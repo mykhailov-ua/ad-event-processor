@@ -37,7 +37,9 @@ export function ThemeToggle({ className, showLabel = false }: ThemeToggleProps) 
   return (
     <Tooltip>
       <TooltipTrigger asChild>{button}</TooltipTrigger>
-      <TooltipContent side="bottom">{themeToggleLabel(theme)}</TooltipContent>
+      <TooltipContent align="end" side="top">
+        {themeToggleLabel(theme)}
+      </TooltipContent>
     </Tooltip>
   );
 }

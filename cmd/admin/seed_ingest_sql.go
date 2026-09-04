@@ -76,7 +76,7 @@ func writeSeedIngestSQL(w io.Writer, count int) {
   updated_at = NOW();`)
 	fmt.Fprintln(w)
 
-	fmt.Fprintln(w, "INSERT INTO campaigns (id, name, budget_limit, status, customer_id, pacing_mode, daily_budget, timezone, freq_limit, freq_window, brand_id, target_url)")
+	fmt.Fprintln(w, "INSERT INTO campaigns (id, name, budget_limit, status, customer_id, pacing_mode, daily_budget, timezone, freq_limit, freq_window, brand_id, target_url, target_countries)")
 	fmt.Fprintln(w, "VALUES")
 	for i := 1; i <= count; i++ {
 		sep := ","
@@ -85,15 +85,17 @@ func writeSeedIngestSQL(w io.Writer, count int) {
 		}
 		budgetLimit := int64(4_200_000_000 + (int64(i%17) * 650_000_000) + (int64(i%9) * 384_729))
 		dailyBudget := int64(380_000_000 + (int64(i%11) * 95_000_000) + (int64(i%6) * 18_473))
+		targetCountries := seedUiDemoTargetCountries(i)
 		fmt.Fprintf(
 			w,
-			"  ('%s', %s, %d, 'ACTIVE', '%s', 'ASAP', %d, 'UTC', 100000000, 3600, '%s', 'https://trk.horizon-media.io/landing?cid={click_id}')%s\n",
+			"  ('%s', %s, %d, 'ACTIVE', '%s', 'ASAP', %d, 'UTC', 100000000, 3600, '%s', 'https://trk.horizon-media.io/landing?cid={click_id}', %s)%s\n",
 			seedCampaignUUID(i),
 			sqlLiteral(seedCampaignName(i)),
 			budgetLimit,
 			seedCustomerUUID(i),
 			dailyBudget,
 			seedBrandUUID(i),
+			sqlLiteral(formatPostgresTextArray(targetCountries)),
 			sep,
 		)
 	}
@@ -102,7 +104,8 @@ func writeSeedIngestSQL(w io.Writer, count int) {
   status = 'ACTIVE',
   budget_limit = EXCLUDED.budget_limit,
   brand_id = EXCLUDED.brand_id,
-  target_url = EXCLUDED.target_url;`)
+  target_url = EXCLUDED.target_url,
+  target_countries = EXCLUDED.target_countries;`)
 	fmt.Fprintln(w)
 
 	fmt.Fprintf(w, `INSERT INTO billing.license_status (

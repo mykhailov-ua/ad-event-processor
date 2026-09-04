@@ -2,7 +2,7 @@ import { useCallback, useState, type DragEvent } from 'react';
 
 import { Checkbox } from '@/components/ui/checkbox';
 import type { CampaignListMetrics } from '@/api/campaigns_api';
-import type { Campaign, CampaignMargin } from '@/api/types';
+import type { Campaign, CampaignMargin, CampaignStatsQuery } from '@/api/types';
 import {
   sumCampaignListTotals,
 } from '@/domains/campaigns/list/campaign_list_format';
@@ -51,6 +51,7 @@ export type CampaignsListTableProps = {
   emptyMessage?: string;
   onCampaignOverview?: (campaign: Campaign) => void;
   filterTotals?: CampaignListFilterTotalsView;
+  statsQuery?: CampaignStatsQuery;
 };
 
 export function CampaignsListTable({
@@ -72,6 +73,7 @@ export function CampaignsListTable({
   emptyMessage = 'No campaigns match the current filters.',
   onCampaignOverview,
   filterTotals,
+  statsQuery,
 }: CampaignsListTableProps) {
   const columns = visibleCampaignListColumns(columnPrefs);
   const { localWidths, startResize } = useCampaignListColumnResize({
@@ -263,6 +265,7 @@ export function CampaignsListTable({
               selected={selectedIds.has(campaign.id)}
               onCampaignOverview={onCampaignOverview}
               onToggleSelected={toggleOne}
+              statsQuery={statsQuery}
             />
           ))}
         </TableBody>

@@ -25,6 +25,11 @@ import {
   validateCampaignListStatsDraft,
   type CampaignListQueryPatch,
 } from '@/domains/campaigns/list/campaigns_list_query';
+import { campaignListSelectionScopeKey } from '@/domains/campaigns/list/campaign_list_selection_scope';
+import {
+  campaignListSortNeedsMetricWindow,
+  campaignListSortToApi,
+} from '@/domains/campaigns/list/campaign_list_sort';
 import type { CampaignsDirectoryProps } from '@/domains/campaigns/list/campaigns_directory_types';
 import type {
   CampaignPacingFilter,
@@ -34,6 +39,7 @@ import type {
 import { useCampaignsPageList } from '@/pages/use_campaigns_page_list';
 import { useSession } from '@/hooks/use_session';
 import { useTrackerHeaderSearchRegistration } from '@/lib/tracker_header_context';
+import { userErrorMessage } from '@/lib/admin_error';
 import { DEFAULT_LIST_LIMIT } from '@/lib/list_query';
 import { toDatetimeLocalValue } from '@/lib/datetime_range';
 
@@ -82,6 +88,15 @@ export function useCampaignsPage(): CampaignsDirectoryProps {
   const statsQuery = useMemo(
     () => campaignStatsQueryForRange(appliedStatsRange),
     [appliedStatsRange],
+  );
+  const listScopeKey = useMemo(
+    () =>
+      campaignListSelectionScopeKey({
+        query,
+        statsFrom: statsQuery.from,
+        statsTo: statsQuery.to,
+      }),
+    [query, statsQuery.from, statsQuery.to],
   );
   const [draftStatsFrom, setDraftStatsFrom] = useState(
     toDatetimeLocalValue(appliedStatsRange.from),
@@ -155,6 +170,10 @@ export function useCampaignsPage(): CampaignsDirectoryProps {
     templatesLoading,
     listFacetsFetching,
     filterTotals,
+    filterTotalsCapped,
+    filterTotalsError,
+    metricsError,
+    metricsStale,
   } = useCampaignsPageList({
     query,
     statsQuery,
@@ -174,6 +193,24 @@ export function useCampaignsPage(): CampaignsDirectoryProps {
       setDraftTemplateId(templates[0]?.id ?? '');
     }
   }, [draftTemplateId, templates]);
+
+  useEffect(() => {
+    if (error && data != null) {
+      toast.error(userErrorMessage(error, 'Could not refresh campaign list'));
+    }
+  }, [data, error]);
+
+  useEffect(() => {
+    if (metricsError) {
+      toast.error(userErrorMessage(metricsError, 'Could not load campaign metrics'));
+    }
+  }, [metricsError]);
+
+  useEffect(() => {
+    if (filterTotalsError) {
+      toast.error(userErrorMessage(filterTotalsError, 'Could not load filter totals'));
+    }
+  }, [filterTotalsError]);
 
   const updateQuery = useCallback(
     (patch: CampaignListQueryPatch) => {
@@ -306,13 +343,18 @@ export function useCampaignsPage(): CampaignsDirectoryProps {
     (field: CampaignSortField) => {
       const nextOrder =
         appliedSort === field && appliedOrder === 'asc' ? 'desc' : 'asc';
-      updateQuery({
+      const patch: CampaignListQueryPatch = {
         sort: field,
         order: nextOrder,
         offset: 0,
-      });
+      };
+      if (campaignListSortNeedsMetricWindow(campaignListSortToApi(field))) {
+        patch.stats_from = appliedStatsRange.from;
+        patch.stats_to = appliedStatsRange.to;
+      }
+      updateQuery(patch);
     },
-    [appliedOrder, appliedSort, updateQuery],
+    [appliedOrder, appliedSort, appliedStatsRange.from, appliedStatsRange.to, updateQuery],
   );
 
   const onLoadTemplates = useCallback(() => {
@@ -393,6 +435,11 @@ export function useCampaignsPage(): CampaignsDirectoryProps {
     countryOptions,
     listFacetsFetching,
     filterTotals,
+    filterTotalsCapped,
+    filteredTotal: data?.total ?? 0,
+    metricsStale,
+    listScopeKey,
+    statsQuery,
     exportFilterQuery,
     fetching,
     error,

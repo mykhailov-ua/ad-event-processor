@@ -209,7 +209,7 @@ export async function patchCampaign(
   });
 }
 
-export type CampaignBulkAction = 'pause' | 'resume';
+export type CampaignBulkAction = 'pause' | 'resume' | 'archive';
 
 export type CampaignBulkActionRequest = {
   action: CampaignBulkAction;
@@ -973,6 +973,22 @@ export async function exportCampaign(
     `/api/v1/campaigns/${encodeURIComponent(campaignId)}/export`,
     { signal },
   );
+}
+
+export type CampaignExportBatchResponse = {
+  items: Record<string, CampaignExportBundle>;
+  errors?: { id: string; error_code?: string }[];
+};
+
+export async function exportCampaignsBatch(
+  campaignIds: string[],
+  signal?: AbortSignal,
+): Promise<CampaignExportBatchResponse> {
+  const search = new URLSearchParams();
+  search.set('ids', campaignIds.join(','));
+  return apiJson<CampaignExportBatchResponse>(`/api/v1/campaigns/export?${search.toString()}`, {
+    signal,
+  });
 }
 
 export async function getCampaignEditorShell(

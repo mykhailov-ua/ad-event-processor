@@ -96,6 +96,10 @@ func (campaignReaderStub) ResumeCampaign(context.Context, uuid.UUID, string) err
 	return nil
 }
 
+func (campaignReaderStub) ArchiveCampaign(context.Context, uuid.UUID, string) error {
+	return nil
+}
+
 func TestPostCampaignImportValidateJob_createsJob(t *testing.T) {
 	fixture, err := os.ReadFile(filepath.Join("..", "migrationsource", "testdata", "keitaro_facebook_campaign.json"))
 	require.NoError(t, err)

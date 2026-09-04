@@ -49,6 +49,11 @@ export function CampaignsDirectory({
   countryOptions,
   listFacetsFetching = false,
   filterTotals,
+  filterTotalsCapped = false,
+  filteredTotal = 0,
+  metricsStale = false,
+  listScopeKey,
+  statsQuery,
   exportFilterQuery,
   fetching,
   error,
@@ -93,6 +98,8 @@ export function CampaignsDirectory({
     columnWidthProbe,
     filterTotals,
     exportFilterQuery,
+    listScopeKey,
+    statsQuery,
     onRefreshList,
   });
 
@@ -129,7 +136,10 @@ export function CampaignsDirectory({
             draftOwnerUserId={draftOwnerUserId}
             draftPacing={draftPacing}
             fetching={fetching}
+            filterTotalsCapped={filterTotalsCapped}
+            filteredTotal={filteredTotal}
             listFacetsFetching={listFacetsFetching}
+            metricsStale={metricsStale}
             ownerOptions={ownerOptions}
             statusTotals={statusTotals}
             statusTotalsLoading={statusTotalsLoading}
@@ -245,6 +255,7 @@ export function CampaignsDirectory({
             workspace.setOverviewCampaign(campaign as CampaignWithMoneyDisplay)
           }
           onSelectedIdsChange={workspace.setSelectedIds}
+          statsQuery={statsQuery}
         />
       </PageLayout>
 

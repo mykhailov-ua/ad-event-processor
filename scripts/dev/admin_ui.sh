@@ -37,6 +37,7 @@ Commands:
   stack     Start ingest-only compose only (db, redis, control on :${MANAGEMENT_PORT})
   seed      Bootstrap admin user + UI demo stats for charts
   buyer     Seed buyer dashboard demo (PG stats + ClickHouse economics)
+  full      Full campaign list UX dataset (buyer + owners/countries/margin)
   demo      Re-seed campaign stats and spend for admin charts only
   rebuild-control  Rebuild docker control image (CONTROL_BUILD_TIMEOUT, default 45m) and recreate with control-dev overlay
   control   Run control plane locally in foreground (stops docker control on :${MANAGEMENT_PORT} first)
@@ -203,6 +204,14 @@ start_local_control() {
 }
 
 start_web() {
+  if web_healthy; then
+    if pid_alive "$WEB_PID"; then
+      log "web already running (pid $(<"$WEB_PID"))"
+    else
+      log "web already listening at http://127.0.0.1:${ADMIN_DEV_PORT}"
+    fi
+    return 0
+  fi
   if pid_alive "$WEB_PID" && web_healthy; then
     log "web already running (pid $(<"$WEB_PID"))"
     return 0
@@ -218,12 +227,12 @@ start_web() {
   load_dotenv
   mkdir -p "$VAR_DIR"
   : >"$WEB_LOG"
-  (
-    cd "$ROOT/web"
-    export ADMIN_API_PROXY="${ADMIN_API_PROXY:-${CONTROL_URL}}"
-    export ADMIN_DEV_PORT
-    npm run dev
-  ) >>"$WEB_LOG" 2>&1 &
+  nohup bash -c "
+    cd \"$ROOT/web\"
+    export ADMIN_API_PROXY=\"${ADMIN_API_PROXY:-${CONTROL_URL}}\"
+    export ADMIN_DEV_PORT=\"${ADMIN_DEV_PORT}\"
+    exec node scripts/dev.mjs
+  " >>"$WEB_LOG" 2>&1 &
   echo $! >"$WEB_PID"
   local attempt=0
   while [[ "$attempt" -lt 60 ]]; do
@@ -350,6 +359,10 @@ case "$CMD" in
     ensure_stack
     ensure_seeded
     bash "$SCRIPTS/dev/stack/seed_buyer_dashboard.sh"
+    ;;
+  full)
+    ensure_stack
+    bash "$SCRIPTS/dev/stack/seed_campaign_list_full.sh"
     ;;
   demo)
     ensure_stack

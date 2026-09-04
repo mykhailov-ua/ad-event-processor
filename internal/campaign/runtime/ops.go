@@ -316,6 +316,23 @@ func resumeCampaign(ctx context.Context, pool *pgxpool.Pool, fx campaign.Effects
 	})
 }
 
+func archiveCampaign(ctx context.Context, pool *pgxpool.Pool, fx campaign.Effects, campaignID uuid.UUID, reason string) error {
+	if pool == nil || fx == nil {
+		return campaign.ErrServiceUnavailable()
+	}
+	return pgx.BeginFunc(ctx, pool, func(tx pgx.Tx) error {
+		q := db.New(tx)
+		camp, err := q.GetCampaignForUpdate(ctx, domain.ToUUID(campaignID))
+		if err != nil {
+			return mapCampaignStoreError(err)
+		}
+		if err := campaign.AssertMediaBuyerCampaignAccess(ctx, camp); err != nil {
+			return err
+		}
+		return campaign.ArchiveCampaignStatus(ctx, fx, q, camp, reason)
+	})
+}
+
 type auditReasonChange struct {
 	Reason string `json:"reason"`
 }
@@ -1178,7 +1195,14 @@ func getCampaignStats(
 	if granularity == "hour" {
 		hourly, lagVal, err := queryClickHouseHourly(clickhouseCtx, clickhouseQuery, campaignID, from, to)
 		if err != nil {
-			return campaign.CampaignStatsDTO{}, err
+			report.Hourly = synthesizeHourlyBuckets(
+				campaignID,
+				stats.Impressions,
+				stats.Clicks,
+				stats.Conversions,
+				to,
+			)
+			return report, nil
 		}
 		resolved := hourlyBucketsForReport(
 			campaignID,
@@ -1207,7 +1231,7 @@ func getCampaignStats(
 	} else {
 		daily, lagVal, err := queryClickHouseDaily(clickhouseCtx, clickhouseQuery, campaignID, from, to)
 		if err != nil {
-			return campaign.CampaignStatsDTO{}, err
+			return report, nil
 		}
 		report.Daily = daily
 		lag = lagVal

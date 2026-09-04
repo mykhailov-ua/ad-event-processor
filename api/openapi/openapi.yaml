@@ -96,6 +96,8 @@ paths:
     $ref: paths/campaigns.yaml#/paths/~1api~1v1~1campaigns~1{id}~1owner
   /api/v1/campaigns/{id}/clone:
     $ref: paths/campaigns.yaml#/paths/~1api~1v1~1campaigns~1{id}~1clone
+  /api/v1/campaigns/export:
+    $ref: paths/campaigns.yaml#/paths/~1api~1v1~1campaigns~1export
   /api/v1/campaigns/{id}/export:
     $ref: paths/campaigns.yaml#/paths/~1api~1v1~1campaigns~1{id}~1export
   /api/v1/campaigns/import:

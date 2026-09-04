@@ -22,7 +22,7 @@ DB_NAME="${DB_NAME:-ad_event_processor}"
 DB_SSLMODE="${DB_SSLMODE:-disable}"
 CH_PORT="${CH_PORT:-9000}"
 CH_PASSWORD="${CH_PASSWORD:-secure_ch_pass}"
-SEED_BUYER_COUNT="${SEED_BUYER_COUNT:-50}"
+SEED_BUYER_COUNT="${SEED_BUYER_COUNT:-120}"
 
 log() { printf 'seed-buyer-dashboard: %s\n' "$*"; }
 die() {
@@ -42,16 +42,23 @@ if ! docker compose --project-directory "$ROOT" -f docker-compose.yaml ps --stat
   die "postgres not running; start stack: bash scripts/dev/stack/stack.sh ingest-only"
 fi
 
-log "step 1/5: ensure base campaigns (count=${SEED_BUYER_COUNT})"
+log "step 0: ensure ARCHIVED campaign status enum"
+docker exec ad-event-processor-db-1 psql -h localhost -p "${DB_PORT:-5430}" -U ad_event_processor_user -d ad_event_processor \
+  -c "ALTER TYPE campaign_status_type ADD VALUE IF NOT EXISTS 'ARCHIVED';" > /dev/null
+
+log "step 1/6: ensure base campaigns (count=${SEED_BUYER_COUNT})"
 SEED_INGEST_CAMPAIGN_COUNT="${SEED_BUYER_COUNT}" bash "$ROOT/scripts/test/load/seed_ingest_only_campaigns.sh"
 
-log "step 2/5: PG UI stats (names, spend, campaign_stats)"
+log "step 2/6: PG UI stats (names, spend, campaign_stats)"
 DB_DSN="$(host_db_dsn)" go run ./cmd/admin --env-path .env db seed-ui --count "${SEED_BUYER_COUNT}"
 
-log "step 3/5: assign campaigns to demo customer (Horizon portfolio)"
+log "step 3/6: assign campaigns to demo customer (Horizon portfolio)"
 run_admin db seed-buyer-pg --count "${SEED_BUYER_COUNT}" --customer-seq 1
 
-log "step 4/5: start ClickHouse if needed"
+log "step 4/6: campaign list UX (owners, countries, margin breach, customers)"
+run_admin db seed-campaign-list-ux --count "${SEED_BUYER_COUNT}"
+
+log "step 5/6: start ClickHouse if needed"
 if ! docker compose --project-directory "$ROOT" -f docker-compose.yaml ps --status running clickhouse 2> /dev/null | grep -q clickhouse; then
   bash "$ROOT/scripts/dev/stack/stack.sh" clickhouse
 fi
@@ -66,7 +73,7 @@ for attempt in $(seq 1 30); do
   fi
 done
 
-log "step 5/5: seed ClickHouse traffic and economics"
+log "step 6/6: seed ClickHouse traffic and economics"
 export CH_USE_UDS=0
 export CH_ENABLED=1
 export CH_DSN="clickhouse://${CH_USER:-default}:${CH_PASSWORD}@127.0.0.1:${CH_PORT}/${CH_NAME:-ad_event_processor}"

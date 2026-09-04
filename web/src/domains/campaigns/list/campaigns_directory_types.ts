@@ -1,6 +1,6 @@
 import type { CampaignListMetrics } from '@/api/campaigns_api';
 import type { CampaignStatusTotals } from '@/api/campaigns_api';
-import type { Campaign, CampaignMargin, SelfServeCampaignTemplate } from '@/api/types';
+import type { Campaign, CampaignMargin, SelfServeCampaignTemplate, CampaignStatsQuery } from '@/api/types';
 import type { CustomerComboboxOption } from '@/shell/customer_combobox';
 import type { CampaignsListFilterOption } from '@/domains/campaigns/list/campaigns_list_filter_select';
 import type { CampaignListFilterTotalsView } from '@/domains/campaigns/list/campaign_list_filter_totals';
@@ -56,6 +56,11 @@ export type CampaignsDirectoryProps = {
   countryOptions: CampaignsListFilterOption[];
   listFacetsFetching?: boolean;
   filterTotals?: CampaignListFilterTotalsView;
+  filterTotalsCapped?: boolean;
+  filteredTotal?: number;
+  metricsStale?: boolean;
+  listScopeKey: string;
+  statsQuery: CampaignStatsQuery;
   exportFilterQuery: CampaignListFilterQuery;
   fetching: boolean;
   error: Error | undefined;

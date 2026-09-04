@@ -96,6 +96,10 @@ func (s *diffCampaignStub) ResumeCampaign(context.Context, uuid.UUID, string) er
 	return nil
 }
 
+func (s *diffCampaignStub) ArchiveCampaign(context.Context, uuid.UUID, string) error {
+	return nil
+}
+
 func TestGetCampaignDiff_selfReturnsEmptyRows_holdout(t *testing.T) {
 	t.Parallel()
 	campID := uuid.New()

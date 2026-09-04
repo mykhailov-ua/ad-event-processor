@@ -316,6 +316,46 @@ paths:
         default:
           $ref: '../openapi.yaml#/components/responses/Error'
 
+  /api/v1/campaigns/export:
+    get:
+      tags: [campaigns]
+      operationId: campaignsExportBatch
+      summary: Export multiple campaign bundles in one request
+      x-permissions: [campaigns:read]
+      parameters:
+        - name: ids
+          in: query
+          required: true
+          schema:
+            type: string
+          description: Comma-separated campaign UUIDs (max 50)
+      responses:
+        '200':
+          description: Export bundles keyed by campaign id; per-id errors in errors[]
+          content:
+            application/json:
+              schema:
+                type: object
+                required: [items]
+                properties:
+                  items:
+                    type: object
+                    additionalProperties:
+                      $ref: '../components/schemas/campaign.yaml#/CampaignExportBundle'
+                  errors:
+                    type: array
+                    items:
+                      type: object
+                      required: [id]
+                      properties:
+                        id:
+                          type: string
+                          format: uuid
+                        error_code:
+                          type: string
+        default:
+          $ref: '../openapi.yaml#/components/responses/Error'
+
   /api/v1/campaigns/{id}/export:
     get:
       tags: [campaigns]
@@ -1019,7 +1059,7 @@ paths:
     post:
       tags: [campaigns]
       operationId: campaignsBulkMutate
-      summary: Bulk pause or resume campaigns
+      summary: Bulk pause, resume, or archive campaigns
       x-permissions: [campaigns:write]
       requestBody:
         required: true
@@ -1031,7 +1071,7 @@ paths:
               properties:
                 action:
                   type: string
-                  enum: [pause, resume]
+                  enum: [pause, resume, archive]
                 campaign_ids:
                   type: array
                   items:

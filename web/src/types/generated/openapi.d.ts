@@ -864,7 +864,7 @@ export interface paths {
         };
         get?: never;
         put?: never;
-        /** Bulk pause or resume campaigns */
+        /** Bulk pause, resume, or archive campaigns */
         post: operations["campaignsBulkMutate"];
         delete?: never;
         options?: never;
@@ -9797,7 +9797,7 @@ export interface operations {
             content: {
                 "application/json": {
                     /** @enum {string} */
-                    action: "pause" | "resume";
+                    action: "pause" | "resume" | "archive";
                     campaign_ids: string[];
                 };
             };

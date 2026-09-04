@@ -7,6 +7,7 @@ import {
   devMockCampaignMetricSortNeedsWindow,
   enrichDevMockCampaignMetricsDerived,
 } from './campaign_metrics.ts';
+import { devMockStore } from './store.ts';
 
 type MockListResult = {
   status: number;
@@ -361,4 +362,74 @@ export function devMockListCampaignMetricsTotals(
     to,
     stale: false,
   });
+}
+
+function devMockCampaignStatsHourly(impressions: number, clicks: number, conversions: number) {
+  const buckets = [];
+  const end = new Date();
+  end.setUTCMinutes(0, 0, 0);
+  for (let index = 23; index >= 0; index -= 1) {
+    const hour = new Date(end.getTime() - index * 60 * 60 * 1000);
+    const weight = (index % 5) + 1;
+    buckets.push({
+      hour: hour.toISOString(),
+      impressions: Math.floor((impressions * weight) / 90),
+      clicks: Math.floor((clicks * weight) / 90),
+      conversions: Math.floor((conversions * weight) / 90),
+    });
+  }
+  return buckets;
+}
+
+export function devMockCampaignStats(campaignId: string, url: URL): MockListResult {
+  const row = devMockStore().campaigns.find((campaign) => campaign.id === campaignId);
+  const now = new Date();
+  const from =
+    url.searchParams.get('from') ?? new Date(now.getTime() - 7 * 24 * 60 * 60 * 1000).toISOString();
+  const to = url.searchParams.get('to') ?? now.toISOString();
+  const impressions = 42_000;
+  const clicks = 1_240;
+  const conversions = 86;
+  return json(200, {
+    campaign_id: campaignId,
+    current_spend: row?.current_spend ?? '0.00',
+    metrics: { impressions, clicks, conversions },
+    hourly: devMockCampaignStatsHourly(impressions, clicks, conversions),
+    granularity: url.searchParams.get('granularity') ?? 'hour',
+    from,
+    to,
+    stale: true,
+    source: 'pg',
+    consistency: 'strong',
+  });
+}
+
+export function devMockExportCampaignsBatch(url: URL): MockListResult {
+  const rawIds = url.searchParams.get('ids') ?? '';
+  const ids = rawIds
+    .split(',')
+    .map((id) => id.trim())
+    .filter((id) => id.length > 0);
+  const { campaigns } = devMockStore();
+  const items: Record<string, unknown> = {};
+  const errors: { id: string; error_code: string }[] = [];
+  const exportedAt = new Date().toISOString();
+  for (const id of ids) {
+    const row = campaigns.find((campaign) => campaign.id === id);
+    if (!row) {
+      errors.push({ id, error_code: 'NOT_FOUND' });
+      continue;
+    }
+    items[id] = {
+      export_version: '1',
+      exported_at: exportedAt,
+      campaign: {
+        name: row.name,
+        budget_limit_micro: row.budget_limit_micro ?? 0,
+        pacing_mode: row.pacing_mode ?? 'ASAP',
+        timezone: row.timezone ?? 'UTC',
+      },
+    };
+  }
+  return json(200, { items, errors });
 }

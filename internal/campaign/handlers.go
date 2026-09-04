@@ -38,6 +38,7 @@ type CampaignReader interface {
 	GetCampaignIntegrationHealth(ctx context.Context, campaignID uuid.UUID) (IntegrationHealthDTO, error)
 	PauseCampaign(ctx context.Context, campaignID uuid.UUID, reason string) error
 	ResumeCampaign(ctx context.Context, campaignID uuid.UUID, reason string) error
+	ArchiveCampaign(ctx context.Context, campaignID uuid.UUID, reason string) error
 }
 
 type CampaignsHTTPHandlers struct {
@@ -77,6 +78,7 @@ func (h *CampaignsHTTPHandlers) Register(mux *http.ServeMux) {
 	mux.HandleFunc("GET /api/v1/campaigns/target-countries", limit(perm([]string{"campaigns:read", "campaigns:read:masked"}, h.listCampaignTargetCountries)))
 	mux.HandleFunc("GET /api/v1/campaigns/metrics", limit(perm([]string{"campaigns:read", "campaigns:read:masked"}, h.listCampaignMetrics)))
 	mux.HandleFunc("GET /api/v1/campaigns/metrics-totals", limit(perm([]string{"campaigns:read", "campaigns:read:masked"}, h.listCampaignMetricsTotals)))
+	mux.HandleFunc("GET /api/v1/campaigns/export", limit(perm([]string{"campaigns:read"}, h.exportCampaignsBatch)))
 	mux.HandleFunc("GET /api/v1/campaigns/{id}", limit(perm([]string{"campaigns:read", "campaigns:read:masked"}, h.getCampaign)))
 	mux.HandleFunc("PATCH /api/v1/campaigns/{id}", limit(perm([]string{"campaigns:write"}, h.patchCampaign)))
 	mux.HandleFunc("PUT /api/v1/campaigns/{id}/owner", limit(perm([]string{"campaigns:write"}, h.assignCampaignOwner)))
@@ -386,6 +388,40 @@ type CloneCampaignHTTPRequest struct {
 	NamePrefix string               `json:"name_prefix,omitempty"`
 	NameSuffix string               `json:"name_suffix,omitempty"`
 	Options    CloneCampaignOptions `json:"options,omitempty"`
+}
+
+func (h *CampaignsHTTPHandlers) exportCampaignsBatch(w http.ResponseWriter, r *http.Request) {
+	campaignIDs, err := ParseCampaignExportIDs(r.URL.Query().Get("ids"))
+	if err != nil {
+		httpresponse.Error(w, http.StatusBadRequest, "BAD_REQUEST", err.Error())
+		return
+	}
+	items := make(map[string]CampaignExportBundle, len(campaignIDs))
+	errors := make([]CampaignExportBatchResultRowDTO, 0)
+	for _, campaignID := range campaignIDs {
+		if h.AuthorizeCampaignAccess != nil {
+			if authErr := h.AuthorizeCampaignAccess(r, campaignID); authErr != nil {
+				errors = append(errors, CampaignExportBatchResultRowDTO{
+					ID:        campaignID.String(),
+					ErrorCode: ExportBatchErrorCode(authErr),
+				})
+				continue
+			}
+		}
+		bundle, exportErr := h.Campaigns.ExportCampaign(r.Context(), campaignID)
+		if exportErr != nil {
+			errors = append(errors, CampaignExportBatchResultRowDTO{
+				ID:        campaignID.String(),
+				ErrorCode: ExportBatchErrorCode(exportErr),
+			})
+			continue
+		}
+		items[campaignID.String()] = bundle
+	}
+	httpresponse.JSON(w, http.StatusOK, CampaignExportBatchResponse{
+		Items:  items,
+		Errors: errors,
+	})
 }
 
 func (h *CampaignsHTTPHandlers) exportCampaign(w http.ResponseWriter, r *http.Request) {

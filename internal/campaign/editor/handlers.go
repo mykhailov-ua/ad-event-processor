@@ -770,7 +770,7 @@ func postCampaignBulk(h *campaign.CampaignsHTTPHandlers, w http.ResponseWriter, 
 		return
 	}
 	action := strings.ToLower(strings.TrimSpace(req.Action))
-	if action != "pause" && action != "resume" {
+	if action != "pause" && action != "resume" && action != "archive" {
 		httpresponse.Error(w, http.StatusBadRequest, "BAD_REQUEST", "unsupported bulk action")
 		return
 	}
@@ -801,8 +801,10 @@ func postCampaignBulk(h *campaign.CampaignsHTTPHandlers, w http.ResponseWriter, 
 		}
 		if action == "pause" {
 			err = h.Campaigns.PauseCampaign(r.Context(), campaignID, reason)
-		} else {
+		} else if action == "resume" {
 			err = h.Campaigns.ResumeCampaign(r.Context(), campaignID, reason)
+		} else {
+			err = h.Campaigns.ArchiveCampaign(r.Context(), campaignID, reason)
 		}
 		if err != nil {
 			row.ErrorCode = bulkCampaignErrorCode(err)
@@ -820,6 +822,8 @@ func bulkCampaignErrorCode(err error) string {
 	case errors.Is(err, campaign.ErrCampaignNotFound):
 		return "not_found"
 	case errors.Is(err, campaign.ErrCampaignCannotBePaused), errors.Is(err, campaign.ErrCampaignNotPaused), errors.Is(err, campaign.ErrCampaignOutsideSchedule):
+		return "invalid_state"
+	case errors.Is(err, campaign.ErrCampaignCannotBeArchived):
 		return "invalid_state"
 	case errors.Is(err, campaign.ErrCampaignPublishBlocked):
 		return "publish_blocked"

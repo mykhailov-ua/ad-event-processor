@@ -140,3 +140,7 @@ func (s campaignListStub) PauseCampaign(context.Context, uuid.UUID, string) erro
 func (s campaignListStub) ResumeCampaign(context.Context, uuid.UUID, string) error {
 	return nil
 }
+
+func (s campaignListStub) ArchiveCampaign(context.Context, uuid.UUID, string) error {
+	return nil
+}

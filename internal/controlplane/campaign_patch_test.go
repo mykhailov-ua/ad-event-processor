@@ -78,4 +78,10 @@ func TestParsePatchStatus(t *testing.T) {
 	bad := "DRAINING"
 	_, _, err = campaign.ParsePatchStatus(&bad)
 	require.Error(t, err)
+
+	archived := "ARCHIVED"
+	got, set, err = campaign.ParsePatchStatus(&archived)
+	require.NoError(t, err)
+	require.True(t, set)
+	require.Equal(t, db.CampaignStatusTypeARCHIVED, got)
 }

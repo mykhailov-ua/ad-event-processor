@@ -183,6 +183,8 @@ func parsePatchStatus(raw *string) (db.CampaignStatusType, bool, error) {
 		return db.CampaignStatusTypeACTIVE, true, nil
 	case string(db.CampaignStatusTypePAUSED):
 		return db.CampaignStatusTypePAUSED, true, nil
+	case "ARCHIVED":
+		return db.CampaignStatusTypeARCHIVED, true, nil
 	default:
 		return "", false, errValidation(fmt.Sprintf("invalid status %q", *raw))
 	}
@@ -303,11 +305,35 @@ func ApplySchedulePatch(
 	return nil
 }
 
+func ArchiveCampaignStatus(ctx context.Context, fx Effects, q db.Querier, locked db.Campaign, reason string) error {
+	if locked.Status == db.CampaignStatusTypeARCHIVED {
+		return nil
+	}
+	switch locked.Status {
+	case db.CampaignStatusTypeDELETED, db.CampaignStatusTypeDRAINING:
+		return ErrCampaignCannotBeArchived
+	}
+	campaignID := uuid.UUID(locked.ID.Bytes)
+	wasDelivering := locked.Status == db.CampaignStatusTypeACTIVE || locked.Status == db.CampaignStatusTypeEXHAUSTED
+	oldStatus := locked.Status
+	if err := TransitionCampaignStatus(ctx, fx, q, campaignID, oldStatus, db.CampaignStatusTypeARCHIVED, reason, locked.BudgetLimit); err != nil {
+		return err
+	}
+	if !wasDelivering {
+		return nil
+	}
+	return fx.EnqueueCampaignOutbox(ctx, q, "PAUSE_CAMPAIGN", campaignID, locked.BudgetLimit)
+}
+
 func ApplyStatusPatch(ctx context.Context, fx Effects, q db.Querier, locked db.Campaign, want db.CampaignStatusType, reason string, publishForce bool) error {
 	if want == locked.Status {
 		return nil
 	}
 	campaignID := uuid.UUID(locked.ID.Bytes)
+
+	if want == db.CampaignStatusTypeARCHIVED {
+		return ArchiveCampaignStatus(ctx, fx, q, locked, reason)
+	}
 
 	switch want {
 	case db.CampaignStatusTypePAUSED:

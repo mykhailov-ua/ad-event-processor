@@ -26,6 +26,7 @@
 //
 // Defaults and limits:
 //   - GetCampaignStats marks stale when ClickHouse ingestion lag exceeds 5 minutes (ops.go helper).
+//   - When ClickHouse is nil or hourly/daily query fails, stats fall back to PG rollups (source pg, consistency strong).
 //   - Campaign list/get field scrubbing via authz.MaskLevel from context (ScrubCampaignFields).
 //
 // Verify:

@@ -172,6 +172,115 @@ func TestPostCampaignBulk_rejectsTooManyIDs(t *testing.T) {
 	assert.Equal(t, http.StatusBadRequest, rec.Code)
 }
 
+func TestPostCampaignBulk_archive(t *testing.T) {
+	t.Parallel()
+	campID := uuid.New()
+	stub := &archiveBulkCampaignStub{}
+	h := &campaign.CampaignsHTTPHandlers{Campaigns: stub}
+	mux := http.NewServeMux()
+	RegisterRoutes(h, mux, func(next http.HandlerFunc) http.HandlerFunc { return next }, func(_ []string, next http.HandlerFunc) http.HandlerFunc { return next })
+	payload, err := json.Marshal(BulkCampaignRequestDTO{Action: "archive", CampaignIDs: []string{campID.String()}})
+	require.NoError(t, err)
+	req := httptest.NewRequest(http.MethodPost, "/api/v1/campaigns/bulk-action", bytes.NewReader(payload))
+	req.Header.Set("Content-Type", "application/json")
+	rec := httptest.NewRecorder()
+	mux.ServeHTTP(rec, req)
+	require.Equal(t, http.StatusOK, rec.Code)
+	var resp BulkCampaignResponseDTO
+	require.NoError(t, json.Unmarshal(rec.Body.Bytes(), &resp))
+	require.Len(t, resp.Results, 1)
+	assert.True(t, resp.Results[0].OK)
+	assert.Equal(t, campID.String(), resp.Results[0].ID)
+	assert.Equal(t, []uuid.UUID{campID}, stub.archived)
+	assert.Equal(t, "bulk_archive", stub.lastReason)
+}
+
+type archiveBulkCampaignStub struct {
+	archived   []uuid.UUID
+	lastReason string
+}
+
+func (s *archiveBulkCampaignStub) GetCampaign(context.Context, uuid.UUID) (campaign.CampaignDTO, error) {
+	return campaign.CampaignDTO{}, campaign.ErrCampaignNotFound
+}
+
+func (s *archiveBulkCampaignStub) GetCampaignMargin(context.Context, uuid.UUID) (campaign.CampaignMarginDTO, error) {
+	return campaign.CampaignMarginDTO{}, nil
+}
+
+func (s *archiveBulkCampaignStub) ListCampaigns(context.Context, uuid.UUID, string, int32, int32) ([]campaign.CampaignDTO, int64, error) {
+	return nil, 0, nil
+}
+
+func (s *archiveBulkCampaignStub) ListCampaignsFiltered(context.Context, campaign.ListCampaignsFilter) ([]campaign.CampaignDTO, int64, error) {
+	return nil, 0, nil
+}
+
+func (s *archiveBulkCampaignStub) CountCampaignStatusTotals(context.Context, campaign.ListCampaignsFilter, string, string) (campaign.CampaignStatusTotalsDTO, error) {
+	return campaign.CampaignStatusTotalsDTO{}, nil
+}
+
+func (s *archiveBulkCampaignStub) AttachCampaignListMarginBreach(context.Context, []campaign.CampaignDTO) {
+}
+
+func (s *archiveBulkCampaignStub) PatchCampaign(context.Context, uuid.UUID, campaign.PatchCampaignRequest) (campaign.CampaignDTO, error) {
+	return campaign.CampaignDTO{}, nil
+}
+
+func (s *archiveBulkCampaignStub) PublishCampaign(context.Context, uuid.UUID, bool) (campaign.CampaignDTO, error) {
+	return campaign.CampaignDTO{}, nil
+}
+
+func (s *archiveBulkCampaignStub) EvaluateCampaignPublish(context.Context, uuid.UUID) (campaign.CampaignPublishCheckDTO, error) {
+	return campaign.CampaignPublishCheckDTO{}, nil
+}
+
+func (s *archiveBulkCampaignStub) AssignCampaignOwner(context.Context, uuid.UUID, uuid.UUID) error {
+	return nil
+}
+
+func (s *archiveBulkCampaignStub) ListCampaignEvents(context.Context, uuid.UUID, int32, int32) ([]campaign.CampaignEventDTO, int64, error) {
+	return nil, 0, nil
+}
+
+func (s *archiveBulkCampaignStub) BlockCampaignPlacement(context.Context, uuid.UUID, string) error {
+	return nil
+}
+
+func (s *archiveBulkCampaignStub) CloneCampaign(context.Context, campaign.CloneCampaignSpec) (campaign.CloneCampaignResult, error) {
+	return campaign.CloneCampaignResult{}, nil
+}
+
+func (s *archiveBulkCampaignStub) ExportCampaign(context.Context, uuid.UUID) (campaign.CampaignExportBundle, error) {
+	return campaign.CampaignExportBundle{}, nil
+}
+
+func (s *archiveBulkCampaignStub) ImportCampaign(context.Context, campaign.ImportCampaignSpec) (campaign.ImportCampaignResult, error) {
+	return campaign.ImportCampaignResult{}, nil
+}
+
+func (s *archiveBulkCampaignStub) ImportMigrationCampaigns(context.Context, campaign.ImportMigrationSpec) (campaign.ImportMigrationResult, error) {
+	return campaign.ImportMigrationResult{}, nil
+}
+
+func (s *archiveBulkCampaignStub) GetCampaignIntegrationHealth(context.Context, uuid.UUID) (campaign.IntegrationHealthDTO, error) {
+	return campaign.IntegrationHealthDTO{}, nil
+}
+
+func (s *archiveBulkCampaignStub) PauseCampaign(context.Context, uuid.UUID, string) error {
+	return nil
+}
+
+func (s *archiveBulkCampaignStub) ResumeCampaign(context.Context, uuid.UUID, string) error {
+	return nil
+}
+
+func (s *archiveBulkCampaignStub) ArchiveCampaign(_ context.Context, campaignID uuid.UUID, reason string) error {
+	s.archived = append(s.archived, campaignID)
+	s.lastReason = reason
+	return nil
+}
+
 func TestPostCampaignBulk_unsupportedActionRejected(t *testing.T) {
 	t.Parallel()
 	h := &campaign.CampaignsHTTPHandlers{Campaigns: &diffCampaignStub{}}

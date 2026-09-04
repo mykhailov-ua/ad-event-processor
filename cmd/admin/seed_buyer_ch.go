@@ -19,10 +19,14 @@ import (
 )
 
 const (
-	defaultBuyerCHCampaignCount = 50
-	seedBuyerHistoryDays        = 14
-	maxBuyerClicksPerDay        = 240
-	maxBuyerConversionsPerDay   = 40
+	defaultBuyerCHCampaignCount    = 50
+	seedBuyerHistoryDays           = 14
+	maxBuyerClicksPerDay           = 240
+	maxBuyerConversionsPerDay      = 40
+	maxBuyerClicksPerDayLight      = 24
+	maxBuyerConversionsPerDayLight = 6
+	buyerCHLightCampaignThreshold  = 80
+	buyerCHClearBatchSize          = 15
 )
 
 var (
@@ -112,24 +116,29 @@ func runSeedBuyerCH(cmd *cobra.Command, args []string) error {
 		}
 	}
 
-	hasher := piihash.TestHasher()
+	clickCap, convCap := buyerSeedInsertCaps(buyerCHCampaignCount)
+	historyDays := seedBuyerHistoryDays
+	if buyerCHCampaignCount > buyerCHLightCampaignThreshold {
+		historyDays = 7
+	}
 	today := time.Now().UTC().Truncate(24 * time.Hour)
-	fromDay := today.AddDate(0, 0, -(seedBuyerHistoryDays - 1))
+	fromDay := today.AddDate(0, 0, -(historyDays - 1))
 
 	var clickRows, convRows, hourlyRows int
+	hasher := piihash.TestHasher()
 	for _, camp := range campaigns {
 		statsByDay, err := loadBuyerCampaignStats(ctx, pool, camp.id, fromDay, today.Add(24*time.Hour))
 		if err != nil {
 			return err
 		}
-		for dayOffset := 0; dayOffset < seedBuyerHistoryDays; dayOffset++ {
+		for dayOffset := 0; dayOffset < historyDays; dayOffset++ {
 			day := today.AddDate(0, 0, -dayOffset)
 			st := statsByDay[day.Format("2006-01-02")]
 			if st.clicks == 0 && st.conversions == 0 {
 				imp, clk, conv := seedUiDemoDeliveryCounts(camp.seq, dayOffset)
 				st = buyerDayStats{impressions: imp, clicks: clk, conversions: conv}
 			}
-			cInserted, vInserted, hInserted, err := seedBuyerCampaignDay(ctx, chConn, hasher, camp, day, st)
+			cInserted, vInserted, hInserted, err := seedBuyerCampaignDay(ctx, chConn, hasher, camp, day, st, clickCap, convCap)
 			if err != nil {
 				return fmt.Errorf("campaign %s day %s: %w", camp.id, day.Format("2006-01-02"), err)
 			}
@@ -144,7 +153,7 @@ func runSeedBuyerCH(cmd *cobra.Command, args []string) error {
 	fmt.Printf("  Click rows: %d\n", clickRows)
 	fmt.Printf("  Conversion rows: %d\n", convRows)
 	fmt.Printf("  Hourly rollup rows: %d\n", hourlyRows)
-	fmt.Printf("  Window: last %d days\n", seedBuyerHistoryDays)
+	fmt.Printf("  Window: last %d days\n", historyDays)
 	fmt.Printf("  Demo customer: %s (%s)\n", seedCustomerUUID(buyerCHCustomerSeq), seedCustomerName(buyerCHCustomerSeq))
 	return nil
 }
@@ -187,11 +196,46 @@ WHERE campaign_id = $1
 	return out, rows.Err()
 }
 
+func buyerSeedInsertCaps(campaignCount int) (clicks, conversions int64) {
+	if campaignCount > buyerCHLightCampaignThreshold {
+		return maxBuyerClicksPerDayLight, maxBuyerConversionsPerDayLight
+	}
+	return maxBuyerClicksPerDay, maxBuyerConversionsPerDay
+}
+
+func waitBuyerClickHouseMutations(ctx context.Context, conn driver.Conn) error {
+	deadline := time.Now().Add(3 * time.Minute)
+	for time.Now().Before(deadline) {
+		var pending uint64
+		if err := conn.QueryRow(ctx, `
+SELECT count()
+FROM system.mutations
+WHERE database = 'ad_event_processor' AND is_done = 0`).Scan(&pending); err != nil {
+			return fmt.Errorf("poll mutations: %w", err)
+		}
+		if pending == 0 {
+			return nil
+		}
+		time.Sleep(2 * time.Second)
+	}
+	return fmt.Errorf("clickhouse mutations still pending after 3m")
+}
+
 func clearBuyerClickHouseRows(ctx context.Context, conn driver.Conn, campaignIDs []uuid.UUID) error {
 	tables := []string{"clicks", "conversions", "placement_stats_hourly", "cost_snapshots"}
-	for _, table := range tables {
-		if err := conn.Exec(ctx, fmt.Sprintf("ALTER TABLE ad_event_processor.%s DELETE WHERE campaign_id IN (?)", table), campaignIDs); err != nil {
-			return fmt.Errorf("clear %s: %w", table, err)
+	for i := 0; i < len(campaignIDs); i += buyerCHClearBatchSize {
+		end := i + buyerCHClearBatchSize
+		if end > len(campaignIDs) {
+			end = len(campaignIDs)
+		}
+		batch := campaignIDs[i:end]
+		for _, table := range tables {
+			if err := conn.Exec(ctx, fmt.Sprintf("ALTER TABLE ad_event_processor.%s DELETE WHERE campaign_id IN (?)", table), batch); err != nil {
+				return fmt.Errorf("clear %s batch %d: %w", table, i/buyerCHClearBatchSize, err)
+			}
+		}
+		if err := waitBuyerClickHouseMutations(ctx, conn); err != nil {
+			return err
 		}
 	}
 	return nil
@@ -204,18 +248,20 @@ func seedBuyerCampaignDay(
 	camp buyerCampaignRow,
 	day time.Time,
 	st buyerDayStats,
+	maxClicksPerDay int64,
+	maxConversionsPerDay int64,
 ) (clickRows, convRows, hourlyRows int, err error) {
 	targetClicks := st.clicks
 	if targetClicks <= 0 {
 		return 0, 0, 0, nil
 	}
 	insertClicks := targetClicks
-	if insertClicks > maxBuyerClicksPerDay {
-		insertClicks = maxBuyerClicksPerDay
+	if insertClicks > maxClicksPerDay {
+		insertClicks = maxClicksPerDay
 	}
 	insertConversions := st.conversions
-	if insertConversions > maxBuyerConversionsPerDay {
-		insertConversions = maxBuyerConversionsPerDay
+	if insertConversions > maxConversionsPerDay {
+		insertConversions = maxConversionsPerDay
 	}
 
 	roiNumer := buyerCampaignROINumerator(camp.seq)

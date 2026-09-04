@@ -1,20 +1,34 @@
-import { listCampaigns } from '@/api/campaigns_api';
-import { exportCampaign } from '@/api/campaigns_api';
+import { exportCampaign, exportCampaignsBatch, listCampaigns } from '@/api/campaigns_api';
 import type { Campaign } from '@/api/types';
+import type { CampaignListDataColumnId } from '@/domains/campaigns/list/campaign_list_columns';
+import {
+  buildCampaignListExportCsv,
+  type CampaignListExportRow,
+} from '@/domains/campaigns/list/campaign_list_export_rows';
+export { formatCampaignListExportToast } from '@/domains/campaigns/list/campaign_list_export_toast';
 import type { CampaignListFilterQuery } from '@/domains/campaigns/list/campaigns_list_query';
+import {
+  CAMPAIGN_LIST_EXPORT_BATCH_CHUNK_SIZE,
+  CAMPAIGN_LIST_EXPORT_MAX_ROWS,
+} from '@/domains/campaigns/list/campaign_list_limits';
 
 const CAMPAIGN_LIST_EXPORT_PAGE_SIZE = 1000;
-const CAMPAIGN_LIST_EXPORT_MAX_ROWS = 5000;
+
+export type CampaignListExportDataset = {
+  items: Campaign[];
+  matchedTotal: number;
+  truncated: boolean;
+};
 
 export async function listAllCampaignsForFilter(
   filter: CampaignListFilterQuery,
   signal?: AbortSignal,
-): Promise<Campaign[]> {
+): Promise<CampaignListExportDataset> {
   const items: Campaign[] = [];
   let offset = 0;
-  let total = Number.POSITIVE_INFINITY;
+  let matchedTotal = Number.POSITIVE_INFINITY;
 
-  while (offset < total && items.length < CAMPAIGN_LIST_EXPORT_MAX_ROWS) {
+  while (offset < matchedTotal && items.length < CAMPAIGN_LIST_EXPORT_MAX_ROWS) {
     const page = await listCampaigns(
       {
         ...filter,
@@ -25,7 +39,7 @@ export async function listAllCampaignsForFilter(
       },
       signal,
     );
-    total = page.total;
+    matchedTotal = page.total;
     if (page.items.length === 0) {
       break;
     }
@@ -36,30 +50,38 @@ export async function listAllCampaignsForFilter(
     }
   }
 
-  return items;
+  const resolvedTotal = Number.isFinite(matchedTotal) ? matchedTotal : items.length;
+  return {
+    items,
+    matchedTotal: resolvedTotal,
+    truncated: items.length < resolvedTotal,
+  };
 }
 
 export function exportCampaignRowsCsv(
-  items: Campaign[],
-  customerNameById: Record<string, string>,
+  columns: ReadonlyArray<CampaignListDataColumnId>,
+  rows: ReadonlyArray<CampaignListExportRow>,
 ): void {
-  const header = ['id', 'name', 'status', 'customer', 'budget', 'spend'];
-  const lines = items.map((campaign) =>
-    [
-      campaign.id,
-      campaign.name,
-      campaign.status,
-      customerNameById[campaign.customer_id] ?? campaign.customer_id,
-      campaign.budget_limit,
-      campaign.current_spend,
-    ]
-      .map((value) => `"${String(value).replaceAll('"', '""')}"`)
-      .join(','),
-  );
-  const blob = new Blob([[header.join(','), ...lines].join('\n')], {
+  if (columns.length === 0 || rows.length === 0) {
+    return;
+  }
+  const csv = buildCampaignListExportCsv(columns, rows);
+  const blob = new Blob([csv], {
     type: 'text/csv;charset=utf-8',
   });
   downloadBlob(blob, 'campaigns-export.csv');
+}
+
+async function runInChunks<T>(
+  ids: string[],
+  chunkSize: number,
+  runner: (chunk: string[]) => Promise<T>,
+): Promise<T[]> {
+  const results: T[] = [];
+  for (let offset = 0; offset < ids.length; offset += chunkSize) {
+    results.push(await runner(ids.slice(offset, offset + chunkSize)));
+  }
+  return results;
 }
 
 export async function exportCampaignBundles(campaignIds: string[]): Promise<void> {
@@ -75,8 +97,13 @@ export async function exportCampaignBundles(campaignIds: string[]): Promise<void
   }
 
   const bundles: Record<string, unknown> = {};
-  for (const campaignId of campaignIds) {
-    bundles[campaignId] = await exportCampaign(campaignId);
+  const chunkResults = await runInChunks(
+    campaignIds,
+    CAMPAIGN_LIST_EXPORT_BATCH_CHUNK_SIZE,
+    (chunk) => exportCampaignsBatch(chunk),
+  );
+  for (const response of chunkResults) {
+    Object.assign(bundles, response.items);
   }
   const blob = new Blob([JSON.stringify(bundles, null, 2)], { type: 'application/json' });
   downloadBlob(blob, 'campaigns-export.json');

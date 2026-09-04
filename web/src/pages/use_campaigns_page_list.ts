@@ -24,6 +24,7 @@ import {
 } from '@/domains/campaigns/list/campaign_list_width_probe';
 import { campaignStatsQueryForRange } from '@/domains/campaigns/list/campaign_list_date_range';
 import { campaignListFilterTotalsFromApi } from '@/domains/campaigns/list/campaign_list_filter_totals';
+import { CAMPAIGN_LIST_FILTER_TOTALS_MAX } from '@/domains/campaigns/list/campaign_list_limits';
 
 export type UseCampaignsPageListArgs = {
   query: CampaignListQuery;
@@ -123,7 +124,7 @@ export function useCampaignsPageList({
     [campaignIds, listCoversWidthProbeDataset, widthProbeIds],
   );
 
-  const { data: metricsBatch } = useResource(
+  const { data: metricsBatch, error: metricsError } = useResource(
     (signal) => fetchCampaignListMetricsBatch(metricsCampaignIds, statsQuery, signal),
     [metricsCampaignIds.join(','), refreshToken, statsQuery.from, statsQuery.to],
   );
@@ -151,8 +152,15 @@ export function useCampaignsPageList({
     ],
   );
 
-  const { data: metricsTotalsResponse } = useResource(
-    (signal) => fetchCampaignListMetricsTotals(filterTotalsQuery, statsQuery, signal),
+  const filterTotalsCapped = (data?.total ?? 0) > CAMPAIGN_LIST_FILTER_TOTALS_MAX;
+
+  const { data: metricsTotalsResponse, error: filterTotalsError } = useResource(
+    (signal) => {
+      if (filterTotalsCapped) {
+        return Promise.resolve(undefined);
+      }
+      return fetchCampaignListMetricsTotals(filterTotalsQuery, statsQuery, signal);
+    },
     [
       filterTotalsQuery.customer_id,
       filterTotalsQuery.status,
@@ -162,6 +170,7 @@ export function useCampaignsPageList({
       filterTotalsQuery.budget_max_micro,
       filterTotalsQuery.owner_user_id,
       filterTotalsQuery.country,
+      filterTotalsCapped,
       refreshToken,
       statsQuery.from,
       statsQuery.to,
@@ -271,5 +280,9 @@ export function useCampaignsPageList({
     templatesLoading: templatesFetching,
     listFacetsFetching,
     filterTotals,
+    filterTotalsCapped,
+    filterTotalsError,
+    metricsError,
+    metricsStale: metricsBatch?.stale ?? false,
   };
 }

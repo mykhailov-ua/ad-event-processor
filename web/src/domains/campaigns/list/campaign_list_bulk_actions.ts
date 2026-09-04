@@ -1,12 +1,11 @@
 import {
   bulkCampaignAction,
-  CAMPAIGN_BULK_ACTION_MAX_IDS,
-  patchCampaign,
   summarizeCampaignBulkResults,
   type CampaignBulkAction,
 } from '@/api/campaigns_api';
+import { CAMPAIGN_LIST_BULK_CHUNK_SIZE } from '@/domains/campaigns/list/campaign_list_limits';
 
-export type CampaignBulkArchiveResult = {
+export type CampaignBulkActionResult = {
   succeeded: string[];
   failed: { id: string; error: string }[];
 };
@@ -23,15 +22,15 @@ async function runInChunks<T>(
   return results;
 }
 
-export async function bulkPauseOrResumeCampaigns(
+async function bulkCampaignActionChunked(
   action: CampaignBulkAction,
   campaignIds: string[],
-): Promise<{ succeeded: string[]; failed: { id: string; error: string }[] }> {
+): Promise<CampaignBulkActionResult> {
   if (campaignIds.length === 0) {
     return { succeeded: [], failed: [] };
   }
 
-  const chunkResults = await runInChunks(campaignIds, CAMPAIGN_BULK_ACTION_MAX_IDS, (chunk) =>
+  const chunkResults = await runInChunks(campaignIds, CAMPAIGN_LIST_BULK_CHUNK_SIZE, (chunk) =>
     bulkCampaignAction({ action, campaign_ids: chunk }),
   );
 
@@ -49,29 +48,13 @@ export async function bulkPauseOrResumeCampaigns(
   return { succeeded, failed };
 }
 
-export async function archiveCampaigns(campaignIds: string[]): Promise<CampaignBulkArchiveResult> {
-  if (campaignIds.length === 0) {
-    return { succeeded: [], failed: [] };
-  }
+export async function bulkPauseOrResumeCampaigns(
+  action: Extract<CampaignBulkAction, 'pause' | 'resume'>,
+  campaignIds: string[],
+): Promise<CampaignBulkActionResult> {
+  return bulkCampaignActionChunked(action, campaignIds);
+}
 
-  const settled = await Promise.allSettled(
-    campaignIds.map(async (id) => {
-      await patchCampaign(id, { status: 'ARCHIVED' });
-      return id;
-    }),
-  );
-
-  const succeeded: string[] = [];
-  const failed: { id: string; error: string }[] = [];
-  settled.forEach((result, index) => {
-    const id = campaignIds[index] ?? '';
-    if (result.status === 'fulfilled') {
-      succeeded.push(result.value);
-      return;
-    }
-    const message =
-      result.reason instanceof Error ? result.reason.message : String(result.reason);
-    failed.push({ id, error: message });
-  });
-  return { succeeded, failed };
+export async function archiveCampaigns(campaignIds: string[]): Promise<CampaignBulkActionResult> {
+  return bulkCampaignActionChunked('archive', campaignIds);
 }

@@ -2,7 +2,7 @@ import { useMemo } from 'react';
 
 import { Checkbox } from '@/components/ui/checkbox';
 import type { CampaignListMetrics } from '@/api/campaigns_api';
-import type { Campaign, CampaignMargin } from '@/api/types';
+import type { Campaign, CampaignMargin, CampaignStatsQuery } from '@/api/types';
 import { CampaignCountryBadges } from '@/domains/campaigns/list/campaign_country_badges';
 import {
   isCampaignListMiddleColumnId,
@@ -26,6 +26,7 @@ export type CampaignListTableBodyRowProps = {
   fetching: boolean;
   onToggleSelected: (campaignId: string, checked: boolean) => void;
   onCampaignOverview?: (campaign: Campaign) => void;
+  statsQuery?: CampaignStatsQuery;
 };
 
 export function isCampaignListInteractiveRowTarget(target: EventTarget | null): boolean {
@@ -48,6 +49,7 @@ export function CampaignListTableBodyRow({
   fetching,
   onToggleSelected,
   onCampaignOverview,
+  statsQuery,
 }: CampaignListTableBodyRowProps) {
   const vm = useMemo(
     () =>
@@ -107,17 +109,17 @@ export function CampaignListTableBodyRow({
 
         if (columnId === 'name') {
           return (
-            <td key={columnId} className="whitespace-normal py-1 align-top">
-              <div className="flex items-start gap-1">
-                <div className="flex min-w-0 flex-1 flex-col gap-0.5">
+            <td key={columnId} className="whitespace-nowrap">
+              <div className="flex min-w-0 items-center gap-1.5">
+                <div className="flex min-w-0 flex-1 items-center gap-1.5 overflow-hidden">
                   <CampaignCountryBadges
-                    className="text-xs text-zinc-500"
+                    className="shrink-0 text-xs text-zinc-500"
                     compact
                     countries={vm.countries}
                     max={2}
                   />
                   <button
-                    className="text-left font-medium hover:underline"
+                    className="min-w-0 truncate text-left font-medium hover:underline"
                     title={vm.rawName}
                     type="button"
                     onClick={(event) => {
@@ -143,6 +145,8 @@ export function CampaignListTableBodyRow({
             <CampaignListTableMiddleCell
               campaign={campaign}
               columnId={columnId as CampaignListMiddleColumnId}
+              marginBreach={margin?.margin_breach === true}
+              statsQuery={statsQuery}
               vm={vm}
               onOpenOverview={onCampaignOverview}
             />

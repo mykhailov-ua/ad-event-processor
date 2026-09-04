@@ -4,6 +4,7 @@ package main
 
 import (
 	"fmt"
+	"strings"
 
 	"github.com/google/uuid"
 )
@@ -230,4 +231,26 @@ func seedUserEmail(seq int) string {
 	}[seq%5]
 	local := seedUserLocalParts[seq%len(seedUserLocalParts)]
 	return fmt.Sprintf("%s+%d@%s", local, 100+seq, domain)
+}
+
+var seedUiDemoCountryCodes = []string{"US", "GB", "DE", "CA", "UA", "FR", "JP", "AU", "BR", "MX"}
+
+func seedUiDemoTargetCountries(seq int) []string {
+	count := 1 + (seq % 4)
+	out := make([]string, count)
+	for i := 0; i < count; i++ {
+		out[i] = seedUiDemoCountryCodes[(seq+i)%len(seedUiDemoCountryCodes)]
+	}
+	return out
+}
+
+func formatPostgresTextArray(values []string) string {
+	if len(values) == 0 {
+		return "{}"
+	}
+	parts := make([]string, len(values))
+	for i, value := range values {
+		parts[i] = `"` + strings.ReplaceAll(value, `"`, `\"`) + `"`
+	}
+	return "{" + strings.Join(parts, ",") + "}"
 }

@@ -16,7 +16,7 @@ import {
   devMockWizardSessionGet,
   devMockWizardSessionPost,
 } from './wizard_fixtures.ts';
-import { devMockListCampaignFacets, devMockListCampaignMetricsTotals, devMockListCampaigns } from './campaign_list.ts';
+import { devMockListCampaignFacets, devMockListCampaignMetricsTotals, devMockListCampaigns, devMockCampaignStats, devMockExportCampaignsBatch } from './campaign_list.ts';
 import {
   buildDevMockCampaignMetrics,
   enrichDevMockCampaignMetricsDerived,
@@ -125,7 +125,8 @@ function patchCampaign(campaignId: string, body: unknown): MockResult {
 
 function bulkCampaignAction(body: unknown): MockResult {
   const record = body && typeof body === 'object' ? (body as Record<string, unknown>) : {};
-  const action = record.action === 'resume' ? 'resume' : 'pause';
+  const actionRaw = typeof record.action === 'string' ? record.action : 'pause';
+  const action = actionRaw === 'resume' ? 'resume' : actionRaw === 'archive' ? 'archive' : 'pause';
   const ids = Array.isArray(record.campaign_ids) ? (record.campaign_ids as string[]) : [];
   const { campaigns } = devMockStore();
   const results = ids.map((id) => {
@@ -133,7 +134,11 @@ function bulkCampaignAction(body: unknown): MockResult {
     if (!row) {
       return { id, ok: false, error_code: 'NOT_FOUND' };
     }
-    row.status = action === 'pause' ? 'PAUSED' : 'ACTIVE';
+    if (action === 'archive') {
+      row.status = 'ARCHIVED';
+    } else {
+      row.status = action === 'pause' ? 'PAUSED' : 'ACTIVE';
+    }
     row.updated_at = new Date().toISOString();
     return { id, ok: true };
   });
@@ -396,6 +401,9 @@ export function resolveDevMockRequest(path: string, init?: RequestInit): MockRes
   if (method === 'GET' && pathname === '/api/v1/campaigns/metrics-totals') {
     return devMockListCampaignMetricsTotals(url, devMockStore().campaigns);
   }
+  if (method === 'GET' && pathname === '/api/v1/campaigns/export') {
+    return devMockExportCampaignsBatch(url);
+  }
   if (method === 'GET' && pathname === '/api/v1/campaigns/onboarding-templates') {
     return json(200, devMockOnboardingTemplates());
   }
@@ -442,12 +450,7 @@ export function resolveDevMockRequest(path: string, init?: RequestInit): MockRes
       return campaignById(decodeURIComponent(campaignId));
     }
     if (segments[0] === 'stats') {
-      return json(200, {
-        impressions: 42_000,
-        clicks: 1_240,
-        conversions: 86,
-        spend_micro: 3_400_000,
-      });
+      return devMockCampaignStats(decodeURIComponent(campaignId), url);
     }
     if (segments[0] === 'margin') {
       return json(200, {

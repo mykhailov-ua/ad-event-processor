@@ -86,7 +86,8 @@ export async function gotoCustomers(page) {
  */
 export async function gotoCampaigns(page) {
   await page.goto('/campaigns');
-  await page.getByRole('button', { name: 'Create campaign' }).waitFor();
+  await page.getByRole('heading', { name: 'Campaigns' }).waitFor({ timeout: 15_000 });
+  await page.getByRole('button', { name: 'Create', exact: true }).waitFor({ timeout: 15_000 });
 }
 
 /**

@@ -2,7 +2,7 @@ import { useEffect, useState, type ReactNode } from 'react';
 
 import { getCampaignStats } from '@/api/campaigns_api';
 import { ApiError } from '@/api/client';
-import type { CampaignStats } from '@/api/types';
+import type { CampaignStats, CampaignStatsQuery } from '@/api/types';
 import { ErrorBlock } from '@/shell/error_block';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
@@ -137,10 +137,12 @@ function formatRemaining(campaign: CampaignWithMoneyDisplay): string {
 export function CampaignMetricsPopover({
   campaign,
   onOpenOverview,
+  statsQuery,
   triggerContent,
 }: {
   campaign: CampaignWithMoneyDisplay;
   onOpenOverview?: (campaign: CampaignWithMoneyDisplay) => void;
+  statsQuery?: CampaignStatsQuery;
   triggerContent?: ReactNode;
 }) {
   const [open, setOpen] = useState(false);
@@ -157,7 +159,7 @@ export function CampaignMetricsPopover({
     setLoading(true);
     setError(undefined);
 
-    void getCampaignStats(campaign.id, {}, controller.signal)
+    void getCampaignStats(campaign.id, statsQuery ?? {}, controller.signal)
       .then((next) => {
         setStats(next);
       })
@@ -176,7 +178,7 @@ export function CampaignMetricsPopover({
     return () => {
       controller.abort();
     };
-  }, [campaign.id, open]);
+  }, [campaign.id, open, statsQuery]);
 
   const handleOpenChange = (next: boolean) => {
     setOpen(next);

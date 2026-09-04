@@ -12,6 +12,7 @@ var (
 	ErrCampaignNotFound                 = errors.New("campaign not found")
 	ErrForbidden                        = errors.New("forbidden")
 	ErrCampaignCannotBePaused           = errors.New("campaign cannot be paused")
+	ErrCampaignCannotBeArchived         = errors.New("campaign cannot be archived")
 	ErrCampaignNotPaused                = errors.New("campaign is not paused")
 	ErrCampaignOutsideSchedule          = errors.New("campaign is outside scheduled delivery window")
 	ErrCampaignPublishBlocked           = errors.New("campaign publish blocked")

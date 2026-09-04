@@ -143,6 +143,8 @@ func seedUiDemoSpendMicro(seq int, budgetLimit int64) int64 {
 
 func seedUiDemoStatus(seq int) string {
 	switch {
+	case seq%23 == 0:
+		return "ARCHIVED"
 	case seq%19 == 0:
 		return "DELETED"
 	case seq%13 == 0:

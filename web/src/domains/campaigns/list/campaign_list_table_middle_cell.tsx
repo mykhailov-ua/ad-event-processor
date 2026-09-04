@@ -1,7 +1,8 @@
 import { Link } from 'react-router-dom';
 
-import type { Campaign } from '@/api/types';
+import type { Campaign, CampaignStatsQuery } from '@/api/types';
 import { CampaignCountryBadges } from '@/domains/campaigns/list/campaign_country_badges';
+import { CampaignMarginBreachBadge } from '@/domains/campaigns/list/campaign_margin_badge';
 import { CampaignMetricsPopover } from '@/domains/campaigns/list/campaign_metrics_popover';
 import type { CampaignListMiddleColumnId } from '@/domains/campaigns/list/campaign_list_columns';
 import { rateBenchmarkToneClass } from '@/domains/campaigns/list/campaign_list_rate_tone';
@@ -13,22 +14,29 @@ export type CampaignListTableMiddleCellProps = {
   columnId: CampaignListMiddleColumnId;
   campaign: Campaign;
   vm: CampaignRowVm;
+  marginBreach?: boolean;
   onOpenOverview?: (campaign: Campaign) => void;
+  statsQuery?: CampaignStatsQuery;
 };
 
 export function CampaignListTableMiddleCell({
   columnId,
   campaign,
   vm,
+  marginBreach = false,
   onOpenOverview,
+  statsQuery,
 }: CampaignListTableMiddleCellProps) {
   const row = campaign as CampaignWithMoneyDisplay;
 
   switch (columnId) {
     case 'status':
       return (
-        <span className={vm.statusBadgeClass} title={vm.statusLabel}>
-          {vm.statusLabel}
+        <span className="inline-flex min-w-0 items-center gap-1.5">
+          <span className={vm.statusBadgeClass} title={vm.statusLabel}>
+            {vm.statusLabel}
+          </span>
+          {marginBreach ? <CampaignMarginBreachBadge /> : null}
         </span>
       );
     case 'clicks':
@@ -161,6 +169,7 @@ export function CampaignListTableMiddleCell({
         <CampaignMetricsPopover
           campaign={row}
           onOpenOverview={onOpenOverview}
+          statsQuery={statsQuery}
           triggerContent={
             <span className={tableCellClass()}>{vm.budgetPct.toFixed(1)}%</span>
           }

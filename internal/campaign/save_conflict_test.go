@@ -91,6 +91,10 @@ func (s *patchRevisionCampaignStub) ResumeCampaign(context.Context, uuid.UUID, s
 	return nil
 }
 
+func (s *patchRevisionCampaignStub) ArchiveCampaign(context.Context, uuid.UUID, string) error {
+	return nil
+}
+
 func TestPatchCampaign_staleIfMatch_skipsPatch_holdout(t *testing.T) {
 	t.Parallel()
 	campID := uuid.New()

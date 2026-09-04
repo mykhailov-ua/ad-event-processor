@@ -25,8 +25,8 @@ test('campaigns directory exposes keyboard-reachable filters', async ({ page }) 
   await page.getByLabel('Search').focus();
   await expect(page.getByLabel('Search')).toBeFocused();
 
-  await page.getByLabel('Status').focus();
-  await expect(page.getByLabel('Status')).toBeFocused();
+  await page.getByLabel('Period').focus();
+  await expect(page.getByLabel('Period')).toBeFocused();
 });
 
 test('customers directory exposes keyboard-reachable table sort', async ({ page }) => {

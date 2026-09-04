@@ -91,6 +91,7 @@ var documentedRouteList = []string{
 	"PUT /api/v1/campaigns/{id}/owner",
 	"POST /api/v1/campaigns/{id}/placement-blocks",
 	"POST /api/v1/campaigns/{id}/clone",
+	"GET /api/v1/campaigns/export",
 	"GET /api/v1/campaigns/{id}/export",
 	"POST /api/v1/campaigns/import",
 	"POST /api/v1/campaigns/import/validate",

@@ -1,8 +1,9 @@
-import { useCallback, useMemo, useState } from 'react';
+import { useCallback, useEffect, useMemo, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { toast } from 'sonner';
 
 import type { CampaignListMetrics } from '@/api/campaigns_api';
+import { fetchCampaignListMetricsBatch } from '@/api/campaigns_api';
 import type { Campaign, CampaignMargin } from '@/api/types';
 import type { CampaignWithMoneyDisplay } from '@/domains/campaigns/list/campaign_metrics_shared';
 import {
@@ -12,8 +13,14 @@ import {
 import {
   exportCampaignBundles,
   exportCampaignRowsCsv,
+  formatCampaignListExportToast,
   listAllCampaignsForFilter,
+  type CampaignListExportDataset,
 } from '@/domains/campaigns/list/campaign_list_export';
+import {
+  buildCampaignListExportRows,
+  exportableCampaignListColumns,
+} from '@/domains/campaigns/list/campaign_list_export_rows';
 import type { CampaignListFilterQuery } from '@/domains/campaigns/list/campaigns_list_query';
 import { resolveCampaignListSummary } from '@/domains/campaigns/list/campaign_list_summary';
 import {
@@ -32,6 +39,7 @@ import {
 } from '@/domains/campaigns/list/campaign_list_column_widths';
 import type { CampaignListColumnWidthProbe } from '@/domains/campaigns/list/campaigns_directory_types';
 import type { CampaignListFilterTotalsView } from '@/domains/campaigns/list/campaign_list_filter_totals';
+import type { CampaignStatsQuery } from '@/api/types';
 
 type UseCampaignsDirectoryWorkspaceArgs = {
   items: Campaign[];
@@ -42,6 +50,8 @@ type UseCampaignsDirectoryWorkspaceArgs = {
   columnWidthProbe?: CampaignListColumnWidthProbe;
   filterTotals?: CampaignListFilterTotalsView;
   exportFilterQuery: CampaignListFilterQuery;
+  statsQuery: CampaignStatsQuery;
+  listScopeKey: string;
   onRefreshList: () => void;
 };
 
@@ -54,6 +64,8 @@ export function useCampaignsDirectoryWorkspace({
   columnWidthProbe,
   filterTotals,
   exportFilterQuery,
+  statsQuery,
+  listScopeKey,
   onRefreshList,
 }: UseCampaignsDirectoryWorkspaceArgs) {
   const navigate = useNavigate();
@@ -69,6 +81,10 @@ export function useCampaignsDirectoryWorkspace({
   const [columnPrefs, setColumnPrefs] = useState<CampaignListColumnPrefs>(() =>
     loadCampaignListColumnPrefs(),
   );
+
+  useEffect(() => {
+    setSelectedIds(new Set());
+  }, [listScopeKey]);
 
   const handleColumnPrefsApply = useCallback((prefs: CampaignListColumnPrefs) => {
     setColumnPrefs(prefs);
@@ -148,8 +164,13 @@ export function useCampaignsDirectoryWorkspace({
         if (result.failed.length > 0) {
           toast.error(`${label} failed for ${result.failed.length} campaign(s)`);
         }
-        setSelectedIds(new Set());
-        onRefreshList();
+        if (result.succeeded.length === 0 && result.failed.length === 0) {
+          toast.error(`${label}: no campaigns updated`);
+        }
+        if (result.succeeded.length > 0) {
+          setSelectedIds(new Set());
+          onRefreshList();
+        }
       } catch (err) {
         toast.error(err instanceof Error ? err.message : String(err));
       } finally {
@@ -172,46 +193,86 @@ export function useCampaignsDirectoryWorkspace({
     void runBulkAction('Archived', () => archiveCampaigns(selectedIdsList));
   }, [runBulkAction, selectedIdsList]);
 
-  const resolveExportCampaigns = useCallback(async (): Promise<Campaign[]> => {
+  const resolveExportCampaigns = useCallback(async (): Promise<CampaignListExportDataset> => {
     if (selectedIdsList.length > 0) {
       const selected = new Set(selectedIdsList);
       const fromPage = items.filter((item) => selected.has(item.id));
       if (fromPage.length === selectedIdsList.length) {
-        return fromPage;
+        return {
+          items: fromPage,
+          matchedTotal: fromPage.length,
+          truncated: false,
+        };
       }
       const allFiltered = await listAllCampaignsForFilter(exportFilterQuery);
-      return allFiltered.filter((item) => selected.has(item.id));
+      const selectedRows = allFiltered.items.filter((item) => selected.has(item.id));
+      return {
+        items: selectedRows,
+        matchedTotal: selectedIdsList.length,
+        truncated: selectedRows.length < selectedIdsList.length || allFiltered.truncated,
+      };
     }
     return listAllCampaignsForFilter(exportFilterQuery);
   }, [exportFilterQuery, items, selectedIdsList]);
 
   const onExportCsv = useCallback(() => {
     setExportBusy(true);
+    const exportColumns = exportableCampaignListColumns(visibleColumns);
     void resolveExportCampaigns()
-      .then((rows) => {
-        if (rows.length === 0) {
+      .then(async (dataset) => {
+        if (dataset.items.length === 0) {
           toast.error('No campaigns to export');
           return;
         }
-        exportCampaignRowsCsv(rows, customerNameById);
-        toast.success(`Exported ${rows.length} campaign(s) as CSV`);
+        const campaignIds = dataset.items.map((row) => row.id);
+        const batch = await fetchCampaignListMetricsBatch(campaignIds, statsQuery);
+        const exportRows = buildCampaignListExportRows(
+          dataset.items,
+          exportColumns,
+          batch.metricsById,
+          batch.marginsById,
+          customerNameById,
+          ownerEmailById,
+        );
+        exportCampaignRowsCsv(exportColumns, exportRows);
+        toast.success(
+          formatCampaignListExportToast(
+            dataset.items.length,
+            dataset.matchedTotal,
+            dataset.truncated,
+            'CSV',
+          ),
+        );
       })
       .catch((err: unknown) => {
         toast.error(err instanceof Error ? err.message : String(err));
       })
       .finally(() => setExportBusy(false));
-  }, [customerNameById, resolveExportCampaigns]);
+  }, [
+    customerNameById,
+    ownerEmailById,
+    resolveExportCampaigns,
+    statsQuery,
+    visibleColumns,
+  ]);
 
   const onExportBundles = useCallback(() => {
     setExportBusy(true);
     void resolveExportCampaigns()
-      .then(async (rows) => {
-        if (rows.length === 0) {
+      .then(async (dataset) => {
+        if (dataset.items.length === 0) {
           toast.error('No campaigns to export');
           return;
         }
-        await exportCampaignBundles(rows.map((row) => row.id));
-        toast.success('Campaign export downloaded');
+        await exportCampaignBundles(dataset.items.map((row) => row.id));
+        toast.success(
+          formatCampaignListExportToast(
+            dataset.items.length,
+            dataset.matchedTotal,
+            dataset.truncated,
+            'JSON',
+          ),
+        );
       })
       .catch((err: unknown) => {
         toast.error(err instanceof Error ? err.message : String(err));

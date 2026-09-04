@@ -21,6 +21,7 @@ import {
   type CampaignListSummary,
 } from '@/domains/campaigns/list/campaign_list_summary';
 import type { CampaignListColumnPrefs } from '@/domains/campaigns/list/campaign_list_columns';
+import { CAMPAIGN_LIST_FILTER_TOTALS_MAX } from '@/domains/campaigns/list/campaign_list_limits';
 import { CampaignListColumnsMenu } from '@/domains/campaigns/list/campaign_list_columns_menu';
 import type { CampaignPacingFilter, CampaignStatusFilter } from '@/domains/campaigns/list/campaigns_list_types';
 import {
@@ -52,6 +53,9 @@ export type CampaignsListToolbarProps = {
   ownerOptions: CampaignsListFilterOption[];
   countryOptions: CampaignsListFilterOption[];
   listFacetsFetching?: boolean;
+  filterTotalsCapped?: boolean;
+  filteredTotal?: number;
+  metricsStale?: boolean;
   summary: CampaignListSummary;
   statusTotals?: CampaignStatusTotals;
   statusTotalsLoading?: boolean;
@@ -95,6 +99,9 @@ export function CampaignsListToolbar({
   ownerOptions,
   countryOptions,
   listFacetsFetching = false,
+  filterTotalsCapped = false,
+  filteredTotal = 0,
+  metricsStale = false,
   summary,
   statusTotals,
   statusTotalsLoading = false,
@@ -248,6 +255,15 @@ export function CampaignsListToolbar({
           ) : null}
           {summary.marginBreachCount > 0 ? (
             <span className="text-xs">Margin breach: {summary.marginBreachCount}</span>
+          ) : null}
+          {filterTotalsCapped ? (
+            <span className="text-xs">
+              Filter totals unavailable above {CAMPAIGN_LIST_FILTER_TOTALS_MAX.toLocaleString()} campaigns (
+              {filteredTotal.toLocaleString()} matched)
+            </span>
+          ) : null}
+          {metricsStale && !filterTotalsCapped ? (
+            <span className="text-xs">Page metrics may be stale</span>
           ) : null}
         </div>
       </div>

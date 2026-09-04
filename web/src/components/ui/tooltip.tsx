@@ -1,8 +1,10 @@
 import * as React from 'react';
 
 import { adminChrome } from '@/lib/admin_chrome';
+import { mergeRefs } from '@/lib/as_child';
 import { OverlayRoot } from '@/lib/overlay_root';
 import { cn } from '@/lib/utils';
+import { computeTooltipCoords } from '@/components/ui/tooltip_position';
 
 function TooltipProvider({ children }: { children: React.ReactNode }) {
   return <>{children}</>;
@@ -70,8 +72,10 @@ const TooltipTrigger = React.forwardRef<
   };
 
   if (asChild && React.isValidElement(children)) {
-    return React.cloneElement(children as React.ReactElement<Record<string, unknown>>, {
-      ref: mergedRef,
+    const child = children as React.ReactElement<Record<string, unknown>>;
+    const childRef = (child as { ref?: React.Ref<HTMLElement> }).ref;
+    return React.cloneElement(child, {
+      ref: mergeRefs(mergedRef, childRef),
       className: cn(className, (children.props as { className?: string }).className),
       ...handlers,
       ...props,
@@ -93,8 +97,12 @@ TooltipTrigger.displayName = 'TooltipTrigger';
 
 const TooltipContent = React.forwardRef<
   HTMLDivElement,
-  React.HTMLAttributes<HTMLDivElement> & { side?: 'top' | 'bottom'; sideOffset?: number }
->(({ className, side = 'top', sideOffset = 4, style, children, ...props }, ref) => {
+  React.HTMLAttributes<HTMLDivElement> & {
+    side?: 'top' | 'bottom';
+    align?: 'center' | 'start' | 'end';
+    sideOffset?: number;
+  }
+>(({ className, side = 'top', align = 'center', sideOffset = 4, style, children, ...props }, ref) => {
   const { open, triggerRef } = useTooltipContext();
   const [coords, setCoords] = React.useState<React.CSSProperties>({});
 
@@ -102,15 +110,23 @@ const TooltipContent = React.forwardRef<
     if (!open || !triggerRef.current) {
       return;
     }
-    const rect = triggerRef.current.getBoundingClientRect();
-    setCoords({
-      position: 'fixed',
-      left: rect.left + rect.width / 2,
-      top: side === 'bottom' ? rect.bottom + sideOffset : rect.top - sideOffset,
-      transform: 'translate(-50%, -100%)',
-      zIndex: 50,
-    });
-  }, [open, side, sideOffset, triggerRef]);
+
+    const updateCoords = () => {
+      const node = triggerRef.current;
+      if (!node) {
+        return;
+      }
+      setCoords(computeTooltipCoords(node.getBoundingClientRect(), side, align, sideOffset));
+    };
+
+    updateCoords();
+    window.addEventListener('scroll', updateCoords, true);
+    window.addEventListener('resize', updateCoords);
+    return () => {
+      window.removeEventListener('scroll', updateCoords, true);
+      window.removeEventListener('resize', updateCoords);
+    };
+  }, [align, open, side, sideOffset, triggerRef]);
 
   if (!open) {
     return null;
@@ -123,7 +139,7 @@ const TooltipContent = React.forwardRef<
         role="tooltip"
         className={cn(
           adminChrome.panel,
-          'px-3 py-1.5 text-xs text-zinc-900 shadow-lg dark:text-zinc-100',
+          'pointer-events-none px-3 py-1.5 text-xs text-zinc-900 shadow-lg dark:text-zinc-100',
           className,
         )}
         style={{ ...coords, ...style }}

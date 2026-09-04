@@ -198,6 +198,13 @@ func (r *Runtime) ResumeCampaign(ctx context.Context, campaignID uuid.UUID, reas
 	return resumeCampaign(ctx, r.PoolOrNil(), r.effects, campaignID, reason, false)
 }
 
+func (r *Runtime) ArchiveCampaign(ctx context.Context, campaignID uuid.UUID, reason string) error {
+	if r == nil || r.effects == nil {
+		return campaign.ErrServiceUnavailable()
+	}
+	return archiveCampaign(ctx, r.PoolOrNil(), r.effects, campaignID, reason)
+}
+
 func (r *Runtime) ResumeCampaignForPublish(ctx context.Context, campaignID uuid.UUID, force bool) error {
 	if r == nil || r.effects == nil {
 		return campaign.ErrServiceUnavailable()
