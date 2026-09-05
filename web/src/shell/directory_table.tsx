@@ -70,7 +70,7 @@ function DirectoryTableHeadShell({
 }: ComponentProps<typeof TableHead>) {
   return (
     <TableHead
-      className={cn('h-10 bg-card/90 p-0 backdrop-blur-sm', className)}
+      className={cn('h-[34px] bg-card/90 p-0 backdrop-blur-sm', className)}
       {...props}
     />
   );

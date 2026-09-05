@@ -1,4 +1,6 @@
 import type { CampaignStatusFilter } from '@/domains/campaigns/list/campaigns_list_types';
+import { Button } from '@/components/ui/button';
+import { adminKit } from '@/lib/admin_kit';
 import { cn } from '@/lib/utils';
 
 export type CampaignListStatusChipOption = {
@@ -62,19 +64,21 @@ export function CampaignListStatusChips({
               : '0';
 
         return (
-          <button
+          <Button
             key={option.value || 'all'}
             aria-pressed={selected}
             className={cn(
-              'inline-flex min-h-7 max-w-full shrink-0 items-center gap-1 whitespace-nowrap rounded-[5px] border px-2 py-1 text-[13px] font-semibold leading-[18px] transition-colors',
+              adminKit.buttonShell,
+              'max-w-full gap-1 whitespace-nowrap rounded-[5px] border px-2 font-semibold shadow-none',
               selected ? tone.active : tone.idle,
             )}
             type="button"
+            variant="outline"
             onClick={() => onChange(option.value)}
           >
             {option.label}
             <span className={cn('text-[11px] font-semibold tabular-nums', tone.count)}>{countLabel}</span>
-          </button>
+          </Button>
         );
       })}
     </div>

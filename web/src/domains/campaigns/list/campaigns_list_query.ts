@@ -24,7 +24,7 @@ export function parseCampaignListSort(raw: string | null): CampaignSortField {
   }
   const trimmed = raw.trim();
   if (trimmed === 'id') {
-    return 'updated_at';
+    return 'id';
   }
   if (
     trimmed === 'name' ||

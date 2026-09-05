@@ -22,7 +22,7 @@ import {
   IntegrationTemplateImportForm,
 } from '@/domains/integrations/integration_schema_form';
 import { IntegrationsNav, integrationsPanelError } from '@/domains/integrations/integrations_nav';
-import { JsonDashboardView } from '@/domains/dashboards/json_dashboard_view';
+import { JsonPayloadView } from '@/shell/json_payload_view';
 import { displayTimestamp } from '@/lib/display';
 
 export type IntegrationsSchemasTab = 'schemas' | 'templates';
@@ -215,7 +215,7 @@ export function IntegrationsSchemas({
               <pre className="ui-scrollbar overflow-x-auto rounded-2xl border border-border bg-muted p-4 text-xs text-foreground">
                 {JSON.stringify(viewSchema.schema.schema, null, 2)}
               </pre>
-              <JsonDashboardView
+              <JsonPayloadView
                 payload={viewSchema.schema as unknown as Record<string, unknown>}
               />
             </section>

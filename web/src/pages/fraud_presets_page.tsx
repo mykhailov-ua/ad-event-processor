@@ -6,7 +6,7 @@ import {
   FraudPresets,
   type FraudPresetEditDraft,
 } from '@/domains/fraud/fraud_presets';
-import { useRefreshToken } from '@/hooks/use_coalesced_refresh_token';
+import { useCoalescedBumpRefresh, useRefreshToken } from '@/hooks/use_coalesced_refresh_token';
 import { useResource } from '@/api/use_resource';
 
 function parseThresholdField(
@@ -58,6 +58,9 @@ export function FraudPresetsPage() {
     });
   }, [data]);
 
+  const listBusy = fetching || savingPresetName != null;
+  const bumpRefreshCoalesced = useCoalescedBumpRefresh(bumpRefresh, listBusy);
+
   const onPresetDraftChange = useCallback(
     (name: string, patch: Partial<FraudPresetEditDraft>) => {
       setPresetDrafts((prev) => ({
@@ -76,6 +79,9 @@ export function FraudPresetsPage() {
 
   const onSavePreset = useCallback(
     async (name: string) => {
+      if (savingPresetName != null) {
+        return;
+      }
       const draft = presetDrafts[name];
       if (!name || !draft) {
         return;
@@ -141,14 +147,14 @@ export function FraudPresetsPage() {
           delete next[name];
           return next;
         });
-        bumpRefresh();
+        bumpRefreshCoalesced();
       } catch (err) {
         setSaveError(err instanceof Error ? err : new Error(String(err)));
       } finally {
         setSavingPresetName(undefined);
       }
     },
-    [presetDrafts, bumpRefresh],
+    [bumpRefreshCoalesced, presetDrafts, savingPresetName],
   );
 
   return (

@@ -5,7 +5,7 @@ import { listDlqInbox, retryDlqInboxEntry } from '@/api/ops_api';
 import type { DLQInboxEntry } from '@/api/types';
 import { OpsDlqInbox } from '@/domains/ops/ops_dlq_inbox';
 import { useResource } from '@/api/use_resource';
-import { useRefreshToken } from '@/hooks/use_coalesced_refresh_token';
+import { useCoalescedBumpRefresh, useRefreshToken } from '@/hooks/use_coalesced_refresh_token';
 import { parseListLimit } from '@/lib/list_query';
 
 const CURSOR_STACK_KEY = 'cursor_stack';
@@ -41,6 +41,8 @@ export function OpsDlqPage() {
     (signal) => listDlqInbox({ limit, cursor }, signal),
     [limit, cursor, refreshToken],
   );
+
+  const bumpRefreshCoalesced = useCoalescedBumpRefresh(bumpRefresh, fetching || retryingId != null);
 
   const updateCursors = useCallback(
     (nextCursor: string | undefined, nextStack: string[]) => {
@@ -80,17 +82,17 @@ export function OpsDlqPage() {
   }, [cursorStack, updateCursors]);
 
   const onRetry = useCallback(async (entry: DLQInboxEntry) => {
-    if (!entry.id || !entry.source) {
+    if (!entry.id || !entry.source || retryingId != null) {
       return;
     }
     setRetryingId(entry.id);
     try {
       await retryDlqInboxEntry(entry.id, entry.source);
-      bumpRefresh();
+      bumpRefreshCoalesced();
     } finally {
       setRetryingId(undefined);
     }
-  }, [bumpRefresh]);
+  }, [bumpRefreshCoalesced, retryingId]);
 
   return (
     <OpsDlqInbox

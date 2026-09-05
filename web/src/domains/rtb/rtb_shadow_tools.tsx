@@ -4,7 +4,7 @@ import { PageSkeleton } from '@/shell/page_skeleton';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import type { RtbReconcileExport, RtbShadowDiffSnapshot } from '@/api/types';
-import { JsonDashboardView } from '@/domains/dashboards/json_dashboard_view';
+import { JsonPayloadView } from '@/shell/json_payload_view';
 import { RtbNav, RtbLicenseStub, rtbPanelError } from '@/domains/rtb/rtb_nav';
 
 export type RtbShadowToolsProps = {
@@ -90,14 +90,14 @@ export function RtbShadowTools({
       {shadow ? (
         <section className="grid gap-2">
           <h2 className="text-base font-semibold">Shadow diff</h2>
-          <JsonDashboardView payload={shadow as unknown as Record<string, unknown>} />
+          <JsonPayloadView payload={shadow as unknown as Record<string, unknown>} />
         </section>
       ) : null}
 
       {reconcile ? (
         <section className="grid gap-2">
           <h2 className="text-base font-semibold">Reconcile export</h2>
-          <JsonDashboardView payload={reconcile as unknown as Record<string, unknown>} />
+          <JsonPayloadView payload={reconcile as unknown as Record<string, unknown>} />
         </section>
       ) : null}
 

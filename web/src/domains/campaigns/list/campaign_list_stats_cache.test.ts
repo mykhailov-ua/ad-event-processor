@@ -53,3 +53,25 @@ test('readCachedCampaignStatsForCampaign_holdoutFindsListScopeRevision', () => {
   assert.equal(found?.metrics?.impressions, 3);
   assert.equal(readCachedCampaignStatsForCampaign('cmp-9', {}), undefined);
 });
+
+test('readCachedCampaignStats_holdoutExpiresAfterTtl', () => {
+  clearCampaignStatsCache();
+  const key = buildCampaignStatsCacheKey('cmp-ttl', { from: 'a', to: 'b' }, 'scope-1');
+  const originalNow = Date.now;
+  let now = 1_000;
+  Date.now = () => now;
+
+  try {
+    writeCachedCampaignStats(key, {
+      ...campaignStatsFromListMetrics('cmp-ttl', { impressions: 9, clicks: 0, conversions: 0 }),
+      source: 'stats',
+    });
+    assert.equal(readCachedCampaignStats(key)?.metrics?.impressions, 9);
+
+    now += 61_000;
+    assert.equal(readCachedCampaignStats(key), undefined);
+  } finally {
+    Date.now = originalNow;
+    clearCampaignStatsCache();
+  }
+});

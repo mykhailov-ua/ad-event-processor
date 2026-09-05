@@ -201,7 +201,13 @@ export function CampaignListTableMiddleCell({
       }
       return (
         <span className="block max-w-full overflow-hidden">
-          <CampaignCountryBadges className="max-w-full" countries={vm.countries} max={3} />
+          <CampaignCountryBadges
+            className="max-w-full"
+            compact
+            countries={vm.countries}
+            max={3}
+            overflowMenu
+          />
         </span>
       );
     default:

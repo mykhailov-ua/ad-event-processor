@@ -1,4 +1,11 @@
-import { useMemo } from 'react';
+// Campaign list workspace fetch fan-out (RF-9 baseline; do not collapse without product sign-off):
+// - GET list campaigns (main page + optional width-probe duplicate when probe dataset not covered)
+// - POST metrics batch (merged page + probe ids)
+// - POST filter totals (skipped when total > CAMPAIGN_LIST_FILTER_TOTALS_MAX)
+// - GET list facets (customer_id only; not tied to list refreshToken)
+// - GET customers combobox (once per mount)
+// - GET self-serve templates (create overlay open only)
+import { useEffect, useMemo } from 'react';
 
 import {
   fetchCampaignListFacets,
@@ -18,7 +25,7 @@ import {
   buildCampaignListOwnerOptions,
 } from '@/domains/campaigns/list/campaign_list_filter_options';
 import { isCampaignListAuxEndpointUnavailable } from '@/domains/campaigns/list/campaign_list_aux_error';
-import { campaignListFacetsFromItems } from '@/domains/campaigns/list/campaign_list_facets_from_items';
+import { resolveCampaignListFacets } from '@/domains/campaigns/list/campaign_list_facets_source';
 import {
   buildCampaignListWidthProbeQuery,
   listResponseCoversWidthProbeDataset,
@@ -27,12 +34,17 @@ import {
 import { campaignStatsQueryForRange } from '@/domains/campaigns/list/campaign_list_date_range';
 import { campaignListFilterTotalsFromApi } from '@/domains/campaigns/list/campaign_list_filter_totals';
 import { CAMPAIGN_LIST_FILTER_TOTALS_MAX } from '@/domains/campaigns/list/campaign_list_limits';
+import {
+  fetchCampaignListCached,
+  invalidateCampaignListResponseCache,
+} from '@/domains/campaigns/list/campaign_list_response_cache';
 
 export type UseCampaignsPageListArgs = {
   query: CampaignListQuery;
   statsQuery: ReturnType<typeof campaignStatsQueryForRange>;
   refreshToken: number;
   customerId: string | undefined;
+  createCustomerId: string;
   appliedOwnerUserId: string;
   createSectionOpen: boolean;
   templatesRefreshToken: number;
@@ -43,10 +55,15 @@ export function useCampaignsPageList({
   statsQuery,
   refreshToken,
   customerId,
+  createCustomerId,
   appliedOwnerUserId,
   createSectionOpen,
   templatesRefreshToken,
 }: UseCampaignsPageListArgs) {
+  useEffect(() => {
+    invalidateCampaignListResponseCache();
+  }, [refreshToken]);
+
   const widthProbeQuery = useMemo(
     () => buildCampaignListWidthProbeQuery(query),
     [
@@ -62,7 +79,7 @@ export function useCampaignsPageList({
   );
 
   const { data, error, fetching } = useResource(
-    (signal) => listCampaigns(query, signal),
+    (signal) => fetchCampaignListCached(query, statsQuery.from, statsQuery.to, signal),
     [
       query.customer_id,
       query.status,
@@ -96,8 +113,8 @@ export function useCampaignsPageList({
     },
     [
       listCoversWidthProbeDataset,
-      widthProbeQuery.budget_max_micro,
       widthProbeQuery.budget_min_micro,
+      widthProbeQuery.budget_max_micro,
       widthProbeQuery.country,
       widthProbeQuery.customer_id,
       widthProbeQuery.owner_user_id,
@@ -217,15 +234,10 @@ export function useCampaignsPageList({
     [customerId],
   );
 
-  const listFacets = useMemo(() => {
-    if (listFacetsFromApi) {
-      return listFacetsFromApi;
-    }
-    if (data?.items?.length) {
-      return campaignListFacetsFromItems(data.items);
-    }
-    return undefined;
-  }, [data?.items, listFacetsFromApi]);
+  const { facets: listFacets, degraded: listFacetsDegraded } = useMemo(
+    () => resolveCampaignListFacets(listFacetsFromApi, listFacetsFetching),
+    [listFacetsFromApi, listFacetsFetching],
+  );
 
   const countryOptions = useMemo(
     () => buildCampaignListCountryOptions(listFacets?.countries ?? [], query.country),
@@ -267,7 +279,8 @@ export function useCampaignsPageList({
     return names;
   }, [customerOptions]);
 
-  const shouldLoadTemplates = createSectionOpen && Boolean(customerId);
+  const templateCustomerId = createCustomerId.trim() || customerId;
+  const shouldLoadTemplates = createSectionOpen && Boolean(templateCustomerId);
 
   const {
     data: templatesData,
@@ -275,12 +288,12 @@ export function useCampaignsPageList({
     fetching: templatesFetching,
   } = useResource(
     (signal) => {
-      if (!shouldLoadTemplates || !customerId) {
+      if (!shouldLoadTemplates || !templateCustomerId) {
         return Promise.resolve(undefined);
       }
-      return listSelfServeTemplates(customerId, signal);
+      return listSelfServeTemplates(templateCustomerId, signal);
     },
-    [customerId, templatesRefreshToken, shouldLoadTemplates],
+    [templateCustomerId, templatesRefreshToken, shouldLoadTemplates],
   );
 
   return {
@@ -302,6 +315,7 @@ export function useCampaignsPageList({
     templatesError,
     templatesLoading: templatesFetching,
     listFacetsFetching,
+    listFacetsDegraded,
     filterTotals,
     filterTotalsCapped,
     filterTotalsError,

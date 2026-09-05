@@ -1,7 +1,7 @@
-import { Activity, Globe, Server, Shield } from 'lucide-react';
+import { Copy } from 'lucide-react';
 import { useState, type ReactNode } from 'react';
+import { toast } from 'sonner';
 
-import { CopyButton } from '@/shell/copy_button';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
 import {
@@ -17,81 +17,50 @@ import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Switch } from '@/components/ui/switch';
 import { Tooltip, TooltipContent, TooltipTrigger } from '@/components/ui/tooltip';
-import { settingsFieldLabel } from '@/lib/settings_labels';
+import {
+  settingsColumnClass,
+  settingsColumnPanelClass,
+  settingsColumnsGridClass,
+  settingsRowClass,
+  settingsRowLabelClass,
+  settingsRowValueClass,
+  settingsSectionTitleClass,
+} from '@/domains/settings/settings_classes';
 import { settingsTextValue } from '@/domains/settings/settings_empty';
 import type { PlatformSettingsSnapshot } from '@/domains/settings/settings_snapshot';
+import { settingsFieldLabel } from '@/lib/settings_labels';
 import { cn } from '@/lib/utils';
 
-type BentoCell = {
+type SettingsRowProps = {
+  className?: string;
   label: string;
   value: ReactNode;
 };
 
-type BentoColumnDef = {
-  icon: ReactNode;
-  title: string;
-  rows: BentoCell[];
-};
-
-const BENTO_ROW_CLASS =
-  'grid min-h-0 min-w-0 grid-cols-1 gap-1 border-b border-border/40 px-4 py-3 last:border-b-0 sm:grid-cols-[minmax(0,9.5rem)_minmax(0,1fr)] sm:items-start sm:gap-x-3 sm:gap-y-1';
-
-const BENTO_HEADER_CLASS =
-  'flex min-w-0 items-center gap-2 border-b border-border/40 bg-muted/20 px-4 py-2.5 text-ui-caption font-medium tracking-wide text-muted-foreground';
-
-export function BentoRow({
-  className,
-  label,
-  value,
-}: {
-  className?: string;
-  label: string;
-  value: ReactNode;
-}) {
+function SettingsRow({ className, label, value }: SettingsRowProps) {
   return (
-    <div className={cn(BENTO_ROW_CLASS, className)}>
-      <span className="min-w-0 break-words text-xs leading-snug text-muted-foreground">{label}</span>
-      <div className="flex min-w-0 flex-wrap items-center gap-2 text-sm text-foreground sm:justify-self-end">
-        {value}
-      </div>
+    <div className={cn(settingsRowClass, className)}>
+      <span className={settingsRowLabelClass}>{label}</span>
+      <div className={settingsRowValueClass}>{value}</div>
     </div>
   );
 }
 
-function BentoColumnHeader({
+function SettingsColumn({
   className,
-  icon,
-  title,
-}: {
-  className?: string;
-  icon: ReactNode;
-  title: string;
-}) {
-  return (
-    <div className={cn(BENTO_HEADER_CLASS, className)}>
-      {icon}
-      <span className="min-w-0 break-words">{title}</span>
-    </div>
-  );
-}
-
-function BentoColumnStack({
-  className,
-  icon,
   rows,
   title,
 }: {
   className?: string;
-  icon: ReactNode;
-  rows: BentoCell[];
+  rows: SettingsRowProps[];
   title: string;
 }) {
   return (
-    <section className={cn('min-w-0', className)}>
-      <BentoColumnHeader icon={icon} title={title} />
-      <div className="min-w-0 divide-y divide-border/40">
+    <section className={cn(settingsColumnClass, className)}>
+      <h3 className={settingsSectionTitleClass}>{title}</h3>
+      <div className={settingsColumnPanelClass}>
         {rows.map((row) => (
-          <BentoRow key={row.label} label={row.label} value={row.value} />
+          <SettingsRow key={row.label} label={row.label} value={row.value} />
         ))}
       </div>
     </section>
@@ -124,20 +93,27 @@ export function SettingsStatusBadge({
   );
 }
 
-export function SettingsReadOnlySwitch({
+export function SettingsPatchSwitch({
   checked,
+  disabled = false,
+  field,
   label,
+  onPatch,
+  patching,
 }: {
   checked: boolean | undefined;
+  disabled?: boolean;
+  field: 'telemetry_enabled' | 'edge_xdp' | 'edge_expose_click' | 'edge_expose_openrtb';
   label: string;
+  onPatch: (patch: Record<string, unknown>) => void;
+  patching: boolean;
 }) {
   return (
     <Switch
       aria-label={label}
-      aria-readonly="true"
       checked={checked === true}
-      className="pointer-events-none shrink-0"
-      tabIndex={-1}
+      disabled={disabled || patching}
+      onCheckedChange={(next) => onPatch({ [field]: next })}
     />
   );
 }
@@ -154,8 +130,8 @@ function SettingsUrlCopyChip({
   const trimmed = value.trim();
   if (!trimmed) {
     return (
-      <span className="inline-flex h-7 max-w-full items-center rounded-sm border border-dashed border-border/60 px-2.5 text-xs text-muted-foreground">
-        {shortLabel}
+      <span className="inline-flex h-7 max-w-full items-center rounded-[5px] border border-dashed border-border px-2.5 text-xs text-muted-foreground">
+        {shortLabel} not set
       </span>
     );
   }
@@ -163,12 +139,22 @@ function SettingsUrlCopyChip({
   return (
     <Tooltip>
       <TooltipTrigger asChild>
-        <span className="inline-flex h-7 max-w-full items-center gap-0.5 rounded-sm border border-border/60 bg-muted/25 pl-2.5 pr-0.5 text-xs text-foreground">
+        <Button
+          className="h-7 max-w-full gap-1.5 px-2 text-xs"
+          type="button"
+          variant="outline"
+          onClick={() => {
+            void navigator.clipboard.writeText(trimmed).then(
+              () => toast.success(`${label} copied`),
+              () => toast.error('Could not copy to clipboard'),
+            );
+          }}
+        >
           <span className="whitespace-nowrap">{shortLabel}</span>
-          <CopyButton className="size-7 shrink-0" label={label} value={trimmed} />
-        </span>
+          <Copy className="h-3.5 w-3.5 shrink-0" aria-hidden />
+        </Button>
       </TooltipTrigger>
-      <TooltipContent className="max-w-sm break-all font-mono text-ui-caption leading-snug">
+      <TooltipContent className="max-w-sm break-all font-mono text-xs leading-snug">
         {trimmed}
       </TooltipContent>
     </Tooltip>
@@ -244,7 +230,7 @@ function StripeSecretsDialog({
       open={open}
     >
       <DialogTrigger asChild>
-        <Button className="shrink-0 px-3 text-xs" type="button" variant="outline">
+        <Button type="button" variant="outline">
           Configure
         </Button>
       </DialogTrigger>
@@ -259,7 +245,7 @@ function StripeSecretsDialog({
         </DialogHeader>
         <div className="grid gap-4">
           {hasStored ? (
-            <div className="grid gap-2 rounded-xl bg-muted/30 p-3 text-xs text-muted-foreground">
+            <div className="grid gap-2 rounded-[8px] border border-border bg-muted/30 p-3 text-xs text-muted-foreground">
               <p>
                 Current secret key:{' '}
                 <span className="font-mono text-foreground">
@@ -317,18 +303,17 @@ function buildColumns(
   snapshot: PlatformSettingsSnapshot,
   onPatchPlatform: (patch: Record<string, unknown>) => void,
   patching: boolean,
-): BentoColumnDef[] {
+): Array<{ title: string; rows: SettingsRowProps[] }> {
   const currency = snapshot.config.defaultCurrency.trim();
   const timezone = snapshot.config.timezone.trim();
   const localeLine =
     currency || timezone
-      ? [currency || '-', timezone || '-'].join('  /  ')
+      ? [currency || '-', timezone || '-'].join(' / ')
       : settingsTextValue('', 'default_currency');
   const networkInterface = snapshot.config.networkInterface.trim();
 
   return [
     {
-      icon: <Server className="h-3.5 w-3.5 shrink-0" />,
       title: 'Host and system',
       rows: [
         {
@@ -347,19 +332,19 @@ function buildColumns(
         {
           label: settingsFieldLabel('telemetry_enabled'),
           value: (
-            <SettingsReadOnlySwitch
+            <SettingsPatchSwitch
               checked={snapshot.config.telemetryEnabled}
+              field="telemetry_enabled"
               label={settingsFieldLabel('telemetry_enabled')}
+              patching={patching}
+              onPatch={onPatchPlatform}
             />
           ),
         },
         {
           label: settingsFieldLabel('network_interface'),
           value: networkInterface ? (
-            <span className="inline-flex max-w-full flex-wrap items-center gap-2 break-all font-mono text-xs">
-              <Activity className="h-3.5 w-3.5 shrink-0 text-emerald-500" />
-              {networkInterface}
-            </span>
+            <span className="break-all font-mono text-xs">{networkInterface}</span>
           ) : (
             settingsTextValue(networkInterface, 'network_interface')
           ),
@@ -367,7 +352,6 @@ function buildColumns(
       ],
     },
     {
-      icon: <Globe className="h-3.5 w-3.5 shrink-0" />,
       title: 'Traffic and routing',
       rows: [
         {
@@ -398,33 +382,41 @@ function buildColumns(
       ],
     },
     {
-      icon: <Shield className="h-3.5 w-3.5 shrink-0" />,
       title: 'Edge and integration',
       rows: [
         {
           label: settingsFieldLabel('edge_xdp'),
           value: (
-            <SettingsReadOnlySwitch
+            <SettingsPatchSwitch
               checked={snapshot.config.edgeXdp}
+              field="edge_xdp"
               label={settingsFieldLabel('edge_xdp')}
+              patching={patching}
+              onPatch={onPatchPlatform}
             />
           ),
         },
         {
           label: settingsFieldLabel('edge_expose_click'),
           value: (
-            <SettingsReadOnlySwitch
+            <SettingsPatchSwitch
               checked={snapshot.config.edgeExposeClick}
+              field="edge_expose_click"
               label={settingsFieldLabel('edge_expose_click')}
+              patching={patching}
+              onPatch={onPatchPlatform}
             />
           ),
         },
         {
           label: settingsFieldLabel('edge_expose_openrtb'),
           value: (
-            <SettingsReadOnlySwitch
+            <SettingsPatchSwitch
               checked={snapshot.config.edgeExposeOpenRTB}
+              field="edge_expose_openrtb"
               label={settingsFieldLabel('edge_expose_openrtb')}
+              patching={patching}
+              onPatch={onPatchPlatform}
             />
           ),
         },
@@ -454,15 +446,15 @@ export function SettingsBentoGrid({
   const columns = buildColumns(snapshot, onPatchPlatform, patching);
 
   return (
-    <div className="grid min-w-0 divide-y divide-border/40 xl:grid-cols-3 xl:divide-x xl:divide-y-0">
+    <div className={settingsColumnsGridClass}>
       {columns.map((column) => (
-        <BentoColumnStack
-          key={column.title}
-          icon={column.icon}
-          rows={column.rows}
-          title={column.title}
-        />
+        <SettingsColumn key={column.title} rows={column.rows} title={column.title} />
       ))}
     </div>
   );
+}
+
+// Legacy export for tests or external imports.
+export function BentoRow(props: SettingsRowProps) {
+  return <SettingsRow {...props} />;
 }

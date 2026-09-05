@@ -23,7 +23,7 @@ paths:
           required: false
           schema:
             type: string
-            enum: [name, updated_at, spend, budget_limit, status, tags, group, flow, owner, countries, budget_pct, clicks, impressions, conversions, unique_clicks, blocks, cost, revenue, profit, roi, ctr, cr, cpc, cpa, ecpa, epc, cpm, block_pct, leads, approved, hold_leads, rejected_leads, approve_rate, lp_clicks, lp_views, lp_ctr, bots, bot_pct]
+            enum: [name, id, updated_at, spend, budget_limit, status, tags, group, flow, owner, countries, budget_pct, clicks, impressions, conversions, unique_clicks, blocks, cost, revenue, profit, roi, ctr, cr, cpc, cpa, ecpa, epc, cpm, block_pct, leads, approved, hold_leads, rejected_leads, approve_rate, lp_clicks, lp_views, lp_ctr, bots, bot_pct]
         - name: order
           in: query
           required: false

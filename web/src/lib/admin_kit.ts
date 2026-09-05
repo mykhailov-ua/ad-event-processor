@@ -10,8 +10,10 @@ export const adminKit = {
     'focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 focus-visible:ring-offset-background',
   controlHeight: 'min-h-7',
   controlText: 'text-[13px] leading-[18px]',
-  labelCaps: 'text-[11px] font-semibold uppercase leading-[14px] tracking-normal text-muted-foreground',
-  tableHeader: 'text-[11px] font-bold uppercase leading-[14px] text-muted-foreground',
+  buttonShell:
+    'inline-flex h-7 shrink-0 items-center justify-center gap-2 py-0 text-[13px] leading-none [&_svg]:block [&_svg]:shrink-0',
+  labelCaps: 'text-[11px] font-normal uppercase leading-[14px] tracking-normal text-muted-foreground',
+  tableHeader: 'text-[11px] font-normal uppercase leading-[14px] text-muted-foreground',
   tableRowHeight: 'h-[34px]',
 } as const;
 
@@ -35,7 +37,7 @@ export const adminStatusBadgeClass: Record<AdminStatusTone, string> = {
 };
 
 export const adminStatusBadgeBase =
-  'inline-flex max-w-full shrink-0 items-center whitespace-nowrap rounded-full border px-2 py-0.5 text-xs font-medium leading-4';
+  'inline-flex max-w-full shrink-0 items-center whitespace-nowrap rounded-full border px-2 py-0.5 text-xs font-normal leading-4';
 
 export type AdminAlertTone = 'success' | 'error' | 'warning';
 

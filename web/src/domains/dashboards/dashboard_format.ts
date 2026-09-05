@@ -1,5 +1,7 @@
 import type { BuyerPortfolio } from '@/domains/dashboards/buyer_dashboard_types';
 
+export { formatDashboardCrPct, formatDashboardRoiPct } from '@/lib/display_metrics';
+
 const MICRO_PER_USD = 1_000_000;
 
 export function formatDashboardUsdFromMicro(value?: number | null): string {
@@ -13,21 +15,6 @@ export function formatDashboardUsdFromMicro(value?: number | null): string {
     minimumFractionDigits: 2,
     maximumFractionDigits: 2,
   }).format(usd);
-}
-
-export function formatDashboardRoiPct(value: number): string {
-  if (!Number.isFinite(value)) {
-    return '';
-  }
-  const sign = value > 0 ? '+' : '';
-  return `${sign}${value.toFixed(2)}%`;
-}
-
-export function formatDashboardCrPct(value?: number | null): string {
-  if (value == null || !Number.isFinite(value)) {
-    return '';
-  }
-  return `${value.toFixed(2)}%`;
 }
 
 export function portfolioCostMicro(portfolio: BuyerPortfolio): number | undefined {

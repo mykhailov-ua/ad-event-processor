@@ -55,6 +55,7 @@ export type CampaignsDirectoryProps = {
   ownerEmailById: Record<string, string>;
   countryOptions: CampaignsListFilterOption[];
   listFacetsFetching?: boolean;
+  listFacetsDegraded?: boolean;
   filterTotals?: CampaignListFilterTotalsView;
   filterTotalsCapped?: boolean;
   filteredTotal?: number;
@@ -67,6 +68,7 @@ export type CampaignsDirectoryProps = {
   hasSnapshot: boolean;
   filtersActive: boolean;
   customerId: string | undefined;
+  createCustomerId: string;
   createSectionOpen: boolean;
   onCreateSectionOpenChange: (open: boolean) => void;
   templates: SelfServeCampaignTemplate[];
@@ -91,6 +93,7 @@ export type CampaignsDirectoryProps = {
   onPageChange: (nextOffset: number) => void;
   onPageSizeChange: (size: number) => void;
   onDraftTemplateIdChange: (templateId: string) => void;
+  onDraftCreateCustomerIdChange: (customerId: string) => void;
   onDraftCreateNameChange: (name: string) => void;
   onDraftBudgetLimitMicroChange: (value: string) => void;
   onLoadTemplates: () => void;

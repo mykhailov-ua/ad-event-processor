@@ -80,7 +80,7 @@ test('buildCampaignListExportCsv matches visible column labels and row VM values
     baseCampaign,
     metrics,
     margin,
-    { [baseCampaign.customer_id]: 'Acme' },
+    { [baseCampaign.customer_id]: 'Horizon Media Group' },
     {},
     false,
   );

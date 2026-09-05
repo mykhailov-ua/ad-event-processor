@@ -39,7 +39,7 @@ export const dashboardPrefsChipEmptyClass =
 export const dashboardPrefsChipClass =
   'inline-flex max-w-full items-center gap-1 rounded-full border border-border bg-muted/60 px-2 py-0.5 text-[12px] leading-4 text-foreground';
 
-export const dashboardPrefsChipLabelClass = 'truncate';
+export const dashboardPrefsChipLabelClass = 'whitespace-nowrap';
 
 export const dashboardPrefsChipRemoveClass =
   'inline-flex shrink-0 items-center justify-center rounded-full text-muted-foreground transition-colors hover:text-foreground';

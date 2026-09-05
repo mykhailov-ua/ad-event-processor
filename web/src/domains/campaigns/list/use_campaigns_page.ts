@@ -2,7 +2,6 @@ import { useCallback, useEffect, useMemo, useState } from 'react';
 import { useSearchParams } from 'react-router-dom';
 import { toast } from 'sonner';
 
-import { createSelfServeCampaign } from '@/api/selfserve_api';
 import {
   microQueryParamToUsdInput,
   usdInputToMicroQueryParam,
@@ -37,7 +36,8 @@ import type {
   CampaignSortField,
   CampaignStatusFilter,
 } from '@/domains/campaigns/list/campaigns_list_types';
-import { useCampaignsPageList } from '@/pages/use_campaigns_page_list';
+import { useCampaignsPageList } from '@/domains/campaigns/list/use_campaigns_page_list';
+import { useCampaignsPageMutations } from '@/domains/campaigns/list/use_campaigns_page_mutations';
 import { useSession } from '@/hooks/use_session';
 import { useCoalescedBumpRefresh, useRefreshToken } from '@/hooks/use_coalesced_refresh_token';
 import { useTrackerHeaderSearchRegistration } from '@/lib/tracker_header_context';
@@ -52,6 +52,7 @@ export function useCampaignsPage(): CampaignsDirectoryProps {
   const [createSectionOpen, setCreateSectionOpen] = useState(false);
   const [templatesRefreshToken, setTemplatesRefreshToken] = useState(0);
   const [draftTemplateId, setDraftTemplateId] = useState('');
+  const [draftCreateCustomerId, setDraftCreateCustomerId] = useState('');
   const [draftCreateName, setDraftCreateName] = useState('');
   const [draftBudgetLimitMicro, setDraftBudgetLimitMicro] = useState('');
   const [creating, setCreating] = useState(false);
@@ -167,6 +168,7 @@ export function useCampaignsPage(): CampaignsDirectoryProps {
     templatesError,
     templatesLoading,
     listFacetsFetching,
+    listFacetsDegraded,
     filterTotals,
     filterTotalsCapped,
     filterTotalsError,
@@ -177,6 +179,7 @@ export function useCampaignsPage(): CampaignsDirectoryProps {
     statsQuery,
     refreshToken,
     customerId,
+    createCustomerId: draftCreateCustomerId,
     appliedOwnerUserId,
     createSectionOpen,
     templatesRefreshToken,
@@ -184,15 +187,25 @@ export function useCampaignsPage(): CampaignsDirectoryProps {
 
   const refreshList = useCoalescedBumpRefresh(bumpRefresh, fetching);
 
-  useEffect(() => {
-    if (templates.length === 0) {
-      setDraftTemplateId('');
-      return;
-    }
-    if (!templates.some((template) => template.id === draftTemplateId)) {
-      setDraftTemplateId(templates[0]?.id ?? '');
-    }
-  }, [draftTemplateId, templates]);
+  const { onLoadTemplates, onCreateCampaign } = useCampaignsPageMutations({
+    customerId,
+    appliedCustomerId,
+    createSectionOpen,
+    setCreateSectionOpen,
+    templates,
+    draftTemplateId,
+    setDraftTemplateId,
+    draftCreateCustomerId,
+    setDraftCreateCustomerId,
+    draftCreateName,
+    setDraftCreateName,
+    draftBudgetLimitMicro,
+    setDraftBudgetLimitMicro,
+    setCreating,
+    setActionError,
+    setTemplatesRefreshToken,
+    refreshList,
+  });
 
   useEffect(() => {
     if (error && data != null) {
@@ -357,53 +370,6 @@ export function useCampaignsPage(): CampaignsDirectoryProps {
     [appliedOrder, appliedSort, appliedStatsRange.from, appliedStatsRange.to, updateQuery],
   );
 
-  const onLoadTemplates = useCallback(() => {
-    setTemplatesRefreshToken((value) => value + 1);
-  }, []);
-
-  const onCreateCampaign = useCallback(async () => {
-    if (!customerId || !draftTemplateId) {
-      return;
-    }
-
-    const budgetRaw = draftBudgetLimitMicro.trim();
-    let budgetLimitMicro: number | undefined;
-    if (budgetRaw) {
-      const parsed = Number.parseInt(budgetRaw, 10);
-      if (!Number.isFinite(parsed) || parsed <= 0) {
-        setActionError(new Error('Budget must be a positive integer (micro units)'));
-        return;
-      }
-      budgetLimitMicro = parsed;
-    }
-
-    setCreating(true);
-    setActionError(undefined);
-    try {
-      await createSelfServeCampaign({
-        customer_id: customerId,
-        template_id: draftTemplateId,
-        name: draftCreateName.trim() || undefined,
-        budget_limit_micro: budgetLimitMicro,
-      });
-      setDraftCreateName('');
-      setDraftBudgetLimitMicro('');
-      setCreateSectionOpen(false);
-      toast.success('Campaign created');
-      refreshList();
-    } catch (err) {
-      setActionError(err instanceof Error ? err : new Error(String(err)));
-    } finally {
-      setCreating(false);
-    }
-  }, [
-    customerId,
-    draftBudgetLimitMicro,
-    draftCreateName,
-    draftTemplateId,
-    refreshList,
-  ]);
-
   return {
     items: data?.items,
     total: data?.total ?? 0,
@@ -434,6 +400,7 @@ export function useCampaignsPage(): CampaignsDirectoryProps {
     ownerEmailById,
     countryOptions,
     listFacetsFetching,
+    listFacetsDegraded,
     filterTotals,
     filterTotalsCapped,
     filteredTotal: data?.total ?? 0,
@@ -446,6 +413,7 @@ export function useCampaignsPage(): CampaignsDirectoryProps {
     hasSnapshot: data != null,
     filtersActive,
     customerId,
+    createCustomerId: draftCreateCustomerId,
     createSectionOpen,
     onCreateSectionOpenChange: setCreateSectionOpen,
     templates,
@@ -470,6 +438,7 @@ export function useCampaignsPage(): CampaignsDirectoryProps {
     onPageChange,
     onPageSizeChange,
     onDraftTemplateIdChange: setDraftTemplateId,
+    onDraftCreateCustomerIdChange: setDraftCreateCustomerId,
     onDraftCreateNameChange: setDraftCreateName,
     onDraftBudgetLimitMicroChange: setDraftBudgetLimitMicro,
     onLoadTemplates,

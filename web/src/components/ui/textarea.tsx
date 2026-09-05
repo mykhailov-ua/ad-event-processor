@@ -28,7 +28,8 @@ const Textarea = React.forwardRef<HTMLTextAreaElement, TextareaProps>(
   ({ className, maxLength, showCount, value, onChange, rows = 3, ...props }, ref) => {
     const innerRef = useRef<HTMLTextAreaElement | null>(null);
     const showCounter = showCount ?? maxLength != null;
-    const length = typeof value === 'string' ? value.length : 0;
+    const textValue = value ?? '';
+    const length = textValue.length;
 
     const syncHeight = useCallback(() => {
       const element = innerRef.current;
@@ -41,7 +42,7 @@ const Textarea = React.forwardRef<HTMLTextAreaElement, TextareaProps>(
 
     useLayoutEffect(() => {
       syncHeight();
-    }, [syncHeight, value]);
+    }, [syncHeight, textValue]);
 
     return (
       <div className="relative">
@@ -49,18 +50,19 @@ const Textarea = React.forwardRef<HTMLTextAreaElement, TextareaProps>(
           <textarea
             ref={mergeRefs(ref, innerRef)}
             rows={rows}
-            maxLength={maxLength}
-            value={value}
-            onChange={(event) => {
-              onChange?.(event);
-              syncHeight();
-            }}
             className={cn(
-              'flex min-h-[5rem] w-full resize-none overflow-hidden border-0 bg-transparent px-3 py-2 font-mono text-sm text-foreground transition-colors placeholder:text-muted-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring disabled:cursor-not-allowed disabled:opacity-50',
+              'flex min-h-[5rem] w-full resize-none overflow-hidden border-0 bg-transparent px-3 py-2 text-sm text-foreground transition-colors placeholder:text-muted-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring disabled:cursor-not-allowed disabled:opacity-50',
+              !className?.includes('ui-editor-mono-extralight') && 'font-mono',
               showCounter && maxLength != null && 'pb-7',
               className,
             )}
             {...props}
+            maxLength={maxLength}
+            value={textValue}
+            onChange={(event) => {
+              onChange?.(event);
+              syncHeight();
+            }}
           />
         </div>
         {showCounter && maxLength != null ? (

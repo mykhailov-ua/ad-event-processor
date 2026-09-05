@@ -290,6 +290,8 @@ export async function expectApiListBoundToDom(page, body, options) {
     expect(typeof label).toBe('string');
     expect(label.length).toBeGreaterThan(0);
 
+    // FE2 (scoped): .or() disambiguates row label across cell/link/input/text surfaces only.
+    // Do not chain .or(empty) or stub headings on data tables (L1s ban; see web/e2e/README.md).
     const rowLocator = main
       .getByRole('cell', { name: label, exact: true })
       .or(main.getByRole('link', { name: label, exact: true }))

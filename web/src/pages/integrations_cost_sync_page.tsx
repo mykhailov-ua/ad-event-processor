@@ -12,7 +12,7 @@ import {
   type IntegrationsCostSyncPanel,
 } from '@/domains/integrations/integrations_cost_sync';
 import { useCustomerScope } from '@/hooks/use_customer_scope';
-import { useRefreshToken } from '@/hooks/use_coalesced_refresh_token';
+import { useCoalescedBumpRefresh, useRefreshToken } from '@/hooks/use_coalesced_refresh_token';
 import { useResource } from '@/api/use_resource';
 
 function defaultSyncDateUtc(): string {
@@ -64,6 +64,9 @@ export function IntegrationsCostSyncPage() {
   const credentials = useMemo(() => data?.credentials ?? [], [data?.credentials]);
   const history = useMemo(() => data?.history ?? [], [data?.history]);
 
+  const listBusy = fetching || saving || deleting || running;
+  const bumpRefreshCoalesced = useCoalescedBumpRefresh(bumpRefresh, listBusy);
+
   const scopedError = panel === 'networks' ? undefined : error;
   const fetchingScoped = panel === 'networks' ? fetching : fetching;
   const hasScopedData = data != null;
@@ -81,6 +84,9 @@ export function IntegrationsCostSyncPage() {
   }, []);
 
   const onSave = useCallback(async () => {
+    if (saving) {
+      return;
+    }
     const network = draftNetwork.trim();
     if (!network || !appliedCustomerId) {
       return;
@@ -99,7 +105,7 @@ export function IntegrationsCostSyncPage() {
         sync_interval_minutes: (Number.isFinite(interval) ? interval : 60) as 15 | 30 | 60 | 1440,
       });
       setSaveSuccess(true);
-      bumpRefresh();
+      bumpRefreshCoalesced();
     } catch (err) {
       setSaveError(err instanceof Error ? err : new Error(String(err)));
     } finally {
@@ -113,10 +119,13 @@ export function IntegrationsCostSyncPage() {
     draftNetwork,
     draftRefreshToken,
     draftSyncIntervalMinutes,
-    bumpRefresh,
+    bumpRefreshCoalesced,
   ]);
 
   const onDelete = useCallback(async () => {
+    if (deleting) {
+      return;
+    }
     const network = draftNetwork.trim();
     if (!network || !appliedCustomerId) {
       return;
@@ -127,15 +136,18 @@ export function IntegrationsCostSyncPage() {
     try {
       await deleteCostSyncCredential(network, appliedCustomerId);
       setDeleteSuccess(true);
-      bumpRefresh();
+      bumpRefreshCoalesced();
     } catch (err) {
       setDeleteError(err instanceof Error ? err : new Error(String(err)));
     } finally {
       setDeleting(false);
     }
-  }, [appliedCustomerId, draftNetwork, bumpRefresh]);
+  }, [appliedCustomerId, draftNetwork, bumpRefreshCoalesced]);
 
   const onRunSync = useCallback(async () => {
+    if (running) {
+      return;
+    }
     if (!appliedCustomerId) {
       return;
     }
@@ -150,13 +162,13 @@ export function IntegrationsCostSyncPage() {
         to: runTo.trim() || undefined,
       });
       setRunSuccess(true);
-      bumpRefresh();
+      bumpRefreshCoalesced();
     } catch (err) {
       setRunError(err instanceof Error ? err : new Error(String(err)));
     } finally {
       setRunning(false);
     }
-  }, [appliedCustomerId, runFrom, runNetwork, runTo, bumpRefresh]);
+  }, [appliedCustomerId, runFrom, runNetwork, runTo, bumpRefreshCoalesced]);
 
   return (
     <IntegrationsCostSync

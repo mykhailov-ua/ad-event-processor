@@ -1,5 +1,5 @@
 import { Button } from '@/components/ui/button';
-import { JsonDashboardView } from '@/domains/dashboards/json_dashboard_view';
+import { JsonPayloadView } from '@/shell/json_payload_view';
 import { opsPanelError } from '@/domains/ops/ops_nav';
 import {
   OpsActionGroup,
@@ -39,7 +39,7 @@ export function OpsRum({ payload, fetching, error, hasSnapshot, onLoad }: OpsRum
       }
     >
       {payload ? (
-        <JsonDashboardView payload={payload} />
+        <JsonPayloadView payload={payload} />
       ) : (
         <p className="text-muted-foreground">Load RUM samples from the control plane.</p>
       )}

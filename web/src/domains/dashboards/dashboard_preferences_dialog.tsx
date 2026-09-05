@@ -163,13 +163,14 @@ export function DashboardPreferencesDialog({
         </div>
 
         <DialogFooter className={dashboardPrefsDialogFooterClass}>
-          <button
+          <Button
             className={dashboardPrefsRestoreClass}
             type="button"
+            variant="link"
             onClick={() => setDraft(defaultBuyerDashboardPreferences())}
           >
             Restore to default
-          </button>
+          </Button>
           <div className={dashboardPrefsFooterActionsClass}>
             <Button type="button" variant="secondary" onClick={() => onOpenChange(false)}>
               Cancel

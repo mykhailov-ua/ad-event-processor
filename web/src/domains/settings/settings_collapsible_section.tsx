@@ -1,6 +1,12 @@
 import { ChevronDown } from 'lucide-react';
 import type { ReactNode } from 'react';
 
+import {
+  settingsCardClass,
+  settingsCardTitleClass,
+  settingsCollapsibleBodyClass,
+  settingsCollapsibleSummaryClass,
+} from '@/domains/settings/settings_classes';
 import { Badge } from '@/components/ui/badge';
 import { cn } from '@/lib/utils';
 
@@ -17,17 +23,17 @@ export function SettingsCollapsibleSection({
 }) {
   return (
     <details
-      className="ui-surface-raised group min-w-0 rounded-2xl border border-border/40"
+      className={cn(settingsCardClass, 'group min-w-0')}
       open={defaultOpen || undefined}
     >
-      <summary className="flex cursor-pointer list-none items-center justify-between gap-2 px-5 py-4 marker:content-none [&::-webkit-details-marker]:hidden">
-        <span className="text-base font-medium tracking-tight text-foreground">{title}</span>
+      <summary className={settingsCollapsibleSummaryClass}>
+        <span className={settingsCardTitleClass}>{title}</span>
         <span className="flex items-center gap-2">
           {badge ? <Badge variant="outline">{badge}</Badge> : null}
           <ChevronDown className="h-4 w-4 shrink-0 text-muted-foreground transition-transform group-open:rotate-180" />
         </span>
       </summary>
-      <div className={cn('border-t border-border/40 px-5 pb-5 pt-4')}>{children}</div>
+      <div className={settingsCollapsibleBodyClass}>{children}</div>
     </details>
   );
 }

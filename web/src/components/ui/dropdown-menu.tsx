@@ -109,8 +109,12 @@ DropdownMenuTrigger.displayName = 'DropdownMenuTrigger';
 
 const DropdownMenuContent = React.forwardRef<
   HTMLDivElement,
-  React.HTMLAttributes<HTMLDivElement> & { sideOffset?: number; align?: 'start' | 'end' | 'center' }
->(({ className, sideOffset = 4, align = 'start', style, children, ...props }, ref) => {
+  React.HTMLAttributes<HTMLDivElement> & {
+    sideOffset?: number;
+    align?: 'start' | 'end' | 'center';
+    scrollable?: boolean;
+  }
+>(({ className, sideOffset = 4, align = 'start', scrollable = true, style, children, ...props }, ref) => {
   const { open, setOpen, triggerRef } = useMenuContext();
   const contentRef = React.useRef<HTMLDivElement | null>(null);
   const [position, setPosition] = React.useState<React.CSSProperties>({
@@ -177,7 +181,13 @@ const DropdownMenuContent = React.forwardRef<
         style={{ ...position, ...style }}
         {...props}
       >
-        {children}
+        {scrollable ? (
+          <div className={cn(adminChrome.menuList, 'ui-scrollbar max-h-60 overflow-y-auto')}>
+            {children}
+          </div>
+        ) : (
+          <div className={adminChrome.menuList}>{children}</div>
+        )}
       </div>
     </OverlayRoot>
   );
@@ -271,7 +281,7 @@ function DropdownMenuSubContent({
   ...props
 }: React.HTMLAttributes<HTMLDivElement>) {
   return (
-    <div className={cn(adminChrome.floating, className)} {...props}>
+    <div className={cn(adminChrome.floating, adminChrome.menuList, className)} {...props}>
       {children}
     </div>
   );

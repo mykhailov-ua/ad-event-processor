@@ -23,7 +23,10 @@ import {
   visibleCampaignListColumns,
 } from '@/domains/campaigns/list/campaign_list_columns';
 import { CampaignListTableBodyRow } from '@/domains/campaigns/list/campaign_list_table_body_row';
-import { CampaignListTableHeaderCell } from '@/domains/campaigns/list/campaign_list_table_header_cell';
+import {
+  CampaignListColumnResizeHandle,
+  CampaignListTableHeaderCell,
+} from '@/domains/campaigns/list/campaign_list_table_header_cell';
 import { CampaignListTableTotalsCell } from '@/domains/campaigns/list/campaign_list_table_totals_cell';
 import type { CampaignSortField, SortOrder } from '@/domains/campaigns/list/campaigns_list_types';
 import type { CampaignWithMoneyDisplay } from '@/domains/campaigns/list/campaign_metrics_shared';
@@ -38,10 +41,8 @@ import {
   campaignListTableClass,
   campaignListTableSurfaceClass,
   campaignListTdClass,
-  campaignListTdNameClass,
   campaignListTfootTdClass,
   campaignListThClass,
-  campaignListThNameClass,
 } from '@/domains/campaigns/list/campaign_list_classes';
 import { DirectoryTable, TableBody, TableFooter, TableHeader } from '@/shell/directory_table';
 import { cn } from '@/lib/utils';
@@ -174,6 +175,7 @@ export function CampaignsListTable({
     <DirectoryTable
       className={cn(campaignListTableSurfaceClass, 'rounded-none border-0 shadow-none')}
       fixedLayout
+      horizontalScroll
       tableClassName={campaignListTableClass}
       tableRef={tableRef}
       tableStyle={{
@@ -192,23 +194,23 @@ export function CampaignsListTable({
           <tr>
             {columns.map((columnId) => {
               const draggable = isCampaignListColumnDraggable(columnId);
-              const resizable = isCampaignListColumnResizable(columnId);
+              const resizable = isCampaignListColumnResizable(columnId, columns);
               const reorderableTarget = draggable ? columnId : null;
               const isSelect = columnId === 'select';
-              const isNum = isCampaignListNumericColumn(columnId);
 
               return (
                 <th
                   key={columnId}
                   className={cn(
                     campaignListThClass,
-                    isSelect ? 'px-4 text-center' : isNum ? campaignListNumClass : undefined,
+                    isSelect ? 'px-4 text-center' : undefined,
                     columnId === 'name'
-                      ? cn(campaignListThNameClass, campaignListCellToolsClass)
+                      ? campaignListCellToolsClass
                       : !isSelect
                         ? campaignListCellToolsClass
                         : undefined,
                     draggingColumnId === columnId && 'opacity-60',
+                    resizable && 'relative',
                   )}
                 >
                   {isSelect ? (
@@ -227,8 +229,6 @@ export function CampaignsListTable({
                       columnId={columnId}
                       disabled={fetching}
                       draggable={draggable}
-                      resizable={resizable}
-                      resizeLabel={`Resize ${CAMPAIGN_LIST_COLUMN_LABELS[columnId]} column`}
                       onColumnSort={onColumnSort}
                       onDragEnd={clearDragState}
                       onDragStart={() => {
@@ -241,11 +241,16 @@ export function CampaignsListTable({
                           handleColumnDrop(reorderableTarget, event);
                         }
                       }}
-                      onResizePointerDown={(event) => {
+                    />
+                  )}
+                  {resizable ? (
+                    <CampaignListColumnResizeHandle
+                      label={`Resize ${CAMPAIGN_LIST_COLUMN_LABELS[columnId]} column`}
+                      onPointerDown={(event) => {
                         startResize(columnId, event);
                       }}
                     />
-                  )}
+                  ) : null}
                 </th>
               );
             })}
@@ -283,7 +288,7 @@ export function CampaignsListTable({
                     columnId === 'select'
                       ? 'px-4 text-center'
                       : columnId === 'name'
-                        ? cn(campaignListTdNameClass, campaignListCellToolsClass)
+                        ? campaignListCellToolsClass
                         : cn(campaignListCellToolsClass, isNum && campaignListNumClass),
                   )}
                 >

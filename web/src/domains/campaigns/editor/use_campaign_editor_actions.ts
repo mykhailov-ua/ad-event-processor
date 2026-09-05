@@ -1,12 +1,10 @@
-import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
-import { useNavigate, useParams } from 'react-router-dom';
+import { useCallback, useState } from 'react';
 import { toast } from 'sonner';
 
 import {
   checkCampaignPublish,
   cloneCampaign,
   exportCampaign,
-  getCampaign,
   getCampaignDiff,
   patchCampaign,
   previewCampaignClone,
@@ -20,54 +18,48 @@ import {
   type MacroPreviewResponse,
 } from '@/api/campaigns_api';
 import { isAbortError } from '@/api/client';
-import { getFlow } from '@/api/flows_api';
 import type {
   Campaign,
   CampaignPublishBlockedError,
   CampaignPublishCheck,
   CampaignValidateResponse,
 } from '@/api/types';
-import { useResource } from '@/api/use_resource';
 import {
   buildCloneRequestBody,
   DEFAULT_CLONE_OPTIONS,
 } from '@/domains/campaigns/editor/campaign_clone_request';
 import {
   buildCampaignPatchBody,
-  campaignToFormState,
   type CampaignEditorFormState,
   type MacroPreviewFormState,
 } from '@/domains/campaigns/editor/campaign_editor';
-import type { CampaignEditorProps } from '@/domains/campaigns/editor/campaign_editor_types';
-import { useBreadcrumbSegmentLabel } from '@/shell/breadcrumb_context';
 
-const EMPTY_FORM: CampaignEditorFormState = {
-  name: '',
-  status: '',
-  budget_limit: '',
-  pacing_mode: '',
-  flow_id: '',
-  brand_id: '',
-  ingress_param: '',
-  ingress_scale: '',
-  ingress_max_micro: '',
-  ingress_policy: '',
-  traffic_template_id: '',
-  click_query_params_json: '{}',
+export type UseCampaignEditorActionsArgs = {
+  id: string | undefined;
+  form: CampaignEditorFormState | undefined;
+  campaignSnapshot: Campaign | undefined;
+  setCampaignSnapshot: (campaign: Campaign | undefined) => void;
+  syncFormFromCampaign: (campaign: Campaign) => void;
+  setChecking: (value: boolean) => void;
+  setPublishCheck: (value: CampaignPublishCheck | undefined) => void;
+  setPublishCheckError: (value: Error | undefined) => void;
 };
 
-export function useCampaignEditorPage(): CampaignEditorProps {
-  const { id } = useParams<{ id: string }>();
-  const navigate = useNavigate();
-  const [form, setForm] = useState<CampaignEditorFormState | undefined>(undefined);
+export function useCampaignEditorActions({
+  id,
+  form,
+  campaignSnapshot,
+  setCampaignSnapshot,
+  syncFormFromCampaign,
+  setChecking,
+  setPublishCheck,
+  setPublishCheckError,
+}: UseCampaignEditorActionsArgs) {
   const [saving, setSaving] = useState(false);
   const [saveError, setSaveError] = useState<Error | undefined>(undefined);
-  const [campaignSnapshot, setCampaignSnapshot] = useState<Campaign | undefined>(undefined);
-  const [checking, setChecking] = useState(false);
   const [validating, setValidating] = useState(false);
   const [publishing, setPublishing] = useState(false);
   const [forcePublish, setForcePublish] = useState(false);
-  const [publishCheck, setPublishCheck] = useState<CampaignPublishCheck | undefined>(undefined);
   const [validateResult, setValidateResult] = useState<
     CampaignValidateResponse | undefined
   >(undefined);
@@ -75,7 +67,6 @@ export function useCampaignEditorPage(): CampaignEditorProps {
     CampaignPublishBlockedError | undefined
   >(undefined);
   const [publishSuccess, setPublishSuccess] = useState(false);
-  const [publishCheckError, setPublishCheckError] = useState<Error | undefined>(undefined);
   const [validateError, setValidateError] = useState<Error | undefined>(undefined);
   const [publishError, setPublishError] = useState<Error | undefined>(undefined);
   const [macroPreviewForm, setMacroPreviewForm] = useState<MacroPreviewFormState>({
@@ -107,86 +98,6 @@ export function useCampaignEditorPage(): CampaignEditorProps {
   const [ownerSuccess, setOwnerSuccess] = useState(false);
   const [exporting, setExporting] = useState(false);
   const [exportError, setExportError] = useState<Error | undefined>(undefined);
-  const autoPublishCheckDone = useRef(false);
-
-  const { data, error, fetching } = useResource(
-    (signal) => {
-      if (!id) {
-        return Promise.reject(new Error('Campaign id is required'));
-      }
-      return getCampaign(id, signal);
-    },
-    [id],
-  );
-
-  const flowId = (campaignSnapshot ?? data)?.flow_id?.trim() ?? '';
-
-  const { data: flowData } = useResource(
-    (signal) => {
-      if (!flowId) {
-        return Promise.resolve(undefined);
-      }
-      return getFlow(flowId, signal);
-    },
-    [flowId],
-  );
-
-  useEffect(() => {
-    if (!data) {
-      return;
-    }
-    setCampaignSnapshot(data);
-    setForm(campaignToFormState(data));
-    setSaveError(undefined);
-  }, [data]);
-
-  useEffect(() => {
-    autoPublishCheckDone.current = false;
-    setPublishCheck(undefined);
-    setPublishCheckError(undefined);
-  }, [id]);
-
-  useEffect(() => {
-    if (!id || !data || autoPublishCheckDone.current) {
-      return;
-    }
-    if (data.status !== 'PAUSED') {
-      return;
-    }
-    autoPublishCheckDone.current = true;
-
-    setChecking(true);
-    setPublishCheckError(undefined);
-
-    void checkCampaignPublish(id)
-      .then((result) => {
-        setPublishCheck(result);
-      })
-      .catch((err: unknown) => {
-        if (isAbortError(err)) {
-          return;
-        }
-        setPublishCheckError(err instanceof Error ? err : new Error(String(err)));
-      })
-      .finally(() => {
-        setChecking(false);
-      });
-  }, [data, id]);
-
-  const onFieldChange = useCallback(
-    <K extends keyof CampaignEditorFormState>(
-      field: K,
-      value: CampaignEditorFormState[K],
-    ) => {
-      setForm((prev) => {
-        if (!prev) {
-          return prev;
-        }
-        return { ...prev, [field]: value };
-      });
-    },
-    [],
-  );
 
   const onSave = useCallback(() => {
     if (!id || !campaignSnapshot || !form) {
@@ -208,7 +119,7 @@ export function useCampaignEditorPage(): CampaignEditorProps {
     void patchCampaign(id, patchResult.body)
       .then((updated) => {
         setCampaignSnapshot(updated);
-        setForm(campaignToFormState(updated));
+        syncFormFromCampaign(updated);
       })
       .catch((err: unknown) => {
         if (isAbortError(err)) {
@@ -219,42 +130,7 @@ export function useCampaignEditorPage(): CampaignEditorProps {
       .finally(() => {
         setSaving(false);
       });
-  }, [campaignSnapshot, form, id]);
-
-  const onSaveAndClose = useCallback(() => {
-    if (!id || !campaignSnapshot || !form) {
-      return;
-    }
-
-    const patchResult = buildCampaignPatchBody(campaignSnapshot, form);
-    if (!patchResult.ok) {
-      setSaveError(new Error(patchResult.error));
-      return;
-    }
-    if (Object.keys(patchResult.body).length === 0) {
-      navigate('/campaigns');
-      return;
-    }
-
-    setSaving(true);
-    setSaveError(undefined);
-
-    void patchCampaign(id, patchResult.body)
-      .then((updated) => {
-        setCampaignSnapshot(updated);
-        setForm(campaignToFormState(updated));
-        navigate('/campaigns');
-      })
-      .catch((err: unknown) => {
-        if (isAbortError(err)) {
-          return;
-        }
-        setSaveError(err instanceof Error ? err : new Error(String(err)));
-      })
-      .finally(() => {
-        setSaving(false);
-      });
-  }, [campaignSnapshot, form, id, navigate]);
+  }, [campaignSnapshot, form, id, setCampaignSnapshot, syncFormFromCampaign]);
 
   const onCheckPublish = useCallback(() => {
     if (!id) {
@@ -278,7 +154,7 @@ export function useCampaignEditorPage(): CampaignEditorProps {
       .finally(() => {
         setChecking(false);
       });
-  }, [id]);
+  }, [id, setChecking, setPublishCheck, setPublishCheckError]);
 
   const onValidateChanges = useCallback(() => {
     if (!id || !campaignSnapshot || !form) {
@@ -332,7 +208,7 @@ export function useCampaignEditorPage(): CampaignEditorProps {
           setPublishSuccess(true);
           toast.success('Campaign published');
           setCampaignSnapshot(result.campaign);
-          setForm(campaignToFormState(result.campaign));
+          syncFormFromCampaign(result.campaign);
           return;
         }
         setPublishBlocked(result.error);
@@ -346,7 +222,7 @@ export function useCampaignEditorPage(): CampaignEditorProps {
       .finally(() => {
         setPublishing(false);
       });
-  }, [forcePublish, id]);
+  }, [forcePublish, id, setCampaignSnapshot, syncFormFromCampaign]);
 
   const onMacroPreviewFieldChange = useCallback(
     <K extends keyof MacroPreviewFormState>(
@@ -534,38 +410,16 @@ export function useCampaignEditorPage(): CampaignEditorProps {
       });
   }, [id]);
 
-  const campaign = campaignSnapshot ?? data;
-  const effectiveForm =
-    form ?? (campaign ? campaignToFormState(campaign) : undefined);
-  const flowPaths = useMemo(() => {
-    const paths = flowData?.paths;
-    return Array.isArray(paths) ? paths : undefined;
-  }, [flowData?.paths]);
-
-  useBreadcrumbSegmentLabel(id, campaign?.name);
-
   return {
-    campaign,
-    clickUrl: macroPreviewResult?.resolved_click_url,
-    flowPaths,
-    form: effectiveForm ?? EMPTY_FORM,
-    fetching,
     saving,
-    loadError: error,
     saveError,
-    hasSnapshot: campaignSnapshot != null || data != null,
-    onFieldChange,
     onSave,
-    onSaveAndClose,
-    checking,
     validating,
     publishing,
     forcePublish,
-    publishCheck,
     validateResult,
     publishBlocked,
     publishSuccess,
-    publishCheckError,
     validateError,
     publishError,
     onForcePublishChange: setForcePublish,
@@ -578,6 +432,7 @@ export function useCampaignEditorPage(): CampaignEditorProps {
     macroPreviewResult,
     macroPreviewError,
     onMacroPreview,
+    clickUrl: macroPreviewResult?.resolved_click_url,
     cloneNameSuffix,
     onCloneNameSuffixChange: setCloneNameSuffix,
     cloneOptions,

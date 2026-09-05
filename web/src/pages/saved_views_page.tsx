@@ -10,7 +10,7 @@ import {
 import type { SavedView } from '@/api/types';
 import { SavedViewsPanel } from '@/domains/portals/saved_views_panel';
 import { useCustomerScope } from '@/hooks/use_customer_scope';
-import { useRefreshToken } from '@/hooks/use_coalesced_refresh_token';
+import { useCoalescedBumpRefresh, useRefreshToken } from '@/hooks/use_coalesced_refresh_token';
 import { useResource } from '@/api/use_resource';
 
 type EditRow = {
@@ -55,6 +55,9 @@ export function SavedViewsPage() {
   const [acting, setActing] = useState(false);
   const [actionError, setActionError] = useState<Error | undefined>();
   const [createSuccess, setCreateSuccess] = useState(false);
+
+  const listBusy = fetching || acting;
+  const bumpRefreshCoalesced = useCoalescedBumpRefresh(bumpRefresh, listBusy);
 
   useEffect(() => {
     if (!data?.length) {
@@ -101,6 +104,9 @@ export function SavedViewsPage() {
   );
 
   const onCreateView = useCallback(async () => {
+    if (acting) {
+      return;
+    }
     const customerId = appliedCustomerId.trim();
     const name = draftName.trim();
     const reportKey = draftReportKey.trim();
@@ -123,16 +129,19 @@ export function SavedViewsPage() {
       setDraftSpecJson('{}');
       setCreateSuccess(true);
       toast.success('Saved view created');
-      bumpRefresh();
+      bumpRefreshCoalesced();
     } catch (err) {
       setActionError(err instanceof Error ? err : new Error(String(err)));
     } finally {
       setActing(false);
     }
-  }, [appliedCustomerId, draftName, draftReportKey, draftSpecJson, parseSpec, bumpRefresh]);
+  }, [acting, appliedCustomerId, draftName, draftReportKey, draftSpecJson, parseSpec, bumpRefreshCoalesced]);
 
   const onUpdateView = useCallback(
     async (id: string) => {
+      if (acting) {
+        return;
+      }
       const customerId = appliedCustomerId.trim();
       const edit = editRows[id];
       if (!customerId || !edit) {
@@ -147,17 +156,20 @@ export function SavedViewsPage() {
           report_key: edit.report_key.trim(),
           spec,
         });
-        bumpRefresh();
+        bumpRefreshCoalesced();
       } catch (err) {
         setActionError(err instanceof Error ? err : new Error(String(err)));
       } finally {
         setActing(false);
       }
     },
-    [appliedCustomerId, editRows, parseSpec, bumpRefresh],
+    [acting, appliedCustomerId, editRows, parseSpec, bumpRefreshCoalesced],
   );
 
   const onDeleteView = useCallback(async (id: string) => {
+    if (acting) {
+      return;
+    }
     setActing(true);
     setActionError(undefined);
     try {
@@ -167,13 +179,13 @@ export function SavedViewsPage() {
         delete next[id];
         return next;
       });
-      bumpRefresh();
+      bumpRefreshCoalesced();
     } catch (err) {
       setActionError(err instanceof Error ? err : new Error(String(err)));
     } finally {
       setActing(false);
     }
-  }, [bumpRefresh]);
+  }, [acting, bumpRefreshCoalesced]);
 
   return (
     <SavedViewsPanel

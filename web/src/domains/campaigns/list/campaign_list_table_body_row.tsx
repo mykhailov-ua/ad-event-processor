@@ -1,9 +1,8 @@
-import { useMemo } from 'react';
+import { memo, useMemo } from 'react';
 
 import { Checkbox } from '@/components/ui/checkbox';
 import type { CampaignListMetrics } from '@/api/campaigns_api';
 import type { Campaign, CampaignMargin, CampaignStatsQuery } from '@/api/types';
-import { CampaignCountryBadges } from '@/domains/campaigns/list/campaign_country_badges';
 import {
   isCampaignListMiddleColumnId,
   isCampaignListNumericColumn,
@@ -18,12 +17,15 @@ import {
   campaignListCellContentClass,
   campaignListCellToolsClass,
   campaignListHeaderCellClass,
+  campaignListNameRowCellClass,
+  campaignListNameRowMenuSlotClass,
+  campaignListNameRowTextClass,
+  campaignListNameTextClass,
   campaignListNumClass,
   campaignListSelectCellClass,
   campaignListTdClass,
-  campaignListTdNameClass,
 } from '@/domains/campaigns/list/campaign_list_classes';
-import { CopyableText } from '@/shell/copyable_text';
+import { CopyButton } from '@/shell/copy_button';
 import { cn } from '@/lib/utils';
 
 export type CampaignListTableBodyRowProps = {
@@ -41,16 +43,7 @@ export type CampaignListTableBodyRowProps = {
   statsQuery?: CampaignStatsQuery;
 };
 
-export function isCampaignListInteractiveRowTarget(target: EventTarget | null): boolean {
-  if (!(target instanceof HTMLElement)) {
-    return false;
-  }
-  return Boolean(
-    target.closest('a, button, input, label, [role="checkbox"], [data-col-resize], [data-col-grip]'),
-  );
-}
-
-export function CampaignListTableBodyRow({
+export const CampaignListTableBodyRow = memo(function CampaignListTableBodyRow({
   campaign,
   columns,
   customerNameById,
@@ -78,15 +71,7 @@ export function CampaignListTableBodyRow({
   );
 
   return (
-    <tr
-      className={cn(vm.rowClass, 'cursor-pointer')}
-      onClick={(event) => {
-        if (fetching || isCampaignListInteractiveRowTarget(event.target)) {
-          return;
-        }
-        onToggleSelected(campaign.id, !selected);
-      }}
-    >
+    <tr className={vm.rowClass}>
       {columns.map((columnId) => {
         const isNum = isCampaignListNumericColumn(columnId);
 
@@ -111,9 +96,19 @@ export function CampaignListTableBodyRow({
             <td key={columnId} className={cn(campaignListTdClass, campaignListCellToolsClass, campaignListNumClass, 'text-muted-foreground')}>
               <div className={campaignListHeaderCellClass}>
                 <div className={campaignListCellContentClass}>
-                  <CopyableText label="Campaign ID" mono title={campaign.id} value={vm.displayId} />
+                  <span
+                    className="select-text whitespace-nowrap font-mono text-xs tabular-nums"
+                    title={campaign.id}
+                  >
+                    {vm.displayId}
+                  </span>
                 </div>
-                <div aria-hidden className={campaignListBodyToolsGutterClass} />
+                <CopyButton
+                  flashOnCopy
+                  label="Campaign ID"
+                  showToast={false}
+                  value={vm.displayId}
+                />
               </div>
             </td>
           );
@@ -121,26 +116,16 @@ export function CampaignListTableBodyRow({
 
         if (columnId === 'name') {
           return (
-            <td key={columnId} className={cn(campaignListTdClass, campaignListTdNameClass, campaignListCellToolsClass)}>
-              <div className="flex min-h-[34px] max-w-full flex-nowrap items-center gap-1">
-                <CampaignCountryBadges
-                  className="shrink-0"
-                  compact
-                  countries={vm.countries}
-                  max={2}
-                />
-                <span
-                  className="min-w-0 flex-1 select-text whitespace-nowrap font-medium text-foreground"
-                  title={vm.rawName}
-                  onClick={(event) => event.stopPropagation()}
-                >
-                  {vm.rawName}
-                </span>
-                <CampaignListTableRowMenu
-                  className="absolute right-1 top-1/2 -translate-y-1/2"
-                  campaign={campaign}
-                  onOpenOverview={onCampaignOverview}
-                />
+            <td key={columnId} className={cn(campaignListTdClass, campaignListCellToolsClass)}>
+              <div className={campaignListNameRowCellClass}>
+                <div className={campaignListNameRowTextClass}>
+                  <span className={campaignListNameTextClass} title={vm.rawName}>
+                    {vm.rawName}
+                  </span>
+                </div>
+                <div className={campaignListNameRowMenuSlotClass}>
+                  <CampaignListTableRowMenu campaign={campaign} onOpenOverview={onCampaignOverview} />
+                </div>
               </div>
             </td>
           );
@@ -172,4 +157,4 @@ export function CampaignListTableBodyRow({
       })}
     </tr>
   );
-}
+});

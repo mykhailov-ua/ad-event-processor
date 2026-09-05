@@ -1,3 +1,7 @@
+import {
+  dashboardKpiGridClass,
+  dashboardKpiTileClass,
+} from '@/domains/dashboards/dashboard_classes';
 import { cn } from '@/lib/utils';
 
 export type DashboardKpiTile = {
@@ -20,17 +24,11 @@ export function DashboardKpiStrip({ tiles, className }: DashboardKpiStripProps) 
   return (
     <div
       aria-label="Key performance indicators"
-      className={cn(
-        'grid grid-cols-2 gap-2 sm:grid-cols-4 xl:grid-cols-7',
-        className,
-      )}
+      className={cn(dashboardKpiGridClass, className)}
       role="region"
     >
       {tiles.map((tile) => (
-        <div
-          key={tile.id}
-          className="ui-surface-raised grid min-w-0 gap-0.5 px-3 py-2.5 text-center sm:px-4 sm:py-3"
-        >
+        <div key={tile.id} className={dashboardKpiTileClass}>
           <p className="whitespace-nowrap text-ui-caption tracking-wide text-muted-foreground sm:text-xs">
             {tile.label}
           </p>

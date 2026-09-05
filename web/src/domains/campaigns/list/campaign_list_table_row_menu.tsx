@@ -30,8 +30,7 @@ export function CampaignListTableRowMenu({
       <DropdownMenuTrigger asChild>
         <Button
           aria-label={`Actions for ${campaign.name}`}
-          className={cn('h-7 w-7 shrink-0', className)}
-          size="icon"
+          className={cn('size-7 shrink-0 p-0', className)}
           type="button"
           variant="ghost"
           onClick={(event) => event.stopPropagation()}

@@ -38,7 +38,6 @@ export function CampaignEditor(props: CampaignEditorProps) {
     hasSnapshot,
     onFieldChange,
     onSave,
-    onSaveAndClose,
     clickUrl,
     checking,
     validating,
@@ -112,7 +111,6 @@ export function CampaignEditor(props: CampaignEditorProps) {
       onClone={() => setCloneOpen(true)}
       onFieldChange={onFieldChange}
       onSave={onSave}
-      onSaveAndClose={onSaveAndClose ?? onSave}
     />
   );
 }

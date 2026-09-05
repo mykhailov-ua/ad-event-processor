@@ -6,7 +6,7 @@ import { cn } from '@/lib/utils';
 import { Button, buttonVariants } from '@/components/ui/button';
 
 const COMPACT_NAV_BUTTON_CLASS =
-  'inline-flex items-center justify-center rounded-md border border-border bg-background text-sm font-medium transition active:scale-[0.98] disabled:pointer-events-none disabled:opacity-50 min-h-0 p-0 aria-disabled:opacity-50';
+  'inline-flex items-center justify-center rounded-md border-0 bg-transparent p-0 text-foreground shadow-none transition hover:bg-accent disabled:pointer-events-none disabled:opacity-50 min-h-0 aria-disabled:opacity-50';
 
 export type CalendarProps = React.ComponentProps<typeof DayPicker> & {
   buttonVariant?: React.ComponentProps<typeof Button>['variant'];
@@ -75,7 +75,7 @@ function Calendar({
         ),
         month_caption: cn(
           'flex h-[--cell-size] w-full items-center justify-center px-[--cell-size]',
-          isCompact && 'text-[13px] font-semibold leading-[18px] text-foreground',
+          isCompact && 'text-[13px] font-normal leading-[18px] text-foreground',
           defaultClassNames.month_caption,
         ),
         dropdowns: cn(
@@ -96,7 +96,7 @@ function Calendar({
           'select-none font-medium',
           captionLayout === 'label'
             ? isCompact
-              ? 'text-[13px] font-semibold leading-[18px] text-foreground'
+              ? 'text-[13px] font-normal leading-[18px] text-foreground'
               : 'text-sm'
             : '[&>svg]:text-muted-foreground flex h-8 items-center gap-1 rounded-md pl-2 pr-1 text-sm [&>svg]:size-3.5',
           defaultClassNames.caption_label,
@@ -124,9 +124,9 @@ function Calendar({
         range_end: cn(defaultClassNames.range_end),
         today: cn(
           isCampaigns
-            ? 'font-semibold text-foreground data-[selected=true]:rounded-full'
+            ? 'font-normal text-foreground data-[selected=true]:rounded-full'
             : isAdmin
-              ? 'rounded-sm bg-muted font-semibold text-foreground data-[selected=true]:rounded-sm'
+              ? 'rounded-sm bg-muted font-normal text-foreground data-[selected=true]:rounded-sm'
               : 'rounded-lg bg-accent text-accent-foreground data-[selected=true]:rounded-lg',
           defaultClassNames.today,
         ),

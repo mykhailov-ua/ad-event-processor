@@ -4,6 +4,7 @@ package campaign
 func CampaignListAllowedSortFields() map[string]struct{} {
 	return map[string]struct{}{
 		"name":           {},
+		"id":             {},
 		"spend":          {},
 		"updated_at":     {},
 		"budget_limit":   {},

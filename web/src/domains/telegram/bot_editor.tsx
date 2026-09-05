@@ -21,7 +21,7 @@ import {
 } from '@/components/ui/sheet';
 import { Textarea } from '@/components/ui/textarea';
 import type { TelegramBot, TelegramDeeplink, TelegramValidateResult } from '@/api/types';
-import { JsonDashboardView } from '@/domains/dashboards/json_dashboard_view';
+import { JsonPayloadView } from '@/shell/json_payload_view';
 import { TelegramNav, telegramPanelError } from '@/domains/telegram/telegram_nav';
 
 export type TelegramBotEditorProps = {
@@ -210,7 +210,7 @@ export function TelegramBotEditor({
             />
           </div>
           {validateResult ? (
-            <JsonDashboardView payload={validateResult as unknown as Record<string, unknown>} />
+            <JsonPayloadView payload={validateResult as unknown as Record<string, unknown>} />
           ) : null}
           <DialogFooter>
             <Button disabled={acting} onClick={onValidateInitData} type="button">
@@ -234,7 +234,7 @@ export function TelegramBotEditor({
             />
           </div>
           {deeplinkResult ? (
-            <JsonDashboardView payload={deeplinkResult as unknown as Record<string, unknown>} />
+            <JsonPayloadView payload={deeplinkResult as unknown as Record<string, unknown>} />
           ) : null}
           <DialogFooter>
             <Button disabled={acting} onClick={onResolveDeeplink} type="button">

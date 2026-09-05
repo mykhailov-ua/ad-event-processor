@@ -16,6 +16,15 @@ func CampaignDisplayID(id uuid.UUID) string {
 	return fmt.Sprintf("%08d", 10000000+(hash%90000000))
 }
 
+// CampaignDisplayIDSortKey is the numeric display_id used for list sort=id (matches campaign_display_id_sort_key in PG).
+func CampaignDisplayIDSortKey(id uuid.UUID) int64 {
+	var hash uint64
+	for _, b := range id {
+		hash = hash*31 + uint64(b)
+	}
+	return int64(10000000 + (hash % 90000000))
+}
+
 // CampaignDisplayIDFromString parses id as UUID when possible; otherwise hashes the raw string.
 func CampaignDisplayIDFromString(id string) string {
 	parsed, err := uuid.Parse(id)

@@ -1,6 +1,7 @@
 import { useMemo, useRef, useState } from 'react';
 import { Check, ChevronDown, Search, X } from 'lucide-react';
 
+import { Button } from '@/components/ui/button';
 import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover';
 import type { CampaignsListFilterOption } from '@/domains/campaigns/list/campaigns_list_filter_select';
 import {
@@ -86,22 +87,24 @@ export function CampaignListCountrySelect({
   return (
     <Popover open={open} onOpenChange={handleOpenChange}>
       <PopoverTrigger asChild>
-        <button
+        <Button
           ref={triggerRef}
           aria-expanded={open}
           aria-haspopup="listbox"
           aria-label={ariaLabel}
           className={cn(
             campaignCountrySelectTriggerClass,
+            'h-auto font-normal shadow-none',
             className,
           )}
           disabled={disabled}
           title={title}
           type="button"
+          variant="outline"
         >
           <span className="whitespace-nowrap">{selectedLabel}</span>
           <ChevronDown className="h-4 w-4 shrink-0 opacity-60" aria-hidden />
-        </button>
+        </Button>
       </PopoverTrigger>
       <PopoverContent align={align} className={cn(campaignCountrySelectPopoverClass, 'p-0')} side="bottom">
         <div className={campaignCountrySelectSearchClass}>
@@ -115,14 +118,15 @@ export function CampaignListCountrySelect({
             onChange={(event) => setQuery(event.target.value)}
           />
           {query ? (
-            <button
+            <Button
               aria-label="Clear search"
-              className="shrink-0 text-muted-foreground hover:text-foreground"
+              className="h-7 w-7 shrink-0 text-muted-foreground shadow-none hover:bg-transparent hover:text-foreground"
               type="button"
+              variant="ghost"
               onClick={() => setQuery('')}
             >
               <X className="h-4 w-4" aria-hidden />
-            </button>
+            </Button>
           ) : null}
         </div>
         <ul className={campaignCountrySelectListClass} role="listbox">
@@ -131,24 +135,26 @@ export function CampaignListCountrySelect({
             const isSelected = option.value === value;
             return (
               <li key={option.value} role="none">
-                <button
+                <Button
                   aria-selected={isSelected}
                   className={cn(
                     campaignCountrySelectOptionClass,
+                    'h-auto justify-between font-normal shadow-none',
                     isSelected && campaignCountrySelectOptionSelectedClass,
                   )}
                   role="option"
                   type="button"
+                  variant="ghost"
                   onClick={() => {
                     onValueChange?.(option.value);
                     setOpen(false);
                   }}
                 >
-                  <span className="truncate">{label}</span>
+                  <span className="truncate" title={label}>{label}</span>
                   {isSelected ? (
                     <Check className="h-4 w-4 shrink-0 text-foreground" aria-hidden />
                   ) : null}
-                </button>
+                </Button>
               </li>
             );
           })}

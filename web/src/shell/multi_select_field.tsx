@@ -82,7 +82,7 @@ export function MultiSelectField<T extends string>({
           </button>
         </PopoverTrigger>
         <PopoverContent align="start" className="w-64 p-0" sideOffset={4}>
-          <ul className="ui-scrollbar max-h-64 overflow-y-auto p-1">
+          <ul className="ui-scrollbar flex max-h-64 flex-col gap-1 overflow-y-auto p-1">
             {options.map((option) => {
               const selected = value.includes(option.id);
               return (

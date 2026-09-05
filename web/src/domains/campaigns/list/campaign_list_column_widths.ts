@@ -4,6 +4,8 @@ import {
   CAMPAIGN_LIST_COLUMN_LABELS,
   CAMPAIGN_LIST_COLUMN_MIN_WIDTH_PX,
   CAMPAIGN_LIST_SELECTION_COLUMN_WIDTH_PX,
+  CAMPAIGN_LIST_STATUS_COLUMN_WIDTH_PX,
+  CAMPAIGN_LIST_STATUS_PROBE_LABEL,
   clampCampaignListColumnWidthPx,
   type CampaignListColumnId,
   type CampaignListMiddleColumnId,
@@ -23,8 +25,13 @@ const CELL_HORIZONTAL_PADDING_PX = 32;
 const HEADER_TOOLS_GUTTER_PX = 28;
 const HEADER_SORT_ICON_PX = 12;
 const BODY_TOOLS_GUTTER_PX = 28;
-const NAME_ROW_MENU_PX = 36;
-const NAME_COUNTRY_BADGES_PX = 40;
+const NAME_ROW_MENU_PX = 28;
+const NAME_ROW_MENU_GAP_PX = 16;
+const STATUS_BADGE_HORIZONTAL_PADDING_PX = 16;
+const COUNTRY_FLAG_ICON_PX = 16;
+const COUNTRY_FLAG_GAP_PX = 2;
+const COUNTRY_OVERFLOW_BUTTON_PX = 24;
+const COUNTRY_BADGES_MAX_VISIBLE = 3;
 
 type ColumnContentWidthOptions = {
   header?: boolean;
@@ -49,9 +56,33 @@ function columnContentWidth(
     extra += BODY_TOOLS_GUTTER_PX;
   }
   if (options.name) {
-    extra += NAME_ROW_MENU_PX + NAME_COUNTRY_BADGES_PX;
+    extra += NAME_ROW_MENU_PX + NAME_ROW_MENU_GAP_PX;
   }
   return Math.max(minWidth, estimateTextWidthPx(text) + CELL_HORIZONTAL_PADDING_PX + extra);
+}
+
+export function campaignStatusCellContentWidthPx(label: string, minWidth: number): number {
+  return Math.max(
+    minWidth,
+    estimateTextWidthPx(label) +
+      STATUS_BADGE_HORIZONTAL_PADDING_PX +
+      CELL_HORIZONTAL_PADDING_PX +
+      BODY_TOOLS_GUTTER_PX,
+  );
+}
+
+export function campaignCountriesCellContentWidthPx(countryCount: number, minWidth: number): number {
+  const visibleCount = Math.min(Math.max(countryCount, 0), COUNTRY_BADGES_MAX_VISIBLE);
+  const flagsWidth =
+    visibleCount * COUNTRY_FLAG_ICON_PX + Math.max(0, visibleCount - 1) * COUNTRY_FLAG_GAP_PX;
+  const overflowWidth =
+    countryCount > COUNTRY_BADGES_MAX_VISIBLE
+      ? COUNTRY_OVERFLOW_BUTTON_PX + COUNTRY_FLAG_GAP_PX
+      : 0;
+  return Math.max(
+    minWidth,
+    flagsWidth + overflowWidth + CELL_HORIZONTAL_PADDING_PX + BODY_TOOLS_GUTTER_PX,
+  );
 }
 
 export function campaignListMiddleCellText(
@@ -142,6 +173,29 @@ export function computeCampaignListColumnWidths({
           maxWidth,
           columnContentWidth(campaign.name ?? '', widths[columnId], { name: true, tools: true }),
         );
+      }
+    } else if (columnId === 'countries') {
+      for (const campaign of items) {
+        maxWidth = Math.max(
+          maxWidth,
+          campaignCountriesCellContentWidthPx((campaign.target_countries ?? []).length, widths[columnId]),
+        );
+      }
+    } else if (columnId === 'status') {
+      maxWidth = Math.max(
+        maxWidth,
+        campaignStatusCellContentWidthPx(CAMPAIGN_LIST_STATUS_PROBE_LABEL, widths[columnId]),
+      );
+      for (const campaign of items) {
+        const text = campaignListMiddleCellText(
+          'status',
+          campaign,
+          metricsById[campaign.id],
+          marginsById[campaign.id],
+          customerNameById,
+          ownerEmailById,
+        );
+        maxWidth = Math.max(maxWidth, campaignStatusCellContentWidthPx(text, widths[columnId]));
       }
     } else {
       for (const campaign of items) {

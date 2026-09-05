@@ -26,7 +26,7 @@ import {
 } from '@/shell/directory_table';
 import type { DomainHealth, DomainSSLSetupResult } from '@/api/types';
 import { CreativeNav, creativePanelError } from '@/domains/creative/creative_nav';
-import { JsonDashboardView } from '@/domains/dashboards/json_dashboard_view';
+import { JsonPayloadView } from '@/shell/json_payload_view';
 import { displayTimestamp } from '@/lib/display';
 
 export type DomainsDirectoryProps = {
@@ -238,7 +238,7 @@ export function DomainsDirectory({
         <p className="text-sm text-muted-foreground">{actionMessage}</p>
       ) : null}
       {sslResult ? (
-        <JsonDashboardView payload={sslResult as unknown as Record<string, unknown>} />
+        <JsonPayloadView payload={sslResult as unknown as Record<string, unknown>} />
       ) : null}
       {actionError ? creativePanelError(actionError, 'Domain action failed') : null}
       {error && hasSnapshot ? creativePanelError(error, 'Refresh failed') : null}

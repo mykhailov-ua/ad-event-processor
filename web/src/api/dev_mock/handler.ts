@@ -28,6 +28,11 @@ import {
   devMockSessionRoleLabel,
   getDevMockRole,
 } from './rbac.ts';
+import {
+  devMockApplyPlatformSettings,
+  devMockPatchPlatformSettings,
+  devMockPlatformSettingsView,
+} from './settings_fixtures.ts';
 import { DEV_MOCK_CUSTOMERS, DEV_MOCK_USERS, devMockStore } from './store.ts';
 
 function json(status: number, body: unknown): MockResult {
@@ -433,12 +438,24 @@ function reportCatalog(): MockResult {
 }
 
 function settingsView(): MockResult {
-  return json(200, {
-    config: {},
-    secrets: {},
-    restart_required: false,
-    templates: [],
-  });
+  return json(200, devMockPlatformSettingsView());
+}
+
+function parseMockJsonBody(init?: RequestInit): Record<string, unknown> | undefined {
+  const raw = init?.body;
+  if (typeof raw !== 'string' || !raw.trim()) {
+    return undefined;
+  }
+  try {
+    const parsed: unknown = JSON.parse(raw);
+    return isRecord(parsed) ? parsed : undefined;
+  } catch {
+    return undefined;
+  }
+}
+
+function isRecord(value: unknown): value is Record<string, unknown> {
+  return value != null && typeof value === 'object' && !Array.isArray(value);
 }
 
 export function resolveDevMockRequest(path: string, init?: RequestInit): MockResult | undefined {
@@ -608,6 +625,17 @@ export function resolveDevMockRequest(path: string, init?: RequestInit): MockRes
   }
   if (method === 'GET' && pathname === '/api/v1/settings/platform') {
     return settingsView();
+  }
+  if (method === 'PATCH' && pathname === '/api/v1/settings/platform') {
+    const patch = parseMockJsonBody(init);
+    if (!patch) {
+      return json(400, { error: { code: 'BAD_REQUEST', message: 'Patch must be a JSON object' } });
+    }
+    return json(200, devMockPatchPlatformSettings(patch));
+  }
+  if (method === 'POST' && pathname === '/api/v1/settings/platform/apply') {
+    const body = parseMockJsonBody(init);
+    return json(200, devMockApplyPlatformSettings(typeof body?.install_root === 'string' ? body.install_root : undefined));
   }
   if (method === 'GET' && pathname === '/api/v1/license/status') {
     return json(200, { state: 'ACTIVE', tier: 'dev' });

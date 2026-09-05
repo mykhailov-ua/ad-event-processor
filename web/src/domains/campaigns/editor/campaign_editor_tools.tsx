@@ -19,12 +19,13 @@ export function CampaignEditorTools({ campaignId }: { campaignId: string }) {
   const [tab, setTab] = useState<CampaignEditorToolsTab>('integration');
 
   return (
-    <section className="ui-filter-panel">
-      <h2 className="text-base font-semibold">Campaign tools</h2>
+    <section className="flex max-w-3xl flex-col gap-4 pt-2">
+      <h2 className="text-sm font-semibold text-foreground">Campaign tools</h2>
       <div className="flex flex-wrap gap-2">
         {TOOL_TABS.map((item) => (
           <Button
             key={item.id}
+            className="focus-visible:ring-0 focus-visible:ring-offset-0"
             type="button"
             variant={tab === item.id ? 'default' : 'outline'}
             onClick={() => setTab(item.id)}

@@ -1,6 +1,6 @@
 import type { CampaignListMetrics } from '@/api/campaigns_api';
 import type { Campaign, CampaignMargin } from '@/api/types';
-import { formatDashboardCrPct, formatDashboardRoiPct } from '@/domains/dashboards/dashboard_format';
+import { formatDashboardCrPct, formatDashboardRoiPct } from '@/lib/display_metrics';
 import {
   formatTableCount,
   formatTableMoneyFromMicro,

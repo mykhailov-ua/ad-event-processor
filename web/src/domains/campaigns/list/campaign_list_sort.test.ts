@@ -7,8 +7,8 @@ import {
   sortFieldForCampaignColumn,
 } from './campaign_list_sort.ts';
 
-test('campaignListSortToApi maps UI id column to updated_at', () => {
-  assert.equal(campaignListSortToApi('id'), 'updated_at');
+test('campaignListSortToApi maps UI id column to id', () => {
+  assert.equal(campaignListSortToApi('id'), 'id');
   assert.equal(campaignListSortToApi('updated_at'), 'updated_at');
 });
 

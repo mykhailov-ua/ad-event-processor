@@ -3,23 +3,27 @@
  * domains/shell import primitives, not these tokens directly.
  */
 import { adminKit } from '@/lib/admin_kit';
+import { cn } from '@/lib/utils';
 
 export const adminChrome = {
   control: cnControl(),
-  controlGhost:
-    'min-h-7 rounded-[5px] border border-transparent bg-transparent px-2 py-1 text-[13px] leading-[18px] text-foreground transition-colors hover:bg-accent hover:text-accent-foreground',
+  controlGhost: cn(
+    adminKit.buttonShell,
+    'rounded-[5px] border border-transparent bg-transparent px-2 text-foreground transition-colors hover:bg-accent hover:text-accent-foreground',
+  ),
   panel: 'rounded-[10px] border border-border bg-card text-card-foreground',
   panelMuted: 'rounded-[10px] bg-muted text-muted-foreground',
-  overlayBackdrop: 'fixed inset-0 z-50 bg-black/80',
+  overlayBackdrop: 'fixed inset-0 z-50 bg-foreground/20 dark:bg-background/75',
   floating:
     'z-50 rounded-[5px] border border-border bg-popover text-popover-foreground p-1 shadow-lg',
+  menuList: 'flex flex-col gap-1',
   menuItem:
     'relative flex w-full cursor-pointer select-none items-center whitespace-nowrap rounded-[5px] px-2 py-1.5 text-[13px] text-foreground outline-none hover:bg-accent hover:text-accent-foreground disabled:pointer-events-none disabled:opacity-50',
   tableHead:
-    'h-[34px] bg-muted/50 px-4 text-left align-middle text-[11px] font-bold uppercase leading-[14px] text-muted-foreground',
+    'h-[34px] bg-muted/50 px-4 text-left align-middle text-[11px] font-normal uppercase leading-[14px] text-muted-foreground',
   tableCell: 'px-4 py-0 align-middle text-[13px] leading-[18px] text-foreground',
   muted: 'text-muted-foreground',
-  pageTitle: 'text-lg font-bold tracking-tight text-foreground',
+  pageTitle: 'text-lg font-normal tracking-tight text-foreground',
 } as const;
 
 function cnControl(): string {

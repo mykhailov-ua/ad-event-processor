@@ -22,6 +22,12 @@ import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Textarea } from '@/components/ui/textarea';
+import {
+  CAMPAIGN_CLICK_QUERY_PARAMS_FIELD_HINT,
+  CAMPAIGN_CLICK_QUERY_PARAMS_JSON_MAX_CHARS,
+  CAMPAIGN_CLICK_QUERY_PARAMS_TEXTAREA_MAX_HEIGHT_CLASS,
+  CAMPAIGN_CLICK_QUERY_PARAMS_TEXTAREA_MONO_CLASS,
+} from '@/domains/campaigns/editor/campaign_click_query_limits';
 import { Checkbox } from '@/components/ui/checkbox';
 import {
   Select,
@@ -550,8 +556,17 @@ export function CampaignWizardPanel({ customerOptions, onCampaignCreated }: Camp
               </div>
               <div className="text-sm font-medium text-foreground grid gap-2">
                   <Label>Click query params (JSON)</Label>
-                  <Textarea className="min-h-28 font-mono text-xs"
-                  value={trafficDraft.click_query_params}
+                  <Textarea
+                    className={cn(
+                      CAMPAIGN_CLICK_QUERY_PARAMS_TEXTAREA_MONO_CLASS,
+                      'min-h-28',
+                      CAMPAIGN_CLICK_QUERY_PARAMS_TEXTAREA_MAX_HEIGHT_CLASS,
+                      'resize-y overflow-y-auto',
+                    )}
+                    maxLength={CAMPAIGN_CLICK_QUERY_PARAMS_JSON_MAX_CHARS}
+                    placeholder="{}"
+                    showCount
+                    value={trafficDraft.click_query_params}
                   onChange={(event) =>
                     setTrafficDraft((current) => ({
                       ...current,
@@ -559,6 +574,9 @@ export function CampaignWizardPanel({ customerOptions, onCampaignCreated }: Camp
                     }))
                   }
                 />
+                <p className="text-xs font-normal text-muted-foreground">
+                  {CAMPAIGN_CLICK_QUERY_PARAMS_FIELD_HINT}
+                </p>
               </div>
               <div className="flex justify-end">
                 <Button disabled={savingStep} loading={savingStep} type="button" onClick={onSaveStep}>

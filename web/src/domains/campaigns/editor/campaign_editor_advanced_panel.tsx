@@ -2,10 +2,10 @@ import { Link } from 'react-router-dom';
 
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
-import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Checkbox } from '@/components/ui/checkbox';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
+import { Textarea } from '@/components/ui/textarea';
 import {
   Sheet,
   SheetContent,
@@ -20,7 +20,15 @@ import {
   TableHeader,
   TableRow,
 } from '@/shell/directory_table';
-import { JsonDashboardView } from '@/domains/dashboards/json_dashboard_view';
+import {
+  CAMPAIGN_CLICK_QUERY_PARAMS_FIELD_HINT,
+  CAMPAIGN_CLICK_QUERY_PARAMS_JSON_MAX_CHARS,
+  CAMPAIGN_CLICK_QUERY_PARAMS_TEXTAREA_MAX_HEIGHT_CLASS,
+  CAMPAIGN_CLICK_QUERY_PARAMS_TEXTAREA_MONO_CLASS,
+  CAMPAIGN_EDITOR_MONO_EXTRALIGHT_CLASS,
+} from '@/domains/campaigns/editor/campaign_click_query_limits';
+import { JsonPayloadView } from '@/shell/json_payload_view';
+import { formatCampaignJsonKey } from '@/domains/campaigns/editor/campaign_json_labels';
 import { CampaignEditorTools } from '@/domains/campaigns/editor/campaign_editor_tools';
 import type { Campaign } from '@/api/types';
 import type { CampaignEditorProps } from '@/domains/campaigns/editor/campaign_editor_types';
@@ -33,6 +41,7 @@ import {
   editorApiErrorBlock,
   formatReadonly,
 } from '@/domains/campaigns/editor/campaign_editor_shared';
+import { cn } from '@/lib/utils';
 
 export type CampaignEditorAdvancedPanelProps = Pick<
   CampaignEditorProps,
@@ -158,8 +167,8 @@ export function CampaignEditorAdvancedPanel({
   onCloneOpenChange,
 }: CampaignEditorAdvancedPanelProps) {
   return (
-    <div className="flex flex-col gap-3">
-      <p className="text-muted-foreground">
+    <div className="flex max-w-3xl flex-col gap-8">
+      <p className="text-sm text-muted-foreground">
         Status: {statusLabel}
         {checking ? '  /  Checking publish...' : ''}
         {publishCheck && !checking ? (
@@ -169,15 +178,14 @@ export function CampaignEditorAdvancedPanel({
         )}
       </p>
 
-      <Card>
-        <CardHeader>
-          <CardTitle className="text-base">Routing & ingress</CardTitle>
-        </CardHeader>
-        <CardContent className="grid gap-4">
+      <section className="flex flex-col gap-4">
+        <h2 className="text-sm font-semibold text-foreground">Routing & ingress</h2>
+        <div className="grid gap-4">
           <div className="grid gap-2 sm:grid-cols-2">
             <div className="grid gap-2">
               <Label htmlFor="campaign-flow-id">Flow ID</Label>
               <Input
+                className={CAMPAIGN_EDITOR_MONO_EXTRALIGHT_CLASS}
                 id="campaign-flow-id"
                 value={form.flow_id}
                 disabled={saving}
@@ -187,6 +195,7 @@ export function CampaignEditorAdvancedPanel({
             <div className="grid gap-2">
               <Label htmlFor="campaign-brand-id">Brand ID</Label>
               <Input
+                className={CAMPAIGN_EDITOR_MONO_EXTRALIGHT_CLASS}
                 id="campaign-brand-id"
                 value={form.brand_id}
                 disabled={saving}
@@ -199,6 +208,7 @@ export function CampaignEditorAdvancedPanel({
             <div className="grid gap-2">
               <Label htmlFor="campaign-ingress-param">Ingress cost param</Label>
               <Input
+                className={CAMPAIGN_EDITOR_MONO_EXTRALIGHT_CLASS}
                 id="campaign-ingress-param"
                 value={form.ingress_param}
                 disabled={saving}
@@ -208,6 +218,7 @@ export function CampaignEditorAdvancedPanel({
             <div className="grid gap-2">
               <Label htmlFor="campaign-ingress-scale">Ingress cost scale</Label>
               <Input
+                className={CAMPAIGN_EDITOR_MONO_EXTRALIGHT_CLASS}
                 id="campaign-ingress-scale"
                 value={form.ingress_scale}
                 disabled={saving}
@@ -221,6 +232,7 @@ export function CampaignEditorAdvancedPanel({
             <div className="grid gap-2">
               <Label htmlFor="campaign-ingress-max-micro">Ingress max micro</Label>
               <Input
+                className={CAMPAIGN_EDITOR_MONO_EXTRALIGHT_CLASS}
                 id="campaign-ingress-max-micro"
                 value={form.ingress_max_micro}
                 disabled={saving}
@@ -231,6 +243,7 @@ export function CampaignEditorAdvancedPanel({
             <div className="grid gap-2">
               <Label htmlFor="campaign-ingress-policy">Ingress policy</Label>
               <Input
+                className={CAMPAIGN_EDITOR_MONO_EXTRALIGHT_CLASS}
                 id="campaign-ingress-policy"
                 value={form.ingress_policy}
                 disabled={saving}
@@ -238,17 +251,16 @@ export function CampaignEditorAdvancedPanel({
               />
             </div>
           </div>
-        </CardContent>
-      </Card>
+        </div>
+      </section>
 
-      <Card>
-        <CardHeader>
-          <CardTitle className="text-base">Integrations</CardTitle>
-        </CardHeader>
-        <CardContent className="grid gap-4">
+      <section className="flex flex-col gap-4">
+        <h2 className="text-sm font-semibold text-foreground">Integrations</h2>
+        <div className="grid gap-4">
           <div className="grid gap-2">
             <Label htmlFor="campaign-traffic-template-id">Traffic template ID</Label>
             <Input
+              className={CAMPAIGN_EDITOR_MONO_EXTRALIGHT_CLASS}
               id="campaign-traffic-template-id"
               value={form.traffic_template_id}
               disabled={saving}
@@ -262,28 +274,32 @@ export function CampaignEditorAdvancedPanel({
 
           <div className="grid gap-2">
             <Label htmlFor="campaign-click-query-params">Click query params (JSON)</Label>
-            <textarea
-              id="campaign-click-query-params"
-              className="min-h-32 w-full rounded-xl border border-border/50 bg-muted/40 px-3 py-2 font-mono text-sm"
-              value={form.click_query_params_json}
+            <Textarea
+              className={cn(
+                CAMPAIGN_CLICK_QUERY_PARAMS_TEXTAREA_MONO_CLASS,
+                CAMPAIGN_CLICK_QUERY_PARAMS_TEXTAREA_MAX_HEIGHT_CLASS,
+                'resize-y overflow-y-auto focus-visible:ring-0 focus-visible:ring-offset-0',
+              )}
               disabled={saving}
-              placeholder={'{\n  "sub2": "{{campaign.id}}"\n}'}
+              id="campaign-click-query-params"
+              maxLength={CAMPAIGN_CLICK_QUERY_PARAMS_JSON_MAX_CHARS}
+              placeholder="{}"
+              rows={8}
+              showCount
+              value={form.click_query_params_json}
               onChange={(event) => onFieldChange('click_query_params_json', event.target.value)}
             />
             <p className="text-xs text-muted-foreground">
               Query param macros for the click URL preset (sub1..sub30, ad_campaign_id, click ids).
-              Values must be strings.
+              Values must be strings. {CAMPAIGN_CLICK_QUERY_PARAMS_FIELD_HINT}
             </p>
           </div>
-        </CardContent>
-      </Card>
+        </div>
+      </section>
 
-      <Card>
-        <CardHeader>
-          <CardTitle className="text-base">Macro preview</CardTitle>
-        </CardHeader>
-        <CardContent className="grid gap-4">
-          <div className="grid gap-2 sm:grid-cols-3">
+      <section className="flex flex-col gap-4">
+        <h2 className="text-sm font-semibold text-foreground">Macro preview</h2>
+        <div className="grid gap-2 sm:grid-cols-3">
             <div className="grid gap-2">
               <Label htmlFor="macro-preview-sub1">sub1</Label>
               <Input
@@ -352,15 +368,11 @@ export function CampaignEditorAdvancedPanel({
               <StringList title="Unresolved macros" items={macroPreviewResult.unresolved_macros} />
             </div>
           ) : null}
-        </CardContent>
-      </Card>
+      </section>
 
-      <Card>
-        <CardHeader>
-          <CardTitle className="text-base">Publish gate</CardTitle>
-        </CardHeader>
-        <CardContent className="grid gap-4">
-          <div className="flex flex-wrap gap-2">
+      <section className="flex flex-col gap-4">
+        <h2 className="text-sm font-semibold text-foreground">Publish gate</h2>
+        <div className="flex flex-wrap gap-2">
             <Button
               type="button"
               variant="secondary"
@@ -448,8 +460,7 @@ export function CampaignEditorAdvancedPanel({
               <StringList title="Warning slugs" items={publishBlocked.warning_slugs} />
             </div>
           ) : null}
-        </CardContent>
-      </Card>
+      </section>
 
       <Sheet onOpenChange={onCloneOpenChange} open={cloneOpen}>
         <SheetContent className="overflow-y-auto sm:max-w-2xl">
@@ -539,18 +550,19 @@ export function CampaignEditorAdvancedPanel({
               : null}
 
             {clonePreview ? (
-              <JsonDashboardView payload={clonePreview as unknown as Record<string, unknown>} />
+              <JsonPayloadView
+                formatColumn={formatCampaignJsonKey}
+                formatKey={formatCampaignJsonKey}
+                payload={clonePreview as unknown as Record<string, unknown>}
+              />
             ) : null}
           </div>
         </SheetContent>
       </Sheet>
 
-      <Card>
-        <CardHeader>
-          <CardTitle className="text-base">Compare campaigns</CardTitle>
-        </CardHeader>
-        <CardContent className="grid gap-4">
-          <div className="grid gap-2">
+      <section className="flex flex-col gap-4">
+        <h2 className="text-sm font-semibold text-foreground">Compare campaigns</h2>
+        <div className="grid gap-2">
             <Label htmlFor="campaign-diff-against-id">Against campaign ID</Label>
             <Input
               id="campaign-diff-against-id"
@@ -616,15 +628,11 @@ export function CampaignEditorAdvancedPanel({
               )}
             </div>
           ) : null}
-        </CardContent>
-      </Card>
+      </section>
 
-      <Card>
-        <CardHeader>
-          <CardTitle className="text-base">Owner and export</CardTitle>
-        </CardHeader>
-        <CardContent className="grid gap-4">
-          <div className="grid max-w-md grid-cols-[1fr_auto] items-end gap-4">
+      <section className="flex flex-col gap-4">
+        <h2 className="text-sm font-semibold text-foreground">Owner and export</h2>
+        <div className="grid max-w-md grid-cols-[1fr_auto] items-end gap-4">
             <div className="grid gap-2">
               <Label htmlFor="campaign-owner-user-id">New owner user ID</Label>
               <Input
@@ -668,8 +676,7 @@ export function CampaignEditorAdvancedPanel({
           {exportError
             ? editorApiErrorBlock(exportError, 'Export unavailable', 'Could not export campaign')
             : null}
-        </CardContent>
-      </Card>
+      </section>
 
       <CampaignEditorTools campaignId={campaign.id} />
     </div>

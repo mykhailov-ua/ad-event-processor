@@ -13,7 +13,7 @@ import {
   IntegrationsSchemas,
   type IntegrationsSchemasTab,
 } from '@/domains/integrations/integrations_schemas';
-import { useRefreshToken } from '@/hooks/use_coalesced_refresh_token';
+import { useCoalescedBumpRefresh, useRefreshToken } from '@/hooks/use_coalesced_refresh_token';
 import { useResource } from '@/api/use_resource';
 
 export function IntegrationsSchemasPage() {
@@ -52,6 +52,9 @@ export function IntegrationsSchemasPage() {
   const schemas = useMemo(() => data?.schemas ?? [], [data?.schemas]);
   const templates = useMemo(() => data?.templates ?? [], [data?.templates]);
 
+  const listBusy = fetching || creating || applying || importing;
+  const bumpRefreshCoalesced = useCoalescedBumpRefresh(bumpRefresh, listBusy);
+
   const onPrefillFromSchema = useCallback((row: IntegrationSchema) => {
     setDraftSchemaId(row.id);
     setApplyError(undefined);
@@ -82,6 +85,9 @@ export function IntegrationsSchemasPage() {
   }, []);
 
   const onCreate = useCallback(async () => {
+    if (creating) {
+      return;
+    }
     const name = draftName.trim();
     const version = Number.parseInt(draftVersion.trim(), 10);
     if (!name || !Number.isFinite(version)) {
@@ -101,15 +107,18 @@ export function IntegrationsSchemasPage() {
       await createIntegrationSchema({ name, version, schema });
       setCreateSuccess(true);
       toast.success('Integration schema created');
-      bumpRefresh();
+      bumpRefreshCoalesced();
     } catch (err) {
       setCreateError(err instanceof Error ? err : new Error(String(err)));
     } finally {
       setCreating(false);
     }
-  }, [draftName, draftSchemaJson, draftVersion, bumpRefresh]);
+  }, [draftName, draftSchemaJson, draftVersion, bumpRefreshCoalesced]);
 
   const onApply = useCallback(async () => {
+    if (applying) {
+      return;
+    }
     const schemaId = draftSchemaId.trim();
     const campaignId = draftCampaignId.trim();
     if (!schemaId || !campaignId) {
@@ -131,6 +140,9 @@ export function IntegrationsSchemasPage() {
   }, [draftCampaignId, draftSchemaId]);
 
   const onImport = useCallback(async () => {
+    if (importing) {
+      return;
+    }
     const names = draftTemplateNames
       .split(',')
       .map((value) => value.trim())
@@ -143,13 +155,13 @@ export function IntegrationsSchemasPage() {
       const result = await importIntegrationTemplates(names.length > 0 ? { names } : {});
       setImportedCount(result.length);
       setImportSuccess(true);
-      bumpRefresh();
+      bumpRefreshCoalesced();
     } catch (err) {
       setImportError(err instanceof Error ? err : new Error(String(err)));
     } finally {
       setImporting(false);
     }
-  }, [draftTemplateNames, bumpRefresh]);
+  }, [draftTemplateNames, bumpRefreshCoalesced]);
 
   return (
     <IntegrationsSchemas

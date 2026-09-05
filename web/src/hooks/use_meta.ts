@@ -1,6 +1,6 @@
 import { useContext } from 'react';
 
-import { MetaContext, type MetaContextValue } from '@/providers/meta_provider';
+import { MetaContext, type MetaContextValue } from '@/context/meta_context';
 
 export function useMeta(): MetaContextValue {
   const value = useContext(MetaContext);

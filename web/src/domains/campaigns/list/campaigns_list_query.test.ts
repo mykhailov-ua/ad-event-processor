@@ -7,8 +7,8 @@ import {
   parseCampaignListSort,
 } from './campaigns_list_query.ts';
 
-test('parseCampaignListSort maps legacy id to updated_at', () => {
-  assert.equal(parseCampaignListSort('id'), 'updated_at');
+test('parseCampaignListSort keeps id sort field', () => {
+  assert.equal(parseCampaignListSort('id'), 'id');
 });
 
 test('buildCampaignListQuery adds stats window for metric sort', () => {

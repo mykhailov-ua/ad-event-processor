@@ -5,6 +5,7 @@ import {
   CAMPAIGN_LIST_DEFAULT_HIDDEN,
   clampCampaignListColumnWidthPx,
   defaultCampaignListColumnPrefs,
+  isCampaignListColumnResizable,
   moveDataColumn,
   moveMiddleColumn,
   normalizeColumnWidthPx,
@@ -92,4 +93,14 @@ test('setMiddleColumnVisible toggles hidden set', () => {
   assert.equal(hidden.includes('impressions'), true);
   const shown = setMiddleColumnVisible(hidden, 'impressions', true);
   assert.equal(shown.includes('impressions'), false);
+});
+
+test('isCampaignListColumnResizable blocks select id status and trailing column', () => {
+  const columns = ['select', 'id', 'name', 'status', 'countries'] as const;
+
+  assert.equal(isCampaignListColumnResizable('select', columns), false);
+  assert.equal(isCampaignListColumnResizable('id', columns), false);
+  assert.equal(isCampaignListColumnResizable('status', columns), false);
+  assert.equal(isCampaignListColumnResizable('countries', columns), false);
+  assert.equal(isCampaignListColumnResizable('name', columns), true);
 });

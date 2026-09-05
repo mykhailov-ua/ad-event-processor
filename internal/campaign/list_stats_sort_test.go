@@ -38,4 +38,10 @@ func TestParseListSort_metadataFields(t *testing.T) {
 	require.NoError(t, err)
 	require.Equal(t, "group", field)
 	require.Equal(t, "asc", order)
+
+	req = httptest.NewRequest("GET", "/api/v1/campaigns?sort=id&order=asc", nil)
+	field, order, err = parseListSort(req, allowed, "name")
+	require.NoError(t, err)
+	require.Equal(t, "id", field)
+	require.Equal(t, "asc", order)
 }

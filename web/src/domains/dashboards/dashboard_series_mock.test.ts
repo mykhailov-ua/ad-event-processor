@@ -44,3 +44,13 @@ test('buildDashboardMockPortfolio fills breakdown tables and recent clicks', () 
   assert.ok((portfolio.kpis?.revenue_micro ?? 0) > 0);
   assert.ok((portfolio.kpis?.cpc_micro ?? 0) > 0);
 });
+
+test('buildDashboardMockPortfolio campaign names omit pipe separators', () => {
+  const portfolio = buildDashboardMockPortfolio({
+    customer_id: 'cust-demo',
+    period: { from: '2026-07-01T00:00:00', to: '2026-09-01T23:59:59' },
+  });
+  for (const row of portfolio.breakdowns?.campaigns?.rows ?? []) {
+    assert.ok(!row.name?.includes('|'), `campaign fixture name must not contain "|": ${row.name}`);
+  }
+});

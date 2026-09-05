@@ -7,7 +7,7 @@ import {
   removeOpsBlacklistEntry,
 } from '@/api/ops_api';
 import { OpsBlacklist } from '@/domains/ops/ops_blacklist';
-import { useRefreshToken } from '@/hooks/use_coalesced_refresh_token';
+import { useCoalescedBumpRefresh, useRefreshToken } from '@/hooks/use_coalesced_refresh_token';
 import { useResource } from '@/api/use_resource';
 import { parseListLimit, parseListOffset } from '@/lib/list_query';
 
@@ -28,6 +28,9 @@ export function OpsBlacklistPage() {
     [limit, offset, refreshToken],
   );
 
+  const listBusy = fetching || saving;
+  const bumpRefreshCoalesced = useCoalescedBumpRefresh(bumpRefresh, listBusy);
+
   const onPageChange = useCallback(
     (nextOffset: number) => {
       const next = new URLSearchParams(searchParams);
@@ -39,6 +42,9 @@ export function OpsBlacklistPage() {
   );
 
   const onAdd = useCallback(async () => {
+    if (saving) {
+      return;
+    }
     const ip = draftIp.trim();
     if (!ip) {
       return;
@@ -52,15 +58,18 @@ export function OpsBlacklistPage() {
       });
       setDraftIp('');
       setDraftReason('');
-      bumpRefresh();
+      bumpRefreshCoalesced();
     } catch (err) {
       setActionError(err instanceof Error ? err : new Error(String(err)));
     } finally {
       setSaving(false);
     }
-  }, [draftIp, draftReason, bumpRefresh]);
+  }, [draftIp, draftReason, bumpRefreshCoalesced, saving]);
 
   const onRemove = useCallback(async () => {
+    if (saving) {
+      return;
+    }
     const ip = draftRemoveIp.trim();
     if (!ip) {
       return;
@@ -70,13 +79,13 @@ export function OpsBlacklistPage() {
     try {
       await removeOpsBlacklistEntry({ ip });
       setDraftRemoveIp('');
-      bumpRefresh();
+      bumpRefreshCoalesced();
     } catch (err) {
       setActionError(err instanceof Error ? err : new Error(String(err)));
     } finally {
       setSaving(false);
     }
-  }, [draftRemoveIp, bumpRefresh]);
+  }, [draftRemoveIp, bumpRefreshCoalesced, saving]);
 
   return (
     <OpsBlacklist

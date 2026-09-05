@@ -1553,7 +1553,23 @@ Applies to all admin lists: `DirectoryTable` / `OpsTable`, campaigns directory, 
 | `requestAnimationFrame` throttle on pointermove / dragover handlers | Caps main-thread work during drag |
 | Reorder prefs: update order array only; **do not** rerun width probe when only order changed | `computeCampaignListColumnWidths` is O(rows x cols) |
 | Server pagination; client renders `items` page only | No `useMemo` filter over full dataset in browser |
+| Row VM (`buildCampaignRowVm`) per body row | Parent filter/sort state does not reformat every cell string |
+| Imperative `<col>` width during resize drag | `use_campaign_list_column_resize.ts` avoids React width state on `pointermove` |
 | Virtualized tbody when row count > ~100 (future) | Constant DOM node count |
+
+### VDOM reconcile scope (campaigns list; operator verified 2026-09)
+
+Campaigns directory table (~35 visible columns, 100-row page) stays interactive on ingest-only dev stack after row VM + imperative resize landed. This is **not** windowed DOM virtualization yet; perf comes from narrowing React reconcile and layout work:
+
+| Technique | File | Effect |
+| :--- | :--- | :--- |
+| Row view-model | `campaign_list_row_vm.ts`, `campaign_list_table_body_row.tsx` | Derived labels/metrics computed once per row props change; cells render plain strings |
+| Colgroup ref resize | `use_campaign_list_column_resize.ts` | Drag updates `<col style>` without `setState` each pixel |
+| Header-local DnD highlight | `campaign_list_table_header_cell.tsx` | Avoids tbody re-render on every `dragover` |
+
+Operator sign-off (2026-09): scroll, column resize, and filter refresh on full campaign page remain smooth; no main-thread stalls in DevTools during resize/drag.
+
+Future: `@tanstack/react-virtual` or equivalent when page size exceeds ~100 rows without server pagination tightening.
 
 ### Anti-patterns (never; causes jank and main-thread block)
 
@@ -1561,8 +1577,9 @@ Applies to all admin lists: `DirectoryTable` / `OpsTable`, campaigns directory, 
 | :--- | :--- | :--- |
 | **`setState` on every `dragover` / `pointermove` in table root** | Full reconcile of header + **all body rows** on each event (10-60 Hz) | `campaigns_list_table.tsx` `setDragOverColumnId` on `onDragOver` |
 | **Resize width via React state each pixel** | `setLocalWidths` -> re-render -> update every `<col style>` -> `table-layout: fixed` reflow on all cells | `use_campaign_list_column_resize.ts` `onPointerMove` |
-| **Global `text-overflow: ellipsis` on all `th, td`** | Layout must measure clipped text on width change | `app.css` `.admin-table--campaigns :is(th, td)` |
-| **No `memo` on body rows** | Any parent state change repaints every cell | `CampaignListTableBodyRow` |
+| **Global `text-overflow: ellipsis` on all `th, td`** | Layout must measure clipped text on width change | Removed with BEM table blocks; use per-cell `whitespace-nowrap` where needed |
+| **Row VM skipped** | Parent state reformats every metric cell on each render | `buildCampaignRowVm` in `campaign_list_table_body_row.tsx` |
+| **No `memo` on body rows** | Any parent state change repaints every cell if VM inputs unchanged | Prefer row VM + narrow props; add `memo` when profiler shows idle tbody repaint |
 | **Width recompute on column reorder** | Same numeric widths rescanned across all campaigns | `use_campaigns_directory_workspace.ts` `computedColumnWidths` deps on `visibleColumns` order |
 | **Synchronous `localStorage` on drop** | `JSON.stringify` + write blocks drop frame | `saveCampaignListColumnPrefs` in `handleColumnDrop` |
 | **HTML5 DnD on grip with React highlight in parent** | Extra `dragenter`/`dragleave` churn + browser drag image | `campaign_list_table_header_cell.tsx` |

@@ -2,7 +2,8 @@ import { useCallback, useState } from 'react';
 
 import { listOpsShards, triggerOpsShard0Catchup } from '@/api/ops_api';
 import { OpsShards } from '@/domains/ops/ops_shards';
-import { useRefreshToken } from '@/hooks/use_coalesced_refresh_token';
+import { useCoalescedCallback } from '@/hooks/use_coalesced_callback';
+import { useCoalescedBumpRefresh, useRefreshToken } from '@/hooks/use_coalesced_refresh_token';
 import { useResource } from '@/api/use_resource';
 
 export function OpsShardsPage() {
@@ -16,19 +17,28 @@ export function OpsShardsPage() {
     [refreshToken],
   );
 
-  const onCatchup = useCallback(async () => {
+  const bumpRefreshCoalesced = useCoalescedBumpRefresh(bumpRefresh, fetching || catchingUp);
+
+  const runCatchup = useCallback(async () => {
     setCatchingUp(true);
     setCatchupError(undefined);
     try {
       const result = await triggerOpsShard0Catchup();
       setCatchupStatus(result.status ?? 'accepted');
-      bumpRefresh();
+      bumpRefreshCoalesced();
     } catch (err) {
       setCatchupError(err instanceof Error ? err : new Error(String(err)));
     } finally {
       setCatchingUp(false);
     }
-  }, [bumpRefresh]);
+  }, [bumpRefreshCoalesced]);
+
+  const onCatchup = useCoalescedCallback(
+    () => {
+      void runCatchup();
+    },
+    { inFlightGuard: true, inFlight: catchingUp },
+  );
 
   return (
     <OpsShards

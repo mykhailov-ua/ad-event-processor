@@ -36,7 +36,6 @@ export function PaginationPrevNext({
       <Button
         aria-label={prevLabel}
         className={cn(
-          'min-h-7 rounded-[5px] px-2.5 py-1 text-[13px] leading-[18px]',
           inline ? undefined : 'flex-1',
           !canGoPrev && 'opacity-50',
         )}
@@ -59,7 +58,6 @@ export function PaginationPrevNext({
       <Button
         aria-label={nextLabel}
         className={cn(
-          'min-h-7 rounded-[5px] px-2.5 py-1 text-[13px] leading-[18px]',
           inline ? undefined : 'flex-1',
           !canGoNext && 'opacity-50',
         )}

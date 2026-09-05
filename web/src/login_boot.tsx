@@ -4,8 +4,8 @@ import { BrowserRouter, Route, Routes } from 'react-router-dom';
 import { ActivatePage } from '@/pages/activate_page';
 import { LoginPage } from '@/pages/login_page';
 import { SetupPage } from '@/pages/setup_page';
-import { MetaProvider } from '@/providers/meta_provider';
-import { ThemeProvider } from '@/providers/theme_provider';
+import { MetaProvider } from '@/context/meta_context';
+import { ThemeProvider } from '@/context/theme_context';
 import '@/styles/app.css';
 
 const root = document.getElementById('root');

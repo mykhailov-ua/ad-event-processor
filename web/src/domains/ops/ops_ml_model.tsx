@@ -3,7 +3,7 @@ import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { EmptyState } from '@/shell/empty_state';
 import type { MLManualLabel } from '@/api/types';
-import { JsonDashboardView } from '@/domains/dashboards/json_dashboard_view';
+import { JsonPayloadView } from '@/shell/json_payload_view';
 import { opsPanelError } from '@/domains/ops/ops_nav';
 import { OpsActionGroup, OpsPageLoading, OpsPageShell } from '@/domains/ops/ops_page_shell';
 import {
@@ -17,7 +17,7 @@ import {
 export type OpsMlModelProps = {
   status: Record<string, unknown> | undefined;
   evalBlock: Record<string, unknown> | undefined;
-  labels: MLManualLabel[];
+  labels?: MLManualLabel[];
   draftIpHash: string;
   draftLabel: string;
   draftReason: string;
@@ -69,6 +69,8 @@ export function OpsMlModel({
   onLoadLabels,
   onAddLabel,
 }: OpsMlModelProps) {
+  const labelRows = labels ?? [];
+
   if (fetchingStatus && !hasStatusSnapshot && !statusError) {
     return <OpsPageLoading />;
   }
@@ -130,8 +132,8 @@ export function OpsMlModel({
       {evalError && !hasEvalSnapshot ? opsPanelError(evalError, 'Could not load ML eval') : null}
       {labelsError && !hasLabelsSnapshot ? opsPanelError(labelsError, 'Could not load ML labels') : null}
 
-      {status ? <JsonDashboardView payload={status} /> : null}
-      {evalBlock ? <JsonDashboardView payload={evalBlock} /> : null}
+      {status ? <JsonPayloadView payload={status} /> : null}
+      {evalBlock ? <JsonPayloadView payload={evalBlock} /> : null}
 
       {saveError ? opsPanelError(saveError, 'Could not add ML label') : null}
       {saveSuccess ? (
@@ -140,11 +142,11 @@ export function OpsMlModel({
         </p>
       ) : null}
 
-      {labels.length === 0 && hasLabelsSnapshot ? (
+      {labelRows.length === 0 && hasLabelsSnapshot ? (
         <EmptyState description="Fleet manual label list is empty." title="No ML labels" />
       ) : null}
 
-      {labels.length > 0 ? (
+      {labelRows.length > 0 ? (
         <OpsTable
           head={
             <OpsTableHeaderRow>
@@ -154,8 +156,14 @@ export function OpsMlModel({
             </OpsTableHeaderRow>
           }
         >
-          {labels.map((row, index) => (
-            <OpsTableRow key={`${row.ip_hash ?? 'row'}-${index}`}>
+          {labelRows.map((row, index) => (
+            <OpsTableRow
+              key={
+                row.ip_hash && row.created_at
+                  ? `${row.ip_hash}:${row.created_at}`
+                  : row.ip_hash ?? `row-${index}`
+              }
+            >
               <OpsTableCell className="font-mono text-xs text-muted-foreground">
                 {row.ip_hash ?? ''}
               </OpsTableCell>

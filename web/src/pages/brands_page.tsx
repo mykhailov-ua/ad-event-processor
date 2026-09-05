@@ -33,6 +33,9 @@ export function BrandsPage() {
   const [createSuccess, setCreateSuccess] = useState(false);
 
   const onCreateBrand = useCallback(async () => {
+    if (creating) {
+      return;
+    }
     const name = draftBrandName.trim();
     if (!appliedCustomerId || !name) {
       setCreateError(new Error('Customer scope and brand name are required.'));
@@ -52,7 +55,7 @@ export function BrandsPage() {
     } finally {
       setCreating(false);
     }
-  }, [appliedCustomerId, draftBrandName]);
+  }, [appliedCustomerId, draftBrandName, creating]);
 
   return (
     <BrandsDirectory

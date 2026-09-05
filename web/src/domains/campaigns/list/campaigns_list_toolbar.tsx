@@ -55,6 +55,7 @@ export type CampaignsListToolbarProps = {
   ownerOptions: CampaignsListFilterOption[];
   countryOptions: CampaignsListFilterOption[];
   listFacetsFetching?: boolean;
+  listFacetsDegraded?: boolean;
   filterTotalsCapped?: boolean;
   filteredTotal?: number;
   metricsStale?: boolean;
@@ -103,6 +104,7 @@ export function CampaignsListToolbar({
   ownerOptions,
   countryOptions,
   listFacetsFetching = false,
+  listFacetsDegraded = false,
   filterTotalsCapped = false,
   filteredTotal = 0,
   metricsStale = false,
@@ -182,7 +184,7 @@ export function CampaignsListToolbar({
   return (
     <div className="flex w-full flex-col gap-3">
       <div className="flex flex-wrap items-center gap-4">
-        <h1 className="m-0 shrink-0 text-lg font-bold text-foreground">Campaigns</h1>
+        <h1 className="m-0 shrink-0 text-lg font-normal text-foreground">Campaigns</h1>
         <div aria-label="Campaign actions" className="flex flex-wrap items-center gap-2" role="toolbar">
           <Button type="button" variant="brand" onClick={onCreateClick}>
             <Plus className="h-3.5 w-3.5" aria-hidden />
@@ -239,10 +241,10 @@ export function CampaignsListToolbar({
           <DropdownMenu>
             <DropdownMenuTrigger asChild>
               <Button
+                aria-label="More campaign actions"
+                className="size-7 p-0"
                 type="button"
                 variant="outline"
-                size="icon"
-                aria-label="More campaign actions"
               >
                 <MoreHorizontal className="h-4 w-4" aria-hidden />
               </Button>
@@ -291,7 +293,17 @@ export function CampaignsListToolbar({
       <FilterPanel aria-label="List filters" className="bg-transparent p-0 pt-0" role="search">
         <DirectoryFilterForm
           layout="campaigns"
-          onSubmit={(event) => {
+          onKeyDown={(event) => {
+            if (event.key !== 'Enter' || event.defaultPrevented) {
+              return;
+            }
+            const target = event.target;
+            if (!(target instanceof HTMLInputElement)) {
+              return;
+            }
+            if (target.id !== 'campaigns-budget-min' && target.id !== 'campaigns-budget-max') {
+              return;
+            }
             event.preventDefault();
             onBudgetFiltersApply();
           }}
@@ -321,9 +333,13 @@ export function CampaignsListToolbar({
           <FilterField className={campaignListFilterFieldClass} label="Owner" labelClassName={campaignListFilterLabelClass}>
             <CampaignsListFilterSelect
               aria-label="Owner"
-              disabled={fetching || listFacetsFetching}
+              disabled={fetching || listFacetsFetching || listFacetsDegraded}
               options={ownerOptions}
-              title="Filter campaigns by owner"
+              title={
+                listFacetsDegraded
+                  ? 'Owner filter requires list-facets API'
+                  : 'Filter campaigns by owner'
+              }
               value={draftOwnerUserId || ALL_OPTION_VALUE}
               onValueChange={(value) =>
                 onDraftOwnerUserIdChange(value === ALL_OPTION_VALUE ? '' : value)
@@ -334,9 +350,13 @@ export function CampaignsListToolbar({
           <FilterField className={campaignListFilterFieldClass} label="Country" labelClassName={campaignListFilterLabelClass}>
             <CampaignListCountrySelect
               aria-label="Country"
-              disabled={fetching || listFacetsFetching}
+              disabled={fetching || listFacetsFetching || listFacetsDegraded}
               options={countryOptions}
-              title="Filter campaigns by target country"
+              title={
+                listFacetsDegraded
+                  ? 'Country filter requires list-facets API'
+                  : 'Filter campaigns by target country'
+              }
               value={draftCountry || ALL_OPTION_VALUE}
               onValueChange={(value) =>
                 onDraftCountryChange(value === ALL_OPTION_VALUE ? '' : value)
@@ -381,10 +401,6 @@ export function CampaignsListToolbar({
             variant="campaigns"
             onChange={onStatsRangeChange}
           />
-
-          <Button type="submit" variant="outline">
-            Apply
-          </Button>
 
           {onPagePrev && onPageNext ? (
             <div className="flex w-full min-w-0 flex-col gap-1.5">

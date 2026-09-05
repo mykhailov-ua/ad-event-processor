@@ -1,4 +1,4 @@
-import type { ReactNode } from 'react';
+import type { CSSProperties, ReactNode } from 'react';
 
 import type { Campaign, CampaignStats } from '@/api/types';
 import type { CampaignStatusTone } from '@/domains/campaigns/list/campaign_list_row_tone';
@@ -181,10 +181,11 @@ export function HourlyTrendChart({
   const lastLabel = formatHourLabel(windowBuckets[windowBuckets.length - 1]?.hour);
 
   if (loading) {
+    const shellHeight = height + 28;
     return (
       <div
-        className="rounded-xl bg-muted/25"
-        style={{ height: height + 28 }}
+        className="h-[var(--hourly-chart-shell-height)] rounded-xl bg-muted/25"
+        style={{ '--hourly-chart-shell-height': `${shellHeight}px` } as CSSProperties}
       >
         <div className="flex h-full items-center justify-center text-xs text-muted-foreground">
           Loading chart...

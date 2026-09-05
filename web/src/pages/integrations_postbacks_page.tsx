@@ -11,7 +11,7 @@ import {
   IntegrationsPostbacks,
   type IntegrationsPostbacksTab,
 } from '@/domains/integrations/integrations_postbacks';
-import { useRefreshToken } from '@/hooks/use_coalesced_refresh_token';
+import { useCoalescedBumpRefresh, useRefreshToken } from '@/hooks/use_coalesced_refresh_token';
 import { useResource } from '@/api/use_resource';
 
 export function IntegrationsPostbacksPage() {
@@ -42,6 +42,9 @@ export function IntegrationsPostbacksPage() {
   const dlq = useMemo(() => data?.dlq ?? [], [data?.dlq]);
   const campaignStatus = useMemo(() => data?.campaignStatus ?? [], [data?.campaignStatus]);
 
+  const listBusy = fetching || saving || testing || retryingId != null;
+  const bumpRefreshCoalesced = useCoalescedBumpRefresh(bumpRefresh, listBusy);
+
   const onPrefillFromConfig = useCallback((row: PostbackConfig) => {
     setDraftCampaignId(row.campaign_id ?? '');
     setDraftProvider(row.provider ?? 'webhook');
@@ -56,6 +59,9 @@ export function IntegrationsPostbacksPage() {
   }, []);
 
   const onSave = useCallback(async () => {
+    if (saving) {
+      return;
+    }
     const campaignId = draftCampaignId.trim();
     if (!campaignId) {
       return;
@@ -72,7 +78,7 @@ export function IntegrationsPostbacksPage() {
         test_event_code: draftTestEventCode.trim() || undefined,
       });
       setSaveSuccess(true);
-      bumpRefresh();
+      bumpRefreshCoalesced();
     } catch (err) {
       setSaveError(err instanceof Error ? err : new Error(String(err)));
     } finally {
@@ -85,10 +91,13 @@ export function IntegrationsPostbacksPage() {
     draftTargetEvent,
     draftTestEventCode,
     draftUrlTemplate,
-    bumpRefresh,
+    bumpRefreshCoalesced,
   ]);
 
   const onTest = useCallback(async () => {
+    if (testing) {
+      return;
+    }
     const campaignId = draftCampaignId.trim();
     if (!campaignId) {
       return;
@@ -104,20 +113,23 @@ export function IntegrationsPostbacksPage() {
     } finally {
       setTesting(false);
     }
-  }, [draftCampaignId]);
+  }, [draftCampaignId, testing]);
 
   const onRetryDlq = useCallback(async (id: string) => {
+    if (retryingId != null) {
+      return;
+    }
     setRetryingId(id);
     setRetryError(undefined);
     try {
       await retryPostbackDlq(id);
-      bumpRefresh();
+      bumpRefreshCoalesced();
     } catch (err) {
       setRetryError(err instanceof Error ? err : new Error(String(err)));
     } finally {
       setRetryingId(undefined);
     }
-  }, [bumpRefresh]);
+  }, [bumpRefreshCoalesced, retryingId]);
 
   return (
     <IntegrationsPostbacks

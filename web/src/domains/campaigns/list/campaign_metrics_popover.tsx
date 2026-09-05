@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useState, type ReactNode } from 'react';
+import { useCallback, useEffect, useMemo, useRef, useState, type ReactNode } from 'react';
 
 import { getCampaignStats } from '@/api/campaigns_api';
 import type { CampaignListMetrics } from '@/api/campaigns_api';
@@ -29,12 +29,16 @@ function MetricsPopoverBody({
   error,
   loading,
   onOpenOverview,
+  onRefresh,
+  refreshing,
   stats,
 }: {
   campaign: CampaignWithMoneyDisplay;
   error: Error | undefined;
   loading: boolean;
   onOpenOverview?: (campaign: CampaignWithMoneyDisplay) => void;
+  onRefresh: () => void;
+  refreshing: boolean;
   stats: CampaignStats | undefined;
 }) {
   const dailyBudget = displayMoneyDecimal(campaign.daily_budget);
@@ -49,7 +53,7 @@ function MetricsPopoverBody({
     <div className="divide-y divide-border">
       <header className="grid gap-3 p-4">
         <div className="grid gap-1">
-          <p className="whitespace-nowrap text-sm font-medium leading-snug">{campaign.name}</p>
+          <p className="whitespace-nowrap text-sm tabular-nums leading-snug">{campaign.name}</p>
           <p className="text-xs text-muted-foreground">Campaign metrics</p>
         </div>
         <BudgetUsedSummary campaign={campaign} className="max-w-none" />
@@ -113,6 +117,14 @@ function MetricsPopoverBody({
             />
           </div>
           <HourlyTrendChart buckets={stats?.hourly ?? []} loading={loading} />
+          <Button
+            disabled={loading || refreshing}
+            type="button"
+            variant="secondary"
+            onClick={onRefresh}
+          >
+            Refresh stats
+          </Button>
         </MetricsSection>
       </div>
 
@@ -161,6 +173,8 @@ export function CampaignMetricsPopover({
   const [stats, setStats] = useState<CampaignStats | undefined>();
   const [error, setError] = useState<Error | undefined>();
   const [loading, setLoading] = useState(false);
+  const [refreshNonce, setRefreshNonce] = useState(0);
+  const pendingRefreshRef = useRef(false);
   const resolvedStatsQuery = useMemo(
     () => statsQuery ?? {},
     [statsQuery?.from, statsQuery?.granularity, statsQuery?.to],
@@ -174,13 +188,16 @@ export function CampaignMetricsPopover({
     if (!open) {
       return;
     }
-
-    const cached = readCachedCampaignStats(cacheKey);
-    if (cached) {
-      setStats(cached);
-      setError(undefined);
-      setLoading(false);
-      return;
+    const forceRefresh = pendingRefreshRef.current;
+    pendingRefreshRef.current = false;
+    if (!forceRefresh) {
+      const cached = readCachedCampaignStats(cacheKey);
+      if (cached) {
+        setStats(cached);
+        setError(undefined);
+        setLoading(false);
+        return;
+      }
     }
 
     const controller = new AbortController();
@@ -211,32 +228,29 @@ export function CampaignMetricsPopover({
     return () => {
       controller.abort();
     };
-  }, [cacheKey, campaign.id, listMetrics, open, resolvedStatsQuery]);
+  }, [cacheKey, campaign.id, listMetrics, open, refreshNonce, resolvedStatsQuery]);
 
-  const handleOpenChange = (next: boolean) => {
-    setOpen(next);
-    if (!next) {
-      setStats(undefined);
-      setError(undefined);
-      setLoading(false);
-    }
-  };
+  const handleRefresh = useCallback(() => {
+    pendingRefreshRef.current = true;
+    setRefreshNonce((value) => value + 1);
+  }, []);
 
   const handleOpenOverview = (selected: CampaignWithMoneyDisplay) => {
-    handleOpenChange(false);
+    setOpen(false);
     onOpenOverview?.(selected);
   };
 
   return (
-    <Popover onOpenChange={handleOpenChange} open={open}>
+    <Popover onOpenChange={setOpen} open={open}>
       <PopoverTrigger asChild>
-        <button
+        <Button
           aria-label={`View metrics for ${campaign.name}`}
-          className="block w-full min-w-0 rounded-md text-left transition-colors hover:bg-muted/50 focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-ring"
+          className="block h-auto w-full min-w-0 justify-start rounded-md border-0 bg-transparent p-0 text-left font-normal shadow-none hover:bg-muted/50"
           type="button"
+          variant="ghost"
         >
           {triggerContent ?? <BudgetUsedSummary campaign={campaign} />}
-        </button>
+        </Button>
       </PopoverTrigger>
       <PopoverContent
         align="start"
@@ -251,7 +265,9 @@ export function CampaignMetricsPopover({
           campaign={campaign}
           error={error}
           loading={loading}
+          refreshing={loading}
           onOpenOverview={onOpenOverview ? handleOpenOverview : undefined}
+          onRefresh={handleRefresh}
           stats={stats}
         />
       </PopoverContent>

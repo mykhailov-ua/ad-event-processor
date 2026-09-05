@@ -1,5 +1,7 @@
 import { ArrowDown, ArrowUp, GripVertical } from 'lucide-react';
-import { useState, type DragEvent, type PointerEvent, type ReactNode } from 'react';
+import { useCallback, useRef, type DragEvent, type PointerEvent, type ReactNode } from 'react';
+
+import { Button } from '@/components/ui/button';
 
 import {
   CAMPAIGN_LIST_COLUMN_LABELS,
@@ -9,7 +11,7 @@ import {
 } from '@/domains/campaigns/list/campaign_list_columns';
 import {
   campaignListColDragGripClass,
-  campaignListColGripClass,
+  campaignListColResizeHandleClass,
   campaignListHeaderCellClass,
   campaignListHeaderLabelClass,
   campaignListHeaderLabelNumClass,
@@ -26,9 +28,6 @@ export type CampaignListTableHeaderCellProps = {
   onColumnSort: (field: CampaignSortField) => void;
   disabled?: boolean;
   draggable: boolean;
-  resizable?: boolean;
-  resizeLabel?: string;
-  onResizePointerDown?: (event: PointerEvent<HTMLDivElement>) => void;
   onDragStart: () => void;
   onDrop: (event: DragEvent<HTMLDivElement>) => void;
   onDragEnd: () => void;
@@ -41,14 +40,20 @@ export function CampaignListTableHeaderCell({
   onColumnSort,
   disabled,
   draggable,
-  resizable = false,
-  resizeLabel,
-  onResizePointerDown,
   onDragStart,
   onDrop,
   onDragEnd,
 }: CampaignListTableHeaderCellProps) {
-  const [dragOver, setDragOver] = useState(false);
+  const rootRef = useRef<HTMLDivElement>(null);
+
+  const setDragOverHighlight = useCallback((active: boolean) => {
+    const root = rootRef.current;
+    if (!root) {
+      return;
+    }
+    root.classList.toggle('bg-muted', active);
+  }, []);
+
   const sortField = sortFieldForCampaignColumn(columnId);
   const active = sortField != null && appliedSort === sortField;
   const label = CAMPAIGN_LIST_COLUMN_LABELS[columnId];
@@ -61,14 +66,15 @@ export function CampaignListTableHeaderCell({
   let labelNode: ReactNode;
   if (sortField != null) {
     labelNode = (
-      <button
+      <Button
         className={cn(
-          'inline-flex max-w-full items-center gap-0.5 whitespace-nowrap',
+          'inline-flex h-auto max-w-full items-center justify-start gap-0.5 border-0 bg-transparent p-0 font-normal shadow-none hover:bg-transparent',
           active && 'text-foreground',
         )}
         disabled={disabled}
         title={label}
         type="button"
+        variant="ghost"
         onClick={() => onColumnSort(sortField)}
       >
         {label}
@@ -79,7 +85,7 @@ export function CampaignListTableHeaderCell({
             <ArrowDown aria-hidden className="ml-0.5 h-3 w-3 shrink-0" />
           )
         ) : null}
-      </button>
+      </Button>
     );
   } else {
     labelNode = (
@@ -89,13 +95,14 @@ export function CampaignListTableHeaderCell({
     );
   }
 
-  const showTools = draggable || resizable;
+  const showTools = draggable;
 
   return (
     <div
-      className={cn(campaignListHeaderCellClass, dragOver && 'bg-muted')}
+      ref={rootRef}
+      className={campaignListHeaderCellClass}
       onDragEnd={() => {
-        setDragOver(false);
+        setDragOverHighlight(false);
         onDragEnd();
       }}
       onDragEnter={(event) => {
@@ -103,7 +110,7 @@ export function CampaignListTableHeaderCell({
           return;
         }
         event.preventDefault();
-        setDragOver(true);
+        setDragOverHighlight(true);
       }}
       onDragLeave={(event) => {
         if (!draggable) {
@@ -112,7 +119,7 @@ export function CampaignListTableHeaderCell({
         if (event.currentTarget.contains(event.relatedTarget as Node)) {
           return;
         }
-        setDragOver(false);
+        setDragOverHighlight(false);
       }}
       onDragOver={(event) => {
         if (!draggable) {
@@ -120,10 +127,10 @@ export function CampaignListTableHeaderCell({
         }
         event.preventDefault();
         event.dataTransfer.dropEffect = 'move';
-        setDragOver(true);
+        setDragOverHighlight(true);
       }}
       onDrop={(event) => {
-        setDragOver(false);
+        setDragOverHighlight(false);
         onDrop(event);
       }}
     >
@@ -149,15 +156,26 @@ export function CampaignListTableHeaderCell({
           ) : null}
         </div>
       ) : null}
-      {resizable ? (
-        <div
-          aria-label={resizeLabel ?? `Resize ${label} column`}
-          className={campaignListColGripClass}
-          data-col-resize=""
-          role="separator"
-          onPointerDown={onResizePointerDown}
-        />
-      ) : null}
     </div>
+  );
+}
+
+export type CampaignListColumnResizeHandleProps = {
+  label: string;
+  onPointerDown: (event: PointerEvent<HTMLDivElement>) => void;
+};
+
+export function CampaignListColumnResizeHandle({
+  label,
+  onPointerDown,
+}: CampaignListColumnResizeHandleProps) {
+  return (
+    <div
+      aria-label={label}
+      className={campaignListColResizeHandleClass}
+      data-col-resize=""
+      role="separator"
+      onPointerDown={onPointerDown}
+    />
   );
 }

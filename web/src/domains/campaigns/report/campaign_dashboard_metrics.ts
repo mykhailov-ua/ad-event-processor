@@ -4,8 +4,8 @@ import type { DashboardBreakdownColumnId } from '@/domains/dashboards/dashboard_
 import {
   formatDashboardCrPct,
   formatDashboardRoiPct,
-  formatDashboardUsdFromMicro,
-} from '@/domains/dashboards/dashboard_format';
+} from '@/lib/display_metrics';
+import { formatDashboardUsdFromMicro } from '@/domains/dashboards/dashboard_format';
 import { displayCount } from '@/lib/display';
 
 export type CampaignDashboardKpis = {

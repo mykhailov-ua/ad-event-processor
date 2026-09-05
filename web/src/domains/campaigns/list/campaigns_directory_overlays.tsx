@@ -40,11 +40,13 @@ export type CampaignsDirectoryOverlaysProps = {
   bulkBusy: boolean;
   cloneOpen: boolean;
   createDisabled: boolean;
+  createCustomerId: string;
   createSectionOpen: boolean;
   creating: boolean;
   customerId: string | undefined;
   customerNameById: Record<string, string>;
   customerOptions: CustomerComboboxOption[];
+  customersLoading: boolean;
   draftBudgetLimitMicro: string;
   draftCreateName: string;
   draftTemplateId: string;
@@ -56,6 +58,7 @@ export type CampaignsDirectoryOverlaysProps = {
   onCreateCampaign: () => void;
   onCreateSectionOpenChange: (open: boolean) => void;
   onDraftBudgetLimitMicroChange: (value: string) => void;
+  onDraftCreateCustomerIdChange: (customerId: string) => void;
   onDraftCreateNameChange: (name: string) => void;
   onDraftTemplateIdChange: (templateId: string) => void;
   onImportOpenChange: (open: boolean) => void;
@@ -86,11 +89,13 @@ export function CampaignsDirectoryOverlays({
   bulkBusy,
   cloneOpen,
   createDisabled,
+  createCustomerId,
   createSectionOpen,
   creating,
   customerId,
   customerNameById,
   customerOptions,
+  customersLoading,
   draftBudgetLimitMicro,
   draftCreateName,
   draftTemplateId,
@@ -102,6 +107,7 @@ export function CampaignsDirectoryOverlays({
   onCreateCampaign,
   onCreateSectionOpenChange,
   onDraftBudgetLimitMicroChange,
+  onDraftCreateCustomerIdChange,
   onDraftCreateNameChange,
   onDraftTemplateIdChange,
   onImportOpenChange,
@@ -125,6 +131,9 @@ export function CampaignsDirectoryOverlays({
   templatesLoading,
   wizardOpen,
 }: CampaignsDirectoryOverlaysProps) {
+  const effectiveCreateCustomerId = createCustomerId.trim() || customerId || '';
+  const createFieldsDisabled = !effectiveCreateCustomerId;
+
   return (
     <>
       {actionError ? <ErrorBlock title="Action failed" message={actionError.message} /> : null}
@@ -134,14 +143,7 @@ export function CampaignsDirectoryOverlays({
           <DialogHeader>
             <DialogTitle>Create campaign</DialogTitle>
             <DialogDescription>
-              {customerId ? (
-                <>
-                  Customer{' '}
-                  <span className="font-mono text-xs text-foreground">{customerId}</span>
-                </>
-              ) : (
-                'Select a customer group filter to create a campaign.'
-              )}
+              Choose a customer group, then pick a template and optional overrides.
             </DialogDescription>
           </DialogHeader>
 
@@ -153,14 +155,52 @@ export function CampaignsDirectoryOverlays({
             }}
           >
             <div className="grid gap-2">
+              <Label htmlFor="campaigns-create-customer">Customer group</Label>
+              <Select
+                disabled={customersLoading || customerOptions.length === 0}
+                value={createCustomerId || undefined}
+                onValueChange={onDraftCreateCustomerIdChange}
+              >
+                <SelectTrigger className="w-full" id="campaigns-create-customer">
+                  <SelectValue
+                    placeholder={
+                      customersLoading
+                        ? 'Loading…'
+                        : customerOptions.length === 0
+                          ? 'No customer groups'
+                          : 'Select customer group…'
+                    }
+                  />
+                </SelectTrigger>
+                <SelectContent plain>
+                  {customerOptions.map((customer) => (
+                    <SelectItem key={customer.id} plain value={customer.id}>
+                      {customer.name}
+                    </SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
+            </div>
+
+            <div className="grid gap-2">
               <Label htmlFor="campaigns-template">Template</Label>
               <Select
-                disabled={!customerId || templates.length === 0}
+                disabled={createFieldsDisabled || templatesLoading}
                 value={draftTemplateId}
                 onValueChange={onDraftTemplateIdChange}
               >
                 <SelectTrigger className="w-full" id="campaigns-template">
-                  <SelectValue placeholder={templatesLoading ? 'Loading\u2026' : 'Select template\u2026'} />
+                  <SelectValue
+                    placeholder={
+                      createFieldsDisabled
+                        ? 'Select customer group first…'
+                        : templatesLoading
+                          ? 'Loading…'
+                          : templates.length === 0
+                            ? 'No templates'
+                            : 'Select template…'
+                    }
+                  />
                 </SelectTrigger>
                 <SelectContent plain>
                   {templates.map((template) => (
@@ -176,8 +216,8 @@ export function CampaignsDirectoryOverlays({
               <Label htmlFor="campaigns-create-name">Name</Label>
               <Input
                 id="campaigns-create-name"
-                disabled={!customerId}
-                placeholder="Optional display name\u2026"
+                disabled={createFieldsDisabled}
+                placeholder="Optional display name…"
                 value={draftCreateName}
                 onChange={(event) => onDraftCreateNameChange(event.target.value)}
               />
@@ -187,9 +227,9 @@ export function CampaignsDirectoryOverlays({
               <Label htmlFor="campaigns-budget-micro">Budget (micro)</Label>
               <Input
                 id="campaigns-budget-micro"
-                disabled={!customerId}
+                disabled={createFieldsDisabled}
                 inputMode="numeric"
-                placeholder="Optional override\u2026"
+                placeholder="Optional override…"
                 value={draftBudgetLimitMicro}
                 onChange={(event) => onDraftBudgetLimitMicroChange(event.target.value)}
               />
@@ -198,13 +238,16 @@ export function CampaignsDirectoryOverlays({
             {templatesError ? (
               <ErrorBlock title="Could not load templates" message={templatesError.message} />
             ) : null}
-            {customerId && !templatesLoading && templates.length === 0 && !templatesError ? (
-              <p className="text-sm text-muted-foreground">No templates for this customer.</p>
+            {effectiveCreateCustomerId && !templatesLoading && templates.length === 0 && !templatesError ? (
+              <p className="text-sm text-muted-foreground">
+                No templates for{' '}
+                {customerNameById[effectiveCreateCustomerId] ?? effectiveCreateCustomerId}.
+              </p>
             ) : null}
 
             <DialogFooter className="gap-2 sm:gap-0">
               <SecondaryActionButton
-                disabled={!customerId}
+                disabled={createFieldsDisabled}
                 loading={templatesLoading}
                 onClick={onLoadTemplates}
                 type="button"

@@ -2,6 +2,7 @@ import * as React from 'react';
 
 import { useControllableState } from '@/lib/controllable_state';
 import { cn } from '@/lib/utils';
+import { adminKit } from '@/lib/admin_kit';
 
 function Tabs({
   value,
@@ -78,7 +79,7 @@ const TabsTrigger = React.forwardRef<
       role="tab"
       aria-selected={selected}
       className={cn(
-        'inline-flex items-center justify-center whitespace-nowrap text-[13px] font-medium transition-colors disabled:pointer-events-none disabled:opacity-50',
+        'inline-flex items-center justify-center whitespace-nowrap text-[13px] font-medium leading-none transition-colors disabled:pointer-events-none disabled:opacity-50',
         variant === 'segmented' && 'rounded-[5px] px-3 py-1',
         variant === 'segmented' &&
           (selected
@@ -86,7 +87,8 @@ const TabsTrigger = React.forwardRef<
             : 'text-muted-foreground hover:text-foreground'),
         variant === 'pill' &&
           cn(
-            'min-h-7 rounded-full border px-3 py-1',
+            adminKit.buttonShell,
+            'rounded-full border px-3',
             selected
               ? 'border-primary bg-primary text-primary-foreground'
               : 'border-border bg-background text-foreground hover:bg-accent',

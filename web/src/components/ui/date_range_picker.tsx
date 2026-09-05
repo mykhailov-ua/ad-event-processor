@@ -14,7 +14,6 @@ import {
 } from '@/lib/datetime_range';
 import { resolvePopoverAlign } from '@/lib/popover_align';
 import {
-  campaignDateRangeApplyButtonClass,
   campaignDateRangeClearButtonClass,
   campaignDateRangeFooterClass,
   campaignDateRangePopoverClass,
@@ -136,36 +135,41 @@ export function DateRangePicker({
     setOpen(nextOpen);
   }
 
-  function handleApply() {
-    if (!draftRange?.from || !draftRange.to) {
+  function commitDraftRange(range: DateRange | undefined) {
+    if (!range?.from || !range.to) {
       return;
     }
-    const orderedFrom =
-      draftRange.from <= draftRange.to ? draftRange.from : draftRange.to;
-    const orderedTo = draftRange.from <= draftRange.to ? draftRange.to : draftRange.from;
+    const orderedFrom = range.from <= range.to ? range.from : range.to;
+    const orderedTo = range.from <= range.to ? range.to : range.from;
     onChange(startOfDayLocalValue(orderedFrom), endOfDayLocalValue(orderedTo));
     setOpen(false);
+  }
+
+  function handleDraftSelect(next: DateRange | undefined) {
+    setDraftRange(next);
+    commitDraftRange(next);
   }
 
   const trigger = (
     <Popover open={open} onOpenChange={handleOpenChange}>
       <PopoverTrigger asChild>
         {variant === 'admin' || isCampaigns ? (
-          <button
+          <Button
             ref={triggerRef}
             id={id}
-            type="button"
-            disabled={disabled}
             className={cn(
               isCampaigns
-                ? campaignDateRangeTriggerClass
+                ? cn(campaignDateRangeTriggerClass, 'h-auto justify-between font-normal shadow-none')
                 : 'relative inline-flex min-h-7 w-full max-w-full items-center justify-between gap-2 rounded-[5px] border border-border bg-background px-2 py-1 text-[13px] leading-[18px] text-foreground',
               !fromDate && 'text-muted-foreground',
             )}
+            disabled={disabled}
+            type="button"
+            variant="outline"
           >
             <CalendarIcon className="h-4 w-4 shrink-0 opacity-60" aria-hidden />
             <span className="min-w-0 flex-1 truncate text-left">{displayLabel}</span>
-          </button>
+          </Button>
         ) : (
           <Button
             ref={triggerRef}
@@ -186,8 +190,7 @@ export function DateRangePicker({
       <PopoverContent
         align={align}
         className={cn(
-          'w-auto p-0 [&_.ui-shell]:!w-auto [&_.ui-shell]:!min-w-0 [&_.ui-shell-panel]:overflow-visible',
-          isStyledPicker && 'rounded-lg border border-border bg-card p-0 shadow-lg',
+          'w-auto p-0',
           isCampaigns && campaignDateRangePopoverClass,
         )}
         panelScroll={isCampaigns ? 'none' : undefined}
@@ -200,7 +203,7 @@ export function DateRangePicker({
             selected={draftRange}
             defaultMonth={draftRange?.from ?? fromDate ?? new Date()}
             variant={calendarVariant}
-            onSelect={setDraftRange}
+            onSelect={handleDraftSelect}
           />
         </div>
         {isCampaigns ? (
@@ -208,26 +211,17 @@ export function DateRangePicker({
             <span className="min-w-0 truncate text-[13px] leading-[18px] text-muted-foreground">
               {draftFooterLabel || 'Pick date range'}
             </span>
-            <div className="flex shrink-0 items-center gap-2">
-              <button
-                className={campaignDateRangeClearButtonClass}
-                type="button"
-                onClick={() => {
-                  onChange('', '');
-                  setOpen(false);
-                }}
-              >
-                Clear
-              </button>
-              <button
-                className={campaignDateRangeApplyButtonClass}
-                disabled={!draftRange?.from || !draftRange?.to}
-                type="button"
-                onClick={handleApply}
-              >
-                Apply
-              </button>
-            </div>
+            <Button
+              className={campaignDateRangeClearButtonClass}
+              type="button"
+              variant="outline"
+              onClick={() => {
+                onChange('', '');
+                setOpen(false);
+              }}
+            >
+              Clear
+            </Button>
           </div>
         ) : (
           <div
@@ -237,24 +231,16 @@ export function DateRangePicker({
                 : 'flex justify-end gap-2 border-t border-border/50 px-3 py-3'
             }
           >
-            <button
-              className="inline-flex min-h-8 items-center justify-center gap-2 rounded-md border border-border bg-background px-3 text-sm font-medium leading-normal text-foreground transition active:scale-[0.98] hover:bg-accent disabled:pointer-events-none disabled:opacity-50"
+            <Button
               type="button"
+              variant="outline"
               onClick={() => {
                 onChange('', '');
                 setOpen(false);
               }}
             >
               Clear
-            </button>
-            <button
-              className="inline-flex min-h-8 items-center justify-center gap-2 rounded-md border border-primary bg-primary px-3 text-sm font-medium leading-normal text-primary-foreground transition active:scale-[0.98] hover:bg-primary/90 disabled:pointer-events-none disabled:opacity-50"
-              disabled={!draftRange?.from || !draftRange?.to}
-              type="button"
-              onClick={handleApply}
-            >
-              Apply
-            </button>
+            </Button>
           </div>
         )}
       </PopoverContent>

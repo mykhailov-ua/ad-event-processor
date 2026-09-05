@@ -1,4 +1,4 @@
-/** Inter + tnum for numeric columns and KPIs. */
+/** Inter + tnum for numeric columns, KPIs, and campaign name cells. */
 export const ADMIN_TABULAR_CLASS = 'tabular-nums';
 
 /** Alias used in dashboard components. */

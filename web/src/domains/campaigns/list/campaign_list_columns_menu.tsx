@@ -85,57 +85,58 @@ export function CampaignListColumnsMenu({
     <DropdownMenu>
       <DropdownMenuTrigger asChild>
         <Button
-          className="shrink-0 whitespace-nowrap px-2 font-medium"
+          className="shrink-0 gap-1.5 whitespace-nowrap px-2 font-medium"
           disabled={disabled}
           type="button"
           variant="outline"
         >
-          <Columns3 className="mr-1 h-3.5 w-3.5 shrink-0" aria-hidden />
+          <Columns3 className="h-3.5 w-3.5 shrink-0" aria-hidden />
           Columns ({visibleMiddleCount}/{totalMiddleCount})
         </Button>
       </DropdownMenuTrigger>
-      <DropdownMenuContent align="end" className={cn(campaignListColumnsMenuClass, 'p-0')}>
-        <div className="border-b border-border px-3 py-2.5">
-          <p className="mb-1.5 text-[10px] font-semibold uppercase leading-[14px] text-muted-foreground">
+      <DropdownMenuContent align="start" className={cn(campaignListColumnsMenuClass, 'gap-0 p-0')} scrollable={false}>
+        <div className="border-b border-border px-2 py-1.5">
+          <p className="mb-1 text-[10px] font-semibold uppercase leading-[14px] text-muted-foreground">
             Preset views
           </p>
-          <div className="flex flex-wrap items-center gap-x-3 gap-y-1">
+          <div className="flex flex-wrap items-center gap-x-2.5 gap-y-0.5">
             {PRESET_ORDER.map((presetId) => (
-              <button
+              <Button
                 key={presetId}
                 className={cn(
-                  'text-[13px] leading-[18px] transition-colors',
+                  'h-auto min-h-6 px-0 text-[13px] leading-none shadow-none',
                   activePreset === presetId
-                    ? 'font-semibold text-foreground'
-                    : 'font-normal text-muted-foreground hover:text-foreground',
+                    ? 'font-semibold text-foreground hover:bg-transparent'
+                    : 'font-normal text-muted-foreground hover:bg-transparent hover:text-foreground',
                 )}
                 type="button"
+                variant="ghost"
                 onClick={() => applyPreset(presetId)}
               >
                 {CAMPAIGN_LIST_COLUMN_PRESET_LABELS[presetId]}
-              </button>
+              </Button>
             ))}
           </div>
         </div>
 
-        <div className="ui-scrollbar grid max-h-80 grid-cols-2 divide-x divide-border overflow-y-auto">
+        <div className="ui-scrollbar grid max-h-72 grid-cols-4 divide-x divide-border overflow-y-auto">
           {CAMPAIGN_LIST_COLUMN_CATEGORIES.map((category) => (
-            <section key={category.id} className="px-3 py-2.5">
-              <h3 className="mb-2 text-[10px] font-semibold uppercase leading-[14px] text-muted-foreground">
+            <section key={category.id} className="min-w-0 px-2 py-1.5">
+              <h3 className="mb-1 text-[10px] font-semibold uppercase leading-[14px] text-muted-foreground">
                 {category.title}
               </h3>
-              <ul className="grid gap-1.5">
+              <ul className="grid gap-0.5">
                 {category.columns.map((columnId) => {
                   const checked = !hidden.has(columnId);
                   return (
                     <li key={columnId}>
-                      <label className="flex min-h-8 cursor-pointer items-center gap-2">
+                      <label className="flex min-h-6 cursor-pointer items-center gap-1.5 py-px">
                         <Checkbox
                           checked={checked}
                           className={campaignListColumnsMenuCheckboxClass}
                           onCheckedChange={(next) => toggleColumn(columnId, next === true)}
                         />
-                        <span className="whitespace-nowrap text-[13px] leading-[18px] text-foreground/80">
+                        <span className="whitespace-nowrap text-[12px] leading-4 text-foreground/80">
                           {CAMPAIGN_LIST_COLUMN_LABELS[columnId]}
                         </span>
                       </label>
@@ -147,14 +148,15 @@ export function CampaignListColumnsMenu({
           ))}
         </div>
 
-        <div className="border-t border-border px-3 py-2.5 text-center">
-          <button
-            className="text-[13px] font-medium leading-[18px] text-primary underline-offset-2 hover:underline"
+        <div className="border-t border-border px-2 py-1.5 text-center">
+          <Button
+            className="h-auto min-h-6 px-0 text-[13px] font-medium leading-none text-primary underline-offset-2 shadow-none hover:bg-transparent hover:underline"
             type="button"
+            variant="link"
             onClick={restoreDefault}
           >
             Restore to default
-          </button>
+          </Button>
         </div>
       </DropdownMenuContent>
     </DropdownMenu>

@@ -8,6 +8,7 @@ import { Link, useNavigate } from 'react-router-dom';
 import { PageLayout } from '@/shell/page_layout';
 import type { FlowPath } from '@/api/types';
 import type { CampaignEditorFormState } from '@/domains/campaigns/editor/campaign_editor_types';
+import { CAMPAIGN_EDITOR_MONO_EXTRALIGHT_CLASS } from '@/domains/campaigns/editor/campaign_click_query_limits';
 
 export type CampaignEditorShellProps = {
   campaignId: string;
@@ -21,7 +22,6 @@ export type CampaignEditorShellProps = {
     value: CampaignEditorFormState[K],
   ) => void;
   onSave: () => void;
-  onSaveAndClose: () => void;
   onClone: () => void;
   advancedPanel?: ReactNode;
   statusBanner?: ReactNode;
@@ -36,7 +36,6 @@ export function CampaignEditorShell({
   clickUrl,
   onFieldChange,
   onSave,
-  onSaveAndClose,
   onClone,
   advancedPanel,
   statusBanner,
@@ -45,10 +44,13 @@ export function CampaignEditorShell({
   const paths = flowPaths.length > 0 ? flowPaths : [{ weight: 100, landers: [], offers: [] }];
 
   const pathsAside = (
-    <section className="ui-shell ui-shell-panel flex flex-col gap-3">
+    <section className="flex flex-col gap-4">
       <h2 className="text-sm font-semibold text-foreground">Paths</h2>
       {paths.map((path, pathIndex) => (
-        <div key={`path-${pathIndex}`} className="ui-shell ui-shell-panel flex flex-col gap-3">
+        <div
+          key={`path-${pathIndex}`}
+          className="flex flex-col gap-3 border-t border-border pt-4 first:border-t-0 first:pt-0"
+        >
           <p>
             <strong>Path {pathIndex + 1}</strong> / weight {path.weight ?? 100}
           </p>
@@ -90,14 +92,14 @@ export function CampaignEditorShell({
   return (
     <PageLayout
       aside={pathsAside}
+      asideClassName="sticky top-0 max-h-full border-l border-border pl-4 pb-8 lg:pl-6"
       description={`ID: ${campaignId}`}
+      mainClassName="min-w-0 gap-8 pb-8 pl-1 pr-2"
+      workspaceClassName="min-h-0 flex-1 px-5 py-4"
       headerActions={
         <>
           <Button disabled={saving} loading={saving} type="button" onClick={onSave}>
             Save
-          </Button>
-          <Button disabled={saving} loading={saving} type="button" variant="secondary" onClick={onSaveAndClose}>
-            Save &amp; Close
           </Button>
           <Button type="button" variant="secondary" onClick={onClone}>
             Clone
@@ -114,73 +116,56 @@ export function CampaignEditorShell({
     >
       {statusBanner}
 
-      <section className="ui-shell ui-shell-panel flex flex-col gap-3">
+      <section className="flex max-w-3xl flex-col gap-4">
         <h2 className="text-sm font-semibold text-foreground">Main options</h2>
 
-        <div className="grid grid-cols-[8rem_1fr] items-center gap-2">
-          <Label htmlFor="campaign-editor-name">Name</Label>
-          <Input
-            disabled={saving}
-            id="campaign-editor-name"
-            value={form.name}
-            onChange={(event) => onFieldChange('name', event.target.value)}
-          />
-        </div>
+        <div className="grid gap-4">
+          <div className="grid grid-cols-[8rem_minmax(0,1fr)] items-center gap-x-4 gap-y-2">
+            <Label htmlFor="campaign-editor-name">Name</Label>
+            <Input
+              disabled={saving}
+              id="campaign-editor-name"
+              value={form.name}
+              onChange={(event) => onFieldChange('name', event.target.value)}
+            />
+          </div>
 
-        <div className="grid grid-cols-[8rem_1fr] items-center gap-2">
-          <Label htmlFor="campaign-editor-traffic-template">Traffic source</Label>
-          <Input
-            disabled={saving}
-            id="campaign-editor-traffic-template"
-            value={form.traffic_template_id}
-            onChange={(event) => onFieldChange('traffic_template_id', event.target.value)}
-          />
-        </div>
+          <div className="grid grid-cols-[8rem_minmax(0,1fr)] items-center gap-x-4 gap-y-2">
+            <Label htmlFor="campaign-editor-budget">Budget limit</Label>
+            <Input
+              disabled={saving}
+              id="campaign-editor-budget"
+              value={form.budget_limit}
+              onChange={(event) => onFieldChange('budget_limit', event.target.value)}
+            />
+          </div>
 
-        <div className="grid grid-cols-[8rem_1fr] items-center gap-2">
-          <Label htmlFor="campaign-editor-budget">Budget limit</Label>
-          <Input
-            disabled={saving}
-            id="campaign-editor-budget"
-            value={form.budget_limit}
-            onChange={(event) => onFieldChange('budget_limit', event.target.value)}
-          />
-        </div>
+          <div className="grid grid-cols-[8rem_minmax(0,1fr)] items-center gap-x-4 gap-y-2">
+            <Label htmlFor="campaign-editor-status">Status</Label>
+            <Input
+              disabled={saving}
+              id="campaign-editor-status"
+              value={form.status}
+              onChange={(event) => onFieldChange('status', event.target.value)}
+            />
+          </div>
 
-        <div className="grid grid-cols-[8rem_1fr] items-center gap-2">
-          <Label htmlFor="campaign-editor-status">Status</Label>
-          <Input
-            disabled={saving}
-            id="campaign-editor-status"
-            value={form.status}
-            onChange={(event) => onFieldChange('status', event.target.value)}
-          />
-        </div>
-
-        <div className="grid grid-cols-[8rem_1fr] items-center gap-2">
-          <Label htmlFor="campaign-editor-flow">Flow ID</Label>
-          <Input
-            disabled={saving}
-            id="campaign-editor-flow"
-            value={form.flow_id}
-            onChange={(event) => onFieldChange('flow_id', event.target.value)}
-          />
-        </div>
-
-        <div className="grid gap-2">
-          <Label htmlFor="campaign-editor-url">Campaign URL</Label>
-          <Textarea
-            id="campaign-editor-url"
-            readOnly
-            rows={3}
-            value={clickUrl ?? `https://trk.example.com/click?campaign_id=${campaignId}`}
-          />
+          <div className="grid grid-cols-[8rem_minmax(0,1fr)] items-start gap-x-4 gap-y-2">
+            <Label className="pt-2" htmlFor="campaign-editor-url">
+              Campaign URL
+            </Label>
+            <Textarea
+              className={CAMPAIGN_EDITOR_MONO_EXTRALIGHT_CLASS}
+              id="campaign-editor-url"
+              readOnly
+              rows={3}
+              value={clickUrl ?? `https://trk.example.com/click?campaign_id=${campaignId}`}
+            />
+          </div>
         </div>
       </section>
 
-      {advancedPanel ? (
-        <div className="ui-shell ui-shell-panel flex flex-col gap-3">{advancedPanel}</div>
-      ) : null}
+      {advancedPanel}
     </PageLayout>
   );
 }

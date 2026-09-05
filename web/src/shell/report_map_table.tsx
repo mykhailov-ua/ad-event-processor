@@ -16,6 +16,7 @@ export type ReportMapTableProps = {
   rows: readonly ReportMapRow[];
   rowKeyPrefix?: string;
   className?: string;
+  formatColumn?: (column: string) => string;
 };
 
 /** Captioned or bare map-row table for ops reports and RTB overview. */
@@ -25,6 +26,7 @@ export function ReportMapTable({
   rows,
   rowKeyPrefix,
   className,
+  formatColumn,
 }: ReportMapTableProps) {
   const keyPrefix = rowKeyPrefix ?? caption;
   const table = (
@@ -32,7 +34,9 @@ export function ReportMapTable({
       <TableHeader>
         <TableRow>
           {columns.map((column) => (
-            <DirectoryTableHead key={column}>{column}</DirectoryTableHead>
+            <DirectoryTableHead key={column}>
+              {formatColumn ? formatColumn(column) : column}
+            </DirectoryTableHead>
           ))}
         </TableRow>
       </TableHeader>

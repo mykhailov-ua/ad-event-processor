@@ -382,6 +382,8 @@ ORDER BY
   (CASE WHEN COALESCE(sqlc.narg('sort_field')::text, 'updated_at') = 'countries' AND NOT COALESCE(sqlc.narg('sort_desc')::boolean, true) THEN array_to_string(campaigns.target_countries, ',') END) ASC NULLS LAST,
   (CASE WHEN COALESCE(sqlc.narg('sort_field')::text, 'updated_at') = 'tags' AND COALESCE(sqlc.narg('sort_desc')::boolean, true) THEN lower(campaigns.name) END) DESC NULLS LAST,
   (CASE WHEN COALESCE(sqlc.narg('sort_field')::text, 'updated_at') = 'tags' AND NOT COALESCE(sqlc.narg('sort_desc')::boolean, true) THEN lower(campaigns.name) END) ASC NULLS LAST,
+  (CASE WHEN COALESCE(sqlc.narg('sort_field')::text, 'updated_at') = 'id' AND COALESCE(sqlc.narg('sort_desc')::boolean, true) THEN campaign_display_id_sort_key(campaigns.id) END) DESC NULLS LAST,
+  (CASE WHEN COALESCE(sqlc.narg('sort_field')::text, 'updated_at') = 'id' AND NOT COALESCE(sqlc.narg('sort_desc')::boolean, true) THEN campaign_display_id_sort_key(campaigns.id) END) ASC NULLS LAST,
   (CASE WHEN COALESCE(sqlc.narg('sort_field')::text, 'updated_at') = 'updated_at' AND COALESCE(sqlc.narg('sort_desc')::boolean, true) THEN campaigns.updated_at END) DESC NULLS LAST,
   (CASE WHEN COALESCE(sqlc.narg('sort_field')::text, 'updated_at') = 'updated_at' AND NOT COALESCE(sqlc.narg('sort_desc')::boolean, true) THEN campaigns.updated_at END) ASC NULLS LAST,
   campaigns.updated_at DESC

@@ -11,7 +11,7 @@ function Badge({ className, variant = 'default', ...props }: BadgeProps) {
   return (
     <div
       className={cn(
-        'inline-flex items-center rounded-full border px-2 py-0.5 text-xs font-medium leading-4',
+        'inline-flex items-center rounded-full border px-2 py-0.5 text-xs font-normal leading-4',
         badgeVariantClass[variant],
         className,
       )}

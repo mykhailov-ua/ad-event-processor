@@ -6,6 +6,7 @@ import { Button } from '@/components/ui/button';
 import { DatetimePicker } from '@/components/ui/datetime_picker';
 import { PageLayout } from '@/shell/page_layout';
 import type { CustomerComboboxOption } from '@/shell/customer_combobox';
+import { EmptyState } from '@/shell/empty_state';
 import { ErrorBlock } from '@/shell/error_block';
 import { PageSkeleton } from '@/shell/page_skeleton';
 import { StubBanner } from '@/shell/stub_banner';
@@ -14,9 +15,19 @@ import type { DashboardRole } from '@/api/types';
 import { CampaignsListFilterSelect } from '@/domains/campaigns/list/campaigns_list_filter_select';
 import { BuyerDashboardToolbar, type BuyerDashboardCampaignOption } from '@/domains/dashboards/buyer_dashboard_toolbar';
 import { BuyerDashboardView } from '@/domains/dashboards/buyer_dashboard_view';
+import {
+  dashboardFilterFieldClass,
+  dashboardFilterLabelClass,
+  dashboardPageWorkspaceClass,
+} from '@/domains/dashboards/dashboard_classes';
 import { parseBuyerPortfolio, type DashboardRangePreset } from '@/domains/dashboards/buyer_dashboard_types';
 import { opsStatusTone } from '@/domains/ops/ops_status';
 import { useBuyerDashboardPreferences } from '@/hooks/use_buyer_dashboard_preferences';
+import {
+  DirectoryFilterForm,
+  FilterField,
+  FilterPanel,
+} from '@/shell/filter_panel';
 import { cn } from '@/lib/utils';
 
 export type { DashboardRangePreset };
@@ -44,8 +55,8 @@ export type RoleDashboardViewProps = {
   fetching: boolean;
   error: Error | undefined;
   hasSnapshot: boolean;
+  customerRequired: boolean;
   licenseGated: boolean;
-  showApply: boolean;
   onDraftRoleChange: (role: DashboardRole) => void;
   onDraftCustomerIdChange: (value: string) => void;
   onDraftCampaignIdChange: (value: string) => void;
@@ -53,7 +64,7 @@ export type RoleDashboardViewProps = {
   onRangePresetChange: (preset: DashboardRangePreset) => void;
   onDraftFromChange: (value: string) => void;
   onDraftToChange: (value: string) => void;
-  onApply: () => void;
+  onRefresh: () => void;
   clickLogHref?: string;
 };
 
@@ -79,13 +90,11 @@ function RoleDashboardFilters({
   draftTo,
   rangePreset,
   customerOptions,
-  fetching,
   onDraftRoleChange,
   onDraftCustomerIdChange,
   onRangePresetChange,
   onDraftFromChange,
   onDraftToChange,
-  onApply,
 }: {
   role: DashboardRole;
   draftRole: DashboardRole;
@@ -94,13 +103,11 @@ function RoleDashboardFilters({
   draftTo: string;
   rangePreset: DashboardRangePreset;
   customerOptions: CustomerComboboxOption[];
-  fetching: boolean;
   onDraftRoleChange: (role: DashboardRole) => void;
   onDraftCustomerIdChange: (value: string) => void;
   onRangePresetChange: (preset: DashboardRangePreset) => void;
   onDraftFromChange: (value: string) => void;
   onDraftToChange: (value: string) => void;
-  onApply: () => void;
 }) {
   const roleOptions = DASHBOARD_ROLES.map((item) => ({
     value: item,
@@ -115,74 +122,102 @@ function RoleDashboardFilters({
     })),
   ];
 
+  const customRange = rangePreset === 'custom';
+
   return (
-    <div className="flex flex-col gap-3 flex flex-col gap-2">
-      <div
-        aria-label="Dashboard filters"
-        className="flex flex-wrap items-center gap-2 flex flex-wrap items-center gap-2"
-        role="search"
-      >
-        <CampaignsListFilterSelect
-          aria-label="Role"
-          options={roleOptions}
-          value={draftRole}
-          onValueChange={(value) => onDraftRoleChange(value as DashboardRole)}
-        />
-        <CampaignsListFilterSelect
-          aria-label="Customer"
-          options={customerSelectOptions}
-          value={draftCustomerId || ALL_OPTION_VALUE}
-          onValueChange={(value) =>
-            onDraftCustomerIdChange(value === ALL_OPTION_VALUE ? '' : value)
-          }
-        />
-        <CampaignsListFilterSelect
-          aria-label="Range preset"
-          options={RANGE_PRESET_OPTIONS}
-          value={rangePreset}
-          onValueChange={(value) => onRangePresetChange(value as DashboardRangePreset)}
-        />
-        <DatetimePicker
-          id="dashboard-from"
-          label="From"
-          value={draftFrom}
-          onChange={(value) => {
-            if (rangePreset !== 'custom') {
-              toast.message('Switch range preset to Custom to edit dates');
-              return;
-            }
-            onDraftFromChange(value);
-          }}
-        />
-        <DatetimePicker
-          id="dashboard-to"
-          label="To"
-          value={draftTo}
-          onChange={(value) => {
-            if (rangePreset !== 'custom') {
-              toast.message('Switch range preset to Custom to edit dates');
-              return;
-            }
-            onDraftToChange(value);
-          }}
-        />
-        <Button
-          loading={fetching}
-          type="button"
-          onClick={() => {
-            if (!draftCustomerId.trim()) {
-              toast.message('Select a customer');
-              return;
-            }
-            onApply();
-          }}
-        >
-          Load
-        </Button>
-      </div>
+    <div className="grid gap-2">
+      <FilterPanel aria-label="Dashboard filters" className="bg-transparent p-0" role="search">
+        <DirectoryFilterForm layout="campaigns">
+          <FilterField
+            className={dashboardFilterFieldClass}
+            label="Role"
+            labelClassName={dashboardFilterLabelClass}
+          >
+            <CampaignsListFilterSelect
+              aria-label="Role"
+              options={roleOptions}
+              value={draftRole}
+              onValueChange={(value) => onDraftRoleChange(value as DashboardRole)}
+            />
+          </FilterField>
+
+          <FilterField
+            className={dashboardFilterFieldClass}
+            label="Customer"
+            labelClassName={dashboardFilterLabelClass}
+          >
+            <CampaignsListFilterSelect
+              aria-label="Customer"
+              options={customerSelectOptions}
+              value={draftCustomerId || ALL_OPTION_VALUE}
+              onValueChange={(value) =>
+                onDraftCustomerIdChange(value === ALL_OPTION_VALUE ? '' : value)
+              }
+            />
+          </FilterField>
+
+          <FilterField
+            className={dashboardFilterFieldClass}
+            label="Range"
+            labelClassName={dashboardFilterLabelClass}
+          >
+            <CampaignsListFilterSelect
+              aria-label="Range preset"
+              options={RANGE_PRESET_OPTIONS}
+              value={rangePreset}
+              onValueChange={(value) => onRangePresetChange(value as DashboardRangePreset)}
+            />
+          </FilterField>
+
+          <FilterField
+            className={dashboardFilterFieldClass}
+            htmlFor="dashboard-from"
+            label="From"
+            labelClassName={dashboardFilterLabelClass}
+          >
+            <DatetimePicker
+              className="[&>label]:sr-only"
+              disabled={!customRange}
+              id="dashboard-from"
+              label="From"
+              value={draftFrom}
+              onChange={(value) => {
+                if (!customRange) {
+                  toast.message('Switch range preset to Custom to edit dates');
+                  return;
+                }
+                onDraftFromChange(value);
+              }}
+            />
+          </FilterField>
+
+          <FilterField
+            className={dashboardFilterFieldClass}
+            htmlFor="dashboard-to"
+            label="To"
+            labelClassName={dashboardFilterLabelClass}
+          >
+            <DatetimePicker
+              className="[&>label]:sr-only"
+              disabled={!customRange}
+              id="dashboard-to"
+              label="To"
+              value={draftTo}
+              onChange={(value) => {
+                if (!customRange) {
+                  toast.message('Switch range preset to Custom to edit dates');
+                  return;
+                }
+                onDraftToChange(value);
+              }}
+            />
+          </FilterField>
+        </DirectoryFilterForm>
+      </FilterPanel>
+
       {role !== 'buyer' ? (
-        <p className="text-muted-foreground">
-          <Link className="text-blue-600 hover:underline dark:text-blue-400" to="/rtb">
+        <p className="text-sm text-muted-foreground">
+          <Link className="text-primary hover:underline" to="/rtb">
             RTB overview
           </Link>
         </p>
@@ -205,6 +240,7 @@ export function RoleDashboardView({
   fetching,
   error,
   hasSnapshot,
+  customerRequired,
   licenseGated,
   onDraftRoleChange,
   onDraftCustomerIdChange,
@@ -213,8 +249,7 @@ export function RoleDashboardView({
   onDraftFromChange,
   onDraftToChange,
   onRangePresetChange,
-  onApply,
-  showApply,
+  onRefresh,
   clickLogHref,
 }: RoleDashboardViewProps) {
   const { preferences, applyPreferences } = useBuyerDashboardPreferences();
@@ -225,7 +260,7 @@ export function RoleDashboardView({
 
   if (licenseGated) {
     return (
-      <PageLayout title="Dashboards">
+      <PageLayout title="Dashboards" workspaceClassName={dashboardPageWorkspaceClass}>
         <StubBanner
           message="This dashboard is not available on the current license tier."
           title="License required"
@@ -243,7 +278,7 @@ export function RoleDashboardView({
     );
   }
 
-  const buyerPortfolio = role === 'buyer' ? parseBuyerPortfolio(payload) : undefined;
+  const buyerPortfolio = role === 'buyer' && !customerRequired ? parseBuyerPortfolio(payload) : undefined;
   const pageTitle = role === 'buyer' ? 'Dashboard' : `${formatDashboardRoleLabel(role)} dashboard`;
 
   return (
@@ -252,61 +287,65 @@ export function RoleDashboardView({
       controlPanel={
         role === 'buyer' ? (
           <BuyerDashboardToolbar
-              campaignOptions={campaignOptions}
-              customerOptions={customerOptions}
-              draftCampaignId={draftCampaignId}
-              draftCustomerId={draftCustomerId}
-              draftFrom={draftFrom}
-              draftTo={draftTo}
-              fetching={fetching}
-              preferences={preferences}
-              showApply={showApply}
-              onApply={onApply}
-              onDraftCampaignIdChange={onDraftCampaignIdChange}
-              onDraftCustomerIdChange={onDraftCustomerIdChange}
-              onDraftRangeChange={onDraftRangeChange}
-              onPreferencesApply={applyPreferences}
-            />
+            campaignOptions={campaignOptions}
+            customerOptions={customerOptions}
+            draftCampaignId={draftCampaignId}
+            draftCustomerId={draftCustomerId}
+            draftFrom={draftFrom}
+            draftTo={draftTo}
+            preferences={preferences}
+            onDraftCampaignIdChange={onDraftCampaignIdChange}
+            onDraftCustomerIdChange={onDraftCustomerIdChange}
+            onDraftRangeChange={onDraftRangeChange}
+            onPreferencesApply={applyPreferences}
+          />
         ) : (
           <RoleDashboardFilters
-              customerOptions={customerOptions}
-              draftCustomerId={draftCustomerId}
-              draftFrom={draftFrom}
-              draftRole={draftRole}
-              draftTo={draftTo}
-              fetching={fetching}
-              rangePreset={rangePreset}
-              role={role}
-              onApply={onApply}
-              onDraftCustomerIdChange={onDraftCustomerIdChange}
-              onDraftFromChange={onDraftFromChange}
-              onDraftRoleChange={onDraftRoleChange}
-              onDraftToChange={onDraftToChange}
-              onRangePresetChange={onRangePresetChange}
-            />
+            customerOptions={customerOptions}
+            draftCustomerId={draftCustomerId}
+            draftFrom={draftFrom}
+            draftRole={draftRole}
+            draftTo={draftTo}
+            rangePreset={rangePreset}
+            role={role}
+            onDraftCustomerIdChange={onDraftCustomerIdChange}
+            onDraftFromChange={onDraftFromChange}
+            onDraftRoleChange={onDraftRoleChange}
+            onDraftToChange={onDraftToChange}
+            onRangePresetChange={onRangePresetChange}
+          />
         )
       }
       headerActions={
         <Button
           aria-label="Refresh dashboard"
+          className="size-7 p-0"
           loading={fetching}
-          size="icon"
           type="button"
           variant="secondary"
           onClick={() => {
-            if (!draftCustomerId.trim()) {
+            if (customerRequired) {
               toast.message('Select a customer');
               return;
             }
-            onApply();
+            onRefresh();
           }}
         >
           <RefreshCw aria-hidden className="h-4 w-4" />
         </Button>
       }
       title={pageTitle}
+      workspaceClassName={dashboardPageWorkspaceClass}
     >
-      <div className="flex flex-col gap-3">
+      <div className="grid min-w-0 gap-3">
+        {customerRequired ? (
+          <EmptyState
+            description="Choose a customer group to load KPIs, charts, and breakdown tables."
+            title="Select a customer"
+            variant="blank-slate"
+          />
+        ) : null}
+
         {buyerPortfolio ? (
           <BuyerDashboardView
             clickLogHref={clickLogHref}

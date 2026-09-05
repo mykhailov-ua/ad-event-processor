@@ -1,7 +1,7 @@
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
-import { JsonDashboardView } from '@/domains/dashboards/json_dashboard_view';
+import { JsonPayloadView } from '@/shell/json_payload_view';
 import { opsPanelError } from '@/domains/ops/ops_nav';
 import { OpsActionGroup, OpsPageLoading, OpsPageShell } from '@/domains/ops/ops_page_shell';
 
@@ -89,10 +89,10 @@ export function OpsDomains({
         ? opsPanelError(tlsListError, 'Could not load TLS allowed list')
         : null}
 
-      {rotation ? <JsonDashboardView payload={rotation} /> : null}
-      {tlsAllowed ? <JsonDashboardView payload={tlsAllowed} /> : null}
+      {rotation ? <JsonPayloadView payload={rotation} /> : null}
+      {tlsAllowed ? <JsonPayloadView payload={tlsAllowed} /> : null}
       {tlsHostError ? opsPanelError(tlsHostError, 'TLS allow check failed') : null}
-      {tlsHost ? <JsonDashboardView payload={tlsHost} /> : null}
+      {tlsHost ? <JsonPayloadView payload={tlsHost} /> : null}
     </OpsPageShell>
   );
 }

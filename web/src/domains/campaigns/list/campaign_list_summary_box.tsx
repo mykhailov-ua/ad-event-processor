@@ -60,7 +60,7 @@ export function CampaignListSummaryBox({
       {summary.staleCount > 0 ? (
         <>
           <SummaryDivider />
-          <span className="shrink-0 text-[11px] italic text-muted-foreground">
+          <span className="shrink-0 text-[11px] text-muted-foreground">
             {summary.scope === 'filter' ? 'Filtered totals may be stale' : `Stale stats: ${summary.staleCount}`}
           </span>
         </>

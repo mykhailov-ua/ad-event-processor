@@ -1,21 +1,23 @@
 import { useMemo } from 'react';
 
-import { FilterApplyButton, PrimaryActionButton } from '@/shell/action_buttons';
+import { PrimaryActionButton } from '@/shell/action_buttons';
 import { ErrorBlock } from '@/shell/error_block';
-import { FilterField, FilterPanel } from '@/shell/filter_panel';
+import { FilterField } from '@/shell/filter_panel';
 import { PageChrome } from '@/shell/page_chrome';
 import { PageSkeleton } from '@/shell/page_skeleton';
-import { PanelSection } from '@/shell/stat_panel';
 import { Badge } from '@/components/ui/badge';
 import { Input } from '@/components/ui/input';
 import { Textarea } from '@/components/ui/textarea';
 import { COLD_PATH_MAX_BODY_CHARS } from '@/lib/body_limits';
 import { settingsFieldLabel } from '@/lib/settings_labels';
 import { SettingsBentoGrid } from '@/domains/settings/settings_bento_grid';
+import { SettingsCard } from '@/domains/settings/settings_card';
 import {
   formatJsonPayloadSize,
   SettingsCollapsibleSection,
 } from '@/domains/settings/settings_collapsible_section';
+import { SettingsFormActions, SettingsFormStack } from '@/domains/settings/settings_form_stack';
+import { settingsHintClass, settingsPageWorkspaceClass } from '@/domains/settings/settings_classes';
 import { SettingsNav } from '@/domains/settings/settings_nav';
 import { parsePlatformSettingsSnapshot } from '@/domains/settings/settings_snapshot';
 
@@ -84,9 +86,10 @@ export function PlatformSettings({
     () => (payload ? parsePlatformSettingsSnapshot(payload) : undefined),
     [payload],
   );
+  const patchDraftReady = draftPatchJson.trim().length > 0;
 
   if (fetching && !hasSnapshot && !error) {
-    return <PageSkeleton />;
+    return <PageSkeleton variant="directory" columns={4} />;
   }
 
   if (error && !hasSnapshot) {
@@ -96,8 +99,7 @@ export function PlatformSettings({
   return (
     <PageChrome
       title="Platform settings"
-      description="Active platform configuration, secrets metadata, and persistence actions."
-      workspaceClassName="min-h-0 flex-1 border-0 bg-transparent p-0"
+      workspaceClassName={settingsPageWorkspaceClass}
       badge={
         restartRequired ? (
           <Badge variant="secondary">Restart required</Badge>
@@ -105,185 +107,200 @@ export function PlatformSettings({
           <Badge variant="outline">Live</Badge>
         ) : undefined
       }
+      controlPanel={
+        <div className="flex flex-col gap-3">
+          <SettingsNav />
+          <p className={settingsHintClass}>
+            Active platform configuration, secrets metadata, and persistence actions.
+          </p>
+        </div>
+      }
     >
-      <SettingsNav />
-
-      {showBootstrap ? (
-        <PanelSection title="Initial setup">
-          <FilterPanel className="m-5 rounded-md border-0 bg-muted/50">
-            <p className="text-sm text-muted-foreground sm:col-span-2">
-              Create the platform configuration on first run using the setup token from your
-              deployment bundle.
-            </p>
-            <FilterField htmlFor="settings-install-token" label="Setup token">
-              <Input
-                id="settings-install-token"
-                type="password"
-                autoComplete="off"
-                value={draftInstallToken}
-                onChange={(event) => onDraftInstallTokenChange(event.target.value)}
-              />
-            </FilterField>
-            <FilterField
-              className="sm:col-span-2"
-              htmlFor="settings-bootstrap-json"
-              label="Setup configuration"
+      <div className="flex min-h-0 flex-1 flex-col gap-3">
+        {showBootstrap ? (
+          <SettingsCard title="Initial setup">
+            <SettingsFormStack
+              onSubmit={(event) => {
+                event.preventDefault();
+                void onRunBootstrap();
+              }}
             >
+              <p className={settingsHintClass}>
+                Create the platform configuration on first run using the setup token from your
+                deployment bundle.
+              </p>
+              <FilterField htmlFor="settings-install-token" label="Setup token">
+                <Input
+                  id="settings-install-token"
+                  type="password"
+                  autoComplete="off"
+                  value={draftInstallToken}
+                  onChange={(event) => onDraftInstallTokenChange(event.target.value)}
+                />
+              </FilterField>
+              <FilterField htmlFor="settings-bootstrap-json" label="Setup configuration">
+                <Textarea
+                  id="settings-bootstrap-json"
+                  className="min-h-[10rem] font-mono text-xs"
+                  value={draftBootstrapJson}
+                  maxLength={COLD_PATH_MAX_BODY_CHARS}
+                  onChange={(event) => onDraftBootstrapJsonChange(event.target.value)}
+                  placeholder={'{\n  "admin_email": "ops@example.com",\n  "admin_password": "change-me",\n  "config": {\n    "tracking_domain": "track.example.com"\n  }\n}'}
+                />
+              </FilterField>
+              <SettingsFormActions>
+                <PrimaryActionButton
+                  disabled={bootstrapping || !draftInstallToken.trim() || !draftBootstrapJson.trim()}
+                  loading={bootstrapping}
+                  type="submit"
+                >
+                  {bootstrapping ? 'Setting up...' : 'Complete setup'}
+                </PrimaryActionButton>
+                {bootstrapSuccess ? (
+                  <p className={settingsHintClass} role="status">
+                    Initial setup completed.
+                  </p>
+                ) : null}
+              </SettingsFormActions>
+              {bootstrapError ? (
+                <ErrorBlock title="Setup failed" message={bootstrapError.message} />
+              ) : null}
+            </SettingsFormStack>
+          </SettingsCard>
+        ) : null}
+
+        {snapshot ? (
+          <>
+            {snapshot.restartPending.length > 0 ? (
+              <SettingsCard
+                meta={<Badge variant="secondary">{snapshot.restartPending.length} pending</Badge>}
+                title="Pending restart"
+              >
+                <ul className="list-disc space-y-1 pl-5 text-[13px] leading-[18px] text-muted-foreground">
+                  {snapshot.restartPending.map((field) => (
+                    <li key={field}>{settingsFieldLabel(field)}</li>
+                  ))}
+                </ul>
+              </SettingsCard>
+            ) : null}
+
+            <SettingsCard
+              meta={
+                snapshot.bootstrapComplete ? (
+                  <Badge variant="outline">Ready</Badge>
+                ) : (
+                  <Badge variant="secondary">Pending</Badge>
+                )
+              }
+              title="Platform configuration"
+            >
+              <SettingsBentoGrid
+                onPatchPlatform={onPatchPlatform}
+                patching={patching}
+                snapshot={snapshot}
+              />
+            </SettingsCard>
+
+            <SettingsCollapsibleSection
+              badge={`JSON / ${formatJsonPayloadSize(payload)}`}
+              title="Raw configuration payload"
+            >
+              <pre className="ui-code-block max-h-96 overflow-auto text-xs">
+                {JSON.stringify(payload, null, 2)}
+              </pre>
+            </SettingsCollapsibleSection>
+          </>
+        ) : null}
+
+        <SettingsCollapsibleSection badge="Patch JSON" defaultOpen title="Update configuration">
+          <SettingsFormStack
+            onSubmit={(event) => {
+              event.preventDefault();
+              if (patchDraftReady && !patching) {
+                void onApplyPatch();
+              }
+            }}
+          >
+            <p className={settingsHintClass}>
+              Apply partial updates to the active platform configuration. Changes take effect in
+              memory; use save to disk when you need a persistent install bundle.
+            </p>
+            <FilterField htmlFor="settings-patch-json" label="Configuration changes">
               <Textarea
-                id="settings-bootstrap-json"
-                className="min-h-[10rem] font-mono text-xs"
-                value={draftBootstrapJson}
+                id="settings-patch-json"
+                className="min-h-[8rem] font-mono text-xs"
+                value={draftPatchJson}
                 maxLength={COLD_PATH_MAX_BODY_CHARS}
-                onChange={(event) => onDraftBootstrapJsonChange(event.target.value)}
-                placeholder={'{\n  "admin_email": "ops@example.com",\n  "admin_password": "change-me",\n  "config": {\n    "tracking_domain": "track.example.com"\n  }\n}'}
+                onChange={(event) => onDraftPatchJsonChange(event.target.value)}
+                placeholder="{}"
               />
             </FilterField>
-            <div className="flex flex-wrap items-center gap-3 sm:col-span-2">
+            {!patchDraftReady ? (
+              <p className={settingsHintClass}>
+                Example:{' '}
+                <code className="font-mono text-foreground">{`{"tracking_domain":"track.example.com"}`}</code>
+              </p>
+            ) : null}
+            <SettingsFormActions>
               <PrimaryActionButton
-                disabled={bootstrapping || !draftInstallToken.trim() || !draftBootstrapJson.trim()}
-                loading={bootstrapping}
-                onClick={onRunBootstrap}
-                type="button"
+                disabled={patching || !patchDraftReady}
+                loading={patching}
+                type="submit"
               >
-                {bootstrapping ? 'Setting up...' : 'Complete setup'}
+                {patching ? 'Applying...' : 'Apply changes'}
               </PrimaryActionButton>
-              {bootstrapSuccess ? (
-                <p className="text-sm text-muted-foreground" role="status">
-                  Initial setup completed.
+              {patchSuccess ? (
+                <p className={settingsHintClass} role="status">
+                  Configuration updated.
                 </p>
               ) : null}
-            </div>
-            {bootstrapError ? (
-              <div className="sm:col-span-2">
-                <ErrorBlock title="Setup failed" message={bootstrapError.message} />
-              </div>
-            ) : null}
-          </FilterPanel>
-        </PanelSection>
-      ) : null}
-
-      {snapshot ? (
-        <>
-          {snapshot.restartPending.length > 0 ? (
-            <PanelSection
-              meta={<Badge variant="secondary">{snapshot.restartPending.length} pending</Badge>}
-              title="Pending restart"
-            >
-              <ul className="list-disc space-y-1 px-5 pb-5 pl-10 text-sm text-muted-foreground">
-                {snapshot.restartPending.map((field) => (
-                  <li key={field}>{settingsFieldLabel(field)}</li>
-                ))}
-              </ul>
-            </PanelSection>
-          ) : null}
-
-          <PanelSection
-            meta={
-              snapshot.bootstrapComplete ? (
-                <Badge variant="outline">Ready</Badge>
-              ) : (
-                <Badge variant="secondary">Pending</Badge>
-              )
-            }
-            title="Platform configuration"
-          >
-            <SettingsBentoGrid
-              onPatchPlatform={onPatchPlatform}
-              patching={patching}
-              snapshot={snapshot}
-            />
-          </PanelSection>
-
-          <SettingsCollapsibleSection
-            badge={`JSON  /  ${formatJsonPayloadSize(payload)}`}
-            title="Raw configuration payload"
-          >
-            <pre className="ui-code-block max-h-96 overflow-auto text-xs">
-              {JSON.stringify(payload, null, 2)}
-            </pre>
-          </SettingsCollapsibleSection>
-        </>
-      ) : null}
-
-      <SettingsCollapsibleSection badge="Patch JSON" defaultOpen title="Update configuration">
-        <FilterPanel className="rounded-none border-0 bg-transparent p-0">
-          <p className="text-sm text-muted-foreground sm:col-span-2">
-            Apply partial updates to the active platform configuration. Changes take effect in
-            memory; use save to disk when you need a persistent install bundle.
-          </p>
-          <FilterField
-            className="sm:col-span-2"
-            htmlFor="settings-patch-json"
-            label="Configuration changes"
-          >
-            <Textarea
-              id="settings-patch-json"
-              className="min-h-[8rem] font-mono text-xs"
-              value={draftPatchJson}
-              maxLength={COLD_PATH_MAX_BODY_CHARS}
-              onChange={(event) => onDraftPatchJsonChange(event.target.value)}
-              placeholder='{"tracking_domain":"track.example.com"}'
-            />
-          </FilterField>
-          <div className="flex flex-wrap items-center gap-3 sm:col-span-2">
-            <FilterApplyButton
-              disabled={patching || !draftPatchJson.trim()}
-              onClick={onApplyPatch}
-              type="button"
-            >
-              {patching ? 'Applying...' : 'Apply changes'}
-            </FilterApplyButton>
-            {patchSuccess ? (
-              <p className="text-sm text-muted-foreground" role="status">
-                Configuration updated.
-              </p>
-            ) : null}
-          </div>
-          {patchError ? (
-            <div className="sm:col-span-2">
+            </SettingsFormActions>
+            {patchError ? (
               <ErrorBlock title="Could not apply changes" message={patchError.message} />
-            </div>
-          ) : null}
-        </FilterPanel>
-      </SettingsCollapsibleSection>
-
-      <SettingsCollapsibleSection badge="Disk" title="Save configuration to disk">
-        <FilterPanel className="rounded-none border-0 bg-transparent p-0">
-          <p className="text-sm text-muted-foreground sm:col-span-2">
-            Persist the active configuration to disk. Leave the directory empty to use the server
-            default install root.
-          </p>
-          <FilterField
-            htmlFor="settings-install-root"
-            label="Installation directory (optional)"
-          >
-            <Input
-              id="settings-install-root"
-              className="font-mono"
-              value={draftInstallRoot}
-              onChange={(event) => onDraftInstallRootChange(event.target.value)}
-              placeholder="/opt/ad-event-processor"
-            />
-          </FilterField>
-          <div className="flex flex-wrap items-center gap-3 sm:col-span-2">
-            <PrimaryActionButton disabled={applying} loading={applying} onClick={onApplyToDisk} type="button">
-              {applying ? 'Saving...' : 'Save to disk'}
-            </PrimaryActionButton>
-            {applySuccess && applyWrittenPath ? (
-              <p className="text-sm text-muted-foreground" role="status">
-                Saved to <span className="font-mono">{applyWrittenPath}</span>.
-              </p>
             ) : null}
-          </div>
-          {applyError ? (
-            <div className="sm:col-span-2">
-              <ErrorBlock title="Could not save to disk" message={applyError.message} />
-            </div>
-          ) : null}
-        </FilterPanel>
-      </SettingsCollapsibleSection>
+          </SettingsFormStack>
+        </SettingsCollapsibleSection>
 
-      {error && hasSnapshot ? <ErrorBlock title="Refresh failed" message={error.message} /> : null}
+        <SettingsCollapsibleSection badge="Disk" title="Save configuration to disk">
+          <SettingsFormStack
+            onSubmit={(event) => {
+              event.preventDefault();
+              if (!applying) {
+                void onApplyToDisk();
+              }
+            }}
+          >
+            <p className={settingsHintClass}>
+              Persist the active configuration to disk. Leave the directory empty to use the server
+              default install root.
+            </p>
+            <FilterField htmlFor="settings-install-root" label="Installation directory (optional)">
+              <Input
+                id="settings-install-root"
+                className="font-mono"
+                value={draftInstallRoot}
+                onChange={(event) => onDraftInstallRootChange(event.target.value)}
+                placeholder="/opt/ad-event-processor"
+              />
+            </FilterField>
+            <SettingsFormActions>
+              <PrimaryActionButton disabled={applying} loading={applying} type="submit">
+                {applying ? 'Saving...' : 'Save to disk'}
+              </PrimaryActionButton>
+              {applySuccess && applyWrittenPath ? (
+                <p className={settingsHintClass} role="status">
+                  Saved to <span className="font-mono">{applyWrittenPath}</span>.
+                </p>
+              ) : null}
+            </SettingsFormActions>
+            {applyError ? (
+              <ErrorBlock title="Could not save to disk" message={applyError.message} />
+            ) : null}
+          </SettingsFormStack>
+        </SettingsCollapsibleSection>
+
+        {error && hasSnapshot ? <ErrorBlock title="Refresh failed" message={error.message} /> : null}
+      </div>
     </PageChrome>
   );
 }

@@ -1,6 +1,8 @@
 import type { Campaign } from '@/api/types';
 import { campaignBudgetUsedPercent } from '@/lib/campaign_budget_used.ts';
 
+import { campaignDisplayId } from '@/domains/campaigns/list/campaign_display_id.ts';
+
 import {
   buildDevMockCampaignMetrics,
   compareDevMockCampaignMetricSort,
@@ -68,6 +70,8 @@ function compareCampaignRows(
   metricsById: Map<string, ReturnType<typeof buildDevMockCampaignMetrics>>,
 ): number {
   switch (sort) {
+    case 'id':
+      return Number.parseInt(campaignDisplayId(left), 10) - Number.parseInt(campaignDisplayId(right), 10);
     case 'name':
       return left.name.localeCompare(right.name);
     case 'updated_at':

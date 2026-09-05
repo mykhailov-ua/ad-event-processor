@@ -1,3 +1,4 @@
+import { useCallback } from 'react';
 import { toast } from 'sonner';
 
 import type { CampaignWithMoneyDisplay } from '@/domains/campaigns/list/campaign_metrics_shared';
@@ -12,6 +13,14 @@ import { ErrorBlock } from '@/shell/error_block';
 import { PageSkeleton } from '@/shell/page_skeleton';
 import { PageLayout } from '@/shell/page_layout';
 import { DirectoryPaginationFooter } from '@/shell/directory_pagination_footer';
+import { StubBanner } from '@/shell/stub_banner';
+import { CAMPAIGN_LIST_FACETS_DEGRADED_MESSAGE } from '@/domains/campaigns/list/campaign_list_facets_source';
+import {
+  openCampaignCreateDialog,
+  openCampaignWizardSheet,
+  setCampaignCreateDialogOpen,
+  setCampaignWizardSheetOpen,
+} from '@/domains/campaigns/list/campaign_list_create_overlay';
 import { Button } from '@/components/ui/button';
 import { listPageRange } from '@/lib/list_page_stats';
 
@@ -31,6 +40,7 @@ export function CampaignsDirectory({
   statusTotals,
   statusTotalsLoading,
   customerOptions,
+  customersLoading,
   customerNameById,
   metricsById,
   marginsById,
@@ -50,6 +60,7 @@ export function CampaignsDirectory({
   ownerEmailById,
   countryOptions,
   listFacetsFetching = false,
+  listFacetsDegraded = false,
   filterTotals,
   filterTotalsCapped = false,
   filteredTotal = 0,
@@ -62,6 +73,7 @@ export function CampaignsDirectory({
   hasSnapshot,
   filtersActive,
   customerId,
+  createCustomerId,
   createSectionOpen,
   onCreateSectionOpenChange,
   templates,
@@ -86,6 +98,7 @@ export function CampaignsDirectory({
   onPageChange,
   onPageSizeChange,
   onDraftTemplateIdChange,
+  onDraftCreateCustomerIdChange,
   onDraftCreateNameChange,
   onDraftBudgetLimitMicroChange,
   onLoadTemplates,
@@ -107,12 +120,35 @@ export function CampaignsDirectory({
 
   const canGoPrev = offset > 0;
   const canGoNext = offset + limit < total;
+  const effectiveCreateCustomerId = createCustomerId.trim() || customerId || '';
   const createDisabled =
-    creating || !customerId || !draftTemplateId || templatesLoading;
+    creating || !effectiveCreateCustomerId || !draftTemplateId || templatesLoading;
   const { rangeStart, rangeEnd } = listPageRange(total, limit, offset, (items ?? []).length);
   const rangeLabel = total === 0 ? '0 of 0' : `Showing ${rangeStart}-${rangeEnd} of ${total}`;
   const page = Math.floor(offset / limit) + 1;
   const pageCount = total === 0 ? 1 : Math.ceil(total / limit);
+
+  const handleCreateClick = useCallback(() => {
+    openCampaignCreateDialog(onCreateSectionOpenChange, workspace.setWizardOpen);
+  }, [onCreateSectionOpenChange, workspace.setWizardOpen]);
+
+  const handleWizardClick = useCallback(() => {
+    openCampaignWizardSheet(onCreateSectionOpenChange, workspace.setWizardOpen);
+  }, [onCreateSectionOpenChange, workspace.setWizardOpen]);
+
+  const handleCreateSectionOpenChange = useCallback(
+    (open: boolean) => {
+      setCampaignCreateDialogOpen(open, onCreateSectionOpenChange, workspace.setWizardOpen);
+    },
+    [onCreateSectionOpenChange, workspace.setWizardOpen],
+  );
+
+  const handleWizardOpenChange = useCallback(
+    (open: boolean) => {
+      setCampaignWizardSheetOpen(open, onCreateSectionOpenChange, workspace.setWizardOpen);
+    },
+    [onCreateSectionOpenChange, workspace.setWizardOpen],
+  );
 
   if (fetching && !hasSnapshot && !error) {
     return <PageSkeleton variant="directory" columns={8} />;
@@ -129,6 +165,12 @@ export function CampaignsDirectory({
         footerClassName="border-0 bg-transparent p-0 dark:bg-transparent"
         controlPanel={
           <div className="flex flex-col gap-3">
+            {listFacetsDegraded ? (
+              <StubBanner
+                title="Owner and country filters limited"
+                message={CAMPAIGN_LIST_FACETS_DEGRADED_MESSAGE}
+              />
+            ) : null}
             <CampaignsListToolbar
             bulkBusy={workspace.bulkBusy || workspace.exportBusy}
             countryOptions={countryOptions}
@@ -146,6 +188,7 @@ export function CampaignsDirectory({
             filterTotalsCapped={filterTotalsCapped}
             filteredTotal={filteredTotal}
             listFacetsFetching={listFacetsFetching}
+            listFacetsDegraded={listFacetsDegraded}
             metricsStale={metricsStale}
             ownerOptions={ownerOptions}
             statusTotals={statusTotals}
@@ -167,7 +210,7 @@ export function CampaignsDirectory({
               }
               workspace.setCloneOpen(true);
             }}
-            onCreateClick={() => onCreateSectionOpenChange(true)}
+            onCreateClick={handleCreateClick}
             onStatsRangeChange={onStatsRangeChange}
             onDraftBudgetMaxUsdChange={onDraftBudgetMaxUsdChange}
             onDraftBudgetMinUsdChange={onDraftBudgetMinUsdChange}
@@ -193,7 +236,7 @@ export function CampaignsDirectory({
               }
               workspace.onResumeSelected();
             }}
-            onWizardClick={() => workspace.setWizardOpen(true)}
+            onWizardClick={handleWizardClick}
             canGoNext={canGoNext}
             canGoPrev={canGoPrev}
             paginationDisabled={fetching}
@@ -291,10 +334,12 @@ export function CampaignsDirectory({
         cloneOpen={workspace.cloneOpen}
         createDisabled={createDisabled}
         createSectionOpen={createSectionOpen}
+        createCustomerId={createCustomerId}
         creating={creating}
         customerId={customerId}
         customerNameById={customerNameById}
         customerOptions={customerOptions}
+        customersLoading={customersLoading}
         draftBudgetLimitMicro={draftBudgetLimitMicro}
         draftCreateName={draftCreateName}
         draftTemplateId={draftTemplateId}
@@ -307,8 +352,9 @@ export function CampaignsDirectory({
           onRefreshList();
         }}
         onCreateCampaign={onCreateCampaign}
-        onCreateSectionOpenChange={onCreateSectionOpenChange}
+        onCreateSectionOpenChange={handleCreateSectionOpenChange}
         onDraftBudgetLimitMicroChange={onDraftBudgetLimitMicroChange}
+        onDraftCreateCustomerIdChange={onDraftCreateCustomerIdChange}
         onDraftCreateNameChange={onDraftCreateNameChange}
         onDraftTemplateIdChange={onDraftTemplateIdChange}
         onImportOpenChange={workspace.setImportOpen}
@@ -320,7 +366,7 @@ export function CampaignsDirectory({
         }}
         onResetWorkspaceConfirm={workspace.handleResetWorkspaceConfirm}
         onResetWorkspaceOpenChange={workspace.setResetWorkspaceOpen}
-        onWizardOpenChange={workspace.setWizardOpen}
+        onWizardOpenChange={handleWizardOpenChange}
         onWizardRefresh={onRefreshList}
         overviewCampaign={workspace.overviewCampaign}
         marginsById={marginsById}

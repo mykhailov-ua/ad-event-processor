@@ -18,6 +18,17 @@ func TestSeedCatalog_customerNamesUniquePer100(t *testing.T) {
 	}
 }
 
+func TestSeedCatalog_campaignNamesUniquePer100(t *testing.T) {
+	seen := make(map[string]struct{}, 100)
+	for i := 1; i <= 100; i++ {
+		name := seedCampaignName(i)
+		if _, ok := seen[name]; ok {
+			t.Fatalf("duplicate campaign display name at seq %d: %q", i, name)
+		}
+		seen[name] = struct{}{}
+	}
+}
+
 func TestSeedCatalog_campaignNamesUniquePer1000(t *testing.T) {
 	seen := make(map[string]struct{}, 1000)
 	for i := 1; i <= 1000; i++ {
@@ -67,6 +78,26 @@ func TestSeedCatalog_customerBalanceMicroNotRoundThousands(t *testing.T) {
 		balance := seedCustomerBalanceMicro(i)
 		if balance%1_000_000 == 0 {
 			t.Fatalf("customer balance ends on .00 at seq %d: %d micros", i, balance)
+		}
+	}
+}
+
+func TestSeedCatalog_displayNamesOmitGeoDeskAndWaveTokens(t *testing.T) {
+	banned := []string{"Alpha desk", "Bravo desk", " · wave ", " · group ", " / GB /", " · GB ·", " · CA ·", " · US ·", " · "}
+	for i := 1; i <= 1000; i++ {
+		campaign := seedCampaignName(i)
+		customer := seedCustomerName(i)
+		creative := seedCreativeDisplayName(i)
+		for _, token := range banned {
+			if strings.Contains(campaign, token) {
+				t.Fatalf("campaign seq %d contains banned token %q: %q", i, token, campaign)
+			}
+			if strings.Contains(customer, token) {
+				t.Fatalf("customer seq %d contains banned token %q: %q", i, token, customer)
+			}
+			if strings.Contains(creative, token) {
+				t.Fatalf("creative seq %d contains banned token %q: %q", i, token, creative)
+			}
 		}
 	}
 }

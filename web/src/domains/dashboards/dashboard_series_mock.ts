@@ -18,13 +18,13 @@ export const DASHBOARD_MOCK_DEFAULT_TO = new Date(2026, 8, 1);
 const WEEKDAY_FACTORS = [0.72, 1.04, 1.08, 1.05, 1.0, 0.88, 0.69];
 
 const CAMPAIGN_FIXTURES = [
-  { id: 'cmp-us-fb-browser', name: 'US | Facebook | Browser', share: 0.31, roiSkew: 0.08 },
-  { id: 'cmp-de-push-finance', name: 'DE | Push | Finance', share: 0.19, roiSkew: 0.04 },
-  { id: 'cmp-br-tiktok-app', name: 'BR | TikTok | App install', share: 0.16, roiSkew: -0.06 },
-  { id: 'cmp-pl-native-loan', name: 'PL | Native | Loan', share: 0.12, roiSkew: 0.02 },
-  { id: 'cmp-gb-google-search', name: 'GB | Google | Search', share: 0.11, roiSkew: 0.11 },
-  { id: 'cmp-ca-taboola-vsl', name: 'CA | Taboola | VSL', share: 0.07, roiSkew: -0.12 },
-  { id: 'cmp-in-pop-travel', name: 'IN | Popunder | Travel', share: 0.04, roiSkew: -0.18 },
+  { id: 'cmp-us-fb-browser', name: 'US Facebook Browser', share: 0.31, roiSkew: 0.08 },
+  { id: 'cmp-de-push-finance', name: 'DE Push Finance', share: 0.19, roiSkew: 0.04 },
+  { id: 'cmp-br-tiktok-app', name: 'BR TikTok App install', share: 0.16, roiSkew: -0.06 },
+  { id: 'cmp-pl-native-loan', name: 'PL Native Loan', share: 0.12, roiSkew: 0.02 },
+  { id: 'cmp-gb-google-search', name: 'GB Google Search', share: 0.11, roiSkew: 0.11 },
+  { id: 'cmp-ca-taboola-vsl', name: 'CA Taboola VSL', share: 0.07, roiSkew: -0.12 },
+  { id: 'cmp-in-pop-travel', name: 'IN Popunder Travel', share: 0.04, roiSkew: -0.18 },
 ];
 
 const LANDER_FIXTURES = [

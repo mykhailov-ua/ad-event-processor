@@ -1,5 +1,6 @@
 import type { DashboardMetricId } from '@/domains/dashboards/dashboard_metrics';
 import { DASHBOARD_CHART_SERIES_STYLES } from '@/domains/dashboards/dashboard_metrics';
+import { Button } from '@/components/ui/button';
 import { cn } from '@/lib/utils';
 
 export type DashboardChartMetricPickerProps = {
@@ -19,13 +20,11 @@ export function DashboardChartMetricPicker({
       {DASHBOARD_CHART_SERIES_STYLES.map((metric) => {
         const active = selected.includes(metric.id);
         return (
-          <button
+          <Button
             key={metric.id}
-            type="button"
             aria-pressed={active}
-            onClick={() => onToggle(metric.id)}
             className={cn(
-              'rounded-sm border px-2.5 py-1 font-sans text-ui-caption font-medium transition-opacity',
+              'h-auto rounded-sm border px-2.5 py-1 text-ui-caption font-medium shadow-none',
               active ? 'opacity-100' : 'opacity-35 hover:opacity-60',
             )}
             style={{
@@ -33,9 +32,12 @@ export function DashboardChartMetricPicker({
               color: metric.stroke,
               backgroundColor: active ? metric.fill : 'transparent',
             }}
+            type="button"
+            variant="outline"
+            onClick={() => onToggle(metric.id)}
           >
             {metric.label}
-          </button>
+          </Button>
         );
       })}
     </div>

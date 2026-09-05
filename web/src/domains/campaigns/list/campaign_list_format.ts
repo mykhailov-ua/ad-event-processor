@@ -1,10 +1,9 @@
+import type { BuyerPortfolio } from '@/domains/dashboards/buyer_dashboard_types';
 import {
   formatDashboardCrPct,
   formatDashboardRoiPct,
-} from '@/domains/dashboards/dashboard_format';
+} from '@/lib/display_metrics';
 import { displayCount } from '@/lib/display';
-
-import type { CampaignListMetrics } from '@/api/campaigns_api';
 import type { CampaignMargin } from '@/api/types';
 import type { CampaignWithMoneyDisplay } from '@/domains/campaigns/list/campaign_metrics_shared';
 import { resolveCampaignListRowMetrics } from '@/domains/campaigns/list/campaign_list_row_metrics';

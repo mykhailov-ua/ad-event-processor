@@ -3,12 +3,14 @@ import {
   campaignBreakdownLink,
   DashboardBreakdownTableSection,
 } from '@/domains/dashboards/dashboard_breakdown_table';
+import { dashboardTableSectionSplitClass } from '@/domains/dashboards/dashboard_classes';
 import { buildKpiTiles } from '@/domains/dashboards/dashboard_metrics';
 import { DashboardMultiAxisChart } from '@/domains/dashboards/dashboard_multi_axis_chart';
 import { DashboardRecentClicks } from '@/domains/dashboards/dashboard_recent_clicks';
 import type { BuyerDashboardPreferences } from '@/domains/dashboards/dashboard_preferences';
 import { resolveBuyerDashboardPortfolio, resolveDashboardChartSeries, isDashboardChartMockEnabled } from '@/domains/dashboards/dashboard_series_mock';
 import type { BuyerPortfolio } from '@/domains/dashboards/buyer_dashboard_types';
+import { campaignListTableCardClass } from '@/domains/campaigns/list/campaign_list_classes';
 import { StubBanner } from '@/shell/stub_banner';
 import { useMemo } from 'react';
 
@@ -57,7 +59,7 @@ export function BuyerDashboardView({ portfolio, preferences, clickLogHref }: Buy
   }, [preferences.breakdownEntities, resolvedPortfolio.breakdowns]);
 
   return (
-    <div className="grid min-w-0 gap-4">
+    <div className="grid min-w-0 gap-3">
       {isDashboardChartMockEnabled() ? (
         <StubBanner
           message="KPIs, charts, and tables use fixture series from ?chart_mock=1. Set chart_mock=0 or remove the parameter for live API metrics."
@@ -69,23 +71,28 @@ export function BuyerDashboardView({ portfolio, preferences, clickLogHref }: Buy
 
       <DashboardMultiAxisChart series={chartSeries} chartMetricIds={preferences.chartMetrics} />
 
-      <div className="grid min-w-0 gap-4 lg:grid-cols-2">
-        {breakdownSections.map((section) => (
+      <div className={campaignListTableCardClass}>
+        {breakdownSections.map((section, index) => (
           <DashboardBreakdownTableSection
             key={section.id}
             columns={preferences.breakdownColumns}
+            embedded
             nameLink={section.nameLink}
+            scope={section.id}
+            sectionClassName={index > 0 ? dashboardTableSectionSplitClass : undefined}
             table={section.table}
             title={section.title}
           />
         ))}
-      </div>
 
-      <DashboardRecentClicks
-        columns={preferences.recentClickColumns}
-        events={resolvedPortfolio.recent_clicks ?? []}
-        viewAllHref={clickLogHref}
-      />
+        <DashboardRecentClicks
+          columns={preferences.recentClickColumns}
+          embedded
+          events={resolvedPortfolio.recent_clicks ?? []}
+          sectionClassName={breakdownSections.length > 0 ? dashboardTableSectionSplitClass : undefined}
+          viewAllHref={clickLogHref}
+        />
+      </div>
     </div>
   );
 }

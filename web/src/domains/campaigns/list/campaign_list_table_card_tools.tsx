@@ -1,5 +1,6 @@
 import { CampaignListColumnsMenu } from '@/domains/campaigns/list/campaign_list_columns_menu';
 import type { CampaignListColumnPrefs } from '@/domains/campaigns/list/campaign_list_columns';
+import { Button } from '@/components/ui/button';
 
 export type CampaignListTableCardToolsProps = {
   columnPrefs: CampaignListColumnPrefs;
@@ -26,14 +27,15 @@ export function CampaignListTableCardTools({
           Reset view
         </span>
       ) : (
-        <button
-          className="shrink-0 whitespace-nowrap text-[13px] font-medium text-emerald-500 underline underline-offset-2 transition-colors hover:text-emerald-600"
+        <Button
+          className="h-auto whitespace-nowrap border-0 bg-transparent p-0 font-medium text-emerald-500 underline underline-offset-2 shadow-none hover:bg-transparent hover:text-emerald-600"
           title="Reset columns and widths"
           type="button"
+          variant="link"
           onClick={onResetWorkspaceClick}
         >
           Reset view
-        </button>
+        </Button>
       )}
     </div>
   );

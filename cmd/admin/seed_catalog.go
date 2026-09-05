@@ -33,36 +33,115 @@ var seedCustomerNames = []string{
 }
 
 var seedCampaignNames = []string{
-	"US Summer Surge",
-	"EU Retargeting V2",
-	"LATAM Mobile App",
-	"Global Video Reach",
-	"APAC Crypto Swap",
-	"Nordic Ecom Promo",
-	"DACH High Intent",
-	"UK Search Ads Q3",
-	"US Gaming Install",
-	"SA Ecom Flash",
-	"SaaS Leads Global",
-	"Fintech Acquisition",
-	"B2B Enterprise EU",
-	"APAC Direct Sales",
-	"US Display Retarget",
-	"Crypto Exchange VIP",
-	"Mobile Gaming Tier1",
-	"EU Ecom Sales",
-	"US Performance Push",
-	"Global Brand Lift",
-	"DE Finance Leads",
-	"BR Nutra Push",
-	"JP Mobile Subs",
-	"CA Insurance CPL",
-	"AU Solar Quotes",
-	"MX Remittance App",
-	"IN UPI Onboarding",
-	"PL Ecom Remarketing",
-	"IT Travel Meta",
-	"ES Telco Prepaid",
+	"Summer checkout retarget",
+	"Velox trial onboarding",
+	"Horizon brand lift Q3",
+	"Sportsbook install tier-1",
+	"Insurance quote funnel",
+	"Solar panel CPL west",
+	"Fintech card signup",
+	"Ecom cart abandoners",
+	"Mobile game level-10",
+	"B2B SaaS demo requests",
+	"Travel meta search spring",
+	"Telco prepaid acquisition",
+	"Crypto exchange KYC",
+	"Nutra sweepstakes LP",
+	"Remittance app re-engagement",
+	"UPI wallet funding",
+	"Remarketing catalog sales",
+	"Native article placements",
+	"Push notification winback",
+	"Search non-brand conquest",
+	"Display prospecting broad",
+	"Connected TV awareness",
+	"Podcast host read spots",
+	"Influencer whitelisting burst",
+	"Affiliate coupon codes",
+	"Lead gen whitepaper gate",
+	"Webinar registration drive",
+	"App store search boost",
+	"Cross-sell existing buyers",
+	"Loyalty tier upgrade",
+	"Seasonal promo burst",
+	"Black Friday warm-up",
+	"Back-to-school supplies",
+	"Holiday gift guides",
+	"Valentine flash offers",
+	"Mother's day gift lane",
+	"Back to campus wifi",
+	"Payday loan alternate",
+	"Mortgage rate compare",
+	"Auto insurance quotes",
+	"Pet insurance trials",
+	"Streaming trial starts",
+	"Meal kit first box",
+	"Fashion lookalike scale",
+	"Beauty sample boxes",
+	"Home security installs",
+	"Smart thermostat leads",
+	"VPN annual plans",
+	"Password manager trials",
+	"EdTech course enroll",
+	"Language app premium",
+	"Fitness app reactivation",
+	"Meditation subscription",
+	"Dating app installs",
+	"Food delivery credits",
+	"Ride share referrals",
+	"Hotel booking meta",
+	"Flight deal alerts",
+	"Cruise package leads",
+	"Real estate listings",
+	"Rental apartment tours",
+	"Moving services quotes",
+	"Storage unit promos",
+	"Legal consultation intake",
+	"Tax prep early bird",
+	"Payroll software trials",
+	"Invoicing SMB signup",
+	"CRM free tier upgrade",
+	"Hosting migration offer",
+	"Domain renewal nudge",
+	"Email marketing trials",
+	"Analytics SDK adoption",
+	"Dev tools freemium",
+	"Cloud credits campaign",
+	"Cybersecurity audits",
+	"Backup software DR",
+	"Printer ink subscribe",
+	"Office supplies bulk",
+	"Wholesale marketplace",
+	"Dropship supplier intro",
+	"Marketplace seller onboarding",
+	"POS hardware bundle",
+	"Inventory sync SaaS",
+	"Loyalty card wallet",
+	"Gift card marketplace",
+	"Cashback browser ext",
+	"Comparison shopping feed",
+	"Price drop alerts",
+	"Review site sponsorship",
+	"Forum community ads",
+	"Discord server boosts",
+	"Twitch stream overlays",
+	"YouTube pre-roll tests",
+	"Reddit conversation ads",
+	"Pinterest shopping pins",
+	"Snap AR lens trial",
+	"TikTok spark posts",
+	"Meta advantage+ scale",
+	"Google PMax feed-only",
+	"Microsoft audience network",
+	"Taboola content recirc",
+	"Outbrain premium pubs",
+	"Revcontent native lane",
+	"MGID widget rotation",
+	"Propeller push subs",
+	"RichAds popunder route",
+	"ExoClick video bumper",
+	"Adsterra multi-format",
+	"Galaksion smartlink mix",
 }
 
 var seedBrandNames = []string{
@@ -86,12 +165,18 @@ var seedCustomerRegionLabels = []string{
 	"US East", "US West", "EU North", "APAC", "LATAM",
 }
 
-var seedCampaignGeoTags = []string{
-	"US", "GB", "CA", "UA", "DE", "FR", "JP",
+var seedCampaignGoalLabels = []string{
+	"Install push", "Lead gen", "Checkout retarget", "Signup lift", "Trial start", "Lookalike scale",
 }
 
-var seedCampaignDeskTags = []string{
-	"Alpha desk", "Bravo desk", "Cedar desk", "Delta desk", "Echo desk",
+var seedCampaignFlightLabels = []string{
+	"Primary flight", "Secondary flight", "Holdout cell", "Scale pass", "Refresh run",
+	"Lift test", "Winback push", "Prospect pass", "Remarket pass", "Evergreen run",
+	"Seasonal push", "Promo burst", "Catalog test", "Offer test", "Audience pass",
+	"Geo expansion", "Budget scale", "Bid floor test", "Creative pass", "Channel mix",
+	"Partner run", "Direct pass", "Affiliate burst", "Retarget pass", "Acquisition pass",
+	"Conversion lift", "Signup pass", "Trial pass", "Install pass", "Checkout pass",
+	"Lead pass", "Loyalty pass", "Reactivation pass", "Upsell pass",
 }
 
 const seedUUIDNamespaceDNS = "ad-event-processor.local.seed"
@@ -134,52 +219,51 @@ func seedEntityUUID(seq int) uuid.UUID {
 func seedCustomerName(seq int) string {
 	idx := seq - 1
 	base := seedCustomerNames[idx%len(seedCustomerNames)]
-	region := seedCustomerRegionLabels[(idx*2+seq/3)%len(seedCustomerRegionLabels)]
-	var name string
-	switch idx % 4 {
+	if seq <= len(seedCustomerNames) {
+		return base
+	}
+	cycle := (seq - 1) / len(seedCustomerNames)
+	region := seedCustomerRegionLabels[(idx+cycle)%len(seedCustomerRegionLabels)]
+	goal := seedCampaignGoalLabels[(idx+seq+cycle)%len(seedCampaignGoalLabels)]
+	switch cycle % 3 {
 	case 0:
-		name = base
+		return fmt.Sprintf("%s — %s", base, region)
 	case 1:
-		name = fmt.Sprintf("%s — %s", base, region)
-	case 2:
-		name = fmt.Sprintf("%s (%s)", region, base)
+		return fmt.Sprintf("%s — %s", base, goal)
 	default:
-		name = fmt.Sprintf("%s · %s desk", base, region)
+		return fmt.Sprintf("%s %s", region, base)
 	}
-	if idx >= len(seedCustomerNames) {
-		name = fmt.Sprintf("%s · group %d", name, 1+(seq%41))
-	}
-	return name
 }
 
 func seedCampaignName(seq int) string {
 	idx := seq - 1
-	base := seedCampaignNames[idx%len(seedCampaignNames)]
-	geo := seedCampaignGeoTags[(idx*3+seq)%len(seedCampaignGeoTags)]
-	desk := seedCampaignDeskTags[(idx*5+seq/3)%len(seedCampaignDeskTags)]
-	wave := 1 + (seq % 53)
-
-	var name string
-	switch idx % 6 {
+	if seq <= len(seedCampaignNames) {
+		return seedCampaignNames[idx]
+	}
+	variantIndex := idx - len(seedCampaignNames)
+	baseCount := len(seedCampaignNames)
+	goalCount := len(seedCampaignGoalLabels)
+	baseIdx := variantIndex % baseCount
+	remainder := variantIndex / baseCount
+	goalIdx := remainder % goalCount
+	flightIdx := remainder / goalCount
+	base := seedCampaignNames[baseIdx]
+	flight := seedCampaignFlightLabels[flightIdx%len(seedCampaignFlightLabels)]
+	goal := seedCampaignGoalLabels[goalIdx]
+	switch variantIndex % 4 {
 	case 0:
-		name = base
+		return fmt.Sprintf("%s — %s %s", base, flight, goal)
 	case 1:
-		name = fmt.Sprintf("%s · %s", base, geo)
+		return fmt.Sprintf("%s (%s, %s)", base, flight, goal)
 	case 2:
-		name = fmt.Sprintf("%s (%s)", geo, base)
-	case 3:
-		goal := []string{"Install", "Lead gen", "Checkout", "Signup", "Trial", "LAL"}[(idx+seq)%6]
-		name = fmt.Sprintf("%s — %s", base, goal)
-	case 4:
-		period := []string{"Q1", "Q2", "Q3", "Q4", "H2", "FY"}[(idx+seq/7)%6]
-		name = fmt.Sprintf("%s %s %s", period, base, geo)
+		return fmt.Sprintf("%s, %s — %s", flight, base, goal)
 	default:
-		name = fmt.Sprintf("%s / %s / %s", base, geo, desk)
+		return fmt.Sprintf("%s / %s / %s", base, flight, goal)
 	}
-	if seq > len(seedCampaignNames) {
-		name = fmt.Sprintf("%s · wave %d", name, wave)
-	}
-	return name
+}
+
+func loadTestSequentialUUID(seq int) string {
+	return fmt.Sprintf("00000000-0000-0000-0000-%012x", seq)
 }
 
 func seedBrandName(seq int) string {
@@ -203,9 +287,12 @@ var seedCreativeNames = []string{
 
 func seedCreativeDisplayName(seq int) string {
 	idx := seq - 1
-	geo := seedCampaignGeoTags[(idx/12)%len(seedCampaignGeoTags)]
-	desk := seedCampaignDeskTags[(idx/(12*len(seedCampaignGeoTags)))%len(seedCampaignDeskTags)]
-	return fmt.Sprintf("%s - %s - %s", seedCreativeNames[idx%len(seedCreativeNames)], geo, desk)
+	kind := seedCreativeNames[idx%len(seedCreativeNames)]
+	if seq <= len(seedCreativeNames) {
+		return kind
+	}
+	brand := seedBrandNames[(idx/len(seedCreativeNames))%len(seedBrandNames)]
+	return fmt.Sprintf("%s — %s", kind, brand)
 }
 
 func seedBrandDisplayName(seq int) string {

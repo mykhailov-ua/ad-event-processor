@@ -8,19 +8,22 @@ import { useTrackerHeaderSearch } from '@/lib/tracker_header_context';
 
 export type TrackerShellSidebarToggleProps = {
   collapsed: boolean;
+  mobileNavOpen?: boolean;
   onToggle: () => void;
 };
 
 export function TrackerShellSidebarToggle({
   collapsed,
+  mobileNavOpen = false,
   onToggle,
 }: TrackerShellSidebarToggleProps) {
+  const navOpen = mobileNavOpen || !collapsed;
+
   return (
     <Button
-      aria-expanded={!collapsed}
-      aria-label={collapsed ? 'Show navigation menu' : 'Hide navigation menu'}
-      className="inline-flex min-h-7 w-8 items-center justify-center rounded-md hover:bg-accent hover:text-accent-foreground"
-      size="icon"
+      aria-expanded={navOpen}
+      aria-label={navOpen ? 'Hide navigation menu' : 'Show navigation menu'}
+      className="inline-flex size-7 items-center justify-center rounded-md p-0 hover:bg-accent hover:text-accent-foreground"
       type="button"
       variant="secondary"
       onClick={onToggle}

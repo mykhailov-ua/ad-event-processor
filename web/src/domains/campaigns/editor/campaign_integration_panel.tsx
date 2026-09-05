@@ -5,6 +5,7 @@ import {
   getCampaignIntegrationHealth,
   getCampaignIntegrationPanel,
 } from '@/api/campaigns_api';
+import { useResource } from '@/api/use_resource';
 import { ApiError } from '@/api/client';
 import type { ApplyCampaignTemplatesResult, CampaignIntegrationHealth } from '@/api/types';
 import { ErrorBlock } from '@/shell/error_block';
@@ -21,7 +22,9 @@ import {
   TableHeader,
   TableRow,
 } from '@/shell/directory_table';
-import { useResource } from '@/api/use_resource';
+import { adminChrome } from '@/lib/admin_chrome';
+import { cn } from '@/lib/utils';
+import { formatIntegrationHealthSlug, formatIntegrationHealthStatus } from '@/domains/campaigns/editor/integration_health_labels';
 
 function panelError(error: Error, title: string) {
   if (error instanceof ApiError && error.status === 501) {
@@ -100,19 +103,27 @@ export function CampaignIntegrationPanel({ campaignId }: { campaignId: string })
         : null}
 
       {panel ? (
-        <div className="ui-surface grid gap-3 p-3 text-sm">
+        <div className={cn(adminChrome.panel, 'grid gap-3 p-4 text-sm')}>
           <div className="flex flex-wrap items-center gap-2">
             <span className="font-medium">{panel.overall_status_label}</span>
-            <Badge variant="outline">{panel.overall_status}</Badge>
+            <Badge variant="outline">{formatIntegrationHealthStatus(panel.overall_status)}</Badge>
           </div>
           {(panel.rows ?? []).length > 0 ? (
-            <ul className="grid gap-1">
-              {panel.rows?.map((row, index) => (
-                <li key={`integration-row-${index}`}>
-                  {String((row as Record<string, unknown>).slug ?? `Row ${index + 1}`)}:{' '}
-                  {String((row as Record<string, unknown>).message ?? '')}
-                </li>
-              ))}
+            <ul className="grid gap-2">
+              {panel.rows?.map((row, index) => {
+                const slug = String((row as Record<string, unknown>).slug ?? '');
+                const message = String((row as Record<string, unknown>).message ?? '');
+                return (
+                  <li key={`integration-row-${index}`} className="leading-relaxed">
+                    <span className="font-medium text-foreground">
+                      {formatIntegrationHealthSlug(slug)}
+                    </span>
+                    {message ? (
+                      <span className="text-muted-foreground">{`: ${message}`}</span>
+                    ) : null}
+                  </li>
+                );
+              })}
             </ul>
           ) : null}
         </div>
@@ -120,7 +131,7 @@ export function CampaignIntegrationPanel({ campaignId }: { campaignId: string })
 
       <div className="grid grid-cols-[repeat(auto-fill,minmax(12rem,1fr))] items-end gap-4">
         <div className="grid gap-2">
-          <Label htmlFor="apply-traffic-source">Traffic source</Label>
+          <Label htmlFor="apply-traffic-source">Apply template: traffic source</Label>
           <Input
             id="apply-traffic-source"
             value={draftTrafficSource}
@@ -170,8 +181,8 @@ export function CampaignIntegrationPanel({ campaignId }: { campaignId: string })
             <TableBody>
               {health.rows?.map((row, index) => (
                 <TableRow key={`health-${index}`}>
-                  <TableCell>{row.slug ?? ''}</TableCell>
-                  <TableCell>{row.status ?? ''}</TableCell>
+                  <TableCell>{formatIntegrationHealthSlug(row.slug ?? '')}</TableCell>
+                  <TableCell>{formatIntegrationHealthStatus(row.status ?? '')}</TableCell>
                   <TableCell className="text-muted-foreground">{row.message ?? ''}</TableCell>
                 </TableRow>
               ))}

@@ -7,5 +7,5 @@ export const SETTINGS_NAV_ITEMS: SectionNavItem[] = [
 ];
 
 export function SettingsNav() {
-  return <SectionNav items={SETTINGS_NAV_ITEMS} label="Settings sections" />;
+  return <SectionNav items={SETTINGS_NAV_ITEMS} label="Settings sections" variant="admin" />;
 }

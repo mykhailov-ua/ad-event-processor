@@ -62,7 +62,40 @@ for dir in "${BUTTON_SRC[@]}"; do
     echo "Error: UI slop - mixed Button size=\"sm\" is banned under ${dir}; use default Button (h-control)"
     failed=1
   fi
+  if rg -n 'size="icon"|size=\{[^}]*['\''"]icon['\''"]' "$dir" --glob '*.tsx' 2> /dev/null; then
+    echo "Error: UI slop - Button size=\"icon\" is banned under ${dir}; use default Button + className size-7 p-0"
+    failed=1
+  fi
 done
+
+for dir in "${COPY_SRC[@]}"; do
+  [ -d "$dir" ] || continue
+  if rg -n 'truncate[^"\n`]*tabular-nums|tabular-nums[^"\n`]*truncate' "$dir" --glob '*.tsx' 2> /dev/null; then
+    echo "Error: UI slop - truncate with tabular-nums on same node under ${dir}; widen column (VL-18)"
+    failed=1
+  fi
+  if rg -n '<(h[1-6])\b[^>]*\btruncate\b' "$dir" --glob '*.tsx' 2> /dev/null; then
+    echo "Error: UI slop - truncate on heading under ${dir}; use whitespace-nowrap (VL-18)"
+    failed=1
+  fi
+done
+
+# Column drag highlight must not use React state on dragover (repaints tbody).
+while IFS= read -r drag_file; do
+  [ -n "$drag_file" ] || continue
+  if rg -n 'useState\([^)]*[Dd]rag' "$drag_file" 2> /dev/null \
+    && rg -n 'onDragOver' "$drag_file" 2> /dev/null; then
+    echo "Error: UI slop - useState drag highlight with onDragOver in ${drag_file}; use ref classList toggle (P4)"
+    failed=1
+  fi
+done < <(rg -l 'onDragOver' web/src/domains web/src/shell --glob '*.tsx' 2> /dev/null || true)
+
+if [ -d web/e2e ]; then
+  if rg -n 'or\(.*empty' web/e2e --glob '*.spec.js' 2> /dev/null; then
+    echo "Error: UI slop - deprecated table.or(empty) pattern in web/e2e specs (FE2 / L1s)"
+    failed=1
+  fi
+fi
 
 for dir in "${COPY_SRC[@]}"; do
   [ -d "$dir" ] || continue

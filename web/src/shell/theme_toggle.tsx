@@ -4,7 +4,7 @@ import { Button } from '@/components/ui/button';
 import { Tooltip, TooltipContent, TooltipTrigger } from '@/components/ui/tooltip';
 import { themeToggleLabel } from '@/lib/theme';
 import { cn } from '@/lib/utils';
-import { useTheme } from '@/providers/theme_provider';
+import { useTheme } from '@/context/theme_context';
 
 export type ThemeToggleProps = {
   className?: string;
@@ -19,8 +19,7 @@ export function ThemeToggle({ className, showLabel = false }: ThemeToggleProps) 
   const button = (
     <Button
       aria-label={themeToggleLabel(theme)}
-      className={cn(showLabel ? '' : 'inline-flex h-8 w-8 items-center justify-center rounded-md hover:bg-accent hover:text-accent-foreground', className)}
-      size={showLabel ? 'default' : 'icon'}
+      className={cn(showLabel ? '' : cn('size-7 p-0', className))}
       type="button"
       variant="secondary"
       onClick={() => setTheme(nextTheme)}

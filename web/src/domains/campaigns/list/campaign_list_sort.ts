@@ -3,6 +3,7 @@ import type { CampaignSortField } from '@/domains/campaigns/list/campaigns_list_
 
 export const CAMPAIGN_LIST_API_SORT_FIELDS = [
   'name',
+  'id',
   'updated_at',
   'spend',
   'budget_limit',
@@ -84,7 +85,10 @@ export function campaignListSortNeedsMetricWindow(field: CampaignListApiSortFiel
 }
 
 export function campaignListSortToApi(field: CampaignSortField): CampaignListApiSortField {
-  if (field === 'id' || field === 'updated_at') {
+  if (field === 'id') {
+    return 'id';
+  }
+  if (field === 'updated_at') {
     return 'updated_at';
   }
   return field as CampaignListApiSortField;
@@ -97,7 +101,7 @@ export function sortFieldForCampaignColumn(
     case 'name':
       return 'name';
     case 'id':
-      return 'updated_at';
+      return 'id';
     case 'status':
     case 'clicks':
     case 'impressions':

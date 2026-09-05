@@ -32,11 +32,11 @@ test('buildBreadcrumbs does not link billing invoices index without a list route
 test('buildBreadcrumbs routes brand creatives through brands list', () => {
   const brandId = '550e8400-e29b-41d4-a716-446655440002';
   const crumbs = buildBreadcrumbs(`/brand-creatives/${brandId}`, {
-    [brandId]: 'Acme brand',
+    [brandId]: 'Velox Checkout',
   });
 
   assert.equal(crumbs[0]?.label, 'Brands');
   assert.equal(crumbs[0]?.href, '/brands');
-  assert.equal(crumbs[1]?.label, 'Acme brand');
+  assert.equal(crumbs[1]?.label, 'Velox Checkout');
   assert.equal(crumbs[1]?.href, undefined);
 });

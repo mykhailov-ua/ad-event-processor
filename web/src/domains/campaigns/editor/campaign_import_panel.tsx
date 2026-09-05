@@ -33,7 +33,8 @@ import {
   SelectTrigger,
   SelectValue,
 } from '@/components/ui/select';
-import { JsonDashboardView } from '@/domains/dashboards/json_dashboard_view';
+import { JsonPayloadView } from '@/shell/json_payload_view';
+import { formatCampaignJsonKey } from '@/domains/campaigns/editor/campaign_json_labels';
 import { useResource } from '@/api/use_resource';
 import { useSession } from '@/hooks/use_session';
 import { cn } from '@/lib/utils';
@@ -463,7 +464,11 @@ export function CampaignImportPanel() {
           {jobResource.error ? panelError(jobResource.error, 'Could not poll validate job') : null}
 
           {validateResult ? (
-            <JsonDashboardView payload={validateResult as unknown as Record<string, unknown>} />
+            <JsonPayloadView
+              formatColumn={formatCampaignJsonKey}
+              formatKey={formatCampaignJsonKey}
+              payload={validateResult as unknown as Record<string, unknown>}
+            />
           ) : null}
         </div>
       </section>
@@ -523,7 +528,11 @@ export function CampaignImportPanel() {
           </div>
 
           {pullPreview ? (
-            <JsonDashboardView payload={pullPreview as unknown as Record<string, unknown>} />
+            <JsonPayloadView
+              formatColumn={formatCampaignJsonKey}
+              formatKey={formatCampaignJsonKey}
+              payload={pullPreview as unknown as Record<string, unknown>}
+            />
           ) : null}
         </div>
       </section>

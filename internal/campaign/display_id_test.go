@@ -31,6 +31,7 @@ func TestCampaignDisplayID_seedCatalogCampaign_holdout(t *testing.T) {
 	id := seedCatalogCampaignUUID(1)
 	got := CampaignDisplayID(id)
 	require.Equal(t, "91821918", got)
+	require.Equal(t, int64(91821918), CampaignDisplayIDSortKey(id))
 }
 
 func seedCatalogCampaignUUID(seq int) uuid.UUID {

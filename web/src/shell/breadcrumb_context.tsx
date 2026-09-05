@@ -20,12 +20,10 @@ const BreadcrumbContext = createContext<BreadcrumbContextValue | null>(null);
 export function BreadcrumbProvider({ children }: { children: ReactNode }) {
   const { pathname } = useLocation();
   const [segmentLabels, setSegmentLabels] = useState<Record<string, string>>({});
-  const [labelsPathname, setLabelsPathname] = useState(pathname);
 
-  if (labelsPathname !== pathname) {
-    setLabelsPathname(pathname);
+  useLayoutEffect(() => {
     setSegmentLabels({});
-  }
+  }, [pathname]);
 
   const setSegmentLabel = useCallback((segment: string, label: string) => {
     setSegmentLabels((current) => {
@@ -63,17 +61,22 @@ export function useBreadcrumbSegmentLabel(
   segment: string | undefined,
   label: string | undefined,
 ) {
-  const context = useContext(BreadcrumbContext);
+  const setSegmentLabel = useContext(BreadcrumbContext)?.setSegmentLabel;
+  const clearSegmentLabel = useContext(BreadcrumbContext)?.clearSegmentLabel;
 
   useLayoutEffect(() => {
-    if (!context || !segment || !label) {
+    if (!setSegmentLabel || !clearSegmentLabel || !segment) {
       return;
     }
-    context.setSegmentLabel(segment, label);
+    if (!label) {
+      clearSegmentLabel(segment);
+      return;
+    }
+    setSegmentLabel(segment, label);
     return () => {
-      context.clearSegmentLabel(segment);
+      clearSegmentLabel(segment);
     };
-  }, [context, label, segment]);
+  }, [clearSegmentLabel, label, segment, setSegmentLabel]);
 }
 
 export function useBreadcrumbSegmentLabels() {

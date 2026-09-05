@@ -1,4 +1,5 @@
 import { cn } from '@/lib/utils';
+import { adminKit } from '@/lib/admin_kit';
 
 export type FilterChipOption<T extends string> = {
   value: T;
@@ -42,7 +43,8 @@ export function FilterChipGroup<T extends string>({
             key={option.value || '__all'}
             aria-pressed={selected}
             className={cn(
-              'inline-flex min-h-7 max-w-full shrink-0 items-center gap-1.5 whitespace-nowrap rounded-full border px-3 py-1 text-[13px] font-medium leading-[18px] transition-colors',
+              adminKit.buttonShell,
+              'max-w-full gap-1.5 whitespace-nowrap rounded-full border px-3 font-medium transition-colors',
               selected ? CHIP_ACTIVE : CHIP_IDLE,
             )}
             type="button"

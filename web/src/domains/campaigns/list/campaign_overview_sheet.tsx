@@ -315,7 +315,7 @@ export function CampaignOverviewSheet({
       <DialogContent className={campaignOverviewDialogClass}>
         <div className={campaignOverviewScrollClass}>
           <header className={campaignOverviewHeaderClass}>
-            <div className="flex items-center justify-between gap-3">
+            <div className="flex flex-wrap items-center gap-x-3 gap-y-1">
               <span
                 className={cn(
                   'inline-flex items-center rounded-[5px] px-2 py-0.5 text-[11px] font-bold uppercase leading-[14px]',
@@ -324,14 +324,14 @@ export function CampaignOverviewSheet({
               >
                 {statusLabel}
               </span>
-              <span className="text-[11px] leading-[14px] text-muted-foreground">
+              <span className="min-w-0 text-[11px] leading-[14px] text-muted-foreground">
                 Updated {displayTimestamp(campaign.updated_at, campaign.updated_at_display)}
               </span>
             </div>
 
-            <div className="grid gap-1">
-              <h2 className="m-0 text-lg font-bold leading-[24px] text-foreground">{campaign.name}</h2>
-              <p className="m-0 font-mono text-[13px] leading-[18px] text-muted-foreground">{campaign.id}</p>
+            <div className="grid min-w-0 gap-1">
+              <h2 className="m-0 whitespace-nowrap text-lg tabular-nums leading-[24px] text-foreground">{campaign.name}</h2>
+              <p className="m-0 break-all font-mono text-[13px] leading-[18px] text-muted-foreground">{campaign.id}</p>
             </div>
           </header>
 

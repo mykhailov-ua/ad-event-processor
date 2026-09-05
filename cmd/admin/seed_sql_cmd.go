@@ -36,11 +36,22 @@ var seedUUIDsShellCmd = &cobra.Command{
 	},
 }
 
+var seedLoadTestStackSQLCmd = &cobra.Command{
+	Use:   "seed-load-test-stack-sql",
+	Short: "Print load-test stack seed SQL (sequential UUIDs, catalog names)",
+	RunE: func(cmd *cobra.Command, args []string) error {
+		count, _ := cmd.Flags().GetInt("count")
+		writeLoadTestStackSeedSQL(os.Stdout, count)
+		return nil
+	},
+}
+
 func init() {
-	for _, command := range []*cobra.Command{seedIngestSQLCmd, seedPrepTestSQLCmd, seedUUIDsShellCmd} {
+	for _, command := range []*cobra.Command{seedIngestSQLCmd, seedPrepTestSQLCmd, seedUUIDsShellCmd, seedLoadTestStackSQLCmd} {
 		command.Flags().Int("count", 100, "Number of seeded entities")
 	}
 	dbCmd.AddCommand(seedIngestSQLCmd)
 	dbCmd.AddCommand(seedPrepTestSQLCmd)
 	dbCmd.AddCommand(seedUUIDsShellCmd)
+	dbCmd.AddCommand(seedLoadTestStackSQLCmd)
 }

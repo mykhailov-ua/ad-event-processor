@@ -9,6 +9,25 @@ import {
   campaignToFormState,
   parseClickQueryParamsJson,
 } from './campaign_editor_form.ts';
+import {
+  CAMPAIGN_CLICK_QUERY_PARAM_MAX_KEYS,
+  CAMPAIGN_CLICK_QUERY_PARAM_MAX_VALUE_LEN,
+  CAMPAIGN_CLICK_QUERY_PARAMS_FIELD_HINT,
+  CAMPAIGN_CLICK_QUERY_PARAMS_JSON_MAX_CHARS,
+} from './campaign_click_query_limits.ts';
+
+test('click query params field hint documents whole-json and per-value limits', () => {
+  assert.match(CAMPAIGN_CLICK_QUERY_PARAMS_FIELD_HINT, /21,442/);
+  assert.match(
+    CAMPAIGN_CLICK_QUERY_PARAMS_FIELD_HINT,
+    new RegExp(String(CAMPAIGN_CLICK_QUERY_PARAM_MAX_VALUE_LEN)),
+  );
+  assert.match(
+    CAMPAIGN_CLICK_QUERY_PARAMS_FIELD_HINT,
+    new RegExp(String(CAMPAIGN_CLICK_QUERY_PARAM_MAX_KEYS)),
+  );
+  assert.equal(CAMPAIGN_CLICK_QUERY_PARAMS_JSON_MAX_CHARS, 21442);
+});
 
 function baseCampaign(overrides: Partial<Campaign> = {}): Campaign {
   return {
@@ -118,6 +137,27 @@ test('buildCampaignPatchBody_holdoutRejectsInvalidIngressMaxMicro', () => {
   if (!result.ok) {
     assert.match(result.error, /max micro/i);
   }
+});
+
+test('parseClickQueryParamsJson rejects JSON longer than server bound', () => {
+  const result = parseClickQueryParamsJson(`{${' '.repeat(CAMPAIGN_CLICK_QUERY_PARAMS_JSON_MAX_CHARS + 1)}}`);
+  assert.equal(result.ok, false);
+});
+
+test('parseClickQueryParamsJson rejects too many keys', () => {
+  const params: Record<string, string> = {};
+  for (let i = 1; i <= CAMPAIGN_CLICK_QUERY_PARAM_MAX_KEYS + 1; i += 1) {
+    params[`sub${i}`] = 'x';
+  }
+  const result = parseClickQueryParamsJson(JSON.stringify(params));
+  assert.equal(result.ok, false);
+});
+
+test('parseClickQueryParamsJson rejects value longer than server bound', () => {
+  const result = parseClickQueryParamsJson(
+    JSON.stringify({ sub1: 'a'.repeat(CAMPAIGN_CLICK_QUERY_PARAM_MAX_VALUE_LEN + 1) }),
+  );
+  assert.equal(result.ok, false);
 });
 
 test('buildCampaignPatchBody_holdoutIgnoresClickQueryKeyReorder', () => {

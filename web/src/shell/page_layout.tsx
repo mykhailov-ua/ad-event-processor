@@ -11,6 +11,8 @@ export type PageLayoutProps = {
   aside?: ReactNode;
   footer?: ReactNode;
   workspaceClassName?: string;
+  mainClassName?: string;
+  asideClassName?: string;
   footerClassName?: string;
   children: ReactNode;
 };
@@ -24,6 +26,8 @@ export function PageLayout({
   aside,
   footer,
   workspaceClassName,
+  mainClassName,
+  asideClassName,
   footerClassName,
   children,
 }: PageLayoutProps) {
@@ -57,10 +61,24 @@ export function PageLayout({
               : 'grid min-h-0 flex-1 grid-cols-1 gap-2'
           }
         >
-          <main className="ui-scrollbar flex min-h-0 min-w-0 flex-1 flex-col gap-2 overflow-x-hidden overflow-y-auto">
+          <main
+            className={cn(
+              'ui-scrollbar flex min-h-0 min-w-0 flex-1 flex-col gap-2 overflow-x-hidden overflow-y-auto',
+              mainClassName,
+            )}
+          >
             {children}
           </main>
-          {aside ? <aside className="flex min-h-0 min-w-0 flex-col gap-2 overflow-auto">{aside}</aside> : null}
+          {aside ? (
+            <aside
+              className={cn(
+                'ui-scrollbar flex min-h-0 min-w-0 flex-col gap-2 self-start overflow-y-auto',
+                asideClassName,
+              )}
+            >
+              {aside}
+            </aside>
+          ) : null}
         </div>
 
         {footer ? (

@@ -1,5 +1,6 @@
 import { X } from 'lucide-react';
 
+import { Button } from '@/components/ui/button';
 import { Checkbox } from '@/components/ui/checkbox';
 import {
   dashboardPrefsCheckboxLabelClass,
@@ -103,14 +104,15 @@ export function DashboardPrefsSelectionPanel<T extends string>({
                     {labelById.get(optionId) ?? optionId}
                   </span>
                   {canRemove ? (
-                    <button
+                    <Button
                       aria-label={`Remove ${labelById.get(optionId) ?? optionId}`}
-                      className={dashboardPrefsChipRemoveClass}
+                      className={cn(dashboardPrefsChipRemoveClass, 'h-6 w-6 shrink-0 p-0 shadow-none')}
                       type="button"
+                      variant="ghost"
                       onClick={() => removeChip(optionId)}
                     >
                       <X aria-hidden className="h-3 w-3" />
-                    </button>
+                    </Button>
                   ) : null}
                 </span>
               );

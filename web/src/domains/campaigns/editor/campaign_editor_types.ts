@@ -46,7 +46,6 @@ export type CampaignEditorProps = {
     value: CampaignEditorFormState[K],
   ) => void;
   onSave: () => void;
-  onSaveAndClose?: () => void;
   onOpenClone?: () => void;
   clickUrl?: string;
   checking: boolean;

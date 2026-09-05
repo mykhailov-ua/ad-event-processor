@@ -134,11 +134,17 @@ export const CAMPAIGN_LIST_COLUMN_LABELS: Record<CampaignListColumnId, string> =
 
 export const CAMPAIGN_LIST_SELECTION_COLUMN_WIDTH_PX = 48;
 
+/** Widest status badge label in campaigns directory table probe. */
+export const CAMPAIGN_LIST_STATUS_PROBE_LABEL = 'Exhausted';
+
+/** Fixed status column width: probe label + badge padding + cell/tools gutters. */
+export const CAMPAIGN_LIST_STATUS_COLUMN_WIDTH_PX = 148;
+
 export const CAMPAIGN_LIST_COLUMN_MIN_WIDTH_PX: Record<CampaignListColumnId, number> = {
   select: CAMPAIGN_LIST_SELECTION_COLUMN_WIDTH_PX,
   id: 72,
   name: 200,
-  status: 88,
+  status: CAMPAIGN_LIST_STATUS_COLUMN_WIDTH_PX,
   clicks: 60,
   impressions: 72,
   ctr: 56,
@@ -174,9 +180,9 @@ export const CAMPAIGN_LIST_COLUMN_MIN_WIDTH_PX: Record<CampaignListColumnId, num
 
 const CAMPAIGN_LIST_COLUMN_MAX_WIDTH_PX: Partial<Record<CampaignListColumnId, number>> = {
   select: CAMPAIGN_LIST_SELECTION_COLUMN_WIDTH_PX,
-  id: 96,
+  id: 148,
   name: 320,
-  status: 120,
+  status: CAMPAIGN_LIST_STATUS_COLUMN_WIDTH_PX,
   group: 220,
   owner: 220,
   flow: 160,
@@ -250,8 +256,17 @@ export function isCampaignListColumnDraggable(
   return REORDERABLE_COLUMN_SET.has(id as CampaignListReorderableColumnId);
 }
 
-export function isCampaignListColumnResizable(id: CampaignListColumnId): boolean {
-  return id !== 'select';
+export function isCampaignListColumnResizable(
+  id: CampaignListColumnId,
+  columns?: ReadonlyArray<CampaignListColumnId>,
+): boolean {
+  if (id === 'select' || id === 'id' || id === 'status') {
+    return false;
+  }
+  if (columns != null && columns.length > 0 && columns[columns.length - 1] === id) {
+    return false;
+  }
+  return true;
 }
 
 const NUMERIC_MIDDLE_COLUMNS = new Set<CampaignListMiddleColumnId>([
@@ -450,12 +465,14 @@ export function mergeCampaignListColumnWidths(
 ): Record<CampaignListColumnId, number> {
   const merged = { ...computed };
   for (const columnId of columns) {
+    const resizable = isCampaignListColumnResizable(columnId, columns);
+    const overrideWidth = resizable ? overrides[columnId] : undefined;
     const width =
-      overrides[columnId] ??
+      overrideWidth ??
       merged[columnId] ??
       CAMPAIGN_LIST_COLUMN_MIN_WIDTH_PX[columnId];
     merged[columnId] =
-      overrides[columnId] != null
+      overrideWidth != null
         ? clampUserResizedCampaignListColumnWidthPx(columnId, width)
         : clampCampaignListColumnWidthPx(columnId, width);
   }
@@ -563,8 +580,9 @@ export function setCampaignListColumnWidth(
   prefs: CampaignListColumnPrefs,
   columnId: CampaignListColumnId,
   widthPx: number,
+  columns?: ReadonlyArray<CampaignListColumnId>,
 ): CampaignListColumnPrefs {
-  if (!isCampaignListColumnResizable(columnId)) {
+  if (!isCampaignListColumnResizable(columnId, columns)) {
     return prefs;
   }
   return {

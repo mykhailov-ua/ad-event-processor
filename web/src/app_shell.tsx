@@ -7,7 +7,7 @@ import {
   TrackerShellHeaderSearch,
   TrackerShellSidebarToggle,
 } from '@/shell/tracker_shell_header';
-import { AppSidebar } from '@/shell/app_sidebar';
+import { AppMobileNavSheet, AppSidebar } from '@/shell/app_sidebar';
 import { AdminDevBanner } from '@/shell/admin_dev_banner';
 import { AppErrorBoundary } from '@/shell/app_error_boundary';
 import { BreadcrumbProvider } from '@/shell/breadcrumb_context';
@@ -26,6 +26,7 @@ export function AppShell() {
   const { session, user } = useSession();
   const [signingOut, setSigningOut] = useState(false);
   const [sidebarCollapsed, setSidebarCollapsed] = useState(() => readSidebarCollapsed());
+  const [mobileNavOpen, setMobileNavOpen] = useState(false);
   const [commandPaletteOpen, setCommandPaletteOpen] = useState(false);
 
   const navItems = useMemo(() => {
@@ -55,6 +56,14 @@ export function AppShell() {
     });
   };
 
+  const handleNavToggle = () => {
+    if (window.matchMedia('(min-width: 768px)').matches) {
+      toggleSidebar();
+      return;
+    }
+    setMobileNavOpen((open) => !open);
+  };
+
   return (
     <EulaGate>
       <TooltipProvider>
@@ -67,12 +76,21 @@ export function AppShell() {
           <AdminDevBanner />
           <div className="flex min-h-0 flex-1 overflow-hidden">
             {session ? (
-              <AppSidebar
-                collapsed={sidebarCollapsed}
-                items={navItems}
-                signingOut={signingOut}
-                onSignOut={handleSignOut}
-              />
+              <>
+                <AppSidebar
+                  collapsed={sidebarCollapsed}
+                  items={navItems}
+                  signingOut={signingOut}
+                  onSignOut={handleSignOut}
+                />
+                <AppMobileNavSheet
+                  items={navItems}
+                  open={mobileNavOpen}
+                  signingOut={signingOut}
+                  onOpenChange={setMobileNavOpen}
+                  onSignOut={handleSignOut}
+                />
+              </>
             ) : null}
 
             <div className="flex min-h-0 min-w-0 flex-1 flex-col overflow-hidden bg-background">
@@ -82,7 +100,8 @@ export function AppShell() {
                     <div className="flex min-w-0 items-center gap-2">
                       <TrackerShellSidebarToggle
                         collapsed={sidebarCollapsed}
-                        onToggle={toggleSidebar}
+                        mobileNavOpen={mobileNavOpen}
+                        onToggle={handleNavToggle}
                       />
                       <PageBreadcrumbs className="min-w-0 overflow-hidden" />
                     </div>

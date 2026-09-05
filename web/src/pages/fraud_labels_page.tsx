@@ -4,7 +4,7 @@ import { useSearchParams } from 'react-router-dom';
 import { bulkUpsertFraudLabels, listFraudLabels, upsertFraudLabel } from '@/api/fraud_api';
 import type { FraudManualLabelBulkRequest } from '@/api/types';
 import { FraudLabels } from '@/domains/fraud/fraud_labels';
-import { useRefreshToken } from '@/hooks/use_coalesced_refresh_token';
+import { useCoalescedBumpRefresh, useRefreshToken } from '@/hooks/use_coalesced_refresh_token';
 import { useResource } from '@/api/use_resource';
 import { useSession } from '@/hooks/use_session';
 import { parseListLimit, parseListOffset } from '@/lib/list_query';
@@ -57,6 +57,9 @@ export function FraudLabelsPage() {
     [appliedCustomerId, appliedLimit, appliedOffset, refreshToken, shouldFetch],
   );
 
+  const listBusy = fetching || saving || bulkSaving;
+  const bumpRefreshCoalesced = useCoalescedBumpRefresh(bumpRefresh, listBusy);
+
   const updateQuery = useCallback(
     (patch: { customer_id?: string; limit?: number; offset?: number }) => {
       const next = new URLSearchParams(searchParams);
@@ -88,6 +91,9 @@ export function FraudLabelsPage() {
   );
 
   const onSaveLabel = useCallback(async () => {
+    if (saving) {
+      return;
+    }
     if (!appliedCustomerId) {
       return;
     }
@@ -115,15 +121,18 @@ export function FraudLabelsPage() {
       setSaveSuccess(true);
       setDraftIpHash('');
       setDraftReason('');
-      bumpRefresh();
+      bumpRefreshCoalesced();
     } catch (err) {
       setSaveError(err instanceof Error ? err : new Error(String(err)));
     } finally {
       setSaving(false);
     }
-  }, [appliedCustomerId, draftIpHash, draftLabel, draftReason, bumpRefresh]);
+  }, [appliedCustomerId, draftIpHash, draftLabel, draftReason, bumpRefreshCoalesced, saving]);
 
   const onBulkUpsert = useCallback(async () => {
+    if (bulkSaving) {
+      return;
+    }
     if (!appliedCustomerId) {
       return;
     }
@@ -148,13 +157,13 @@ export function FraudLabelsPage() {
       setBulkSuccess(true);
       setBulkUpserted(response.upserted);
       setDraftBulkJson('');
-      bumpRefresh();
+      bumpRefreshCoalesced();
     } catch (err) {
       setBulkError(err instanceof Error ? err : new Error(String(err)));
     } finally {
       setBulkSaving(false);
     }
-  }, [appliedCustomerId, draftBulkJson, bumpRefresh]);
+  }, [appliedCustomerId, draftBulkJson, bumpRefreshCoalesced, bulkSaving]);
 
   return (
     <FraudLabels

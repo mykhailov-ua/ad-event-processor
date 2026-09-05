@@ -2,6 +2,11 @@ import type { Campaign, IngressCostConfig, PatchCampaignRequest } from '@/api/ty
 import { resolveOptionalUuidPatchValue } from '@/lib/clear_uuid';
 
 import type { BuildCampaignPatchResult, CampaignEditorFormState } from './campaign_editor_types';
+import {
+  CAMPAIGN_CLICK_QUERY_PARAM_MAX_KEYS,
+  CAMPAIGN_CLICK_QUERY_PARAM_MAX_VALUE_LEN,
+  CAMPAIGN_CLICK_QUERY_PARAMS_JSON_MAX_CHARS,
+} from './campaign_click_query_limits';
 
 type IngressFromFormResult =
   | { ok: true; value: IngressCostConfig | undefined }
@@ -60,6 +65,12 @@ export function parseClickQueryParamsJson(
   if (trimmed === '') {
     return { ok: true, value: {} };
   }
+  if (trimmed.length > CAMPAIGN_CLICK_QUERY_PARAMS_JSON_MAX_CHARS) {
+    return {
+      ok: false,
+      error: `Click query params JSON must be at most ${CAMPAIGN_CLICK_QUERY_PARAMS_JSON_MAX_CHARS.toLocaleString()} characters.`,
+    };
+  }
 
   let parsed: unknown;
   try {
@@ -81,6 +92,20 @@ export function parseClickQueryParamsJson(
       };
     }
     value[key] = entry;
+  }
+  if (Object.keys(value).length > CAMPAIGN_CLICK_QUERY_PARAM_MAX_KEYS) {
+    return {
+      ok: false,
+      error: `Click query params allow at most ${CAMPAIGN_CLICK_QUERY_PARAM_MAX_KEYS} keys.`,
+    };
+  }
+  for (const [key, entry] of Object.entries(value)) {
+    if (entry.length > CAMPAIGN_CLICK_QUERY_PARAM_MAX_VALUE_LEN) {
+      return {
+        ok: false,
+        error: `Click query params value for "${key}" exceeds ${CAMPAIGN_CLICK_QUERY_PARAM_MAX_VALUE_LEN} characters.`,
+      };
+    }
   }
   return { ok: true, value };
 }

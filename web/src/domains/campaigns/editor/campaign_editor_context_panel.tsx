@@ -11,7 +11,8 @@ import { StubBanner } from '@/shell/stub_banner';
 import { Button } from '@/components/ui/button';
 import { Checkbox } from '@/components/ui/checkbox';
 import { Label } from '@/components/ui/label';
-import { JsonDashboardView } from '@/domains/dashboards/json_dashboard_view';
+import { JsonPayloadView } from '@/shell/json_payload_view';
+import { formatCampaignJsonKey } from '@/domains/campaigns/editor/campaign_json_labels';
 import { useResource } from '@/api/use_resource';
 
 function panelError(error: Error, title: string) {
@@ -132,13 +133,25 @@ export function CampaignEditorContextPanel({ campaignId }: { campaignId: string 
         : null}
 
       {loadKey === 'geo' && geoResource.data ? (
-        <JsonDashboardView payload={geoResource.data} />
+        <JsonPayloadView
+          formatColumn={formatCampaignJsonKey}
+          formatKey={formatCampaignJsonKey}
+          payload={geoResource.data}
+        />
       ) : null}
       {loadKey === 'fraud' && fraudResource.data ? (
-        <JsonDashboardView payload={fraudResource.data} />
+        <JsonPayloadView
+          formatColumn={formatCampaignJsonKey}
+          formatKey={formatCampaignJsonKey}
+          payload={fraudResource.data}
+        />
       ) : null}
       {loadKey === 'shell' && shellResource.data ? (
-        <JsonDashboardView payload={shellResource.data as unknown as Record<string, unknown>} />
+        <JsonPayloadView
+          formatColumn={formatCampaignJsonKey}
+          formatKey={formatCampaignJsonKey}
+          payload={shellResource.data as unknown as Record<string, unknown>}
+        />
       ) : null}
     </div>
   );

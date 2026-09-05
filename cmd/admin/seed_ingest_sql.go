@@ -182,6 +182,66 @@ func writeSeedPrepTestSQL(w io.Writer, count int) {
   freq_limit = 100000000;`)
 }
 
+func writeLoadTestStackSeedSQL(w io.Writer, count int) {
+	if count < 1 {
+		count = 100
+	}
+
+	fmt.Fprintln(w, "TRUNCATE TABLE events CASCADE;")
+	fmt.Fprintln(w, "TRUNCATE TABLE campaign_stats CASCADE;")
+	fmt.Fprintln(w, "TRUNCATE TABLE campaigns CASCADE;")
+	fmt.Fprintln(w)
+
+	fmt.Fprintln(w, "INSERT INTO customers (id, name, balance, currency, allowed_overdraft)")
+	fmt.Fprintln(w, "VALUES")
+	for i := 1; i <= count; i++ {
+		sep := ","
+		if i == count {
+			sep = ""
+		}
+		fmt.Fprintf(
+			w,
+			"  ('%s', %s, %d, 'USD', 0)%s\n",
+			loadTestSequentialUUID(i),
+			sqlLiteral(seedCustomerName(i)),
+			seedCustomerBalanceMicro(i),
+			sep,
+		)
+	}
+	fmt.Fprintln(w, `ON CONFLICT (id) DO UPDATE SET
+  name = EXCLUDED.name,
+  balance = EXCLUDED.balance;`)
+	fmt.Fprintln(w)
+
+	fmt.Fprintln(w, "INSERT INTO campaigns (id, name, budget_limit, status, customer_id, pacing_mode, daily_budget, timezone, freq_limit, freq_window)")
+	fmt.Fprintln(w, "VALUES")
+	for i := 1; i <= count; i++ {
+		sep := ","
+		if i == count {
+			sep = ""
+		}
+		budgetLimit := int64(4_200_000_000 + (int64(i%17) * 650_000_000) + (int64(i%9) * 384_729))
+		dailyBudget := int64(380_000_000 + (int64(i%11) * 95_000_000) + (int64(i%6) * 18_473))
+		fmt.Fprintf(
+			w,
+			"  ('%s', %s, %d, 'ACTIVE', '%s', 'ASAP', %d, 'UTC', 100000000, 3600)%s\n",
+			loadTestSequentialUUID(i),
+			sqlLiteral(seedCampaignName(i)),
+			budgetLimit,
+			loadTestSequentialUUID(i),
+			dailyBudget,
+			sep,
+		)
+	}
+	fmt.Fprintln(w, `ON CONFLICT (id) DO UPDATE SET
+  name = EXCLUDED.name,
+  current_spend = 0,
+  status = 'ACTIVE',
+  budget_limit = EXCLUDED.budget_limit,
+  daily_budget = EXCLUDED.daily_budget,
+  freq_limit = 100000000;`)
+}
+
 func writeSeedUUIDShell(w io.Writer, count int) {
 	if count < 1 {
 		count = 100

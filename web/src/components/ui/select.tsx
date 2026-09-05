@@ -218,11 +218,13 @@ const SelectContent = React.forwardRef<
           }
         }}
         role="listbox"
-        className={cn(adminChrome.floating, 'max-h-96 w-max overflow-hidden p-1', className)}
+        className={cn(adminChrome.floating, 'max-h-96 w-max overflow-hidden p-0', className)}
         style={coords}
         {...props}
       >
-        <div className="ui-scrollbar max-h-60 overflow-y-auto p-1">{children}</div>
+        <div className={cn(adminChrome.menuList, 'ui-scrollbar max-h-60 overflow-y-auto p-1')}>
+          {children}
+        </div>
       </div>
     </OverlayRoot>
   );

@@ -5,6 +5,7 @@ import type { CampaignListMetrics } from '@/api/campaigns_api';
 import type { Campaign, CampaignMargin } from '@/api/types';
 
 import { computeCampaignListColumnWidths, campaignListMiddleCellText, defaultCampaignListColumnWidths } from './campaign_list_column_widths.ts';
+import { CAMPAIGN_LIST_STATUS_COLUMN_WIDTH_PX } from './campaign_list_columns.ts';
 
 test('defaultCampaignListColumnWidths fits header labels with tools gutter', () => {
   const widths = defaultCampaignListColumnWidths(['select', 'unique_clicks', 'lp_views']);
@@ -34,6 +35,67 @@ test('computeCampaignListColumnWidths uses dataset max not current page only', (
   });
 
   assert.ok(widths.clicks >= 75);
+});
+
+test('computeCampaignListColumnWidths fits eight-digit id with copy control', () => {
+  const items: Campaign[] = [
+    {
+      id: '00000000-0000-7000-8000-000000000001',
+      display_id: '47501610',
+      name: 'Campaign',
+      customer_id: 'c1',
+      status: 'ACTIVE',
+    } as Campaign,
+  ];
+
+  const widths = computeCampaignListColumnWidths({
+    columns: ['id'],
+    items,
+    metricsById: {},
+    marginsById: {},
+    customerNameById: {},
+  });
+
+  assert.ok(widths.id >= 116, `id column too narrow for display id: ${widths.id}`);
+  assert.ok(widths.id > 96, `id column still capped at legacy 96px max: ${widths.id}`);
+});
+
+test('computeCampaignListColumnWidths sizes countries column for three flags and overflow menu', () => {
+  const items: Campaign[] = [
+    {
+      id: 'a',
+      name: 'Multi GEO',
+      customer_id: 'c1',
+      status: 'ACTIVE',
+      target_countries: ['US', 'CA', 'DE', 'FR', 'GB'],
+    } as Campaign,
+  ];
+
+  const widths = computeCampaignListColumnWidths({
+    columns: ['countries'],
+    items,
+    metricsById: {},
+    marginsById: {},
+    customerNameById: {},
+  });
+
+  assert.ok(widths.countries >= 98, `countries column too narrow: ${widths.countries}`);
+});
+
+test('computeCampaignListColumnWidths keeps status column fixed for Exhausted badge', () => {
+  const items: Campaign[] = [
+    { id: 'a', name: 'Campaign', customer_id: 'c1', status: 'EXHAUSTED' } as Campaign,
+  ];
+
+  const widths = computeCampaignListColumnWidths({
+    columns: ['status'],
+    items,
+    metricsById: {},
+    marginsById: {},
+    customerNameById: {},
+  });
+
+  assert.equal(widths.status, CAMPAIGN_LIST_STATUS_COLUMN_WIDTH_PX);
 });
 
 test('computeCampaignListColumnWidths keeps widths stable when sort order changes', () => {

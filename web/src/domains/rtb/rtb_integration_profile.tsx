@@ -1,7 +1,7 @@
 import { PageChrome } from '@/shell/page_chrome';
 import { PageSkeleton } from '@/shell/page_skeleton';
 import type { RtbIntegrationProfile } from '@/api/types';
-import { JsonDashboardView } from '@/domains/dashboards/json_dashboard_view';
+import { JsonPayloadView } from '@/shell/json_payload_view';
 import { RtbNav, RtbLicenseStub, rtbPanelError } from '@/domains/rtb/rtb_nav';
 
 export type RtbIntegrationProfilePanelProps = {
@@ -46,7 +46,7 @@ export function RtbIntegrationProfilePanel({
       <RtbNav />
 
       {profile ? (
-        <JsonDashboardView payload={profile as Record<string, unknown>} />
+        <JsonPayloadView payload={profile as Record<string, unknown>} />
       ) : (
         rtbPanelError(new Error('Empty profile'), 'Could not load integration profile')
       )}

@@ -138,11 +138,11 @@ export function useCampaignsDirectoryWorkspace({
 
   const handleColumnWidthCommit = useCallback((columnId: CampaignListColumnId, widthPx: number) => {
     setColumnPrefs((current) => {
-      const next = setCampaignListColumnWidth(current, columnId, widthPx);
+      const next = setCampaignListColumnWidth(current, columnId, widthPx, visibleColumns);
       saveCampaignListColumnPrefs(next);
       return next;
     });
-  }, []);
+  }, [visibleColumns]);
 
   const selectedCampaignId = useMemo(() => {
     if (selectedIds.size !== 1) {

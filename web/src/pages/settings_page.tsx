@@ -8,7 +8,7 @@ import {
   patchPlatformSettings,
 } from '@/api/settings_api';
 import { PlatformSettings } from '@/domains/settings/platform_settings';
-import { useRefreshToken } from '@/hooks/use_coalesced_refresh_token';
+import { useCoalescedBumpRefresh, useRefreshToken } from '@/hooks/use_coalesced_refresh_token';
 import { useResource } from '@/api/use_resource';
 
 function readBootstrapComplete(payload: Record<string, unknown> | undefined): boolean {
@@ -54,7 +54,13 @@ export function SettingsPage() {
 
   const payload = data as Record<string, unknown> | undefined;
 
+  const settingsBusy = fetching || patching || applying || bootstrapping;
+  const bumpRefreshCoalesced = useCoalescedBumpRefresh(bumpRefresh, settingsBusy);
+
   const onApplyPatch = useCallback(async () => {
+    if (patching) {
+      return;
+    }
     const trimmed = draftPatchJson.trim();
     if (!trimmed) {
       return;
@@ -71,15 +77,18 @@ export function SettingsPage() {
       setPatchSuccess(true);
       toast.success('Platform settings updated');
       setDraftPatchJson('');
-      bumpRefresh();
+      bumpRefreshCoalesced();
     } catch (err) {
       setPatchError(err instanceof Error ? err : new Error(String(err)));
     } finally {
       setPatching(false);
     }
-  }, [draftPatchJson, bumpRefresh]);
+  }, [draftPatchJson, bumpRefreshCoalesced, patching]);
 
   const onPatchPlatform = useCallback(async (patch: Record<string, unknown>) => {
+    if (patching) {
+      return;
+    }
     setPatching(true);
     setPatchError(undefined);
     setPatchSuccess(false);
@@ -87,15 +96,20 @@ export function SettingsPage() {
       await patchPlatformSettings(patch);
       setPatchSuccess(true);
       toast.success('Platform settings updated');
-      bumpRefresh();
+      bumpRefreshCoalesced();
     } catch (err) {
-      setPatchError(err instanceof Error ? err : new Error(String(err)));
+      const patchFailure = err instanceof Error ? err : new Error(String(err));
+      setPatchError(patchFailure);
+      toast.error(patchFailure.message);
     } finally {
       setPatching(false);
     }
-  }, [bumpRefresh]);
+  }, [bumpRefreshCoalesced, patching]);
 
   const onApplyToDisk = useCallback(async () => {
+    if (applying) {
+      return;
+    }
     setApplying(true);
     setApplyError(undefined);
     setApplySuccess(false);
@@ -111,9 +125,12 @@ export function SettingsPage() {
     } finally {
       setApplying(false);
     }
-  }, [draftInstallRoot]);
+  }, [applying, draftInstallRoot]);
 
   const onRunBootstrap = useCallback(async () => {
+    if (bootstrapping) {
+      return;
+    }
     const token = draftInstallToken.trim();
     const trimmed = draftBootstrapJson.trim();
     if (!token || !trimmed) {
@@ -132,13 +149,13 @@ export function SettingsPage() {
       toast.success('Initial setup complete');
       setDraftInstallToken('');
       setDraftBootstrapJson('');
-      bumpRefresh();
+      bumpRefreshCoalesced();
     } catch (err) {
       setBootstrapError(err instanceof Error ? err : new Error(String(err)));
     } finally {
       setBootstrapping(false);
     }
-  }, [draftInstallToken, draftBootstrapJson, bumpRefresh]);
+  }, [bootstrapping, draftInstallToken, draftBootstrapJson, bumpRefreshCoalesced]);
 
   return (
     <PlatformSettings

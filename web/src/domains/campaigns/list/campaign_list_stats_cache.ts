@@ -1,6 +1,14 @@
 import type { CampaignListMetrics } from '@/api/campaigns_api';
 import type { CampaignStats, CampaignStatsQuery } from '@/api/types';
 
+/** Session cache TTL for popover stats; list refresh bumps cacheRevision to invalidate. */
+export const CAMPAIGN_STATS_CACHE_TTL_MS = 60_000;
+
+type CampaignStatsCacheEntry = {
+  stats: CampaignStats;
+  expiresAt: number;
+};
+
 export function buildCampaignStatsCacheKey(
   campaignId: string,
   statsQuery: CampaignStatsQuery,
@@ -38,10 +46,22 @@ export function campaignStatsFromListMetrics(
   };
 }
 
-const statsCache = new Map<string, CampaignStats>();
+const statsCache = new Map<string, CampaignStatsCacheEntry>();
+
+function isCacheEntryFresh(entry: CampaignStatsCacheEntry, now = Date.now()): boolean {
+  return now <= entry.expiresAt;
+}
 
 export function readCachedCampaignStats(cacheKey: string): CampaignStats | undefined {
-  return statsCache.get(cacheKey);
+  const entry = statsCache.get(cacheKey);
+  if (!entry) {
+    return undefined;
+  }
+  if (!isCacheEntryFresh(entry)) {
+    statsCache.delete(cacheKey);
+    return undefined;
+  }
+  return entry.stats;
 }
 
 function statsQueryKeyParts(statsQuery: CampaignStatsQuery): [string, string, string] {
@@ -54,7 +74,12 @@ export function readCachedCampaignStatsForCampaign(
   statsQuery: CampaignStatsQuery = {},
 ): CampaignStats | undefined {
   const [from, to, granularity] = statsQueryKeyParts(statsQuery);
-  for (const [key, stats] of statsCache) {
+  const now = Date.now();
+  for (const [key, entry] of statsCache) {
+    if (!isCacheEntryFresh(entry, now)) {
+      statsCache.delete(key);
+      continue;
+    }
     const parts = key.split('\0');
     if (parts.length < 5) {
       continue;
@@ -65,13 +90,16 @@ export function readCachedCampaignStatsForCampaign(
     if (parts[2] !== from || parts[3] !== to || parts[4] !== granularity) {
       continue;
     }
-    return stats;
+    return entry.stats;
   }
   return undefined;
 }
 
 export function writeCachedCampaignStats(cacheKey: string, stats: CampaignStats): void {
-  statsCache.set(cacheKey, stats);
+  statsCache.set(cacheKey, {
+    stats,
+    expiresAt: Date.now() + CAMPAIGN_STATS_CACHE_TTL_MS,
+  });
 }
 
 export function clearCampaignStatsCache(): void {

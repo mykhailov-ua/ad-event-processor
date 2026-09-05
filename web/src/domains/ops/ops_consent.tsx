@@ -1,4 +1,4 @@
-import { JsonDashboardView } from '@/domains/dashboards/json_dashboard_view';
+import { JsonPayloadView } from '@/shell/json_payload_view';
 import { opsPanelError } from '@/domains/ops/ops_nav';
 import {
   OpsPageBlockingError,
@@ -31,7 +31,7 @@ export function OpsConsent({ payload, fetching, error, hasSnapshot }: OpsConsent
   return (
     <OpsPageShell title="Consent proofs">
       {payload ? (
-        <JsonDashboardView payload={payload} />
+        <JsonPayloadView payload={payload} />
       ) : (
         <p className="text-muted-foreground">No consent proof payload returned.</p>
       )}

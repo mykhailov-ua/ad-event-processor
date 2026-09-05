@@ -8,6 +8,7 @@ import {
 } from '@/api/ops_api';
 import { useResource } from '@/api/use_resource';
 import { OpsMlModel } from '@/domains/ops/ops_ml_model';
+import { useCoalescedBumpRefresh } from '@/hooks/use_coalesced_refresh_token';
 
 function skipLazyFetch(): Promise<never> {
   return Promise.reject(new DOMException('Skipped', 'AbortError'));
@@ -54,19 +55,22 @@ export function OpsMlModelPage() {
     [labelsLoadToken],
   );
 
-  const onLoadStatus = useCallback(() => {
+  const onLoadStatus = useCoalescedBumpRefresh(() => {
     setStatusLoadToken((value) => value + 1);
-  }, []);
+  }, statusResource.fetching);
 
-  const onLoadEval = useCallback(() => {
+  const onLoadEval = useCoalescedBumpRefresh(() => {
     setEvalLoadToken((value) => value + 1);
-  }, []);
+  }, evalResource.fetching);
 
-  const onLoadLabels = useCallback(() => {
+  const onLoadLabels = useCoalescedBumpRefresh(() => {
     setLabelsLoadToken((value) => value + 1);
-  }, []);
+  }, labelsResource.fetching);
 
   const onAddLabel = useCallback(async () => {
+    if (savingLabel) {
+      return;
+    }
     const ipHash = draftIpHash.trim();
     const labelRaw = draftLabel.trim();
     if (!ipHash || !labelRaw) {
@@ -94,13 +98,13 @@ export function OpsMlModelPage() {
     } finally {
       setSavingLabel(false);
     }
-  }, [draftIpHash, draftLabel, draftReason]);
+  }, [draftIpHash, draftLabel, draftReason, savingLabel]);
 
   return (
     <OpsMlModel
       status={statusResource.data}
       evalBlock={evalResource.data}
-      labels={labelsResource.data ?? []}
+      labels={labelsResource.data}
       draftIpHash={draftIpHash}
       draftLabel={draftLabel}
       draftReason={draftReason}
