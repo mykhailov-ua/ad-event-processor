@@ -6,9 +6,10 @@ import {
   type CoalescedCallbackOptions,
 } from '@/lib/coalesced_user_action';
 
+// React wrapper for coalesceUserAction; stable returned callback for toolbar Refresh handlers.
 export function useCoalescedCallback(
   callback: () => void,
-  options: CoalescedCallbackOptions = {},
+  options: CoalescedCallbackOptions = {}
 ): () => void {
   const {
     windowMs = DEFAULT_COALESCE_WINDOW_MS,

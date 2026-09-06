@@ -18,18 +18,25 @@ import (
 func tlsHookHandler(t *testing.T, tlsEnabled bool, filter EventFilter) (*AdsPacketHandler, uuid.UUID) {
 	t.Helper()
 	cid := uuid.New()
+	brandID := uuid.New()
 	lockStaticCampaign(func(c *domain.Campaign) {
 		c.ID = cid
+		c.BrandID = &brandID
 		c.TLSFingerprintBlockEnabled = tlsEnabled
+		c.CIDRBlockEnabled = false
 	})
 	t.Cleanup(func() {
-		lockStaticCampaign(func(c *domain.Campaign) { c.TLSFingerprintBlockEnabled = false })
+		lockStaticCampaign(func(c *domain.Campaign) {
+			c.TLSFingerprintBlockEnabled = false
+			c.CIDRBlockEnabled = false
+		})
 		cachedMockCamp.Store(nil)
 	})
 	cachedMockCamp.Store(nil)
 
 	cfg := &config.Config{MaxRequestBodySize: 1 << 20}
-	h := NewAdsPacketHandler(cfg, &mockRegistry{}, NewFilterEngine(0, filter), nil, nil, NewJumpHashSharder(1), "fraud-stream", nil)
+	store := clickHookBrandStore(t, brandID)
+	h := NewAdsPacketHandler(cfg, &mockRegistry{}, NewFilterEngine(0, filter), nil, nil, NewJumpHashSharder(1), "fraud-stream", store)
 	return h, cid
 }
 

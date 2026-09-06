@@ -245,6 +245,9 @@ MetaResponse:
       type: boolean
     eula_required:
       type: boolean
+    payment_enabled:
+      type: boolean
+      description: Payment module wired for customer payment history and intents.
     license:
       $ref: '#/MetaLicense'
 
@@ -490,6 +493,24 @@ SupportFeedbackResponse:
     id:
       type: string
       format: uuid
+
+AuthLoginRequest:
+  type: object
+  required: [email, password]
+  properties:
+    email:
+      type: string
+      format: email
+    password:
+      type: string
+      format: password
+
+AuthRefreshResponse:
+  type: object
+  required: [status]
+  properties:
+    status:
+      type: string
 
 PublicActivateRequest:
   type: object

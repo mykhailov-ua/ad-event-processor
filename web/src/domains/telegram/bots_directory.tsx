@@ -1,7 +1,9 @@
 import { Link } from 'react-router-dom';
 
+import { FILTER_PANEL_NARROW_CLASS } from '@/shell/filter_panel';
 import { PageChrome } from '@/shell/page_chrome';
 import { EmptyState } from '@/shell/empty_state';
+import { cn } from '@/lib/utils';
 import { PageSkeleton } from '@/shell/page_skeleton';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
@@ -58,9 +60,9 @@ export function TelegramBotsDirectory({
     <PageChrome title="Telegram bots">
       <TelegramNav />
 
-      <section className="ui-filter-panel gap-6">
+      <section className={cn(FILTER_PANEL_NARROW_CLASS, 'gap-6')}>
         <h2 className="text-base font-semibold">Configure bot</h2>
-        <div className="grid max-w-xl gap-4">
+        <div className="grid gap-4">
           <div className="grid gap-2">
             <Label htmlFor="telegram-campaign-id">Campaign ID</Label>
             <Input
@@ -80,42 +82,42 @@ export function TelegramBotsDirectory({
         <EmptyState title="No bots" description="No Telegram Mini App bots are configured." />
       ) : (
         <DirectoryTable horizontalScroll>
-            <TableHeader>
-              <TableRow>
-                <DirectoryTableHead>Bot ID</DirectoryTableHead>
-                <DirectoryTableHead>Campaign</DirectoryTableHead>
-                <DirectoryTableHead>Webhook</DirectoryTableHead>
-                <DirectoryTableHead>Mini App</DirectoryTableHead>
-                <DirectoryTableHead>Updated</DirectoryTableHead>
-                <DirectoryTableHead />
-              </TableRow>
-            </TableHeader>
-            <TableBody>
-              {(bots ?? []).map((row) => {
-                const campaignId = row.campaign_id ?? '';
-                return (
-                  <TableRow key={String(row.bot_id ?? campaignId ?? row.webhook_url)}>
-                    <TableCell>{row.bot_id ?? ''}</TableCell>
-                    <TableCell className="font-mono text-xs">{campaignId}</TableCell>
-                    <TableCell className="whitespace-nowrap font-mono text-xs">
-                      {row.webhook_url ?? ''}
-                    </TableCell>
-                    <TableCell className="whitespace-nowrap font-mono text-xs">
-                      {row.mini_app_url ?? ''}
-                    </TableCell>
-                    <TableCell>{displayTimestamp(row.updated_at)}</TableCell>
-                    <TableCell>
-                      {campaignId ? (
-                        <Button asChild type="button" variant="outline">
-                          <Link to={`/telegram/bots/${campaignId}`}>Edit</Link>
-                        </Button>
-                      ) : null}
-                    </TableCell>
-                  </TableRow>
-                );
-              })}
-            </TableBody>
-          </DirectoryTable>
+          <TableHeader>
+            <TableRow>
+              <DirectoryTableHead>Bot ID</DirectoryTableHead>
+              <DirectoryTableHead>Campaign</DirectoryTableHead>
+              <DirectoryTableHead>Webhook</DirectoryTableHead>
+              <DirectoryTableHead>Mini App</DirectoryTableHead>
+              <DirectoryTableHead>Updated</DirectoryTableHead>
+              <DirectoryTableHead />
+            </TableRow>
+          </TableHeader>
+          <TableBody>
+            {(bots ?? []).map((row) => {
+              const campaignId = row.campaign_id ?? '';
+              return (
+                <TableRow key={String(row.bot_id ?? campaignId ?? row.webhook_url)}>
+                  <TableCell>{row.bot_id ?? ''}</TableCell>
+                  <TableCell className="font-mono text-xs">{campaignId}</TableCell>
+                  <TableCell className="whitespace-nowrap font-mono text-xs">
+                    {row.webhook_url ?? ''}
+                  </TableCell>
+                  <TableCell className="whitespace-nowrap font-mono text-xs">
+                    {row.mini_app_url ?? ''}
+                  </TableCell>
+                  <TableCell>{displayTimestamp(row.updated_at)}</TableCell>
+                  <TableCell>
+                    {campaignId ? (
+                      <Button asChild type="button" variant="outline">
+                        <Link to={`/telegram/bots/${campaignId}`}>Edit</Link>
+                      </Button>
+                    ) : null}
+                  </TableCell>
+                </TableRow>
+              );
+            })}
+          </TableBody>
+        </DirectoryTable>
       )}
 
       {actionError ? telegramPanelError(actionError, 'Bot action failed') : null}

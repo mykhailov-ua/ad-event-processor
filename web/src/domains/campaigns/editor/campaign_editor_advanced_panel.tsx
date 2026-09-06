@@ -1,47 +1,14 @@
-import { Link } from 'react-router-dom';
-
-import { Button } from '@/components/ui/button';
-import { Badge } from '@/components/ui/badge';
-import { Checkbox } from '@/components/ui/checkbox';
-import { Input } from '@/components/ui/input';
-import { Label } from '@/components/ui/label';
-import { Textarea } from '@/components/ui/textarea';
-import {
-  Sheet,
-  SheetContent,
-  SheetHeader,
-  SheetTitle,
-} from '@/components/ui/sheet';
-import {
-  DirectoryTable,
-  DirectoryTableHead,
-  TableBody,
-  TableCell,
-  TableHeader,
-  TableRow,
-} from '@/shell/directory_table';
-import {
-  CAMPAIGN_CLICK_QUERY_PARAMS_FIELD_HINT,
-  CAMPAIGN_CLICK_QUERY_PARAMS_JSON_MAX_CHARS,
-  CAMPAIGN_CLICK_QUERY_PARAMS_TEXTAREA_MAX_HEIGHT_CLASS,
-  CAMPAIGN_CLICK_QUERY_PARAMS_TEXTAREA_MONO_CLASS,
-  CAMPAIGN_EDITOR_MONO_EXTRALIGHT_CLASS,
-} from '@/domains/campaigns/editor/campaign_click_query_limits';
-import { JsonPayloadView } from '@/shell/json_payload_view';
-import { formatCampaignJsonKey } from '@/domains/campaigns/editor/campaign_json_labels';
+import { CampaignEditorAdvancedCloneSheet } from '@/domains/campaigns/editor/campaign_editor_advanced_clone_sheet';
+import { CampaignEditorAdvancedCompareSection } from '@/domains/campaigns/editor/campaign_editor_advanced_compare_section';
+import { CampaignEditorAdvancedMacroSection } from '@/domains/campaigns/editor/campaign_editor_advanced_macro_section';
+import { CampaignEditorAdvancedOwnerSection } from '@/domains/campaigns/editor/campaign_editor_advanced_owner_section';
+import { CampaignEditorAdvancedPublishSection } from '@/domains/campaigns/editor/campaign_editor_advanced_publish_section';
+import { CampaignEditorAdvancedRoutingSection } from '@/domains/campaigns/editor/campaign_editor_advanced_routing_section';
+import { EDITOR_MAIN_COLUMN_CLASS } from '@/shell/filter_panel';
 import { CampaignEditorTools } from '@/domains/campaigns/editor/campaign_editor_tools';
+import { cn } from '@/lib/utils';
 import type { Campaign } from '@/api/types';
 import type { CampaignEditorProps } from '@/domains/campaigns/editor/campaign_editor_types';
-import {
-  CLONE_OPTION_FIELDS,
-  FieldErrorsPanel,
-  StringList,
-  ValidityBadge,
-  diffSeverityVariant,
-  editorApiErrorBlock,
-  formatReadonly,
-} from '@/domains/campaigns/editor/campaign_editor_shared';
-import { cn } from '@/lib/utils';
 
 export type CampaignEditorAdvancedPanelProps = Pick<
   CampaignEditorProps,
@@ -167,516 +134,97 @@ export function CampaignEditorAdvancedPanel({
   onCloneOpenChange,
 }: CampaignEditorAdvancedPanelProps) {
   return (
-    <div className="flex max-w-3xl flex-col gap-8">
+    <div className={cn(EDITOR_MAIN_COLUMN_CLASS, 'gap-8')}>
       <p className="text-sm text-muted-foreground">
         Status: {statusLabel}
         {checking ? '  /  Checking publish...' : ''}
-        {publishCheck && !checking ? (
-          publishCheck.valid ? '  /  Publish ready' : '  /  Publish blocked'
-        ) : (
-          ''
-        )}
+        {publishCheck && !checking
+          ? publishCheck.valid
+            ? '  /  Publish ready'
+            : '  /  Publish blocked'
+          : ''}
       </p>
 
-      <section className="flex flex-col gap-4">
-        <h2 className="text-sm font-semibold text-foreground">Routing & ingress</h2>
-        <div className="grid gap-4">
-          <div className="grid gap-2 sm:grid-cols-2">
-            <div className="grid gap-2">
-              <Label htmlFor="campaign-flow-id">Flow ID</Label>
-              <Input
-                className={CAMPAIGN_EDITOR_MONO_EXTRALIGHT_CLASS}
-                id="campaign-flow-id"
-                value={form.flow_id}
-                disabled={saving}
-                onChange={(event) => onFieldChange('flow_id', event.target.value)}
-              />
-            </div>
-            <div className="grid gap-2">
-              <Label htmlFor="campaign-brand-id">Brand ID</Label>
-              <Input
-                className={CAMPAIGN_EDITOR_MONO_EXTRALIGHT_CLASS}
-                id="campaign-brand-id"
-                value={form.brand_id}
-                disabled={saving}
-                onChange={(event) => onFieldChange('brand_id', event.target.value)}
-              />
-            </div>
-          </div>
+      <CampaignEditorAdvancedRoutingSection
+        form={form}
+        saving={saving}
+        onFieldChange={onFieldChange}
+      />
 
-          <div className="grid gap-2 sm:grid-cols-2">
-            <div className="grid gap-2">
-              <Label htmlFor="campaign-ingress-param">Ingress cost param</Label>
-              <Input
-                className={CAMPAIGN_EDITOR_MONO_EXTRALIGHT_CLASS}
-                id="campaign-ingress-param"
-                value={form.ingress_param}
-                disabled={saving}
-                onChange={(event) => onFieldChange('ingress_param', event.target.value)}
-              />
-            </div>
-            <div className="grid gap-2">
-              <Label htmlFor="campaign-ingress-scale">Ingress cost scale</Label>
-              <Input
-                className={CAMPAIGN_EDITOR_MONO_EXTRALIGHT_CLASS}
-                id="campaign-ingress-scale"
-                value={form.ingress_scale}
-                disabled={saving}
-                placeholder="decimal or micro"
-                onChange={(event) => onFieldChange('ingress_scale', event.target.value)}
-              />
-            </div>
-          </div>
+      <CampaignEditorAdvancedMacroSection
+        macroPreviewForm={macroPreviewForm}
+        onMacroPreviewFieldChange={onMacroPreviewFieldChange}
+        macroPreviewing={macroPreviewing}
+        fetching={fetching}
+        macroPreviewResult={macroPreviewResult}
+        macroPreviewError={macroPreviewError}
+        onMacroPreview={onMacroPreview}
+      />
 
-          <div className="grid gap-2 sm:grid-cols-2">
-            <div className="grid gap-2">
-              <Label htmlFor="campaign-ingress-max-micro">Ingress max micro</Label>
-              <Input
-                className={CAMPAIGN_EDITOR_MONO_EXTRALIGHT_CLASS}
-                id="campaign-ingress-max-micro"
-                value={form.ingress_max_micro}
-                disabled={saving}
-                inputMode="numeric"
-                onChange={(event) => onFieldChange('ingress_max_micro', event.target.value)}
-              />
-            </div>
-            <div className="grid gap-2">
-              <Label htmlFor="campaign-ingress-policy">Ingress policy</Label>
-              <Input
-                className={CAMPAIGN_EDITOR_MONO_EXTRALIGHT_CLASS}
-                id="campaign-ingress-policy"
-                value={form.ingress_policy}
-                disabled={saving}
-                onChange={(event) => onFieldChange('ingress_policy', event.target.value)}
-              />
-            </div>
-          </div>
-        </div>
-      </section>
+      <CampaignEditorAdvancedPublishSection
+        checking={checking}
+        validating={validating}
+        publishing={publishing}
+        forcePublish={forcePublish}
+        gateBusy={gateBusy}
+        fetching={fetching}
+        saving={saving}
+        publishCheck={publishCheck}
+        validateResult={validateResult}
+        publishBlocked={publishBlocked}
+        publishSuccess={publishSuccess}
+        publishCheckError={publishCheckError}
+        validateError={validateError}
+        publishError={publishError}
+        onForcePublishChange={onForcePublishChange}
+        onCheckPublish={onCheckPublish}
+        onValidateChanges={onValidateChanges}
+        onPublish={onPublish}
+      />
 
-      <section className="flex flex-col gap-4">
-        <h2 className="text-sm font-semibold text-foreground">Integrations</h2>
-        <div className="grid gap-4">
-          <div className="grid gap-2">
-            <Label htmlFor="campaign-traffic-template-id">Traffic template ID</Label>
-            <Input
-              className={CAMPAIGN_EDITOR_MONO_EXTRALIGHT_CLASS}
-              id="campaign-traffic-template-id"
-              value={form.traffic_template_id}
-              disabled={saving}
-              placeholder="meta-facebook"
-              onChange={(event) => onFieldChange('traffic_template_id', event.target.value)}
-            />
-            <p className="text-xs text-muted-foreground">
-              Integration click URL preset template (for example meta-facebook).
-            </p>
-          </div>
+      <CampaignEditorAdvancedCloneSheet
+        campaign={campaign}
+        cloneOpen={cloneOpen}
+        onCloneOpenChange={onCloneOpenChange}
+        cloneNameSuffix={cloneNameSuffix}
+        onCloneNameSuffixChange={onCloneNameSuffixChange}
+        cloneOptions={cloneOptions}
+        onCloneOptionChange={onCloneOptionChange}
+        clonePreviewing={clonePreviewing}
+        cloning={cloning}
+        fetching={fetching}
+        clonePreview={clonePreview}
+        clonePreviewError={clonePreviewError}
+        cloneError={cloneError}
+        cloneSuccess={cloneSuccess}
+        clonedCampaignId={clonedCampaignId}
+        onClonePreview={onClonePreview}
+        onCloneExecute={onCloneExecute}
+      />
 
-          <div className="grid gap-2">
-            <Label htmlFor="campaign-click-query-params">Click query params (JSON)</Label>
-            <Textarea
-              className={cn(
-                CAMPAIGN_CLICK_QUERY_PARAMS_TEXTAREA_MONO_CLASS,
-                CAMPAIGN_CLICK_QUERY_PARAMS_TEXTAREA_MAX_HEIGHT_CLASS,
-                'resize-y overflow-y-auto focus-visible:ring-0 focus-visible:ring-offset-0',
-              )}
-              disabled={saving}
-              id="campaign-click-query-params"
-              maxLength={CAMPAIGN_CLICK_QUERY_PARAMS_JSON_MAX_CHARS}
-              placeholder="{}"
-              rows={8}
-              showCount
-              value={form.click_query_params_json}
-              onChange={(event) => onFieldChange('click_query_params_json', event.target.value)}
-            />
-            <p className="text-xs text-muted-foreground">
-              Query param macros for the click URL preset (sub1..sub30, ad_campaign_id, click ids).
-              Values must be strings. {CAMPAIGN_CLICK_QUERY_PARAMS_FIELD_HINT}
-            </p>
-          </div>
-        </div>
-      </section>
+      <CampaignEditorAdvancedCompareSection
+        campaign={campaign}
+        diffAgainstId={diffAgainstId}
+        onDiffAgainstIdChange={onDiffAgainstIdChange}
+        comparingDiff={comparingDiff}
+        fetching={fetching}
+        diffResult={diffResult}
+        diffError={diffError}
+        onCompareDiff={onCompareDiff}
+      />
 
-      <section className="flex flex-col gap-4">
-        <h2 className="text-sm font-semibold text-foreground">Macro preview</h2>
-        <div className="grid gap-2 sm:grid-cols-3">
-            <div className="grid gap-2">
-              <Label htmlFor="macro-preview-sub1">sub1</Label>
-              <Input
-                id="macro-preview-sub1"
-                value={macroPreviewForm.sub1}
-                disabled={macroPreviewing || fetching}
-                onChange={(event) => onMacroPreviewFieldChange('sub1', event.target.value)}
-              />
-            </div>
-            <div className="grid gap-2">
-              <Label htmlFor="macro-preview-country">country</Label>
-              <Input
-                id="macro-preview-country"
-                value={macroPreviewForm.country}
-                disabled={macroPreviewing || fetching}
-                onChange={(event) => onMacroPreviewFieldChange('country', event.target.value)}
-              />
-            </div>
-            <div className="grid gap-2">
-              <Label htmlFor="macro-preview-click-id">click_id</Label>
-              <Input
-                id="macro-preview-click-id"
-                value={macroPreviewForm.click_id}
-                disabled={macroPreviewing || fetching}
-                onChange={(event) => onMacroPreviewFieldChange('click_id', event.target.value)}
-              />
-            </div>
-          </div>
-
-          <div className="flex justify-end">
-            <Button
-              type="button"
-              variant="secondary"
-              disabled={macroPreviewing || fetching}
-              onClick={onMacroPreview}
-            >
-              {macroPreviewing ? 'Previewing...' : 'Preview'}
-            </Button>
-          </div>
-
-          {macroPreviewError
-            ? editorApiErrorBlock(
-                macroPreviewError,
-                'Macro preview unavailable',
-                'Could not preview macros',
-              )
-            : null}
-
-          {macroPreviewResult ? (
-            <div className="grid gap-3 rounded-md border border-border bg-card p-3">
-              <div className="grid gap-2">
-                <p className="text-sm font-medium">Resolved click URL</p>
-                <p className="break-all font-mono text-xs text-muted-foreground">
-                  {formatReadonly(macroPreviewResult.resolved_click_url)}
-                </p>
-              </div>
-              {macroPreviewResult.resolved_postback_url ? (
-                <div className="grid gap-2">
-                  <p className="text-sm font-medium">Resolved postback URL</p>
-                  <p className="break-all font-mono text-xs text-muted-foreground">
-                    {macroPreviewResult.resolved_postback_url}
-                  </p>
-                </div>
-              ) : null}
-              <StringList title="Warnings" items={macroPreviewResult.warnings} />
-              <StringList title="Unresolved macros" items={macroPreviewResult.unresolved_macros} />
-            </div>
-          ) : null}
-      </section>
-
-      <section className="flex flex-col gap-4">
-        <h2 className="text-sm font-semibold text-foreground">Publish gate</h2>
-        <div className="flex flex-wrap gap-2">
-            <Button
-              type="button"
-              variant="secondary"
-              disabled={gateBusy || fetching}
-              onClick={onCheckPublish}
-            >
-              {checking ? 'Checking...' : 'Check publish'}
-            </Button>
-            <Button
-              type="button"
-              variant="secondary"
-              disabled={gateBusy || fetching || saving}
-              onClick={onValidateChanges}
-            >
-              {validating ? 'Validating...' : 'Validate changes'}
-            </Button>
-            <Button type="button" disabled={gateBusy || fetching || saving} onClick={onPublish}>
-              {publishing ? 'Publishing...' : 'Publish'}
-            </Button>
-          </div>
-
-          <div className="flex items-center gap-2">
-            <Checkbox
-              checked={forcePublish}
-              disabled={gateBusy || fetching}
-              id="campaign-force-publish"
-              onCheckedChange={(checked) => onForcePublishChange(checked === true)}
-            />
-            <Label htmlFor="campaign-force-publish">Force publish</Label>
-          </div>
-
-          {publishCheckError
-            ? editorApiErrorBlock(
-                publishCheckError,
-                'Publish check unavailable',
-                'Could not check publish gate',
-              )
-            : null}
-          {validateError
-            ? editorApiErrorBlock(validateError, 'Validate unavailable', 'Could not validate changes')
-            : null}
-          {publishError
-            ? editorApiErrorBlock(publishError, 'Publish unavailable', 'Could not publish campaign')
-            : null}
-
-          {publishSuccess ? <Badge variant="secondary">Campaign published</Badge> : null}
-
-          {publishCheck ? (
-            <div className="grid gap-3 rounded-md border border-border bg-card p-3">
-              <div className="flex flex-wrap items-center gap-2">
-                <p className="text-sm font-medium">Publish check</p>
-                <ValidityBadge
-                  valid={publishCheck.valid}
-                  validLabel="Ready"
-                  invalidLabel="Blocked"
-                />
-              </div>
-              <FieldErrorsPanel title="Field errors" fieldErrors={publishCheck.field_errors} />
-              <StringList title="Warnings" items={publishCheck.warning_slugs} />
-            </div>
-          ) : null}
-
-          {validateResult ? (
-            <div className="grid gap-3 rounded-md border border-border bg-card p-3">
-              <div className="flex flex-wrap items-center gap-2">
-                <p className="text-sm font-medium">Patch validation</p>
-                <ValidityBadge
-                  valid={validateResult.valid}
-                  validLabel="Valid"
-                  invalidLabel="Invalid"
-                />
-              </div>
-              <FieldErrorsPanel title="Field errors" fieldErrors={validateResult.field_errors} />
-              <StringList title="Warnings" items={validateResult.warnings} />
-            </div>
-          ) : null}
-
-          {publishBlocked ? (
-            <div className="grid gap-3 rounded-md border border-destructive/50 bg-card p-3">
-              <div className="flex flex-wrap items-center gap-2">
-                <p className="text-sm font-medium text-destructive">Publish blocked</p>
-                <Badge variant="destructive">422</Badge>
-              </div>
-              <FieldErrorsPanel title="Field errors" fieldErrors={publishBlocked.field_errors} />
-              <StringList title="Warning slugs" items={publishBlocked.warning_slugs} />
-            </div>
-          ) : null}
-      </section>
-
-      <Sheet onOpenChange={onCloneOpenChange} open={cloneOpen}>
-        <SheetContent className="overflow-y-auto sm:max-w-2xl">
-          <SheetHeader>
-            <SheetTitle>Clone campaign</SheetTitle>
-          </SheetHeader>
-          <div className="grid gap-4 pt-4">
-            <div className="grid gap-2">
-              <Label htmlFor="campaign-clone-name-suffix">Clone name suffix</Label>
-              <Input
-                id="campaign-clone-name-suffix"
-                value={cloneNameSuffix}
-                disabled={clonePreviewing || cloning || fetching}
-                placeholder=" (copy)"
-                onChange={(event) => onCloneNameSuffixChange(event.target.value)}
-              />
-              <p className="text-xs text-muted-foreground">
-                Leave empty for the default &quot;{campaign.name} (copy)&quot;. Enter a suffix such as
-                &quot; - v2&quot; to append to the source name.
-              </p>
-            </div>
-
-            <div className="grid gap-3">
-              <p className="text-sm font-medium">Clone options</p>
-              {CLONE_OPTION_FIELDS.map(({ field, label, description }) => {
-                const inputId = `campaign-clone-option-${field}`;
-                const defaultChecked = field === 'reset_spend' ? false : true;
-                const checked = cloneOptions[field] ?? defaultChecked;
-
-                return (
-                  <div key={field} className="grid gap-1">
-                    <div className="flex items-center gap-2">
-                      <Checkbox
-                        checked={checked}
-                        disabled={clonePreviewing || cloning || fetching}
-                        id={inputId}
-                        onCheckedChange={(value) => onCloneOptionChange(field, value === true)}
-                      />
-                      <Label htmlFor={inputId}>{label}</Label>
-                    </div>
-                    <p className="text-xs text-muted-foreground">{description}</p>
-                  </div>
-                );
-              })}
-            </div>
-
-            <div className="flex flex-wrap justify-end gap-2">
-              <Button
-                type="button"
-                variant="secondary"
-                disabled={clonePreviewing || cloning || fetching}
-                onClick={onClonePreview}
-              >
-                {clonePreviewing ? 'Previewing...' : 'Preview clone'}
-              </Button>
-              <Button
-                type="button"
-                disabled={clonePreviewing || cloning || fetching}
-                onClick={onCloneExecute}
-              >
-                {cloning ? 'Creating clone...' : 'Create clone'}
-              </Button>
-            </div>
-
-            {cloneError
-              ? editorApiErrorBlock(cloneError, 'Clone unavailable', 'Could not create clone')
-              : null}
-
-            {cloneSuccess && clonedCampaignId ? (
-              <p className="text-sm text-muted-foreground">
-                Clone created.{' '}
-                <Link
-                  className="text-primary hover:underline"
-                  to={`/campaigns/${clonedCampaignId}/edit`}
-                >
-                  Open cloned campaign
-                </Link>
-              </p>
-            ) : null}
-
-            {clonePreviewError
-              ? editorApiErrorBlock(
-                  clonePreviewError,
-                  'Clone preview unavailable',
-                  'Could not preview clone',
-                )
-              : null}
-
-            {clonePreview ? (
-              <JsonPayloadView
-                formatColumn={formatCampaignJsonKey}
-                formatKey={formatCampaignJsonKey}
-                payload={clonePreview as unknown as Record<string, unknown>}
-              />
-            ) : null}
-          </div>
-        </SheetContent>
-      </Sheet>
-
-      <section className="flex flex-col gap-4">
-        <h2 className="text-sm font-semibold text-foreground">Compare campaigns</h2>
-        <div className="grid gap-2">
-            <Label htmlFor="campaign-diff-against-id">Against campaign ID</Label>
-            <Input
-              id="campaign-diff-against-id"
-              value={diffAgainstId}
-              disabled={comparingDiff || fetching}
-              placeholder="Other campaign UUID"
-              onChange={(event) => onDiffAgainstIdChange(event.target.value)}
-            />
-            <p className="text-xs text-muted-foreground">
-              Compare this campaign ({campaign.id}) against another campaign in the same customer.
-            </p>
-          </div>
-
-          <div className="flex justify-end">
-            <Button
-              type="button"
-              variant="secondary"
-              disabled={comparingDiff || fetching}
-              onClick={onCompareDiff}
-            >
-              {comparingDiff ? 'Comparing...' : 'Compare'}
-            </Button>
-          </div>
-
-          {diffError
-            ? editorApiErrorBlock(diffError, 'Campaign diff unavailable', 'Could not compare campaigns')
-            : null}
-
-          {diffResult ? (
-            <div className="grid gap-3">
-              {diffResult.truncated ? (
-                <Badge variant="outline">Diff truncated - showing first rows only</Badge>
-              ) : null}
-              {diffResult.rows.length === 0 ? (
-                <p className="text-sm text-muted-foreground">No differences found.</p>
-              ) : (
-                <DirectoryTable>
-                  <TableHeader>
-                    <TableRow>
-                      <DirectoryTableHead>Field</DirectoryTableHead>
-                      <DirectoryTableHead>This campaign</DirectoryTableHead>
-                      <DirectoryTableHead>Against campaign</DirectoryTableHead>
-                      <DirectoryTableHead>Severity</DirectoryTableHead>
-                    </TableRow>
-                  </TableHeader>
-                  <TableBody>
-                    {diffResult.rows.map((row) => (
-                      <TableRow key={row.path}>
-                        <TableCell className="font-medium">{row.label}</TableCell>
-                        <TableCell className="font-mono text-xs">
-                          {formatReadonly(row.left_display)}
-                        </TableCell>
-                        <TableCell className="font-mono text-xs">
-                          {formatReadonly(row.right_display)}
-                        </TableCell>
-                        <TableCell>
-                          <Badge variant={diffSeverityVariant(row.severity)}>{row.severity}</Badge>
-                        </TableCell>
-                      </TableRow>
-                    ))}
-                  </TableBody>
-                </DirectoryTable>
-              )}
-            </div>
-          ) : null}
-      </section>
-
-      <section className="flex flex-col gap-4">
-        <h2 className="text-sm font-semibold text-foreground">Owner and export</h2>
-        <div className="grid max-w-md grid-cols-[1fr_auto] items-end gap-4">
-            <div className="grid gap-2">
-              <Label htmlFor="campaign-owner-user-id">New owner user ID</Label>
-              <Input
-                id="campaign-owner-user-id"
-                value={draftOwnerUserId}
-                disabled={transferringOwner || fetching}
-                onChange={(event) => onDraftOwnerUserIdChange(event.target.value)}
-              />
-            </div>
-            <Button
-              type="button"
-              disabled={transferringOwner || fetching}
-              onClick={onTransferOwner}
-            >
-              {transferringOwner ? 'Transferring...' : 'Transfer owner'}
-            </Button>
-          </div>
-          {ownerSuccess ? (
-            <p className="text-sm text-muted-foreground" role="status">
-              Owner transfer accepted.
-            </p>
-          ) : null}
-          {ownerError
-            ? editorApiErrorBlock(
-                ownerError,
-                'Owner transfer unavailable',
-                'Could not transfer owner',
-              )
-            : null}
-
-          <div className="flex justify-start">
-            <Button
-              type="button"
-              variant="secondary"
-              disabled={exporting || fetching}
-              onClick={onExportCampaign}
-            >
-              {exporting ? 'Exporting...' : 'Download export bundle'}
-            </Button>
-          </div>
-          {exportError
-            ? editorApiErrorBlock(exportError, 'Export unavailable', 'Could not export campaign')
-            : null}
-      </section>
+      <CampaignEditorAdvancedOwnerSection
+        draftOwnerUserId={draftOwnerUserId}
+        onDraftOwnerUserIdChange={onDraftOwnerUserIdChange}
+        transferringOwner={transferringOwner}
+        fetching={fetching}
+        ownerError={ownerError}
+        ownerSuccess={ownerSuccess}
+        onTransferOwner={onTransferOwner}
+        exporting={exporting}
+        exportError={exportError}
+        onExportCampaign={onExportCampaign}
+      />
 
       <CampaignEditorTools campaignId={campaign.id} />
     </div>

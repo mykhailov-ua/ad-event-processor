@@ -9,7 +9,6 @@ import (
 	"ad-event-processor/internal/campaign"
 	_ "ad-event-processor/internal/campaign/editor"
 	"ad-event-processor/internal/campaign/integration"
-	_ "ad-event-processor/internal/campaign/integration"
 	"ad-event-processor/internal/campaign/selfserve"
 	_ "ad-event-processor/internal/campaign/wizard"
 	"ad-event-processor/internal/commandpalette"

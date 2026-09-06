@@ -3,7 +3,7 @@
 // Role:
 //   - ProductName and VendorName default to ad-event-processor when BRAND_* unset.
 //   - SiteURL, SupportEmail, SupportURL, AdminURL are env-only (empty when unset).
-//   - HTTPSafeViewHeader and HTTPSafePageHeader used by ingest decoy and edge silent-reject bytes.
+//   - HTTPSafeViewHeader and HTTPSafePageHeader used by ingest safe-view responses and edge non-blocking fraud bytes.
 //   - HTTPUserAgent and AlertTitle helpers for outbound cold-path HTTP and notify subjects.
 //
 // Topology:

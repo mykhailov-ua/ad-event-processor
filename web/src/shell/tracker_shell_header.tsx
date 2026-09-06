@@ -64,14 +64,17 @@ export function TrackerShellHeaderSearch({ onOpenCommandPalette }: TrackerShellH
 
   return (
     <div className="w-full max-w-md">
-      <button
-        className="flex min-h-7 w-full items-center justify-between gap-2 rounded-md border border-border bg-background px-3 text-sm text-muted-foreground hover:bg-accent hover:text-foreground transition-colors"
+      <Button
+        className="w-full justify-between gap-2 px-3 font-normal text-muted-foreground"
         type="button"
+        variant="outline"
         onClick={onOpenCommandPalette}
       >
         <span className="whitespace-nowrap text-left">Search routes, campaigns, reports...</span>
-        <kbd className="hidden rounded border border-border px-1.5 py-0.5 text-ui-mini font-medium text-muted-foreground sm:inline">Ctrl+K</kbd>
-      </button>
+        <kbd className="hidden rounded border border-border px-1.5 py-0.5 text-ui-mini font-medium text-muted-foreground sm:inline">
+          Ctrl+K
+        </kbd>
+      </Button>
     </div>
   );
 }
@@ -79,12 +82,18 @@ export function TrackerShellHeaderSearch({ onOpenCommandPalette }: TrackerShellH
 export function TrackerShellHeaderActions() {
   return (
     <div className="flex flex-nowrap items-center gap-4">
-      <Button asChild className="h-auto border-0 bg-transparent p-0 text-[13px] font-medium text-muted-foreground shadow-none hover:bg-transparent hover:text-foreground" type="button" variant="ghost">
-        <Link to="/docs">Docs</Link>
-      </Button>
-      <Button asChild className="h-auto border-0 bg-transparent p-0 text-[13px] font-semibold text-foreground shadow-none hover:bg-transparent" type="button" variant="ghost">
-        <Link to="/settings">Account</Link>
-      </Button>
+      <Link
+        className="inline-flex min-h-7 items-center text-[13px] font-medium text-muted-foreground transition-colors hover:text-foreground"
+        to="/docs"
+      >
+        Docs
+      </Link>
+      <Link
+        className="inline-flex min-h-7 items-center text-[13px] font-semibold text-foreground transition-colors hover:text-foreground"
+        to="/settings"
+      >
+        Account
+      </Link>
       <ThemeToggle />
     </div>
   );

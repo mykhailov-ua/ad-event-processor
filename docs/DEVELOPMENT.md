@@ -310,14 +310,14 @@ Dev default store: `var/landers/`. Mount the same path on edge nginx for static 
 
 ---
 
-## Moderator intel feed
+## Review traffic intelligence feed
 
-Scale+ SKU feature (`moderator_intel_feed`). Tracker pulls a signed `moderator_intel_v1` JSON pack into `MODERATOR_INTEL_FEED_DIR` on a refresh interval. Hot path matches visitor IPs against an in-memory LPM table; when the campaign flag `moderator_intel_enabled` is on, `/click` serves the safe page (defensive only, no outbound probing).
+Scale+ SKU feature (`moderator_intel_feed`). Tracker pulls a signed `moderator_intel_v1` JSON pack into `MODERATOR_INTEL_FEED_DIR` on a refresh interval. Hot path matches visitor IPs against an in-memory LPM table; when the campaign flag `moderator_intel_enabled` is on, `/click` serves the review-traffic alternate URL (defensive only, no outbound probing).
 
 | Surface | Path / env |
 | :--- | :--- |
 | Feed format | `moderator_intel_v1.json` + `moderator_intel_v1.sig` (HMAC-SHA256) |
-| Campaign toggle | Admin campaign config -> "Moderator intel feed" |
+| Campaign toggle | Admin campaign config -> review traffic intelligence feed |
 | Signal | `moderator_ip` (L1-high, weight 45) |
 
 Env vars (see `.env.example`): `MODERATOR_INTEL_ENABLED`, `MODERATOR_INTEL_FEED_DIR`, `MODERATOR_INTEL_FEED_REFRESH_INTERVAL`, optional `MODERATOR_INTEL_FEED_URL`, `MODERATOR_INTEL_FEED_SECRET`, `MODERATOR_INTEL_FEED_DOWNLOAD`, `MODERATOR_INTEL_ALLOW_UNSIGNED`.
@@ -445,8 +445,9 @@ Manual root-attacker drills (pubkey injection, HWID sysfs spoof, binary patch): 
 ## Shard 0 Outage Mitigation
 
 Redis Shard 0 functions as the configuration hub for campaign definitions and global state.
-- **Tracker Resiliency:** If Shard 0 drops, trackers continue running campaigns using their local in-memory snapshot (`CAMPAIGN_REPLICA_PATH`). New campaign IDs are safely rejected with an **HTTP 503** until Shard 0 comes back online.
-- **Control API Resiliency:** Outbox updates are distributed to surviving shards (Shards 1..N). When Shard 0 recovers, the `Shard0CatchupWorker` automatically catches up with the latest state changes.
+- **Tracker resiliency:** If Shard 0 drops, trackers continue running campaigns using their local in-memory snapshot (`CAMPAIGN_REPLICA_PATH`). Campaigns homed on shard 0 return **503 `shard_unavailable`** while Redis-0 is down.
+- **Stale registry:** When pub/sub is quiet longer than `REGISTRY_STALE_TTL`, the registry enters stale mode. With **`REGISTRY_STALE_PG_GRACE=true`** (default), cache misses call Postgres once: active campaigns are warmed and ingest continues; IDs with no PG row return **404**; disable grace or PG unreachable returns **503 `registry_stale`**.
+- **Control API resiliency:** Outbox updates are distributed to surviving shards (Shards 1..N). When Shard 0 recovers, the `Shard0CatchupWorker` automatically catches up with the latest state changes.
 
 ---
 

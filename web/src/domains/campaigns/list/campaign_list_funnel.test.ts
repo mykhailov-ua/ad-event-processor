@@ -1,10 +1,7 @@
 import assert from 'node:assert/strict';
 import test from 'node:test';
 
-import {
-  resolveCampaignFunnelCounts,
-  syncCampaignFunnelLeadsRaw,
-} from './campaign_list_funnel.ts';
+import { resolveCampaignFunnelCounts, syncCampaignFunnelLeadsRaw } from './campaign_list_funnel.ts';
 
 test('syncCampaignFunnelLeadsRaw keeps explicit leads_raw', () => {
   assert.equal(syncCampaignFunnelLeadsRaw(3, 1, 2, 99), 99);

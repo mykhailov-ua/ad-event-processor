@@ -1,24 +1,24 @@
 import { useMemo, useRef, useState } from 'react';
-import { format } from 'date-fns';
 import { CalendarIcon } from 'lucide-react';
 import type { DateRange } from 'react-day-picker';
 
 import { Button } from '@/components/ui/button';
 import { Calendar } from '@/components/ui/calendar';
+import {
+  formatRangeLabel,
+  normalizePickerDay,
+  resolveMonthCount,
+  toDraftRange,
+} from '@/components/ui/date_range_picker_shared';
 import { Label } from '@/components/ui/label';
 import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover';
+import { adminChrome } from '@/lib/admin_chrome';
 import {
   endOfDayLocalValue,
   parseDatetimeLocalValue,
   startOfDayLocalValue,
 } from '@/lib/datetime_range';
-import { resolvePopoverAlign } from '@/lib/popover_align';
-import {
-  campaignDateRangeClearButtonClass,
-  campaignDateRangeFooterClass,
-  campaignDateRangePopoverClass,
-  campaignDateRangeTriggerClass,
-} from '@/lib/campaign_picker_classes';
+import { resolvePopoverAlign, resolvePopoverSide } from '@/lib/popover_align';
 import { cn } from '@/lib/utils';
 
 export type DateRangePickerProps = {
@@ -30,55 +30,8 @@ export type DateRangePickerProps = {
   disabled?: boolean;
   className?: string;
   labelClassName?: string;
-  variant?: 'default' | 'admin' | 'campaigns';
+  variant?: 'default' | 'admin';
 };
-
-function formatFooterRange(from: Date | undefined, to: Date | undefined): string {
-  if (!from) {
-    return '';
-  }
-  if (!to) {
-    return format(from, 'MMM d, yyyy');
-  }
-  return `${format(from, 'MMM d, yyyy')} - ${format(to, 'MMM d, yyyy')}`;
-}
-
-function formatRangeLabel(from: Date | undefined, to: Date | undefined): string {
-  if (!from) {
-    return 'Pick date range';
-  }
-  if (!to) {
-    return format(from, 'MMM d, yyyy');
-  }
-  if (from.getFullYear() === to.getFullYear()) {
-    return `${format(from, 'MMM d')} - ${format(to, 'MMM d, yyyy')}`;
-  }
-  return `${format(from, 'MMM d, yyyy')} - ${format(to, 'MMM d, yyyy')}`;
-}
-
-function resolveMonthCount(): number {
-  if (typeof window === 'undefined') {
-    return 2;
-  }
-  return window.matchMedia('(min-width: 768px)').matches ? 2 : 1;
-}
-
-function estimateCampaignDateRangePopoverWidth(monthCount: number): number {
-  return monthCount * 272 + 48;
-}
-
-function normalizePickerDay(day: Date): Date {
-  const normalized = new Date(day);
-  normalized.setHours(0, 0, 0, 0);
-  return normalized;
-}
-
-function toDraftRange(from: Date | undefined, to: Date | undefined): DateRange | undefined {
-  if (!from) {
-    return undefined;
-  }
-  return { from: normalizePickerDay(from), to: to ? normalizePickerDay(to) : undefined };
-}
 
 export function DateRangePicker({
   id,
@@ -101,10 +54,8 @@ export function DateRangePicker({
   const fromDate = useMemo(() => parseDatetimeLocalValue(from), [from]);
   const toDate = useMemo(() => parseDatetimeLocalValue(to), [to]);
   const displayLabel = formatRangeLabel(fromDate, toDate);
-  const isCampaigns = variant === 'campaigns';
-  const isStyledPicker = variant === 'admin' || isCampaigns;
-  const calendarVariant = isCampaigns ? 'campaigns' : variant === 'admin' ? 'admin' : 'default';
-  const draftFooterLabel = formatFooterRange(draftRange?.from, draftRange?.to);
+  const isAdmin = variant === 'admin';
+  const calendarVariant = isAdmin ? 'admin' : 'default';
 
   function resetDraft() {
     setDraftRange(toDraftRange(fromDate, toDate));
@@ -112,24 +63,10 @@ export function DateRangePicker({
 
   function handleOpenChange(nextOpen: boolean) {
     if (nextOpen) {
-      const nextMonthCount = resolveMonthCount();
-      setMonthCount(nextMonthCount);
-      const popoverWidth = isCampaigns
-        ? estimateCampaignDateRangePopoverWidth(nextMonthCount)
-        : 320;
+      setMonthCount(resolveMonthCount());
       const trigger = triggerRef.current;
-      if (trigger) {
-        const rect = trigger.getBoundingClientRect();
-        const estimatedHeight = isCampaigns ? 360 : 320;
-        const spaceBelow = window.innerHeight - rect.bottom;
-        const spaceAbove = rect.top;
-        setSide(
-          spaceBelow < estimatedHeight && spaceAbove > spaceBelow ? 'top' : 'bottom',
-        );
-      } else {
-        setSide('bottom');
-      }
-      setAlign(resolvePopoverAlign(trigger, undefined, popoverWidth));
+      setSide(resolvePopoverSide(trigger, 320));
+      setAlign(resolvePopoverAlign(trigger, undefined, 320));
       resetDraft();
     }
     setOpen(nextOpen);
@@ -153,50 +90,28 @@ export function DateRangePicker({
   const trigger = (
     <Popover open={open} onOpenChange={handleOpenChange}>
       <PopoverTrigger asChild>
-        {variant === 'admin' || isCampaigns ? (
-          <Button
-            ref={triggerRef}
-            id={id}
-            className={cn(
-              isCampaigns
-                ? cn(campaignDateRangeTriggerClass, 'h-auto justify-between font-normal shadow-none')
-                : 'relative inline-flex min-h-7 w-full max-w-full items-center justify-between gap-2 rounded-[5px] border border-border bg-background px-2 py-1 text-[13px] leading-[18px] text-foreground',
-              !fromDate && 'text-muted-foreground',
-            )}
-            disabled={disabled}
-            type="button"
-            variant="outline"
-          >
-            <CalendarIcon className="h-4 w-4 shrink-0 opacity-60" aria-hidden />
-            <span className="min-w-0 flex-1 truncate text-left">{displayLabel}</span>
-          </Button>
-        ) : (
-          <Button
-            ref={triggerRef}
-            id={id}
-            type="button"
-            variant="outline"
-            disabled={disabled}
-            className={cn(
-              'flex min-h-7 w-full items-center justify-between rounded-[5px] border border-border bg-background px-2 py-1 text-[13px] font-normal leading-[18px] text-foreground',
-              !fromDate && 'text-muted-foreground',
-            )}
-          >
-            <CalendarIcon className="mr-2 h-4 w-4 shrink-0" />
-            <span className="truncate">{displayLabel}</span>
-          </Button>
-        )}
+        <Button
+          ref={triggerRef}
+          id={id}
+          type="button"
+          variant="outline"
+          disabled={disabled}
+          className={cn(
+            adminChrome.control,
+            isAdmin
+              ? 'relative inline-flex w-full max-w-full items-center justify-between gap-2 font-normal'
+              : 'flex w-full items-center justify-between gap-2 font-normal',
+            !fromDate && 'text-muted-foreground'
+          )}
+        >
+          <CalendarIcon className={cn('h-4 w-4 shrink-0', isAdmin && 'opacity-60')} aria-hidden />
+          <span className={cn('whitespace-nowrap', isAdmin && 'min-w-0 flex-1 text-left')}>
+            {displayLabel}
+          </span>
+        </Button>
       </PopoverTrigger>
-      <PopoverContent
-        align={align}
-        className={cn(
-          'w-auto p-0',
-          isCampaigns && campaignDateRangePopoverClass,
-        )}
-        panelScroll={isCampaigns ? 'none' : undefined}
-        side={side}
-      >
-        <div className={cn(isCampaigns ? 'p-3 pb-2' : 'p-3')}>
+      <PopoverContent align={align} className="w-auto p-0" side={side}>
+        <div className="p-3">
           <Calendar
             mode="range"
             numberOfMonths={monthCount}
@@ -206,48 +121,29 @@ export function DateRangePicker({
             onSelect={handleDraftSelect}
           />
         </div>
-        {isCampaigns ? (
-          <div className={campaignDateRangeFooterClass}>
-            <span className="min-w-0 truncate text-[13px] leading-[18px] text-muted-foreground">
-              {draftFooterLabel || 'Pick date range'}
-            </span>
-            <Button
-              className={campaignDateRangeClearButtonClass}
-              type="button"
-              variant="outline"
-              onClick={() => {
-                onChange('', '');
-                setOpen(false);
-              }}
-            >
-              Clear
-            </Button>
-          </div>
-        ) : (
-          <div
-            className={
-              variant === 'admin'
-                ? 'flex justify-end gap-2 border-t border-border p-2'
-                : 'flex justify-end gap-2 border-t border-border/50 px-3 py-3'
-            }
+        <div
+          className={
+            isAdmin
+              ? 'flex justify-end gap-2 border-t border-border p-2'
+              : 'flex justify-end gap-2 border-t border-border/50 px-3 py-3'
+          }
+        >
+          <Button
+            type="button"
+            variant="outline"
+            onClick={() => {
+              onChange('', '');
+              setOpen(false);
+            }}
           >
-            <Button
-              type="button"
-              variant="outline"
-              onClick={() => {
-                onChange('', '');
-                setOpen(false);
-              }}
-            >
-              Clear
-            </Button>
-          </div>
-        )}
+            Clear
+          </Button>
+        </div>
       </PopoverContent>
     </Popover>
   );
 
-  if (variant === 'admin') {
+  if (isAdmin) {
     return (
       <label className={cn('text-sm font-medium text-foreground', className)}>
         <span className={labelClassName}>{label}</span>
@@ -258,7 +154,9 @@ export function DateRangePicker({
 
   return (
     <div className={cn('grid w-full min-w-0 gap-1.5', className)}>
-      <Label className={labelClassName} htmlFor={id}>{label}</Label>
+      <Label className={labelClassName} htmlFor={id}>
+        {label}
+      </Label>
       {trigger}
     </div>
   );

@@ -31,7 +31,7 @@ export function assertPlaywrightBudget(name, medianMs, budgetMs) {
   const limitMs = budgetMs * PERF_TOLERANCE_RATIO;
   if (medianMs > limitMs) {
     throw new Error(
-      `${name}: median ${medianMs.toFixed(1)} ms exceeds budget ${budgetMs} ms (limit ${limitMs.toFixed(1)} ms)`,
+      `${name}: median ${medianMs.toFixed(1)} ms exceeds budget ${budgetMs} ms (limit ${limitMs.toFixed(1)} ms)`
     );
   }
 }

@@ -1,6 +1,4 @@
-export type ParseCreativeWeightResult =
-  | { ok: true; weight: number }
-  | { ok: false; error: string };
+export type ParseCreativeWeightResult = { ok: true; weight: number } | { ok: false; error: string };
 
 const CREATIVE_WEIGHT_MAX = 2_147_483_647;
 
@@ -37,7 +35,7 @@ export function buildBrandCreativeBody(
   nameRaw: string,
   landingUrlRaw: string,
   weightRaw: string,
-  statusRaw: string,
+  statusRaw: string
 ): BuildBrandCreativeBodyResult {
   const name = nameRaw.trim();
   if (!name) {

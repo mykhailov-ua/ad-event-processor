@@ -91,88 +91,85 @@ export function FraudPresets({
         <EmptyState title="No presets" description="No global fraud policy presets returned." />
       ) : (
         <DirectoryTable>
-            <TableHeader>
-              <TableRow>
-                <DirectoryTableHead>Name</DirectoryTableHead>
-                <DirectoryTableHead>Pass</DirectoryTableHead>
-                <DirectoryTableHead>Suspect</DirectoryTableHead>
-                <DirectoryTableHead>IVT</DirectoryTableHead>
-                <DirectoryTableHead>Block</DirectoryTableHead>
-                <DirectoryTableHead>Updated</DirectoryTableHead>
-                <DirectoryTableHead />
-              </TableRow>
-            </TableHeader>
-            <TableBody>
-              {(items ?? []).map((row) => {
-                const presetName = row.name ?? '';
-                const draft = presetDrafts[presetName] ?? presetDraftFromRow(row);
-                const saving = savingPresetName === presetName;
-                return (
-                  <TableRow key={presetName || 'unknown'}>
-                    <TableCell>{presetName}</TableCell>
-                    <TableCell>
-                      <Input
-                        aria-label={`Pass threshold for ${presetName}`}
-                        className="min-w-[4rem] font-mono text-xs"
-                        inputMode="numeric"
-                        value={draft.pass}
-                        onChange={(event) =>
-                          onPresetDraftChange(presetName, { pass: event.target.value })
-                        }
-                      />
-                    </TableCell>
-                    <TableCell>
-                      <Input
-                        aria-label={`Suspect threshold for ${presetName}`}
-                        className="min-w-[4rem] font-mono text-xs"
-                        inputMode="numeric"
-                        value={draft.suspect}
-                        onChange={(event) =>
-                          onPresetDraftChange(presetName, { suspect: event.target.value })
-                        }
-                      />
-                    </TableCell>
-                    <TableCell>
-                      <Input
-                        aria-label={`IVT threshold for ${presetName}`}
-                        className="min-w-[4rem] font-mono text-xs"
-                        inputMode="numeric"
-                        value={draft.ivt}
-                        onChange={(event) =>
-                          onPresetDraftChange(presetName, { ivt: event.target.value })
-                        }
-                      />
-                    </TableCell>
-                    <TableCell>
-                      <Input
-                        aria-label={`Block threshold for ${presetName}`}
-                        className="min-w-[4rem] font-mono text-xs"
-                        inputMode="numeric"
-                        value={draft.block}
-                        onChange={(event) =>
-                          onPresetDraftChange(presetName, { block: event.target.value })
-                        }
-                      />
-                    </TableCell>
-                    <TableCell>
-                      {displayTimestamp(row.updated_at, row.updated_at_display)}
-                    </TableCell>
-                    <TableCell className="text-right">
-                      <Button
-                        disabled={!presetName || saving}
-                        onClick={() => onSavePreset(presetName)}
-                       
-                        type="button"
-                        variant="outline"
-                      >
-                        {saving ? 'Saving...' : 'Save'}
-                      </Button>
-                    </TableCell>
-                  </TableRow>
-                );
-              })}
-            </TableBody>
-          </DirectoryTable>
+          <TableHeader>
+            <TableRow>
+              <DirectoryTableHead>Name</DirectoryTableHead>
+              <DirectoryTableHead>Pass</DirectoryTableHead>
+              <DirectoryTableHead>Suspect</DirectoryTableHead>
+              <DirectoryTableHead>IVT</DirectoryTableHead>
+              <DirectoryTableHead>Block</DirectoryTableHead>
+              <DirectoryTableHead>Updated</DirectoryTableHead>
+              <DirectoryTableHead />
+            </TableRow>
+          </TableHeader>
+          <TableBody>
+            {(items ?? []).map((row) => {
+              const presetName = row.name ?? '';
+              const draft = presetDrafts[presetName] ?? presetDraftFromRow(row);
+              const saving = savingPresetName === presetName;
+              return (
+                <TableRow key={presetName || 'unknown'}>
+                  <TableCell>{presetName}</TableCell>
+                  <TableCell>
+                    <Input
+                      aria-label={`Pass threshold for ${presetName}`}
+                      className="min-w-[4rem] font-mono text-xs"
+                      inputMode="numeric"
+                      value={draft.pass}
+                      onChange={(event) =>
+                        onPresetDraftChange(presetName, { pass: event.target.value })
+                      }
+                    />
+                  </TableCell>
+                  <TableCell>
+                    <Input
+                      aria-label={`Suspect threshold for ${presetName}`}
+                      className="min-w-[4rem] font-mono text-xs"
+                      inputMode="numeric"
+                      value={draft.suspect}
+                      onChange={(event) =>
+                        onPresetDraftChange(presetName, { suspect: event.target.value })
+                      }
+                    />
+                  </TableCell>
+                  <TableCell>
+                    <Input
+                      aria-label={`IVT threshold for ${presetName}`}
+                      className="min-w-[4rem] font-mono text-xs"
+                      inputMode="numeric"
+                      value={draft.ivt}
+                      onChange={(event) =>
+                        onPresetDraftChange(presetName, { ivt: event.target.value })
+                      }
+                    />
+                  </TableCell>
+                  <TableCell>
+                    <Input
+                      aria-label={`Block threshold for ${presetName}`}
+                      className="min-w-[4rem] font-mono text-xs"
+                      inputMode="numeric"
+                      value={draft.block}
+                      onChange={(event) =>
+                        onPresetDraftChange(presetName, { block: event.target.value })
+                      }
+                    />
+                  </TableCell>
+                  <TableCell>{displayTimestamp(row.updated_at, row.updated_at_display)}</TableCell>
+                  <TableCell className="text-right">
+                    <Button
+                      disabled={!presetName || saving}
+                      onClick={() => onSavePreset(presetName)}
+                      type="button"
+                      variant="outline"
+                    >
+                      {saving ? 'Saving...' : 'Save'}
+                    </Button>
+                  </TableCell>
+                </TableRow>
+              );
+            })}
+          </TableBody>
+        </DirectoryTable>
       )}
 
       {saveError ? (

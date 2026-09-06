@@ -4,14 +4,15 @@
 -- Consumers: edge_track_policy.lua allow(), retry_after_sec(); tier from edge-fraud-tier.lua.
 -- Limits from edge-config.get() mirror (limit_per_min, window_ms, rl_pct_*, retry_*_sec).
 --
--- Cache invalidation: TTL bucket keys "{campaign_id}:{tier}:{bucket}" via incr(..., 0, window_sec*2).
+-- Cache invalidation: TTL bucket keys "{subject}:{tier}:{bucket}" via incr(..., 0, window_sec*2).
 -- Old buckets expire after 2x window; no explicit delete. incr failure: fail-closed (deny request).
 --
 -- ngx.shared edge_rl keys (number count per key):
--- - {campaign_id}:{tier}:{bucket} where tier is pass|suspect|ivt|block; bucket = floor(ngx.time()/window_sec).
+-- - {campaign_id}:{tier}:{bucket} when campaign_id extracted from body/header.
+-- - ip:{remote_addr}:{tier}:{bucket} when campaign_id nil (nil_campaign_id_ip_rl_fallback fallback; no unbounded bypass).
 --
 -- State machine (per request):
--- - nil/empty campaign_id -> allow (no SHM touch).
+-- - nil/empty campaign_id -> rate limit by client IP (same tier/limit math).
 -- - base_limit <= 0 from config -> allow.
 -- - tier block or scaled limit <= 0 -> deny (edge_track_policy -> 403 fraud block).
 -- - incr count <= limit -> allow; else deny (429 with Retry-After from edge-config tier retry).
@@ -25,9 +26,10 @@
 --
 -- Verify:
 -- luac -p deploy/nginx/lua/edge-rl.lua
--- bash scripts/test/edge/lua_tests.sh
+-- bash scripts/test/edge/lua_tests.sh unit
 local edge_config = require "edge-config"
 local edge_fraud_tier = require "edge-fraud-tier"
+local edge_ip = require "edge-ip"
 
 local _M = {}
 
@@ -46,18 +48,25 @@ local function tier_limit(base_limit, fraud_score)
     return scaled, tier
 end
 
+function _M.rl_subject_key(campaign_id)
+    if campaign_id and campaign_id ~= "" then
+        return campaign_id
+    end
+    local ip = edge_ip.canonical(ngx.var.remote_addr)
+    if not ip or ip == "" then
+        ip = "unknown"
+    end
+    return "ip:" .. ip
+end
+
 function _M.retry_after_sec(fraud_score)
     local tier = edge_fraud_tier.tier_from_score(fraud_score)
     return edge_config.get_retry_after(tier)
 end
 
--- Per-campaign edge_rl incr: key {campaign_id}:{tier}:{bucket}; TTL 2x window_sec. incr fail -> deny (fail-closed).
+-- Per-subject edge_rl incr: key {subject}:{tier}:{bucket}; TTL 2x window_sec. incr fail -> deny (fail-closed).
 -- Tier scaling from edge-config rl_pct_*; does not debit Redis campaign budget (tracker UnifiedFilter owns spend).
 function _M.allow(campaign_id, fraud_score)
-    if not campaign_id or campaign_id == "" then
-        return true
-    end
-
     local base_limit, window_ms = edge_config.get()
     if base_limit <= 0 then
         return true
@@ -70,7 +79,8 @@ function _M.allow(campaign_id, fraud_score)
 
     local window_sec = math.max(1, math.floor(window_ms / 1000))
     local bucket = math.floor(ngx.time() / window_sec)
-    local key = campaign_id .. ":" .. tier .. ":" .. tostring(bucket)
+    local subject = _M.rl_subject_key(campaign_id)
+    local key = subject .. ":" .. tier .. ":" .. tostring(bucket)
 
     local count, err = rl_dict:incr(key, 1, 0, window_sec * 2)
     if not count then

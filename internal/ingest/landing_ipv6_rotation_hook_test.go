@@ -13,6 +13,11 @@ import (
 func ipv6RotationHandler(t *testing.T, cidrBlockEnabled bool, mode string, threshold uint32, filter *countingFilter) (*AdsPacketHandler, uuid.UUID) {
 	t.Helper()
 	h, cid := cidrBlockHookHandler(t, cidrBlockEnabled, filter)
+	h.ConfigureCIDR(clickHookNonMatchingCIDRTable(t))
+	v4 := NewIPv4RotationTable()
+	v4.SetMode("shadow")
+	v4.SetPolicy(uint64(time.Minute.Nanoseconds()), 1<<20)
+	h.ConfigureIPv4Rotation(v4)
 	table := NewIPv6RotationTable()
 	table.SetMode(mode)
 	table.SetPolicy(uint64(time.Minute.Nanoseconds()), threshold)
@@ -83,15 +88,27 @@ func TestClickRedirect_IPv6Rotation_IPv4Skipped(t *testing.T) {
 	require.Equal(t, 1, filter.calls)
 }
 
-func TestClickRedirect_IPv6Rotation_TableNil_FailOpen(t *testing.T) {
+func TestClickRedirect_IPv6Rotation_TableNil_FailClosed(t *testing.T) {
 	filter := &countingFilter{}
 	h, cid := cidrBlockHookHandler(t, true, filter)
+	h.ConfigureCIDR(clickHookNonMatchingCIDRTable(t))
 
-	for i := 1; i <= 3; i++ {
-		conn := serveClickFromIP(h, cid, rotatedIPv6Host(i))
-		require.NotContains(t, string(conn.Written()), "X-ad-event-processor-Safe-View")
+	conn := serveClickFromIP(h, cid, rotatedIPv6Host(1))
+	require.Equal(t, http.StatusOK, ParseGnetHTTPStatus(conn.Written()))
+	require.Contains(t, string(conn.Written()), "X-ad-event-processor-Safe-View: l1v6")
+	require.Equal(t, 0, filter.calls, "IPv6 rotation enabled with nil table must safe-view before FilterEngine")
+}
+
+func TestClickRedirect_IPv6Rotation_TableNil_failOpen_holdout(t *testing.T) {
+	filter := &countingFilter{}
+	h, cid := cidrBlockHookHandler(t, true, filter)
+	h.ConfigureCIDR(clickHookNonMatchingCIDRTable(t))
+
+	conn := serveClickFromIP(h, cid, rotatedIPv6Host(1))
+	if filter.calls > 0 {
+		t.Fatal("holdout: CIDRBlockEnabled with nil IPv6 rotation table must not fall through to FilterEngine")
 	}
-	require.Equal(t, 3, filter.calls)
+	require.Contains(t, string(conn.Written()), "X-ad-event-processor-Safe-View: l1v6")
 }
 
 func TestIPv6RotationTable_observe_resetsWindow(t *testing.T) {

@@ -1,3 +1,4 @@
+// L3 campaigns create lane: template list sync effects; toast after createSelfServeCampaign 2xx (EH-SI1); refreshList coalesced by parent.
 import { useCallback, useEffect, type Dispatch, type SetStateAction } from 'react';
 import { toast } from 'sonner';
 
@@ -94,7 +95,7 @@ export function useCampaignsPageMutations({
       setCreateSectionOpen(false);
       toast.success('Campaign created');
       refreshList();
-    } catch (err) {
+    } catch (err: unknown) {
       setActionError(err instanceof Error ? err : new Error(String(err)));
     } finally {
       setCreating(false);

@@ -14,7 +14,7 @@ test('ops home shows blocking error when media buyer lacks shards:read', async (
       response.request().method() === 'GET' &&
       response.url().includes('/api/v1/ops/home') &&
       response.status() === 403,
-    { timeout: 20_000 },
+    { timeout: 20_000 }
   );
 
   await page.goto('/ops?admin_dev=1&admin_dev_role=MB');

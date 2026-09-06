@@ -8,8 +8,10 @@ import (
 	"ad-event-processor/internal/config"
 	"ad-event-processor/internal/domain"
 	db "ad-event-processor/internal/domain/db"
+	"ad-event-processor/pkg/coldpath"
 
 	"github.com/google/uuid"
+	"github.com/jackc/pgx/v5/pgtype"
 	"github.com/jackc/pgx/v5/pgxpool"
 	"github.com/redis/go-redis/v9"
 	"github.com/stretchr/testify/require"
@@ -48,6 +50,29 @@ func (h *testHost) Sharder() domain.Sharder { return h.sharder }
 func (h *testHost) Config() *config.Config { return h.cfg }
 
 func (h *testHost) AuditLog(ctx context.Context, q db.Querier, adminID uuid.UUID, action, targetType string, targetID *uuid.UUID, changes, metadata any) {
+	changesJSON, err := coldpath.MarshalJSON(changes)
+	if err != nil {
+		changesJSON = []byte("{}")
+	}
+	metadataJSON, err := coldpath.MarshalJSON(metadata)
+	if err != nil {
+		metadataJSON = []byte("{}")
+	}
+	var tid pgtype.UUID
+	if targetID != nil {
+		tid = domain.ToUUID(*targetID)
+	}
+	if q == nil {
+		q = db.New(h.pool)
+	}
+	_, _ = q.CreateAuditLog(ctx, db.CreateAuditLogParams{
+		AdminID:    domain.ToUUID(adminID),
+		Action:     action,
+		TargetType: targetType,
+		TargetID:   tid,
+		Changes:    changesJSON,
+		Metadata:   metadataJSON,
+	})
 }
 
 type mockRedisForQuota struct {

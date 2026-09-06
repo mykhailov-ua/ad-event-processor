@@ -58,16 +58,8 @@ export const CampaignListTableBodyRow = memo(function CampaignListTableBodyRow({
   statsQuery,
 }: CampaignListTableBodyRowProps) {
   const vm = useMemo(
-    () =>
-      buildCampaignRowVm(
-        campaign,
-        metrics,
-        margin,
-        customerNameById,
-        ownerEmailById,
-        selected,
-      ),
-    [campaign, customerNameById, margin, metrics, ownerEmailById, selected],
+    () => buildCampaignRowVm(campaign, metrics, margin, customerNameById, ownerEmailById, selected),
+    [campaign, customerNameById, margin, metrics, ownerEmailById, selected]
   );
 
   return (
@@ -93,7 +85,15 @@ export const CampaignListTableBodyRow = memo(function CampaignListTableBodyRow({
 
         if (columnId === 'id') {
           return (
-            <td key={columnId} className={cn(campaignListTdClass, campaignListCellToolsClass, campaignListNumClass, 'text-muted-foreground')}>
+            <td
+              key={columnId}
+              className={cn(
+                campaignListTdClass,
+                campaignListCellToolsClass,
+                campaignListNumClass,
+                'text-muted-foreground'
+              )}
+            >
               <div className={campaignListHeaderCellClass}>
                 <div className={campaignListCellContentClass}>
                   <span
@@ -124,7 +124,10 @@ export const CampaignListTableBodyRow = memo(function CampaignListTableBodyRow({
                   </span>
                 </div>
                 <div className={campaignListNameRowMenuSlotClass}>
-                  <CampaignListTableRowMenu campaign={campaign} onOpenOverview={onCampaignOverview} />
+                  <CampaignListTableRowMenu
+                    campaign={campaign}
+                    onOpenOverview={onCampaignOverview}
+                  />
                 </div>
               </div>
             </td>
@@ -136,19 +139,26 @@ export const CampaignListTableBodyRow = memo(function CampaignListTableBodyRow({
         }
 
         return (
-          <td key={columnId} className={cn(campaignListTdClass, campaignListCellToolsClass, isNum && campaignListNumClass)}>
+          <td
+            key={columnId}
+            className={cn(
+              campaignListTdClass,
+              campaignListCellToolsClass,
+              isNum && campaignListNumClass
+            )}
+          >
             <div className={campaignListHeaderCellClass}>
               <div className={campaignListCellContentClass}>
                 <CampaignListTableMiddleCell
-                campaign={campaign}
-                columnId={columnId as CampaignListMiddleColumnId}
-                listMetrics={metrics}
-                marginBreach={margin?.margin_breach === true}
-                statsCacheRevision={statsCacheRevision}
-                statsQuery={statsQuery}
-                vm={vm}
-                onOpenOverview={onCampaignOverview}
-              />
+                  campaign={campaign}
+                  columnId={columnId as CampaignListMiddleColumnId}
+                  listMetrics={metrics}
+                  marginBreach={margin?.margin_breach === true}
+                  statsCacheRevision={statsCacheRevision}
+                  statsQuery={statsQuery}
+                  vm={vm}
+                  onOpenOverview={onCampaignOverview}
+                />
               </div>
               <div aria-hidden className={campaignListBodyToolsGutterClass} />
             </div>

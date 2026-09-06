@@ -18,6 +18,20 @@ import {
   buildCampaignDashboardKpiTiles,
   type CampaignDashboardKpis,
 } from '@/domains/campaigns/report/campaign_dashboard_metrics';
+import type { DashboardBreakdownScope } from '@/domains/dashboards/dashboard_table_column_prefs';
+
+function campaignDashboardBreakdownScope(
+  dimension: CampaignReportDimension
+): DashboardBreakdownScope {
+  switch (dimension) {
+    case 'offers':
+      return 'offers';
+    case 'landers':
+      return 'landers';
+    default:
+      return 'campaigns';
+  }
+}
 
 export type CampaignDashboardViewProps = {
   campaignId: string;
@@ -52,7 +66,7 @@ export function CampaignDashboardView({
 }: CampaignDashboardViewProps) {
   const kpiTiles = useMemo(
     () => buildCampaignDashboardKpiTiles(kpis, DEFAULT_CAMPAIGN_DASHBOARD_KPI_METRICS),
-    [kpis],
+    [kpis]
   );
   const title = campaignName ?? 'Campaign dashboard';
   const description = campaignName ? campaignId : undefined;
@@ -64,7 +78,10 @@ export function CampaignDashboardView({
   if (licenseGated) {
     return (
       <div className="flex min-h-0 flex-1 flex-col gap-2">
-        <StubBanner title="Dashboard unavailable" message="License or permission denied for campaign dashboard." />
+        <StubBanner
+          title="Dashboard unavailable"
+          message="License or permission denied for campaign dashboard."
+        />
       </div>
     );
   }
@@ -80,8 +97,12 @@ export function CampaignDashboardView({
   return (
     <PageLayout
       controlPanel={
-        <div className="flex flex-col gap-3">
-          <div aria-label="Report dimension" className="flex flex-wrap items-center gap-2" role="group">
+        <div className="grid gap-3">
+          <div
+            aria-label="Report dimension"
+            className="flex flex-wrap items-center gap-2"
+            role="group"
+          >
             {DIMENSION_PILLS.map((pill) => (
               <Button
                 key={pill.id}
@@ -96,9 +117,17 @@ export function CampaignDashboardView({
           </div>
           <div className="flex items-center gap-2 text-sm text-muted-foreground">
             <span>
-              {period?.from && period?.to ? `${period.from.slice(0, 10)} to ${period.to.slice(0, 10)}` : null}
+              {period?.from && period?.to
+                ? `${period.from.slice(0, 10)} to ${period.to.slice(0, 10)}`
+                : null}
             </span>
-            <Button type="button" variant="secondary" onClick={onRefresh} disabled={fetching} loading={fetching}>
+            <Button
+              type="button"
+              variant="secondary"
+              onClick={onRefresh}
+              disabled={fetching}
+              loading={fetching}
+            >
               Refresh
             </Button>
           </div>
@@ -115,9 +144,14 @@ export function CampaignDashboardView({
         />
         <DashboardBreakdownTableSection
           title={DIMENSION_LABELS[dimension]}
+          scope={campaignDashboardBreakdownScope(dimension)}
           table={breakdown}
           columns={DEFAULT_CAMPAIGN_DASHBOARD_BREAKDOWN_COLUMNS}
-          emptyDescription={dimension === 'paths' ? 'Path-level metrics are not available for this period yet.' : 'No data in this range.'}
+          emptyDescription={
+            dimension === 'paths'
+              ? 'Path-level metrics are not available for this period yet.'
+              : 'No data in this range.'
+          }
         />
       </div>
     </PageLayout>

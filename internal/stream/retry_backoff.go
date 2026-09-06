@@ -9,14 +9,14 @@ var (
 )
 
 // SetStoreRetryPolicy tunes ClickHouseStore insert backoff (distinct from Redis stream tryFlush).
-func SetStoreRetryPolicy(retries int, initial, max time.Duration) {
+func SetStoreRetryPolicy(retries int, initial, maxWait time.Duration) {
 	if retries > 0 {
 		MaxRetries = retries
 	}
 	if initial > 0 {
 		InitialWait = initial
 	}
-	if max > 0 {
-		MaxWait = max
+	if maxWait > 0 {
+		MaxWait = maxWait
 	}
 }

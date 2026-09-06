@@ -131,11 +131,11 @@ func runSeedBuyerCH(cmd *cobra.Command, args []string) error {
 		if err != nil {
 			return err
 		}
-		for dayOffset := 0; dayOffset < historyDays; dayOffset++ {
+		for dayOffset := range historyDays {
 			day := today.AddDate(0, 0, -dayOffset)
 			st := statsByDay[day.Format("2006-01-02")]
 			if st.clicks == 0 && st.conversions == 0 {
-				imp, clk, conv := seedUiDemoDeliveryCounts(camp.seq, dayOffset)
+				imp, clk, conv := seedUIDemoDeliveryCounts(camp.seq, dayOffset)
 				st = buyerDayStats{impressions: imp, clicks: clk, conversions: conv}
 			}
 			cInserted, vInserted, hInserted, err := seedBuyerCampaignDay(ctx, chConn, hasher, camp, day, st, clickCap, convCap)
@@ -168,7 +168,8 @@ func loadBuyerSeedCampaigns() []buyerCampaignRow {
 
 func loadBuyerCampaignStats(ctx context.Context, pool interface {
 	Query(context.Context, string, ...any) (pgx.Rows, error)
-}, campaignID uuid.UUID, from, to time.Time) (map[string]buyerDayStats, error) {
+}, campaignID uuid.UUID, from, to time.Time,
+) (map[string]buyerDayStats, error) {
 	out := make(map[string]buyerDayStats, seedBuyerHistoryDays)
 	rows, err := pool.Query(ctx, `
 SELECT date,

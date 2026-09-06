@@ -17,13 +17,13 @@ func NewViolationHandler(onEvent func(ViolationEvent) error) *ViolationHandler {
 	return &ViolationHandler{onEvent: onEvent}
 }
 
-// Drain reads violations ringbuf until idle window; dedupes by SrcIP per drain pass
+// Drain reads violations ringbuf until idle window; dedupes by host per drain pass
 // before onEvent (typically RecordAutoBan -> Redis blacklist:auto).
 func (h *ViolationHandler) Drain(rd *ringbuf.Reader, idle time.Duration) (int, error) {
 	if rd == nil || h.onEvent == nil {
 		return 0, nil
 	}
-	seen := make(map[uint32]struct{})
+	seen := make(map[string]struct{})
 	deadline := time.Now().Add(idle)
 	var handled int
 
@@ -39,14 +39,18 @@ func (h *ViolationHandler) Drain(rd *ringbuf.Reader, idle time.Duration) (int, e
 			}
 			return handled, err
 		}
-		if len(record.RawSample) < 13 {
+		evt, ok := decodeViolation(record.RawSample)
+		if !ok {
 			continue
 		}
-		evt := decodeViolation(record.RawSample)
-		if _, dup := seen[evt.SrcIP]; dup {
+		host := ViolationHost(evt)
+		if host == "" {
 			continue
 		}
-		seen[evt.SrcIP] = struct{}{}
+		if _, dup := seen[host]; dup {
+			continue
+		}
+		seen[host] = struct{}{}
 		if err := h.onEvent(evt); err != nil {
 			return handled, err
 		}
@@ -56,12 +60,16 @@ func (h *ViolationHandler) Drain(rd *ringbuf.Reader, idle time.Duration) (int, e
 	return handled, nil
 }
 
-func decodeViolation(raw []byte) ViolationEvent {
-	return ViolationEvent{
-		TSNs:   binary.LittleEndian.Uint64(raw[0:8]),
-		SrcIP:  binary.LittleEndian.Uint32(raw[8:12]),
-		Reason: raw[12],
+func decodeViolation(raw []byte) (ViolationEvent, bool) {
+	if len(raw) < ViolationEventWireSize {
+		return ViolationEvent{}, false
 	}
+	var evt ViolationEvent
+	evt.TSNs = binary.LittleEndian.Uint64(raw[0:8])
+	evt.Family = raw[8]
+	evt.Reason = raw[9]
+	copy(evt.Addr[:], raw[12:28])
+	return evt, true
 }
 
 func isRingbufClosed(err error) bool {

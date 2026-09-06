@@ -23,7 +23,7 @@ export type MultiSelectFieldProps<T extends string> = {
 
 function formatSelectionSummary<T extends string>(
   value: T[],
-  optionById: Map<T, MultiSelectOption<T>>,
+  optionById: Map<T, MultiSelectOption<T>>
 ): string {
   if (value.length === 0) {
     return 'None';
@@ -41,7 +41,10 @@ export function MultiSelectField<T extends string>({
   minSelected = 1,
 }: MultiSelectFieldProps<T>) {
   const [open, setOpen] = useState(false);
-  const optionById = useMemo(() => new Map(options.map((option) => [option.id, option])), [options]);
+  const optionById = useMemo(
+    () => new Map(options.map((option) => [option.id, option])),
+    [options]
+  );
   const summary = formatSelectionSummary(value, optionById);
 
   function toggleOption(optionId: T, checked: boolean) {
@@ -59,7 +62,10 @@ export function MultiSelectField<T extends string>({
   }
 
   return (
-    <label className={cn('flex flex-col gap-1 text-sm font-medium text-foreground', className)} htmlFor={id}>
+    <label
+      className={cn('flex flex-col gap-1 text-sm font-medium text-foreground', className)}
+      htmlFor={id}
+    >
       {label}
       <Popover open={open} onOpenChange={setOpen}>
         <PopoverTrigger asChild>
@@ -67,18 +73,15 @@ export function MultiSelectField<T extends string>({
             id={id}
             aria-expanded={open}
             className={cn(
-              'relative flex w-full items-center justify-between rounded-md border border-border bg-background px-3 text-sm text-foreground',
-              adminKit.controlHeight,
+              'relative flex w-full items-center justify-between gap-2 rounded-md border border-border bg-background px-3 text-sm text-foreground',
+              adminKit.controlHeight
             )}
             type="button"
           >
             <span className="whitespace-nowrap" title={summary}>
               {summary}
             </span>
-            <ChevronDown
-              aria-hidden
-              className={cn('h-4 w-4 opacity-50', open && 'rotate-180')}
-            />
+            <ChevronDown aria-hidden className={cn('h-4 w-4 opacity-50', open && 'rotate-180')} />
           </button>
         </PopoverTrigger>
         <PopoverContent align="start" className="w-64 p-0" sideOffset={4}>
@@ -92,7 +95,9 @@ export function MultiSelectField<T extends string>({
                       checked={selected}
                       onCheckedChange={(next) => toggleOption(option.id, next === true)}
                     />
-                    <span className="text-xs font-medium text-muted-foreground">{option.label}</span>
+                    <span className="text-xs font-medium text-muted-foreground">
+                      {option.label}
+                    </span>
                   </label>
                 </li>
               );

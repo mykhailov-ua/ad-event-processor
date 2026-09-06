@@ -1,2 +1,33 @@
-import{Fb as a,Jb as f,Kb as d,Pb as n,bb as i,c as t,f as v,gb as p,n as o,o as r,p as m}from"./chunks/chunk-V4DFYFUG.js";var P=t(v(),1);var e=t(i(),1),u=document.getElementById("root");u&&(0,P.createRoot)(u).render((0,e.jsx)(m,{children:(0,e.jsx)(p,{children:(0,e.jsx)(a,{children:(0,e.jsxs)(r,{children:[(0,e.jsx)(o,{element:(0,e.jsx)(n,{}),path:"/setup"}),(0,e.jsx)(o,{element:(0,e.jsx)(f,{}),path:"/activate"}),(0,e.jsx)(o,{element:(0,e.jsx)(d,{}),path:"*"})]})})})}));
+import {
+  Ib as i,
+  Ob as p,
+  c as t,
+  f as v,
+  mc as a,
+  n as o,
+  o as r,
+  p as m,
+  qc as f,
+  rc as d,
+  wc as n,
+} from './chunks/chunk-XD36ALSM.js';
+var P = t(v(), 1);
+var e = t(i(), 1),
+  u = document.getElementById('root');
+u &&
+  (0, P.createRoot)(u).render(
+    (0, e.jsx)(m, {
+      children: (0, e.jsx)(p, {
+        children: (0, e.jsx)(a, {
+          children: (0, e.jsxs)(r, {
+            children: [
+              (0, e.jsx)(o, { element: (0, e.jsx)(n, {}), path: '/setup' }),
+              (0, e.jsx)(o, { element: (0, e.jsx)(f, {}), path: '/activate' }),
+              (0, e.jsx)(o, { element: (0, e.jsx)(d, {}), path: '*' }),
+            ],
+          }),
+        }),
+      }),
+    })
+  );
 //# sourceMappingURL=login.js.map

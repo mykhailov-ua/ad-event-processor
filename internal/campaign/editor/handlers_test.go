@@ -193,11 +193,51 @@ func TestPostCampaignBulk_archive(t *testing.T) {
 	assert.Equal(t, campID.String(), resp.Results[0].ID)
 	assert.Equal(t, []uuid.UUID{campID}, stub.archived)
 	assert.Equal(t, "bulk_archive", stub.lastReason)
+	assert.Equal(t, 1, stub.bulkCalls, "bulk archive must use BulkCampaignAction once")
+}
+
+func TestPostCampaignBulk_holdoutSkipsPerIDPauseCampaign(t *testing.T) {
+	t.Parallel()
+	stub := &bulkPauseHoldoutStub{}
+	h := &campaign.CampaignsHTTPHandlers{Campaigns: stub}
+	payload, err := json.Marshal(BulkCampaignRequestDTO{
+		Action:      "pause",
+		CampaignIDs: []string{uuid.New().String(), uuid.New().String()},
+	})
+	require.NoError(t, err)
+	req := httptest.NewRequest(http.MethodPost, "/api/v1/campaigns/bulk-action", bytes.NewReader(payload))
+	rec := httptest.NewRecorder()
+	postCampaignBulk(h, rec, req)
+	require.Equal(t, http.StatusOK, rec.Code)
+	assert.Equal(t, 1, stub.bulkCalls)
+	assert.Equal(t, 0, stub.pauseCalls)
+}
+
+type bulkPauseHoldoutStub struct {
+	diffCampaignStub
+	bulkCalls  int
+	pauseCalls int
+}
+
+func (s *bulkPauseHoldoutStub) BulkCampaignAction(_ context.Context, _ string, ids []uuid.UUID, _ string) map[uuid.UUID]error {
+	s.bulkCalls++
+	return map[uuid.UUID]error{}
+}
+
+func (s *bulkPauseHoldoutStub) PauseCampaign(context.Context, uuid.UUID, string) error {
+	s.pauseCalls++
+	return nil
 }
 
 type archiveBulkCampaignStub struct {
 	archived   []uuid.UUID
 	lastReason string
+	bulkCalls  int
+}
+
+func (s *archiveBulkCampaignStub) BulkCampaignAction(ctx context.Context, action string, ids []uuid.UUID, reason string) map[uuid.UUID]error {
+	s.bulkCalls++
+	return campaign.RunBulkCampaignAction(ctx, action, ids, reason, s.PauseCampaign, s.ResumeCampaign, s.ArchiveCampaign)
 }
 
 func (s *archiveBulkCampaignStub) GetCampaign(context.Context, uuid.UUID) (campaign.CampaignDTO, error) {
@@ -253,6 +293,13 @@ func (s *archiveBulkCampaignStub) CloneCampaign(context.Context, campaign.CloneC
 
 func (s *archiveBulkCampaignStub) ExportCampaign(context.Context, uuid.UUID) (campaign.CampaignExportBundle, error) {
 	return campaign.CampaignExportBundle{}, nil
+}
+
+func (s *archiveBulkCampaignStub) ExportCampaignsBatch(context.Context, []uuid.UUID) campaign.ExportCampaignsBatchResult {
+	return campaign.ExportCampaignsBatchResult{
+		Items:  map[uuid.UUID]campaign.CampaignExportBundle{},
+		Errors: map[uuid.UUID]error{},
+	}
 }
 
 func (s *archiveBulkCampaignStub) ImportCampaign(context.Context, campaign.ImportCampaignSpec) (campaign.ImportCampaignResult, error) {

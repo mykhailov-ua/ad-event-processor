@@ -8,6 +8,7 @@ export function currentCustomerDetailMonthValue(): string {
   return `${year}-${month}`;
 }
 
+// Rejected promise with AbortError name: useResource treats it as skip, not ErrorBlock (RP-3 tab gating).
 export function skipCustomerDetailTabFetch(): Promise<never> {
   return Promise.reject(new DOMException('Skipped', 'AbortError'));
 }

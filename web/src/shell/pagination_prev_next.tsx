@@ -1,5 +1,3 @@
-import { toast } from 'sonner';
-
 import { Button } from '@/components/ui/button';
 import type { ButtonVariant } from '@/lib/admin_chrome';
 import { cn } from '@/lib/utils';
@@ -27,53 +25,33 @@ export function PaginationPrevNext({
   variant = 'outline',
   prevLabel = 'Previous',
   nextLabel = 'Next',
-  layout = 'split',
+  layout = 'inline',
 }: PaginationPrevNextProps) {
-  const inline = layout === 'inline';
+  const split = layout === 'split';
+  const prevDisabled = disabled || !canGoPrev;
+  const nextDisabled = disabled || !canGoNext;
 
   return (
-    <div className={cn(inline ? 'flex items-center gap-2' : 'flex w-full gap-2', className)}>
+    <div className={cn(split ? 'flex w-full gap-2' : 'flex items-center gap-2', className)}>
       <Button
         aria-label={prevLabel}
-        className={cn(
-          inline ? undefined : 'flex-1',
-          !canGoPrev && 'opacity-50',
-        )}
-        shape={inline ? undefined : 'pill'}
+        className={split ? 'flex-1' : undefined}
+        disabled={prevDisabled}
+        shape={split ? 'pill' : undefined}
         type="button"
         variant={variant}
-        onClick={() => {
-          if (disabled) {
-            return;
-          }
-          if (!canGoPrev) {
-            toast.message('Already on first page');
-            return;
-          }
-          onPrev();
-        }}
+        onClick={onPrev}
       >
         {prevLabel}
       </Button>
       <Button
         aria-label={nextLabel}
-        className={cn(
-          inline ? undefined : 'flex-1',
-          !canGoNext && 'opacity-50',
-        )}
-        shape={inline ? undefined : 'pill'}
+        className={split ? 'flex-1' : undefined}
+        disabled={nextDisabled}
+        shape={split ? 'pill' : undefined}
         type="button"
         variant={variant}
-        onClick={() => {
-          if (disabled) {
-            return;
-          }
-          if (!canGoNext) {
-            toast.message('Already on last page');
-            return;
-          }
-          onNext();
-        }}
+        onClick={onNext}
       >
         {nextLabel}
       </Button>

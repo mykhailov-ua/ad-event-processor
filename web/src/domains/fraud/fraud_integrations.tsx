@@ -1,6 +1,7 @@
 import { Link } from 'react-router-dom';
 
 import { SecondaryActionButton } from '@/shell/action_buttons';
+import { FilterField, INLINE_FILTER_ACTION_GRID_CLASS } from '@/shell/filter_panel';
 import { PageChrome } from '@/shell/page_chrome';
 import { EmptyState } from '@/shell/empty_state';
 import { ErrorBlock } from '@/shell/error_block';
@@ -31,7 +32,7 @@ export type FraudIntegrationsProps = {
 };
 
 function statusBadgeVariant(
-  status: string | undefined,
+  status: string | undefined
 ): 'default' | 'secondary' | 'destructive' | 'outline' {
   const normalized = (status ?? '').toLowerCase();
   if (normalized === 'ok' || normalized === 'healthy') {
@@ -69,16 +70,19 @@ export function FraudIntegrations({
       <Link className="text-sm text-muted-foreground hover:underline" to="/fraud">
         Back to fraud hub
       </Link>
-      <div className="grid max-w-md grid-cols-[1fr_auto] items-end gap-4">
-        <div className="grid gap-2">
-          <Label htmlFor="fraud-customer-id">Customer ID</Label>
+      <div className={INLINE_FILTER_ACTION_GRID_CLASS}>
+        <FilterField htmlFor="fraud-customer-id" label="Customer ID">
           <Input
             id="fraud-customer-id"
             value={draftCustomerId}
             onChange={(event) => onDraftCustomerIdChange(event.target.value)}
           />
-        </div>
-        <SecondaryActionButton disabled={fetching || !draftCustomerId.trim()} onClick={onApplyCustomer} type="button">
+        </FilterField>
+        <SecondaryActionButton
+          disabled={fetching || !draftCustomerId.trim()}
+          onClick={onApplyCustomer}
+          type="button"
+        >
           Load
         </SecondaryActionButton>
       </div>
@@ -95,45 +99,43 @@ export function FraudIntegrations({
         />
       ) : (
         <DirectoryTable horizontalScroll>
-            <TableHeader>
-              <TableRow>
-                <DirectoryTableHead>Campaign</DirectoryTableHead>
-                <DirectoryTableHead>Name</DirectoryTableHead>
-                <DirectoryTableHead>Provider</DirectoryTableHead>
-                <DirectoryTableHead>Configured</DirectoryTableHead>
-                <DirectoryTableHead>Health</DirectoryTableHead>
-                <DirectoryTableHead className="text-right">DLQ</DirectoryTableHead>
-                <DirectoryTableHead>Last success</DirectoryTableHead>
-                <DirectoryTableHead>Error</DirectoryTableHead>
+          <TableHeader>
+            <TableRow>
+              <DirectoryTableHead>Campaign</DirectoryTableHead>
+              <DirectoryTableHead>Name</DirectoryTableHead>
+              <DirectoryTableHead>Provider</DirectoryTableHead>
+              <DirectoryTableHead>Configured</DirectoryTableHead>
+              <DirectoryTableHead>Health</DirectoryTableHead>
+              <DirectoryTableHead className="text-right">DLQ</DirectoryTableHead>
+              <DirectoryTableHead>Last success</DirectoryTableHead>
+              <DirectoryTableHead>Error</DirectoryTableHead>
+            </TableRow>
+          </TableHeader>
+          <TableBody>
+            {(items ?? []).map((row) => (
+              <TableRow key={`${row.campaign_id}-${row.provider ?? row.name}`}>
+                <TableCell className="font-mono text-xs">{row.campaign_id}</TableCell>
+                <TableCell>{row.name ?? ''}</TableCell>
+                <TableCell>{row.provider ?? ''}</TableCell>
+                <TableCell>{row.configured ? 'yes' : 'no'}</TableCell>
+                <TableCell>
+                  {row.health_status ? (
+                    <Badge variant={statusBadgeVariant(row.health_status)}>
+                      {row.health_status}
+                    </Badge>
+                  ) : (
+                    ''
+                  )}
+                </TableCell>
+                <TableCell className="text-right">{row.dlq_count ?? 0}</TableCell>
+                <TableCell>{displayTimestamp(row.last_success_at)}</TableCell>
+                <TableCell className="whitespace-nowrap text-muted-foreground">
+                  {row.last_error ?? ''}
+                </TableCell>
               </TableRow>
-            </TableHeader>
-            <TableBody>
-              {(items ?? []).map((row) => (
-                <TableRow key={`${row.campaign_id}-${row.provider ?? row.name}`}>
-                  <TableCell className="font-mono text-xs">{row.campaign_id}</TableCell>
-                  <TableCell>{row.name ?? ''}</TableCell>
-                  <TableCell>{row.provider ?? ''}</TableCell>
-                  <TableCell>{row.configured ? 'yes' : 'no'}</TableCell>
-                  <TableCell>
-                    {row.health_status ? (
-                      <Badge variant={statusBadgeVariant(row.health_status)}>
-                        {row.health_status}
-                      </Badge>
-                    ) : (
-                      ''
-                    )}
-                  </TableCell>
-                  <TableCell className="text-right">{row.dlq_count ?? 0}</TableCell>
-                  <TableCell>
-                    {displayTimestamp(row.last_success_at)}
-                  </TableCell>
-                  <TableCell className="whitespace-nowrap text-muted-foreground">
-                    {row.last_error ?? ''}
-                  </TableCell>
-                </TableRow>
-              ))}
-            </TableBody>
-          </DirectoryTable>
+            ))}
+          </TableBody>
+        </DirectoryTable>
       )}
 
       {error && hasSnapshot ? <ErrorBlock title="Refresh failed" message={error.message} /> : null}

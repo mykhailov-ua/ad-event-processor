@@ -2,8 +2,9 @@
 //
 // Role:
 //   - Export writes api/openapi/paths/_generated_routes.yaml stubs from controlplane.Catalog() and bundles openapi.bundle.yaml.
-//   - documented_routes.go lists handler routes that must already exist in the spec union (parity allowlist).
-//   - AssertCatalogParity fails when live catalog keys are missing from the bundled spec.
+//   - documented_routes.go lists handler routes that must already exist in the spec union (full schema, not stubs).
+//   - parity_allowlist.txt lists catalog routes omitted from OpenAPI and from generated stubs (runtime-only aliases).
+//   - AssertCatalogParity fails when live catalog keys are missing from the bundled spec and allowlist.
 //
 // Topology:
 //   - Library only; cmd/openapi-export and scripts/ci/admin/openapi.sh call Export and tests.

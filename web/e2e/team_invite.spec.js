@@ -16,7 +16,7 @@ test.beforeEach(async ({}, testInfo) => {
   await skipUnlessIntegrationReady(testInfo);
 });
 
-test('team invite posts member and refreshes roster', async ({ page }) => {
+test('team invite posts member and refreshes roster', { tag: '@write' }, async ({ page }) => {
   await loginAsAdmin(page);
   const runToken = integrationRunToken();
   const inviteEmail = integrationTeamInviteEmail(runToken);
@@ -38,7 +38,7 @@ test('team invite posts member and refreshes roster', async ({ page }) => {
     (response) =>
       isApiGet('/api/v1/team/members')(response) &&
       response.url().includes(`customer_id=${encodeURIComponent(customerId)}`),
-    { timeout: 20_000 },
+    { timeout: 20_000 }
   );
   await membersLoaded;
 
@@ -51,7 +51,7 @@ test('team invite posts member and refreshes roster', async ({ page }) => {
     (response) =>
       isApiPost('/api/v1/team/members', 201)(response) &&
       response.url().includes(`customer_id=${encodeURIComponent(customerId)}`),
-    { timeout: 20_000 },
+    { timeout: 20_000 }
   );
   const refreshedMembers = page.waitForResponse(isApiGet('/api/v1/team/members'), {
     timeout: 20_000,
@@ -66,7 +66,7 @@ test('team invite posts member and refreshes roster', async ({ page }) => {
   const membersResponse = await refreshedMembers;
   const membersBody = await membersResponse.json();
   expect(membersBody.items).toEqual(
-    expect.arrayContaining([expect.objectContaining({ email: inviteEmail })]),
+    expect.arrayContaining([expect.objectContaining({ email: inviteEmail })])
   );
 
   await expect(page.getByRole('cell', { name: inviteEmail, exact: true })).toBeVisible({

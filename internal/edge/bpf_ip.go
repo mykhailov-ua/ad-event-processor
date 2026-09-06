@@ -15,6 +15,18 @@ func HostIPv4(addr uint32) string {
 	).String()
 }
 
+// ViolationHost returns canonical host string from a violations ringbuf sample (IPv4 or IPv6).
+func ViolationHost(evt ViolationEvent) string {
+	switch evt.Family {
+	case ViolationAddrFamilyV6:
+		return net.IP(evt.Addr[:]).String()
+	case ViolationAddrFamilyV4:
+		return net.IP(evt.Addr[:4]).String()
+	default:
+		return ""
+	}
+}
+
 func WireIPv4(ip string) (uint32, error) {
 	parsed := net.ParseIP(ip)
 	if parsed == nil {

@@ -8,7 +8,10 @@ import { CampaignMetricsPopover } from '@/domains/campaigns/list/campaign_metric
 import type { CampaignListMiddleColumnId } from '@/domains/campaigns/list/campaign_list_columns';
 import { rateBenchmarkToneClass } from '@/domains/campaigns/list/campaign_list_rate_tone';
 import type { CampaignRowVm } from '@/domains/campaigns/list/campaign_list_row_vm';
-import { RateMetricCell, tableCellClass } from '@/domains/campaigns/list/campaign_list_table_cell_format';
+import {
+  RateMetricCell,
+  tableCellClass,
+} from '@/domains/campaigns/list/campaign_list_table_cell_format';
 import type { CampaignWithMoneyDisplay } from '@/domains/campaigns/list/campaign_metrics_shared';
 import { cn } from '@/lib/utils';
 
@@ -89,7 +92,7 @@ export function CampaignListTableMiddleCell({
         <span
           className={tableCellClass(
             vm.cr.isZero,
-            rateBenchmarkToneClass(vm.cr.isZero ? null : vm.cr.valPct),
+            rateBenchmarkToneClass(vm.cr.isZero ? null : vm.cr.valPct)
           )}
         >
           {vm.cr.text}
@@ -97,16 +100,22 @@ export function CampaignListTableMiddleCell({
       );
     case 'leads':
       return (
-        <span className={tableCellClass(vm.leads.isZero, undefined, 'conversion')}>{vm.leads.text}</span>
+        <span className={tableCellClass(vm.leads.isZero, undefined, 'conversion')}>
+          {vm.leads.text}
+        </span>
       );
     case 'approved':
       return (
-        <span className={tableCellClass(vm.approved.isZero, undefined, 'approved')}>{vm.approved.text}</span>
+        <span className={tableCellClass(vm.approved.isZero, undefined, 'approved')}>
+          {vm.approved.text}
+        </span>
       );
     case 'hold_leads':
       return <span className={tableCellClass(vm.holdLeads.isZero)}>{vm.holdLeads.text}</span>;
     case 'rejected_leads':
-      return <span className={tableCellClass(vm.rejectedLeads.isZero)}>{vm.rejectedLeads.text}</span>;
+      return (
+        <span className={tableCellClass(vm.rejectedLeads.isZero)}>{vm.rejectedLeads.text}</span>
+      );
     case 'approve_rate':
       if (!vm.approveRate) {
         return <span className={tableCellClass(true)}>-</span>;
@@ -145,7 +154,9 @@ export function CampaignListTableMiddleCell({
       return <span className={tableCellClass()}>{vm.botPct}</span>;
     case 'revenue':
       return (
-        <span className={tableCellClass(vm.revenue.isZero, undefined, 'primary')}>{vm.revenue.text}</span>
+        <span className={tableCellClass(vm.revenue.isZero, undefined, 'primary')}>
+          {vm.revenue.text}
+        </span>
       );
     case 'cost':
       return <span className={tableCellClass(vm.cost.isZero)}>{vm.cost.text}</span>;
@@ -155,7 +166,7 @@ export function CampaignListTableMiddleCell({
           className={tableCellClass(
             vm.profit.isZero,
             vm.profitToneClass,
-            vm.profit.isZero ? undefined : 'primary',
+            vm.profit.isZero ? undefined : 'primary'
           )}
         >
           {vm.profit.isZero ? '0.00' : vm.profit.text}
@@ -178,9 +189,7 @@ export function CampaignListTableMiddleCell({
           onOpenOverview={onOpenOverview}
           statsCacheRevision={statsCacheRevision}
           statsQuery={statsQuery}
-          triggerContent={
-            <span className={tableCellClass()}>{vm.budgetPct.toFixed(1)}%</span>
-          }
+          triggerContent={<span className={tableCellClass()}>{vm.budgetPct.toFixed(1)}%</span>}
         />
       );
     case 'flow':
@@ -191,7 +200,10 @@ export function CampaignListTableMiddleCell({
       );
     case 'owner':
       return (
-        <span className="block max-w-full whitespace-nowrap tabular-nums text-muted-foreground" title={vm.ownerId}>
+        <span
+          className="block max-w-full whitespace-nowrap tabular-nums text-muted-foreground"
+          title={vm.ownerId}
+        >
           {vm.ownerLabel}
         </span>
       );

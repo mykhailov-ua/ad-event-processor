@@ -34,14 +34,19 @@ function AppSidebarBrand() {
       >
         <span className="h-3 w-3 rounded-sm border-2 border-primary-foreground/80" />
       </span>
-      <span className="whitespace-nowrap text-sm font-bold text-foreground">ad-event-processor</span>
+      <span className="whitespace-nowrap text-sm font-bold text-foreground">
+        ad-event-processor
+      </span>
     </div>
   );
 }
 
 export function AppSidebarNav({ items, onNavigate }: AppSidebarNavProps) {
   return (
-    <nav aria-label="Main" className="ui-scrollbar flex min-h-0 flex-1 flex-col gap-px overflow-y-auto px-2">
+    <nav
+      aria-label="Main"
+      className="ui-scrollbar flex min-h-0 flex-1 flex-col gap-px overflow-y-auto px-2"
+    >
       {items.map((item) => {
         const Icon = item.icon;
         return (
@@ -53,7 +58,7 @@ export function AppSidebarNav({ items, onNavigate }: AppSidebarNavProps) {
                 'flex items-center gap-1.5 rounded px-2 py-1 text-[13px] font-medium no-underline transition-colors',
                 isActive
                   ? 'border-l-2 border-primary bg-accent pl-[calc(0.5rem-2px)] font-semibold text-foreground'
-                  : 'text-muted-foreground hover:bg-accent hover:text-foreground',
+                  : 'text-muted-foreground hover:bg-accent hover:text-foreground'
               )
             }
             to={item.path}
@@ -103,7 +108,7 @@ export function AppSidebar({ collapsed, items, signingOut, onSignOut }: AppSideb
     <aside
       className={cn(
         'h-full min-h-0 w-52 shrink-0 flex-col overflow-hidden border-r border-border bg-card text-card-foreground',
-        collapsed ? 'hidden' : 'hidden md:flex',
+        collapsed ? 'hidden' : 'hidden md:flex'
       )}
     >
       <AppSidebarBrand />

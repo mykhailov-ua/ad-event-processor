@@ -1,3 +1,4 @@
+import { NARROW_EDIT_FORM_CLASS } from '@/shell/filter_panel';
 import { PageChrome } from '@/shell/page_chrome';
 import { PageSkeleton } from '@/shell/page_skeleton';
 import { Badge } from '@/components/ui/badge';
@@ -54,7 +55,7 @@ export function RtbFloorsApplyPanel({
     <PageChrome title="RTB floors">
       <RtbNav />
 
-      <section className="grid max-w-xl gap-4">
+      <section className={NARROW_EDIT_FORM_CLASS}>
         <div className="grid gap-2">
           <Label htmlFor="rtb-floor-placements">placement_ids (one per line)</Label>
           <Textarea
@@ -88,25 +89,25 @@ export function RtbFloorsApplyPanel({
           </div>
           {(result.suggestions ?? []).length > 0 ? (
             <DirectoryTable>
-                <TableHeader>
-                  <TableRow>
-                    <DirectoryTableHead>Placement</DirectoryTableHead>
-                    <DirectoryTableHead>Deal</DirectoryTableHead>
-                    <DirectoryTableHead>Current floor</DirectoryTableHead>
-                    <DirectoryTableHead>Suggested</DirectoryTableHead>
+              <TableHeader>
+                <TableRow>
+                  <DirectoryTableHead>Placement</DirectoryTableHead>
+                  <DirectoryTableHead>Deal</DirectoryTableHead>
+                  <DirectoryTableHead>Current floor</DirectoryTableHead>
+                  <DirectoryTableHead>Suggested</DirectoryTableHead>
+                </TableRow>
+              </TableHeader>
+              <TableBody>
+                {(result.suggestions ?? []).map((row) => (
+                  <TableRow key={`${row.placement_id}-${row.deal_id}`}>
+                    <TableCell>{row.placement_id ?? ''}</TableCell>
+                    <TableCell>{row.deal_id ?? ''}</TableCell>
+                    <TableCell>{displayMicro(row.current_floor_micro)}</TableCell>
+                    <TableCell>{displayMicro(row.suggested_floor_micro)}</TableCell>
                   </TableRow>
-                </TableHeader>
-                <TableBody>
-                  {(result.suggestions ?? []).map((row) => (
-                    <TableRow key={`${row.placement_id}-${row.deal_id}`}>
-                      <TableCell>{row.placement_id ?? ''}</TableCell>
-                      <TableCell>{row.deal_id ?? ''}</TableCell>
-                      <TableCell>{displayMicro(row.current_floor_micro)}</TableCell>
-                      <TableCell>{displayMicro(row.suggested_floor_micro)}</TableCell>
-                    </TableRow>
-                  ))}
-                </TableBody>
-              </DirectoryTable>
+                ))}
+              </TableBody>
+            </DirectoryTable>
           ) : null}
         </section>
       ) : applying ? (

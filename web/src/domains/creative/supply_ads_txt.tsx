@@ -51,7 +51,7 @@ export type SupplyAdsTxtDirectoryProps = {
   onEditRowChange: (
     id: number,
     field: 'domain' | 'publisher_account_id' | 'relationship' | 'sort_order',
-    value: string,
+    value: string
   ) => void;
   onCreateRow: () => void;
   onUpdateRow: (id: number) => void;
@@ -115,7 +115,12 @@ export function SupplyAdsTxtDirectory({
         Back to supply hub
       </Link>
       <p className="text-sm">
-        <a className="underline" href={SUPPLY_PREVIEW_ADS_TXT_PATH} target="_blank" rel="noreferrer">
+        <a
+          className="underline"
+          href={SUPPLY_PREVIEW_ADS_TXT_PATH}
+          target="_blank"
+          rel="noreferrer"
+        >
           Open server ads.txt preview
         </a>
       </p>
@@ -171,77 +176,75 @@ export function SupplyAdsTxtDirectory({
         <EmptyState title="No ads.txt rows" description="Supply ads.txt table is empty." />
       ) : (
         <DirectoryTable>
-            <TableHeader>
-              <TableRow>
-                <DirectoryTableHead>Domain</DirectoryTableHead>
-                <DirectoryTableHead>Account</DirectoryTableHead>
-                <DirectoryTableHead>Relationship</DirectoryTableHead>
-                <DirectoryTableHead>Order</DirectoryTableHead>
-                <DirectoryTableHead />
-              </TableRow>
-            </TableHeader>
-            <TableBody>
-              {(items ?? []).map((row) => {
-                const edit = editRows[row.id] ?? {
-                  domain: row.domain,
-                  publisher_account_id: row.publisher_account_id,
-                  relationship: row.relationship,
-                  sort_order: String(row.sort_order ?? ''),
-                };
-                return (
-                  <TableRow key={row.id}>
-                    <TableCell>
-                      <Input
-                        value={edit.domain}
-                        onChange={(event) =>
-                          onEditRowChange(row.id, 'domain', event.target.value)
-                        }
-                      />
-                    </TableCell>
-                    <TableCell>
-                      <Input
-                        className="font-mono text-xs"
-                        value={edit.publisher_account_id}
-                        onChange={(event) =>
-                          onEditRowChange(row.id, 'publisher_account_id', event.target.value)
-                        }
-                      />
-                    </TableCell>
-                    <TableCell>
-                      <Input
-                        value={edit.relationship}
-                        onChange={(event) =>
-                          onEditRowChange(row.id, 'relationship', event.target.value)
-                        }
-                      />
-                    </TableCell>
-                    <TableCell>
-                      <Input
-                        value={edit.sort_order}
-                        onChange={(event) =>
-                          onEditRowChange(row.id, 'sort_order', event.target.value)
-                        }
-                      />
-                    </TableCell>
-                    <TableCell>
-                      <RowActionsMenu ariaLabel="Row actions" disabled={acting}>
-                        <DropdownMenuItem disabled={acting} onClick={() => onUpdateRow(row.id)}>
-                          Save
-                        </DropdownMenuItem>
-                        <DropdownMenuItem
-                          className="text-destructive focus:text-destructive"
-                          disabled={acting}
-                          onClick={() => onDeleteRow(row.id)}
-                        >
-                          Delete
-                        </DropdownMenuItem>
-                      </RowActionsMenu>
-                    </TableCell>
-                  </TableRow>
-                );
-              })}
-            </TableBody>
-          </DirectoryTable>
+          <TableHeader>
+            <TableRow>
+              <DirectoryTableHead>Domain</DirectoryTableHead>
+              <DirectoryTableHead>Account</DirectoryTableHead>
+              <DirectoryTableHead>Relationship</DirectoryTableHead>
+              <DirectoryTableHead>Order</DirectoryTableHead>
+              <DirectoryTableHead />
+            </TableRow>
+          </TableHeader>
+          <TableBody>
+            {(items ?? []).map((row) => {
+              const edit = editRows[row.id] ?? {
+                domain: row.domain,
+                publisher_account_id: row.publisher_account_id,
+                relationship: row.relationship,
+                sort_order: String(row.sort_order ?? ''),
+              };
+              return (
+                <TableRow key={row.id}>
+                  <TableCell>
+                    <Input
+                      value={edit.domain}
+                      onChange={(event) => onEditRowChange(row.id, 'domain', event.target.value)}
+                    />
+                  </TableCell>
+                  <TableCell>
+                    <Input
+                      className="font-mono text-xs"
+                      value={edit.publisher_account_id}
+                      onChange={(event) =>
+                        onEditRowChange(row.id, 'publisher_account_id', event.target.value)
+                      }
+                    />
+                  </TableCell>
+                  <TableCell>
+                    <Input
+                      value={edit.relationship}
+                      onChange={(event) =>
+                        onEditRowChange(row.id, 'relationship', event.target.value)
+                      }
+                    />
+                  </TableCell>
+                  <TableCell>
+                    <Input
+                      value={edit.sort_order}
+                      onChange={(event) =>
+                        onEditRowChange(row.id, 'sort_order', event.target.value)
+                      }
+                    />
+                  </TableCell>
+                  <TableCell>
+                    <RowActionsMenu ariaLabel="Row actions" disabled={acting}>
+                      <DropdownMenuItem disabled={acting} onClick={() => onUpdateRow(row.id)}>
+                        Save
+                      </DropdownMenuItem>
+                      <DropdownMenuItem
+                        className="text-destructive focus:text-destructive"
+                        disabled={acting}
+                        onClick={() => onDeleteRow(row.id)}
+                      >
+                        Delete
+                      </DropdownMenuItem>
+                    </RowActionsMenu>
+                  </TableCell>
+                </TableRow>
+              );
+            })}
+          </TableBody>
+        </DirectoryTable>
       )}
 
       {actionError ? creativePanelError(actionError, 'ads.txt action failed') : null}

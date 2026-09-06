@@ -138,35 +138,35 @@ export function RtbDealsDirectory({
         <EmptyState title="No deals" description="RTB deal catalog returned no entries." />
       ) : (
         <DirectoryTable>
-            <TableHeader>
-              <TableRow>
-                <DirectoryTableHead>Deal ID</DirectoryTableHead>
-                <DirectoryTableHead>Internal ID</DirectoryTableHead>
-                <DirectoryTableHead>Floor (micro)</DirectoryTableHead>
-                <DirectoryTableHead>Pacing</DirectoryTableHead>
-                <DirectoryTableHead>Updated</DirectoryTableHead>
+          <TableHeader>
+            <TableRow>
+              <DirectoryTableHead>Deal ID</DirectoryTableHead>
+              <DirectoryTableHead>Internal ID</DirectoryTableHead>
+              <DirectoryTableHead>Floor (micro)</DirectoryTableHead>
+              <DirectoryTableHead>Pacing</DirectoryTableHead>
+              <DirectoryTableHead>Updated</DirectoryTableHead>
+            </TableRow>
+          </TableHeader>
+          <TableBody>
+            {(items ?? []).map((row) => (
+              <TableRow key={row.id ?? row.deal_id}>
+                <TableCell>
+                  {row.id != null ? (
+                    <Link className="hover:underline" to={`/rtb/deals/${row.id}`}>
+                      {row.deal_id ?? ''}
+                    </Link>
+                  ) : (
+                    (row.deal_id ?? '')
+                  )}
+                </TableCell>
+                <TableCell>{row.id ?? ''}</TableCell>
+                <TableCell>{displayMicro(row.floor_micro)}</TableCell>
+                <TableCell>{row.pacing ?? ''}</TableCell>
+                <TableCell>{displayTimestamp(row.updated_at)}</TableCell>
               </TableRow>
-            </TableHeader>
-            <TableBody>
-              {(items ?? []).map((row) => (
-                <TableRow key={row.id ?? row.deal_id}>
-                  <TableCell>
-                    {row.id != null ? (
-                      <Link className="hover:underline" to={`/rtb/deals/${row.id}`}>
-                        {row.deal_id ?? ''}
-                      </Link>
-                    ) : (
-                      row.deal_id ?? ''
-                    )}
-                  </TableCell>
-                  <TableCell>{row.id ?? ''}</TableCell>
-                  <TableCell>{displayMicro(row.floor_micro)}</TableCell>
-                  <TableCell>{row.pacing ?? ''}</TableCell>
-                  <TableCell>{displayTimestamp(row.updated_at)}</TableCell>
-                </TableRow>
-              ))}
-            </TableBody>
-          </DirectoryTable>
+            ))}
+          </TableBody>
+        </DirectoryTable>
       )}
 
       {error && hasSnapshot ? rtbPanelError(error, 'Refresh failed') : null}

@@ -1,23 +1,6 @@
-import { getRtbIntegrationProfile } from '@/api/rtb_api';
 import { RtbIntegrationProfilePanel } from '@/domains/rtb/rtb_integration_profile';
-import { rtbLicenseGated } from '@/domains/rtb/rtb_nav';
-import { useResource } from '@/api/use_resource';
+import { useRtbIntegrationProfilePageWorkspace } from '@/domains/rtb/use_rtb_integration_profile_page_workspace';
 
 export function RtbIntegrationProfilePage() {
-  const { data, error, fetching } = useResource(
-    (signal) => getRtbIntegrationProfile(signal),
-    [],
-  );
-
-  const licenseGated = rtbLicenseGated(error);
-
-  return (
-    <RtbIntegrationProfilePanel
-      profile={data}
-      fetching={fetching}
-      error={licenseGated ? undefined : error}
-      hasSnapshot={data != null || licenseGated}
-      licenseGated={licenseGated}
-    />
-  );
+  return <RtbIntegrationProfilePanel {...useRtbIntegrationProfilePageWorkspace()} />;
 }

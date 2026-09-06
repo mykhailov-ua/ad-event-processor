@@ -7,18 +7,26 @@ import { cn } from '@/lib/utils';
 
 export const adminChrome = {
   control: cnControl(),
+  controlFieldGroup: cn(cnControl(), 'flex items-center gap-2'),
+  controlFieldInset:
+    'min-w-0 flex-1 border-0 bg-transparent p-0 text-foreground shadow-none outline-none placeholder:text-muted-foreground focus-visible:ring-0 focus-visible:ring-offset-0 disabled:cursor-not-allowed disabled:opacity-50',
   controlGhost: cn(
     adminKit.buttonShell,
-    'rounded-[5px] border border-transparent bg-transparent px-2 text-foreground transition-colors hover:bg-accent hover:text-accent-foreground',
+    adminKit.controlRadius,
+    'border border-transparent bg-transparent px-2 text-foreground transition-colors hover:bg-accent hover:text-accent-foreground'
   ),
-  panel: 'rounded-[10px] border border-border bg-card text-card-foreground',
-  panelMuted: 'rounded-[10px] bg-muted text-muted-foreground',
+  panel: cn(adminKit.panelRadius, 'border border-border bg-card text-card-foreground'),
+  panelMuted: cn(adminKit.panelRadius, 'bg-muted text-muted-foreground'),
   overlayBackdrop: 'fixed inset-0 z-50 bg-foreground/20 dark:bg-background/75',
-  floating:
-    'z-50 rounded-[5px] border border-border bg-popover text-popover-foreground p-1 shadow-lg',
+  floating: cn(
+    'z-50 border border-border bg-popover text-popover-foreground p-1 shadow-lg',
+    adminKit.controlRadius
+  ),
   menuList: 'flex flex-col gap-1',
-  menuItem:
-    'relative flex w-full cursor-pointer select-none items-center whitespace-nowrap rounded-[5px] px-2 py-1.5 text-[13px] text-foreground outline-none hover:bg-accent hover:text-accent-foreground disabled:pointer-events-none disabled:opacity-50',
+  menuItem: cn(
+    'relative flex w-full cursor-pointer select-none items-center whitespace-nowrap px-2 py-1.5 text-[13px] text-foreground outline-none hover:bg-accent hover:text-accent-foreground disabled:pointer-events-none disabled:opacity-50',
+    adminKit.controlRadius
+  ),
   tableHead:
     'h-[34px] bg-muted/50 px-4 text-left align-middle text-[11px] font-normal uppercase leading-[14px] text-muted-foreground',
   tableCell: 'px-4 py-0 align-middle text-[13px] leading-[18px] text-foreground',
@@ -49,12 +57,10 @@ export type ButtonVariant =
   | 'link';
 
 export const buttonVariantClass: Record<ButtonVariant, string> = {
-  default:
-    'border-primary bg-primary text-primary-foreground hover:bg-primary/90',
+  default: 'border-primary bg-primary text-primary-foreground hover:bg-primary/90',
   brand:
-    'border-emerald-500 bg-emerald-500 text-slate-900 hover:border-emerald-600 hover:bg-emerald-600 dark:hover:border-emerald-400 dark:hover:bg-emerald-400',
-  secondary:
-    'border-border bg-secondary text-secondary-foreground hover:bg-secondary/80',
+    'border-admin-brand bg-admin-brand text-admin-brand-foreground hover:border-admin-brand-hover hover:bg-admin-brand-hover',
+  secondary: 'border-border bg-secondary text-secondary-foreground hover:bg-secondary/80',
   outline:
     'border-border bg-background text-foreground hover:bg-accent hover:text-accent-foreground',
   ghost:
@@ -81,10 +87,10 @@ export const badgeVariantClass: Record<BadgeVariant, string> = {
   secondary: 'border-transparent bg-secondary text-secondary-foreground',
   destructive: 'border-transparent bg-destructive/10 text-destructive',
   outline: 'border-border text-foreground',
-  active: 'border-transparent bg-emerald-500/10 text-emerald-500',
-  paused: 'border-transparent bg-amber-500/10 text-amber-500',
+  active: 'border-transparent bg-admin-status-active/10 text-admin-status-active',
+  paused: 'border-transparent bg-admin-status-paused/10 text-admin-status-paused',
   archived: 'border-border bg-muted text-muted-foreground',
   error: 'border-transparent bg-destructive/10 text-destructive',
-  draft: 'border-transparent bg-sky-500/10 text-sky-500',
-  scheduled: 'border-transparent bg-orange-500/10 text-orange-500',
+  draft: 'border-transparent bg-admin-status-draft/10 text-admin-status-draft',
+  scheduled: 'border-transparent bg-admin-status-scheduled/10 text-admin-status-scheduled',
 };

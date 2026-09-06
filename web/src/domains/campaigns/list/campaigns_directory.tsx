@@ -106,6 +106,7 @@ export function CampaignsDirectory({
 }: CampaignsDirectoryProps) {
   const workspace = useCampaignsDirectoryWorkspace({
     items,
+    customerOptions,
     customerNameById,
     ownerEmailById,
     metricsById,
@@ -140,14 +141,14 @@ export function CampaignsDirectory({
     (open: boolean) => {
       setCampaignCreateDialogOpen(open, onCreateSectionOpenChange, workspace.setWizardOpen);
     },
-    [onCreateSectionOpenChange, workspace.setWizardOpen],
+    [onCreateSectionOpenChange, workspace.setWizardOpen]
   );
 
   const handleWizardOpenChange = useCallback(
     (open: boolean) => {
       setCampaignWizardSheetOpen(open, onCreateSectionOpenChange, workspace.setWizardOpen);
     },
-    [onCreateSectionOpenChange, workspace.setWizardOpen],
+    [onCreateSectionOpenChange, workspace.setWizardOpen]
   );
 
   if (fetching && !hasSnapshot && !error) {
@@ -161,10 +162,8 @@ export function CampaignsDirectory({
   return (
     <>
       <PageLayout
-        workspaceClassName="flex min-h-0 flex-1 flex-col gap-3 border-0 bg-transparent p-0 dark:bg-transparent"
-        footerClassName="border-0 bg-transparent p-0 dark:bg-transparent"
         controlPanel={
-          <div className="flex flex-col gap-3">
+          <div className="grid gap-3">
             {listFacetsDegraded ? (
               <StubBanner
                 title="Owner and country filters limited"
@@ -172,76 +171,76 @@ export function CampaignsDirectory({
               />
             ) : null}
             <CampaignsListToolbar
-            bulkBusy={workspace.bulkBusy || workspace.exportBusy}
-            countryOptions={countryOptions}
-            customerOptions={customerOptions}
-            draftStatsFrom={draftStatsFrom}
-            draftStatsTo={draftStatsTo}
-            draftBudgetMaxUsd={draftBudgetMaxUsd}
-            draftBudgetMinUsd={draftBudgetMinUsd}
-            draftCountry={draftCountry}
-            draftCustomerId={draftCustomerId}
-            appliedStatus={draftStatus}
-            draftOwnerUserId={draftOwnerUserId}
-            draftPacing={draftPacing}
-            fetching={fetching}
-            filterTotalsCapped={filterTotalsCapped}
-            filteredTotal={filteredTotal}
-            listFacetsFetching={listFacetsFetching}
-            listFacetsDegraded={listFacetsDegraded}
-            metricsStale={metricsStale}
-            ownerOptions={ownerOptions}
-            statusTotals={statusTotals}
-            statusTotalsLoading={statusTotalsLoading}
-            summary={workspace.summary}
-            selectedCount={workspace.selectedIds.size}
-            onArchiveClick={() => {
-              if (workspace.selectedIds.size === 0) {
-                toast.error('Select at least one campaign');
-                return;
-              }
-              workspace.setArchiveOpen(true);
-            }}
-            onBudgetFiltersApply={onBudgetFiltersApply}
-            onCloneClick={() => {
-              if (workspace.selectedIds.size !== 1) {
-                toast.error('Select exactly one campaign to clone');
-                return;
-              }
-              workspace.setCloneOpen(true);
-            }}
-            onCreateClick={handleCreateClick}
-            onStatsRangeChange={onStatsRangeChange}
-            onDraftBudgetMaxUsdChange={onDraftBudgetMaxUsdChange}
-            onDraftBudgetMinUsdChange={onDraftBudgetMinUsdChange}
-            onDraftCountryChange={onDraftCountryChange}
-            onDraftCustomerIdChange={onDraftCustomerIdChange}
-            onDraftOwnerUserIdChange={onDraftOwnerUserIdChange}
-            onDraftPacingChange={onDraftPacingChange}
-            onDraftStatusChange={onDraftStatusChange}
-            onImportClick={() => workspace.setImportOpen(true)}
-            onPauseClick={() => {
-              if (workspace.selectedIds.size === 0) {
-                toast.error('Select at least one campaign');
-                return;
-              }
-              workspace.onPauseSelected();
-            }}
-            onRefresh={onRefreshList}
-            onReportClick={workspace.onReportClick}
-            onResumeClick={() => {
-              if (workspace.selectedIds.size === 0) {
-                toast.error('Select at least one campaign');
-                return;
-              }
-              workspace.onResumeSelected();
-            }}
-            onWizardClick={handleWizardClick}
-            canGoNext={canGoNext}
-            canGoPrev={canGoPrev}
-            paginationDisabled={fetching}
-            onPageNext={() => onPageChange(offset + limit)}
-            onPagePrev={() => onPageChange(Math.max(0, offset - limit))}
+              bulkBusy={workspace.bulkBusy || workspace.exportBusy}
+              countryOptions={countryOptions}
+              customerOptions={customerOptions}
+              draftStatsFrom={draftStatsFrom}
+              draftStatsTo={draftStatsTo}
+              draftBudgetMaxUsd={draftBudgetMaxUsd}
+              draftBudgetMinUsd={draftBudgetMinUsd}
+              draftCountry={draftCountry}
+              draftCustomerId={draftCustomerId}
+              appliedStatus={draftStatus}
+              draftOwnerUserId={draftOwnerUserId}
+              draftPacing={draftPacing}
+              fetching={fetching}
+              filterTotalsCapped={filterTotalsCapped}
+              filteredTotal={filteredTotal}
+              listFacetsFetching={listFacetsFetching}
+              listFacetsDegraded={listFacetsDegraded}
+              metricsStale={metricsStale}
+              ownerOptions={ownerOptions}
+              statusTotals={statusTotals}
+              statusTotalsLoading={statusTotalsLoading}
+              summary={workspace.summary}
+              selectedCount={workspace.selectedIds.size}
+              onArchiveClick={() => {
+                if (workspace.selectedIds.size === 0) {
+                  toast.error('Select at least one campaign');
+                  return;
+                }
+                workspace.setArchiveOpen(true);
+              }}
+              onBudgetFiltersApply={onBudgetFiltersApply}
+              onCloneClick={() => {
+                if (workspace.selectedIds.size !== 1) {
+                  toast.error('Select exactly one campaign to clone');
+                  return;
+                }
+                workspace.setCloneOpen(true);
+              }}
+              onCreateClick={handleCreateClick}
+              onStatsRangeChange={onStatsRangeChange}
+              onDraftBudgetMaxUsdChange={onDraftBudgetMaxUsdChange}
+              onDraftBudgetMinUsdChange={onDraftBudgetMinUsdChange}
+              onDraftCountryChange={onDraftCountryChange}
+              onDraftCustomerIdChange={onDraftCustomerIdChange}
+              onDraftOwnerUserIdChange={onDraftOwnerUserIdChange}
+              onDraftPacingChange={onDraftPacingChange}
+              onDraftStatusChange={onDraftStatusChange}
+              onImportClick={() => workspace.setImportOpen(true)}
+              onPauseClick={() => {
+                if (workspace.selectedIds.size === 0) {
+                  toast.error('Select at least one campaign');
+                  return;
+                }
+                workspace.onPauseSelected();
+              }}
+              onRefresh={onRefreshList}
+              onReportClick={workspace.onReportClick}
+              onResumeClick={() => {
+                if (workspace.selectedIds.size === 0) {
+                  toast.error('Select at least one campaign');
+                  return;
+                }
+                workspace.onResumeSelected();
+              }}
+              onWizardClick={handleWizardClick}
+              canGoNext={canGoNext}
+              canGoPrev={canGoPrev}
+              paginationDisabled={fetching}
+              onPageNext={() => onPageChange(offset + limit)}
+              onPagePrev={() => onPageChange(Math.max(0, offset - limit))}
             />
             <CampaignListTableCardTools
               columnPrefs={workspace.columnPrefs}
@@ -252,7 +251,7 @@ export function CampaignsDirectory({
           </div>
         }
         footer={
-          <div className="flex flex-wrap items-center gap-2">
+          <div className="flex flex-wrap items-center gap-3">
             <DirectoryPaginationFooter
               canGoNext={canGoNext}
               canGoPrev={canGoPrev}
@@ -262,7 +261,6 @@ export function CampaignsDirectory({
               page={page}
               pageCount={pageCount}
               pageSizeId="campaigns-page-size"
-              pageSizeLayout="inline"
               rangeLabel={rangeLabel}
               showPrevNext={false}
               onLimitChange={onPageSizeChange}
@@ -344,6 +342,7 @@ export function CampaignsDirectory({
         draftCreateName={draftCreateName}
         draftTemplateId={draftTemplateId}
         importOpen={workspace.importOpen}
+        importPanelWorkspace={workspace.importPanelWorkspace}
         onArchiveConfirm={workspace.onArchiveSelected}
         onArchiveOpenChange={workspace.setArchiveOpen}
         onCloneOpenChange={workspace.setCloneOpen}
@@ -381,6 +380,7 @@ export function CampaignsDirectory({
         templatesError={templatesError}
         templatesLoading={templatesLoading}
         wizardOpen={workspace.wizardOpen}
+        wizardPanelWorkspace={workspace.wizardPanelWorkspace}
       />
     </>
   );

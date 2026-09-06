@@ -103,6 +103,7 @@ type Registry struct {
 	lastPubSubOKUnix int64
 	staleTTLNano     int64
 	staleMode        int32
+	stalePGGrace     atomic.Bool
 
 	snapGen      atomic.Uint64
 	workerCache  [registryWorkerCacheMax]registryWorkerCacheSlot
@@ -124,6 +125,7 @@ func NewRegistry(repo db.Querier) *Registry {
 		licenseState: licensing.StateExpired,
 	})
 	r.cohorts.Store(&cohortRegistrySnapshot{byID: make(map[uuid.UUID]domain.ExperimentCohort)})
+	r.stalePGGrace.Store(true)
 	return r
 }
 

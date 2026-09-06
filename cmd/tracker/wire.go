@@ -40,6 +40,13 @@ import (
 	"github.com/redis/go-redis/v9"
 )
 
+func exitWithCancel(cancel context.CancelFunc, code int) {
+	if cancel != nil {
+		cancel()
+	}
+	os.Exit(code)
+}
+
 func runTracker(cfg *config.Config) {
 	// Phase 1: retry policy, autotune, structured logger (15s disk metrics reporter).
 	ingestion.SetStoreRetryPolicy(
@@ -88,7 +95,7 @@ func runTracker(cfg *config.Config) {
 	pool, err := database.Connect(ctx, string(cfg.DBDSN), cfg.DBTrackerMaxConns, cfg.DBMinConns)
 	if err != nil {
 		slog.Error("failed to connect to database", "error", err)
-		os.Exit(1)
+		exitWithCancel(cancel, 1)
 	}
 	defer pool.Close()
 
@@ -131,7 +138,7 @@ func runTracker(cfg *config.Config) {
 	})
 	if err != nil {
 		slog.Error("failed to connect to redis shards", "error", err)
-		os.Exit(1)
+		exitWithCancel(cancel, 1)
 	}
 	warmPings := cfg.RedisPoolSize
 	if warmPings <= 0 {
@@ -190,6 +197,7 @@ func runTracker(cfg *config.Config) {
 	}
 
 	registry.ConfigureStaleMode(time.Duration(cfg.RegistryStaleTTLSec) * time.Second)
+	registry.SetStalePGGrace(cfg.RegistryStalePGGrace)
 	registry.StartWatchShards(ctx, redisShards, channel)
 	registry.StartEpochPoll(ctx, redisShards, time.Duration(cfg.RegistryPollMs)*time.Millisecond)
 
@@ -228,7 +236,7 @@ func runTracker(cfg *config.Config) {
 	if err != nil {
 		if cfg.Env == "prod" || cfg.Env == "production" {
 			slog.Error("FATAL: MaxMind DB load failed in production", "error", err)
-			os.Exit(1)
+			exitWithCancel(cancel, 1)
 		}
 		slog.Warn("MaxMind DB load failed, using mock geo provider (development only)", "error", err)
 		geoProvider = &ingestion.MockGeoProvider{}
@@ -255,6 +263,7 @@ func runTracker(cfg *config.Config) {
 
 	geoFilter := ingestion.NewGeoFilter(geoProvider, registry)
 	geoFilter.SetAcceptLangGeoEnabled(cfg.AcceptLangGeoEnabled)
+	geoFilter.SetGeoFailClosed(cfg.GeoFailClosed)
 	scheduleFilter := ingestion.NewScheduleFilter(registry)
 	fraudFilter := ingestion.NewFraudFilter(geoProvider)
 	var dcASNTable *ingestion.DCASNTable
@@ -368,7 +377,7 @@ func runTracker(cfg *config.Config) {
 	// Phase 5: unified-filter Lua preload; stream key fcap:ignored when CH_INGEST_SOURCE=broker.
 	if err := ingestion.InitUnifiedFilterLua(); err != nil {
 		slog.Error("unified-filter lua init failed", "error", err)
-		os.Exit(1)
+		exitWithCancel(cancel, 1)
 	}
 
 	unifiedFilter := ingestion.NewUnifiedFilter(
@@ -390,7 +399,7 @@ func runTracker(cfg *config.Config) {
 	unifiedFilter.SetSettingsWatcher(settingsWatcher)
 	if err := unifiedFilter.PreloadScripts(ctx); err != nil {
 		slog.Error("failed to preload redis lua scripts on all shards", "error", err)
-		os.Exit(1)
+		exitWithCancel(cancel, 1)
 	}
 	unifiedFilter.AttachReconnectPreload()
 	unifiedFilter.StartScriptPreheater(ctx, 30*time.Second)
@@ -522,7 +531,7 @@ func runTracker(cfg *config.Config) {
 	piiHasher, piiErr := piihash.NewFromSalt(cfg.PIISaltVersion, string(cfg.PIISaltHex), string(cfg.TokenSymmetricKey))
 	if piiErr != nil {
 		slog.Error("failed to initialize PII hasher for segment filter", "error", piiErr)
-		os.Exit(1)
+		exitWithCancel(cancel, 1)
 	}
 	vppFilter := ingestion.NewVPPFilter(registry, settingsWatcher)
 	segmentFilter := ingestion.NewSegmentFilter(redisShards, registry, piiHasher)
@@ -693,7 +702,7 @@ func runTracker(cfg *config.Config) {
 			list[i], bpErr = ingestion.NewBrokerProducer(producerCfg)
 			if bpErr != nil {
 				slog.Error("broker producer init failed (CH_INGEST_SOURCE=broker)", "error", bpErr, "partition", i)
-				os.Exit(1)
+				exitWithCancel(cancel, 1)
 			}
 		}
 		brokerProducers = ingestion.NewBrokerProducerSet(list)
@@ -711,7 +720,7 @@ func runTracker(cfg *config.Config) {
 		fraudBrokerSink, bpErr = ingestion.NewFraudBrokerSink(cfg.Broker.URL, brokerRedisURL, cfg.Broker.FraudTopic, fraudTimeout)
 		if bpErr != nil {
 			slog.Error("fraud broker sink init failed (CH_INGEST_SOURCE=broker)", "error", bpErr)
-			os.Exit(1)
+			exitWithCancel(cancel, 1)
 		}
 		if fw := gnetHandler.FraudWriter(); fw != nil {
 			fw.SetBrokerSink(fraudBrokerSink)
@@ -754,7 +763,7 @@ func runTracker(cfg *config.Config) {
 		// UDP_CONTROL_*: shard control plane (pause/resume, routing epoch); fail-closed when UDP_FAIL_CLOSED=1.
 		if err := udpCtrl.Start(ctx); err != nil {
 			slog.Error("udp control start failed", "error", err)
-			os.Exit(1)
+			exitWithCancel(cancel, 1)
 		}
 		defer func() { _ = udpCtrl.Close() }()
 		gnetHandler.SetUDPControl(udpCtrl)
@@ -879,9 +888,10 @@ func runTracker(cfg *config.Config) {
 	gnetHandler.SetLogger(appLogger)
 	gnetHandler.StartHealthProbe(ctx)
 
-	// Phase 9: pinned worker pool (queue depth 8192 slots per worker), gnet listen, METRICS_PORT sidecar.
+	// Phase 9: pinned worker pool (queue depth from WORKER_POOL_QUEUE_DEPTH), gnet listen, METRICS_PORT sidecar.
 	// Tier B: MaxWorkers goroutines with LockOSThread; FilterEngine.Check and EVALSHA run here, not on epoll.
-	workerPool := ingestion.NewPinnedWorkerPool(cfg.MaxWorkers, 8192)
+	wpCfg := cfg.WorkerPoolConfig()
+	workerPool := ingestion.NewPinnedWorkerPool(wpCfg.Workers, wpCfg.QueueDepth)
 	gnetHandler.SetWorkerPool(workerPool)
 
 	slog.Info("starting ad-event-tracker via gnet", "port", cfg.ServerPort, "unix_socket", cfg.TrackerUnixSocket, "gnet_event_loops", cfg.GnetEventLoopCount(), "max_workers", cfg.MaxWorkers)
@@ -891,7 +901,7 @@ func runTracker(cfg *config.Config) {
 	if cfg.TrackerUnixSocket != "" {
 		if err := netaddr.PrepareUnixSocket(cfg.TrackerUnixSocket); err != nil {
 			slog.Error("tracker unix socket prepare failed", "path", cfg.TrackerUnixSocket, "error", err)
-			os.Exit(1)
+			exitWithCancel(cancel, 1)
 		}
 		listenURI = netaddr.GnetListenURI(cfg.TrackerUnixSocket)
 	}
@@ -908,7 +918,7 @@ func runTracker(cfg *config.Config) {
 		)
 		if err != nil {
 			slog.Error("gnet server failed", "error", err)
-			os.Exit(1)
+			exitWithCancel(cancel, 1)
 		}
 	}()
 	if cfg.TrackerUnixSocket != "" {

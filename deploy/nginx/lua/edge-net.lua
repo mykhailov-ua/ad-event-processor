@@ -11,6 +11,7 @@
 --
 -- Constants and limits:
 -- - http_get_json socket settimeout 2000 ms.
+-- - MAX_HTTP_RESPONSE_BYTES 69632 caps full HTTP response read (headers + body); MAX_HTTP_BODY_BYTES 65536 for JSON body slice.
 -- - parse_http_url default HTTP port 8188 when omitted.
 -- - redis_connect unix uses pool name "_" for unix: paths.
 -- - parse_addr_list splits comma-separated REDIS_ADDRS / sentinel lists.
@@ -23,6 +24,11 @@
 -- luac -p deploy/nginx/lua/edge-net.lua
 -- bash scripts/test/edge/lua_tests.sh
 local _M = {}
+
+_M.MAX_HTTP_BODY_BYTES = 65536
+_M.MAX_HTTP_RESPONSE_BYTES = 69632
+
+local MAX_HTTP_RESPONSE_BYTES = _M.MAX_HTTP_RESPONSE_BYTES
 
 function _M.is_unix_socket(addr)
     if not addr or addr == "" then
@@ -127,14 +133,20 @@ function _M.http_get_json(url)
         sock:close()
         return nil, send_err
     end
-    local data, read_err = sock:receive "*a"
+    local data, read_err = sock:receive(MAX_HTTP_RESPONSE_BYTES + 1)
     sock:close()
     if not data then
         return nil, read_err
     end
+    if #data > MAX_HTTP_RESPONSE_BYTES then
+        return nil, "http response too large"
+    end
     local body = string.match(data, "\r\n\r\n(.*)$")
     if not body then
         return nil, "empty http body"
+    end
+    if #body > _M.MAX_HTTP_BODY_BYTES then
+        return nil, "http body too large"
     end
     local cjson = require "cjson.safe"
     return cjson.decode(body)

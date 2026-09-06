@@ -9,24 +9,17 @@ type ErrorBlockProps = {
   componentStack?: string;
 };
 
-export function ErrorBlock({
-  title = 'Error',
-  message,
-  error,
-  componentStack,
-}: ErrorBlockProps) {
+export function ErrorBlock({ title = 'Error', message, error, componentStack }: ErrorBlockProps) {
   const resolvedMessage = message ?? userErrorMessage(error, 'Request failed.');
   const details =
-    error != null || componentStack
-      ? formatAdminErrorDetails(error, componentStack)
-      : '';
+    error != null || componentStack ? formatAdminErrorDetails(error, componentStack) : '';
 
   return (
     <Card className="border-destructive/50 bg-destructive/5">
-      <CardHeader className="pb-2">
+      <CardHeader>
         <CardTitle className="text-base text-destructive">{title}</CardTitle>
       </CardHeader>
-      <CardContent className="space-y-3">
+      <CardContent>
         <p className="text-sm text-muted-foreground">{resolvedMessage}</p>
         <AdminErrorDetails details={details} />
       </CardContent>

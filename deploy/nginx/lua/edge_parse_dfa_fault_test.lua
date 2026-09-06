@@ -2,8 +2,8 @@
 -- Runtime: host luajit via scripts/test/edge/lua_tests.sh; loads edge-parse-dfa from package.path arg[1].
 --
 -- Contract under test (must match Go parser.mdc budgets):
--- - MAX_BODY_BYTES 1048576, MAX_SCAN_BYTES 8192, MAX_CAMPAIGN_LEN 64.
--- - campaign_id beyond scan window must not extract; ERR_OVERSIZE / ERR_MALFORMED codes.
+-- - MAX_BODY_BYTES 1048576, MAX_SCAN_BYTES 8192, MAX_CAMPAIGN_LEN 64, MAX_JSON_DEPTH 32, MAX_NATIVE_JSON_DEPTH 16.
+-- - campaign_id beyond scan window must not extract; truncation returns nil,nil (not ERR_MALFORMED).
 --
 -- Output: edge_parse_dfa_fault: passed=N failed=N faults=N; exit 1 on any holdout failure.
 --
@@ -66,12 +66,7 @@ assert_case("campaign_id_after_scan_budget", "campaign_id_after_scan_budget", fu
     local cid_field = string.char(0x0a, 16) .. uuid_bytes()
     local body = junk .. cid_field
     local cid, err = dfa.extract_campaign_id(body, #body)
-    if cid ~= nil then
-        error "holdout campaign_id_after_scan_budget: campaign_id extracted beyond scan budget"
-    end
-    if err ~= nil and err ~= dfa.ERR_MALFORMED then
-        error("unexpected err " .. tostring(err))
-    end
+    expect_nil(cid, err, "E-P01", "campaign_id_after_scan_budget")
 end)
 
 assert_case("varint_bomb", "varint_bomb", function()
@@ -167,6 +162,63 @@ assert_case("proto_oversize_campaign_field", "proto_oversize_campaign_field", fu
     local body = string.char(0x0a, 100) .. string.rep("a", 100)
     local cid, err = dfa.extract_campaign_id(body, #body)
     expect_err(dfa.ERR_OVERSIZE, cid, err, "E-P06", "proto_oversize_campaign_field")
+end)
+
+assert_case("json_escape_odd_backslashes", "json_escape_odd_backslashes", function()
+    local json = '{"junk":"\\\\\\"","campaign_id":"550e8400-e29b-41d4-a716-446655440000"}'
+    local cid, err = dfa.extract_campaign_id(json, #json)
+    expect_cid("550e8400-e29b-41d4-a716-446655440000", cid, err, "E-J09", "json_escape_odd_backslashes")
+end)
+
+assert_case("openrtb_item_id_in_scan_window", "openrtb_item_id_in_scan_window", function()
+    local pad = string.rep(" ", 7900)
+    local tail = '{"item":[{"id":"550e8400-e29b-41d4-a716-446655440000"}]}'
+    local json = pad .. tail
+    if #json > dfa.MAX_SCAN_BYTES then
+        error "fixture longer than scan window"
+    end
+    local cid, err = dfa.extract_campaign_id(json, #json, "openrtb_3")
+    expect_cid("550e8400-e29b-41d4-a716-446655440000", cid, err, "E-O01", "openrtb_item_id_in_scan_window")
+end)
+
+assert_case("openrtb_truncated_mid_parse", "openrtb_truncated_mid_parse", function()
+    local json = string.rep(" ", dfa.MAX_SCAN_BYTES - 10) .. '{"item":[{"id":"550e8400-e29b-41d4-a716-446655440000"}]}'
+    local cid, err = dfa.extract_campaign_id(json, #json, "openrtb_3")
+    expect_nil(cid, err, "E-O02", "openrtb_truncated_mid_parse")
+end)
+
+assert_case("json_depth_bomb", "json_depth_bomb", function()
+    local depth = dfa.MAX_JSON_DEPTH + 4
+    local json = string.rep("{", depth) .. string.rep("}", depth)
+    local cid, err = dfa.extract_campaign_id(json, #json, "openrtb_3")
+    expect_err(dfa.ERR_MALFORMED, cid, err, "E-J10", "json_depth_bomb")
+end)
+
+assert_case("native_json_depth_bomb", "native_json_depth_bomb", function()
+    local depth = dfa.MAX_NATIVE_JSON_DEPTH + 4
+    local json = string.rep('{"k":', depth) .. "1" .. string.rep("}", depth)
+    if #json > dfa.MAX_SCAN_BYTES then
+        error "native depth fixture exceeds scan window"
+    end
+    local cid, err = dfa.extract_campaign_id(json, #json, "ad_event_processor_native")
+    expect_err(dfa.ERR_MALFORMED, cid, err, "E-J11", "native_json_depth_bomb")
+end)
+
+assert_case("negative_content_length", "negative_content_length", function()
+    local cl_err = dfa.check_content_length(-1)
+    if cl_err ~= dfa.ERR_MALFORMED then
+        error(
+            string.format("[E-J12] check_content_length: expected err=%s got %s", dfa.ERR_MALFORMED, tostring(cl_err))
+        )
+    end
+    local cid, err = dfa.extract_campaign_id("{}", -1)
+    expect_err(dfa.ERR_MALFORMED, cid, err, "E-J12", "negative CL extract malformed")
+end)
+
+assert_case("default_ingress_schema_cached", "default_ingress_schema_cached", function()
+    local body = string.char(0x0a, 16) .. uuid_bytes()
+    local cid, err = dfa.extract_campaign_id(body, #body)
+    expect_cid("550e8400-e29b-41d4-a716-446655440000", cid, err, "E-P10", "default_ingress_schema_cached")
 end)
 
 print(string.format("edge_parse_dfa_fault: passed=%d failed=%d faults=%d", passed, failed, fault_count))

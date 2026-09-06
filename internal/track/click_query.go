@@ -250,7 +250,7 @@ func MatchClickQueryKey(key []byte) ClickQueryKeyID {
 	return clickKeyUnknown
 }
 
-func SplitClickPathQuery(path []byte) (base, query []byte, OK bool) {
+func SplitClickPathQuery(path []byte) (base, query []byte, ok bool) {
 	if len(path) < len(clickPathPrefix) {
 		return nil, nil, false
 	}
@@ -289,7 +289,7 @@ func AppendPctDecoded(dst, src []byte) []byte {
 		return append(dst, src...)
 	}
 	_ = src[n-1]
-	for i := range n {
+	for i := 0; i < n; i++ {
 		c := src[i]
 		if c == '%' {
 			if i+2 >= n {
@@ -317,8 +317,8 @@ func AppendPctDecoded(dst, src []byte) []byte {
 
 func ParseClickQuery(path []byte, scratch []byte, out *ClickQueryParsed) []byte {
 	out.Reset()
-	_, query, OK := SplitClickPathQuery(path)
-	if !OK || len(query) == 0 {
+	_, query, ok := SplitClickPathQuery(path)
+	if !ok || len(query) == 0 {
 		return scratch
 	}
 	_ = query[len(query)-1]
@@ -524,12 +524,12 @@ func AppendRedirectMacroEscaped(dst, src []byte) []byte {
 	return dst
 }
 
-func ExpandRedirectMacros(dst, base []byte, ClickID, UserID string, Subs SubIDSlots) []byte {
-	clickB := filter.UnsafeBytes(ClickID)
-	userB := filter.UnsafeBytes(UserID)
+func ExpandRedirectMacros(dst, base []byte, clickID, userID string, subs SubIDSlots) []byte {
+	clickB := filter.UnsafeBytes(clickID)
+	userB := filter.UnsafeBytes(userID)
 	subB := [MaxSubIDs][]byte{}
 	for i := range MaxSubIDs {
-		subB[i] = filter.UnsafeBytes(Subs[i])
+		subB[i] = filter.UnsafeBytes(subs[i])
 	}
 
 	n := len(base)
@@ -566,16 +566,16 @@ func ExpandRedirectMacros(dst, base []byte, ClickID, UserID string, Subs SubIDSl
 	return dst
 }
 
-func BuildRedirectLocation(dst, base []byte, ClickID, UserID string, Subs SubIDSlots, Passthrough []byte) ([]byte, bool) {
+func BuildRedirectLocation(dst, base []byte, clickID, userID string, subs SubIDSlots, passthrough []byte) ([]byte, bool) {
 	if !RedirectBaseValid(base) {
 		return dst, false
 	}
 	dst = dst[:0]
-	dst = ExpandRedirectMacros(dst, base, ClickID, UserID, Subs)
+	dst = ExpandRedirectMacros(dst, base, clickID, userID, subs)
 	if len(dst) > maxRedirectLocation {
 		return dst, false
 	}
-	if len(Passthrough) == 0 {
+	if len(passthrough) == 0 {
 		return dst, true
 	}
 	sep := byte('?')
@@ -585,10 +585,10 @@ func BuildRedirectLocation(dst, base []byte, ClickID, UserID string, Subs SubIDS
 			break
 		}
 	}
-	if len(dst)+1+len(Passthrough) > maxRedirectLocation {
+	if len(dst)+1+len(passthrough) > maxRedirectLocation {
 		return dst, false
 	}
 	dst = append(dst, sep)
-	dst = append(dst, Passthrough...)
+	dst = append(dst, passthrough...)
 	return dst, true
 }

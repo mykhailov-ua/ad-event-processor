@@ -5,7 +5,7 @@
 //   - Parse/Preview (adapter.go, preview.go): normalize vendor payloads to MappedCampaign/MappedFlow DTOs
 //     with macro mapping (macro_mapper.go) and traffic-source schema resolution (schema_resolver.go).
 //   - Maps (maps.go): YAML macro/source tables from deploy/vendor/migration (or install root override).
-//   - FetchRemotePayload (pull.go): live pull for Keitaro admin API and Binom report API (30 s timeout).
+//   - FetchRemotePayload (pull.go): live pull for Keitaro admin API and Binom report API (PullTimeout 30 s; PullImportTimeout 60 s).
 //   - Transform helpers (transform.go, payload_decode.go, keitaro_streams.go) for flow paths and warnings.
 //
 // Topology:

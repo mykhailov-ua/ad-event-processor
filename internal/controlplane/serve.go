@@ -367,7 +367,13 @@ func ServeWithOptions(ctx context.Context, cfg *config.Config, opts ServeOptions
 
 	corsMdl := ctrlhttp.NewCORSMiddleware(cfg.AllowedOrigins)
 	csrfMdl := ctrlhttp.NewCSRFMiddleware(string(cfg.AdminAPIKey))
-	gatewayHandler := ctrlhttp.SecurityHeadersMiddleware(corsMdl(csrfMdl(validateMW(mux))))
+	longRoutes := ctrlhttp.AdminLongRouteTimeouts()
+	adminCtxMdl := ctrlhttp.AdminRequestContextMiddleware(
+		time.Duration(cfg.HTTPWriteTimeoutMs)*time.Millisecond,
+		longRoutes,
+	)
+	managementWriteTimeout := ctrlhttp.ManagementWriteTimeout(cfg.HTTPWriteTimeoutMs, longRoutes)
+	gatewayHandler := ctrlhttp.SecurityHeadersMiddleware(corsMdl(csrfMdl(adminCtxMdl(validateMW(mux)))))
 
 	slog.Info("starting management gateway server", "port", cfg.ManagementPort)
 
@@ -376,7 +382,7 @@ func ServeWithOptions(ctx context.Context, cfg *config.Config, opts ServeOptions
 		Handler:           gatewayHandler,
 		ReadHeaderTimeout: time.Duration(cfg.HTTPReadHeaderTimeoutMs) * time.Millisecond,
 		ReadTimeout:       time.Duration(cfg.HTTPReadTimeoutMs) * time.Millisecond,
-		WriteTimeout:      time.Duration(cfg.HTTPWriteTimeoutMs) * time.Millisecond,
+		WriteTimeout:      managementWriteTimeout,
 		IdleTimeout:       time.Duration(cfg.HTTPIdleTimeoutMs) * time.Millisecond,
 	}
 

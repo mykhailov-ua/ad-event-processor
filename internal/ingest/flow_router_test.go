@@ -7,6 +7,7 @@ import (
 	"testing"
 
 	"ad-event-processor/internal/config"
+	"ad-event-processor/internal/domain"
 
 	"github.com/google/uuid"
 	"github.com/stretchr/testify/require"
@@ -124,7 +125,14 @@ func TestClickRedirect_FlowRouter(t *testing.T) {
 	}))
 
 	cfg := &config.Config{MaxRequestBodySize: 1 << 20}
-	h := NewAdsPacketHandler(cfg, &mockRegistry{}, nil, nil, nil, NewJumpHashSharder(1), "fraud-stream", nil)
+	brandID := uuid.New()
+	store := clickHookBrandStore(t, brandID)
+	lockStaticCampaign(func(c *domain.Campaign) {
+		c.ID = cid
+		c.BrandID = &brandID
+	})
+	t.Cleanup(func() { cachedMockCamp.Store(nil) })
+	h := NewAdsPacketHandler(cfg, &mockRegistry{}, nil, nil, nil, NewJumpHashSharder(1), "fraud-stream", store)
 	h.ConfigureCampaignFlow(table)
 
 	path := "/click?campaign_id=" + cid.String() + "&type=click&user_id=flow-user-42&click_id=sticky-click-1"

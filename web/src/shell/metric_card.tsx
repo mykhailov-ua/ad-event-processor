@@ -1,5 +1,10 @@
 import { ArrowDown, ArrowUp } from 'lucide-react';
 
+import {
+  adminMetricDeltaNegativeClass,
+  adminMetricDeltaPositiveClass,
+} from '@/lib/admin_metric_tone';
+import { adminKit } from '@/lib/admin_kit';
 import { cn } from '@/lib/utils';
 
 export type MetricCardProps = {
@@ -15,7 +20,9 @@ export function MetricCard({ label, value, deltaPct, className }: MetricCardProp
   const positive = showDelta && delta >= 0;
 
   return (
-    <div className={cn('rounded-[10px] border border-border bg-card p-4', className)}>
+    <div
+      className={cn('grid gap-2 border border-border bg-card p-4', adminKit.panelRadius, className)}
+    >
       <div className="flex items-start justify-between gap-2">
         <p className="m-0 text-[11px] font-semibold uppercase leading-[14px] text-muted-foreground">
           {label}
@@ -24,16 +31,20 @@ export function MetricCard({ label, value, deltaPct, className }: MetricCardProp
           <span
             className={cn(
               'inline-flex items-center gap-0.5 text-[11px] font-semibold tabular-nums',
-              positive ? 'text-emerald-600' : 'text-red-600',
+              positive ? adminMetricDeltaPositiveClass : adminMetricDeltaNegativeClass
             )}
           >
-            {positive ? <ArrowUp aria-hidden className="h-3 w-3" /> : <ArrowDown aria-hidden className="h-3 w-3" />}
+            {positive ? (
+              <ArrowUp aria-hidden className="h-3 w-3" />
+            ) : (
+              <ArrowDown aria-hidden className="h-3 w-3" />
+            )}
             {positive ? '+' : ''}
             {delta.toFixed(0)}%
           </span>
         ) : null}
       </div>
-      <p className="m-0 mt-2 text-2xl font-bold leading-none text-foreground tabular-nums">{value}</p>
+      <p className="m-0 text-2xl font-bold leading-none text-foreground tabular-nums">{value}</p>
     </div>
   );
 }

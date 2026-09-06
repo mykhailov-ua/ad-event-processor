@@ -8,7 +8,11 @@ import { buildKpiTiles } from '@/domains/dashboards/dashboard_metrics';
 import { DashboardMultiAxisChart } from '@/domains/dashboards/dashboard_multi_axis_chart';
 import { DashboardRecentClicks } from '@/domains/dashboards/dashboard_recent_clicks';
 import type { BuyerDashboardPreferences } from '@/domains/dashboards/dashboard_preferences';
-import { resolveBuyerDashboardPortfolio, resolveDashboardChartSeries, isDashboardChartMockEnabled } from '@/domains/dashboards/dashboard_series_mock';
+import {
+  resolveBuyerDashboardPortfolio,
+  resolveDashboardChartSeries,
+  isDashboardChartMockEnabled,
+} from '@/domains/dashboards/dashboard_series_mock';
 import type { BuyerPortfolio } from '@/domains/dashboards/buyer_dashboard_types';
 import { campaignListTableCardClass } from '@/domains/campaigns/list/campaign_list_classes';
 import { StubBanner } from '@/shell/stub_banner';
@@ -20,15 +24,19 @@ export type BuyerDashboardViewProps = {
   clickLogHref?: string;
 };
 
-export function BuyerDashboardView({ portfolio, preferences, clickLogHref }: BuyerDashboardViewProps) {
+export function BuyerDashboardView({
+  portfolio,
+  preferences,
+  clickLogHref,
+}: BuyerDashboardViewProps) {
   const resolvedPortfolio = useMemo(() => resolveBuyerDashboardPortfolio(portfolio), [portfolio]);
   const kpiTiles = useMemo(
     () => buildKpiTiles(resolvedPortfolio, preferences.kpiMetrics),
-    [preferences.kpiMetrics, resolvedPortfolio],
+    [preferences.kpiMetrics, resolvedPortfolio]
   );
   const chartSeries = useMemo(
     () => resolveDashboardChartSeries(resolvedPortfolio.series),
-    [resolvedPortfolio.series],
+    [resolvedPortfolio.series]
   );
 
   const breakdownSections = useMemo(() => {
@@ -89,7 +97,9 @@ export function BuyerDashboardView({ portfolio, preferences, clickLogHref }: Buy
           columns={preferences.recentClickColumns}
           embedded
           events={resolvedPortfolio.recent_clicks ?? []}
-          sectionClassName={breakdownSections.length > 0 ? dashboardTableSectionSplitClass : undefined}
+          sectionClassName={
+            breakdownSections.length > 0 ? dashboardTableSectionSplitClass : undefined
+          }
           viewAllHref={clickLogHref}
         />
       </div>

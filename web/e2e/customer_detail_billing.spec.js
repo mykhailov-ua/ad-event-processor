@@ -2,6 +2,8 @@ import { test, expect } from '@playwright/test';
 
 import {
   gotoLive,
+  gotoLiveAwaitGet,
+  isApiGet,
   loginAsAdmin,
   mainContent,
   skipUnlessIntegrationReady,
@@ -24,7 +26,7 @@ test.beforeEach(async ({}, testInfo) => {
 
 test('customer detail shows billing tab bar', async ({ page }) => {
   await loginAsAdmin(page);
-  await gotoLive(page, '/customers');
+  await gotoLiveAwaitGet(page, '/customers', '/api/v1/customers');
   await mainContent(page).getByRole('heading', { name: 'Customers', exact: true }).waitFor({
     timeout: 15_000,
   });
@@ -36,7 +38,13 @@ test('customer detail shows billing tab bar', async ({ page }) => {
     return;
   }
 
+  const customerHref = await customerLink.getAttribute('href');
+  const customerId = customerHref?.split('/').pop() ?? '';
+  const customerGet = page.waitForResponse(isApiGet(`/api/v1/customers/${customerId}`), {
+    timeout: 20_000,
+  });
   await customerLink.click();
+  await customerGet;
   await page.waitForURL(/\/customers\/[^/]+$/, { timeout: 15_000 });
 
   const profileTab = mainContent(page).getByRole('button', { name: 'Profile', exact: true });

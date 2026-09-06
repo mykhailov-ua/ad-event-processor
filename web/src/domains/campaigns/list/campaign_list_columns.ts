@@ -202,7 +202,7 @@ const CAMPAIGN_LIST_COLUMN_USER_RESIZE_MAX_BY_ID: Partial<Record<CampaignListCol
 
 export function clampCampaignListColumnWidthPx(
   columnId: CampaignListColumnId,
-  widthPx: number,
+  widthPx: number
 ): number {
   const minWidth = CAMPAIGN_LIST_COLUMN_MIN_WIDTH_PX[columnId];
   const maxWidth =
@@ -212,7 +212,7 @@ export function clampCampaignListColumnWidthPx(
 
 export function clampUserResizedCampaignListColumnWidthPx(
   columnId: CampaignListColumnId,
-  widthPx: number,
+  widthPx: number
 ): number {
   const minWidth = CAMPAIGN_LIST_COLUMN_MIN_WIDTH_PX[columnId];
   const maxWidth =
@@ -245,20 +245,20 @@ const REORDERABLE_COLUMN_SET = new Set<CampaignListReorderableColumnId>([
 ]);
 
 export function isCampaignListMiddleColumnId(
-  id: CampaignListColumnId,
+  id: CampaignListColumnId
 ): id is CampaignListMiddleColumnId {
   return MIDDLE_COLUMN_SET.has(id as CampaignListMiddleColumnId);
 }
 
 export function isCampaignListColumnDraggable(
-  id: CampaignListColumnId,
+  id: CampaignListColumnId
 ): id is CampaignListReorderableColumnId {
   return REORDERABLE_COLUMN_SET.has(id as CampaignListReorderableColumnId);
 }
 
 export function isCampaignListColumnResizable(
   id: CampaignListColumnId,
-  columns?: ReadonlyArray<CampaignListColumnId>,
+  columns?: ReadonlyArray<CampaignListColumnId>
 ): boolean {
   if (id === 'select' || id === 'id' || id === 'status') {
     return false;
@@ -308,7 +308,7 @@ export function isCampaignListNumericColumn(id: CampaignListColumnId): boolean {
 
 export function resolveCampaignListColumnWidthPx(
   columnId: CampaignListColumnId,
-  localWidths: Readonly<Partial<Record<CampaignListColumnId, number>>>,
+  localWidths: Readonly<Partial<Record<CampaignListColumnId, number>>>
 ): number {
   const width = localWidths[columnId];
   if (width != null && Number.isFinite(width) && width > 0) {
@@ -325,9 +325,7 @@ export function defaultCampaignListColumnPrefs(): CampaignListColumnPrefs {
   };
 }
 
-export function normalizeMiddleOrder(
-  order: ReadonlyArray<string>,
-): CampaignListMiddleColumnId[] {
+export function normalizeMiddleOrder(order: ReadonlyArray<string>): CampaignListMiddleColumnId[] {
   const seen = new Set<CampaignListMiddleColumnId>();
   const result: CampaignListMiddleColumnId[] = [];
 
@@ -353,7 +351,7 @@ export function normalizeMiddleOrder(
 }
 
 export function normalizeDataColumnOrder(
-  order: ReadonlyArray<string>,
+  order: ReadonlyArray<string>
 ): CampaignListReorderableColumnId[] {
   const seen = new Set<CampaignListReorderableColumnId>();
   const result: CampaignListReorderableColumnId[] = [];
@@ -384,9 +382,7 @@ export function normalizeDataColumnOrder(
   return result;
 }
 
-export function normalizeHidden(
-  hidden: ReadonlyArray<string>,
-): CampaignListMiddleColumnId[] {
+export function normalizeHidden(hidden: ReadonlyArray<string>): CampaignListMiddleColumnId[] {
   const set = new Set<CampaignListMiddleColumnId>();
   for (const raw of hidden) {
     const columnId = migrateLegacyColumnId(raw);
@@ -399,7 +395,7 @@ export function normalizeHidden(
 }
 
 export function normalizeColumnWidthPx(
-  widthPx: unknown,
+  widthPx: unknown
 ): Partial<Record<CampaignListColumnId, number>> {
   if (!widthPx || typeof widthPx !== 'object') {
     return {};
@@ -430,9 +426,7 @@ export function normalizeColumnWidthPx(
   return result;
 }
 
-export function visibleCampaignListColumns(
-  prefs: CampaignListColumnPrefs,
-): CampaignListColumnId[] {
+export function visibleCampaignListColumns(prefs: CampaignListColumnPrefs): CampaignListColumnId[] {
   const hidden = new Set(prefs.hidden);
   const tail = normalizeDataColumnOrder(prefs.dataColumnOrder).filter((columnId) => {
     if (columnId === 'name') {
@@ -449,7 +443,7 @@ export function visibleMiddleColumnCount(prefs: CampaignListColumnPrefs): number
 }
 
 export function middleColumnsForSettings(
-  prefs: CampaignListColumnPrefs,
+  prefs: CampaignListColumnPrefs
 ): CampaignListMiddleColumnId[] {
   return normalizeDataColumnOrder(prefs.dataColumnOrder).filter(isCampaignListMiddleColumnId);
 }
@@ -461,16 +455,13 @@ export function campaignListTableMinWidthPx(columns: ReadonlyArray<CampaignListC
 export function mergeCampaignListColumnWidths(
   computed: Readonly<Record<CampaignListColumnId, number>>,
   overrides: Readonly<Partial<Record<CampaignListColumnId, number>>>,
-  columns: ReadonlyArray<CampaignListColumnId>,
+  columns: ReadonlyArray<CampaignListColumnId>
 ): Record<CampaignListColumnId, number> {
   const merged = { ...computed };
   for (const columnId of columns) {
     const resizable = isCampaignListColumnResizable(columnId, columns);
     const overrideWidth = resizable ? overrides[columnId] : undefined;
-    const width =
-      overrideWidth ??
-      merged[columnId] ??
-      CAMPAIGN_LIST_COLUMN_MIN_WIDTH_PX[columnId];
+    const width = overrideWidth ?? merged[columnId] ?? CAMPAIGN_LIST_COLUMN_MIN_WIDTH_PX[columnId];
     merged[columnId] =
       overrideWidth != null
         ? clampUserResizedCampaignListColumnWidthPx(columnId, width)
@@ -497,15 +488,13 @@ export function parseCampaignListColumnPrefs(raw: string | null): CampaignListCo
       : normalizeDataColumnOrder([
           'name',
           ...normalizeMiddleOrder(
-            Array.isArray(parsed.middleOrder) ? parsed.middleOrder.map(String) : [],
+            Array.isArray(parsed.middleOrder) ? parsed.middleOrder.map(String) : []
           ),
         ]);
 
     return {
       dataColumnOrder,
-      hidden: normalizeHidden(
-        Array.isArray(parsed.hidden) ? parsed.hidden.map(String) : [],
-      ),
+      hidden: normalizeHidden(Array.isArray(parsed.hidden) ? parsed.hidden.map(String) : []),
       widthPx: normalizeColumnWidthPx(parsed.widthPx),
     };
   } catch {
@@ -525,7 +514,7 @@ export function serializeCampaignListColumnPrefs(prefs: CampaignListColumnPrefs)
 export function moveMiddleColumn(
   order: CampaignListMiddleColumnId[],
   fromIndex: number,
-  toIndex: number,
+  toIndex: number
 ): CampaignListMiddleColumnId[] {
   if (fromIndex === toIndex || fromIndex < 0 || toIndex < 0 || fromIndex >= order.length) {
     return order;
@@ -543,7 +532,7 @@ export function moveMiddleColumn(
 export function moveDataColumn(
   order: CampaignListReorderableColumnId[],
   draggedId: CampaignListReorderableColumnId,
-  targetId: CampaignListReorderableColumnId,
+  targetId: CampaignListReorderableColumnId
 ): CampaignListReorderableColumnId[] {
   if (draggedId === targetId) {
     return order;
@@ -565,7 +554,7 @@ export function moveDataColumn(
 export function setMiddleColumnVisible(
   hidden: CampaignListMiddleColumnId[],
   id: CampaignListMiddleColumnId,
-  visible: boolean,
+  visible: boolean
 ): CampaignListMiddleColumnId[] {
   const set = new Set(hidden);
   if (visible) {
@@ -580,7 +569,7 @@ export function setCampaignListColumnWidth(
   prefs: CampaignListColumnPrefs,
   columnId: CampaignListColumnId,
   widthPx: number,
-  columns?: ReadonlyArray<CampaignListColumnId>,
+  columns?: ReadonlyArray<CampaignListColumnId>
 ): CampaignListColumnPrefs {
   if (!isCampaignListColumnResizable(columnId, columns)) {
     return prefs;
@@ -599,7 +588,7 @@ export function loadCampaignListColumnPrefs(): CampaignListColumnPrefs {
     return defaultCampaignListColumnPrefs();
   }
   return parseCampaignListColumnPrefs(
-    window.localStorage.getItem(CAMPAIGN_LIST_COLUMNS_STORAGE_KEY),
+    window.localStorage.getItem(CAMPAIGN_LIST_COLUMNS_STORAGE_KEY)
   );
 }
 
@@ -609,6 +598,6 @@ export function saveCampaignListColumnPrefs(prefs: CampaignListColumnPrefs): voi
   }
   window.localStorage.setItem(
     CAMPAIGN_LIST_COLUMNS_STORAGE_KEY,
-    serializeCampaignListColumnPrefs(prefs),
+    serializeCampaignListColumnPrefs(prefs)
   );
 }

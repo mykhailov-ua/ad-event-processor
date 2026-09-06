@@ -589,8 +589,8 @@ Use color **only** to encode data or state. Decorative gradients, glow, and per-
 | Content | Face | Class |
 | :--- | :--- | :--- |
 | Labels, names, nav, buttons | Inter Variable | `font-sans`, body default |
-| Money, counts, %, ROI, IDs in grids | Inter + tnum | `.num`, `tabular-nums`, `admin-tabular-nums` |
-| UUID, JSON, URLs, secrets | JetBrains Mono | `font-mono`, `admin-data-mono`, `ui-code-block` |
+| Money, counts, %, ROI, IDs in grids | Inter + tnum | `.num`, `tabular-nums`, `font-numeric`, `admin-tabular-nums` |
+| UUID, JSON, URLs, secrets | IBM Plex Mono | `font-mono`, `admin-data-mono`, `ui-code-block` |
 
 | Rule | Detail |
 | :--- | :--- |

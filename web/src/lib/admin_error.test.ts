@@ -5,6 +5,7 @@ import { ApiError } from '../api/api_error.ts';
 import {
   adminErrorUserMessage,
   formatAdminErrorDetails,
+  isPaymentUnavailableError,
   userErrorMessage,
 } from './admin_error.ts';
 
@@ -16,15 +17,15 @@ test('userErrorMessage hides generic Error details outside dev mode', () => {
 test('userErrorMessage maps ApiError status to operator copy', () => {
   assert.equal(
     userErrorMessage(new ApiError(404, 'NOT_FOUND', 'campaign missing')),
-    'The requested resource was not found.',
+    'The requested resource was not found.'
   );
   assert.equal(
     userErrorMessage(new ApiError(403, 'FORBIDDEN', 'role denied')),
-    'You do not have permission to view this resource.',
+    'You do not have permission to view this resource.'
   );
   assert.equal(
     userErrorMessage(new ApiError(0, 'TIMEOUT', 'timed out')),
-    'The request timed out. Check your connection and try again.',
+    'The request timed out. Check your connection and try again.'
   );
 });
 
@@ -35,6 +36,22 @@ test('formatAdminErrorDetails includes ApiError fields', () => {
   assert.match(details, /upstream down/);
 });
 
-test('adminErrorUserMessage has copy for not-found', () => {
-  assert.match(adminErrorUserMessage('not-found'), /does not exist/);
+test('userErrorMessage maps payment unavailable', () => {
+  assert.equal(
+    userErrorMessage(new ApiError(503, 'PAYMENT_UNAVAILABLE', 'payment service not configured')),
+    'Payment history is not available in this deployment. Enable the payment module or use the ledger tab for balance activity.'
+  );
+});
+
+test('isPaymentUnavailableError matches PAYMENT_UNAVAILABLE code', () => {
+  assert.equal(
+    isPaymentUnavailableError(
+      new ApiError(503, 'PAYMENT_UNAVAILABLE', 'payment service not configured')
+    ),
+    true
+  );
+  assert.equal(
+    isPaymentUnavailableError(new ApiError(500, 'INTERNAL_ERROR', 'internal error')),
+    false
+  );
 });

@@ -1,9 +1,13 @@
 import { test, expect } from '@playwright/test';
 
 import {
+  ADMIN_SMOKE_ROUTE_READS,
   fetchSessionCustomerId,
   gotoLive,
+  gotoLiveAwaitGet,
+  gotoLiveAwaitResponse,
   gotoLiveTeam,
+  isCampaignsListResponse,
   loginAsAdmin,
   loginSignInHeading,
   mainHeading,
@@ -28,42 +32,36 @@ test('install onboarding routes load headings', async ({ page }) => {
   await expect(signInHeading).toBeVisible();
 });
 
-test('key admin routes load page headings', async ({ page }) => {
+test('key admin routes load page headings and primary GET reads', async ({ page }) => {
   await loginAsAdmin(page);
   const customerId = await fetchSessionCustomerId(page);
 
-  const routes = [
-    { path: '/customers', heading: 'Customers' },
-    { path: '/campaigns', heading: 'Campaigns' },
-    { path: '/billing', heading: 'Billing' },
-    { path: '/settings', heading: 'Platform settings' },
-    { path: '/settings/license', heading: 'License' },
-    {
-      path: customerId ? `/team?customer_id=${encodeURIComponent(customerId)}` : '/team',
-      heading: 'Team',
-      skipWithoutCustomer: true,
-    },
-    { path: '/audit', heading: 'Audit' },
-    { path: '/reports', heading: 'Reports' },
-    { path: '/ops', heading: 'Ops' },
-    { path: '/fraud', heading: 'Fraud' },
-    { path: '/fraud/presets', heading: 'Fraud presets' },
-  ];
-
-  for (const route of routes) {
-    const { path, heading, skipWithoutCustomer } = route;
+  for (const route of ADMIN_SMOKE_ROUTE_READS) {
+    const { path, heading, api, skipWithoutCustomer, useCampaignsList } = route;
     if (skipWithoutCustomer && !customerId) {
       continue;
     }
-    if (path.startsWith('/team')) {
+
+    let response;
+    if (useCampaignsList) {
+      response = await gotoLiveAwaitResponse(page, path, isCampaignsListResponse);
+    } else if (path.startsWith('/team')) {
       const loaded = await gotoLiveTeam(page, customerId);
       if (!loaded) {
         test.skip(true, 'integration: team overview requires customer_id');
         return;
       }
       continue;
+    } else {
+      response = await gotoLiveAwaitGet(page, path, api);
     }
-    await gotoLive(page, path);
+
     await expect(mainHeading(page, heading)).toBeVisible({ timeout: 15_000 });
+    expect(response.ok()).toBe(true);
+    const body = await response.json();
+    expect(body).toBeTruthy();
   }
+
+  await gotoLive(page, '/fraud');
+  await expect(mainHeading(page, 'Fraud')).toBeVisible({ timeout: 15_000 });
 });

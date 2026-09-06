@@ -51,16 +51,13 @@ export function BreadcrumbProvider({ children }: { children: ReactNode }) {
       setSegmentLabel,
       clearSegmentLabel,
     }),
-    [clearSegmentLabel, segmentLabels, setSegmentLabel],
+    [clearSegmentLabel, segmentLabels, setSegmentLabel]
   );
 
   return <BreadcrumbContext.Provider value={value}>{children}</BreadcrumbContext.Provider>;
 }
 
-export function useBreadcrumbSegmentLabel(
-  segment: string | undefined,
-  label: string | undefined,
-) {
+export function useBreadcrumbSegmentLabel(segment: string | undefined, label: string | undefined) {
   const setSegmentLabel = useContext(BreadcrumbContext)?.setSegmentLabel;
   const clearSegmentLabel = useContext(BreadcrumbContext)?.clearSegmentLabel;
 

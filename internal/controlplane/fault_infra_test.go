@@ -2,12 +2,10 @@ package controlplane
 
 import (
 	"context"
-	"os"
-	"path/filepath"
-	"runtime"
-	"strings"
 	"testing"
 	"time"
+
+	"ad-event-processor/internal/testutil"
 
 	"github.com/jackc/pgx/v5/pgxpool"
 	"github.com/redis/go-redis/v9"
@@ -77,30 +75,7 @@ func setupControlFaultInfra(t *testing.T) (*controlFaultInfra, func()) {
 
 func applyFaultMigrations(t *testing.T, pool *pgxpool.Pool) {
 	t.Helper()
-	ctx := context.Background()
-	_, filename, _, ok := runtime.Caller(0)
-	require.True(t, ok)
-	migrationsDir := filepath.Join(filepath.Dir(filename), "..", "ads", "migrations")
-	entries, err := os.ReadDir(migrationsDir)
-	require.NoError(t, err)
-
-	for _, entry := range entries {
-		if entry.IsDir() || !strings.HasSuffix(entry.Name(), ".sql") {
-			continue
-		}
-		sqlBytes, err := os.ReadFile(filepath.Join(migrationsDir, entry.Name()))
-		require.NoError(t, err)
-
-		sql := string(sqlBytes)
-		parts := strings.Split(sql, "-- +goose Down")
-		upPart := parts[0]
-		upPart = strings.ReplaceAll(upPart, "-- +goose Up", "")
-		upPart = strings.ReplaceAll(upPart, "-- +goose StatementBegin", "")
-		upPart = strings.ReplaceAll(upPart, "-- +goose StatementEnd", "")
-
-		_, err = pool.Exec(ctx, upPart)
-		require.NoError(t, err, "migration %s", entry.Name())
-	}
+	testutil.ApplyMigrations(t, pool, testutil.AdsMigrationsDir())
 }
 
 func stopFaultContainer(t *testing.T, c testcontainers.Container) {

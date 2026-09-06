@@ -85,7 +85,7 @@ type campaignForecasterAdapter struct {
 }
 
 func (a campaignForecasterAdapter) ForecastCampaign(ctx context.Context, in reports.CampaignForecastInput) (reports.CampaignForecastDTO, error) {
-	return reports.ForecastCampaign(ctx, forecastHost{svc: a.svc}, in)
+	return reports.ForecastCampaign(ctx, forecastHost(a), in)
 }
 
 type forecastHost struct {

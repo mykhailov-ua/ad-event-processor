@@ -46,9 +46,7 @@ function DropdownMenu({
   const triggerRef = React.useRef<HTMLElement | null>(null);
 
   return (
-    <MenuContext.Provider
-      value={{ open: Boolean(isOpen), setOpen: setIsOpen, triggerRef }}
-    >
+    <MenuContext.Provider value={{ open: Boolean(isOpen), setOpen: setIsOpen, triggerRef }}>
       {children}
     </MenuContext.Provider>
   );
@@ -114,84 +112,89 @@ const DropdownMenuContent = React.forwardRef<
     align?: 'start' | 'end' | 'center';
     scrollable?: boolean;
   }
->(({ className, sideOffset = 4, align = 'start', scrollable = true, style, children, ...props }, ref) => {
-  const { open, setOpen, triggerRef } = useMenuContext();
-  const contentRef = React.useRef<HTMLDivElement | null>(null);
-  const [position, setPosition] = React.useState<React.CSSProperties>({
-    position: 'fixed',
-    visibility: 'hidden',
-  });
+>(
+  (
+    { className, sideOffset = 4, align = 'start', scrollable = true, style, children, ...props },
+    ref
+  ) => {
+    const { open, setOpen, triggerRef } = useMenuContext();
+    const contentRef = React.useRef<HTMLDivElement | null>(null);
+    const [position, setPosition] = React.useState<React.CSSProperties>({
+      position: 'fixed',
+      visibility: 'hidden',
+    });
 
-  useOverlayDismiss(open, () => setOpen(false), contentRef, [triggerRef]);
+    useOverlayDismiss(open, () => setOpen(false), contentRef, [triggerRef]);
 
-  React.useLayoutEffect(() => {
-    if (!open || !triggerRef.current) {
-      return;
-    }
-
-    const updatePosition = () => {
-      const trigger = triggerRef.current;
-      const content = contentRef.current;
-      if (!trigger || !content) {
+    React.useLayoutEffect(() => {
+      if (!open || !triggerRef.current) {
         return;
       }
-      const rect = trigger.getBoundingClientRect();
-      const next = computeFloatingPosition(rect, content.offsetWidth, content.offsetHeight, {
-        align,
-        gap: sideOffset,
-      });
-      setPosition({ ...next, visibility: 'visible' });
-    };
 
-    updatePosition();
-    const raf = window.requestAnimationFrame(updatePosition);
-    const unsubscribeScroll = subscribeFloatingPosition(triggerRef.current, updatePosition);
-    const resizeObserver =
-      typeof ResizeObserver !== 'undefined' && contentRef.current
-        ? new ResizeObserver(() => updatePosition())
-        : undefined;
-    if (resizeObserver && contentRef.current) {
-      resizeObserver.observe(contentRef.current);
+      const updatePosition = () => {
+        const trigger = triggerRef.current;
+        const content = contentRef.current;
+        if (!trigger || !content) {
+          return;
+        }
+        const rect = trigger.getBoundingClientRect();
+        const next = computeFloatingPosition(rect, content.offsetWidth, content.offsetHeight, {
+          align,
+          gap: sideOffset,
+        });
+        setPosition({ ...next, visibility: 'visible' });
+      };
+
+      updatePosition();
+      const raf = window.requestAnimationFrame(updatePosition);
+      const unsubscribeScroll = subscribeFloatingPosition(triggerRef.current, updatePosition);
+      const resizeObserver =
+        typeof ResizeObserver !== 'undefined' && contentRef.current
+          ? new ResizeObserver(() => updatePosition())
+          : undefined;
+      if (resizeObserver && contentRef.current) {
+        resizeObserver.observe(contentRef.current);
+      }
+
+      return () => {
+        window.cancelAnimationFrame(raf);
+        unsubscribeScroll();
+        resizeObserver?.disconnect();
+      };
+    }, [align, open, sideOffset, triggerRef, children]);
+
+    if (!open) {
+      return null;
     }
 
-    return () => {
-      window.cancelAnimationFrame(raf);
-      unsubscribeScroll();
-      resizeObserver?.disconnect();
-    };
-  }, [align, open, sideOffset, triggerRef, children]);
-
-  if (!open) {
-    return null;
+    return (
+      <OverlayRoot>
+        <div
+          ref={(node) => {
+            contentRef.current = node;
+            if (typeof ref === 'function') {
+              ref(node);
+            } else if (ref) {
+              ref.current = node;
+            }
+          }}
+          role="menu"
+          className={cn(adminChrome.floating, 'min-w-[8rem]', className)}
+          style={{ ...position, ...style }}
+          {...props}
+        >
+          {scrollable ? (
+            <div className={cn(adminChrome.menuList, 'ui-scrollbar max-h-60 overflow-y-auto')}>
+              {children}
+            </div>
+          ) : (
+            <div className={adminChrome.menuList}>{children}</div>
+          )}
+        </div>
+      </OverlayRoot>
+    );
   }
-
-  return (
-    <OverlayRoot>
-      <div
-        ref={(node) => {
-          contentRef.current = node;
-          if (typeof ref === 'function') {
-            ref(node);
-          } else if (ref) {
-            ref.current = node;
-          }
-        }}
-        role="menu"
-        className={cn(adminChrome.floating, 'min-w-[8rem]', className)}
-        style={{ ...position, ...style }}
-        {...props}
-      >
-        {scrollable ? (
-          <div className={cn(adminChrome.menuList, 'ui-scrollbar max-h-60 overflow-y-auto')}>
-            {children}
-          </div>
-        ) : (
-          <div className={adminChrome.menuList}>{children}</div>
-        )}
-      </div>
-    </OverlayRoot>
-  );
-});
+);
 DropdownMenuContent.displayName = 'DropdownMenuContent';
 
 const DropdownMenuItem = React.forwardRef<
@@ -229,17 +232,22 @@ const DropdownMenuLabel = React.forwardRef<
 >(({ className, inset, ...props }, ref) => (
   <div
     ref={ref}
-    className={cn('px-2 py-1 text-xs font-semibold text-muted-foreground', inset && 'pl-6', className)}
+    className={cn(
+      'px-2 py-1 text-xs font-semibold text-muted-foreground',
+      inset && 'pl-6',
+      className
+    )}
     {...props}
   />
 ));
 DropdownMenuLabel.displayName = 'DropdownMenuLabel';
 
-const DropdownMenuSeparator = React.forwardRef<HTMLDivElement, React.HTMLAttributes<HTMLDivElement>>(
-  ({ className, ...props }, ref) => (
-    <div ref={ref} className={cn('my-1 h-px bg-border', className)} {...props} />
-  ),
-);
+const DropdownMenuSeparator = React.forwardRef<
+  HTMLDivElement,
+  React.HTMLAttributes<HTMLDivElement>
+>(({ className, ...props }, ref) => (
+  <div ref={ref} className={cn('my-1 h-px bg-border', className)} {...props} />
+));
 DropdownMenuSeparator.displayName = 'DropdownMenuSeparator';
 
 const DropdownMenuShortcut = ({ className, ...props }: React.HTMLAttributes<HTMLSpanElement>) => (
@@ -295,7 +303,11 @@ function DropdownMenuRadioGroup({ children }: { children?: React.ReactNode }) {
 }
 
 function DropdownMenuSubTriggerChevron() {
-  return <span aria-hidden className="ml-auto">&gt;</span>;
+  return (
+    <span aria-hidden className="ml-auto">
+      &gt;
+    </span>
+  );
 }
 
 export {

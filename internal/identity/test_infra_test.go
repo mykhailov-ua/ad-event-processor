@@ -10,6 +10,8 @@ import (
 	"testing"
 	"time"
 
+	"ad-event-processor/internal/testutil"
+
 	"ad-event-processor/internal/identity/db"
 
 	"github.com/google/uuid"
@@ -166,6 +168,12 @@ func countActiveSessions(t *testing.T, pool *pgxpool.Pool, userID uuid.UUID) int
 }
 
 func applyAuthMigrations(t testing.TB, pool *pgxpool.Pool) {
+	t.Helper()
+	testutil.ApplyMigrations(t, pool, testutil.AdsMigrationsDir())
+	applyAuthOnlyMigrations(t, pool)
+}
+
+func applyAuthOnlyMigrations(t testing.TB, pool *pgxpool.Pool) {
 	t.Helper()
 	ctx := context.Background()
 	_, filename, _, _ := runtime.Caller(0)

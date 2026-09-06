@@ -2,14 +2,21 @@ import type { ComponentProps, ReactNode } from 'react';
 
 import { TableCell, TableHead, TableRow } from '@/components/ui/table';
 import { cn } from '@/lib/utils';
-import { DirectoryTable, TableBody, TableFooter, TableHeader } from '@/shell/directory_table';
+import {
+  DirectoryTable,
+  SECTION_TABLE_HOST_CLASS,
+  TableBody,
+  TableFooter,
+  TableHeader,
+} from '@/shell/directory_table';
 
 /** Ops matrix chrome: sticky headers, zebra rows, numeric column alignment. */
 export const OPS_DIRECTORY_TABLE_CLASS = cn(
-  'w-auto table-fixed border-collapse text-ui-dense',
+  'w-full border-collapse text-ui-dense',
   '[&_th]:sticky [&_th]:top-0 [&_th]:z-[2] [&_th]:bg-muted/50 [&_th]:px-3 [&_th]:py-1.5 [&_th]:text-xs [&_th]:font-semibold [&_th]:text-muted-foreground',
-  '[&_td]:border-b [&_td]:border-border [&_td]:px-3 [&_td]:py-1.5',
+  '[&_td]:px-3 [&_td]:py-1.5',
   '[&_tbody_tr:nth-child(even)_td]:bg-muted/30',
+  '[&_tbody_tr:last-child_td]:border-b-0'
 );
 
 /** Ops directory table shell; delegates border/scroll to DirectoryTable. */
@@ -18,16 +25,19 @@ export function OpsTable({
   children,
   foot,
   className,
+  horizontalScroll = false,
 }: {
   head: ReactNode;
   children: ReactNode;
   foot?: ReactNode;
   className?: string;
+  horizontalScroll?: boolean;
 }) {
   return (
     <DirectoryTable
       className={className}
       fixedLayout
+      horizontalScroll={horizontalScroll}
       tableClassName={OPS_DIRECTORY_TABLE_CLASS}
     >
       <TableHeader>{head}</TableHeader>
@@ -78,12 +88,14 @@ export function OpsBlock({
   }
 
   return (
-    <section className={cn('rounded-md border border-border bg-card p-3', className)}>
+    <section
+      className={cn('ops-section-card rounded-md border border-border bg-card p-3', className)}
+    >
       <header className="flex items-center justify-between gap-2">
         {title ? <h2 className="text-sm font-semibold">{title}</h2> : null}
         {meta}
       </header>
-      {children}
+      <div className={SECTION_TABLE_HOST_CLASS}>{children}</div>
     </section>
   );
 }

@@ -49,7 +49,7 @@ func DefaultClickHouseSpoolConfig() ClickHouseSpoolConfig {
 	}
 }
 
-// ClickHouseSpool: mmap WAL segments when live CH insert fails. errCHSpoolMaxSegments is
+// ClickHouseSpool uses mmap WAL segments when live CH insert fails. errCHSpoolMaxSegments is
 // retriable (processor keeps PEL); segment cap from sealed processor_ch_ingest_policy.json.
 type ClickHouseSpool struct {
 	dir          string

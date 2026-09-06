@@ -4,7 +4,7 @@ import { Button } from '@/components/ui/button';
 import { Tooltip, TooltipContent, TooltipTrigger } from '@/components/ui/tooltip';
 import { themeToggleLabel } from '@/lib/theme';
 import { cn } from '@/lib/utils';
-import { useTheme } from '@/context/theme_context';
+import { useTheme } from '@/hooks/use_theme';
 
 export type ThemeToggleProps = {
   className?: string;

@@ -14,9 +14,7 @@ export function mergeRefs<T>(...refs: Array<React.Ref<T> | undefined>) {
   };
 }
 
-export function composeHandlers<E>(
-  ...handlers: Array<((event: E) => void) | undefined>
-) {
+export function composeHandlers<E>(...handlers: Array<((event: E) => void) | undefined>) {
   return (event: E) => {
     for (const handler of handlers) {
       handler?.(event);
@@ -30,7 +28,7 @@ export type SlotProps = React.HTMLAttributes<HTMLElement> & {
 
 export const Slot = React.forwardRef<HTMLElement, SlotProps>(function Slot(
   { children, className, ...props },
-  forwardedRef,
+  forwardedRef
 ) {
   if (!React.isValidElement(children)) {
     return children ?? null;
@@ -46,11 +44,11 @@ export const Slot = React.forwardRef<HTMLElement, SlotProps>(function Slot(
     ref: mergeRefs(forwardedRef, childRef),
     onClick: composeHandlers(
       props.onClick as ((event: React.MouseEvent<HTMLElement>) => void) | undefined,
-      child.props.onClick as ((event: React.MouseEvent<HTMLElement>) => void) | undefined,
+      child.props.onClick as ((event: React.MouseEvent<HTMLElement>) => void) | undefined
     ),
     onKeyDown: composeHandlers(
       props.onKeyDown as ((event: React.KeyboardEvent<HTMLElement>) => void) | undefined,
-      child.props.onKeyDown as ((event: React.KeyboardEvent<HTMLElement>) => void) | undefined,
+      child.props.onKeyDown as ((event: React.KeyboardEvent<HTMLElement>) => void) | undefined
     ),
   });
 });

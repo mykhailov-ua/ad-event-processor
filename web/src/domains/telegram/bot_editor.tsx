@@ -13,12 +13,7 @@ import {
 } from '@/components/ui/dialog';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
-import {
-  Sheet,
-  SheetContent,
-  SheetHeader,
-  SheetTitle,
-} from '@/components/ui/sheet';
+import { Sheet, SheetBody, SheetContent, SheetHeader, SheetTitle } from '@/components/ui/sheet';
 import { Textarea } from '@/components/ui/textarea';
 import type { TelegramBot, TelegramDeeplink, TelegramValidateResult } from '@/api/types';
 import { JsonPayloadView } from '@/shell/json_payload_view';
@@ -141,57 +136,59 @@ export function TelegramBotEditor({
       </div>
 
       <Sheet onOpenChange={setBotOpen} open={botOpen}>
-        <SheetContent className="overflow-y-auto sm:max-w-xl">
+        <SheetContent className="gap-0 p-0 sm:max-w-xl">
           <SheetHeader>
             <SheetTitle>Bot configuration</SheetTitle>
           </SheetHeader>
-          <div className="grid gap-4 pt-4">
-            <div className="grid gap-2">
-              <Label htmlFor="telegram-bot-token">Bot token</Label>
-              <Input
-                id="telegram-bot-token"
-                type="password"
-                value={draftBotToken}
-                onChange={(event) => onDraftBotTokenChange(event.target.value)}
-              />
+          <SheetBody>
+            <div className="grid gap-4">
+              <div className="grid gap-2">
+                <Label htmlFor="telegram-bot-token">Bot token</Label>
+                <Input
+                  id="telegram-bot-token"
+                  type="password"
+                  value={draftBotToken}
+                  onChange={(event) => onDraftBotTokenChange(event.target.value)}
+                />
+              </div>
+              <div className="grid gap-2">
+                <Label htmlFor="telegram-webhook-url">Webhook URL</Label>
+                <Input
+                  id="telegram-webhook-url"
+                  value={draftWebhookUrl}
+                  onChange={(event) => onDraftWebhookUrlChange(event.target.value)}
+                />
+              </div>
+              <div className="grid gap-2">
+                <Label htmlFor="telegram-mini-app-url">Mini App URL</Label>
+                <Input
+                  id="telegram-mini-app-url"
+                  value={draftMiniAppUrl}
+                  onChange={(event) => onDraftMiniAppUrlChange(event.target.value)}
+                />
+              </div>
+              <div className="grid gap-2">
+                <Label htmlFor="telegram-secret-token">Secret token</Label>
+                <Input
+                  id="telegram-secret-token"
+                  type="password"
+                  value={draftSecretToken}
+                  onChange={(event) => onDraftSecretTokenChange(event.target.value)}
+                />
+              </div>
+              <div className="grid gap-2">
+                <Label htmlFor="telegram-auth-date-ttl">Auth date TTL (seconds)</Label>
+                <Input
+                  id="telegram-auth-date-ttl"
+                  value={draftAuthDateTtl}
+                  onChange={(event) => onDraftAuthDateTtlChange(event.target.value)}
+                />
+              </div>
+              <Button disabled={acting} onClick={onSaveBot} type="button">
+                Save bot
+              </Button>
             </div>
-            <div className="grid gap-2">
-              <Label htmlFor="telegram-webhook-url">Webhook URL</Label>
-              <Input
-                id="telegram-webhook-url"
-                value={draftWebhookUrl}
-                onChange={(event) => onDraftWebhookUrlChange(event.target.value)}
-              />
-            </div>
-            <div className="grid gap-2">
-              <Label htmlFor="telegram-mini-app-url">Mini App URL</Label>
-              <Input
-                id="telegram-mini-app-url"
-                value={draftMiniAppUrl}
-                onChange={(event) => onDraftMiniAppUrlChange(event.target.value)}
-              />
-            </div>
-            <div className="grid gap-2">
-              <Label htmlFor="telegram-secret-token">Secret token</Label>
-              <Input
-                id="telegram-secret-token"
-                type="password"
-                value={draftSecretToken}
-                onChange={(event) => onDraftSecretTokenChange(event.target.value)}
-              />
-            </div>
-            <div className="grid gap-2">
-              <Label htmlFor="telegram-auth-date-ttl">Auth date TTL (seconds)</Label>
-              <Input
-                id="telegram-auth-date-ttl"
-                value={draftAuthDateTtl}
-                onChange={(event) => onDraftAuthDateTtlChange(event.target.value)}
-              />
-            </div>
-            <Button disabled={acting} onClick={onSaveBot} type="button">
-              Save bot
-            </Button>
-          </div>
+          </SheetBody>
         </SheetContent>
       </Sheet>
 
@@ -209,9 +206,7 @@ export function TelegramBotEditor({
               onChange={(event) => onDraftInitDataChange(event.target.value)}
             />
           </div>
-          {validateResult ? (
-            <JsonPayloadView payload={validateResult as unknown as Record<string, unknown>} />
-          ) : null}
+          {validateResult ? <JsonPayloadView payload={validateResult} /> : null}
           <DialogFooter>
             <Button disabled={acting} onClick={onValidateInitData} type="button">
               Validate
@@ -233,9 +228,7 @@ export function TelegramBotEditor({
               onChange={(event) => onDraftDeeplinkTokenChange(event.target.value)}
             />
           </div>
-          {deeplinkResult ? (
-            <JsonPayloadView payload={deeplinkResult as unknown as Record<string, unknown>} />
-          ) : null}
+          {deeplinkResult ? <JsonPayloadView payload={deeplinkResult} /> : null}
           <DialogFooter>
             <Button disabled={acting} onClick={onResolveDeeplink} type="button">
               Resolve
@@ -244,9 +237,7 @@ export function TelegramBotEditor({
         </DialogContent>
       </Dialog>
 
-      {actionMessage ? (
-        <p className="text-sm text-muted-foreground">{actionMessage}</p>
-      ) : null}
+      {actionMessage ? <p className="text-sm text-muted-foreground">{actionMessage}</p> : null}
       {actionError ? telegramPanelError(actionError, 'Telegram action failed') : null}
       {error && hasSnapshot ? telegramPanelError(error, 'Refresh failed') : null}
     </PageChrome>

@@ -8,7 +8,7 @@ import {
 
 export function useBuyerDashboardPreferences() {
   const [preferences, setPreferences] = useState<BuyerDashboardPreferences>(() =>
-    loadBuyerDashboardPreferences(),
+    loadBuyerDashboardPreferences()
   );
 
   const applyPreferences = useCallback((next: BuyerDashboardPreferences) => {

@@ -6,14 +6,13 @@ import (
 	"io"
 	"net/http"
 	"net/http/httptest"
-	"os"
-	"path/filepath"
-	"runtime"
 	"strings"
 	"sync"
 	"sync/atomic"
 	"testing"
 	"time"
+
+	"ad-event-processor/internal/testutil"
 
 	db "ad-event-processor/internal/domain/db"
 
@@ -48,29 +47,7 @@ func setupPostgresInfra(t *testing.T) (pool *pgxpool.Pool, cleanup func()) {
 	pool, err = pgxpool.New(ctx, connStr)
 	require.NoError(t, err)
 
-	_, filename, _, ok := runtime.Caller(0)
-	require.True(t, ok)
-	migrationsDir := filepath.Join(filepath.Dir(filename), "..", "ingestion", "migrations")
-	entries, err := os.ReadDir(migrationsDir)
-	require.NoError(t, err)
-
-	for _, entry := range entries {
-		if entry.IsDir() || !strings.HasSuffix(entry.Name(), ".sql") {
-			continue
-		}
-		sqlBytes, err := os.ReadFile(filepath.Join(migrationsDir, entry.Name()))
-		require.NoError(t, err)
-
-		sql := string(sqlBytes)
-		parts := strings.Split(sql, "-- +goose Down")
-		upPart := parts[0]
-		upPart = strings.ReplaceAll(upPart, "-- +goose Up", "")
-		upPart = strings.ReplaceAll(upPart, "-- +goose StatementBegin", "")
-		upPart = strings.ReplaceAll(upPart, "-- +goose StatementEnd", "")
-
-		_, err = pool.Exec(ctx, upPart)
-		require.NoError(t, err, "migration %s failed", entry.Name())
-	}
+	testutil.ApplyMigrations(t, pool, testutil.AdsMigrationsDir())
 
 	cleanup = func() {
 		pool.Close()

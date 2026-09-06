@@ -76,3 +76,5 @@ if [[ "$failed" -ne 0 ]]; then
 fi
 
 echo "hot-path-static: OK (${#HOT_FILES[@]} files)"
+
+bash "$SCRIPTS/ci/static/ingest_lifetime_gate.sh"

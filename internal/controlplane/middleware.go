@@ -161,4 +161,5 @@ type adminWireEnv struct {
 	writeErr                   func(http.ResponseWriter, error)
 	authCustomer               func(*http.Request, string) error
 	authCampaign               func(*http.Request, uuid.UUID) error
+	authCampaignIDs            func(*http.Request, []uuid.UUID) map[uuid.UUID]error
 }

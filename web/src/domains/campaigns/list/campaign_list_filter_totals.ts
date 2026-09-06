@@ -6,6 +6,8 @@ import {
 } from '@/domains/campaigns/list/campaign_list_format';
 import type { CampaignFunnelCounts } from '@/domains/campaigns/list/campaign_list_funnel';
 
+// Maps POST /campaigns/metrics-totals wire row into table footer + summary band.
+// Funnel columns use resolveCampaignFunnelCounts (parity with list_sort_extended.go).
 export type CampaignListFilterTotalsView = {
   totals: CampaignListTotals;
   funnelTotals: CampaignFunnelCounts;
@@ -15,7 +17,7 @@ export type CampaignListFilterTotalsView = {
 };
 
 export function campaignListFilterTotalsFromApi(
-  response: CampaignListMetricsTotalsResponse | undefined,
+  response: CampaignListMetricsTotalsResponse | undefined
 ): CampaignListFilterTotalsView | undefined {
   if (!response) {
     return undefined;

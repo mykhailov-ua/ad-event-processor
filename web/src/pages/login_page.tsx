@@ -27,9 +27,13 @@ export function LoginPage() {
     try {
       await login({ email, password });
       window.location.replace('/');
-    } catch (err) {
+    } catch (err: unknown) {
       const message =
-        err instanceof ApiError ? err.message : err instanceof Error ? err.message : 'Sign in failed';
+        err instanceof ApiError
+          ? err.message
+          : err instanceof Error
+            ? err.message
+            : 'Sign in failed';
       setError(message);
     } finally {
       setSubmitting(false);

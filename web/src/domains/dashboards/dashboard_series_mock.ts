@@ -1,5 +1,16 @@
 import { eachDayOfInterval, format, getDate, getDay, getMonth } from 'date-fns';
 
+import { createDevMockCampaigns } from '@/api/dev_mock/fixtures';
+import {
+  SEED_LANDER_PATHS,
+  SEED_OFFER_NAMES,
+  SEED_TRAFFIC_SOURCES,
+  seedCatalogName,
+  seedClickId,
+  seedLanderFileName,
+  seedPlacementId,
+} from '@/api/dev_mock/fixture_names';
+import { seedDeterministicUuid } from '@/api/dev_mock/seed_uuid';
 import type {
   BuyerPortfolio,
   ClickLogEvent,
@@ -17,42 +28,44 @@ export const DASHBOARD_MOCK_DEFAULT_TO = new Date(2026, 8, 1);
 
 const WEEKDAY_FACTORS = [0.72, 1.04, 1.08, 1.05, 1.0, 0.88, 0.69];
 
-const CAMPAIGN_FIXTURES = [
-  { id: 'cmp-us-fb-browser', name: 'US Facebook Browser', share: 0.31, roiSkew: 0.08 },
-  { id: 'cmp-de-push-finance', name: 'DE Push Finance', share: 0.19, roiSkew: 0.04 },
-  { id: 'cmp-br-tiktok-app', name: 'BR TikTok App install', share: 0.16, roiSkew: -0.06 },
-  { id: 'cmp-pl-native-loan', name: 'PL Native Loan', share: 0.12, roiSkew: 0.02 },
-  { id: 'cmp-gb-google-search', name: 'GB Google Search', share: 0.11, roiSkew: 0.11 },
-  { id: 'cmp-ca-taboola-vsl', name: 'CA Taboola VSL', share: 0.07, roiSkew: -0.12 },
-  { id: 'cmp-in-pop-travel', name: 'IN Popunder Travel', share: 0.04, roiSkew: -0.18 },
-];
+const CAMPAIGN_SHARES = [0.31, 0.19, 0.16, 0.12, 0.11, 0.07, 0.04];
+const CAMPAIGN_ROI_SKEWS = [0.08, 0.04, -0.06, 0.02, 0.11, -0.12, -0.18];
 
-const LANDER_FIXTURES = [
-  { id: 'lp-finance-v3', name: 'finance-offer-v3.html', share: 0.28 },
-  { id: 'lp-sweeps-mob', name: 'sweeps-mobile-lp', share: 0.22 },
-  { id: 'lp-vsl-long', name: 'vsl-17min-lander', share: 0.18 },
-  { id: 'lp-app-pre', name: 'app-install-prelander', share: 0.14 },
-  { id: 'lp-direct-offer', name: 'direct-offer-page', share: 0.11 },
-  { id: 'lp-quiz-funnel', name: 'quiz-funnel-step-1', share: 0.07 },
-];
+const CAMPAIGN_FIXTURES = createDevMockCampaigns()
+  .slice(0, CAMPAIGN_SHARES.length)
+  .map((campaign, index) => ({
+    id: campaign.id,
+    name: campaign.name,
+    share: CAMPAIGN_SHARES[index],
+    roiSkew: CAMPAIGN_ROI_SKEWS[index],
+  }));
 
-const OFFER_FIXTURES = [
-  { id: 'off-credit-line', name: 'CreditLine Pro (CPL)', share: 0.26 },
-  { id: 'off-casino-welcome', name: 'Casino Welcome (CPA)', share: 0.21 },
-  { id: 'off-travel-book', name: 'Travel Booking (CPS)', share: 0.17 },
-  { id: 'off-app-finance', name: 'Finance App (CPI)', share: 0.15 },
-  { id: 'off-insurance-quote', name: 'Insurance Quote (CPL)', share: 0.12 },
-  { id: 'off-sweeps-entry', name: 'Sweeps Entry (CPL)', share: 0.09 },
-];
+const LANDER_SHARES = [0.28, 0.22, 0.18, 0.14, 0.11, 0.07];
 
-const SOURCE_FIXTURES = [
-  { id: 'src-facebook', name: 'facebook.com', share: 0.34 },
-  { id: 'src-push', name: 'push_subscribers', share: 0.22 },
-  { id: 'src-google', name: 'google_ads', share: 0.18 },
-  { id: 'src-tiktok', name: 'tiktok_ads', share: 0.14 },
-  { id: 'src-taboola', name: 'taboola', share: 0.07 },
-  { id: 'src-outbrain', name: 'outbrain', share: 0.05 },
-];
+const LANDER_FIXTURES = LANDER_SHARES.map((share, index) => {
+  const path = seedCatalogName(SEED_LANDER_PATHS, index + 1);
+  return {
+    id: path,
+    name: seedLanderFileName(index + 1),
+    share,
+  };
+});
+
+const OFFER_SHARES = [0.26, 0.21, 0.17, 0.15, 0.12, 0.09];
+
+const OFFER_FIXTURES = OFFER_SHARES.map((share, index) => ({
+  id: seedDeterministicUuid('offer', index + 1),
+  name: seedCatalogName(SEED_OFFER_NAMES, index + 1),
+  share,
+}));
+
+const SOURCE_SHARES = [0.34, 0.22, 0.18, 0.14, 0.07, 0.05];
+
+const SOURCE_FIXTURES = SOURCE_SHARES.map((share, index) => ({
+  id: seedDeterministicUuid('traffic_source', index + 1),
+  name: seedCatalogName(SEED_TRAFFIC_SOURCES, index + 1),
+  share,
+}));
 
 const RECENT_CLICK_COUNTRIES = ['US', 'DE', 'BR', 'PL', 'GB', 'CA', 'IN', 'AU'];
 const RECENT_CLICK_SOURCES = [
@@ -124,7 +137,7 @@ function isBuyerPortfolioEmpty(portfolio: BuyerPortfolio): boolean {
       (point.clicks ?? 0) > 0 ||
       (point.conversions ?? 0) > 0 ||
       (point.spend_micro ?? point.spend_micros ?? 0) > 0 ||
-      (point.revenue_micro ?? 0) > 0,
+      (point.revenue_micro ?? 0) > 0
   );
   const hasKpis =
     (portfolio.kpis?.conversions ?? 0) > 0 ||
@@ -159,7 +172,7 @@ function shouldFillDashboardDemoData(portfolio: BuyerPortfolio): boolean {
 
 export function buildDashboardMockSeries(
   from = DASHBOARD_MOCK_DEFAULT_FROM,
-  to = DASHBOARD_MOCK_DEFAULT_TO,
+  to = DASHBOARD_MOCK_DEFAULT_TO
 ): DashboardSeriesPoint[] {
   const days = eachDayOfInterval({ start: from, end: to });
   const totalDays = days.length;
@@ -169,7 +182,7 @@ export function buildDashboardMockSeries(
     const clicksBase = 38_600 + index * 142;
     const clicks = Math.max(
       120,
-      Math.round(clicksBase * traffic + (hashUnit(index * 17 + 3) > 0.96 ? 6_200 : 0)),
+      Math.round(clicksBase * traffic + (hashUnit(index * 17 + 3) > 0.96 ? 6_200 : 0))
     );
 
     const cpcUsd = 0.11 + hashUnit(index * 7 + 2) * 0.14;
@@ -244,8 +257,7 @@ function computeCrPct(conversions: number, clicks: number): number {
 }
 
 function enrichEconomicsRow(row: DashboardBreakdownRow): DashboardBreakdownRow {
-  const profit_micro =
-    row.profit_micro ?? (row.revenue_micro ?? 0) - (row.cost_micro ?? 0);
+  const profit_micro = row.profit_micro ?? (row.revenue_micro ?? 0) - (row.cost_micro ?? 0);
   const clicks = row.clicks ?? 0;
   const conversions = row.conversions ?? 0;
   const cost_micro = row.cost_micro ?? 0;
@@ -267,7 +279,7 @@ function enrichEconomicsTotals(totals: DashboardBreakdownTotals): DashboardBreak
 
 function buildBreakdownRows(
   fixtures: { id: string; name: string; share: number; roiSkew?: number }[],
-  totals: AggregateTotals,
+  totals: AggregateTotals
 ): DashboardBreakdownRow[] {
   return fixtures.map((fixture, index) => {
     const shareJitter = 0.94 + hashUnit(index * 23 + 1) * 0.12;
@@ -311,7 +323,7 @@ function sumBreakdownRows(rows: DashboardBreakdownRow[]): DashboardBreakdownTota
       cost_micro: 0,
       revenue_micro: 0,
       profit_micro: 0,
-    },
+    }
   );
   const costMicro = totals.cost_micro ?? 0;
   const profitMicro = totals.profit_micro ?? 0;
@@ -321,7 +333,7 @@ function sumBreakdownRows(rows: DashboardBreakdownRow[]): DashboardBreakdownTota
 
 function buildBreakdownTable(
   fixtures: { id: string; name: string; share: number; roiSkew?: number }[],
-  totals: AggregateTotals,
+  totals: AggregateTotals
 ): DashboardBreakdownTable {
   const rows = buildBreakdownRows(fixtures, totals);
   return {
@@ -330,11 +342,6 @@ function buildBreakdownTable(
     truncated: false,
     total: rows.length,
   };
-}
-
-function clickId(seed: number): string {
-  const part = Math.floor(hashUnit(seed) * 0xffff_ffff).toString(16).padStart(8, '0');
-  return `clk_${part}${seed.toString(16).padStart(4, '0')}`;
 }
 
 function buildRecentClicks(rangeEnd: Date): ClickLogEvent[] {
@@ -346,9 +353,9 @@ function buildRecentClicks(rangeEnd: Date): ClickLogEvent[] {
     const hasRevenue = hashUnit(index + 8) > 0.28;
     events.push({
       event_type: 'click',
-      click_id: clickId(index + 41),
+      click_id: seedClickId(index + 41),
       campaign_id: campaign.id,
-      placement_id: `plc_${(index + 3).toString().padStart(4, '0')}`,
+      placement_id: seedPlacementId(index + 3),
       created_at: createdAt.toISOString(),
       country: RECENT_CLICK_COUNTRIES[index % RECENT_CLICK_COUNTRIES.length],
       sub1: RECENT_CLICK_SOURCES[index % RECENT_CLICK_SOURCES.length],
@@ -409,7 +416,7 @@ export function buildDashboardMockPortfolio(portfolio: BuyerPortfolio): BuyerPor
       cpa_micro: computeCpaMicro(totals.cost_micro, totals.conversions),
       cr_pct: computeCrPct(totals.conversions, totals.clicks),
       epc_micro: computeEpcMicro(totals.revenue_micro, totals.clicks),
-      freshness: { stale: false, label: 'Mock preview' },
+      freshness: { stale: false, label: 'Synthetic preview' },
     },
     series,
     breakdowns: {
@@ -423,7 +430,7 @@ export function buildDashboardMockPortfolio(portfolio: BuyerPortfolio): BuyerPor
 }
 
 export function resolveDashboardChartSeries(
-  series: DashboardSeriesPoint[] | undefined,
+  series: DashboardSeriesPoint[] | undefined
 ): DashboardSeriesPoint[] {
   if (series && series.length > 0) {
     return series;

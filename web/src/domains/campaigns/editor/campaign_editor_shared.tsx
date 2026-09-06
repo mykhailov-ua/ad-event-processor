@@ -5,6 +5,24 @@ import { Badge } from '@/components/ui/badge';
 import { ErrorBlock } from '@/shell/error_block';
 import { StubBanner } from '@/shell/stub_banner';
 import type { CloneCampaignOptions } from '@/api/campaigns_api';
+import { adminKit } from '@/lib/admin_kit';
+import { cn } from '@/lib/utils';
+
+/** Bordered editor/wizard section card. */
+export const campaignEditorSectionClass = cn(
+  'grid gap-4 border border-border bg-card p-3',
+  adminKit.panelRadius
+);
+
+/** Muted inset panel inside an editor section. */
+export const campaignEditorInsetPanelClass = cn(
+  'grid gap-2 border border-border bg-muted p-3 text-sm',
+  adminKit.panelRadius
+);
+
+export const campaignEditorWizardRootClass = 'grid gap-6';
+
+export const campaignEditorActionsRowClass = 'flex flex-wrap justify-end gap-2';
 
 export function formatReadonly(value: string | undefined): string {
   if (value == null || value === '') {
@@ -13,9 +31,7 @@ export function formatReadonly(value: string | undefined): string {
   return value;
 }
 
-function fieldErrorEntries(
-  fieldErrors: Record<string, string> | undefined,
-): [string, string][] {
+function fieldErrorEntries(fieldErrors: Record<string, string> | undefined): [string, string][] {
   if (!fieldErrors) {
     return [];
   }
@@ -37,7 +53,7 @@ export function FieldErrorsPanel({
   return (
     <div className="grid gap-2">
       <p className="text-sm font-medium">{title}</p>
-      <ul className="list-inside list-disc text-sm text-muted-foreground">
+      <ul className="m-0 flex list-disc flex-col gap-1 pl-5 text-sm text-muted-foreground">
         {entries.map(([field, message]) => (
           <li key={field}>
             <span className="font-mono text-xs">{field}</span>: {message}
@@ -61,9 +77,7 @@ export function ValidityBadge({
   invalidLabel: string;
 }) {
   return (
-    <Badge variant={valid ? 'secondary' : 'destructive'}>
-      {valid ? validLabel : invalidLabel}
-    </Badge>
+    <Badge variant={valid ? 'secondary' : 'destructive'}>{valid ? validLabel : invalidLabel}</Badge>
   );
 }
 
@@ -99,9 +113,7 @@ export const CLONE_OPTION_FIELDS: {
   },
 ];
 
-export function diffSeverityVariant(
-  severity: string,
-): 'secondary' | 'destructive' | 'outline' {
+export function diffSeverityVariant(severity: string): 'secondary' | 'destructive' | 'outline' {
   if (severity === 'remove') {
     return 'destructive';
   }
@@ -119,7 +131,7 @@ export function StringList({ title, items }: { title: string; items: string[] | 
   return (
     <div className="grid gap-1">
       <p className="text-sm font-medium">{title}</p>
-      <ul className="list-inside list-disc text-sm text-muted-foreground">
+      <ul className="m-0 flex list-disc flex-col gap-1 pl-5 text-sm text-muted-foreground">
         {items.map((item) => (
           <li key={item}>{item}</li>
         ))}
@@ -146,7 +158,7 @@ export function EditorStatusBanners({
         <StubBanner key="save" title="Save not available" message={saveError.message} />
       ) : (
         <ErrorBlock key="save" title="Could not save campaign" message={saveError.message} />
-      ),
+      )
     );
   }
   if (publishCheckError) {
@@ -155,32 +167,40 @@ export function EditorStatusBanners({
         key="publish-check"
         title="Could not check publish gate"
         message={publishCheckError.message}
-      />,
+      />
     );
   }
   if (validateError) {
     blocks.push(
-      <ErrorBlock key="validate" title="Could not validate changes" message={validateError.message} />,
+      <ErrorBlock
+        key="validate"
+        title="Could not validate changes"
+        message={validateError.message}
+      />
     );
   }
   if (publishError) {
     blocks.push(
-      <ErrorBlock key="publish" title="Could not publish campaign" message={publishError.message} />,
+      <ErrorBlock key="publish" title="Could not publish campaign" message={publishError.message} />
     );
   }
   if (blocks.length === 0) {
     return null;
   }
-  return <div className="flex flex-col gap-3">{blocks}</div>;
+  return <div className="grid gap-3">{blocks}</div>;
 }
 
 export function editorApiErrorBlock(
   error: Error,
   stubTitle: string,
-  errorTitle: string,
+  errorTitle: string
 ): ReactNode {
   if (error instanceof ApiError && error.status === 501) {
     return <StubBanner title={stubTitle} message={error.message} />;
   }
   return <ErrorBlock title={errorTitle} message={error.message} />;
+}
+
+export function campaignPanelError(error: Error, title: string): ReactNode {
+  return editorApiErrorBlock(error, `${title} unavailable`, title);
 }

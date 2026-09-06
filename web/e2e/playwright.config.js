@@ -1,9 +1,7 @@
 import { defineConfig } from '@playwright/test';
 
 const baseURL =
-  process.env.ADMIN_E2E_BASE_URL ||
-  process.env.PLAYWRIGHT_BASE_URL ||
-  'http://localhost:8188';
+  process.env.ADMIN_E2E_BASE_URL || process.env.PLAYWRIGHT_BASE_URL || 'http://localhost:8188';
 
 export default defineConfig({
   testDir: '.',

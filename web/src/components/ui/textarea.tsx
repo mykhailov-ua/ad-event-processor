@@ -28,7 +28,14 @@ const Textarea = React.forwardRef<HTMLTextAreaElement, TextareaProps>(
   ({ className, maxLength, showCount, value, onChange, rows = 3, ...props }, ref) => {
     const innerRef = useRef<HTMLTextAreaElement | null>(null);
     const showCounter = showCount ?? maxLength != null;
-    const textValue = value ?? '';
+    const textValue =
+      typeof value === 'string'
+        ? value
+        : Array.isArray(value)
+          ? value.join('')
+          : value != null
+            ? String(value)
+            : '';
     const length = textValue.length;
 
     const syncHeight = useCallback(() => {
@@ -54,7 +61,7 @@ const Textarea = React.forwardRef<HTMLTextAreaElement, TextareaProps>(
               'flex min-h-[5rem] w-full resize-none overflow-hidden border-0 bg-transparent px-3 py-2 text-sm text-foreground transition-colors placeholder:text-muted-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring disabled:cursor-not-allowed disabled:opacity-50',
               !className?.includes('ui-editor-mono-extralight') && 'font-mono',
               showCounter && maxLength != null && 'pb-7',
-              className,
+              className
             )}
             {...props}
             maxLength={maxLength}
@@ -75,7 +82,7 @@ const Textarea = React.forwardRef<HTMLTextAreaElement, TextareaProps>(
         ) : null}
       </div>
     );
-  },
+  }
 );
 Textarea.displayName = 'Textarea';
 

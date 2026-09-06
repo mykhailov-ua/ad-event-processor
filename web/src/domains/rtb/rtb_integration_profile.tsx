@@ -46,7 +46,7 @@ export function RtbIntegrationProfilePanel({
       <RtbNav />
 
       {profile ? (
-        <JsonPayloadView payload={profile as Record<string, unknown>} />
+        <JsonPayloadView payload={profile} />
       ) : (
         rtbPanelError(new Error('Empty profile'), 'Could not load integration profile')
       )}

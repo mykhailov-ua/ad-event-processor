@@ -10,6 +10,8 @@ import (
 	"testing"
 	"time"
 
+	"ad-event-processor/internal/testutil"
+
 	"github.com/jackc/pgx/v5/pgxpool"
 	"github.com/redis/go-redis/v9"
 	"github.com/testcontainers/testcontainers-go"
@@ -56,13 +58,14 @@ func SetupTestDB(t testing.TB) (pool *pgxpool.Pool, cleanup func()) {
 	}
 
 	root := repoRoot()
-	ApplyMigrations(t, pool, filepath.Join(root, "internal", "ingestion", "migrations"))
+	ApplyMigrations(t, pool, testutil.AdsMigrationsDir())
 	ApplyMigrations(t, pool, filepath.Join(root, "internal", "payment", "migrations"))
 
 	cleanup = func() {
 		pool.Close()
 		_ = pgContainer.Terminate(ctx)
 	}
+	t.Cleanup(cleanup)
 	return
 }
 
@@ -119,5 +122,6 @@ func SetupTestRedis(t testing.TB) (redisClient redis.UniversalClient, cleanup fu
 		_ = redisClient.Close()
 		_ = redisContainer.Terminate(ctx)
 	}
+	t.Cleanup(cleanup)
 	return
 }

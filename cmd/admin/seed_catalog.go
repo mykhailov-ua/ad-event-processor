@@ -211,11 +211,6 @@ func seedLicenseRecordUUID() uuid.UUID {
 	return seedDeterministicUUID("license", 1)
 }
 
-// seedEntityUUID is the campaign id helper used by UI demo seed and legacy callers.
-func seedEntityUUID(seq int) uuid.UUID {
-	return seedCampaignUUID(seq)
-}
-
 func seedCustomerName(seq int) string {
 	idx := seq - 1
 	base := seedCustomerNames[idx%len(seedCustomerNames)]
@@ -320,13 +315,13 @@ func seedUserEmail(seq int) string {
 	return fmt.Sprintf("%s+%d@%s", local, 100+seq, domain)
 }
 
-var seedUiDemoCountryCodes = []string{"US", "GB", "DE", "CA", "UA", "FR", "JP", "AU", "BR", "MX"}
+var seedUIDemoCountryCodes = []string{"US", "GB", "DE", "CA", "UA", "FR", "JP", "AU", "BR", "MX"}
 
-func seedUiDemoTargetCountries(seq int) []string {
+func seedUIDemoTargetCountries(seq int) []string {
 	count := 1 + (seq % 4)
 	out := make([]string, count)
-	for i := 0; i < count; i++ {
-		out[i] = seedUiDemoCountryCodes[(seq+i)%len(seedUiDemoCountryCodes)]
+	for i := range count {
+		out[i] = seedUIDemoCountryCodes[(seq+i)%len(seedUIDemoCountryCodes)]
 	}
 	return out
 }

@@ -12,6 +12,7 @@ import (
 	"ad-event-processor/internal/campaign/wizard"
 	campaignworker "ad-event-processor/internal/campaign/worker"
 	"ad-event-processor/internal/config"
+	"ad-event-processor/internal/costsync"
 	"ad-event-processor/internal/database"
 	"ad-event-processor/internal/domain"
 	"ad-event-processor/internal/flow"
@@ -38,7 +39,7 @@ import (
 	"github.com/redis/go-redis/v9"
 )
 
-// Service: control plane composition root; cold path only (PG, Redis shards, CH query, outbox).
+// Service control plane composition root; cold path only (PG, Redis shards, CH query, outbox).
 type Service struct {
 	pool                     *pgxpool.Pool
 	settlementPostgresPool   *pgxpool.Pool
@@ -84,6 +85,8 @@ type Service struct {
 	settingsStore            *settingsadmin.Store
 	privacyStore             *privacyadmin.Store
 	notifierAPI              notify.NotifierAPI
+	costSyncWorker           *costsync.Worker
+	migrationPullWG          sync.WaitGroup
 }
 
 func (s *Service) SetRtbBidShadeSimulator(sim rtbadmin.BidShadeSimulator) {
@@ -131,12 +134,22 @@ func (s *Service) startWorker(fn func()) {
 	}()
 }
 
+func (s *Service) SetCostSyncWorker(worker *costsync.Worker) {
+	if s != nil {
+		s.costSyncWorker = worker
+	}
+}
+
 func (s *Service) Close() {
 	s.closed.Store(true)
 	if s.cancel != nil {
 		s.cancel()
 	}
 	s.wg.Wait()
+	if s.costSyncWorker != nil {
+		s.costSyncWorker.Wait()
+	}
+	s.migrationPullWG.Wait()
 }
 
 func NewService(ctx context.Context, pool *pgxpool.Pool, redisShards []redis.UniversalClient, sharder domain.Sharder, cfg *config.Config) *Service {

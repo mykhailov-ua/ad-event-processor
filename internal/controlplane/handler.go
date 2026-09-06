@@ -26,7 +26,7 @@ import (
 	"github.com/google/uuid"
 )
 
-// Handler: admin cold-path HTTP root for cmd/control; wires domain handlers, never tracker ingest.
+// Handler admin cold-path HTTP root for cmd/control; wires domain handlers, never tracker ingest.
 type Handler struct {
 	svc                   *Service
 	cfg                   *config.Config
@@ -70,7 +70,7 @@ func NewHandler(svc *Service, cfg *config.Config, authMiddleware *AuthMiddleware
 	return h
 }
 
-// RegisterRoutes: /api/v1 via BuildAdminAPIRegistry when PG pool present; legacy /admin/* 410; region ingest last.
+// RegisterRoutes /api/v1 via BuildAdminAPIRegistry when PG pool present; legacy /admin/* 410; region ingest last.
 func (h *Handler) RegisterRoutes(mux *http.ServeMux) {
 	if h.svc != nil && h.svc.GetPool() != nil {
 		RegisterRoutes(mux, h.BuildAdminAPIRegistry(h.svc.GetPool(), h.svc.RedisShards()))
@@ -81,7 +81,7 @@ func (h *Handler) RegisterRoutes(mux *http.ServeMux) {
 	RegisterRegionIngestRoutes(mux, h)
 }
 
-// limit: default operator stack = IP rate limit (Management.RateLimitRPS) then PostgresGate AcquireHigh.
+// limit default operator stack = IP rate limit (Management.RateLimitRPS) then PostgresGate AcquireHigh.
 func (h *Handler) limit(next http.HandlerFunc) http.HandlerFunc {
 	return h.limitByIP(h.pgHigh(next))
 }
@@ -112,7 +112,7 @@ func (h *Handler) allowFraudDecision(customerID string) bool {
 	return ctrlhttp.AllowFraudDecision(h.fraudDecisionLimiter, customerID)
 }
 
-// pgHigh: per-request high-priority PG slot; 503 SERVICE_UNAVAILABLE when postgresGate saturated.
+// pgHigh per-request high-priority PG slot; 503 SERVICE_UNAVAILABLE when postgresGate saturated.
 // Background workers use Service.WithPostgresLow for report-heavy paths.
 func (h *Handler) pgHigh(next http.HandlerFunc) http.HandlerFunc {
 	return func(w http.ResponseWriter, r *http.Request) {
@@ -129,7 +129,7 @@ func (h *Handler) pgHigh(next http.HandlerFunc) http.HandlerFunc {
 	}
 }
 
-// perm: RBAC via AuthMiddleware.RequirePermission; authFallback accepts X-Admin-API-Key when middleware nil.
+// perm RBAC via AuthMiddleware.RequirePermission; authFallback accepts X-Admin-API-Key when middleware nil.
 func (h *Handler) perm(next http.HandlerFunc, permission string) http.HandlerFunc {
 	if h.authMiddleware != nil {
 		return h.authMiddleware.RequirePermission(permission)(next)
@@ -156,21 +156,46 @@ func (h *Handler) authFallback(next http.HandlerFunc) http.HandlerFunc {
 
 // ensureCampaignAccess / ensureCustomerAccess: bound API keys and media-buyer roles; no-op for full operators.
 func (h *Handler) ensureCampaignAccess(r *http.Request, campaignID uuid.UUID) error {
-	u, ok := GetUser(r.Context())
-	if !ok || !u.HasBoundCustomer() {
-		return nil
-	}
-	camp, err := h.svc.GetCampaignRow(r.Context(), campaignID)
-	if err != nil {
-		return err
-	}
-	if uuid.UUID(camp.CustomerID.Bytes) != u.CustomerID {
-		return errForbidden
-	}
-	if err := campaign.AssertMediaBuyerCampaignAccess(r.Context(), camp); err != nil {
+	errs := h.ensureCampaignIDsAccess(r, []uuid.UUID{campaignID})
+	if err, ok := errs[campaignID]; ok {
 		return err
 	}
 	return nil
+}
+
+func (h *Handler) ensureCampaignIDsAccess(r *http.Request, ids []uuid.UUID) map[uuid.UUID]error {
+	u, ok := GetUser(r.Context())
+	if !ok || !u.HasBoundCustomer() || len(ids) == 0 {
+		return nil
+	}
+	rows, err := h.svc.ListCampaignRowsByIDs(r.Context(), ids)
+	if err != nil {
+		out := make(map[uuid.UUID]error, len(ids))
+		for _, id := range ids {
+			out[id] = err
+		}
+		return out
+	}
+	rowByID := make(map[uuid.UUID]db.Campaign, len(rows))
+	for i := range rows {
+		rowByID[uuid.UUID(rows[i].ID.Bytes)] = rows[i]
+	}
+	out := make(map[uuid.UUID]error)
+	for _, id := range ids {
+		row, found := rowByID[id]
+		if !found {
+			out[id] = campaign.ErrCampaignNotFound
+			continue
+		}
+		if uuid.UUID(row.CustomerID.Bytes) != u.CustomerID {
+			out[id] = errForbidden
+			continue
+		}
+		if err := campaign.AssertMediaBuyerCampaignAccess(r.Context(), row); err != nil {
+			out[id] = err
+		}
+	}
+	return out
 }
 
 func (h *Handler) ensureCustomerAccess(r *http.Request, customerID string) error {
@@ -188,7 +213,7 @@ func (h *Handler) ensureCustomerAccess(r *http.Request, customerID string) error
 	return nil
 }
 
-// writeForecastError: CH timeout/unavailable returns 503 + Retry-After; distinct from PG validation errors.
+// writeForecastError CH timeout/unavailable returns 503 + Retry-After; distinct from PG validation errors.
 func writeForecastError(w http.ResponseWriter, err error) {
 	if errors.Is(err, campaign.ErrForecastClickHouseTimeout) || errors.Is(err, campaign.ErrForecastUnavailable) {
 		w.Header().Set("Retry-After", strconv.Itoa(campaign.ForecastRetryAfterSec()))
@@ -295,7 +320,7 @@ func (s *Service) IngestRegionProxyBatch(ctx context.Context, in regionproxy.Bat
 	return regionproxy.IngestBatch(ctx, s, in)
 }
 
-// postRegionIngestBatch: multi-region spend sync; X-Admin-API-Key auth; body capped at coldpath.RegionIngestMaxBody.
+// postRegionIngestBatch multi-region spend sync; X-Admin-API-Key auth; body capped at coldpath.RegionIngestMaxBody.
 func (h *Handler) postRegionIngestBatch(w http.ResponseWriter, r *http.Request) {
 	key := r.Header.Get("X-Admin-API-Key")
 	if key == "" || h.cfg == nil || key != string(h.cfg.AdminAPIKey) {

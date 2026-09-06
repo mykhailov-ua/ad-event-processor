@@ -16,11 +16,45 @@ import {
   devMockWizardSessionGet,
   devMockWizardSessionPost,
 } from './wizard_fixtures.ts';
-import { devMockListCampaignFacets, devMockListCampaignMetricsTotals, devMockListCampaigns, devMockCampaignStats, devMockExportCampaignsBatch } from './campaign_list.ts';
+import {
+  devMockListCampaignFacets,
+  devMockListCampaignMetricsTotals,
+  devMockListCampaigns,
+  devMockCampaignStats,
+  devMockExportCampaignsBatch,
+} from './campaign_list.ts';
 import {
   buildDevMockCampaignMetrics,
   enrichDevMockCampaignMetricsDerived,
 } from './campaign_metrics.ts';
+import {
+  devMockBillingInvariant,
+  devMockBillingSummary,
+  devMockCustomerBalance,
+  devMockCustomerLedger,
+  devMockCustomerStatement,
+  devMockCustomerWallet,
+  devMockInvoiceById,
+  devMockInvoicesList,
+} from './billing_fixtures.ts';
+import {
+  devMockBareArrayForPath,
+  devMockCostSyncSnapshot,
+  devMockIntegrationSnapshot,
+  devMockPostbacksSnapshot,
+} from './catalog_fixtures.ts';
+import { devMockAuditList } from './audit_fixtures.ts';
+import { devMockRoleDashboard } from './dashboard_fixtures.ts';
+import {
+  devMockClickLogReport,
+  devMockReportCatalog,
+  devMockReportEnvelope,
+} from './reports_fixtures.ts';
+import {
+  devMockTeamBudgetApprovals,
+  devMockTeamMembersList,
+  devMockTeamOverview,
+} from './team_fixtures.ts';
 import type { MockResult } from './handler_types.ts';
 import {
   devMockAuthorizeRequest,
@@ -43,86 +77,15 @@ function emptyList(limit = 50, offset = 0): MockResult {
   return json(200, { items: [], total: 0, limit, offset });
 }
 
-function emptyArray(): MockResult {
-  return json(200, []);
-}
-
-const BARE_ARRAY_GET_PATHS = new Set([
-  '/api/v1/automation/presets',
-  '/api/v1/automation/rules',
-  '/api/v1/brands',
-  '/api/v1/cost-sync/credentials',
-  '/api/v1/cost-sync/history',
-  '/api/v1/cost-sync/networks',
-  '/api/v1/domains',
-  '/api/v1/flows',
-  '/api/v1/fraud/presets',
-  '/api/v1/integration/affiliate-status-presets',
-  '/api/v1/integration/schemas',
-  '/api/v1/integration/templates',
-  '/api/v1/landers',
-  '/api/v1/margin-guard/activity',
-  '/api/v1/margin-guard/policies',
-  '/api/v1/offers',
-  '/api/v1/ops/ml-model/labels',
-  '/api/v1/postbacks/campaign-status',
-  '/api/v1/postbacks/config',
-  '/api/v1/postbacks/dlq',
-  '/api/v1/report-schedules',
-  '/api/v1/rtb/deals',
-  '/api/v1/smart-alerts/history',
-  '/api/v1/smart-alerts/rules',
-  '/api/v1/supply/ads-txt',
-  '/api/v1/supply/sellers',
-  '/api/v1/telegram/bots',
-  '/api/v1/traffic-optimizer/presets',
-  '/api/v1/traffic-optimizer/rules',
-  '/api/v1/views',
-]);
-
-function isBareArrayListPath(pathname: string): boolean {
-  if (BARE_ARRAY_GET_PATHS.has(pathname)) {
-    return true;
-  }
-  if (pathname.startsWith('/api/v1/fraud/integrations')) {
-    return true;
-  }
-  if (pathname.startsWith('/api/v1/fraud/labels')) {
-    return true;
-  }
-  if (pathname.startsWith('/api/v1/ops/recon')) {
-    return true;
-  }
-  if (pathname.startsWith('/api/v1/integration/platform-campaigns')) {
-    return true;
-  }
-  if (pathname.startsWith('/api/v1/telegram/postbacks')) {
-    return true;
-  }
-  return /^\/api\/v1\/brands\/[^/]+\/creatives$/.test(pathname);
-}
-
-function emptyCostSyncSnapshot(): MockResult {
-  return json(200, { networks: [], credentials: [], history: [] });
-}
-
-function emptyRoleDashboard(url: URL, pathname: string): MockResult {
-  const role = pathname.slice('/api/v1/dashboards/'.length).split('/')[0];
-  if (role === 'buyer') {
-    const customerId = url.searchParams.get('customer_id')?.trim();
-    return json(200, {
-      customer_id: customerId || undefined,
-      series: [],
-      breakdowns: {
-        campaigns: { rows: [] },
-        landers: { rows: [] },
-        offers: { rows: [] },
-        sources: { rows: [] },
-      },
-      recent_clicks: [],
-    });
-  }
-  return json(200, { series: [], totals: {} });
+function paginatedList(items: unknown[], url: URL): MockResult {
+  const limit = Number.parseInt(url.searchParams.get('limit') ?? '50', 10) || 50;
+  const offset = Number.parseInt(url.searchParams.get('offset') ?? '0', 10) || 0;
+  return json(200, {
+    items: items.slice(offset, offset + limit),
+    total: items.length,
+    limit,
+    offset,
+  });
 }
 
 function parseJsonBody(init?: RequestInit): unknown {
@@ -266,6 +229,7 @@ function metaResponse(): MockResult {
     bootstrap_complete: true,
     eula_required: false,
     eula_accepted: true,
+    payment_enabled: true,
     license: { state: 'ACTIVE', tier: 'dev' },
   });
 }
@@ -273,10 +237,16 @@ function metaResponse(): MockResult {
 function customersList(url: URL): MockResult {
   const limit = Number.parseInt(url.searchParams.get('limit') ?? '50', 10) || 50;
   const offset = Number.parseInt(url.searchParams.get('offset') ?? '0', 10) || 0;
-  const items = DEV_MOCK_CUSTOMERS.map((customer) => ({
+  const items = DEV_MOCK_CUSTOMERS.map((customer, index) => ({
     id: customer.id,
     name: customer.name,
     status: 'ACTIVE',
+    currency: 'USD',
+    balance: (12_000 + index * 2450.75).toFixed(6),
+    cost_center: `CC-${customer.name.slice(0, 3).toUpperCase()}`,
+    active_campaigns: devMockStore().campaigns.filter((row) => row.customer_id === customer.id)
+      .length,
+    total_spend: (84_200 + index * 12_400).toFixed(6),
     created_at: new Date().toISOString(),
     updated_at: new Date().toISOString(),
   }));
@@ -289,23 +259,27 @@ function customersList(url: URL): MockResult {
 }
 
 function teamMembers(): MockResult {
-  return json(200, {
-    items: DEV_MOCK_USERS.map((user) => ({
-      user_id: user.id,
-      email: user.email,
-      role: 'buyer',
-      campaigns_owned: 0,
-    })),
-    total: DEV_MOCK_USERS.length,
-  });
+  return json(200, devMockTeamMembersList());
 }
 
 function selfServeTemplates(): MockResult {
   return json(200, {
     items: [
-      { id: 'tpl-search', name: 'Search traffic', description: 'Default search template' },
-      { id: 'tpl-social', name: 'Social traffic', description: 'Social placements template' },
-      { id: 'tpl-native', name: 'Native display', description: 'Native display template' },
+      {
+        id: 'meta_social_funnel',
+        name: 'Meta social funnel',
+        description: 'Facebook and Instagram click-to-lander flow with conversion mapping.',
+      },
+      {
+        id: 'push_house_funnel',
+        name: 'Push house funnel',
+        description: 'Push notification source with hold-friendly postback mapping.',
+      },
+      {
+        id: 'native_mgid_funnel',
+        name: 'Native MGID funnel',
+        description: 'Native placements with teaser URL macros and geo targeting.',
+      },
     ],
   });
 }
@@ -415,7 +389,9 @@ function previewCampaignClone(campaignId: string, body: unknown): MockResult {
 }
 
 function mockNotImplemented(): MockResult {
-  return json(501, { error: { code: 'NOT_IMPLEMENTED', message: 'Route not implemented in dev mock' } });
+  return json(501, {
+    error: { code: 'NOT_IMPLEMENTED', message: 'Route not implemented in dev mock' },
+  });
 }
 
 function authLoginResponse(): MockResult {
@@ -429,12 +405,7 @@ function authRefreshResponse(): MockResult {
 }
 
 function reportCatalog(): MockResult {
-  return json(200, {
-    items: [
-      { key: 'campaign-performance', title: 'Campaign performance', category: 'campaigns' },
-      { key: 'click-log', title: 'Click log', category: 'traffic' },
-    ],
-  });
+  return json(200, devMockReportCatalog());
 }
 
 function settingsView(): MockResult {
@@ -483,7 +454,10 @@ export function resolveDevMockRequest(path: string, init?: RequestInit): MockRes
     const body = boot.body as { session: unknown } | undefined;
     return json(200, body?.session ?? {});
   }
-  if (method === 'POST' && (pathname === '/api/v1/auth/login' || pathname === '/api/v1/auth/refresh')) {
+  if (
+    method === 'POST' &&
+    (pathname === '/api/v1/auth/login' || pathname === '/api/v1/auth/refresh')
+  ) {
     return pathname.endsWith('/login') ? authLoginResponse() : authRefreshResponse();
   }
   if (method === 'POST' && pathname === '/api/v1/auth/logout') {
@@ -499,18 +473,41 @@ export function resolveDevMockRequest(path: string, init?: RequestInit): MockRes
     return customersList(url);
   }
   if (method === 'GET' && pathname.startsWith('/api/v1/customers/')) {
-    const customerId = decodeURIComponent(pathname.slice('/api/v1/customers/'.length));
-    const customer = DEV_MOCK_CUSTOMERS.find((row) => row.id === customerId);
+    const rest = pathname.slice('/api/v1/customers/'.length);
+    const [customerId, ...segments] = rest.split('/');
+    const decodedId = decodeURIComponent(customerId);
+    const customer = DEV_MOCK_CUSTOMERS.find((row) => row.id === decodedId);
     if (!customer) {
       return json(404, { error: { code: 'NOT_FOUND', message: 'Customer not found' } });
     }
-    return json(200, {
-      id: customer.id,
-      name: customer.name,
-      status: 'ACTIVE',
-      created_at: new Date().toISOString(),
-      updated_at: new Date().toISOString(),
-    });
+    if (segments.length === 0) {
+      const index = DEV_MOCK_CUSTOMERS.findIndex((row) => row.id === decodedId);
+      return json(200, {
+        id: customer.id,
+        name: customer.name,
+        status: 'ACTIVE',
+        currency: 'USD',
+        balance: (12_000 + index * 2450.75).toFixed(6),
+        cost_center: `CC-${customer.name.slice(0, 3).toUpperCase()}`,
+        active_campaigns: devMockStore().campaigns.filter((row) => row.customer_id === customer.id)
+          .length,
+        total_spend: (84_200 + index * 12_400).toFixed(6),
+        created_at: new Date().toISOString(),
+        updated_at: new Date().toISOString(),
+      });
+    }
+    if (segments[0] === 'balance') {
+      return json(200, devMockCustomerBalance(decodedId));
+    }
+    if (segments[0] === 'wallet') {
+      return json(200, devMockCustomerWallet(decodedId));
+    }
+    if (segments[0] === 'ledger') {
+      return json(200, devMockCustomerLedger(decodedId, url));
+    }
+    if (segments[0] === 'billing' && segments[1] === 'statement') {
+      return json(200, devMockCustomerStatement(decodedId, url));
+    }
   }
   if (method === 'GET' && pathname === '/api/v1/campaigns') {
     return listCampaigns(url);
@@ -617,6 +614,13 @@ export function resolveDevMockRequest(path: string, init?: RequestInit): MockRes
       return brandById(decodeURIComponent(brandMatch[1]));
     }
   }
+  if (method === 'GET' && pathname === '/api/v1/team/overview') {
+    const customerId = url.searchParams.get('customer_id')?.trim();
+    return json(200, devMockTeamOverview(customerId));
+  }
+  if (method === 'GET' && pathname === '/api/v1/team/budget-approvals') {
+    return json(200, devMockTeamBudgetApprovals(url));
+  }
   if (method === 'GET' && pathname === '/api/v1/team/members') {
     return teamMembers();
   }
@@ -635,7 +639,12 @@ export function resolveDevMockRequest(path: string, init?: RequestInit): MockRes
   }
   if (method === 'POST' && pathname === '/api/v1/settings/platform/apply') {
     const body = parseMockJsonBody(init);
-    return json(200, devMockApplyPlatformSettings(typeof body?.install_root === 'string' ? body.install_root : undefined));
+    return json(
+      200,
+      devMockApplyPlatformSettings(
+        typeof body?.install_root === 'string' ? body.install_root : undefined
+      )
+    );
   }
   if (method === 'GET' && pathname === '/api/v1/license/status') {
     return json(200, { state: 'ACTIVE', tier: 'dev' });
@@ -644,13 +653,20 @@ export function resolveDevMockRequest(path: string, init?: RequestInit): MockRes
     return json(200, { accepted: true, version: 'dev' });
   }
   if (method === 'GET' && pathname.startsWith('/api/v1/dashboards/')) {
-    return emptyRoleDashboard(url, pathname);
+    return json(200, devMockRoleDashboard(url, pathname));
+  }
+  if (method === 'GET' && pathname === '/api/v1/reports/click-log') {
+    return json(200, devMockClickLogReport(url));
   }
   if (method === 'GET' && pathname.startsWith('/api/v1/reports/')) {
-    return json(200, { columns: [], rows: [], total: 0 });
+    const reportKey = decodeURIComponent(pathname.slice('/api/v1/reports/'.length));
+    if (reportKey === 'catalog' || reportKey.startsWith('jobs')) {
+      return emptyList();
+    }
+    return json(200, devMockReportEnvelope(reportKey));
   }
   if (method === 'GET' && pathname.startsWith('/api/v1/audit')) {
-    return emptyList();
+    return json(200, devMockAuditList(url));
   }
   if (method === 'GET' && pathname === '/api/v1/ops/home') {
     return devMockOpsHomeSnapshot();
@@ -675,7 +691,7 @@ export function resolveDevMockRequest(path: string, init?: RequestInit): MockRes
   }
   if (method === 'POST' && pathname.startsWith('/api/v1/ops/dlq/') && pathname.endsWith('/retry')) {
     const id = decodeURIComponent(
-      pathname.slice('/api/v1/ops/dlq/'.length, pathname.length - '/retry'.length),
+      pathname.slice('/api/v1/ops/dlq/'.length, pathname.length - '/retry'.length)
     );
     if (id && !id.includes('/')) {
       return { status: 202 };
@@ -691,10 +707,30 @@ export function resolveDevMockRequest(path: string, init?: RequestInit): MockRes
     const url = new URL(path, 'http://dev.local');
     const limit = Number.parseInt(url.searchParams.get('limit') ?? '50', 10) || 50;
     const offset = Number.parseInt(url.searchParams.get('offset') ?? '0', 10) || 0;
-    return devMockOpsList(limit, offset);
+    return devMockOpsList(pathname, limit, offset);
   }
   if (method === 'GET' && pathname.startsWith('/api/v1/ops/')) {
     return devMockOpsObject();
+  }
+  if (method === 'GET' && pathname === '/api/v1/billing/summary') {
+    return json(200, devMockBillingSummary());
+  }
+  if (method === 'GET' && pathname === '/api/v1/billing/invariant') {
+    const customerId = url.searchParams.get('customer_id')?.trim();
+    return json(200, devMockBillingInvariant(customerId));
+  }
+  if (method === 'GET' && pathname === '/api/v1/billing/invoices') {
+    return json(200, devMockInvoicesList(url));
+  }
+  if (method === 'GET' && pathname.startsWith('/api/v1/billing/invoices/')) {
+    const invoiceRest = pathname.slice('/api/v1/billing/invoices/'.length);
+    if (!invoiceRest.includes('/')) {
+      const invoice = devMockInvoiceById(decodeURIComponent(invoiceRest));
+      if (!invoice) {
+        return json(404, { error: { code: 'NOT_FOUND', message: 'Invoice not found' } });
+      }
+      return json(200, invoice);
+    }
   }
   if (method === 'GET' && pathname.startsWith('/api/v1/billing')) {
     return emptyList();
@@ -703,12 +739,25 @@ export function resolveDevMockRequest(path: string, init?: RequestInit): MockRes
     return { status: 204 };
   }
   if (method === 'GET' && pathname === '/api/v1/cost-sync/snapshot') {
-    return emptyCostSyncSnapshot();
+    return json(200, devMockCostSyncSnapshot());
   }
-  if (method === 'GET' && isBareArrayListPath(pathname)) {
-    return emptyArray();
+  if (method === 'GET' && pathname === '/api/v1/postbacks/snapshot') {
+    return json(200, devMockPostbacksSnapshot());
+  }
+  if (method === 'GET' && pathname === '/api/v1/integration/snapshot') {
+    return json(200, devMockIntegrationSnapshot());
+  }
+  if (method === 'GET') {
+    const catalogItems = devMockBareArrayForPath(pathname);
+    if (catalogItems) {
+      return json(200, catalogItems);
+    }
   }
   if (method === 'GET' && pathname.startsWith('/api/v1/')) {
+    const listItems = devMockBareArrayForPath(pathname);
+    if (listItems) {
+      return paginatedList(listItems, url);
+    }
     return emptyList();
   }
   if (method === 'POST' || method === 'PATCH' || method === 'PUT' || method === 'DELETE') {

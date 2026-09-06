@@ -9,7 +9,6 @@ import (
 	"ad-event-processor/internal/filter"
 	filterunified "ad-event-processor/internal/filter/unified"
 	fw "ad-event-processor/internal/ingest/filterwire"
-	"ad-event-processor/pkg/piihash"
 
 	"github.com/google/uuid"
 	"github.com/redis/go-redis/v9"
@@ -23,6 +22,7 @@ var (
 	ErrPacingExhausted        = fw.ErrPacingExhausted
 	ErrFreqLimitExceeded      = fw.ErrFreqLimitExceeded
 	ErrGeoBlocked             = fw.ErrGeoBlocked
+	ErrGeoLookupFailed        = fw.ErrGeoLookupFailed
 	ErrScheduleBlocked        = fw.ErrScheduleBlocked
 	ErrFraudDetected          = fw.ErrFraudDetected
 	ErrEmergencyBreakerActive = fw.ErrEmergencyBreakerActive
@@ -261,10 +261,6 @@ func releaseFraudAccumulator(evt *domain.Event, acc *fraudAccumulator) {
 	fw.ReleaseFraudAccumulator(evt, acc)
 }
 
-func segmentUserHash(hasher *piihash.Hasher, evt *domain.Event) ([16]byte, bool) {
-	return fw.SegmentUserHash(hasher, evt)
-}
-
 func addSegmentMember(ctx context.Context, redisShards []redis.UniversalClient, segmentID uuid.UUID, userHash [16]byte, ttl time.Duration) error {
 	return fw.AddSegmentMember(ctx, redisShards, segmentID, userHash, ttl)
 }
@@ -301,6 +297,10 @@ func unsafeString(b []byte) string {
 	return filter.UnsafeString(b)
 }
 
-type bufWrapper = BufWrapper
+func getBufWrapper() *BufWrapper {
+	return fw.GetBufWrapper()
+}
 
-var bufPool = fw.BufPool
+func putBufWrapper(w *BufWrapper) {
+	fw.PutBufWrapper(w)
+}

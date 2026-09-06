@@ -1,8 +1,9 @@
-import { useEffect, useMemo, useState, type WheelEvent } from 'react';
+import { useEffect, useMemo, useState } from 'react';
 
 import { Button } from '@/components/ui/button';
 import {
   Dialog,
+  DialogBody,
   DialogContent,
   DialogFooter,
   DialogHeader,
@@ -23,13 +24,10 @@ import {
   RECENT_CLICK_COLUMN_LABELS,
 } from '@/domains/dashboards/dashboard_preferences';
 import {
-  dashboardPrefsDialogContentClass,
   dashboardPrefsDialogFooterClass,
   dashboardPrefsDialogHeaderClass,
-  dashboardPrefsDialogScrollClass,
   dashboardPrefsDialogSectionBodyClass,
   dashboardPrefsDialogSectionClass,
-  dashboardPrefsDialogSectionDividerClass,
   dashboardPrefsDialogSectionTitleClass,
   dashboardPrefsDialogTitleClass,
   dashboardPrefsFooterActionsClass,
@@ -47,12 +45,11 @@ export type DashboardPreferencesDialogProps = {
   onApply: (preferences: BuyerDashboardPreferences) => void;
 };
 
-function toOptions<T extends string>(ids: readonly T[], labels: Record<T, string>): DashboardPrefsOption<T>[] {
+function toOptions<T extends string>(
+  ids: readonly T[],
+  labels: Record<T, string>
+): DashboardPrefsOption<T>[] {
   return ids.map((id) => ({ id, label: labels[id] }));
-}
-
-function stopDialogWheelPropagation(event: WheelEvent<HTMLDivElement>) {
-  event.stopPropagation();
 }
 
 export function DashboardPreferencesDialog({
@@ -69,45 +66,36 @@ export function DashboardPreferencesDialog({
     }
   }, [open, preferences]);
 
-  const kpiOptions = useMemo(
-    () => toOptions(ALL_KPI_METRIC_IDS, KPI_METRIC_LABELS),
-    [],
-  );
-  const chartOptions = useMemo(
-    () => toOptions(ALL_CHART_METRIC_IDS, KPI_METRIC_LABELS),
-    [],
-  );
+  const kpiOptions = useMemo(() => toOptions(ALL_KPI_METRIC_IDS, KPI_METRIC_LABELS), []);
+  const chartOptions = useMemo(() => toOptions(ALL_CHART_METRIC_IDS, KPI_METRIC_LABELS), []);
   const entityOptions = useMemo(
     () => toOptions(ALL_BREAKDOWN_ENTITIES, BREAKDOWN_ENTITY_LABELS),
-    [],
+    []
   );
   const breakdownColumnOptions = useMemo(
     () => toOptions(ALL_BREAKDOWN_COLUMNS, BREAKDOWN_COLUMN_LABELS),
-    [],
+    []
   );
   const recentClickOptions = useMemo(
     () => toOptions(ALL_RECENT_CLICK_COLUMNS, RECENT_CLICK_COLUMN_LABELS),
-    [],
+    []
   );
 
   function updateDraft<K extends keyof BuyerDashboardPreferences>(
     key: K,
-    value: BuyerDashboardPreferences[K],
+    value: BuyerDashboardPreferences[K]
   ) {
     setDraft((current) => ({ ...current, [key]: value }));
   }
 
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
-      <DialogContent className={dashboardPrefsDialogContentClass}>
+      <DialogContent className="max-w-2xl p-0">
         <DialogHeader className={dashboardPrefsDialogHeaderClass}>
           <DialogTitle className={dashboardPrefsDialogTitleClass}>Preferences</DialogTitle>
         </DialogHeader>
 
-        <div
-          className={dashboardPrefsDialogScrollClass}
-          onWheel={stopDialogWheelPropagation}
-        >
+        <DialogBody className="grid gap-5">
           <section className={dashboardPrefsDialogSectionClass}>
             <h3 className={dashboardPrefsDialogSectionTitleClass}>Metrics</h3>
             <div className={dashboardPrefsDialogSectionBodyClass}>
@@ -139,7 +127,7 @@ export function DashboardPreferencesDialog({
             </div>
           </section>
 
-          <section className={dashboardPrefsDialogSectionDividerClass}>
+          <section className={dashboardPrefsDialogSectionClass}>
             <h3 className={dashboardPrefsDialogSectionTitleClass}>Recent clicks</h3>
             <div className={dashboardPrefsDialogSectionBodyClass}>
               <DashboardPrefsSelectionPanel
@@ -160,7 +148,7 @@ export function DashboardPreferencesDialog({
               />
             </div>
           </section>
-        </div>
+        </DialogBody>
 
         <DialogFooter className={dashboardPrefsDialogFooterClass}>
           <Button

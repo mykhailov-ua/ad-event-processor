@@ -1,10 +1,4 @@
-export type DashboardRangePreset =
-  | 'today'
-  | 'yesterday'
-  | '7d'
-  | '30d'
-  | 'this_month'
-  | 'custom';
+export type DashboardRangePreset = 'today' | 'yesterday' | '7d' | '30d' | 'this_month' | 'custom';
 
 export type DashboardPeriod = {
   from?: string;
@@ -167,7 +161,9 @@ export type BuyerPortfolio = {
   fraud?: CustomerFraudOverview;
 };
 
-export function parseBuyerPortfolio(payload: Record<string, unknown> | undefined): BuyerPortfolio | undefined {
+export function parseBuyerPortfolio(
+  payload: Record<string, unknown> | undefined
+): BuyerPortfolio | undefined {
   if (!payload || typeof payload !== 'object') {
     return undefined;
   }

@@ -1,7 +1,12 @@
 import type { NavItem } from '@/lib/nav_config';
 import { filterNavItems } from '@/lib/nav_config';
 import { NAV_FILTER_1K_BUDGET } from '@/lib/perf/budgets';
-import { assertPerfBudget, formatBenchResult, runPerfBudget, type BenchResult } from '@/lib/perf/measure';
+import {
+  assertPerfBudget,
+  formatBenchResult,
+  runPerfBudget,
+  type BenchResult,
+} from '@/lib/perf/measure';
 
 function buildSyntheticNavCatalog(size: number): NavItem[] {
   const items: NavItem[] = [];

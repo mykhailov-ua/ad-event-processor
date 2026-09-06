@@ -31,9 +31,12 @@ function filtersAppliedFromQuery(url: URL, keys: readonly string[]): Record<stri
   return applied;
 }
 
-function countDevMockStatusTotals(
-  rows: Array<{ status?: string }>,
-): { active: number; paused: number; archived: number; total: number } {
+function countDevMockStatusTotals(rows: Array<{ status?: string }>): {
+  active: number;
+  paused: number;
+  archived: number;
+  total: number;
+} {
   let active = 0;
   let paused = 0;
   let archived = 0;
@@ -67,11 +70,13 @@ function compareCampaignRows(
   left: Campaign,
   right: Campaign,
   sort: string,
-  metricsById: Map<string, ReturnType<typeof buildDevMockCampaignMetrics>>,
+  metricsById: Map<string, ReturnType<typeof buildDevMockCampaignMetrics>>
 ): number {
   switch (sort) {
     case 'id':
-      return Number.parseInt(campaignDisplayId(left), 10) - Number.parseInt(campaignDisplayId(right), 10);
+      return (
+        Number.parseInt(campaignDisplayId(left), 10) - Number.parseInt(campaignDisplayId(right), 10)
+      );
     case 'name':
       return left.name.localeCompare(right.name);
     case 'updated_at':
@@ -113,7 +118,10 @@ export function devMockListCampaigns(url: URL, campaigns: Campaign[]): MockListR
   const order = url.searchParams.get('order') === 'desc' ? 'desc' : 'asc';
   const from = url.searchParams.get('from') ?? '';
   const to = url.searchParams.get('to') ?? '';
-  const limit = Math.min(200, Math.max(1, Number.parseInt(url.searchParams.get('limit') ?? '50', 10) || 50));
+  const limit = Math.min(
+    200,
+    Math.max(1, Number.parseInt(url.searchParams.get('limit') ?? '50', 10) || 50)
+  );
   const offset = Math.max(0, Number.parseInt(url.searchParams.get('offset') ?? '0', 10) || 0);
 
   if (devMockCampaignMetricSortNeedsWindow(sort) && (!from.trim() || !to.trim())) {
@@ -163,9 +171,7 @@ export function devMockListCampaigns(url: URL, campaigns: Campaign[]): MockListR
 
   const metricsById = new Map<string, ReturnType<typeof buildDevMockCampaignMetrics>>();
   if (devMockCampaignMetricSortNeedsWindow(sort)) {
-    const rangeFrom =
-      from.trim() ||
-      new Date(Date.now() - 7 * 86_400_000).toISOString();
+    const rangeFrom = from.trim() || new Date(Date.now() - 7 * 86_400_000).toISOString();
     const rangeTo = to.trim() || new Date().toISOString();
     rows.forEach((row, index) => {
       metricsById.set(row.id, buildDevMockCampaignMetrics(row.id, index + 1, rangeFrom, rangeTo));
@@ -212,7 +218,7 @@ export function devMockListCampaigns(url: URL, campaigns: Campaign[]): MockListR
 export function devMockListCampaignFacets(
   url: URL,
   campaigns: Campaign[],
-  userEmailById: Readonly<Record<string, string>>,
+  userEmailById: Readonly<Record<string, string>>
 ): MockListResult {
   const customerId = url.searchParams.get('customer_id') ?? '';
   let rows = [...campaigns];
@@ -292,10 +298,7 @@ function filterDevMockCampaignRows(url: URL, campaigns: Campaign[]): Campaign[] 
   return rows;
 }
 
-export function devMockListCampaignMetricsTotals(
-  url: URL,
-  campaigns: Campaign[],
-): MockListResult {
+export function devMockListCampaignMetricsTotals(url: URL, campaigns: Campaign[]): MockListResult {
   const from = url.searchParams.get('from') ?? new Date(Date.now() - 7 * 86_400_000).toISOString();
   const to = url.searchParams.get('to') ?? new Date().toISOString();
   const rows = filterDevMockCampaignRows(url, campaigns);

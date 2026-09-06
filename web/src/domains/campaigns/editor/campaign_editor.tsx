@@ -64,9 +64,7 @@ export function CampaignEditor(props: CampaignEditorProps) {
 
   if (loadError && !hasSnapshot) {
     if (loadError instanceof ApiError && loadError.status === 501) {
-      return (
-        <StubBanner title="Campaign editor unavailable" message={loadError.message} />
-      );
+      return <StubBanner title="Campaign editor unavailable" message={loadError.message} />;
     }
     return <ErrorBlock title="Could not load campaign" message={loadError.message} />;
   }
@@ -78,7 +76,7 @@ export function CampaignEditor(props: CampaignEditorProps) {
   const displayCampaign = campaign as CampaignDisplayFields;
   const statusLabel = formatCampaignStatusLabel(
     displayCampaign.status,
-    displayCampaign.status_label,
+    displayCampaign.status_label
   );
   const gateBusy = checking || validating || publishing;
 

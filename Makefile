@@ -35,7 +35,11 @@ test-fast: gen fmt
 test-unit: test-fast
 
 test-integration: gen fmt
+	bash scripts/ci/query_budget_gate.sh
 	go test -count=1 -timeout 30m ./internal/... ./pkg/... ./tests/... -skip 'Fault'
+
+test-query-budget: gen
+	bash scripts/ci/query_budget_gate.sh
 
 test-fault: gen fmt
 	go test -count=1 -timeout 30m -run 'Fault' ./...

@@ -17,6 +17,6 @@ test('buildDashboardMockSeries holdout: 63-day series within Node perf budget', 
   const limitMs = DASHBOARD_MOCK_SERIES_BUDGET.medianMs * PERF_TOLERANCE_RATIO;
   assert.ok(
     medianMs <= limitMs,
-    `buildDashboardMockSeries ${medianMs.toFixed(3)} ms exceeds ${limitMs.toFixed(3)} ms`,
+    `buildDashboardMockSeries ${medianMs.toFixed(3)} ms exceeds ${limitMs.toFixed(3)} ms`
   );
 });

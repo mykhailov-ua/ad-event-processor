@@ -39,16 +39,19 @@ if not campaign_id or campaign_id == "" then
     return
 end
 
--- Peer pick: weighted random (node_weights) first; slot_map shard index fallback when weights nil.
+-- Peer pick: slot_map shard index first (CRC32C affinity); node_weights fallback when shard nil (slot_map_before_node_weights).
 -- idx is 0-based peer index; peers.list is 1-based. Must match Go StaticSlotSharder CRC32C slot table.
 local shard = slot_map.get_shard(campaign_id)
 if shard ~= nil then
     ngx.ctx.redis_shard = shard
 end
 
-local idx = node_weights.pick_peer_index()
-if idx == nil and shard ~= nil then
+local idx = nil
+if shard ~= nil then
     idx = tonumber(shard)
+end
+if idx == nil then
+    idx = node_weights.pick_peer_index()
 end
 if idx == nil then
     return

@@ -87,13 +87,13 @@ func TestFault_IVTCorrelationConcurrentFind(t *testing.T) {
 		SeenAt:  time.Now().UTC(),
 	}))
 
+	const goroutines = 24
 	rule := &tcpEdgeCorrelationRule{
-		clickhouseQuery: database.NewClickHouseQuery(conn, database.ClickHouseQueryConfig{}),
+		clickhouseQuery: database.NewClickHouseQuery(conn, database.ClickHouseQueryConfig{MaxConcurrency: goroutines}),
 		redisClient:     redisClient,
 		cfg:             AnalyzerConfig{Window: time.Hour},
 	}
 
-	const goroutines = 24
 	var wg sync.WaitGroup
 	var silentRejectHits atomic.Int32
 	var errs atomic.Int32

@@ -11,6 +11,7 @@ import (
 	"ad-event-processor/internal/costsync/provider"
 	db "ad-event-processor/internal/domain/db"
 	"ad-event-processor/internal/metrics"
+	"ad-event-processor/pkg/coldpath"
 
 	"github.com/google/uuid"
 	"github.com/jackc/pgx/v5/pgtype"
@@ -20,6 +21,7 @@ import (
 const (
 	costSyncAdvisoryLockKey = int64(0x657370785f636f73)
 	advisoryUnlockTimeout   = 5 * time.Second
+	costSyncCycleTimeout    = 110 * time.Second
 )
 
 type OAuthConfig struct {
@@ -36,16 +38,17 @@ type OAuthConfig struct {
 }
 
 type Worker struct {
-	pool            *pgxpool.Pool
-	converter       *CurrencyConverter
-	encryptionKey   []byte
-	httpClient      *http.Client
-	networkBaseURL  map[string]string
-	oauth           OAuthConfig
-	insertSnapshots func(context.Context, []CostLine, []int64) error
-	clickAttributor ClickCostAttributor
-	onSyncComplete  func(network string, duration time.Duration)
-	cycleWG         sync.WaitGroup
+	pool             *pgxpool.Pool
+	converter        *CurrencyConverter
+	encryptionKey    []byte
+	httpClient       *http.Client
+	networkBaseURL   map[string]string
+	oauth            OAuthConfig
+	insertSnapshots  func(context.Context, []CostLine, []int64) error
+	clickAttributor  ClickCostAttributor
+	onSyncComplete   func(network string, duration time.Duration)
+	cycleWG          sync.WaitGroup
+	testSyncDayBlock <-chan struct{}
 }
 
 type WorkerOption func(*Worker)
@@ -186,7 +189,7 @@ func (w *Worker) runSubdailyGuarded(ctx context.Context, trigger string) {
 }
 
 func (w *Worker) runSubdaily(ctx context.Context, trigger string) {
-	opCtx, cancel := context.WithTimeout(ctx, 110*time.Second)
+	opCtx, cancel := coldpath.BoundedContext(ctx, costSyncCycleTimeout)
 	defer cancel()
 
 	acquired, err := w.tryAdvisoryLock(opCtx)
@@ -228,20 +231,54 @@ func (w *Worker) Wait() {
 	w.cycleWG.Wait()
 }
 
+// CycleTimeout is the bounded ctx ceiling for manual and cron cost-sync runs.
+func CycleTimeout() time.Duration {
+	return costSyncCycleTimeout
+}
+
 func (w *Worker) RunManual(ctx context.Context, customerID *uuid.UUID, network string, from, to time.Time) error {
+	opCtx, cancel := coldpath.BoundedContext(ctx, costSyncCycleTimeout)
+	defer cancel()
 	if to.Before(from) {
 		return fmt.Errorf("invalid date range")
 	}
 	for d := from; !d.After(to); d = d.AddDate(0, 0, 1) {
-		if err := w.syncDay(ctx, customerID, network, d, "manual"); err != nil {
+		if err := w.syncDay(opCtx, customerID, network, d, "manual"); err != nil {
 			return err
 		}
 	}
 	return nil
 }
 
+// StartManualRun validates the date range and runs syncDay in the background (POST /api/v1/cost-sync/run).
+func (w *Worker) StartManualRun(parent context.Context, customerID *uuid.UUID, network string, from, to time.Time) error {
+	if w == nil {
+		return fmt.Errorf("cost-sync worker not configured")
+	}
+	if to.Before(from) {
+		return fmt.Errorf("invalid date range")
+	}
+	if parent == nil {
+		parent = context.Background()
+	}
+	w.cycleWG.Add(1)
+	go func() {
+		defer w.cycleWG.Done()
+		opCtx, cancel := coldpath.BoundedContext(parent, costSyncCycleTimeout)
+		defer cancel()
+		for d := from; !d.After(to); d = d.AddDate(0, 0, 1) {
+			if err := w.syncDay(opCtx, customerID, network, d, "manual"); err != nil {
+				slog.Error("cost-sync manual run failed", "error", err, "from", from.Format("2006-01-02"), "to", to.Format("2006-01-02"))
+				metrics.CostSyncRunsTotal.WithLabelValues("failed").Inc()
+				return
+			}
+		}
+	}()
+	return nil
+}
+
 func (w *Worker) runHourly(ctx context.Context, trigger string) {
-	opCtx, cancel := context.WithTimeout(ctx, 110*time.Second)
+	opCtx, cancel := coldpath.BoundedContext(ctx, costSyncCycleTimeout)
 	defer cancel()
 
 	acquired, err := w.tryAdvisoryLock(opCtx)
@@ -263,6 +300,13 @@ func (w *Worker) runHourly(ctx context.Context, trigger string) {
 }
 
 func (w *Worker) syncDay(ctx context.Context, filterCustomer *uuid.UUID, filterNetwork string, date time.Time, trigger string) error {
+	if w.testSyncDayBlock != nil {
+		select {
+		case <-w.testSyncDayBlock:
+		case <-ctx.Done():
+			return ctx.Err()
+		}
+	}
 	q := db.New(w.pool)
 	creds, err := q.ListCostSyncCredentials(ctx)
 	if err != nil {

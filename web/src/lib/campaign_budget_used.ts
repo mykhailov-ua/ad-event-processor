@@ -1,6 +1,6 @@
 export function campaignBudgetUsedPercent(
   budgetLimit?: string | null,
-  currentSpend?: string | null,
+  currentSpend?: string | null
 ): number | undefined {
   const budget = Number.parseFloat(budgetLimit ?? '');
   const spend = Number.parseFloat(currentSpend ?? '');

@@ -12,9 +12,7 @@ export function CampaignMarginBreachBadge() {
           !
         </span>
       </TooltipTrigger>
-      <TooltipContent>
-        Margin guard breach in the current reporting window
-      </TooltipContent>
+      <TooltipContent>Margin guard breach in the current reporting window</TooltipContent>
     </Tooltip>
   );
 }

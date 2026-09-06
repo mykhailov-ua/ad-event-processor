@@ -34,7 +34,7 @@ func seedClickWithTLS(t *testing.T, conn driver.Conn, ip, ua, tlsHash string) uu
 	return campaignID
 }
 
-func TestTCPEdgeCorrelationRule_GhostOnImpersonation(t *testing.T) {
+func TestTCPEdgeCorrelationRule_NonBlockingOnImpersonation(t *testing.T) {
 	if testing.Short() {
 		t.Skip("integration: run make test-integration (Docker testcontainers)")
 	}

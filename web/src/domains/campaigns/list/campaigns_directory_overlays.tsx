@@ -19,6 +19,7 @@ import {
 } from '@/components/ui/select';
 import {
   Sheet,
+  SheetBody,
   SheetContent,
   SheetDescription,
   SheetHeader,
@@ -32,6 +33,8 @@ import { CampaignCloneDialog } from '@/domains/campaigns/editor/campaign_clone_d
 import { CampaignImportPanel } from '@/domains/campaigns/editor/campaign_import_panel';
 import { CampaignOverviewSheet } from '@/domains/campaigns/list/campaign_overview_sheet';
 import { CampaignWizardPanel } from '@/domains/campaigns/editor/campaign_wizard_panel';
+import type { CampaignImportPanelWorkspace } from '@/domains/campaigns/editor/use_campaign_import_panel_workspace';
+import type { CampaignWizardPanelWorkspace } from '@/domains/campaigns/editor/use_campaign_wizard_panel_workspace';
 import { CampaignListResetWorkspaceDialog } from '@/domains/campaigns/list/campaign_list_reset_workspace_dialog';
 
 export type CampaignsDirectoryOverlaysProps = {
@@ -51,6 +54,7 @@ export type CampaignsDirectoryOverlaysProps = {
   draftCreateName: string;
   draftTemplateId: string;
   importOpen: boolean;
+  importPanelWorkspace: CampaignImportPanelWorkspace;
   onArchiveConfirm: () => void;
   onArchiveOpenChange: (open: boolean) => void;
   onCloneOpenChange: (open: boolean) => void;
@@ -81,6 +85,7 @@ export type CampaignsDirectoryOverlaysProps = {
   templatesError: Error | undefined;
   templatesLoading: boolean;
   wizardOpen: boolean;
+  wizardPanelWorkspace: CampaignWizardPanelWorkspace;
 };
 
 export function CampaignsDirectoryOverlays({
@@ -100,6 +105,7 @@ export function CampaignsDirectoryOverlays({
   draftCreateName,
   draftTemplateId,
   importOpen,
+  importPanelWorkspace,
   onArchiveConfirm,
   onArchiveOpenChange,
   onCloneOpenChange,
@@ -130,6 +136,7 @@ export function CampaignsDirectoryOverlays({
   templatesError,
   templatesLoading,
   wizardOpen,
+  wizardPanelWorkspace,
 }: CampaignsDirectoryOverlaysProps) {
   const effectiveCreateCustomerId = createCustomerId.trim() || customerId || '';
   const createFieldsDisabled = !effectiveCreateCustomerId;
@@ -141,9 +148,9 @@ export function CampaignsDirectoryOverlays({
       <Dialog open={createSectionOpen} onOpenChange={onCreateSectionOpenChange}>
         <DialogContent className="max-w-lg">
           <DialogHeader>
-            <DialogTitle>Create campaign</DialogTitle>
+            <DialogTitle>Quick create campaign</DialogTitle>
             <DialogDescription>
-              Choose a customer group, then pick a template and optional overrides.
+              Pick a customer group and template for a fast campaign setup.
             </DialogDescription>
           </DialogHeader>
 
@@ -165,10 +172,10 @@ export function CampaignsDirectoryOverlays({
                   <SelectValue
                     placeholder={
                       customersLoading
-                        ? 'Loading…'
+                        ? 'Loading...'
                         : customerOptions.length === 0
                           ? 'No customer groups'
-                          : 'Select customer group…'
+                          : 'Select customer group...'
                     }
                   />
                 </SelectTrigger>
@@ -193,12 +200,12 @@ export function CampaignsDirectoryOverlays({
                   <SelectValue
                     placeholder={
                       createFieldsDisabled
-                        ? 'Select customer group first…'
+                        ? 'Select customer group first...'
                         : templatesLoading
-                          ? 'Loading…'
+                          ? 'Loading...'
                           : templates.length === 0
                             ? 'No templates'
-                            : 'Select template…'
+                            : 'Select template...'
                     }
                   />
                 </SelectTrigger>
@@ -217,7 +224,7 @@ export function CampaignsDirectoryOverlays({
               <Input
                 id="campaigns-create-name"
                 disabled={createFieldsDisabled}
-                placeholder="Optional display name…"
+                placeholder="Optional display name..."
                 value={draftCreateName}
                 onChange={(event) => onDraftCreateNameChange(event.target.value)}
               />
@@ -229,7 +236,7 @@ export function CampaignsDirectoryOverlays({
                 id="campaigns-budget-micro"
                 disabled={createFieldsDisabled}
                 inputMode="numeric"
-                placeholder="Optional override…"
+                placeholder="Optional override..."
                 value={draftBudgetLimitMicro}
                 onChange={(event) => onDraftBudgetLimitMicroChange(event.target.value)}
               />
@@ -238,7 +245,10 @@ export function CampaignsDirectoryOverlays({
             {templatesError ? (
               <ErrorBlock title="Could not load templates" message={templatesError.message} />
             ) : null}
-            {effectiveCreateCustomerId && !templatesLoading && templates.length === 0 && !templatesError ? (
+            {effectiveCreateCustomerId &&
+            !templatesLoading &&
+            templates.length === 0 &&
+            !templatesError ? (
               <p className="text-sm text-muted-foreground">
                 No templates for{' '}
                 {customerNameById[effectiveCreateCustomerId] ?? effectiveCreateCustomerId}.
@@ -255,7 +265,7 @@ export function CampaignsDirectoryOverlays({
                 Reload templates
               </SecondaryActionButton>
               <PrimaryActionButton disabled={createDisabled} loading={creating} type="submit">
-                Create
+                Quick create
               </PrimaryActionButton>
             </DialogFooter>
           </form>
@@ -300,7 +310,7 @@ export function CampaignsDirectoryOverlays({
         campaign={overviewCampaign}
         customerName={
           overviewCampaign
-            ? customerNameById[overviewCampaign.customer_id] ?? overviewCampaign.customer_id
+            ? (customerNameById[overviewCampaign.customer_id] ?? overviewCampaign.customer_id)
             : ''
         }
         listMargin={overviewCampaign ? marginsById[overviewCampaign.id] : undefined}
@@ -312,29 +322,28 @@ export function CampaignsDirectoryOverlays({
       />
 
       <Sheet onOpenChange={onImportOpenChange} open={importOpen}>
-        <SheetContent className="flex h-full w-full flex-col gap-0 overflow-hidden p-0 sm:max-w-2xl">
-          <SheetHeader className="shrink-0 border-b border-border px-6 py-4 text-left">
+        <SheetContent className="gap-0 p-0 sm:max-w-2xl">
+          <SheetHeader className="border-b border-border py-4 text-left">
             <SheetTitle>Import campaign</SheetTitle>
             <SheetDescription>Validate, migrate, or import a campaign bundle.</SheetDescription>
           </SheetHeader>
-          <div className="ui-scrollbar min-h-0 flex-1 overflow-y-auto px-6 py-4 pb-8">
-            <CampaignImportPanel />
-          </div>
+          <SheetBody className="pb-8">
+            <CampaignImportPanel workspace={importPanelWorkspace} />
+          </SheetBody>
         </SheetContent>
       </Sheet>
 
       <Sheet onOpenChange={onWizardOpenChange} open={wizardOpen}>
-        <SheetContent className="w-full overflow-y-auto sm:max-w-2xl">
+        <SheetContent className="gap-0 p-0 sm:max-w-2xl">
           <SheetHeader>
-            <SheetTitle>Campaign wizard</SheetTitle>
-            <SheetDescription>Guided setup for a new campaign.</SheetDescription>
+            <SheetTitle>Guided setup</SheetTitle>
+            <SheetDescription>
+              Step-by-step campaign setup with traffic, flow, and budget.
+            </SheetDescription>
           </SheetHeader>
-          <div className="mt-6">
-            <CampaignWizardPanel
-              customerOptions={customerOptions}
-              onCampaignCreated={onWizardRefresh}
-            />
-          </div>
+          <SheetBody>
+            <CampaignWizardPanel workspace={wizardPanelWorkspace} />
+          </SheetBody>
         </SheetContent>
       </Sheet>
     </>

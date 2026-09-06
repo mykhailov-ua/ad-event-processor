@@ -95,7 +95,7 @@ func TestFraudFilter_DCASN_mobileAS12322_negative(t *testing.T) {
 	assert.False(t, acc.Has(FraudReasonDatacenterIP))
 }
 
-func TestFraudFilter_DCASN_sampledSkips(t *testing.T) {
+func TestFraudFilter_DCASN_alwaysChecks_holdout(t *testing.T) {
 	table := NewDCASNTable()
 	table.Publish(buildDCASNSnapshot(map[uint32]struct{}{16509: {}}, 1))
 
@@ -103,23 +103,20 @@ func TestFraudFilter_DCASN_sampledSkips(t *testing.T) {
 	f := NewFraudFilter(geo)
 	f.ConfigureDCASN(table, geo, 0)
 
-	evt := &domain.Event{IP: "54.230.17.9", StringBuffer: make([]byte, 0, 32)}
-	engine := NewFilterEngine(0, f)
-	engine.SetRegistry(&mockRegistry{})
+	evt := domain.EventPool.Get().(*domain.Event)
+	defer domain.EventPool.Put(evt)
+	evt.Reset()
+	acc := attachFraudAccumulator(evt)
+	defer releaseFraudAccumulator(evt, acc)
+	evt.IP = "54.230.17.9"
 
-	var shadowCount int
-	for range 256 {
+	for range 32 {
 		evt.FraudReason = ""
 		evt.FraudScore = 0
-		evt.ShadowEvent = false
 		evt.StringBuffer = evt.StringBuffer[:0]
-		require.NoError(t, engine.Check(context.Background(), evt))
-		if evt.ShadowEvent || evt.FraudScore > 0 {
-			shadowCount++
-		}
+		require.NoError(t, f.Check(context.Background(), evt))
+		assert.True(t, acc.Has(FraudReasonDatacenterIP), "holdout: DC ASN must run on every check when table ready")
 	}
-	assert.Greater(t, shadowCount, 0)
-	assert.Less(t, shadowCount, 256)
 }
 
 func TestFraudFilter_DCASN_holdout(t *testing.T) {

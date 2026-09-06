@@ -4,7 +4,7 @@ export function formatCampaignListExportToast(
   exportedCount: number,
   matchedTotal: number,
   truncated: boolean,
-  format: 'CSV' | 'JSON',
+  format: 'CSV' | 'JSON'
 ): string {
   if (truncated) {
     return `Exported ${exportedCount.toLocaleString()} of ${matchedTotal.toLocaleString()} campaign(s) as ${format} (max ${CAMPAIGN_LIST_EXPORT_MAX_ROWS.toLocaleString()})`;

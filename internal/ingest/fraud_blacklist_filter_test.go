@@ -93,10 +93,33 @@ func TestFraudBlacklistFilter_cacheMissThenHit_holdout(t *testing.T) {
 		require.Equal(t, int32(1), mock.sisMemberN.Load())
 		assert.False(t, acc.Has(FraudReasonL3Blocklist))
 
+		acc.Reset()
 		require.NoError(t, f.Check(ctx, evt))
-		require.Equal(t, int32(1), mock.sisMemberN.Load())
+		require.Equal(t, int32(2), mock.sisMemberN.Load(), "not blacklisted must not be cached")
 		assert.False(t, acc.Has(FraudReasonL3Blocklist))
 	})
+}
+
+func TestFraudBlacklistFilter_freshBlacklistNotHiddenByNegativeCache_holdout(t *testing.T) {
+	mock := &fraudSIsMemberMock{hit: false}
+	f := NewFraudBlacklistFilter([]redis.UniversalClient{mock})
+	evt := domain.EventPool.Get().(*domain.Event)
+	defer domain.EventPool.Put(evt)
+	evt.Reset()
+	evt.IP = "198.51.100.99"
+	acc := attachFraudAccumulator(evt)
+	defer releaseFraudAccumulator(evt, acc)
+	ctx := context.Background()
+
+	require.NoError(t, f.Check(ctx, evt))
+	require.Equal(t, int32(1), mock.sisMemberN.Load())
+	assert.False(t, acc.Has(FraudReasonL3Blocklist))
+
+	mock.hit = true
+	acc.Reset()
+	require.NoError(t, f.Check(ctx, evt))
+	require.Equal(t, int32(2), mock.sisMemberN.Load())
+	assert.True(t, acc.Has(FraudReasonL3Blocklist))
 }
 
 func TestParseBlacklistUpdatePayload(t *testing.T) {
@@ -146,7 +169,7 @@ func (m *errSIsMemberMock) SIsMember(ctx context.Context, key string, member any
 	return cmd
 }
 
-func TestFraudBlacklistFilter_redisError_failOpen(t *testing.T) {
+func TestFraudBlacklistFilter_redisError_failClosed_holdout(t *testing.T) {
 	f := NewFraudBlacklistFilter([]redis.UniversalClient{&errSIsMemberMock{}})
 	evt := domain.EventPool.Get().(*domain.Event)
 	defer domain.EventPool.Put(evt)
@@ -155,12 +178,27 @@ func TestFraudBlacklistFilter_redisError_failOpen(t *testing.T) {
 	acc := attachFraudAccumulator(evt)
 	defer releaseFraudAccumulator(evt, acc)
 
-	require.NoError(t, f.Check(context.Background(), evt))
+	err := f.Check(context.Background(), evt)
+	require.Error(t, err)
 	assert.False(t, acc.Has(FraudReasonL3Blocklist))
+	kind, ok := classifyFilterErr(err)
+	require.True(t, ok)
+	assert.Equal(t, filterRejectInfra, kind)
+}
+
+func TestFraudBlacklistFilter_nilShard_failClosed_holdout(t *testing.T) {
+	f := NewFraudBlacklistFilter([]redis.UniversalClient{nil})
+	evt := domain.EventPool.Get().(*domain.Event)
+	defer domain.EventPool.Put(evt)
+	evt.Reset()
+	evt.IP = "203.0.113.2"
+
+	err := f.Check(context.Background(), evt)
+	require.ErrorIs(t, err, ErrShardUnavailable)
 }
 
 func TestFraudBlacklistFilter_zeroAlloc(t *testing.T) {
-	f, evt, ctx := setupFraudBlacklistBench(t, false)
+	f, evt, ctx := setupFraudBlacklistBench(t, true)
 	avg := testing.AllocsPerRun(100, func() {
 		_ = f.Check(ctx, evt)
 	})

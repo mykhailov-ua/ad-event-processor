@@ -1,3 +1,4 @@
+// L3 dashboard table widths: localStorage overrides per scope; name column uses probe width from row labels.
 import { useCallback, useMemo, useState } from 'react';
 
 import type { DashboardBreakdownColumnId } from '@/domains/dashboards/dashboard_preferences';
@@ -20,13 +21,13 @@ import {
 export function useDashboardBreakdownColumnWidths(
   scope: DashboardTableWidthScope,
   columns: readonly DashboardBreakdownColumnId[],
-  nameLabels: readonly string[],
+  nameLabels: readonly string[]
 ) {
   const [widthOverrides, setWidthOverrides] = useState(() => loadDashboardTableColumnWidths(scope));
 
   const nameProbeWidthPx = useMemo(
     () => probeDashboardNameColumnWidthPx(nameLabels, DASHBOARD_BREAKDOWN_COLUMN_WIDTH_PX.name),
-    [nameLabels],
+    [nameLabels]
   );
 
   const columnWidths = useMemo((): Record<DashboardBreakdownColumnId, number> => {
@@ -35,7 +36,7 @@ export function useDashboardBreakdownColumnWidths(
       widths[columnId] = resolveDashboardBreakdownColumnWidthPx(
         columnId,
         widthOverrides as Partial<Record<DashboardBreakdownColumnId, number>>,
-        columnId === 'name' ? nameProbeWidthPx : undefined,
+        columnId === 'name' ? nameProbeWidthPx : undefined
       );
     }
     return widths;
@@ -47,13 +48,15 @@ export function useDashboardBreakdownColumnWidths(
       const nextOverrides = saveDashboardTableColumnWidth(scope, columnId, nextWidth);
       setWidthOverrides(nextOverrides);
     },
-    [scope],
+    [scope]
   );
 
   return { columnWidths, handleColumnWidthCommit };
 }
 
-export function useDashboardRecentClickColumnWidths(columns: readonly DashboardRecentClickColumnId[]) {
+export function useDashboardRecentClickColumnWidths(
+  columns: readonly DashboardRecentClickColumnId[]
+) {
   const scope: DashboardTableWidthScope = 'recent_clicks';
   const [widthOverrides, setWidthOverrides] = useState(() => loadDashboardTableColumnWidths(scope));
 
@@ -62,7 +65,7 @@ export function useDashboardRecentClickColumnWidths(columns: readonly DashboardR
     for (const columnId of columns) {
       widths[columnId] = resolveDashboardRecentClickColumnWidthPx(
         columnId,
-        widthOverrides as Partial<Record<DashboardRecentClickColumnId, number>>,
+        widthOverrides as Partial<Record<DashboardRecentClickColumnId, number>>
       );
     }
     return widths;
@@ -74,7 +77,7 @@ export function useDashboardRecentClickColumnWidths(columns: readonly DashboardR
       const nextOverrides = saveDashboardTableColumnWidth(scope, columnId, nextWidth);
       setWidthOverrides(nextOverrides);
     },
-    [],
+    []
   );
 
   return { columnWidths, handleColumnWidthCommit };

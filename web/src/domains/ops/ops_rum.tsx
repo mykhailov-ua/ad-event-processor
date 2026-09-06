@@ -1,4 +1,13 @@
 import { Button } from '@/components/ui/button';
+import type {
+  OpsConsentProofsResponse,
+  OpsDomainRotationResponse,
+  OpsMlModelEvalResponse,
+  OpsMlModelStatusResponse,
+  OpsRumResponse,
+  OpsTlsAllowedHostResponse,
+  OpsTlsAllowedListResponse,
+} from '@/api/types';
 import { JsonPayloadView } from '@/shell/json_payload_view';
 import { opsPanelError } from '@/domains/ops/ops_nav';
 import {
@@ -9,7 +18,7 @@ import {
 } from '@/domains/ops/ops_page_shell';
 
 export type OpsRumProps = {
-  payload: Record<string, unknown> | undefined;
+  payload: OpsRumResponse | undefined;
   fetching: boolean;
   error: Error | undefined;
   hasSnapshot: boolean;

@@ -1,4 +1,4 @@
-import { apiFetch, apiJson, apiJsonArray } from './client.js';
+import { apiFetch, apiJson, apiJsonArray, parseApiError } from './client.js';
 import type {
   TelegramBot,
   TelegramDeeplink,
@@ -13,14 +13,19 @@ export async function listTelegramBots(signal?: AbortSignal): Promise<TelegramBo
   return apiJsonArray<TelegramBot>('/api/v1/telegram/bots', { signal });
 }
 
-export async function getTelegramBot(campaignId: string, signal?: AbortSignal): Promise<TelegramBot> {
-  return apiJson<TelegramBot>(`/api/v1/telegram/bots/${encodeURIComponent(campaignId)}`, { signal });
+export async function getTelegramBot(
+  campaignId: string,
+  signal?: AbortSignal
+): Promise<TelegramBot> {
+  return apiJson<TelegramBot>(`/api/v1/telegram/bots/${encodeURIComponent(campaignId)}`, {
+    signal,
+  });
 }
 
 export async function configureTelegramBot(
   campaignId: string,
   body: TelegramBot,
-  signal?: AbortSignal,
+  signal?: AbortSignal
 ): Promise<void> {
   const response = await apiFetch(`/api/v1/telegram/bots/${encodeURIComponent(campaignId)}`, {
     method: 'PUT',
@@ -28,22 +33,24 @@ export async function configureTelegramBot(
     signal,
   });
   if (!response.ok) {
-    throw new Error(response.statusText || `HTTP ${response.status}`);
+    throw await parseApiError(response);
   }
 }
 
 export async function listTelegramPostbacks(
   params: TelegramListPostbacksQuery,
-  signal?: AbortSignal,
+  signal?: AbortSignal
 ): Promise<TelegramPostback[]> {
   const search = new URLSearchParams();
   search.set('campaign_id', params.campaign_id);
-  return apiJsonArray<TelegramPostback>(`/api/v1/telegram/postbacks?${search.toString()}`, { signal });
+  return apiJsonArray<TelegramPostback>(`/api/v1/telegram/postbacks?${search.toString()}`, {
+    signal,
+  });
 }
 
 export async function createTelegramPostback(
   body: TelegramPostback,
-  signal?: AbortSignal,
+  signal?: AbortSignal
 ): Promise<void> {
   const response = await apiFetch('/api/v1/telegram/postbacks', {
     method: 'POST',
@@ -51,14 +58,14 @@ export async function createTelegramPostback(
     signal,
   });
   if (!response.ok) {
-    throw new Error(response.statusText || `HTTP ${response.status}`);
+    throw await parseApiError(response);
   }
 }
 
 export async function updateTelegramPostback(
   id: string,
   body: TelegramUpdatePostbackRequest,
-  signal?: AbortSignal,
+  signal?: AbortSignal
 ): Promise<void> {
   const response = await apiFetch(`/api/v1/telegram/postbacks/${encodeURIComponent(id)}`, {
     method: 'PUT',
@@ -66,7 +73,7 @@ export async function updateTelegramPostback(
     signal,
   });
   if (!response.ok) {
-    throw new Error(response.statusText || `HTTP ${response.status}`);
+    throw await parseApiError(response);
   }
 }
 
@@ -76,23 +83,23 @@ export async function deleteTelegramPostback(id: string, signal?: AbortSignal): 
     signal,
   });
   if (!response.ok) {
-    throw new Error(response.statusText || `HTTP ${response.status}`);
+    throw await parseApiError(response);
   }
 }
 
 export async function testTelegramPostback(id: string, signal?: AbortSignal): Promise<void> {
-  const response = await apiFetch(
-    `/api/v1/telegram/postbacks/${encodeURIComponent(id)}/test`,
-    { method: 'POST', signal },
-  );
+  const response = await apiFetch(`/api/v1/telegram/postbacks/${encodeURIComponent(id)}/test`, {
+    method: 'POST',
+    signal,
+  });
   if (!response.ok) {
-    throw new Error(response.statusText || `HTTP ${response.status}`);
+    throw await parseApiError(response);
   }
 }
 
 export async function createTelegramDeeplink(
   body: TelegramDeeplink,
-  signal?: AbortSignal,
+  signal?: AbortSignal
 ): Promise<TelegramDeeplink> {
   return apiJson<TelegramDeeplink>('/api/v1/telegram/deeplink-tokens', {
     method: 'POST',
@@ -101,16 +108,19 @@ export async function createTelegramDeeplink(
   });
 }
 
-export async function getTelegramDeeplink(token: string, signal?: AbortSignal): Promise<TelegramDeeplink> {
+export async function getTelegramDeeplink(
+  token: string,
+  signal?: AbortSignal
+): Promise<TelegramDeeplink> {
   return apiJson<TelegramDeeplink>(
     `/api/v1/telegram/deeplink-tokens/${encodeURIComponent(token)}`,
-    { signal },
+    { signal }
   );
 }
 
 export async function validateTelegramInitData(
   body: TelegramValidateRequest,
-  signal?: AbortSignal,
+  signal?: AbortSignal
 ): Promise<TelegramValidateResult> {
   return apiJson<TelegramValidateResult>('/api/v1/telegram/validate', {
     method: 'POST',

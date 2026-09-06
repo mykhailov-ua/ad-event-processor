@@ -9,7 +9,7 @@ import type {
 
 export async function listMarginGuardPolicies(
   params: MarginGuardListPoliciesQuery,
-  signal?: AbortSignal,
+  signal?: AbortSignal
 ): Promise<MarginGuardPolicy[]> {
   const search = new URLSearchParams();
   search.set('campaign_id', params.campaign_id);
@@ -20,7 +20,7 @@ export async function listMarginGuardPolicies(
 
 export async function listMarginGuardActivity(
   params: MarginGuardListActivityQuery,
-  signal?: AbortSignal,
+  signal?: AbortSignal
 ): Promise<MarginGuardActivity[]> {
   const search = new URLSearchParams();
   search.set('campaign_id', params.campaign_id);
@@ -31,7 +31,7 @@ export async function listMarginGuardActivity(
 
 export async function createMarginGuardPolicy(
   body: MarginGuardPolicy,
-  signal?: AbortSignal,
+  signal?: AbortSignal
 ): Promise<MarginGuardPolicy> {
   return apiJson<MarginGuardPolicy>('/api/v1/margin-guard/policies', {
     method: 'POST',
@@ -42,7 +42,7 @@ export async function createMarginGuardPolicy(
 
 export async function removeMarginGuardOverride(
   body: MarginGuardOverrideRequest,
-  signal?: AbortSignal,
+  signal?: AbortSignal
 ): Promise<void> {
   await apiJson<void>('/api/v1/margin-guard/overrides', {
     method: 'POST',

@@ -84,7 +84,7 @@ export function PlatformSettings({
 }: PlatformSettingsProps) {
   const snapshot = useMemo(
     () => (payload ? parsePlatformSettingsSnapshot(payload) : undefined),
-    [payload],
+    [payload]
   );
   const patchDraftReady = draftPatchJson.trim().length > 0;
 
@@ -108,7 +108,7 @@ export function PlatformSettings({
         ) : undefined
       }
       controlPanel={
-        <div className="flex flex-col gap-3">
+        <div className="grid gap-3">
           <SettingsNav />
           <p className={settingsHintClass}>
             Active platform configuration, secrets metadata, and persistence actions.
@@ -116,7 +116,7 @@ export function PlatformSettings({
         </div>
       }
     >
-      <div className="flex min-h-0 flex-1 flex-col gap-3">
+      <div className="grid min-h-0 flex-1 auto-rows-max gap-3">
         {showBootstrap ? (
           <SettingsCard title="Initial setup">
             <SettingsFormStack
@@ -145,12 +145,16 @@ export function PlatformSettings({
                   value={draftBootstrapJson}
                   maxLength={COLD_PATH_MAX_BODY_CHARS}
                   onChange={(event) => onDraftBootstrapJsonChange(event.target.value)}
-                  placeholder={'{\n  "admin_email": "ops@example.com",\n  "admin_password": "change-me",\n  "config": {\n    "tracking_domain": "track.example.com"\n  }\n}'}
+                  placeholder={
+                    '{\n  "admin_email": "ops@example.com",\n  "admin_password": "change-me",\n  "config": {\n    "tracking_domain": "track.example.com"\n  }\n}'
+                  }
                 />
               </FilterField>
               <SettingsFormActions>
                 <PrimaryActionButton
-                  disabled={bootstrapping || !draftInstallToken.trim() || !draftBootstrapJson.trim()}
+                  disabled={
+                    bootstrapping || !draftInstallToken.trim() || !draftBootstrapJson.trim()
+                  }
                   loading={bootstrapping}
                   type="submit"
                 >
@@ -176,7 +180,7 @@ export function PlatformSettings({
                 meta={<Badge variant="secondary">{snapshot.restartPending.length} pending</Badge>}
                 title="Pending restart"
               >
-                <ul className="list-disc space-y-1 pl-5 text-[13px] leading-[18px] text-muted-foreground">
+                <ul className="m-0 flex list-disc flex-col gap-1 pl-5 text-[13px] leading-[18px] text-muted-foreground">
                   {snapshot.restartPending.map((field) => (
                     <li key={field}>{settingsFieldLabel(field)}</li>
                   ))}
@@ -299,7 +303,9 @@ export function PlatformSettings({
           </SettingsFormStack>
         </SettingsCollapsibleSection>
 
-        {error && hasSnapshot ? <ErrorBlock title="Refresh failed" message={error.message} /> : null}
+        {error && hasSnapshot ? (
+          <ErrorBlock title="Refresh failed" message={error.message} />
+        ) : null}
       </div>
     </PageChrome>
   );

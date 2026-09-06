@@ -17,8 +17,10 @@ import (
 	"github.com/jackc/pgx/v5/pgxpool"
 )
 
-const campaignListMetricsMaxIDs = 100 // max comma-separated ids= on GET .../campaigns/metrics/batch
-const campaignListMetricsCHTimeout = 5 * time.Second
+const (
+	campaignListMetricsMaxIDs    = 100 // max comma-separated ids= on GET .../campaigns/metrics/batch
+	campaignListMetricsCHTimeout = 5 * time.Second
+)
 
 type CampaignListMetricsRowDTO struct {
 	CampaignID           string  `json:"campaign_id"`

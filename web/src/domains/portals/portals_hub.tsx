@@ -5,6 +5,7 @@ import { PageChrome } from '@/shell/page_chrome';
 import { PortalsNav } from '@/domains/portals/portals_nav';
 import { hasPortalPermission, type PortalKey } from '@/lib/portal_access';
 
+// Portal hub cards filtered by session permissions (nav chrome only; routes still 403 without server RBAC).
 const PORTAL_LINKS: Array<{
   key: PortalKey;
   path: string;

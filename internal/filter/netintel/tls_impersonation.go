@@ -25,7 +25,7 @@ func UAClaimsChromeNotChromium(ua string) bool {
 	return strings.Contains(uaLower, "chrome") && !strings.Contains(uaLower, "chromium")
 }
 
-func TlsFingerprintImpersonating(ua string, ja3, ja4, tlsHash []byte) bool {
+func TLSFingerprintImpersonating(ua string, ja3, ja4, tlsHash []byte) bool {
 	if !UAClaimsChromeNotChromium(ua) {
 		return false
 	}

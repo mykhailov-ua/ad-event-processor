@@ -48,10 +48,10 @@ type regionRelayHost struct {
 }
 
 func (h *regionRelayHost) RegionRelayRegionCode() uint8 {
-	if h.Service == nil || h.Service.cfg == nil {
+	if h == nil || h.cfg == nil {
 		return 0
 	}
-	return h.Service.cfg.RegionCode
+	return h.cfg.RegionCode
 }
 
 func NewOutboxWorker(svc *Service) *OutboxWorker {

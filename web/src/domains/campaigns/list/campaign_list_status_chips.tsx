@@ -17,26 +17,33 @@ export type CampaignListStatusChipsProps = {
   className?: string;
 };
 
-const STATUS_CHIP_CLASS: Record<string, { idle: string; active: string; count: string }> = {
+const STATUS_CHIP_CLASS: Record<
+  string,
+  { idle: string; active: string; countIdle: string; countActive: string }
+> = {
   '': {
     idle: 'border-border bg-background text-foreground',
     active: 'border-foreground/40 bg-accent text-foreground',
-    count: 'text-muted-foreground',
+    countIdle: 'text-muted-foreground',
+    countActive: 'text-muted-foreground',
   },
   ACTIVE: {
-    idle: 'border-emerald-500/70 bg-background text-emerald-500',
-    active: 'border-emerald-500 bg-emerald-500/15 text-emerald-400',
-    count: 'text-emerald-400',
+    idle: 'border-border bg-background text-muted-foreground',
+    active: 'border-admin-status-active bg-admin-status-active/20 text-admin-status-active',
+    countIdle: 'text-muted-foreground',
+    countActive: 'text-admin-status-active',
   },
   PAUSED: {
-    idle: 'border-amber-500/70 bg-background text-amber-500',
-    active: 'border-amber-500 bg-amber-500/15 text-amber-400',
-    count: 'text-amber-400',
+    idle: 'border-border bg-background text-muted-foreground',
+    active: 'border-admin-status-paused bg-admin-status-paused/20 text-admin-status-paused',
+    countIdle: 'text-muted-foreground',
+    countActive: 'text-admin-status-paused',
   },
   ARCHIVED: {
     idle: 'border-border bg-background text-muted-foreground',
     active: 'border-border bg-muted text-foreground',
-    count: 'text-muted-foreground',
+    countIdle: 'text-muted-foreground',
+    countActive: 'text-muted-foreground',
   },
 };
 
@@ -52,7 +59,11 @@ export function CampaignListStatusChips({
   className,
 }: CampaignListStatusChipsProps) {
   return (
-    <div className={cn('flex flex-wrap gap-2', className)} role="group" aria-label="Campaign status">
+    <div
+      className={cn('flex flex-wrap gap-2', className)}
+      role="group"
+      aria-label="Campaign status"
+    >
       {options.map((option) => {
         const selected = value === option.value;
         const tone = chipTone(option.value);
@@ -69,15 +80,23 @@ export function CampaignListStatusChips({
             aria-pressed={selected}
             className={cn(
               adminKit.buttonShell,
-              'max-w-full gap-1 whitespace-nowrap rounded-[5px] border px-2 font-semibold shadow-none',
-              selected ? tone.active : tone.idle,
+              'max-w-full gap-1 whitespace-nowrap border px-2 font-semibold shadow-none',
+              adminKit.controlRadius,
+              selected ? tone.active : tone.idle
             )}
             type="button"
             variant="outline"
             onClick={() => onChange(option.value)}
           >
             {option.label}
-            <span className={cn('text-[11px] font-semibold tabular-nums', tone.count)}>{countLabel}</span>
+            <span
+              className={cn(
+                'text-[11px] font-semibold tabular-nums',
+                selected ? tone.countActive : tone.countIdle
+              )}
+            >
+              {countLabel}
+            </span>
           </Button>
         );
       })}

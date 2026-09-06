@@ -20,9 +20,7 @@ export async function prepareDevBuildEnv() {
     process.env.ADMIN_DEV_AUTO_MOCK = healthy ? '0' : '1';
   }
   if (process.env.ADMIN_DEV_AUTO_MOCK === '1') {
-    console.log(
-      `Admin dev: control not reachable at ${API_TARGET}; mock API enabled (admin_dev).`,
-    );
+    console.log(`Admin dev: control not reachable at ${API_TARGET}; mock API enabled (admin_dev).`);
     console.log('Admin dev: force live API with ADMIN_DEV_AUTO_MOCK=0 or ?admin_dev=0');
   }
 }

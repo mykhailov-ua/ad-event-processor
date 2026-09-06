@@ -2,7 +2,7 @@ import type { CSSProperties } from 'react';
 
 export function anchorBelowTrigger(
   rect: DOMRect,
-  options?: { gap?: number; minWidth?: number },
+  options?: { gap?: number; minWidth?: number }
 ): CSSProperties {
   const gap = options?.gap ?? 4;
   return {
@@ -17,7 +17,7 @@ export function anchorBelowTrigger(
 export function anchorAboveTrigger(
   rect: DOMRect,
   contentHeight: number,
-  options?: { gap?: number; minWidth?: number },
+  options?: { gap?: number; minWidth?: number }
 ): CSSProperties {
   const gap = options?.gap ?? 4;
   return {

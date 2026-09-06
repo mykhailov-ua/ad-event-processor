@@ -1,4 +1,5 @@
-import { useEffect, useState } from 'react';
+import { useState } from 'react';
+import { useRunWhenTrue } from '@/hooks/use_run_when_true';
 
 import { PrimaryActionButton, SecondaryActionButton } from '@/shell/action_buttons';
 import { PageChrome } from '@/shell/page_chrome';
@@ -64,11 +65,7 @@ export function MarginGuardActivityDirectory({
 }: MarginGuardActivityDirectoryProps) {
   const [clearOpen, setClearOpen] = useState(false);
 
-  useEffect(() => {
-    if (removeSuccess) {
-      setClearOpen(false);
-    }
-  }, [removeSuccess]);
+  useRunWhenTrue(removeSuccess, () => setClearOpen(false));
 
   if (!appliedCampaignId) {
     return (
@@ -157,27 +154,27 @@ export function MarginGuardActivityDirectory({
         <EmptyState title="No activity" description="No margin guard activity for this campaign." />
       ) : (
         <DirectoryTable horizontalScroll>
-            <TableHeader>
-              <TableRow>
-                <DirectoryTableHead>Placement</DirectoryTableHead>
-                <DirectoryTableHead>Action</DirectoryTableHead>
-                <DirectoryTableHead>Reason</DirectoryTableHead>
-                <DirectoryTableHead>Created</DirectoryTableHead>
+          <TableHeader>
+            <TableRow>
+              <DirectoryTableHead>Placement</DirectoryTableHead>
+              <DirectoryTableHead>Action</DirectoryTableHead>
+              <DirectoryTableHead>Reason</DirectoryTableHead>
+              <DirectoryTableHead>Created</DirectoryTableHead>
+            </TableRow>
+          </TableHeader>
+          <TableBody>
+            {(items ?? []).map((row) => (
+              <TableRow key={row.id}>
+                <TableCell className="font-mono text-xs">{row.placement_id}</TableCell>
+                <TableCell>
+                  <Badge variant="outline">{row.action}</Badge>
+                </TableCell>
+                <TableCell className="whitespace-nowrap">{row.reason}</TableCell>
+                <TableCell>{displayTimestamp(row.created_at)}</TableCell>
               </TableRow>
-            </TableHeader>
-            <TableBody>
-              {(items ?? []).map((row) => (
-                <TableRow key={row.id}>
-                  <TableCell className="font-mono text-xs">{row.placement_id}</TableCell>
-                  <TableCell>
-                    <Badge variant="outline">{row.action}</Badge>
-                  </TableCell>
-                  <TableCell className="whitespace-nowrap">{row.reason}</TableCell>
-                  <TableCell>{displayTimestamp(row.created_at)}</TableCell>
-                </TableRow>
-              ))}
-            </TableBody>
-          </DirectoryTable>
+            ))}
+          </TableBody>
+        </DirectoryTable>
       )}
 
       {actionError ? <ErrorBlock title="Action failed" message={actionError.message} /> : null}

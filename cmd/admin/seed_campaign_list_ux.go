@@ -74,7 +74,7 @@ var seedCampaignListUXCmd = &cobra.Command{
 			campID := seedCampaignUUID(seq)
 			customerID := seedCampaignListUXCustomerID(seq)
 			ownerID := teamUserIDs[(seq-1)%len(teamUserIDs)]
-			countries := seedUiDemoTargetCountries(seq)
+			countries := seedUIDemoTargetCountries(seq)
 
 			tag, execErr := tx.Exec(ctx, `
 UPDATE campaigns

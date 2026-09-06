@@ -10,7 +10,7 @@ export const DEFAULT_CLONE_OPTIONS: Required<CloneCampaignOptions> = {
 
 export function buildCloneRequestBody(
   nameSuffix: string,
-  options: CloneCampaignOptions,
+  options: CloneCampaignOptions
 ): CloneCampaignRequest {
   const body: CloneCampaignRequest = { options };
   const suffix = nameSuffix.trim();

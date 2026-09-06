@@ -1,3 +1,5 @@
+// URL list pagination param parsing for directory pages (ui.mdc server-owned pagination).
+// parseListLimit caps at max (default 500 for wire); clampListLimit uses OPTIMAL_LIST_LIMIT_MAX for UI prefs.
 export const DEFAULT_LIST_LIMIT = 50;
 
 export const OPTIMAL_LIST_LIMIT_MAX = 100;

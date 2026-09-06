@@ -29,6 +29,7 @@ var (
 	ErrPacingExhausted        = filter.ErrPacingExhausted
 	ErrFreqLimitExceeded      = filter.ErrFreqLimitExceeded
 	ErrGeoBlocked             = filter.ErrGeoBlocked
+	ErrGeoLookupFailed        = filter.ErrGeoLookupFailed
 	ErrScheduleBlocked        = filter.ErrScheduleBlocked
 	ErrFraudDetected          = filter.ErrFraudDetected
 	ErrEmergencyBreakerActive = filter.ErrEmergencyBreakerActive
@@ -116,11 +117,13 @@ func appendUUID(dst []byte, u uuid.UUID) []byte {
 	return filter.AppendUUID(dst, u)
 }
 
-func unsafeString(b []byte) string {
-	return filter.UnsafeString(b)
+func GetBufWrapper() *BufWrapper {
+	return BufPool.Get().(*BufWrapper)
 }
 
-type bufWrapper = BufWrapper
+func PutBufWrapper(w *BufWrapper) {
+	BufPool.Put(w)
+}
 
 var BufPool = sync.Pool{
 	New: func() any {

@@ -1,5 +1,7 @@
 import { Link } from 'react-router-dom';
 
+import { NARROW_EDIT_FORM_CLASS } from '@/shell/filter_panel';
+
 import type { RtbDealUpdateSpec } from '@/api/types';
 import { PageChrome } from '@/shell/page_chrome';
 import { PageSkeleton } from '@/shell/page_skeleton';
@@ -79,7 +81,7 @@ export function RtbDealEditor({
       </Link>
 
       <form
-        className="grid max-w-xl gap-4"
+        className={NARROW_EDIT_FORM_CLASS}
         onSubmit={(event) => {
           event.preventDefault();
           onSave();

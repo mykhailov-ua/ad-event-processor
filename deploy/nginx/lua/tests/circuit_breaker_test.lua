@@ -60,6 +60,7 @@ local function reset_store()
     end
 end
 
+local MIN_ERR_OPEN = 10
 package.loaded["edge-circuit"] = nil
 local edge_circuit = require "edge-circuit"
 
@@ -89,6 +90,16 @@ for _ = 1, 95 do
     edge_circuit.record_err()
 end
 assert_true(not edge_circuit.open(bucket_curr, bucket_prev), "95/101 below threshold")
+
+reset_store()
+for _ = 1, MIN_ERR_OPEN do
+    edge_circuit.record_total()
+    edge_circuit.record_err()
+end
+assert_true(
+    edge_circuit.open(bucket_curr, bucket_prev),
+    "circuit_breaker_min_samples: 100% errs opens before SAMPLE_WINDOW"
+)
 
 reset_store()
 for _ = 1, 101 do

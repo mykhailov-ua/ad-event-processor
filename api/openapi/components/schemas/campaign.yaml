@@ -78,8 +78,10 @@ Campaign:
       type: string
     safe_page_url:
       type: string
+      description: Review-traffic alternate destination URL when policy routes traffic away from the primary target.
     safe_page_enabled:
       type: boolean
+      description: Enable review-traffic alternate URL routing on /click.
     attestation_enabled:
       type: boolean
     attestation_mode:
@@ -95,8 +97,10 @@ Campaign:
       type: boolean
     moderator_intel_enabled:
       type: boolean
+      description: Enable review traffic intelligence feed matching on /click.
     review_traffic_action:
       type: string
+      description: Policy when review-traffic signals match (safe_page, block, passthrough).
     tls_fingerprint_block_enabled:
       type: boolean
     conn_type_policy:
@@ -245,8 +249,10 @@ PatchCampaignRequest:
       type: string
     safe_page_url:
       type: string
+      description: Review-traffic alternate destination URL when policy routes traffic away from the primary target.
     safe_page_enabled:
       type: boolean
+      description: Enable review-traffic alternate URL routing on /click.
     dmr_enabled:
       type: boolean
     cidr_block_enabled:
@@ -255,8 +261,10 @@ PatchCampaignRequest:
       type: boolean
     moderator_intel_enabled:
       type: boolean
+      description: Enable review traffic intelligence feed matching on /click.
     review_traffic_action:
       type: string
+      description: Policy when review-traffic signals match (safe_page, block, passthrough).
     tls_fingerprint_block_enabled:
       type: boolean
     conn_type_policy:
@@ -521,6 +529,34 @@ CloneCampaignRequest:
       type: string
     name_suffix:
       type: string
+    options:
+      $ref: '#/CloneCampaignOptions'
+
+CloneCampaignOptions:
+  type: object
+  properties:
+    include_flow:
+      type: boolean
+    include_postbacks:
+      type: boolean
+    include_fraud:
+      type: boolean
+    include_placement_blocks:
+      type: boolean
+    reset_spend:
+      type: boolean
+
+CloneCampaignPreview:
+  type: object
+  required: [source_id, name, would_create]
+  properties:
+    source_id:
+      type: string
+      format: uuid
+    name:
+      type: string
+    would_create:
+      $ref: '#/CloneCampaignOptions'
 
 CloneCampaignResult:
   type: object
@@ -671,6 +707,7 @@ CampaignFraudConfig:
       maximum: 255
     silent_reject_enabled:
       type: boolean
+      description: Return HTTP acceptance while recording a fraud analytics flag instead of hard 403.
     behavior_flags:
       type: integer
       format: int32
@@ -704,6 +741,7 @@ PatchCampaignFraudRequest:
       format: int32
     silent_reject_enabled:
       type: boolean
+      description: Return HTTP acceptance while recording a fraud analytics flag instead of hard 403.
     behavior_flags:
       type: integer
       format: int32
@@ -1982,4 +2020,219 @@ CampaignIntegrationPanel:
       items:
         type: object
         additionalProperties: true
+
+MacroPreviewRequest:
+  type: object
+  properties:
+    sub1:
+      type: string
+    country:
+      type: string
+    click_id:
+      type: string
+    user_id:
+      type: string
+    fbclid:
+      type: string
+    gclid:
+      type: string
+    ttclid:
+      type: string
+
+MacroPreviewResponse:
+  type: object
+  properties:
+    resolved_click_url:
+      type: string
+    resolved_postback_url:
+      type: string
+    unresolved_macros:
+      type: array
+      items:
+        type: string
+    warnings:
+      type: array
+      items:
+        type: string
+
+CampaignDiffRow:
+  type: object
+  required: [path, label, left_display, right_display, severity]
+  properties:
+    path:
+      type: string
+    label:
+      type: string
+    left_display:
+      type: string
+    right_display:
+      type: string
+    severity:
+      type: string
+
+CampaignDiffResponse:
+  type: object
+  required: [rows]
+  properties:
+    rows:
+      type: array
+      items:
+        $ref: '#/CampaignDiffRow'
+    truncated:
+      type: boolean
+
+CampaignBulkActionRequest:
+  type: object
+  required: [action, campaign_ids]
+  properties:
+    action:
+      type: string
+      enum: [pause, resume, archive]
+    campaign_ids:
+      type: array
+      items:
+        type: string
+        format: uuid
+
+CampaignBulkActionResultRow:
+  type: object
+  required: [id, ok]
+  properties:
+    id:
+      type: string
+      format: uuid
+    ok:
+      type: boolean
+    error_code:
+      type: string
+
+CampaignBulkActionResponse:
+  type: object
+  required: [results]
+  properties:
+    results:
+      type: array
+      items:
+        $ref: '#/CampaignBulkActionResultRow'
+
+CampaignGeoCountryRow:
+  type: object
+  required: [code, label, kind]
+  properties:
+    code:
+      type: string
+    label:
+      type: string
+    kind:
+      type: string
+
+CampaignGeoSummary:
+  type: object
+  required: [included_label, excluded_label]
+  properties:
+    included_label:
+      type: string
+    excluded_label:
+      type: string
+    conflict_warning:
+      type: boolean
+    expanded:
+      type: array
+      items:
+        $ref: '#/CampaignGeoCountryRow'
+    truncated:
+      type: boolean
+
+CampaignFraudEditorCard:
+  type: object
+  required: [signal_key, title_label, count_label, severity]
+  properties:
+    signal_key:
+      type: string
+    title_label:
+      type: string
+    count_label:
+      type: string
+    severity:
+      type: string
+    report_key:
+      type: string
+    report_href:
+      type: string
+
+CampaignFraudEditorSummary:
+  type: object
+  required: [campaign_id, cards]
+  properties:
+    campaign_id:
+      type: string
+      format: uuid
+    cards:
+      type: array
+      items:
+        $ref: '#/CampaignFraudEditorCard'
+    disclaimer:
+      type: string
+
+CampaignFlowValidateRequest:
+  type: object
+  properties:
+    paths:
+      type: array
+      items:
+        $ref: '#/FlowPath'
+
+CampaignFlowPathError:
+  type: object
+  properties:
+    path_index:
+      type: integer
+      format: int32
+    code:
+      type: string
+    message:
+      type: string
+
+CampaignFlowValidateResponse:
+  type: object
+  required: [valid]
+  properties:
+    valid:
+      type: boolean
+    path_errors:
+      type: array
+      items:
+        $ref: '#/CampaignFlowPathError'
+    suggested_fix_action:
+      type: string
+
+PlacementBlockSuggestion:
+  type: object
+  required: [placement_id, impressions, ivt_rate, ivt_rate_label, reason_label, suggested_action]
+  properties:
+    placement_id:
+      type: string
+    impressions:
+      type: integer
+      format: int64
+    ivt_rate:
+      type: number
+      format: double
+    ivt_rate_label:
+      type: string
+    reason_label:
+      type: string
+    suggested_action:
+      type: string
+
+PlacementBlockSuggestionsResponse:
+  type: object
+  required: [items, freshness]
+  properties:
+    items:
+      type: array
+      items:
+        $ref: '#/PlacementBlockSuggestion'
+    freshness:
+      $ref: 'ops_reports.yaml#/DataFreshness'
 

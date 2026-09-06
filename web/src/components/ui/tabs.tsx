@@ -25,7 +25,7 @@ function Tabs({
 
   return (
     <TabsContext.Provider value={{ active: active ?? '', setActive }}>
-      <div className={className}>{children}</div>
+      <div className={cn('flex flex-col gap-2', className)}>{children}</div>
     </TabsContext.Provider>
   );
 }
@@ -53,12 +53,11 @@ const TabsList = React.forwardRef<
     ref={ref}
     role="tablist"
     className={cn(
-      variant === 'segmented' &&
-        'inline-flex h-9 items-center rounded-[5px] bg-muted p-1 text-muted-foreground',
+      variant === 'segmented' && 'inline-flex h-7 items-center bg-muted p-1 text-muted-foreground',
+      adminKit.controlRadius,
       variant === 'pill' && 'inline-flex flex-wrap items-center gap-2',
-      variant === 'underline' &&
-        'inline-flex items-center gap-4 border-b border-border',
-      className,
+      variant === 'underline' && 'inline-flex items-center gap-4 border-b border-border',
+      className
     )}
     {...props}
   />
@@ -67,7 +66,10 @@ TabsList.displayName = 'TabsList';
 
 const TabsTrigger = React.forwardRef<
   HTMLButtonElement,
-  React.ButtonHTMLAttributes<HTMLButtonElement> & { value: string; variant?: 'segmented' | 'pill' | 'underline' }
+  React.ButtonHTMLAttributes<HTMLButtonElement> & {
+    value: string;
+    variant?: 'segmented' | 'pill' | 'underline';
+  }
 >(({ className, value, variant = 'segmented', onClick, ...props }, ref) => {
   const { active, setActive } = useTabsContext();
   const selected = active === value;
@@ -79,8 +81,9 @@ const TabsTrigger = React.forwardRef<
       role="tab"
       aria-selected={selected}
       className={cn(
-        'inline-flex items-center justify-center whitespace-nowrap text-[13px] font-medium leading-none transition-colors disabled:pointer-events-none disabled:opacity-50',
-        variant === 'segmented' && 'rounded-[5px] px-3 py-1',
+        'inline-flex items-center justify-center whitespace-nowrap font-medium leading-none transition-colors disabled:pointer-events-none disabled:opacity-50',
+        adminKit.controlText,
+        variant === 'segmented' && cn(adminKit.controlRadius, 'px-3 py-1'),
         variant === 'segmented' &&
           (selected
             ? 'bg-background text-foreground shadow-sm'
@@ -88,19 +91,20 @@ const TabsTrigger = React.forwardRef<
         variant === 'pill' &&
           cn(
             adminKit.buttonShell,
-            'rounded-full border px-3',
+            adminKit.pillRadius,
+            'border px-3',
             selected
               ? 'border-primary bg-primary text-primary-foreground'
-              : 'border-border bg-background text-foreground hover:bg-accent',
+              : 'border-border bg-background text-foreground hover:bg-accent'
           ),
         variant === 'underline' &&
           cn(
             'border-b-2 px-0 pb-2',
             selected
               ? 'border-primary text-foreground'
-              : 'border-transparent text-muted-foreground hover:text-foreground',
+              : 'border-transparent text-muted-foreground hover:text-foreground'
           ),
-        className,
+        className
       )}
       onClick={(event) => {
         onClick?.(event);
@@ -123,9 +127,7 @@ const TabsContent = React.forwardRef<
     return null;
   }
 
-  return (
-    <div ref={ref} role="tabpanel" className={cn('mt-2', className)} {...props} />
-  );
+  return <div ref={ref} role="tabpanel" className={className} {...props} />;
 });
 TabsContent.displayName = 'TabsContent';
 

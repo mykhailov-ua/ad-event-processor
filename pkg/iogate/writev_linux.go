@@ -41,7 +41,7 @@ func VectoredWrite(fd int, chunks [][]byte) (int, error) {
 	return int(n), nil
 }
 
-// FlushVectored: TierHigh append slot, writev(2), then optional group-commit fsync via fsyncFn (caller supplies Sync/fdatasync).
+// FlushVectored TierHigh append slot, writev(2), then optional group-commit fsync via fsyncFn (caller supplies Sync/fdatasync).
 func (g *DiskWriteGate) FlushVectored(ctx context.Context, fd int, chunks [][]byte, fsyncFn func() error) error {
 	// nil gate: writev every call; fsync when fsyncFn set (no group commit).
 	if g == nil {

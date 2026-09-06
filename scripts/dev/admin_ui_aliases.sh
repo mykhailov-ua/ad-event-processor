@@ -8,13 +8,7 @@
 # One-liner without sourcing:
 #   bash scripts/dev/aed-admin up
 
-if [[ -n "${BASH_SOURCE[0]:-}" ]]; then
-  _aed_admin_ui_aliases_dir="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
-elif [[ -n "${ZSH_VERSION:-}" ]]; then
-  _aed_admin_ui_aliases_dir="$(cd "$(dirname "${(%):-%x}")" && pwd)"
-else
-  _aed_admin_ui_aliases_dir="$(cd "$(dirname "$0")" && pwd)"
-fi
+_aed_admin_ui_aliases_dir="$(cd "$(dirname "${BASH_SOURCE[0]:-$0}")" && pwd)"
 
 case ":${PATH}:" in
   *":${_aed_admin_ui_aliases_dir}:"*) ;;

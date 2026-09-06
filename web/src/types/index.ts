@@ -27,7 +27,6 @@ export type PaymentHistoryRow = components['schemas']['PaymentHistoryRow'];
 export type BillingInvoiceLine = components['schemas']['BillingInvoiceLine'];
 export type TaxProfile = components['schemas']['TaxProfile'];
 export type SelfServeCampaignTemplate = components['schemas']['SelfServeCampaignTemplate'];
-export type SelfServeTemplateListResponse =
-  components['schemas']['SelfServeTemplateListResponse'];
+export type SelfServeTemplateListResponse = components['schemas']['SelfServeTemplateListResponse'];
 export type SelfServeCreateCampaignRequest =
   components['schemas']['SelfServeCreateCampaignRequest'];

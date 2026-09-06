@@ -3,11 +3,7 @@ import type { OutboxEvent } from '@/api/types';
 import { displayTimestamp } from '@/lib/display';
 import { opsPanelError } from '@/domains/ops/ops_nav';
 import { OpsListFooter } from '@/domains/ops/ops_list_footer';
-import {
-  OpsPageBlockingError,
-  OpsPageLoading,
-  OpsPageShell,
-} from '@/domains/ops/ops_page_shell';
+import { OpsPageBlockingError, OpsPageLoading, OpsPageShell } from '@/domains/ops/ops_page_shell';
 import {
   OpsTable,
   OpsTableCell,
@@ -66,6 +62,7 @@ export function OpsOutbox({
         <EmptyState description="Outbox tail is empty for this page." title="No outbox events" />
       ) : (
         <OpsTable
+          horizontalScroll
           head={
             <OpsTableHeaderRow>
               <OpsTableHead>ID</OpsTableHead>

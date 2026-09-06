@@ -23,7 +23,7 @@ export function buildCustomersListPath(params: CustomerListQuery = {}): string {
 
 export async function listCustomers(
   params: CustomerListQuery = {},
-  signal?: AbortSignal,
+  signal?: AbortSignal
 ): Promise<CustomerListResponse> {
   return apiJson<CustomerListResponse>(buildCustomersListPath(params), { signal });
 }
@@ -39,7 +39,7 @@ export type PatchCustomerCostCenterRequest = {
 export async function patchCustomerCostCenter(
   id: string,
   body: PatchCustomerCostCenterRequest,
-  signal?: AbortSignal,
+  signal?: AbortSignal
 ): Promise<Customer> {
   return apiJson<Customer>(`/api/v1/customers/${encodeURIComponent(id)}/cost-center`, {
     method: 'PATCH',

@@ -1,6 +1,7 @@
 import { apiJson, apiJsonArray } from './client.js';
 import type {
   FraudDecision,
+  FraudDecisionQuery,
   FraudIntegration,
   FraudLabelsListResponse,
   FraudLabelsQuery,
@@ -24,14 +25,14 @@ export function buildFraudIntegrationsPath(customerId: string): string {
 
 export async function listFraudIntegrations(
   customerId: string,
-  signal?: AbortSignal,
+  signal?: AbortSignal
 ): Promise<FraudIntegration[]> {
   return apiJsonArray<FraudIntegration>(buildFraudIntegrationsPath(customerId), { signal });
 }
 
 export async function listFraudLabels(
   params: FraudLabelsQuery,
-  signal?: AbortSignal,
+  signal?: AbortSignal
 ): Promise<FraudLabelsListResponse> {
   const search = new URLSearchParams();
   if (params.limit != null) {
@@ -42,14 +43,14 @@ export async function listFraudLabels(
   }
   return apiJson<FraudLabelsListResponse>(
     withCustomerQuery('/api/v1/fraud/labels', params.customer_id, search),
-    { signal },
+    { signal }
   );
 }
 
 export async function upsertFraudLabel(
   customerId: string,
   body: FraudManualLabelRequest,
-  signal?: AbortSignal,
+  signal?: AbortSignal
 ): Promise<void> {
   await apiJson<void>(withCustomerQuery('/api/v1/fraud/labels', customerId), {
     method: 'POST',
@@ -61,7 +62,7 @@ export async function upsertFraudLabel(
 export async function bulkUpsertFraudLabels(
   customerId: string,
   body: FraudManualLabelBulkRequest,
-  signal?: AbortSignal,
+  signal?: AbortSignal
 ): Promise<FraudManualLabelBulkResponse> {
   return apiJson<FraudManualLabelBulkResponse>(
     withCustomerQuery('/api/v1/fraud/labels/bulk', customerId),
@@ -69,14 +70,14 @@ export async function bulkUpsertFraudLabels(
       method: 'POST',
       body: JSON.stringify(body),
       signal,
-    },
+    }
   );
 }
 
 export async function createFraudOverride(
   customerId: string,
   body: FraudOverrideRequest,
-  signal?: AbortSignal,
+  signal?: AbortSignal
 ): Promise<void> {
   await apiJson<void>(withCustomerQuery('/api/v1/fraud/overrides', customerId), {
     method: 'POST',
@@ -92,24 +93,16 @@ export async function listFraudPresets(signal?: AbortSignal): Promise<FraudPolic
 export async function patchFraudPreset(
   name: string,
   body: PatchFraudPolicyPresetRequest,
-  signal?: AbortSignal,
+  signal?: AbortSignal
 ): Promise<FraudPolicyPreset> {
-  return apiJson<FraudPolicyPreset>(
-    `/api/v1/ops/fraud/presets/${encodeURIComponent(name)}`,
-    {
-      method: 'PATCH',
-      body: JSON.stringify(body),
-      signal,
-    },
-  );
+  return apiJson<FraudPolicyPreset>(`/api/v1/ops/fraud/presets/${encodeURIComponent(name)}`, {
+    method: 'PATCH',
+    body: JSON.stringify(body),
+    signal,
+  });
 }
 
-export function buildFraudDecisionPath(params: {
-  customer_id: string;
-  ip_hash: string;
-  campaign_id?: string;
-  hours?: number;
-}): string {
+export function buildFraudDecisionPath(params: FraudDecisionQuery): string {
   const search = new URLSearchParams({
     customer_id: params.customer_id,
     ip_hash: params.ip_hash,
@@ -124,13 +117,8 @@ export function buildFraudDecisionPath(params: {
 }
 
 export async function getFraudDecision(
-  params: {
-    customer_id: string;
-    ip_hash: string;
-    campaign_id?: string;
-    hours?: number;
-  },
-  signal?: AbortSignal,
+  params: FraudDecisionQuery,
+  signal?: AbortSignal
 ): Promise<FraudDecision> {
   return apiJson(buildFraudDecisionPath(params), { signal });
 }

@@ -4,7 +4,6 @@ import (
 	"context"
 	"os"
 	"path/filepath"
-	"runtime"
 	"sort"
 	"strings"
 	"testing"
@@ -12,6 +11,7 @@ import (
 
 	ingestdb "ad-event-processor/internal/domain/db"
 	ingestion "ad-event-processor/internal/ingest"
+	"ad-event-processor/internal/testutil"
 
 	"github.com/google/uuid"
 	"github.com/jackc/pgx/v5/pgtype"
@@ -44,10 +44,8 @@ func setupBillingTestDB(t testing.TB) (pool *pgxpool.Pool, cleanup func()) {
 	pool, err = pgxpool.New(ctx, connStr)
 	require.NoError(t, err)
 
-	_, filename, _, _ := runtime.Caller(0)
-	baseDir := filepath.Join(filepath.Dir(filename), "..", "..")
-	applyBillingMigrations(t, pool, filepath.Join(baseDir, "internal", "ingestion", "migrations"))
-	applyBillingMigrations(t, pool, filepath.Join(baseDir, "internal", "ledger", "migrations"))
+	applyBillingMigrations(t, pool, testutil.AdsMigrationsDir())
+	applyBillingMigrations(t, pool, testutil.BillingMigrationsDir())
 
 	cleanup = func() {
 		pool.Close()

@@ -1,11 +1,6 @@
 import { test, expect } from '@playwright/test';
 
-import {
-  gotoLive,
-  isApiGet,
-  loginAsAdmin,
-  skipUnlessIntegrationReady,
-} from './helpers.js';
+import { gotoLive, isApiGet, loginAsAdmin, skipUnlessIntegrationReady } from './helpers.js';
 
 test.beforeEach(async ({}, testInfo) => {
   await skipUnlessIntegrationReady(testInfo);

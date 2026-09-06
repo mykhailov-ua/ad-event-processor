@@ -65,10 +65,16 @@ function renderRecentClickCell(columnId: DashboardRecentClickColumnId, event: Cl
   }
 }
 
-export function DashboardRecentClicksListTable({ events, columns }: DashboardRecentClicksListTableProps) {
+export function DashboardRecentClicksListTable({
+  events,
+  columns,
+}: DashboardRecentClicksListTableProps) {
   const visibleColumns =
-    columns.length > 0 ? columns : (['click_id', 'created_at', 'campaign_id'] as DashboardRecentClickColumnId[]);
-  const { columnWidths, handleColumnWidthCommit } = useDashboardRecentClickColumnWidths(visibleColumns);
+    columns.length > 0
+      ? columns
+      : (['click_id', 'created_at', 'campaign_id'] as DashboardRecentClickColumnId[]);
+  const { columnWidths, handleColumnWidthCommit } =
+    useDashboardRecentClickColumnWidths(visibleColumns);
   const tableRef = useRef<HTMLTableElement>(null);
   const colgroupRef = useRef<HTMLTableColElement>(null);
   const { startResize } = useDirectoryColumnResize({
@@ -112,11 +118,15 @@ export function DashboardRecentClicksListTable({ events, columns }: DashboardRec
                 className={cn(
                   campaignListThClass,
                   campaignListCellToolsClass,
-                  resizable && 'relative',
+                  resizable && 'relative'
                 )}
               >
                 <div className={campaignListHeaderCellClass}>
-                  <div className={numeric ? campaignListHeaderLabelNumClass : campaignListHeaderLabelClass}>
+                  <div
+                    className={
+                      numeric ? campaignListHeaderLabelNumClass : campaignListHeaderLabelClass
+                    }
+                  >
                     <span className="whitespace-nowrap" title={label}>
                       {label}
                     </span>
@@ -146,7 +156,7 @@ export function DashboardRecentClicksListTable({ events, columns }: DashboardRec
                       campaignListTdClass,
                       campaignListCellToolsClass,
                       campaignListNumClass,
-                      'text-muted-foreground',
+                      'text-muted-foreground'
                     )}
                   >
                     <div className={campaignListHeaderCellClass}>
@@ -158,7 +168,12 @@ export function DashboardRecentClicksListTable({ events, columns }: DashboardRec
                           {event.click_id}
                         </span>
                       </div>
-                      <CopyButton flashOnCopy label="Event id" showToast={false} value={event.click_id} />
+                      <CopyButton
+                        flashOnCopy
+                        label="Event id"
+                        showToast={false}
+                        value={event.click_id}
+                      />
                     </div>
                   </td>
                 );
@@ -171,7 +186,7 @@ export function DashboardRecentClicksListTable({ events, columns }: DashboardRec
                       campaignListTdClass,
                       campaignListCellToolsClass,
                       campaignListNumClass,
-                      'text-muted-foreground',
+                      'text-muted-foreground'
                     )}
                   >
                     <div className={campaignListHeaderCellClass}>
@@ -183,7 +198,12 @@ export function DashboardRecentClicksListTable({ events, columns }: DashboardRec
                           {event.campaign_id}
                         </span>
                       </div>
-                      <CopyButton flashOnCopy label="Campaign ID" showToast={false} value={event.campaign_id} />
+                      <CopyButton
+                        flashOnCopy
+                        label="Campaign ID"
+                        showToast={false}
+                        value={event.campaign_id}
+                      />
                     </div>
                   </td>
                 );
@@ -196,7 +216,7 @@ export function DashboardRecentClicksListTable({ events, columns }: DashboardRec
                       campaignListTdClass,
                       campaignListCellToolsClass,
                       campaignListNumClass,
-                      'text-muted-foreground',
+                      'text-muted-foreground'
                     )}
                   >
                     <div className={campaignListHeaderCellClass}>
@@ -213,11 +233,15 @@ export function DashboardRecentClicksListTable({ events, columns }: DashboardRec
                   className={cn(
                     campaignListTdClass,
                     campaignListCellToolsClass,
-                    numeric && campaignListNumClass,
+                    numeric && campaignListNumClass
                   )}
                 >
                   <div className={campaignListHeaderCellClass}>
-                    <div className={numeric ? campaignListCellContentNumClass : campaignListCellContentClass}>
+                    <div
+                      className={
+                        numeric ? campaignListCellContentNumClass : campaignListCellContentClass
+                      }
+                    >
                       <span
                         className="block whitespace-nowrap"
                         title={columnId === 'sub1' ? event.sub1 : undefined}

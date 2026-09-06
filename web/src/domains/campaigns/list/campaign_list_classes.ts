@@ -1,8 +1,10 @@
 import { adminKit } from '@/lib/admin_kit';
 import { cn } from '@/lib/utils';
 
-export const campaignListTableCardClass =
-  'flex min-h-0 min-w-0 flex-1 flex-col overflow-hidden rounded-[10px] border border-border bg-card';
+export const campaignListTableCardClass = cn(
+  'flex min-h-0 min-w-0 flex-1 flex-col overflow-hidden border border-border bg-card',
+  adminKit.panelRadius
+);
 
 export const campaignListTableSurfaceClass =
   'ui-scrollbar min-h-0 min-w-0 flex-1 overflow-x-auto overflow-y-auto bg-card';
@@ -11,28 +13,26 @@ export const campaignListTableClass =
   'w-max table-fixed border-separate border-spacing-0 text-[13px] leading-[18px] text-foreground';
 
 export const campaignListThClass =
-  'h-[34px] max-h-[34px] overflow-visible whitespace-nowrap border-b border-r border-border bg-muted/50 px-4 py-0 align-middle text-[11px] font-normal uppercase leading-[14px] tracking-normal text-muted-foreground last:border-r-0';
+  'h-[34px] max-h-[34px] overflow-visible whitespace-nowrap border-b border-r border-border bg-muted/50 px-4 py-0 align-middle text-[11px] font-semibold uppercase leading-[14px] tracking-normal text-muted-foreground last:border-r-0';
 
 export const campaignListTdClass =
   'h-[34px] max-h-[34px] overflow-hidden whitespace-nowrap border-b border-border bg-inherit px-4 py-0 align-middle text-[13px] text-foreground';
 
-export const campaignListTfootTdClass = 'border-t border-border bg-muted font-normal text-foreground';
+export const campaignListTfootTdClass =
+  'border-t border-border bg-muted font-normal text-foreground';
 
 export const campaignListCellToolsClass = 'pr-4';
 
-export const campaignListNameRowCellClass =
-  'flex h-[34px] w-full min-w-0 items-center gap-4';
+export const campaignListNameRowCellClass = 'flex h-[34px] w-full min-w-0 items-center gap-4';
 
 export const campaignListNameRowTextClass = 'min-w-0 flex-1';
 
 export const campaignListNameTextClass =
   'block whitespace-nowrap select-text tabular-nums text-foreground';
 
-export const campaignListNameRowMenuSlotClass =
-  'flex w-7 shrink-0 items-center justify-center';
+export const campaignListNameRowMenuSlotClass = 'flex w-7 shrink-0 items-center justify-center';
 
-export const campaignListHeaderCellClass =
-  'flex h-[34px] min-w-0 items-center gap-0 text-left';
+export const campaignListHeaderCellClass = 'flex h-[34px] min-w-0 items-center gap-0 text-left';
 
 export const campaignListHeaderLabelClass = 'min-w-0 flex-1 whitespace-nowrap text-left';
 
@@ -68,11 +68,15 @@ export const campaignListFilterLabelClass = adminKit.labelCaps;
 export const campaignListArchiveButtonClass =
   'border-destructive bg-destructive/10 text-destructive shadow-none hover:bg-destructive/20';
 
-export const campaignListColumnsMenuClass =
-  'w-[min(100vw-1.5rem,40rem)] overflow-hidden rounded-lg border border-border bg-card shadow-lg';
+export const campaignListColumnsMenuClass = cn(
+  'w-[min(100vw-1.5rem,40rem)] overflow-hidden border border-border bg-card shadow-lg',
+  adminKit.panelRadius
+);
 
-export const campaignListColumnsMenuCheckboxClass =
-  'rounded-[4px] border-border bg-background peer-checked:border-primary peer-checked:bg-primary';
+export const campaignListColumnsMenuCheckboxClass = cn(
+  'border-border bg-background peer-checked:border-primary peer-checked:bg-primary',
+  adminKit.controlRadius
+);
 
 export const campaignCountrySelectPopoverClass = 'w-[min(100vw-2rem,16rem)]';
 
@@ -80,7 +84,7 @@ export const campaignCountrySelectTriggerClass = cn(
   adminKit.controlHeight,
   adminKit.controlRadius,
   adminKit.controlText,
-  'flex w-full min-w-0 items-center justify-between gap-2 border border-border bg-background px-2 py-1 text-left text-foreground',
+  'flex w-full min-w-0 items-center justify-between gap-2 border border-border bg-background px-2 py-1 text-left text-foreground'
 );
 
 export const campaignCountrySelectSearchClass =
@@ -89,8 +93,11 @@ export const campaignCountrySelectSearchClass =
 export const campaignCountrySelectListClass =
   'ui-scrollbar m-0 flex max-h-60 list-none flex-col gap-1 overflow-y-auto p-1';
 
-export const campaignCountrySelectOptionClass =
-  'flex min-h-8 w-full items-center justify-between gap-2 whitespace-nowrap rounded-md px-2.5 py-2 text-left text-[13px] leading-[18px] text-foreground hover:bg-accent';
+export const campaignCountrySelectOptionClass = cn(
+  adminKit.controlHeight,
+  'flex w-full items-center justify-between gap-2 whitespace-nowrap px-2.5 text-left text-[13px] leading-[18px] text-foreground hover:bg-accent',
+  adminKit.controlRadius
+);
 
 export const campaignCountrySelectOptionSelectedClass = 'bg-accent text-foreground';
 
@@ -102,16 +109,18 @@ export const campaignCountriesOverflowPopoverClass =
 export const campaignOverviewDialogClass = cn(
   'w-[calc(100%-2rem)] max-w-md gap-0 p-0',
   '[&>div]:flex [&>div]:max-h-[min(88vh,44rem)] [&>div]:flex-col [&>div]:overflow-hidden [&>div]:gap-0 [&>div]:p-0 [&>div]:shadow-xl',
-  '[&>div>button[aria-label="Close"]]:z-10 [&>div>button[aria-label="Close"]]:text-muted-foreground [&>div>button[aria-label="Close"]]:hover:text-foreground',
+  '[&>div>button[aria-label="Close"]]:z-10 [&>div>button[aria-label="Close"]]:text-muted-foreground [&>div>button[aria-label="Close"]]:hover:text-foreground'
 );
 
 export const campaignOverviewScrollClass =
-  'ui-scrollbar min-h-0 flex-1 overflow-y-auto px-6 pb-4 pt-5 pr-12';
+  'ui-scrollbar grid min-h-0 flex-1 auto-rows-max gap-4 overflow-y-auto px-6 pb-4 pt-5 pr-12';
 
-export const campaignOverviewHeaderClass = 'mb-4 grid gap-3';
+export const campaignOverviewHeaderClass = 'grid gap-3';
 
-export const campaignOverviewSectionClass =
-  'rounded-[10px] border border-border bg-card p-3';
+export const campaignOverviewSectionClass = cn(
+  'ops-section-card grid gap-3 border border-border bg-card p-3',
+  adminKit.panelRadius
+);
 
 export const campaignOverviewSectionTitleClass =
   'm-0 text-[11px] font-semibold uppercase leading-[14px] text-muted-foreground';
@@ -121,8 +130,10 @@ export const campaignOverviewRowsClass = 'grid';
 export const campaignOverviewRowClass =
   'flex items-center justify-between gap-4 border-b border-border py-2.5 text-[13px] leading-[18px] last:border-b-0';
 
-export const campaignOverviewMetricCardClass =
-  'flex min-h-[4.5rem] flex-col items-center justify-center rounded-[8px] border border-border bg-card px-1.5 py-2 text-center';
+export const campaignOverviewMetricCardClass = cn(
+  'grid min-h-[4.5rem] auto-rows-min content-center justify-items-center gap-1 border border-border bg-card px-1.5 py-2 text-center',
+  adminKit.panelRadius
+);
 
 export const campaignOverviewMetricLabelClass =
   'm-0 text-[10px] font-semibold uppercase leading-[14px] text-muted-foreground';
@@ -135,21 +146,27 @@ export const campaignOverviewRatesClass = 'grid gap-2';
 export const campaignOverviewRateRowClass =
   'grid gap-1 border-b border-border py-2 last:border-b-0';
 
-export const campaignOverviewEmptyBannerClass =
-  'm-0 rounded-[8px] bg-muted px-3 py-2 text-center text-[13px] leading-[18px] text-muted-foreground';
+export const campaignOverviewEmptyBannerClass = cn(
+  'm-0 bg-muted px-3 py-2 text-center text-[13px] leading-[18px] text-muted-foreground',
+  adminKit.panelRadius
+);
 
 export const campaignOverviewFooterClass =
   'grid shrink-0 grid-cols-2 gap-2 border-t border-border bg-muted/30 px-6 py-4';
 
-export const campaignOverviewFooterButtonClass =
-  'h-auto min-h-9 w-full justify-center rounded-[5px] px-3 py-2 text-[13px] font-semibold leading-[18px] shadow-none';
+export const campaignOverviewFooterButtonClass = cn(
+  adminKit.controlHeight,
+  adminKit.buttonShell,
+  'w-full justify-center px-3 font-semibold shadow-none',
+  adminKit.controlRadius
+);
 
 export const campaignOverviewPrimaryButtonClass = cn(
   campaignOverviewFooterButtonClass,
-  'border-primary bg-primary text-primary-foreground hover:bg-primary/90',
+  'border-primary bg-primary text-primary-foreground hover:bg-primary/90'
 );
 
 export const campaignOverviewOutlineButtonClass = cn(
   campaignOverviewFooterButtonClass,
-  'border-border bg-background text-foreground hover:bg-accent',
+  'border-border bg-background text-foreground hover:bg-accent'
 );

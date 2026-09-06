@@ -15,7 +15,7 @@ export function syncCampaignFunnelLeadsRaw(
   approved: number,
   hold: number,
   rejected: number,
-  leadsRaw?: number | null,
+  leadsRaw?: number | null
 ): number {
   if (leadsRaw != null && leadsRaw > 0) {
     return leadsRaw;
@@ -79,7 +79,7 @@ export function formatCpmUsd(costMicro: number, impressions: number): string {
 
 export function sumCampaignFunnelTotals(
   items: ReadonlyArray<{ id: string }>,
-  metricsById: Readonly<Record<string, CampaignListMetrics>>,
+  metricsById: Readonly<Record<string, CampaignListMetrics>>
 ): CampaignFunnelCounts {
   const totals: CampaignFunnelCounts = {
     rawLeads: 0,

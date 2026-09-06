@@ -12,7 +12,7 @@ func TestParseReviewTrafficAction(t *testing.T) {
 		{"block", ReviewTrafficActionBlock},
 		{"passthrough", ReviewTrafficActionPassthrough},
 		{"", ReviewTrafficActionSafePage},
-		{"CLOAK", ReviewTrafficActionSafePage},
+		{"unknown_legacy", ReviewTrafficActionSafePage},
 	}
 	for _, tc := range cases {
 		got := ParseReviewTrafficAction(tc.in)

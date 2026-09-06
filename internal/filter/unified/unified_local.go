@@ -298,13 +298,6 @@ func appendBudgetQuotaKey(dst []byte, campaignID uuid.UUID, subSlot int) []byte 
 	return filt.AppendUUID(dst, campaignID)
 }
 
-func budgetQuotaKeyForDebit(campaignID uuid.UUID, subSlot int) string {
-	if subSlot <= 0 {
-		return filt.BudgetQuotaKey(campaignID)
-	}
-	return domain.BudgetQuotaKeySub(campaignID, subSlot)
-}
-
 func FcapKeyPrefixForDebit(camp *domain.Campaign, userID, clickID string) string {
 	return fcapKeyPrefixForDebit(camp, userID, clickID)
 }
@@ -539,15 +532,6 @@ func (f *UnifiedFilter) checkGoRoughPacing(evt *domain.Event, camp *domain.Campa
 		return filt.ErrPacingExhausted
 	}
 	return nil
-}
-
-func indexByteString(s string, b byte) int {
-	for i := range len(s) {
-		if s[i] == b {
-			return i
-		}
-	}
-	return -1
 }
 
 func loadU64(b []byte) uint64 {

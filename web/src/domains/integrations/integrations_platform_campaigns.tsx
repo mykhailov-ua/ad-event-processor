@@ -168,39 +168,39 @@ export function IntegrationsPlatformCampaigns({
         />
       ) : (
         <DirectoryTable>
-            <TableHeader>
-              <TableRow>
-                <DirectoryTableHead>Campaign</DirectoryTableHead>
-                <DirectoryTableHead>Network</DirectoryTableHead>
-                <DirectoryTableHead>External ID</DirectoryTableHead>
-                <DirectoryTableHead>Status</DirectoryTableHead>
-                <DirectoryTableHead>Daily budget (micro)</DirectoryTableHead>
-                <DirectoryTableHead>Last synced</DirectoryTableHead>
+          <TableHeader>
+            <TableRow>
+              <DirectoryTableHead>Campaign</DirectoryTableHead>
+              <DirectoryTableHead>Network</DirectoryTableHead>
+              <DirectoryTableHead>External ID</DirectoryTableHead>
+              <DirectoryTableHead>Status</DirectoryTableHead>
+              <DirectoryTableHead>Daily budget (micro)</DirectoryTableHead>
+              <DirectoryTableHead>Last synced</DirectoryTableHead>
+            </TableRow>
+          </TableHeader>
+          <TableBody>
+            {(links ?? []).map((row) => (
+              <TableRow
+                key={`${row.campaign_id}-${row.network}`}
+                className="cursor-pointer"
+                onClick={() => linkForm.onPrefillFromLink(row)}
+              >
+                <TableCell className="font-mono text-xs">{row.campaign_id}</TableCell>
+                <TableCell>{row.network}</TableCell>
+                <TableCell className="font-mono text-xs">{row.external_campaign_id}</TableCell>
+                <TableCell>
+                  {row.sync_error ? (
+                    <Badge variant="destructive">{row.external_status ?? 'error'}</Badge>
+                  ) : (
+                    <Badge variant="outline">{row.external_status ?? 'unknown'}</Badge>
+                  )}
+                </TableCell>
+                <TableCell>{displayMicro(row.external_daily_budget_micro)}</TableCell>
+                <TableCell>{displayTimestamp(row.last_synced_at)}</TableCell>
               </TableRow>
-            </TableHeader>
-            <TableBody>
-              {(links ?? []).map((row) => (
-                <TableRow
-                  key={`${row.campaign_id}-${row.network}`}
-                  className="cursor-pointer"
-                  onClick={() => linkForm.onPrefillFromLink(row)}
-                >
-                  <TableCell className="font-mono text-xs">{row.campaign_id}</TableCell>
-                  <TableCell>{row.network}</TableCell>
-                  <TableCell className="font-mono text-xs">{row.external_campaign_id}</TableCell>
-                  <TableCell>
-                    {row.sync_error ? (
-                      <Badge variant="destructive">{row.external_status ?? 'error'}</Badge>
-                    ) : (
-                      <Badge variant="outline">{row.external_status ?? 'unknown'}</Badge>
-                    )}
-                  </TableCell>
-                  <TableCell>{displayMicro(row.external_daily_budget_micro)}</TableCell>
-                  <TableCell>{displayTimestamp(row.last_synced_at)}</TableCell>
-                </TableRow>
-              ))}
-            </TableBody>
-          </DirectoryTable>
+            ))}
+          </TableBody>
+        </DirectoryTable>
       )}
 
       {error && hasSnapshot ? integrationsPanelError(error, 'Refresh failed') : null}

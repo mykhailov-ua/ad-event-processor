@@ -67,6 +67,13 @@ func (listAuxRouteCampaignStub) ExportCampaign(context.Context, uuid.UUID) (Camp
 	return CampaignExportBundle{}, nil
 }
 
+func (listAuxRouteCampaignStub) ExportCampaignsBatch(context.Context, []uuid.UUID) ExportCampaignsBatchResult {
+	return ExportCampaignsBatchResult{
+		Items:  map[uuid.UUID]CampaignExportBundle{},
+		Errors: map[uuid.UUID]error{},
+	}
+}
+
 func (listAuxRouteCampaignStub) ImportCampaign(context.Context, ImportCampaignSpec) (ImportCampaignResult, error) {
 	return ImportCampaignResult{}, nil
 }
@@ -91,6 +98,10 @@ func (listAuxRouteCampaignStub) ArchiveCampaign(context.Context, uuid.UUID, stri
 	return nil
 }
 
+func (s listAuxRouteCampaignStub) BulkCampaignAction(ctx context.Context, action string, ids []uuid.UUID, reason string) map[uuid.UUID]error {
+	return RunBulkCampaignAction(ctx, action, ids, reason, s.PauseCampaign, s.ResumeCampaign, s.ArchiveCampaign)
+}
+
 func TestListAuxRoutes_notCapturedByCampaignID_holdout(t *testing.T) {
 	t.Parallel()
 
@@ -112,7 +123,7 @@ func TestListAuxRoutes_notCapturedByCampaignID_holdout(t *testing.T) {
 	for _, tc := range cases {
 		t.Run(tc.name, func(t *testing.T) {
 			t.Parallel()
-			req := httptest.NewRequest(http.MethodGet, tc.path, nil)
+			req := httptest.NewRequest(http.MethodGet, tc.path, http.NoBody)
 			rec := httptest.NewRecorder()
 			mux.ServeHTTP(rec, req)
 

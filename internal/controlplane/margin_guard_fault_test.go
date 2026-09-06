@@ -59,7 +59,7 @@ func TestFault_MarginGuardPause(t *testing.T) {
 	var outboxCount int
 	require.NoError(t, pool.QueryRow(ctx, `
 		SELECT COUNT(*) FROM outbox_events
-		WHERE event_type = 'PAUSE_CAMPAIGN' AND payload::text LIKE $1`,
+		WHERE event_type = 'PAUSE_CAMPAIGN' AND convert_from(payload, 'UTF8') LIKE $1`,
 		"%"+campaignID.String()+"%",
 	).Scan(&outboxCount))
 	require.Equal(t, 1, outboxCount)

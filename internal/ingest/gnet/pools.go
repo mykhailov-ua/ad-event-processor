@@ -1,12 +1,18 @@
 package gnet
 
-import "sync"
+import (
+	"sync"
+
+	"ad-event-processor/internal/metrics"
+)
 
 const maxPoolObjectSize = 64 * 1024
 
 const MaxPoolObjectSize = maxPoolObjectSize
 
-var RequestBufferPool = requestBufferPool
+func GetRequestBuffer() *[]byte {
+	return requestBufferPool.Get().(*[]byte)
+}
 
 var requestBufferPool = sync.Pool{
 	New: func() any {
@@ -20,7 +26,11 @@ func PutRequestBuffer(buf *[]byte) {
 }
 
 func putRequestBuffer(buf *[]byte) {
-	if buf == nil || cap(*buf) > maxPoolObjectSize {
+	if buf == nil {
+		return
+	}
+	if cap(*buf) > maxPoolObjectSize {
+		metrics.RequestBufferPoolTrimTotal.Inc()
 		return
 	}
 	*buf = (*buf)[:0]

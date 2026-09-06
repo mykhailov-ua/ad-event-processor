@@ -1,4 +1,5 @@
-import { useEffect, useState } from 'react';
+import { useState } from 'react';
+import { useRunWhenTrue } from '@/hooks/use_run_when_true';
 import { Link } from 'react-router-dom';
 
 import { PrimaryActionButton } from '@/shell/action_buttons';
@@ -98,17 +99,8 @@ export function BrandCreativesDirectory({
 }: BrandCreativesDirectoryProps) {
   const [createOpen, setCreateOpen] = useState(false);
 
-  useEffect(() => {
-    if (actionSuccess) {
-      setCreateOpen(false);
-    }
-  }, [actionSuccess]);
-
-  useEffect(() => {
-    if (editSuccess) {
-      onCloseEditCreative();
-    }
-  }, [editSuccess, onCloseEditCreative]);
+  useRunWhenTrue(actionSuccess, () => setCreateOpen(false));
+  useRunWhenTrue(editSuccess, onCloseEditCreative);
 
   if (fetching && !hasSnapshot && !error) {
     return <PageSkeleton />;
@@ -148,22 +140,40 @@ export function BrandCreativesDirectory({
           <div className="grid grid-cols-[repeat(auto-fill,minmax(12rem,1fr))] gap-4">
             <div className="grid gap-2">
               <Label htmlFor="creative-name">Name</Label>
-              <Input id="creative-name" value={draftName} onChange={(e) => onDraftNameChange(e.target.value)} />
+              <Input
+                id="creative-name"
+                value={draftName}
+                onChange={(e) => onDraftNameChange(e.target.value)}
+              />
             </div>
             <div className="grid gap-2 md:col-span-2">
               <Label htmlFor="creative-url">Landing URL</Label>
-              <Input id="creative-url" value={draftUrl} onChange={(e) => onDraftUrlChange(e.target.value)} />
+              <Input
+                id="creative-url"
+                value={draftUrl}
+                onChange={(e) => onDraftUrlChange(e.target.value)}
+              />
             </div>
             <div className="grid gap-2">
               <Label htmlFor="creative-weight">Weight</Label>
-              <Input id="creative-weight" value={draftWeight} onChange={(e) => onDraftWeightChange(e.target.value)} />
+              <Input
+                id="creative-weight"
+                value={draftWeight}
+                onChange={(e) => onDraftWeightChange(e.target.value)}
+              />
             </div>
             <div className="grid gap-2">
               <Label htmlFor="creative-status">Status</Label>
-              <Input id="creative-status" value={draftStatus} onChange={(e) => onDraftStatusChange(e.target.value)} />
+              <Input
+                id="creative-status"
+                value={draftStatus}
+                onChange={(e) => onDraftStatusChange(e.target.value)}
+              />
             </div>
           </div>
-          {actionError && createOpen ? creativePanelError(actionError, 'Creative action failed') : null}
+          {actionError && createOpen
+            ? creativePanelError(actionError, 'Creative action failed')
+            : null}
           <DialogFooter>
             <PrimaryActionButton loading={acting} onClick={onCreateCreative} type="button">
               Create creative
@@ -218,7 +228,9 @@ export function BrandCreativesDirectory({
               />
             </div>
           </div>
-          {actionError && editingCreative ? creativePanelError(actionError, 'Could not save creative') : null}
+          {actionError && editingCreative
+            ? creativePanelError(actionError, 'Could not save creative')
+            : null}
           <DialogFooter>
             <PrimaryActionButton loading={acting} onClick={onSaveCreative} type="button">
               Save creative
@@ -231,47 +243,44 @@ export function BrandCreativesDirectory({
         <EmptyState title="No creatives" description="This brand has no creatives yet." />
       ) : (
         <DirectoryTable horizontalScroll>
-            <TableHeader>
-              <TableRow>
-                <DirectoryTableHead>Name</DirectoryTableHead>
-                <DirectoryTableHead>Status</DirectoryTableHead>
-                <DirectoryTableHead>Weight</DirectoryTableHead>
-                <DirectoryTableHead>Landing URL</DirectoryTableHead>
-                <DirectoryTableHead>Updated</DirectoryTableHead>
-                <DirectoryTableHead />
+          <TableHeader>
+            <TableRow>
+              <DirectoryTableHead>Name</DirectoryTableHead>
+              <DirectoryTableHead>Status</DirectoryTableHead>
+              <DirectoryTableHead>Weight</DirectoryTableHead>
+              <DirectoryTableHead>Landing URL</DirectoryTableHead>
+              <DirectoryTableHead>Updated</DirectoryTableHead>
+              <DirectoryTableHead />
+            </TableRow>
+          </TableHeader>
+          <TableBody>
+            {(items ?? []).map((row) => (
+              <TableRow key={row.id}>
+                <TableCell>{row.name}</TableCell>
+                <TableCell>
+                  <Badge variant="outline">{row.status}</Badge>
+                </TableCell>
+                <TableCell>{row.weight}</TableCell>
+                <TableCell className="whitespace-nowrap">{row.landing_url}</TableCell>
+                <TableCell>{displayTimestamp(row.updated_at)}</TableCell>
+                <TableCell>
+                  <RowActionsMenu ariaLabel="Creative actions" disabled={acting}>
+                    <DropdownMenuItem disabled={acting} onClick={() => onOpenEditCreative(row)}>
+                      Edit
+                    </DropdownMenuItem>
+                    <DropdownMenuItem
+                      className="text-destructive focus:text-destructive"
+                      disabled={acting}
+                      onClick={() => onDeleteCreative(row.id)}
+                    >
+                      Delete
+                    </DropdownMenuItem>
+                  </RowActionsMenu>
+                </TableCell>
               </TableRow>
-            </TableHeader>
-            <TableBody>
-              {(items ?? []).map((row) => (
-                <TableRow key={row.id}>
-                  <TableCell>{row.name}</TableCell>
-                  <TableCell>
-                    <Badge variant="outline">{row.status}</Badge>
-                  </TableCell>
-                  <TableCell>{row.weight}</TableCell>
-                  <TableCell className="whitespace-nowrap">{row.landing_url}</TableCell>
-                  <TableCell>{displayTimestamp(row.updated_at)}</TableCell>
-                  <TableCell>
-                    <RowActionsMenu ariaLabel="Creative actions" disabled={acting}>
-                      <DropdownMenuItem
-                        disabled={acting}
-                        onClick={() => onOpenEditCreative(row)}
-                      >
-                        Edit
-                      </DropdownMenuItem>
-                      <DropdownMenuItem
-                        className="text-destructive focus:text-destructive"
-                        disabled={acting}
-                        onClick={() => onDeleteCreative(row.id)}
-                      >
-                        Delete
-                      </DropdownMenuItem>
-                    </RowActionsMenu>
-                  </TableCell>
-                </TableRow>
-              ))}
-            </TableBody>
-          </DirectoryTable>
+            ))}
+          </TableBody>
+        </DirectoryTable>
       )}
 
       {error && hasSnapshot ? creativePanelError(error, 'Refresh failed') : null}

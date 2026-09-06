@@ -56,7 +56,7 @@ func TestEvalShaPooled_MockRedis(t *testing.T) {
 func TestResetPooledRedisCmd_ReusesCmd(t *testing.T) {
 	redisClient := &mockRedisClient{}
 	wire := []any{"evalsha", "hash", numKeys15Any, "k1"}
-	cmd := evalCmdPool.Get().(*redis.Cmd)
+	cmd := evalCmdPoolGet()
 	resetPooledRedisCmd(cmd, context.Background(), wire, 3)
 	if err := redisClient.Process(context.Background(), cmd); err != nil {
 		t.Fatal(err)
@@ -74,5 +74,5 @@ func TestResetPooledRedisCmd_ReusesCmd(t *testing.T) {
 	if err != nil || n != 0 {
 		t.Fatalf("second round: n=%d err=%v", n, err)
 	}
-	evalCmdPool.Put(cmd)
+	evalCmdPoolPut(cmd)
 }

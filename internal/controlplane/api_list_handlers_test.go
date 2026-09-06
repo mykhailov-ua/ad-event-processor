@@ -118,6 +118,20 @@ func TestCustomersList_Handler(t *testing.T) {
 		assert.Equal(t, http.StatusForbidden, w.Code)
 	})
 
+	t.Run("role U list returns only bound customer", func(t *testing.T) {
+		req, _ := http.NewRequest("GET", "/api/v1/customers?limit=50&offset=0", http.NoBody)
+		withSessionUser(req, tokenMaker, ctrlhttp.RoleUser, custID)
+		w := httptest.NewRecorder()
+		mux.ServeHTTP(w, req)
+
+		require.Equal(t, http.StatusOK, w.Code)
+		var resp platformadmin.CustomerListResponse
+		require.NoError(t, json.Unmarshal(w.Body.Bytes(), &resp))
+		require.Equal(t, int64(1), resp.Total)
+		require.Len(t, resp.Items, 1)
+		assert.Equal(t, custID.String(), resp.Items[0].ID)
+	})
+
 	t.Run("unauthenticated returns 401", func(t *testing.T) {
 		req, _ := http.NewRequest("GET", "/api/v1/customers", http.NoBody)
 		w := httptest.NewRecorder()

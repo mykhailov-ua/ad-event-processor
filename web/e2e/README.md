@@ -17,61 +17,105 @@ Playwright specs under this directory are classified below. Do not cite smoke or
 | **T0** | `admin_dev=1` mock intercept | `admin_dev=0` on `:8188` |
 | **T1** | Live `/api/v1` on `:8188`, mock banner absent | `assertLiveApiMode(page)` after `?admin_dev=0` |
 
-## Upgraded specs (L1+)
+## Shared helpers
 
-Shared helpers: `web/e2e/helpers.js` (`gotoLive`, `isApiGet`, `isApiPost`, `isApiPatch`, `expectApiListBoundToDom`, `applyCustomerScopeIfPrompted`, `fetchSessionCustomerId`, `ensureCustomerScopeLoaded`, `ensureIntegrationCustomerScope`, `openFirstCampaignEditor`, `fetchFirstCampaignId`, `randomHex32`, `integrationRunToken`, `integrationTeamInviteEmail`, `integrationSettingsTrackingDomain`, `integrationFraudLabelReason`, `integrationCampaignValidateSuffix`).
+`web/e2e/helpers.js`:
 
-| File | Level | Notes |
-| :--- | :--- | :--- |
-| `campaigns_filters.spec.js` | **L1** + L0 filter tests | `waitForResponse` on GET `/api/v1/campaigns` |
-| `campaigns_bulk_pause.spec.js` | **L2** | POST `/api/v1/campaigns/bulk` + refreshed list status |
-| `ops_forbidden_mb.spec.js` | **L3** | Mock MB role; GET `/api/v1/ops/home` 403 + blocking error |
-| `customers_list.spec.js` | **L1** | GET `/api/v1/customers` + row/empty bind |
-| `automation_rules.spec.js` | **L1** | GET `/api/v1/automation/rules` |
-| `creative_flows.spec.js` | **L1** | GET `/api/v1/flows`, `/api/v1/landers` |
-| `integrations_hub.spec.js` | **L0** nav + **L1** section reads | Per-section GET on integrations routes |
-| `portals_smoke.spec.js` | **L1** | Self-serve invoices, report schedules; publisher **L1/L3** |
-| `rtb_deals.spec.js` | **L1** | GET `/api/v1/rtb/deals` when licensed |
-| `team_member_patch.spec.js` | **L1** | GET `/api/v1/team/members` |
-| `fraud_presets_patch.spec.js` | **L1** | GET `/api/v1/fraud/presets` |
-| `command_palette.spec.js` | **L1** | GET `/api/v1/command-palette/routes` + option row |
-| `fraud_labels_write.spec.js` | **L2** | POST `/api/v1/fraud/labels` + list refresh + row |
-| `fraud_overrides_write.spec.js` | **L2** | POST `/api/v1/fraud/overrides` + success copy |
-| `settings_patch.spec.js` | **L2** | PATCH `/api/v1/settings/platform` + status |
-| `settings_apply.spec.js` | **L2** | POST `/api/v1/settings/platform/apply` + `written_path` |
-| `team_invite.spec.js` | **L2** | POST `/api/v1/team/members` 201 + roster row |
-| `campaign_publish.spec.js` | **L2** | POST `/validate` + GET `/publish-check` on editor gate |
-| `integrations_actions.spec.js` | **L2** | cost-sync run 202, platform sync 204, DLQ retry 200 |
+| Helper | Use |
+| :--- | :--- |
+| `gotoLive`, `gotoLiveAwaitGet`, `gotoLiveAwaitResponse` | T1 navigation + GET wait |
+| `isApiGet`, `isApiPost`, `isApiPatch` | Response predicates |
+| `expectApiListBoundToDom` | L1 list/empty bind (FE2-safe `.or()` on row surfaces only) |
+| `ADMIN_SMOKE_ROUTE_READS`, `OPS_SECTION_READS` | Smoke matrix route tables |
+| `applyCustomerScopeIfPrompted`, `ensureCustomerScopeLoaded` | Customer-scoped pages |
+| `openFirstCampaignEditor`, `fetchFirstCampaignId` | Campaign editor flows |
+| `integrationRunToken`, `randomHex32`, `integration*Reason/Domain/Suffix` | Unique integration fixtures |
+
+## L1 read specs (Phase 4)
+
+| File | Primary GET |
+| :--- | :--- |
+| `smoke_matrix.spec.js` | Per-route via `ADMIN_SMOKE_ROUTE_READS` + `/fraud` hub |
+| `customers_list.spec.js` | `/api/v1/customers` |
+| `billing_filters.spec.js` | `/api/v1/billing/invoices` (+ filtered refetch) |
+| `billing_invoice_detail.spec.js` | Invoice + ledger + deliveries on detail open |
+| `audit.spec.js` | `/api/v1/audit` |
+| `automation_rules.spec.js` | `/api/v1/automation/rules` |
+| `campaign_editor.spec.js` | `/api/v1/campaigns/:id` on editor open |
+| `campaigns_filters.spec.js` | `/api/v1/campaigns` list bind |
+| `click_log.spec.js` | `/api/v1/reports/click-log` on Apply |
+| `creative_flows.spec.js` | `/api/v1/flows`, `/api/v1/landers` |
+| `customer_detail_billing.spec.js` | `/api/v1/customers`, `/api/v1/customers/:id` |
+| `dashboards.spec.js` | `/api/v1/dashboards/buyer` on Apply |
+| `fraud_labels.spec.js` | `/api/v1/fraud/labels` |
+| `fraud_presets.spec.js` | `/api/v1/fraud/presets` |
+| `integrations_hub.spec.js` | Per integrations section GET |
+| `ops_blacklist.spec.js` | `/api/v1/ops/blacklist` |
+| `ops_console.spec.js` | `/api/v1/ops/home` + `OPS_SECTION_READS` |
+| `ops_dlq.spec.js` | `/api/v1/ops/dlq/inbox` |
+| `portals_smoke.spec.js` | Self-serve / publisher reads |
+| `reports.spec.js` | `/api/v1/reports/catalog` |
+| `rtb_deals.spec.js` | `/api/v1/rtb/deals` |
+| `settings.spec.js` | `/api/v1/settings/platform` |
+| `sidebar.spec.js` | `/api/v1/session` after login |
+| `team.spec.js` | `/api/v1/team/overview` |
+| `team_member_patch.spec.js` | `/api/v1/team/members` |
+| `fraud_presets_patch.spec.js` | `/api/v1/fraud/presets` |
+| `command_palette.spec.js` | `/api/v1/command-palette/routes` |
+
+## L2 write specs (`@write` tag)
+
+Mutation specs carry `{ tag: '@write' }` on each test:
+
+| File | Mutation |
+| :--- | :--- |
+| `campaigns_bulk_pause.spec.js` | POST `/api/v1/campaigns/bulk` |
+| `campaign_publish.spec.js` | POST validate + GET publish-check |
+| `fraud_labels_write.spec.js` | POST `/api/v1/fraud/labels` |
+| `fraud_overrides_write.spec.js` | POST `/api/v1/fraud/overrides` |
+| `integrations_actions.spec.js` | cost-sync run, platform sync, DLQ retry |
+| `settings_patch.spec.js` | PATCH `/api/v1/settings/platform` |
+| `settings_apply.spec.js` | POST `/api/v1/settings/platform/apply` |
+| `team_invite.spec.js` | POST `/api/v1/team/members` |
+
+## L3 error specs
+
+| File | Notes |
+| :--- | :--- |
+| `ops_forbidden_mb.spec.js` | MB role GET `/api/v1/ops/home` 403 |
 
 ## Retained L0 only (not wiring proof)
 
-| File | Level | Pattern |
-| :--- | :--- | :--- |
-| `smoke_matrix.spec.js` | L0 | Heading-only route matrix |
-| `ops_console.spec.js` | L0 | Ops section nav; no 404 text |
-| `ui_buttons_audit.spec.js` | L0 | DOM chrome audit only |
+| File | Pattern |
+| :--- | :--- |
+| `onboarding.spec.js` | Install/login/setup headings |
+| `login.spec.js` | Auth shell |
+| `bootstrap.spec.js`, `settings_bootstrap.spec.js` | Boot paths |
+| `fraud_hub.spec.js` | Hub card links (no list GET on `/fraud`) |
+| `ui_buttons_audit.spec.js` | DOM chrome audit |
+| `ui_clickability_audit.spec.js` | Cross-route enabled-button clickability (`trial` click + hit-test) |
+| `keyboard_navigation.spec.js` | A11y shell |
+| `campaign_flows.spec.js` | Dialog open only |
+| `campaign_import_validate.spec.js` | Control visibility |
+| `report_jobs.spec.js` | Form shell (job GET only when `job_id` set) |
 
 ## Commands
 
 ```bash
-# Curated smoke bundle (mix of L0/L1; includes L1 campaigns read)
+# T1 stack required for integration specs
+bash scripts/dev/aed-admin up
+
+# Curated smoke bundle
 ADMIN_WEB_E2E_SMOKE=1 bash scripts/ci/admin/web.sh
 
 # Full matrix (nightly)
 ADMIN_WEB_E2E_NIGHTLY=1 bash scripts/ci/admin/web_e2e_nightly.sh
 
-# Single upgraded spec
-cd web/e2e && npx playwright test customers_list.spec.js
+# L2 mutation subset (@write tag)
+cd web && ADMIN_DEV_AUTO_MOCK=0 npx playwright test --grep @write
 
-# L1+ directory read specs
+# L1 read subset (examples)
 cd web/e2e && npx playwright test \
-  customers_list.spec.js automation_rules.spec.js creative_flows.spec.js \
-  integrations_hub.spec.js portals_smoke.spec.js rtb_deals.spec.js \
-  team_member_patch.spec.js fraud_presets_patch.spec.js command_palette.spec.js
-
-# L2 write/mutation specs
-cd web/e2e && npx playwright test \
-  fraud_labels_write.spec.js fraud_overrides_write.spec.js \
-  settings_patch.spec.js settings_apply.spec.js team_invite.spec.js \
-  campaign_publish.spec.js integrations_actions.spec.js
+  smoke_matrix.spec.js customers_list.spec.js billing_filters.spec.js \
+  audit.spec.js ops_console.spec.js fraud_labels.spec.js
 ```

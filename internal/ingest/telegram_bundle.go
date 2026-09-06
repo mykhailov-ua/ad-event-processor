@@ -9,7 +9,6 @@ import (
 	"ad-event-processor/internal/telemetry"
 	"ad-event-processor/internal/track"
 
-	"github.com/google/uuid"
 	"github.com/panjf2000/gnet/v2"
 )
 
@@ -36,23 +35,9 @@ func buildTelegramRedirectLocation(dst, base []byte, clickID, bridgeToken string
 	return track.BuildTelegramRedirectLocation(dst, base, clickID, bridgeToken, subs, passthrough)
 }
 
-func appendTelegramClickLink(dst []byte, baseURL string, campaignID, clickID uuid.UUID, widgetID []byte) []byte {
-	return track.AppendTelegramClickLink(dst, baseURL, campaignID, clickID, widgetID)
-}
-
-func marshalTelegramBridgePayload(dst []byte, token string) []byte {
-	return track.MarshalTelegramBridgePayload(dst, token)
-}
-
 func validateBridgeToken(b []byte) bool {
 	return track.ValidateBridgeToken(b)
 }
-
-func appendUUIDStr(dst []byte, u uuid.UUID) []byte { return track.AppendUUIDStr(dst, u) }
-func appendUintStr(dst []byte, v uint64) []byte    { return track.AppendUintStr(dst, v) }
-func appendFloatStr(dst []byte, f float64) []byte  { return track.AppendFloatStr(dst, f) }
-func parseASCIIInt(b []byte) int                   { return track.ParseASCIIInt(b) }
-func parseASCIIFloat(b []byte) float64             { return track.ParseASCIIFloat(b) }
 
 func fillTelegramEventFromParsed(evt *domain.Event, eventType string, parsed *telegramQueryParsed, req Request) {
 	track.FillTelegramEventFromParsed(evt, eventType, parsed, track.WireIngress{
@@ -220,10 +205,7 @@ func (h *AdsPacketHandler) reactTelegramClick(req Request, c gnet.Conn, ctx *Con
 			releaseAdmission()
 			return gnet.None
 		}
-		if !h.publishAcceptedTrack(evt, &admissionLease) {
-			if h.filterEngine != nil {
-				h.filterEngine.RollbackDebit(context.Background(), evt, h.registry)
-			}
+		if !h.publishAcceptedOrRollback(context.Background(), evt, &admissionLease) {
 			spec := filterRejectSpecs[filterRejectProducerOverload]
 			h.recordTrackReject(ctx, evt, filterRejectProducerOverload)
 			h.writeFilterReject(c, spec.gnetResp, ctx)
@@ -295,10 +277,7 @@ func (h *AdsPacketHandler) reactTelegramImpression(req Request, c gnet.Conn, ctx
 			releaseAdmission()
 			return gnet.None
 		}
-		if !h.publishAcceptedTrack(evt, &admissionLease) {
-			if h.filterEngine != nil {
-				h.filterEngine.RollbackDebit(context.Background(), evt, h.registry)
-			}
+		if !h.publishAcceptedOrRollback(context.Background(), evt, &admissionLease) {
 			spec := filterRejectSpecs[filterRejectProducerOverload]
 			h.recordTrackReject(ctx, evt, filterRejectProducerOverload)
 			h.writeFilterReject(c, spec.gnetResp, ctx)

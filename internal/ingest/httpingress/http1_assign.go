@@ -43,6 +43,8 @@ func http1AssignHeader(req *Request, key, val []byte, hFlags *uint8, clValue *in
 				httpFold[key[7]] == 'i' && httpFold[key[8]] == 'p' {
 				if len(req.ClientIP) == 0 {
 					req.ClientIP = val
+				} else if len(req.RealIP) == 0 && http1ClientIPNeedsRealIPFallback(req.ClientIP) {
+					req.RealIP = val
 				}
 			}
 		case 0x2d636573:
@@ -59,20 +61,27 @@ func http1AssignHeader(req *Request, key, val []byte, hFlags *uint8, clValue *in
 				}
 			}
 		case 0x63742d78:
-			if foldKeyU32(key, 4) == 0x736d2d70 && httpFold[key[8]] == 's' {
-				if mss, ok := parseTCPMSSHeader(val); ok {
-					req.TCPMSS = mss
-					req.TCPMSSSet = 1
+			switch foldKeyU32(key, 4) {
+			case 0x736d2d70:
+				if httpFold[key[8]] == 's' {
+					if mss, ok := parseTCPMSSHeader(val); ok {
+						req.TCPMSS = mss
+						req.TCPMSSSet = 1
+					}
 				}
-			} else if foldKeyU32(key, 4) == 0x74742d70 && httpFold[key[8]] == 'l' {
-				if ttl, ok := parseTCPTTLHeader(val); ok {
-					req.TCPTTL = ttl
-					req.TCPTTLSet = 1
+			case 0x74742d70:
+				if httpFold[key[8]] == 'l' {
+					if ttl, ok := parseTCPTTLHeader(val); ok {
+						req.TCPTTL = ttl
+						req.TCPTTLSet = 1
+					}
 				}
-			} else if foldKeyU32(key, 4) == 0x69732d70 && httpFold[key[8]] == 'g' {
-				if sig, ok := filter.ParseTCPSigHeader(val); ok {
-					req.TCPSig = sig
-					req.TCPSigSet = 1
+			case 0x69732d70:
+				if httpFold[key[8]] == 'g' {
+					if sig, ok := filter.ParseTCPSigHeader(val); ok {
+						req.TCPSig = sig
+						req.TCPSigSet = 1
+					}
 				}
 			}
 		}
@@ -116,6 +125,9 @@ func http1AssignHeader(req *Request, key, val []byte, hFlags *uint8, clValue *in
 		case 0x6f662d78:
 			if foldKeyU64(key, 4) == 0x2d64656472617772 && httpFold[key[12]] == 'f' &&
 				httpFold[key[13]] == 'o' && httpFold[key[14]] == 'r' {
+				if len(req.ClientIP) > 0 && len(req.RealIP) == 0 {
+					req.RealIP = req.ClientIP
+				}
 				req.ClientIP = val
 			}
 		case 0x65636361:

@@ -1,7 +1,7 @@
 import { PageChrome } from '@/shell/page_chrome';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
-import { Label } from '@/components/ui/label';
+import { FilterField, NARROW_EDIT_FORM_WIDE_CLASS } from '@/shell/filter_panel';
 import { Textarea } from '@/components/ui/textarea';
 import type { OpenRtbValidationResult } from '@/api/types';
 import { RtbNav, RtbLicenseStub, rtbPanelError } from '@/domains/rtb/rtb_nav';
@@ -38,16 +38,15 @@ export function RtbValidateBidRequest({
     <PageChrome title="Validate bid request">
       <RtbNav />
 
-      <section className="grid max-w-2xl gap-4">
-        <div className="grid gap-2">
-          <Label htmlFor="rtb-validate-json">OpenRTB bid request JSON</Label>
+      <section className={NARROW_EDIT_FORM_WIDE_CLASS}>
+        <FilterField htmlFor="rtb-validate-json" label="OpenRTB bid request JSON">
           <Textarea
             id="rtb-validate-json"
             rows={12}
             value={draftJson}
             onChange={(event) => onDraftJsonChange(event.target.value)}
           />
-        </div>
+        </FilterField>
         <Button disabled={validating} onClick={onValidate} type="button">
           Validate
         </Button>

@@ -1,4 +1,4 @@
-import { apiFetch, apiJson, apiJsonArray } from './client.js';
+import { apiFetch, apiJson, apiJsonArray, parseApiError } from './client.js';
 import type {
   CreateReportScheduleRequest,
   ReportSchedule,
@@ -8,7 +8,7 @@ import type {
 
 export async function listReportSchedules(
   params: ReportSchedulesListQuery,
-  signal?: AbortSignal,
+  signal?: AbortSignal
 ): Promise<ReportSchedule[]> {
   const search = new URLSearchParams();
   search.set('customer_id', params.customer_id);
@@ -23,7 +23,7 @@ export async function getReportSchedule(id: string, signal?: AbortSignal): Promi
 
 export async function createReportSchedule(
   body: CreateReportScheduleRequest,
-  signal?: AbortSignal,
+  signal?: AbortSignal
 ): Promise<ReportSchedule> {
   return apiJson<ReportSchedule>('/api/v1/report-schedules', {
     method: 'POST',
@@ -35,7 +35,7 @@ export async function createReportSchedule(
 export async function updateReportSchedule(
   id: string,
   body: UpdateReportScheduleRequest,
-  signal?: AbortSignal,
+  signal?: AbortSignal
 ): Promise<ReportSchedule> {
   return apiJson<ReportSchedule>(`/api/v1/report-schedules/${encodeURIComponent(id)}`, {
     method: 'PUT',
@@ -50,6 +50,6 @@ export async function deleteReportSchedule(id: string, signal?: AbortSignal): Pr
     signal,
   });
   if (!response.ok && response.status !== 204) {
-    throw new Error(response.statusText || `HTTP ${response.status}`);
+    throw await parseApiError(response);
   }
 }

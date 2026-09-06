@@ -554,12 +554,17 @@ paths:
             schema:
               $ref: '../components/schemas/campaign.yaml#/MigratePullRequest'
       responses:
-        '201':
-          description: Migration import result
+        '202':
+          description: Import accepted; remote pull and PG import run in background
           content:
             application/json:
               schema:
-                $ref: '../components/schemas/campaign.yaml#/ImportMigrationResult'
+                type: object
+                required: [status]
+                properties:
+                  status:
+                    type: string
+                    enum: [accepted]
         default:
           $ref: '../openapi.yaml#/components/responses/Error'
 
@@ -746,6 +751,54 @@ paths:
             application/json:
               schema:
                 $ref: '../components/schemas/campaign.yaml#/CampaignEditorShell'
+        default:
+          $ref: '../openapi.yaml#/components/responses/Error'
+
+  /api/v1/campaigns/{id}/geo-summary:
+    get:
+      tags: [campaigns]
+      operationId: campaignsGeoSummary
+      summary: Campaign geo targeting summary for editor
+      x-permissions: [campaigns:read, campaigns:read:masked]
+      parameters:
+        - $ref: '../openapi.yaml#/components/parameters/UuidPathId'
+        - name: expand
+          in: query
+          required: false
+          schema:
+            type: string
+            enum: ['1']
+      responses:
+        '200':
+          description: Geo summary
+          content:
+            application/json:
+              schema:
+                $ref: '../components/schemas/campaign.yaml#/CampaignGeoSummary'
+        default:
+          $ref: '../openapi.yaml#/components/responses/Error'
+
+  /api/v1/campaigns/{id}/fraud-editor:
+    get:
+      tags: [campaigns]
+      operationId: campaignsFraudEditorSummary
+      summary: Campaign fraud editor cards for editor shell
+      x-permissions: [campaigns:read]
+      parameters:
+        - $ref: '../openapi.yaml#/components/parameters/UuidPathId'
+        - name: preview
+          in: query
+          required: false
+          schema:
+            type: string
+            enum: ['1']
+      responses:
+        '200':
+          description: Fraud editor summary
+          content:
+            application/json:
+              schema:
+                $ref: '../components/schemas/campaign.yaml#/CampaignFraudEditorSummary'
         default:
           $ref: '../openapi.yaml#/components/responses/Error'
 
@@ -939,19 +992,14 @@ paths:
         content:
           application/json:
             schema:
-              type: object
-              properties:
-                paths:
-                  type: array
-                  items:
-                    type: object
+              $ref: '../components/schemas/campaign.yaml#/CampaignFlowValidateRequest'
       responses:
         '200':
           description: Flow validation result
           content:
             application/json:
               schema:
-                type: object
+                $ref: '../components/schemas/campaign.yaml#/CampaignFlowValidateResponse'
         default:
           $ref: '../openapi.yaml#/components/responses/Error'
 
@@ -968,14 +1016,14 @@ paths:
         content:
           application/json:
             schema:
-              type: object
+              $ref: '../components/schemas/campaign.yaml#/MacroPreviewRequest'
       responses:
         '200':
           description: Macro preview
           content:
             application/json:
               schema:
-                type: object
+                $ref: '../components/schemas/campaign.yaml#/MacroPreviewResponse'
         default:
           $ref: '../openapi.yaml#/components/responses/Error'
 
@@ -999,7 +1047,7 @@ paths:
           content:
             application/json:
               schema:
-                type: object
+                $ref: '../components/schemas/campaign.yaml#/CampaignDiffResponse'
         default:
           $ref: '../openapi.yaml#/components/responses/Error'
 
@@ -1016,14 +1064,14 @@ paths:
         content:
           application/json:
             schema:
-              type: object
+              $ref: '../components/schemas/campaign.yaml#/CloneCampaignRequest'
       responses:
         '200':
           description: Clone preview
           content:
             application/json:
               schema:
-                type: object
+                $ref: '../components/schemas/campaign.yaml#/CloneCampaignPreview'
         default:
           $ref: '../openapi.yaml#/components/responses/Error'
 
@@ -1051,7 +1099,7 @@ paths:
           content:
             application/json:
               schema:
-                type: object
+                $ref: '../components/schemas/campaign.yaml#/PlacementBlockSuggestionsResponse'
         default:
           $ref: '../openapi.yaml#/components/responses/Error'
 
@@ -1066,24 +1114,14 @@ paths:
         content:
           application/json:
             schema:
-              type: object
-              required: [action, campaign_ids]
-              properties:
-                action:
-                  type: string
-                  enum: [pause, resume, archive]
-                campaign_ids:
-                  type: array
-                  items:
-                    type: string
-                    format: uuid
+              $ref: '../components/schemas/campaign.yaml#/CampaignBulkActionRequest'
       responses:
         '200':
           description: Bulk results
           content:
             application/json:
               schema:
-                type: object
+                $ref: '../components/schemas/campaign.yaml#/CampaignBulkActionResponse'
         default:
           $ref: '../openapi.yaml#/components/responses/Error'
 

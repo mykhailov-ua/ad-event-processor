@@ -3,7 +3,6 @@ package compat
 import (
 	"net/netip"
 	"sync/atomic"
-	"time"
 
 	"ad-event-processor/internal/domain"
 	"ad-event-processor/internal/domain/budget"
@@ -18,8 +17,7 @@ import (
 )
 
 type (
-	FraudReasonID    = filter.FraudReasonID
-	filterRejectKind = filter.FilterRejectKind
+	FraudReasonID = filter.FraudReasonID
 )
 
 const (
@@ -54,11 +52,6 @@ const (
 	fraudReasonCount                    = filter.FraudReasonID(filter.FraudReasonCount)
 )
 
-const (
-	fraudSignalL1High = filter.FraudSignalL1High
-	fraudSignalL3     = filter.FraudSignalL3
-)
-
 func FraudSignalWeight(id FraudReasonID) uint8 {
 	return filter.FraudSignalWeight(id)
 }
@@ -82,26 +75,7 @@ func ProxyVPNConnTypeBlocks(connType uint8) bool {
 	return filter.ProxyVPNConnTypeBlocks(connType)
 }
 
-func buildDCASNSnapshot(asns map[uint32]struct{}, gen uint64) *filter.DCASNSnapshot {
-	return filter.BuildDCASNSnapshot(asns, gen)
-}
-
 var BuildDCASNSnapshot = filter.BuildDCASNSnapshot
-
-func shouldBypassCGNATIPVelocity(
-	globalBypass bool,
-	camp *domain.Campaign,
-	carrierTable *MobileCarrierASNTable,
-	lookup filter.ASNLookup,
-	ip string,
-	signal string,
-) bool {
-	return filter.ShouldBypassCGNATIPVelocity(globalBypass, camp, carrierTable, lookup, ip, signal)
-}
-
-type cidrBuilder = filter.CIDRBuilder
-
-const cidrNoIndex = filter.CIDRNoIndex
 
 func HashResidentialProxyUser(s string) uint32 {
 	return filter.HashResidentialProxyUser(s)
@@ -115,22 +89,6 @@ func RemainingBudgetMicro(camp *domain.Campaign) int64 {
 	return filter.RemainingBudgetMicro(camp)
 }
 
-func matchUAAt(ua string, i, n int, needle string) bool {
-	return filter.MatchUAAt(ua, i, n, needle)
-}
-
-const uaScanMax = filter.UAScanMax
-
-func hexByte(n byte) byte {
-	return filter.HexByte(n)
-}
-
-func scanUAFamily(ua string) uint8 {
-	return filter.ScanUAFamily(ua)
-}
-
-var ScanUAFamily = filter.ScanUAFamily
-
 const (
 	uaFamilyWindows = filter.UAFamilyWindows
 	uaFamilyMac     = filter.UAFamilyMac
@@ -143,48 +101,10 @@ const (
 	UAFamilyUnknown = filter.UAFamilyUnknown
 )
 
-func normalizeCapturedTTL(captured uint8) uint8 {
-	return filter.NormalizeCapturedTTL(captured)
-}
-
-func campaignHashTag(id uuid.UUID) string {
-	return domain.CampaignHashTag(id)
-}
-
-func budgetCampaignKey(id uuid.UUID) string {
-	return domain.BudgetCampaignKey(id)
-}
-
-func campaignSyncKey(id uuid.UUID) string {
-	return domain.CampaignSyncKey(id)
-}
-
-var CampaignSyncKey = domain.CampaignSyncKey
-
-func customerSyncKey(campaignID, customerID uuid.UUID) string {
-	return domain.CustomerSyncKey(campaignID, customerID)
-}
-
-func fcapKeyPrefix(campaignID uuid.UUID, brandFcapKey string) string {
-	return domain.FcapKeyPrefix(campaignID, brandFcapKey)
-}
-
-func dailySpendKeyPrefix(campaignID uuid.UUID) string {
-	return domain.DailySpendKeyPrefix(campaignID)
-}
-
-var RedisClusterSlot = domain.RedisClusterSlot
-
-func timezoneMismatchHours(browserTZ, country string, now time.Time) (bool, int) {
-	return filter.TimezoneMismatchHours(browserTZ, country, now)
-}
-
 var (
 	ErrSegmentNotIncluded = filter.ErrSegmentNotIncluded
 	ErrSegmentExcluded    = filter.ErrSegmentExcluded
 )
-
-type mockRegistry = filter.MockRegistry
 
 var (
 	ErrConsentDenied                = filter.ErrConsentDenied
@@ -196,65 +116,16 @@ var (
 	ParseASNLine                    = filter.ParseASNLine
 )
 
-func classifyFilterErr(err error) (filter.FilterRejectKind, bool) {
-	return filter.ClassifyFilterErr(err)
-}
-
-func parseASNLine(line string) (uint32, bool) {
-	return filter.ParseASNLine(line)
-}
-
-func enrichMockCampaign(cp *domain.Campaign) {
-	filter.EnrichMockCampaign(cp)
-}
-
-func lockStaticCampaign(mut func(c *domain.Campaign)) {
-	filter.LockStaticCampaign(mut)
-}
-
 func WithStaticCampaign(fn func(camp **domain.Campaign)) {
 	filter.WithStaticCampaign(fn)
-}
-
-func configureMockRegistryCampaign(mut func(c *domain.Campaign)) {
-	filter.ConfigureMockRegistryCampaign(mut)
-}
-
-func resetStaticCampaignBaseline() {
-	filter.ResetStaticCampaignBaseline()
-}
-
-var cachedMockCamp = filter.CachedMockCamp()
-
-func marshalCHSpoolPayload(dedupToken string, events []*domain.Event) ([]byte, error) {
-	return stream.MarshalCHSpoolPayload(dedupToken, events)
-}
-
-func crc32Castagnoli(data *uuid.UUID) uint32 {
-	return filter.CRC32Castagnoli(data)
 }
 
 var (
 	CRC32Castagnoli       = filter.CRC32Castagnoli
 	AppendCampaignHashTag = filter.AppendCampaignHashTag
 	PlacementBlacklistKey = filter.PlacementBlacklistKey
+	ScanUAFamily          = filter.ScanUAFamily
 )
-
-func openRTBLicenseAllowed(reg domain.CampaignRegistry) bool {
-	return filter.OpenRTBLicenseAllowed(reg)
-}
-
-func parseIPv6To128(ip string) (hi, lo uint64, ok bool) {
-	return stream.ParseIPv6To128(ip)
-}
-
-func appendCampaignHashTag(dst []byte, id uuid.UUID) []byte {
-	return filter.AppendCampaignHashTag(dst, id)
-}
-
-func budgetQuotaKey(id uuid.UUID) string {
-	return filter.BudgetQuotaKey(id)
-}
 
 func WriteAuditLog(
 	l *logger.Logger,
@@ -264,18 +135,6 @@ func WriteAuditLog(
 	evt *domain.Event,
 ) {
 	stream.WriteAuditLog(l, seq, sampleMask, shardID, evt)
-}
-
-func auditEventFromFields(ts int64, campaignID uuid.UUID, clickID, eventType string) *domain.Event {
-	evt := domain.EventPool.Get().(*domain.Event)
-	evt.Reset()
-	evt.ClickID = clickID
-	evt.CampaignID = campaignID
-	evt.Type = eventType
-	if ts > 0 {
-		evt.CreatedAt = time.Unix(ts, 0)
-	}
-	return evt
 }
 
 func EnqueueFraudReject(writer *stream.FraudStreamWriter, shard int, evt *domain.Event) {
@@ -288,40 +147,8 @@ const (
 	FraudReasonCodeOSFingerprint = filter.FraudReasonCodeOSFingerprint
 )
 
-func monotonicNano() int64 {
-	return filter.MonotonicNano()
-}
-
-func loadTCPSynSigCorpusFromDir(dir string) *filter.TCPSynSigCorpusSnapshot {
-	return filter.LoadTCPSynSigCorpusFromDir(dir)
-}
-
 func PublishTCPSynSigCorpus(snap *filter.TCPSynSigCorpusSnapshot) {
 	filter.PublishTCPSynSigCorpus(snap)
-}
-
-func cachedUnixMilliLoad() int64 {
-	return filter.CachedUnixMilliNow()
-}
-
-func cachedUnixMilliStore(ms int64) {
-	filter.CachedUnixMilliStore(ms)
-}
-
-func cachedUnixMilliAnyStore(v any) {
-	filter.CachedUnixMilliAnyStore(v)
-}
-
-func cachedNowUTCSetFromUnixMilli(ms int64) {
-	filter.CachedNowUTCSetFromUnixMilli(ms)
-}
-
-func storeCachedNowUTC() {
-	filter.StoreCachedNowUTC()
-}
-
-func setClockRefreshPaused(paused bool) {
-	filter.SetClockRefreshPaused(paused)
 }
 
 type (
@@ -415,6 +242,8 @@ var (
 	ReloadRtbDeals                      = rtb.ReloadDeals
 	RtbCatalogReloadChannel             = domain.RtbCatalogReloadChannel
 	BudgetCampaignKey                   = domain.BudgetCampaignKey
+	CampaignSyncKey                     = domain.CampaignSyncKey
+	RedisClusterSlot                    = domain.RedisClusterSlot
 )
 
 const (
@@ -492,12 +321,6 @@ const RtbFloorRedisKeyPrefix = domain.RtbFloorRedisKeyPrefix
 
 func ToUUID(u uuid.UUID) pgtype.UUID {
 	return shard.ToUUID(u)
-}
-
-type slotTable = domain.SlotTable
-
-func buildSlotTable(numBuckets int) *slotTable {
-	return domain.BuildSlotTable(numBuckets)
 }
 
 type IngressQuotaMap = stream.IngressQuotaMap

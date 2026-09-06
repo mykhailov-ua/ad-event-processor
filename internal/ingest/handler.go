@@ -16,9 +16,9 @@ import (
 
 	"ad-event-processor/internal/config"
 	"ad-event-processor/internal/domain"
+	"ad-event-processor/internal/ingest/domainhosts"
 	"ad-event-processor/internal/ingest/gnet"
 	"ad-event-processor/internal/ingest/pb"
-	"ad-event-processor/internal/ingest/pool"
 	"ad-event-processor/internal/metrics"
 	"ad-event-processor/internal/telemetry"
 	"ad-event-processor/pkg/branding"
@@ -115,7 +115,11 @@ func init() {
 }
 
 func putBuffer(buf *bytes.Buffer) {
-	if buf == nil || buf.Cap() > maxPoolObjectSize {
+	if buf == nil {
+		return
+	}
+	if buf.Cap() > maxPoolObjectSize {
+		metrics.IngestBufferPoolTrimTotal.Inc()
 		return
 	}
 	buf.Reset()
@@ -240,10 +244,10 @@ func NewRouter(cfg *config.Config, registry domain.CampaignRegistry, filterEngin
 		}
 
 		id := NewFastUUID()
-		wReqID := bufPool.Get().(*BufWrapper)
+		wReqID := getBufWrapper()
 		wReqID.Buf = wReqID.Buf[:0]
 		wReqID.Buf = appendUUID(wReqID.Buf, id)
-		defer bufPool.Put(wReqID)
+		defer putBufWrapper(wReqID)
 
 		var campaignID uuid.UUID
 		var eventType string
@@ -388,8 +392,16 @@ func NewRouter(cfg *config.Config, registry domain.CampaignRegistry, filterEngin
 		var landing string
 		if filterEngine != nil {
 			// net/http worker (not Tier B gnet): TryReserve before FilterEngine.Check (Lua debit);
-			// release lease on all reject paths; publish after accept; RollbackDebit on post-debit publish fail.
-			lease, kind, acquired := tryAcquireStreamAdmissionForFilter(cfg, sharder, streamProducers, brokerProducers, campaignID, filterEngine)
+			// release lease on all reject paths; PublishAcceptedOrRollback after accept.
+			publishDeps := TrackPublishDeps{
+				Cfg:             cfg,
+				Sharder:         sharder,
+				StreamProducers: streamProducers,
+				BrokerProducers: brokerProducers,
+				FilterEngine:    filterEngine,
+				Registry:        registry,
+			}
+			lease, kind, acquired := publishDeps.Reserve(campaignID)
 			if !acquired {
 				spec := filterRejectSpecs[kind]
 				recordHTTPFilterReject(kind, evt)
@@ -449,8 +461,8 @@ func NewRouter(cfg *config.Config, registry domain.CampaignRegistry, filterEngin
 				return
 			case trackStatusAccepted:
 				landing = outcome.LandingURL
-				if !publishAcceptedTrackIngress(sharder, streamProducers, brokerProducers, filterEngine, evt, &lease) {
-					status = httpTrackRejectProducerOverload(r.Context(), w, filterEngine, evt, registry)
+				if !publishDeps.PublishAcceptedOrRollback(r.Context(), evt, &lease) {
+					status = httpTrackRejectProducerOverload(w, evt)
 					releaseLease()
 					return
 				}
@@ -508,51 +520,65 @@ func getIPOnly(addr string) string {
 	return addr
 }
 
-func extractClientIP(r *http.Request, trustedProxies []string) string {
-	remoteIP := getIPOnly(r.RemoteAddr)
+func publicClientIPFromHeaderValue(ipStr string) (string, bool) {
+	ipStr = strings.TrimSpace(ipStr)
+	parsedIP := net.ParseIP(ipStr)
+	if parsedIP == nil || parsedIP.IsPrivate() || parsedIP.IsLoopback() || parsedIP.IsLinkLocalUnicast() {
+		return "", false
+	}
+	return ipStr, true
+}
+
+func publicClientIPFromXFF(xff string) (string, bool) {
+	if xff == "" {
+		return "", false
+	}
+	last := len(xff)
+	for i := len(xff) - 1; i >= -1; i-- {
+		if i == -1 || xff[i] == ',' {
+			start := i + 1
+			for start < last && xff[start] == ' ' {
+				start++
+			}
+			end := last
+			for end > start && xff[end-1] == ' ' {
+				end--
+			}
+			if start < end {
+				if ipStr, ok := publicClientIPFromHeaderValue(xff[start:end]); ok {
+					return ipStr, true
+				}
+			}
+			last = i
+		}
+	}
+	return "", false
+}
+
+func clientIPFromTrustedProxy(remoteIP, xff, xRealIP string, trustedProxies []string) string {
 	if !isTrustedProxy(remoteIP, trustedProxies) {
 		return remoteIP
 	}
+	if ip, ok := publicClientIPFromXFF(xff); ok {
+		return ip
+	}
+	if ip, ok := publicClientIPFromHeaderValue(xRealIP); ok {
+		return ip
+	}
+	return remoteIP
+}
 
+func extractClientIP(r *http.Request, trustedProxies []string) string {
+	remoteIP := getIPOnly(r.RemoteAddr)
 	var xff string
 	if xffSlice := r.Header["X-Forwarded-For"]; len(xffSlice) > 0 {
 		xff = xffSlice[0]
 	}
-	if xff != "" {
-		last := len(xff)
-		for i := len(xff) - 1; i >= -1; i-- {
-			if i == -1 || xff[i] == ',' {
-				start := i + 1
-				for start < last && xff[start] == ' ' {
-					start++
-				}
-				end := last
-				for end > start && xff[end-1] == ' ' {
-					end--
-				}
-
-				if start < end {
-					ipStr := xff[start:end]
-					parsedIP := net.ParseIP(ipStr)
-					if parsedIP != nil && !parsedIP.IsPrivate() && !parsedIP.IsLoopback() && !parsedIP.IsLinkLocalUnicast() {
-						return ipStr
-					}
-				}
-				last = i
-			}
-		}
-	}
-
+	var xRealIP string
 	if xriSlice := r.Header["X-Real-Ip"]; len(xriSlice) > 0 {
-		xri := xriSlice[0]
-		ipStr := strings.TrimSpace(xri)
-		parsedIP := net.ParseIP(ipStr)
-		if parsedIP != nil && !parsedIP.IsPrivate() && !parsedIP.IsLoopback() && !parsedIP.IsLinkLocalUnicast() {
-			return ipStr
-		}
+		xRealIP = xriSlice[0]
 	}
-
-	return remoteIP
+	return clientIPFromTrustedProxy(remoteIP, xff, xRealIP, trustedProxies)
 }
 
 var (
@@ -560,7 +586,6 @@ var (
 	respInvalidCampaign      = []byte("HTTP/1.1 400 Bad Request\r\nContent-Type: text/plain\r\nContent-Length: 19\r\nConnection: keep-alive\r\n\r\ninvalid campaign_id")
 	respInvalidJSON          = []byte("HTTP/1.1 400 Bad Request\r\nContent-Type: text/plain\r\nContent-Length: 12\r\nConnection: keep-alive\r\n\r\ninvalid json")
 	respEmergencyBreaker     = []byte("HTTP/1.1 503 Service Unavailable\r\nContent-Type: text/plain\r\nContent-Length: 32\r\nConnection: keep-alive\r\n\r\nservice temporarily unavailable")
-	respWorkerPoolOverload   = []byte("HTTP/1.1 503 Service Unavailable\r\nContent-Type: text/plain\r\nRetry-After: 1\r\nContent-Length: 17\r\nConnection: keep-alive\r\n\r\nserver overloaded")
 	respProducerOverload     = []byte("HTTP/1.1 503 Service Unavailable\r\nContent-Type: text/plain\r\nRetry-After: 1\r\nContent-Length: 18\r\nConnection: keep-alive\r\n\r\nproducer overloaded")
 	respInfraUnavailable     = []byte("HTTP/1.1 503 Service Unavailable\r\nContent-Type: text/plain\r\nRetry-After: 1\r\nContent-Length: 19\r\nConnection: keep-alive\r\n\r\nservice unavailable")
 	respRateLimit            = []byte("HTTP/1.1 429 Too Many Requests\r\nContent-Type: text/plain\r\nRetry-After: 60\r\nContent-Length: 19\r\nConnection: keep-alive\r\n\r\nrate limit exceeded")
@@ -644,7 +669,7 @@ type AdsPacketHandler struct {
 	linkHMACIpad            [linkHMACBlockSize]byte
 	linkHMACOpad            [linkHMACBlockSize]byte
 	linkSignInnerScratch    [linkSignInnerScratchLen]byte
-	domainPoolTable         *pool.Table
+	domainPoolTable         *domainhosts.Table
 	campaignFlowTable       *CampaignFlowTable
 	clickProxyClient        *http.Client
 }
@@ -714,7 +739,7 @@ func (h *AdsPacketHandler) ConfigureModeratorIntel(table *ModeratorIPTable) {
 	h.moderatorMetrics = newModeratorIntelMetrics()
 }
 
-func (h *AdsPacketHandler) ConfigureDomainPool(table *pool.Table) {
+func (h *AdsPacketHandler) ConfigureDomainPool(table *domainhosts.Table) {
 	if h == nil {
 		return
 	}
@@ -795,23 +820,15 @@ func (h *AdsPacketHandler) SetWorkerPool(wp *PinnedWorkerPool) {
 }
 
 func (h *AdsPacketHandler) write(c pkgnet.Conn, data []byte, ctx *ConnContext) {
-	h.Server.Write(c, data, ctx)
+	h.Write(c, data, ctx)
 }
 
 func (h *AdsPacketHandler) writeClose(c pkgnet.Conn, data []byte, ctx *ConnContext) {
-	h.Server.WriteClose(c, data, ctx)
+	h.WriteClose(c, data, ctx)
 }
 
 func (h *AdsPacketHandler) writeFilterReject(c pkgnet.Conn, data []byte, ctx *ConnContext) {
-	h.Server.WriteFilterReject(c, data, ctx, bytes.Equal(data, respDuplicate))
-}
-
-func (h *AdsPacketHandler) writeMaybeClose(c pkgnet.Conn, data []byte, ctx *ConnContext, closeAfter bool) {
-	if closeAfter {
-		h.writeClose(c, data, ctx)
-		return
-	}
-	h.write(c, data, ctx)
+	h.WriteFilterReject(c, data, ctx, bytes.Equal(data, respDuplicate))
 }
 
 func NewAdsPacketHandler(cfg *config.Config, registry domain.CampaignRegistry, filterEngine *FilterEngine, pool Pinger, redisShards []redis.UniversalClient, sharder Sharder, fraudStream string, creativeStore *BrandCreativeStore) *AdsPacketHandler {
@@ -847,7 +864,7 @@ func NewAdsPacketHandler(cfg *config.Config, registry domain.CampaignRegistry, f
 		},
 		MonoElapsed: monoElapsedSeconds,
 	})
-	h.Server.SetReactor(h)
+	h.SetReactor(h)
 	h.startedAtNano.Store(time.Now().UnixNano())
 	configureOrtbScanLimits(cfg)
 	configureJSONParseSecurity(cfg)
@@ -1153,7 +1170,7 @@ func (h *AdsPacketHandler) StartHealthProbe(ctx context.Context) {
 func (h *AdsPacketHandler) React(req Request, c pkgnet.Conn) pkgnet.Action {
 	ctx, ok := c.Context().(*ConnContext)
 	if !ok {
-		ctx = h.Server.AllocConnContext(c)
+		ctx = h.AllocConnContext(c)
 		c.SetContext(ctx)
 	}
 
@@ -1348,7 +1365,7 @@ func (h *AdsPacketHandler) React(req Request, c pkgnet.Conn) pkgnet.Action {
 	}
 	h.trackMetrics.decisionAccepted.Inc()
 	writeAuditLog(h.logger, &h.auditLogSeq, h.auditLogSampleMask, ctx.ShardID, evt)
-	if !h.publishAcceptedTrack(evt, &lease) {
+	if !h.publishAcceptedOrRollback(context.Background(), evt, &lease) {
 		spec := filterRejectSpecs[filterRejectProducerOverload]
 		h.writeFilterReject(c, spec.gnetResp, ctx)
 		h.recordMetrics(startMono, spec.status)
@@ -1366,36 +1383,13 @@ func extractClientIPGnet(ctx *ConnContext, req *Request, c pkgnet.Conn, trustedP
 	if ctx.RemoteIP == "" {
 		ctx.RemoteIP = getIPOnly(c.RemoteAddr().String())
 	}
-	remoteIP := ctx.RemoteIP
-	if !isTrustedProxy(remoteIP, trustedProxies) {
-		return remoteIP
-	}
-
+	var xff string
 	if len(req.ClientIP) > 0 {
-		xff := unsafeString(req.ClientIP)
-		last := len(xff)
-		for i := len(xff) - 1; i >= -1; i-- {
-			if i == -1 || xff[i] == ',' {
-				start := i + 1
-				for start < last && xff[start] == ' ' {
-					start++
-				}
-				end := last
-				for end > start && xff[end-1] == ' ' {
-					end--
-				}
-
-				if start < end {
-					ipStr := xff[start:end]
-					parsedIP := net.ParseIP(ipStr)
-					if parsedIP != nil && !parsedIP.IsPrivate() && !parsedIP.IsLoopback() && !parsedIP.IsLinkLocalUnicast() {
-						return ipStr
-					}
-				}
-				last = i
-			}
-		}
+		xff = unsafeString(req.ClientIP)
 	}
-
-	return remoteIP
+	var xRealIP string
+	if len(req.RealIP) > 0 {
+		xRealIP = unsafeString(req.RealIP)
+	}
+	return clientIPFromTrustedProxy(ctx.RemoteIP, xff, xRealIP, trustedProxies)
 }

@@ -11,8 +11,6 @@ import (
 	"github.com/google/uuid"
 )
 
-const buyerDrilldownTopN = 25
-
 type DashboardDrilldownDimension string
 
 const (
@@ -82,10 +80,12 @@ func drilldownDimensionExpr(dimension DashboardDrilldownDimension) (expr string,
 	}
 }
 
-const clickhouseDimSub3Expr = `nullIf(coalesce(nullIf(JSONExtractString(payload, 'sub3'), ''), ''), '')`
-const clickhouseDimSub4Expr = `nullIf(coalesce(nullIf(JSONExtractString(payload, 'sub4'), ''), ''), '')`
-const clickhouseDimSub5Expr = `nullIf(coalesce(nullIf(JSONExtractString(payload, 'sub5'), ''), ''), '')`
-const clickhouseDimPlacementExpr = `nullIf(coalesce(nullIf(placement_id, ''), nullIf(JSONExtractString(payload, 'placement_id'), '')), '')`
+const (
+	clickhouseDimSub3Expr      = `nullIf(coalesce(nullIf(JSONExtractString(payload, 'sub3'), ''), ''), '')`
+	clickhouseDimSub4Expr      = `nullIf(coalesce(nullIf(JSONExtractString(payload, 'sub4'), ''), ''), '')`
+	clickhouseDimSub5Expr      = `nullIf(coalesce(nullIf(JSONExtractString(payload, 'sub5'), ''), ''), '')`
+	clickhouseDimPlacementExpr = `nullIf(coalesce(nullIf(placement_id, ''), nullIf(JSONExtractString(payload, 'placement_id'), '')), '')`
+)
 
 const campaignDrilldownQuery = `
 SELECT

@@ -1,3 +1,4 @@
+// L3 report runner: catalog cached; applied filters from URL; draft* until commit; shouldFetch gates evidence vs table vs export-only modes.
 import { useCallback, useEffect, useMemo, useState } from 'react';
 import { useParams, useSearchParams } from 'react-router-dom';
 
@@ -14,6 +15,7 @@ import { parseListLimit, parseListOffset } from '@/lib/list_query';
 import { deriveColumns } from '@/lib/report_table';
 import { fromDatetimeLocalValue, toDatetimeLocalValue } from '@/lib/datetime_range';
 import { fetchReportCatalogCached } from '@/lib/report_catalog_cache';
+import type { ReportRunnerProps } from '@/domains/reports/report_runner';
 
 type ReportRunnerSnapshot = {
   rows: ReportMapRow[];
@@ -32,16 +34,15 @@ export function useReportRunnerPage() {
   const { data: catalog } = useResource((signal) => fetchReportCatalogCached(signal), []);
   const catalogRow = useMemo(
     () => catalog?.rows?.find((row) => row.key === reportKey),
-    [catalog?.rows, reportKey],
+    [catalog?.rows, reportKey]
   );
 
   const defaultRange = useMemo(
     () => defaultReportRange(catalogRow?.default_range),
-    [catalogRow?.default_range],
+    [catalogRow?.default_range]
   );
 
-  const appliedCustomerId =
-    searchParams.get('customer_id') ?? session?.default_customer_id ?? '';
+  const appliedCustomerId = searchParams.get('customer_id') ?? session?.default_customer_id ?? '';
   const appliedFrom = searchParams.get('from') ?? defaultRange.from;
   const appliedTo = searchParams.get('to') ?? defaultRange.to;
   const appliedCampaignId = searchParams.get('campaign_id') ?? '';
@@ -49,7 +50,7 @@ export function useReportRunnerPage() {
   const appliedLimit = parseListLimit(searchParams.get('limit'));
   const appliedOffset = parseListOffset(searchParams.get('offset'));
 
-  const mode = EXPORT_ONLY_REPORT_KEYS.has(reportKey)
+  const mode: ReportRunnerProps['mode'] = EXPORT_ONLY_REPORT_KEYS.has(reportKey)
     ? 'export-only'
     : EVIDENCE_PACK_REPORT_KEYS.has(reportKey)
       ? 'evidence'
@@ -94,42 +95,39 @@ export function useReportRunnerPage() {
     mode,
   ];
 
-  const { data, error, fetching } = useResource(
-    async (signal) => {
-      if (!shouldFetch) {
-        return undefined;
-      }
+  const { data, error, fetching } = useResource(async (signal) => {
+    if (!shouldFetch) {
+      return undefined;
+    }
 
-      const params = {
-        customer_id: appliedCustomerId || undefined,
-        from: appliedFrom,
-        to: appliedTo,
-        campaign_id: appliedCampaignId || undefined,
-        click_id: appliedClickId || undefined,
-        limit: appliedLimit,
-        offset: appliedOffset,
-      };
+    const params = {
+      customer_id: appliedCustomerId || undefined,
+      from: appliedFrom,
+      to: appliedTo,
+      campaign_id: appliedCampaignId || undefined,
+      click_id: appliedClickId || undefined,
+      limit: appliedLimit,
+      offset: appliedOffset,
+    };
 
-      if (mode === 'evidence') {
-        const evidencePack = await runEvidencePackReport(reportKey, params, signal);
-        return {
-          rows: [],
-          columns: [],
-          evidencePack,
-        } satisfies ReportRunnerSnapshot;
-      }
-
-      const envelope = await runReport(reportKey, params, signal);
-      const rows = envelope.rows ?? [];
+    if (mode === 'evidence') {
+      const evidencePack = await runEvidencePackReport(reportKey, params, signal);
       return {
-        rows,
-        columns: deriveColumns(rows),
-        freshness: envelope.freshness,
-        nextCursor: envelope.next_cursor,
+        rows: [],
+        columns: [],
+        evidencePack,
       } satisfies ReportRunnerSnapshot;
-    },
-    queryKey,
-  );
+    }
+
+    const envelope = await runReport(reportKey, params, signal);
+    const rows = envelope.rows ?? [];
+    return {
+      rows,
+      columns: deriveColumns(rows),
+      freshness: envelope.freshness,
+      nextCursor: envelope.next_cursor,
+    } satisfies ReportRunnerSnapshot;
+  }, queryKey);
 
   const updateQuery = useCallback(
     (patch: {
@@ -183,7 +181,7 @@ export function useReportRunnerPage() {
       appliedTo,
       searchParams,
       setSearchParams,
-    ],
+    ]
   );
 
   const onApplyFilters = useCallback(() => {
@@ -212,7 +210,7 @@ export function useReportRunnerPage() {
     (nextOffset: number) => {
       updateQuery({ offset: Math.max(0, nextOffset) });
     },
-    [updateQuery],
+    [updateQuery]
   );
 
   const onExportTelegram = useCallback(() => {
@@ -233,13 +231,11 @@ export function useReportRunnerPage() {
         const downloadUrl =
           typeof result.download_url === 'string' ? result.download_url : undefined;
         setTelegramExportMessage(
-          downloadUrl ? `Export ready: ${downloadUrl}` : 'Telegram export completed.',
+          downloadUrl ? `Export ready: ${downloadUrl}` : 'Telegram export completed.'
         );
       })
       .catch((err: unknown) => {
-        setTelegramExportMessage(
-          err instanceof Error ? err.message : 'Telegram export failed.',
-        );
+        setTelegramExportMessage(err instanceof Error ? err.message : 'Telegram export failed.');
       })
       .finally(() => {
         setExportingTelegram(false);

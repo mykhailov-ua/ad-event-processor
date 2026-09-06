@@ -21,6 +21,6 @@ if (root) {
           </Routes>
         </MetaProvider>
       </ThemeProvider>
-    </BrowserRouter>,
+    </BrowserRouter>
   );
 }

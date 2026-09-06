@@ -47,11 +47,7 @@ export type SavedViewsPanelProps = {
   onDraftNameChange: (value: string) => void;
   onDraftReportKeyChange: (value: string) => void;
   onDraftSpecJsonChange: (value: string) => void;
-  onEditRowChange: (
-    id: string,
-    field: 'name' | 'report_key' | 'spec_json',
-    value: string,
-  ) => void;
+  onEditRowChange: (id: string, field: 'name' | 'report_key' | 'spec_json', value: string) => void;
   onCreateView: () => void;
   onUpdateView: (id: string) => void;
   onDeleteView: (id: string) => void;
@@ -163,7 +159,12 @@ export function SavedViewsPanel({
             </div>
           </div>
           <DialogFooter>
-            <PrimaryActionButton disabled={acting} loading={acting} onClick={onCreateView} type="button">
+            <PrimaryActionButton
+              disabled={acting}
+              loading={acting}
+              onClick={onCreateView}
+              type="button"
+            >
               Create
             </PrimaryActionButton>
           </DialogFooter>
@@ -222,70 +223,70 @@ export function SavedViewsPanel({
             />
           ) : (
             <DirectoryTable>
-                <TableHeader>
-                  <TableRow>
-                    <DirectoryTableHead>Name</DirectoryTableHead>
-                    <DirectoryTableHead>Report</DirectoryTableHead>
-                    <DirectoryTableHead>Updated</DirectoryTableHead>
-                    <DirectoryTableHead />
-                  </TableRow>
-                </TableHeader>
-                <TableBody>
-                  {(views ?? []).map((row) => {
-                    const id = row.id ?? '';
-                    const edit = editRows[id] ?? {
-                      name: row.name ?? '',
-                      report_key: row.report_key ?? '',
-                      spec_json: '',
-                    };
-                    return (
-                      <TableRow key={id || row.name}>
-                        <TableCell>
-                          {id ? (
-                            <Input
-                              className="text-sm"
-                              value={edit.name}
-                              onChange={(event) => onEditRowChange(id, 'name', event.target.value)}
-                            />
-                          ) : (
-                            row.name ?? ''
-                          )}
-                        </TableCell>
-                        <TableCell>
-                          {id ? (
-                            <Input
-                              className="font-mono text-xs"
-                              value={edit.report_key}
-                              onChange={(event) =>
-                                onEditRowChange(id, 'report_key', event.target.value)
-                              }
-                            />
-                          ) : (
-                            <span className="font-mono text-xs">{row.report_key ?? ''}</span>
-                          )}
-                        </TableCell>
-                        <TableCell>{displayTimestamp(row.updated_at)}</TableCell>
-                        <TableCell>
-                          {id ? (
-                            <RowActionsMenu ariaLabel="Saved view actions" disabled={acting}>
-                              <DropdownMenuItem disabled={acting} onClick={() => onUpdateView(id)}>
-                                Save
-                              </DropdownMenuItem>
-                              <DropdownMenuItem
-                                className="text-destructive focus:text-destructive"
-                                disabled={acting}
-                                onClick={() => setDeleteViewId(id)}
-                              >
-                                Delete
-                              </DropdownMenuItem>
-                            </RowActionsMenu>
-                          ) : null}
-                        </TableCell>
-                      </TableRow>
-                    );
-                  })}
-                </TableBody>
-              </DirectoryTable>
+              <TableHeader>
+                <TableRow>
+                  <DirectoryTableHead>Name</DirectoryTableHead>
+                  <DirectoryTableHead>Report</DirectoryTableHead>
+                  <DirectoryTableHead>Updated</DirectoryTableHead>
+                  <DirectoryTableHead />
+                </TableRow>
+              </TableHeader>
+              <TableBody>
+                {(views ?? []).map((row) => {
+                  const id = row.id ?? '';
+                  const edit = editRows[id] ?? {
+                    name: row.name ?? '',
+                    report_key: row.report_key ?? '',
+                    spec_json: '',
+                  };
+                  return (
+                    <TableRow key={id || row.name}>
+                      <TableCell>
+                        {id ? (
+                          <Input
+                            className="text-sm"
+                            value={edit.name}
+                            onChange={(event) => onEditRowChange(id, 'name', event.target.value)}
+                          />
+                        ) : (
+                          (row.name ?? '')
+                        )}
+                      </TableCell>
+                      <TableCell>
+                        {id ? (
+                          <Input
+                            className="font-mono text-xs"
+                            value={edit.report_key}
+                            onChange={(event) =>
+                              onEditRowChange(id, 'report_key', event.target.value)
+                            }
+                          />
+                        ) : (
+                          <span className="font-mono text-xs">{row.report_key ?? ''}</span>
+                        )}
+                      </TableCell>
+                      <TableCell>{displayTimestamp(row.updated_at)}</TableCell>
+                      <TableCell>
+                        {id ? (
+                          <RowActionsMenu ariaLabel="Saved view actions" disabled={acting}>
+                            <DropdownMenuItem disabled={acting} onClick={() => onUpdateView(id)}>
+                              Save
+                            </DropdownMenuItem>
+                            <DropdownMenuItem
+                              className="text-destructive focus:text-destructive"
+                              disabled={acting}
+                              onClick={() => setDeleteViewId(id)}
+                            >
+                              Delete
+                            </DropdownMenuItem>
+                          </RowActionsMenu>
+                        ) : null}
+                      </TableCell>
+                    </TableRow>
+                  );
+                })}
+              </TableBody>
+            </DirectoryTable>
           )}
         </div>
       )}

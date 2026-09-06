@@ -197,8 +197,9 @@ paths:
           content:
             application/json:
               schema:
-                additionalProperties: true
-                type: object
+                type: array
+                items:
+                  $ref: ../components/schemas/ops_reports.yaml#/FraudIntegration
           description: Integration rows
         default:
           $ref: ../openapi.yaml#/components/responses/Error
@@ -282,8 +283,7 @@ paths:
         content:
           application/json:
             schema:
-              additionalProperties: true
-              type: object
+              $ref: ../components/schemas/ops_reports.yaml#/FraudOverrideRequest
         required: true
       responses:
         '200':
@@ -1605,34 +1605,6 @@ paths:
       x-permissions:
       - campaigns:read
       - campaigns:read:masked
-  /api/v1/reports/ghost-impression-funnel:
-    get:
-      description: Returns rows plus freshness metadata; stale=true when ClickHouse lag exceeds SLA.
-      operationId: reportGhostImpressionFunnel
-      parameters:
-      - *id001
-      - *id002
-      - *id003
-      - *id004
-      - *id005
-      - *id006
-      - *id007
-      - *id008
-      responses:
-        '200':
-          content:
-            application/json:
-              schema:
-                $ref: ../components/schemas/ops_reports.yaml#/ReportMapEnvelope
-          description: Report rows
-        default:
-          $ref: ../openapi.yaml#/components/responses/Error
-      summary: Legacy alias for silent-reject-impression-funnel
-      tags:
-      - reports
-      x-permissions:
-      - campaigns:read
-      - campaigns:read:masked
   /api/v1/reports/ivt-by-source:
     get:
       description: Returns rows plus freshness metadata; stale=true when ClickHouse lag exceeds SLA.
@@ -2049,7 +2021,7 @@ paths:
           description: Report rows
         default:
           $ref: ../openapi.yaml#/components/responses/Error
-      summary: Silent reject impression funnel
+      summary: Non-blocking fraud response funnel
       tags:
       - reports
       x-permissions:

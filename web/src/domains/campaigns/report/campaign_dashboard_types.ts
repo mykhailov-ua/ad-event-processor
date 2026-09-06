@@ -1,3 +1,5 @@
+import type { CampaignDashboardQuery } from '@/api/types';
+
 export type CampaignReportDimension =
   | 'paths'
   | 'offers'
@@ -26,7 +28,9 @@ export function parseCampaignReportDimension(raw: string | null): CampaignReport
   }
 }
 
-export function parseCampaignReportSort(raw: string | null): string {
+export type CampaignReportSort = NonNullable<CampaignDashboardQuery['sort']>;
+
+export function parseCampaignReportSort(raw: string | null): CampaignReportSort {
   const value = raw?.trim();
   if (
     value === 'name' ||

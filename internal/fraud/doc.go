@@ -12,10 +12,10 @@
 //   - ivt-detector enqueues boost/blacklist/silent_reject through admin_hooks -> control outbox -> Redis side effects.
 //
 // Contracts (deploy/vendor/ANTIFRAUD.md):
-//   - ML actions (EnqueueFraudThreatBatch): boost, blacklist, silent_reject (legacy enqueue alias ghost).
+//   - ML actions (EnqueueFraudThreatBatch): boost, blacklist, silent_reject (legacy enqueue wire alias ghost).
 //   - fraud_scoring_rule IVT tier: silent_reject when campaign silent_reject_enabled; else blacklist.
 //   - silent_reject adds IP to blacklist:fraud via outbox; does not flip campaign silent_reject_enabled.
-//   - Hot-path silent reject (decoy 202/302, silent_reject_event) is campaign-flag driven in internal/track + ingest.
+//   - Hot-path non-blocking fraud response (acceptance 202/302, silent_reject_event) is campaign-flag driven in internal/track + ingest.
 //
 // Invariants:
 //   - Batch-only ML; hot path never imports this package (boundaries.mdc).
@@ -24,7 +24,7 @@
 //
 // Forbidden:
 //   - Import from internal/ingest or internal/filter hot Check path.
-//   - Doc or handler claims of per-IP ghosting via campaign silent_reject_enabled auto-flip from ML enqueue.
+//   - Doc or handler claims of per-IP policy routing via campaign silent_reject_enabled auto-flip from ML enqueue.
 //
 // Verify:
 //

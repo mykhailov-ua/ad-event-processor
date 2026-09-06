@@ -28,10 +28,10 @@ const (
 	CmdRegisterTopicResp uint16 = 104
 )
 
-// FetchRespMetaLen: status u8 + msg_count u32 + high_watermark u64 (payload after meta is message blob).
+// FetchRespMetaLen status u8 + msg_count u32 + high_watermark u64 (payload after meta is message blob).
 const FetchRespMetaLen = 13
 
-// ProduceBatchRespMetaLen: status u8 + offset u64 + committed_count u32.
+// ProduceBatchRespMetaLen status u8 + offset u64 + committed_count u32.
 const ProduceBatchRespMetaLen = 13
 
 type TopicMetadata struct {
@@ -211,7 +211,7 @@ func (r *TopicRegistry) Register(name string) (uint16, error) {
 	return id, nil
 }
 
-// BatchMsgHeader: 8-byte record prefix inside CmdProduceBatch payload (topic_id u16, pad u16, len u32).
+// BatchMsgHeader 8-byte record prefix inside CmdProduceBatch payload (topic_id u16, pad u16, len u32).
 type BatchMsgHeader struct {
 	TopicID    uint16
 	_          uint16

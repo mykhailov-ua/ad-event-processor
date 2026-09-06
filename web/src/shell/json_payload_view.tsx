@@ -4,13 +4,11 @@ import { PanelSection } from '@/shell/stat_panel';
 import { Badge } from '@/components/ui/badge';
 import { ReportMapTable } from '@/shell/report_map_table';
 import { deriveColumns, formatMapCell } from '@/lib/report_table';
+import type { JsonPayload } from '@/lib/json_record';
+import { isJsonRecord, toJsonRecord } from '@/lib/json_record';
 import { cn } from '@/lib/utils';
 
 const DASHBOARD_TABLE_ROW_CAP = 100;
-
-function isRecord(value: unknown): value is Record<string, unknown> {
-  return value != null && typeof value === 'object' && !Array.isArray(value);
-}
 
 type DashboardTableMeta = {
   truncated?: boolean;
@@ -27,14 +25,14 @@ type DashboardTableSection = {
 
 function readTableSectionMeta(
   payload: Record<string, unknown>,
-  key: string,
+  key: string
 ): DashboardTableMeta | undefined {
   const sectionsMeta = payload.table_sections_meta;
-  if (!isRecord(sectionsMeta)) {
+  if (!isJsonRecord(sectionsMeta)) {
     return undefined;
   }
   const meta = sectionsMeta[key];
-  if (!isRecord(meta)) {
+  if (!isJsonRecord(meta)) {
     return undefined;
   }
   return {
@@ -43,20 +41,21 @@ function readTableSectionMeta(
   };
 }
 
-function partitionPayload(payload: Record<string, unknown>): {
+function partitionPayload(payload: JsonPayload): {
   scalarEntries: Array<[string, unknown]>;
   tableSections: DashboardTableSection[];
 } {
+  const record = toJsonRecord(payload);
   const scalarEntries: Array<[string, unknown]> = [];
   const tableSections: DashboardTableSection[] = [];
 
-  for (const [key, value] of Object.entries(payload)) {
+  for (const [key, value] of Object.entries(record)) {
     if (key === 'table_sections_meta') {
       continue;
     }
-    if (Array.isArray(value) && value.length > 0 && isRecord(value[0])) {
+    if (Array.isArray(value) && value.length > 0 && isJsonRecord(value[0])) {
       const rows = value as Record<string, unknown>[];
-      const serverMeta = readTableSectionMeta(payload, key);
+      const serverMeta = readTableSectionMeta(record, key);
       const totalCount = serverMeta?.total ?? rows.length;
       const serverTruncated = serverMeta?.truncated === true;
       const clientTruncated = !serverTruncated && rows.length > DASHBOARD_TABLE_ROW_CAP;
@@ -70,7 +69,7 @@ function partitionPayload(payload: Record<string, unknown>): {
       });
       continue;
     }
-    if (isRecord(value)) {
+    if (isJsonRecord(value)) {
       scalarEntries.push([key, value]);
       continue;
     }
@@ -83,7 +82,7 @@ function partitionPayload(payload: Record<string, unknown>): {
 }
 
 export type JsonPayloadViewProps = {
-  payload: Record<string, unknown>;
+  payload: JsonPayload;
   formatKey?: (key: string) => string;
   formatColumn?: (key: string) => string;
 };
@@ -93,10 +92,7 @@ export const JsonPayloadView = memo(function JsonPayloadView({
   formatKey,
   formatColumn,
 }: JsonPayloadViewProps) {
-  const { scalarEntries, tableSections } = useMemo(
-    () => partitionPayload(payload),
-    [payload],
-  );
+  const { scalarEntries, tableSections } = useMemo(() => partitionPayload(payload), [payload]);
 
   return (
     <div className="grid gap-4">
@@ -112,7 +108,7 @@ export const JsonPayloadView = memo(function JsonPayloadView({
                   'text-sm',
                   (typeof value === 'object' && value != null) || key.includes('template')
                     ? 'break-all font-mono text-xs'
-                    : 'tabular-nums',
+                    : 'tabular-nums'
                 )}
               >
                 {formatMapCell(value)}

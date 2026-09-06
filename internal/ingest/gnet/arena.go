@@ -5,9 +5,10 @@ import (
 )
 
 const (
-	offloadArenaSlots    = 4
-	offloadMaxReqBytes   = 1 << 20
-	offloadArenaFallback = 0
+	offloadArenaSlots           = 4
+	offloadMaxReqBytes          = 1 << 20
+	offloadArenaFallback        = 0
+	connContextBufSliceCapLimit = 64 * 1024
 )
 
 type workerArena struct {

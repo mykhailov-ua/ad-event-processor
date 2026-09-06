@@ -13,6 +13,7 @@ import {
   TableRow,
 } from '@/shell/directory_table';
 import { ErrorBlock } from '@/shell/error_block';
+import { DatePicker } from '@/components/ui/datetime_picker';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import {
@@ -162,22 +163,20 @@ export function IntegrationsCostSync({
           </div>
           <div className="grid gap-2">
             <Label htmlFor="cost-sync-run-from">From (UTC)</Label>
-            <Input
+            <DatePicker
               id="cost-sync-run-from"
-              type="date"
               value={runSyncForm.draftFrom}
               disabled={!appliedCustomerId || runSyncForm.running}
-              onChange={(event) => runSyncForm.onDraftFromChange(event.target.value)}
+              onChange={runSyncForm.onDraftFromChange}
             />
           </div>
           <div className="grid gap-2">
             <Label htmlFor="cost-sync-run-to">To (UTC)</Label>
-            <Input
+            <DatePicker
               id="cost-sync-run-to"
-              type="date"
               value={runSyncForm.draftTo}
               disabled={!appliedCustomerId || runSyncForm.running}
-              onChange={(event) => runSyncForm.onDraftToChange(event.target.value)}
+              onChange={runSyncForm.onDraftToChange}
             />
           </div>
           <Button
@@ -192,7 +191,9 @@ export function IntegrationsCostSync({
           <ErrorBlock title="Cost sync run failed" message={runSyncForm.runError.message} />
         ) : null}
         {runSyncForm.runSuccess ? (
-          <p className="text-sm text-muted-foreground">Sync accepted. Refresh history for results.</p>
+          <p className="text-sm text-muted-foreground">
+            Sync accepted. Refresh history for results.
+          </p>
         ) : null}
       </section>
 
@@ -210,15 +211,15 @@ export function IntegrationsCostSync({
       </div>
 
       {panel === 'networks' ? (
-      <section className="grid gap-2">
-        <h2 className="text-base font-semibold">Networks</h2>
-        {networks.length === 0 ? (
-          <EmptyState
-            title="No networks"
-            description="Cost sync network schemas returned no entries."
-          />
-        ) : (
-          <DirectoryTable>
+        <section className="grid gap-2">
+          <h2 className="text-base font-semibold">Networks</h2>
+          {networks.length === 0 ? (
+            <EmptyState
+              title="No networks"
+              description="Cost sync network schemas returned no entries."
+            />
+          ) : (
+            <DirectoryTable>
               <TableHeader>
                 <TableRow>
                   <DirectoryTableHead>Network</DirectoryTableHead>
@@ -236,8 +237,8 @@ export function IntegrationsCostSync({
                 ))}
               </TableBody>
             </DirectoryTable>
-        )}
-      </section>
+          )}
+        </section>
       ) : null}
 
       {panel === 'credentials' ? (
@@ -278,14 +279,14 @@ export function IntegrationsCostSync({
             />
 
             <div className="grid gap-2">
-            <h2 className="text-base font-semibold">Credentials</h2>
-            {credentials.length === 0 ? (
-              <EmptyState
-                title="No credentials"
-                description="No cost sync credentials are stored for this customer."
-              />
-            ) : (
-              <DirectoryTable>
+              <h2 className="text-base font-semibold">Credentials</h2>
+              {credentials.length === 0 ? (
+                <EmptyState
+                  title="No credentials"
+                  description="No cost sync credentials are stored for this customer."
+                />
+              ) : (
+                <DirectoryTable>
                   <TableHeader>
                     <TableRow>
                       <DirectoryTableHead>Network</DirectoryTableHead>
@@ -309,7 +310,7 @@ export function IntegrationsCostSync({
                     ))}
                   </TableBody>
                 </DirectoryTable>
-            )}
+              )}
             </div>
           </section>
         )
@@ -335,31 +336,31 @@ export function IntegrationsCostSync({
               />
             ) : (
               <DirectoryTable>
-                  <TableHeader>
-                    <TableRow>
-                      <DirectoryTableHead>Run</DirectoryTableHead>
-                      <DirectoryTableHead>Network</DirectoryTableHead>
-                      <DirectoryTableHead>Date</DirectoryTableHead>
-                      <DirectoryTableHead>Status</DirectoryTableHead>
-                      <DirectoryTableHead>Rows</DirectoryTableHead>
-                      <DirectoryTableHead>Amount (USD micro)</DirectoryTableHead>
+                <TableHeader>
+                  <TableRow>
+                    <DirectoryTableHead>Run</DirectoryTableHead>
+                    <DirectoryTableHead>Network</DirectoryTableHead>
+                    <DirectoryTableHead>Date</DirectoryTableHead>
+                    <DirectoryTableHead>Status</DirectoryTableHead>
+                    <DirectoryTableHead>Rows</DirectoryTableHead>
+                    <DirectoryTableHead>Amount (USD micro)</DirectoryTableHead>
+                  </TableRow>
+                </TableHeader>
+                <TableBody>
+                  {history.map((row) => (
+                    <TableRow key={row.id}>
+                      <TableCell>{row.id}</TableCell>
+                      <TableCell className="font-mono text-xs">{row.network}</TableCell>
+                      <TableCell>{row.cost_date}</TableCell>
+                      <TableCell>
+                        <Badge variant="outline">{row.status}</Badge>
+                      </TableCell>
+                      <TableCell>{row.rows_imported}</TableCell>
+                      <TableCell>{displayMicro(row.total_amount_usd_micro)}</TableCell>
                     </TableRow>
-                  </TableHeader>
-                  <TableBody>
-                    {history.map((row) => (
-                      <TableRow key={row.id}>
-                        <TableCell>{row.id}</TableCell>
-                        <TableCell className="font-mono text-xs">{row.network}</TableCell>
-                        <TableCell>{row.cost_date}</TableCell>
-                        <TableCell>
-                          <Badge variant="outline">{row.status}</Badge>
-                        </TableCell>
-                        <TableCell>{row.rows_imported}</TableCell>
-                        <TableCell>{displayMicro(row.total_amount_usd_micro)}</TableCell>
-                      </TableRow>
-                    ))}
-                  </TableBody>
-                </DirectoryTable>
+                  ))}
+                </TableBody>
+              </DirectoryTable>
             )}
           </section>
         )

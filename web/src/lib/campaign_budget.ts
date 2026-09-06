@@ -1,7 +1,7 @@
 /** Display-only spend/budget ratio from wire decimal strings (0..1). */
 export function budgetUtilizationRatio(
   spend?: string | null,
-  budget?: string | null,
+  budget?: string | null
 ): number | undefined {
   const spendAmount = Number.parseFloat(spend?.trim() ?? '');
   const budgetAmount = Number.parseFloat(budget?.trim() ?? '');
@@ -13,7 +13,7 @@ export function budgetUtilizationRatio(
 
 export function budgetUtilizationPercent(
   spend?: string | null,
-  budget?: string | null,
+  budget?: string | null
 ): number | undefined {
   const ratio = budgetUtilizationRatio(spend, budget);
   if (ratio == null) {

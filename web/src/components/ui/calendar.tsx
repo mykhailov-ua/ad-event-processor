@@ -2,15 +2,18 @@ import * as React from 'react';
 import { ChevronDown, ChevronLeft, ChevronRight } from 'lucide-react';
 import { DayButton, DayPicker, getDefaultClassNames } from 'react-day-picker';
 
+import { adminKit } from '@/lib/admin_kit';
 import { cn } from '@/lib/utils';
 import { Button, buttonVariants } from '@/components/ui/button';
 
-const COMPACT_NAV_BUTTON_CLASS =
-  'inline-flex items-center justify-center rounded-md border-0 bg-transparent p-0 text-foreground shadow-none transition hover:bg-accent disabled:pointer-events-none disabled:opacity-50 min-h-0 aria-disabled:opacity-50';
+const COMPACT_NAV_BUTTON_CLASS = cn(
+  'inline-flex items-center justify-center border-0 bg-transparent p-0 text-foreground shadow-none transition hover:bg-accent disabled:pointer-events-none disabled:opacity-50 min-h-0 aria-disabled:opacity-50',
+  adminKit.controlRadius
+);
 
 export type CalendarProps = React.ComponentProps<typeof DayPicker> & {
   buttonVariant?: React.ComponentProps<typeof Button>['variant'];
-  variant?: 'default' | 'admin' | 'campaigns';
+  variant?: 'default' | 'admin' | 'toolbar';
 };
 
 function Calendar({
@@ -26,8 +29,8 @@ function Calendar({
 }: CalendarProps) {
   const defaultClassNames = getDefaultClassNames();
   const isAdmin = variant === 'admin';
-  const isCampaigns = variant === 'campaigns';
-  const isCompact = isAdmin || isCampaigns;
+  const isToolbar = variant === 'toolbar';
+  const isCompact = isAdmin || isToolbar;
 
   return (
     <DayPicker
@@ -35,12 +38,12 @@ function Calendar({
       className={cn(
         isAdmin
           ? 'group/calendar [--cell-size:1.875rem] bg-transparent p-0'
-          : isCampaigns
+          : isToolbar
             ? 'group/calendar [--cell-size:2rem] bg-transparent p-0'
             : 'group/calendar p-3 [--cell-size:2rem] bg-transparent [[data-slot=card-content]_&]:bg-transparent [[data-slot=popover-content]_&]:bg-transparent',
         String.raw`rtl:**:[.rdp-button\_next>svg]:rotate-180`,
         String.raw`rtl:**:[.rdp-button\_previous>svg]:rotate-180`,
-        className,
+        className
       )}
       captionLayout={captionLayout}
       formatters={{
@@ -51,46 +54,52 @@ function Calendar({
         root: cn('w-fit', defaultClassNames.root),
         months: cn(
           'relative flex flex-col gap-4 md:flex-row',
-          isCampaigns && 'gap-3',
-          defaultClassNames.months,
+          isToolbar && 'gap-3',
+          defaultClassNames.months
         ),
-        month: cn(
-          'flex w-full flex-col gap-4',
-          isCampaigns && 'gap-2',
-          defaultClassNames.month,
-        ),
+        month: cn('flex w-full flex-col gap-4', isToolbar && 'gap-2', defaultClassNames.month),
         nav: cn(
           'absolute inset-x-0 top-0 flex w-full items-center justify-between gap-1',
-          defaultClassNames.nav,
+          defaultClassNames.nav
         ),
         button_previous: cn(
-          isCompact ? COMPACT_NAV_BUTTON_CLASS : buttonVariants({ variant: buttonVariant, shape: 'square' }),
+          isCompact
+            ? COMPACT_NAV_BUTTON_CLASS
+            : buttonVariants({ variant: buttonVariant, shape: 'square' }),
           'h-[var(--cell-size)] w-[var(--cell-size)] select-none',
-          defaultClassNames.button_previous,
+          defaultClassNames.button_previous
         ),
         button_next: cn(
-          isCompact ? COMPACT_NAV_BUTTON_CLASS : buttonVariants({ variant: buttonVariant, shape: 'square' }),
+          isCompact
+            ? COMPACT_NAV_BUTTON_CLASS
+            : buttonVariants({ variant: buttonVariant, shape: 'square' }),
           'h-[var(--cell-size)] w-[var(--cell-size)] select-none',
-          defaultClassNames.button_next,
+          defaultClassNames.button_next
         ),
         month_caption: cn(
           'flex h-[--cell-size] w-full items-center justify-center px-[--cell-size]',
           isCompact && 'text-[13px] font-normal leading-[18px] text-foreground',
-          defaultClassNames.month_caption,
+          defaultClassNames.month_caption
         ),
         dropdowns: cn(
           'flex h-[--cell-size] w-full items-center justify-center gap-1.5 text-sm font-medium',
-          defaultClassNames.dropdowns,
+          defaultClassNames.dropdowns
         ),
         dropdown_root: cn(
+          'relative border focus-within:border-ring',
           isCompact
-            ? 'relative rounded-sm border border-border bg-background focus-within:border-primary'
-            : 'relative rounded-xl border border-border/50 border-input focus-within:border-ring focus-within:ring-ring/50 focus-within:ring-[3px]',
-          defaultClassNames.dropdown_root,
+            ? cn('border-border bg-background focus-within:border-primary', adminKit.controlRadius)
+            : cn(
+                'border-border/50 border-input focus-within:ring-ring/50 focus-within:ring-[3px]',
+                adminKit.panelRadius
+              ),
+          defaultClassNames.dropdown_root
         ),
         dropdown: cn(
-          isCompact ? 'bg-muted/50 absolute inset-0 opacity-0' : 'bg-popover absolute inset-0 opacity-0',
-          defaultClassNames.dropdown,
+          isCompact
+            ? 'bg-muted/50 absolute inset-0 opacity-0'
+            : 'bg-popover absolute inset-0 opacity-0',
+          defaultClassNames.dropdown
         ),
         caption_label: cn(
           'select-none font-medium',
@@ -98,47 +107,58 @@ function Calendar({
             ? isCompact
               ? 'text-[13px] font-normal leading-[18px] text-foreground'
               : 'text-sm'
-            : '[&>svg]:text-muted-foreground flex h-8 items-center gap-1 rounded-md pl-2 pr-1 text-sm [&>svg]:size-3.5',
-          defaultClassNames.caption_label,
+            : cn(
+                '[&>svg]:text-muted-foreground flex items-center gap-1 pl-2 pr-1 [&>svg]:size-3.5',
+                adminKit.controlRadius,
+                adminKit.controlHeight,
+                adminKit.controlText
+              ),
+          defaultClassNames.caption_label
         ),
         month_grid: cn('w-full border-collapse', defaultClassNames.month_grid),
         weekdays: cn('flex', defaultClassNames.weekdays),
         weekday: cn(
           isCompact
             ? 'flex-1 select-none text-[11px] font-medium leading-[14px] text-muted-foreground'
-            : 'text-muted-foreground flex-1 select-none rounded-lg text-xs font-normal',
-          defaultClassNames.weekday,
+            : cn(
+                'text-muted-foreground flex-1 select-none text-xs font-normal',
+                adminKit.controlRadius
+              ),
+          defaultClassNames.weekday
         ),
-        week: cn('mt-2 flex w-full', isCampaigns && 'mt-1 gap-0', defaultClassNames.week),
+        week: cn('mt-2 flex w-full', isToolbar && 'mt-1 gap-0', defaultClassNames.week),
         week_number_header: cn('w-[--cell-size] select-none', defaultClassNames.week_number_header),
-        week_number: cn(
-          'text-muted-foreground select-none text-xs',
-          defaultClassNames.week_number,
-        ),
+        week_number: cn('text-muted-foreground select-none text-xs', defaultClassNames.week_number),
         day: cn(
           'group/day relative flex flex-1 items-center justify-center p-0.5 text-center',
-          defaultClassNames.day,
+          defaultClassNames.day
         ),
         range_start: cn(defaultClassNames.range_start),
         range_middle: cn(defaultClassNames.range_middle),
         range_end: cn(defaultClassNames.range_end),
         today: cn(
-          isCampaigns
+          isToolbar
             ? 'font-normal text-foreground data-[selected=true]:rounded-full'
             : isAdmin
-              ? 'rounded-sm bg-muted font-normal text-foreground data-[selected=true]:rounded-sm'
-              : 'rounded-lg bg-accent text-accent-foreground data-[selected=true]:rounded-lg',
-          defaultClassNames.today,
+              ? cn(
+                  'bg-muted font-normal text-foreground data-[selected=true]:rounded-sm',
+                  adminKit.controlRadius
+                )
+              : cn(
+                  'bg-accent text-accent-foreground data-[selected=true]:rounded-sm',
+                  adminKit.controlRadius
+                ),
+          defaultClassNames.today
         ),
         outside: cn(
           isCompact
             ? 'text-muted-foreground opacity-50 aria-selected:opacity-50'
             : 'text-muted-foreground opacity-40 aria-selected:opacity-40',
-          defaultClassNames.outside,
+          defaultClassNames.outside
         ),
         disabled: cn(
           isCompact ? 'text-muted-foreground opacity-50' : 'text-muted-foreground opacity-50',
-          defaultClassNames.disabled,
+          defaultClassNames.disabled
         ),
         hidden: cn('invisible', defaultClassNames.hidden),
         ...classNames,
@@ -156,9 +176,7 @@ function Calendar({
           }
           return <ChevronDown className={cn('size-4', chevronClassName)} {...chevronProps} />;
         },
-        DayButton: (dayButtonProps) => (
-          <CalendarDayButton {...dayButtonProps} variant={variant} />
-        ),
+        DayButton: (dayButtonProps) => <CalendarDayButton {...dayButtonProps} variant={variant} />,
         WeekNumber: ({ children, ...weekProps }) => (
           <td {...weekProps}>
             <div className="flex size-[--cell-size] items-center justify-center text-center">
@@ -180,12 +198,12 @@ function CalendarDayButton({
   modifiers,
   variant = 'default',
   ...props
-}: React.ComponentProps<typeof DayButton> & { variant?: 'default' | 'admin' | 'campaigns' }) {
+}: React.ComponentProps<typeof DayButton> & { variant?: 'default' | 'admin' | 'toolbar' }) {
   const defaultClassNames = getDefaultClassNames();
   const ref = React.useRef<HTMLButtonElement>(null);
   const isAdmin = variant === 'admin';
-  const isCampaigns = variant === 'campaigns';
-  const isCompactDay = isAdmin || isCampaigns;
+  const isToolbar = variant === 'toolbar';
+  const isCompactDay = isAdmin || isToolbar;
 
   React.useEffect(() => {
     if (modifiers.focused) {
@@ -212,17 +230,22 @@ function CalendarDayButton({
         isCompactDay
           ? 'h-[var(--cell-size)] w-[var(--cell-size)] p-0 font-normal'
           : 'size-[calc(var(--cell-size)-0.3rem)] p-0 font-normal',
-        isCampaigns
+        isToolbar
           ? 'rounded-full border border-transparent bg-transparent text-[13px] leading-none shadow-none hover:bg-accent data-[selected-single=true]:bg-primary data-[selected-single=true]:text-primary-foreground data-[range-start=true]:bg-primary data-[range-start=true]:text-primary-foreground data-[range-end=true]:bg-primary data-[range-end=true]:text-primary-foreground data-[range-middle=true]:rounded-none data-[range-middle=true]:bg-accent/50 data-[range-middle=true]:text-foreground group-data-[focused=true]/day:relative group-data-[focused=true]/day:z-10'
           : isAdmin
-          ? 'border border-transparent bg-transparent shadow-none hover:bg-accent rounded-sm leading-none data-[selected-single=true]:bg-primary data-[selected-single=true]:text-primary-foreground data-[range-start=true]:bg-primary data-[range-start=true]:text-primary-foreground data-[range-end=true]:bg-primary data-[range-end=true]:text-primary-foreground data-[range-middle=true]:border-transparent data-[range-middle=true]:bg-accent/50 data-[range-middle=true]:text-foreground group-data-[focused=true]/day:relative group-data-[focused=true]/day:z-10 group-data-[focused=true]/day:ring-2 group-data-[focused=true]/day:ring-ring'
-          : 'rounded-[var(--picker-radius-control,var(--radius))] leading-none data-[selected-single=true]:bg-primary data-[selected-single=true]:text-primary-foreground data-[range-start=true]:bg-primary data-[range-start=true]:text-primary-foreground data-[range-end=true]:bg-primary data-[range-end=true]:text-primary-foreground data-[range-middle=true]:bg-accent/55 data-[range-middle=true]:text-foreground group-data-[focused=true]/day:relative group-data-[focused=true]/day:z-10 group-data-[focused=true]/day:border-ring group-data-[focused=true]/day:ring-ring/50 group-data-[focused=true]/day:ring-[3px]',
+            ? 'border border-transparent bg-transparent shadow-none hover:bg-accent rounded-sm leading-none data-[selected-single=true]:bg-primary data-[selected-single=true]:text-primary-foreground data-[range-start=true]:bg-primary data-[range-start=true]:text-primary-foreground data-[range-end=true]:bg-primary data-[range-end=true]:text-primary-foreground data-[range-middle=true]:border-transparent data-[range-middle=true]:bg-accent/50 data-[range-middle=true]:text-foreground group-data-[focused=true]/day:relative group-data-[focused=true]/day:z-10 group-data-[focused=true]/day:ring-2 group-data-[focused=true]/day:ring-ring'
+            : cn(
+                adminKit.controlRadius,
+                'leading-none data-[selected-single=true]:bg-primary data-[selected-single=true]:text-primary-foreground data-[range-start=true]:bg-primary data-[range-start=true]:text-primary-foreground data-[range-end=true]:bg-primary data-[range-end=true]:text-primary-foreground data-[range-middle=true]:bg-accent/55 data-[range-middle=true]:text-foreground group-data-[focused=true]/day:relative group-data-[focused=true]/day:z-10 group-data-[focused=true]/day:border-ring group-data-[focused=true]/day:ring-ring/50 group-data-[focused=true]/day:ring-[3px]'
+              ),
         'flex items-center justify-center',
         '[&>span]:text-xs [&>span]:opacity-100',
         modifiers.outside &&
-          (isAdmin || isCampaigns ? 'text-muted-foreground opacity-50' : 'text-muted-foreground opacity-40'),
+          (isAdmin || isToolbar
+            ? 'text-muted-foreground opacity-50'
+            : 'text-muted-foreground opacity-40'),
         defaultClassNames.day,
-        className,
+        className
       )}
       {...props}
     />

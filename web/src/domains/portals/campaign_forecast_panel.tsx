@@ -1,5 +1,6 @@
-import { PageChrome } from '@/shell/page_chrome';
+import { FILTER_PANEL_NARROW_CLASS } from '@/shell/filter_panel';
 import { CustomerScopeBar } from '@/shell/customer_scope_bar';
+import { PageChrome } from '@/shell/page_chrome';
 import { PageSkeleton } from '@/shell/page_skeleton';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
@@ -60,7 +61,7 @@ export function CampaignForecastPanel({
         onDraftCustomerIdChange={onDraftCustomerIdChange}
       />
 
-      <section className="ui-filter-panel max-w-xl">
+      <section className={FILTER_PANEL_NARROW_CLASS}>
         <div className="grid gap-2">
           <Label htmlFor="forecast-budget-micro">Budget limit (micro)</Label>
           <Input

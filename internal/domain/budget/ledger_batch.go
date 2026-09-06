@@ -41,8 +41,6 @@ type SpendBatchFlusher interface {
 	UpdateSpendBatch(ctx context.Context, items []SpendFlushItem) ([]SpendFlushOutcome, error)
 }
 
-type spendBatchFlusher = SpendBatchFlusher
-
 type PendingRollup struct {
 	AmountMicro         int64
 	TxID                string

@@ -43,7 +43,7 @@ export function automationRuleEditFromRow(row: AutomationRule): AutomationRuleEd
 export function automationRuleUpsertBody(
   customerId: string,
   row: AutomationRule,
-  draft: AutomationRuleEditDraft,
+  draft: AutomationRuleEditDraft
 ): UpsertAutomationRuleRequest {
   const threshold = Number.parseFloat(draft.threshold.trim());
   return {
@@ -52,7 +52,7 @@ export function automationRuleUpsertBody(
     name: draft.name.trim(),
     metric: draft.metric.trim(),
     operator: draft.operator.trim(),
-    threshold: Number.isFinite(threshold) ? threshold : row.threshold ?? 0,
+    threshold: Number.isFinite(threshold) ? threshold : (row.threshold ?? 0),
     window_minutes: row.window_minutes,
     group_by: row.group_by,
     actions: row.actions ?? [],
@@ -64,7 +64,7 @@ export function automationRuleUpsertBody(
 
 export function automationRuleCreateBody(
   customerId: string,
-  draft: AutomationRuleEditDraft,
+  draft: AutomationRuleEditDraft
 ): UpsertAutomationRuleRequest {
   const threshold = Number.parseFloat(draft.threshold.trim());
   return {
@@ -82,7 +82,9 @@ export function automationRuleCreateBody(
   };
 }
 
-export function trafficOptimizerRuleEditFromRow(row: TrafficOptimizerRule): TrafficOptimizerRuleEditDraft {
+export function trafficOptimizerRuleEditFromRow(
+  row: TrafficOptimizerRule
+): TrafficOptimizerRuleEditDraft {
   return {
     name: row.name ?? '',
     enabled: row.enabled ?? false,
@@ -92,7 +94,7 @@ export function trafficOptimizerRuleEditFromRow(row: TrafficOptimizerRule): Traf
 export function trafficOptimizerRuleUpsertBody(
   customerId: string,
   row: TrafficOptimizerRule,
-  draft: TrafficOptimizerRuleEditDraft,
+  draft: TrafficOptimizerRuleEditDraft
 ): UpsertTrafficOptimizerRuleRequest {
   return {
     customer_id: customerId,
@@ -117,7 +119,7 @@ export function trafficOptimizerRuleUpsertBody(
 
 export function trafficOptimizerRuleCreateBody(
   customerId: string,
-  draft: TrafficOptimizerRuleEditDraft,
+  draft: TrafficOptimizerRuleEditDraft
 ): UpsertTrafficOptimizerRuleRequest {
   return {
     customer_id: customerId,
@@ -151,7 +153,7 @@ export function smartAlertRuleEditFromRow(row: SmartAlertRule): SmartAlertRuleEd
 export function smartAlertRuleUpsertBody(
   customerId: string,
   row: SmartAlertRule,
-  draft: SmartAlertRuleEditDraft,
+  draft: SmartAlertRuleEditDraft
 ): UpsertSmartAlertRuleRequest {
   const threshold = Number.parseFloat(draft.threshold.trim());
   const windowMinutes = Number.parseInt(draft.window_minutes.trim(), 10);
@@ -161,8 +163,8 @@ export function smartAlertRuleUpsertBody(
     name: draft.name.trim(),
     metric: draft.metric.trim(),
     operator: draft.operator.trim(),
-    threshold: Number.isFinite(threshold) ? threshold : row.threshold ?? 0,
-    window_minutes: Number.isFinite(windowMinutes) ? windowMinutes : row.window_minutes ?? 60,
+    threshold: Number.isFinite(threshold) ? threshold : (row.threshold ?? 0),
+    window_minutes: Number.isFinite(windowMinutes) ? windowMinutes : (row.window_minutes ?? 60),
     webhook_url: draft.webhook_url.trim(),
     enabled: draft.enabled,
   };
@@ -170,7 +172,7 @@ export function smartAlertRuleUpsertBody(
 
 export function smartAlertRuleCreateBody(
   customerId: string,
-  draft: SmartAlertRuleEditDraft,
+  draft: SmartAlertRuleEditDraft
 ): UpsertSmartAlertRuleRequest {
   const threshold = Number.parseFloat(draft.threshold.trim());
   const windowMinutes = Number.parseInt(draft.window_minutes.trim(), 10);

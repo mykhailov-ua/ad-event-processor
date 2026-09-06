@@ -1,10 +1,13 @@
 import { useEffect, type RefObject } from 'react';
 
+// Lightweight dismiss for first-party floating menus (frontend-slop.mdc overlay class B).
+// pointerdown uses capture phase so outside clicks close before nested controls handle the event.
+// excludeRefs keeps the trigger (and portaled siblings) from counting as outside.
 export function useOverlayDismiss(
   open: boolean,
   onDismiss: () => void,
   containerRef: RefObject<HTMLElement | null>,
-  excludeRefs: Array<RefObject<HTMLElement | null>> = [],
+  excludeRefs: Array<RefObject<HTMLElement | null>> = []
 ) {
   useEffect(() => {
     if (!open) {

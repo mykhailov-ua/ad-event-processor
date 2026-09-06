@@ -31,7 +31,7 @@ test('selected row uses highlight class', () => {
 });
 
 test('campaignStatusBadgeClass tints active campaigns green', () => {
-  assert.match(campaignStatusBadgeClass('ACTIVE'), /text-emerald-500/);
-  assert.match(campaignStatusBadgeClass('PAUSED'), /text-amber-500/);
+  assert.match(campaignStatusBadgeClass('ACTIVE'), /text-admin-status-active/);
+  assert.match(campaignStatusBadgeClass('PAUSED'), /text-admin-status-paused/);
   assert.match(campaignStatusBadgeClass('ACTIVE'), /rounded-full/);
 });

@@ -46,7 +46,7 @@ function estimateTextWidthPx(text: string): number {
 function columnContentWidth(
   text: string,
   minWidth: number,
-  options: ColumnContentWidthOptions = {},
+  options: ColumnContentWidthOptions = {}
 ): number {
   let extra = 0;
   if (options.header) {
@@ -67,11 +67,14 @@ export function campaignStatusCellContentWidthPx(label: string, minWidth: number
     estimateTextWidthPx(label) +
       STATUS_BADGE_HORIZONTAL_PADDING_PX +
       CELL_HORIZONTAL_PADDING_PX +
-      BODY_TOOLS_GUTTER_PX,
+      BODY_TOOLS_GUTTER_PX
   );
 }
 
-export function campaignCountriesCellContentWidthPx(countryCount: number, minWidth: number): number {
+export function campaignCountriesCellContentWidthPx(
+  countryCount: number,
+  minWidth: number
+): number {
   const visibleCount = Math.min(Math.max(countryCount, 0), COUNTRY_BADGES_MAX_VISIBLE);
   const flagsWidth =
     visibleCount * COUNTRY_FLAG_ICON_PX + Math.max(0, visibleCount - 1) * COUNTRY_FLAG_GAP_PX;
@@ -81,7 +84,7 @@ export function campaignCountriesCellContentWidthPx(countryCount: number, minWid
       : 0;
   return Math.max(
     minWidth,
-    flagsWidth + overflowWidth + CELL_HORIZONTAL_PADDING_PX + BODY_TOOLS_GUTTER_PX,
+    flagsWidth + overflowWidth + CELL_HORIZONTAL_PADDING_PX + BODY_TOOLS_GUTTER_PX
   );
 }
 
@@ -91,21 +94,14 @@ export function campaignListMiddleCellText(
   metrics: CampaignListMetrics | undefined,
   margin: CampaignMargin | undefined,
   customerNameById: Record<string, string>,
-  ownerEmailById: Record<string, string> = {},
+  ownerEmailById: Record<string, string> = {}
 ): string {
-  const vm = buildCampaignRowVm(
-    campaign,
-    metrics,
-    margin,
-    customerNameById,
-    ownerEmailById,
-    false,
-  );
+  const vm = buildCampaignRowVm(campaign, metrics, margin, customerNameById, ownerEmailById, false);
   return campaignListMiddleCellDisplayText(columnId, vm);
 }
 
 export function defaultCampaignListColumnWidths(
-  columns: ReadonlyArray<CampaignListColumnId>,
+  columns: ReadonlyArray<CampaignListColumnId>
 ): Record<CampaignListColumnId, number> {
   const widths = {} as Record<CampaignListColumnId, number>;
   for (const columnId of columns) {
@@ -116,7 +112,7 @@ export function defaultCampaignListColumnWidths(
     const label = CAMPAIGN_LIST_COLUMN_LABELS[columnId];
     widths[columnId] = clampCampaignListColumnWidthPx(
       columnId,
-      columnContentWidth(label, CAMPAIGN_LIST_COLUMN_MIN_WIDTH_PX[columnId], { header: true }),
+      columnContentWidth(label, CAMPAIGN_LIST_COLUMN_MIN_WIDTH_PX[columnId], { header: true })
     );
   }
   return widths;
@@ -142,13 +138,8 @@ export function computeCampaignListColumnWidths({
   const widths = defaultCampaignListColumnWidths(columns);
   const totals =
     filterTotals?.totals ??
-    sumCampaignListTotals(
-      items as CampaignWithMoneyDisplay[],
-      metricsById,
-      marginsById,
-    );
-  const funnelTotals =
-    filterTotals?.funnelTotals ?? sumCampaignFunnelTotals(items, metricsById);
+    sumCampaignListTotals(items as CampaignWithMoneyDisplay[], metricsById, marginsById);
+  const funnelTotals = filterTotals?.funnelTotals ?? sumCampaignFunnelTotals(items, metricsById);
   const totalsLabel = filterTotals ? 'Filtered total' : 'Total';
 
   for (const columnId of columns) {
@@ -164,27 +155,30 @@ export function computeCampaignListColumnWidths({
       for (const campaign of items) {
         maxWidth = Math.max(
           maxWidth,
-          columnContentWidth(campaignDisplayId(campaign), widths[columnId], { tools: true }),
+          columnContentWidth(campaignDisplayId(campaign), widths[columnId], { tools: true })
         );
       }
     } else if (columnId === 'name') {
       for (const campaign of items) {
         maxWidth = Math.max(
           maxWidth,
-          columnContentWidth(campaign.name ?? '', widths[columnId], { name: true, tools: true }),
+          columnContentWidth(campaign.name ?? '', widths[columnId], { name: true, tools: true })
         );
       }
     } else if (columnId === 'countries') {
       for (const campaign of items) {
         maxWidth = Math.max(
           maxWidth,
-          campaignCountriesCellContentWidthPx((campaign.target_countries ?? []).length, widths[columnId]),
+          campaignCountriesCellContentWidthPx(
+            (campaign.target_countries ?? []).length,
+            widths[columnId]
+          )
         );
       }
     } else if (columnId === 'status') {
       maxWidth = Math.max(
         maxWidth,
-        campaignStatusCellContentWidthPx(CAMPAIGN_LIST_STATUS_PROBE_LABEL, widths[columnId]),
+        campaignStatusCellContentWidthPx(CAMPAIGN_LIST_STATUS_PROBE_LABEL, widths[columnId])
       );
       for (const campaign of items) {
         const text = campaignListMiddleCellText(
@@ -193,7 +187,7 @@ export function computeCampaignListColumnWidths({
           metricsById[campaign.id],
           marginsById[campaign.id],
           customerNameById,
-          ownerEmailById,
+          ownerEmailById
         );
         maxWidth = Math.max(maxWidth, campaignStatusCellContentWidthPx(text, widths[columnId]));
       }
@@ -205,7 +199,7 @@ export function computeCampaignListColumnWidths({
           metricsById[campaign.id],
           marginsById[campaign.id],
           customerNameById,
-          ownerEmailById,
+          ownerEmailById
         );
         maxWidth = Math.max(maxWidth, columnContentWidth(text, widths[columnId], { tools: true }));
       }
@@ -216,12 +210,12 @@ export function computeCampaignListColumnWidths({
       totals,
       funnelTotals,
       items.length,
-      totalsLabel,
+      totalsLabel
     );
     if (totalsText) {
       maxWidth = Math.max(
         maxWidth,
-        columnContentWidth(totalsText, widths[columnId], { tools: true }),
+        columnContentWidth(totalsText, widths[columnId], { tools: true })
       );
     }
 

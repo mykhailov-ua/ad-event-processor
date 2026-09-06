@@ -7,12 +7,15 @@ import (
 
 	"ad-event-processor/internal/domain"
 	db "ad-event-processor/internal/domain/db"
+	"ad-event-processor/pkg/coldpath"
 
 	"github.com/google/uuid"
 	"github.com/jackc/pgx/v5"
 	"github.com/jackc/pgx/v5/pgtype"
 	"github.com/jackc/pgx/v5/pgxpool"
 )
+
+const trafficOptimizerTickTimeout = 2 * time.Minute
 
 type PublishHost interface {
 	PublishCampaignUpdate(ctx context.Context, campaignID string)
@@ -75,11 +78,13 @@ func (w *Worker) Start(ctx context.Context) {
 }
 
 func (w *Worker) tick(ctx context.Context) {
+	opCtx, cancel := coldpath.BoundedContext(ctx, trafficOptimizerTickTimeout)
+	defer cancel()
 	if w == nil || w.pool == nil || w.host == nil {
 		return
 	}
 	recordWorkerTick(time.Now().UTC())
-	rules, err := db.New(w.pool).ListEnabledTrafficOptimizerRules(ctx)
+	rules, err := db.New(w.pool).ListEnabledTrafficOptimizerRules(opCtx)
 	if err != nil {
 		slog.Error("traffic optimizer: list rules", "error", err)
 		return
@@ -102,18 +107,18 @@ func (w *Worker) tick(ctx context.Context) {
 			continue
 		}
 		evalsByCustomer[rule.CustomerID]++
-		_ = db.New(w.pool).UpdateTrafficOptimizerRuleLastEvaluated(ctx, db.UpdateTrafficOptimizerRuleLastEvaluatedParams{
+		_ = db.New(w.pool).UpdateTrafficOptimizerRuleLastEvaluated(opCtx, db.UpdateTrafficOptimizerRuleLastEvaluatedParams{
 			ID:              domain.ToUUID(rule.ID),
 			LastEvaluatedAt: pgtype.Timestamptz{Time: now, Valid: true},
 		})
-		if onCooldown, err := w.ruleOnCooldown(ctx, rule, now); err != nil {
+		if onCooldown, err := w.ruleOnCooldown(opCtx, rule, now); err != nil {
 			slog.Warn("traffic optimizer: cooldown check", "rule_id", rule.ID, "error", err)
 			continue
 		} else if onCooldown {
 			EvalTotal.WithLabelValues(rule.CustomerID.String(), "cooldown").Inc()
 			continue
 		}
-		if err := w.applyRule(ctx, rule, now); err != nil {
+		if err := w.applyRule(opCtx, rule, now); err != nil {
 			slog.Warn("traffic optimizer: apply rule", "rule_id", rule.ID, "error", err)
 			EvalTotal.WithLabelValues(rule.CustomerID.String(), "error").Inc()
 			continue

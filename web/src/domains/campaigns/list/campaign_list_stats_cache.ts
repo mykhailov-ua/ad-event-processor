@@ -4,6 +4,8 @@ import type { CampaignStats, CampaignStatsQuery } from '@/api/types';
 /** Session cache TTL for popover stats; list refresh bumps cacheRevision to invalidate. */
 export const CAMPAIGN_STATS_CACHE_TTL_MS = 60_000;
 
+// Popover stats: session Map keyed by cacheRevision + campaign + date range.
+// listMetrics seeds UI from POST metrics batch while GET /stats loads; source=list_batch is approximate.
 type CampaignStatsCacheEntry = {
   stats: CampaignStats;
   expiresAt: number;
@@ -12,7 +14,7 @@ type CampaignStatsCacheEntry = {
 export function buildCampaignStatsCacheKey(
   campaignId: string,
   statsQuery: CampaignStatsQuery,
-  cacheRevision: string,
+  cacheRevision: string
 ): string {
   return [
     cacheRevision,
@@ -26,7 +28,7 @@ export function buildCampaignStatsCacheKey(
 export function campaignStatsFromListMetrics(
   campaignId: string,
   metrics: CampaignListMetrics,
-  statsQuery: CampaignStatsQuery = {},
+  statsQuery: CampaignStatsQuery = {}
 ): CampaignStats {
   return {
     campaign_id: campaignId,
@@ -71,7 +73,7 @@ function statsQueryKeyParts(statsQuery: CampaignStatsQuery): [string, string, st
 /** Match any session revision (e.g. list scope) when editor does not know cacheRevision. */
 export function readCachedCampaignStatsForCampaign(
   campaignId: string,
-  statsQuery: CampaignStatsQuery = {},
+  statsQuery: CampaignStatsQuery = {}
 ): CampaignStats | undefined {
   const [from, to, granularity] = statsQueryKeyParts(statsQuery);
   const now = Date.now();

@@ -31,10 +31,20 @@ export function PageBreadcrumbs({ className }: { className?: string }) {
               {crumbs.map((crumb, index) => {
                 const isLast = index === crumbs.length - 1;
                 return (
-                  <span key={`${crumb.label}-${index}`} className="inline-flex items-center gap-1.5">
-                    {index > 0 ? <span aria-hidden className="text-muted-foreground/60">/</span> : null}
+                  <span
+                    key={`${crumb.label}-${index}`}
+                    className="inline-flex items-center gap-1.5"
+                  >
+                    {index > 0 ? (
+                      <span aria-hidden className="text-muted-foreground/60">
+                        /
+                      </span>
+                    ) : null}
                     {crumb.href && !isLast ? (
-                      <Link className="text-muted-foreground hover:text-foreground hover:underline" to={crumb.href}>
+                      <Link
+                        className="text-muted-foreground hover:text-foreground hover:underline"
+                        to={crumb.href}
+                      >
                         {crumb.label}
                       </Link>
                     ) : isLast ? (

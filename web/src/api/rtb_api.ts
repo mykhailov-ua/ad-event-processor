@@ -1,5 +1,6 @@
-import { apiFetch, apiJson, apiJsonArray } from './client.js';
+import { apiFetch, apiJson, apiJsonArray, parseApiError } from './client.js';
 import type {
+  OpenRtbBidRequest,
   OpenRtbValidationResult,
   RtbDeal,
   RtbDealCreateSpec,
@@ -21,7 +22,7 @@ export async function getRtbDeal(id: number, signal?: AbortSignal): Promise<RtbD
 
 export async function createRtbDeal(
   body: RtbDealCreateSpec,
-  signal?: AbortSignal,
+  signal?: AbortSignal
 ): Promise<RtbDeal> {
   return apiJson<RtbDeal>('/api/v1/rtb/deals', {
     method: 'POST',
@@ -33,7 +34,7 @@ export async function createRtbDeal(
 export async function patchRtbDeal(
   id: number,
   body: RtbDealUpdateSpec,
-  signal?: AbortSignal,
+  signal?: AbortSignal
 ): Promise<RtbDeal> {
   return apiJson<RtbDeal>(`/api/v1/rtb/deals/${encodeURIComponent(String(id))}`, {
     method: 'PATCH',
@@ -48,19 +49,19 @@ export async function deleteRtbDeal(id: number, signal?: AbortSignal): Promise<v
     signal,
   });
   if (!response.ok && response.status !== 204) {
-    throw new Error(response.statusText || `HTTP ${response.status}`);
+    throw await parseApiError(response);
   }
 }
 
 export async function getRtbIntegrationProfile(
-  signal?: AbortSignal,
+  signal?: AbortSignal
 ): Promise<RtbIntegrationProfile> {
   return apiJson<RtbIntegrationProfile>('/api/v1/rtb/integration-profile', { signal });
 }
 
 export async function getRtbShadowDiff(
   window = '1h',
-  signal?: AbortSignal,
+  signal?: AbortSignal
 ): Promise<RtbShadowDiffSnapshot> {
   const search = new URLSearchParams();
   if (window) {
@@ -73,7 +74,7 @@ export async function getRtbShadowDiff(
 
 export async function getRtbReconcileExport(
   params: { window?: string; request_id?: string } = {},
-  signal?: AbortSignal,
+  signal?: AbortSignal
 ): Promise<RtbReconcileExport> {
   const search = new URLSearchParams();
   if (params.window) {
@@ -90,7 +91,7 @@ export async function getRtbReconcileExport(
 export async function applyRtbFloors(
   body: RtbFloorsApplyRequest,
   dryRun = true,
-  signal?: AbortSignal,
+  signal?: AbortSignal
 ): Promise<RtbFloorsApplyResult> {
   const search = new URLSearchParams();
   if (dryRun) {
@@ -106,8 +107,8 @@ export async function applyRtbFloors(
 }
 
 export async function validateRtbBidRequest(
-  body: Record<string, unknown>,
-  signal?: AbortSignal,
+  body: OpenRtbBidRequest,
+  signal?: AbortSignal
 ): Promise<OpenRtbValidationResult> {
   return apiJson<OpenRtbValidationResult>('/api/v1/rtb/validate-bid-request', {
     method: 'POST',

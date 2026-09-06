@@ -9,7 +9,7 @@ export function listPageRange(
   total: number,
   limit: number,
   offset: number,
-  itemCount: number,
+  itemCount: number
 ): ListPageRange {
   if (total <= 0 || limit <= 0) {
     return { page: 0, pageCount: 0, rangeStart: 0, rangeEnd: 0 };

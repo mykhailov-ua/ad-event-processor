@@ -1,4 +1,9 @@
 import type { CampaignMargin } from '@/api/types';
+import {
+  adminMetricMutedZeroClass,
+  adminMetricNegativeClass,
+  adminMetricPositiveClass,
+} from '@/lib/admin_metric_tone';
 import type { VmRateCell } from '@/domains/campaigns/list/campaign_list_row_vm';
 
 export {
@@ -17,14 +22,14 @@ export function profitToneClass(margin?: CampaignMargin): string {
 
 export function profitToneClassFromMicro(profitMicro?: number | null): string {
   if (profitMicro == null || profitMicro === 0) {
-    return 'tabular-nums text-muted-foreground/60';
+    return adminMetricMutedZeroClass;
   }
-  return profitMicro > 0 ? 'font-semibold text-green-700 dark:text-green-400' : 'font-semibold text-red-700 dark:text-red-400';
+  return profitMicro > 0 ? adminMetricPositiveClass : adminMetricNegativeClass;
 }
 
 export function roiToneClassFromRate(roi: VmRateCell): string {
   if (roi.isZero || roi.text === '-') {
-    return 'tabular-nums text-muted-foreground/60';
+    return adminMetricMutedZeroClass;
   }
-  return roi.valPct >= 0 ? 'font-semibold text-green-700 dark:text-green-400' : 'font-semibold text-red-700 dark:text-red-400';
+  return roi.valPct >= 0 ? adminMetricPositiveClass : adminMetricNegativeClass;
 }

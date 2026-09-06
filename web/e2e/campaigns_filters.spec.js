@@ -38,7 +38,7 @@ test('campaigns directory toolbar and filters are visible', async ({ page }) => 
   await expect(page.getByRole('heading', { name: 'Campaigns' })).toBeVisible();
   await expect(page.getByRole('toolbar', { name: 'Campaign actions' })).toBeVisible();
   const toolbar = page.getByRole('toolbar', { name: 'Campaign actions' });
-  await expect(page.getByRole('button', { name: 'Create', exact: true })).toBeVisible();
+  await expect(page.getByRole('button', { name: 'Quick create', exact: true })).toBeVisible();
   await expect(toolbar.getByRole('button', { name: 'Clone' })).toBeVisible();
   await expect(toolbar.getByRole('button', { name: 'Pause', exact: true })).toBeVisible();
   await expect(toolbar.getByRole('button', { name: 'Archive', exact: true })).toBeVisible();
@@ -100,8 +100,8 @@ test('campaigns create dialog opens from toolbar', async ({ page }) => {
   await loginAsAdmin(page);
   await gotoCampaigns(page);
 
-  await page.getByRole('button', { name: 'Create', exact: true }).click();
-  await expect(page.getByRole('heading', { name: 'Create campaign' })).toBeVisible();
+  await page.getByRole('button', { name: 'Quick create', exact: true }).click();
+  await expect(page.getByRole('heading', { name: 'Quick create campaign' })).toBeVisible();
 });
 
 test('campaigns column sort updates query string', async ({ page }) => {

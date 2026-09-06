@@ -6,9 +6,7 @@ import { randomBytes } from 'node:crypto';
 import { expect } from '@playwright/test';
 
 export const baseURL =
-  process.env.ADMIN_E2E_BASE_URL ||
-  process.env.PLAYWRIGHT_BASE_URL ||
-  'http://localhost:8188';
+  process.env.ADMIN_E2E_BASE_URL || process.env.PLAYWRIGHT_BASE_URL || 'http://localhost:8188';
 
 const DEFAULT_EMAIL = 'admin@test.local';
 const DEFAULT_PASSWORD = 'Password123!';
@@ -172,6 +170,60 @@ export function isApiPatch(pathPart, status = 200) {
 }
 
 /**
+ * Navigate live (`admin_dev=0`) and wait for a GET API response.
+ * @param {import('@playwright/test').Page} page
+ * @param {string} path
+ * @param {string} apiPathPart
+ * @param {number} [status=200]
+ * @returns {Promise<import('@playwright/test').Response>}
+ */
+export async function gotoLiveAwaitGet(page, path, apiPathPart, status = 200) {
+  const listResponse = page.waitForResponse(isApiGet(apiPathPart, status), { timeout: 20_000 });
+  await gotoLive(page, path);
+  return listResponse;
+}
+
+/**
+ * @param {import('@playwright/test').Page} page
+ * @param {(response: import('@playwright/test').Response) => boolean} predicate
+ * @returns {Promise<import('@playwright/test').Response>}
+ */
+export async function gotoLiveAwaitResponse(page, path, predicate) {
+  const listResponse = page.waitForResponse(predicate, { timeout: 20_000 });
+  await gotoLive(page, path);
+  return listResponse;
+}
+
+/** L1 smoke matrix routes with primary read GET (hub-only routes omit api). */
+export const ADMIN_SMOKE_ROUTE_READS = [
+  { path: '/customers', heading: 'Customers', api: '/api/v1/customers' },
+  { path: '/campaigns', heading: 'Campaigns', useCampaignsList: true },
+  { path: '/billing', heading: 'Billing', api: '/api/v1/billing/invoices' },
+  { path: '/settings', heading: 'Platform settings', api: '/api/v1/settings/platform' },
+  { path: '/settings/license', heading: 'License', api: '/api/v1/license/status' },
+  { path: '/team', heading: 'Team', api: '/api/v1/team/overview', skipWithoutCustomer: true },
+  { path: '/audit', heading: 'Audit', api: '/api/v1/audit' },
+  { path: '/reports', heading: 'Reports', api: '/api/v1/reports/catalog' },
+  { path: '/ops', heading: 'Ops', api: '/api/v1/ops/home' },
+  { path: '/fraud/presets', heading: 'Fraud presets', api: '/api/v1/fraud/presets' },
+];
+
+/** Ops section pages with list/read GET on mount. */
+export const OPS_SECTION_READS = [
+  { path: '/ops/dlq', api: '/api/v1/ops/dlq/inbox' },
+  { path: '/ops/blacklist', api: '/api/v1/ops/blacklist' },
+  { path: '/ops/incidents', api: '/api/v1/ops/incidents' },
+  { path: '/ops/outbox', api: '/api/v1/ops/outbox' },
+  { path: '/ops/shards', api: '/api/v1/ops/shards' },
+  { path: '/ops/ml-model', api: '/api/v1/ops/ml-model' },
+  { path: '/ops/domains', api: '/api/v1/ops/domains/rotation' },
+  { path: '/ops/recon', api: '/api/v1/ops/recon' },
+  { path: '/ops/consent', api: '/api/v1/ops/consent/proofs' },
+  { path: '/ops/rum', api: '/api/v1/ops/rum' },
+  { path: '/ops/metrics', api: '/api/v1/ops/dashboard/metrics' },
+];
+
+/**
  * @returns {string}
  */
 export function randomHex32() {
@@ -297,7 +349,12 @@ export async function expectApiListBoundToDom(page, body, options) {
       .or(main.getByRole('link', { name: label, exact: true }))
       .or(main.locator(`input[value="${label}"]`))
       .or(main.getByText(label, { exact: true }));
-    if (await rowLocator.first().isVisible({ timeout: 3000 }).catch(() => false)) {
+    if (
+      await rowLocator
+        .first()
+        .isVisible({ timeout: 3000 })
+        .catch(() => false)
+    ) {
       return;
     }
   }
@@ -359,9 +416,12 @@ export async function loginAsAdmin(page) {
     }
 
     if (attempt === 1) {
-      const invalidCredentials = await page.getByText('invalid credentials').isVisible().catch(() => false);
+      const invalidCredentials = await page
+        .getByText('invalid credentials')
+        .isVisible()
+        .catch(() => false);
       throw new Error(
-        invalidCredentials ? 'login failed: invalid credentials' : 'login failed: still on /login',
+        invalidCredentials ? 'login failed: invalid credentials' : 'login failed: still on /login'
       );
     }
   }
@@ -399,7 +459,9 @@ export async function gotoCustomers(page) {
 export async function gotoCampaigns(page) {
   await page.goto('/campaigns');
   await mainHeading(page, 'Campaigns').waitFor({ timeout: 15_000 });
-  await page.getByRole('button', { name: 'Create', exact: true }).waitFor({ timeout: 15_000 });
+  await page
+    .getByRole('button', { name: 'Quick create', exact: true })
+    .waitFor({ timeout: 15_000 });
 }
 
 /**
@@ -443,9 +505,7 @@ export async function openFirstCampaignEditor(page) {
  * @returns {Promise<string>}
  */
 export async function fetchFirstCampaignId(page) {
-  const response = await page.request.get(
-    new URL('/api/v1/campaigns?limit=1', baseURL).toString(),
-  );
+  const response = await page.request.get(new URL('/api/v1/campaigns?limit=1', baseURL).toString());
   if (!response.ok()) {
     return '';
   }

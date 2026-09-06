@@ -26,14 +26,14 @@
 // Contracts:
 //
 // Env knobs (units; read via Server.cfg):
-//   - MAX_WORKERS: worker count (default 16); queue depth 8192 wired in cmd/tracker/wire.go.
+//   - MAX_WORKERS: worker count (default 16); WORKER_POOL_QUEUE_DEPTH default 8192 (cmd/tracker/wire.go).
 //   - MAX_REQUEST_BODY_SIZE (bytes, default 1048576): ParseHTTP1 maxBody.
 //   - HTTP1_INCOMPLETE_MAX (count, default 3): incomplete header/body strikes before close.
 //   - HTTP1_BODY_IDLE_MS (ms): slow-body idle close; dev default 500, production default 5000 when unset.
 //   - HTTP1_MAX_CONN_LIFETIME_MS (ms, default 0): 0 disables conn lifetime cap.
 //
 // Defaults and limits:
-//   - Per-worker MPSC queue depth 8192 (must be power of two; zero or non-POT rounds to 4096).
+//   - Per-worker MPSC queue depth WORKER_POOL_QUEUE_DEPTH (default 8192; must be power of two; zero or non-POT rounds to 4096).
 //   - Worker arena: offloadArenaSlots=4, offloadMaxReqBytes=1 MiB per slot (arena.go).
 //   - requestBufferPool objects capped at maxPoolObjectSize=64 KiB; larger wire copies heap-allocate.
 //   - http1MaxBufferedOverhead=8192 bytes added to maxBody for inbound buffer accounting.

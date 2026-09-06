@@ -1,3 +1,4 @@
+import { FILTER_PANEL_NARROW_CLASS } from '@/shell/filter_panel';
 import { PageChrome } from '@/shell/page_chrome';
 import { ErrorBlock } from '@/shell/error_block';
 import { PageSkeleton } from '@/shell/page_skeleton';
@@ -67,9 +68,11 @@ export function SupportFeedbackForm({
         </dl>
       ) : null}
 
-      {metaError ? <ErrorBlock title="Could not load feedback metadata" message={metaError.message} /> : null}
+      {metaError ? (
+        <ErrorBlock title="Could not load feedback metadata" message={metaError.message} />
+      ) : null}
 
-      <section className="ui-filter-panel max-w-xl">
+      <section className={FILTER_PANEL_NARROW_CLASS}>
         <div className="grid gap-2">
           <Label htmlFor="feedback-type">Type</Label>
           <Input

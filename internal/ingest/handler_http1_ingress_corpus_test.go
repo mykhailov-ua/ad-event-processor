@@ -55,6 +55,14 @@ func TestHTTP1IngressCanonical_trackRejectsChunked(t *testing.T) {
 	require.Equal(t, IngressReject, gnet.Verdict)
 }
 
+func TestHTTP1IngressCanonical_trackRejectsGzipTransferEncoding(t *testing.T) {
+	wire := []byte("POST /track HTTP/1.1\r\nTransfer-Encoding: gzip\r\nContent-Length: 5\r\n\r\nhello")
+	edge, gnet, diff := http1IngressCanonical(wire, 1024)
+	require.False(t, diff)
+	require.Equal(t, IngressReject, edge.Verdict)
+	require.Equal(t, IngressReject, gnet.Verdict)
+}
+
 func boolProofStr(closed bool) string {
 	if closed {
 		return "closed"

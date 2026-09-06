@@ -32,6 +32,6 @@ test('filterNavItems holdout: 1k catalog x 1k filters within budget', () => {
   const limitMs = NAV_FILTER_1K_BUDGET.medianMs * PERF_TOLERANCE_RATIO;
   assert.ok(
     perFilterMs <= limitMs,
-    `filterNavItems per-call ${perFilterMs.toFixed(4)} ms exceeds ${limitMs.toFixed(4)} ms`,
+    `filterNavItems per-call ${perFilterMs.toFixed(4)} ms exceeds ${limitMs.toFixed(4)} ms`
   );
 });

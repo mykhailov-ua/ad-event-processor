@@ -53,7 +53,7 @@ for dir in "${SCAN_DIRS[@]}"; do
       fi
       echo "Error: client list sort pattern in non-allowlisted file: $line"
       failed=1
-    done < <(rg -n "$pattern" "$dir" --glob '*.ts' --glob '*.tsx' 2>/dev/null || true)
+    done < <(rg -n "$pattern" "$dir" --glob '*.ts' --glob '*.tsx' 2> /dev/null || true)
   done
 done
 

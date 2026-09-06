@@ -1,7 +1,6 @@
 import type { FlowPath } from '@/api/types';
 
-export const DEFAULT_FLOW_PATHS_JSON =
-  '[{"weight":100,"landers":[],"offers":[]}]';
+export const DEFAULT_FLOW_PATHS_JSON = '[{"weight":100,"landers":[],"offers":[]}]';
 
 export function flowPathsToJson(paths: unknown): string {
   if (Array.isArray(paths)) {
@@ -11,7 +10,7 @@ export function flowPathsToJson(paths: unknown): string {
 }
 
 export function parseFlowPathsJson(
-  raw: string,
+  raw: string
 ): { ok: true; paths: FlowPath[] } | { ok: false; error: string } {
   try {
     const parsed: unknown = JSON.parse(raw);
@@ -30,14 +29,12 @@ function canonicalFlowPaths(paths: FlowPath[]): string {
     landers: [...(path.landers ?? [])]
       .map((ref) => ({ lander_id: ref.lander_id, weight: ref.weight ?? 0 }))
       .sort(
-        (left, right) =>
-          left.lander_id.localeCompare(right.lander_id) || left.weight - right.weight,
+        (left, right) => left.lander_id.localeCompare(right.lander_id) || left.weight - right.weight
       ),
     offers: [...(path.offers ?? [])]
       .map((ref) => ({ offer_id: ref.offer_id, weight: ref.weight ?? 0 }))
       .sort(
-        (left, right) =>
-          left.offer_id.localeCompare(right.offer_id) || left.weight - right.weight,
+        (left, right) => left.offer_id.localeCompare(right.offer_id) || left.weight - right.weight
       ),
   }));
   return JSON.stringify(normalized);
@@ -63,10 +60,10 @@ export function flowPathsEqual(left: unknown, right: unknown): boolean {
   return canonicalFlowPaths(leftPaths) === canonicalFlowPaths(rightPaths);
 }
 
-export function flowDraftFromSnapshot(flow: {
-  name?: string;
-  paths?: unknown;
-}): { name: string; pathsJson: string } {
+export function flowDraftFromSnapshot(flow: { name?: string; paths?: unknown }): {
+  name: string;
+  pathsJson: string;
+} {
   return {
     name: flow.name ?? '',
     pathsJson: flowPathsToJson(flow.paths),
@@ -79,7 +76,7 @@ export type BuildFlowUpdateResult =
 
 export function buildFlowUpdateBody(
   draftName: string,
-  draftPathsJson: string,
+  draftPathsJson: string
 ): BuildFlowUpdateResult {
   const name = draftName.trim();
   if (!name) {

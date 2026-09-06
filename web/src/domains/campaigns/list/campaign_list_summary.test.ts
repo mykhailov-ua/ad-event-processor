@@ -5,10 +5,7 @@ import { computeCampaignListSummary, resolveCampaignListSummary } from './campai
 
 test('computeCampaignListSummary aggregates current page when nothing selected', () => {
   const summary = computeCampaignListSummary(
-    [
-      { id: 'a', flow_id: 'flow-1' } as never,
-      { id: 'b' } as never,
-    ],
+    [{ id: 'a', flow_id: 'flow-1' } as never, { id: 'b' } as never],
     new Set(),
     {
       a: { clicks: 10, conversions: 2, stale: false },
@@ -17,7 +14,7 @@ test('computeCampaignListSummary aggregates current page when nothing selected',
     {
       a: { operator_margin_micro: 100, rtb_cost_micro: 200, advertiser_spend_micro: 300 },
       b: { operator_margin_micro: -50, rtb_cost_micro: 100, advertiser_spend_micro: 50 },
-    },
+    }
   );
 
   assert.equal(summary.scope, 'page');
@@ -48,7 +45,7 @@ test('computeCampaignListSummary_holdout prefers metrics batch micros over margi
         rtb_cost_micro: 99,
         advertiser_spend_micro: 99,
       },
-    },
+    }
   );
 
   assert.equal(summary.revenueMicro, 2_000_000);
@@ -58,10 +55,7 @@ test('computeCampaignListSummary_holdout prefers metrics batch micros over margi
 
 test('computeCampaignListSummary scopes to selected rows only', () => {
   const summary = computeCampaignListSummary(
-    [
-      { id: 'a' } as never,
-      { id: 'b' } as never,
-    ],
+    [{ id: 'a' } as never, { id: 'b' } as never],
     new Set(['b']),
     {
       a: { clicks: 100, conversions: 10, stale: false },
@@ -69,7 +63,7 @@ test('computeCampaignListSummary scopes to selected rows only', () => {
     },
     {
       b: { operator_margin_micro: 20, rtb_cost_micro: 30, advertiser_spend_micro: 50 },
-    },
+    }
   );
 
   assert.equal(summary.scope, 'selection');
@@ -107,7 +101,7 @@ test('resolveCampaignListSummary uses filter totals when nothing selected', () =
       campaignCount: 12,
       marginBreachCount: 3,
       stale: false,
-    },
+    }
   );
 
   assert.equal(summary.scope, 'filter');
@@ -146,7 +140,7 @@ test('resolveCampaignListSummary_holdout prefers selection over filter totals', 
       campaignCount: 99,
       marginBreachCount: 0,
       stale: false,
-    },
+    }
   );
 
   assert.equal(summary.scope, 'selection');

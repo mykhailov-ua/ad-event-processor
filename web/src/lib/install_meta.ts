@@ -1,5 +1,6 @@
 import type { MetaResponse } from '@/api/types';
 
+// License/bootstrap gates derived from GET /meta; server remains authoritative for enforcement.
 const BLOCKED_LICENSE_STATES = new Set(['EXPIRED', 'REVOKED']);
 
 export function readBootstrapComplete(meta: MetaResponse | undefined): boolean {

@@ -2,7 +2,7 @@
 //
 // Role:
 //   - CompositionDrain table in drain.go: bridge files and shell files mapped to target internal/<domain>/ packages.
-//   - Migration inventory for modular-monolith drain milestones; not loaded at runtime.
+//   - Migration inventory for modular-monolith domain extraction inventory; not loaded at runtime.
 //
 // Invariants:
 //   - Each DrainRow names a concrete controlplane file and Role; Drained=true means domain logic lives in internal/<domain>/.

@@ -75,6 +75,7 @@ export function OpsShards({
         <EmptyState description="Shard health matrix is empty." title="No shard rows" />
       ) : (
         <OpsTable
+          horizontalScroll
           head={
             <OpsTableHeaderRow>
               <OpsTableHead>Shard</OpsTableHead>

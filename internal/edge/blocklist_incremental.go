@@ -7,7 +7,6 @@ import (
 
 	"ad-event-processor/internal/metrics"
 
-	"github.com/cilium/ebpf"
 	"github.com/redis/go-redis/v9"
 )
 
@@ -89,16 +88,15 @@ func (s *BlocklistStore) applyHostAdd(maps BlocklistMaps, ip string) (int, error
 		if _, exists := s.hosts[addr]; exists {
 			return 0, nil
 		}
-		if maps.V4Host != nil {
-			recordLRUEvictionBeforeInsert(maps.V4Host, "blocklist_host_v4", len(s.hosts))
-			if err := maps.V4Host.Update(addr, blockedMarker, ebpf.UpdateAny); err != nil {
+		if maps.V4Host != nil || maps.V4Prefix != nil {
+			if err := upsertHostDenyV4(maps, addr, len(s.hosts)); err != nil {
 				return 0, err
 			}
 		}
 		s.hosts[addr] = struct{}{}
 		return 1, nil
 	}
-	if maps.V6Host == nil {
+	if maps.V6Host == nil && maps.V6Prefix == nil {
 		return 0, nil
 	}
 	key, ok := ParseIPv6Host(ip)
@@ -109,8 +107,7 @@ func (s *BlocklistStore) applyHostAdd(maps BlocklistMaps, ip string) (int, error
 	if _, exists := s.v6Hosts[id]; exists {
 		return 0, nil
 	}
-	recordLRUEvictionBeforeInsert(maps.V6Host, "blocklist_host_v6", len(s.v6Hosts))
-	if err := maps.V6Host.Update(key.Addr, blockedMarker, ebpf.UpdateAny); err != nil {
+	if err := upsertHostDenyV6(maps, key, len(s.v6Hosts)); err != nil {
 		return 0, err
 	}
 	s.v6Hosts[id] = key
@@ -126,15 +123,15 @@ func (s *BlocklistStore) applyHostRemove(maps BlocklistMaps, ip string) (int, er
 		if _, exists := s.hosts[addr]; !exists {
 			return 0, nil
 		}
-		if maps.V4Host != nil {
-			if err := maps.V4Host.Delete(addr); err != nil {
+		if maps.V4Host != nil || maps.V4Prefix != nil {
+			if err := deleteHostDenyV4(maps, addr); err != nil {
 				return 0, err
 			}
 		}
 		delete(s.hosts, addr)
 		return 1, nil
 	}
-	if maps.V6Host == nil {
+	if maps.V6Host == nil && maps.V6Prefix == nil {
 		return 0, nil
 	}
 	key, ok := ParseIPv6Host(ip)
@@ -145,7 +142,7 @@ func (s *BlocklistStore) applyHostRemove(maps BlocklistMaps, ip string) (int, er
 	if _, exists := s.v6Hosts[id]; !exists {
 		return 0, nil
 	}
-	if err := maps.V6Host.Delete(key.Addr); err != nil {
+	if err := deleteHostDenyV6(maps, key); err != nil {
 		return 0, err
 	}
 	delete(s.v6Hosts, id)

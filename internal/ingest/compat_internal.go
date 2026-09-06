@@ -17,7 +17,6 @@ type (
 	filterRejectKind = filter.FilterRejectKind
 	cidrBuilder      = filter.CIDRBuilder
 	mockRegistry     = filter.MockRegistry
-	cidrNode         = filter.CIDRNode
 	slotTable        = domain.SlotTable
 )
 
@@ -28,8 +27,6 @@ var (
 	cachedMockCamp                = filter.CachedMockCamp()
 	buildDCASNSnapshot            = filter.BuildDCASNSnapshot
 	shouldBypassCGNATIPVelocity   = filter.ShouldBypassCGNATIPVelocity
-	hexByte                       = filter.HexByte
-	scanUAFamily                  = filter.ScanUAFamily
 	normalizeCapturedTTL          = filter.NormalizeCapturedTTL
 	campaignHashTag               = domain.CampaignHashTag
 	budgetCampaignKey             = domain.BudgetCampaignKey
@@ -44,28 +41,22 @@ var (
 	resetStaticCampaignBaseline   = filter.ResetStaticCampaignBaseline
 	budgetQuotaKey                = filter.BudgetQuotaKey
 	buildSlotTable                = domain.BuildSlotTable
-	cachedUnixMilliNow            = filter.CachedUnixMilliNow
-	getCampaignFromEvent          = filter.GetCampaignFromEvent
 	asnLookupFromGeo              = filter.AsnLookupFromGeo
 	shouldSampleLuaMetrics        = filter.ShouldSampleLuaMetrics
 	auditLogSampleMaskFromConfig  = stream.AuditLogSampleMaskFromConfig
 	applyMobileBiometricSummary   = filter.ApplyMobileBiometricSummary
-	parseTCPSigHeader             = filter.ParseTCPSigHeader
 	uaMatchesInAppWebView         = filter.UAMatchesInAppWebView
 	osFingerprintMismatch         = filter.OsFingerprintMismatch
-	tcpSynSigMismatch             = filter.TcpSynSigMismatch
+	tcpSynSigMismatch             = filter.TCPSynSigMismatch
 	hashTCPSynFields              = filter.HashTCPSynFields
 	monotonicNano                 = filter.MonotonicNano
 	monoElapsedSeconds            = filter.MonoElapsedSeconds
-	matchUAAt                     = filter.MatchUAAt
 	campaignSyncKey               = domain.CampaignSyncKey
-	timezoneMismatchHours         = filter.TimezoneMismatchHours
 	marshalCHSpoolPayload         = stream.MarshalCHSpoolPayload
 	crc32Castagnoli               = filter.CRC32Castagnoli
 	openRTBLicenseAllowed         = filter.OpenRTBLicenseAllowed
 	parseIPv6To128                = stream.ParseIPv6To128
 	appendCampaignHashTag         = filter.AppendCampaignHashTag
-	loadTCPSynSigCorpusFromDir    = filter.LoadTCPSynSigCorpusFromDir
 	cachedUnixMilliLoad           = filter.CachedUnixMilliNow
 	cachedUnixMilliStore          = filter.CachedUnixMilliStore
 	cachedUnixMilliAnyStore       = filter.CachedUnixMilliAnyStore
@@ -74,7 +65,6 @@ var (
 	setClockRefreshPaused         = filter.SetClockRefreshPaused
 	cgnatBypassForCampaign        = filter.CgnatBypassForCampaign
 	histogramSampleMaskFromConfig = filter.HistogramSampleMaskFromConfig
-	cachedUnixMilliAnyLoad        = filter.CachedUnixMilliAnyLoad
 	observeHistogramSampled       = filter.ObserveHistogramSampled
 )
 

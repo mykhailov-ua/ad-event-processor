@@ -1,2 +1,4 @@
 # Routes intentionally omitted from OpenAPI (one METHOD PATH per line).
 # Example: GET /admin/legacy
+# Runtime HTTP alias; canonical report key is silent-reject-impression-funnel.
+GET /api/v1/reports/ghost-impression-funnel

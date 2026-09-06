@@ -107,19 +107,19 @@ func main() {
 		defer func() { _ = statsMap.Close() }()
 	}
 
-	var violationReader *ringbuf.Reader
 	violationsMap, err := edge.LoadPinnedViolationsMap(violationsPath)
 	if err != nil {
-		slog.Warn("open pinned violations ringbuf; autoban disabled", "path", violationsPath, "error", err)
-	} else {
-		defer func() { _ = violationsMap.Close() }()
-		violationReader, err = ringbuf.NewReader(violationsMap)
-		if err != nil {
-			slog.Warn("create violations ringbuf reader", "error", err)
-		} else {
-			defer func() { _ = violationReader.Close() }()
-		}
+		slog.Error("open pinned violations ringbuf", "path", violationsPath, "error", err)
+		os.Exit(1)
 	}
+	defer func() { _ = violationsMap.Close() }()
+
+	violationReader, err := ringbuf.NewReader(violationsMap)
+	if err != nil {
+		slog.Error("create violations ringbuf reader", "error", err)
+		os.Exit(1)
+	}
+	defer func() { _ = violationReader.Close() }()
 
 	var fingerprintReader *ringbuf.Reader
 	fingerprintsMap, err := edge.LoadPinnedFingerprintsMap(fingerprintsPath)
@@ -150,7 +150,10 @@ func main() {
 	var lastStats []uint64
 
 	violationHandler := edge.NewViolationHandler(func(evt edge.ViolationEvent) error {
-		ip := edge.HostIPv4(evt.SrcIP)
+		ip := edge.ViolationHost(evt)
+		if ip == "" {
+			return nil
+		}
 		if err := edge.RecordAutoBan(ctx, redisClient, ip, autobanTTL); err != nil {
 			return err
 		}

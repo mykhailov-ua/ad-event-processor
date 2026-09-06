@@ -47,7 +47,7 @@ export function PlatformBootstrapForm({ onComplete }: PlatformBootstrapFormProps
       toast.success('Platform setup complete');
       setInstallToken('');
       onComplete?.();
-    } catch (err) {
+    } catch (err: unknown) {
       setError(err instanceof Error ? err : new Error(String(err)));
     } finally {
       setSubmitting(false);
@@ -87,7 +87,9 @@ export function PlatformBootstrapForm({ onComplete }: PlatformBootstrapFormProps
         </PrimaryActionButton>
       </div>
       {success ? (
-        <p className="text-sm text-muted-foreground">Setup complete. Sign in with the admin account you configured.</p>
+        <p className="text-sm text-muted-foreground">
+          Setup complete. Sign in with the admin account you configured.
+        </p>
       ) : null}
       {error ? <ErrorBlock title="Setup failed" message={error.message} /> : null}
     </div>

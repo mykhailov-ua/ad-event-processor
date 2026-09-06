@@ -161,7 +161,7 @@ func TestSafePageVerify_TimezoneMismatch_SafeView(t *testing.T) {
 	require.Contains(t, resp, `safe.example/white`)
 }
 
-func TestSafePageVerify_cleanMoneyPage(t *testing.T) {
+func TestSafePageVerify_attestedAlternateURL(t *testing.T) {
 	h, cid := testSafePageVerifyHandler(t)
 	h.trackProc.ingestGeo = &staticGeoProvider{country: "US"}
 

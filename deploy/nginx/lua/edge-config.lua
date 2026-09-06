@@ -16,7 +16,7 @@
 --   (fail-open); set only when redis_value_ok and tonumber succeeds.
 -- - edge_expose_* flags: truthy -> 1; explicit false -> 0; null/ngx.null/missing -> dict:delete (env fallback).
 --
--- Redis connect/HMGET fail: fail-open on prior dict (no flush); route gates may fall back to env.
+-- Redis connect/HMGET fail: bump _asn_ver without new stamps (fail-closed ASN bypass until next good sync).
 --
 -- ngx.shared edge_config (types):
 -- - _asn_ver (number): active ASN whitelist generation.
@@ -195,12 +195,20 @@ local function sync_expose_flag(field, val)
     end
 end
 
--- HMGET config:values on worker 0 timer only; Redis down retains prior SHM (fail-open on RL numerics).
+local function invalidate_asn_whitelist()
+    local ver = (dict:get "_asn_ver" or 0) + 1
+    dict:set("_asn_ver", ver)
+    dict:set("_asn_cdn_count", 0)
+    dict:set("_asn_mobile_count", 0)
+end
+
+-- HMGET config:values on worker 0 timer only; Redis down bumps _asn_ver (fail-closed CDN/mobile bypass).
 -- ASN: bump _asn_ver last after stamping asn_cdn:* / asn_mobile:*; empty CSV clears via generation bump.
 function _M.sync()
     local red, err = blacklist_sync.connect_any_shard()
     if not red then
         edge_circuit.record_err()
+        invalidate_asn_whitelist()
         ngx.log(ngx.WARN, "edge_config: redis connect failed: ", err)
         return
     end
@@ -223,6 +231,7 @@ function _M.sync()
     red:set_keepalive(10000, 8)
     if not vals or type(vals) ~= "table" then
         edge_circuit.record_err()
+        invalidate_asn_whitelist()
         ngx.log(ngx.WARN, "edge_config: hmget failed: ", cmd_err or "empty")
         return
     end

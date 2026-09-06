@@ -10,8 +10,6 @@ import (
 
 const permCampaignsReadMasked = "campaigns:read:masked"
 
-var reportPermsCampaignRead = []string{"campaigns:read", permCampaignsReadMasked}
-
 var reportPermsFraudOperator = []string{"audit:read", "campaigns:read"}
 
 func ReportPermsFraudCustomer() []string {

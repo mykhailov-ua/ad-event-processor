@@ -161,9 +161,9 @@ func (w proxyConnWriter) Write(p []byte) (int, error) {
 }
 
 func (h *AdsPacketHandler) proxyFinishConn(c gnet.Conn, ctx *ConnContext) {
-	if h.Server != nil && h.Server.HasWorkerPool() && ctx != nil {
-		h.Server.ReleaseOffloadBuffers(ctx)
-		h.Server.RetireOffloadContext(ctx)
+	if h.HasWorkerPool() && ctx != nil {
+		h.ReleaseOffloadBuffers(ctx)
+		h.RetireOffloadContext(ctx)
 	}
 }
 

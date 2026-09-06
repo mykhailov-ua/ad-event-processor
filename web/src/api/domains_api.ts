@@ -1,4 +1,4 @@
-import { apiFetch, apiJson, apiJsonArray } from './client.js';
+import { apiFetch, apiJson, apiJsonArray, parseApiError } from './client.js';
 import type {
   AddDomainRequest,
   DomainHealth,
@@ -11,7 +11,10 @@ export async function listDomains(signal?: AbortSignal): Promise<DomainHealth[]>
   return apiJsonArray<DomainHealth>('/api/v1/domains', { signal });
 }
 
-export async function addDomain(body: AddDomainRequest, signal?: AbortSignal): Promise<DomainHealth> {
+export async function addDomain(
+  body: AddDomainRequest,
+  signal?: AbortSignal
+): Promise<DomainHealth> {
   return apiJson<DomainHealth>('/api/v1/domains', {
     method: 'POST',
     body: JSON.stringify(body),
@@ -25,30 +28,30 @@ export async function deleteDomain(hostname: string, signal?: AbortSignal): Prom
     signal,
   });
   if (!response.ok) {
-    throw new Error(response.statusText || `HTTP ${response.status}`);
+    throw await parseApiError(response);
   }
 }
 
 export async function probeDomain(hostname: string, signal?: AbortSignal): Promise<DomainHealth> {
-  return apiJson<DomainHealth>(
-    `/api/v1/domains/${encodeURIComponent(hostname)}/probe`,
-    { method: 'POST', signal },
-  );
+  return apiJson<DomainHealth>(`/api/v1/domains/${encodeURIComponent(hostname)}/probe`, {
+    method: 'POST',
+    signal,
+  });
 }
 
 export async function setupDomainSsl(
   hostname: string,
-  signal?: AbortSignal,
+  signal?: AbortSignal
 ): Promise<DomainSSLSetupResult> {
   return apiJson<DomainSSLSetupResult>(
     `/api/v1/domains/${encodeURIComponent(hostname)}/ssl/setup`,
-    { method: 'POST', signal },
+    { method: 'POST', signal }
   );
 }
 
 export async function parkDomain(
   body: ParkDomainRequest,
-  signal?: AbortSignal,
+  signal?: AbortSignal
 ): Promise<ParkDomainResponse> {
   return apiJson<ParkDomainResponse>('/api/v1/domains/park', {
     method: 'POST',

@@ -95,7 +95,7 @@ export function CampaignListCountrySelect({
           className={cn(
             campaignCountrySelectTriggerClass,
             'h-auto font-normal shadow-none',
-            className,
+            className
           )}
           disabled={disabled}
           title={title}
@@ -106,7 +106,11 @@ export function CampaignListCountrySelect({
           <ChevronDown className="h-4 w-4 shrink-0 opacity-60" aria-hidden />
         </Button>
       </PopoverTrigger>
-      <PopoverContent align={align} className={cn(campaignCountrySelectPopoverClass, 'p-0')} side="bottom">
+      <PopoverContent
+        align={align}
+        className={cn(campaignCountrySelectPopoverClass, 'p-0')}
+        side="bottom"
+      >
         <div className={campaignCountrySelectSearchClass}>
           <Search className="h-4 w-4 shrink-0 text-muted-foreground" aria-hidden />
           <input
@@ -140,7 +144,7 @@ export function CampaignListCountrySelect({
                   className={cn(
                     campaignCountrySelectOptionClass,
                     'h-auto justify-between font-normal shadow-none',
-                    isSelected && campaignCountrySelectOptionSelectedClass,
+                    isSelected && campaignCountrySelectOptionSelectedClass
                   )}
                   role="option"
                   type="button"
@@ -150,7 +154,9 @@ export function CampaignListCountrySelect({
                     setOpen(false);
                   }}
                 >
-                  <span className="truncate" title={label}>{label}</span>
+                  <span className="truncate" title={label}>
+                    {label}
+                  </span>
                   {isSelected ? (
                     <Check className="h-4 w-4 shrink-0 text-foreground" aria-hidden />
                   ) : null}

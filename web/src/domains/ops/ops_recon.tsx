@@ -97,6 +97,7 @@ export function OpsRecon({
         <EmptyState description="No reconciliation runs match filters." title="No recon runs" />
       ) : (
         <OpsTable
+          horizontalScroll
           head={
             <OpsTableHeaderRow>
               <OpsTableHead>ID</OpsTableHead>

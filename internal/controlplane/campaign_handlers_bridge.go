@@ -165,6 +165,14 @@ func (s *Service) PauseCampaign(ctx context.Context, campaignID uuid.UUID, reaso
 	return s.CampaignRuntime().PauseCampaign(ctx, campaignID, reason)
 }
 
+func (s *Service) ArchiveCampaign(ctx context.Context, campaignID uuid.UUID, reason string) error {
+	return s.CampaignRuntime().ArchiveCampaign(ctx, campaignID, reason)
+}
+
+func (s *Service) BulkCampaignAction(ctx context.Context, action string, ids []uuid.UUID, reason string) map[uuid.UUID]error {
+	return s.CampaignRuntime().BulkCampaignAction(ctx, action, ids, reason)
+}
+
 func (s *Service) PreviewPauseCampaign(ctx context.Context, campaignID uuid.UUID, reason string) (campaign.MutationPreviewDTO, error) {
 	return campaign.PreviewPauseCampaign(ctx, s.pool, campaignID, reason)
 }

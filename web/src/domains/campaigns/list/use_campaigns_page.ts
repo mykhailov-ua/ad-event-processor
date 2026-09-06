@@ -1,3 +1,4 @@
+// L3 campaigns page owner: URL searchParams are applied filters; draft* until commit; delegates list fetch to useCampaignsPageList (RF-9).
 import { useCallback, useEffect, useMemo, useState } from 'react';
 import { useSearchParams } from 'react-router-dom';
 import { toast } from 'sonner';
@@ -60,12 +61,9 @@ export function useCampaignsPage(): CampaignsDirectoryProps {
 
   const query = useMemo(
     () => buildCampaignListQuery(searchParams, session?.default_customer_id),
-    [searchParams, session?.default_customer_id],
+    [searchParams, session?.default_customer_id]
   );
-  const exportFilterQuery = useMemo(
-    () => campaignListFilterQueryFromListQuery(query),
-    [query],
-  );
+  const exportFilterQuery = useMemo(() => campaignListFilterQueryFromListQuery(query), [query]);
 
   const customerId = query.customer_id;
   const appliedCustomerId = searchParams.get('customer_id') ?? '';
@@ -84,13 +82,13 @@ export function useCampaignsPage(): CampaignsDirectoryProps {
       resolveCampaignListStatsRange(
         searchParams.get('stats_from'),
         searchParams.get('stats_to'),
-        searchParams.get('stats_range'),
+        searchParams.get('stats_range')
       ),
-    [searchParams],
+    [searchParams]
   );
   const statsQuery = useMemo(
     () => campaignStatsQueryForRange(appliedStatsRange),
-    [appliedStatsRange],
+    [appliedStatsRange]
   );
   const listScopeKey = useMemo(
     () =>
@@ -99,17 +97,17 @@ export function useCampaignsPage(): CampaignsDirectoryProps {
         statsFrom: statsQuery.from,
         statsTo: statsQuery.to,
       }),
-    [query, statsQuery.from, statsQuery.to],
+    [query, statsQuery.from, statsQuery.to]
   );
   const [draftStatsFrom, setDraftStatsFrom] = useState(
-    toDatetimeLocalValue(appliedStatsRange.from),
+    toDatetimeLocalValue(appliedStatsRange.from)
   );
   const [draftStatsTo, setDraftStatsTo] = useState(toDatetimeLocalValue(appliedStatsRange.to));
   const filtersActive = campaignListFiltersActive(
     searchParams,
     appliedQ,
     appliedSort,
-    appliedOrder,
+    appliedOrder
   );
 
   const [draftCustomerId, setDraftCustomerId] = useState(appliedCustomerId);
@@ -119,10 +117,10 @@ export function useCampaignsPage(): CampaignsDirectoryProps {
   const [draftOwnerUserId, setDraftOwnerUserId] = useState(appliedOwnerUserId);
   const [draftCountry, setDraftCountry] = useState(appliedCountry);
   const [draftBudgetMinUsd, setDraftBudgetMinUsd] = useState(
-    microQueryParamToUsdInput(appliedBudgetMinMicro),
+    microQueryParamToUsdInput(appliedBudgetMinMicro)
   );
   const [draftBudgetMaxUsd, setDraftBudgetMaxUsd] = useState(
-    microQueryParamToUsdInput(appliedBudgetMaxMicro),
+    microQueryParamToUsdInput(appliedBudgetMaxMicro)
   );
 
   useEffect(() => {
@@ -230,21 +228,21 @@ export function useCampaignsPage(): CampaignsDirectoryProps {
       const next = applyCampaignListQueryPatch(searchParams, query, patch);
       setSearchParams(next, { replace: true });
     },
-    [query, searchParams, setSearchParams],
+    [query, searchParams, setSearchParams]
   );
 
   const onPageChange = useCallback(
     (nextOffset: number) => {
       updateQuery({ offset: Math.max(0, nextOffset) });
     },
-    [updateQuery],
+    [updateQuery]
   );
 
   const onPageSizeChange = useCallback(
     (size: number) => {
       updateQuery({ limit: size, offset: 0 });
     },
-    [updateQuery],
+    [updateQuery]
   );
 
   const onDraftCustomerIdChange = useCallback(
@@ -255,7 +253,7 @@ export function useCampaignsPage(): CampaignsDirectoryProps {
         offset: 0,
       });
     },
-    [updateQuery],
+    [updateQuery]
   );
 
   const onDraftStatusChange = useCallback(
@@ -266,7 +264,7 @@ export function useCampaignsPage(): CampaignsDirectoryProps {
         offset: 0,
       });
     },
-    [updateQuery],
+    [updateQuery]
   );
 
   const onDraftPacingChange = useCallback(
@@ -277,7 +275,7 @@ export function useCampaignsPage(): CampaignsDirectoryProps {
         offset: 0,
       });
     },
-    [updateQuery],
+    [updateQuery]
   );
 
   const onDraftOwnerUserIdChange = useCallback(
@@ -288,7 +286,7 @@ export function useCampaignsPage(): CampaignsDirectoryProps {
         offset: 0,
       });
     },
-    [updateQuery],
+    [updateQuery]
   );
 
   const onDraftCountryChange = useCallback(
@@ -299,7 +297,7 @@ export function useCampaignsPage(): CampaignsDirectoryProps {
         offset: 0,
       });
     },
-    [updateQuery],
+    [updateQuery]
   );
 
   const onStatsRangeChange = useCallback(
@@ -322,7 +320,7 @@ export function useCampaignsPage(): CampaignsDirectoryProps {
       setDraftStatsTo(to);
       updateQuery({ stats_from: validated.from, stats_to: validated.to, offset: 0 });
     },
-    [defaultStatsRange.from, defaultStatsRange.to, updateQuery],
+    [defaultStatsRange.from, defaultStatsRange.to, updateQuery]
   );
 
   const onBudgetFiltersApply = useCallback(() => {
@@ -348,14 +346,13 @@ export function useCampaignsPage(): CampaignsDirectoryProps {
       disabled: fetching,
       placeholder: 'id, name, url',
     }),
-    [draftQ, fetching, onSearchApply],
+    [draftQ, fetching, onSearchApply]
   );
   useTrackerHeaderSearchRegistration(headerSearchConfig);
 
   const onColumnSort = useCallback(
     (field: CampaignSortField) => {
-      const nextOrder =
-        appliedSort === field && appliedOrder === 'asc' ? 'desc' : 'asc';
+      const nextOrder = appliedSort === field && appliedOrder === 'asc' ? 'desc' : 'asc';
       const patch: CampaignListQueryPatch = {
         sort: field,
         order: nextOrder,
@@ -367,7 +364,7 @@ export function useCampaignsPage(): CampaignsDirectoryProps {
       }
       updateQuery(patch);
     },
-    [appliedOrder, appliedSort, appliedStatsRange.from, appliedStatsRange.to, updateQuery],
+    [appliedOrder, appliedSort, appliedStatsRange.from, appliedStatsRange.to, updateQuery]
   );
 
   return {

@@ -87,6 +87,13 @@ func (s *ReconService) Run(ctx context.Context, periodStart, periodEnd time.Time
 		q := db.New(tx)
 		for _, f := range findings {
 			detailBytes := f.Detail
+			if len(detailBytes) == 0 {
+				detailBytes = marshalReconDetail(map[string]int64{
+					"payment_amount_micro": f.PaymentAmountMicro,
+					"ledger_amount_micro":  f.LedgerAmountMicro,
+					"delta_micro":          f.DeltaMicro,
+				})
+			}
 			var intentUUID pgtype.UUID
 			if f.PaymentIntentID != uuid.Nil {
 				intentUUID = pgtype.UUID{Bytes: f.PaymentIntentID, Valid: true}

@@ -54,7 +54,9 @@ function readBool(record: Record<string, unknown>, key: string): boolean | undef
 function readRestartPending(payload: Record<string, unknown>): string[] {
   const value = payload.restart_required;
   if (Array.isArray(value)) {
-    return value.filter((entry): entry is string => typeof entry === 'string' && entry.trim() !== '');
+    return value.filter(
+      (entry): entry is string => typeof entry === 'string' && entry.trim() !== ''
+    );
   }
   if (value === true || value === 'true') {
     return ['configuration'];
@@ -91,7 +93,7 @@ function parseSecrets(value: unknown): PlatformSecretsSnapshot {
 }
 
 export function parsePlatformSettingsSnapshot(
-  payload: Record<string, unknown>,
+  payload: Record<string, unknown>
 ): PlatformSettingsSnapshot {
   const bootstrapValue = payload.bootstrap_complete;
   const bootstrapComplete = bootstrapValue === true || bootstrapValue === 'true';

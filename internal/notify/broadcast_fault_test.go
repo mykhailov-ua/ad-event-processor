@@ -136,6 +136,11 @@ func TestFault_notifierBroadcastAllFailThenRetry(t *testing.T) {
 		Title:     "Broadcast retry",
 		Body:      "all fail probe",
 		Broadcast: true,
+		BroadcastProviders: []string{
+			string(db.NotifierProviderSLACK),
+			string(db.NotifierProviderTELEGRAM),
+			string(db.NotifierProviderSMS),
+		},
 	})
 	require.NoError(t, err)
 
@@ -158,7 +163,7 @@ func TestFault_notifierBroadcastAllFailThenRetry(t *testing.T) {
 
 	id, err := postgresUUIDFromString(result.NotificationID)
 	require.NoError(t, err)
-	_, err = pool.Exec(ctx, "UPDATE notify.notifications SET updated_at = now() - interval '10 seconds' WHERE id = $1", id)
+	_, err = pool.Exec(ctx, "UPDATE notifier.notifications SET updated_at = now() - interval '10 seconds' WHERE id = $1", id)
 	require.NoError(t, err)
 
 	processed, err = svc.ProcessPending(ctx, workerBatchSize)

@@ -61,7 +61,7 @@
 //	  - SettingsWatcher / fraud boost maps: atomic snapshot readers on filter path.
 //
 //	TTL and stale drivers:
-//	  - Registry stale mode: REGISTRY_STALE_TTL_SEC since last pub/sub OK (fail-open settings PG fallback).
+//	  - Registry stale mode: REGISTRY_STALE_TTL since last pub/sub OK; REGISTRY_STALE_PG_GRACE warms known campaigns from PG on cache miss (404 when PG row missing, 503 registry_stale when grace off or PG down).
 //	  - Duplicate/idempotency: DUPLICATE_TTL_SEC, IDEMPOTENCY_TTL_HRS on Redis and local quanta idem cache.
 //	  - Registry epoch poll: REGISTRY_POLL_MS compares Redis campaign:registry:epoch across shards.
 //
@@ -95,7 +95,7 @@
 //   - SERVER_PORT, METRICS_PORT (TCP ports).
 //   - FILTER_TIMEOUT_MS (ms), FILTER_SLOW_MS (ms), WRITE_TIMEOUT_MS (ms).
 //   - MAX_WORKERS (pinned filter workers), REGISTRY_SYNC_INTERVAL_MS (ms), REGISTRY_POLL_MS (ms).
-//   - REDIS_POOL_SIZE (connections per shard), STREAM_PRODUCER_ADMISSION_PCT (percent 0-100).
+//   - REDIS_POOL_SIZE (connections per shard), STREAM_PRODUCER_ADMISSION_PCT (percent 0-100), REGISTRY_STALE_PG_GRACE (default true).
 //   - TRACKER_PPROF_ENABLED=1 enables /debug/pprof on metrics port (write timeout 120s vs 10s).
 //
 // Verify:

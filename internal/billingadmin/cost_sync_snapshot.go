@@ -106,7 +106,11 @@ func (h *CostSyncHTTPHandlers) listCostSyncHistoryRows(
 }
 
 func (h *CostSyncHTTPHandlers) getCostSyncSnapshot(w http.ResponseWriter, r *http.Request) {
-	customerID := r.URL.Query().Get("customer_id")
+	customerID, err := h.resolveCustomerFilter(r, r.URL.Query().Get("customer_id"))
+	if err != nil {
+		h.writeCostSyncError(w, err)
+		return
+	}
 	if customerID != "" {
 		if _, err := uuid.Parse(customerID); err != nil {
 			httpresponse.Error(w, http.StatusBadRequest, "BAD_REQUEST", "invalid customer_id")

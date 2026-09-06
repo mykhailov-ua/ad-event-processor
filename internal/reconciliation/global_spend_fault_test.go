@@ -54,8 +54,9 @@ func TestFault_GlobalSpendReconciler(t *testing.T) {
 		}
 	}
 
-	for n := range 3 {
-		require.NoError(t, reconciler.ApplyBatch(ctx, "mr-batch-"+strconv.Itoa(n), txns))
+	const batchDedupKey = "mr-batch-dedup"
+	for range 3 {
+		require.NoError(t, reconciler.ApplyBatch(ctx, batchDedupKey, txns))
 	}
 
 	var ledgerCount int

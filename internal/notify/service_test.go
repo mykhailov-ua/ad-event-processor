@@ -4,9 +4,6 @@ import (
 	"context"
 	"encoding/json"
 	"fmt"
-	"os"
-	"path/filepath"
-	"runtime"
 	"strings"
 	"testing"
 	"time"
@@ -53,47 +50,13 @@ func setupTestDB(t testing.TB) (pool *pgxpool.Pool, cleanup func()) {
 		t.Fatalf("failed to connect to db: %s", err)
 	}
 
-	_, filename, _, _ := runtime.Caller(0)
-	baseDir := filepath.Join(filepath.Dir(filename), "..", "..")
-	notifierMigrationsDir := filepath.Join(baseDir, "internal", "notify", "migrations")
-	applyMigrations(t, pool, notifierMigrationsDir)
+	require.NoError(t, ApplyMigrations(ctx, pool))
 
 	cleanup = func() {
 		pool.Close()
 		_ = pgContainer.Terminate(ctx)
 	}
 	return
-}
-
-func applyMigrations(t testing.TB, pool *pgxpool.Pool, dir string) {
-	t.Helper()
-	ctx := context.Background()
-
-	entries, err := os.ReadDir(dir)
-	if err != nil {
-		t.Fatalf("failed to read migrations dir %s: %s", dir, err)
-	}
-
-	for _, entry := range entries {
-		if entry.IsDir() || !strings.HasSuffix(entry.Name(), ".sql") {
-			continue
-		}
-		sqlBytes, err := os.ReadFile(filepath.Join(dir, entry.Name()))
-		if err != nil {
-			t.Fatalf("failed to read migration %s: %s", entry.Name(), err)
-		}
-
-		sql := string(sqlBytes)
-		parts := strings.Split(sql, "-- +goose Down")
-		upPart := parts[0]
-		upPart = strings.ReplaceAll(upPart, "-- +goose Up", "")
-		upPart = strings.ReplaceAll(upPart, "-- +goose StatementBegin", "")
-		upPart = strings.ReplaceAll(upPart, "-- +goose StatementEnd", "")
-
-		if _, err := pool.Exec(ctx, upPart); err != nil {
-			t.Fatalf("failed to apply migration %s: %s", entry.Name(), err)
-		}
-	}
 }
 
 func TestService_enqueueAndGet(t *testing.T) {
@@ -215,7 +178,7 @@ func TestService_processPending_permanentFailure(t *testing.T) {
 
 	id, err := uuid.Parse(result.NotificationID)
 	require.NoError(t, err)
-	_, err = pool.Exec(ctx, "UPDATE notify.notifications SET retry_count = 4, updated_at = now() - interval '60 seconds' WHERE id = $1", pgtype.UUID{Bytes: id, Valid: true})
+	_, err = pool.Exec(ctx, "UPDATE notifier.notifications SET retry_count = 4, updated_at = now() - interval '60 seconds' WHERE id = $1", pgtype.UUID{Bytes: id, Valid: true})
 	require.NoError(t, err)
 
 	processed, err := svc.ProcessPending(ctx, workerBatchSize)
@@ -257,7 +220,7 @@ func TestService_processPending_circuitBreaker(t *testing.T) {
 	assert.Equal(t, 3, processed)
 	assert.Equal(t, CircuitOpen, breaker.State())
 
-	rows, err := pool.Query(ctx, "SELECT error_message FROM notify.notifications WHERE error_message IS NOT NULL")
+	rows, err := pool.Query(ctx, "SELECT error_message FROM notifier.notifications WHERE error_message IS NOT NULL")
 	require.NoError(t, err)
 	defer rows.Close()
 
@@ -303,7 +266,7 @@ func TestService_processPending_exponentialBackoff(t *testing.T) {
 
 	id, err := uuid.Parse(result.NotificationID)
 	require.NoError(t, err)
-	_, err = pool.Exec(ctx, "UPDATE notify.notifications SET updated_at = now() - interval '10 seconds' WHERE id = $1", pgtype.UUID{Bytes: id, Valid: true})
+	_, err = pool.Exec(ctx, "UPDATE notifier.notifications SET updated_at = now() - interval '10 seconds' WHERE id = $1", pgtype.UUID{Bytes: id, Valid: true})
 	require.NoError(t, err)
 
 	processed, err = svc.ProcessPending(ctx, workerBatchSize)

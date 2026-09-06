@@ -2,6 +2,7 @@
 //
 // Role:
 //   - postgres_connect.go opens a pgxpool; postgres_pools.go splits read vs settlement lanes (ConnectPostgresPools).
+//     Admin read pool sets statement_timeout from ADMIN_PG_STATEMENT_TIMEOUT_MS (default 30 s); settlement pool has no cap.
 //   - goose_migrate.go applies embedded SQL migrations (ApplyGooseMigrationsDir/FS).
 //   - partition_manager.go creates and drops dated PG partitions for high-volume tables.
 //   - redis_connect.go dials standalone Redis; redis_shards.go builds per-shard UniversalClient (Sentinel, UDS, sticky pin).
@@ -12,6 +13,7 @@
 //   - clickhouse_query_config.go maps app config to ClickHouseQueryConfig defaults.
 //   - clickhouse_partition_janitor.go manages CH partition recompress, retention drop, and emergency drop (off-peak UTC).
 //   - explain_parse.go parses EXPLAIN JSON for CI audit; pg_table_stats.go collects PG table stats for ops scrapers.
+//   - query_budget.go sublinear N+1 assertion helpers for integration query counters.
 //   - query_counter.go pgx trace hook for test N+1 detection; testutil.go testcontainers PG/Redis helpers.
 //   - shutdown_errors.go classifies pool-closed and cancel errors during graceful shutdown.
 //
@@ -37,7 +39,8 @@
 //	go test ./internal/database/ -short -count=1
 //	go test ./internal/database/ -short -run TestRedisBreaker_TripsAfterThreshold -count=1
 //	go test ./internal/database/ -short -run TestCHQuery_acquireRejectWhenSaturated -count=1
-//	go test ./internal/database/ -short -run TestSyncGlobalStringToAllShards -count=1
+//	go test ./internal/database/ -short -run TestAssertQueryBudgetSublinear -count=1
+//	bash scripts/ci/query_budget_gate.sh
 //	go test ./internal/database/ -short -run TestValidClickHouseIdentifier -count=1
 //	go test ./internal/database/ -short -run TestPartitionManager_Cleanup -count=1
 //	bash scripts/ci/static/cold_path_static.sh

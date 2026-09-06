@@ -25,9 +25,9 @@ export function AdminErrorDetails({ details }: AdminErrorDetailsProps) {
   }
 
   return (
-    <div className="mt-4 rounded-md border border-border bg-card">
-      <div className="border-b border-border px-3 py-2">
-        <p className="text-xs font-semibold text-muted-foreground">Developer details</p>
+    <div className="rounded-md border border-border bg-card">
+      <div className="flex items-center justify-between gap-2 border-b border-border px-3 py-2">
+        <p className="m-0 text-xs font-semibold text-muted-foreground">Developer details</p>
         <Button type="button" variant="outline" onClick={() => void copyDetails()}>
           {copied ? 'Copied' : 'Copy'}
         </Button>

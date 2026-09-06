@@ -1,3 +1,4 @@
+// L3 campaign editor actions: PATCH/publish/clone mutations; save errors via saveError (no toast on save, EH-SI1 on publish/clone 2xx).
 import { useCallback, useState } from 'react';
 import { toast } from 'sonner';
 
@@ -60,12 +61,12 @@ export function useCampaignEditorActions({
   const [validating, setValidating] = useState(false);
   const [publishing, setPublishing] = useState(false);
   const [forcePublish, setForcePublish] = useState(false);
-  const [validateResult, setValidateResult] = useState<
-    CampaignValidateResponse | undefined
-  >(undefined);
-  const [publishBlocked, setPublishBlocked] = useState<
-    CampaignPublishBlockedError | undefined
-  >(undefined);
+  const [validateResult, setValidateResult] = useState<CampaignValidateResponse | undefined>(
+    undefined
+  );
+  const [publishBlocked, setPublishBlocked] = useState<CampaignPublishBlockedError | undefined>(
+    undefined
+  );
   const [publishSuccess, setPublishSuccess] = useState(false);
   const [validateError, setValidateError] = useState<Error | undefined>(undefined);
   const [publishError, setPublishError] = useState<Error | undefined>(undefined);
@@ -75,9 +76,9 @@ export function useCampaignEditorActions({
     click_id: '',
   });
   const [macroPreviewing, setMacroPreviewing] = useState(false);
-  const [macroPreviewResult, setMacroPreviewResult] = useState<
-    MacroPreviewResponse | undefined
-  >(undefined);
+  const [macroPreviewResult, setMacroPreviewResult] = useState<MacroPreviewResponse | undefined>(
+    undefined
+  );
   const [macroPreviewError, setMacroPreviewError] = useState<Error | undefined>(undefined);
   const [cloneNameSuffix, setCloneNameSuffix] = useState('');
   const [cloneOptions, setCloneOptions] = useState<CloneCampaignOptions>(DEFAULT_CLONE_OPTIONS);
@@ -225,13 +226,10 @@ export function useCampaignEditorActions({
   }, [forcePublish, id, setCampaignSnapshot, syncFormFromCampaign]);
 
   const onMacroPreviewFieldChange = useCallback(
-    <K extends keyof MacroPreviewFormState>(
-      field: K,
-      value: MacroPreviewFormState[K],
-    ) => {
+    <K extends keyof MacroPreviewFormState>(field: K, value: MacroPreviewFormState[K]) => {
       setMacroPreviewForm((prev) => ({ ...prev, [field]: value }));
     },
-    [],
+    []
   );
 
   const onMacroPreview = useCallback(() => {
@@ -322,12 +320,9 @@ export function useCampaignEditorActions({
       });
   }, [cloneNameSuffix, cloneOptions, id]);
 
-  const onCloneOptionChange = useCallback(
-    (field: keyof CloneCampaignOptions, value: boolean) => {
-      setCloneOptions((prev) => ({ ...prev, [field]: value }));
-    },
-    [],
-  );
+  const onCloneOptionChange = useCallback((field: keyof CloneCampaignOptions, value: boolean) => {
+    setCloneOptions((prev) => ({ ...prev, [field]: value }));
+  }, []);
 
   const onCompareDiff = useCallback(() => {
     if (!id) {

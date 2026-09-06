@@ -16,12 +16,24 @@ import {
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Switch } from '@/components/ui/switch';
+import {
+  Table,
+  TableBody,
+  TableCell,
+  TableHead,
+  TableHeader,
+  TableRow,
+} from '@/components/ui/table';
 import { Tooltip, TooltipContent, TooltipTrigger } from '@/components/ui/tooltip';
 import {
+  settingsBentoBodyCellClass,
+  settingsBentoHeaderCellClass,
+  settingsBentoMobileStackClass,
+  settingsBentoTableClass,
+  settingsBentoTypeClass,
   settingsColumnClass,
   settingsColumnPanelClass,
-  settingsColumnsGridClass,
-  settingsRowClass,
+  settingsGridCellInnerClass,
   settingsRowLabelClass,
   settingsRowValueClass,
   settingsSectionTitleClass,
@@ -29,6 +41,7 @@ import {
 import { settingsTextValue } from '@/domains/settings/settings_empty';
 import type { PlatformSettingsSnapshot } from '@/domains/settings/settings_snapshot';
 import { settingsFieldLabel } from '@/lib/settings_labels';
+import { adminKit } from '@/lib/admin_kit';
 import { cn } from '@/lib/utils';
 
 type SettingsRowProps = {
@@ -39,7 +52,16 @@ type SettingsRowProps = {
 
 function SettingsRow({ className, label, value }: SettingsRowProps) {
   return (
-    <div className={cn(settingsRowClass, className)}>
+    <div className={cn(settingsGridCellInnerClass, 'px-3 py-2', className)}>
+      <span className={settingsRowLabelClass}>{label}</span>
+      <div className={settingsRowValueClass}>{value}</div>
+    </div>
+  );
+}
+
+function SettingsGridCell({ className, label, value }: SettingsRowProps) {
+  return (
+    <div className={cn(settingsGridCellInnerClass, className)}>
       <span className={settingsRowLabelClass}>{label}</span>
       <div className={settingsRowValueClass}>{value}</div>
     </div>
@@ -57,7 +79,7 @@ function SettingsColumn({
 }) {
   return (
     <section className={cn(settingsColumnClass, className)}>
-      <h3 className={settingsSectionTitleClass}>{title}</h3>
+      <h3 className={cn(settingsSectionTitleClass, settingsBentoTypeClass)}>{title}</h3>
       <div className={settingsColumnPanelClass}>
         {rows.map((row) => (
           <SettingsRow key={row.label} label={row.label} value={row.value} />
@@ -74,8 +96,7 @@ export function SettingsStatusBadge({
   label: string;
   tone: 'positive' | 'neutral' | 'unknown';
 }) {
-  const variant =
-    tone === 'positive' ? 'active' : tone === 'unknown' ? 'paused' : 'secondary';
+  const variant = tone === 'positive' ? 'active' : tone === 'unknown' ? 'paused' : 'secondary';
 
   return (
     <Badge className="gap-1.5" variant={variant}>
@@ -83,9 +104,9 @@ export function SettingsStatusBadge({
         aria-hidden="true"
         className={cn(
           'h-1.5 w-1.5 rounded-full',
-          tone === 'positive' && 'bg-emerald-400',
+          tone === 'positive' && 'bg-admin-status-active',
           tone === 'neutral' && 'bg-muted-foreground/60',
-          tone === 'unknown' && 'bg-amber-500',
+          tone === 'unknown' && 'bg-admin-status-paused'
         )}
       />
       {label}
@@ -130,7 +151,12 @@ function SettingsUrlCopyChip({
   const trimmed = value.trim();
   if (!trimmed) {
     return (
-      <span className="inline-flex h-7 max-w-full items-center rounded-[5px] border border-dashed border-border px-2.5 text-xs text-muted-foreground">
+      <span
+        className={cn(
+          'inline-flex h-7 max-w-full items-center border border-dashed border-border px-2.5 text-xs text-muted-foreground',
+          adminKit.controlRadius
+        )}
+      >
         {shortLabel} not set
       </span>
     );
@@ -146,7 +172,7 @@ function SettingsUrlCopyChip({
           onClick={() => {
             void navigator.clipboard.writeText(trimmed).then(
               () => toast.success(`${label} copied`),
-              () => toast.error('Could not copy to clipboard'),
+              () => toast.error('Could not copy to clipboard')
             );
           }}
         >
@@ -154,7 +180,7 @@ function SettingsUrlCopyChip({
           <Copy className="h-3.5 w-3.5 shrink-0" aria-hidden />
         </Button>
       </TooltipTrigger>
-      <TooltipContent className="max-w-sm break-all font-mono text-xs leading-snug">
+      <TooltipContent className={cn('max-w-sm break-all leading-snug', settingsBentoTypeClass)}>
         {trimmed}
       </TooltipContent>
     </Tooltip>
@@ -245,7 +271,12 @@ function StripeSecretsDialog({
         </DialogHeader>
         <div className="grid gap-4">
           {hasStored ? (
-            <div className="grid gap-2 rounded-[8px] border border-border bg-muted/30 p-3 text-xs text-muted-foreground">
+            <div
+              className={cn(
+                'grid gap-2 border border-border bg-muted/30 p-3 text-xs text-muted-foreground',
+                adminKit.panelRadius
+              )}
+            >
               <p>
                 Current secret key:{' '}
                 <span className="font-mono text-foreground">
@@ -261,7 +292,9 @@ function StripeSecretsDialog({
             </div>
           ) : null}
           <div className="grid gap-2">
-            <Label htmlFor="stripe-secret-key-input">{settingsFieldLabel('stripe_secret_key')}</Label>
+            <Label htmlFor="stripe-secret-key-input">
+              {settingsFieldLabel('stripe_secret_key')}
+            </Label>
             <Input
               autoComplete="off"
               id="stripe-secret-key-input"
@@ -302,7 +335,7 @@ function StripeSecretsDialog({
 function buildColumns(
   snapshot: PlatformSettingsSnapshot,
   onPatchPlatform: (patch: Record<string, unknown>) => void,
-  patching: boolean,
+  patching: boolean
 ): Array<{ title: string; rows: SettingsRowProps[] }> {
   const currency = snapshot.config.defaultCurrency.trim();
   const timezone = snapshot.config.timezone.trim();
@@ -344,7 +377,7 @@ function buildColumns(
         {
           label: settingsFieldLabel('network_interface'),
           value: networkInterface ? (
-            <span className="break-all font-mono text-xs">{networkInterface}</span>
+            <span className="break-all">{networkInterface}</span>
           ) : (
             settingsTextValue(networkInterface, 'network_interface')
           ),
@@ -357,7 +390,7 @@ function buildColumns(
         {
           label: settingsFieldLabel('tracking_domain'),
           value: (
-            <span className="break-all font-mono text-xs">
+            <span className="break-all">
               {settingsTextValue(snapshot.config.trackingDomain, 'tracking_domain')}
             </span>
           ),
@@ -424,8 +457,12 @@ function buildColumns(
           label: 'Stripe secrets',
           value: (
             <span className="inline-flex max-w-full flex-wrap items-center gap-2">
-              <span className="font-mono text-xs tracking-widest text-muted-foreground">--------</span>
-              <StripeSecretsDialog onSave={onPatchPlatform} patching={patching} snapshot={snapshot} />
+              <span className="tracking-widest text-muted-foreground">--------</span>
+              <StripeSecretsDialog
+                onSave={onPatchPlatform}
+                patching={patching}
+                snapshot={snapshot}
+              />
             </span>
           ),
         },
@@ -444,13 +481,47 @@ export function SettingsBentoGrid({
   snapshot: PlatformSettingsSnapshot;
 }) {
   const columns = buildColumns(snapshot, onPatchPlatform, patching);
+  const rowCount = columns.reduce((max, column) => Math.max(max, column.rows.length), 0);
 
   return (
-    <div className={settingsColumnsGridClass}>
-      {columns.map((column) => (
-        <SettingsColumn key={column.title} rows={column.rows} title={column.title} />
-      ))}
-    </div>
+    <>
+      <Table bare className={settingsBentoTableClass}>
+        <colgroup>
+          <col className="w-1/3" />
+          <col className="w-1/3" />
+          <col className="w-1/3" />
+        </colgroup>
+        <TableHeader>
+          <TableRow>
+            {columns.map((column) => (
+              <TableHead key={column.title} className={settingsBentoHeaderCellClass} scope="col">
+                {column.title}
+              </TableHead>
+            ))}
+          </TableRow>
+        </TableHeader>
+        <TableBody>
+          {Array.from({ length: rowCount }, (_, rowIndex) => (
+            <TableRow key={rowIndex}>
+              {columns.map((column) => {
+                const row = column.rows[rowIndex];
+                return (
+                  <TableCell key={column.title} className={settingsBentoBodyCellClass}>
+                    {row ? <SettingsGridCell {...row} /> : null}
+                  </TableCell>
+                );
+              })}
+            </TableRow>
+          ))}
+        </TableBody>
+      </Table>
+
+      <div className={settingsBentoMobileStackClass}>
+        {columns.map((column) => (
+          <SettingsColumn key={column.title} rows={column.rows} title={column.title} />
+        ))}
+      </div>
+    </>
   );
 }
 

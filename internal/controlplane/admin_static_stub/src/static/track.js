@@ -1,30 +1,54 @@
-/**
- * POST /track from a landing page (browser pixel). Requires TRACK_CORS_ORIGINS on tracker.
- * @param {Record<string, unknown>} opts
- * @returns {Promise<unknown>}
- */
-export function trackEvent(opts) {
-  const body = {
-    campaign_id: opts.campaignId,
-    type: opts.type,
-  };
-  if (opts.clickId) body.click_id = opts.clickId;
-  if (opts.userId) body.user_id = opts.userId;
-  const subs = opts.subs || {};
-  for (let i = 1; i <= 30; i += 1) {
-    const key = `sub${i}`;
-    if (subs[key]) body[key] = subs[key];
+'use strict';
+(() => {
+  function s(n) {
+    let e = new URLSearchParams(window.location.search);
+    for (let c of ['fbclid', 'gclid', 'ttclid', 'msclkid', 'tblci']) {
+      let t = e.get(c);
+      t && (n[c] = t);
+    }
+    let i = e.get('ob_click_id') || e.get('obclid');
+    i && (n.ob_click_id = i);
   }
-  const params = new URLSearchParams(window.location.search);
-  for (const key of ['fbclid', 'gclid', 'ttclid']) {
-    const val = params.get(key);
-    if (val) body[key] = val;
+  function a(n) {
+    let e = [],
+      i = globalThis.trackTelemetrySnapshot;
+    if (typeof i == 'function') {
+      let t = i();
+      t && t.events && t.events.length && (e = e.concat(t.events));
+    }
+    let c = globalThis.trackBiometricsSnapshot;
+    if (typeof c == 'function') {
+      let t = c();
+      t && t.events && t.events.length && (e = e.concat(t.events));
+    }
+    e.length && (n.telemetry = { events: e });
   }
-  return fetch(opts.endpoint, {
-    method: 'POST',
-    headers: { 'Content-Type': 'application/json' },
-    body: JSON.stringify(body),
-    keepalive: true,
-    credentials: 'omit',
-  });
-}
+  function r(n) {
+    let e = { campaign_id: n.campaignId, type: n.type },
+      i =
+        n.eventId ||
+        (typeof crypto != 'undefined' && typeof crypto.randomUUID == 'function'
+          ? crypto.randomUUID()
+          : '');
+    i && (e.event_id = i),
+      n.clickId && (e.click_id = n.clickId),
+      n.userId && (e.user_id = n.userId);
+    let c = n.subs || {};
+    for (let t = 1; t <= 30; t += 1) {
+      let o = `sub${t}`;
+      c[o] && (e[o] = c[o]);
+    }
+    return (
+      s(e),
+      a(e),
+      fetch(n.endpoint, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(e),
+        keepalive: !0,
+        credentials: 'omit',
+      })
+    );
+  }
+  globalThis.trackEvent = r;
+})();

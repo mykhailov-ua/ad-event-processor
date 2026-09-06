@@ -19,7 +19,7 @@ function DocsGuideBlockView({ block }: { block: DocsGuideBlock }) {
       return <h3 className="text-sm font-semibold text-foreground">{block.text}</h3>;
     case 'list':
       return (
-        <ul className="list-disc space-y-1.5 pl-5 text-sm leading-relaxed text-foreground">
+        <ul className="m-0 flex list-disc flex-col gap-1.5 pl-5 text-sm leading-relaxed text-foreground">
           {block.items.map((item) => (
             <li key={item}>{item}</li>
           ))}
@@ -49,7 +49,7 @@ function DocsGuideBlockView({ block }: { block: DocsGuideBlock }) {
                     key={`${row[0]}-${index}`}
                     className={cn(
                       'min-w-[8rem] align-top break-words',
-                      index === 0 ? 'font-medium' : 'text-muted-foreground',
+                      index === 0 ? 'font-medium' : 'text-muted-foreground'
                     )}
                   >
                     {cell}

@@ -5,6 +5,8 @@ import { ApiError } from '@/api/client';
 import type { AuthUser, SessionResponse } from '@/api/types';
 import { useResource } from '@/api/use_resource';
 
+// Root session snapshot for the SPA shell. Single GET /session bootstrap via useResource.
+// authenticated/forbidden/unauthenticated derive from ApiError status; nav hide is not authorization.
 type SessionState = {
   me: AuthUser;
   session: SessionResponse;
@@ -45,7 +47,7 @@ export const SessionContext = createContext<SessionContextValue | undefined>(und
 function buildSessionValue(
   data: SessionState | null | undefined,
   error: Error | undefined,
-  fetching: boolean,
+  fetching: boolean
 ): SessionContextValue {
   const apiError = error instanceof ApiError ? error : undefined;
   const forbidden = apiError?.status === 403;
@@ -72,10 +74,7 @@ export type SessionProviderProps = {
 
 export function SessionProvider({ children }: SessionProviderProps) {
   const { data, error, fetching } = useResource(fetchSessionState, []);
-  const value = useMemo(
-    () => buildSessionValue(data, error, fetching),
-    [data, error, fetching],
-  );
+  const value = useMemo(() => buildSessionValue(data, error, fetching), [data, error, fetching]);
 
   return <SessionContext.Provider value={value}>{children}</SessionContext.Provider>;
 }

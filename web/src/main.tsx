@@ -10,6 +10,8 @@ import { initAdminDevModeFromUrl } from '@/lib/admin_dev_mode';
 import { initDevMockRoleFromUrl } from '@/lib/dev_mock_role';
 import '@/styles/app.css';
 
+// Parse ?admin_dev= and ?admin_dev_role= before React mount so api/client and SessionProvider
+// see stable flags on the first fetch (strip query via history.replaceState).
 initAdminDevModeFromUrl();
 initDevMockRoleFromUrl();
 
@@ -26,6 +28,6 @@ if (root) {
           </MetaProvider>
         </ThemeProvider>
       </BrowserRouter>
-    </AppErrorBoundary>,
+    </AppErrorBoundary>
   );
 }

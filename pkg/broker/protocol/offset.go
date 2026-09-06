@@ -21,7 +21,7 @@ const (
 	OffsetStatusStoreUnavailable byte = 2 // offset store down; client may treat as offset 0
 )
 
-// Offset key wire: topic_len u16 + topic + partition u16 + group_len u16 + group (commit adds offset u64).
+// DecodeOffsetKeyRequest parses offset key wire: topic_len u16 + topic + partition u16 + group_len u16 + group (commit adds offset u64).
 func DecodeOffsetKeyRequest(payload []byte) (topic string, partition uint16, group string, err error) {
 	if len(payload) < 6 {
 		return "", 0, "", errors.New("malformed offset request")

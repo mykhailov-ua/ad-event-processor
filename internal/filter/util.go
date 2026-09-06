@@ -76,6 +76,7 @@ var (
 	ErrPacingExhausted        = errors.New("pacing exhausted")
 	ErrFreqLimitExceeded      = domain.ErrFreqLimitExceeded
 	ErrGeoBlocked             = errors.New("geo-targeting blocked")
+	ErrGeoLookupFailed        = errors.New("geo lookup unavailable")
 	ErrScheduleBlocked        = errors.New("outside delivery schedule")
 	ErrFraudDetected          = errors.New("fraud detected")
 	ErrEmergencyBreakerActive = domain.ErrEmergencyBreakerActive
@@ -307,7 +308,7 @@ func ClassifyFilterErr(err error) (FilterRejectKind, bool) {
 }
 
 func isInfraFilterErr(err error) bool {
-	if errors.Is(err, database.ErrRedisCircuitOpen) || errors.Is(err, ErrInfraNetwork) {
+	if errors.Is(err, database.ErrRedisCircuitOpen) || errors.Is(err, ErrInfraNetwork) || errors.Is(err, ErrGeoLookupFailed) {
 		return true
 	}
 	return database.IsNetworkOrSystemError(err)

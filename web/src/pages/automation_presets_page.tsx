@@ -1,16 +1,6 @@
-import { listAutomationPresets } from '@/api/automation_api';
 import { AutomationPresetsDirectory } from '@/domains/automation/automation_presets_directory';
-import { useResource } from '@/api/use_resource';
+import { useAutomationPresetsPageWorkspace } from '@/domains/automation/use_automation_presets_page_workspace';
 
 export function AutomationPresetsPage() {
-  const { data, error, fetching } = useResource((signal) => listAutomationPresets(signal), []);
-
-  return (
-    <AutomationPresetsDirectory
-      items={data}
-      fetching={fetching}
-      error={error}
-      hasSnapshot={data != null}
-    />
-  );
+  return <AutomationPresetsDirectory {...useAutomationPresetsPageWorkspace()} />;
 }

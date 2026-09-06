@@ -27,7 +27,7 @@ die() {
 }
 
 usage() {
-  cat <<EOF
+  cat << EOF
 Usage: bash scripts/dev/admin_ui.sh <command>
 
 Commands:
@@ -70,7 +70,7 @@ pid_alive() {
   local pid_file="$1"
   local pid=""
   [[ -f "$pid_file" ]] || return 1
-  pid="$(<"$pid_file")"
+  pid="$(< "$pid_file")"
   [[ -n "$pid" ]] || return 1
   kill -0 "$pid" 2> /dev/null
 }
@@ -114,7 +114,7 @@ ensure_stack() {
 
 ensure_control_dev_ui_redirect() {
   local headers
-  headers="$(curl -sI "${CONTROL_URL}/login" 2>/dev/null || true)"
+  headers="$(curl -sI "${CONTROL_URL}/login" 2> /dev/null || true)"
   if echo "$headers" | grep -qi "location:.*127.0.0.1:${ADMIN_DEV_PORT}"; then
     return 0
   fi
@@ -124,7 +124,7 @@ ensure_control_dev_ui_redirect() {
   if ! wait_control_health; then
     die "control did not become healthy after recreate"
   fi
-  headers="$(curl -sI "${CONTROL_URL}/login" 2>/dev/null || true)"
+  headers="$(curl -sI "${CONTROL_URL}/login" 2> /dev/null || true)"
   if echo "$headers" | grep -qi "location:.*127.0.0.1:${ADMIN_DEV_PORT}"; then
     return 0
   fi
@@ -184,36 +184,36 @@ stop_docker_control() {
 
 start_local_control() {
   if pid_alive "$CONTROL_PID"; then
-    log "local control already running (pid $(<"$CONTROL_PID"))"
+    log "local control already running (pid $(< "$CONTROL_PID"))"
     return 0
   fi
   load_dotenv
   stop_docker_control
   mkdir -p "$VAR_DIR"
-  : >"$CONTROL_LOG"
+  : > "$CONTROL_LOG"
   (
     cd "$ROOT"
     aed_go_run ./cmd/control
-  ) >>"$CONTROL_LOG" 2>&1 &
-  echo $! >"$CONTROL_PID"
+  ) >> "$CONTROL_LOG" 2>&1 &
+  echo $! > "$CONTROL_PID"
   if ! wait_control_health; then
     tail -20 "$CONTROL_LOG" >&2 || true
     die "local control failed to start; see $CONTROL_LOG"
   fi
-  log "local control running pid=$(<"$CONTROL_PID") -> ${CONTROL_URL}"
+  log "local control running pid=$(< "$CONTROL_PID") -> ${CONTROL_URL}"
 }
 
 start_web() {
   if web_healthy; then
     if pid_alive "$WEB_PID"; then
-      log "web already running (pid $(<"$WEB_PID"))"
+      log "web already running (pid $(< "$WEB_PID"))"
     else
       log "web already listening at http://127.0.0.1:${ADMIN_DEV_PORT}"
     fi
     return 0
   fi
   if pid_alive "$WEB_PID" && web_healthy; then
-    log "web already running (pid $(<"$WEB_PID"))"
+    log "web already running (pid $(< "$WEB_PID"))"
     return 0
   fi
   if pid_alive "$WEB_PID"; then
@@ -226,18 +226,18 @@ start_web() {
   fi
   load_dotenv
   mkdir -p "$VAR_DIR"
-  : >"$WEB_LOG"
+  : > "$WEB_LOG"
   nohup bash -c "
     cd \"$ROOT/web\"
     export ADMIN_API_PROXY=\"${ADMIN_API_PROXY:-${CONTROL_URL}}\"
     export ADMIN_DEV_PORT=\"${ADMIN_DEV_PORT}\"
     exec node scripts/dev.mjs
-  " >>"$WEB_LOG" 2>&1 &
-  echo $! >"$WEB_PID"
+  " >> "$WEB_LOG" 2>&1 &
+  echo $! > "$WEB_PID"
   local attempt=0
   while [[ "$attempt" -lt 60 ]]; do
     if pid_alive "$WEB_PID" && web_healthy; then
-      log "web running pid=$(<"$WEB_PID") -> http://127.0.0.1:${ADMIN_DEV_PORT}"
+      log "web running pid=$(< "$WEB_PID") -> http://127.0.0.1:${ADMIN_DEV_PORT}"
       return 0
     fi
     if ! pid_alive "$WEB_PID"; then
@@ -260,7 +260,7 @@ stop_one() {
     return 0
   fi
   local pid
-  pid="$(<"$pid_file")"
+  pid="$(< "$pid_file")"
   kill "$pid" 2> /dev/null || true
   for _ in 1 2 3 4 5; do
     if ! kill -0 "$pid" 2> /dev/null; then
@@ -279,14 +279,14 @@ print_status() {
   if control_healthy; then
     log "control: healthy ${CONTROL_URL}"
   elif pid_alive "$CONTROL_PID"; then
-    log "control: local pid=$(<"$CONTROL_PID") (not healthy yet) ${CONTROL_URL}"
+    log "control: local pid=$(< "$CONTROL_PID") (not healthy yet) ${CONTROL_URL}"
   else
     log "control: not reachable ${CONTROL_URL}"
   fi
   if pid_alive "$WEB_PID" && web_healthy; then
-    log "web: running pid=$(<"$WEB_PID") http://127.0.0.1:${ADMIN_DEV_PORT}"
+    log "web: running pid=$(< "$WEB_PID") http://127.0.0.1:${ADMIN_DEV_PORT}"
   elif pid_alive "$WEB_PID"; then
-    log "web: pid=$(<"$WEB_PID") unhealthy on :${ADMIN_DEV_PORT}"
+    log "web: pid=$(< "$WEB_PID") unhealthy on :${ADMIN_DEV_PORT}"
   else
     log "web: stopped"
   fi
@@ -294,7 +294,7 @@ print_status() {
 }
 
 print_dev_urls() {
-  cat <<EOF
+  cat << EOF
 
 Open admin UI:  http://127.0.0.1:${ADMIN_DEV_PORT}
 API (no UI):    ${CONTROL_URL}

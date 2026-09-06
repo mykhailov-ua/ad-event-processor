@@ -10,7 +10,7 @@ import (
 
 const ProcessorPgReserve = 1
 
-// ProcessorChReserve: one connection slot held back so health probes and admin queries
+// ProcessorChReserve holds one connection slot back so health probes and admin queries
 // are not starved when the processor saturates ClickHouse write concurrency.
 const ProcessorChReserve = 1
 

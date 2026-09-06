@@ -12,7 +12,9 @@ test.beforeEach(async ({}, testInfo) => {
   await skipUnlessIntegrationReady(testInfo);
 });
 
-test('rtb deals list loads from GET /api/v1/rtb/deals when openrtb licensed', async ({ page }, testInfo) => {
+test('rtb deals list loads from GET /api/v1/rtb/deals when openrtb licensed', async ({
+  page,
+}, testInfo) => {
   await loginAsAdmin(page);
   const listResponse = page.waitForResponse(isApiGet('/api/v1/rtb/deals'), { timeout: 20_000 });
   await gotoLive(page, '/rtb/deals');

@@ -14,8 +14,7 @@ export function CampaignForecastView({ forecast }: { forecast: CampaignForecast 
 
   const spendRows = (forecast.spend_curve ?? []).map((point) => ({
     hour: point.hour ?? '',
-    spend_micro:
-      point.spend_micro != null ? formatDashboardUsdFromMicro(point.spend_micro) : '',
+    spend_micro: point.spend_micro != null ? formatDashboardUsdFromMicro(point.spend_micro) : '',
     impressions: point.impressions ?? '',
   }));
 
@@ -39,9 +38,7 @@ export function CampaignForecastView({ forecast }: { forecast: CampaignForecast 
           ) : null}
           <p>{advisory.message}</p>
           {advisory.suggested_pacing ? (
-            <p className="text-muted-foreground">
-              Suggested pacing: {advisory.suggested_pacing}
-            </p>
+            <p className="text-muted-foreground">Suggested pacing: {advisory.suggested_pacing}</p>
           ) : null}
         </div>
       ) : null}

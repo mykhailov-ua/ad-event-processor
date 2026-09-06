@@ -8,7 +8,7 @@ type StubBannerProps = {
 export function StubBanner({ title = 'Not available', message }: StubBannerProps) {
   return (
     <Card className="border-border/40 bg-muted/30">
-      <CardHeader className="pb-2">
+      <CardHeader>
         <CardTitle className="text-base text-muted-foreground">{title}</CardTitle>
       </CardHeader>
       <CardContent>

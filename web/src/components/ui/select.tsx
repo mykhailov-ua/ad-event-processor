@@ -2,6 +2,7 @@ import * as React from 'react';
 import { Check, ChevronDown } from 'lucide-react';
 
 import { Slot } from '@/lib/as_child';
+import { Button } from '@/components/ui/button';
 import { adminChrome } from '@/lib/admin_chrome';
 import { useControllableState } from '@/lib/controllable_state';
 import {
@@ -88,13 +89,7 @@ function SelectGroup({ children }: { children?: React.ReactNode }) {
   return <div role="group">{children}</div>;
 }
 
-const SelectValue = ({
-  placeholder,
-  className,
-}: {
-  placeholder?: string;
-  className?: string;
-}) => {
+const SelectValue = ({ placeholder, className }: { placeholder?: string; className?: string }) => {
   const { value, labels } = useSelectContext();
   const label = value ? labels.get(value) : undefined;
   return (
@@ -121,17 +116,14 @@ const SelectTrigger = React.forwardRef<
   };
 
   return (
-    <button
+    <Button
       ref={mergedRef}
       type="button"
+      variant={plain ? 'ghost' : 'outline'}
       disabled={isDisabled}
       aria-expanded={ctx.open}
       aria-haspopup="listbox"
-      className={cn(
-        plain ? adminChrome.controlGhost : adminChrome.control,
-        'flex w-full items-center justify-between gap-2 text-left',
-        className,
-      )}
+      className={cn('w-full justify-between gap-2 font-normal', className)}
       onClick={(event) => {
         onClick?.(event);
         if (!event.defaultPrevented && !isDisabled) {
@@ -142,7 +134,7 @@ const SelectTrigger = React.forwardRef<
     >
       {children}
       <ChevronDown className="h-4 w-4 shrink-0 opacity-60" aria-hidden />
-    </button>
+    </Button>
   );
 });
 SelectTrigger.displayName = 'SelectTrigger';
@@ -234,7 +226,7 @@ SelectContent.displayName = 'SelectContent';
 const SelectLabel = React.forwardRef<HTMLDivElement, React.HTMLAttributes<HTMLDivElement>>(
   ({ className, ...props }, ref) => (
     <div ref={ref} className={cn('px-2 py-1.5 text-sm font-semibold', className)} {...props} />
-  ),
+  )
 );
 SelectLabel.displayName = 'SelectLabel';
 
@@ -258,7 +250,12 @@ const SelectItem = React.forwardRef<
       role="option"
       aria-selected={selected}
       disabled={disabled}
-      className={cn(adminChrome.menuItem, 'relative pr-8', selected && 'bg-accent text-accent-foreground', className)}
+      className={cn(
+        adminChrome.menuItem,
+        'relative pr-8',
+        selected && 'bg-accent text-accent-foreground',
+        className
+      )}
       onClick={(event) => {
         onClick?.(event);
         if (!event.defaultPrevented && !disabled) {
@@ -282,7 +279,7 @@ SelectItem.displayName = 'SelectItem';
 const SelectSeparator = React.forwardRef<HTMLDivElement, React.HTMLAttributes<HTMLDivElement>>(
   ({ className, ...props }, ref) => (
     <div ref={ref} className={cn('my-1 h-px bg-border', className)} {...props} />
-  ),
+  )
 );
 SelectSeparator.displayName = 'SelectSeparator';
 

@@ -9,7 +9,7 @@ test('campaignDisplayId uses eight-digit display_id from API when present', () =
       id: '6ba7b810-9dad-11d1-80b4-00c04fd430c8',
       display_id: '12345678',
     }),
-    '12345678',
+    '12345678'
   );
 });
 

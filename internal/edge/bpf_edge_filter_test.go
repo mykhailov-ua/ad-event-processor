@@ -3,6 +3,7 @@ package edge
 import (
 	"encoding/binary"
 	"net"
+	"os"
 	"testing"
 
 	"github.com/cilium/ebpf"
@@ -441,6 +442,99 @@ func TestXDP_dropInvalidTCP(t *testing.T) {
 		pkt[14+20], pkt[14+20+1] = 0, 0
 		assert.Equal(t, uint32(1), runXDP(t, objs.XdpEdgeFilter, pkt))
 	})
+}
+
+func buildTruncatedIPv4TrackerTCP(t *testing.T, src net.IP, tcpPayloadBytes int) []byte {
+	t.Helper()
+	require.GreaterOrEqual(t, tcpPayloadBytes, 4)
+	require.Less(t, tcpPayloadBytes, 20)
+	pkt := buildSYNPacket(t, src, net.IPv4(10, 0, 0, 1), trackerPort)
+	return pkt[:14+20+tcpPayloadBytes]
+}
+
+func TestXDP_truncatedTrackerTCPFailClosed(t *testing.T) {
+	objs := loadTestObjects(t)
+	src := net.IPv4(203, 0, 113, 77)
+
+	t.Run("drop_invalid_not_pass", func(t *testing.T) {
+		before := statCount(t, objs.Stats, StatDropInvalid)
+		pkt := buildTruncatedIPv4TrackerTCP(t, src, 8)
+		assert.Equal(t, uint32(1), runXDP(t, objs.XdpEdgeFilter, pkt))
+		assert.Equal(t, before+1, statCount(t, objs.Stats, StatDropInvalid))
+	})
+
+	t.Run("blocklist_before_truncated_header", func(t *testing.T) {
+		victim := net.IPv4(203, 0, 113, 78)
+		updateBlocklistHostV4(t, objs.BlocklistHostV4, 203, 0, 113, 78)
+		before := statCount(t, objs.Stats, StatDropBlocklist)
+		pkt := buildTruncatedIPv4TrackerTCP(t, victim, 8)
+		assert.Equal(t, uint32(1), runXDP(t, objs.XdpEdgeFilter, pkt))
+		assert.Equal(t, before+1, statCount(t, objs.Stats, StatDropBlocklist))
+	})
+
+	t.Run("non_tracker_truncated_pass", func(t *testing.T) {
+		pkt := buildSYNPacket(t, src, net.IPv4(10, 0, 0, 1), 443)
+		pkt = pkt[:14+20+8]
+		assert.Equal(t, uint32(2), runXDP(t, objs.XdpEdgeFilter, pkt))
+	})
+}
+
+func TestXDP_truncatedTrackerFailClosed_holdout(t *testing.T) {
+	data, err := os.ReadFile("../../deploy/edge/xdp/bpf/edge_filter.c")
+	require.NoError(t, err)
+	src := string(data)
+	assert.Contains(t, src, "if ((void *)(tcph + 1) > data_end) {")
+	assert.Contains(t, src, "stat_idx = XDP_STAT_DROP_INVALID;")
+	assert.NotContains(t, src, "if ((void *)(tcph + 1) > data_end)\n\t\treturn XDP_PASS;")
+}
+
+func buildIPv4FragNonFirst(t *testing.T, src net.IP, dport uint16) []byte {
+	t.Helper()
+	pkt := buildSYNPacket(t, src, net.IPv4(10, 0, 0, 1), dport)
+	ip := pkt[14:]
+	binary.BigEndian.PutUint16(ip[6:8], 0x0008)
+	return pkt
+}
+
+func setIPv4FragMF(t *testing.T, pkt []byte) {
+	t.Helper()
+	ip := pkt[14:]
+	binary.BigEndian.PutUint16(ip[6:8], 0x2000)
+}
+
+func TestXDP_ipv4NonFirstFragmentFailClosed(t *testing.T) {
+	objs := loadTestObjects(t)
+	src := net.IPv4(203, 0, 113, 88)
+
+	t.Run("drop_invalid_not_pass", func(t *testing.T) {
+		before := statCount(t, objs.Stats, StatDropInvalid)
+		pkt := buildIPv4FragNonFirst(t, src, trackerPort)
+		assert.Equal(t, uint32(1), runXDP(t, objs.XdpEdgeFilter, pkt))
+		assert.Equal(t, before+1, statCount(t, objs.Stats, StatDropInvalid))
+	})
+
+	t.Run("blocklist_bypass_holdout", func(t *testing.T) {
+		victim := net.IPv4(203, 0, 113, 89)
+		updateBlocklistHostV4(t, objs.BlocklistHostV4, 203, 0, 113, 89)
+		before := statCount(t, objs.Stats, StatDropInvalid)
+		pkt := buildIPv4FragNonFirst(t, victim, trackerPort)
+		assert.Equal(t, uint32(1), runXDP(t, objs.XdpEdgeFilter, pkt))
+		assert.Equal(t, before+1, statCount(t, objs.Stats, StatDropInvalid))
+	})
+
+	t.Run("first_fragment_mf_tracker_pass", func(t *testing.T) {
+		pkt := buildSYNPacket(t, src, net.IPv4(10, 0, 0, 1), trackerPort)
+		setIPv4FragMF(t, pkt)
+		assert.Equal(t, uint32(2), runXDP(t, objs.XdpEdgeFilter, pkt))
+	})
+}
+
+func TestXDP_ipv4Fragment_holdout(t *testing.T) {
+	data, err := os.ReadFile("../../deploy/edge/xdp/bpf/edge_filter.c")
+	require.NoError(t, err)
+	src := string(data)
+	assert.Contains(t, src, "IPV4_FRAG_OFFSET_MASK")
+	assert.Contains(t, src, "bpf_ntohs(iph->frag_off) & IPV4_FRAG_OFFSET_MASK")
 }
 
 func TestXDP_dropNonTCPOnTrackerPort(t *testing.T) {

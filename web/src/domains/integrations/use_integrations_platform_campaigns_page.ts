@@ -1,3 +1,4 @@
+// L3 platform campaigns page: customer scope gates list fetch; row mutations coalesce bumpRefresh while listBusy.
 import { useCallback, useState } from 'react';
 
 import {
@@ -16,12 +17,8 @@ import { useCustomerScope } from '@/hooks/use_customer_scope';
 import { useResource } from '@/api/use_resource';
 
 export function useIntegrationsPlatformCampaignsPage() {
-  const {
-    appliedCustomerId,
-    draftCustomerId,
-    setDraftCustomerId,
-    applyCustomerScope,
-  } = useCustomerScope();
+  const { appliedCustomerId, draftCustomerId, setDraftCustomerId, applyCustomerScope } =
+    useCustomerScope();
 
   const shouldFetch = Boolean(appliedCustomerId);
   const { refreshToken, bumpRefresh } = useRefreshToken();
@@ -33,7 +30,7 @@ export function useIntegrationsPlatformCampaignsPage() {
       }
       return listPlatformCampaignLinks({ customer_id: appliedCustomerId }, signal);
     },
-    [appliedCustomerId, shouldFetch, refreshToken],
+    [appliedCustomerId, shouldFetch, refreshToken]
   );
 
   const [draftCampaignId, setDraftCampaignId] = useState('');
@@ -60,14 +57,7 @@ export function useIntegrationsPlatformCampaignsPage() {
   const [mutationResult, setMutationResult] = useState<PlatformCampaignMutation | undefined>();
 
   const listBusy =
-    fetching ||
-    saving ||
-    deleting ||
-    refreshing ||
-    syncing ||
-    pausing ||
-    resuming ||
-    settingBudget;
+    fetching || saving || deleting || refreshing || syncing || pausing || resuming || settingBudget;
   const bumpRefreshCoalesced = useCoalescedBumpRefresh(bumpRefresh, listBusy);
 
   const clearActionFeedback = useCallback(() => {
@@ -90,11 +80,11 @@ export function useIntegrationsPlatformCampaignsPage() {
       setDraftExternalCampaignId(row.external_campaign_id ?? '');
       setDraftAccountId(row.account_id ?? '');
       setDraftDailyBudgetMicro(
-        row.external_daily_budget_micro != null ? String(row.external_daily_budget_micro) : '',
+        row.external_daily_budget_micro != null ? String(row.external_daily_budget_micro) : ''
       );
       clearActionFeedback();
     },
-    [clearActionFeedback],
+    [clearActionFeedback]
   );
 
   const onSave = useCallback(async () => {
@@ -117,7 +107,7 @@ export function useIntegrationsPlatformCampaignsPage() {
       });
       setSaveSuccess(true);
       bumpRefreshCoalesced();
-    } catch (err) {
+    } catch (err: unknown) {
       setSaveError(err instanceof Error ? err : new Error(String(err)));
     } finally {
       setSaving(false);
@@ -148,7 +138,7 @@ export function useIntegrationsPlatformCampaignsPage() {
       await deletePlatformCampaignLink(campaignId, network);
       setDeleteSuccess(true);
       bumpRefreshCoalesced();
-    } catch (err) {
+    } catch (err: unknown) {
       setDeleteError(err instanceof Error ? err : new Error(String(err)));
     } finally {
       setDeleting(false);
@@ -170,7 +160,7 @@ export function useIntegrationsPlatformCampaignsPage() {
       await refreshPlatformCampaignLink(campaignId, network);
       setRefreshSuccess(true);
       bumpRefreshCoalesced();
-    } catch (err) {
+    } catch (err: unknown) {
       setRefreshError(err instanceof Error ? err : new Error(String(err)));
     } finally {
       setRefreshing(false);
@@ -191,7 +181,7 @@ export function useIntegrationsPlatformCampaignsPage() {
       await runPlatformCampaignSync({ campaign_id: campaignId });
       setSyncSuccess(true);
       bumpRefreshCoalesced();
-    } catch (err) {
+    } catch (err: unknown) {
       setSyncError(err instanceof Error ? err : new Error(String(err)));
     } finally {
       setSyncing(false);
@@ -202,7 +192,7 @@ export function useIntegrationsPlatformCampaignsPage() {
     async (
       action: 'pause' | 'resume' | 'budget',
       setter: (value: boolean) => void,
-      inFlight: boolean,
+      inFlight: boolean
     ) => {
       if (inFlight) {
         return;
@@ -236,21 +226,24 @@ export function useIntegrationsPlatformCampaignsPage() {
         }
         setMutationResult(result);
         bumpRefreshCoalesced();
-      } catch (err) {
+      } catch (err: unknown) {
         setMutationError(err instanceof Error ? err : new Error(String(err)));
       } finally {
         setter(false);
       }
     },
-    [bumpRefreshCoalesced, clearActionFeedback, draftCampaignId, draftDailyBudgetMicro, draftNetwork],
+    [
+      bumpRefreshCoalesced,
+      clearActionFeedback,
+      draftCampaignId,
+      draftDailyBudgetMicro,
+      draftNetwork,
+    ]
   );
 
-  const onRefreshLink = useCoalescedBumpRefresh(
-    () => {
-      void onRefresh();
-    },
-    refreshing || fetching,
-  );
+  const onRefreshLink = useCoalescedBumpRefresh(() => {
+    void onRefresh();
+  }, refreshing || fetching);
 
   const onPause = useCallback(() => {
     void runMutation('pause', setPausing, pausing);

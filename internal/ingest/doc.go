@@ -3,7 +3,7 @@
 // Role:
 //   - AdsPacketHandler React path for /track, /click, /openrtb/bid, /tg/*.
 //   - processTrack calls FilterEngine.Check synchronously on PinnedWorkerPool Tier B (not a detached goroutine).
-//   - tryAcquireStreamAdmission (TryReserve) before debit; publishAcceptedTrack after accept.
+//   - tryAcquireStreamAdmission (TryReserve) before debit; TrackPublishDeps.PublishAcceptedOrRollback after accept.
 //
 // Thread model (canonical: hot-path.mdc Tracker thread model, cmd/tracker/doc.go):
 //
@@ -15,7 +15,7 @@
 //	  - runOffloadedRequest -> React -> parseTrackIngest
 //	    -> tryAcquireStreamAdmission (TryReserve)
 //	    -> processTrack -> FilterEngine.Check (incl. EVALSHA when not local-quanta full-skip)
-//	    -> publishAcceptedTrack -> writeGnetTrackAccepted -> cloneAsyncWriteBytes -> AsyncWrite.
+//	    -> TrackPublishDeps.PublishAcceptedOrRollback -> writeGnetTrackAccepted -> cloneAsyncWriteBytes -> AsyncWrite.
 //	  - Synchronous end-to-end on one worker; no go func() around FilterEngine.Check.
 //	  - Per-worker MPSC queue depth 8192; HTTP1OffloadBusy = one in-flight offload per HTTP/1 conn.
 //	  - Queue full -> WorkerPoolRejectTotal, 503 overload (TestFault_PinnedWorkerPoolSaturationSpike).
@@ -27,7 +27,7 @@
 //   - Response bytes: cloneAsyncWriteBytes before arena release and AsyncWrite.
 //
 // Topology:
-//   - Subpackages: gnet, httpingress, parser, conn, filterwire, cold, compat, ortbreact, watchers, pool, traceprobe.
+//   - Subpackages: gnet, httpingress, parser, conn, filterwire, cold, compat, ortbreact, watchers, domainhosts, traceprobe.
 //   - Filter types from internal/filter; ingest wiring via filterwire and compat re-exports.
 //   - Must not import internal/controlplane admin or internal/fraud ML scoring.
 //
@@ -43,7 +43,7 @@
 //
 // Env knobs (units):
 //   - FILTER_TIMEOUT_MS (ms): filter chain deadline; production ceiling 100 ms (config/env_validate.go).
-//   - MAX_WORKERS: PinnedWorkerPool size (default 16); per-worker queue depth wired to 8192 in cmd/tracker/wire.go.
+//   - MAX_WORKERS: PinnedWorkerPool size (default 16); WORKER_POOL_QUEUE_DEPTH per-worker queue (default 8192).
 //   - STREAM_PRODUCER_ADMISSION_PCT (percent 0-100, default 85): TryReserve before Lua debit.
 //   - MAX_REQUEST_BODY_SIZE (bytes, default 1048576): HTTP/1 maxBody passed to httpingress.ParseHTTP1.
 //   - ORTB_SCAN_MAX_BYTES (bytes, default 262144): OpenRTB JSON scan cap (parser.OrtbScanMaxBytes).
@@ -93,5 +93,7 @@
 //	go test ./internal/ingest/ -short -run TestPinnedWorkerPool -count=1
 //	go test ./internal/ingest/ -short -run TestFault_PinnedWorkerPoolSaturationSpike -count=1
 //	go test ./internal/ingest/ -short -run TestChaos_CrossHop_NginxGnet -count=1
+//	go test ./internal/ingest/ -short -run TestPublishAcceptedOrRollback_holdout -count=1
+//	bash scripts/ci/static/ingest_lifetime_gate.sh
 //	make test-alloc-gate
 package ingest

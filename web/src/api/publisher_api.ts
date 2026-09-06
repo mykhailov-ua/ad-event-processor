@@ -7,7 +7,7 @@ import type {
 
 export async function getPublisherDashboard(
   params: PublisherStatementsQuery = {},
-  signal?: AbortSignal,
+  signal?: AbortSignal
 ): Promise<PublisherDashboard> {
   const search = new URLSearchParams();
   if (params.from) {
@@ -23,7 +23,7 @@ export async function getPublisherDashboard(
 
 export async function listPublisherStatements(
   params: PublisherStatementsQuery = {},
-  signal?: AbortSignal,
+  signal?: AbortSignal
 ): Promise<PublisherStatementListResponse> {
   const search = new URLSearchParams();
   if (params.from) {

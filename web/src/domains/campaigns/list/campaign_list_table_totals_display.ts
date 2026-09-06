@@ -21,7 +21,7 @@ export function campaignListTotalsCellDisplayText(
   totals: CampaignListTotals,
   funnelTotals: CampaignFunnelCounts,
   pageCount: number,
-  totalsLabel = 'Total',
+  totalsLabel = 'Total'
 ): string {
   switch (columnId) {
     case 'select':

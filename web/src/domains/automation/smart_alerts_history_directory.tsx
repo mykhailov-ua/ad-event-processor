@@ -92,50 +92,52 @@ export function SmartAlertsHistoryDirectory({
       />
 
       {(items ?? []).length === 0 ? (
-        <EmptyState title="No alert events" description="No smart alert events for this customer." />
+        <EmptyState
+          title="No alert events"
+          description="No smart alert events for this customer."
+        />
       ) : (
         <DirectoryTable>
-            <TableHeader>
-              <TableRow>
-                <DirectoryTableHead>Metric</DirectoryTableHead>
-                <DirectoryTableHead>Observed</DirectoryTableHead>
-                <DirectoryTableHead>Threshold</DirectoryTableHead>
-                <DirectoryTableHead>Fired</DirectoryTableHead>
-                <DirectoryTableHead>Status</DirectoryTableHead>
-                <DirectoryTableHead>Ack</DirectoryTableHead>
+          <TableHeader>
+            <TableRow>
+              <DirectoryTableHead>Metric</DirectoryTableHead>
+              <DirectoryTableHead>Observed</DirectoryTableHead>
+              <DirectoryTableHead>Threshold</DirectoryTableHead>
+              <DirectoryTableHead>Fired</DirectoryTableHead>
+              <DirectoryTableHead>Status</DirectoryTableHead>
+              <DirectoryTableHead>Ack</DirectoryTableHead>
+            </TableRow>
+          </TableHeader>
+          <TableBody>
+            {(items ?? []).map((row) => (
+              <TableRow key={row.id}>
+                <TableCell>{row.metric}</TableCell>
+                <TableCell>{row.observed_value}</TableCell>
+                <TableCell>{row.threshold}</TableCell>
+                <TableCell>{displayTimestamp(row.fired_at)}</TableCell>
+                <TableCell>
+                  {row.acked_at ? (
+                    <Badge variant="outline">acked</Badge>
+                  ) : (
+                    <Badge variant="secondary">{row.webhook_status}</Badge>
+                  )}
+                </TableCell>
+                <TableCell>
+                  {row.acked_at ? null : (
+                    <Button
+                      disabled={ackingEventId === row.id}
+                      onClick={() => onAck(row.id)}
+                      type="button"
+                      variant="outline"
+                    >
+                      Ack
+                    </Button>
+                  )}
+                </TableCell>
               </TableRow>
-            </TableHeader>
-            <TableBody>
-              {(items ?? []).map((row) => (
-                <TableRow key={row.id}>
-                  <TableCell>{row.metric}</TableCell>
-                  <TableCell>{row.observed_value}</TableCell>
-                  <TableCell>{row.threshold}</TableCell>
-                  <TableCell>{displayTimestamp(row.fired_at)}</TableCell>
-                  <TableCell>
-                    {row.acked_at ? (
-                      <Badge variant="outline">acked</Badge>
-                    ) : (
-                      <Badge variant="secondary">{row.webhook_status}</Badge>
-                    )}
-                  </TableCell>
-                  <TableCell>
-                    {row.acked_at ? null : (
-                      <Button
-                        disabled={ackingEventId === row.id}
-                        onClick={() => onAck(row.id)}
-                       
-                        type="button"
-                        variant="outline"
-                      >
-                        Ack
-                      </Button>
-                    )}
-                  </TableCell>
-                </TableRow>
-              ))}
-            </TableBody>
-          </DirectoryTable>
+            ))}
+          </TableBody>
+        </DirectoryTable>
       )}
 
       {ackError ? automationPanelError(ackError, 'Ack failed') : null}

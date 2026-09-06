@@ -1,15 +1,5 @@
-import { useCallback, useEffect, useState } from 'react';
-
-import {
-  applyCampaignTemplates,
-  getCampaignIntegrationHealth,
-  getCampaignIntegrationPanel,
-} from '@/api/campaigns_api';
-import { useResource } from '@/api/use_resource';
-import { ApiError } from '@/api/client';
-import type { ApplyCampaignTemplatesResult, CampaignIntegrationHealth } from '@/api/types';
-import { ErrorBlock } from '@/shell/error_block';
-import { StubBanner } from '@/shell/stub_banner';
+import { getCampaignIntegrationPanel } from '@/api/campaigns_api';
+import type { IntegrationHealthRow } from '@/api/types';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
@@ -24,82 +14,50 @@ import {
 } from '@/shell/directory_table';
 import { adminChrome } from '@/lib/admin_chrome';
 import { cn } from '@/lib/utils';
-import { formatIntegrationHealthSlug, formatIntegrationHealthStatus } from '@/domains/campaigns/editor/integration_health_labels';
+import { campaignPanelError } from '@/domains/campaigns/editor/campaign_editor_shared';
+import {
+  formatIntegrationHealthSlug,
+  formatIntegrationHealthStatus,
+} from '@/domains/campaigns/editor/integration_health_labels';
+import type { CampaignIntegrationPanelWorkspace } from '@/domains/campaigns/editor/use_campaign_integration_panel_workspace';
 
-function panelError(error: Error, title: string) {
-  if (error instanceof ApiError && error.status === 501) {
-    return <StubBanner title={`${title} unavailable`} message={error.message} />;
-  }
-  return <ErrorBlock title={title} message={error.message} />;
-}
+export type CampaignIntegrationPanelProps = {
+  panel: Awaited<ReturnType<typeof getCampaignIntegrationPanel>> | undefined;
+  panelFetching: boolean;
+  loadError: Error | undefined;
+  workspace: CampaignIntegrationPanelWorkspace;
+};
 
-export function CampaignIntegrationPanel({ campaignId }: { campaignId: string }) {
-  const [draftTrafficSource, setDraftTrafficSource] = useState('');
-  const [draftAffiliateNetwork, setDraftAffiliateNetwork] = useState('');
-  const [draftTrackingDomain, setDraftTrackingDomain] = useState('');
-  const [applying, setApplying] = useState(false);
-  const [applyResult, setApplyResult] = useState<ApplyCampaignTemplatesResult | undefined>();
-  const [applyError, setApplyError] = useState<Error | undefined>();
-  const [health, setHealth] = useState<CampaignIntegrationHealth | undefined>();
-  const [healthError, setHealthError] = useState<Error | undefined>();
-  const [healthLoading, setHealthLoading] = useState(false);
-
-  const panelResource = useResource(
-    (signal) => getCampaignIntegrationPanel(campaignId, signal),
-    [campaignId],
-  );
-
-  useEffect(() => {
-    setApplyResult(undefined);
-    setApplyError(undefined);
-    setHealth(undefined);
-    setHealthError(undefined);
-  }, [campaignId]);
-
-  const onLoadHealth = useCallback(async () => {
-    setHealthLoading(true);
-    setHealthError(undefined);
-    try {
-      const result = await getCampaignIntegrationHealth(campaignId);
-      setHealth(result);
-    } catch (err) {
-      setHealthError(err instanceof Error ? err : new Error(String(err)));
-    } finally {
-      setHealthLoading(false);
-    }
-  }, [campaignId]);
-
-  const onApplyTemplates = useCallback(async () => {
-    setApplying(true);
-    setApplyError(undefined);
-    setApplyResult(undefined);
-    try {
-      const body: Parameters<typeof applyCampaignTemplates>[1] = {};
-      if (draftTrafficSource.trim()) {
-        body.traffic_source = draftTrafficSource.trim();
-      }
-      if (draftAffiliateNetwork.trim()) {
-        body.affiliate_network = draftAffiliateNetwork.trim();
-      }
-      if (draftTrackingDomain.trim()) {
-        body.tracking_domain = draftTrackingDomain.trim();
-      }
-      const result = await applyCampaignTemplates(campaignId, body);
-      setApplyResult(result);
-    } catch (err) {
-      setApplyError(err instanceof Error ? err : new Error(String(err)));
-    } finally {
-      setApplying(false);
-    }
-  }, [campaignId, draftAffiliateNetwork, draftTrackingDomain, draftTrafficSource]);
-
-  const panel = panelResource.data;
+export function CampaignIntegrationPanel({
+  panel,
+  panelFetching,
+  loadError,
+  workspace,
+}: CampaignIntegrationPanelProps) {
+  const {
+    draftTrafficSource,
+    setDraftTrafficSource,
+    draftAffiliateNetwork,
+    setDraftAffiliateNetwork,
+    draftTrackingDomain,
+    setDraftTrackingDomain,
+    applying,
+    applyResult,
+    applyError,
+    health,
+    healthError,
+    healthLoading,
+    onLoadHealth,
+    onApplyTemplates,
+  } = workspace;
 
   return (
     <div className="grid gap-4">
-      {panelResource.fetching && !panel ? <p className="text-sm text-muted-foreground">Loading panel...</p> : null}
-      {panelResource.error && !panel
-        ? panelError(panelResource.error, 'Could not load integration panel')
+      {panelFetching && !panel ? (
+        <p className="text-sm text-muted-foreground">Loading panel...</p>
+      ) : null}
+      {loadError && !panel
+        ? campaignPanelError(loadError, 'Could not load integration panel')
         : null}
 
       {panel ? (
@@ -108,11 +66,11 @@ export function CampaignIntegrationPanel({ campaignId }: { campaignId: string })
             <span className="font-medium">{panel.overall_status_label}</span>
             <Badge variant="outline">{formatIntegrationHealthStatus(panel.overall_status)}</Badge>
           </div>
-          {(panel.rows ?? []).length > 0 ? (
+          {((panel.rows ?? []) as IntegrationHealthRow[]).length > 0 ? (
             <ul className="grid gap-2">
-              {panel.rows?.map((row, index) => {
-                const slug = String((row as Record<string, unknown>).slug ?? '');
-                const message = String((row as Record<string, unknown>).message ?? '');
+              {(panel.rows as IntegrationHealthRow[] | undefined)?.map((row, index) => {
+                const slug = row.slug;
+                const message = row.message;
                 return (
                   <li key={`integration-row-${index}`} className="leading-relaxed">
                     <span className="font-medium text-foreground">
@@ -162,8 +120,8 @@ export function CampaignIntegrationPanel({ campaignId }: { campaignId: string })
         </Button>
       </div>
 
-      {applyError ? panelError(applyError, 'Apply templates failed') : null}
-      {healthError ? panelError(healthError, 'Could not load integration health') : null}
+      {applyError ? campaignPanelError(applyError, 'Apply templates failed') : null}
+      {healthError ? campaignPanelError(healthError, 'Could not load integration health') : null}
       {applyResult ? (
         <p className="text-sm text-muted-foreground" role="status">
           Templates applied for campaign {applyResult.campaign_id}.
@@ -171,23 +129,23 @@ export function CampaignIntegrationPanel({ campaignId }: { campaignId: string })
       ) : null}
       {health ? (
         <DirectoryTable>
-            <TableHeader>
-              <TableRow>
-                <DirectoryTableHead>Check</DirectoryTableHead>
-                <DirectoryTableHead>Status</DirectoryTableHead>
-                <DirectoryTableHead>Detail</DirectoryTableHead>
+          <TableHeader>
+            <TableRow>
+              <DirectoryTableHead>Check</DirectoryTableHead>
+              <DirectoryTableHead>Status</DirectoryTableHead>
+              <DirectoryTableHead>Detail</DirectoryTableHead>
+            </TableRow>
+          </TableHeader>
+          <TableBody>
+            {health.rows?.map((row, index) => (
+              <TableRow key={`health-${index}`}>
+                <TableCell>{formatIntegrationHealthSlug(row.slug ?? '')}</TableCell>
+                <TableCell>{formatIntegrationHealthStatus(row.status ?? '')}</TableCell>
+                <TableCell className="text-muted-foreground">{row.message ?? ''}</TableCell>
               </TableRow>
-            </TableHeader>
-            <TableBody>
-              {health.rows?.map((row, index) => (
-                <TableRow key={`health-${index}`}>
-                  <TableCell>{formatIntegrationHealthSlug(row.slug ?? '')}</TableCell>
-                  <TableCell>{formatIntegrationHealthStatus(row.status ?? '')}</TableCell>
-                  <TableCell className="text-muted-foreground">{row.message ?? ''}</TableCell>
-                </TableRow>
-              ))}
-            </TableBody>
-          </DirectoryTable>
+            ))}
+          </TableBody>
+        </DirectoryTable>
       ) : null}
     </div>
   );

@@ -5,6 +5,8 @@ import (
 	"sync"
 	"sync/atomic"
 	"time"
+
+	"ad-event-processor/internal/metrics"
 )
 
 func finishOffloadCtx(ctx *ConnContext) {
@@ -179,14 +181,14 @@ func (p *PinnedWorkerPool) SubmitOffload(ctx *ConnContext, src []byte) bool {
 	return p.submitOffloadToWorkerIdx(int(idx), ctx, src)
 }
 
-func (p *PinnedWorkerPool) SubmitOffloadToWorker(WorkerID int, ctx *ConnContext, src []byte) bool {
+func (p *PinnedWorkerPool) SubmitOffloadToWorker(workerID int, ctx *ConnContext, src []byte) bool {
 	if atomic.LoadInt32(&p.closed) == 1 || ctx == nil {
 		return false
 	}
-	if WorkerID < 0 || WorkerID >= len(p.workers) {
+	if workerID < 0 || workerID >= len(p.workers) {
 		return p.SubmitOffload(ctx, src)
 	}
-	if p.submitOffloadToWorkerIdx(WorkerID, ctx, src) {
+	if p.submitOffloadToWorkerIdx(workerID, ctx, src) {
 		return true
 	}
 	return p.SubmitOffload(ctx, src)
@@ -204,6 +206,8 @@ func (p *PinnedWorkerPool) submitOffloadToWorkerIdx(idx int, ctx *ConnContext, s
 			ctx.OffloadArenaWorker = idx
 			ctx.OffloadArenaSlot = slot
 			ctx.OffloadRelease = release
+		} else {
+			metrics.WorkerArenaMissTotal.Inc()
 		}
 	}
 	if w.queue.PushCtx(ctx) {
@@ -219,11 +223,13 @@ func (p *PinnedWorkerPool) submitOffloadToWorkerIdx(idx int, ctx *ConnContext, s
 
 	if len(src) > 0 && ctx.OffloadReqSlice == nil && ctx.OffloadReqBuf == nil {
 		if len(src) > maxPoolObjectSize {
+			metrics.WorkerOffloadHeapCopyTotal.Inc()
 			heap := make([]byte, len(src))
 			copy(heap, src)
 			ctx.OffloadReqSlice = heap
 			ctx.OffloadReqLen = len(src)
 		} else {
+			metrics.WorkerOffloadBufferPoolTotal.Inc()
 			reqBufPtr := requestBufferPool.Get().(*[]byte)
 			reqBytes := *reqBufPtr
 			if cap(reqBytes) < len(src) {

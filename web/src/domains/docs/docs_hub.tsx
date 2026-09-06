@@ -5,7 +5,9 @@ import { DocsTroubleshootingTable } from '@/domains/docs/docs_section_content';
 import { PageChrome } from '@/shell/page_chrome';
 import { PanelSection } from '@/shell/stat_panel';
 import { Badge } from '@/components/ui/badge';
+import { adminKit } from '@/lib/admin_kit';
 import { DEFAULT_DOCS_SECTION_ID, getDocsSection } from '@/lib/docs_sections';
+import { cn } from '@/lib/utils';
 
 export type DocsHubProps = {
   sectionId: string | undefined;
@@ -19,12 +21,14 @@ export function DocsHub({ sectionId }: DocsHubProps) {
   }
 
   return (
-    <PageChrome
-      title="Documentation"
-      workspaceClassName="min-h-0 flex-1 border-0 bg-transparent p-0"
-    >
+    <PageChrome title="Documentation">
       <div className="grid min-w-0 gap-4">
-        <p className="rounded-2xl border border-border/40 bg-muted/25 px-4 py-3 text-sm leading-relaxed text-muted-foreground">
+        <p
+          className={cn(
+            'border border-border/40 bg-muted/25 px-4 py-3 text-sm leading-relaxed text-muted-foreground',
+            adminKit.panelRadius
+          )}
+        >
           Operator notes for common admin issues. Deep runbooks live in{' '}
           <span className="font-mono text-xs text-foreground">docs/DEVELOPMENT.md</span> and{' '}
           <span className="font-mono text-xs text-foreground">deploy/vendor/</span> on the server.

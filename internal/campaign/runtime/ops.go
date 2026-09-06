@@ -227,40 +227,13 @@ func pauseCampaign(ctx context.Context, pool *pgxpool.Pool, fx campaign.Effects,
 	if pool == nil || fx == nil {
 		return campaign.ErrServiceUnavailable()
 	}
-	// PAUSE_CAMPAIGN outbox row is inserted in the same PG txn as status_history (Effects.EnqueueCampaignOutbox).
 	return pgx.BeginFunc(ctx, pool, func(tx pgx.Tx) error {
 		q := db.New(tx)
 		camp, err := q.GetCampaignForUpdate(ctx, domain.ToUUID(campaignID))
 		if err != nil {
 			return mapCampaignStoreError(err)
 		}
-		if err := campaign.AssertMediaBuyerCampaignAccess(ctx, camp); err != nil {
-			return err
-		}
-		// Idempotent pause: already PAUSED skips outbox enqueue.
-		if camp.Status == db.CampaignStatusTypePAUSED {
-			return nil
-		}
-		if camp.Status != db.CampaignStatusTypeACTIVE {
-			return fmt.Errorf("%w in status %s", campaign.ErrCampaignCannotBePaused, camp.Status)
-		}
-		if _, err := q.PauseCampaign(ctx, domain.ToUUID(campaignID)); err != nil {
-			return err
-		}
-		if err := q.CreateStatusHistory(ctx, db.CreateStatusHistoryParams{
-			CampaignID: domain.ToUUID(campaignID),
-			OldStatus:  db.NullCampaignStatusType{CampaignStatusType: camp.Status, Valid: true},
-			NewStatus:  db.CampaignStatusTypePAUSED,
-			Reason:     pgtype.Text{String: reason, Valid: reason != ""},
-		}); err != nil {
-			return err
-		}
-		adminID := uuid.Nil
-		if user, ok := authz.GetUser(ctx); ok {
-			adminID = user.UserID
-		}
-		fx.AuditLog(ctx, q, adminID, "PAUSE_CAMPAIGN", "campaign", &campaignID, auditReasonChange{Reason: reason}, nil)
-		return fx.EnqueueCampaignOutbox(ctx, q, "PAUSE_CAMPAIGN", campaignID, camp.BudgetLimit)
+		return pauseCampaignLocked(ctx, q, fx, camp, campaignID, reason, adminIDFromCtx(ctx))
 	})
 }
 
@@ -268,51 +241,13 @@ func resumeCampaign(ctx context.Context, pool *pgxpool.Pool, fx campaign.Effects
 	if pool == nil || fx == nil {
 		return campaign.ErrServiceUnavailable()
 	}
-	// RESUME_CAMPAIGN outbox mirrors pause: same PG txn as status row + EnqueueCampaignOutbox.
 	return pgx.BeginFunc(ctx, pool, func(tx pgx.Tx) error {
 		q := db.New(tx)
 		camp, err := q.GetCampaignForUpdate(ctx, domain.ToUUID(campaignID))
 		if err != nil {
 			return mapCampaignStoreError(err)
 		}
-		if err := campaign.AssertMediaBuyerCampaignAccess(ctx, camp); err != nil {
-			return err
-		}
-		if camp.Status != db.CampaignStatusTypePAUSED {
-			return campaign.ErrCampaignNotPaused
-		}
-		now := time.Now()
-		var startAt, endAt *time.Time
-		if camp.StartAt.Valid {
-			startAt = &camp.StartAt.Time
-		}
-		if camp.EndAt.Valid {
-			endAt = &camp.EndAt.Time
-		}
-		if campaign.ResolveScheduleStatus(now, startAt, endAt) != db.CampaignStatusTypeACTIVE {
-			return campaign.ErrCampaignOutsideSchedule
-		}
-		// Publish gate (flow paths, integration blockers) before resume; force skips warnings only.
-		if err := fx.EnforceCampaignPublishGate(ctx, campaignID, camp, publishForce); err != nil {
-			return err
-		}
-		if _, err := q.ResumeCampaign(ctx, domain.ToUUID(campaignID)); err != nil {
-			return err
-		}
-		if err := q.CreateStatusHistory(ctx, db.CreateStatusHistoryParams{
-			CampaignID: domain.ToUUID(campaignID),
-			OldStatus:  db.NullCampaignStatusType{CampaignStatusType: camp.Status, Valid: true},
-			NewStatus:  db.CampaignStatusTypeACTIVE,
-			Reason:     pgtype.Text{String: reason, Valid: reason != ""},
-		}); err != nil {
-			return err
-		}
-		adminID := uuid.Nil
-		if user, ok := authz.GetUser(ctx); ok {
-			adminID = user.UserID
-		}
-		fx.AuditLog(ctx, q, adminID, "RESUME_CAMPAIGN", "campaign", &campaignID, auditReasonChange{Reason: reason}, nil)
-		return fx.EnqueueCampaignOutbox(ctx, q, "RESUME_CAMPAIGN", campaignID, camp.BudgetLimit)
+		return resumeCampaignLocked(ctx, q, fx, camp, campaignID, reason, publishForce, adminIDFromCtx(ctx))
 	})
 }
 
@@ -326,10 +261,7 @@ func archiveCampaign(ctx context.Context, pool *pgxpool.Pool, fx campaign.Effect
 		if err != nil {
 			return mapCampaignStoreError(err)
 		}
-		if err := campaign.AssertMediaBuyerCampaignAccess(ctx, camp); err != nil {
-			return err
-		}
-		return campaign.ArchiveCampaignStatus(ctx, fx, q, camp, reason)
+		return archiveCampaignLocked(ctx, q, fx, camp, reason)
 	})
 }
 
@@ -1123,6 +1055,15 @@ const clickhouseLagCacheTTL = 30 * time.Second
 // Process-wide CH ingestion lag cache; stale=true when lag exceeds clickHouseStaleThreshold (5 min).
 var globalClickHouseLagCache clickhouseLagCache
 
+// ResetClickHouseIngestionLagCache clears the cached max(created_at) lag probe.
+// Call after fault injection or fresh CH writes when the same process must re-probe immediately.
+func ResetClickHouseIngestionLagCache() {
+	globalClickHouseLagCache.mu.Lock()
+	globalClickHouseLagCache.lag = 0
+	globalClickHouseLagCache.updated = time.Time{}
+	globalClickHouseLagCache.mu.Unlock()
+}
+
 func getCampaignStats(
 	ctx context.Context,
 	pool *pgxpool.Pool,
@@ -1213,16 +1154,17 @@ func getCampaignStats(
 			hourly,
 		)
 		report.Hourly = resolved
-		if hourlyBucketsHaveActivity(hourly) {
+		switch {
+		case hourlyBucketsHaveActivity(hourly):
 			lag = lagVal
 			report.Consistency = "eventual"
 			report.Source = "ch"
 			report.Stale = lag > clickHouseStaleThreshold
-		} else if hourlyBucketsHaveActivity(resolved) {
+		case hourlyBucketsHaveActivity(resolved):
 			report.Consistency = "strong"
 			report.Source = "pg"
 			report.Stale = true
-		} else {
+		default:
 			lag = lagVal
 			report.Consistency = "eventual"
 			report.Source = "ch"

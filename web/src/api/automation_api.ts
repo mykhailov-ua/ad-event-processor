@@ -13,7 +13,7 @@ export async function listAutomationPresets(signal?: AbortSignal): Promise<Autom
 
 export async function listAutomationRules(
   params: AutomationListRulesQuery,
-  signal?: AbortSignal,
+  signal?: AbortSignal
 ): Promise<AutomationRule[]> {
   const search = new URLSearchParams();
   search.set('customer_id', params.customer_id);
@@ -22,7 +22,7 @@ export async function listAutomationRules(
 
 export async function createAutomationRule(
   body: UpsertAutomationRuleRequest,
-  signal?: AbortSignal,
+  signal?: AbortSignal
 ): Promise<AutomationRule> {
   return apiJson<AutomationRule>('/api/v1/automation/rules', {
     method: 'POST',
@@ -34,7 +34,7 @@ export async function createAutomationRule(
 export async function updateAutomationRule(
   ruleId: string,
   body: UpsertAutomationRuleRequest,
-  signal?: AbortSignal,
+  signal?: AbortSignal
 ): Promise<AutomationRule> {
   return apiJson<AutomationRule>(`/api/v1/automation/rules/${encodeURIComponent(ruleId)}`, {
     method: 'PUT',
@@ -52,10 +52,10 @@ export async function deleteAutomationRule(ruleId: string, signal?: AbortSignal)
 
 export async function dryRunAutomationRule(
   ruleId: string,
-  signal?: AbortSignal,
+  signal?: AbortSignal
 ): Promise<AutomationDryRunResult> {
   return apiJson<AutomationDryRunResult>(
     `/api/v1/automation/rules/${encodeURIComponent(ruleId)}/dry-run`,
-    { method: 'POST', signal },
+    { method: 'POST', signal }
   );
 }

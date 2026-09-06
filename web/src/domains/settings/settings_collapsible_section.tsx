@@ -22,10 +22,7 @@ export function SettingsCollapsibleSection({
   title: string;
 }) {
   return (
-    <details
-      className={cn(settingsCardClass, 'group min-w-0')}
-      open={defaultOpen || undefined}
-    >
+    <details className={cn(settingsCardClass, 'group min-w-0')} open={defaultOpen || undefined}>
       <summary className={settingsCollapsibleSummaryClass}>
         <span className={settingsCardTitleClass}>{title}</span>
         <span className="flex items-center gap-2">

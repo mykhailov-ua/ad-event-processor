@@ -57,6 +57,23 @@ run_tarpit_live_smoke() {
   fi
 }
 
+run_security_holdout_tests() {
+  local LUA_MOUNT="/etc/nginx/lua"
+
+  if command -v luajit > /dev/null 2>&1; then
+    luajit "${LUA_DIR}/edge_security_holdout_test.lua" "${LUA_DIR}"
+    return $?
+  fi
+
+  if ! command -v docker > /dev/null 2>&1; then
+    echo "nginx_lua_tests: security holdout skipped (luajit and docker unavailable)"
+    return 2
+  fi
+
+  docker run --rm -v "$ROOT/deploy/nginx/lua:${LUA_MOUNT}:ro" openresty/openresty:alpine \
+    /usr/local/openresty/luajit/bin/luajit "${LUA_MOUNT}/edge_security_holdout_test.lua" "${LUA_MOUNT}"
+}
+
 run_parse_dfa_tests() {
   local LUA_MOUNT="/etc/nginx/lua"
 
@@ -102,6 +119,7 @@ print('edge-parse-dfa: smoke ok')
 "
   docker run --rm -v "$ROOT/deploy/nginx/lua:${LUA_MOUNT}:ro" openresty/openresty:alpine \
     /usr/local/openresty/luajit/bin/luajit "${LUA_MOUNT}/edge_parse_dfa_fault_test.lua" "${LUA_MOUNT}"
+  run_security_holdout_tests || return $?
 }
 
 case "$MODE" in
@@ -119,12 +137,34 @@ case "$MODE" in
     run_lua_test blacklist_sync_test.lua
     run_lua_test circuit_breaker_test.lua
     run_lua_test edge_config_test.lua
+    run_lua_test asn_sync_failclosed_test.lua
     run_lua_test edge_slot_map_test.lua
     run_lua_test node_weights_test.lua
+    run_lua_test asn_trust_test.lua
+    run_lua_test fraud_score_trust_test.lua
+    run_lua_test campaign_id_trust_test.lua
+    run_lua_test campaign_id_scan_test.lua
+    run_lua_test bl_pending_cap_test.lua
+    run_lua_test bl_pending_drain_test.lua
+    run_lua_test route_gate_env_test.lua
+    run_lua_test safe_page_cid_test.lua
+    run_lua_test ip_canonical_test.lua
+    run_lua_test track_policy_failclosed_test.lua
+    run_lua_test edge_rl_fallback_test.lua
+    run_security_holdout_tests
+    ;;
+  security)
+    if ! run_security_holdout_tests; then
+      rc=$?
+      if [[ "$rc" -eq 2 ]]; then
+        exit 0
+      fi
+      exit "$rc"
+    fi
     ;;
   unit)
     skipped=0
-    for lua_test in tarpit_test.lua blacklist_sync_test.lua node_weights_test.lua edge_slot_map_test.lua edge_net_test.lua tls_alpn_test.lua circuit_breaker_test.lua edge_config_test.lua; do
+    for lua_test in tarpit_test.lua blacklist_sync_test.lua node_weights_test.lua edge_slot_map_test.lua edge_net_test.lua tls_alpn_test.lua circuit_breaker_test.lua edge_config_test.lua asn_sync_failclosed_test.lua asn_trust_test.lua fraud_score_trust_test.lua campaign_id_trust_test.lua bl_pending_cap_test.lua bl_pending_drain_test.lua track_policy_failclosed_test.lua route_gate_env_test.lua safe_page_cid_test.lua edge_rl_fallback_test.lua; do
       if ! run_lua_test "$lua_test"; then
         rc=$?
         if [[ "$rc" -eq 2 ]]; then
@@ -148,10 +188,22 @@ case "$MODE" in
     run_lua_test tls_alpn_test.lua
     run_lua_test circuit_breaker_test.lua
     run_lua_test edge_config_test.lua
+    run_lua_test asn_sync_failclosed_test.lua
+    run_lua_test asn_trust_test.lua
+    run_lua_test fraud_score_trust_test.lua
+    run_lua_test campaign_id_trust_test.lua
+    run_lua_test campaign_id_scan_test.lua
+    run_lua_test bl_pending_cap_test.lua
+    run_lua_test bl_pending_drain_test.lua
+    run_lua_test route_gate_env_test.lua
+    run_lua_test safe_page_cid_test.lua
+    run_lua_test ip_canonical_test.lua
+    run_lua_test track_policy_failclosed_test.lua
+    run_lua_test edge_rl_fallback_test.lua
     run_tarpit_live_smoke
     ;;
   *)
-    echo "usage: $0 [all|unit|compliance|parse-dfa]" >&2
+    echo "usage: $0 [all|unit|compliance|parse-dfa|security]" >&2
     exit 2
     ;;
 esac

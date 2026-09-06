@@ -197,7 +197,7 @@ func parseTrackRequestJSON(v *TrackRequest, data []byte) error {
 		}
 
 		// parser.ScanBudget key-pair cap; exceed -> ErrMalformed (JSON bomb load-shedding).
-		if !bud.consumeKeyPair() {
+		if !bud.ConsumeKeyPair() {
 			return parser.ErrMalformed
 		}
 

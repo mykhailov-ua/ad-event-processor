@@ -1,3 +1,16 @@
+// L1 transport for /api/v1/* (frontend-modular.mdc).
+// Runs in the browser main thread on Cold surfaces; pairs with useResource abort on dep change.
+//
+// Contracts:
+// - RESOURCE_FETCH_TIMEOUT_MS hard deadline; timeout abort maps to ApiError(0, TIMEOUT).
+// - Caller AbortSignal and timeout are linked; abort from caller is not rewritten to TIMEOUT.
+// - Mutating methods attach X-CSRF-Token from csrfToken cookie when present.
+// - credentials: include for session cookie on same-origin control plane.
+// - isAdminDevMode() short-circuits to dev_mock before fetch (T0 only; not production security).
+//
+// Verify:
+// cd web && npm run typecheck
+// bash scripts/ci/admin/web.sh
 import { devMockResponse } from '@/api/dev_mock/index';
 import { ApiError } from '@/api/api_error';
 import { isAdminDevMode } from '@/lib/admin_dev_mode';
@@ -48,7 +61,7 @@ function isMutatingMethod(method: string): boolean {
   return upper !== 'GET' && upper !== 'HEAD' && upper !== 'OPTIONS';
 }
 
-async function parseApiError(response: Response): Promise<ApiError> {
+export async function parseApiError(response: Response): Promise<ApiError> {
   let code = 'HTTP_ERROR';
   let message = response.statusText || `HTTP ${response.status}`;
 
@@ -123,7 +136,7 @@ export async function apiFetch(path: string, init: ApiRequestInit = {}): Promise
       credentials: 'include',
       signal: linkAbortSignals(signals),
     });
-  } catch (err) {
+  } catch (err: unknown) {
     if (isAbortError(err) && timeoutCtrl.signal.aborted && !init.signal?.aborted) {
       throw new ApiError(0, 'TIMEOUT', `Request timed out after ${RESOURCE_FETCH_TIMEOUT_MS}ms`);
     }
@@ -131,6 +144,32 @@ export async function apiFetch(path: string, init: ApiRequestInit = {}): Promise
   } finally {
     clearTimeout(timeoutId);
   }
+}
+
+export type JsonParser<T> = (value: unknown) => T;
+
+export async function apiJsonValidated<T>(
+  path: string,
+  init: ApiRequestInit,
+  parse: JsonParser<T>
+): Promise<T> {
+  const response = await apiFetch(path, init);
+
+  if (!response.ok) {
+    throw await parseApiError(response);
+  }
+
+  if (response.status === 204) {
+    return undefined as T;
+  }
+
+  const contentLength = response.headers.get('Content-Length');
+  if (contentLength === '0') {
+    return undefined as T;
+  }
+
+  const payload: unknown = await response.json();
+  return parse(payload);
 }
 
 export async function apiJson<T>(path: string, init: ApiRequestInit = {}): Promise<T> {
@@ -158,4 +197,55 @@ export async function apiJsonArray<T>(path: string, init: ApiRequestInit = {}): 
     throw new ApiError(502, 'INVALID_RESPONSE', 'Expected JSON array response');
   }
   return payload as T[];
+}
+
+export async function apiJsonArrayWithTotalCount<T>(
+  path: string,
+  init: ApiRequestInit = {},
+  options: { totalHeader?: string } = {}
+): Promise<{ items: T[]; total: number }> {
+  const response = await apiFetch(path, init);
+
+  if (!response.ok) {
+    throw await parseApiError(response);
+  }
+
+  const payload: unknown = await response.json();
+  if (!Array.isArray(payload)) {
+    throw new ApiError(502, 'INVALID_RESPONSE', 'Expected JSON array response');
+  }
+
+  const headerName = options.totalHeader ?? 'X-Total-Count';
+  const totalHeader = response.headers.get(headerName);
+  const parsedTotal = totalHeader != null ? Number.parseInt(totalHeader, 10) : payload.length;
+  const total = Number.isFinite(parsedTotal) ? parsedTotal : payload.length;
+
+  return { items: payload as T[], total };
+}
+
+export async function apiJsonArrayWithTotalCountValidated<T>(
+  path: string,
+  init: ApiRequestInit,
+  parseItem: JsonParser<T>,
+  options: { totalHeader?: string } = {}
+): Promise<{ items: T[]; total: number }> {
+  const response = await apiFetch(path, init);
+
+  if (!response.ok) {
+    throw await parseApiError(response);
+  }
+
+  const payload: unknown = await response.json();
+  if (!Array.isArray(payload)) {
+    throw new ApiError(502, 'INVALID_RESPONSE', 'Expected JSON array response');
+  }
+
+  const items = payload.map(parseItem);
+
+  const headerName = options.totalHeader ?? 'X-Total-Count';
+  const totalHeader = response.headers.get(headerName);
+  const parsedTotal = totalHeader != null ? Number.parseInt(totalHeader, 10) : items.length;
+  const total = Number.isFinite(parsedTotal) ? parsedTotal : items.length;
+
+  return { items, total };
 }

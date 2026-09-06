@@ -1,3 +1,5 @@
+// L3 owner: customer detail tabs, draft tax/cost-center forms, tab-gated useResource lanes (RP-3).
+// Each tab uses a separate useResource; inactive tabs call skipCustomerDetailTabFetch().
 import { useCallback, useEffect, useState } from 'react';
 import { useParams } from 'react-router-dom';
 
@@ -13,7 +15,7 @@ import {
   putCustomerTaxProfile,
 } from '@/api/billing_api';
 import { getCustomer, patchCustomerCostCenter } from '@/api/customers_api';
-import type { CustomerDetailTab } from '@/domains/customers/customer_detail';
+import type { CustomerDetailTab } from '@/domains/customers/customer_detail_types';
 import {
   CUSTOMER_DETAIL_LEDGER_PAGE_LIMIT,
   CUSTOMER_DETAIL_PAYMENTS_PAGE_LIMIT,
@@ -23,6 +25,7 @@ import {
 } from '@/domains/customers/customer_detail_page_utils';
 import { useBreadcrumbSegmentLabel } from '@/shell/breadcrumb_context';
 import { useResource } from '@/api/use_resource';
+import { useMeta } from '@/hooks/use_meta';
 import { useSession } from '@/hooks/use_session';
 import { triggerBlobDownload } from '@/lib/trigger_blob_download';
 
@@ -55,6 +58,8 @@ export function useCustomerDetailPageWorkspace() {
   }, [id]);
 
   const { user } = useSession();
+  const { meta } = useMeta();
+  const paymentEnabled = meta?.payment_enabled === true;
   const canSaveTax = user?.permissions?.includes('customers:write') ?? false;
   const canSaveCostCenter = canSaveTax;
 
@@ -65,7 +70,7 @@ export function useCustomerDetailPageWorkspace() {
       }
       return getCustomer(id, signal);
     },
-    [id, customerRefreshToken],
+    [id, customerRefreshToken]
   );
 
   useEffect(() => {
@@ -82,7 +87,7 @@ export function useCustomerDetailPageWorkspace() {
       }
       return getCustomerBalance(id, signal);
     },
-    [id, tab],
+    [id, tab]
   );
 
   const ledgerResource = useResource(
@@ -93,10 +98,10 @@ export function useCustomerDetailPageWorkspace() {
       return listCustomerLedger(
         id,
         { limit: CUSTOMER_DETAIL_LEDGER_PAGE_LIMIT, offset: ledgerOffset },
-        signal,
+        signal
       );
     },
-    [id, tab, ledgerOffset],
+    [id, tab, ledgerOffset]
   );
 
   const statementResource = useResource(
@@ -106,7 +111,7 @@ export function useCustomerDetailPageWorkspace() {
       }
       return getCustomerBillingStatement(id, statementMonthApplied, signal);
     },
-    [id, tab, statementMonthApplied],
+    [id, tab, statementMonthApplied]
   );
 
   const forecastResource = useResource(
@@ -116,7 +121,7 @@ export function useCustomerDetailPageWorkspace() {
       }
       return getCustomerBillingForecast(id, signal);
     },
-    [id, tab],
+    [id, tab]
   );
 
   const walletResource = useResource(
@@ -126,7 +131,7 @@ export function useCustomerDetailPageWorkspace() {
       }
       return getCustomerWallet(id, signal);
     },
-    [id, tab],
+    [id, tab]
   );
 
   const paymentsResource = useResource(
@@ -137,10 +142,10 @@ export function useCustomerDetailPageWorkspace() {
       return listCustomerPayments(
         id,
         { limit: CUSTOMER_DETAIL_PAYMENTS_PAGE_LIMIT, offset: paymentsOffset },
-        signal,
+        signal
       );
     },
-    [id, tab, paymentsOffset],
+    [id, tab, paymentsOffset]
   );
 
   const taxResource = useResource(
@@ -150,7 +155,7 @@ export function useCustomerDetailPageWorkspace() {
       }
       return getCustomerTaxProfile(id, signal);
     },
-    [id, tab, taxRefreshToken],
+    [id, tab, taxRefreshToken]
   );
 
   useEffect(() => {
@@ -163,6 +168,12 @@ export function useCustomerDetailPageWorkspace() {
     setDraftTaxScheme(draft.taxScheme);
     setDraftTaxRateBps(draft.taxRateBps);
   }, [taxResource.data]);
+
+  useEffect(() => {
+    if (!paymentEnabled && tab === 'payments') {
+      setTab('profile');
+    }
+  }, [paymentEnabled, tab]);
 
   const onPaymentsPageChange = useCallback((nextOffset: number) => {
     setPaymentsOffset(Math.max(0, nextOffset));
@@ -181,7 +192,7 @@ export function useCustomerDetailPageWorkspace() {
     try {
       const result = await exportCustomerBalanceCsv(id);
       triggerBlobDownload(result.blob, `customer-${id}-ledger.csv`);
-    } catch (err) {
+    } catch (err: unknown) {
       setLedgerExportError(err instanceof Error ? err : new Error(String(err)));
     } finally {
       setLedgerExporting(false);
@@ -219,19 +230,12 @@ export function useCustomerDetailPageWorkspace() {
       });
       setSaveSuccess(true);
       setTaxRefreshToken((value) => value + 1);
-    } catch (err) {
+    } catch (err: unknown) {
       setSaveError(err instanceof Error ? err : new Error(String(err)));
     } finally {
       setSavingTax(false);
     }
-  }, [
-    canSaveTax,
-    draftCountryCode,
-    draftTaxRateBps,
-    draftTaxRegion,
-    draftTaxScheme,
-    id,
-  ]);
+  }, [canSaveTax, draftCountryCode, draftTaxRateBps, draftTaxRegion, draftTaxScheme, id]);
 
   const onSaveCostCenter = useCallback(async () => {
     if (!id || !canSaveCostCenter) {
@@ -245,7 +249,7 @@ export function useCustomerDetailPageWorkspace() {
       await patchCustomerCostCenter(id, { cost_center: draftCostCenter.trim() });
       setCostCenterSaveSuccess(true);
       setCustomerRefreshToken((value) => value + 1);
-    } catch (err) {
+    } catch (err: unknown) {
       setCostCenterSaveError(err instanceof Error ? err : new Error(String(err)));
     } finally {
       setSavingCostCenter(false);
@@ -259,6 +263,7 @@ export function useCustomerDetailPageWorkspace() {
     customerFetching: customerResource.fetching,
     customerError: customerResource.error,
     hasCustomerSnapshot: customerResource.data != null,
+    paymentEnabled,
     tab,
     onTabChange: setTab,
     balance: balanceResource.data,

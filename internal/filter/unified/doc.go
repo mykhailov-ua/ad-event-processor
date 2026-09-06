@@ -16,7 +16,7 @@
 //	-1 budget key missing; 0 success; 2 duplicate (dedup SET NX failed after checks);
 //	3 insufficient budget; 4 daily pacing quota; 5 frequency cap; 6 TTC below minimum;
 //	7 TTC missing when fail-closed; 10 TTC bypass (missing imp ts, fail-open); 11 routing epoch / migration fence;
-//	20 degraded accept (remaining deadline < degrade_ns, default 2ms).
+//	20 degraded (remaining deadline < degrade_ns, default 2ms); Go rollbacks debit and returns ErrFilterTimeout.
 //
 // Budget invariants:
 //   - TryReserve on stream producer must succeed before Lua debit (ingest tryAcquireStreamAdmission).
@@ -47,11 +47,12 @@
 //   - Return code semantics (unified-filter.lua): -1 missing budget key (fail closed, no debit);
 //     0 full accept; 2 duplicate after gates (dedup SET NX, no second debit); 3 insufficient budget;
 //     4 daily pacing; 5 frequency cap; 6 TTC below minimum; 7 TTC missing when fail-closed; 10 TTC
-//     bypass (missing impression ts, fail-open accept); 11 routing epoch / migration fence (no debit past
-//     fence); 20 degraded accept when remaining monotonic deadline < degrade_ns. Codes 4-7 reject before
-//     debit; 20 skips pacing/fcap/TTC side effects but still debits when budget path runs (load shed).
+//     bypass (missing impression ts, fail-open accept when TTC min zero); 11 routing epoch / migration fence (no debit past
+//     fence); 20 degraded when remaining monotonic deadline < degrade_ns. Codes 4-7 reject before debit;
+//     20 skips pacing/fcap/TTC in Lua but Go rollbacks any debit and returns ErrFilterTimeout (fail-closed).
+//     Code 10 with TTC min enabled: rollback debit and ErrFilterTimeout (fail-closed); zero TTC min keeps legacy bypass.
 //   - degrade_ns default 2ms (ARGV[31], 2000000 ns): when FILTER_TIMEOUT_MS budget is nearly exhausted,
-//     Lua returns 20 and skips expensive pacing/fcap/TTC branches to bound tail latency inside one EVALSHA.
+//     Lua returns 20 and skips expensive pacing/fcap/TTC branches; Go rejects with rollback (no accept).
 //     Rejected: separate short Lua script per tier (double RTT); rejected wall-clock deadline in Lua
 //     (ARGV uses monotonic ns only); rejected raising degrade_ns above ~2ms (p99 Redis Lua budget in
 //     core.mdc); rejected disabling degrade (Redis thread holds under pacing/fcap at timeout tail).

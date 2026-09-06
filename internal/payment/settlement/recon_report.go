@@ -49,8 +49,8 @@ type reconDetailDeadOutbox struct {
 
 func marshalReconDetail(v any) json.RawMessage {
 	b, err := json.Marshal(v)
-	if err != nil {
-		return nil
+	if err != nil || len(b) == 0 {
+		return json.RawMessage(`{}`)
 	}
 	return b
 }

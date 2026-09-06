@@ -186,7 +186,7 @@ func splitTLSFeedLine(line string) (typ string, payload []byte) {
 }
 
 func TLSFingerprintImpersonating(ua string, ja3, ja4, tlsHash []byte) bool {
-	return filter.TlsFingerprintImpersonating(ua, ja3, ja4, tlsHash)
+	return filter.TLSFingerprintImpersonating(ua, ja3, ja4, tlsHash)
 }
 
 func UAClaimsChromeNotChromium(ua string) bool {

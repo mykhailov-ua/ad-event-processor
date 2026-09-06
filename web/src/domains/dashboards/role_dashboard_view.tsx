@@ -13,23 +13,27 @@ import { StubBanner } from '@/shell/stub_banner';
 import { DASHBOARD_ROLES, formatDashboardRoleLabel } from '@/api/dashboards_api';
 import type { DashboardRole } from '@/api/types';
 import { CampaignsListFilterSelect } from '@/domains/campaigns/list/campaigns_list_filter_select';
-import { BuyerDashboardToolbar, type BuyerDashboardCampaignOption } from '@/domains/dashboards/buyer_dashboard_toolbar';
+import {
+  BuyerDashboardToolbar,
+  type BuyerDashboardCampaignOption,
+} from '@/domains/dashboards/buyer_dashboard_toolbar';
 import { BuyerDashboardView } from '@/domains/dashboards/buyer_dashboard_view';
 import {
   dashboardFilterFieldClass,
   dashboardFilterLabelClass,
   dashboardPageWorkspaceClass,
 } from '@/domains/dashboards/dashboard_classes';
-import { parseBuyerPortfolio, type DashboardRangePreset } from '@/domains/dashboards/buyer_dashboard_types';
+import {
+  parseBuyerPortfolio,
+  type DashboardRangePreset,
+} from '@/domains/dashboards/buyer_dashboard_types';
 import { opsStatusTone } from '@/domains/ops/ops_status';
 import { useBuyerDashboardPreferences } from '@/hooks/use_buyer_dashboard_preferences';
-import {
-  DirectoryFilterForm,
-  FilterField,
-  FilterPanel,
-} from '@/shell/filter_panel';
+import { DirectoryFilterForm, FilterField, FilterPanel } from '@/shell/filter_panel';
 import { cn } from '@/lib/utils';
 
+// L3 dashboard shell: loading/error/stale-while-revalidate (EH-SI2).
+// licenseGated -> StubBanner; blocking load -> PageSkeleton; refresh error with snapshot -> ErrorBlock band.
 export type { DashboardRangePreset };
 
 const ALL_OPTION_VALUE = '__all__';
@@ -76,7 +80,12 @@ function freshnessBadge(payload: Record<string, unknown> | undefined) {
   }
   const stale = portfolio?.kpis?.freshness?.stale === true;
   return (
-    <span className={cn('text-xs text-muted-foreground', stale ? opsStatusTone('warn') : opsStatusTone('ok'))}>
+    <span
+      className={cn(
+        'text-xs text-muted-foreground',
+        stale ? opsStatusTone('warn') : opsStatusTone('ok')
+      )}
+    >
       {label}
     </span>
   );
@@ -278,7 +287,8 @@ export function RoleDashboardView({
     );
   }
 
-  const buyerPortfolio = role === 'buyer' && !customerRequired ? parseBuyerPortfolio(payload) : undefined;
+  const buyerPortfolio =
+    role === 'buyer' && !customerRequired ? parseBuyerPortfolio(payload) : undefined;
   const pageTitle = role === 'buyer' ? 'Dashboard' : `${formatDashboardRoleLabel(role)} dashboard`;
 
   return (
@@ -320,16 +330,12 @@ export function RoleDashboardView({
         <Button
           aria-label="Refresh dashboard"
           className="size-7 p-0"
+          disabled={customerRequired}
           loading={fetching}
+          title={customerRequired ? 'Select a customer' : 'Refresh dashboard'}
           type="button"
           variant="secondary"
-          onClick={() => {
-            if (customerRequired) {
-              toast.message('Select a customer');
-              return;
-            }
-            onRefresh();
-          }}
+          onClick={onRefresh}
         >
           <RefreshCw aria-hidden className="h-4 w-4" />
         </Button>

@@ -28,17 +28,25 @@ export function OpsPageShell({
     <PageLayout
       badge={badge}
       controlPanel={
-        <div className="flex flex-col gap-3 flex flex-col gap-2">
-          <div aria-label="Ops sections" className="flex flex-wrap items-center gap-2 border-t border-border pt-2">
+        <div className="grid gap-4">
+          <div aria-label="Ops sections" className="flex flex-wrap items-center gap-2">
             <OpsNav variant="admin" />
           </div>
           {actions ? (
-            <div aria-label="Ops actions" className="flex flex-wrap items-center gap-2" role="toolbar">
+            <div
+              aria-label="Ops actions"
+              className="flex flex-wrap items-center gap-2"
+              role="toolbar"
+            >
               {actions}
             </div>
           ) : null}
           {filters ? (
-            <div aria-label="Ops filters" className="flex flex-wrap items-center gap-2 flex flex-wrap items-center gap-2" role="search">
+            <div
+              aria-label="Ops filters"
+              className="flex flex-wrap items-center gap-2"
+              role="search"
+            >
               {filters}
             </div>
           ) : null}
@@ -73,13 +81,7 @@ export function OpsPageBlockingError({
 }
 
 /** Group action buttons the same way as campaigns_list_toolbar. */
-export function OpsActionGroup({
-  label,
-  children,
-}: {
-  label: string;
-  children: ReactNode;
-}) {
+export function OpsActionGroup({ label, children }: { label: string; children: ReactNode }) {
   return (
     <div aria-label={label} className="flex flex-wrap items-center gap-1">
       {children}

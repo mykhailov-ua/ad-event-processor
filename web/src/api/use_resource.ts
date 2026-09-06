@@ -13,10 +13,12 @@ export type UseResourceState<T> = {
  * replaces data snapshot on success, keeps stale rows during revalidate.
  * `fetching` is true only until the first successful or failed load; background
  * refetches do not toggle it (avoids control-bar flicker on sort/filter).
+ *
+ * generationRef ignores stale responses when deps change faster than the network.
  */
 export function useResource<T>(
   fetcher: (signal: AbortSignal) => Promise<T>,
-  deps: DependencyList,
+  deps: DependencyList
 ): UseResourceState<T> {
   const [data, setData] = useState<T | undefined>(undefined);
   const [error, setError] = useState<Error | undefined>(undefined);

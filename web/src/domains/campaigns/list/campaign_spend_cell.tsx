@@ -33,11 +33,7 @@ export function CampaignSpendCell({
           <div
             className={cn(
               'h-full rounded-full transition-[width]',
-              ratio >= 0.9
-                ? 'bg-destructive'
-                : ratio >= 0.7
-                  ? 'bg-secondary'
-                  : 'bg-primary',
+              ratio >= 0.9 ? 'bg-destructive' : ratio >= 0.7 ? 'bg-secondary' : 'bg-primary'
             )}
             style={{ width: `${Math.min(100, Math.max(0, percent))}%` }}
           />

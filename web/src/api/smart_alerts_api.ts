@@ -1,4 +1,4 @@
-import { apiFetch, apiJson, apiJsonArray } from './client.js';
+import { apiFetch, apiJson, apiJsonArray, parseApiError } from './client.js';
 import type {
   SmartAlertEvent,
   SmartAlertsListHistoryQuery,
@@ -9,16 +9,18 @@ import type {
 
 export async function listSmartAlertRules(
   params: SmartAlertsListRulesQuery,
-  signal?: AbortSignal,
+  signal?: AbortSignal
 ): Promise<SmartAlertRule[]> {
   const search = new URLSearchParams();
   search.set('customer_id', params.customer_id);
-  return apiJsonArray<SmartAlertRule>(`/api/v1/smart-alerts/rules?${search.toString()}`, { signal });
+  return apiJsonArray<SmartAlertRule>(`/api/v1/smart-alerts/rules?${search.toString()}`, {
+    signal,
+  });
 }
 
 export async function listSmartAlertHistory(
   params: SmartAlertsListHistoryQuery,
-  signal?: AbortSignal,
+  signal?: AbortSignal
 ): Promise<SmartAlertEvent[]> {
   const search = new URLSearchParams();
   search.set('customer_id', params.customer_id);
@@ -32,7 +34,7 @@ export async function listSmartAlertHistory(
 
 export async function createSmartAlertRule(
   body: UpsertSmartAlertRuleRequest,
-  signal?: AbortSignal,
+  signal?: AbortSignal
 ): Promise<SmartAlertRule> {
   return apiJson<SmartAlertRule>('/api/v1/smart-alerts/rules', {
     method: 'POST',
@@ -44,7 +46,7 @@ export async function createSmartAlertRule(
 export async function updateSmartAlertRule(
   ruleId: string,
   body: UpsertSmartAlertRuleRequest,
-  signal?: AbortSignal,
+  signal?: AbortSignal
 ): Promise<SmartAlertRule> {
   return apiJson<SmartAlertRule>(`/api/v1/smart-alerts/rules/${encodeURIComponent(ruleId)}`, {
     method: 'PATCH',
@@ -63,9 +65,9 @@ export async function deleteSmartAlertRule(ruleId: string, signal?: AbortSignal)
 export async function ackSmartAlertEvent(eventId: string, signal?: AbortSignal): Promise<void> {
   const response = await apiFetch(
     `/api/v1/smart-alerts/events/${encodeURIComponent(eventId)}/ack`,
-    { method: 'POST', signal },
+    { method: 'POST', signal }
   );
   if (!response.ok && response.status !== 204) {
-    throw new Error(response.statusText || `HTTP ${response.status}`);
+    throw await parseApiError(response);
   }
 }

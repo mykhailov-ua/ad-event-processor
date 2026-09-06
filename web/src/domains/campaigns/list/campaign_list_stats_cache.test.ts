@@ -28,7 +28,11 @@ test('campaignStatsFromListMetrics maps list batch counts', () => {
 test('campaignStatsCache_holdoutReusesSessionSnapshot', () => {
   clearCampaignStatsCache();
   const key = buildCampaignStatsCacheKey('cmp-1', { from: 'a', to: 'b' }, 'scope-1');
-  const seeded = campaignStatsFromListMetrics('cmp-1', { impressions: 1, clicks: 0, conversions: 0 });
+  const seeded = campaignStatsFromListMetrics('cmp-1', {
+    impressions: 1,
+    clicks: 0,
+    conversions: 0,
+  });
   writeCachedCampaignStats(key, {
     ...seeded,
     hourly: [{ hour: '2026-01-01T00:00:00Z', impressions: 1, clicks: 0, conversions: 0 }],
@@ -38,7 +42,10 @@ test('campaignStatsCache_holdoutReusesSessionSnapshot', () => {
   const cached = readCachedCampaignStats(key);
   assert.equal(cached?.source, 'stats');
   assert.equal(cached?.hourly?.length, 1);
-  assert.equal(readCachedCampaignStats(buildCampaignStatsCacheKey('cmp-2', {}, 'scope-1')), undefined);
+  assert.equal(
+    readCachedCampaignStats(buildCampaignStatsCacheKey('cmp-2', {}, 'scope-1')),
+    undefined
+  );
 });
 
 test('readCachedCampaignStatsForCampaign_holdoutFindsListScopeRevision', () => {

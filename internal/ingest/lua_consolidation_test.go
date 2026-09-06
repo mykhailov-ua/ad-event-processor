@@ -187,7 +187,17 @@ func TestUnifiedFilter_TierDegradationNearDeadline(t *testing.T) {
 	}
 	evt.FilterDeadlineMono = monotonicNano() + 500_000
 
-	require.NoError(t, f.Check(ctx, evt))
+	err := f.Check(ctx, evt)
+	require.ErrorIs(t, err, ErrFilterTimeout)
+
+	budgetAfter, budgetErr := redisClient.Get(ctx, camp.BudgetCampaignKey).Int64()
+	require.NoError(t, budgetErr)
+	require.Equal(t, int64(9_000_000_000_000_000), budgetAfter, "degraded path must rollback Lua debit")
+
+	fcapAfter, fcapErr := redisClient.Get(ctx, camp.FcapKeyPrefix+"degrade-user").Int64()
+	require.NoError(t, fcapErr)
+	require.Equal(t, int64(999), fcapAfter, "degraded path must not increment fcap when rejected")
+
 	after := testutil.ToFloat64(metrics.FilterTierDegradedTotal)
 	require.Greater(t, after-before, 0.0)
 }

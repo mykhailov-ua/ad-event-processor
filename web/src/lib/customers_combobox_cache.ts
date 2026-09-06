@@ -16,9 +16,7 @@ let inflightResponse: Promise<CustomerListResponse> | undefined;
  * Fetches the customer combobox snapshot once per browser session; parallel mounts share inflight.
  * Paginated customers directory uses `listCustomers` directly with page query params.
  */
-export function fetchCustomersComboboxCached(
-  signal?: AbortSignal,
-): Promise<CustomerListResponse> {
+export function fetchCustomersComboboxCached(signal?: AbortSignal): Promise<CustomerListResponse> {
   if (cachedResponse) {
     return Promise.resolve(cachedResponse);
   }

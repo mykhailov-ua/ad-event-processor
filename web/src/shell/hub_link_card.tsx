@@ -1,12 +1,7 @@
 import type { LucideIcon } from 'lucide-react';
 import type { ReactNode } from 'react';
 
-import {
-  BentoGrid,
-  BentoLinkCard,
-  type BentoIconTone,
-  bentoToneFromKey,
-} from '@/shell/bento_card';
+import { BentoGrid, BentoLinkCard, type BentoIconTone, bentoToneFromKey } from '@/shell/bento_card';
 import { cn } from '@/lib/utils';
 
 export type HubLinkItem = {
@@ -18,13 +13,7 @@ export type HubLinkItem = {
   meta?: string;
 };
 
-export function HubLinkGrid({
-  children,
-  className,
-}: {
-  children: ReactNode;
-  className?: string;
-}) {
+export function HubLinkGrid({ children, className }: { children: ReactNode; className?: string }) {
   return <BentoGrid className={className}>{children}</BentoGrid>;
 }
 

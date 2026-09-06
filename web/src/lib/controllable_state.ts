@@ -1,5 +1,7 @@
 import { useCallback, useState } from 'react';
 
+// Controlled/uncontrolled primitive for overlays and pickers.
+// value !== undefined => parent owns state; defaultValue seeds internal state when uncontrolled.
 export function useControllableState<T>({
   value,
   defaultValue,
@@ -20,7 +22,7 @@ export function useControllableState<T>({
       }
       onChange?.(next);
     },
-    [isControlled, onChange],
+    [isControlled, onChange]
   );
 
   return [state, setState] as const;

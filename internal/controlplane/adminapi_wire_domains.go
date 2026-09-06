@@ -47,6 +47,7 @@ func (h *Handler) wireAdminDomainRoutes(reg *RouteRegistry, e adminWireEnv) {
 	writeErr := e.writeErr
 	authCustomer := e.authCustomer
 	authCampaign := e.authCampaign
+	authCampaignIDs := e.authCampaignIDs
 	reportJobs := e.reportJobs
 	encKey := e.encKey
 	costWorker := e.costWorker
@@ -95,15 +96,16 @@ func (h *Handler) wireAdminDomainRoutes(reg *RouteRegistry, e adminWireEnv) {
 		WriteServiceError:       writeErr,
 	}
 	reg.DashboardsHTTP = &dashboardadmin.HTTPHandlers{
-		BuyerPortfolio:       svc,
-		CampaignDashboard:    svc,
-		RoleDashboards:       svc,
-		ReportJobs:           reportJobs,
-		ApplyRateLimit:       limit,
-		RequirePermission:    perm,
-		RequireAnyPermission: permAny,
-		ResolveCustomerID:    h.resolveCampaignsCustomerID,
-		WriteServiceError:    writeErr,
+		BuyerPortfolio:          svc,
+		CampaignDashboard:       svc,
+		RoleDashboards:          svc,
+		ReportJobs:              reportJobs,
+		ApplyRateLimit:          limit,
+		RequirePermission:       perm,
+		RequireAnyPermission:    permAny,
+		ResolveCustomerID:       h.resolveCampaignsCustomerID,
+		AuthorizeCampaignAccess: authCampaign,
+		WriteServiceError:       writeErr,
 		EdgeMetricsReader: func(ctx context.Context) (dashboardadmin.EdgeMetricsPanelDTO, error) {
 			panel, err := opsadmin.FetchEdgeMetrics(ctx)
 			if err != nil {
@@ -145,10 +147,12 @@ func (h *Handler) wireAdminDomainRoutes(reg *RouteRegistry, e adminWireEnv) {
 		CryptoSubProvider:          selfServeCryptoSubProvider,
 	}
 	reg.PostbackHTTP = &campaign.PostbackHTTPHandlers{
-		Pool:              pool,
-		EncryptionKey:     encKey,
-		ApplyRateLimit:    limit,
-		RequirePermission: perm,
+		Pool:                    pool,
+		EncryptionKey:           encKey,
+		ApplyRateLimit:          limit,
+		RequirePermission:       perm,
+		AuthorizeCampaignAccess: authCampaign,
+		WriteServiceError:       writeErr,
 	}
 	reg.CostSyncHTTP = &billingadmin.CostSyncHTTPHandlers{
 		Pool:              pool,
@@ -156,6 +160,12 @@ func (h *Handler) wireAdminDomainRoutes(reg *RouteRegistry, e adminWireEnv) {
 		Worker:            costWorker,
 		ApplyRateLimit:    limit,
 		RequirePermission: perm,
+		ResolveBoundCustomerID: func(r *http.Request, customerID string) (string, error) {
+			filtered, _, err := h.resolveUsageExportCustomerFilter(r, customerID, "")
+			return filtered, err
+		},
+		AuthorizeCustomerAccess: authCustomer,
+		WriteServiceError:       writeErr,
 	}
 	reg.PlatformCampaignHTTP = &platformadmin.PlatformCampaignHTTPHandlers{
 		Pool:              pool,
@@ -309,23 +319,24 @@ func (h *Handler) wireAdminDomainRoutes(reg *RouteRegistry, e adminWireEnv) {
 	}
 	// CampaignsHTTP: PG mutations via CampaignRuntime; ClickHouseQuery read-only for event stats.
 	reg.CampaignsHTTP = &campaign.CampaignsHTTPHandlers{
-		Campaigns:                 svc.CampaignRuntime(),
-		CampaignFraud:             fraudadmin.CampaignFraudAPI{Host: svc, MapErr: mapFraudadminErr},
-		ConversionMappings:        svc,
-		GetCampaignFlow:           svc.GetFlow,
-		ValidateCampaignFlowPaths: svc.ValidateCampaignFlowPaths,
-		RecordRevisionConflict:    svc.AuditCampaignRevisionConflict,
-		ClickHouseQuery:           svc.ClickHouseQuery(),
-		PostgresPool:              pool,
-		MarginDefaultThresholdBps: h.cfg.MarginGuardDefaultThresholdBps,
-		ApplyRateLimit:            limit,
-		RequireAnyPermission:      permAny,
-		AuthorizeCampaignAccess:   authCampaign,
-		ResolveCustomerID:         h.resolveCampaignsCustomerID,
-		AllowFraudPreview:         h.allowFraudPreview,
-		LicenseFeatureAllowed:     licenseFeatureAllowed,
-		ReportJobs:                reportJobs,
-		WriteServiceError:         writeErr,
+		Campaigns:                  svc.CampaignRuntime(),
+		CampaignFraud:              fraudadmin.CampaignFraudAPI{Host: svc, MapErr: mapFraudadminErr},
+		ConversionMappings:         svc,
+		GetCampaignFlow:            svc.GetFlow,
+		ValidateCampaignFlowPaths:  svc.ValidateCampaignFlowPaths,
+		RecordRevisionConflict:     svc.AuditCampaignRevisionConflict,
+		ClickHouseQuery:            svc.ClickHouseQuery(),
+		PostgresPool:               pool,
+		MarginDefaultThresholdBps:  h.cfg.MarginGuardDefaultThresholdBps,
+		ApplyRateLimit:             limit,
+		RequireAnyPermission:       permAny,
+		AuthorizeCampaignAccess:    authCampaign,
+		AuthorizeCampaignIDsAccess: authCampaignIDs,
+		ResolveCustomerID:          h.resolveCampaignsCustomerID,
+		AllowFraudPreview:          h.allowFraudPreview,
+		LicenseFeatureAllowed:      licenseFeatureAllowed,
+		ReportJobs:                 reportJobs,
+		WriteServiceError:          writeErr,
 	}
 	reg.FraudHTTP = &fraudadmin.HTTPHandlers{
 		Labels:                  fraudadmin.LabelsAPI{Host: svc},
@@ -364,6 +375,7 @@ func (h *Handler) wireAdminDomainRoutes(reg *RouteRegistry, e adminWireEnv) {
 		ApplyRateLimit: limit,
 		Enrich:         platformadmin.NewMetaEnricher(h.svc),
 		WriteError:     writeErr,
+		PaymentEnabled: h.payment != nil,
 	}
 	// SessionHTTP: SPA bootstrap; CH ingestion lag probe when clickhouseQuery configured (readonly).
 	reg.SessionHTTP = func() *platformadmin.SessionHTTPHandlers {

@@ -121,6 +121,13 @@ func (s campaignListStub) ExportCampaign(context.Context, uuid.UUID) (campaign.C
 	return campaign.CampaignExportBundle{}, nil
 }
 
+func (s campaignListStub) ExportCampaignsBatch(context.Context, []uuid.UUID) campaign.ExportCampaignsBatchResult {
+	return campaign.ExportCampaignsBatchResult{
+		Items:  map[uuid.UUID]campaign.CampaignExportBundle{},
+		Errors: map[uuid.UUID]error{},
+	}
+}
+
 func (s campaignListStub) ImportCampaign(context.Context, campaign.ImportCampaignSpec) (campaign.ImportCampaignResult, error) {
 	return campaign.ImportCampaignResult{}, nil
 }
@@ -143,4 +150,8 @@ func (s campaignListStub) ResumeCampaign(context.Context, uuid.UUID, string) err
 
 func (s campaignListStub) ArchiveCampaign(context.Context, uuid.UUID, string) error {
 	return nil
+}
+
+func (s campaignListStub) BulkCampaignAction(ctx context.Context, action string, ids []uuid.UUID, reason string) map[uuid.UUID]error {
+	return campaign.RunBulkCampaignAction(ctx, action, ids, reason, s.PauseCampaign, s.ResumeCampaign, s.ArchiveCampaign)
 }

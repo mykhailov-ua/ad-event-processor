@@ -17,6 +17,7 @@ import (
 	"time"
 
 	db "ad-event-processor/internal/domain/db"
+	"ad-event-processor/pkg/coldpath"
 
 	"github.com/google/uuid"
 	"github.com/jackc/pgx/v5"
@@ -26,6 +27,8 @@ import (
 )
 
 const postbackMaxRetries = 5
+
+const postbackBatchTimeout = 2 * time.Minute
 
 var (
 	ErrDuplicateEvent          = errors.New("duplicate postback event ignored")
@@ -120,6 +123,12 @@ func (w *PostbackWorker) Start(ctx context.Context, interval time.Duration) {
 }
 
 func (w *PostbackWorker) ProcessBatch(ctx context.Context) error {
+	opCtx, cancel := coldpath.BoundedContext(ctx, postbackBatchTimeout)
+	defer cancel()
+	return w.processBatch(opCtx)
+}
+
+func (w *PostbackWorker) processBatch(ctx context.Context) error {
 	tx, err := w.pool.Begin(ctx)
 	if err != nil {
 		return err

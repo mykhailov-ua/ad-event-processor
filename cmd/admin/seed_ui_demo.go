@@ -46,11 +46,11 @@ var seedUIDemoCmd = &cobra.Command{
 
 		for seq := 1; seq <= uiDemoCampaignCount; seq++ {
 			campID := seedCampaignUUID(seq)
-			budgetLimit := seedUiDemoBudgetMicro(seq)
-			currentSpend := seedUiDemoSpendMicro(seq, budgetLimit)
-			status := seedUiDemoStatus(seq)
-			pacing := seedUiDemoPacing(seq)
-			timezone := seedUiDemoTimezone(seq)
+			budgetLimit := seedUIDemoBudgetMicro(seq)
+			currentSpend := seedUIDemoSpendMicro(seq, budgetLimit)
+			status := seedUIDemoStatus(seq)
+			pacing := seedUIDemoPacing(seq)
+			timezone := seedUIDemoTimezone(seq)
 
 			tag, err := tx.Exec(ctx, `
 UPDATE campaigns
@@ -79,9 +79,9 @@ WHERE id = $1`,
 			}
 			updated++
 
-			for dayOffset := 0; dayOffset < 14; dayOffset++ {
+			for dayOffset := range 14 {
 				statsDate := today.AddDate(0, 0, -dayOffset)
-				imp, clk, conv := seedUiDemoDeliveryCounts(seq, dayOffset)
+				imp, clk, conv := seedUIDemoDeliveryCounts(seq, dayOffset)
 				_, err = tx.Exec(ctx, `
 INSERT INTO campaign_stats (campaign_id, date, impressions_count, clicks_count, conversions_count)
 VALUES ($1, $2::date, $3, $4, $5)
@@ -124,14 +124,14 @@ func init() {
 	seedUIDemoCmd.Flags().IntVar(&uiDemoCampaignCount, "count", defaultUIDemoCampaignCount, "Max deterministic campaign seq to upsert (1..N)")
 }
 
-func seedUiDemoBudgetMicro(seq int) int64 {
+func seedUIDemoBudgetMicro(seq int) int64 {
 	base := int64(3_800_000_000)
 	spread := int64(19_400_000_000)
 	step := int64(1_337_421)
 	return base + ((int64(seq) * step) % spread) + int64(seq%13)*271_829
 }
 
-func seedUiDemoSpendMicro(seq int, budgetLimit int64) int64 {
+func seedUIDemoSpendMicro(seq int, budgetLimit int64) int64 {
 	pcts := []int64{0, 4, 11, 23, 38, 57, 72, 84, 91, 97, 99}
 	pct := pcts[seq%len(pcts)]
 	spend := budgetLimit * pct / 100
@@ -141,7 +141,7 @@ func seedUiDemoSpendMicro(seq int, budgetLimit int64) int64 {
 	return spend
 }
 
-func seedUiDemoStatus(seq int) string {
+func seedUIDemoStatus(seq int) string {
 	switch {
 	case seq%23 == 0:
 		return "ARCHIVED"
@@ -156,19 +156,19 @@ func seedUiDemoStatus(seq int) string {
 	}
 }
 
-func seedUiDemoPacing(seq int) string {
+func seedUIDemoPacing(seq int) string {
 	if seq%3 == 0 {
 		return "EVEN"
 	}
 	return "ASAP"
 }
 
-func seedUiDemoTimezone(seq int) string {
+func seedUIDemoTimezone(seq int) string {
 	zones := []string{"UTC", "America/New_York", "Europe/Berlin", "Asia/Tokyo", "Australia/Sydney"}
 	return zones[seq%len(zones)]
 }
 
-func seedUiDemoDeliveryCounts(seq int, dayOffset int) (impressions, clicks, conversions int64) {
+func seedUIDemoDeliveryCounts(seq int, dayOffset int) (impressions, clicks, conversions int64) {
 	seed := uint64(seq*1_000_003 + dayOffset*97_821)
 	seed ^= seed << 13
 	seed ^= seed >> 7
@@ -180,7 +180,7 @@ func seedUiDemoDeliveryCounts(seq int, dayOffset int) (impressions, clicks, conv
 
 	if seq%9 == 0 {
 		impressions = impressions * 2 / 5
-		clicks = clicks / 2
+		clicks /= 2
 	}
 	if seq%11 == 0 {
 		impressions = impressions * 3 / 2

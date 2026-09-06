@@ -4,7 +4,7 @@ export const ADMIN_TABULAR_CLASS = 'tabular-nums';
 /** Alias used in dashboard components. */
 export const ADMIN_NUMERIC_CLASS = 'tabular-nums';
 
-/** JetBrains Mono for UUIDs, hashes, URLs, JSON, secrets. */
+/** IBM Plex Mono for UUIDs, hashes, URLs, JSON, secrets. */
 export const ADMIN_MONO_CLASS = 'font-mono tabular-nums';
 
 export type AdminTypographyRole = 'prose' | 'tabular' | 'mono';
@@ -95,7 +95,7 @@ export function formatAdminEnumLabel(raw: string): string {
   const [first, ...rest] = words;
   const head =
     ADMIN_LABEL_ABBREVIATIONS.get(first.toLowerCase()) ??
-    (first.charAt(0).toUpperCase() + first.slice(1).toLowerCase());
+    first.charAt(0).toUpperCase() + first.slice(1).toLowerCase();
   return [head, ...rest].join(' ');
 }
 

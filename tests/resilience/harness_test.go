@@ -32,6 +32,12 @@ import (
 
 const defaultTrackShards = 4
 
+const resilienceTrackCampaignInsertSQL = `
+INSERT INTO campaigns (
+	id, name, status, customer_id, budget_limit,
+	tls_fingerprint_block_enabled, proxy_vpn_block_enabled, cidr_block_enabled, moderator_intel_enabled
+) VALUES ($1, $2, $3, $4, $5, false, false, false, false)`
+
 type multiShardTrackHarness struct {
 	t           *testing.T
 	ctx         context.Context
@@ -102,8 +108,7 @@ func setupMultiShardTrackHarness(t *testing.T, opts multiShardTrackOpts) *multiS
 	require.NoError(t, err)
 
 	for _, campaignID := range campaignIDs {
-		_, err = pool.Exec(ctx,
-			"INSERT INTO campaigns (id, name, status, customer_id, budget_limit) VALUES ($1, $2, $3, $4, $5)",
+		_, err = pool.Exec(ctx, resilienceTrackCampaignInsertSQL,
 			campaignID, "Resilience Track Campaign", "ACTIVE", customerID, 100_000_000,
 		)
 		require.NoError(t, err)

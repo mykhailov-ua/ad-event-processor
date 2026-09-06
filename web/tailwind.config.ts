@@ -8,8 +8,8 @@ const config: Config = {
     extend: {
       fontFamily: {
         sans: ['"Inter Variable"', 'Inter', 'system-ui', 'sans-serif'],
-        mono: ['"JetBrains Mono Variable"', 'JetBrains Mono', 'ui-monospace', 'monospace'],
-        numeric: ['"JetBrains Mono Variable"', 'JetBrains Mono', 'ui-monospace', 'monospace'],
+        mono: ['"IBM Plex Mono"', 'ui-monospace', 'monospace'],
+        numeric: ['"Inter Variable"', 'Inter', 'system-ui', 'sans-serif'],
       },
       colors: {
         border: 'hsl(var(--border))',
@@ -44,6 +44,34 @@ const config: Config = {
         card: {
           DEFAULT: 'hsl(var(--card))',
           foreground: 'hsl(var(--card-foreground))',
+        },
+        chart: {
+          1: 'hsl(var(--chart-1))',
+          2: 'hsl(var(--chart-2))',
+          3: 'hsl(var(--chart-3))',
+          4: 'hsl(var(--chart-4))',
+          5: 'hsl(var(--chart-5))',
+        },
+        admin: {
+          brand: {
+            DEFAULT: 'hsl(var(--admin-brand))',
+            hover: 'hsl(var(--admin-brand-hover))',
+            foreground: 'hsl(var(--admin-brand-fg))',
+            soft: 'hsl(var(--admin-brand) / 0.12)',
+          },
+          positive: 'hsl(var(--admin-positive-fg))',
+          negative: 'hsl(var(--admin-negative-fg))',
+          warn: {
+            DEFAULT: 'hsl(var(--admin-warn-fg))',
+            bg: 'hsl(var(--admin-warn-bg))',
+            border: 'hsl(var(--admin-warn-border))',
+          },
+          status: {
+            active: 'hsl(var(--admin-status-active))',
+            paused: 'hsl(var(--admin-status-paused))',
+            draft: 'hsl(var(--admin-status-draft))',
+            scheduled: 'hsl(var(--admin-status-scheduled))',
+          },
         },
       },
       borderRadius: {

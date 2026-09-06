@@ -3,12 +3,7 @@ import test from 'node:test';
 
 import { coalesceUserAction, DEFAULT_COALESCE_WINDOW_MS } from './coalesced_user_action.ts';
 
-function gate(
-  lastFiredAtMs: number,
-  nowMs: number,
-  inFlight = false,
-  inFlightGuard = true,
-) {
+function gate(lastFiredAtMs: number, nowMs: number, inFlight = false, inFlightGuard = true) {
   return coalesceUserAction({
     lastFiredAtMs,
     nowMs,

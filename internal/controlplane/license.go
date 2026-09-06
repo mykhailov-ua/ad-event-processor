@@ -6,6 +6,7 @@ import (
 	"errors"
 	"log/slog"
 	"net/http"
+	"strings"
 	"sync/atomic"
 	"time"
 
@@ -299,7 +300,20 @@ func mapServiceError(err error) (status int, code, message string) {
 		return http.StatusBadRequest, "BAD_REQUEST", msg
 	}
 
+	if isPaymentUnavailableError(err) {
+		return http.StatusServiceUnavailable, "PAYMENT_UNAVAILABLE", "payment service not configured"
+	}
+
 	return http.StatusInternalServerError, "INTERNAL_ERROR", "internal error"
+}
+
+func isPaymentUnavailableError(err error) bool {
+	if err == nil {
+		return false
+	}
+	msg := err.Error()
+	return strings.Contains(msg, "payment client not configured") ||
+		strings.Contains(msg, "payment service not configured")
 }
 
 func isNotFoundError(err error) bool {

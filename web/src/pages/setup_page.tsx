@@ -39,13 +39,13 @@ export function SetupPage() {
             your deployment bundle.
           </CardDescription>
         </CardHeader>
-        <CardContent>
+        <CardContent className="grid gap-4">
           <PlatformBootstrapForm
             onComplete={() => {
               refreshMeta();
             }}
           />
-          <p className="mt-4 text-center text-sm text-muted-foreground">
+          <p className="m-0 text-center text-sm text-muted-foreground">
             Have a license JWT already?{' '}
             <Link className="text-foreground underline" to="/activate">
               Activate with license

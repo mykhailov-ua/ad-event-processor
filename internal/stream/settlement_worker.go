@@ -27,7 +27,7 @@ type laneMsg struct {
 	msgID string
 }
 
-// SettlementWorker: single XReadGroup reader fans out to per-campaign lanes (crc32 hash)
+// SettlementWorker is a single XReadGroup reader that fans out to per-campaign lanes (crc32 hash).
 // so Postgres settlement batches do not contend on one flush mutex. Uses StreamConsumer
 // FlushBatch (store then XAck) on each lane; maxWorkers=0 on the embedded consumer.
 //

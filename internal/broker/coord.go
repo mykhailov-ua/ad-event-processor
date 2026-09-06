@@ -31,7 +31,7 @@ type topicLeaderState struct {
 
 const claimQueueCapacity = 64
 
-// Coordinator: Redis lease per topic partition; only leader may appendLeader to local WAL.
+// Coordinator Redis lease per topic partition; only leader may appendLeader to local WAL.
 type Coordinator struct {
 	nodeID        string
 	tcpAddr       string

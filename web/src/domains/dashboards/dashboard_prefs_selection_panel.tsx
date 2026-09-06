@@ -38,7 +38,7 @@ function toggleSelection<T extends string>(
   current: readonly T[],
   optionId: T,
   checked: boolean,
-  minSelected: number,
+  minSelected: number
 ): T[] {
   if (checked) {
     if (current.includes(optionId)) {
@@ -54,7 +54,7 @@ function toggleSelection<T extends string>(
 
 export function formatDashboardPrefsSummary<T extends string>(
   value: readonly T[],
-  labels: Record<T, string>,
+  labels: Record<T, string>
 ): string {
   return value.map((id) => labels[id]).join(', ');
 }
@@ -71,7 +71,10 @@ export function DashboardPrefsSelectionPanel<T extends string>({
   summary,
 }: DashboardPrefsSelectionPanelProps<T>) {
   const labelById = new Map(options.map((option) => [option.id, option.label]));
-  const labels = Object.fromEntries(options.map((option) => [option.id, option.label])) as Record<T, string>;
+  const labels = Object.fromEntries(options.map((option) => [option.id, option.label])) as Record<
+    T,
+    string
+  >;
   const selectedSet = new Set(value);
   const resolvedSummary = summary ?? formatDashboardPrefsSummary(value, labels);
 
@@ -88,11 +91,7 @@ export function DashboardPrefsSelectionPanel<T extends string>({
         {label}
       </p>
       {showChips ? (
-        <div
-          aria-labelledby={`${id}-label`}
-          className={dashboardPrefsChipBoxClass}
-          role="group"
-        >
+        <div aria-labelledby={`${id}-label`} className={dashboardPrefsChipBoxClass} role="group">
           {value.length === 0 ? (
             <span className={dashboardPrefsChipEmptyClass}>No items selected</span>
           ) : (
@@ -106,7 +105,10 @@ export function DashboardPrefsSelectionPanel<T extends string>({
                   {canRemove ? (
                     <Button
                       aria-label={`Remove ${labelById.get(optionId) ?? optionId}`}
-                      className={cn(dashboardPrefsChipRemoveClass, 'h-6 w-6 shrink-0 p-0 shadow-none')}
+                      className={cn(
+                        dashboardPrefsChipRemoveClass,
+                        'h-6 w-6 shrink-0 p-0 shadow-none'
+                      )}
                       type="button"
                       variant="ghost"
                       onClick={() => removeChip(optionId)}
@@ -120,11 +122,7 @@ export function DashboardPrefsSelectionPanel<T extends string>({
           )}
         </div>
       ) : (
-        <p
-          aria-live="polite"
-          className={dashboardPrefsColumnSummaryClass}
-          title={resolvedSummary}
-        >
+        <p aria-live="polite" className={dashboardPrefsColumnSummaryClass} title={resolvedSummary}>
           {resolvedSummary}
         </p>
       )}

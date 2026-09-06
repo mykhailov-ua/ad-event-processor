@@ -1,12 +1,12 @@
 package ingest
 
 import (
-	"ad-event-processor/internal/ingest/pool"
+	"ad-event-processor/internal/ingest/domainhosts"
 )
 
-type DomainPoolTable = pool.Table
+type DomainPoolTable = domainhosts.Table
 
 var (
-	NewDomainPoolTable = pool.NewTable
-	NewDomainPoolSync  = pool.NewSync
+	NewDomainPoolTable = domainhosts.NewTable
+	NewDomainPoolSync  = domainhosts.NewSync
 )

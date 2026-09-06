@@ -14,7 +14,7 @@ test('formatSettingsDisplayValue maps deployment profiles', () => {
 test('formatSettingsDisplayValue maps ingress schemas', () => {
   assert.equal(
     formatSettingsDisplayValue('ad_event_processor_native', 'ingress_schema'),
-    'Native ingest',
+    'Native ingest'
   );
   assert.equal(formatSettingsDisplayValue('openrtb_3', 'ingress_schema'), 'OpenRTB 3');
 });

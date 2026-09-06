@@ -4,7 +4,10 @@ import test from 'node:test';
 import type { CampaignListMetrics } from '@/api/campaigns_api.ts';
 import type { Campaign, CampaignMargin } from '@/api/types.ts';
 import { seedDeterministicUuid } from '@/api/dev_mock/seed_uuid.ts';
-import { defaultCampaignListColumnPrefs, visibleCampaignListColumns } from './campaign_list_columns.ts';
+import {
+  defaultCampaignListColumnPrefs,
+  visibleCampaignListColumns,
+} from './campaign_list_columns.ts';
 import { formatCampaignListExportToast } from './campaign_list_export_toast.ts';
 import {
   buildCampaignListExportCsv,
@@ -68,7 +71,9 @@ const margin: CampaignMargin = {
 };
 
 test('exportableCampaignListColumns drops selection column', () => {
-  const columns = exportableCampaignListColumns(visibleCampaignListColumns(defaultCampaignListColumnPrefs()));
+  const columns = exportableCampaignListColumns(
+    visibleCampaignListColumns(defaultCampaignListColumnPrefs())
+  );
   assert.equal(columns.includes('select' as never), false);
   assert.equal(columns.includes('name'), true);
   assert.equal(columns.includes('status'), true);
@@ -82,7 +87,7 @@ test('buildCampaignListExportCsv matches visible column labels and row VM values
     margin,
     { [baseCampaign.customer_id]: 'Horizon Media Group' },
     {},
-    false,
+    false
   );
   const csv = buildCampaignListExportCsv(columns, [{ campaign: baseCampaign, vm }]);
 
@@ -106,7 +111,7 @@ test('buildCampaignListExportRows maps metrics batch per campaign id', () => {
     { [baseCampaign.id]: metrics },
     { [baseCampaign.id]: margin },
     {},
-    {},
+    {}
   );
   assert.equal(rows.length, 1);
   assert.equal(campaignListExportCellValue('clicks', rows[0]!.vm), '120');

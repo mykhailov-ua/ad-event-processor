@@ -23,7 +23,8 @@ export function parseChartMetricSelection(raw: string | null): DashboardMetricId
     }
     const allowed = new Set(ALL_CHART_METRIC_IDS);
     const selected = parsed.filter(
-      (item): item is DashboardMetricId => typeof item === 'string' && allowed.has(item as DashboardMetricId),
+      (item): item is DashboardMetricId =>
+        typeof item === 'string' && allowed.has(item as DashboardMetricId)
     );
     return selected.length > 0 ? selected : DEFAULT_CHART_METRIC_IDS;
   } catch {
@@ -47,7 +48,7 @@ export function saveChartMetricSelection(ids: DashboardMetricId[]): void {
 
 export function toggleChartMetric(
   current: DashboardMetricId[],
-  id: DashboardMetricId,
+  id: DashboardMetricId
 ): DashboardMetricId[] {
   if (current.includes(id)) {
     const next = current.filter((item) => item !== id);

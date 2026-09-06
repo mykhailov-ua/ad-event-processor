@@ -20,7 +20,7 @@ func TestRequestBufferPool_NoCapPoisoning(t *testing.T) {
 	smallPtr := &small
 	putRequestBuffer(smallPtr)
 
-	got := requestBufferPool.Get().(*[]byte)
+	got := getRequestBuffer()
 	gotCap := cap(*got)
 	putRequestBuffer(got)
 

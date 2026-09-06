@@ -204,8 +204,7 @@ paths:
         content:
           application/json:
             schema:
-              type: object
-              additionalProperties: true
+              $ref: '../components/schemas/rtb.yaml#/OpenRtbBidRequest'
       responses:
         '200':
           description: Validation result

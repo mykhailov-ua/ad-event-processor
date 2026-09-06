@@ -131,10 +131,6 @@ func uaFamilySynSigMask(family uint8) uint8 {
 	}
 }
 
-func hashTCPSynFields(ttl uint8, window uint16, mss uint8, doff uint8) uint32 {
-	return HashTCPSynFields(ttl, window, mss, doff)
-}
-
 func HashTCPSynFields(ttl uint8, window uint16, mss uint8, doff uint8) uint32 {
 	h := uint32(ttl)
 	h = (h << 5) ^ uint32(window)
@@ -143,7 +139,7 @@ func HashTCPSynFields(ttl uint8, window uint16, mss uint8, doff uint8) uint32 {
 	return h
 }
 
-func TcpSynSigMismatch(ua string, sig uint32) bool {
+func TCPSynSigMismatch(ua string, sig uint32) bool {
 	if sig == 0 || ua == "" {
 		return false
 	}

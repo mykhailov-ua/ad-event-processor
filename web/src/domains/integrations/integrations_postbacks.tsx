@@ -112,71 +112,71 @@ export function IntegrationsPostbacks({
       </div>
 
       {tab === 'configs' ? (
-      <section className="grid gap-4">
-        <PostbackConfigForm
-          draftCampaignId={configForm.draftCampaignId}
-          draftProvider={configForm.draftProvider}
-          draftUrlTemplate={configForm.draftUrlTemplate}
-          draftTargetEvent={configForm.draftTargetEvent}
-          draftApiToken={configForm.draftApiToken}
-          draftTestEventCode={configForm.draftTestEventCode}
-          saving={configForm.saving}
-          testing={configForm.testing}
-          saveError={configForm.saveError}
-          testError={configForm.testError}
-          saveSuccess={configForm.saveSuccess}
-          testResult={configForm.testResult}
-          onDraftCampaignIdChange={configForm.onDraftCampaignIdChange}
-          onDraftProviderChange={configForm.onDraftProviderChange}
-          onDraftUrlTemplateChange={configForm.onDraftUrlTemplateChange}
-          onDraftTargetEventChange={configForm.onDraftTargetEventChange}
-          onDraftApiTokenChange={configForm.onDraftApiTokenChange}
-          onDraftTestEventCodeChange={configForm.onDraftTestEventCodeChange}
-          onSave={configForm.onSave}
-          onTest={configForm.onTest}
-        />
+        <section className="grid gap-4">
+          <PostbackConfigForm
+            draftCampaignId={configForm.draftCampaignId}
+            draftProvider={configForm.draftProvider}
+            draftUrlTemplate={configForm.draftUrlTemplate}
+            draftTargetEvent={configForm.draftTargetEvent}
+            draftApiToken={configForm.draftApiToken}
+            draftTestEventCode={configForm.draftTestEventCode}
+            saving={configForm.saving}
+            testing={configForm.testing}
+            saveError={configForm.saveError}
+            testError={configForm.testError}
+            saveSuccess={configForm.saveSuccess}
+            testResult={configForm.testResult}
+            onDraftCampaignIdChange={configForm.onDraftCampaignIdChange}
+            onDraftProviderChange={configForm.onDraftProviderChange}
+            onDraftUrlTemplateChange={configForm.onDraftUrlTemplateChange}
+            onDraftTargetEventChange={configForm.onDraftTargetEventChange}
+            onDraftApiTokenChange={configForm.onDraftApiTokenChange}
+            onDraftTestEventCodeChange={configForm.onDraftTestEventCodeChange}
+            onSave={configForm.onSave}
+            onTest={configForm.onTest}
+          />
 
-        <div className="grid gap-2">
-        <h2 className="text-base font-semibold">Configs</h2>
-        {configs.length === 0 ? (
-          <EmptyState title="No configs" description="No postback configs are configured." />
-        ) : (
-          <DirectoryTable horizontalScroll>
-              <TableHeader>
-                <TableRow>
-                  <DirectoryTableHead>Campaign</DirectoryTableHead>
-                  <DirectoryTableHead>Provider</DirectoryTableHead>
-                  <DirectoryTableHead>Target event</DirectoryTableHead>
-                  <DirectoryTableHead>Token</DirectoryTableHead>
-                </TableRow>
-              </TableHeader>
-              <TableBody>
-                {configs.map((row) => (
-                  <TableRow
-                    key={`${row.campaign_id}-${row.provider}`}
-                    className="cursor-pointer"
-                    onClick={() => configForm.onPrefillFromConfig(row)}
-                  >
-                    <TableCell className="font-mono text-xs">{row.campaign_id}</TableCell>
-                    <TableCell>{row.provider}</TableCell>
-                    <TableCell>{row.target_event}</TableCell>
-                    <TableCell>{row.has_api_token ? 'set' : 'missing'}</TableCell>
+          <div className="grid gap-2">
+            <h2 className="text-base font-semibold">Configs</h2>
+            {configs.length === 0 ? (
+              <EmptyState title="No configs" description="No postback configs are configured." />
+            ) : (
+              <DirectoryTable horizontalScroll>
+                <TableHeader>
+                  <TableRow>
+                    <DirectoryTableHead>Campaign</DirectoryTableHead>
+                    <DirectoryTableHead>Provider</DirectoryTableHead>
+                    <DirectoryTableHead>Target event</DirectoryTableHead>
+                    <DirectoryTableHead>Token</DirectoryTableHead>
                   </TableRow>
-                ))}
-              </TableBody>
-            </DirectoryTable>
-        )}
-        </div>
-      </section>
+                </TableHeader>
+                <TableBody>
+                  {configs.map((row) => (
+                    <TableRow
+                      key={`${row.campaign_id}-${row.provider}`}
+                      className="cursor-pointer"
+                      onClick={() => configForm.onPrefillFromConfig(row)}
+                    >
+                      <TableCell className="font-mono text-xs">{row.campaign_id}</TableCell>
+                      <TableCell>{row.provider}</TableCell>
+                      <TableCell>{row.target_event}</TableCell>
+                      <TableCell>{row.has_api_token ? 'set' : 'missing'}</TableCell>
+                    </TableRow>
+                  ))}
+                </TableBody>
+              </DirectoryTable>
+            )}
+          </div>
+        </section>
       ) : null}
 
       {tab === 'dlq' ? (
-      <section className="grid gap-2">
-        <h2 className="text-base font-semibold">DLQ</h2>
-        {dlq.length === 0 ? (
-          <EmptyState title="DLQ empty" description="No failed postback deliveries in DLQ." />
-        ) : (
-          <DirectoryTable horizontalScroll>
+        <section className="grid gap-2">
+          <h2 className="text-base font-semibold">DLQ</h2>
+          {dlq.length === 0 ? (
+            <EmptyState title="DLQ empty" description="No failed postback deliveries in DLQ." />
+          ) : (
+            <DirectoryTable horizontalScroll>
               <TableHeader>
                 <TableRow>
                   <DirectoryTableHead>ID</DirectoryTableHead>
@@ -191,49 +191,48 @@ export function IntegrationsPostbacks({
                 {dlq.map((row) => {
                   const rowId = row.id != null ? String(row.id) : '';
                   return (
-                  <TableRow key={rowId || row.campaign_id}>
-                    <TableCell>{row.id}</TableCell>
-                    <TableCell className="font-mono text-xs">{row.campaign_id ?? ''}</TableCell>
-                    <TableCell>{row.event_type ?? ''}</TableCell>
-                    <TableCell>{row.failures_count ?? ''}</TableCell>
-                    <TableCell className="whitespace-nowrap">{row.last_error ?? ''}</TableCell>
-                    <TableCell>
-                      <Button
-                        disabled={!rowId || dlqActions.retryingId === rowId}
-                        onClick={() => {
-                          if (rowId) {
-                            dlqActions.onRetry(rowId);
-                          }
-                        }}
-                       
-                        type="button"
-                        variant="outline"
-                      >
-                        {dlqActions.retryingId === rowId ? 'Retrying...' : 'Retry'}
-                      </Button>
-                    </TableCell>
-                  </TableRow>
+                    <TableRow key={rowId || row.campaign_id}>
+                      <TableCell>{row.id}</TableCell>
+                      <TableCell className="font-mono text-xs">{row.campaign_id ?? ''}</TableCell>
+                      <TableCell>{row.event_type ?? ''}</TableCell>
+                      <TableCell>{row.failures_count ?? ''}</TableCell>
+                      <TableCell className="whitespace-nowrap">{row.last_error ?? ''}</TableCell>
+                      <TableCell>
+                        <Button
+                          disabled={!rowId || dlqActions.retryingId === rowId}
+                          onClick={() => {
+                            if (rowId) {
+                              dlqActions.onRetry(rowId);
+                            }
+                          }}
+                          type="button"
+                          variant="outline"
+                        >
+                          {dlqActions.retryingId === rowId ? 'Retrying...' : 'Retry'}
+                        </Button>
+                      </TableCell>
+                    </TableRow>
                   );
                 })}
               </TableBody>
             </DirectoryTable>
-        )}
-        {dlqActions.retryError ? (
-          <ErrorBlock title="DLQ retry failed" message={dlqActions.retryError.message} />
-        ) : null}
-      </section>
+          )}
+          {dlqActions.retryError ? (
+            <ErrorBlock title="DLQ retry failed" message={dlqActions.retryError.message} />
+          ) : null}
+        </section>
       ) : null}
 
       {tab === 'status' ? (
-      <section className="grid gap-2">
-        <h2 className="text-base font-semibold">Campaign status</h2>
-        {campaignStatus.length === 0 ? (
-          <EmptyState
-            title="No campaign status"
-            description="No postback delivery status rows returned."
-          />
-        ) : (
-          <DirectoryTable horizontalScroll>
+        <section className="grid gap-2">
+          <h2 className="text-base font-semibold">Campaign status</h2>
+          {campaignStatus.length === 0 ? (
+            <EmptyState
+              title="No campaign status"
+              description="No postback delivery status rows returned."
+            />
+          ) : (
+            <DirectoryTable horizontalScroll>
               <TableHeader>
                 <TableRow>
                   <DirectoryTableHead>Campaign</DirectoryTableHead>
@@ -259,8 +258,8 @@ export function IntegrationsPostbacks({
                 ))}
               </TableBody>
             </DirectoryTable>
-        )}
-      </section>
+          )}
+        </section>
       ) : null}
 
       {error && hasSnapshot ? integrationsPanelError(error, 'Refresh failed') : null}

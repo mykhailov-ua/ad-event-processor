@@ -60,27 +60,27 @@ export function DisputesDirectory({
         <EmptyState title="No disputes" description="No payment disputes for the selected scope." />
       ) : (
         <DirectoryTable>
-            <TableHeader>
-              <TableRow>
-                <DirectoryTableHead>Intent</DirectoryTableHead>
-                <DirectoryTableHead>Provider dispute</DirectoryTableHead>
-                <DirectoryTableHead>Amount (micro)</DirectoryTableHead>
-                <DirectoryTableHead>Currency</DirectoryTableHead>
-                <DirectoryTableHead>Updated</DirectoryTableHead>
+          <TableHeader>
+            <TableRow>
+              <DirectoryTableHead>Intent</DirectoryTableHead>
+              <DirectoryTableHead>Provider dispute</DirectoryTableHead>
+              <DirectoryTableHead>Amount (micro)</DirectoryTableHead>
+              <DirectoryTableHead>Currency</DirectoryTableHead>
+              <DirectoryTableHead>Updated</DirectoryTableHead>
+            </TableRow>
+          </TableHeader>
+          <TableBody>
+            {disputes.map((row) => (
+              <TableRow key={row.provider_dispute_id ?? row.intent_id ?? row.updated_at}>
+                <TableCell className="font-mono text-xs">{row.intent_id ?? ''}</TableCell>
+                <TableCell className="font-mono text-xs">{row.provider_dispute_id ?? ''}</TableCell>
+                <TableCell>{displayMicro(row.amount_micro)}</TableCell>
+                <TableCell>{row.currency ?? ''}</TableCell>
+                <TableCell>{displayTimestamp(row.updated_at)}</TableCell>
               </TableRow>
-            </TableHeader>
-            <TableBody>
-              {disputes.map((row) => (
-                <TableRow key={row.provider_dispute_id ?? row.intent_id ?? row.updated_at}>
-                  <TableCell className="font-mono text-xs">{row.intent_id ?? ''}</TableCell>
-                  <TableCell className="font-mono text-xs">{row.provider_dispute_id ?? ''}</TableCell>
-                  <TableCell>{displayMicro(row.amount_micro)}</TableCell>
-                  <TableCell>{row.currency ?? ''}</TableCell>
-                  <TableCell>{displayTimestamp(row.updated_at)}</TableCell>
-                </TableRow>
-              ))}
-            </TableBody>
-          </DirectoryTable>
+            ))}
+          </TableBody>
+        </DirectoryTable>
       )}
 
       {error && hasSnapshot ? <ErrorBlock title="Refresh failed" message={error.message} /> : null}

@@ -1,7 +1,6 @@
 package features
 
 import (
-	"encoding/hex"
 	"sync"
 
 	"ad-event-processor/pkg/piihash"
@@ -32,11 +31,6 @@ func hashIPForClickhouse(ip string) [16]byte {
 
 func HashIPForClickhouse(ip string) [16]byte {
 	return hashIPForClickhouse(ip)
-}
-
-func ipHashHex(ip string) string {
-	h := hashIPForClickhouse(ip)
-	return hex.EncodeToString(h[:])
 }
 
 const emptyIPHashFilter = "ip_hash != ''"

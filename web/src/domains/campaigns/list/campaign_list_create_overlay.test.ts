@@ -17,7 +17,7 @@ test('openCampaignCreateDialog closes wizard before opening create', () => {
     },
     (open) => {
       wizardOpen = open;
-    },
+    }
   );
   assert.equal(createOpen, true);
   assert.equal(wizardOpen, false);
@@ -32,7 +32,7 @@ test('openCampaignWizardSheet_holdout closes create before opening wizard', () =
     },
     (open) => {
       wizardOpen = open;
-    },
+    }
   );
   assert.equal(createOpen, false);
   assert.equal(wizardOpen, true);
@@ -48,7 +48,7 @@ test('setCampaignWizardSheetOpen does not leave create open', () => {
     },
     (open) => {
       wizardOpen = open;
-    },
+    }
   );
   assert.equal(createOpen, false);
   assert.equal(wizardOpen, true);
@@ -64,7 +64,7 @@ test('setCampaignCreateDialogOpen does not leave wizard open', () => {
     },
     (open) => {
       wizardOpen = open;
-    },
+    }
   );
   assert.equal(createOpen, true);
   assert.equal(wizardOpen, false);

@@ -23,7 +23,7 @@ func RetryNotification(ctx context.Context, host NotificationsHost, notification
 		return fmt.Errorf("invalid notification id: %w", err)
 	}
 	tag, err := host.Pool().Exec(ctx, `
-		UPDATE notify.notifications
+		UPDATE notifier.notifications
 		SET status = 'PENDING',
 		 retry_count = 0,
 		 error_message = NULL,

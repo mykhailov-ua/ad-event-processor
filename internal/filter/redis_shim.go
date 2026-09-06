@@ -45,14 +45,6 @@ func appendCampaignHashTag(dst []byte, id uuid.UUID) []byte {
 	return domain.AppendCampaignHashTag(dst, id)
 }
 
-func campaignHashTag(id uuid.UUID) string {
-	return domain.CampaignHashTag(id)
-}
-
-func crc32Castagnoli(data *uuid.UUID) uint32 {
-	return domain.CRC32Castagnoli(data)
-}
-
 func BudgetCampaignKey(id uuid.UUID) string {
 	return domain.BudgetCampaignKey(id)
 }
@@ -103,12 +95,6 @@ func NewStaticSlotSharder(numBuckets int) *StaticSlotSharder {
 
 func NewJumpHashSharder(numBuckets int) *JumpHashSharder {
 	return domain.NewJumpHashSharder(numBuckets)
-}
-
-type slotTable = domain.SlotTable
-
-func buildSlotTable(numBuckets int) *slotTable {
-	return domain.BuildSlotTable(numBuckets)
 }
 
 const CampaignEpochKey = shard.CampaignEpochKey

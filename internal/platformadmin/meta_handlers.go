@@ -40,6 +40,7 @@ type MetaResponseDTO struct {
 	EulaVersion       string          `json:"eula_version,omitempty"`
 	EulaAccepted      bool            `json:"eula_accepted"`
 	EulaRequired      bool            `json:"eula_required"`
+	PaymentEnabled    bool            `json:"payment_enabled"`
 	License           *MetaLicenseDTO `json:"license,omitempty"`
 }
 
@@ -58,6 +59,7 @@ type MetaHTTPHandlers struct {
 	ApplyRateLimit func(http.HandlerFunc) http.HandlerFunc
 	Enrich         MetaEnricher
 	WriteError     func(http.ResponseWriter, error)
+	PaymentEnabled bool
 }
 
 func (h *MetaHTTPHandlers) Register(mux *http.ServeMux) {
@@ -79,6 +81,7 @@ func (h *MetaHTTPHandlers) getMeta(w http.ResponseWriter, r *http.Request) {
 		SupportURL:     branding.SupportURL(),
 		Version:        branding.Version(),
 		IngressSchemas: config.SupportedIngressSchemas(),
+		PaymentEnabled: h.PaymentEnabled,
 	}
 	if h.Enrich != nil {
 		out, err := h.Enrich(r.Context())

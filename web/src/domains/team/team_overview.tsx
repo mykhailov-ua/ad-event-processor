@@ -1,4 +1,5 @@
-import { useEffect, useState } from 'react';
+import { useState } from 'react';
+import { useRunWhenTrue } from '@/hooks/use_run_when_true';
 
 import { PrimaryActionButton, SecondaryActionButton } from '@/shell/action_buttons';
 import { PageChrome } from '@/shell/page_chrome';
@@ -6,6 +7,12 @@ import { EmptyState } from '@/shell/empty_state';
 import { ErrorBlock } from '@/shell/error_block';
 import { PageSkeleton } from '@/shell/page_skeleton';
 import { DirectoryPaginationFooter } from '@/shell/directory_pagination_footer';
+import {
+  COMPACT_TOOLBAR_ROW_CLASS,
+  FilterField,
+  FILTER_PANEL_SUMMARY_CLASS,
+  INLINE_FILTER_ACTION_GRID_CLASS,
+} from '@/shell/filter_panel';
 import {
   DirectoryTable,
   DirectoryTableHead,
@@ -144,11 +151,7 @@ export function TeamOverviewView({
 }: TeamOverviewViewProps) {
   const [inviteOpen, setInviteOpen] = useState(false);
 
-  useEffect(() => {
-    if (inviteSuccess) {
-      setInviteOpen(false);
-    }
-  }, [inviteSuccess]);
+  useRunWhenTrue(inviteSuccess, () => setInviteOpen(false));
 
   if (fetching && !hasSnapshot && !error) {
     return <PageSkeleton variant="directory" columns={5} />;
@@ -174,26 +177,25 @@ export function TeamOverviewView({
       }
     >
       <form
-        className="grid max-w-md grid-cols-[1fr_auto] items-end gap-4"
+        className={INLINE_FILTER_ACTION_GRID_CLASS}
         onSubmit={(event) => {
           event.preventDefault();
           onApplyCustomer();
         }}
       >
-        <div className="grid gap-2">
-          <Label htmlFor="team-customer-id">Customer ID</Label>
+        <FilterField htmlFor="team-customer-id" label="Customer ID">
           <Input
             id="team-customer-id"
             className="text-sm"
             value={draftCustomerId}
             onChange={(event) => onDraftCustomerIdChange(event.target.value)}
           />
-        </div>
+        </FilterField>
         <SecondaryActionButton type="submit">Load</SecondaryActionButton>
       </form>
 
       {overview ? (
-        <div className="ui-filter-panel gap-2 text-sm">
+        <div className={FILTER_PANEL_SUMMARY_CLASS}>
           <div className="flex flex-wrap gap-4">
             <span>{overview.customer_name ?? overview.customer_id}</span>
             {overview.cost_center ? <span>Cost center: {overview.cost_center}</span> : null}
@@ -241,9 +243,7 @@ export function TeamOverviewView({
           <DialogFooter>
             <PrimaryActionButton
               disabled={
-                !draftCustomerId.trim() ||
-                !draftInviteEmail.trim() ||
-                !draftInviteRole.trim()
+                !draftCustomerId.trim() || !draftInviteEmail.trim() || !draftInviteRole.trim()
               }
               loading={inviting}
               onClick={onInvite}
@@ -255,10 +255,7 @@ export function TeamOverviewView({
         </DialogContent>
       </Dialog>
 
-      <Tabs
-        onValueChange={(value) => onRosterTabChange(value as TeamRosterTab)}
-        value={rosterTab}
-      >
+      <Tabs onValueChange={(value) => onRosterTabChange(value as TeamRosterTab)} value={rosterTab}>
         <TabsList>
           {ROSTER_TABS.map((item) => (
             <TabsTrigger key={item.id} value={item.id}>
@@ -268,183 +265,199 @@ export function TeamOverviewView({
         </TabsList>
 
         <TabsContent className="grid gap-6" value="members">
-      <h2 className="text-base font-semibold">Members</h2>
-      {membersFetching && !hasMembersSnapshot ? (
-        <p className="text-sm text-muted-foreground">Loading members...</p>
-      ) : !membersCustomerId ? (
-        <EmptyState title="Customer required" description="Load a customer to review team members." />
-      ) : membersList.length === 0 ? (
-        <EmptyState title="No members" description="Team roster is empty for this customer." />
-      ) : (
-        <>
-          <form
-            className="grid grid-cols-[repeat(auto-fill,minmax(12rem,1fr))] items-end gap-4"
-            onSubmit={(event) => event.preventDefault()}
-          >
-            <DirectoryPaginationFooter
-              canGoNext={membersOffset + membersList.length < membersTotal}
-              canGoPrev={membersOffset > 0}
-              disabled={membersFetching}
-              onNext={() => onMembersPageChange(membersOffset + membersLimit)}
-              onPrev={() => onMembersPageChange(Math.max(0, membersOffset - membersLimit))}
+          <h2 className="text-base font-semibold">Members</h2>
+          {membersFetching && !hasMembersSnapshot ? (
+            <p className="text-sm text-muted-foreground">Loading members...</p>
+          ) : !membersCustomerId ? (
+            <EmptyState
+              title="Customer required"
+              description="Load a customer to review team members."
             />
-          </form>
-          <DirectoryTable>
-            <TableHeader>
-              <TableRow>
-                <DirectoryTableHead>Email</DirectoryTableHead>
-                <DirectoryTableHead>Role</DirectoryTableHead>
-                <DirectoryTableHead>Campaigns</DirectoryTableHead>
-                <DirectoryTableHead>Spend cap</DirectoryTableHead>
-                <DirectoryTableHead>Blocked</DirectoryTableHead>
-                <DirectoryTableHead>Joined</DirectoryTableHead>
-                <DirectoryTableHead />
-              </TableRow>
-            </TableHeader>
-              <TableBody>
-                {membersList.map((member) => {
-                  const memberId = member.user_id ?? '';
-                  const draft = memberDrafts[memberId] ?? memberDraftFromRow(member);
-                  const updating = memberUpdatingId === memberId;
-                  return (
-                    <TableRow key={memberId || member.email}>
-                      <TableCell>{member.email ?? ''}</TableCell>
-                      <TableCell>
-                        <Input
-                          aria-label={`Role for ${member.email ?? memberId}`}
-                          className="min-w-[5rem]"
-                          value={draft.role}
-                          onChange={(event) =>
-                            onMemberDraftChange(memberId, { role: event.target.value })
-                          }
-                        />
-                      </TableCell>
-                      <TableCell className="tabular-nums">{member.campaigns_owned ?? ''}</TableCell>
-                      <TableCell>
-                        <Input
-                          aria-label={`Spend cap for ${member.email ?? memberId}`}
-                          className="min-w-[6rem] font-mono text-xs"
-                          inputMode="numeric"
-                          value={draft.spend_cap_micro}
-                          onChange={(event) =>
-                            onMemberDraftChange(memberId, { spend_cap_micro: event.target.value })
-                          }
-                        />
-                      </TableCell>
-                      <TableCell>
-                        <Checkbox
-                          aria-label={`Blocked for ${member.email ?? memberId}`}
-                          checked={draft.is_blocked}
-                          onCheckedChange={(checked) =>
-                            onMemberDraftChange(memberId, { is_blocked: checked === true })
-                          }
-                        />
-                      </TableCell>
-                      <TableCell>
-                        {displayTimestamp(member.created_at, member.created_at_display)}
-                      </TableCell>
-                      <TableCell className="text-right">
-                        <Button
-                          disabled={!memberId || updating}
-                          onClick={() => onSaveMember(memberId)}
-                         
-                          type="button"
-                          variant="outline"
-                        >
-                          {updating ? 'Saving...' : 'Save'}
-                        </Button>
-                      </TableCell>
-                    </TableRow>
-                  );
-                })}
-              </TableBody>
-          </DirectoryTable>
-        </>
-      )}
+          ) : membersList.length === 0 ? (
+            <EmptyState title="No members" description="Team roster is empty for this customer." />
+          ) : (
+            <>
+              <form
+                className={COMPACT_TOOLBAR_ROW_CLASS}
+                onSubmit={(event) => event.preventDefault()}
+              >
+                <DirectoryPaginationFooter
+                  canGoNext={membersOffset + membersList.length < membersTotal}
+                  canGoPrev={membersOffset > 0}
+                  disabled={membersFetching}
+                  onNext={() => onMembersPageChange(membersOffset + membersLimit)}
+                  onPrev={() => onMembersPageChange(Math.max(0, membersOffset - membersLimit))}
+                />
+              </form>
+              <DirectoryTable>
+                <TableHeader>
+                  <TableRow>
+                    <DirectoryTableHead>Email</DirectoryTableHead>
+                    <DirectoryTableHead>Role</DirectoryTableHead>
+                    <DirectoryTableHead>Campaigns</DirectoryTableHead>
+                    <DirectoryTableHead>Spend cap</DirectoryTableHead>
+                    <DirectoryTableHead>Blocked</DirectoryTableHead>
+                    <DirectoryTableHead>Joined</DirectoryTableHead>
+                    <DirectoryTableHead />
+                  </TableRow>
+                </TableHeader>
+                <TableBody>
+                  {membersList.map((member) => {
+                    const memberId = member.user_id ?? '';
+                    const draft = memberDrafts[memberId] ?? memberDraftFromRow(member);
+                    const updating = memberUpdatingId === memberId;
+                    return (
+                      <TableRow key={memberId || member.email}>
+                        <TableCell>{member.email ?? ''}</TableCell>
+                        <TableCell>
+                          <Input
+                            aria-label={`Role for ${member.email ?? memberId}`}
+                            className="min-w-[5rem]"
+                            value={draft.role}
+                            onChange={(event) =>
+                              onMemberDraftChange(memberId, { role: event.target.value })
+                            }
+                          />
+                        </TableCell>
+                        <TableCell className="tabular-nums">
+                          {member.campaigns_owned ?? ''}
+                        </TableCell>
+                        <TableCell>
+                          <Input
+                            aria-label={`Spend cap for ${member.email ?? memberId}`}
+                            className="min-w-[6rem] font-mono text-xs"
+                            inputMode="numeric"
+                            value={draft.spend_cap_micro}
+                            onChange={(event) =>
+                              onMemberDraftChange(memberId, { spend_cap_micro: event.target.value })
+                            }
+                          />
+                        </TableCell>
+                        <TableCell>
+                          <Checkbox
+                            aria-label={`Blocked for ${member.email ?? memberId}`}
+                            checked={draft.is_blocked}
+                            onCheckedChange={(checked) =>
+                              onMemberDraftChange(memberId, { is_blocked: checked === true })
+                            }
+                          />
+                        </TableCell>
+                        <TableCell>
+                          {displayTimestamp(member.created_at, member.created_at_display)}
+                        </TableCell>
+                        <TableCell className="text-right">
+                          <Button
+                            disabled={!memberId || updating}
+                            onClick={() => onSaveMember(memberId)}
+                            type="button"
+                            variant="outline"
+                          >
+                            {updating ? 'Saving...' : 'Save'}
+                          </Button>
+                        </TableCell>
+                      </TableRow>
+                    );
+                  })}
+                </TableBody>
+              </DirectoryTable>
+            </>
+          )}
 
-      {membersError ? (
-        <ErrorBlock title="Could not load members" message={membersError.message} />
-      ) : null}
+          {membersError ? (
+            <ErrorBlock title="Could not load members" message={membersError.message} />
+          ) : null}
         </TabsContent>
 
         <TabsContent className="grid gap-6" value="approvals">
-      <h2 className="text-base font-semibold">Budget approvals</h2>
-      {approvalsFetching && !hasApprovalsSnapshot ? (
-        <p className="text-sm text-muted-foreground">Loading approvals...</p>
-      ) : !approvalsCustomerId ? (
-        <EmptyState title="Customer required" description="Load a customer to review budget approvals." />
-      ) : approvals.length === 0 ? (
-        <EmptyState title="No pending approvals" description="Budget approval queue is empty." />
-      ) : (
-        <>
-          <form
-            className="grid grid-cols-[repeat(auto-fill,minmax(12rem,1fr))] items-end gap-4"
-            onSubmit={(event) => event.preventDefault()}
-          >
-            <DirectoryPaginationFooter
-              canGoNext={approvalsOffset + approvals.length < approvalsTotal}
-              canGoPrev={approvalsOffset > 0}
-              disabled={approvalsFetching}
-              onNext={() => onApprovalsPageChange(approvalsOffset + approvalsLimit)}
-              onPrev={() => onApprovalsPageChange(Math.max(0, approvalsOffset - approvalsLimit))}
+          <h2 className="text-base font-semibold">Budget approvals</h2>
+          {approvalsFetching && !hasApprovalsSnapshot ? (
+            <p className="text-sm text-muted-foreground">Loading approvals...</p>
+          ) : !approvalsCustomerId ? (
+            <EmptyState
+              title="Customer required"
+              description="Load a customer to review budget approvals."
             />
-          </form>
-          <DirectoryTable>
-            <TableHeader>
-              <TableRow>
-                <DirectoryTableHead>Status</DirectoryTableHead>
-                <DirectoryTableHead>User</DirectoryTableHead>
-                <DirectoryTableHead>Campaign</DirectoryTableHead>
-                <DirectoryTableHead>Requested</DirectoryTableHead>
-                <DirectoryTableHead>Previous</DirectoryTableHead>
-                <DirectoryTableHead>Created</DirectoryTableHead>
-                <DirectoryTableHead />
-              </TableRow>
-            </TableHeader>
-              <TableBody>
-                {approvals.map((row) => {
-                  const rowId = row.id ?? '';
-                  return (
-                    <TableRow key={rowId}>
-                      <TableCell>{row.status ?? ''}</TableCell>
-                      <TableCell className="font-mono text-xs">{row.user_id ?? ''}</TableCell>
-                      <TableCell className="font-mono text-xs">{row.campaign_id ?? ''}</TableCell>
-                      <TableCell className="tabular-nums">{row.requested_budget_micro ?? ''}</TableCell>
-                      <TableCell className="tabular-nums">{row.previous_budget_micro ?? ''}</TableCell>
-                      <TableCell>
-                        {displayTimestamp(row.created_at, row.created_at_display)}
-                      </TableCell>
-                      <TableCell className="text-right">
-                        <RowActionsMenu
-                          ariaLabel="Approval actions"
-                          disabled={!rowId || actingId === rowId}
-                        >
-                          <DropdownMenuItem
+          ) : approvals.length === 0 ? (
+            <EmptyState
+              title="No pending approvals"
+              description="Budget approval queue is empty."
+            />
+          ) : (
+            <>
+              <form
+                className={COMPACT_TOOLBAR_ROW_CLASS}
+                onSubmit={(event) => event.preventDefault()}
+              >
+                <DirectoryPaginationFooter
+                  canGoNext={approvalsOffset + approvals.length < approvalsTotal}
+                  canGoPrev={approvalsOffset > 0}
+                  disabled={approvalsFetching}
+                  onNext={() => onApprovalsPageChange(approvalsOffset + approvalsLimit)}
+                  onPrev={() =>
+                    onApprovalsPageChange(Math.max(0, approvalsOffset - approvalsLimit))
+                  }
+                />
+              </form>
+              <DirectoryTable>
+                <TableHeader>
+                  <TableRow>
+                    <DirectoryTableHead>Status</DirectoryTableHead>
+                    <DirectoryTableHead>User</DirectoryTableHead>
+                    <DirectoryTableHead>Campaign</DirectoryTableHead>
+                    <DirectoryTableHead>Requested</DirectoryTableHead>
+                    <DirectoryTableHead>Previous</DirectoryTableHead>
+                    <DirectoryTableHead>Created</DirectoryTableHead>
+                    <DirectoryTableHead />
+                  </TableRow>
+                </TableHeader>
+                <TableBody>
+                  {approvals.map((row) => {
+                    const rowId = row.id ?? '';
+                    return (
+                      <TableRow key={rowId}>
+                        <TableCell>{row.status ?? ''}</TableCell>
+                        <TableCell className="font-mono text-xs">{row.user_id ?? ''}</TableCell>
+                        <TableCell className="font-mono text-xs">{row.campaign_id ?? ''}</TableCell>
+                        <TableCell className="tabular-nums">
+                          {row.requested_budget_micro ?? ''}
+                        </TableCell>
+                        <TableCell className="tabular-nums">
+                          {row.previous_budget_micro ?? ''}
+                        </TableCell>
+                        <TableCell>
+                          {displayTimestamp(row.created_at, row.created_at_display)}
+                        </TableCell>
+                        <TableCell className="text-right">
+                          <RowActionsMenu
+                            ariaLabel="Approval actions"
                             disabled={!rowId || actingId === rowId}
-                            onClick={() => onApprove(rowId)}
                           >
-                            Approve
-                          </DropdownMenuItem>
-                          <DropdownMenuItem
-                            className="text-destructive focus:text-destructive"
-                            disabled={!rowId || actingId === rowId}
-                            onClick={() => onDeny(rowId)}
-                          >
-                            Deny
-                          </DropdownMenuItem>
-                        </RowActionsMenu>
-                      </TableCell>
-                    </TableRow>
-                  );
-                })}
-              </TableBody>
-          </DirectoryTable>
-        </>
-      )}
+                            <DropdownMenuItem
+                              disabled={!rowId || actingId === rowId}
+                              onClick={() => onApprove(rowId)}
+                            >
+                              Approve
+                            </DropdownMenuItem>
+                            <DropdownMenuItem
+                              className="text-destructive focus:text-destructive"
+                              disabled={!rowId || actingId === rowId}
+                              onClick={() => onDeny(rowId)}
+                            >
+                              Deny
+                            </DropdownMenuItem>
+                          </RowActionsMenu>
+                        </TableCell>
+                      </TableRow>
+                    );
+                  })}
+                </TableBody>
+              </DirectoryTable>
+            </>
+          )}
 
-      {approvalsError ? (
-        <ErrorBlock title="Could not load approvals" message={approvalsError.message} />
-      ) : null}
+          {approvalsError ? (
+            <ErrorBlock title="Could not load approvals" message={approvalsError.message} />
+          ) : null}
         </TabsContent>
       </Tabs>
       {actionError ? <ErrorBlock title="Action failed" message={actionError.message} /> : null}

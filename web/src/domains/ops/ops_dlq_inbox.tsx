@@ -5,11 +5,7 @@ import type { DLQInboxEntry } from '@/api/types';
 import { displayTimestamp } from '@/lib/display';
 import { opsPanelError } from '@/domains/ops/ops_nav';
 import { OpsListFooter } from '@/domains/ops/ops_list_footer';
-import {
-  OpsPageBlockingError,
-  OpsPageLoading,
-  OpsPageShell,
-} from '@/domains/ops/ops_page_shell';
+import { OpsPageBlockingError, OpsPageLoading, OpsPageShell } from '@/domains/ops/ops_page_shell';
 import { OpsStatusChip } from '@/domains/ops/ops_status';
 import {
   OpsTable,
@@ -76,6 +72,7 @@ export function OpsDlqInbox({
         <EmptyState description="No failed deliveries are queued." title="DLQ inbox empty" />
       ) : (
         <OpsTable
+          horizontalScroll
           head={
             <OpsTableHeaderRow>
               <OpsTableHead>Source</OpsTableHead>
@@ -105,7 +102,9 @@ export function OpsDlqInbox({
                 <OpsTableCell className="whitespace-nowrap text-muted-foreground">
                   {entry.error ?? ''}
                 </OpsTableCell>
-                <OpsTableCell>{displayTimestamp(entry.failed_at, entry.failed_at_display)}</OpsTableCell>
+                <OpsTableCell>
+                  {displayTimestamp(entry.failed_at, entry.failed_at_display)}
+                </OpsTableCell>
                 <OpsTableCell numeric>{entry.retry_count ?? ''}</OpsTableCell>
                 <OpsTableCell className="w-10 text-center">
                   {canRetry ? (

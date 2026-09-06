@@ -6,7 +6,7 @@ import { CLEAR_UUID, resolveOptionalUuidPatchValue } from './clear_uuid.ts';
 test('resolveOptionalUuidPatchValue_holdoutClearsWithNilUuid', () => {
   assert.equal(
     resolveOptionalUuidPatchValue('', '11111111-1111-4111-8111-111111111111'),
-    CLEAR_UUID,
+    CLEAR_UUID
   );
 });
 

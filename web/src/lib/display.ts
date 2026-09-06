@@ -1,5 +1,6 @@
 import { formatDistanceToNow, isValid, parseISO } from 'date-fns';
 
+// Display helpers for Cold directory cells (ui.mdc): prefer server *_display; never recompute money/status rules.
 /** Prefer server *_display fields; fall back to wire micro integer. */
 export function displayMicro(value?: number | null, display?: string | null): string {
   const formatted = display?.trim();

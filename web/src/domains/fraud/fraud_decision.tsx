@@ -104,7 +104,7 @@ export function FraudDecisionView({
       {decision ? (
         <div className="grid gap-4">
           <Card>
-            <CardHeader className="pb-2">
+            <CardHeader>
               <CardTitle className="flex flex-wrap items-center gap-2 text-base">
                 Tier
                 {decision.tier ? <Badge>{decision.tier}</Badge> : null}
@@ -115,8 +115,7 @@ export function FraudDecisionView({
               <div>IP hash: {decision.ip_hash ?? ''}</div>
               {decision.campaign_id ? <div>Campaign: {decision.campaign_id}</div> : null}
               <div>
-                Evaluated:{' '}
-                {displayTimestamp(decision.evaluated_at, decision.evaluated_at_display)}
+                Evaluated: {displayTimestamp(decision.evaluated_at, decision.evaluated_at_display)}
               </div>
               {decision.disclaimer ? (
                 <p className="text-muted-foreground">{decision.disclaimer}</p>
@@ -133,7 +132,7 @@ export function FraudDecisionView({
 
           {features.length > 0 ? (
             <Card>
-              <CardHeader className="pb-2">
+              <CardHeader>
                 <CardTitle className="text-base">Features</CardTitle>
               </CardHeader>
               <CardContent className="grid gap-1 text-sm">

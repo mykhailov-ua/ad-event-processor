@@ -112,8 +112,6 @@ var (
 	recordRtbExchangeLog      = rtb.RecordRtbExchangeLog
 )
 
-type rtbExchangeLogMeta = rtb.RtbExchangeLogMeta
-
 const (
 	rtbExchangeRequestIDMax = rtb.RtbExchangeRequestIDMax
 	rtbExchangeBidIDMax     = rtb.RtbExchangeBidIDMax
@@ -126,17 +124,6 @@ var (
 	NewBudgetStore      = rtb.NewBudgetStore
 	rtbModeFromConfig   = rtb.RtbModeFromConfig
 )
-
-func fraudBoostsFromWatcher(watcher *SettingsWatcher) *rtb.FraudBoostSnapshot {
-	if watcher == nil {
-		return nil
-	}
-	snap := watcher.GetFraudScoreBoosts()
-	if snap == nil {
-		return nil
-	}
-	return &rtb.FraudBoostSnapshot{Boosts: snap.Boosts}
-}
 
 func noBidToRejectKind(reason rtb.NoBidReason) filter.FilterRejectKind {
 	switch reason {

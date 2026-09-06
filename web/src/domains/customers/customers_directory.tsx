@@ -70,7 +70,13 @@ export function CustomersDirectory({
 
   return (
     <PageLayout
-      badge={freshnessLabel ? <span className="inline-flex items-center rounded-md border border-border bg-muted px-2 py-0.5 text-xs text-muted-foreground">{freshnessLabel}</span> : null}
+      badge={
+        freshnessLabel ? (
+          <span className="inline-flex items-center rounded-md border border-border bg-muted px-2 py-0.5 text-xs text-muted-foreground">
+            {freshnessLabel}
+          </span>
+        ) : null
+      }
       footer={
         <DirectoryPaginationFooter
           canGoNext={canGoNext}
@@ -143,7 +149,7 @@ export function CustomersDirectory({
             {(items ?? []).map((customer) => {
               const createdLabel = displayTimestamp(
                 customer.created_at,
-                customer.created_at_display,
+                customer.created_at_display
               );
               return (
                 <TableRow key={customer.id ?? customer.name}>
@@ -162,15 +168,22 @@ export function CustomersDirectory({
                       </span>
                     )}
                   </TableCell>
-                  <TableCell className="text-right tabular-nums">{customer.balance ?? ''}</TableCell>
+                  <TableCell className="text-right tabular-nums">
+                    {customer.balance ?? ''}
+                  </TableCell>
                   <TableCell className="whitespace-nowrap">{customer.currency ?? ''}</TableCell>
-                  <TableCell className="whitespace-nowrap" title={customer.cost_center ?? undefined}>
+                  <TableCell
+                    className="whitespace-nowrap"
+                    title={customer.cost_center ?? undefined}
+                  >
                     {customer.cost_center ?? ''}
                   </TableCell>
                   <TableCell className="text-right tabular-nums">
                     {customer.active_campaigns ?? ''}
                   </TableCell>
-                  <TableCell className="text-right tabular-nums">{customer.total_spend ?? ''}</TableCell>
+                  <TableCell className="text-right tabular-nums">
+                    {customer.total_spend ?? ''}
+                  </TableCell>
                   <TableCell
                     className="whitespace-nowrap text-muted-foreground"
                     title={createdLabel}

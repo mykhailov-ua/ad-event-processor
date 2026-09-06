@@ -6,8 +6,7 @@ export type BreadcrumbItem = {
   href?: string;
 };
 
-const UUID_RE =
-  /^[0-9a-f]{8}-[0-9a-f]{4}-[1-8][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i;
+const UUID_RE = /^[0-9a-f]{8}-[0-9a-f]{4}-[1-8][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i;
 
 const STATIC_PATH_LABELS: Record<string, string> = {
   '/customers': 'Customers',
@@ -167,9 +166,7 @@ function normalizePathname(pathname: string): string {
   if (!pathname || pathname === '/') {
     return '';
   }
-  return pathname.endsWith('/') && pathname.length > 1
-    ? pathname.slice(0, -1)
-    : pathname;
+  return pathname.endsWith('/') && pathname.length > 1 ? pathname.slice(0, -1) : pathname;
 }
 
 function shortenId(value: string): string {
@@ -206,7 +203,7 @@ function resolveStepLabel(
   step: CrumbStep,
   stepIndex: number,
   steps: CrumbStep[],
-  segmentLabels: Record<string, string>,
+  segmentLabels: Record<string, string>
 ): string {
   const { segment, path } = step;
 
@@ -263,7 +260,7 @@ function resolveCrumbHref(steps: CrumbStep[], stepIndex: number): string | undef
 
 export function buildBreadcrumbs(
   pathname: string,
-  segmentLabels: Record<string, string> = {},
+  segmentLabels: Record<string, string> = {}
 ): BreadcrumbItem[] {
   const normalized = normalizePathname(pathname);
   if (!normalized) {

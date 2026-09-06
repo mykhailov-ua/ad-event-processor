@@ -1,7 +1,7 @@
 // Role: Shard 0 Redis outage matrix: track 503, registry stale 503, partial outbox fanout, recovery after restart.
 // Tier: resilience.
 // Infra: testcontainers Postgres (ads schema), Redis x4 with fault infra and circuit breakers.
-// Invariants proved: shard 0 track 503 shard_unavailable; unknown campaign 503 registry_stale; shards 1-3 accept; outbox partial fanout PROCESSED; shard 0 recovers; budget invariant on shards 1-3.
+// Invariants proved: shard 0 track 503 shard_unavailable; unknown campaign 404 when PG confirms missing (REGISTRY_STALE_PG_GRACE); 503 registry_stale when grace off or PG unreachable; shards 1-3 accept; outbox partial fanout PROCESSED; shard 0 recovers; budget invariant on shards 1-3.
 // Verify: make test-resilience
 package resilience_test
 
@@ -26,7 +26,7 @@ import (
 	"github.com/stretchr/testify/require"
 )
 
-// Holdout: shard 0 down must 503 track and registry_stale for unknown campaign; partial outbox fanout must succeed on shards 1-3.
+// Holdout: shard 0 down must 503 track; stale unknown campaign 404 with PG grace, 503 registry_stale when grace disabled; partial outbox fanout must succeed on shards 1-3.
 func TestFault_Shard0Outage(t *testing.T) {
 	if testing.Short() {
 		t.Skip("integration: run make test-integration (Docker testcontainers)")
@@ -55,8 +55,11 @@ func TestFault_Shard0Outage(t *testing.T) {
 	require.NoError(t, err)
 
 	for _, campaignID := range campaignIDs {
-		_, err = pool.Exec(ctx,
-			"INSERT INTO campaigns (id, name, status, customer_id, budget_limit) VALUES ($1, $2, $3, $4, $5)",
+		_, err = pool.Exec(ctx, `
+INSERT INTO campaigns (
+	id, name, status, customer_id, budget_limit,
+	tls_fingerprint_block_enabled, proxy_vpn_block_enabled, cidr_block_enabled, moderator_intel_enabled
+) VALUES ($1, $2, $3, $4, $5, false, false, false, false)`,
 			campaignID, "Shard0 Campaign", "ACTIVE", customerID, 100_000_000,
 		)
 		require.NoError(t, err)
@@ -133,8 +136,15 @@ func TestFault_Shard0Outage(t *testing.T) {
 	time.Sleep(5 * time.Millisecond)
 	require.True(t, registry.IsStaleMode())
 	statusStale, bodyStale := postClickCampaignBody(t, handler, unknownID, uuid.NewString())
-	assert.Equal(t, http.StatusServiceUnavailable, statusStale)
-	assert.Contains(t, bodyStale, "registry_stale")
+	assert.Equal(t, http.StatusNotFound, statusStale, "unknown campaign with PG grace must 404 when row missing")
+	assert.Contains(t, bodyStale, "campaign not found")
+
+	registry.SetStalePGGrace(false)
+	statusNoGrace, bodyNoGrace := postClickCampaignBody(t, handler, unknownID, uuid.NewString())
+	assert.Equal(t, http.StatusServiceUnavailable, statusNoGrace)
+	assert.Contains(t, bodyNoGrace, "registry_stale")
+	registry.SetStalePGGrace(true)
+
 	registry.ConfigureStaleMode(30 * time.Second)
 	registry.MarkPubSubOK()
 

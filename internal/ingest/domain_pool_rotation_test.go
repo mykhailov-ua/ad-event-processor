@@ -5,7 +5,7 @@ import (
 	"testing"
 
 	"ad-event-processor/internal/config"
-	"ad-event-processor/internal/ingest/pool"
+	"ad-event-processor/internal/ingest/domainhosts"
 
 	"github.com/google/uuid"
 	"github.com/stretchr/testify/require"
@@ -13,9 +13,9 @@ import (
 
 func TestDomainPoolTable_FallbackHost(t *testing.T) {
 	t.Parallel()
-	table := pool.NewTable()
+	table := domainhosts.NewTable()
 	poolID := uuid.MustParse("11111111-1111-4111-8111-111111111111")
-	table.Publish(pool.BuildSnapshotFromRows([]pool.SyncRow{
+	table.Publish(domainhosts.BuildSnapshotFromRows([]domainhosts.SyncRow{
 		{PoolID: poolID, Hostname: "banned.example", Status: "banned"},
 		{PoolID: poolID, Hostname: "active.example", Status: "active"},
 	}, 1))
@@ -37,9 +37,9 @@ func TestDomainHealth_BanTriggersRotation(t *testing.T) {
 }
 
 func runDomainBanRotationClickTest(t *testing.T) {
-	table := pool.NewTable()
+	table := domainhosts.NewTable()
 	poolID := uuid.MustParse("22222222-2222-4222-8222-222222222222")
-	table.Publish(pool.BuildSnapshotFromRows([]pool.SyncRow{
+	table.Publish(domainhosts.BuildSnapshotFromRows([]domainhosts.SyncRow{
 		{PoolID: poolID, Hostname: "banned-track.test", Status: "banned"},
 		{PoolID: poolID, Hostname: "active-track.test", Status: "active"},
 	}, 1))
@@ -62,9 +62,9 @@ func runDomainBanRotationClickTest(t *testing.T) {
 }
 
 func TestClickRedirect_DomainRotation_DMR(t *testing.T) {
-	table := pool.NewTable()
+	table := domainhosts.NewTable()
 	poolID := uuid.MustParse("22222222-2222-4222-8222-222222222222")
-	table.Publish(pool.BuildSnapshotFromRows([]pool.SyncRow{
+	table.Publish(domainhosts.BuildSnapshotFromRows([]domainhosts.SyncRow{
 		{PoolID: poolID, Hostname: "banned-track.test", Status: "banned"},
 		{PoolID: poolID, Hostname: "active-track.test", Status: "active"},
 	}, 1))
@@ -88,6 +88,6 @@ func TestClickRedirect_DomainRotation_DMR(t *testing.T) {
 
 func TestBuildTrackingDomainRotation(t *testing.T) {
 	t.Parallel()
-	loc := pool.BuildTrackingDomainRotation(nil, []byte("https"), []byte("next.example"), []byte("/click?x=1"))
+	loc := domainhosts.BuildTrackingDomainRotation(nil, []byte("https"), []byte("next.example"), []byte("/click?x=1"))
 	require.Equal(t, "https://next.example/click?x=1", string(loc))
 }

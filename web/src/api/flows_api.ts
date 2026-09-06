@@ -20,7 +20,7 @@ export async function createFlow(body: CreateFlowRequest, signal?: AbortSignal):
 export async function updateFlow(
   id: string,
   body: UpdateFlowRequest,
-  signal?: AbortSignal,
+  signal?: AbortSignal
 ): Promise<Flow> {
   return apiJson<Flow>(`/api/v1/flows/${encodeURIComponent(id)}`, {
     method: 'PUT',

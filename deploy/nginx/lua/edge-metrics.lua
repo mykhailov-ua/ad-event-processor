@@ -11,9 +11,9 @@
 -- ngx.shared edge_metrics (counter keys, number):
 -- - perimeter_pass_total, track_policy_pass_total, body_read_total.
 -- - circuit_reject_total, blocked_ip_total, blocked_campaign_rl_total, blocked_fraud_tier_total.
--- - parse_oversize_total, body_stream_total, body_peek_total, chunked_reject_total.
+-- - parse_oversize_total, parse_malformed_total, body_read_failed_total, campaign_id_scan_reject_total, body_stream_total, body_peek_total, chunked_reject_total.
 -- - ingress_protocol:http/1.1_total, ingress_protocol:h2_total, ingress_protocol:h3_total.
--- - blacklist_stale_total, tarpit_total, tarpit_delay_ms_total.
+-- - blacklist_stale_total, blacklist_pending_overflow_total, blacklist_pending_immediate_stamp_total, tarpit_total, tarpit_delay_ms_total.
 --
 -- ngx.shared blacklist_cache (gauge sources, read-only here):
 -- - _bl_sync_ts (number unix s): last successful blacklist stamp -> ad_event_processor_edge_sync_last_success_timestamp.
@@ -30,7 +30,7 @@
 -- - Prometheus export prefix ad_event_processor_edge_* (fixed label set; no per-request label keys).
 --
 -- HTTP status mapping (callers):
--- - 403 blocked IP, fraud tier block; 411 chunked /track; 413 oversize; 429 campaign RL; 503 circuit or blacklist stale.
+-- - 403 blocked IP, fraud tier block; 411 chunked /track; 413 oversize; 400 malformed body, campaign_id scan required, body read fail; 429 campaign RL; 503 circuit or blacklist stale.
 --
 -- Forbidden: dynamic per-request metric label keys beyond fixed ingress_protocol:* set.
 --
@@ -75,6 +75,18 @@ function _M.record_parse_oversize()
     metrics:incr("parse_oversize_total", 1, 0)
 end
 
+function _M.record_parse_malformed()
+    metrics:incr("parse_malformed_total", 1, 0)
+end
+
+function _M.record_body_read_failed()
+    metrics:incr("body_read_failed_total", 1, 0)
+end
+
+function _M.record_campaign_id_scan_reject()
+    metrics:incr("campaign_id_scan_reject_total", 1, 0)
+end
+
 function _M.record_body_stream()
     metrics:incr("body_stream_total", 1, 0)
 end
@@ -95,6 +107,22 @@ function _M.record_blacklist_stale()
     metrics:incr("blacklist_stale_total", 1, 0)
 end
 
+function _M.record_blacklist_pending_overflow(dropped)
+    local n = tonumber(dropped) or 1
+    if n < 1 then
+        n = 1
+    end
+    metrics:incr("blacklist_pending_overflow_total", n, 0)
+end
+
+function _M.record_blacklist_pending_immediate_stamp(stamped)
+    local n = tonumber(stamped) or 1
+    if n < 1 then
+        n = 1
+    end
+    metrics:incr("blacklist_pending_immediate_stamp_total", n, 0)
+end
+
 function _M.record_tarpit(delay_sec)
     metrics:incr("tarpit_total", 1, 0)
     local ms = math.floor((delay_sec or 0) * 1000)
@@ -102,6 +130,10 @@ function _M.record_tarpit(delay_sec)
         ms = 0
     end
     metrics:incr("tarpit_delay_ms_total", ms, 0)
+end
+
+function _M.record_tarpit_admit_reject()
+    metrics:incr("tarpit_admit_reject_total", 1, 0)
 end
 
 local function say_metric(name, metric_type, help, value)
@@ -121,6 +153,9 @@ function _M.render_prometheus()
     local blocked_rl = metrics:get "blocked_campaign_rl_total" or 0
     local blocked_fraud_tier = metrics:get "blocked_fraud_tier_total" or 0
     local parse_oversize = metrics:get "parse_oversize_total" or 0
+    local parse_malformed = metrics:get "parse_malformed_total" or 0
+    local body_read_failed = metrics:get "body_read_failed_total" or 0
+    local campaign_id_scan_reject = metrics:get "campaign_id_scan_reject_total" or 0
     local body_stream = metrics:get "body_stream_total" or 0
     local body_peek = metrics:get "body_peek_total" or 0
     local chunked_reject = metrics:get "chunked_reject_total" or 0
@@ -128,6 +163,8 @@ function _M.render_prometheus()
     local ingress_h2 = metrics:get "ingress_protocol:h2_total" or 0
     local ingress_h3 = metrics:get "ingress_protocol:h3_total" or 0
     local blacklist_stale = metrics:get "blacklist_stale_total" or 0
+    local blacklist_pending_overflow = metrics:get "blacklist_pending_overflow_total" or 0
+    local blacklist_pending_immediate_stamp = metrics:get "blacklist_pending_immediate_stamp_total" or 0
     local tarpit_total = metrics:get "tarpit_total" or 0
     local tarpit_delay_ms = metrics:get "tarpit_delay_ms_total" or 0
     local sync_ts = blacklist_cache:get "_bl_sync_ts" or 0
@@ -185,6 +222,24 @@ function _M.render_prometheus()
         parse_oversize
     )
     say_metric(
+        "ad_event_processor_edge_parse_malformed_total",
+        "counter",
+        "Requests rejected because edge DFA returned malformed inside scan window (400).",
+        parse_malformed
+    )
+    say_metric(
+        "ad_event_processor_edge_body_read_failed_total",
+        "counter",
+        "Requests rejected because edge could not read or peek request body (400).",
+        body_read_failed
+    )
+    say_metric(
+        "ad_event_processor_edge_campaign_id_scan_reject_total",
+        "counter",
+        "POST /track rejected: campaign_id not in DFA scan window and no trusted header (400).",
+        campaign_id_scan_reject
+    )
+    say_metric(
         "ad_event_processor_edge_body_stream_total",
         "counter",
         "Track policy stream mode: no read_body, body proxied without Lua buffering.",
@@ -231,6 +286,18 @@ function _M.render_prometheus()
         "counter",
         "Requests rejected because blacklist sync is missing or stale (503).",
         blacklist_stale
+    )
+    say_metric(
+        "ad_event_processor_edge_blacklist_pending_overflow_total",
+        "counter",
+        "Deferred blacklist IPs dropped because _bl_pending SHM cap was exceeded before _bl_ver was set.",
+        blacklist_pending_overflow
+    )
+    say_metric(
+        "ad_event_processor_edge_blacklist_pending_immediate_stamp_total",
+        "counter",
+        "Deferred blacklist IPs immediate-stamped at current _bl_ver when _bl_pending SHM cap was exceeded.",
+        blacklist_pending_immediate_stamp
     )
     say_metric(
         "ad_event_processor_edge_tarpit_total",

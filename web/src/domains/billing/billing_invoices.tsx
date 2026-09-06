@@ -10,7 +10,7 @@ import {
   TableHeader,
   TableRow,
 } from '@/shell/directory_table';
-import { Input } from '@/components/ui/input';
+import { MonthPicker } from '@/components/ui/datetime_picker';
 import { Label } from '@/components/ui/label';
 import {
   Select,
@@ -82,13 +82,7 @@ export function BillingInvoices({
       >
         <div className="grid gap-2">
           <Label htmlFor="billing-month">Month</Label>
-          <Input
-            id="billing-month"
-            type="month"
-            className="text-sm"
-            value={draftMonth}
-            onChange={(event) => onDraftMonthChange(event.target.value)}
-          />
+          <MonthPicker id="billing-month" value={draftMonth} onChange={onDraftMonthChange} />
         </div>
 
         <div className="grid gap-2">
@@ -139,27 +133,36 @@ export function BillingInvoices({
             </TableRow>
           </TableHeader>
           <TableBody>
-              {(items ?? []).map((invoice) => (
-                <TableRow key={invoice.id}>
-                  <TableCell>
-                    {invoice.id ? (
-                      <Link className="font-mono text-xs hover:underline" to={`/billing/invoices/${invoice.id}`}>
-                        {invoice.id}
-                      </Link>
-                    ) : (
-                      ''
-                    )}
-                  </TableCell>
-                  <TableCell>{invoice.billing_month}</TableCell>
-                  <TableCell className="font-mono text-xs">{invoice.customer_id}</TableCell>
-                  <TableCell>{invoice.status ?? ''}</TableCell>
-                  <TableCell className="tabular-nums">{displayMicro(invoice.subtotal_micro, invoice.subtotal_micro_display)}</TableCell>
-                  <TableCell className="tabular-nums">{displayMicro(invoice.tax_micro, invoice.tax_micro_display)}</TableCell>
-                  <TableCell className="tabular-nums">{displayMicro(invoice.total_micro, invoice.total_micro_display)}</TableCell>
-                  <TableCell>{invoice.currency}</TableCell>
-                </TableRow>
-              ))}
-            </TableBody>
+            {(items ?? []).map((invoice) => (
+              <TableRow key={invoice.id}>
+                <TableCell>
+                  {invoice.id ? (
+                    <Link
+                      className="font-mono text-xs hover:underline"
+                      to={`/billing/invoices/${invoice.id}`}
+                    >
+                      {invoice.id}
+                    </Link>
+                  ) : (
+                    ''
+                  )}
+                </TableCell>
+                <TableCell>{invoice.billing_month}</TableCell>
+                <TableCell className="font-mono text-xs">{invoice.customer_id}</TableCell>
+                <TableCell>{invoice.status ?? ''}</TableCell>
+                <TableCell className="tabular-nums">
+                  {displayMicro(invoice.subtotal_micro, invoice.subtotal_micro_display)}
+                </TableCell>
+                <TableCell className="tabular-nums">
+                  {displayMicro(invoice.tax_micro, invoice.tax_micro_display)}
+                </TableCell>
+                <TableCell className="tabular-nums">
+                  {displayMicro(invoice.total_micro, invoice.total_micro_display)}
+                </TableCell>
+                <TableCell>{invoice.currency}</TableCell>
+              </TableRow>
+            ))}
+          </TableBody>
         </DirectoryTable>
       )}
     </section>

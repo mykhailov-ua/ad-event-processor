@@ -1,8 +1,4 @@
-import {
-  AdminSelect,
-  type AdminSelectOption,
-  type AdminSelectProps,
-} from '@/shell/admin_select';
+import { AdminSelect, type AdminSelectOption, type AdminSelectProps } from '@/shell/admin_select';
 
 export type CampaignsListFilterOption = AdminSelectOption;
 export type CampaignsListFilterSelectProps = AdminSelectProps;

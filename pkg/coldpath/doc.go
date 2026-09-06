@@ -2,6 +2,7 @@
 //
 // Role:
 //   - ReadLimitedBody, DecodeRequestOrBadRequest, DecodeBody for admin/payment/webhook handlers.
+//   - BoundedContext caps handler/worker ctx when parent deadline is absent or longer.
 //   - WritePaginatedJSON sets X-Total-Count for list endpoints; Paginate/PaginatedList for cursor/offset lists.
 //   - ApplyTrackedSchemaMigrations: goose-style SQL dirs with public.tracked_migrations ledger.
 //   - MarshalOutbox/UnmarshalOutbox with optional proto magic prefix; PG error helpers for idempotency branches.

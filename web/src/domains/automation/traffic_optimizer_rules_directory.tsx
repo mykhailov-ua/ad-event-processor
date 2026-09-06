@@ -1,4 +1,5 @@
-import { useEffect, useState } from 'react';
+import { useState } from 'react';
+import { useRunWhenTrue } from '@/hooks/use_run_when_true';
 
 import { PrimaryActionButton } from '@/shell/action_buttons';
 import { PageChrome } from '@/shell/page_chrome';
@@ -91,11 +92,7 @@ export function TrafficOptimizerRulesDirectory({
 }: TrafficOptimizerRulesDirectoryProps) {
   const [createOpen, setCreateOpen] = useState(false);
 
-  useEffect(() => {
-    if (createSuccess) {
-      setCreateOpen(false);
-    }
-  }, [createSuccess]);
+  useRunWhenTrue(createSuccess, () => setCreateOpen(false));
 
   if (!appliedCustomerId) {
     return (
@@ -192,77 +189,75 @@ export function TrafficOptimizerRulesDirectory({
         <EmptyState title="No optimizer rules" description="No rules exist for this customer." />
       ) : (
         <DirectoryTable>
-            <TableHeader>
-              <TableRow>
-                <DirectoryTableHead>Name</DirectoryTableHead>
-                <DirectoryTableHead>Scope</DirectoryTableHead>
-                <DirectoryTableHead>Objective</DirectoryTableHead>
-                <DirectoryTableHead>Algorithm</DirectoryTableHead>
-                <DirectoryTableHead>Enabled</DirectoryTableHead>
-                <DirectoryTableHead>Actions</DirectoryTableHead>
-              </TableRow>
-            </TableHeader>
-            <TableBody>
-              {(items ?? []).map((row) => {
-                const ruleId = row.id ?? '';
-                const draft = ruleDrafts[ruleId] ?? trafficOptimizerRuleEditFromRow(row);
-                const updating = updatingRuleId === ruleId;
-                const deleting = deletingRuleId === ruleId;
-                return (
-                  <TableRow key={ruleId}>
-                    <TableCell>
-                      <Input
-                        aria-label={`Name for rule ${ruleId}`}
-                        className="min-w-[8rem]"
-                        value={draft.name}
-                        onChange={(event) =>
-                          onRuleDraftChange(ruleId, { name: event.target.value })
-                        }
-                      />
-                    </TableCell>
-                    <TableCell>{row.scope}</TableCell>
-                    <TableCell>{row.objective}</TableCell>
-                    <TableCell>{row.algorithm}</TableCell>
-                    <TableCell>
-                      <Checkbox
-                        aria-label={`Enabled for rule ${ruleId}`}
-                        checked={draft.enabled}
-                        onCheckedChange={(checked) =>
-                          onRuleDraftChange(ruleId, { enabled: checked === true })
-                        }
-                      />
-                    </TableCell>
-                    <TableCell>
-                      <RowActionsMenu
-                        ariaLabel="Rule actions"
+          <TableHeader>
+            <TableRow>
+              <DirectoryTableHead>Name</DirectoryTableHead>
+              <DirectoryTableHead>Scope</DirectoryTableHead>
+              <DirectoryTableHead>Objective</DirectoryTableHead>
+              <DirectoryTableHead>Algorithm</DirectoryTableHead>
+              <DirectoryTableHead>Enabled</DirectoryTableHead>
+              <DirectoryTableHead>Actions</DirectoryTableHead>
+            </TableRow>
+          </TableHeader>
+          <TableBody>
+            {(items ?? []).map((row) => {
+              const ruleId = row.id ?? '';
+              const draft = ruleDrafts[ruleId] ?? trafficOptimizerRuleEditFromRow(row);
+              const updating = updatingRuleId === ruleId;
+              const deleting = deletingRuleId === ruleId;
+              return (
+                <TableRow key={ruleId}>
+                  <TableCell>
+                    <Input
+                      aria-label={`Name for rule ${ruleId}`}
+                      className="min-w-[8rem]"
+                      value={draft.name}
+                      onChange={(event) => onRuleDraftChange(ruleId, { name: event.target.value })}
+                    />
+                  </TableCell>
+                  <TableCell>{row.scope}</TableCell>
+                  <TableCell>{row.objective}</TableCell>
+                  <TableCell>{row.algorithm}</TableCell>
+                  <TableCell>
+                    <Checkbox
+                      aria-label={`Enabled for rule ${ruleId}`}
+                      checked={draft.enabled}
+                      onCheckedChange={(checked) =>
+                        onRuleDraftChange(ruleId, { enabled: checked === true })
+                      }
+                    />
+                  </TableCell>
+                  <TableCell>
+                    <RowActionsMenu
+                      ariaLabel="Rule actions"
+                      disabled={!ruleId || updating || deleting}
+                    >
+                      <DropdownMenuItem
                         disabled={!ruleId || updating || deleting}
+                        onClick={() => onSaveRule(ruleId)}
                       >
-                        <DropdownMenuItem
-                          disabled={!ruleId || updating || deleting}
-                          onClick={() => onSaveRule(ruleId)}
-                        >
-                          {updating ? 'Saving...' : 'Save'}
-                        </DropdownMenuItem>
-                        <DropdownMenuItem
-                          disabled={(dryRunning && dryRunRuleId === ruleId) || !ruleId || deleting}
-                          onClick={() => onDryRun(ruleId)}
-                        >
-                          Dry-run
-                        </DropdownMenuItem>
-                        <DropdownMenuItem
-                          className="text-destructive focus:text-destructive"
-                          disabled={!ruleId || updating || deleting}
-                          onClick={() => onDeleteRule(ruleId)}
-                        >
-                          {deleting ? 'Deleting...' : 'Delete'}
-                        </DropdownMenuItem>
-                      </RowActionsMenu>
-                    </TableCell>
-                  </TableRow>
-                );
-              })}
-            </TableBody>
-          </DirectoryTable>
+                        {updating ? 'Saving...' : 'Save'}
+                      </DropdownMenuItem>
+                      <DropdownMenuItem
+                        disabled={(dryRunning && dryRunRuleId === ruleId) || !ruleId || deleting}
+                        onClick={() => onDryRun(ruleId)}
+                      >
+                        Dry-run
+                      </DropdownMenuItem>
+                      <DropdownMenuItem
+                        className="text-destructive focus:text-destructive"
+                        disabled={!ruleId || updating || deleting}
+                        onClick={() => onDeleteRule(ruleId)}
+                      >
+                        {deleting ? 'Deleting...' : 'Delete'}
+                      </DropdownMenuItem>
+                    </RowActionsMenu>
+                  </TableCell>
+                </TableRow>
+              );
+            })}
+          </TableBody>
+        </DirectoryTable>
       )}
 
       {actionError ? <ErrorBlock title="Action failed" message={actionError.message} /> : null}
@@ -272,30 +267,28 @@ export function TrafficOptimizerRulesDirectory({
       {dryRunResult ? (
         <section className="grid gap-2">
           <h2 className="text-base font-semibold">Dry-run result</h2>
-          {dryRunResult.stale_weights ? (
-            <Badge variant="secondary">Stale weights</Badge>
-          ) : null}
+          {dryRunResult.stale_weights ? <Badge variant="secondary">Stale weights</Badge> : null}
           {(dryRunResult.arms ?? []).length > 0 ? (
             <DirectoryTable>
-                <TableHeader>
-                  <TableRow>
-                    <DirectoryTableHead>Entity</DirectoryTableHead>
-                    <DirectoryTableHead>Current weight</DirectoryTableHead>
-                    <DirectoryTableHead>Proposed weight</DirectoryTableHead>
-                    <DirectoryTableHead>Observed value</DirectoryTableHead>
+              <TableHeader>
+                <TableRow>
+                  <DirectoryTableHead>Entity</DirectoryTableHead>
+                  <DirectoryTableHead>Current weight</DirectoryTableHead>
+                  <DirectoryTableHead>Proposed weight</DirectoryTableHead>
+                  <DirectoryTableHead>Observed value</DirectoryTableHead>
+                </TableRow>
+              </TableHeader>
+              <TableBody>
+                {(dryRunResult.arms ?? []).map((arm) => (
+                  <TableRow key={arm.entity_id}>
+                    <TableCell className="font-mono text-xs">{arm.entity_id}</TableCell>
+                    <TableCell>{arm.current_weight}</TableCell>
+                    <TableCell>{arm.proposed_weight}</TableCell>
+                    <TableCell>{arm.observed_value}</TableCell>
                   </TableRow>
-                </TableHeader>
-                <TableBody>
-                  {(dryRunResult.arms ?? []).map((arm) => (
-                    <TableRow key={arm.entity_id}>
-                      <TableCell className="font-mono text-xs">{arm.entity_id}</TableCell>
-                      <TableCell>{arm.current_weight}</TableCell>
-                      <TableCell>{arm.proposed_weight}</TableCell>
-                      <TableCell>{arm.observed_value}</TableCell>
-                    </TableRow>
-                  ))}
-                </TableBody>
-              </DirectoryTable>
+                ))}
+              </TableBody>
+            </DirectoryTable>
           ) : null}
         </section>
       ) : null}

@@ -17,6 +17,8 @@ import {
 import type { Flow, FlowPath } from '@/api/types';
 import { CreativeNav, creativePanelError } from '@/domains/creative/creative_nav';
 import { displayTimestamp } from '@/lib/display';
+import { adminKit } from '@/lib/admin_kit';
+import { cn } from '@/lib/utils';
 
 export type FlowDetailProps = {
   flow: Flow | undefined;
@@ -132,29 +134,29 @@ export function FlowDetail({
         <section className="grid gap-2">
           <h2 className="text-base font-semibold">Paths</h2>
           <DirectoryTable>
-              <TableHeader>
-                <TableRow>
-                  <DirectoryTableHead>Weight</DirectoryTableHead>
-                  <DirectoryTableHead>Landers</DirectoryTableHead>
-                  <DirectoryTableHead>Offers</DirectoryTableHead>
+            <TableHeader>
+              <TableRow>
+                <DirectoryTableHead>Weight</DirectoryTableHead>
+                <DirectoryTableHead>Landers</DirectoryTableHead>
+                <DirectoryTableHead>Offers</DirectoryTableHead>
+              </TableRow>
+            </TableHeader>
+            <TableBody>
+              {paths.map((path, index) => (
+                <TableRow key={`${path.weight}-${index}`}>
+                  <TableCell>{path.weight}</TableCell>
+                  <TableCell>{path.landers?.length ?? 0}</TableCell>
+                  <TableCell>{path.offers?.length ?? 0}</TableCell>
                 </TableRow>
-              </TableHeader>
-              <TableBody>
-                {paths.map((path, index) => (
-                  <TableRow key={`${path.weight}-${index}`}>
-                    <TableCell>{path.weight}</TableCell>
-                    <TableCell>{path.landers?.length ?? 0}</TableCell>
-                    <TableCell>{path.offers?.length ?? 0}</TableCell>
-                  </TableRow>
-                ))}
-              </TableBody>
-            </DirectoryTable>
+              ))}
+            </TableBody>
+          </DirectoryTable>
         </section>
       ) : null}
 
       <details className="grid gap-2">
         <summary className="cursor-pointer text-base font-semibold">Raw</summary>
-        <pre className="overflow-x-auto rounded-xl border border-border/50 bg-muted/40 p-4 font-mono text-xs">
+        <pre className={cn('ui-code-block overflow-x-auto', adminKit.panelRadius)}>
           {JSON.stringify(flow, null, 2)}
         </pre>
       </details>

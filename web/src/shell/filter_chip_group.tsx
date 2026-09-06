@@ -45,7 +45,7 @@ export function FilterChipGroup<T extends string>({
             className={cn(
               adminKit.buttonShell,
               'max-w-full gap-1.5 whitespace-nowrap rounded-full border px-3 font-medium transition-colors',
-              selected ? CHIP_ACTIVE : CHIP_IDLE,
+              selected ? CHIP_ACTIVE : CHIP_IDLE
             )}
             type="button"
             onClick={() => onChange(option.value)}
@@ -55,7 +55,9 @@ export function FilterChipGroup<T extends string>({
               <span
                 className={cn(
                   'inline-flex min-w-[1.25rem] items-center justify-center rounded-full px-1.5 text-[11px] font-semibold tabular-nums',
-                  selected ? 'bg-primary-foreground/20 text-primary-foreground' : 'bg-muted text-muted-foreground',
+                  selected
+                    ? 'bg-primary-foreground/20 text-primary-foreground'
+                    : 'bg-muted text-muted-foreground'
                 )}
               >
                 {countLabel}

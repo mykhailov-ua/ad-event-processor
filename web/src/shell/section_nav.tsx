@@ -1,6 +1,7 @@
 import { Link, useLocation } from 'react-router-dom';
 
 import { isSectionNavActive, type SectionNavItem } from '@/lib/nav_config';
+import { adminKit } from '@/lib/admin_kit';
 import { cn } from '@/lib/utils';
 
 export type SectionNavProps = {
@@ -16,7 +17,10 @@ export function SectionNav({ items, label, className, variant = 'pill' }: Sectio
   return (
     <nav
       aria-label={label}
-      className={cn(variant === 'admin' ? 'flex flex-wrap gap-1' : 'flex flex-wrap gap-2', className)}
+      className={cn(
+        variant === 'admin' ? 'flex flex-wrap gap-1' : 'flex flex-wrap gap-2',
+        className
+      )}
     >
       {items.map((item) => {
         const active = isSectionNavActive(location.pathname, item);
@@ -27,8 +31,9 @@ export function SectionNav({ items, label, className, variant = 'pill' }: Sectio
               to={item.path}
               aria-current={active ? 'page' : undefined}
               className={cn(
-                'inline-flex h-7 items-center rounded-[5px] border border-border bg-background px-2.5 text-[13px] leading-none text-foreground',
-                active && 'border-primary bg-primary text-primary-foreground',
+                'inline-flex h-7 items-center border border-border bg-background px-2.5 text-[13px] leading-none text-foreground',
+                adminKit.controlRadius,
+                active && 'border-primary bg-primary text-primary-foreground'
               )}
             >
               {item.label}
@@ -43,7 +48,7 @@ export function SectionNav({ items, label, className, variant = 'pill' }: Sectio
               'rounded-sm px-3.5 py-1.5 text-sm transition-colors',
               active
                 ? 'bg-secondary font-medium text-foreground'
-                : 'text-muted-foreground hover:bg-muted/50 hover:text-foreground',
+                : 'text-muted-foreground hover:bg-muted/50 hover:text-foreground'
             )}
           >
             {item.label}

@@ -154,7 +154,6 @@ var (
 	parseJA4BrowserCorpus       = conn.ParseJA4BrowserCorpus
 	buildTLSFingerprintSnapshot = conn.BuildTLSFingerprintSnapshot
 	ja3BytesSuspicious          = conn.JA3BytesSuspicious
-	ja4BytesSuspicious          = conn.JA4BytesSuspicious
 	tlsFingerprintImpersonating = conn.TLSFingerprintImpersonating
 	uaClaimsChromeNotChromium   = conn.UAClaimsChromeNotChromium
 )

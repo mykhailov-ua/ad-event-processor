@@ -1,4 +1,4 @@
-import { apiFetch, apiJson, apiJsonArray } from './client.js';
+import { apiFetch, apiJson, apiJsonArray, parseApiError } from './client.js';
 import type {
   CreateSavedViewRequest,
   SavedView,
@@ -8,7 +8,7 @@ import type {
 
 export async function listSavedViews(
   params: SavedViewsListQuery,
-  signal?: AbortSignal,
+  signal?: AbortSignal
 ): Promise<SavedView[]> {
   const search = new URLSearchParams();
   search.set('customer_id', params.customer_id);
@@ -21,7 +21,7 @@ export async function getSavedView(id: string, signal?: AbortSignal): Promise<Sa
 
 export async function createSavedView(
   body: CreateSavedViewRequest,
-  signal?: AbortSignal,
+  signal?: AbortSignal
 ): Promise<SavedView> {
   return apiJson<SavedView>('/api/v1/views', {
     method: 'POST',
@@ -33,7 +33,7 @@ export async function createSavedView(
 export async function updateSavedView(
   id: string,
   body: UpdateSavedViewRequest,
-  signal?: AbortSignal,
+  signal?: AbortSignal
 ): Promise<SavedView> {
   return apiJson<SavedView>(`/api/v1/views/${encodeURIComponent(id)}`, {
     method: 'PUT',
@@ -48,6 +48,6 @@ export async function deleteSavedView(id: string, signal?: AbortSignal): Promise
     signal,
   });
   if (!response.ok && response.status !== 204) {
-    throw new Error(response.statusText || `HTTP ${response.status}`);
+    throw await parseApiError(response);
   }
 }

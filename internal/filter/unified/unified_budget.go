@@ -659,7 +659,15 @@ func (f *UnifiedFilter) handleLuaResult(
 		filt.AddFraudSignal(evt, filt.FraudReasonMissingImpTS)
 		return true, nil
 	case 10:
+		filt.AddFraudSignal(evt, filt.FraudReasonMissingImpTS)
 		metrics.TTCBypassTotal.Inc()
+		if ttcEnabled(f.ttcMinMsAny) {
+			debitAmount := spendMicroFromAny(amount)
+			if debitAmount > 0 && campInfo != nil {
+				f.RollbackDebit(ctx, evt, campInfo, debitAmount, false)
+			}
+			return true, filt.ErrFilterTimeout
+		}
 		metrics.EventsProcessed.Inc()
 		telemetry.RecordAccepted()
 		f.recordAcceptedSpendIfDebited(shard, evt.CampaignID, amount, sampleLua)
@@ -678,10 +686,11 @@ func (f *UnifiedFilter) handleLuaResult(
 		return true, filt.ErrPlacementBlocked
 	case luaReturnTierDegraded:
 		metrics.FilterTierDegradedTotal.Inc()
-		metrics.EventsProcessed.Inc()
-		telemetry.RecordAccepted()
-		f.recordAcceptedSpendIfDebited(shard, evt.CampaignID, amount, sampleLua)
-		return true, nil
+		debitAmount := spendMicroFromAny(amount)
+		if debitAmount > 0 && campInfo != nil {
+			f.RollbackDebit(ctx, evt, campInfo, debitAmount, false)
+		}
+		return true, filt.ErrFilterTimeout
 	default:
 		// Lua debit succeeded; ingest publishAcceptedTrack runs after Check returns nil.
 		// Post-debit producer reject must call RollbackDebit (not handled inside this package).

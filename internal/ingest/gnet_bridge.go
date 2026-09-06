@@ -24,8 +24,8 @@ var (
 	BuildGnetGetHealth    = gnet.BuildGnetGetHealth
 	BuildGnetGetReady     = gnet.BuildGnetGetReady
 
-	putRequestBuffer  = gnet.PutRequestBuffer
-	requestBufferPool = gnet.RequestBufferPool
+	putRequestBuffer = gnet.PutRequestBuffer
+	getRequestBuffer = gnet.GetRequestBuffer
 
 	h2ClientPreface    = httpingress.H2ClientPreface
 	h2ClientPrefaceLen = httpingress.H2ClientPrefaceLen
@@ -36,14 +36,14 @@ func (h *AdsPacketHandler) parseHTTP(data []byte, scratchPtr *[]byte) (int, Requ
 	if h == nil || h.Server == nil {
 		return 0, Request{}, errInvalidRequest
 	}
-	return h.Server.ParseHTTP(data, scratchPtr)
+	return h.ParseHTTP(data, scratchPtr)
 }
 
 func (h *AdsPacketHandler) onTrafficH2(c pkgnet.Conn, buf []byte) pkgnet.Action {
 	if h == nil || h.Server == nil {
 		return pkgnet.None
 	}
-	return h.Server.OnTrafficH2(c, buf)
+	return h.OnTrafficH2(c, buf)
 }
 
 func PostOpenRTBBidGnet(h *AdsPacketHandler, body []byte) (int, []byte) {

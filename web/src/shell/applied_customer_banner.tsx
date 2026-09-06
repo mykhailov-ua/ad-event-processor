@@ -1,6 +1,8 @@
 import { X } from 'lucide-react';
 
 import { Button } from '@/components/ui/button';
+import { adminKit } from '@/lib/admin_kit';
+import { cn } from '@/lib/utils';
 
 export type AppliedCustomerBannerProps = {
   customerId: string;
@@ -14,7 +16,12 @@ export function AppliedCustomerBanner({
   onClear,
 }: AppliedCustomerBannerProps) {
   return (
-    <div className="grid grid-cols-[1fr_auto] items-center gap-2 rounded-2xl bg-muted/30 px-4 py-2.5 text-sm">
+    <div
+      className={cn(
+        'grid grid-cols-[1fr_auto] items-center gap-2 bg-muted/30 px-4 py-2.5 text-sm',
+        adminKit.panelRadius
+      )}
+    >
       <span className="text-muted-foreground">Customer scope</span>
       <span className="font-medium text-foreground">{customerName}</span>
       <span className="font-mono text-xs text-muted-foreground">{customerId}</span>

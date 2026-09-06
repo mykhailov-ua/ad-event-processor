@@ -6,7 +6,7 @@
 //     PUT/DELETE /api/v1/automation/rules/{id}; POST /api/v1/automation/rules/{id}/dry-run.
 //   - RulesService persists rules in Postgres (sqlc automation_rules) and validates presets,
 //     metrics, operators, and actions.
-//   - Worker (worker.go) polls enabled rules on a ticker, evaluates CH windows (eval.go),
+//   - Worker (worker.go) polls enabled rules on a ticker (automationTickTimeout 2 min per tick), evaluates CH windows (eval.go),
 //     dedupes fires via ActionHash + automation_rule_fires, and applies actions through Executor.
 //   - Dry-run and HTTP read paths never insert fire rows or call Executor mutations.
 //

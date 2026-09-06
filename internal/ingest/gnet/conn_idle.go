@@ -21,43 +21,43 @@ func http1HeadersComplete(data []byte) bool {
 	return false
 }
 
-func (h *Server) http1IncompleteMax() uint8 {
+func (s *Server) http1IncompleteMax() uint8 {
 	limit := uint8(3)
-	if h == nil || h.cfg == nil {
+	if s == nil || s.cfg == nil {
 		return limit
 	}
-	if h.cfg.HTTP1IncompleteMax <= 0 {
+	if s.cfg.HTTP1IncompleteMax <= 0 {
 		return limit
 	}
-	if h.cfg.HTTP1IncompleteMax > 255 {
+	if s.cfg.HTTP1IncompleteMax > 255 {
 		return 255
 	}
-	return uint8(h.cfg.HTTP1IncompleteMax)
+	return uint8(s.cfg.HTTP1IncompleteMax)
 }
 
-func (h *Server) http1BodyIdleDuration() time.Duration {
+func (s *Server) http1BodyIdleDuration() time.Duration {
 	ms := 5000
-	if h != nil && h.cfg != nil {
-		if h.cfg.HTTP1BodyIdleMs > 0 {
-			ms = h.cfg.HTTP1BodyIdleMs
-		} else if h.cfg.Env != "production" {
+	if s != nil && s.cfg != nil {
+		if s.cfg.HTTP1BodyIdleMs > 0 {
+			ms = s.cfg.HTTP1BodyIdleMs
+		} else if s.cfg.Env != "production" {
 			ms = 500
 		}
 	}
 	return time.Duration(ms) * time.Millisecond
 }
 
-func (h *Server) http1MaxConnLifetimeDuration() time.Duration {
-	if h == nil || h.cfg == nil || h.cfg.HTTP1MaxConnLifetimeMs <= 0 {
+func (s *Server) http1MaxConnLifetimeDuration() time.Duration {
+	if s == nil || s.cfg == nil || s.cfg.HTTP1MaxConnLifetimeMs <= 0 {
 		return 0
 	}
-	return time.Duration(h.cfg.HTTP1MaxConnLifetimeMs) * time.Millisecond
+	return time.Duration(s.cfg.HTTP1MaxConnLifetimeMs) * time.Millisecond
 }
 
-func (h *Server) http1MaxBufferedBytes() int64 {
+func (s *Server) http1MaxBufferedBytes() int64 {
 	maxBody := int64(1 << 20)
-	if h != nil && h.cfg != nil {
-		maxBody = h.cfg.MaxRequestBodySize
+	if s != nil && s.cfg != nil {
+		maxBody = s.cfg.MaxRequestBodySize
 	}
 	return maxBody + http1MaxBufferedOverhead
 }
@@ -114,24 +114,24 @@ func putAsyncWriteLease(lease asyncWriteLease) {
 	responseBytesPool.Put(lease.poolPtr)
 }
 
-func (h *Server) http1OffloadAsyncWriteDone(c pkgnet.Conn, offloadCtx, connCtx *ConnContext, lease asyncWriteLease) {
+func (s *Server) http1OffloadAsyncWriteDone(c pkgnet.Conn, offloadCtx, connCtx *ConnContext, lease asyncWriteLease) {
 	putAsyncWriteLease(lease)
 	if connCtx != nil && connCtx.HTTP1PendingOffloadWrites.Add(-1) != 0 {
 		return
 	}
-	h.http1OffloadWriteDone(c, offloadCtx)
+	s.http1OffloadWriteDone(c, offloadCtx)
 }
 
-func (h *Server) http1EnsureConnContext(c pkgnet.Conn) *ConnContext {
+func (s *Server) http1EnsureConnContext(c pkgnet.Conn) *ConnContext {
 	if connCtx := http1ConnContext(c); connCtx != nil {
 		return connCtx
 	}
-	ctx := h.allocConnContext(c)
+	ctx := s.allocConnContext(c)
 	c.SetContext(ctx)
 	return ctx
 }
 
-func (h *Server) http1ResetIncompleteState(ctx *ConnContext, c pkgnet.Conn) {
+func (s *Server) http1ResetIncompleteState(ctx *ConnContext, c pkgnet.Conn) {
 	if ctx == nil {
 		return
 	}
@@ -144,11 +144,11 @@ func (h *Server) http1ResetIncompleteState(ctx *ConnContext, c pkgnet.Conn) {
 	}
 }
 
-func (h *Server) http1ArmBodyIdle(c pkgnet.Conn, ctx *ConnContext) {
+func (s *Server) http1ArmBodyIdle(c pkgnet.Conn, ctx *ConnContext) {
 	if ctx == nil || c == nil || ctx.HTTP1BodyIdleArmed {
 		return
 	}
-	idle := h.http1BodyIdleDuration()
+	idle := s.http1BodyIdleDuration()
 	if idle <= 0 {
 		return
 	}
@@ -157,15 +157,15 @@ func (h *Server) http1ArmBodyIdle(c pkgnet.Conn, ctx *ConnContext) {
 	ctx.HTTP1BodyIdleArmed = true
 }
 
-func (h *Server) http1CheckBodyIdle(c pkgnet.Conn, ctx *ConnContext) pkgnet.Action {
+func (s *Server) http1CheckBodyIdle(c pkgnet.Conn, ctx *ConnContext) pkgnet.Action {
 	if ctx == nil {
 		return pkgnet.None
 	}
-	maxLife := h.http1MaxConnLifetimeDuration()
+	maxLife := s.http1MaxConnLifetimeDuration()
 	if maxLife > 0 && ctx.HTTP1ConnOpenedMono > 0 &&
 		filter.MonotonicNano()-ctx.HTTP1ConnOpenedMono >= maxLife.Nanoseconds() {
 		metrics.HTTP1IncompleteCloseTotal.WithLabelValues("idle").Inc()
-		h.http1ResetIncompleteState(ctx, c)
+		s.http1ResetIncompleteState(ctx, c)
 		return pkgnet.Close
 	}
 	if ctx.HTTP1BodyIdleDeadline == 0 {
@@ -175,12 +175,12 @@ func (h *Server) http1CheckBodyIdle(c pkgnet.Conn, ctx *ConnContext) pkgnet.Acti
 		return pkgnet.None
 	}
 	metrics.HTTP1IncompleteCloseTotal.WithLabelValues("idle").Inc()
-	h.http1ResetIncompleteState(ctx, c)
+	s.http1ResetIncompleteState(ctx, c)
 	return pkgnet.Close
 }
 
-func (h *Server) http1OffloadWriteDone(c pkgnet.Conn, offloadCtx *ConnContext) {
-	if h == nil || h.workerPool == nil || c == nil {
+func (s *Server) http1OffloadWriteDone(c pkgnet.Conn, offloadCtx *ConnContext) {
+	if s == nil || s.workerPool == nil || c == nil {
 		return
 	}
 	var connCtx *ConnContext
@@ -195,7 +195,7 @@ func (h *Server) http1OffloadWriteDone(c pkgnet.Conn, offloadCtx *ConnContext) {
 		connCtx.HTTP1OffloadBusy.Store(false)
 	}
 	if offloadCtx != nil && offloadCtx.OffloadCloseAfterWrite.Load() {
-		h.http1ResetIncompleteState(connCtx, c)
+		s.http1ResetIncompleteState(connCtx, c)
 		_ = c.Close()
 		return
 	}
@@ -204,27 +204,27 @@ func (h *Server) http1OffloadWriteDone(c pkgnet.Conn, offloadCtx *ConnContext) {
 	}
 }
 
-func (h *Server) http1HandleIncomplete(c pkgnet.Conn, ctx *ConnContext, buf []byte, consumed int) pkgnet.Action {
+func (s *Server) http1HandleIncomplete(c pkgnet.Conn, ctx *ConnContext, buf []byte, consumed int) pkgnet.Action {
 	metrics.HTTPParseErrors.WithLabelValues("incomplete").Inc()
 
 	if consumed > 0 {
 		return pkgnet.None
 	}
 
-	if int64(len(buf)) > h.http1MaxBufferedBytes() {
+	if int64(len(buf)) > s.http1MaxBufferedBytes() {
 		metrics.HTTP1IncompleteCloseTotal.WithLabelValues("buffer").Inc()
-		h.http1ResetIncompleteState(ctx, c)
+		s.http1ResetIncompleteState(ctx, c)
 		return pkgnet.Close
 	}
 
 	if http1HeadersComplete(buf) {
-		h.http1ArmBodyIdle(c, ctx)
+		s.http1ArmBodyIdle(c, ctx)
 	}
 
 	ctx.HTTP1IncompleteSpin++
-	if ctx.HTTP1IncompleteSpin >= h.http1IncompleteMax() {
+	if ctx.HTTP1IncompleteSpin >= s.http1IncompleteMax() {
 		metrics.HTTP1IncompleteCloseTotal.WithLabelValues("spin").Inc()
-		h.http1ResetIncompleteState(ctx, c)
+		s.http1ResetIncompleteState(ctx, c)
 		return pkgnet.Close
 	}
 	return pkgnet.None

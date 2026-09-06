@@ -14,12 +14,14 @@
  *   1. allow_v6 LPM (/128)
  *   2. blocklist_host_v6 LRU HASH
  *   3. blocklist_v6 LPM (/128)
+ *   then syn/rst limits, pps token bucket (same config scalars as IPv4).
+ *   SYN-cookie tail call is IPv4-only; v6 SYN over limit always XDP_DROP.
  *
  * Map max_entries:
  *   blocklist_v4/v6, blocklist_host_v4/v6: 786432
  *   allow_v4/v6: 65536
- *   syn_ratelimit_v4: 786432 per CPU; syn_subnet_ratelimit_v4: 65536 (LRU)
- *   ratelimit_v4, rst_ratelimit_v4: 1048576 per CPU
+ *   syn_ratelimit_v4/v6: 786432 per CPU; syn_subnet_ratelimit_v4/v6: 65536 (LRU)
+ *   ratelimit_v4/v6, rst_ratelimit_v4/v6: 1048576 per CPU
  *   global_syn: 1 (per-CPU array); config: 1; prog_array: 1
  *   violations, fingerprints ringbufs: 256 KiB each
  *
@@ -41,14 +43,16 @@
  *   Host /32 (v4) or full IPv6 addr keys populated by edge-bpf-sync via ebpf.UpdateAny.
  *   Kernel evicts least-recently-used entry when map is full and a new key is inserted.
  *   XDP has no bpf_map_delete_elem on deny maps; no in-program delete path.
- *   Userspace remove path: BlocklistStore.applyHostRemove -> maps.V4Host.Delete (changelog
- *   or full ApplyDiff). LPM deny maps (blocklist_v4/v6) use explicit Delete on remove too.
+ *   Userspace mirrors every host deny into blocklist_v4/v6 LPM /128|/32 as well so LRU
+ *   eviction on blocklist_host_* does not open an L4 bypass (invalidation: bpf_lpm_mirror).
+ *   Userspace remove path: BlocklistStore.applyHostRemove -> maps.V4Host.Delete and matching
+ *   /32|/128 LPM Delete (changelog or full ApplyDiff). Prefix denies use LPM only.
  *
  * LRU eviction vs userspace shadow (invalidation pattern: bpf_lru_implicit):
  *   When occupied >= max_entries before insert, edge-bpf-sync increments
  *   ad_edge_blocklist_lru_eviction_total (recordLRUEvictionBeforeInsert). Kernel may drop
- *   a cold host entry while BlocklistStore.hosts still lists it until the next 5 min full
- *   SMEMBERS resync (SyncBlocklistFromRedis ApplyDiff) reconciles shadow to Redis truth.
+ *   a cold host LRU entry while BlocklistStore.hosts still lists it; LPM /32 mirror keeps XDP
+ *   deny until explicit Delete or full SMEMBERS resync reconciles shadow to Redis truth.
  *
  * L7 generational cache (invalidation pattern: l7_generational_full | l7_generational_incremental):
  *   Not read by this program. ngx.shared bumps _bl_ver on full SMEMBERS sync; incremental
@@ -57,19 +61,22 @@
  * violations ringbuf (256 KiB, BPF_MAP_TYPE_RINGBUF):
  *   emit_violation on SYN / global SYN / SYN-subnet / PPS drops when SYN-cookie tail call
  *   is not taken. Reasons: VIOLATION_SYN=1, VIOLATION_GLOBAL_SYN=2, VIOLATION_PPS=3,
- *   VIOLATION_SYN_SUBNET=4. ringbuf_used_pct + bpf_ringbuf_query before reserve; under pressure
- *   sample VIOLATION_PPS first so SYN/global/subnet alerts retain headroom. Reserve failure
- *   still silent (packet XDP_DROP). edge-bpf-sync drains -> RecordAutoBan -> Redis.
+ *   VIOLATION_SYN_SUBNET=4. ringbuf_used_pct + bpf_ringbuf_query before reserve; PPS reserve
+ *   suppressed at RINGBUF_VIOLATION_PPS_STOP_PCT (95%). No random sampling skip (autoban
+ *   must not miss drops under moderate ring pressure). Reserve failure still silent (packet
+ *   XDP_DROP). edge-bpf-sync drains -> RecordAutoBan -> Redis.
  *
  * fingerprints ringbuf:
  *   emit_fingerprint on SYN when CFG_FLAG_FINGERPRINT set. Aggressive sampling when ring
  *   >60% full; skip when >85% (violations map is separate). Reserve failure silent.
+ *   Wire: struct violation_event (28 B): ts_ns, addr_family (4|6), reason, addr[16].
+ *   IPv4 addr in first 4 bytes network order; IPv6 full saddr. edge-bpf-sync autobans both.
  *   Drain -> edge.Record -> Redis edge:tcp_fp:* (L7 OS fingerprint headers, not blocklist).
  *
- * syn_ratelimit_v4 / ratelimit_v4 / rst_ratelimit_v4 (BPF_MAP_TYPE_PERCPU_HASH):
+ * syn_ratelimit_v4/v6 / ratelimit_v4/v6 / rst_ratelimit_v4/v6 (BPF_MAP_TYPE_PERCPU_HASH):
  *   Per-CPU shards avoid LRU spinlock contention under spoofed-IP floods. Limit is enforced
- *   per RSS CPU queue (same as global_syn PERCPU_ARRAY). syn_subnet_ratelimit_v4 stays
- *   LRU_HASH (/24 aggregate; shared keys, not per-CPU).
+ *   per RSS CPU queue (same as global_syn PERCPU_ARRAY). syn_subnet_ratelimit_v4/v6 stays
+ *   LRU_HASH (/24 v4, /64 v6 aggregate; shared keys, not per-CPU).
  *
  * Design trade-offs (reviewed; do not re-litigate without new operator evidence):
  *
@@ -114,9 +121,59 @@
  *   Wired by cmd/edge-xdp wireProgArray when XdpSynCookie object loaded and
  *   CFG_FLAG_SYN_COOKIE set.
  *
- * Non-TCP on ingress (drop_non_tcp_tracker):
- *   UDP/SCTP: XDP_DROP only when dest == TRACKER_INGRESS_PORT. ICMP: XDP_PASS for Type 3
- *   Code 4 (PMTUD fragmentation needed); other ICMP types still XDP_DROP.
+ * Non-TCP on ingress (drop_non_tcp_tracker, IPv4 and IPv6 nexthdr):
+ *   UDP/SCTP: XDP_DROP only when dest == TRACKER_INGRESS_PORT. ICMPv4: XDP_PASS for Type 3
+ *   Code 4 (PMTUD fragmentation needed); other ICMPv4 types XDP_DROP. ICMPv6: XDP_PASS for
+ *   Packet Too Big (type 2); other ICMPv6 types XDP_DROP.
+ *
+ * Tracker-bound malformed TCP (fail-closed):
+ *   After dest == TRACKER_INGRESS_PORT is readable, allow/blocklist run on L3 saddr only.
+ *   Truncated TCP header (tcph + 1 > data_end) -> XDP_DROP (XDP_STAT_DROP_INVALID), not XDP_PASS.
+ *   Non-tracker or dest unreadable -> XDP_PASS (unchanged fail-open).
+ *
+ * IPv6 extension headers (ipv6_find_l4):
+ *   Walk up to IPV6_EXT_MAX_STEPS Hop-by-Hop, Routing, Destination, and Fragment headers
+ *   before L4. Non-first fragments and unknown next headers -> XDP_DROP (DROP_INVALID).
+ *   L4 proto still evaluated with drop_non_tcp_tracker when not TCP.
+ *
+ * IPv4 fragments:
+ *   Non-first fragments (frag_off & IPV4_FRAG_OFFSET_MASK) -> XDP_DROP (DROP_INVALID).
+ *   First fragment (offset 0, MF allowed) keeps normal tracker TCP enforcement.
+ *
+ * Perimeter remediations (2026; perf vs security - read before loosening):
+ *
+ * Intent: stop L4 bypasses on tracker :8180 and keep attack volume out of nginx/tracker.
+ * Wire decision is authoritative (XDP_DROP still drops under ringbuf pressure). L7
+ * (access-check.lua generational blacklist) is a parallel path, not a substitute for holes here.
+ *
+ * Performance (ingress RPS, edge CPU, valid lead):
+ * - v6 syn/pps/rst/global limits mirror v4: removes unbounded v6 SYN/PPS that previously
+ *   reached the stack; legit v6 clients hit the same caps as v4 (config map scalars).
+ * - fail-closed on tracker-bound truncated TCP, non-first v4/v6 fragments, unknown v6 ext:
+ *   fewer packets and no reassembly work in nginx; may drop rare broken-wire TCP or end-to-end
+ *   fragmented sessions before L7 (uncommon for normal clients; PMTUD ICMP still PASS).
+ * - ipv6_find_l4: bounded loop (IPV6_EXT_MAX_STEPS) per IPv6 packet; cost scales with ext chain.
+ * - blocklist host -> LPM /32|/128 mirror: userspace sync only (BlocklistStore upsertHostDeny*);
+ *   doubles map writes and LPM trie growth on insert; hot XDP path still three lookups.
+ * - emit_violation: removed random ringbuf sampling; under flood, more ringbuf + autoban Redis
+ *   traffic from edge-bpf-sync (cold path); does not relax XDP_DROP on the wire.
+ *
+ * Security (bypass closed, false positive / ops):
+ * - Closed gaps: v6 rate limit parity; v6 UDP/SCTP/ICMP on :8180; blocklist evaluated on L3
+ *   saddr before truncated TCP fail-closed; Hop-by-Hop/Routing/Dest/Fragment walk before dest;
+ *   non-first fragment drop; LRU host eviction no longer opens deny (LPM mirror); autoban no
+ *   longer skips ~75-88% of violation samples at moderate ring fill.
+ * - Friction to expect: v6 /64 and v4 /24 subnet SYN caps aggregate CGNAT/mobile; unknown v6 ext
+ *   or >IPV6_EXT_MAX_STEPS chain -> DROP_INVALID; more autoban entries under sustained flood
+ *   (shared-IP false ban ops risk; tune AUTOBAN_TTL and manual remove).
+ * - Still operator/config trade-offs (not "bugs"): allow-before-deny on allowlist mis-sync;
+ *   IPv4-only SYN-cookie XDP_TX (spoofed-source reflection); global_syn / assumed_cpus mismatch;
+ *   violation/autoban ringbuf carries IPv4 and IPv6 src (addr_family 4|6); fingerprint ringbuf
+ *   still IPv4-only and sampled at 60%/85% (separate from violations).
+ *
+ * Revisit only with operator evidence (metrics, capture), not to restore fail-open bypass:
+ *   ad_edge_blocklist_lru_eviction_total, XDP stats DROP_INVALID/NON_TCP/SYN/PPS, v6 vs v4 pass
+ *   ratio, violations ringbuf used_pct, autoban churn vs manual unban.
  *
  * Verify: make gen bpf-dev; go test ./internal/edge/ -short -run TestTokenBucket_ -count=1
  */
@@ -174,6 +231,8 @@ static long (*const bpf_tcp_gen_syncookie_ipv4)(void *iph, __u16 iph_len, void *
 
 #define ICMP_DEST_UNREACH 3
 #define ICMP_FRAG_NEEDED 4
+#define ICMPV6_PKT_TOOBIG 2
+#define VIOLATION_SYN 1
 #define VIOLATION_GLOBAL_SYN 2
 #define VIOLATION_PPS 3
 #define VIOLATION_SYN_SUBNET 4
@@ -181,9 +240,11 @@ static long (*const bpf_tcp_gen_syncookie_ipv4)(void *iph, __u16 iph_len, void *
 #define RINGBUF_BYTES (256 * 1024)
 #define RINGBUF_FP_SAMPLE_PCT 60
 #define RINGBUF_FP_SKIP_PCT 85
-#define RINGBUF_VIOLATION_PPS_SAMPLE_PCT 80
 #define RINGBUF_VIOLATION_PPS_STOP_PCT 95
-#define RINGBUF_VIOLATION_OTHER_SAMPLE_PCT 90
+
+#define IPV6_EXT_MAX_STEPS 4
+
+#define IPV4_FRAG_OFFSET_MASK 0x1FFF
 
 struct fingerprint_event {
 	__u64 ts_ns;
@@ -231,9 +292,10 @@ struct edge_config {
 
 struct violation_event {
 	__u64 ts_ns;
-	__u32 src_ip;
+	__u8 addr_family;
 	__u8 reason;
-	__u8 _pad[3];
+	__u8 _pad[2];
+	__u8 addr[16];
 };
 
 enum xdp_stats {
@@ -332,6 +394,34 @@ struct {
 } rst_ratelimit_v4 SEC(".maps");
 
 struct {
+	__uint(type, BPF_MAP_TYPE_PERCPU_HASH);
+	__uint(max_entries, 786432);
+	__type(key, struct in6_addr);
+	__type(value, struct syn_state);
+} syn_ratelimit_v6 SEC(".maps");
+
+struct {
+	__uint(type, BPF_MAP_TYPE_LRU_HASH);
+	__uint(max_entries, 65536);
+	__type(key, struct in6_addr);
+	__type(value, struct syn_state);
+} syn_subnet_ratelimit_v6 SEC(".maps");
+
+struct {
+	__uint(type, BPF_MAP_TYPE_PERCPU_HASH);
+	__uint(max_entries, 1048576);
+	__type(key, struct in6_addr);
+	__type(value, struct pps_bucket);
+} ratelimit_v6 SEC(".maps");
+
+struct {
+	__uint(type, BPF_MAP_TYPE_PERCPU_HASH);
+	__uint(max_entries, 1048576);
+	__type(key, struct in6_addr);
+	__type(value, struct pps_bucket);
+} rst_ratelimit_v6 SEC(".maps");
+
+struct {
 	__uint(type, BPF_MAP_TYPE_PERCPU_ARRAY);
 	__uint(max_entries, 1);
 	__type(key, __u32);
@@ -425,7 +515,8 @@ static __always_inline int ringbuf_reserve_allowed_fp(void *ring, __u32 used_pct
 	return 1;
 }
 
-static __always_inline void emit_violation(__u32 src_ip, __u8 reason)
+/* emit_violation: no random sample skip; see file header Perimeter remediations (autoban vs ring pressure). */
+static __always_inline void emit_violation_addr(__u8 family, const void *addr, __u8 reason)
 {
 	struct violation_event *evt;
 	__u32 used_pct = ringbuf_used_pct(&violations);
@@ -433,14 +524,6 @@ static __always_inline void emit_violation(__u32 src_ip, __u8 reason)
 
 	if (reason == VIOLATION_PPS)
 		priority = 1;
-	if (used_pct >= RINGBUF_VIOLATION_PPS_SAMPLE_PCT && reason == VIOLATION_PPS) {
-		if ((src_ip ^ reason) & 0x7)
-			return;
-	}
-	if (used_pct >= RINGBUF_VIOLATION_OTHER_SAMPLE_PCT && reason != VIOLATION_GLOBAL_SYN) {
-		if ((src_ip ^ reason) & 0x3)
-			return;
-	}
 	if (!ringbuf_reserve_allowed(&violations, used_pct, priority))
 		return;
 
@@ -448,9 +531,26 @@ static __always_inline void emit_violation(__u32 src_ip, __u8 reason)
 	if (!evt)
 		return;
 	evt->ts_ns = bpf_ktime_get_ns();
-	evt->src_ip = src_ip;
+	evt->addr_family = family;
 	evt->reason = reason;
+	evt->_pad[0] = 0;
+	evt->_pad[1] = 0;
+	__builtin_memset(evt->addr, 0, sizeof(evt->addr));
+	if (family == 4)
+		__builtin_memcpy(evt->addr, addr, 4);
+	else
+		__builtin_memcpy(evt->addr, addr, 16);
 	bpf_ringbuf_submit(evt, 0);
+}
+
+static __always_inline void emit_violation(__u32 src_ip, __u8 reason)
+{
+	emit_violation_addr(4, &src_ip, reason);
+}
+
+static __always_inline void emit_violation_v6(const struct in6_addr *src, __u8 reason)
+{
+	emit_violation_addr(6, src, reason);
 }
 
 static __always_inline __u8 read_tcp_mss(struct tcphdr *tcph, void *data_end)
@@ -473,7 +573,7 @@ static __always_inline __u8 read_tcp_mss(struct tcphdr *tcph, void *data_end)
 	off = 0;
 
 	#pragma unroll
-	for (__u32 step = 0; step < 10; step++) {
+	for (__u32 step = 0; step < 5; step++) {
 		__u8 *p;
 		__u8 kind;
 		__u8 olen;
@@ -822,6 +922,106 @@ static __always_inline int check_rst_limit(__u32 src_ip, __u64 now)
 	return XDP_PASS;
 }
 
+static __always_inline struct in6_addr ipv6_subnet64(const struct in6_addr *addr)
+{
+	struct in6_addr key;
+
+	__builtin_memcpy(&key, addr, 16);
+	key.s6_addr[8] = 0;
+	key.s6_addr[9] = 0;
+	key.s6_addr[10] = 0;
+	key.s6_addr[11] = 0;
+	key.s6_addr[12] = 0;
+	key.s6_addr[13] = 0;
+	key.s6_addr[14] = 0;
+	key.s6_addr[15] = 0;
+	return key;
+}
+
+static __always_inline int check_syn_limit_v6(const struct in6_addr *src, __u64 now, __u32 syn_limit)
+{
+	struct syn_state *st = bpf_map_lookup_elem(&syn_ratelimit_v6, src);
+
+	if (st) {
+		if (now - st->window_start_ns < SYN_WINDOW_NS) {
+			if (st->count >= syn_limit)
+				return XDP_DROP;
+			st->count++;
+		} else {
+			st->window_start_ns = now;
+			st->count = 1;
+		}
+		return XDP_PASS;
+	}
+
+	struct syn_state new_st = {};
+
+	new_st.window_start_ns = now;
+	new_st.count = 1;
+	bpf_map_update_elem(&syn_ratelimit_v6, src, &new_st, BPF_ANY);
+	return XDP_PASS;
+}
+
+/* check_syn_subnet_limit_v6: keys are IPv6 /64; DEFAULT_SYN_SUBNET_LIMIT from config map. */
+static __always_inline int check_syn_subnet_limit_v6(const struct in6_addr *src, __u64 now,
+						     __u32 subnet_limit)
+{
+	struct in6_addr subnet = ipv6_subnet64(src);
+	struct syn_state *st = bpf_map_lookup_elem(&syn_subnet_ratelimit_v6, &subnet);
+	struct syn_state new_st = {};
+
+	if (st) {
+		if (now - st->window_start_ns < SYN_WINDOW_NS) {
+			if (st->count >= subnet_limit)
+				return XDP_DROP;
+			new_st.window_start_ns = st->window_start_ns;
+			new_st.count = st->count + 1;
+		} else {
+			new_st.window_start_ns = now;
+			new_st.count = 1;
+		}
+	} else {
+		new_st.window_start_ns = now;
+		new_st.count = 1;
+	}
+
+	bpf_map_update_elem(&syn_subnet_ratelimit_v6, &subnet, &new_st, BPF_ANY);
+	return XDP_PASS;
+}
+
+static __always_inline int check_pps_limit_v6(const struct in6_addr *src, __u64 now, __u32 pps_rate)
+{
+	struct pps_bucket *st = bpf_map_lookup_elem(&ratelimit_v6, src);
+
+	if (st)
+		return token_bucket_consume_existing(st, now, pps_rate, pps_rate);
+
+	if (!pps_rate)
+		return XDP_DROP;
+
+	struct pps_bucket new_st = {};
+
+	new_st.last_ns = now;
+	new_st.tokens = pps_rate - 1;
+	bpf_map_update_elem(&ratelimit_v6, src, &new_st, BPF_ANY);
+	return XDP_PASS;
+}
+
+static __always_inline int check_rst_limit_v6(const struct in6_addr *src, __u64 now)
+{
+	struct pps_bucket *st = bpf_map_lookup_elem(&rst_ratelimit_v6, src);
+
+	if (st)
+		return token_bucket_consume_existing(st, now, DEFAULT_RST_RATE, DEFAULT_RST_BURST);
+
+	struct pps_bucket new_st = {};
+
+	new_st.last_ns = now;
+	new_st.tokens = DEFAULT_RST_BURST - 1;
+	bpf_map_update_elem(&rst_ratelimit_v6, src, &new_st, BPF_ANY);
+	return XDP_PASS;
+}
+
 static __always_inline int is_tcp_anomaly_flags(__u8 fl)
 {
 	if ((fl & (TCP_FLAG_SYN | TCP_FLAG_FIN)) == (TCP_FLAG_SYN | TCP_FLAG_FIN))
@@ -847,7 +1047,7 @@ static __always_inline int is_invalid_tcp(struct tcphdr *tcph)
 	return 0;
 }
 
-static __always_inline int drop_non_tcp_tracker(__u8 proto, void *l4, void *data_end)
+static __always_inline int drop_non_tcp_tracker(__u8 proto, void *l4, void *data_end, __u8 ipv6)
 {
 	if (proto == IPPROTO_UDP) {
 		struct udphdr *udph = l4;
@@ -867,17 +1067,60 @@ static __always_inline int drop_non_tcp_tracker(__u8 proto, void *l4, void *data
 		return XDP_PASS;
 	}
 
-	if (proto == IPPROTO_ICMP) {
+	if ((!ipv6 && proto == IPPROTO_ICMP) || (ipv6 && proto == IPPROTO_ICMPV6)) {
 		__u8 *icmp = l4;
 
 		if (icmp + 2 > (__u8 *)data_end)
 			return XDP_PASS;
-		if (icmp[0] == ICMP_DEST_UNREACH && icmp[1] == ICMP_FRAG_NEEDED)
+		if (!ipv6 && icmp[0] == ICMP_DEST_UNREACH && icmp[1] == ICMP_FRAG_NEEDED)
+			return XDP_PASS;
+		if (ipv6 && icmp[0] == ICMPV6_PKT_TOOBIG)
 			return XDP_PASS;
 		return XDP_DROP;
 	}
 
 	return XDP_PASS;
+}
+
+/* ipv6_find_l4: ext walk trade-off (perf vs bypass); see file header Perimeter remediations. */
+static __always_inline int ipv6_find_l4(void *start, void *data_end, __u8 nh, void **l4_out,
+					__u8 *nh_out)
+{
+	void *cur = start;
+
+	#pragma unroll
+	for (__u32 step = 0; step < IPV6_EXT_MAX_STEPS; step++) {
+		if (nh == IPPROTO_TCP || nh == IPPROTO_UDP || nh == IPPROTO_SCTP ||
+		    nh == IPPROTO_ICMPV6) {
+			*l4_out = cur;
+			*nh_out = nh;
+			return 0;
+		}
+		if (nh == IPPROTO_HOPOPTS || nh == IPPROTO_ROUTING || nh == IPPROTO_DSTOPTS) {
+			__u8 *p = cur;
+
+			if (p + 8 > (__u8 *)data_end)
+				return -1;
+			nh = p[0];
+			cur = p + (p[1] + 1) * 8;
+			if (cur > data_end)
+				return -1;
+			continue;
+		}
+		if (nh == IPPROTO_FRAGMENT) {
+			__u8 *p = cur;
+
+			if (p + 8 > (__u8 *)data_end)
+				return -1;
+			if (bpf_ntohs(*(__be16 *)(p + 2)) & 0xFFF8)
+				return -2;
+			nh = p[0];
+			cur = p + 8;
+			continue;
+		}
+		return -3;
+	}
+	return -4;
 }
 
 SEC("xdp")
@@ -933,7 +1176,10 @@ static __always_inline void ipv6_lpm_key_from_addr(struct ipv6_lpm_key *key, con
 	__builtin_memcpy(key->addr, addr, 16);
 }
 
-static __always_inline int xdp_filter_ipv6_tcp(struct ipv6hdr *ip6, struct tcphdr *tcph)
+static __always_inline int xdp_filter_ipv6_tcp(struct ipv6hdr *ip6, struct tcphdr *tcph,
+					       void *data_end, __u32 syn_limit, __u32 pps_rate,
+					       __u32 global_syn_limit, __u32 assumed_cpus,
+					       __u32 syn_subnet_limit, __u64 now)
 {
 	struct ipv6_lpm_key al_key = {};
 	ipv6_lpm_key_from_addr(&al_key, &ip6->saddr);
@@ -951,6 +1197,54 @@ static __always_inline int xdp_filter_ipv6_tcp(struct ipv6hdr *ip6, struct tcphd
 	ipv6_lpm_key_from_addr(&bl_key, &ip6->saddr);
 	if (bpf_map_lookup_elem(&blocklist_v6, &bl_key)) {
 		stat_inc(XDP_STAT_DROP_BLOCKLIST);
+		return XDP_DROP;
+	}
+
+	if ((void *)(tcph + 1) > data_end) {
+		stat_inc(XDP_STAT_DROP_INVALID);
+		return XDP_DROP;
+	}
+
+	__u8 tcp_fl = *(__u8 *)((__u8 *)tcph + 13);
+
+	if (is_tcp_anomaly_flags(tcp_fl)) {
+		stat_inc(XDP_STAT_DROP_ANOMALY);
+		return XDP_DROP;
+	}
+
+	if (is_invalid_tcp(tcph)) {
+		stat_inc(XDP_STAT_DROP_INVALID);
+		return XDP_DROP;
+	}
+
+	if (tcp_fl & TCP_FLAG_RST) {
+		if (check_rst_limit_v6(&ip6->saddr, now) == XDP_DROP) {
+			stat_inc(XDP_STAT_DROP_RST);
+			return XDP_DROP;
+		}
+	}
+
+	if ((tcp_fl & (TCP_FLAG_SYN | TCP_FLAG_ACK)) == TCP_FLAG_SYN) {
+		if (check_global_syn(now, global_syn_limit, assumed_cpus) == XDP_DROP) {
+			emit_violation_v6(&ip6->saddr, VIOLATION_GLOBAL_SYN);
+			stat_inc(XDP_STAT_DROP_GLOBAL_SYN);
+			return XDP_DROP;
+		}
+		if (check_syn_subnet_limit_v6(&ip6->saddr, now, syn_subnet_limit) == XDP_DROP) {
+			emit_violation_v6(&ip6->saddr, VIOLATION_SYN_SUBNET);
+			stat_inc(XDP_STAT_DROP_SYN_SUBNET);
+			return XDP_DROP;
+		}
+		if (check_syn_limit_v6(&ip6->saddr, now, syn_limit) == XDP_DROP) {
+			emit_violation_v6(&ip6->saddr, VIOLATION_SYN);
+			stat_inc(XDP_STAT_DROP_SYN);
+			return XDP_DROP;
+		}
+	}
+
+	if (check_pps_limit_v6(&ip6->saddr, now, pps_rate) == XDP_DROP) {
+		emit_violation_v6(&ip6->saddr, VIOLATION_PPS);
+		stat_inc(XDP_STAT_DROP_PPS);
 		return XDP_DROP;
 	}
 
@@ -976,18 +1270,41 @@ int xdp_edge_filter(struct xdp_md *ctx)
 			return XDP_PASS;
 
 		struct ipv6hdr *ip6 = (void *)(eth + 1);
+		void *l4;
+		__u8 l4_proto;
+		int l4_ok;
+
 		if ((void *)(ip6 + 1) > data_end)
 			return XDP_PASS;
-		if (ip6->nexthdr != IPPROTO_TCP)
-			return XDP_PASS;
 
-		struct tcphdr *tcph = (void *)(ip6 + 1);
-		if ((void *)(tcph + 1) > data_end)
+		l4_ok = ipv6_find_l4((void *)(ip6 + 1), data_end, ip6->nexthdr, &l4, &l4_proto);
+		if (l4_ok < 0) {
+			stat_inc(XDP_STAT_DROP_INVALID);
+			return XDP_DROP;
+		}
+
+		if (l4_proto != IPPROTO_TCP) {
+			action = drop_non_tcp_tracker(l4_proto, l4, data_end, 1);
+			if (action == XDP_DROP) {
+				stat_inc(XDP_STAT_DROP_NON_TCP);
+				return XDP_DROP;
+			}
+			return XDP_PASS;
+		}
+
+		struct tcphdr *tcph = l4;
+		if ((__u8 *)tcph + 4 > (__u8 *)data_end)
 			return XDP_PASS;
 		if (bpf_ntohs(tcph->dest) != TRACKER_INGRESS_PORT)
 			return XDP_PASS;
 
-		return xdp_filter_ipv6_tcp(ip6, tcph);
+		__u32 syn_limit, pps_rate, global_syn_limit, assumed_cpus, syn_subnet_limit;
+
+		load_config_scalars(&syn_limit, &pps_rate, &global_syn_limit, &assumed_cpus,
+				    &syn_subnet_limit);
+		__u64 now = bpf_ktime_get_ns();
+		return xdp_filter_ipv6_tcp(ip6, tcph, data_end, syn_limit, pps_rate, global_syn_limit,
+					   assumed_cpus, syn_subnet_limit, now);
 	}
 
 	struct iphdr *iph = (void *)(eth + 1);
@@ -998,10 +1315,17 @@ int xdp_edge_filter(struct xdp_md *ctx)
 	if (ihl_len < sizeof(*iph))
 		return XDP_PASS;
 
+	/* Non-first frag fail-closed: see file header Perimeter remediations (reassembly flood vs rare legit frag). */
+	if (bpf_ntohs(iph->frag_off) & IPV4_FRAG_OFFSET_MASK) {
+		stat_idx = XDP_STAT_DROP_INVALID;
+		action = XDP_DROP;
+		goto out;
+	}
+
 	void *l4 = (void *)iph + ihl_len;
 
 	if (iph->protocol != IPPROTO_TCP) {
-		action = drop_non_tcp_tracker(iph->protocol, l4, data_end);
+		action = drop_non_tcp_tracker(iph->protocol, l4, data_end, 0);
 		if (action == XDP_DROP) {
 			stat_idx = XDP_STAT_DROP_NON_TCP;
 			goto out;
@@ -1010,7 +1334,7 @@ int xdp_edge_filter(struct xdp_md *ctx)
 	}
 
 	struct tcphdr *tcph = l4;
-	if ((void *)(tcph + 1) > data_end)
+	if ((__u8 *)tcph + 4 > (__u8 *)data_end)
 		return XDP_PASS;
 
 	if (bpf_ntohs(tcph->dest) != TRACKER_INGRESS_PORT)
@@ -1040,6 +1364,13 @@ int xdp_edge_filter(struct xdp_md *ctx)
 	if (bpf_map_lookup_elem(&blocklist_v4, &bl_key)) {
 		action = XDP_DROP;
 		stat_idx = XDP_STAT_DROP_BLOCKLIST;
+		goto out;
+	}
+
+	if ((void *)(tcph + 1) > data_end) {
+		/* Tracker fail-closed truncated TCP; blocklist already checked on saddr. */
+		action = XDP_DROP;
+		stat_idx = XDP_STAT_DROP_INVALID;
 		goto out;
 	}
 

@@ -35,7 +35,7 @@ Cross-ref: `.cursor/rules/boundaries.mdc`, `.cursor/rules/code-style.mdc`, per-p
 | `regionproxy` | Multi-region WAL, quorum, uplink (Enterprise) | Cold (regional cell) |
 | `runtimepaths` | Runtime path resolution (`var/`, `bin/`, broker socket) | Both |
 | `supportbundle` | Support bundle tar layout and redaction | Cold |
-| `branding` | Product/vendor strings and safe-view HTTP headers | Hot (ingest decoy bytes) + cold (admin) |
+| `branding` | Product/vendor strings and safe-view HTTP headers | Hot (ingest safe-view response bytes) + cold (admin) |
 
 Hot/cold reflects **production** import paths. Fault tests may import additional packages.
 

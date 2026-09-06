@@ -13,7 +13,7 @@
 -- Constants and limits:
 -- - EDGE_TARPIT_MAX_HEADERS default 64.
 -- - EDGE_TARPIT_BODY_BYTES default 65536.
--- - EDGE_TARPIT_MAX_SEC default 2; hard cap 15 s; negative clamped to 0.
+-- - EDGE_TARPIT_MAX_SEC default 2; hard cap 2 s (tarpit_delay_cap); EDGE_TARPIT_MAX_CONCURRENT default 32.
 -- - Header delay: min(MAX_SEC, 0.25 + (headers - MAX_HEADERS) * 0.05).
 -- - Body delay: min(MAX_SEC, 0.5 + (content_length - MAX_BODY) / MAX_BODY); max of header/body terms wins.
 --
@@ -34,6 +34,10 @@ local ENABLED = false
 local MAX_HEADERS = 64
 local MAX_BODY = 65536
 local MAX_SEC = 2
+local MAX_CONCURRENT = 32
+local HARD_MAX_SEC = 2
+
+local tarpit_metrics = ngx.shared.edge_metrics
 
 local function env_bool(name, default)
     local v = getenv(name)
@@ -57,11 +61,15 @@ local function reload_config()
     MAX_HEADERS = env_num("EDGE_TARPIT_MAX_HEADERS", 64)
     MAX_BODY = env_num("EDGE_TARPIT_BODY_BYTES", 65536)
     MAX_SEC = env_num("EDGE_TARPIT_MAX_SEC", 2)
-    if MAX_SEC > 15 then
-        MAX_SEC = 15
+    MAX_CONCURRENT = env_num("EDGE_TARPIT_MAX_CONCURRENT", 32)
+    if MAX_SEC > HARD_MAX_SEC then
+        MAX_SEC = HARD_MAX_SEC
     end
     if MAX_SEC < 0 then
         MAX_SEC = 0
+    end
+    if MAX_CONCURRENT < 1 then
+        MAX_CONCURRENT = 1
     end
 end
 
@@ -109,8 +117,15 @@ function _M.maybe_delay()
     local delay = _M.compute_delay(n, cl)
 
     if delay > 0 then
+        local active = tarpit_metrics:incr("tarpit_active", 1, 0)
+        if active > MAX_CONCURRENT then
+            tarpit_metrics:incr("tarpit_active", -1, 0)
+            edge_metrics.record_tarpit_admit_reject()
+            return
+        end
         edge_metrics.record_tarpit(delay)
         ngx.sleep(delay)
+        tarpit_metrics:incr("tarpit_active", -1, 0)
     end
 end
 

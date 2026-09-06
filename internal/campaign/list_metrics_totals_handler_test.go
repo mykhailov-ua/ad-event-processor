@@ -15,7 +15,7 @@ func TestListCampaignMetricsTotals_requiresPostgres(t *testing.T) {
 		http.MethodGet,
 		"/api/v1/campaigns/metrics-totals?from="+time.Now().Add(-24*time.Hour).UTC().Format(time.RFC3339)+
 			"&to="+time.Now().UTC().Format(time.RFC3339),
-		nil,
+		http.NoBody,
 	)
 	rec := httptest.NewRecorder()
 

@@ -4,7 +4,11 @@ import assert from 'node:assert/strict';
 import type { CampaignListMetrics } from '@/api/campaigns_api';
 import type { Campaign, CampaignMargin } from '@/api/types';
 
-import { computeCampaignListColumnWidths, campaignListMiddleCellText, defaultCampaignListColumnWidths } from './campaign_list_column_widths.ts';
+import {
+  computeCampaignListColumnWidths,
+  campaignListMiddleCellText,
+  defaultCampaignListColumnWidths,
+} from './campaign_list_column_widths.ts';
 import { CAMPAIGN_LIST_STATUS_COLUMN_WIDTH_PX } from './campaign_list_columns.ts';
 
 test('defaultCampaignListColumnWidths fits header labels with tools gutter', () => {

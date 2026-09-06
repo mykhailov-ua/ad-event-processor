@@ -93,7 +93,7 @@ func (r rolesReloader) ReloadRoles() error {
 
 func (r rolesReloader) RolesPath() string { return authz.DefaultRolesPath() }
 
-// BuildAdminAPIRegistry: cold-path RouteRegistry for RegisterRoutes (register.go); no HTTP listen here.
+// BuildAdminAPIRegistry returns cold-path RouteRegistry for RegisterRoutes (register.go); no HTTP listen here.
 // Returns empty registry when pool or svc nil so RegisterRoutes is a no-op until serve.go wires PG.
 func (h *Handler) BuildAdminAPIRegistry(pool *pgxpool.Pool, redisShards []redis.UniversalClient) RouteRegistry {
 	if h == nil || h.svc == nil || pool == nil {
@@ -110,6 +110,7 @@ func (h *Handler) BuildAdminAPIRegistry(pool *pgxpool.Pool, redisShards []redis.
 	}
 	authCustomer := h.authorizeCustomerAccess
 	authCampaign := h.authorizeCampaignAccess
+	authCampaignIDs := h.ensureCampaignIDsAccess
 	isAdmin := func(r *http.Request) bool {
 		u, ok := GetUser(r.Context())
 		return ok && !u.IsUser()
@@ -151,6 +152,7 @@ func (h *Handler) BuildAdminAPIRegistry(pool *pgxpool.Pool, redisShards []redis.
 	if h.cfg != nil && h.cfg.Control.EnableCostSync && len(encKey) >= 32 {
 		costWorker = costsync.NewWorker(pool, encKey)
 		platformWorker = platformsync.NewWorker(pool, encKey, costWorker)
+		svc.SetCostSyncWorker(costWorker)
 	}
 
 	selfServePaymentProvider := ""
@@ -279,6 +281,7 @@ func (h *Handler) BuildAdminAPIRegistry(pool *pgxpool.Pool, redisShards []redis.
 		writeErr:                   writeErr,
 		authCustomer:               authCustomer,
 		authCampaign:               authCampaign,
+		authCampaignIDs:            authCampaignIDs,
 	})
 	return reg
 }

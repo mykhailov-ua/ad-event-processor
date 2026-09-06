@@ -51,25 +51,25 @@ func dmrHTMLAttrEscape(dst, src []byte) []byte {
 	i := 0
 	for i < len(src) {
 		r, size := utf8.DecodeRune(src[i:])
-		switch {
-		case r == '&':
+		switch r {
+		case '&':
 			dst = append(dst, "&amp;"...)
-		case r == '"':
+		case '"':
 			dst = append(dst, "&quot;"...)
-		case r == '\'':
+		case '\'':
 			dst = append(dst, "&#39;"...)
-		case r == '<':
+		case '<':
 			dst = append(dst, "&lt;"...)
-		case r == '>':
+		case '>':
 			dst = append(dst, "&gt;"...)
-		case r == '\r':
+		case '\r':
 			dst = append(dst, "&#13;"...)
-		case r == '\n':
+		case '\n':
 			dst = append(dst, "&#10;"...)
 
-		case r == 0x2028:
+		case 0x2028:
 			dst = append(dst, "&#8232;"...)
-		case r == 0x2029:
+		case 0x2029:
 			dst = append(dst, "&#8233;"...)
 		default:
 			dst = append(dst, src[i:i+size]...)

@@ -1,7 +1,7 @@
 // Package platformsync mirrors linked ad-network campaigns and applies remote pause/resume/budget mutations.
 //
 // Role:
-//   - Worker (worker.go) holds a PG advisory lock and runs 15-minute cycles: sync link statuses from vendor APIs
+//   - Worker (worker.go) holds a PG advisory lock and runs 15-minute cycles (platformSyncCycleTimeout 2 min per cycle): sync link statuses from vendor APIs
 //     and drain platform_campaign_mutations pending rows.
 //   - facebook.go, google.go, tiktok.go, microsoft_ads.go implement fetch and mutate HTTP for each network.
 //   - preview.go dry-runs mutations (PreviewMutation) before platformadmin enqueues pending rows.

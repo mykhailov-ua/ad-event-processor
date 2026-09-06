@@ -284,17 +284,17 @@ var (
 
 	ModeratorIntelFeedRefreshTotal = promauto.NewCounter(prometheus.CounterOpts{
 		Name: "ad_moderator_intel_feed_refresh_total",
-		Help: "Moderator intel feed refresh cycles completed",
+		Help: "Review traffic intelligence feed refresh cycles completed",
 	})
 
 	ModeratorIntelFeedRefreshErrorsTotal = promauto.NewCounter(prometheus.CounterOpts{
 		Name: "ad_moderator_intel_feed_refresh_errors_total",
-		Help: "Moderator intel feed parse or verify failures; previous snapshot retained",
+		Help: "Review traffic intelligence feed parse or verify failures; previous snapshot retained",
 	})
 
 	ModeratorIntelLPMMatchTotal = promauto.NewCounterVec(prometheus.CounterOpts{
 		Name: "ad_moderator_intel_lpm_match_total",
-		Help: "Moderator intel pre-filter matches by network label",
+		Help: "Review traffic intelligence pre-filter matches by network label",
 	}, []string{"network"})
 
 	ModeratorIntelLPMUninitialized = promauto.NewGauge(prometheus.GaugeOpts{
@@ -515,6 +515,34 @@ var (
 	WorkerPoolRejectTotal = promauto.NewCounter(prometheus.CounterOpts{
 		Name: "ad_worker_pool_reject_total",
 		Help: "Requests rejected because pinned worker pool queue is full",
+	})
+	WorkerArenaMissTotal = promauto.NewCounter(prometheus.CounterOpts{
+		Name: "ad_worker_arena_miss_total",
+		Help: "Offload wire copies that missed per-worker arena slots (pool or heap fallback)",
+	})
+	WorkerOffloadHeapCopyTotal = promauto.NewCounter(prometheus.CounterOpts{
+		Name: "ad_worker_offload_heap_copy_total",
+		Help: "Offload wire copies allocated on heap when arena and pool paths are unavailable or frame exceeds max pool object size",
+	})
+	WorkerOffloadBufferPoolTotal = promauto.NewCounter(prometheus.CounterOpts{
+		Name: "ad_worker_offload_buffer_pool_total",
+		Help: "Offload wire copies served from requestBufferPool after arena miss",
+	})
+	RequestBufferPoolTrimTotal = promauto.NewCounter(prometheus.CounterOpts{
+		Name: "ad_request_buffer_pool_trim_total",
+		Help: "Request buffer pool objects dropped on Put because cap exceeded max pool object size",
+	})
+	ConnContextOversizedBufferTotal = promauto.NewCounter(prometheus.CounterOpts{
+		Name: "ad_conn_context_oversized_buffer_total",
+		Help: "ConnContext BufSlice retained with cap above conn context limit when returned to contextPool",
+	})
+	IngestBufferPoolTrimTotal = promauto.NewCounter(prometheus.CounterOpts{
+		Name: "ad_ingest_buffer_pool_trim_total",
+		Help: "bytes.Buffer objects dropped on Put because cap exceeded ingest max pool object size",
+	})
+	StreamIDRingBufferEmptyTotal = promauto.NewCounter(prometheus.CounterOpts{
+		Name: "ad_stream_id_ring_empty_total",
+		Help: "Stream producer click IDs generated synchronously because IDRingBuffer was empty",
 	})
 
 	HandlerLogDropTotal = promauto.NewCounter(prometheus.CounterOpts{

@@ -6,6 +6,14 @@ import (
 	"strings"
 )
 
+func writeSeedSQL(w io.Writer, format string, args ...any) {
+	_, _ = fmt.Fprintf(w, format, args...)
+}
+
+func writeSeedSQLLine(w io.Writer, line string) {
+	_, _ = fmt.Fprintln(w, line)
+}
+
 func sqlLiteral(value string) string {
 	return "'" + strings.ReplaceAll(value, "'", "''") + "'"
 }
@@ -15,14 +23,14 @@ func writeSeedIngestSQL(w io.Writer, count int) {
 		count = 100
 	}
 
-	fmt.Fprintln(w, "INSERT INTO customers (id, name, balance, currency, allowed_overdraft)")
-	fmt.Fprintln(w, "VALUES")
+	writeSeedSQLLine(w, "INSERT INTO customers (id, name, balance, currency, allowed_overdraft)")
+	writeSeedSQLLine(w, "VALUES")
 	for i := 1; i <= count; i++ {
 		sep := ","
 		if i == count {
 			sep = ""
 		}
-		fmt.Fprintf(
+		writeSeedSQL(
 			w,
 			"  ('%s', %s, %d, 'USD', 0)%s\n",
 			seedCustomerUUID(i),
@@ -31,17 +39,17 @@ func writeSeedIngestSQL(w io.Writer, count int) {
 			sep,
 		)
 	}
-	fmt.Fprintln(w, "ON CONFLICT (id) DO UPDATE SET name = EXCLUDED.name, balance = EXCLUDED.balance;")
-	fmt.Fprintln(w)
+	writeSeedSQLLine(w, "ON CONFLICT (id) DO UPDATE SET name = EXCLUDED.name, balance = EXCLUDED.balance;")
+	writeSeedSQLLine(w, "")
 
-	fmt.Fprintln(w, "INSERT INTO advertiser_brands (id, customer_id, name)")
-	fmt.Fprintln(w, "VALUES")
+	writeSeedSQLLine(w, "INSERT INTO advertiser_brands (id, customer_id, name)")
+	writeSeedSQLLine(w, "VALUES")
 	for i := 1; i <= count; i++ {
 		sep := ","
 		if i == count {
 			sep = ""
 		}
-		fmt.Fprintf(
+		writeSeedSQL(
 			w,
 			"  ('%s', '%s', %s)%s\n",
 			seedBrandUUID(i),
@@ -50,17 +58,17 @@ func writeSeedIngestSQL(w io.Writer, count int) {
 			sep,
 		)
 	}
-	fmt.Fprintln(w, "ON CONFLICT (id) DO NOTHING;")
-	fmt.Fprintln(w)
+	writeSeedSQLLine(w, "ON CONFLICT (id) DO NOTHING;")
+	writeSeedSQLLine(w, "")
 
-	fmt.Fprintln(w, "INSERT INTO brand_creatives (id, brand_id, name, landing_url, weight, status)")
-	fmt.Fprintln(w, "VALUES")
+	writeSeedSQLLine(w, "INSERT INTO brand_creatives (id, brand_id, name, landing_url, weight, status)")
+	writeSeedSQLLine(w, "VALUES")
 	for i := 1; i <= count; i++ {
 		sep := ","
 		if i == count {
 			sep = ""
 		}
-		fmt.Fprintf(
+		writeSeedSQL(
 			w,
 			"  ('%s', '%s', %s, 'https://trk.horizon-media.io/landing?cid={click_id}', %d, 'ACTIVE')%s\n",
 			seedCreativeUUID(i),
@@ -70,14 +78,14 @@ func writeSeedIngestSQL(w io.Writer, count int) {
 			sep,
 		)
 	}
-	fmt.Fprintln(w, `ON CONFLICT (brand_id, name) DO UPDATE SET
+	writeSeedSQLLine(w, `ON CONFLICT (brand_id, name) DO UPDATE SET
   landing_url = EXCLUDED.landing_url,
   status = 'ACTIVE',
   updated_at = NOW();`)
-	fmt.Fprintln(w)
+	writeSeedSQLLine(w, "")
 
-	fmt.Fprintln(w, "INSERT INTO campaigns (id, name, budget_limit, status, customer_id, pacing_mode, daily_budget, timezone, freq_limit, freq_window, brand_id, target_url, target_countries)")
-	fmt.Fprintln(w, "VALUES")
+	writeSeedSQLLine(w, "INSERT INTO campaigns (id, name, budget_limit, status, customer_id, pacing_mode, daily_budget, timezone, freq_limit, freq_window, brand_id, target_url, target_countries)")
+	writeSeedSQLLine(w, "VALUES")
 	for i := 1; i <= count; i++ {
 		sep := ","
 		if i == count {
@@ -85,8 +93,8 @@ func writeSeedIngestSQL(w io.Writer, count int) {
 		}
 		budgetLimit := int64(4_200_000_000 + (int64(i%17) * 650_000_000) + (int64(i%9) * 384_729))
 		dailyBudget := int64(380_000_000 + (int64(i%11) * 95_000_000) + (int64(i%6) * 18_473))
-		targetCountries := seedUiDemoTargetCountries(i)
-		fmt.Fprintf(
+		targetCountries := seedUIDemoTargetCountries(i)
+		writeSeedSQL(
 			w,
 			"  ('%s', %s, %d, 'ACTIVE', '%s', 'ASAP', %d, 'UTC', 100000000, 3600, '%s', 'https://trk.horizon-media.io/landing?cid={click_id}', %s)%s\n",
 			seedCampaignUUID(i),
@@ -99,16 +107,16 @@ func writeSeedIngestSQL(w io.Writer, count int) {
 			sep,
 		)
 	}
-	fmt.Fprintln(w, `ON CONFLICT (id) DO UPDATE SET
+	writeSeedSQLLine(w, `ON CONFLICT (id) DO UPDATE SET
   current_spend = 0,
   status = 'ACTIVE',
   budget_limit = EXCLUDED.budget_limit,
   brand_id = EXCLUDED.brand_id,
   target_url = EXCLUDED.target_url,
   target_countries = EXCLUDED.target_countries;`)
-	fmt.Fprintln(w)
+	writeSeedSQLLine(w, "")
 
-	fmt.Fprintf(w, `INSERT INTO billing.license_status (
+	writeSeedSQL(w, `INSERT INTO billing.license_status (
     deployment_id, license_id, plan_code, valid_until, state, entitlements_json, last_verified_at
 ) VALUES (
     '%s',
@@ -132,14 +140,14 @@ func writeSeedPrepTestSQL(w io.Writer, count int) {
 		count = 100
 	}
 
-	fmt.Fprintln(w, "INSERT INTO customers (id, name, balance, currency, allowed_overdraft)")
-	fmt.Fprintln(w, "VALUES")
+	writeSeedSQLLine(w, "INSERT INTO customers (id, name, balance, currency, allowed_overdraft)")
+	writeSeedSQLLine(w, "VALUES")
 	for i := 1; i <= count; i++ {
 		sep := ","
 		if i == count {
 			sep = ""
 		}
-		fmt.Fprintf(
+		writeSeedSQL(
 			w,
 			"  ('%s', %s, %d, 'USD', 0)%s\n",
 			seedCustomerUUID(i),
@@ -148,13 +156,13 @@ func writeSeedPrepTestSQL(w io.Writer, count int) {
 			sep,
 		)
 	}
-	fmt.Fprintln(w, `ON CONFLICT (id) DO UPDATE SET
+	writeSeedSQLLine(w, `ON CONFLICT (id) DO UPDATE SET
   name = EXCLUDED.name,
   balance = EXCLUDED.balance;`)
-	fmt.Fprintln(w)
+	writeSeedSQLLine(w, "")
 
-	fmt.Fprintln(w, "INSERT INTO campaigns (id, name, budget_limit, status, customer_id, pacing_mode, daily_budget, timezone, freq_limit, freq_window)")
-	fmt.Fprintln(w, "VALUES")
+	writeSeedSQLLine(w, "INSERT INTO campaigns (id, name, budget_limit, status, customer_id, pacing_mode, daily_budget, timezone, freq_limit, freq_window)")
+	writeSeedSQLLine(w, "VALUES")
 	for i := 1; i <= count; i++ {
 		sep := ","
 		if i == count {
@@ -162,7 +170,7 @@ func writeSeedPrepTestSQL(w io.Writer, count int) {
 		}
 		budgetLimit := int64(4_200_000_000 + (int64(i%17) * 650_000_000) + (int64(i%9) * 384_729))
 		dailyBudget := int64(380_000_000 + (int64(i%11) * 95_000_000) + (int64(i%6) * 18_473))
-		fmt.Fprintf(
+		writeSeedSQL(
 			w,
 			"  ('%s', %s, %d, 'ACTIVE', '%s', 'ASAP', %d, 'UTC', 100000000, 3600)%s\n",
 			seedCampaignUUID(i),
@@ -173,7 +181,7 @@ func writeSeedPrepTestSQL(w io.Writer, count int) {
 			sep,
 		)
 	}
-	fmt.Fprintln(w, `ON CONFLICT (id) DO UPDATE SET
+	writeSeedSQLLine(w, `ON CONFLICT (id) DO UPDATE SET
   name = EXCLUDED.name,
   current_spend = 0,
   status = 'ACTIVE',
@@ -187,19 +195,19 @@ func writeLoadTestStackSeedSQL(w io.Writer, count int) {
 		count = 100
 	}
 
-	fmt.Fprintln(w, "TRUNCATE TABLE events CASCADE;")
-	fmt.Fprintln(w, "TRUNCATE TABLE campaign_stats CASCADE;")
-	fmt.Fprintln(w, "TRUNCATE TABLE campaigns CASCADE;")
-	fmt.Fprintln(w)
+	writeSeedSQLLine(w, "TRUNCATE TABLE events CASCADE;")
+	writeSeedSQLLine(w, "TRUNCATE TABLE campaign_stats CASCADE;")
+	writeSeedSQLLine(w, "TRUNCATE TABLE campaigns CASCADE;")
+	writeSeedSQLLine(w, "")
 
-	fmt.Fprintln(w, "INSERT INTO customers (id, name, balance, currency, allowed_overdraft)")
-	fmt.Fprintln(w, "VALUES")
+	writeSeedSQLLine(w, "INSERT INTO customers (id, name, balance, currency, allowed_overdraft)")
+	writeSeedSQLLine(w, "VALUES")
 	for i := 1; i <= count; i++ {
 		sep := ","
 		if i == count {
 			sep = ""
 		}
-		fmt.Fprintf(
+		writeSeedSQL(
 			w,
 			"  ('%s', %s, %d, 'USD', 0)%s\n",
 			loadTestSequentialUUID(i),
@@ -208,13 +216,13 @@ func writeLoadTestStackSeedSQL(w io.Writer, count int) {
 			sep,
 		)
 	}
-	fmt.Fprintln(w, `ON CONFLICT (id) DO UPDATE SET
+	writeSeedSQLLine(w, `ON CONFLICT (id) DO UPDATE SET
   name = EXCLUDED.name,
   balance = EXCLUDED.balance;`)
-	fmt.Fprintln(w)
+	writeSeedSQLLine(w, "")
 
-	fmt.Fprintln(w, "INSERT INTO campaigns (id, name, budget_limit, status, customer_id, pacing_mode, daily_budget, timezone, freq_limit, freq_window)")
-	fmt.Fprintln(w, "VALUES")
+	writeSeedSQLLine(w, "INSERT INTO campaigns (id, name, budget_limit, status, customer_id, pacing_mode, daily_budget, timezone, freq_limit, freq_window)")
+	writeSeedSQLLine(w, "VALUES")
 	for i := 1; i <= count; i++ {
 		sep := ","
 		if i == count {
@@ -222,7 +230,7 @@ func writeLoadTestStackSeedSQL(w io.Writer, count int) {
 		}
 		budgetLimit := int64(4_200_000_000 + (int64(i%17) * 650_000_000) + (int64(i%9) * 384_729))
 		dailyBudget := int64(380_000_000 + (int64(i%11) * 95_000_000) + (int64(i%6) * 18_473))
-		fmt.Fprintf(
+		writeSeedSQL(
 			w,
 			"  ('%s', %s, %d, 'ACTIVE', '%s', 'ASAP', %d, 'UTC', 100000000, 3600)%s\n",
 			loadTestSequentialUUID(i),
@@ -233,7 +241,7 @@ func writeLoadTestStackSeedSQL(w io.Writer, count int) {
 			sep,
 		)
 	}
-	fmt.Fprintln(w, `ON CONFLICT (id) DO UPDATE SET
+	writeSeedSQLLine(w, `ON CONFLICT (id) DO UPDATE SET
   name = EXCLUDED.name,
   current_spend = 0,
   status = 'ACTIVE',
@@ -246,12 +254,12 @@ func writeSeedUUIDShell(w io.Writer, count int) {
 	if count < 1 {
 		count = 100
 	}
-	fmt.Fprintf(w, "AED_SEED_DEPLOYMENT_ID='%s'\n", seedDeploymentUUID())
-	fmt.Fprintf(w, "AED_SEED_LICENSE_ID='%s'\n", seedLicenseRecordUUID())
+	writeSeedSQL(w, "AED_SEED_DEPLOYMENT_ID='%s'\n", seedDeploymentUUID())
+	writeSeedSQL(w, "AED_SEED_LICENSE_ID='%s'\n", seedLicenseRecordUUID())
 	for i := 1; i <= count; i++ {
-		fmt.Fprintf(w, "AED_CUSTOMER_UUID_%d='%s'\n", i, seedCustomerUUID(i))
-		fmt.Fprintf(w, "AED_BRAND_UUID_%d='%s'\n", i, seedBrandUUID(i))
-		fmt.Fprintf(w, "AED_CREATIVE_UUID_%d='%s'\n", i, seedCreativeUUID(i))
-		fmt.Fprintf(w, "AED_CAMPAIGN_UUID_%d='%s'\n", i, seedCampaignUUID(i))
+		writeSeedSQL(w, "AED_CUSTOMER_UUID_%d='%s'\n", i, seedCustomerUUID(i))
+		writeSeedSQL(w, "AED_BRAND_UUID_%d='%s'\n", i, seedBrandUUID(i))
+		writeSeedSQL(w, "AED_CREATIVE_UUID_%d='%s'\n", i, seedCreativeUUID(i))
+		writeSeedSQL(w, "AED_CAMPAIGN_UUID_%d='%s'\n", i, seedCampaignUUID(i))
 	}
 }

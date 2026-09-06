@@ -12,7 +12,10 @@ import {
   campaignListRowClass,
   campaignStatusBadgeClass,
 } from '@/domains/campaigns/list/campaign_list_row_tone';
-import { profitToneClassFromMicro, roiToneClassFromRate } from '@/domains/campaigns/list/campaign_list_tone';
+import {
+  profitToneClassFromMicro,
+  roiToneClassFromRate,
+} from '@/domains/campaigns/list/campaign_list_tone';
 import type { CampaignListMiddleColumnId } from '@/domains/campaigns/list/campaign_list_columns';
 import { campaignDisplayId } from '@/domains/campaigns/list/campaign_display_id';
 import type { CampaignWithMoneyDisplay } from '@/domains/campaigns/list/campaign_metrics_shared';
@@ -106,7 +109,7 @@ export function buildCampaignRowVm(
   margin: CampaignMargin | undefined,
   customerNameById: Record<string, string>,
   ownerEmailById: Record<string, string>,
-  selected: boolean,
+  selected: boolean
 ): CampaignRowVm {
   const row = campaign as CampaignWithMoneyDisplay;
   const { clicks, impressions, blocks, costMicro, profitMicro, revenueMicro, funnel } =
@@ -195,7 +198,7 @@ export function buildCampaignRowVm(
 // Width probe strings must match CampaignListTableMiddleCell output.
 export function campaignListMiddleCellDisplayText(
   columnId: CampaignListMiddleColumnId,
-  vm: CampaignRowVm,
+  vm: CampaignRowVm
 ): string {
   switch (columnId) {
     case 'status':

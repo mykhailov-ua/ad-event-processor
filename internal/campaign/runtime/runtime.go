@@ -13,7 +13,7 @@ import (
 	"github.com/jackc/pgx/v5/pgxpool"
 )
 
-// Runtime: PG reads/writes in ops.go; campaign.Effects (controlplane Service) owns outbox rows,
+// Runtime performs PG reads/writes in ops.go; campaign.Effects (controlplane Service) owns outbox rows,
 // publish gates, and post-commit Redis epoch fanout. No direct Redis or tracker I/O here.
 type Runtime struct {
 	pool            *pgxpool.Pool
@@ -133,6 +133,24 @@ func (r *Runtime) ExportCampaign(ctx context.Context, campaignID uuid.UUID) (cam
 		return campaign.CampaignExportBundle{}, campaign.ErrServiceUnavailable()
 	}
 	return importexport.ExportCampaign(ctx, r.effects.CampaignImportExportHost(), campaignID)
+}
+
+func (r *Runtime) ExportCampaignsBatch(ctx context.Context, ids []uuid.UUID) campaign.ExportCampaignsBatchResult {
+	if r == nil || r.effects == nil {
+		out := campaign.ExportCampaignsBatchResult{
+			Items:  make(map[uuid.UUID]campaign.CampaignExportBundle),
+			Errors: make(map[uuid.UUID]error),
+		}
+		for _, id := range ids {
+			out.Errors[id] = campaign.ErrServiceUnavailable()
+		}
+		return out
+	}
+	batch := importexport.ExportCampaignsBatch(ctx, r.effects.CampaignImportExportHost(), ids)
+	return campaign.ExportCampaignsBatchResult{
+		Items:  batch.Items,
+		Errors: batch.Errors,
+	}
 }
 
 func (r *Runtime) ImportCampaign(ctx context.Context, spec campaign.ImportCampaignSpec) (campaign.ImportCampaignResult, error) {

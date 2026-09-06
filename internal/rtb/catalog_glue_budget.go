@@ -162,13 +162,6 @@ func hashUserID(userID string) uint64 {
 	return HashBytes64(unsafe.Slice(unsafe.StringData(userID), len(userID)))
 }
 
-func hashUserIDBytes(userID []byte) uint64 {
-	if len(userID) == 0 {
-		return 0
-	}
-	return HashBytes64(userID)
-}
-
 func CampaignDataFromDomain(camp *domain.Campaign, input RtbCampaignInput) CampaignData {
 	remaining := camp.BudgetLimit - camp.CurrentSpend
 	if remaining < 0 {

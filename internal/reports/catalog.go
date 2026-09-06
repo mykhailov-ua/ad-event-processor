@@ -34,7 +34,7 @@ var ReportCatalogEntries = []ReportCatalogRowDTO{
 	{Key: "campaign-toggle-cohort", Title: "Campaign toggle cohort", Description: "Before/after metrics around fraud toggle changes", Category: "fraud", RequiredPermissions: []string{"audit:read", "campaigns:read"}, DefaultRange: "7d"},
 	{Key: "layer-desync-drilldown", Title: "Layer desync drilldown", Description: "Layer desync fraud reasons and hourly trend", Category: "fraud", RequiredPermissions: reportPermsFraudOperator, DefaultRange: "7d"},
 	{Key: "wire-signal-breakdown", Title: "Wire signal breakdown", Description: "L7/TLS/H2 wire fraud signals", Category: "fraud", RequiredPermissions: ReportPermsFraudCustomer(), DefaultRange: "7d"},
-	{Key: "silent-reject-impression-funnel", Title: "Silent reject impression funnel", Description: "Billable vs silent reject vs IVT impressions", Category: "fraud", RequiredPermissions: ReportPermsFraudCustomer(), DefaultRange: "7d"},
+	{Key: "silent-reject-impression-funnel", Title: "Non-blocking fraud response funnel", Description: "Billable vs non-blocking fraud response vs IVT impressions", Category: "fraud", RequiredPermissions: ReportPermsFraudCustomer(), DefaultRange: "7d"},
 	{Key: "ivt-by-source", Title: "IVT by source", Description: "Invalid traffic by sub and geo", Category: "fraud", RequiredPermissions: ReportPermsFraudCustomer(), DefaultRange: "7d", ExportFormats: []string{"csv"}},
 	{Key: "filter-rejects", Title: "Filter rejects", Description: "Ingress filter reject kinds", Category: "fraud", RequiredPermissions: []string{"audit:read"}, DefaultRange: "24h"},
 	{Key: "fraud-evidence-pack", Title: "Fraud evidence pack", Description: "Signed per-click fraud evidence", Category: "fraud", RequiredPermissions: reportPermsFraudOperator, DefaultRange: "7d"},

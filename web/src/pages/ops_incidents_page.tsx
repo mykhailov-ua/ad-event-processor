@@ -1,16 +1,6 @@
-import { getOpsIncidents } from '@/api/ops_api';
 import { OpsIncidents } from '@/domains/ops/ops_incidents';
-import { useResource } from '@/api/use_resource';
+import { useOpsIncidentsPageWorkspace } from '@/domains/ops/use_ops_incidents_page_workspace';
 
 export function OpsIncidentsPage() {
-  const { data, error, fetching } = useResource((signal) => getOpsIncidents(signal), []);
-
-  return (
-    <OpsIncidents
-      snapshot={data}
-      fetching={fetching}
-      error={error}
-      hasSnapshot={data != null}
-    />
-  );
+  return <OpsIncidents {...useOpsIncidentsPageWorkspace()} />;
 }

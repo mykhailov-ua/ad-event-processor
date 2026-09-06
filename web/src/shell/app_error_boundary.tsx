@@ -2,6 +2,7 @@ import { Component, type ErrorInfo, type ReactNode } from 'react';
 
 import { AdminErrorPage } from '@/shell/admin_error_page';
 
+// Catches render-throw in route subtree; does not intercept async fetch errors (those use ErrorBlock).
 type AppErrorBoundaryProps = {
   children: ReactNode;
   layout?: 'standalone' | 'embedded';

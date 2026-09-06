@@ -23,11 +23,11 @@ type Invoice struct {
 	TotalMicro           int64         `json:"total_micro"`
 	TotalMicroDisplay    string        `json:"total_micro_display,omitempty"`
 	Currency             string        `json:"currency"`
-	TaxScheme     string        `json:"tax_scheme"`
-	TaxRateBps    int32         `json:"tax_rate_bps"`
-	Lines         []InvoiceLine `json:"lines"`
-	CreatedAt     time.Time     `json:"-"`
-	PDFURL        string        `json:"pdf_url,omitempty"`
+	TaxScheme            string        `json:"tax_scheme"`
+	TaxRateBps           int32         `json:"tax_rate_bps"`
+	Lines                []InvoiceLine `json:"lines"`
+	CreatedAt            time.Time     `json:"-"`
+	PDFURL               string        `json:"pdf_url,omitempty"`
 }
 
 func (i Invoice) MarshalJSON() ([]byte, error) {

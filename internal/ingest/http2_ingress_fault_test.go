@@ -32,7 +32,7 @@ func http2FaultMalformedCases() []http2FaultCase {
 	return []http2FaultCase{
 		{name: "incomplete_preface", payload: h2ClientPreface[:20], maxBody: maxBody, wantErr: errIncompleteRequest},
 		{name: "garbage_no_preface", payload: randomWireGarbage(64), maxBody: maxBody, wantErr: errInvalidRequest},
-		{name: "preface_only", payload: append([]byte(nil), h2ClientPreface[:]...), maxBody: maxBody, wantErr: errIncompleteRequest},
+		{name: "preface_only", payload: append([]byte(nil), h2ClientPreface...), maxBody: maxBody, wantErr: errIncompleteRequest},
 		{name: "oversized_frame_length", payload: buildH2WireAfterPreface([]byte{0xff, 0xff, 0xff, h2FrameData, 0x00, 0x00, 0x00, 0x00, 0x01}), maxBody: maxBody, wantErr: errIncompleteRequest},
 		{name: "headers_stream_zero", payload: buildH2WireAfterPreface(buildH2Frame(0, h2FrameHeaders, h2FlagEndHeaders|h2FlagEndStream, []byte{0x83})), maxBody: maxBody, wantErr: errInvalidRequest},
 		{name: "invalid_hpack_index", payload: buildH2WireAfterPreface(buildH2HeadersDataFrames(1, []byte{0xff}, nil)), maxBody: maxBody, wantErr: errIncompleteRequest},
@@ -40,13 +40,13 @@ func http2FaultMalformedCases() []http2FaultCase {
 		{name: "payload_too_large", payload: buildH2OversizedDataFrame(maxBody + 1), maxBody: maxBody, wantErr: errPayloadTooLarge},
 		{name: "valid_track", payload: validTrack, maxBody: maxBody, wantOK: true},
 		{name: "header_block_oversized", payload: buildH2OversizedHeaderBlock(), maxBody: maxBody, wantErr: errInvalidRequest},
-		{name: "settings_only", payload: append(append([]byte(nil), h2ClientPreface[:]...), buildH2Frame(0, h2FrameSettings, 0, nil)...), maxBody: maxBody, wantErr: errIncompleteRequest},
+		{name: "settings_only", payload: append(append([]byte(nil), h2ClientPreface...), buildH2Frame(0, h2FrameSettings, 0, nil)...), maxBody: maxBody, wantErr: errIncompleteRequest},
 	}
 }
 
 func buildH2WireAfterPreface(frames []byte) []byte {
 	var buf bytes.Buffer
-	buf.Write(h2ClientPreface[:])
+	buf.Write(h2ClientPreface)
 	buf.Write(frames)
 	return buf.Bytes()
 }

@@ -30,7 +30,7 @@ func TestRetentionJanitor_DeletesOldRows(t *testing.T) {
 	require.NoError(t, err)
 
 	_, err = pool.Exec(ctx, `
-		UPDATE notify.notifications
+		UPDATE notifier.notifications
 		SET status = 'SENT', created_at = NOW() - interval '40 days'
 		WHERE status = 'PENDING'`)
 	require.NoError(t, err)
@@ -39,7 +39,7 @@ func TestRetentionJanitor_DeletesOldRows(t *testing.T) {
 	janitor.runOnce(ctx)
 
 	var remaining int
-	err = pool.QueryRow(ctx, `SELECT COUNT(*) FROM notify.notifications`).Scan(&remaining)
+	err = pool.QueryRow(ctx, `SELECT COUNT(*) FROM notifier.notifications`).Scan(&remaining)
 	require.NoError(t, err)
 	assert.Equal(t, 0, remaining)
 }

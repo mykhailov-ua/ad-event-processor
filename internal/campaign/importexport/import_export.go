@@ -638,59 +638,248 @@ func resolveImportFlowRefs(
 	}
 
 	landerIDs := make(map[string]uuid.UUID, len(landerByRef))
-	for ref, row := range landerByRef {
-		id, err := upsertLanderByNameURL(ctx, tx, row.Name, row.URL)
+	if len(landerByRef) > 0 {
+		ids, err := batchUpsertLandersByNameURL(ctx, tx, landerByRef)
 		if err != nil {
 			return nil, nil, nil, err
 		}
-		landerIDs[ref] = id
+		landerIDs = ids
 	}
 	offerIDs := make(map[string]uuid.UUID, len(offerByRef))
-	for ref, row := range offerByRef {
-		id, err := upsertOfferByNameURL(ctx, tx, row.Name, row.URL)
+	if len(offerByRef) > 0 {
+		ids, err := batchUpsertOffersByNameURL(ctx, tx, offerByRef)
 		if err != nil {
 			return nil, nil, nil, err
 		}
-		offerIDs[ref] = id
+		offerIDs = ids
 	}
 	return landerIDs, offerIDs, bundle.Flow.Paths, nil
 }
 
 func upsertLanderByNameURL(ctx context.Context, tx pgx.Tx, name, url string) (uuid.UUID, error) {
-	name = strings.TrimSpace(name)
-	if name == "" {
-		return uuid.Nil, campaign.ErrValidationf("lander name is required")
-	}
-	var id uuid.UUID
-	err := tx.QueryRow(ctx, `
-SELECT id FROM landers WHERE name = $1 AND COALESCE(url, '') = $2 LIMIT 1`, name, strings.TrimSpace(url)).Scan(&id)
-	if err == nil {
-		return id, nil
-	}
-	if !errors.Is(err, pgx.ErrNoRows) {
+	ids, err := batchUpsertLandersByNameURL(ctx, tx, map[string]campaign.CampaignExportLander{
+		"__single__": {Name: name, URL: url},
+	})
+	if err != nil {
 		return uuid.Nil, err
 	}
-	err = tx.QueryRow(ctx, `
-INSERT INTO landers (name, url) VALUES ($1, NULLIF($2, '')) RETURNING id`, name, strings.TrimSpace(url)).Scan(&id)
-	return id, err
+	return ids["__single__"], nil
+}
+
+func batchUpsertLandersByNameURL(ctx context.Context, tx pgx.Tx, byRef map[string]campaign.CampaignExportLander) (map[string]uuid.UUID, error) {
+	if len(byRef) == 0 {
+		return nil, nil
+	}
+	type landerPair struct {
+		ref  string
+		name string
+		url  string
+	}
+	pairs := make([]landerPair, 0, len(byRef))
+	names := make([]string, 0, len(byRef))
+	urls := make([]string, 0, len(byRef))
+	for ref, row := range byRef {
+		name := strings.TrimSpace(row.Name)
+		if name == "" {
+			return nil, campaign.ErrValidationf("lander name is required")
+		}
+		url := strings.TrimSpace(row.URL)
+		pairs = append(pairs, landerPair{ref: ref, name: name, url: url})
+		names = append(names, name)
+		urls = append(urls, url)
+	}
+	found := make(map[string]uuid.UUID, len(pairs))
+	rows, err := tx.Query(ctx, `
+SELECT l.id, l.name, COALESCE(l.url, '')
+FROM landers l
+INNER JOIN unnest($1::text[], $2::text[]) AS q(name, url)
+  ON l.name = q.name AND COALESCE(l.url, '') = q.url`, names, urls)
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+	for rows.Next() {
+		var id uuid.UUID
+		var name, url string
+		if err := rows.Scan(&id, &name, &url); err != nil {
+			return nil, err
+		}
+		key := landerNameURLKey(name, url)
+		for _, pair := range pairs {
+			if landerNameURLKey(pair.name, pair.url) == key {
+				found[pair.ref] = id
+			}
+		}
+	}
+	if err := rows.Err(); err != nil {
+		return nil, err
+	}
+	missingNames := make([]string, 0)
+	missingURLs := make([]string, 0)
+	missingRefs := make([]string, 0)
+	for _, pair := range pairs {
+		if _, ok := found[pair.ref]; ok {
+			continue
+		}
+		missingRefs = append(missingRefs, pair.ref)
+		missingNames = append(missingNames, pair.name)
+		missingURLs = append(missingURLs, pair.url)
+	}
+	if len(missingRefs) > 0 {
+		insertRows, err := tx.Query(ctx, `
+INSERT INTO landers (name, url)
+SELECT name, NULLIF(url, '')
+FROM unnest($1::text[], $2::text[]) AS q(name, url)
+RETURNING id, name, COALESCE(url, '')`, missingNames, missingURLs)
+		if err != nil {
+			return nil, err
+		}
+		defer insertRows.Close()
+		for insertRows.Next() {
+			var id uuid.UUID
+			var name, url string
+			if err := insertRows.Scan(&id, &name, &url); err != nil {
+				return nil, err
+			}
+			key := landerNameURLKey(name, url)
+			for _, ref := range missingRefs {
+				if _, ok := found[ref]; ok {
+					continue
+				}
+				for _, pair := range pairs {
+					if pair.ref == ref && landerNameURLKey(pair.name, pair.url) == key {
+						found[ref] = id
+					}
+				}
+			}
+		}
+		if err := insertRows.Err(); err != nil {
+			return nil, err
+		}
+	}
+	for _, pair := range pairs {
+		if _, ok := found[pair.ref]; !ok {
+			return nil, fmt.Errorf("lander upsert incomplete for ref %q", pair.ref)
+		}
+	}
+	return found, nil
+}
+
+func landerNameURLKey(name, url string) string {
+	return strings.TrimSpace(name) + "\x00" + strings.TrimSpace(url)
 }
 
 func upsertOfferByNameURL(ctx context.Context, tx pgx.Tx, name, url string) (uuid.UUID, error) {
-	name = strings.TrimSpace(name)
-	url = strings.TrimSpace(url)
-	if name == "" || url == "" {
-		return uuid.Nil, campaign.ErrValidationf("offer name and url are required")
-	}
-	var id uuid.UUID
-	err := tx.QueryRow(ctx, `SELECT id FROM offers WHERE name = $1 AND url = $2 LIMIT 1`, name, url).Scan(&id)
-	if err == nil {
-		return id, nil
-	}
-	if !errors.Is(err, pgx.ErrNoRows) {
+	ids, err := batchUpsertOffersByNameURL(ctx, tx, map[string]campaign.CampaignExportOffer{
+		"__single__": {Name: name, URL: url},
+	})
+	if err != nil {
 		return uuid.Nil, err
 	}
-	err = tx.QueryRow(ctx, `INSERT INTO offers (name, url) VALUES ($1, $2) RETURNING id`, name, url).Scan(&id)
-	return id, err
+	return ids["__single__"], nil
+}
+
+func batchUpsertOffersByNameURL(ctx context.Context, tx pgx.Tx, byRef map[string]campaign.CampaignExportOffer) (map[string]uuid.UUID, error) {
+	if len(byRef) == 0 {
+		return nil, nil
+	}
+	type offerPair struct {
+		ref  string
+		name string
+		url  string
+	}
+	pairs := make([]offerPair, 0, len(byRef))
+	names := make([]string, 0, len(byRef))
+	urls := make([]string, 0, len(byRef))
+	for ref, row := range byRef {
+		name := strings.TrimSpace(row.Name)
+		url := strings.TrimSpace(row.URL)
+		if name == "" || url == "" {
+			return nil, campaign.ErrValidationf("offer name and url are required")
+		}
+		pairs = append(pairs, offerPair{ref: ref, name: name, url: url})
+		names = append(names, name)
+		urls = append(urls, url)
+	}
+	found := make(map[string]uuid.UUID, len(pairs))
+	rows, err := tx.Query(ctx, `
+SELECT o.id, o.name, o.url
+FROM offers o
+INNER JOIN unnest($1::text[], $2::text[]) AS q(name, url)
+  ON o.name = q.name AND o.url = q.url`, names, urls)
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+	for rows.Next() {
+		var id uuid.UUID
+		var name, url string
+		if err := rows.Scan(&id, &name, &url); err != nil {
+			return nil, err
+		}
+		key := offerNameURLKey(name, url)
+		for _, pair := range pairs {
+			if offerNameURLKey(pair.name, pair.url) == key {
+				found[pair.ref] = id
+			}
+		}
+	}
+	if err := rows.Err(); err != nil {
+		return nil, err
+	}
+	missingNames := make([]string, 0)
+	missingURLs := make([]string, 0)
+	missingRefs := make([]string, 0)
+	for _, pair := range pairs {
+		if _, ok := found[pair.ref]; ok {
+			continue
+		}
+		missingRefs = append(missingRefs, pair.ref)
+		missingNames = append(missingNames, pair.name)
+		missingURLs = append(missingURLs, pair.url)
+	}
+	if len(missingRefs) > 0 {
+		insertRows, err := tx.Query(ctx, `
+INSERT INTO offers (name, url)
+SELECT name, url
+FROM unnest($1::text[], $2::text[]) AS q(name, url)
+RETURNING id, name, url`, missingNames, missingURLs)
+		if err != nil {
+			return nil, err
+		}
+		defer insertRows.Close()
+		for insertRows.Next() {
+			var id uuid.UUID
+			var name, url string
+			if err := insertRows.Scan(&id, &name, &url); err != nil {
+				return nil, err
+			}
+			key := offerNameURLKey(name, url)
+			for _, ref := range missingRefs {
+				if _, ok := found[ref]; ok {
+					continue
+				}
+				for _, pair := range pairs {
+					if pair.ref == ref && offerNameURLKey(pair.name, pair.url) == key {
+						found[ref] = id
+					}
+				}
+			}
+		}
+		if err := insertRows.Err(); err != nil {
+			return nil, err
+		}
+	}
+	for _, pair := range pairs {
+		if _, ok := found[pair.ref]; !ok {
+			return nil, fmt.Errorf("offer upsert incomplete for ref %q", pair.ref)
+		}
+	}
+	return found, nil
+}
+
+func offerNameURLKey(name, url string) string {
+	return strings.TrimSpace(name) + "\x00" + strings.TrimSpace(url)
 }
 
 func validateFlowPathsWithIDs(

@@ -7,7 +7,7 @@ let inflightRoutes: Promise<CommandPaletteItem[]> | undefined;
  * Fetches command palette routes once per browser session; recents stay fresh on each open.
  */
 export function fetchCommandPaletteRoutesCached(
-  signal?: AbortSignal,
+  signal?: AbortSignal
 ): Promise<CommandPaletteItem[]> {
   if (cachedRoutes) {
     return Promise.resolve(cachedRoutes);

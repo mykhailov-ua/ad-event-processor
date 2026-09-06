@@ -1,6 +1,7 @@
 const STORAGE_KEY = 'adminDevMode';
 
-// Dev-only: show raw error text in ErrorBlock. Boot via ?admin_dev=1|0; persisted in localStorage.
+// T0 dev overlay: enables dev_mock intercept in api/client.ts and raw errors in ErrorBlock.
+// Toggle via ?admin_dev=1|0 before first paint (main.tsx) or localStorage adminDevMode=1.
 let active = false;
 
 function readStored(): boolean {

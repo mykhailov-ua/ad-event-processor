@@ -1,5 +1,10 @@
 import { Link } from 'react-router-dom';
 
+import {
+  FilterField,
+  FILTER_PANEL_SUMMARY_CLASS,
+  INLINE_FILTER_ACTION_GRID_TWO_ACTIONS_CLASS,
+} from '@/shell/filter_panel';
 import { PageChrome } from '@/shell/page_chrome';
 import { ErrorBlock } from '@/shell/error_block';
 import { Button } from '@/components/ui/button';
@@ -65,7 +70,7 @@ export function BillingExports({
         Back to billing
       </Link>
 
-      <div className="ui-filter-panel md:grid-cols-[repeat(auto-fill,minmax(12rem,1fr))]">
+      <div className="ui-filter-panel grid items-end gap-4 md:grid-cols-[repeat(auto-fill,minmax(12rem,1fr))]">
         <div className="grid gap-2 md:col-span-2">
           <Label htmlFor="export-customer-id">Customer ID</Label>
           <Input
@@ -74,11 +79,19 @@ export function BillingExports({
             onChange={(event) => onDraftCustomerIdChange(event.target.value)}
           />
         </div>
-        <DatetimePicker id="export-from" label="From" value={draftFrom} onChange={onDraftFromChange} />
+        <DatetimePicker
+          id="export-from"
+          label="From"
+          value={draftFrom}
+          onChange={onDraftFromChange}
+        />
         <DatetimePicker id="export-to" label="To" value={draftTo} onChange={onDraftToChange} />
         <div className="grid gap-2">
           <Label htmlFor="export-format">Format</Label>
-          <Select value={draftFormat} onValueChange={(value) => onDraftFormatChange(value as 'csv' | 'ndjson')}>
+          <Select
+            value={draftFormat}
+            onValueChange={(value) => onDraftFormatChange(value as 'csv' | 'ndjson')}
+          >
             <SelectTrigger id="export-format" className="w-full text-sm">
               <SelectValue />
             </SelectTrigger>
@@ -93,16 +106,20 @@ export function BillingExports({
         </Button>
       </div>
 
-      <div className="grid max-w-md grid-cols-[1fr_auto_auto] items-end gap-4">
-        <div className="grid gap-2">
-          <Label htmlFor="export-job-id">Job ID</Label>
+      <div className={INLINE_FILTER_ACTION_GRID_TWO_ACTIONS_CLASS}>
+        <FilterField htmlFor="export-job-id" label="Job ID">
           <Input
             id="export-job-id"
             value={draftJobId}
             onChange={(event) => onDraftJobIdChange(event.target.value)}
           />
-        </div>
-        <Button disabled={polling || !draftJobId.trim()} onClick={onPollJob} type="button" variant="outline">
+        </FilterField>
+        <Button
+          disabled={polling || !draftJobId.trim()}
+          onClick={onPollJob}
+          type="button"
+          variant="outline"
+        >
           Poll
         </Button>
         <Button disabled={!canDownload} onClick={onDownloadJob} type="button" variant="secondary">
@@ -111,7 +128,7 @@ export function BillingExports({
       </div>
 
       {job ? (
-        <div className="ui-surface p-4 text-sm">
+        <div className={FILTER_PANEL_SUMMARY_CLASS}>
           <p>
             Status: <strong>{job.status ?? ''}</strong>
           </p>
@@ -120,7 +137,9 @@ export function BillingExports({
         </div>
       ) : null}
 
-      {actionError ? <ErrorBlock title="Export action failed" message={actionError.message} /> : null}
+      {actionError ? (
+        <ErrorBlock title="Export action failed" message={actionError.message} />
+      ) : null}
       {error ? <ErrorBlock title="Could not load job" message={error.message} /> : null}
     </PageChrome>
   );

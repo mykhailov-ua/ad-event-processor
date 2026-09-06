@@ -1,4 +1,4 @@
-import { apiFetch, apiJson, ApiError } from './client.js';
+import { apiFetch, apiJson, parseApiError } from './client.js';
 import type {
   AcceptEulaRequest,
   ApplyLicenseRequest,
@@ -23,7 +23,7 @@ export async function getEulaStatus(signal?: AbortSignal): Promise<EulaStatus> {
 
 export async function acceptEula(
   body: AcceptEulaRequest,
-  signal?: AbortSignal,
+  signal?: AbortSignal
 ): Promise<EulaStatus> {
   return apiJson<EulaStatus>('/api/v1/eula/accept', {
     method: 'POST',
@@ -38,7 +38,7 @@ export async function getLicenseStatus(signal?: AbortSignal): Promise<LicenseSta
 
 export async function applyLicense(
   body: ApplyLicenseRequest,
-  signal?: AbortSignal,
+  signal?: AbortSignal
 ): Promise<LicenseStatus> {
   return apiJson<LicenseStatus>('/api/v1/license/apply', {
     method: 'POST',
@@ -49,7 +49,7 @@ export async function applyLicense(
 
 export async function listDisputes(
   params: DisputeListQuery = {},
-  signal?: AbortSignal,
+  signal?: AbortSignal
 ): Promise<DisputeListResponse> {
   const search = new URLSearchParams();
   if (params.customer_id) {
@@ -72,7 +72,7 @@ export async function getSupportFeedbackMeta(signal?: AbortSignal): Promise<Supp
 
 export async function createSupportFeedback(
   body: CreateSupportFeedbackRequest,
-  signal?: AbortSignal,
+  signal?: AbortSignal
 ): Promise<SupportFeedbackResponse> {
   return apiJson<SupportFeedbackResponse>('/api/v1/support/feedback', {
     method: 'POST',
@@ -84,7 +84,7 @@ export async function createSupportFeedback(
 export async function postConsent(
   body: ConsentRecord,
   signature: string,
-  signal?: AbortSignal,
+  signal?: AbortSignal
 ): Promise<void> {
   const response = await apiFetch('/api/v1/consent', {
     method: 'POST',
@@ -96,26 +96,6 @@ export async function postConsent(
   });
 
   if (!response.ok) {
-    let code = 'HTTP_ERROR';
-    let message = response.statusText || `HTTP ${response.status}`;
-    try {
-      const payload: unknown = await response.json();
-      if (payload && typeof payload === 'object') {
-        const record = payload as Record<string, unknown>;
-        const errorField = record.error;
-        if (errorField && typeof errorField === 'object') {
-          const errObj = errorField as Record<string, unknown>;
-          if (typeof errObj.code === 'string') {
-            code = errObj.code;
-          }
-          if (typeof errObj.message === 'string') {
-            message = errObj.message;
-          }
-        }
-      }
-    } catch {
-      // Non-JSON error body.
-    }
-    throw new ApiError(response.status, code, message);
+    throw await parseApiError(response);
   }
 }

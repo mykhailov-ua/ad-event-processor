@@ -30,7 +30,7 @@ type (
 var (
 	EnsureIngestGeo                      = netintel.EnsureIngestGeo
 	AcceptLangGeoMismatch                = netintel.AcceptLangGeoMismatch
-	TlsFingerprintImpersonating          = netintel.TlsFingerprintImpersonating
+	TLSFingerprintImpersonating          = netintel.TLSFingerprintImpersonating
 	NewMaxMindProvider                   = netintel.NewMaxMindProvider
 	NewDCASNTable                        = netintel.NewDCASNTable
 	NewCIDRTable                         = netintel.NewCIDRTable

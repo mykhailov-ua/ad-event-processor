@@ -33,9 +33,13 @@ export function ActivatePage() {
         team_name: teamName.trim(),
       });
       window.location.replace('/');
-    } catch (err) {
+    } catch (err: unknown) {
       const message =
-        err instanceof ApiError ? err.message : err instanceof Error ? err.message : 'Activation failed';
+        err instanceof ApiError
+          ? err.message
+          : err instanceof Error
+            ? err.message
+            : 'Activation failed';
       setError(message);
     } finally {
       setSubmitting(false);
@@ -56,7 +60,8 @@ export function ActivatePage() {
         <CardHeader>
           <CardTitle>Activate deployment</CardTitle>
           <CardDescription>
-            Create the owner account and apply your license in one step. Alternative to JSON setup on{' '}
+            Create the owner account and apply your license in one step. Alternative to JSON setup
+            on{' '}
             <Link className="text-foreground underline" to="/setup">
               Initial setup
             </Link>

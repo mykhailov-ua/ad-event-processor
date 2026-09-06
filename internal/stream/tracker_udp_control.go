@@ -145,8 +145,8 @@ type UnpaddedIngressCounters struct {
 	max      uint64
 }
 
-func NewUnpaddedIngressCountersForTest(max uint64) *UnpaddedIngressCounters {
-	return &UnpaddedIngressCounters{max: max}
+func NewUnpaddedIngressCountersForTest(maxOps uint64) *UnpaddedIngressCounters {
+	return &UnpaddedIngressCounters{max: maxOps}
 }
 
 func (m *UnpaddedIngressCounters) TryAcquire(worker int) bool {
@@ -351,14 +351,6 @@ func udpEncodeConfigRequest(dst []byte, req *UDPConfigRequestPayload) int {
 	return shard.UDPEncodeConfigRequest(dst, req)
 }
 
-func udpEncodeShardLimits(dst []byte, limits *UDPControlLimits) int {
-	return shard.UDPEncodeShardLimits(dst, limits)
-}
-
-func udpEncodeNodeWeights(dst []byte, weights []UDPNodeWeight) int {
-	return shard.UDPEncodeNodeWeights(dst, weights)
-}
-
 func udpApplyCanaryFloor(limits *UDPControlLimits) {
 	shard.UDPApplyCanaryFloor(limits)
 }
@@ -395,7 +387,7 @@ var ingressSnapshotPool = sync.Pool{
 	},
 }
 
-// UDPControl: recvLoop on :8191 applies quota epoch from control plane; failClosed blocks ingest on stale epoch.
+// UDPControl recvLoop on :8191 applies quota epoch from control plane; failClosed blocks ingest on stale epoch.
 type UDPControl struct {
 	enabled            bool
 	failClosed         bool

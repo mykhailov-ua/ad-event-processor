@@ -26,12 +26,9 @@ func NewScheduleFilter(registry domain.CampaignRegistry) *ScheduleFilter {
 }
 
 func (f *ScheduleFilter) Check(ctx context.Context, evt *domain.Event) error {
-	camp, ok := GetCampaignFromEvent(f.registry, evt)
-	if !ok {
-		if reg, ok := f.registry.(*Registry); ok && reg.IsStaleMode() {
-			return ErrRegistryStale
-		}
-		return ErrCampaignNotFound
+	camp, err := LookupCampaign(ctx, f.registry, evt)
+	if err != nil {
+		return err
 	}
 	now := CachedTimeUTC()
 	if camp.StartAt != nil && now.Before(*camp.StartAt) {
@@ -427,7 +424,7 @@ func (f *DeviceFilter) Check(ctx context.Context, evt *domain.Event) error {
 	if deviceHintsMismatch(evt.SecCHUA, evt.UA) {
 		AddFraudSignal(evt, FraudReasonDeviceMismatch)
 	}
-	if TlsFingerprintImpersonating(evt.UA, []byte(evt.TLSJA3), []byte(evt.TLSJA4), []byte(evt.TLSHash)) {
+	if TLSFingerprintImpersonating(evt.UA, []byte(evt.TLSJA3), []byte(evt.TLSJA4), []byte(evt.TLSHash)) {
 		AddFraudSignal(evt, FraudReasonDeviceMismatch)
 	}
 	if f.ja4CorpusEnabled.Load() && ja4BrowserCorpusMismatch(evt.UA, []byte(evt.TLSJA4)) {
@@ -444,7 +441,7 @@ func (f *DeviceFilter) Check(ctx context.Context, evt *domain.Event) error {
 	if f.tcpSynSigEnabled.Load() && evt.UA != "" {
 		if evt.TCPSigSet == 0 {
 			metrics.TCPSynSigSkippedTotal.WithLabelValues("no_tcp_sig").Inc()
-		} else if TcpSynSigMismatch(evt.UA, evt.TCPSig) {
+		} else if TCPSynSigMismatch(evt.UA, evt.TCPSig) {
 			metrics.TCPSynSigMismatchTotal.Inc()
 			AddFraudSignal(evt, FraudReasonTCPSynOSMismatch)
 		}

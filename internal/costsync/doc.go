@@ -1,7 +1,7 @@
 // Package costsync ingests ad network cost reports and attributes spend to campaigns for recon and margin guard.
 //
 // Role:
-//   - Worker (worker_sync.go) polls provider APIs on hourly and 15-minute ticks; RunManual serves POST /api/v1/cost-sync/run.
+//   - Worker (worker_sync.go) polls provider APIs on hourly and 15-minute ticks; StartManualRun serves POST /api/v1/cost-sync/run (async 202).
 //   - worker_credential.go decrypts PG credentials, refreshes OAuth tokens, and holds the PG advisory lock (single leader).
 //   - worker_reconcile.go writes reconciliation ledger rows after import.
 //   - cost_sync_batch.go batches PG campaign_costs inserts and ECB FX conversion to USD micro-units.

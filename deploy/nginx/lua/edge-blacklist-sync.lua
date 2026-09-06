@@ -16,7 +16,8 @@
 -- - _bl_count (number): deduped active IP estimate; full sync() sets exact Redis count;
 --   stamp_ips increments only IPs not already at current _bl_ver (no duplicate inflation).
 -- - _bl_pending (string): newline-delimited overflow IPs when batch > CHANGELOG_MAX_IPS; drained by init-worker timer.
--- - b:{ip} (number): generation stamp for client IP.
+--   Capped at PENDING_MAX_BYTES (EDGE_BLACKLIST_PENDING_MAX_BYTES default 65536); overflow IPs immediate-stamped at _bl_ver when set.
+-- - b:{ip} (number): generation stamp for canonical client IP (edge-ip.lua).
 --
 -- ngx.shared sentinel_cache:
 -- - m:{master_name} -> host:port string, TTL SENTINEL_CACHE_TTL 5 s; invalidated on connect failure.
@@ -33,7 +34,7 @@
 -- - stamp_ips empty input: returns false; no _bl_sync_ts update.
 -- - Sentinel resolve fail: WARN, fallback to static REDIS_ADDRS target for that shard.
 --
--- Constants: CHANGELOG_MAX_IPS 64 (EDGE_BLACKLIST_CHANGELOG_MAX_IPS); Redis timeout 500 ms; keepalive 10000 ms pool 8.
+-- Constants: CHANGELOG_MAX_IPS 64 (EDGE_BLACKLIST_CHANGELOG_MAX_IPS); PENDING_MAX_BYTES 65536 (EDGE_BLACKLIST_PENDING_MAX_BYTES).
 --
 -- Forbidden: flush_all on blacklist_cache; per-IP delete on unblock; claiming L7 cache replaces tracker FilterEngine or XDP for all fraud.
 --
@@ -44,6 +45,8 @@
 local redis = require "resty.redis"
 local edge_net = require "edge-net"
 local edge_circuit = require "edge-circuit"
+local edge_metrics = require "edge-metrics"
+local edge_ip = require "edge-ip"
 
 local _M = {}
 
@@ -52,6 +55,7 @@ local sentinel_cache = ngx.shared.sentinel_cache
 
 local test_env = nil
 local test_connect_shard = nil
+local test_stamp_ips_fail = false
 
 local REDIS_HOST = "127.0.0.1" -- fallback TCP when REDIS_ADDRS unset (dev only)
 local REDIS_PORT = 6379 -- TCP fallback port; production uses unix sockets in REDIS_ADDRS
@@ -61,6 +65,9 @@ local REDIS_SENTINEL_ADDRS = "" -- host:26379 list when sentinel failover enable
 local REDIS_MASTER_NAMES = "" -- parallel to sentinel addrs (mymaster per shard)
 local SENTINEL_CACHE_TTL = 5 -- seconds; ngx.shared sentinel_cache master resolution cache
 local CHANGELOG_MAX_IPS = 64 -- max IPs per fraud:quarantine pub/sub incremental stamp batch
+local PENDING_MAX_BYTES = 65536 -- max _bl_pending queue bytes; overflow immediate-stamps at current _bl_ver
+
+_M.PENDING_MAX_BYTES = PENDING_MAX_BYTES
 
 local shards
 local sentinel_addrs
@@ -86,9 +93,14 @@ function _M.set_connect_shard_for_test(fn)
     test_connect_shard = fn
 end
 
+function _M.set_stamp_ips_fail_for_test(v)
+    test_stamp_ips_fail = v == true
+end
+
 function _M.reset_test_hooks()
     test_env = nil
     test_connect_shard = nil
+    test_stamp_ips_fail = false
     shards = nil
     sentinel_addrs = nil
     master_names = nil
@@ -111,6 +123,8 @@ local function load_env()
     REDIS_SENTINEL_ADDRS = getenv "REDIS_SENTINEL_ADDRS" or ""
     REDIS_MASTER_NAMES = getenv "REDIS_MASTER_NAMES" or ""
     CHANGELOG_MAX_IPS = tonumber(getenv "EDGE_BLACKLIST_CHANGELOG_MAX_IPS" or "") or CHANGELOG_MAX_IPS
+    PENDING_MAX_BYTES = tonumber(getenv "EDGE_BLACKLIST_PENDING_MAX_BYTES" or "") or PENDING_MAX_BYTES
+    _M.PENDING_MAX_BYTES = PENDING_MAX_BYTES
 end
 
 local function parse_addr_list(raw)
@@ -260,15 +274,76 @@ function _M.connect_any_shard()
     return nil, last_err, nil
 end
 
+local function stamp_one_ip(ip, ver)
+    local canon = edge_ip.canonical(ip)
+    if not canon or canon == "" then
+        return false, false
+    end
+    local was_active = cache:get("b:" .. canon) == ver
+    cache:set("b:" .. canon, ver)
+    return true, not was_active
+end
+
 local function append_pending_ips(ips)
     if not ips or #ips == 0 then
         return
     end
+    local ver = cache:get "_bl_ver" or 0
     local raw = cache:get "_bl_pending" or ""
+    local dropped = 0
+    local stamped_now = 0
+    local added = 0
     for _, ip in ipairs(ips) do
         if ip and ip ~= "" then
-            raw = raw .. ip .. "\n"
+            local canon = edge_ip.canonical(ip)
+            local line = canon .. "\n"
+            if #raw + #line > PENDING_MAX_BYTES then
+                if ver > 0 then
+                    local ok, is_new = stamp_one_ip(ip, ver)
+                    if ok then
+                        stamped_now = stamped_now + 1
+                        if is_new then
+                            added = added + 1
+                        end
+                    else
+                        dropped = dropped + 1
+                    end
+                else
+                    dropped = dropped + 1
+                end
+            else
+                raw = raw .. line
+            end
         end
+    end
+    if stamped_now > 0 then
+        cache:set("_bl_sync_ts", ngx.time())
+        local prev_count = cache:get "_bl_count" or 0
+        cache:set("_bl_count", prev_count + added)
+        edge_metrics.record_blacklist_pending_immediate_stamp(stamped_now)
+        edge_circuit.record_err()
+        ngx.log(
+            ngx.WARN,
+            "edge_blacklist_sync: _bl_pending cap exceeded, immediate-stamped ",
+            stamped_now,
+            " IPs (cap=",
+            PENDING_MAX_BYTES,
+            " bytes)"
+        )
+    end
+    if dropped > 0 then
+        edge_metrics.record_blacklist_pending_overflow(dropped)
+        edge_circuit.record_err()
+        ngx.log(
+            ngx.WARN,
+            "edge_blacklist_sync: _bl_pending cap exceeded, dropped ",
+            dropped,
+            " IPs (cap=",
+            PENDING_MAX_BYTES,
+            " bytes, ver=",
+            ver,
+            ")"
+        )
     end
     cache:set("_bl_pending", raw)
 end
@@ -277,6 +352,9 @@ end
 -- Overflow tail goes to _bl_pending; init-worker drain timer calls stamp_ips(..., false). No per-IP delete on unblock.
 function _M.stamp_ips(ips, bump_version)
     load_env()
+    if test_stamp_ips_fail then
+        return false
+    end
     if not ips or #ips == 0 then
         return false
     end
@@ -306,11 +384,12 @@ function _M.stamp_ips(ips, bump_version)
     local added = 0
     for _, ip in ipairs(batch) do
         if ip and ip ~= "" then
-            local was_active = cache:get("b:" .. ip) == ver
-            cache:set("b:" .. ip, ver)
-            stamped = stamped + 1
-            if not was_active then
-                added = added + 1
+            local ok, is_new = stamp_one_ip(ip, ver)
+            if ok then
+                stamped = stamped + 1
+                if is_new then
+                    added = added + 1
+                end
             end
         end
     end
@@ -347,16 +426,20 @@ function _M.drain_pending_changelog()
     end
     local ips = {}
     for ip in string.gmatch(raw, "[^\n]+") do
-        ips[#ips + 1] = ip
+        if ip ~= "" then
+            ips[#ips + 1] = ip
+        end
     end
     if #ips == 0 then
         cache:delete "_bl_pending"
         return 0
     end
+    local snapshot = raw
     cache:delete "_bl_pending"
     if _M.stamp_ips(ips, false) then
         return math.min(#ips, CHANGELOG_MAX_IPS)
     end
+    cache:set("_bl_pending", snapshot)
     return 0
 end
 
@@ -399,11 +482,15 @@ function _M.sync()
     local seen = {}
 
     local function stamp(ip)
-        if not ip or ip == "" or seen[ip] then
+        if not ip or ip == "" then
             return
         end
-        seen[ip] = true
-        cache:set("b:" .. ip, new_ver)
+        local canon = edge_ip.canonical(ip)
+        if not canon or canon == "" or seen[canon] then
+            return
+        end
+        seen[canon] = true
+        cache:set("b:" .. canon, new_ver)
         count = count + 1
     end
 

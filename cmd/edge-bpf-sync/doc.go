@@ -49,9 +49,9 @@
 //
 // Fail-open vs fail-closed at startup:
 //   - Fail-closed (os.Exit 1): deny maps LoadPinnedBlocklist*, allow maps LoadPinnedAllowlist*,
-//     rlimit.RemoveMemlock, missing REDIS_ADDRS.
-//   - Fail-open (Warn, continue): stats map missing (XDP metrics disabled); violations ringbuf
-//     missing (autoban disabled); fingerprints ringbuf missing (IVT staging disabled).
+//     violations ringbuf map + reader, rlimit.RemoveMemlock, missing REDIS_ADDRS.
+//   - Fail-open (Warn, continue): stats map missing (XDP metrics disabled);
+//     fingerprints ringbuf missing (IVT staging disabled).
 //   - Licensed idle: EbpfEdgeLicensed false -> skip sync/autoban/drain ticks; pinned maps still opened.
 //
 // Cache invalidation labels:
@@ -73,7 +73,8 @@
 // Invariants:
 //   - Control plane never writes kernel maps directly; this daemon is the only map writer.
 //   - ebpf_xdp_edge license required for sync/autoban loops; idle warn when unlicensed.
-//   - Missing stats/violations/fingerprints maps degrade gracefully (warn, continue).
+//   - Missing stats/fingerprints maps degrade gracefully (warn, continue).
+//   - Missing violations ringbuf fails startup (autoban blind is fail-closed).
 //   - rlimit.RemoveMemlock required at startup.
 //
 // Forbidden:

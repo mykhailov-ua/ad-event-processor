@@ -41,7 +41,7 @@ test('parseCampaignListColumnPrefs migrates h_leads to hold_leads', () => {
     JSON.stringify({
       dataColumnOrder: ['name', 'h_leads', 'approved'],
       hidden: ['h_leads'],
-    }),
+    })
   );
 
   assert.equal(prefs.dataColumnOrder.includes('hold_leads'), true);
@@ -54,7 +54,7 @@ test('parseCampaignListColumnPrefs merges unknown and drops legacy tags column',
     JSON.stringify({
       dataColumnOrder: ['name', 'group', 'tags', 'unknown', 'tags', 'clicks'],
       hidden: ['roi', 'bogus'],
-    }),
+    })
   );
 
   assert.equal(prefs.dataColumnOrder[0], 'name');
@@ -65,7 +65,7 @@ test('parseCampaignListColumnPrefs merges unknown and drops legacy tags column',
 
 test('moveMiddleColumn reorders middle metrics', () => {
   const order = defaultCampaignListColumnPrefs().dataColumnOrder.filter(
-    (columnId) => columnId !== 'name',
+    (columnId) => columnId !== 'name'
   );
   const moved = moveMiddleColumn(order, 0, 2);
   assert.equal(moved[0], order[1]);

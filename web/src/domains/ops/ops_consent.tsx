@@ -1,13 +1,10 @@
+import type { OpsConsentProofsResponse } from '@/api/types';
 import { JsonPayloadView } from '@/shell/json_payload_view';
 import { opsPanelError } from '@/domains/ops/ops_nav';
-import {
-  OpsPageBlockingError,
-  OpsPageLoading,
-  OpsPageShell,
-} from '@/domains/ops/ops_page_shell';
+import { OpsPageBlockingError, OpsPageLoading, OpsPageShell } from '@/domains/ops/ops_page_shell';
 
 export type OpsConsentProps = {
-  payload: Record<string, unknown> | undefined;
+  payload: OpsConsentProofsResponse | undefined;
   fetching: boolean;
   error: Error | undefined;
   hasSnapshot: boolean;

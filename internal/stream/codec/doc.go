@@ -2,7 +2,7 @@
 //
 // Role:
 //   - StreamEventPool, AdLogRecordPool: vtproto message reuse on hot encode/decode paths.
-//   - ByteBufPool, LogBufPool: reusable []byte backing for MarshalToSizedBufferVT output.
+//   - ByteBufPool, LogBufPool: pkg/bufpool-backed []byte reuse for MarshalToSizedBufferVT output.
 //   - ByteSliceValuePool, ProducerValuesPool: Redis XADD field wrappers without per-event heap alloc.
 //   - ClearAdStreamEvent / DeepResetAdStreamEvent / DeepResetAdDLQEvent: return pooled messages to clean state.
 //   - UnsafeBytes / UnsafeString: zero-copy string<->[]byte at arena lifetime boundaries on Tier B worker.

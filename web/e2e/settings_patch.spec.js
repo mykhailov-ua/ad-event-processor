@@ -16,7 +16,7 @@ test.beforeEach(async ({}, testInfo) => {
   await skipUnlessIntegrationReady(testInfo);
 });
 
-test('settings patch merges platform configuration', async ({ page }) => {
+test('settings patch merges platform configuration', { tag: '@write' }, async ({ page }) => {
   await loginAsAdmin(page);
   const runToken = integrationRunToken();
   const trackingDomain = integrationSettingsTrackingDomain(runToken);

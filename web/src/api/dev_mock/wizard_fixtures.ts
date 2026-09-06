@@ -105,7 +105,7 @@ function defaultSteps(template: CampaignOnboardingTemplate) {
 }
 
 function reviewFromSteps(
-  steps: NonNullable<CampaignWizardSession['steps']>,
+  steps: NonNullable<CampaignWizardSession['steps']>
 ): NonNullable<CampaignWizardSession['review']> {
   return {
     preview: {
@@ -188,7 +188,12 @@ export function devMockWizardSessionPost(body: Record<string, unknown>): MockWiz
       return { status: 400, body: { error: 'unknown wizard step' } };
     }
     const completed = Array.from(new Set([...session.completed_steps, step]));
-    const stepOrder = ['traffic_source', 'integration_template', 'flow_skeleton', 'budget'] as const;
+    const stepOrder = [
+      'traffic_source',
+      'integration_template',
+      'flow_skeleton',
+      'budget',
+    ] as const;
     const ready = stepOrder.every((item) => completed.includes(item));
     const nextStep = ready
       ? 'review'

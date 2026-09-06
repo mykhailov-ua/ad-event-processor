@@ -1,5 +1,7 @@
 import type { MockResult } from './handler_types.ts';
 
+// T0 RBAC matrix for dev_mock responses when admin_dev=1.
+// Mirrors control-plane permission strings for nav/tests only; production auth is server session + RBAC.
 export type DevMockRoleId = 'A' | 'M' | 'U' | 'B' | 'TL' | 'MB' | 'S' | 'P';
 
 const ROLE_PERMISSIONS: Record<DevMockRoleId, string[]> = {
@@ -132,14 +134,14 @@ export function devMockCurrentPermissions(): string[] {
 
 export function devMockHasPermission(
   permission: string,
-  permissions: string[] = devMockCurrentPermissions(),
+  permissions: string[] = devMockCurrentPermissions()
 ): boolean {
   return permissions.some((entry) => entry === '*' || entry === permission);
 }
 
 export function devMockHasAnyPermission(
   required: string[],
-  permissions: string[] = devMockCurrentPermissions(),
+  permissions: string[] = devMockCurrentPermissions()
 ): boolean {
   return required.some((permission) => devMockHasPermission(permission, permissions));
 }

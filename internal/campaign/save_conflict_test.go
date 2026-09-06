@@ -71,6 +71,13 @@ func (s *patchRevisionCampaignStub) ExportCampaign(context.Context, uuid.UUID) (
 	return CampaignExportBundle{}, nil
 }
 
+func (s *patchRevisionCampaignStub) ExportCampaignsBatch(context.Context, []uuid.UUID) ExportCampaignsBatchResult {
+	return ExportCampaignsBatchResult{
+		Items:  map[uuid.UUID]CampaignExportBundle{},
+		Errors: map[uuid.UUID]error{},
+	}
+}
+
 func (s *patchRevisionCampaignStub) ImportCampaign(context.Context, ImportCampaignSpec) (ImportCampaignResult, error) {
 	return ImportCampaignResult{}, nil
 }
@@ -93,6 +100,10 @@ func (s *patchRevisionCampaignStub) ResumeCampaign(context.Context, uuid.UUID, s
 
 func (s *patchRevisionCampaignStub) ArchiveCampaign(context.Context, uuid.UUID, string) error {
 	return nil
+}
+
+func (s *patchRevisionCampaignStub) BulkCampaignAction(ctx context.Context, action string, ids []uuid.UUID, reason string) map[uuid.UUID]error {
+	return RunBulkCampaignAction(ctx, action, ids, reason, s.PauseCampaign, s.ResumeCampaign, s.ArchiveCampaign)
 }
 
 func TestPatchCampaign_staleIfMatch_skipsPatch_holdout(t *testing.T) {

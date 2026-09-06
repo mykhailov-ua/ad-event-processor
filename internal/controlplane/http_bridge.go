@@ -58,7 +58,7 @@ func (a platformAuthAdapter) Register(ctx context.Context, adminAPIKey, email, p
 	return err
 }
 
-// NewAuthHandler: /api/v1/auth/* login and token refresh; picks healthy control Redis shard for session state.
+// NewAuthHandler serves /api/v1/auth/* login and token refresh; picks healthy control Redis shard for session state.
 func NewAuthHandler(
 	authClient *identity.AuthClient,
 	tokenMaker identity.Maker,
@@ -186,7 +186,7 @@ func (s *Service) startOpsMetricScraper(ctx context.Context, scrapeURL string) {
 	opsadmin.StartMetricScraper(s, ctx, scrapeURL)
 }
 
-// NewManagementOpsReader: ops stack health fan-out (PG pool, Redis shards, optional ClickHouseQuery readonly).
+// NewManagementOpsReader builds ops stack health fan-out (PG pool, Redis shards, optional ClickHouseQuery readonly).
 func NewManagementOpsReader(svc *Service) opsadmin.ManagementOpsReader {
 	if svc == nil {
 		return nil
@@ -215,7 +215,7 @@ func newOpsReader(svc *Service) opsadmin.ManagementOpsReader {
 	return NewManagementOpsReader(svc)
 }
 
-// StartFilterRejectRollupWorker: background CH->PG rollup; requires PG pool and clickhouseQuery (readonly).
+// StartFilterRejectRollupWorker runs background CH->PG rollup; requires PG pool and clickhouseQuery (readonly).
 func (s *Service) StartFilterRejectRollupWorker(ctx context.Context, scrapeURL string) {
 	if s == nil || s.GetPool() == nil || s.clickhouseQuery == nil {
 		slog.Warn("filter reject rollup worker not started: postgres or clickhouse unavailable")

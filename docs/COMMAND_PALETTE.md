@@ -35,7 +35,7 @@ A **modal overlay** opened from the keyboard:
 | `route` | Static nav entry (Integrations, Billing, …) | SPA path from catalog |
 | `action` | "New campaign", "Import migration" | Route or modal trigger |
 
-Competitor parity (Klixsor): search campaigns, offers, pages — we extend with flows, reports, and RBAC-scoped routes.
+Search spans campaigns, offers, landers, flows, reports, and RBAC-scoped routes from one keyboard entry point.
 
 ---
 

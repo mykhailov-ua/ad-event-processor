@@ -53,7 +53,7 @@ test('resolveCampaignListStatsRange prefers explicit from/to over legacy preset'
   const range = resolveCampaignListStatsRange(
     '2026-02-01T00:00:00.000Z',
     '2026-02-10T00:00:00.000Z',
-    'today',
+    'today'
   );
   assert.equal(range.from, '2026-02-01T00:00:00.000Z');
   assert.equal(range.to, '2026-02-10T00:00:00.000Z');

@@ -1,5 +1,10 @@
 import { Link } from 'react-router-dom';
 
+import {
+  FilterField,
+  FILTER_PANEL_SUMMARY_CLASS,
+  INLINE_FILTER_ACTION_GRID_THREE_ACTIONS_CLASS,
+} from '@/shell/filter_panel';
 import { PageChrome } from '@/shell/page_chrome';
 import { ErrorBlock } from '@/shell/error_block';
 import { Button } from '@/components/ui/button';
@@ -72,7 +77,7 @@ export function ReportJobs({
         Back to catalog
       </Link>
 
-      <div className="ui-filter-panel md:grid-cols-[repeat(auto-fill,minmax(12rem,1fr))]">
+      <div className="ui-filter-panel grid items-end gap-4 md:grid-cols-[repeat(auto-fill,minmax(12rem,1fr))]">
         <div className="grid gap-2 md:col-span-2">
           <Label htmlFor="job-customer-id">Customer ID</Label>
           <Input
@@ -89,16 +94,14 @@ export function ReportJobs({
             onChange={(event) => onDraftReportKeyChange(event.target.value)}
           />
         </div>
-        <DatetimePicker
-          id="job-from"
-          label="From"
-          value={draftFrom}
-          onChange={onDraftFromChange}
-        />
+        <DatetimePicker id="job-from" label="From" value={draftFrom} onChange={onDraftFromChange} />
         <DatetimePicker id="job-to" label="To" value={draftTo} onChange={onDraftToChange} />
         <div className="grid gap-2">
           <Label htmlFor="job-format">Format</Label>
-          <Select value={draftFormat} onValueChange={(value) => onDraftFormatChange(value as 'csv' | 'json')}>
+          <Select
+            value={draftFormat}
+            onValueChange={(value) => onDraftFormatChange(value as 'csv' | 'json')}
+          >
             <SelectTrigger id="job-format">
               <SelectValue />
             </SelectTrigger>
@@ -113,19 +116,28 @@ export function ReportJobs({
         </Button>
       </div>
 
-      <div className="grid max-w-xl grid-cols-[1fr_auto_auto_auto] items-end gap-4">
-        <div className="grid gap-2">
-          <Label htmlFor="job-id">Job ID</Label>
+      <div className={INLINE_FILTER_ACTION_GRID_THREE_ACTIONS_CLASS}>
+        <FilterField htmlFor="job-id" label="Job ID">
           <Input
             id="job-id"
             value={draftJobId}
             onChange={(event) => onDraftJobIdChange(event.target.value)}
           />
-        </div>
-        <Button disabled={polling || !draftJobId.trim()} onClick={onPollJob} type="button" variant="outline">
+        </FilterField>
+        <Button
+          disabled={polling || !draftJobId.trim()}
+          onClick={onPollJob}
+          type="button"
+          variant="outline"
+        >
           Poll
         </Button>
-        <Button disabled={!canCancel || !draftJobId.trim()} onClick={onCancelJob} type="button" variant="outline">
+        <Button
+          disabled={!canCancel || !draftJobId.trim()}
+          onClick={onCancelJob}
+          type="button"
+          variant="outline"
+        >
           Cancel
         </Button>
         <Button disabled={!canDownload || !draftJobId.trim()} onClick={onDownloadJob} type="button">
@@ -134,11 +146,11 @@ export function ReportJobs({
       </div>
 
       {job ? (
-        <div className="ui-filter-panel gap-2 text-sm">
-          <div>Status: {job.status ?? 'unknown'}</div>
-          {job.report_key ? <div>Report: {job.report_key}</div> : null}
-          {job.bytes != null ? <div>Bytes: {job.bytes}</div> : null}
-          {job.error ? <div className="text-destructive">Error: {job.error}</div> : null}
+        <div className={FILTER_PANEL_SUMMARY_CLASS}>
+          <p className="m-0">Status: {job.status ?? 'unknown'}</p>
+          {job.report_key ? <p className="m-0">Report: {job.report_key}</p> : null}
+          {job.bytes != null ? <p className="m-0">Bytes: {job.bytes}</p> : null}
+          {job.error ? <p className="m-0 text-destructive">Error: {job.error}</p> : null}
         </div>
       ) : null}
 

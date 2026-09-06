@@ -47,7 +47,7 @@ func AttachCampaignMoneyDisplay(dto *CampaignDTO) {
 	}
 }
 
-// Clamps to [0, 100]. Omitted when budget_limit is zero or unparsable.
+// AttachCampaignBudgetUsedPct clamps to [0, 100]. Omitted when budget_limit is zero or unparsable.
 func AttachCampaignBudgetUsedPct(dto *CampaignDTO) {
 	if dto == nil {
 		return

@@ -63,6 +63,8 @@ func TestFraudEvidencePackQuery_selectsFraudRows_holdout(t *testing.T) {
 	require.Contains(t, fraudEvidencePackQuery, "FROM fraud_events")
 	require.Contains(t, fraudEvidencePackQuery, "layer_desync_count")
 	require.Contains(t, fraudEvidencePackQuery, "click_id = ?")
+	require.Contains(t, fraudEvidencePackBulkQuery, "FROM fraud_events")
+	require.NotContains(t, fraudEvidencePackBulkQuery, "click_id = ?")
 }
 
 func TestFraudEvidencePackRoute_missingSecret503(t *testing.T) {

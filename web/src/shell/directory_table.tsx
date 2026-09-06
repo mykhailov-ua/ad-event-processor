@@ -12,6 +12,10 @@ import {
 import { cn } from '@/lib/utils';
 
 const SORT_ICON_CLASS = 'h-3.5 w-3.5 shrink-0';
+const DIRECTORY_TABLE_HEAD_ROW_CLASS = 'h-[34px]';
+
+/** Wrap section body when it may contain a DirectoryTable inside bordered chrome. */
+export const SECTION_TABLE_HOST_CLASS = 'ui-section-table-host mt-2 min-w-0';
 
 export type DirectoryTableProps = {
   children: ReactNode;
@@ -19,6 +23,8 @@ export type DirectoryTableProps = {
   scrollable?: boolean;
   horizontalScroll?: boolean;
   fixedLayout?: boolean;
+  /** Drop outer frame when parent section/card already has a border. */
+  nested?: boolean;
   tableClassName?: string;
   tableStyle?: CSSProperties;
   tableRef?: Ref<HTMLTableElement>;
@@ -30,17 +36,20 @@ export function DirectoryTable({
   scrollable = false,
   horizontalScroll = false,
   fixedLayout = false,
+  nested = false,
   tableClassName,
   tableStyle,
   tableRef,
 }: DirectoryTableProps) {
   return (
     <div
+      data-directory-table=""
       className={cn(
         'ui-scrollbar min-w-0 rounded-md border border-border',
+        nested && 'border-0 shadow-none',
         scrollable && 'max-h-[min(70vh,48rem)] overflow-y-auto',
         horizontalScroll && 'overflow-x-auto',
-        className,
+        className
       )}
     >
       <Table
@@ -48,9 +57,12 @@ export function DirectoryTable({
         ref={tableRef}
         className={cn(
           'border-collapse text-sm',
-          !horizontalScroll && 'w-full',
+          '[&_thead_th]:border-b [&_thead_th]:border-border',
+          '[&_tbody_td]:border-b [&_tbody_td]:border-border',
+          '[&_tbody_tr:last-child_td]:border-b-0',
+          horizontalScroll ? 'w-max min-w-full' : 'w-full',
           fixedLayout && '[&_td]:whitespace-nowrap [&_th]:whitespace-nowrap',
-          tableClassName,
+          tableClassName
         )}
         style={tableStyle}
       >
@@ -64,13 +76,10 @@ export { TableBody, TableCell, TableFooter, TableHeader, TableRow } from '@/comp
 
 type HeadAlign = 'start' | 'end';
 
-function DirectoryTableHeadShell({
-  className,
-  ...props
-}: ComponentProps<typeof TableHead>) {
+function DirectoryTableHeadShell({ className, ...props }: ComponentProps<typeof TableHead>) {
   return (
     <TableHead
-      className={cn('h-[34px] bg-card/90 p-0 backdrop-blur-sm', className)}
+      className={cn(DIRECTORY_TABLE_HEAD_ROW_CLASS, 'bg-card/90 p-0 backdrop-blur-sm', className)}
       {...props}
     />
   );
@@ -88,8 +97,9 @@ function DirectoryTableHeadContent({
   return (
     <div
       className={cn(
-        'flex h-10 w-full items-center gap-1.5 px-2 font-medium text-muted-foreground',
-        align === 'end' ? 'justify-end text-right' : 'justify-start text-left',
+        DIRECTORY_TABLE_HEAD_ROW_CLASS,
+        'flex w-full items-center gap-1.5 px-2 text-xs font-semibold text-muted-foreground',
+        align === 'end' ? 'justify-end text-right' : 'justify-start text-left'
       )}
     >
       {children}
@@ -140,22 +150,18 @@ export function SortableTableHead({
     <DirectoryTableHeadShell className={className}>
       <button
         aria-label={`Sort by ${label}`}
-        aria-sort={
-          active ? (activeOrder === 'asc' ? 'ascending' : 'descending') : 'none'
-        }
+        aria-sort={active ? (activeOrder === 'asc' ? 'ascending' : 'descending') : 'none'}
         className={cn(
-          'flex h-10 w-full items-center gap-1.5 px-2 font-medium text-muted-foreground transition-colors hover:text-foreground',
+          DIRECTORY_TABLE_HEAD_ROW_CLASS,
+          'flex w-full items-center gap-1.5 px-2 text-xs font-semibold text-muted-foreground transition-colors hover:text-foreground',
           align === 'end' ? 'justify-end text-right' : 'justify-start text-left',
-          active && 'text-foreground',
+          active && 'text-foreground'
         )}
         onClick={() => onSort(sortField)}
         type="button"
       >
         <span className="whitespace-nowrap">{label}</span>
-        <Icon
-          aria-hidden
-          className={cn(SORT_ICON_CLASS, active ? 'opacity-90' : 'opacity-45')}
-        />
+        <Icon aria-hidden className={cn(SORT_ICON_CLASS, active ? 'opacity-90' : 'opacity-45')} />
       </button>
     </DirectoryTableHeadShell>
   );

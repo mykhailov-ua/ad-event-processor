@@ -1284,10 +1284,12 @@ func brandIDOrNil(id uuid.UUID) any {
 }
 
 type PostbackHTTPHandlers struct {
-	Pool              *pgxpool.Pool
-	EncryptionKey     []byte
-	ApplyRateLimit    func(http.HandlerFunc) http.HandlerFunc
-	RequirePermission func(string, http.HandlerFunc) http.HandlerFunc
+	Pool                    *pgxpool.Pool
+	EncryptionKey           []byte
+	ApplyRateLimit          func(http.HandlerFunc) http.HandlerFunc
+	RequirePermission       func(string, http.HandlerFunc) http.HandlerFunc
+	AuthorizeCampaignAccess func(*http.Request, uuid.UUID) error
+	WriteServiceError       func(http.ResponseWriter, error)
 }
 
 func (h *PostbackHTTPHandlers) Register(mux *http.ServeMux) {
@@ -1322,7 +1324,7 @@ type PostbackConfigDTO struct {
 }
 
 func (h *PostbackHTTPHandlers) getPostbacksConfig(w http.ResponseWriter, r *http.Request) {
-	dtos, err := ListPostbackConfigs(r.Context(), h.Pool)
+	dtos, err := h.listScopedPostbackConfigs(r.Context())
 	if err != nil {
 		httpresponse.Error(w, http.StatusInternalServerError, "INTERNAL_ERROR", err.Error())
 		return
@@ -1346,6 +1348,9 @@ func (h *PostbackHTTPHandlers) updatePostbackConfig(w http.ResponseWriter, r *ht
 	campaignID, err := uuid.Parse(campaignIDStr)
 	if err != nil {
 		httpresponse.Error(w, http.StatusBadRequest, "BAD_REQUEST", "invalid campaign_id")
+		return
+	}
+	if !h.authorizePostbackCampaign(w, r, campaignID) {
 		return
 	}
 
@@ -1447,7 +1452,7 @@ type PostbackDlqDTO struct {
 }
 
 func (h *PostbackHTTPHandlers) getDLQ(w http.ResponseWriter, r *http.Request) {
-	dtos, err := ListPostbackDlqEntries(r.Context(), h.Pool)
+	dtos, err := h.listScopedPostbackDlq(r.Context())
 	if err != nil {
 		httpresponse.Error(w, http.StatusInternalServerError, "INTERNAL_ERROR", err.Error())
 		return
@@ -1488,6 +1493,9 @@ func (h *PostbackHTTPHandlers) retryDLQ(w http.ResponseWriter, r *http.Request) 
 			return
 		}
 		httpresponse.Error(w, http.StatusInternalServerError, "INTERNAL_ERROR", err.Error())
+		return
+	}
+	if !h.authorizePostbackCampaign(w, r, uuid.UUID(dlq.CampaignID.Bytes)) {
 		return
 	}
 
@@ -1532,7 +1540,7 @@ type PostbackCampaignStatusDTO struct {
 }
 
 func (h *PostbackHTTPHandlers) getCampaignStatus(w http.ResponseWriter, r *http.Request) {
-	out, err := ListPostbackCampaignStatusRows(r.Context(), h.Pool)
+	out, err := h.listScopedPostbackCampaignStatus(r.Context())
 	if err != nil {
 		httpresponse.Error(w, http.StatusInternalServerError, "INTERNAL_ERROR", err.Error())
 		return
@@ -1548,6 +1556,9 @@ func (h *PostbackHTTPHandlers) testPostbackConfig(w http.ResponseWriter, r *http
 	campaignID, err := uuid.Parse(campaignIDStr)
 	if err != nil {
 		httpresponse.Error(w, http.StatusBadRequest, "BAD_REQUEST", "invalid campaign_id")
+		return
+	}
+	if !h.authorizePostbackCampaign(w, r, campaignID) {
 		return
 	}
 
@@ -2027,7 +2038,7 @@ func bytesTrimSpaceJSON(raw json.RawMessage) []byte {
 
 type migrationPullService interface {
 	PreviewMigrationPull(ctx context.Context, spec PullMigrationPreviewSpec) (migrationsource.PreviewResult, error)
-	ImportMigrationPull(ctx context.Context, spec PullMigrationImportSpec) (ImportMigrationResult, error)
+	StartMigrationPullImport(ctx context.Context, spec PullMigrationImportSpec) error
 }
 
 func (h *CampaignsHTTPHandlers) registerMigrationPullRoutes(
@@ -2055,7 +2066,9 @@ func (h *CampaignsHTTPHandlers) previewMigrationPull(w http.ResponseWriter, r *h
 		httpresponse.Error(w, http.StatusBadRequest, "BAD_REQUEST", "source_kind does not support live pull")
 		return
 	}
-	result, err := svc.PreviewMigrationPull(r.Context(), PullMigrationPreviewSpec{
+	ctx, cancel := coldpath.BoundedContext(r.Context(), migrationsource.PullTimeout())
+	defer cancel()
+	result, err := svc.PreviewMigrationPull(ctx, PullMigrationPreviewSpec{
 		SourceKind: kind,
 		BaseURL:    req.BaseURL,
 		APIToken:   req.APIToken,
@@ -2104,7 +2117,7 @@ func (h *CampaignsHTTPHandlers) importMigrationPull(w http.ResponseWriter, r *ht
 		httpresponse.Error(w, http.StatusBadRequest, "BAD_REQUEST", "source_kind does not support live pull")
 		return
 	}
-	result, err := svc.ImportMigrationPull(r.Context(), PullMigrationImportSpec{
+	if err := svc.StartMigrationPullImport(context.Background(), PullMigrationImportSpec{
 		PullMigrationPreviewSpec: PullMigrationPreviewSpec{
 			SourceKind: kind,
 			BaseURL:    req.BaseURL,
@@ -2115,12 +2128,11 @@ func (h *CampaignsHTTPHandlers) importMigrationPull(w http.ResponseWriter, r *ht
 		IdempotencyKey:   idempotencyKey,
 		NamePrefix:       req.NamePrefix,
 		BudgetLimitMicro: req.BudgetLimitMicro,
-	})
-	if err != nil {
+	}); err != nil {
 		h.WriteHandlerError(w, err)
 		return
 	}
-	httpresponse.JSON(w, http.StatusCreated, result)
+	httpresponse.JSON(w, http.StatusAccepted, map[string]string{"status": "accepted"})
 }
 
 func (h *CampaignsHTTPHandlers) writeCampaignRevisionConflict(w http.ResponseWriter, r *http.Request, campaignID uuid.UUID, current CampaignDTO, req PatchCampaignRequest) {
@@ -2292,22 +2304,6 @@ func ImportMigrationPull(ctx context.Context, fx Effects, spec PullMigrationImpo
 		NamePrefix:       spec.NamePrefix,
 		BudgetLimitMicro: spec.BudgetLimitMicro,
 	})
-}
-
-func mapServiceError(err error) (int, string, string) {
-	if err == nil {
-		return http.StatusInternalServerError, "INTERNAL", "internal error"
-	}
-	if errors.Is(err, ErrCampaignNotFound) {
-		return http.StatusNotFound, "NOT_FOUND", err.Error()
-	}
-	if errors.Is(err, ErrForbidden) {
-		return http.StatusForbidden, "FORBIDDEN", err.Error()
-	}
-	if errors.Is(err, ErrValidation) {
-		return http.StatusBadRequest, "BAD_REQUEST", err.Error()
-	}
-	return http.StatusInternalServerError, "INTERNAL", err.Error()
 }
 
 type DataFreshnessDTO = reports.DataFreshnessDTO

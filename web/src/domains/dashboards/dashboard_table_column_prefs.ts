@@ -1,6 +1,11 @@
 export const DASHBOARD_TABLE_COLUMN_WIDTHS_STORAGE_KEY = 'buyer_dashboard_table_column_widths_v1';
 
-export type DashboardTableWidthScope = 'campaigns' | 'landers' | 'offers' | 'sources' | 'recent_clicks';
+export type DashboardTableWidthScope =
+  | 'campaigns'
+  | 'landers'
+  | 'offers'
+  | 'sources'
+  | 'recent_clicks';
 
 export type DashboardTableColumnWidthStore = Partial<
   Record<DashboardTableWidthScope, Partial<Record<string, number>>>
@@ -33,7 +38,7 @@ function writeStore(store: DashboardTableColumnWidthStore) {
 }
 
 export function loadDashboardTableColumnWidths(
-  scope: DashboardTableWidthScope,
+  scope: DashboardTableWidthScope
 ): Partial<Record<string, number>> {
   const store = readStore();
   return store[scope] ?? {};
@@ -42,7 +47,7 @@ export function loadDashboardTableColumnWidths(
 export function saveDashboardTableColumnWidth(
   scope: DashboardTableWidthScope,
   columnId: string,
-  widthPx: number,
+  widthPx: number
 ): Partial<Record<string, number>> {
   const store = readStore();
   const scopeWidths = { ...(store[scope] ?? {}), [columnId]: widthPx };

@@ -1,9 +1,7 @@
 import type { BuyerPortfolio } from '@/domains/dashboards/buyer_dashboard_types';
-import {
-  formatDashboardCrPct,
-  formatDashboardRoiPct,
-} from '@/lib/display_metrics';
+import { formatDashboardCrPct, formatDashboardRoiPct } from '@/lib/display_metrics';
 import { displayCount } from '@/lib/display';
+import type { CampaignListMetrics } from '@/api/campaigns_api';
 import type { CampaignMargin } from '@/api/types';
 import type { CampaignWithMoneyDisplay } from '@/domains/campaigns/list/campaign_metrics_shared';
 import { resolveCampaignListRowMetrics } from '@/domains/campaigns/list/campaign_list_row_metrics';
@@ -21,7 +19,11 @@ export function formatTableMoneyNumber(amount?: number | null): { text: string; 
   return { text: formatted, isZero: false };
 }
 
-export function formatTableMoneyFromMicro(micro?: number | null): { text: string; valUsd: number; isZero: boolean } {
+export function formatTableMoneyFromMicro(micro?: number | null): {
+  text: string;
+  valUsd: number;
+  isZero: boolean;
+} {
   if (micro == null || !Number.isFinite(micro) || micro === 0) {
     return { text: '0.00', valUsd: 0, isZero: true };
   }
@@ -30,7 +32,11 @@ export function formatTableMoneyFromMicro(micro?: number | null): { text: string
   return { text: res.text, valUsd, isZero: res.isZero };
 }
 
-export function parseAndFormatTableMoneyStr(raw?: string | null): { text: string; valUsd: number; isZero: boolean } {
+export function parseAndFormatTableMoneyStr(raw?: string | null): {
+  text: string;
+  valUsd: number;
+  isZero: boolean;
+} {
   if (!raw?.trim()) {
     return { text: '0.00', valUsd: 0, isZero: true };
   }
@@ -43,14 +49,21 @@ export function parseAndFormatTableMoneyStr(raw?: string | null): { text: string
   return { text: res.text, valUsd: val, isZero: res.isZero };
 }
 
-export function formatTableCount(val?: number | null): { text: string; val: number; isZero: boolean } {
+export function formatTableCount(val?: number | null): {
+  text: string;
+  val: number;
+  isZero: boolean;
+} {
   if (val == null || val === 0) {
     return { text: '0', val: 0, isZero: true };
   }
   return { text: displayCount(val), val, isZero: false };
 }
 
-export function formatTableCr(clicks?: number, conversions?: number): { text: string; valPct: number; isZero: boolean } {
+export function formatTableCr(
+  clicks?: number,
+  conversions?: number
+): { text: string; valPct: number; isZero: boolean } {
   if (clicks == null || clicks <= 0 || conversions == null || conversions <= 0) {
     return { text: '0.00%', valPct: 0, isZero: true };
   }
@@ -58,7 +71,10 @@ export function formatTableCr(clicks?: number, conversions?: number): { text: st
   return { text: formatDashboardCrPct(pct), valPct: pct, isZero: false };
 }
 
-export function formatTableRoi(profitMicro?: number, costMicro?: number): { text: string; valPct: number; isZero: boolean } {
+export function formatTableRoi(
+  profitMicro?: number,
+  costMicro?: number
+): { text: string; valPct: number; isZero: boolean } {
   if (costMicro == null || costMicro <= 0 || profitMicro == null) {
     return { text: '-', valPct: 0, isZero: true };
   }
@@ -123,7 +139,7 @@ export function emptyCampaignListTotals(): CampaignListTotals {
 export function sumCampaignListTotals(
   items: CampaignWithMoneyDisplay[],
   metricsById: Record<string, CampaignListMetrics>,
-  marginsById: Record<string, CampaignMargin>,
+  marginsById: Record<string, CampaignMargin>
 ): CampaignListTotals {
   const totals = emptyCampaignListTotals();
   for (const campaign of items) {

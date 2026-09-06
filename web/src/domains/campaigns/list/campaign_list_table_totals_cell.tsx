@@ -13,10 +13,19 @@ import {
   formatTableRoi,
   type CampaignListTotals,
 } from '@/domains/campaigns/list/campaign_list_format';
-import { percentRate, rateBenchmarkToneClass } from '@/domains/campaigns/list/campaign_list_rate_tone';
-import { profitToneClassFromMicro, roiToneClassFromRate } from '@/domains/campaigns/list/campaign_list_tone';
+import {
+  percentRate,
+  rateBenchmarkToneClass,
+} from '@/domains/campaigns/list/campaign_list_rate_tone';
+import {
+  profitToneClassFromMicro,
+  roiToneClassFromRate,
+} from '@/domains/campaigns/list/campaign_list_tone';
 import type { CampaignListColumnId } from '@/domains/campaigns/list/campaign_list_columns';
-import { RateMetricCell, tableCellClass } from '@/domains/campaigns/list/campaign_list_table_cell_format';
+import {
+  RateMetricCell,
+  tableCellClass,
+} from '@/domains/campaigns/list/campaign_list_table_cell_format';
 
 export type CampaignListTableTotalsCellProps = {
   columnId: CampaignListColumnId;
@@ -58,17 +67,16 @@ export function CampaignListTableTotalsCell({
         return <span className={tableCellClass(true)}>-</span>;
       }
       return (
-        <RateMetricCell
-          isEmpty={false}
-          ratePct={percentRate(funnelTotals.lpClicks, totals.clicks)}
-        >
+        <RateMetricCell isEmpty={false} ratePct={percentRate(funnelTotals.lpClicks, totals.clicks)}>
           {formatLpCtr(funnelTotals.lpClicks, totals.clicks)}
         </RateMetricCell>
       );
     }
     case 'leads': {
       const res = formatTableCount(funnelTotals.rawLeads);
-      return <span className={tableCellClass(res.isZero, undefined, 'conversion')}>{res.text}</span>;
+      return (
+        <span className={tableCellClass(res.isZero, undefined, 'conversion')}>{res.text}</span>
+      );
     }
     case 'approved': {
       const res = formatTableCount(funnelTotals.approved);
@@ -117,7 +125,7 @@ export function CampaignListTableTotalsCell({
         <span
           className={tableCellClass(
             res.isZero,
-            rateBenchmarkToneClass(res.isZero ? null : res.valPct),
+            rateBenchmarkToneClass(res.isZero ? null : res.valPct)
           )}
         >
           {res.text}
@@ -128,19 +136,29 @@ export function CampaignListTableTotalsCell({
       if (totals.impressions <= 0 || totals.costMicro <= 0) {
         return <span className={tableCellClass(true)}>-</span>;
       }
-      return <span className={tableCellClass()}>{formatCpmUsd(totals.costMicro, totals.impressions)}</span>;
+      return (
+        <span className={tableCellClass()}>
+          {formatCpmUsd(totals.costMicro, totals.impressions)}
+        </span>
+      );
     }
     case 'block_pct': {
       if (totals.clicks <= 0 || totals.blocks <= 0) {
         return <span className={tableCellClass(true)}>-</span>;
       }
-      return <span className={tableCellClass()}>{formatRelativeRate(totals.blocks, totals.clicks)}</span>;
+      return (
+        <span className={tableCellClass()}>{formatRelativeRate(totals.blocks, totals.clicks)}</span>
+      );
     }
     case 'bot_pct': {
       if (totals.clicks <= 0 || funnelTotals.bots <= 0) {
         return <span className={tableCellClass(true)}>-</span>;
       }
-      return <span className={tableCellClass()}>{formatRelativeRate(funnelTotals.bots, totals.clicks)}</span>;
+      return (
+        <span className={tableCellClass()}>
+          {formatRelativeRate(funnelTotals.bots, totals.clicks)}
+        </span>
+      );
     }
     case 'ecpa': {
       const ecpaMicro =
@@ -184,7 +202,7 @@ export function CampaignListTableTotalsCell({
           className={tableCellClass(
             profitRes.isZero,
             profitRes.isZero ? undefined : profitTone,
-            profitRes.isZero ? undefined : 'primary',
+            profitRes.isZero ? undefined : 'primary'
           )}
         >
           {profitRes.isZero ? '0.00' : profitRes.text}

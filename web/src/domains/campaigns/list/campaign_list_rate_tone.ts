@@ -14,7 +14,7 @@ export function rateBenchmarkToneClass(ratePct: number | null): string | undefin
     return undefined;
   }
   if (ratePct < LOW_RATE_WARN_PCT) {
-    return 'tabular-nums text-amber-600 dark:text-amber-400';
+    return 'tabular-nums text-admin-warn';
   }
   return undefined;
 }

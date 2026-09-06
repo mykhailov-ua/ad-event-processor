@@ -37,7 +37,10 @@ export type SupplySellersDirectoryProps = {
   draftDomain: string;
   draftSellerType: string;
   draftName: string;
-  editRows: Record<number, { seller_id: string; domain: string; seller_type: string; name: string }>;
+  editRows: Record<
+    number,
+    { seller_id: string; domain: string; seller_type: string; name: string }
+  >;
   acting: boolean;
   actionError: Error | undefined;
   createSuccess: boolean;
@@ -48,7 +51,7 @@ export type SupplySellersDirectoryProps = {
   onEditRowChange: (
     id: number,
     field: 'seller_id' | 'domain' | 'seller_type' | 'name',
-    value: string,
+    value: string
   ) => void;
   onCreateSeller: () => void;
   onUpdateSeller: (id: number) => void;
@@ -173,77 +176,71 @@ export function SupplySellersDirectory({
         <EmptyState title="No sellers" description="Supply sellers table is empty." />
       ) : (
         <DirectoryTable>
-            <TableHeader>
-              <TableRow>
-                <DirectoryTableHead>Seller ID</DirectoryTableHead>
-                <DirectoryTableHead>Domain</DirectoryTableHead>
-                <DirectoryTableHead>Type</DirectoryTableHead>
-                <DirectoryTableHead>Name</DirectoryTableHead>
-                <DirectoryTableHead />
-              </TableRow>
-            </TableHeader>
-            <TableBody>
-              {(items ?? []).map((row) => {
-                const edit = editRows[row.id] ?? {
-                  seller_id: row.seller_id,
-                  domain: row.domain,
-                  seller_type: row.seller_type,
-                  name: row.name,
-                };
-                return (
-                  <TableRow key={row.id}>
-                    <TableCell>
-                      <Input
-                        className="font-mono text-xs"
-                        value={edit.seller_id}
-                        onChange={(event) =>
-                          onEditRowChange(row.id, 'seller_id', event.target.value)
-                        }
-                      />
-                    </TableCell>
-                    <TableCell>
-                      <Input
-                        value={edit.domain}
-                        onChange={(event) =>
-                          onEditRowChange(row.id, 'domain', event.target.value)
-                        }
-                      />
-                    </TableCell>
-                    <TableCell>
-                      <Input
-                        value={edit.seller_type}
-                        onChange={(event) =>
-                          onEditRowChange(row.id, 'seller_type', event.target.value)
-                        }
-                      />
-                    </TableCell>
-                    <TableCell>
-                      <Input
-                        value={edit.name}
-                        onChange={(event) =>
-                          onEditRowChange(row.id, 'name', event.target.value)
-                        }
-                      />
-                    </TableCell>
-                    <TableCell>
-                      <RowActionsMenu ariaLabel="Seller actions" disabled={acting}>
-                        <DropdownMenuItem disabled={acting} onClick={() => onUpdateSeller(row.id)}>
-                          Save
-                        </DropdownMenuItem>
-                        <DropdownMenuItem
-                          className="text-destructive focus:text-destructive"
-                          disabled={acting}
-                          onClick={() => onDeleteSeller(row.id)}
-                        >
-                          Delete
-                        </DropdownMenuItem>
-                      </RowActionsMenu>
-                    </TableCell>
-                  </TableRow>
-                );
-              })}
-            </TableBody>
-          </DirectoryTable>
+          <TableHeader>
+            <TableRow>
+              <DirectoryTableHead>Seller ID</DirectoryTableHead>
+              <DirectoryTableHead>Domain</DirectoryTableHead>
+              <DirectoryTableHead>Type</DirectoryTableHead>
+              <DirectoryTableHead>Name</DirectoryTableHead>
+              <DirectoryTableHead />
+            </TableRow>
+          </TableHeader>
+          <TableBody>
+            {(items ?? []).map((row) => {
+              const edit = editRows[row.id] ?? {
+                seller_id: row.seller_id,
+                domain: row.domain,
+                seller_type: row.seller_type,
+                name: row.name,
+              };
+              return (
+                <TableRow key={row.id}>
+                  <TableCell>
+                    <Input
+                      className="font-mono text-xs"
+                      value={edit.seller_id}
+                      onChange={(event) => onEditRowChange(row.id, 'seller_id', event.target.value)}
+                    />
+                  </TableCell>
+                  <TableCell>
+                    <Input
+                      value={edit.domain}
+                      onChange={(event) => onEditRowChange(row.id, 'domain', event.target.value)}
+                    />
+                  </TableCell>
+                  <TableCell>
+                    <Input
+                      value={edit.seller_type}
+                      onChange={(event) =>
+                        onEditRowChange(row.id, 'seller_type', event.target.value)
+                      }
+                    />
+                  </TableCell>
+                  <TableCell>
+                    <Input
+                      value={edit.name}
+                      onChange={(event) => onEditRowChange(row.id, 'name', event.target.value)}
+                    />
+                  </TableCell>
+                  <TableCell>
+                    <RowActionsMenu ariaLabel="Seller actions" disabled={acting}>
+                      <DropdownMenuItem disabled={acting} onClick={() => onUpdateSeller(row.id)}>
+                        Save
+                      </DropdownMenuItem>
+                      <DropdownMenuItem
+                        className="text-destructive focus:text-destructive"
+                        disabled={acting}
+                        onClick={() => onDeleteSeller(row.id)}
+                      >
+                        Delete
+                      </DropdownMenuItem>
+                    </RowActionsMenu>
+                  </TableCell>
+                </TableRow>
+              );
+            })}
+          </TableBody>
+        </DirectoryTable>
       )}
 
       {actionError ? creativePanelError(actionError, 'Seller action failed') : null}

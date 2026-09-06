@@ -75,7 +75,7 @@ function parseOptionalMicro(raw: string | null): number | undefined {
 
 export function buildCampaignListQuery(
   params: URLSearchParams,
-  defaultCustomerId: string | undefined,
+  defaultCustomerId: string | undefined
 ): CampaignListQuery {
   const customerId = params.get('customer_id') ?? defaultCustomerId;
   const status = params.get('status');
@@ -87,12 +87,11 @@ export function buildCampaignListQuery(
   const statsRange = resolveCampaignListStatsRange(
     params.get('stats_from'),
     params.get('stats_to'),
-    params.get('stats_range'),
+    params.get('stats_range')
   );
 
   const countryRaw = params.get('country');
-  const country =
-    countryRaw && countryRaw !== '__all__' ? countryRaw : undefined;
+  const country = countryRaw && countryRaw !== '__all__' ? countryRaw : undefined;
 
   const query: CampaignListQuery = {
     customer_id: customerId ?? undefined,
@@ -117,9 +116,14 @@ export function buildCampaignListQuery(
   return query;
 }
 
-export type CampaignListFilterQuery = Omit<CampaignListQuery, 'limit' | 'offset' | 'sort' | 'order'>;
+export type CampaignListFilterQuery = Omit<
+  CampaignListQuery,
+  'limit' | 'offset' | 'sort' | 'order'
+>;
 
-export function campaignListFilterQueryFromListQuery(query: CampaignListQuery): CampaignListFilterQuery {
+export function campaignListFilterQueryFromListQuery(
+  query: CampaignListQuery
+): CampaignListFilterQuery {
   const { limit: _limit, offset: _offset, sort: _sort, order: _order, ...filter } = query;
   return filter;
 }
@@ -136,7 +140,7 @@ export type CampaignListQueryPatch = Partial<Omit<CampaignListQuery, 'sort'>> & 
 export function applyCampaignListQueryPatch(
   searchParams: URLSearchParams,
   currentQuery: CampaignListQuery,
-  patch: CampaignListQueryPatch,
+  patch: CampaignListQueryPatch
 ): URLSearchParams {
   const next = new URLSearchParams(searchParams);
   const merged = {
@@ -209,7 +213,7 @@ export function campaignListFiltersActive(
   searchParams: URLSearchParams,
   appliedQ: string,
   appliedSort: CampaignSortField,
-  appliedOrder: SortOrder,
+  appliedOrder: SortOrder
 ): boolean {
   return Boolean(
     searchParams.get('customer_id') ||
@@ -223,13 +227,13 @@ export function campaignListFiltersActive(
       appliedSort !== 'name' ||
       appliedOrder !== 'asc' ||
       searchParams.has('stats_from') ||
-      searchParams.has('stats_to'),
+      searchParams.has('stats_to')
   );
 }
 
 export function validateCampaignListStatsDraft(
   from: string,
-  to: string,
+  to: string
 ): { ok: true; from: string; to: string } | { ok: false; error: string } {
   if (!from.trim() || !to.trim()) {
     return { ok: false, error: 'empty' };

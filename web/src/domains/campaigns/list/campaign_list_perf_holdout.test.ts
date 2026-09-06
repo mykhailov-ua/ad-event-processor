@@ -28,7 +28,7 @@ test('moveDataColumn holdout: 1000 reorders stay within perf budget', () => {
   const limitMs = CAMPAIGN_LIST_MOVE_COLUMN_BUDGET.medianMs * PERF_TOLERANCE_RATIO;
   assert.ok(
     perOpMs <= limitMs,
-    `moveDataColumn per-op ${perOpMs.toFixed(4)} ms exceeds ${limitMs.toFixed(4)} ms`,
+    `moveDataColumn per-op ${perOpMs.toFixed(4)} ms exceeds ${limitMs.toFixed(4)} ms`
   );
 });
 
@@ -47,7 +47,7 @@ test('column width probe holdout: 100 rows within budget', () => {
   const limitMs = CAMPAIGN_LIST_WIDTHS_100_BUDGET.medianMs * PERF_TOLERANCE_RATIO;
   assert.ok(
     medianMs <= limitMs,
-    `computeCampaignListColumnWidths ${medianMs.toFixed(3)} ms exceeds ${limitMs.toFixed(3)} ms`,
+    `computeCampaignListColumnWidths ${medianMs.toFixed(3)} ms exceeds ${limitMs.toFixed(3)} ms`
   );
 });
 
@@ -78,6 +78,6 @@ test('column width probe holdout: doubling rows is sub-quadratic', () => {
   const ratio = time100 / Math.max(time50, 0.001);
   assert.ok(
     ratio < 2.5,
-    `width probe scaled ${ratio.toFixed(2)}x for 2x rows (expected < 2.5x linear-ish)`,
+    `width probe scaled ${ratio.toFixed(2)}x for 2x rows (expected < 2.5x linear-ish)`
   );
 });

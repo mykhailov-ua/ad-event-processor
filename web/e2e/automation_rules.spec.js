@@ -14,7 +14,9 @@ test.beforeEach(async ({}, testInfo) => {
 
 test('automation rules list loads from GET /api/v1/automation/rules', async ({ page }) => {
   await loginAsAdmin(page);
-  const listResponse = page.waitForResponse(isApiGet('/api/v1/automation/rules'), { timeout: 20_000 });
+  const listResponse = page.waitForResponse(isApiGet('/api/v1/automation/rules'), {
+    timeout: 20_000,
+  });
   await gotoLive(page, '/automation/rules');
   await expect(page.getByRole('heading', { name: 'Automation rules' })).toBeVisible();
   await expect(page.getByRole('navigation', { name: 'Automation sections' })).toBeVisible();

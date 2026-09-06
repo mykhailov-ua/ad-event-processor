@@ -1,4 +1,4 @@
-import { apiFetch, apiJson, apiJsonArray } from './client.js';
+import { apiFetch, apiJson, apiJsonArray, parseApiError } from './client.js';
 import type {
   AffiliateStatusPreset,
   ApplyIntegrationSchemaRequest,
@@ -32,30 +32,26 @@ import type {
   UpsertPlatformCampaignLinkRequest,
 } from './types.js';
 
-export async function listCostSyncNetworks(
-  signal?: AbortSignal,
-): Promise<CostSyncNetworkSchema[]> {
+export async function listCostSyncNetworks(signal?: AbortSignal): Promise<CostSyncNetworkSchema[]> {
   return apiJsonArray<CostSyncNetworkSchema>('/api/v1/cost-sync/networks', { signal });
 }
 
 export async function listCostSyncCredentials(
   params: CostSyncCredentialsQuery = {},
-  signal?: AbortSignal,
+  signal?: AbortSignal
 ): Promise<CostSyncCredential[]> {
   const search = new URLSearchParams();
   if (params.customer_id) {
     search.set('customer_id', params.customer_id);
   }
   const query = search.toString();
-  const path = query
-    ? `/api/v1/cost-sync/credentials?${query}`
-    : '/api/v1/cost-sync/credentials';
+  const path = query ? `/api/v1/cost-sync/credentials?${query}` : '/api/v1/cost-sync/credentials';
   return apiJsonArray<CostSyncCredential>(path, { signal });
 }
 
 export async function listCostSyncHistory(
   params: CostSyncHistoryQuery = {},
-  signal?: AbortSignal,
+  signal?: AbortSignal
 ): Promise<CostSyncRun[]> {
   const search = new URLSearchParams();
   if (params.customer_id) {
@@ -74,7 +70,7 @@ export async function listCostSyncHistory(
 
 export async function runCostSync(
   body: RunCostSyncRequest,
-  signal?: AbortSignal,
+  signal?: AbortSignal
 ): Promise<RunCostSyncAcceptedResponse> {
   return apiJson<RunCostSyncAcceptedResponse>('/api/v1/cost-sync/run', {
     method: 'POST',
@@ -86,7 +82,7 @@ export async function runCostSync(
 export async function upsertCostSyncCredential(
   network: string,
   body: UpsertCostSyncCredentialRequest,
-  signal?: AbortSignal,
+  signal?: AbortSignal
 ): Promise<CostSyncCredential> {
   return apiJson<CostSyncCredential>(
     `/api/v1/cost-sync/credentials/${encodeURIComponent(network)}`,
@@ -94,22 +90,22 @@ export async function upsertCostSyncCredential(
       method: 'PUT',
       body: JSON.stringify(body),
       signal,
-    },
+    }
   );
 }
 
 export async function deleteCostSyncCredential(
   network: string,
   customerId: string,
-  signal?: AbortSignal,
+  signal?: AbortSignal
 ): Promise<void> {
   const search = new URLSearchParams({ customer_id: customerId });
   const response = await apiFetch(
     `/api/v1/cost-sync/credentials/${encodeURIComponent(network)}?${search.toString()}`,
-    { method: 'DELETE', signal },
+    { method: 'DELETE', signal }
   );
   if (!response.ok && response.status !== 204) {
-    throw new Error(response.statusText || `HTTP ${response.status}`);
+    throw await parseApiError(response);
   }
 }
 
@@ -119,7 +115,7 @@ export async function fetchPostbacksSnapshot(signal?: AbortSignal): Promise<Post
 
 export async function fetchCostSyncSnapshot(
   params: { customer_id?: string; limit?: number } = {},
-  signal?: AbortSignal,
+  signal?: AbortSignal
 ): Promise<CostSyncSnapshot> {
   const search = new URLSearchParams();
   if (params.customer_id) {
@@ -146,12 +142,15 @@ export async function listPostbackDlq(signal?: AbortSignal): Promise<PostbackDlq
 }
 
 export async function listPostbackCampaignStatus(
-  signal?: AbortSignal,
+  signal?: AbortSignal
 ): Promise<PostbackCampaignStatus[]> {
   return apiJsonArray<PostbackCampaignStatus>('/api/v1/postbacks/campaign-status', { signal });
 }
 
-export async function retryPostbackDlq(id: string, signal?: AbortSignal): Promise<StatusOKResponse> {
+export async function retryPostbackDlq(
+  id: string,
+  signal?: AbortSignal
+): Promise<StatusOKResponse> {
   return apiJson<StatusOKResponse>(`/api/v1/postbacks/dlq/${encodeURIComponent(id)}/retry`, {
     method: 'POST',
     signal,
@@ -161,52 +160,45 @@ export async function retryPostbackDlq(id: string, signal?: AbortSignal): Promis
 export async function updatePostbackConfig(
   campaignId: string,
   body: UpdatePostbackConfigRequest,
-  signal?: AbortSignal,
+  signal?: AbortSignal
 ): Promise<StatusOKResponse> {
-  return apiJson<StatusOKResponse>(
-    `/api/v1/postbacks/config/${encodeURIComponent(campaignId)}`,
-    {
-      method: 'PUT',
-      body: JSON.stringify(body),
-      signal,
-    },
-  );
+  return apiJson<StatusOKResponse>(`/api/v1/postbacks/config/${encodeURIComponent(campaignId)}`, {
+    method: 'PUT',
+    body: JSON.stringify(body),
+    signal,
+  });
 }
 
 export async function testPostbackConfig(
   campaignId: string,
-  signal?: AbortSignal,
+  signal?: AbortSignal
 ): Promise<PostbackDryRunResult> {
   const response = await apiFetch(
     `/api/v1/postbacks/config/${encodeURIComponent(campaignId)}/test`,
-    { method: 'POST', signal },
+    { method: 'POST', signal }
   );
-  const body = (await response.json()) as PostbackDryRunResult;
   if (response.ok || response.status === 422) {
-    return body;
+    return (await response.json()) as PostbackDryRunResult;
   }
-  throw new Error(response.statusText || `HTTP ${response.status}`);
+  throw await parseApiError(response);
 }
 
-export async function listIntegrationSchemas(
-  signal?: AbortSignal,
-): Promise<IntegrationSchema[]> {
+export async function listIntegrationSchemas(signal?: AbortSignal): Promise<IntegrationSchema[]> {
   return apiJsonArray<IntegrationSchema>('/api/v1/integration/schemas', { signal });
 }
 
 export async function getIntegrationSchema(
   id: string,
-  signal?: AbortSignal,
+  signal?: AbortSignal
 ): Promise<IntegrationSchema> {
-  return apiJson<IntegrationSchema>(
-    `/api/v1/integration/schemas/${encodeURIComponent(id)}`,
-    { signal },
-  );
+  return apiJson<IntegrationSchema>(`/api/v1/integration/schemas/${encodeURIComponent(id)}`, {
+    signal,
+  });
 }
 
 export async function createIntegrationSchema(
   body: CreateIntegrationSchemaRequest,
-  signal?: AbortSignal,
+  signal?: AbortSignal
 ): Promise<IntegrationSchema> {
   return apiJson<IntegrationSchema>('/api/v1/integration/schemas', {
     method: 'POST',
@@ -218,7 +210,7 @@ export async function createIntegrationSchema(
 export async function applyIntegrationSchema(
   id: string,
   body: ApplyIntegrationSchemaRequest,
-  signal?: AbortSignal,
+  signal?: AbortSignal
 ): Promise<ApplyIntegrationSchemaResponse> {
   return apiJson<ApplyIntegrationSchemaResponse>(
     `/api/v1/integration/schemas/${encodeURIComponent(id)}/apply`,
@@ -226,13 +218,13 @@ export async function applyIntegrationSchema(
       method: 'POST',
       body: JSON.stringify(body),
       signal,
-    },
+    }
   );
 }
 
 export async function importIntegrationTemplates(
   body: ImportIntegrationTemplatesRequest = {},
-  signal?: AbortSignal,
+  signal?: AbortSignal
 ): Promise<IntegrationSchema[]> {
   return apiJsonArray<IntegrationSchema>('/api/v1/integration/templates/import', {
     method: 'POST',
@@ -242,13 +234,13 @@ export async function importIntegrationTemplates(
 }
 
 export async function listIntegrationTemplates(
-  signal?: AbortSignal,
+  signal?: AbortSignal
 ): Promise<IntegrationTemplateCatalogEntry[]> {
   return apiJsonArray<IntegrationTemplateCatalogEntry>('/api/v1/integration/templates', { signal });
 }
 
 export async function listAffiliateStatusPresets(
-  signal?: AbortSignal,
+  signal?: AbortSignal
 ): Promise<AffiliateStatusPreset[]> {
   return apiJsonArray<AffiliateStatusPreset>('/api/v1/integration/affiliate-status-presets', {
     signal,
@@ -257,7 +249,7 @@ export async function listAffiliateStatusPresets(
 
 export async function listPlatformCampaignLinks(
   params: PlatformCampaignLinksQuery = {},
-  signal?: AbortSignal,
+  signal?: AbortSignal
 ): Promise<PlatformCampaignLink[]> {
   const search = new URLSearchParams();
   if (params.customer_id) {
@@ -275,7 +267,7 @@ export async function listPlatformCampaignLinks(
 
 export async function runPlatformCampaignSync(
   body: PlatformCampaignSyncRunRequest,
-  signal?: AbortSignal,
+  signal?: AbortSignal
 ): Promise<void> {
   const response = await apiFetch('/api/v1/platform-campaigns/sync-run', {
     method: 'POST',
@@ -283,7 +275,7 @@ export async function runPlatformCampaignSync(
     signal,
   });
   if (!response.ok && response.status !== 204) {
-    throw new Error(response.statusText || `HTTP ${response.status}`);
+    throw await parseApiError(response);
   }
 }
 
@@ -295,7 +287,7 @@ export async function upsertPlatformCampaignLink(
   campaignId: string,
   network: string,
   body: UpsertPlatformCampaignLinkRequest,
-  signal?: AbortSignal,
+  signal?: AbortSignal
 ): Promise<PlatformCampaignLink> {
   return apiJson<PlatformCampaignLink>(platformCampaignLinkPath(campaignId, network), {
     method: 'PUT',
@@ -307,32 +299,32 @@ export async function upsertPlatformCampaignLink(
 export async function deletePlatformCampaignLink(
   campaignId: string,
   network: string,
-  signal?: AbortSignal,
+  signal?: AbortSignal
 ): Promise<void> {
   const response = await apiFetch(platformCampaignLinkPath(campaignId, network), {
     method: 'DELETE',
     signal,
   });
   if (!response.ok && response.status !== 204) {
-    throw new Error(response.statusText || `HTTP ${response.status}`);
+    throw await parseApiError(response);
   }
 }
 
 export async function refreshPlatformCampaignLink(
   campaignId: string,
   network: string,
-  signal?: AbortSignal,
+  signal?: AbortSignal
 ): Promise<PlatformCampaignLink> {
-  return apiJson<PlatformCampaignLink>(
-    `${platformCampaignLinkPath(campaignId, network)}/refresh`,
-    { method: 'POST', signal },
-  );
+  return apiJson<PlatformCampaignLink>(`${platformCampaignLinkPath(campaignId, network)}/refresh`, {
+    method: 'POST',
+    signal,
+  });
 }
 
 export async function pausePlatformCampaign(
   campaignId: string,
   body: PlatformCampaignMutationRequest,
-  signal?: AbortSignal,
+  signal?: AbortSignal
 ): Promise<PlatformCampaignMutation> {
   return apiJson<PlatformCampaignMutation>(
     `/api/v1/platform-campaigns/${encodeURIComponent(campaignId)}/pause`,
@@ -340,14 +332,14 @@ export async function pausePlatformCampaign(
       method: 'POST',
       body: JSON.stringify(body),
       signal,
-    },
+    }
   );
 }
 
 export async function resumePlatformCampaign(
   campaignId: string,
   body: PlatformCampaignMutationRequest,
-  signal?: AbortSignal,
+  signal?: AbortSignal
 ): Promise<PlatformCampaignMutation> {
   return apiJson<PlatformCampaignMutation>(
     `/api/v1/platform-campaigns/${encodeURIComponent(campaignId)}/resume`,
@@ -355,14 +347,14 @@ export async function resumePlatformCampaign(
       method: 'POST',
       body: JSON.stringify(body),
       signal,
-    },
+    }
   );
 }
 
 export async function setPlatformCampaignBudget(
   campaignId: string,
   body: PlatformCampaignMutationRequest,
-  signal?: AbortSignal,
+  signal?: AbortSignal
 ): Promise<PlatformCampaignMutation> {
   return apiJson<PlatformCampaignMutation>(
     `/api/v1/platform-campaigns/${encodeURIComponent(campaignId)}/budget`,
@@ -370,6 +362,6 @@ export async function setPlatformCampaignBudget(
       method: 'PUT',
       body: JSON.stringify(body),
       signal,
-    },
+    }
   );
 }

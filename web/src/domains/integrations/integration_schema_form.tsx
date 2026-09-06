@@ -100,7 +100,9 @@ export function IntegrationSchemaCreateForm({
                 onChange={(event) => onDraftSchemaJsonChange(event.target.value)}
               />
             </div>
-            {createError ? <ErrorBlock title="Create failed" message={createError.message} /> : null}
+            {createError ? (
+              <ErrorBlock title="Create failed" message={createError.message} />
+            ) : null}
           </div>
           <DialogFooter>
             <Button disabled={creating || !canCreate} onClick={onCreate} type="button">
@@ -258,7 +260,9 @@ export function IntegrationTemplateImportForm({
       {importSuccess ? (
         <p className="text-sm text-muted-foreground">
           Templates imported
-          {importedCount != null ? ` (${importedCount} schema${importedCount === 1 ? '' : 's'})` : ''}
+          {importedCount != null
+            ? ` (${importedCount} schema${importedCount === 1 ? '' : 's'})`
+            : ''}
           . List refreshed.
         </p>
       ) : null}

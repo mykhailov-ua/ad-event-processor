@@ -6,6 +6,8 @@ import {
   type CampaignListSelectionScope,
 } from '@/domains/campaigns/list/campaign_list_selection_scope';
 
+// Session LRU for GET /campaigns list keyed by query + stats window (RF-4).
+// Invalidated on mutation via invalidateCampaignListResponseCache(); max 32 entries.
 const MAX_CACHE_ENTRIES = 32;
 
 const cache = new Map<string, CampaignListResponse>();
@@ -36,7 +38,7 @@ export async function fetchCampaignListCached(
   query: CampaignListQuery,
   statsFrom: string | undefined,
   statsTo: string | undefined,
-  signal?: AbortSignal,
+  signal?: AbortSignal
 ): Promise<CampaignListResponse> {
   const key = campaignListResponseCacheKey({ query, statsFrom, statsTo });
   const cached = cache.get(key);

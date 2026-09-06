@@ -72,7 +72,7 @@ test('buildCampaignRowVm maps server derived fields', () => {
     baseMargin,
     {},
     {},
-    false,
+    false
   );
 
   assert.equal(vm.ctr?.valPct, 5);
@@ -94,5 +94,5 @@ test('buildCampaignRowVm uses profit_micro for profit tone', () => {
   const margin: CampaignMargin = { ...baseMargin, operator_margin_micro: 0 };
   const vm = buildCampaignRowVm(baseCampaign, metrics, margin, {}, {}, false);
 
-  assert.match(vm.profitToneClass, /text-green-700/);
+  assert.match(vm.profitToneClass, /text-admin-positive/);
 });

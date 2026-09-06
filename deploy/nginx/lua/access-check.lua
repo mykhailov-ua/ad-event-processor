@@ -18,13 +18,14 @@
 -- ngx.shared blacklist_cache generational check (perimeter_blacklist):
 -- - Missing _bl_ver or _bl_sync_ts: 503 fail-closed (no successful sync yet).
 -- - ngx.time() - _bl_sync_ts > BL_STALE_SEC (EDGE_BL_STALE_SEC default 30): 503 fail-closed.
--- - ip_ver = get("b:" .. client_ip); 403 fail-closed only when ip_ver and ip_ver == _bl_ver.
+-- - ip_ver = get("b:" .. canonical(client_ip)); 403 fail-closed only when ip_ver and ip_ver == _bl_ver.
 -- - ip_ver present but ip_ver ~= _bl_ver: fail-open (stale stamp from prior generation after unblock).
 -- - No b:{ip} key: fail-open.
 --
 -- ASN fail-open whitelist (edge-asn.lua, not tracker FilterEngine bypass):
--- - X-Client-ASN whitelisted via edge_config asn_cdn:* / asn_mobile:* skips perimeter_blacklist only.
--- - Missing or non-whitelisted ASN: full generational blacklist check applies.
+-- - EDGE_TRUSTED_ASN_HEADER (default X-Edge-Trusted-ASN) whitelisted via edge_config skips perimeter_blacklist.
+-- - Client X-Client-ASN cleared before gate; not used for bypass (client_asn_blacklist_bypass).
+-- - Missing or non-whitelisted trusted ASN: full generational blacklist check applies.
 --
 -- HTTP outcomes: 403 blocked IP; 503 circuit open or blacklist missing/stale; pass records perimeter_pass metric.
 --
@@ -40,13 +41,14 @@ local edge_track_policy = require "edge_track_policy"
 local edge_asn = require "edge-asn"
 local edge_ingress = require "edge-ingress"
 local edge_tarpit = require "edge-tarpit"
+local edge_ip = require "edge-ip"
 
 local blacklist_cache = ngx.shared.blacklist_cache
 
 local BL_STALE_SEC = tonumber(os.getenv "EDGE_BL_STALE_SEC" or "") or 30
 
 local function client_asn()
-    return ngx.var.http_x_client_asn
+    return edge_asn.trusted_client_asn()
 end
 
 -- Generational blacklist gate (ngx.shared blacklist_cache).
@@ -75,7 +77,7 @@ local function perimeter_blacklist(client_ip)
         ngx.exit(ngx.HTTP_SERVICE_UNAVAILABLE)
     end
 
-    local ip_ver = blacklist_cache:get("b:" .. client_ip)
+    local ip_ver = blacklist_cache:get("b:" .. edge_ip.canonical(client_ip))
     if ip_ver and ip_ver == ver then
         edge_metrics.record_blocked_ip()
         ngx.exit(ngx.HTTP_FORBIDDEN)
@@ -83,7 +85,7 @@ local function perimeter_blacklist(client_ip)
 end
 
 -- Circuit breaker runs before blacklist: record_total every request; open -> 503 fail-closed.
--- Below SAMPLE_WINDOW 100 combined bucket samples circuit stays closed (fail-open on infra noise).
+-- Below SAMPLE_WINDOW 100 combined bucket samples circuit stays closed unless MIN_ERR_OPEN 10 errs at >95% (circuit_breaker_min_samples).
 local function perimeter_gate(client_ip, bucket_curr, bucket_prev)
     edge_circuit.record_total()
     if edge_circuit.open(bucket_curr, bucket_prev) then
@@ -97,17 +99,19 @@ local function perimeter_gate(client_ip, bucket_curr, bucket_prev)
 end
 
 local bucket_curr, bucket_prev = edge_circuit.buckets()
-local client_ip = ngx.var.remote_addr
+local client_ip = edge_ip.canonical(ngx.var.remote_addr)
 
+edge_asn.sanitize_untrusted_asn_headers()
 perimeter_gate(client_ip, bucket_curr, bucket_prev)
 edge_tarpit.maybe_delay()
 edge_ingress.record_and_forward()
 
--- Route dispatch: OPTIONS /track returns 204 upstream; /click and /openrtb/bid use route gates
+-- Route dispatch: OPTIONS /track runs fraud tier + IP edge_rl before upstream 204; /click and /openrtb/bid use route gates
 -- then edge_track_policy; default /track sets ngx.ctx.campaign_id for edge-shard-balancer.
 local edge_route_gate = require "edge-route-gate"
 local uri = ngx.var.uri
 if ngx.req.get_method() == "OPTIONS" and uri == "/track" then
+    edge_track_policy.run_options_track()
     return
 end
 if uri == "/click" then

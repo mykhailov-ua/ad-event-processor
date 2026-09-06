@@ -53,6 +53,7 @@ type Config struct {
 	EventFlushMs                        int
 	StatsFlushMs                        int
 	MaxWorkers                          int
+	WorkerPoolQueueDepth                int
 	GnetNumEventLoops                   int
 	ClickHouseMaxWorkers                int
 	ProcessorPostgresStreamMaxWorkers   int
@@ -75,6 +76,8 @@ type Config struct {
 	DBTrackerMaxConns                   int
 	DBProcessorMaxConns                 int
 	DBMinConns                          int
+	PostgresMaxConnections              int
+	PostgresPoolConnHeadroom            int
 	PostgresPoolSettleMaxConns          int
 	VolumeMeterSource                   string
 	SettlementLanes                     int
@@ -99,6 +102,7 @@ type Config struct {
 	ClickHouseRecompressOffPeakEndUTC   int
 	ProcessorStreamLagMaxSec            int
 	TrackerPGFallback                   bool
+	RegistryStalePGGrace                bool
 	WriteTimeoutMs                      int
 	FilterTimeoutMs                     int
 	FilterSlowMs                        int
@@ -111,6 +115,7 @@ type Config struct {
 	DuplicateTTLSec                     int
 	TTCMinMs                            int
 	TTCFailClosed                       bool
+	GeoFailClosed                       bool
 	ClickHouseBatchSize                 int
 	ClickHouseFlushIntervalMs           int
 	PIISaltVersion                      uint8
@@ -122,6 +127,7 @@ type Config struct {
 	HTTPReadHeaderTimeoutMs             int
 	HTTPReadTimeoutMs                   int
 	HTTPWriteTimeoutMs                  int
+	AdminPGStatementTimeoutMs           int
 	HTTPIdleTimeoutMs                   int
 	DefaultTokenDurationHrs             int
 	StreamMaxLen                        int
@@ -676,6 +682,7 @@ func Load() (*Config, error) {
 		EventFlushMs:                           getEnvInt("EVENT_FLUSH_MS", 20),
 		StatsFlushMs:                           getEnvInt("STATS_FLUSH_MS", 5000),
 		MaxWorkers:                             getEnvInt("MAX_WORKERS", 16),
+		WorkerPoolQueueDepth:                   getEnvInt("WORKER_POOL_QUEUE_DEPTH", DefaultWorkerPoolQueueDepth),
 		GnetNumEventLoops:                      getEnvInt("GNET_NUM_EVENT_LOOPS", 0),
 		ClickHouseMaxWorkers:                   getEnvInt("CH_MAX_WORKERS", 1),
 		ProcessorPostgresStreamMaxWorkers:      getEnvInt("PROCESSOR_PG_STREAM_MAX_WORKERS", 0),
@@ -699,6 +706,8 @@ func Load() (*Config, error) {
 		DBProcessorMaxConns:                    getEnvInt("DB_PROCESSOR_MAX_CONNS", 16),
 		RedisMaxActiveConns:                    getEnvIntDual("REDIS_MAX_ACTIVE_CONNS", "REDIS_MAX_ACTIVE", 2048),
 		DBMinConns:                             getEnvInt("DB_MIN_CONNS", 2),
+		PostgresMaxConnections:                 getEnvInt("PG_MAX_CONNECTIONS", 0),
+		PostgresPoolConnHeadroom:               getEnvInt("PG_POOL_CONN_HEADROOM", DefaultPostgresPoolConnHeadroom),
 		PostgresPoolSettleMaxConns:             getEnvInt("PG_POOL_SETTLE_MAX_CONNS", 0),
 		VolumeMeterSource:                      envOrDefault("VOLUME_METER_SOURCE", "pg"),
 		SettlementLanes:                        getEnvInt("SETTLEMENT_LANES", 0),
@@ -727,6 +736,7 @@ func Load() (*Config, error) {
 		ClickHouseRecompressOffPeakEndUTC:      getEnvInt("CH_RECOMPRESS_OFFPEAK_END_UTC", 6),
 		ProcessorStreamLagMaxSec:               getEnvInt("PROCESSOR_STREAM_LAG_MAX_SEC", 120),
 		TrackerPGFallback:                      getEnvBool("TRACKER_PG_FALLBACK", appEnv != "production"),
+		RegistryStalePGGrace:                   getEnvBool("REGISTRY_STALE_PG_GRACE", true),
 		WriteTimeoutMs:                         getEnvInt("WRITE_TIMEOUT_MS", 5000),
 		FilterTimeoutMs:                        getEnvInt("FILTER_TIMEOUT_MS", 0),
 		FilterSlowMs:                           getEnvInt("FILTER_SLOW_MS", 5),
@@ -740,6 +750,7 @@ func Load() (*Config, error) {
 		DuplicateTTLSec:                        getEnvInt("DUPLICATE_TTL_SEC", 10),
 		TTCMinMs:                               getEnvInt("TTC_MIN_MS", 300),
 		TTCFailClosed:                          getEnvBool("TTC_FAIL_CLOSED", true),
+		GeoFailClosed:                          getEnvBool("GEO_FAIL_CLOSED", true),
 		ClickHouseDSN:                          Secret(os.Getenv("CH_DSN")),
 		ClickHouseEnabled:                      clickHouseEnabledFromEnv(),
 		ClickHouseBatchSize:                    getEnvInt("CH_BATCH_SIZE", 50000),
@@ -754,6 +765,7 @@ func Load() (*Config, error) {
 		HTTPReadHeaderTimeoutMs:                getEnvInt("HTTP_READ_HEADER_TIMEOUT_MS", 2000),
 		HTTPReadTimeoutMs:                      getEnvInt("HTTP_READ_TIMEOUT_MS", 5000),
 		HTTPWriteTimeoutMs:                     getEnvInt("HTTP_WRITE_TIMEOUT_MS", 10000),
+		AdminPGStatementTimeoutMs:              getEnvInt("ADMIN_PG_STATEMENT_TIMEOUT_MS", 30000),
 		HTTPIdleTimeoutMs:                      getEnvInt("HTTP_IDLE_TIMEOUT_MS", 30000),
 		DefaultTokenDurationHrs:                getEnvInt("DEFAULT_TOKEN_DURATION_HRS", 24),
 		ClickAmount:                            getEnvMicro("CLICK_AMOUNT", 100_000),
@@ -997,6 +1009,13 @@ func clickHouseEnabledFromEnv() bool {
 
 func telemetryOptInFromEnv() bool {
 	return TelemetryOptInFromEnvDual()
+}
+
+func (c *Config) AdminPGStatementTimeout() time.Duration {
+	if c == nil || c.AdminPGStatementTimeoutMs <= 0 {
+		return 30 * time.Second
+	}
+	return time.Duration(c.AdminPGStatementTimeoutMs) * time.Millisecond
 }
 
 func (c *Config) TelemetryInterval() time.Duration {

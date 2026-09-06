@@ -659,8 +659,11 @@ func (f *UnifiedFilter) checkIngressRPDGo(
 	now time.Time,
 ) error {
 	maxRPD := f.entitlementsMaxRPD(campInfo.CustomerID)
-	if maxRPD == 0 || redisClient == nil {
+	if maxRPD == 0 {
 		return nil
+	}
+	if redisClient == nil {
+		return filt.ErrShardUnavailable
 	}
 	if filt.CgnatBypassForCampaign(f.cgnatGlobalBypass, f.registry, evt.CampaignID, f.mobileCarrierASN, f.asnLookup, evt.IP, "ingress_rpd") {
 		return nil
@@ -672,7 +675,7 @@ func (f *UnifiedFilter) checkIngressRPDGo(
 	incr := pipe.Incr(ctx, redisKey)
 	pipe.Expire(ctx, redisKey, time.Duration(luaPrecheckIngressTTLSec)*time.Second)
 	if _, err := pipe.Exec(ctx); err != nil {
-		return nil
+		return err
 	}
 	if uint64(incr.Val()) > maxRPD {
 		return filt.ErrDailyQuotaExceeded

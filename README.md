@@ -101,7 +101,7 @@
 
     | Mode | Behavior |
     | :--- | :--- |
-    | Hard reject | HTTP 403, or silent accept (decoy 202/302) when `silent_reject_enabled` on campaign |
+    | Hard reject | HTTP 403, or non-blocking acceptance (202/302) when `silent_reject_enabled` on campaign |
     | Shadow | Accepted with analytics flag; no budget debit when fraud signals skip unified Lua |
     | Blacklist | Redis `blacklist:fraud`; optional XDP drop at NIC (Enterprise license) |
 

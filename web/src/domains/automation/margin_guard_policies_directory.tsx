@@ -1,4 +1,5 @@
-import { useEffect, useState } from 'react';
+import { useState } from 'react';
+import { useRunWhenTrue } from '@/hooks/use_run_when_true';
 
 import { PrimaryActionButton } from '@/shell/action_buttons';
 import { PageChrome } from '@/shell/page_chrome';
@@ -72,11 +73,7 @@ export function MarginGuardPoliciesDirectory({
 }: MarginGuardPoliciesDirectoryProps) {
   const [createOpen, setCreateOpen] = useState(false);
 
-  useEffect(() => {
-    if (createSuccess) {
-      setCreateOpen(false);
-    }
-  }, [createSuccess]);
+  useRunWhenTrue(createSuccess, () => setCreateOpen(false));
 
   if (!appliedCampaignId) {
     return (
@@ -211,29 +208,29 @@ export function MarginGuardPoliciesDirectory({
         <EmptyState title="No policies" description="No margin guard policies for this campaign." />
       ) : (
         <DirectoryTable>
-            <TableHeader>
-              <TableRow>
-                <DirectoryTableHead>Name</DirectoryTableHead>
-                <DirectoryTableHead>ROI floor %</DirectoryTableHead>
-                <DirectoryTableHead>Min clicks</DirectoryTableHead>
-                <DirectoryTableHead>Active</DirectoryTableHead>
+          <TableHeader>
+            <TableRow>
+              <DirectoryTableHead>Name</DirectoryTableHead>
+              <DirectoryTableHead>ROI floor %</DirectoryTableHead>
+              <DirectoryTableHead>Min clicks</DirectoryTableHead>
+              <DirectoryTableHead>Active</DirectoryTableHead>
+            </TableRow>
+          </TableHeader>
+          <TableBody>
+            {(items ?? []).map((row) => (
+              <TableRow key={row.id ?? row.name}>
+                <TableCell>{row.name}</TableCell>
+                <TableCell>{row.roi_floor_pct}</TableCell>
+                <TableCell>{row.min_clicks}</TableCell>
+                <TableCell>
+                  <Badge variant={row.is_active ? 'default' : 'outline'}>
+                    {row.is_active ? 'yes' : 'no'}
+                  </Badge>
+                </TableCell>
               </TableRow>
-            </TableHeader>
-            <TableBody>
-              {(items ?? []).map((row) => (
-                <TableRow key={row.id ?? row.name}>
-                  <TableCell>{row.name}</TableCell>
-                  <TableCell>{row.roi_floor_pct}</TableCell>
-                  <TableCell>{row.min_clicks}</TableCell>
-                  <TableCell>
-                    <Badge variant={row.is_active ? 'default' : 'outline'}>
-                      {row.is_active ? 'yes' : 'no'}
-                    </Badge>
-                  </TableCell>
-                </TableRow>
-              ))}
-            </TableBody>
-          </DirectoryTable>
+            ))}
+          </TableBody>
+        </DirectoryTable>
       )}
 
       {actionError ? <ErrorBlock title="Action failed" message={actionError.message} /> : null}

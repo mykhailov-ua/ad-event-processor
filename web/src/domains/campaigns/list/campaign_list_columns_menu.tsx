@@ -94,9 +94,13 @@ export function CampaignListColumnsMenu({
           Columns ({visibleMiddleCount}/{totalMiddleCount})
         </Button>
       </DropdownMenuTrigger>
-      <DropdownMenuContent align="start" className={cn(campaignListColumnsMenuClass, 'gap-0 p-0')} scrollable={false}>
-        <div className="border-b border-border px-2 py-1.5">
-          <p className="mb-1 text-[10px] font-semibold uppercase leading-[14px] text-muted-foreground">
+      <DropdownMenuContent
+        align="start"
+        className={cn(campaignListColumnsMenuClass, 'gap-0 p-0')}
+        scrollable={false}
+      >
+        <div className="grid gap-1 border-b border-border px-2 py-1.5">
+          <p className="m-0 text-[10px] font-semibold uppercase leading-[14px] text-muted-foreground">
             Preset views
           </p>
           <div className="flex flex-wrap items-center gap-x-2.5 gap-y-0.5">
@@ -107,7 +111,7 @@ export function CampaignListColumnsMenu({
                   'h-auto min-h-6 px-0 text-[13px] leading-none shadow-none',
                   activePreset === presetId
                     ? 'font-semibold text-foreground hover:bg-transparent'
-                    : 'font-normal text-muted-foreground hover:bg-transparent hover:text-foreground',
+                    : 'font-normal text-muted-foreground hover:bg-transparent hover:text-foreground'
                 )}
                 type="button"
                 variant="ghost"
@@ -121,8 +125,8 @@ export function CampaignListColumnsMenu({
 
         <div className="ui-scrollbar grid max-h-72 grid-cols-4 divide-x divide-border overflow-y-auto">
           {CAMPAIGN_LIST_COLUMN_CATEGORIES.map((category) => (
-            <section key={category.id} className="min-w-0 px-2 py-1.5">
-              <h3 className="mb-1 text-[10px] font-semibold uppercase leading-[14px] text-muted-foreground">
+            <section key={category.id} className="flex min-w-0 flex-col gap-1 px-2 py-1.5">
+              <h3 className="m-0 text-[10px] font-semibold uppercase leading-[14px] text-muted-foreground">
                 {category.title}
               </h3>
               <ul className="grid gap-0.5">

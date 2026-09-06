@@ -250,6 +250,68 @@ paths:
         default:
           $ref: '../openapi.yaml#/components/responses/Error'
 
+  /api/v1/auth/login:
+    post:
+      tags: [auth]
+      operationId: authLogin
+      summary: Login with email and password
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '../components/schemas/platform.yaml#/AuthLoginRequest'
+      responses:
+        '200':
+          description: Session cookies set
+          content:
+            application/json:
+              schema:
+                $ref: '../components/schemas/platform.yaml#/PublicLoginResponse'
+        default:
+          $ref: '../openapi.yaml#/components/responses/Error'
+
+  /api/v1/auth/logout:
+    post:
+      tags: [auth]
+      operationId: authLogout
+      summary: Revoke refresh token and clear session cookies
+      responses:
+        '200':
+          description: Logged out
+        default:
+          $ref: '../openapi.yaml#/components/responses/Error'
+
+  /api/v1/auth/refresh:
+    post:
+      tags: [auth]
+      operationId: authRefresh
+      summary: Rotate access token from refresh cookie
+      responses:
+        '200':
+          description: Tokens rotated
+          content:
+            application/json:
+              schema:
+                $ref: '../components/schemas/platform.yaml#/AuthRefreshResponse'
+        default:
+          $ref: '../openapi.yaml#/components/responses/Error'
+
+  /api/v1/auth/me:
+    get:
+      tags: [auth]
+      operationId: authMe
+      summary: Current authenticated user
+      responses:
+        '200':
+          description: User profile
+          content:
+            application/json:
+              schema:
+                $ref: '../components/schemas/platform.yaml#/SessionBootstrapUser'
+        default:
+          $ref: '../openapi.yaml#/components/responses/Error'
+
   /api/v1/session:
     get:
       tags: [meta]

@@ -1,11 +1,14 @@
-import { apiFetch, apiJson, apiJsonArray } from './client.js';
+import { apiFetch, apiJson, apiJsonArray, parseApiError } from './client.js';
 import type { CreateLanderRequest, HostedEditorState, Lander } from './types.js';
 
 export async function listLanders(signal?: AbortSignal): Promise<Lander[]> {
   return apiJsonArray<Lander>('/api/v1/landers', { signal });
 }
 
-export async function createLander(body: CreateLanderRequest, signal?: AbortSignal): Promise<Lander> {
+export async function createLander(
+  body: CreateLanderRequest,
+  signal?: AbortSignal
+): Promise<Lander> {
   return apiJson<Lander>('/api/v1/landers', {
     method: 'POST',
     body: JSON.stringify(body),
@@ -15,31 +18,28 @@ export async function createLander(body: CreateLanderRequest, signal?: AbortSign
 
 export async function getHostedEditorState(
   landerId: string,
-  signal?: AbortSignal,
+  signal?: AbortSignal
 ): Promise<HostedEditorState> {
   return apiJson<HostedEditorState>(
     `/api/v1/landers/${encodeURIComponent(landerId)}/hosted-editor`,
-    { signal },
+    { signal }
   );
 }
 
 export async function uploadHostedLanderFiles(
   landerId: string,
   zipFile: File,
-  signal?: AbortSignal,
+  signal?: AbortSignal
 ): Promise<Lander> {
   const form = new FormData();
   form.append('zip', zipFile);
-  const response = await apiFetch(
-    `/api/v1/landers/${encodeURIComponent(landerId)}/hosted-upload`,
-    {
-      method: 'POST',
-      body: form,
-      signal,
-    },
-  );
+  const response = await apiFetch(`/api/v1/landers/${encodeURIComponent(landerId)}/hosted-upload`, {
+    method: 'POST',
+    body: form,
+    signal,
+  });
   if (!response.ok) {
-    throw new Error(response.statusText || `HTTP ${response.status}`);
+    throw await parseApiError(response);
   }
   return (await response.json()) as Lander;
 }
@@ -47,15 +47,15 @@ export async function uploadHostedLanderFiles(
 export async function getHostedLanderFile(
   landerId: string,
   filePath: string,
-  signal?: AbortSignal,
+  signal?: AbortSignal
 ): Promise<string> {
   const search = new URLSearchParams({ path: filePath });
   const response = await apiFetch(
     `/api/v1/landers/${encodeURIComponent(landerId)}/hosted-files?${search.toString()}`,
-    { signal },
+    { signal }
   );
   if (!response.ok) {
-    throw new Error(response.statusText || `HTTP ${response.status}`);
+    throw await parseApiError(response);
   }
   return response.text();
 }
@@ -64,25 +64,22 @@ export async function putHostedLanderFile(
   landerId: string,
   filePath: string,
   content: string,
-  signal?: AbortSignal,
+  signal?: AbortSignal
 ): Promise<void> {
-  const response = await apiFetch(
-    `/api/v1/landers/${encodeURIComponent(landerId)}/hosted-files`,
-    {
-      method: 'PUT',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ path: filePath, content }),
-      signal,
-    },
-  );
+  const response = await apiFetch(`/api/v1/landers/${encodeURIComponent(landerId)}/hosted-files`, {
+    method: 'PUT',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({ path: filePath, content }),
+    signal,
+  });
   if (!response.ok) {
-    throw new Error(response.statusText || `HTTP ${response.status}`);
+    throw await parseApiError(response);
   }
 }
 
 export async function publishHostedLander(landerId: string, signal?: AbortSignal): Promise<Lander> {
-  return apiJson<Lander>(
-    `/api/v1/landers/${encodeURIComponent(landerId)}/hosted-publish`,
-    { method: 'POST', signal },
-  );
+  return apiJson<Lander>(`/api/v1/landers/${encodeURIComponent(landerId)}/hosted-publish`, {
+    method: 'POST',
+    signal,
+  });
 }

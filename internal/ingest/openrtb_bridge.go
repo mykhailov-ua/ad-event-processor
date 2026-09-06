@@ -5,7 +5,6 @@ import "ad-event-processor/internal/openrtb"
 // Unexported aliases keep hot ingest on internal/openrtb scanners without openrtb importing ingest.
 type (
 	openrtb26Scan                = openrtb.OpenRTB26Scan
-	openrtb26Sections            = openrtb.OpenRTB26Sections
 	openrtb26DeviceScan          = openrtb.OpenRTB26DeviceScan
 	openrtb26ImpObjScan          = openrtb.OpenRTB26ImpObjScan
 	openrtb26ImpWinScan          = openrtb.OpenRTB26ImpWinScan

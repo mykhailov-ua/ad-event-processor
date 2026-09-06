@@ -12,10 +12,15 @@ type RedisCmdHead = redisCmdHead
 
 const UnifiedFilterKeyCount = unifiedFilterKeyCount
 
-var (
-	NumKeys15Any = numKeys15Any
-	EvalCmdPool  = evalCmdPool
-)
+var NumKeys15Any = numKeys15Any
+
+func EvalCmdPoolGet() *redis.Cmd {
+	return evalCmdPool.Get().(*redis.Cmd)
+}
+
+func EvalCmdPoolPut(cmd *redis.Cmd) {
+	evalCmdPool.Put(cmd)
+}
 
 func ResetPooledRedisCmd(cmd *redis.Cmd, ctx context.Context, args []any, firstKeyPos int8) {
 	resetPooledRedisCmd(cmd, ctx, args, firstKeyPos)

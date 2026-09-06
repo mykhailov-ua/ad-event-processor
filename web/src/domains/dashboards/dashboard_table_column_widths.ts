@@ -17,27 +17,31 @@ export const DASHBOARD_BREAKDOWN_COLUMN_WIDTH_PX: Record<DashboardBreakdownColum
   roi: CAMPAIGN_LIST_COLUMN_MIN_WIDTH_PX.roi,
 };
 
-const DASHBOARD_BREAKDOWN_COLUMN_MAX_WIDTH_PX: Partial<Record<DashboardBreakdownColumnId, number>> = {
-  name: 640,
-  unique_clicks: 320,
-  conversions: 160,
-};
+const DASHBOARD_BREAKDOWN_COLUMN_MAX_WIDTH_PX: Partial<Record<DashboardBreakdownColumnId, number>> =
+  {
+    name: 640,
+    unique_clicks: 320,
+    conversions: 160,
+  };
 
 const DASHBOARD_BREAKDOWN_COLUMN_USER_RESIZE_MAX_WIDTH_PX = 480;
 
-export const DASHBOARD_RECENT_CLICK_COLUMN_WIDTH_PX: Record<DashboardRecentClickColumnId, number> = {
-  click_id: 220,
-  created_at: 168,
-  campaign_id: 200,
-  country: 72,
-  sub1: 120,
-  placement_id: 120,
-  goal_name: 120,
-  cost: CAMPAIGN_LIST_COLUMN_MIN_WIDTH_PX.cost,
-  revenue: CAMPAIGN_LIST_COLUMN_MIN_WIDTH_PX.revenue,
-};
+export const DASHBOARD_RECENT_CLICK_COLUMN_WIDTH_PX: Record<DashboardRecentClickColumnId, number> =
+  {
+    click_id: 220,
+    created_at: 168,
+    campaign_id: 200,
+    country: 72,
+    sub1: 120,
+    placement_id: 120,
+    goal_name: 120,
+    cost: CAMPAIGN_LIST_COLUMN_MIN_WIDTH_PX.cost,
+    revenue: CAMPAIGN_LIST_COLUMN_MIN_WIDTH_PX.revenue,
+  };
 
-const DASHBOARD_RECENT_CLICK_COLUMN_MAX_WIDTH_PX: Partial<Record<DashboardRecentClickColumnId, number>> = {
+const DASHBOARD_RECENT_CLICK_COLUMN_MAX_WIDTH_PX: Partial<
+  Record<DashboardRecentClickColumnId, number>
+> = {
   click_id: 420,
   campaign_id: 420,
   created_at: 280,
@@ -57,7 +61,7 @@ function estimateTextWidthPx(text: string): number {
 
 export function probeDashboardNameColumnWidthPx(
   labels: readonly string[],
-  minWidth: number,
+  minWidth: number
 ): number {
   let longest = 'Total';
   for (const label of labels) {
@@ -70,14 +74,14 @@ export function probeDashboardNameColumnWidthPx(
     estimateTextWidthPx(longest) +
       CELL_HORIZONTAL_PADDING_PX +
       NAME_ROW_MENU_PX +
-      NAME_ROW_MENU_GAP_PX,
+      NAME_ROW_MENU_GAP_PX
   );
 }
 
 export function resolveDashboardBreakdownColumnWidthPx(
   columnId: DashboardBreakdownColumnId,
   overrides: Readonly<Partial<Record<DashboardBreakdownColumnId, number>>>,
-  nameProbeWidthPx?: number,
+  nameProbeWidthPx?: number
 ): number {
   const override = overrides[columnId];
   if (override != null && Number.isFinite(override) && override > 0) {
@@ -91,7 +95,7 @@ export function resolveDashboardBreakdownColumnWidthPx(
 
 export function clampDashboardBreakdownColumnWidthPx(
   columnId: DashboardBreakdownColumnId,
-  widthPx: number,
+  widthPx: number
 ): number {
   const minWidth = DASHBOARD_BREAKDOWN_COLUMN_WIDTH_PX[columnId];
   const maxWidth =
@@ -102,16 +106,19 @@ export function clampDashboardBreakdownColumnWidthPx(
 
 export function clampUserResizedDashboardBreakdownColumnWidthPx(
   columnId: DashboardBreakdownColumnId,
-  widthPx: number,
+  widthPx: number
 ): number {
   return clampDashboardBreakdownColumnWidthPx(columnId, widthPx);
 }
 
 export function dashboardBreakdownTableWidthPx(
   columns: DashboardBreakdownColumnId[],
-  widths: Readonly<Record<DashboardBreakdownColumnId, number>>,
+  widths: Readonly<Record<DashboardBreakdownColumnId, number>>
 ): number {
-  return columns.reduce((sum, columnId) => sum + (widths[columnId] ?? DASHBOARD_BREAKDOWN_COLUMN_WIDTH_PX[columnId]), 0);
+  return columns.reduce(
+    (sum, columnId) => sum + (widths[columnId] ?? DASHBOARD_BREAKDOWN_COLUMN_WIDTH_PX[columnId]),
+    0
+  );
 }
 
 export function isDashboardBreakdownNumericColumn(columnId: DashboardBreakdownColumnId): boolean {
@@ -120,7 +127,7 @@ export function isDashboardBreakdownNumericColumn(columnId: DashboardBreakdownCo
 
 export function isDashboardBreakdownColumnResizable(
   columnId: DashboardBreakdownColumnId,
-  columns: readonly DashboardBreakdownColumnId[],
+  columns: readonly DashboardBreakdownColumnId[]
 ): boolean {
   if (columns.length === 0) {
     return false;
@@ -130,7 +137,7 @@ export function isDashboardBreakdownColumnResizable(
 
 export function resolveDashboardRecentClickColumnWidthPx(
   columnId: DashboardRecentClickColumnId,
-  overrides: Readonly<Partial<Record<DashboardRecentClickColumnId, number>>>,
+  overrides: Readonly<Partial<Record<DashboardRecentClickColumnId, number>>>
 ): number {
   const override = overrides[columnId];
   if (override != null && Number.isFinite(override) && override > 0) {
@@ -141,7 +148,7 @@ export function resolveDashboardRecentClickColumnWidthPx(
 
 export function clampDashboardRecentClickColumnWidthPx(
   columnId: DashboardRecentClickColumnId,
-  widthPx: number,
+  widthPx: number
 ): number {
   const minWidth = DASHBOARD_RECENT_CLICK_COLUMN_WIDTH_PX[columnId];
   const maxWidth =
@@ -152,22 +159,24 @@ export function clampDashboardRecentClickColumnWidthPx(
 
 export function clampUserResizedDashboardRecentClickColumnWidthPx(
   columnId: DashboardRecentClickColumnId,
-  widthPx: number,
+  widthPx: number
 ): number {
   return clampDashboardRecentClickColumnWidthPx(columnId, widthPx);
 }
 
 export function dashboardRecentClickTableWidthPx(
   columns: DashboardRecentClickColumnId[],
-  widths: Readonly<Record<DashboardRecentClickColumnId, number>>,
+  widths: Readonly<Record<DashboardRecentClickColumnId, number>>
 ): number {
   return columns.reduce(
     (sum, columnId) => sum + (widths[columnId] ?? DASHBOARD_RECENT_CLICK_COLUMN_WIDTH_PX[columnId]),
-    0,
+    0
   );
 }
 
-export function isDashboardRecentClickNumericColumn(columnId: DashboardRecentClickColumnId): boolean {
+export function isDashboardRecentClickNumericColumn(
+  columnId: DashboardRecentClickColumnId
+): boolean {
   return columnId === 'cost' || columnId === 'revenue';
 }
 
@@ -177,7 +186,7 @@ export function isDashboardRecentClickCopyColumn(columnId: DashboardRecentClickC
 
 export function isDashboardRecentClickColumnResizable(
   columnId: DashboardRecentClickColumnId,
-  columns: readonly DashboardRecentClickColumnId[],
+  columns: readonly DashboardRecentClickColumnId[]
 ): boolean {
   if (columns.length === 0) {
     return false;

@@ -117,8 +117,6 @@ func TestFault_XDPAutobanPipelineSynthetic(t *testing.T) {
 	require.NoError(t, objs.Config.Update(&key, &cfg, ebpf.UpdateAny))
 
 	src := net.IPv4(203, 0, 113, 200)
-	src4 := src.To4()
-	require.NotNil(t, src4)
 	synPkt := buildSYNPacket(t, src, net.IPv4(10, 0, 0, 1), trackerPort)
 	for range 4 {
 		runXDP(t, objs.XdpEdgeFilter, synPkt)
@@ -134,10 +132,10 @@ func TestFault_XDPAutobanPipelineSynthetic(t *testing.T) {
 	require.GreaterOrEqual(t, n, 1)
 
 	reasons := make(map[uint8]int)
-	wantKey := HostKey(src4[0], src4[1], src4[2], src4[3])
+	wantIP := src.String()
 	for _, evt := range recorded {
 		reasons[evt.Reason]++
-		assert.Equal(t, wantKey.Addr, evt.SrcIP)
+		assert.Equal(t, wantIP, ViolationHost(evt))
 	}
 
 	testutil.LogFaultProof(t, "xdp_autoban_pipeline", map[string]string{
@@ -145,5 +143,55 @@ func TestFault_XDPAutobanPipelineSynthetic(t *testing.T) {
 		"violations": fmt.Sprintf("%d", n),
 		"syn_events": fmt.Sprintf("%d", reasons[ViolationSYN]),
 		"pps_events": fmt.Sprintf("%d", reasons[ViolationPPS]),
+	})
+}
+
+func TestFault_XDPAutobanPipelineIPv6Synthetic(t *testing.T) {
+	if testing.Short() {
+		t.Skip("integration: ipv6 autoban pipeline fault test (run make test-integration)")
+	}
+
+	objs := loadTestObjects(t)
+	rd, err := ringbuf.NewReader(objs.Violations)
+	require.NoError(t, err)
+	t.Cleanup(func() { _ = rd.Close() })
+
+	var recorded []ViolationEvent
+	handler := NewViolationHandler(func(evt ViolationEvent) error {
+		recorded = append(recorded, evt)
+		return nil
+	})
+
+	key := uint32(0)
+	cfg := DefaultConfig(InitOptions{})
+	cfg.SynLimit = 2
+	cfg.PpsRate = 5
+	require.NoError(t, objs.Config.Update(&key, &cfg, ebpf.UpdateAny))
+
+	src := parseTestIPv6(t, "2001:db8:fee::200")
+	synPkt := buildIPv6SYNPacket(t, src, trackerPort)
+	for range 4 {
+		runXDP(t, objs.XdpEdgeFilter, synPkt)
+	}
+
+	ppsPkt := buildIPv6PSHACKPacket(t, src, trackerPort)
+	for range 8 {
+		runXDP(t, objs.XdpEdgeFilter, ppsPkt)
+	}
+
+	n, err := handler.Drain(rd, 500*time.Millisecond)
+	require.NoError(t, err)
+	require.GreaterOrEqual(t, n, 1)
+
+	wantIP := src.String()
+	for _, evt := range recorded {
+		assert.Equal(t, ViolationAddrFamilyV6, evt.Family)
+		assert.Equal(t, wantIP, ViolationHost(evt))
+	}
+
+	testutil.LogFaultProof(t, "xdp_autoban_pipeline_ipv6", map[string]string{
+		"harness":    "ringbuf_drain",
+		"violations": fmt.Sprintf("%d", n),
+		"family":     "6",
 	})
 }

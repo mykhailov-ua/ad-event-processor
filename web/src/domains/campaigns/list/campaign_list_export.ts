@@ -12,6 +12,8 @@ import {
   CAMPAIGN_LIST_EXPORT_MAX_ROWS,
 } from '@/domains/campaigns/list/campaign_list_limits';
 
+// Export walks server pages (limit 1000) until CAMPAIGN_LIST_EXPORT_MAX_ROWS or total exhausted.
+// truncated=true when matchedTotal exceeds exported rows; toast copy surfaces the cap.
 const CAMPAIGN_LIST_EXPORT_PAGE_SIZE = 1000;
 
 export type CampaignListExportDataset = {
@@ -22,7 +24,7 @@ export type CampaignListExportDataset = {
 
 export async function listAllCampaignsForFilter(
   filter: CampaignListFilterQuery,
-  signal?: AbortSignal,
+  signal?: AbortSignal
 ): Promise<CampaignListExportDataset> {
   const items: Campaign[] = [];
   let offset = 0;
@@ -37,7 +39,7 @@ export async function listAllCampaignsForFilter(
         sort: 'name',
         order: 'asc',
       },
-      signal,
+      signal
     );
     matchedTotal = page.total;
     if (page.items.length === 0) {
@@ -60,7 +62,7 @@ export async function listAllCampaignsForFilter(
 
 export function exportCampaignRowsCsv(
   columns: ReadonlyArray<CampaignListDataColumnId>,
-  rows: ReadonlyArray<CampaignListExportRow>,
+  rows: ReadonlyArray<CampaignListExportRow>
 ): void {
   if (columns.length === 0 || rows.length === 0) {
     return;
@@ -75,7 +77,7 @@ export function exportCampaignRowsCsv(
 async function runInChunks<T>(
   ids: string[],
   chunkSize: number,
-  runner: (chunk: string[]) => Promise<T>,
+  runner: (chunk: string[]) => Promise<T>
 ): Promise<T[]> {
   const results: T[] = [];
   for (let offset = 0; offset < ids.length; offset += chunkSize) {
@@ -100,7 +102,7 @@ export async function exportCampaignBundles(campaignIds: string[]): Promise<void
   const chunkResults = await runInChunks(
     campaignIds,
     CAMPAIGN_LIST_EXPORT_BATCH_CHUNK_SIZE,
-    (chunk) => exportCampaignsBatch(chunk),
+    (chunk) => exportCampaignsBatch(chunk)
   );
   for (const response of chunkResults) {
     Object.assign(bundles, response.items);

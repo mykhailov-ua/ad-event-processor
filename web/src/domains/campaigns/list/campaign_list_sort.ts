@@ -94,9 +94,7 @@ export function campaignListSortToApi(field: CampaignSortField): CampaignListApi
   return field as CampaignListApiSortField;
 }
 
-export function sortFieldForCampaignColumn(
-  columnId: string,
-): CampaignSortField | undefined {
+export function sortFieldForCampaignColumn(columnId: string): CampaignSortField | undefined {
   switch (columnId) {
     case 'name':
       return 'name';

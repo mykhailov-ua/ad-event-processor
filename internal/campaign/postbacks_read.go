@@ -7,10 +7,12 @@ import (
 	"net/http"
 	"sync"
 
+	"ad-event-processor/internal/domain"
 	db "ad-event-processor/internal/domain/db"
 	"ad-event-processor/pkg/httpresponse"
 
 	"github.com/google/uuid"
+	"github.com/jackc/pgx/v5/pgtype"
 	"github.com/jackc/pgx/v5/pgxpool"
 )
 
@@ -28,7 +30,28 @@ func ListPostbackConfigs(ctx context.Context, pool *pgxpool.Pool) ([]PostbackCon
 	if err != nil {
 		return nil, err
 	}
+	return postbackConfigDTOsFromRows(configs), nil
+}
 
+func ListPostbackConfigsForCampaigns(ctx context.Context, pool *pgxpool.Pool, campaignIDs []uuid.UUID) ([]PostbackConfigDTO, error) {
+	if pool == nil {
+		return nil, errors.New("postgres pool not configured")
+	}
+	if len(campaignIDs) == 0 {
+		return []PostbackConfigDTO{}, nil
+	}
+	pgIDs := make([]pgtype.UUID, len(campaignIDs))
+	for i, id := range campaignIDs {
+		pgIDs[i] = domain.ToUUID(id)
+	}
+	configs, err := db.New(pool).ListPostbackConfigsByCampaignIDs(ctx, pgIDs)
+	if err != nil {
+		return nil, err
+	}
+	return postbackConfigDTOsFromRows(configs), nil
+}
+
+func postbackConfigDTOsFromRows(configs []db.PostbackConfig) []PostbackConfigDTO {
 	dtos := make([]PostbackConfigDTO, 0, len(configs))
 	for _, c := range configs {
 		var campaignIDStr string
@@ -44,7 +67,7 @@ func ListPostbackConfigs(ctx context.Context, pool *pgxpool.Pool) ([]PostbackCon
 			HasAPIToken:   len(c.ApiTokenEncrypted) > 0,
 		})
 	}
-	return dtos, nil
+	return dtos
 }
 
 func ListPostbackDlqEntries(ctx context.Context, pool *pgxpool.Pool) ([]PostbackDlqDTO, error) {
@@ -55,7 +78,32 @@ func ListPostbackDlqEntries(ctx context.Context, pool *pgxpool.Pool) ([]Postback
 	if err != nil {
 		return nil, err
 	}
+	return postbackDlqDTOsFromRows(dlqs), nil
+}
 
+func ListPostbackDlqEntriesForCampaigns(ctx context.Context, pool *pgxpool.Pool, campaignIDs []uuid.UUID) ([]PostbackDlqDTO, error) {
+	all, err := ListPostbackDlqEntries(ctx, pool)
+	if err != nil {
+		return nil, err
+	}
+	if len(campaignIDs) == 0 {
+		return []PostbackDlqDTO{}, nil
+	}
+	allowed := campaignIDSet(campaignIDs)
+	out := make([]PostbackDlqDTO, 0, len(all))
+	for _, dto := range all {
+		id, err := uuid.Parse(dto.CampaignID)
+		if err != nil {
+			continue
+		}
+		if _, ok := allowed[id]; ok {
+			out = append(out, dto)
+		}
+	}
+	return out, nil
+}
+
+func postbackDlqDTOsFromRows(dlqs []db.PostbackDlq) []PostbackDlqDTO {
 	dtos := make([]PostbackDlqDTO, 0, len(dlqs))
 	for _, d := range dlqs {
 		dtos = append(dtos, PostbackDlqDTO{
@@ -70,7 +118,7 @@ func ListPostbackDlqEntries(ctx context.Context, pool *pgxpool.Pool) ([]Postback
 			Status:        d.Status,
 		})
 	}
-	return dtos, nil
+	return dtos
 }
 
 func ListPostbackCampaignStatusRows(ctx context.Context, pool *pgxpool.Pool) ([]PostbackCampaignStatusDTO, error) {
@@ -81,7 +129,6 @@ func ListPostbackCampaignStatusRows(ctx context.Context, pool *pgxpool.Pool) ([]
 	if err != nil {
 		return nil, err
 	}
-
 	out := make([]PostbackCampaignStatusDTO, 0, len(rows))
 	for _, row := range rows {
 		dto := PostbackCampaignStatusDTO{
@@ -98,6 +145,96 @@ func ListPostbackCampaignStatusRows(ctx context.Context, pool *pgxpool.Pool) ([]
 	return out, nil
 }
 
+func ListPostbackCampaignStatusForCampaigns(ctx context.Context, pool *pgxpool.Pool, campaignIDs []uuid.UUID) ([]PostbackCampaignStatusDTO, error) {
+	all, err := ListPostbackCampaignStatusRows(ctx, pool)
+	if err != nil {
+		return nil, err
+	}
+	if len(campaignIDs) == 0 {
+		return []PostbackCampaignStatusDTO{}, nil
+	}
+	allowed := campaignIDSet(campaignIDs)
+	out := make([]PostbackCampaignStatusDTO, 0, len(all))
+	for _, row := range all {
+		id, err := uuid.Parse(row.CampaignID)
+		if err != nil {
+			continue
+		}
+		if _, ok := allowed[id]; ok {
+			out = append(out, row)
+		}
+	}
+	return out, nil
+}
+
+func campaignIDSet(ids []uuid.UUID) map[uuid.UUID]struct{} {
+	out := make(map[uuid.UUID]struct{}, len(ids))
+	for _, id := range ids {
+		out[id] = struct{}{}
+	}
+	return out
+}
+
+func (h *PostbackHTTPHandlers) postbackCampaignScope(ctx context.Context) (allCampaigns bool, ids []uuid.UUID, err error) {
+	return SessionScopedCampaignIDs(ctx, h.Pool)
+}
+
+func (h *PostbackHTTPHandlers) authorizePostbackCampaign(w http.ResponseWriter, r *http.Request, campaignID uuid.UUID) bool {
+	if h.AuthorizeCampaignAccess == nil {
+		return true
+	}
+	if err := h.AuthorizeCampaignAccess(r, campaignID); err != nil {
+		h.writePostbackError(w, err)
+		return false
+	}
+	return true
+}
+
+func (h *PostbackHTTPHandlers) writePostbackError(w http.ResponseWriter, err error) {
+	if h.WriteServiceError != nil {
+		h.WriteServiceError(w, err)
+		return
+	}
+	if errors.Is(err, ErrForbidden) {
+		httpresponse.Error(w, http.StatusForbidden, "FORBIDDEN", "forbidden")
+		return
+	}
+	httpresponse.Error(w, http.StatusInternalServerError, "INTERNAL_ERROR", err.Error())
+}
+
+func (h *PostbackHTTPHandlers) listScopedPostbackConfigs(ctx context.Context) ([]PostbackConfigDTO, error) {
+	allCampaigns, ids, err := h.postbackCampaignScope(ctx)
+	if err != nil {
+		return nil, err
+	}
+	if allCampaigns {
+		return ListPostbackConfigs(ctx, h.Pool)
+	}
+	return ListPostbackConfigsForCampaigns(ctx, h.Pool, ids)
+}
+
+func (h *PostbackHTTPHandlers) listScopedPostbackDlq(ctx context.Context) ([]PostbackDlqDTO, error) {
+	allCampaigns, ids, err := h.postbackCampaignScope(ctx)
+	if err != nil {
+		return nil, err
+	}
+	if allCampaigns {
+		return ListPostbackDlqEntries(ctx, h.Pool)
+	}
+	return ListPostbackDlqEntriesForCampaigns(ctx, h.Pool, ids)
+}
+
+func (h *PostbackHTTPHandlers) listScopedPostbackCampaignStatus(ctx context.Context) ([]PostbackCampaignStatusDTO, error) {
+	allCampaigns, ids, err := h.postbackCampaignScope(ctx)
+	if err != nil {
+		return nil, err
+	}
+	if allCampaigns {
+		return ListPostbackCampaignStatusRows(ctx, h.Pool)
+	}
+	return ListPostbackCampaignStatusForCampaigns(ctx, h.Pool, ids)
+}
+
 func (h *PostbackHTTPHandlers) getPostbacksSnapshot(w http.ResponseWriter, r *http.Request) {
 	ctx := r.Context()
 	var snap PostbacksSnapshotDTO
@@ -107,15 +244,15 @@ func (h *PostbackHTTPHandlers) getPostbacksSnapshot(w http.ResponseWriter, r *ht
 
 	go func() {
 		defer wg.Done()
-		snap.Configs, configsErr = ListPostbackConfigs(ctx, h.Pool)
+		snap.Configs, configsErr = h.listScopedPostbackConfigs(ctx)
 	}()
 	go func() {
 		defer wg.Done()
-		snap.Dlq, dlqErr = ListPostbackDlqEntries(ctx, h.Pool)
+		snap.Dlq, dlqErr = h.listScopedPostbackDlq(ctx)
 	}()
 	go func() {
 		defer wg.Done()
-		snap.CampaignStatus, statusErr = ListPostbackCampaignStatusRows(ctx, h.Pool)
+		snap.CampaignStatus, statusErr = h.listScopedPostbackCampaignStatus(ctx)
 	}()
 	wg.Wait()
 

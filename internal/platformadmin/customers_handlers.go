@@ -4,6 +4,7 @@ import (
 	"context"
 	"net/http"
 
+	"ad-event-processor/internal/controlplane/authz"
 	"ad-event-processor/pkg/coldpath"
 	"ad-event-processor/pkg/httpresponse"
 
@@ -77,6 +78,27 @@ func (h *CustomersHTTPHandlers) listCustomers(w http.ResponseWriter, r *http.Req
 	}, "created_at")
 	if sortErr != nil {
 		httpresponse.Error(w, http.StatusBadRequest, "BAD_REQUEST", sortErr.Error())
+		return
+	}
+	if u, ok := authz.GetUser(r.Context()); ok && u.HasBoundCustomer() {
+		if h.AuthorizeCustomerAccess != nil {
+			if err := h.AuthorizeCustomerAccess(r, u.CustomerID.String()); err != nil {
+				h.writeServiceError(w, err)
+				return
+			}
+		}
+		cust, err := h.Customers.GetCustomerDTO(r.Context(), u.CustomerID)
+		if err != nil {
+			h.writeServiceError(w, err)
+			return
+		}
+		httpresponse.JSON(w, http.StatusOK, ListEnvelope[CustomerDTO]{
+			Items:  []CustomerDTO{cust},
+			Total:  1,
+			Limit:  limit,
+			Offset: offset,
+			Sort:   &ListSortDTO{Field: sortField, Order: order},
+		})
 		return
 	}
 	items, total, err := h.Customers.ListCustomers(r.Context(), limit, offset, sortField, order)

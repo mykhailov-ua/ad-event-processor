@@ -6,6 +6,7 @@ import { useCoalescedBumpRefresh, useRefreshToken } from '@/hooks/use_coalesced_
 import { fetchMetaCached, invalidateMetaCache } from '@/lib/get_meta_cache';
 import { licenseNeedsSetup, readBootstrapComplete } from '@/lib/install_meta';
 
+// GET /meta snapshot shared across shell, license gate, and EULA flows (session-level cache).
 export type MetaContextValue = {
   meta: MetaResponse | undefined;
   error: Error | undefined;
@@ -26,7 +27,7 @@ export function MetaProvider({ children }: MetaProviderProps) {
 
   const { data, error, fetching } = useResource(
     (signal) => fetchMetaCached(signal),
-    [refreshToken],
+    [refreshToken]
   );
 
   const refreshMeta = useCoalescedBumpRefresh(() => {
@@ -43,7 +44,7 @@ export function MetaProvider({ children }: MetaProviderProps) {
       licenseNeedsSetup: licenseNeedsSetup(data),
       refreshMeta,
     }),
-    [data, error, fetching, refreshMeta],
+    [data, error, fetching, refreshMeta]
   );
 
   return <MetaContext.Provider value={value}>{children}</MetaContext.Provider>;

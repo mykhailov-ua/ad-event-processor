@@ -2,6 +2,12 @@ import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
+import { MonthPicker } from '@/components/ui/datetime_picker';
+import {
+  FilterField,
+  FILTER_PANEL_NARROW_CLASS,
+  INLINE_FILTER_ACTION_GRID_CLASS,
+} from '@/shell/filter_panel';
 import { ErrorBlock } from '@/shell/error_block';
 import {
   DirectoryTable,
@@ -34,22 +40,23 @@ export function BillingInvariantPanel({
   onCheck,
 }: BillingInvariantPanelProps) {
   return (
-    <section className="ui-filter-panel">
+    <section className={FILTER_PANEL_NARROW_CLASS}>
       <h2 className="text-base font-semibold">Ledger invariant</h2>
-      <div className="grid max-w-md grid-cols-[1fr_auto] items-end gap-4">
-        <div className="grid gap-2">
-          <Label htmlFor="invariant-customer-id">Customer ID (optional)</Label>
+      <div className={INLINE_FILTER_ACTION_GRID_CLASS}>
+        <FilterField htmlFor="invariant-customer-id" label="Customer ID (optional)">
           <Input
             id="invariant-customer-id"
             value={draftCustomerId}
             onChange={(event) => onDraftCustomerIdChange(event.target.value)}
           />
-        </div>
+        </FilterField>
         <Button disabled={fetching} onClick={onCheck} type="button" variant="outline">
           {fetching ? 'Checking...' : 'Check'}
         </Button>
       </div>
-      {error && !hasSnapshot ? <ErrorBlock title="Invariant check failed" message={error.message} /> : null}
+      {error && !hasSnapshot ? (
+        <ErrorBlock title="Invariant check failed" message={error.message} />
+      ) : null}
       {invariant ? (
         <div className="flex flex-wrap items-center gap-2 text-sm">
           <Badge variant={invariant.ok ? 'default' : 'destructive'}>
@@ -106,13 +113,7 @@ export function BillingPreviewPanel({
         </div>
         <div className="grid gap-2">
           <Label htmlFor="preview-month">Billing month</Label>
-          <Input
-            id="preview-month"
-            type="month"
-            className="text-sm"
-            value={draftMonth}
-            onChange={(event) => onDraftMonthChange(event.target.value)}
-          />
+          <MonthPicker id="preview-month" value={draftMonth} onChange={onDraftMonthChange} />
         </div>
         <Button
           disabled={fetching || !draftCustomerId.trim() || !draftMonth}
@@ -127,38 +128,36 @@ export function BillingPreviewPanel({
 
       {preview ? (
         <div className="grid gap-4">
-          <div className="text-sm">
-            <p>
+          <div className="grid gap-2 text-sm">
+            <p className="m-0">
               Total: {displayMicro(preview.total_micro, preview.total_micro_display)}{' '}
               {preview.currency ?? ''}
             </p>
-            {preview.would_skip ? (
-              <Badge className="mt-2" variant="secondary">
-                Would skip generation
-              </Badge>
-            ) : null}
+            {preview.would_skip ? <Badge variant="secondary">Would skip generation</Badge> : null}
           </div>
           {lines.length > 0 ? (
             <DirectoryTable>
-                <TableHeader>
-                  <TableRow>
-                    <DirectoryTableHead>Ledger type</DirectoryTableHead>
-                    <DirectoryTableHead className="text-right">Amount (micro)</DirectoryTableHead>
-                    <DirectoryTableHead className="text-right">Entries</DirectoryTableHead>
+              <TableHeader>
+                <TableRow>
+                  <DirectoryTableHead>Ledger type</DirectoryTableHead>
+                  <DirectoryTableHead className="text-right">Amount (micro)</DirectoryTableHead>
+                  <DirectoryTableHead className="text-right">Entries</DirectoryTableHead>
+                </TableRow>
+              </TableHeader>
+              <TableBody>
+                {lines.map((line, index) => (
+                  <TableRow key={`${line.ledger_type ?? 'line'}-${index}`}>
+                    <TableCell>{line.ledger_type ?? ''}</TableCell>
+                    <TableCell className="text-right tabular-nums">
+                      {displayMicro(line.amount_micro)}
+                    </TableCell>
+                    <TableCell className="text-right tabular-nums">
+                      {line.entry_count ?? ''}
+                    </TableCell>
                   </TableRow>
-                </TableHeader>
-                <TableBody>
-                  {lines.map((line, index) => (
-                    <TableRow key={`${line.ledger_type ?? 'line'}-${index}`}>
-                      <TableCell>{line.ledger_type ?? ''}</TableCell>
-                      <TableCell className="text-right tabular-nums">
-                        {displayMicro(line.amount_micro)}
-                      </TableCell>
-                      <TableCell className="text-right tabular-nums">{line.entry_count ?? ''}</TableCell>
-                    </TableRow>
-                  ))}
-                </TableBody>
-              </DirectoryTable>
+                ))}
+              </TableBody>
+            </DirectoryTable>
           ) : null}
         </div>
       ) : null}

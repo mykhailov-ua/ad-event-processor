@@ -3,22 +3,19 @@ import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { EmptyState } from '@/shell/empty_state';
 import type { DashboardMetrics, DashboardSummary } from '@/api/types';
-import { displayTimestamp } from '@/lib/display';
 import { cn } from '@/lib/utils';
 import { opsPanelError } from '@/domains/ops/ops_nav';
+import { OpsMetricsLiveSummary } from '@/domains/ops/ops_metrics_live_summary';
+import {
+  OpsMetricsPointsTable,
+  OpsMetricsSnapshotMeta,
+} from '@/domains/ops/ops_metrics_points_table';
 import {
   OpsActionGroup,
   OpsPageBlockingError,
   OpsPageLoading,
   OpsPageShell,
 } from '@/domains/ops/ops_page_shell';
-import {
-  OpsTable,
-  OpsTableCell,
-  OpsTableHead,
-  OpsTableHeaderRow,
-  OpsTableRow,
-} from '@/domains/ops/ops_table';
 
 export type OpsMetricsProps = {
   metrics: DashboardMetrics | undefined;
@@ -95,41 +92,18 @@ export function OpsMetrics({
         </>
       }
     >
-      {liveSummary ? (
-        <p className="text-muted-foreground">
-          Live stream  /  outbox pending {liveSummary.outbox_pending ?? ''}  /  generated{' '}
-          {displayTimestamp(liveSummary.generated_at, liveSummary.generated_at_display)}
-        </p>
-      ) : null}
+      {liveSummary ? <OpsMetricsLiveSummary summary={liveSummary} /> : null}
 
-      {metrics ? (
-        <p className="text-muted-foreground">
-          Range {metrics.range ?? draftRange}  /  bucket {metrics.bucket_sec ?? ''}s  /  generated{' '}
-          {displayTimestamp(metrics.generated_at)}
-        </p>
-      ) : null}
+      <OpsMetricsSnapshotMeta draftRange={draftRange} metrics={metrics} />
 
       {points.length === 0 && hasSnapshot ? (
-        <EmptyState description="Handler returned an empty points array." title="No metric points" />
+        <EmptyState
+          description="Handler returned an empty points array."
+          title="No metric points"
+        />
       ) : null}
 
-      {points.length > 0 ? (
-        <OpsTable
-          head={
-            <OpsTableHeaderRow>
-              <OpsTableHead>Timestamp</OpsTableHead>
-              <OpsTableHead numeric>Value</OpsTableHead>
-            </OpsTableHeaderRow>
-          }
-        >
-          {points.map((point, index) => (
-            <OpsTableRow key={`${point.ts ?? 'point'}-${index}`}>
-              <OpsTableCell>{displayTimestamp(point.ts)}</OpsTableCell>
-              <OpsTableCell numeric>{point.value ?? ''}</OpsTableCell>
-            </OpsTableRow>
-          ))}
-        </OpsTable>
-      ) : null}
+      <OpsMetricsPointsTable points={points} />
 
       {error && hasSnapshot ? opsPanelError(error, 'Refresh failed') : null}
     </OpsPageShell>

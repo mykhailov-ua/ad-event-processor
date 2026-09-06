@@ -111,15 +111,3 @@ func queryGeoDeviceRows(ctx context.Context, clickhouseQuery *database.ClickHous
 func queryDiscrepancyRows(ctx context.Context, clickhouseQuery *database.ClickHouseQuery, campaignIDs []uuid.UUID, from, to time.Time, limit, offset int) ([]map[string]any, int64, error) {
 	return clickhouse.QueryDiscrepancyRows(ctx, clickhouseQuery, campaignIDs, from, to, limit, offset)
 }
-
-func queryKeywordIVTRates(ctx context.Context, clickhouseQuery *database.ClickHouseQuery, campaignIDs []uuid.UUID, from, to time.Time) (map[string]float64, error) {
-	return clickhouse.QueryKeywordIVTRates(ctx, clickhouseQuery, campaignIDs, from, to)
-}
-
-func queryKeywordReportRows(ctx context.Context, clickhouseQuery *database.ClickHouseQuery, campaignIDs []uuid.UUID, from, to time.Time, limit, offset int) ([]reportMetricsCHRow, int64, error) {
-	rows, total, err := clickhouse.QueryKeywordReportRows(ctx, clickhouseQuery, campaignIDs, from, to, limit, offset)
-	if err != nil {
-		return nil, 0, err
-	}
-	return reportMetricsCHRowsFromClickhouse(rows), total, nil
-}

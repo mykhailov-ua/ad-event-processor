@@ -49,9 +49,12 @@ func TestClickRedirect_SocialInAppWebView_TLSRelax_AttestationLightStillL2(t *te
 	filter := &countingFilter{}
 	secret := []byte("0123456789abcdef0123456789abcdef")
 	cid := uuid.New()
+	brandID := uuid.New()
 	lockStaticCampaign(func(c *domain.Campaign) {
 		c.ID = cid
+		c.BrandID = &brandID
 		c.TLSFingerprintBlockEnabled = true
+		c.CIDRBlockEnabled = false
 		c.SocialInAppEnabled = true
 		c.SafePageEnabled = true
 		c.SafePageURL = "https://safe.example/white"
@@ -63,13 +66,15 @@ func TestClickRedirect_SocialInAppWebView_TLSRelax_AttestationLightStillL2(t *te
 			c.SafePageEnabled = false
 			c.SafePageURL = ""
 			c.AttestationMode = domain.AttestationModeOff
+			c.CIDRBlockEnabled = false
 		})
 		cachedMockCamp.Store(nil)
 	})
 	cachedMockCamp.Store(nil)
 
 	cfg := &config.Config{MaxRequestBodySize: 1 << 20}
-	h := NewAdsPacketHandler(cfg, &mockRegistry{}, NewFilterEngine(0, filter), nil, nil, NewJumpHashSharder(1), "fraud-stream", nil)
+	store := clickHookBrandStore(t, brandID)
+	h := NewAdsPacketHandler(cfg, &mockRegistry{}, NewFilterEngine(0, filter), nil, nil, NewJumpHashSharder(1), "fraud-stream", store)
 	h.ConfigureTLSFingerprint(buildTestTLSFingerprintTable("ja3:" + ja3))
 	h.ConfigureAttestation([][]byte{secret})
 

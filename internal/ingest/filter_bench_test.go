@@ -120,7 +120,7 @@ func BenchmarkKeyFormatting_impTSKey(b *testing.B) {
 		CampaignID: uuid.New(),
 	}
 	for b.Loop() {
-		w := bufPool.Get().(*bufWrapper)
+		w := getBufWrapper()
 		w.Buf = w.Buf[:0]
 		w.Buf = append(w.Buf, "imp_ts:"...)
 		w.Buf = append(w.Buf, evt.UserID...)
@@ -128,7 +128,7 @@ func BenchmarkKeyFormatting_impTSKey(b *testing.B) {
 		w.Buf = appendUUID(w.Buf, evt.CampaignID)
 		key := unsafeString(w.Buf)
 		_ = key
-		bufPool.Put(w)
+		putBufWrapper(w)
 	}
 }
 
@@ -137,13 +137,13 @@ func BenchmarkKeyFormatting_IPRateLimiter(b *testing.B) {
 		IP: "192.168.1.1",
 	}
 	for b.Loop() {
-		w := bufPool.Get().(*bufWrapper)
+		w := getBufWrapper()
 		w.Buf = w.Buf[:0]
 		w.Buf = append(w.Buf, "ratelimit:ip:"...)
 		w.Buf = append(w.Buf, evt.IP...)
 		key := unsafeString(w.Buf)
 		_ = key
-		bufPool.Put(w)
+		putBufWrapper(w)
 	}
 }
 
@@ -153,7 +153,7 @@ func BenchmarkKeyFormatting_DuplicateEventFilter(b *testing.B) {
 		ClickID: "click123",
 	}
 	for b.Loop() {
-		w := bufPool.Get().(*bufWrapper)
+		w := getBufWrapper()
 		w.Buf = w.Buf[:0]
 		w.Buf = append(w.Buf, "dup:"...)
 		w.Buf = append(w.Buf, evt.Type...)
@@ -161,7 +161,7 @@ func BenchmarkKeyFormatting_DuplicateEventFilter(b *testing.B) {
 		w.Buf = append(w.Buf, evt.ClickID...)
 		key := unsafeString(w.Buf)
 		_ = key
-		bufPool.Put(w)
+		putBufWrapper(w)
 	}
 }
 

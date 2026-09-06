@@ -18,7 +18,7 @@ test.beforeEach(async ({}, testInfo) => {
   await skipUnlessIntegrationReady(testInfo);
 });
 
-test('upsert fraud label posts to API and refreshes list', async ({ page }) => {
+test('upsert fraud label posts to API and refreshes list', { tag: '@write' }, async ({ page }) => {
   await loginAsAdmin(page);
   const runToken = integrationRunToken();
   const ipHash = randomHex32();
@@ -53,7 +53,7 @@ test('upsert fraud label posts to API and refreshes list', async ({ page }) => {
     (response) =>
       isApiPost('/api/v1/fraud/labels', 200)(response) &&
       response.url().includes(`customer_id=${encodeURIComponent(customerId)}`),
-    { timeout: 20_000 },
+    { timeout: 20_000 }
   );
   const refreshedList = page.waitForResponse(isApiGet('/api/v1/fraud/labels'), { timeout: 20_000 });
 
@@ -63,7 +63,7 @@ test('upsert fraud label posts to API and refreshes list', async ({ page }) => {
   const listResponse = await refreshedList;
   const listBody = await listResponse.json();
   expect(listBody.items).toEqual(
-    expect.arrayContaining([expect.objectContaining({ ip_hash: ipHash })]),
+    expect.arrayContaining([expect.objectContaining({ ip_hash: ipHash })])
   );
 
   await expect(page.getByText('Label saved. List refreshed.', { exact: true })).toBeVisible({

@@ -1,6 +1,7 @@
 import * as React from 'react';
 import { Check } from 'lucide-react';
 
+import { adminKit } from '@/lib/admin_kit';
 import { cn } from '@/lib/utils';
 
 export type CheckboxProps = Omit<React.InputHTMLAttributes<HTMLInputElement>, 'type'> & {
@@ -26,14 +27,15 @@ const Checkbox = React.forwardRef<HTMLInputElement, CheckboxProps>(
       <span
         aria-hidden
         className={cn(
-          'pointer-events-none flex h-4 w-4 items-center justify-center rounded-[4px] border border-input bg-background text-primary-foreground transition-colors peer-focus-visible:outline-none peer-focus-visible:ring-2 peer-focus-visible:ring-ring peer-disabled:cursor-not-allowed peer-disabled:opacity-50 peer-checked:border-primary peer-checked:bg-primary',
-          className,
+          'pointer-events-none flex h-4 w-4 items-center justify-center border border-input bg-background text-primary-foreground transition-colors peer-focus-visible:outline-none peer-focus-visible:ring-2 peer-focus-visible:ring-ring peer-disabled:cursor-not-allowed peer-disabled:opacity-50 peer-checked:border-primary peer-checked:bg-primary',
+          adminKit.controlRadius,
+          className
         )}
       >
         {checked ? <Check className="h-3 w-3" strokeWidth={3} /> : null}
       </span>
     </span>
-  ),
+  )
 );
 Checkbox.displayName = 'Checkbox';
 

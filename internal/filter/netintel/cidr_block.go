@@ -318,7 +318,7 @@ type cidrSnapshot struct {
 	prefs []cidrPrefix
 }
 
-// CIDRTable: immutable radix snapshot (atomic.Pointer); MatchIP is zero-alloc on hot filter path.
+// CIDRTable immutable radix snapshot (atomic.Pointer); MatchIP is zero-alloc on hot filter path.
 type CIDRTable struct {
 	active atomic.Pointer[cidrSnapshot]
 }

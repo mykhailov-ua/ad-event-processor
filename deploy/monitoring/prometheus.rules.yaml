@@ -47,7 +47,7 @@ groups:
           severity: critical
         annotations:
           summary: 'Shard-0 campaigns:update pub/sub unreachable'
-          description: 'Tracker registry is in stale-serve mode (REGISTRY_STALE_TTL exceeded). Shards 1-3 continue ingest; shard-0-homed campaigns return 503 shard_unavailable; unknown campaign IDs return 503 registry_stale; management outbox may stay PENDING until Sentinel promotes a replica. Runbook: docs/DEVELOPMENT.md section Shard-0 outage.'
+          description: 'Tracker registry is in stale-serve mode (REGISTRY_STALE_TTL exceeded). Shards 1-3 continue ingest; shard-0-homed campaigns return 503 shard_unavailable; unknown campaign IDs return 404 when REGISTRY_STALE_PG_GRACE confirms PG miss, else 503 registry_stale when grace is off or PG is unreachable; management outbox may stay PENDING until Sentinel promotes a replica. Runbook: docs/DEVELOPMENT.md section Shard-0 outage.'
 
       - alert: DatabaseWriteErrors
         expr: rate(ad_db_write_errors_total[1m]) > 0

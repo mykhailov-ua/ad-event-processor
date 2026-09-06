@@ -3,8 +3,12 @@ import { Link } from 'react-router-dom';
 import { PrimaryActionButton, SecondaryActionButton } from '@/shell/action_buttons';
 import { PageChrome } from '@/shell/page_chrome';
 import { ErrorBlock } from '@/shell/error_block';
+import {
+  FILTER_PANEL_WIDE_CLASS,
+  FilterField,
+  INLINE_FILTER_ACTION_GRID_CLASS,
+} from '@/shell/filter_panel';
 import { Input } from '@/components/ui/input';
-import { Label } from '@/components/ui/label';
 
 export type FraudOverridesProps = {
   customerId: string;
@@ -46,47 +50,47 @@ export function FraudOverrides({
         Back to fraud hub
       </Link>
 
-      <div className="grid max-w-md grid-cols-[1fr_auto] items-end gap-4">
-        <div className="grid gap-2">
-          <Label htmlFor="override-customer-id">Customer ID</Label>
+      <div className={INLINE_FILTER_ACTION_GRID_CLASS}>
+        <FilterField htmlFor="override-customer-id" label="Customer ID">
           <Input
             id="override-customer-id"
             value={draftCustomerId}
             onChange={(event) => onDraftCustomerIdChange(event.target.value)}
           />
-        </div>
-        <SecondaryActionButton disabled={!draftCustomerId.trim()} onClick={onApplyCustomer} type="button">
+        </FilterField>
+        <SecondaryActionButton
+          disabled={!draftCustomerId.trim()}
+          onClick={onApplyCustomer}
+          type="button"
+        >
           Set customer
         </SecondaryActionButton>
       </div>
 
-      <div className="ui-filter-panel max-w-2xl">
-        <div className="grid gap-2">
-          <Label htmlFor="override-campaign-id">Campaign ID (optional)</Label>
+      <div className={FILTER_PANEL_WIDE_CLASS}>
+        <FilterField htmlFor="override-campaign-id" label="Campaign ID (optional)">
           <Input
             id="override-campaign-id"
             value={draftCampaignId}
             onChange={(event) => onDraftCampaignIdChange(event.target.value)}
           />
-        </div>
-        <div className="grid gap-2">
-          <Label htmlFor="override-ip-hash">Provide IP hash or raw IP</Label>
+        </FilterField>
+        <FilterField htmlFor="override-ip-hash" label="Provide IP hash or raw IP">
           <Input
             id="override-ip-hash"
             placeholder="32 hex characters"
             value={draftIpHash}
             onChange={(event) => onDraftIpHashChange(event.target.value)}
           />
-        </div>
-        <div className="grid gap-2">
-          <Label htmlFor="override-ip">IP address</Label>
+        </FilterField>
+        <FilterField htmlFor="override-ip" label="IP address">
           <Input
             id="override-ip"
             placeholder="e.g. 203.0.113.42"
             value={draftIp}
             onChange={(event) => onDraftIpChange(event.target.value)}
           />
-        </div>
+        </FilterField>
         <PrimaryActionButton
           disabled={!customerId || !hasIpTarget}
           loading={saving}

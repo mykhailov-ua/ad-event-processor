@@ -1,4 +1,5 @@
-import { useEffect, useState } from 'react';
+import { useState } from 'react';
+import { useRunWhenTrue } from '@/hooks/use_run_when_true';
 
 import { PrimaryActionButton } from '@/shell/action_buttons';
 import { PageChrome } from '@/shell/page_chrome';
@@ -80,11 +81,7 @@ export function SmartAlertsRulesDirectory({
 }: SmartAlertsRulesDirectoryProps) {
   const [createOpen, setCreateOpen] = useState(false);
 
-  useEffect(() => {
-    if (createSuccess) {
-      setCreateOpen(false);
-    }
-  }, [createSuccess]);
+  useRunWhenTrue(createSuccess, () => setCreateOpen(false));
 
   if (!appliedCustomerId) {
     return (
@@ -223,122 +220,120 @@ export function SmartAlertsRulesDirectory({
         <EmptyState title="No alert rules" description="No smart alert rules for this customer." />
       ) : (
         <DirectoryTable>
-            <TableHeader>
-              <TableRow>
-                <DirectoryTableHead>Name</DirectoryTableHead>
-                <DirectoryTableHead>Metric</DirectoryTableHead>
-                <DirectoryTableHead>Operator</DirectoryTableHead>
-                <DirectoryTableHead>Threshold</DirectoryTableHead>
-                <DirectoryTableHead>Window</DirectoryTableHead>
-                <DirectoryTableHead>Webhook</DirectoryTableHead>
-                <DirectoryTableHead>Enabled</DirectoryTableHead>
-                <DirectoryTableHead />
-              </TableRow>
-            </TableHeader>
-            <TableBody>
-              {(items ?? []).map((row) => {
-                const ruleId = row.id ?? '';
-                const draft = ruleDrafts[ruleId] ?? smartAlertRuleEditFromRow(row);
-                const updating = updatingRuleId === ruleId;
-                const deleting = deletingRuleId === ruleId;
-                return (
-                  <TableRow key={ruleId}>
-                    <TableCell>
-                      <Input
-                        aria-label={`Name for rule ${ruleId}`}
-                        className="min-w-[8rem]"
-                        value={draft.name}
-                        onChange={(event) =>
-                          onRuleDraftChange(ruleId, { name: event.target.value })
-                        }
-                      />
-                    </TableCell>
-                    <TableCell>
-                      <Input
-                        aria-label={`Metric for rule ${ruleId}`}
-                        className="min-w-[6rem]"
-                        value={draft.metric}
-                        onChange={(event) =>
-                          onRuleDraftChange(ruleId, { metric: event.target.value })
-                        }
-                      />
-                    </TableCell>
-                    <TableCell>
-                      <Input
-                        aria-label={`Operator for rule ${ruleId}`}
-                        className="min-w-[4rem]"
-                        value={draft.operator}
-                        onChange={(event) =>
-                          onRuleDraftChange(ruleId, { operator: event.target.value })
-                        }
-                      />
-                    </TableCell>
-                    <TableCell>
-                      <Input
-                        aria-label={`Threshold for rule ${ruleId}`}
-                        className="min-w-[5rem]"
-                        inputMode="decimal"
-                        value={draft.threshold}
-                        onChange={(event) =>
-                          onRuleDraftChange(ruleId, { threshold: event.target.value })
-                        }
-                      />
-                    </TableCell>
-                    <TableCell>
-                      <Input
-                        aria-label={`Window for rule ${ruleId}`}
-                        className="min-w-[4rem]"
-                        inputMode="numeric"
-                        value={draft.window_minutes}
-                        onChange={(event) =>
-                          onRuleDraftChange(ruleId, { window_minutes: event.target.value })
-                        }
-                      />
-                    </TableCell>
-                    <TableCell>
-                      <Input
-                        aria-label={`Webhook for rule ${ruleId}`}
-                        className="min-w-[10rem] font-mono text-xs"
-                        value={draft.webhook_url}
-                        onChange={(event) =>
-                          onRuleDraftChange(ruleId, { webhook_url: event.target.value })
-                        }
-                      />
-                    </TableCell>
-                    <TableCell>
-                      <Checkbox
-                        aria-label={`Enabled for rule ${ruleId}`}
-                        checked={draft.enabled}
-                        onCheckedChange={(checked) =>
-                          onRuleDraftChange(ruleId, { enabled: checked === true })
-                        }
-                      />
-                    </TableCell>
-                    <TableCell className="text-right">
-                      <RowActionsMenu
-                        ariaLabel="Rule actions"
+          <TableHeader>
+            <TableRow>
+              <DirectoryTableHead>Name</DirectoryTableHead>
+              <DirectoryTableHead>Metric</DirectoryTableHead>
+              <DirectoryTableHead>Operator</DirectoryTableHead>
+              <DirectoryTableHead>Threshold</DirectoryTableHead>
+              <DirectoryTableHead>Window</DirectoryTableHead>
+              <DirectoryTableHead>Webhook</DirectoryTableHead>
+              <DirectoryTableHead>Enabled</DirectoryTableHead>
+              <DirectoryTableHead />
+            </TableRow>
+          </TableHeader>
+          <TableBody>
+            {(items ?? []).map((row) => {
+              const ruleId = row.id ?? '';
+              const draft = ruleDrafts[ruleId] ?? smartAlertRuleEditFromRow(row);
+              const updating = updatingRuleId === ruleId;
+              const deleting = deletingRuleId === ruleId;
+              return (
+                <TableRow key={ruleId}>
+                  <TableCell>
+                    <Input
+                      aria-label={`Name for rule ${ruleId}`}
+                      className="min-w-[8rem]"
+                      value={draft.name}
+                      onChange={(event) => onRuleDraftChange(ruleId, { name: event.target.value })}
+                    />
+                  </TableCell>
+                  <TableCell>
+                    <Input
+                      aria-label={`Metric for rule ${ruleId}`}
+                      className="min-w-[6rem]"
+                      value={draft.metric}
+                      onChange={(event) =>
+                        onRuleDraftChange(ruleId, { metric: event.target.value })
+                      }
+                    />
+                  </TableCell>
+                  <TableCell>
+                    <Input
+                      aria-label={`Operator for rule ${ruleId}`}
+                      className="min-w-[4rem]"
+                      value={draft.operator}
+                      onChange={(event) =>
+                        onRuleDraftChange(ruleId, { operator: event.target.value })
+                      }
+                    />
+                  </TableCell>
+                  <TableCell>
+                    <Input
+                      aria-label={`Threshold for rule ${ruleId}`}
+                      className="min-w-[5rem]"
+                      inputMode="decimal"
+                      value={draft.threshold}
+                      onChange={(event) =>
+                        onRuleDraftChange(ruleId, { threshold: event.target.value })
+                      }
+                    />
+                  </TableCell>
+                  <TableCell>
+                    <Input
+                      aria-label={`Window for rule ${ruleId}`}
+                      className="min-w-[4rem]"
+                      inputMode="numeric"
+                      value={draft.window_minutes}
+                      onChange={(event) =>
+                        onRuleDraftChange(ruleId, { window_minutes: event.target.value })
+                      }
+                    />
+                  </TableCell>
+                  <TableCell>
+                    <Input
+                      aria-label={`Webhook for rule ${ruleId}`}
+                      className="min-w-[10rem] font-mono text-xs"
+                      value={draft.webhook_url}
+                      onChange={(event) =>
+                        onRuleDraftChange(ruleId, { webhook_url: event.target.value })
+                      }
+                    />
+                  </TableCell>
+                  <TableCell>
+                    <Checkbox
+                      aria-label={`Enabled for rule ${ruleId}`}
+                      checked={draft.enabled}
+                      onCheckedChange={(checked) =>
+                        onRuleDraftChange(ruleId, { enabled: checked === true })
+                      }
+                    />
+                  </TableCell>
+                  <TableCell className="text-right">
+                    <RowActionsMenu
+                      ariaLabel="Rule actions"
+                      disabled={!ruleId || updating || deleting}
+                    >
+                      <DropdownMenuItem
                         disabled={!ruleId || updating || deleting}
+                        onClick={() => onSaveRule(ruleId)}
                       >
-                        <DropdownMenuItem
-                          disabled={!ruleId || updating || deleting}
-                          onClick={() => onSaveRule(ruleId)}
-                        >
-                          {updating ? 'Saving...' : 'Save'}
-                        </DropdownMenuItem>
-                        <DropdownMenuItem
-                          className="text-destructive focus:text-destructive"
-                          disabled={!ruleId || updating || deleting}
-                          onClick={() => onDeleteRule(ruleId)}
-                        >
-                          {deleting ? 'Deleting...' : 'Delete'}
-                        </DropdownMenuItem>
-                      </RowActionsMenu>
-                    </TableCell>
-                  </TableRow>
-                );
-              })}
-            </TableBody>
-          </DirectoryTable>
+                        {updating ? 'Saving...' : 'Save'}
+                      </DropdownMenuItem>
+                      <DropdownMenuItem
+                        className="text-destructive focus:text-destructive"
+                        disabled={!ruleId || updating || deleting}
+                        onClick={() => onDeleteRule(ruleId)}
+                      >
+                        {deleting ? 'Deleting...' : 'Delete'}
+                      </DropdownMenuItem>
+                    </RowActionsMenu>
+                  </TableCell>
+                </TableRow>
+              );
+            })}
+          </TableBody>
+        </DirectoryTable>
       )}
 
       {actionError ? <ErrorBlock title="Action failed" message={actionError.message} /> : null}

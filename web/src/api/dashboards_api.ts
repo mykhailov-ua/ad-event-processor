@@ -1,5 +1,10 @@
 import { apiJson } from './client.js';
-import type { DashboardQuery, DashboardRole, RoleDashboard } from './types.js';
+import type {
+  CampaignDashboardQuery,
+  DashboardQuery,
+  DashboardRole,
+  RoleDashboard,
+} from './types.js';
 
 const DASHBOARD_PATHS: Record<DashboardRole, string> = {
   buyer: '/api/v1/dashboards/buyer',
@@ -52,23 +57,16 @@ export function buildDashboardPath(role: DashboardRole, params: DashboardQuery):
 export async function getRoleDashboard(
   role: DashboardRole,
   params: DashboardQuery,
-  signal?: AbortSignal,
+  signal?: AbortSignal
 ): Promise<RoleDashboard> {
   return apiJson<RoleDashboard>(buildDashboardPath(role, params), { signal });
 }
 
-export type CampaignDashboardQuery = {
-  from?: string;
-  to?: string;
-  dimension?: string;
-  q?: string;
-  sort?: string;
-  order?: 'asc' | 'desc';
-};
+export type { CampaignDashboardQuery } from './types.js';
 
 export function buildCampaignDashboardPath(
   campaignId: string,
-  params: CampaignDashboardQuery = {},
+  params: CampaignDashboardQuery = {}
 ): string {
   const search = new URLSearchParams();
   if (params.from) {
@@ -97,7 +95,7 @@ export function buildCampaignDashboardPath(
 export async function getCampaignDashboard(
   campaignId: string,
   params: CampaignDashboardQuery = {},
-  signal?: AbortSignal,
+  signal?: AbortSignal
 ): Promise<RoleDashboard> {
   return apiJson<RoleDashboard>(buildCampaignDashboardPath(campaignId, params), { signal });
 }

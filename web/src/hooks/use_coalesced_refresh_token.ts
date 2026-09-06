@@ -2,6 +2,7 @@ import { useCallback, useState } from 'react';
 
 import { useCoalescedCallback } from '@/hooks/use_coalesced_callback';
 
+// refreshToken dep for useResource/effects; useCoalescedBumpRefresh drops double-clicks while fetching.
 export function useRefreshToken() {
   const [refreshToken, setRefreshToken] = useState(0);
 

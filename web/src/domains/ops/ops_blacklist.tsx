@@ -83,7 +83,12 @@ export function OpsBlacklist({
       actions={
         <>
           <OpsActionGroup label="Block">
-            <Button disabled={!draftIp.trim() || saving} loading={saving} type="button" onClick={onAdd}>
+            <Button
+              disabled={!draftIp.trim() || saving}
+              loading={saving}
+              type="button"
+              onClick={onAdd}
+            >
               Block IP
             </Button>
           </OpsActionGroup>
@@ -147,6 +152,7 @@ export function OpsBlacklist({
         <EmptyState description="No blocked IPs on record." title="Blacklist empty" />
       ) : (
         <OpsTable
+          horizontalScroll
           head={
             <OpsTableHeaderRow>
               <OpsTableHead>IP</OpsTableHead>
@@ -160,8 +166,12 @@ export function OpsBlacklist({
             <OpsTableRow key={row.id ?? row.ip}>
               <OpsTableCell>{row.ip ?? ''}</OpsTableCell>
               <OpsTableCell>{row.reason ?? ''}</OpsTableCell>
-              <OpsTableCell>{displayTimestamp(row.created_at, row.created_at_display)}</OpsTableCell>
-              <OpsTableCell>{displayTimestamp(row.expires_at, row.expires_at_display)}</OpsTableCell>
+              <OpsTableCell>
+                {displayTimestamp(row.created_at, row.created_at_display)}
+              </OpsTableCell>
+              <OpsTableCell>
+                {displayTimestamp(row.expires_at, row.expires_at_display)}
+              </OpsTableCell>
             </OpsTableRow>
           ))}
         </OpsTable>

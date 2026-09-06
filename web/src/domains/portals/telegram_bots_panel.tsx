@@ -42,31 +42,31 @@ export function TelegramBotsPanel({ bots, fetching, error, hasSnapshot }: Telegr
         <EmptyState title="No bots" description="No Telegram Mini App bots are configured." />
       ) : (
         <DirectoryTable horizontalScroll>
-            <TableHeader>
-              <TableRow>
-                <DirectoryTableHead>Bot ID</DirectoryTableHead>
-                <DirectoryTableHead>Campaign</DirectoryTableHead>
-                <DirectoryTableHead>Webhook</DirectoryTableHead>
-                <DirectoryTableHead>Mini App</DirectoryTableHead>
-                <DirectoryTableHead>Updated</DirectoryTableHead>
+          <TableHeader>
+            <TableRow>
+              <DirectoryTableHead>Bot ID</DirectoryTableHead>
+              <DirectoryTableHead>Campaign</DirectoryTableHead>
+              <DirectoryTableHead>Webhook</DirectoryTableHead>
+              <DirectoryTableHead>Mini App</DirectoryTableHead>
+              <DirectoryTableHead>Updated</DirectoryTableHead>
+            </TableRow>
+          </TableHeader>
+          <TableBody>
+            {(bots ?? []).map((row) => (
+              <TableRow key={String(row.bot_id ?? row.campaign_id ?? row.webhook_url)}>
+                <TableCell>{row.bot_id ?? ''}</TableCell>
+                <TableCell className="font-mono text-xs">{row.campaign_id ?? ''}</TableCell>
+                <TableCell className="whitespace-nowrap font-mono text-xs">
+                  {row.webhook_url ?? ''}
+                </TableCell>
+                <TableCell className="whitespace-nowrap font-mono text-xs">
+                  {row.mini_app_url ?? ''}
+                </TableCell>
+                <TableCell>{displayTimestamp(row.updated_at)}</TableCell>
               </TableRow>
-            </TableHeader>
-            <TableBody>
-              {(bots ?? []).map((row) => (
-                <TableRow key={String(row.bot_id ?? row.campaign_id ?? row.webhook_url)}>
-                  <TableCell>{row.bot_id ?? ''}</TableCell>
-                  <TableCell className="font-mono text-xs">{row.campaign_id ?? ''}</TableCell>
-                  <TableCell className="whitespace-nowrap font-mono text-xs">
-                    {row.webhook_url ?? ''}
-                  </TableCell>
-                  <TableCell className="whitespace-nowrap font-mono text-xs">
-                    {row.mini_app_url ?? ''}
-                  </TableCell>
-                  <TableCell>{displayTimestamp(row.updated_at)}</TableCell>
-                </TableRow>
-              ))}
-            </TableBody>
-          </DirectoryTable>
+            ))}
+          </TableBody>
+        </DirectoryTable>
       )}
 
       {error && hasSnapshot ? portalsPanelError(error, 'Refresh failed') : null}

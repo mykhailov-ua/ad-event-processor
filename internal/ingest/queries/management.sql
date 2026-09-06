@@ -32,6 +32,12 @@ WHERE c.id = $1;
 -- name: ListCampaignsByIDs :many
 SELECT * FROM campaigns WHERE id = ANY($1::uuid[]);
 
+-- name: ListCampaignsForUpdate :many
+SELECT * FROM campaigns
+WHERE id = ANY($1::uuid[])
+ORDER BY id
+FOR UPDATE;
+
 -- name: CreateLedgerEntry :one
 INSERT INTO balance_ledger (customer_id, campaign_id, amount, type, idempotency_hash, payment_intent_id)
 VALUES ($1, $2, $3, $4, $5, $6)

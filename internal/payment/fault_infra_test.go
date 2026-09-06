@@ -87,7 +87,7 @@ func SetupPaymentFaultInfra(t *testing.T) (*FaultInfra, func()) {
 	}
 
 	redisShards := []redis.UniversalClient{redisClient}
-	mgmtSvc := controlplane.NewService(context.Background(), pool, redisShards, ingestion.NewStaticSlotSharder(len(redisShards)), cfg)
+	mgmtSvc := controlplane.NewBareServiceForTest(t, pool, redisShards, cfg)
 	settleHandler := controlplane.NewSettlementHandler(mgmtSvc, cfg)
 	settlementGate := NewSettlementFaultGate(settleHandler.PaymentSettlement())
 
@@ -102,11 +102,15 @@ func SetupPaymentFaultInfra(t *testing.T) (*FaultInfra, func()) {
 	}
 
 	cleanup := func() {
+		if infra.ControlplaneSvc != nil {
+			infra.ControlplaneSvc.Close()
+		}
 		_ = redisClient.Close()
 		pool.Close()
 		_ = redisContainer.Terminate(ctx)
 		_ = pgContainer.Terminate(ctx)
 	}
+	t.Cleanup(cleanup)
 	return infra, cleanup
 }
 

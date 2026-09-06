@@ -5,6 +5,7 @@ import (
 	"unsafe"
 
 	"ad-event-processor/internal/ingest/pb"
+	"ad-event-processor/pkg/bufpool"
 	"ad-event-processor/pkg/money"
 )
 
@@ -26,18 +27,8 @@ var (
 			return new(ByteSliceValue)
 		},
 	}
-	ByteBufPool = sync.Pool{
-		New: func() any {
-			b := make([]byte, 0, 512)
-			return &b
-		},
-	}
-	LogBufPool = sync.Pool{
-		New: func() any {
-			b := make([]byte, 0, 512)
-			return &b
-		},
-	}
+	ByteBufPool        = byteSlicePool{defaultCap: 512, maxCap: bufpool.DefaultMaxCap}
+	LogBufPool         = byteSlicePool{defaultCap: 512, maxCap: bufpool.DefaultMaxCap}
 	ProducerValuesPool = sync.Pool{
 		New: func() any {
 			slice := make([]any, 2)
@@ -74,6 +65,19 @@ func UnsafeBytes(s string) []byte {
 
 type ByteSliceValue struct {
 	B []byte
+}
+
+type byteSlicePool struct {
+	defaultCap int
+	maxCap     int
+}
+
+func (p byteSlicePool) Get() any {
+	return bufpool.GetBytes(p.defaultCap)
+}
+
+func (p byteSlicePool) Put(v any) {
+	bufpool.PutBytes(v.(*[]byte), p.maxCap)
 }
 
 func (v *ByteSliceValue) MarshalBinary() ([]byte, error) {

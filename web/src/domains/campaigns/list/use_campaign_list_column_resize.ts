@@ -1,4 +1,11 @@
-import { useCallback, useEffect, useRef, type PointerEvent as ReactPointerEvent, type RefObject } from 'react';
+// L3 campaign list column resize: pointer capture on handle; colgroup/table width updated during drag; commit on pointerup only.
+import {
+  useCallback,
+  useEffect,
+  useRef,
+  type PointerEvent as ReactPointerEvent,
+  type RefObject,
+} from 'react';
 
 import {
   CAMPAIGN_LIST_COLUMN_MIN_WIDTH_PX,
@@ -16,13 +23,13 @@ type ResizeState = {
 function sumColumnWidthsPx(
   columns: CampaignListColumnId[],
   widths: Readonly<Record<CampaignListColumnId, number>>,
-  override?: { columnId: CampaignListColumnId; widthPx: number },
+  override?: { columnId: CampaignListColumnId; widthPx: number }
 ): number {
   return columns.reduce((sum, columnId) => {
     const widthPx =
       override?.columnId === columnId
         ? override.widthPx
-        : widths[columnId] ?? CAMPAIGN_LIST_COLUMN_MIN_WIDTH_PX[columnId];
+        : (widths[columnId] ?? CAMPAIGN_LIST_COLUMN_MIN_WIDTH_PX[columnId]);
     return sum + widthPx;
   }, 0);
 }
@@ -31,7 +38,7 @@ function applyTableColumnWidths(
   colgroup: HTMLTableColElement,
   columns: CampaignListColumnId[],
   widths: Readonly<Record<CampaignListColumnId, number>>,
-  override?: { columnId: CampaignListColumnId; widthPx: number },
+  override?: { columnId: CampaignListColumnId; widthPx: number }
 ): number {
   const totalWidthPx = sumColumnWidthsPx(columns, widths, override);
   columns.forEach((columnId, index) => {
@@ -42,7 +49,7 @@ function applyTableColumnWidths(
     const widthPx =
       override?.columnId === columnId
         ? override.widthPx
-        : widths[columnId] ?? CAMPAIGN_LIST_COLUMN_MIN_WIDTH_PX[columnId];
+        : (widths[columnId] ?? CAMPAIGN_LIST_COLUMN_MIN_WIDTH_PX[columnId]);
     col.style.width = `${widthPx}px`;
   });
   return totalWidthPx;
@@ -87,7 +94,7 @@ export function useCampaignListColumnResize({
       document.body.style.cursor = 'col-resize';
       document.body.style.userSelect = 'none';
     },
-    [columnWidths, columns],
+    [columnWidths, columns]
   );
 
   useEffect(() => {
@@ -127,7 +134,7 @@ export function useCampaignListColumnResize({
       const delta = event.clientX - state.startX;
       const nextWidth = clampUserResizedCampaignListColumnWidthPx(
         state.columnId,
-        state.startWidth + delta,
+        state.startWidth + delta
       );
       draftWidthRef.current = nextWidth;
       applyDraftWidth(state, nextWidth);

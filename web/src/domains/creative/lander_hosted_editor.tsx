@@ -17,6 +17,9 @@ import {
 } from '@/shell/directory_table';
 import type { HostedEditorState } from '@/api/types';
 import { CreativeNav, creativePanelError } from '@/domains/creative/creative_nav';
+import { FILTER_PANEL_NARROW_CLASS } from '@/shell/filter_panel';
+import { adminKit } from '@/lib/admin_kit';
+import { cn } from '@/lib/utils';
 
 export type LanderHostedEditorProps = {
   landerId: string;
@@ -102,7 +105,7 @@ export function LanderHostedEditor({
       </section>
 
       {onUploadZip || onPublish ? (
-        <section className="ui-filter-panel gap-3">
+        <section className={FILTER_PANEL_NARROW_CLASS}>
           <h2 className="text-base font-semibold">Hosted actions</h2>
           {onUploadZip ? (
             <div className="grid gap-2">
@@ -139,12 +142,20 @@ export function LanderHostedEditor({
         <section className="grid gap-2">
           <h2 className="text-base font-semibold">Preview</h2>
           <p className="text-sm">
-            <a className="text-foreground underline" href={previewUrl} rel="noreferrer" target="_blank">
+            <a
+              className="text-foreground underline"
+              href={previewUrl}
+              rel="noreferrer"
+              target="_blank"
+            >
               Open server preview
             </a>
           </p>
           <iframe
-            className="min-h-[480px] w-full rounded-xl border border-border/50 bg-muted/40"
+            className={cn(
+              'min-h-[480px] w-full border border-border/50 bg-muted/40',
+              adminKit.panelRadius
+            )}
             src={previewUrl}
             title={`Preview for lander ${landerId}`}
           />
@@ -154,41 +165,41 @@ export function LanderHostedEditor({
       <section className="grid gap-2">
         <h2 className="text-base font-semibold">Files</h2>
         <DirectoryTable>
-            <TableHeader>
-              <TableRow>
-                <DirectoryTableHead>Path</DirectoryTableHead>
-                <DirectoryTableHead>Size</DirectoryTableHead>
-                <DirectoryTableHead>Editable</DirectoryTableHead>
-              </TableRow>
-            </TableHeader>
-            <TableBody>
-              {(state.files ?? []).map((file) => {
-                const isSelected = selectedFilePath === file.path;
-                const canEdit = file.editable && onSelectFile;
-                return (
-                  <TableRow
-                    key={file.path}
-                    className={
-                      canEdit
-                        ? `cursor-pointer ${isSelected ? 'bg-muted/50' : 'hover:bg-muted/30'}`
-                        : undefined
-                    }
-                    onClick={
-                      canEdit
-                        ? () => {
-                            onSelectFile(file.path);
-                          }
-                        : undefined
-                    }
-                  >
-                    <TableCell className="font-mono text-xs">{file.path}</TableCell>
-                    <TableCell>{file.size}</TableCell>
-                    <TableCell>{file.editable ? 'yes' : 'no'}</TableCell>
-                  </TableRow>
-                );
-              })}
-            </TableBody>
-          </DirectoryTable>
+          <TableHeader>
+            <TableRow>
+              <DirectoryTableHead>Path</DirectoryTableHead>
+              <DirectoryTableHead>Size</DirectoryTableHead>
+              <DirectoryTableHead>Editable</DirectoryTableHead>
+            </TableRow>
+          </TableHeader>
+          <TableBody>
+            {(state.files ?? []).map((file) => {
+              const isSelected = selectedFilePath === file.path;
+              const canEdit = file.editable && onSelectFile;
+              return (
+                <TableRow
+                  key={file.path}
+                  className={
+                    canEdit
+                      ? `cursor-pointer ${isSelected ? 'bg-muted/50' : 'hover:bg-muted/30'}`
+                      : undefined
+                  }
+                  onClick={
+                    canEdit
+                      ? () => {
+                          onSelectFile(file.path);
+                        }
+                      : undefined
+                  }
+                >
+                  <TableCell className="font-mono text-xs">{file.path}</TableCell>
+                  <TableCell>{file.size}</TableCell>
+                  <TableCell>{file.editable ? 'yes' : 'no'}</TableCell>
+                </TableRow>
+              );
+            })}
+          </TableBody>
+        </DirectoryTable>
       </section>
 
       {selectedFilePath && onSaveFile ? (

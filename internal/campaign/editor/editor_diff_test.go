@@ -76,6 +76,13 @@ func (s *diffCampaignStub) ExportCampaign(context.Context, uuid.UUID) (campaign.
 	return campaign.CampaignExportBundle{}, nil
 }
 
+func (s *diffCampaignStub) ExportCampaignsBatch(context.Context, []uuid.UUID) campaign.ExportCampaignsBatchResult {
+	return campaign.ExportCampaignsBatchResult{
+		Items:  map[uuid.UUID]campaign.CampaignExportBundle{},
+		Errors: map[uuid.UUID]error{},
+	}
+}
+
 func (s *diffCampaignStub) ImportCampaign(context.Context, campaign.ImportCampaignSpec) (campaign.ImportCampaignResult, error) {
 	return campaign.ImportCampaignResult{}, nil
 }
@@ -98,6 +105,10 @@ func (s *diffCampaignStub) ResumeCampaign(context.Context, uuid.UUID, string) er
 
 func (s *diffCampaignStub) ArchiveCampaign(context.Context, uuid.UUID, string) error {
 	return nil
+}
+
+func (s *diffCampaignStub) BulkCampaignAction(ctx context.Context, action string, ids []uuid.UUID, reason string) map[uuid.UUID]error {
+	return campaign.RunBulkCampaignAction(ctx, action, ids, reason, s.PauseCampaign, s.ResumeCampaign, s.ArchiveCampaign)
 }
 
 func TestGetCampaignDiff_selfReturnsEmptyRows_holdout(t *testing.T) {

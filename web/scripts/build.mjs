@@ -1,7 +1,15 @@
 #!/usr/bin/env node
 
 import * as esbuild from 'esbuild';
-import { cpSync, existsSync, mkdirSync, readFileSync, rmSync, statSync, writeFileSync } from 'node:fs';
+import {
+  cpSync,
+  existsSync,
+  mkdirSync,
+  readFileSync,
+  rmSync,
+  statSync,
+  writeFileSync,
+} from 'node:fs';
 import { dirname, join, resolve } from 'node:path';
 import { fileURLToPath } from 'node:url';
 import { createRequire } from 'node:module';
@@ -45,7 +53,7 @@ function buildHtmlShell(sourceName, scriptSrc) {
   const withFonts = base.replace('</head>', `${FONT_LINKS}  </head>`);
   return withFonts.replace(
     '</body>',
-    `    <script type="module" src="${scriptSrc}"></script>\n  </body>`,
+    `    <script type="module" src="${scriptSrc}"></script>\n  </body>`
   );
 }
 
@@ -88,11 +96,16 @@ function aliasAtPlugin() {
   };
 }
 
+function fontPackageSlug(packageName) {
+  const trimmed = packageName.replace(/^@fontsource(-variable)?\//, '');
+  return trimmed.split('/')[0];
+}
+
 function loadFontCss(packageName, fontsOutDir) {
-  const cssPath = require.resolve(`${packageName}/index.css`);
+  const cssPath = require.resolve(packageName);
   const cssDir = dirname(cssPath);
   const filesDir = join(cssDir, 'files');
-  const slug = packageName.split('/').pop();
+  const slug = fontPackageSlug(packageName);
   const targetDir = join(fontsOutDir, 'fonts', slug);
   mkdirSync(targetDir, { recursive: true });
 
@@ -111,7 +124,12 @@ async function buildAppCss() {
   const inputPath = join(SRC, 'styles', 'app.css');
   const outDir = join(DIST, 'src', 'styles');
   let input = readFileSync(inputPath, 'utf8');
-  for (const pkg of ['@fontsource-variable/inter', '@fontsource-variable/jetbrains-mono']) {
+  const FONT_IMPORTS = [
+    '@fontsource-variable/inter',
+    '@fontsource/ibm-plex-mono/200.css',
+    '@fontsource/ibm-plex-mono/400.css',
+  ];
+  for (const pkg of FONT_IMPORTS) {
     const token = `@import '${pkg}';`;
     if (input.includes(token)) {
       input = input.replace(token, loadFontCss(pkg, outDir));
@@ -173,8 +191,11 @@ await esbuild.build({
 const staticDir = join(SRC, 'static');
 const trackSrc = join(staticDir, 'track.js');
 if (existsSync(trackSrc)) {
-  mkdirSync(join(DIST, 'src', 'static'), { recursive: true });
-  cpSync(trackSrc, join(DIST, 'src', 'static', 'track.js'));
+  const { execFileSync } = await import('node:child_process');
+  execFileSync('node', ['scripts/build_track_pixel.mjs', `--dist=${DIST}`], {
+    cwd: ROOT,
+    stdio: 'inherit',
+  });
 } else {
   console.error('Error: missing web/src/static/track.js (required for go:embed admin UI)');
   process.exit(1);
@@ -183,4 +204,6 @@ if (existsSync(trackSrc)) {
 writeFileSync(join(DIST, 'index.html'), INDEX_HTML, 'utf8');
 writeFileSync(join(DIST, 'login.html'), LOGIN_HTML, 'utf8');
 
-console.log('dist: esbuild bundle -> dist/src/{main,login,chunks} + tailwind app.css + HTML shells');
+console.log(
+  'dist: esbuild bundle -> dist/src/{main,login,chunks} + tailwind app.css + HTML shells'
+);

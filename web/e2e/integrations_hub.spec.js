@@ -49,7 +49,7 @@ test('affiliate presets read returns rows from GET /api/v1/integration/affiliate
   await loginAsAdmin(page);
   const listResponse = page.waitForResponse(
     isApiGet('/api/v1/integration/affiliate-status-presets'),
-    { timeout: 20_000 },
+    { timeout: 20_000 }
   );
   await gotoLive(page, '/integrations/affiliate-presets');
   await expect(page.getByRole('heading', { name: 'Affiliate status presets' })).toBeVisible();

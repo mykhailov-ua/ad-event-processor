@@ -1,11 +1,7 @@
 import { test, expect } from '@playwright/test';
 
 import { loginAsAdmin, skipUnlessIntegrationReady } from '../helpers.js';
-import {
-  assertPlaywrightBudget,
-  medianWallClockMs,
-  PLAYWRIGHT_BUDGETS,
-} from './helpers_perf.js';
+import { assertPlaywrightBudget, medianWallClockMs, PLAYWRIGHT_BUDGETS } from './helpers_perf.js';
 
 test.describe.configure({ mode: 'serial' });
 
@@ -24,5 +20,9 @@ test('campaigns table first paint within perf budget', async ({ page }) => {
     await expect(table.getByRole('row').nth(1)).toBeVisible();
   });
 
-  assertPlaywrightBudget('campaigns table first paint', medianMs, PLAYWRIGHT_BUDGETS.campaignTableMs);
+  assertPlaywrightBudget(
+    'campaigns table first paint',
+    medianMs,
+    PLAYWRIGHT_BUDGETS.campaignTableMs
+  );
 });

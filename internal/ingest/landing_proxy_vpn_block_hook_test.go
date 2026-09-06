@@ -15,8 +15,10 @@ import (
 func proxyVPNBlockHookHandler(t *testing.T, proxyVPNBlockEnabled bool, filter *countingFilter) (*AdsPacketHandler, uuid.UUID) {
 	t.Helper()
 	cid := uuid.New()
+	brandID := uuid.New()
 	lockStaticCampaign(func(c *domain.Campaign) {
 		c.ID = cid
+		c.BrandID = &brandID
 		c.ProxyVPNBlockEnabled = proxyVPNBlockEnabled
 	})
 	t.Cleanup(func() {
@@ -26,7 +28,8 @@ func proxyVPNBlockHookHandler(t *testing.T, proxyVPNBlockEnabled bool, filter *c
 	cachedMockCamp.Store(nil)
 
 	cfg := &config.Config{MaxRequestBodySize: 1 << 20}
-	h := NewAdsPacketHandler(cfg, &mockRegistry{}, NewFilterEngine(0, filter), nil, nil, NewJumpHashSharder(1), "fraud-stream", nil)
+	store := clickHookBrandStore(t, brandID)
+	h := NewAdsPacketHandler(cfg, &mockRegistry{}, NewFilterEngine(0, filter), nil, nil, NewJumpHashSharder(1), "fraud-stream", store)
 	return h, cid
 }
 
@@ -89,12 +92,13 @@ func TestClickRedirect_ProxyVPNBlockCampaignDisabled_FallsThrough(t *testing.T) 
 	require.Equal(t, 1, filter.calls)
 }
 
-func TestClickRedirect_ProxyVPNBlockTableNil_FailOpen(t *testing.T) {
+func TestClickRedirect_ProxyVPNBlockTableNil_FailClosed(t *testing.T) {
 	filter := &countingFilter{}
 	h, cid := proxyVPNBlockHookHandler(t, true, filter)
 	conn := serveClickFromIP(h, cid, "54.230.17.9")
-	require.NotContains(t, string(conn.Written()), "X-ad-event-processor-Safe-View: l15")
-	require.Equal(t, 1, filter.calls)
+	require.Equal(t, http.StatusOK, ParseGnetHTTPStatus(conn.Written()))
+	require.Contains(t, string(conn.Written()), "X-ad-event-processor-Safe-View: l15")
+	require.Equal(t, 0, filter.calls, "ProxyVPN enabled with nil table must safe-view before FilterEngine")
 }
 
 func TestClickRedirect_ProxyVPNBlockAfterCIDRBlockMiss(t *testing.T) {

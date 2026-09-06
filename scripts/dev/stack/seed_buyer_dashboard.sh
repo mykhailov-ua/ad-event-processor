@@ -88,8 +88,8 @@ fi
 CH_USE_UDS=0 CH_ENABLED=1 CH_DSN="$CH_DSN" CH_READONLY_DSN="$CH_DSN" \
   "${COMPOSE[@]}" --profile ingest_only up -d --force-recreate control
 
-demo_customer="$(run_admin db seed-uuids-shell --count 1 2>/dev/null | sed -n "s/^AED_CUSTOMER_UUID_1='\\(.*\\)'/\\1/p")"
-demo_customer_name="$(DB_DSN="$(host_db_dsn)" go run ./cmd/admin --env-path .env db customer list 2>/dev/null | awk -F'|' 'NR>1 && index($0,"'"${demo_customer}"'"){gsub(/^ +| +$/,"",$2); print $2; exit}')"
+demo_customer="$(run_admin db seed-uuids-shell --count 1 2> /dev/null | sed -n "s/^AED_CUSTOMER_UUID_1='\\(.*\\)'/\\1/p")"
+demo_customer_name="$(DB_DSN="$(host_db_dsn)" go run ./cmd/admin --env-path .env db customer list 2> /dev/null | awk -F'|' 'NR>1 && index($0,"'"${demo_customer}"'"){gsub(/^ +| +$/,"",$2); print $2; exit}')"
 
 cat << EOF
 

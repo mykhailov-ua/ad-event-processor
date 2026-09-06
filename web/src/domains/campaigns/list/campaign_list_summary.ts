@@ -21,7 +21,7 @@ export function resolveCampaignListSummary(
   selectedIds: Set<string>,
   metricsById: Record<string, CampaignListMetrics>,
   marginsById: Record<string, CampaignMargin>,
-  filterTotals?: CampaignListFilterTotalsView,
+  filterTotals?: CampaignListFilterTotalsView
 ): CampaignListSummary {
   if (selectedIds.size > 0) {
     return computeCampaignListSummary(items, selectedIds, metricsById, marginsById);
@@ -43,10 +43,9 @@ export function computeCampaignListSummary(
   items: Campaign[],
   selectedIds: Set<string>,
   metricsById: Record<string, CampaignListMetrics>,
-  marginsById: Record<string, CampaignMargin>,
+  marginsById: Record<string, CampaignMargin>
 ): CampaignListSummary {
-  const scoped =
-    selectedIds.size > 0 ? items.filter((item) => selectedIds.has(item.id)) : items;
+  const scoped = selectedIds.size > 0 ? items.filter((item) => selectedIds.has(item.id)) : items;
   const totals = emptyCampaignListTotals();
   let staleCount = 0;
   let marginBreachCount = 0;

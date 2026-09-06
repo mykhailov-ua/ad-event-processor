@@ -41,7 +41,7 @@ export async function respondDevMockApi(req, res, bodyText) {
     res.end(
       JSON.stringify({
         error: { code: 'MOCK_NOT_FOUND', message: `No dev mock handler for ${url.pathname}` },
-      }),
+      })
     );
     return;
   }

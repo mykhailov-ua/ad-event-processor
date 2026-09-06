@@ -3,7 +3,7 @@ import { Settings2 } from 'lucide-react';
 
 import type { CustomerComboboxOption } from '@/shell/customer_combobox';
 import { Button } from '@/components/ui/button';
-import { DateRangePicker } from '@/components/ui/date_range_picker';
+import { ToolbarDateRangePicker } from '@/shell/toolbar_date_range_picker';
 import { AdminSelect } from '@/shell/admin_select';
 import {
   dashboardFilterFieldClass,
@@ -11,11 +11,7 @@ import {
 } from '@/domains/dashboards/dashboard_classes';
 import { DashboardPreferencesDialog } from '@/domains/dashboards/dashboard_preferences_dialog';
 import type { BuyerDashboardPreferences } from '@/domains/dashboards/dashboard_preferences';
-import {
-  DirectoryFilterForm,
-  FilterField,
-  FilterPanel,
-} from '@/shell/filter_panel';
+import { DirectoryFilterForm, FilterField, FilterPanel } from '@/shell/filter_panel';
 
 const ALL_OPTION_VALUE = '__all__';
 
@@ -62,7 +58,7 @@ export function BuyerDashboardToolbar({
         label: customer.name,
       })),
     ],
-    [customerOptions],
+    [customerOptions]
   );
 
   const campaignSelectOptions = useMemo(
@@ -73,7 +69,7 @@ export function BuyerDashboardToolbar({
         label: campaign.name,
       })),
     ],
-    [campaignOptions],
+    [campaignOptions]
   );
 
   return (
@@ -118,14 +114,13 @@ export function BuyerDashboardToolbar({
             label="Period"
             labelClassName={dashboardFilterLabelClass}
           >
-            <DateRangePicker
+            <ToolbarDateRangePicker
               disabled={!customerSelected}
               from={draftFrom}
               id="buyer-dashboard-range"
               label="Period"
               labelClassName="sr-only"
               to={draftTo}
-              variant="campaigns"
               onChange={onDraftRangeChange}
             />
           </FilterField>

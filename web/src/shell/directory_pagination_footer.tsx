@@ -19,7 +19,6 @@ export type DirectoryPaginationFooterProps = {
   nextLabel?: string;
   variant?: ButtonVariant;
   layout?: 'inline' | 'split';
-  pageSizeLayout?: 'stacked' | 'inline';
   page?: number;
   pageCount?: number;
   onPageChange?: (page: number) => void;
@@ -41,20 +40,18 @@ export function DirectoryPaginationFooter({
   nextLabel = 'Next',
   variant = 'secondary',
   layout = 'inline',
-  pageSizeLayout = 'stacked',
   page,
   pageCount,
   onPageChange,
   showPrevNext = true,
   className,
 }: DirectoryPaginationFooterProps) {
-  const showPageSize =
-    onLimitChange != null && pageSizeId != null && limit != null;
+  const showPageSize = onLimitChange != null && pageSizeId != null && limit != null;
   const showPageNumbers =
     page != null && pageCount != null && pageCount > 1 && onPageChange != null;
 
   return (
-    <div className={cn('flex flex-wrap items-center gap-2', className)}>
+    <div className={cn('flex flex-wrap items-center gap-3', className)}>
       {rangeLabel ? (
         <DirectoryListMeta className="shrink-0 text-[13px] tabular-nums text-muted-foreground">
           {rangeLabel}
@@ -85,7 +82,6 @@ export function DirectoryPaginationFooter({
         <PaginationPageSize
           disabled={disabled}
           id={pageSizeId}
-          layout={pageSizeLayout}
           value={limit}
           onChange={onLimitChange}
         />

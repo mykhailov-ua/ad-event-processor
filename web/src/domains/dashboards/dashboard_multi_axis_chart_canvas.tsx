@@ -1,13 +1,6 @@
 import { format, isValid, parseISO } from 'date-fns';
 import { memo, useEffect, useRef, useState } from 'react';
-import {
-  CartesianGrid,
-  ComposedChart,
-  Line,
-  Tooltip,
-  XAxis,
-  YAxis,
-} from 'recharts';
+import { CartesianGrid, ComposedChart, Line, Tooltip, XAxis, YAxis } from 'recharts';
 
 import {
   buildDateAxisTicks,
@@ -22,8 +15,15 @@ import {
   type DashboardMetricId,
 } from '@/domains/dashboards/dashboard_metrics';
 import { displayCount } from '@/lib/display';
-import { markAdminPerf, measureAdminPerf, publishAdminPerfDuration } from '@/lib/perf/browser_marks';
+import {
+  markAdminPerf,
+  measureAdminPerf,
+  publishAdminPerfDuration,
+} from '@/lib/perf/browser_marks';
+import { cn } from '@/lib/utils';
 
+// Hot chart leaf (frontend-hot-path.mdc regime F): Recharts owns series updates; parent passes snapshot rows.
+// Optional ?admin_perf=1 marks via browser_marks.ts (Playwright perf tier, not tracker SLA).
 export type DashboardChartRow = {
   label: string;
   clicks: number;
@@ -84,18 +84,13 @@ function ChartTooltipContent({
   const volumeEntries = visible.filter((metric) => metric.axis === 'volume');
   const moneyEntries = visible.filter((metric) => metric.axis === 'money');
 
-  const renderSection = (
-    title: string,
-    metrics: typeof DASHBOARD_CHART_SERIES_STYLES,
-  ) => {
+  const renderSection = (title: string, metrics: typeof DASHBOARD_CHART_SERIES_STYLES) => {
     if (metrics.length === 0) {
       return null;
     }
     return (
       <div className="grid gap-1">
-        <p className="font-numeric text-ui-mini tracking-wide text-muted-foreground">
-          {title}
-        </p>
+        <p className="font-numeric text-ui-mini tracking-wide text-muted-foreground">{title}</p>
         {metrics.map((metric) => {
           const value = row[metric.seriesKey as keyof DashboardChartRow] as number;
           const formatted =
@@ -118,7 +113,7 @@ function ChartTooltipContent({
   };
 
   return (
-    <div className="ui-surface-raised grid min-w-[12rem] gap-2 rounded-xl border border-border/60 px-3 py-2 text-xs shadow-sm">
+    <div className={cn('ui-surface-raised grid min-w-[12rem] gap-2 px-3 py-2 text-xs shadow-sm')}>
       <p className="font-medium text-foreground">{formatChartDate(label ?? row.label)}</p>
       {renderSection('Volume', volumeEntries)}
       {renderSection('USD', moneyEntries)}

@@ -21,14 +21,14 @@ export function buildTeamOverviewPath(params: TeamOverviewQuery = {}): string {
 
 export async function getTeamOverview(
   params: TeamOverviewQuery = {},
-  signal?: AbortSignal,
+  signal?: AbortSignal
 ): Promise<TeamOverview> {
   return apiJson<TeamOverview>(buildTeamOverviewPath(params), { signal });
 }
 
 export async function listTeamMembers(
   params: TeamMembersQuery,
-  signal?: AbortSignal,
+  signal?: AbortSignal
 ): Promise<TeamMembersListResponse> {
   const search = new URLSearchParams({ customer_id: params.customer_id });
   if (params.limit != null) {
@@ -44,7 +44,7 @@ export async function listTeamMembers(
 
 export async function listTeamBudgetApprovals(
   params: TeamBudgetApprovalsQuery,
-  signal?: AbortSignal,
+  signal?: AbortSignal
 ): Promise<TeamBudgetApprovalsListResponse> {
   const search = new URLSearchParams({ customer_id: params.customer_id });
   if (params.limit != null) {
@@ -55,7 +55,7 @@ export async function listTeamBudgetApprovals(
   }
   return apiJson<TeamBudgetApprovalsListResponse>(
     `/api/v1/team/budget-approvals?${search.toString()}`,
-    { signal },
+    { signal }
   );
 }
 
@@ -81,7 +81,7 @@ function withCustomerQuery(path: string, customerId: string): string {
 export async function inviteTeamMember(
   customerId: string,
   body: InviteTeamMemberRequest,
-  signal?: AbortSignal,
+  signal?: AbortSignal
 ): Promise<TeamMember> {
   return apiJson<TeamMember>(withCustomerQuery('/api/v1/team/members', customerId), {
     method: 'POST',
@@ -94,7 +94,7 @@ export async function updateTeamMember(
   customerId: string,
   memberId: string,
   body: UpdateTeamMemberRequest,
-  signal?: AbortSignal,
+  signal?: AbortSignal
 ): Promise<TeamMember> {
   return apiJson<TeamMember>(
     withCustomerQuery(`/api/v1/team/members/${encodeURIComponent(memberId)}`, customerId),
@@ -102,6 +102,6 @@ export async function updateTeamMember(
       method: 'PATCH',
       body: JSON.stringify(body),
       signal,
-    },
+    }
   );
 }

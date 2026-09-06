@@ -1,7 +1,7 @@
 import { X } from 'lucide-react';
 import type { ReactNode } from 'react';
 
-import { adminAlertClass, type AdminAlertTone } from '@/lib/admin_kit';
+import { adminAlertClass, adminKit, type AdminAlertTone } from '@/lib/admin_kit';
 import { cn } from '@/lib/utils';
 
 export type AdminAlertProps = {
@@ -16,15 +16,16 @@ export function AdminAlert({ tone, title, description, className, onDismiss }: A
   return (
     <div
       className={cn(
-        'flex items-start justify-between gap-3 rounded-[5px] border px-4 py-3 text-[13px] leading-[18px]',
+        'flex items-start justify-between gap-3 border px-4 py-3 text-[13px] leading-[18px]',
+        adminKit.controlRadius,
         adminAlertClass[tone],
-        className,
+        className
       )}
       role="alert"
     >
-      <div className="min-w-0">
+      <div className="flex min-w-0 flex-col gap-1">
         <p className="m-0 font-semibold">{title}</p>
-        {description ? <p className="m-0 mt-1 opacity-90">{description}</p> : null}
+        {description ? <p className="m-0 opacity-90">{description}</p> : null}
       </div>
       {onDismiss ? (
         <button

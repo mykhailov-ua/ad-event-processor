@@ -33,32 +33,35 @@ type CampaignReader interface {
 	BlockCampaignPlacement(ctx context.Context, campaignID uuid.UUID, placementID string) error
 	CloneCampaign(ctx context.Context, spec CloneCampaignSpec) (CloneCampaignResult, error)
 	ExportCampaign(ctx context.Context, campaignID uuid.UUID) (CampaignExportBundle, error)
+	ExportCampaignsBatch(ctx context.Context, ids []uuid.UUID) ExportCampaignsBatchResult
 	ImportCampaign(ctx context.Context, spec ImportCampaignSpec) (ImportCampaignResult, error)
 	ImportMigrationCampaigns(ctx context.Context, spec ImportMigrationSpec) (ImportMigrationResult, error)
 	GetCampaignIntegrationHealth(ctx context.Context, campaignID uuid.UUID) (IntegrationHealthDTO, error)
 	PauseCampaign(ctx context.Context, campaignID uuid.UUID, reason string) error
 	ResumeCampaign(ctx context.Context, campaignID uuid.UUID, reason string) error
 	ArchiveCampaign(ctx context.Context, campaignID uuid.UUID, reason string) error
+	BulkCampaignAction(ctx context.Context, action string, ids []uuid.UUID, reason string) map[uuid.UUID]error
 }
 
 type CampaignsHTTPHandlers struct {
-	Campaigns                 CampaignReader
-	CampaignFraud             CampaignFraudService
-	ConversionMappings        ConversionMappingService
-	GetCampaignFlow           func(ctx context.Context, flowID uuid.UUID) (FlowDTO, error)
-	ValidateCampaignFlowPaths CampaignFlowPathValidator
-	RecordRevisionConflict    func(ctx context.Context, campaignID uuid.UUID, expectedRevision string)
-	ClickHouseQuery           *database.ClickHouseQuery
-	PostgresPool              *pgxpool.Pool
-	MarginDefaultThresholdBps int
-	ApplyRateLimit            func(http.HandlerFunc) http.HandlerFunc
-	RequireAnyPermission      func([]string, http.HandlerFunc) http.HandlerFunc
-	AuthorizeCampaignAccess   func(*http.Request, uuid.UUID) error
-	ResolveCustomerID         func(*http.Request, *uuid.UUID) (uuid.UUID, error)
-	AllowFraudPreview         func(campaignID string) bool
-	LicenseFeatureAllowed     func(featureKey string) (allowed bool, planCode string)
-	ReportJobs                *reportjob.ReportJobRunner
-	WriteServiceError         func(http.ResponseWriter, error)
+	Campaigns                  CampaignReader
+	CampaignFraud              CampaignFraudService
+	ConversionMappings         ConversionMappingService
+	GetCampaignFlow            func(ctx context.Context, flowID uuid.UUID) (FlowDTO, error)
+	ValidateCampaignFlowPaths  CampaignFlowPathValidator
+	RecordRevisionConflict     func(ctx context.Context, campaignID uuid.UUID, expectedRevision string)
+	ClickHouseQuery            *database.ClickHouseQuery
+	PostgresPool               *pgxpool.Pool
+	MarginDefaultThresholdBps  int
+	ApplyRateLimit             func(http.HandlerFunc) http.HandlerFunc
+	RequireAnyPermission       func([]string, http.HandlerFunc) http.HandlerFunc
+	AuthorizeCampaignAccess    func(*http.Request, uuid.UUID) error
+	AuthorizeCampaignIDsAccess func(*http.Request, []uuid.UUID) map[uuid.UUID]error
+	ResolveCustomerID          func(*http.Request, *uuid.UUID) (uuid.UUID, error)
+	AllowFraudPreview          func(campaignID string) bool
+	LicenseFeatureAllowed      func(featureKey string) (allowed bool, planCode string)
+	ReportJobs                 *reportjob.ReportJobRunner
+	WriteServiceError          func(http.ResponseWriter, error)
 }
 
 func (h *CampaignsHTTPHandlers) Register(mux *http.ServeMux) {
@@ -396,32 +399,55 @@ func (h *CampaignsHTTPHandlers) exportCampaignsBatch(w http.ResponseWriter, r *h
 		httpresponse.Error(w, http.StatusBadRequest, "BAD_REQUEST", err.Error())
 		return
 	}
-	items := make(map[string]CampaignExportBundle, len(campaignIDs))
-	errors := make([]CampaignExportBatchResultRowDTO, 0)
+	authErrors := h.AuthorizeCampaignIDs(r, campaignIDs)
+	allowed := make([]uuid.UUID, 0, len(campaignIDs))
+	errors := make([]CampaignExportBatchResultRowDTO, 0, len(authErrors))
 	for _, campaignID := range campaignIDs {
-		if h.AuthorizeCampaignAccess != nil {
-			if authErr := h.AuthorizeCampaignAccess(r, campaignID); authErr != nil {
-				errors = append(errors, CampaignExportBatchResultRowDTO{
-					ID:        campaignID.String(),
-					ErrorCode: ExportBatchErrorCode(authErr),
-				})
-				continue
-			}
-		}
-		bundle, exportErr := h.Campaigns.ExportCampaign(r.Context(), campaignID)
-		if exportErr != nil {
+		if authErr, denied := authErrors[campaignID]; denied {
 			errors = append(errors, CampaignExportBatchResultRowDTO{
 				ID:        campaignID.String(),
-				ErrorCode: ExportBatchErrorCode(exportErr),
+				ErrorCode: ExportBatchErrorCode(authErr),
 			})
 			continue
 		}
-		items[campaignID.String()] = bundle
+		allowed = append(allowed, campaignID)
+	}
+	items := make(map[string]CampaignExportBundle, len(allowed))
+	if len(allowed) > 0 {
+		batch := h.Campaigns.ExportCampaignsBatch(r.Context(), allowed)
+		for id, bundle := range batch.Items {
+			items[id.String()] = bundle
+		}
+		for id, exportErr := range batch.Errors {
+			errors = append(errors, CampaignExportBatchResultRowDTO{
+				ID:        id.String(),
+				ErrorCode: ExportBatchErrorCode(exportErr),
+			})
+		}
 	}
 	httpresponse.JSON(w, http.StatusOK, CampaignExportBatchResponse{
 		Items:  items,
 		Errors: errors,
 	})
+}
+
+func (h *CampaignsHTTPHandlers) AuthorizeCampaignIDs(r *http.Request, ids []uuid.UUID) map[uuid.UUID]error {
+	if len(ids) == 0 {
+		return nil
+	}
+	if h.AuthorizeCampaignIDsAccess != nil {
+		return h.AuthorizeCampaignIDsAccess(r, ids)
+	}
+	if h.AuthorizeCampaignAccess == nil {
+		return nil
+	}
+	out := make(map[uuid.UUID]error, len(ids))
+	for _, id := range ids {
+		if err := h.AuthorizeCampaignAccess(r, id); err != nil {
+			out[id] = err
+		}
+	}
+	return out
 }
 
 func (h *CampaignsHTTPHandlers) exportCampaign(w http.ResponseWriter, r *http.Request) {

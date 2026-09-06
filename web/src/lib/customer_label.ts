@@ -1,4 +1,4 @@
-import { isTrivialSequentialUuid, isUuidLike } from '@/api/dev_mock/seed_uuid';
+import { isTrivialSequentialUuid, isUuidLike } from '@/lib/uuid';
 
 export function isPlaceholderSeedUuid(value: string | undefined | null): boolean {
   return isTrivialSequentialUuid(value);
@@ -16,7 +16,7 @@ export function isHumanCustomerLabel(value: string | undefined | null): boolean 
 
 export function resolveCustomerLabel(
   customerId: string,
-  customerNameById: Readonly<Record<string, string>>,
+  customerNameById: Readonly<Record<string, string>>
 ): string | undefined {
   const id = customerId.trim();
   if (!id) {

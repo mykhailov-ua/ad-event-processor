@@ -8,6 +8,7 @@ import (
 	"net/http/httptest"
 	"strings"
 	"testing"
+	"time"
 
 	"ad-event-processor/internal/migrationsource"
 
@@ -18,8 +19,9 @@ import (
 
 type migrationPullCampaignStub struct {
 	patchRevisionCampaignStub
-	previewFn func(context.Context, PullMigrationPreviewSpec) (migrationsource.PreviewResult, error)
-	importFn  func(context.Context, PullMigrationImportSpec) (ImportMigrationResult, error)
+	previewFn     func(context.Context, PullMigrationPreviewSpec) (migrationsource.PreviewResult, error)
+	importFn      func(context.Context, PullMigrationImportSpec) (ImportMigrationResult, error)
+	startImportFn func(context.Context, PullMigrationImportSpec) error
 }
 
 func (s migrationPullCampaignStub) PreviewMigrationPull(ctx context.Context, spec PullMigrationPreviewSpec) (migrationsource.PreviewResult, error) {
@@ -34,6 +36,16 @@ func (s migrationPullCampaignStub) ImportMigrationPull(ctx context.Context, spec
 		return s.importFn(ctx, spec)
 	}
 	return ImportMigrationResult{}, nil
+}
+
+func (s migrationPullCampaignStub) StartMigrationPullImport(ctx context.Context, spec PullMigrationImportSpec) error {
+	if s.startImportFn != nil {
+		return s.startImportFn(ctx, spec)
+	}
+	go func() {
+		_, _ = s.ImportMigrationPull(context.Background(), spec)
+	}()
+	return nil
 }
 
 func migrationPullTestMux(stub *migrationPullCampaignStub) *http.ServeMux {
@@ -108,9 +120,46 @@ func TestMigrationPullHandlers_importPullFailureNoPartial_holdout(t *testing.T) 
 	req.Header.Set("Idempotency-Key", "pull-fail-idem")
 	rec := httptest.NewRecorder()
 	mux.ServeHTTP(rec, req)
-	assert.NotEqual(t, http.StatusCreated, rec.Code)
+	assert.Equal(t, http.StatusAccepted, rec.Code)
+	deadline := time.Now().Add(2 * time.Second)
+	for time.Now().Before(deadline) && importCalls == 0 {
+		time.Sleep(10 * time.Millisecond)
+	}
 	assert.Equal(t, 1, importCalls)
 	assert.NotContains(t, strings.ToLower(rec.Body.String()), "secret-key")
+}
+
+func TestMigrationPullHandlers_importAsyncAccepted_holdout(t *testing.T) {
+	gate := make(chan struct{})
+	importStarted := make(chan struct{}, 1)
+	mux := migrationPullTestMux(&migrationPullCampaignStub{
+		startImportFn: func(_ context.Context, _ PullMigrationImportSpec) error {
+			importStarted <- struct{}{}
+			<-gate
+			return nil
+		},
+	})
+
+	body, err := json.Marshal(map[string]string{
+		"source_kind": string(migrationsource.SourceKindKeitaroAdminAPI),
+		"base_url":    "https://trk.example",
+		"api_token":   "secret-key",
+		"customer_id": uuid.New().String(),
+	})
+	require.NoError(t, err)
+	req := httptest.NewRequest(http.MethodPost, "/api/v1/campaigns/migrate/pull/import", bytes.NewReader(body))
+	req.Header.Set("Idempotency-Key", "pull-async-idem")
+	start := time.Now()
+	rec := httptest.NewRecorder()
+	mux.ServeHTTP(rec, req)
+	require.Equal(t, http.StatusAccepted, rec.Code)
+	require.Less(t, time.Since(start), 200*time.Millisecond)
+	select {
+	case <-importStarted:
+	case <-time.After(time.Second):
+		t.Fatal("background import did not start")
+	}
+	close(gate)
 }
 
 func TestMigrationPullHandlers_unconfiguredService(t *testing.T) {

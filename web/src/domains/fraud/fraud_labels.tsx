@@ -7,6 +7,12 @@ import { ErrorBlock } from '@/shell/error_block';
 import { PageSkeleton } from '@/shell/page_skeleton';
 import { DirectoryPaginationFooter } from '@/shell/directory_pagination_footer';
 import {
+  COMPACT_TOOLBAR_ROW_CLASS,
+  FilterField,
+  FILTER_PANEL_WIDE_CLASS,
+  INLINE_FILTER_ACTION_GRID_CLASS,
+} from '@/shell/filter_panel';
+import {
   DirectoryTable,
   DirectoryTableHead,
   TableBody,
@@ -107,25 +113,24 @@ export function FraudLabels({
       </Link>
 
       <form
-        className="grid max-w-md grid-cols-[1fr_auto] items-end gap-4"
+        className={INLINE_FILTER_ACTION_GRID_CLASS}
         onSubmit={(event) => {
           event.preventDefault();
           onApplyCustomer();
         }}
       >
-        <div className="grid gap-2">
-          <Label htmlFor="labels-customer-id">Customer ID</Label>
+        <FilterField htmlFor="labels-customer-id" label="Customer ID">
           <Input
             id="labels-customer-id"
             className="text-sm"
             value={draftCustomerId}
             onChange={(event) => onDraftCustomerIdChange(event.target.value)}
           />
-        </div>
+        </FilterField>
         <FilterApplyButton disabled={fetching || !draftCustomerId.trim()}>Load</FilterApplyButton>
       </form>
 
-      <div className="ui-filter-panel md:grid-cols-[repeat(auto-fill,minmax(12rem,1fr))]">
+      <div className="ui-filter-panel grid items-end gap-4 md:grid-cols-[repeat(auto-fill,minmax(12rem,1fr))]">
         <div className="grid gap-2 md:col-span-2">
           <Label htmlFor="labels-ip-hash">IP hash (32 hex)</Label>
           <Input
@@ -169,9 +174,9 @@ export function FraudLabels({
         <p className="text-sm text-muted-foreground">Label saved. List refreshed.</p>
       ) : null}
 
-      <div className="ui-filter-panel">
-        <p className="text-sm font-medium">Bulk upsert</p>
-        <p className="text-sm text-muted-foreground">
+      <div className={FILTER_PANEL_WIDE_CLASS}>
+        <p className="m-0 text-sm font-medium text-foreground">Bulk upsert</p>
+        <p className="m-0 text-sm text-muted-foreground">
           Paste JSON: {'{ "rows": [ { "ip_hash": "...", "label": 1, "reason": "..." } ] }'}
         </p>
         <Textarea
@@ -190,7 +195,7 @@ export function FraudLabels({
         </PrimaryActionButton>
         {bulkError ? <ErrorBlock title="Bulk upsert failed" message={bulkError.message} /> : null}
         {bulkSuccess ? (
-          <p className="text-sm text-muted-foreground" role="status">
+          <p className="m-0 text-sm text-muted-foreground" role="status">
             Bulk upsert complete{bulkUpserted != null ? ` (${bulkUpserted} rows)` : ''}.
           </p>
         ) : null}
@@ -202,10 +207,7 @@ export function FraudLabels({
         <EmptyState title="No labels" description="No manual ML labels for this customer." />
       ) : (
         <>
-          <form
-            className="grid grid-cols-[repeat(auto-fill,minmax(12rem,1fr))] items-end gap-4"
-            onSubmit={(event) => event.preventDefault()}
-          >
+          <form className={COMPACT_TOOLBAR_ROW_CLASS} onSubmit={(event) => event.preventDefault()}>
             <DirectoryPaginationFooter
               canGoNext={offset + (items ?? []).length < total}
               canGoPrev={offset > 0}

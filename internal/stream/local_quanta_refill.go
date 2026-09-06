@@ -42,7 +42,7 @@ type refillSignal struct {
 	shard      int
 }
 
-// QuotaRefillWorker: background goroutine refills LocalQuantaLedger from Redis when remaining
+// QuotaRefillWorker is a background goroutine that refills LocalQuantaLedger from Redis when remaining
 // drops below adaptive threshold. Signal() is non-blocking; herd limited per shard (maxPerShard).
 type QuotaRefillWorker struct {
 	ledger       *LocalQuantaLedger

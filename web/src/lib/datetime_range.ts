@@ -55,3 +55,60 @@ export function endOfDayLocalValue(date: Date): string {
   normalized.setHours(23, 59, 0, 0);
   return formatDatetimeLocalValue(normalized);
 }
+
+/** YYYY-MM-DD wire value -> local Date (date-only; no timezone shift). */
+export function parseDateValue(value: string): Date | undefined {
+  const trimmed = value.trim();
+  if (!trimmed) {
+    return undefined;
+  }
+  const match = /^(\d{4})-(\d{2})-(\d{2})$/.exec(trimmed);
+  if (!match) {
+    return undefined;
+  }
+  const year = Number(match[1]);
+  const month = Number(match[2]);
+  const day = Number(match[3]);
+  if (month < 1 || month > 12 || day < 1 || day > 31) {
+    return undefined;
+  }
+  const parsed = new Date(year, month - 1, day);
+  if (
+    parsed.getFullYear() !== year ||
+    parsed.getMonth() !== month - 1 ||
+    parsed.getDate() !== day
+  ) {
+    return undefined;
+  }
+  return parsed;
+}
+
+/** Local Date -> YYYY-MM-DD wire value. */
+export function formatDateValue(date: Date): string {
+  const pad = (part: number) => String(part).padStart(2, '0');
+  return `${date.getFullYear()}-${pad(date.getMonth() + 1)}-${pad(date.getDate())}`;
+}
+
+/** YYYY-MM wire value -> local Date (first day of month). */
+export function parseMonthValue(value: string): Date | undefined {
+  const trimmed = value.trim();
+  if (!trimmed) {
+    return undefined;
+  }
+  const match = /^(\d{4})-(\d{2})$/.exec(trimmed);
+  if (!match) {
+    return undefined;
+  }
+  const year = Number(match[1]);
+  const month = Number(match[2]);
+  if (month < 1 || month > 12) {
+    return undefined;
+  }
+  return new Date(year, month - 1, 1);
+}
+
+/** Local Date -> YYYY-MM wire value. */
+export function formatMonthValue(date: Date): string {
+  const pad = (part: number) => String(part).padStart(2, '0');
+  return `${date.getFullYear()}-${pad(date.getMonth() + 1)}`;
+}

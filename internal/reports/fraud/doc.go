@@ -16,7 +16,7 @@
 //
 // Invariants:
 //   - fraud-evidence-pack and customer-fraud-evidence denied for authz.MaskMasked (403).
-//   - Silent reject analytics use silent_reject_event column semantics (not legacy ghost_event).
+//   - Non-blocking fraud response analytics use silent_reject_event column semantics (not legacy ghost_event).
 //   - Evidence pack requires click_id; missing HMAC secret returns 503.
 //   - ML shadow delta snapshot freshness gate: stale after 24h (ml_shadow_delta_snapshot.go).
 //

@@ -1,3 +1,6 @@
+// Client nav gate for optional portal routes (self-serve, publisher, telegram, ...).
+// Hides sidebar links when permissions[] is present; server RBAC remains authoritative (control-plane.mdc).
+// permissions === undefined means bootstrap not loaded yet: show links (fail-open for nav chrome only).
 export const PORTAL_PERMISSIONS = {
   selfserve: 'campaigns:read',
   publisher: 'supply:read:scoped',
@@ -9,10 +12,7 @@ export const PORTAL_PERMISSIONS = {
 
 export type PortalKey = keyof typeof PORTAL_PERMISSIONS;
 
-export function hasPortalPermission(
-  permissions: string[] | undefined,
-  key: PortalKey,
-): boolean {
+export function hasPortalPermission(permissions: string[] | undefined, key: PortalKey): boolean {
   if (permissions === undefined) {
     return true;
   }
@@ -23,7 +23,5 @@ export function hasAnyPortalAccess(permissions: string[] | undefined): boolean {
   if (permissions === undefined) {
     return true;
   }
-  return Object.values(PORTAL_PERMISSIONS).some((permission) =>
-    permissions.includes(permission),
-  );
+  return Object.values(PORTAL_PERMISSIONS).some((permission) => permissions.includes(permission));
 }

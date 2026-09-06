@@ -11,6 +11,7 @@ import (
 
 	"ad-event-processor/internal/costsync"
 	db "ad-event-processor/internal/domain/db"
+	"ad-event-processor/pkg/coldpath"
 
 	"github.com/google/uuid"
 	"github.com/jackc/pgx/v5/pgtype"
@@ -18,8 +19,9 @@ import (
 )
 
 const (
-	platformAdvisoryLockKey = int64(0x6164705f706c6174)
-	syncBatchSize           = 200
+	platformAdvisoryLockKey  = int64(0x6164705f706c6174)
+	syncBatchSize            = 200
+	platformSyncCycleTimeout = 2 * time.Minute
 )
 
 type Worker struct {
@@ -63,10 +65,12 @@ func (w *Worker) Start(ctx context.Context) {
 }
 
 func (w *Worker) runCycle(ctx context.Context) {
+	opCtx, cancel := coldpath.BoundedContext(ctx, platformSyncCycleTimeout)
+	defer cancel()
 	if w.pool == nil {
 		return
 	}
-	conn, err := w.pool.Acquire(ctx)
+	conn, err := w.pool.Acquire(opCtx)
 	if err != nil {
 		slog.Warn("platformsync: acquire conn", "error", err)
 		return
@@ -74,30 +78,32 @@ func (w *Worker) runCycle(ctx context.Context) {
 	defer conn.Release()
 
 	var locked bool
-	if err := conn.QueryRow(ctx, "SELECT pg_try_advisory_lock($1)", platformAdvisoryLockKey).Scan(&locked); err != nil || !locked {
+	if err := conn.QueryRow(opCtx, "SELECT pg_try_advisory_lock($1)", platformAdvisoryLockKey).Scan(&locked); err != nil || !locked {
 		return
 	}
 	defer func() {
-		_, _ = conn.Exec(ctx, "SELECT pg_advisory_unlock($1)", platformAdvisoryLockKey)
+		_, _ = conn.Exec(opCtx, "SELECT pg_advisory_unlock($1)", platformAdvisoryLockKey)
 	}()
 
-	w.processPendingMutations(ctx)
-	w.syncLinkStatuses(ctx)
+	w.processPendingMutations(opCtx)
+	w.syncLinkStatuses(opCtx)
 }
 
 func (w *Worker) RunManual(ctx context.Context, campaignID uuid.UUID) error {
+	opCtx, cancel := coldpath.BoundedContext(ctx, platformSyncCycleTimeout)
+	defer cancel()
 	if w == nil || w.pool == nil {
 		return fmt.Errorf("platformsync: worker not configured")
 	}
 	q := db.New(w.pool)
-	rows, err := q.ListPlatformCampaignLinks(ctx, db.ListPlatformCampaignLinksParams{
+	rows, err := q.ListPlatformCampaignLinks(opCtx, db.ListPlatformCampaignLinksParams{
 		Column1: pgtype.UUID{Bytes: campaignID, Valid: true},
 	})
 	if err != nil {
 		return err
 	}
 	for _, row := range rows {
-		if syncErr := w.syncOneLink(ctx, q, row); syncErr != nil {
+		if syncErr := w.syncOneLink(opCtx, q, row); syncErr != nil {
 			return syncErr
 		}
 	}

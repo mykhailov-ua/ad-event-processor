@@ -1,4 +1,5 @@
-import { useEffect, useState } from 'react';
+import { useState } from 'react';
+import { useRunWhenTrue } from '@/hooks/use_run_when_true';
 import { Gauge, Hash, Sigma, Zap } from 'lucide-react';
 import { PrimaryActionButton, SecondaryActionButton } from '@/shell/action_buttons';
 import { PageChrome } from '@/shell/page_chrome';
@@ -21,6 +22,8 @@ import { JsonPayloadView } from '@/shell/json_payload_view';
 import type { AutomationRuleEditDraft } from '@/domains/automation/automation_rule_forms';
 import { AutomationRulesGrid } from '@/domains/automation/automation_rule_card';
 import { AutomationNav, automationPanelError } from '@/domains/automation/automation_nav';
+import { adminKit } from '@/lib/admin_kit';
+import { cn } from '@/lib/utils';
 
 export type AutomationRulesDirectoryProps = {
   items?: AutomationRule[];
@@ -79,11 +82,7 @@ export function AutomationRulesDirectory({
 }: AutomationRulesDirectoryProps) {
   const [createOpen, setCreateOpen] = useState(false);
 
-  useEffect(() => {
-    if (createSuccess) {
-      setCreateOpen(false);
-    }
-  }, [createSuccess]);
+  useRunWhenTrue(createSuccess, () => setCreateOpen(false));
 
   if (!appliedCustomerId) {
     return (
@@ -193,13 +192,13 @@ export function AutomationRulesDirectory({
                 </div>
               </div>
             </div>
-            <div className="flex items-center gap-2 rounded-2xl bg-muted/25 px-4 py-3">
+            <div
+              className={cn('flex items-center gap-2 bg-muted/25 px-4 py-3', adminKit.panelRadius)}
+            >
               <Checkbox
                 checked={createDraft.enabled}
                 id="automation-create-enabled"
-                onCheckedChange={(checked) =>
-                  onCreateDraftChange({ enabled: checked === true })
-                }
+                onCheckedChange={(checked) => onCreateDraftChange({ enabled: checked === true })}
               />
               <Label className="font-normal" htmlFor="automation-create-enabled">
                 Enable rule after creation
@@ -245,7 +244,7 @@ export function AutomationRulesDirectory({
       {dryRunResult ? (
         <section className="grid gap-2">
           <h2 className="text-base font-semibold">Dry-run result</h2>
-          <JsonPayloadView payload={dryRunResult as unknown as Record<string, unknown>} />
+          <JsonPayloadView payload={dryRunResult} />
         </section>
       ) : null}
 

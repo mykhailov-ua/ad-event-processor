@@ -27,8 +27,8 @@
 //   - SYN-ACK cookie reply: emit_ipv4_synack uses 20-byte TCP (doff=5), SYNACK_TCP_WINDOW 64240,
 //     bpf_xdp_adjust_tail trims ingress options/payload; gen_syncookie_ipv4 reads full ingress tcph_len.
 //   - Blocklist LPM/HOST maps max_entries=786432; allow LPM 65536.
-//   - syn_ratelimit_v4: PERCPU_HASH 786432; ratelimit_v4 and rst_ratelimit_v4: PERCPU_HASH 1048576.
-//   - syn_subnet_ratelimit_v4: LRU_HASH 65536 (/24 aggregate; not per-CPU).
+//   - syn_ratelimit_v4/v6: PERCPU_HASH 786432; ratelimit_v4/v6 and rst_ratelimit_v4/v6: PERCPU_HASH 1048576.
+//   - syn_subnet_ratelimit_v4/v6: LRU_HASH 65536 (/24 v4, /64 v6 aggregate; not per-CPU).
 //   - violations/fingerprints ringbufs: 256 KiB; bpf_ringbuf_query backpressure before reserve.
 //   - Violation reasons: SYN=1, GLOBAL_SYN=2, PPS=3, SYN_SUBNET=4 (VIOLATION_SYN_SUBNET).
 //

@@ -15,32 +15,32 @@ import (
 	pkgnet "github.com/panjf2000/gnet/v2"
 )
 
-func (h *Server) OnTrafficH2(c pkgnet.Conn, buf []byte) pkgnet.Action {
-	return h.onTrafficH2(c, buf)
+func (s *Server) OnTrafficH2(c pkgnet.Conn, buf []byte) pkgnet.Action {
+	return s.onTrafficH2(c, buf)
 }
 
-func (h *Server) onTrafficH2(c pkgnet.Conn, buf []byte) pkgnet.Action {
+func (s *Server) onTrafficH2(c pkgnet.Conn, buf []byte) pkgnet.Action {
 	maxBody := int64(1 << 20)
-	if h != nil && h.cfg != nil {
-		maxBody = h.cfg.MaxRequestBodySize
+	if s != nil && s.cfg != nil {
+		maxBody = s.cfg.MaxRequestBodySize
 	}
 	incompleteMax := uint8(3)
-	if h != nil && h.cfg != nil && h.cfg.H2IncompleteMax > 0 {
-		if h.cfg.H2IncompleteMax > 255 {
+	if s != nil && s.cfg != nil && s.cfg.H2IncompleteMax > 0 {
+		if s.cfg.H2IncompleteMax > 255 {
 			incompleteMax = 255
 		} else {
-			incompleteMax = uint8(h.cfg.H2IncompleteMax)
+			incompleteMax = uint8(s.cfg.H2IncompleteMax)
 		}
 	}
 
 	ctx, ok := c.Context().(*ConnContext)
 	if !ok || ctx == nil {
-		ctx = h.allocConnContext(c)
+		ctx = s.allocConnContext(c)
 		c.SetContext(ctx)
 	}
 	ctx.ProtoH2 = true
 
-	if act := h.h2CheckConnDeadlines(c, ctx); act != pkgnet.None {
+	if act := s.h2CheckConnDeadlines(c, ctx); act != pkgnet.None {
 		return act
 	}
 
@@ -56,12 +56,12 @@ func (h *Server) onTrafficH2(c pkgnet.Conn, buf []byte) pkgnet.Action {
 	}
 	if err != nil {
 		if errors.Is(err, httpingress.ErrIncomplete) {
-			h.h2ArmIncompleteIdle(c, &ctx.H2)
+			s.h2ArmIncompleteIdle(c, &ctx.H2)
 			if consumed == 0 {
 				ctx.H2.IncompleteSpin++
 				if ctx.H2.IncompleteSpin >= incompleteMax {
 					metrics.H2HostileDisconnectTotal.Inc()
-					h.h2ResetIncompleteIdle(&ctx.H2, c)
+					s.h2ResetIncompleteIdle(&ctx.H2, c)
 					return pkgnet.Close
 				}
 			}
@@ -69,43 +69,43 @@ func (h *Server) onTrafficH2(c pkgnet.Conn, buf []byte) pkgnet.Action {
 		}
 		if errors.Is(err, httpingress.ErrPayloadTooLarge) {
 			ctx.H2StreamID = streamID
-			h.write(c, respPayloadTooLarge, ctx)
+			s.write(c, respPayloadTooLarge, ctx)
 			return pkgnet.Close
 		}
 		ctx.H2StreamID = streamID
-		h.write(c, respBadRequestClose, ctx)
+		s.write(c, respBadRequestClose, ctx)
 		return pkgnet.Close
 	}
 	ctx.H2.IncompleteSpin = 0
-	h.h2ResetIncompleteIdle(&ctx.H2, c)
+	s.h2ResetIncompleteIdle(&ctx.H2, c)
 	if len(req.Method) == 0 {
 		return pkgnet.None
 	}
 	ctx.H2StreamID = streamID
-	act := h.React(req, c)
+	act := s.React(req, c)
 	ctx.H2StreamID = 0
 	return act
 }
 
-func (h *Server) allocConnContext(c pkgnet.Conn) *ConnContext {
-	ctx := h.contextPool.Get().(*ConnContext)
-	if h.logger != nil {
-		ctx.ShardID = int(h.loggerShardCounter.Add(1) % uint64(len(h.logger.Shards())))
+func (s *Server) allocConnContext(c pkgnet.Conn) *ConnContext {
+	ctx := s.contextPool.Get().(*ConnContext)
+	if s.logger != nil {
+		ctx.ShardID = int(s.loggerShardCounter.Add(1) % uint64(len(s.logger.Shards())))
 	}
 	ctx.HTTP1ConnOpenedMono = filter.MonotonicNano()
 	ctx.WorkerID = -1
 	return ctx
 }
 
-func (h *Server) retireConnContext(ctx *ConnContext) {
-	if h == nil || ctx == nil || ctx.HTTP1ConnCtx != nil {
+func (s *Server) retireConnContext(ctx *ConnContext) {
+	if s == nil || ctx == nil || ctx.HTTP1ConnCtx != nil {
 		return
 	}
-	h.resetConnContextForReuse(ctx)
-	h.contextPool.Put(ctx)
+	s.resetConnContextForReuse(ctx)
+	s.contextPool.Put(ctx)
 }
 
-func (h *Server) resetConnContextForReuse(ctx *ConnContext) {
+func (s *Server) resetConnContextForReuse(ctx *ConnContext) {
 	if ctx == nil {
 		return
 	}
@@ -139,7 +139,10 @@ func (h *Server) resetConnContextForReuse(ctx *ConnContext) {
 		ctx.Evt.Payload = make([]byte, 0, 1024)
 	}
 	ctx.Resp = pb.TrackResponse{}
-	if cap(ctx.BufSlice) < 4096 {
+	if cap(ctx.BufSlice) > connContextBufSliceCapLimit {
+		metrics.ConnContextOversizedBufferTotal.Inc()
+		ctx.BufSlice = make([]byte, 4096)
+	} else if cap(ctx.BufSlice) < 4096 {
 		ctx.BufSlice = make([]byte, 4096)
 	} else {
 		ctx.BufSlice = ctx.BufSlice[:cap(ctx.BufSlice)]
@@ -190,7 +193,7 @@ func (h *Server) resetConnContextForReuse(ctx *ConnContext) {
 	ctx.OffloadWG = nil
 	ctx.OffloadAsyncWrite.Store(false)
 	ctx.OffloadCloseAfterWrite.Store(false)
-	if h != nil {
-		h.releaseOffloadBuffers(ctx)
+	if s != nil {
+		s.releaseOffloadBuffers(ctx)
 	}
 }

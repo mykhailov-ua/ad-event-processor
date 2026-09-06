@@ -14,12 +14,9 @@ import {
   TableHeader,
   TableRow,
 } from '@/shell/directory_table';
-import type {
-  BillingInvoiceLine,
-  BillingLedgerLine,
-  Invoice,
-  InvoiceDelivery,
-} from '@/api/types';
+import type { BillingInvoiceLine, BillingLedgerLine, Invoice, InvoiceDelivery } from '@/api/types';
+import { CustomerDetailPanel } from '@/domains/customers/customer_detail_panel';
+import { CustomerDetailRow } from '@/domains/customers/customer_detail_row';
 import { displayMicro, displayTimestamp } from '@/lib/display';
 
 export type InvoiceDetailProps = {
@@ -103,10 +100,20 @@ export function InvoiceDetail({
         </Button>
         {canMutate ? (
           <>
-            <Button disabled={voiding || status === 'void'} onClick={onVoid} type="button" variant="destructive">
+            <Button
+              disabled={voiding || status === 'void'}
+              onClick={onVoid}
+              type="button"
+              variant="destructive"
+            >
               {voiding ? 'Voiding...' : 'Void invoice'}
             </Button>
-            <Button disabled={retryingDelivery} onClick={onRetryDelivery} type="button" variant="secondary">
+            <Button
+              disabled={retryingDelivery}
+              onClick={onRetryDelivery}
+              type="button"
+              variant="secondary"
+            >
               {retryingDelivery ? 'Retrying...' : 'Retry delivery'}
             </Button>
           </>
@@ -125,20 +132,26 @@ export function InvoiceDetail({
         </p>
       ) : null}
 
-      <section className="ui-filter-panel gap-2 text-sm">
-        <DetailRow label="Invoice ID" value={invoice.id} mono />
-        <DetailRow label="Customer ID" value={invoice.customer_id} mono />
-        <DetailRow label="Billing month" value={invoice.billing_month} />
-        <DetailRow
+      <CustomerDetailPanel>
+        <CustomerDetailRow label="Invoice ID" value={invoice.id} />
+        <CustomerDetailRow label="Customer ID" value={invoice.customer_id} />
+        <CustomerDetailRow label="Billing month" value={invoice.billing_month} />
+        <CustomerDetailRow
           label="Subtotal"
           value={displayMicro(invoice.subtotal_micro, invoice.subtotal_micro_display)}
         />
-        <DetailRow label="Tax" value={displayMicro(invoice.tax_micro, invoice.tax_micro_display)} />
-        <DetailRow label="Total" value={displayMicro(invoice.total_micro, invoice.total_micro_display)} />
-        <DetailRow label="Currency" value={invoice.currency} />
-        <DetailRow label="Tax scheme" value={invoice.tax_scheme} />
-        <DetailRow label="Tax rate (bps)" value={invoice.tax_rate_bps} />
-      </section>
+        <CustomerDetailRow
+          label="Tax"
+          value={displayMicro(invoice.tax_micro, invoice.tax_micro_display)}
+        />
+        <CustomerDetailRow
+          label="Total"
+          value={displayMicro(invoice.total_micro, invoice.total_micro_display)}
+        />
+        <CustomerDetailRow label="Currency" value={invoice.currency} />
+        <CustomerDetailRow label="Tax scheme" value={invoice.tax_scheme} />
+        <CustomerDetailRow label="Tax rate (bps)" value={invoice.tax_rate_bps} />
+      </CustomerDetailPanel>
 
       <InvoiceLinesTable caption="Invoice lines" lines={lines} />
 
@@ -147,12 +160,20 @@ export function InvoiceDetail({
         {ledgerError && ledgerLines.length === 0 ? (
           <ErrorBlock title="Could not load ledger lines" message={ledgerError.message} />
         ) : ledgerLines.length === 0 && !ledgerFetching ? (
-          <EmptyState title="No ledger lines" description="No backing ledger rows for this invoice." />
+          <EmptyState
+            title="No ledger lines"
+            description="No backing ledger rows for this invoice."
+          />
         ) : (
           <>
             <LedgerLinesTable lines={ledgerLines} />
             {ledgerNextCursor ? (
-              <Button disabled={ledgerFetching} onClick={onLoadMoreLedger} type="button" variant="outline">
+              <Button
+                disabled={ledgerFetching}
+                onClick={onLoadMoreLedger}
+                type="button"
+                variant="outline"
+              >
                 {ledgerFetching ? 'Loading...' : 'Load more ledger lines'}
               </Button>
             ) : null}
@@ -169,7 +190,10 @@ export function InvoiceDetail({
         {deliveriesError && (deliveries ?? []).length === 0 ? (
           <ErrorBlock title="Could not load deliveries" message={deliveriesError.message} />
         ) : (deliveries ?? []).length === 0 && !deliveriesFetching ? (
-          <EmptyState title="No deliveries" description="No delivery attempts recorded for this invoice." />
+          <EmptyState
+            title="No deliveries"
+            description="No delivery attempts recorded for this invoice."
+          />
         ) : (
           <DeliveriesTable items={deliveries} />
         )}
@@ -183,30 +207,7 @@ export function InvoiceDetail({
   );
 }
 
-function DetailRow({
-  label,
-  value,
-  mono,
-}: {
-  label: string;
-  value: string | number | undefined | null;
-  mono?: boolean;
-}) {
-  return (
-    <div className="grid grid-cols-[minmax(8rem,12rem)_1fr] gap-2">
-      <dt className="text-muted-foreground">{label}</dt>
-      <dd className={mono ? 'font-mono text-xs break-all' : undefined}>{value ?? ''}</dd>
-    </div>
-  );
-}
-
-function InvoiceLinesTable({
-  caption,
-  lines,
-}: {
-  caption: string;
-  lines: BillingInvoiceLine[];
-}) {
+function InvoiceLinesTable({ caption, lines }: { caption: string; lines: BillingInvoiceLine[] }) {
   if (lines.length === 0) {
     return (
       <section className="grid gap-2">
@@ -220,25 +221,25 @@ function InvoiceLinesTable({
     <section className="grid gap-2">
       <h2 className="text-base font-semibold">{caption}</h2>
       <DirectoryTable horizontalScroll>
-          <TableHeader>
-            <TableRow>
-              <DirectoryTableHead>Ledger type</DirectoryTableHead>
-              <DirectoryTableHead className="text-right">Amount (micro)</DirectoryTableHead>
-              <DirectoryTableHead className="text-right">Entry count</DirectoryTableHead>
+        <TableHeader>
+          <TableRow>
+            <DirectoryTableHead>Ledger type</DirectoryTableHead>
+            <DirectoryTableHead className="text-right">Amount (micro)</DirectoryTableHead>
+            <DirectoryTableHead className="text-right">Entry count</DirectoryTableHead>
+          </TableRow>
+        </TableHeader>
+        <TableBody>
+          {lines.map((line, index) => (
+            <TableRow key={`${line.ledger_type ?? 'line'}-${index}`}>
+              <TableCell>{line.ledger_type ?? ''}</TableCell>
+              <TableCell className="text-right tabular-nums">
+                {displayMicro(line.amount_micro)}
+              </TableCell>
+              <TableCell className="text-right tabular-nums">{line.entry_count ?? ''}</TableCell>
             </TableRow>
-          </TableHeader>
-          <TableBody>
-            {lines.map((line, index) => (
-              <TableRow key={`${line.ledger_type ?? 'line'}-${index}`}>
-                <TableCell>{line.ledger_type ?? ''}</TableCell>
-                <TableCell className="text-right tabular-nums">
-                  {displayMicro(line.amount_micro)}
-                </TableCell>
-                <TableCell className="text-right tabular-nums">{line.entry_count ?? ''}</TableCell>
-              </TableRow>
-            ))}
-          </TableBody>
-        </DirectoryTable>
+          ))}
+        </TableBody>
+      </DirectoryTable>
     </section>
   );
 }
@@ -246,55 +247,55 @@ function InvoiceLinesTable({
 function LedgerLinesTable({ lines }: { lines: BillingLedgerLine[] }) {
   return (
     <DirectoryTable horizontalScroll>
-        <TableHeader>
-          <TableRow>
-            <DirectoryTableHead>ID</DirectoryTableHead>
-            <DirectoryTableHead>Type</DirectoryTableHead>
-            <DirectoryTableHead className="text-right">Amount (micro)</DirectoryTableHead>
-            <DirectoryTableHead>Created</DirectoryTableHead>
+      <TableHeader>
+        <TableRow>
+          <DirectoryTableHead>ID</DirectoryTableHead>
+          <DirectoryTableHead>Type</DirectoryTableHead>
+          <DirectoryTableHead className="text-right">Amount (micro)</DirectoryTableHead>
+          <DirectoryTableHead>Created</DirectoryTableHead>
+        </TableRow>
+      </TableHeader>
+      <TableBody>
+        {lines.map((row) => (
+          <TableRow key={row.id ?? `${row.created_at}-${row.ledger_type}`}>
+            <TableCell className="tabular-nums">{row.id ?? ''}</TableCell>
+            <TableCell>{row.ledger_type ?? ''}</TableCell>
+            <TableCell className="text-right tabular-nums">
+              {displayMicro(row.amount_micro)}
+            </TableCell>
+            <TableCell>{displayTimestamp(row.created_at)}</TableCell>
           </TableRow>
-        </TableHeader>
-        <TableBody>
-          {lines.map((row) => (
-            <TableRow key={row.id ?? `${row.created_at}-${row.ledger_type}`}>
-              <TableCell className="tabular-nums">{row.id ?? ''}</TableCell>
-              <TableCell>{row.ledger_type ?? ''}</TableCell>
-              <TableCell className="text-right tabular-nums">
-                {displayMicro(row.amount_micro)}
-              </TableCell>
-              <TableCell>{displayTimestamp(row.created_at)}</TableCell>
-            </TableRow>
-          ))}
-        </TableBody>
-      </DirectoryTable>
+        ))}
+      </TableBody>
+    </DirectoryTable>
   );
 }
 
 function DeliveriesTable({ items }: { items?: InvoiceDelivery[] }) {
   return (
     <DirectoryTable horizontalScroll>
-        <TableHeader>
-          <TableRow>
-            <DirectoryTableHead>Status</DirectoryTableHead>
-            <DirectoryTableHead>Provider</DirectoryTableHead>
-            <DirectoryTableHead>Recipient</DirectoryTableHead>
-            <DirectoryTableHead>Retries</DirectoryTableHead>
-            <DirectoryTableHead>Updated</DirectoryTableHead>
-            <DirectoryTableHead>Error</DirectoryTableHead>
+      <TableHeader>
+        <TableRow>
+          <DirectoryTableHead>Status</DirectoryTableHead>
+          <DirectoryTableHead>Provider</DirectoryTableHead>
+          <DirectoryTableHead>Recipient</DirectoryTableHead>
+          <DirectoryTableHead>Retries</DirectoryTableHead>
+          <DirectoryTableHead>Updated</DirectoryTableHead>
+          <DirectoryTableHead>Error</DirectoryTableHead>
+        </TableRow>
+      </TableHeader>
+      <TableBody>
+        {(items ?? []).map((row) => (
+          <TableRow key={row.id}>
+            <TableCell>{row.status}</TableCell>
+            <TableCell>{row.provider}</TableCell>
+            <TableCell>{row.recipient}</TableCell>
+            <TableCell className="tabular-nums">{row.retry_count}</TableCell>
+            <TableCell>{displayTimestamp(row.updated_at)}</TableCell>
+            <TableCell className="whitespace-nowrap">{row.error_message ?? ''}</TableCell>
           </TableRow>
-        </TableHeader>
-        <TableBody>
-          {(items ?? []).map((row) => (
-            <TableRow key={row.id}>
-              <TableCell>{row.status}</TableCell>
-              <TableCell>{row.provider}</TableCell>
-              <TableCell>{row.recipient}</TableCell>
-              <TableCell className="tabular-nums">{row.retry_count}</TableCell>
-              <TableCell>{displayTimestamp(row.updated_at)}</TableCell>
-              <TableCell className="whitespace-nowrap">{row.error_message ?? ''}</TableCell>
-            </TableRow>
-          ))}
-        </TableBody>
-      </DirectoryTable>
+        ))}
+      </TableBody>
+    </DirectoryTable>
   );
 }

@@ -141,7 +141,7 @@ func NewClickHouseStore(conn driver.Conn, writeTimeout time.Duration, spoolDir s
 	return st
 }
 
-// StoreBatch: conversion side effects, gate acquire, insertToClickHouse with backoff, then
+// StoreBatch runs conversion side effects, gate acquire, insertToClickHouse with backoff, then
 // spool fallback. Deduplication token from context prevents double-insert on PEL replay.
 //
 // Verify:

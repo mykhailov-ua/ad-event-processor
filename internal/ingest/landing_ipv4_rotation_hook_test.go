@@ -18,6 +18,11 @@ import (
 func ipv4RotationHandler(t *testing.T, cidrBlockEnabled bool, mode string, threshold uint32, filter *countingFilter) (*AdsPacketHandler, uuid.UUID) {
 	t.Helper()
 	h, cid := cidrBlockHookHandler(t, cidrBlockEnabled, filter)
+	h.ConfigureCIDR(clickHookNonMatchingCIDRTable(t))
+	v6 := NewIPv6RotationTable()
+	v6.SetMode("shadow")
+	v6.SetPolicy(uint64(time.Minute.Nanoseconds()), 1<<20)
+	h.ConfigureIPv6Rotation(v6)
 	table := NewIPv4RotationTable()
 	table.SetMode(mode)
 	table.SetPolicy(uint64(time.Minute.Nanoseconds()), threshold)

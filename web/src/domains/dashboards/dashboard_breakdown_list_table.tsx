@@ -22,7 +22,10 @@ import {
   campaignListThClass,
 } from '@/domains/campaigns/list/campaign_list_classes';
 import { CampaignListColumnResizeHandle } from '@/domains/campaigns/list/campaign_list_table_header_cell';
-import type { DashboardBreakdownRow, DashboardBreakdownTable } from '@/domains/dashboards/buyer_dashboard_types';
+import type {
+  DashboardBreakdownRow,
+  DashboardBreakdownTable,
+} from '@/domains/dashboards/buyer_dashboard_types';
 import {
   formatDashboardCrPct,
   formatDashboardUsdFromMicro,
@@ -56,7 +59,10 @@ type BreakdownCellContext = {
   isTotal?: boolean;
 };
 
-function renderBreakdownCell(columnId: DashboardBreakdownColumnId, ctx: BreakdownCellContext): ReactNode {
+function renderBreakdownCell(
+  columnId: DashboardBreakdownColumnId,
+  ctx: BreakdownCellContext
+): ReactNode {
   const { row } = ctx;
   switch (columnId) {
     case 'name':
@@ -96,15 +102,15 @@ export function DashboardBreakdownListTable({
 }: DashboardBreakdownListTableProps) {
   const rows = table?.rows ?? [];
   const totals = table?.totals;
-  const visibleColumns = columns.length > 0 ? columns : (['name', 'clicks', 'conversions'] as DashboardBreakdownColumnId[]);
-  const nameLabels = useMemo(
-    () => ['Total', ...rows.map((row) => row.name ?? ''), ...(totals?.name ? [totals.name] : [])],
-    [rows, totals?.name],
-  );
+  const visibleColumns =
+    columns.length > 0
+      ? columns
+      : (['name', 'clicks', 'conversions'] as DashboardBreakdownColumnId[]);
+  const nameLabels = useMemo(() => ['Total', ...rows.map((row) => row.name ?? '')], [rows]);
   const { columnWidths, handleColumnWidthCommit } = useDashboardBreakdownColumnWidths(
     scope,
     visibleColumns,
-    nameLabels,
+    nameLabels
   );
   const tableRef = useRef<HTMLTableElement>(null);
   const colgroupRef = useRef<HTMLTableColElement>(null);
@@ -149,11 +155,15 @@ export function DashboardBreakdownListTable({
                 className={cn(
                   campaignListThClass,
                   campaignListCellToolsClass,
-                  resizable && 'relative',
+                  resizable && 'relative'
                 )}
               >
                 <div className={campaignListHeaderCellClass}>
-                  <div className={numeric ? campaignListHeaderLabelNumClass : campaignListHeaderLabelClass}>
+                  <div
+                    className={
+                      numeric ? campaignListHeaderLabelNumClass : campaignListHeaderLabelClass
+                    }
+                  >
                     <span className="whitespace-nowrap" title={label}>
                       {label}
                     </span>
@@ -178,7 +188,10 @@ export function DashboardBreakdownListTable({
               const numeric = isDashboardBreakdownNumericColumn(columnId);
               if (columnId === 'name') {
                 return (
-                  <td key={columnId} className={cn(campaignListTdClass, campaignListCellToolsClass)}>
+                  <td
+                    key={columnId}
+                    className={cn(campaignListTdClass, campaignListCellToolsClass)}
+                  >
                     <div className={campaignListNameRowCellClass}>
                       <div className={campaignListNameRowTextClass}>
                         {nameLink ? (
@@ -197,7 +210,11 @@ export function DashboardBreakdownListTable({
               return (
                 <td
                   key={columnId}
-                  className={cn(campaignListTdClass, campaignListCellToolsClass, campaignListNumClass)}
+                  className={cn(
+                    campaignListTdClass,
+                    campaignListCellToolsClass,
+                    campaignListNumClass
+                  )}
                 >
                   <div className={campaignListHeaderCellClass}>
                     <div className={campaignListCellContentNumClass}>
@@ -220,7 +237,11 @@ export function DashboardBreakdownListTable({
                 return (
                   <td
                     key={columnId}
-                    className={cn(campaignListTdClass, campaignListTfootTdClass, campaignListCellToolsClass)}
+                    className={cn(
+                      campaignListTdClass,
+                      campaignListTfootTdClass,
+                      campaignListCellToolsClass
+                    )}
                   >
                     <div className={campaignListHeaderCellClass}>
                       <div className={campaignListCellContentClass}>Total</div>
@@ -235,7 +256,7 @@ export function DashboardBreakdownListTable({
                     campaignListTdClass,
                     campaignListTfootTdClass,
                     campaignListCellToolsClass,
-                    campaignListNumClass,
+                    campaignListNumClass
                   )}
                 >
                   <div className={campaignListHeaderCellClass}>

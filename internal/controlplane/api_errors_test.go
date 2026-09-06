@@ -37,6 +37,11 @@ func TestMapServiceError(t *testing.T) {
 	assert.Equal(t, http.StatusBadRequest, status)
 	assert.Equal(t, "BAD_REQUEST", code)
 	assert.Contains(t, msg, "invalid pacing mode")
+
+	status, code, msg = mapServiceError(errors.New("payment client not configured"))
+	assert.Equal(t, http.StatusServiceUnavailable, status)
+	assert.Equal(t, "PAYMENT_UNAVAILABLE", code)
+	assert.Equal(t, "payment service not configured", msg)
 }
 
 func TestParseMoneyMicro(t *testing.T) {

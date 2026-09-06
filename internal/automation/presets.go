@@ -176,10 +176,10 @@ func presetCatalog() []presetDef {
 		{
 			Preset: Preset{
 				Key:         "silent_reject_spike",
-				Title:       "Silent reject spike",
-				Description: "Blacklist placement when silent reject rate exceeds threshold.",
+				Title:       "Non-blocking response rate spike",
+				Description: "Blacklist placement when non-blocking fraud response rate exceeds threshold.",
 				ParametersSchema: []PresetParameter{
-					{Key: "silent_reject_threshold", Type: "number", Description: "Silent reject rate percent", Default: 15, Min: ptrFloat(1), Max: ptrFloat(100)},
+					{Key: "silent_reject_threshold", Type: "number", Description: "Non-blocking fraud response rate percent", Default: 15, Min: ptrFloat(1), Max: ptrFloat(100)},
 					{Key: "window_minutes", Type: "integer", Description: "Observation window minutes", Default: 30, Min: ptrFloat(15), Max: ptrFloat(1440)},
 					{Key: "cooldown_minutes", Type: "integer", Description: "Cooldown after fire", Default: 60, Min: ptrFloat(15), Max: ptrFloat(10080)},
 					{Key: "eval_interval_minutes", Type: "integer", Description: "Evaluation interval minutes", Default: 15, Min: ptrFloat(5), Max: ptrFloat(60)},
@@ -187,7 +187,7 @@ func presetCatalog() []presetDef {
 			},
 			expand: func(params map[string]float64) (ExpandedRule, error) {
 				return ExpandedRule{
-					Name:                "Silent reject spike",
+					Name:                "Non-blocking response rate spike",
 					Metric:              "silent_reject_rate",
 					Operator:            "gt",
 					Threshold:           presetFloat(params, "silent_reject_threshold", 15),

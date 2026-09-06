@@ -13,7 +13,7 @@ export async function getPlatformSettings(signal?: AbortSignal): Promise<Platfor
 
 export async function patchPlatformSettings(
   patch: PlatformSettingsPatch,
-  signal?: AbortSignal,
+  signal?: AbortSignal
 ): Promise<PlatformSettingsView> {
   return apiJson<PlatformSettingsView>('/api/v1/settings/platform', {
     method: 'PATCH',
@@ -25,7 +25,7 @@ export async function patchPlatformSettings(
 export async function bootstrapPlatformSettings(
   installToken: string,
   body: PlatformBootstrapRequest,
-  signal?: AbortSignal,
+  signal?: AbortSignal
 ): Promise<PlatformSettingsView> {
   return apiJson<PlatformSettingsView>('/api/v1/settings/platform/bootstrap', {
     method: 'POST',
@@ -37,7 +37,7 @@ export async function bootstrapPlatformSettings(
 
 export async function applyPlatformSettings(
   body?: PlatformApplyRequest,
-  signal?: AbortSignal,
+  signal?: AbortSignal
 ): Promise<PlatformApplyResponse> {
   const installRoot = body?.install_root?.trim();
   const init: ApiRequestInit = {

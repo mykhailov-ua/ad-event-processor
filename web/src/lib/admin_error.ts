@@ -1,12 +1,10 @@
+// Operator-facing error copy (frontend-slop.mdc EH-*).
+// userErrorMessage maps ApiError status/code to safe text; raw Error.message only when admin_dev=1.
+// formatAdminErrorDetails is for ErrorBlock dev overlay, not end-user toasts.
 import { ApiError } from '../api/api_error.ts';
 import { isAdminDevMode } from './admin_dev_mode.ts';
 
-export type AdminErrorKind =
-  | 'load'
-  | 'render'
-  | 'route'
-  | 'not-found'
-  | 'forbidden';
+export type AdminErrorKind = 'load' | 'render' | 'route' | 'not-found' | 'forbidden';
 
 const KIND_USER_MESSAGE: Record<AdminErrorKind, string> = {
   load: 'This page could not be loaded. Try again or return to the home page.',
@@ -68,9 +66,12 @@ function routeErrorStatusText(error: unknown): string | undefined {
 
 export function userErrorMessage(
   error: unknown,
-  fallback = 'Something went wrong. Try again or return to the home page.',
+  fallback = 'Something went wrong. Try again or return to the home page.'
 ): string {
   if (error instanceof ApiError) {
+    if (error.code === 'PAYMENT_UNAVAILABLE') {
+      return 'Payment history is not available in this deployment. Enable the payment module or use the ledger tab for balance activity.';
+    }
     if (error.status === 404) {
       return 'The requested resource was not found.';
     }
@@ -123,6 +124,10 @@ export function userErrorMessage(
   }
 
   return fallback;
+}
+
+export function isPaymentUnavailableError(error: unknown): boolean {
+  return error instanceof ApiError && error.code === 'PAYMENT_UNAVAILABLE';
 }
 
 export function formatAdminErrorDetails(error: unknown, componentStack?: string): string {

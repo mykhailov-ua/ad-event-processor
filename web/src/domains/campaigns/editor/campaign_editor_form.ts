@@ -40,7 +40,7 @@ function ingressFromForm(form: CampaignEditorFormState): IngressFromFormResult {
 
 function ingressConfigsEqual(
   left: IngressCostConfig | undefined,
-  right: IngressCostConfig | undefined,
+  right: IngressCostConfig | undefined
 ): boolean {
   return (
     (left?.param ?? '') === (right?.param ?? '') &&
@@ -59,7 +59,7 @@ function clickQueryParamsCanonicalJson(params: Record<string, string> | undefine
 }
 
 export function parseClickQueryParamsJson(
-  json: string,
+  json: string
 ): { ok: true; value: Record<string, string> } | { ok: false; error: string } {
   const trimmed = json.trim();
   if (trimmed === '') {
@@ -112,7 +112,7 @@ export function parseClickQueryParamsJson(
 
 function clickQueryParamsEqual(
   left: Record<string, string> | undefined,
-  right: Record<string, string>,
+  right: Record<string, string>
 ): boolean {
   const leftObj = left ?? {};
   const leftKeys = Object.keys(leftObj).sort();
@@ -143,7 +143,7 @@ export function campaignToFormState(campaign: Campaign): CampaignEditorFormState
 
 export function buildCampaignPatchBody(
   original: Campaign,
-  form: CampaignEditorFormState,
+  form: CampaignEditorFormState
 ): BuildCampaignPatchResult {
   const body: PatchCampaignRequest = {};
 

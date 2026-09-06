@@ -28,10 +28,7 @@ export function measureMedianMs(fn: () => void, iterations: number): number {
   return median(samples);
 }
 
-export function runPerfBudget(
-  budget: PerfBudget,
-  fn: () => void,
-): BenchResult {
+export function runPerfBudget(budget: PerfBudget, fn: () => void): BenchResult {
   const batchSize = budget.batchSize ?? 1;
   for (let i = 0; i < budget.warmupIterations; i += 1) {
     fn();
@@ -54,7 +51,7 @@ export function runPerfBudget(
 export function assertPerfBudget(result: BenchResult): void {
   if (result.medianMs > result.limitMs) {
     throw new Error(
-      `${result.name}: median ${result.medianMs.toFixed(3)} ms exceeds budget ${result.budgetMs} ms (+${Math.round((PERF_TOLERANCE_RATIO - 1) * 100)}% => ${result.limitMs.toFixed(3)} ms)`,
+      `${result.name}: median ${result.medianMs.toFixed(3)} ms exceeds budget ${result.budgetMs} ms (+${Math.round((PERF_TOLERANCE_RATIO - 1) * 100)}% => ${result.limitMs.toFixed(3)} ms)`
     );
   }
 }

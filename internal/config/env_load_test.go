@@ -227,6 +227,72 @@ func TestLoad_ttcFailClosedDefaultTrue(t *testing.T) {
 	}
 }
 
+func TestLoad_geoFailClosedDefaultTrue(t *testing.T) {
+	t.Setenv("ENV", "development")
+	t.Setenv("SERVER_PORT", "8181")
+	t.Setenv("DB_DSN", "postgres://u:p@localhost/db?sslmode=disable")
+	t.Setenv("REDIS_ADDRS", "127.0.0.1:6479,127.0.0.1:6480,127.0.0.1:6481,127.0.0.1:6482")
+	t.Setenv("TOKEN_SYMMETRIC_KEY", "01234567890123456789012345678901")
+	t.Setenv("GEO_FAIL_CLOSED", "")
+	cfg, err := Load()
+	if err != nil {
+		t.Fatalf("Load: %v", err)
+	}
+	if !cfg.GeoFailClosed {
+		t.Fatal("GeoFailClosed must default true")
+	}
+}
+
+func TestLoad_productionRequiresTrustedProxies(t *testing.T) {
+	t.Setenv("ENV", "production")
+	t.Setenv("SERVER_PORT", "8181")
+	t.Setenv("DB_DSN", "postgres://u:p@localhost/db?sslmode=disable")
+	t.Setenv("REDIS_ADDRS", "127.0.0.1:6479,127.0.0.1:6480,127.0.0.1:6481,127.0.0.1:6482")
+	t.Setenv("TOKEN_SYMMETRIC_KEY", "01234567890123456789012345678901")
+	t.Setenv("TRUSTED_PROXIES", "")
+	t.Setenv("FILTER_TIMEOUT_MS", "100")
+	t.Setenv("TRACKER_PG_FALLBACK", "0")
+	_, err := Load()
+	if err == nil {
+		t.Fatal("expected production Load to fail when TRUSTED_PROXIES is empty")
+	}
+	if !strings.Contains(err.Error(), "TRUSTED_PROXIES") {
+		t.Fatalf("unexpected error: %v", err)
+	}
+}
+
+func TestLoad_streamProducerAdmissionPctRange(t *testing.T) {
+	t.Setenv("ENV", "development")
+	t.Setenv("SERVER_PORT", "8181")
+	t.Setenv("DB_DSN", "postgres://u:p@localhost/db?sslmode=disable")
+	t.Setenv("REDIS_ADDRS", "127.0.0.1:6479,127.0.0.1:6480,127.0.0.1:6481,127.0.0.1:6482")
+	t.Setenv("TOKEN_SYMMETRIC_KEY", "01234567890123456789012345678901")
+	t.Setenv("STREAM_PRODUCER_ADMISSION_PCT", "101")
+	_, err := Load()
+	if err == nil {
+		t.Fatal("expected error for STREAM_PRODUCER_ADMISSION_PCT > 100")
+	}
+	if !strings.Contains(err.Error(), "STREAM_PRODUCER_ADMISSION_PCT") {
+		t.Fatalf("unexpected error: %v", err)
+	}
+}
+
+func TestLoad_registryStalePGGraceDefaultTrue(t *testing.T) {
+	t.Setenv("ENV", "development")
+	t.Setenv("SERVER_PORT", "8181")
+	t.Setenv("DB_DSN", "postgres://u:p@localhost/db?sslmode=disable")
+	t.Setenv("REDIS_ADDRS", "127.0.0.1:6479,127.0.0.1:6480,127.0.0.1:6481,127.0.0.1:6482")
+	t.Setenv("TOKEN_SYMMETRIC_KEY", "01234567890123456789012345678901")
+	t.Setenv("REGISTRY_STALE_PG_GRACE", "")
+	cfg, err := Load()
+	if err != nil {
+		t.Fatalf("Load: %v", err)
+	}
+	if !cfg.RegistryStalePGGrace {
+		t.Fatal("RegistryStalePGGrace must default true")
+	}
+}
+
 func TestBrokerPrimaryCH(t *testing.T) {
 	cfg := &Config{}
 	cfg.Broker.ClickHouseIngestSource = "broker"

@@ -148,7 +148,7 @@ func TestDeviceFilter_tlsImpersonation(t *testing.T) {
 	assert.False(t, acc.Has(FraudReasonDeviceMismatch))
 }
 
-func TestTlsFingerprintImpersonating(t *testing.T) {
+func TestTLSFingerprintImpersonating(t *testing.T) {
 	chromeUA := "Mozilla/5.0 Chrome/120.0.0.0"
 	assert.True(t, tlsFingerprintImpersonating(chromeUA, nil, nil, []byte(suspiciousJA3PythonHash)))
 	assert.True(t, tlsFingerprintImpersonating(chromeUA, []byte("python-requests-ja3"), nil, nil))

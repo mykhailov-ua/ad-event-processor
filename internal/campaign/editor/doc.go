@@ -15,7 +15,7 @@
 //   - Media-buyer scope: AuthorizeCampaignAccess on campaign-scoped routes when wired.
 //   - Read routes accept campaigns:read or campaigns:read:masked; writes require campaigns:write.
 //   - POST /validate unmarshals PatchCampaignRequest and runs validateCampaignPatch only (no PG write).
-//   - POST /campaigns/bulk-action supports pause, resume, and archive; per-id errors in response body.
+//   - POST /campaigns/bulk-action supports pause, resume, and archive; one PG txn via BulkCampaignAction; per-id errors in response body.
 //   - Margin advisories on validate are read-only (no budget mutation).
 //
 // Forbidden:
@@ -30,5 +30,6 @@
 //
 //	go test ./internal/campaign/editor/ -short -run TestGetCampaignDiff -count=1
 //	go test ./internal/campaign/editor/ -short -run TestPostCampaignBulk -count=1
+//	go test ./internal/controlplane/ -run TestQueryBudget_BulkPauseCampaign_HTTP -count=1
 //	go test ./internal/campaign/editor/ -short -run TestMarginAdvisoryForCampaign -count=1
 package editor

@@ -312,17 +312,18 @@ type CampaignDashboardRequest struct {
 }
 
 type HTTPHandlers struct {
-	BuyerPortfolio       BuyerPortfolioReader
-	CampaignDashboard    CampaignDashboardReader
-	RoleDashboards       RoleDashboardReader
-	ReportJobs           ReportJobLister
-	ApplyRateLimit       func(http.HandlerFunc) http.HandlerFunc
-	RequirePermission    func(string, http.HandlerFunc) http.HandlerFunc
-	RequireAnyPermission func([]string, http.HandlerFunc) http.HandlerFunc
-	ResolveCustomerID    func(*http.Request, *uuid.UUID) (uuid.UUID, error)
-	WriteServiceError    func(http.ResponseWriter, error)
-	XDPStatsReader       func(context.Context) (edge.Snapshot, error)
-	EdgeMetricsReader    func(context.Context) (EdgeMetricsPanelDTO, error)
+	BuyerPortfolio          BuyerPortfolioReader
+	CampaignDashboard       CampaignDashboardReader
+	RoleDashboards          RoleDashboardReader
+	ReportJobs              ReportJobLister
+	ApplyRateLimit          func(http.HandlerFunc) http.HandlerFunc
+	RequirePermission       func(string, http.HandlerFunc) http.HandlerFunc
+	RequireAnyPermission    func([]string, http.HandlerFunc) http.HandlerFunc
+	ResolveCustomerID       func(*http.Request, *uuid.UUID) (uuid.UUID, error)
+	AuthorizeCampaignAccess func(*http.Request, uuid.UUID) error
+	WriteServiceError       func(http.ResponseWriter, error)
+	XDPStatsReader          func(context.Context) (edge.Snapshot, error)
+	EdgeMetricsReader       func(context.Context) (EdgeMetricsPanelDTO, error)
 }
 
 type ReportJobLister interface {
@@ -454,6 +455,12 @@ func (h *HTTPHandlers) getBuyerDrilldown(w http.ResponseWriter, r *http.Request)
 		httpresponse.Error(w, http.StatusBadRequest, "BAD_REQUEST", "invalid campaign_id")
 		return
 	}
+	if h.AuthorizeCampaignAccess != nil {
+		if err := h.AuthorizeCampaignAccess(r, campaignID); err != nil {
+			h.writeServiceError(w, err)
+			return
+		}
+	}
 
 	dimension, err := reports.ParseDashboardDrilldownDimension(r.URL.Query().Get("dimension"))
 	if err != nil {
@@ -498,6 +505,12 @@ func (h *HTTPHandlers) getCampaignDashboard(w http.ResponseWriter, r *http.Reque
 	if err != nil {
 		httpresponse.Error(w, http.StatusBadRequest, "BAD_REQUEST", "invalid campaign id")
 		return
+	}
+	if h.AuthorizeCampaignAccess != nil {
+		if err := h.AuthorizeCampaignAccess(r, campaignID); err != nil {
+			h.writeServiceError(w, err)
+			return
+		}
 	}
 
 	if h.CampaignDashboard == nil {

@@ -1,6 +1,7 @@
 package campaign
 
 import (
+	"net/http"
 	"net/http/httptest"
 	"testing"
 
@@ -27,19 +28,19 @@ func TestIsCampaignListExtendedMetricSortField(t *testing.T) {
 func TestParseListSort_metadataFields(t *testing.T) {
 	t.Parallel()
 	allowed := CampaignListAllowedSortFields()
-	req := httptest.NewRequest("GET", "/api/v1/campaigns?sort=budget_pct&order=desc", nil)
+	req := httptest.NewRequest("GET", "/api/v1/campaigns?sort=budget_pct&order=desc", http.NoBody)
 	field, order, err := parseListSort(req, allowed, "name")
 	require.NoError(t, err)
 	require.Equal(t, "budget_pct", field)
 	require.Equal(t, "desc", order)
 
-	req = httptest.NewRequest("GET", "/api/v1/campaigns?sort=group&order=asc", nil)
+	req = httptest.NewRequest("GET", "/api/v1/campaigns?sort=group&order=asc", http.NoBody)
 	field, order, err = parseListSort(req, allowed, "name")
 	require.NoError(t, err)
 	require.Equal(t, "group", field)
 	require.Equal(t, "asc", order)
 
-	req = httptest.NewRequest("GET", "/api/v1/campaigns?sort=id&order=asc", nil)
+	req = httptest.NewRequest("GET", "/api/v1/campaigns?sort=id&order=asc", http.NoBody)
 	field, order, err = parseListSort(req, allowed, "name")
 	require.NoError(t, err)
 	require.Equal(t, "id", field)

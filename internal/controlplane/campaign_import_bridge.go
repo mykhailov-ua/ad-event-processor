@@ -3,6 +3,7 @@ package controlplane
 import (
 	"context"
 	"fmt"
+	"log/slog"
 
 	"ad-event-processor/internal/automation"
 	"ad-event-processor/internal/campaign"
@@ -85,6 +86,10 @@ func (s *Service) ExportCampaign(ctx context.Context, campaignID uuid.UUID) (cam
 	return s.CampaignRuntime().ExportCampaign(ctx, campaignID)
 }
 
+func (s *Service) ExportCampaignsBatch(ctx context.Context, ids []uuid.UUID) campaign.ExportCampaignsBatchResult {
+	return s.CampaignRuntime().ExportCampaignsBatch(ctx, ids)
+}
+
 func (s *Service) ImportCampaign(ctx context.Context, spec campaign.ImportCampaignSpec) (campaign.ImportCampaignResult, error) {
 	return s.CampaignRuntime().ImportCampaign(ctx, spec)
 }
@@ -99,6 +104,30 @@ func (s *Service) PreviewMigrationPull(ctx context.Context, spec campaign.PullMi
 
 func (s *Service) ImportMigrationPull(ctx context.Context, spec campaign.PullMigrationImportSpec) (campaign.ImportMigrationResult, error) {
 	return campaign.ImportMigrationPull(ctx, s, spec)
+}
+
+// StartMigrationPullImport runs remote pull plus PG import in the background (POST .../migrate/pull/import).
+func (s *Service) StartMigrationPullImport(parent context.Context, spec campaign.PullMigrationImportSpec) error {
+	if s == nil {
+		return campaign.ErrServiceUnavailable()
+	}
+	if parent == nil {
+		parent = context.Background()
+	}
+	s.migrationPullWG.Add(1)
+	go func() {
+		defer s.migrationPullWG.Done()
+		opCtx, cancel := coldpath.BoundedContext(parent, migrationsource.PullImportTimeout())
+		defer cancel()
+		if _, err := campaign.ImportMigrationPull(opCtx, s, spec); err != nil {
+			slog.Error("migration pull import failed",
+				"error", err,
+				"customer_id", spec.CustomerID,
+				"source_kind", spec.SourceKind,
+			)
+		}
+	}()
+	return nil
 }
 
 type auditImportCampaignChange struct {

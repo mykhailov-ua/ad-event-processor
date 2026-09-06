@@ -3,6 +3,7 @@ import test, { beforeEach } from 'node:test';
 
 import { resolveDevMockRequest } from './handler.ts';
 import { DEV_MOCK_CUSTOMERS, DEV_MOCK_USERS } from './fixtures.ts';
+import { seedUserEmail } from './fixture_names.ts';
 import { resetDevMockRoleForTests, setDevMockRoleForTests } from './rbac.ts';
 import { resetDevMockStore } from './store.ts';
 
@@ -14,7 +15,7 @@ test('dev mock lists campaign list facets for customer scope', () => {
   resetDevMockStore();
   const customerId = DEV_MOCK_CUSTOMERS[0].id;
   const facets = resolveDevMockRequest(
-    `/api/v1/campaigns/list-facets?customer_id=${encodeURIComponent(customerId)}`,
+    `/api/v1/campaigns/list-facets?customer_id=${encodeURIComponent(customerId)}`
   );
   assert.equal(facets?.status, 200);
   const body = facets?.body as {
@@ -30,7 +31,7 @@ test('dev mock aggregates campaign list metrics totals for filters', () => {
   resetDevMockStore();
   const customerId = DEV_MOCK_CUSTOMERS[0].id;
   const response = resolveDevMockRequest(
-    `/api/v1/campaigns/metrics-totals?customer_id=${encodeURIComponent(customerId)}`,
+    `/api/v1/campaigns/metrics-totals?customer_id=${encodeURIComponent(customerId)}`
   );
   assert.equal(response?.status, 200);
   const body = response?.body as {
@@ -61,7 +62,7 @@ test('dev mock lists campaigns with filters', () => {
   assert.equal(body.status_totals?.total, body.total);
 
   const active = resolveDevMockRequest(
-    `/api/v1/campaigns?customer_id=${encodeURIComponent(DEV_MOCK_CUSTOMERS[0].id)}&status=ACTIVE&limit=50`,
+    `/api/v1/campaigns?customer_id=${encodeURIComponent(DEV_MOCK_CUSTOMERS[0].id)}&status=ACTIVE&limit=50`
   );
   const activeBody = active?.body as {
     items: { status: string }[];
@@ -108,7 +109,7 @@ test('dev mock session bootstrap is authenticated for admin role', () => {
   const boot = resolveDevMockRequest('/api/v1/session/bootstrap');
   assert.equal(boot?.status, 200);
   const body = boot?.body as { user: { email?: string }; session: { role?: string } };
-  assert.equal(body.user.email, 'operator@dev.local');
+  assert.equal(body.user.email, DEV_MOCK_USERS[0].email);
   assert.equal(body.session.role, 'admin');
 });
 
@@ -120,7 +121,7 @@ test('dev mock session bootstrap reflects media buyer permissions', () => {
     user: { email?: string; role?: string; permissions?: string[] };
     session: { role?: string };
   };
-  assert.equal(body.user.email, 'operator@dev.local');
+  assert.equal(body.user.email, DEV_MOCK_USERS[0].email);
   assert.equal(body.session.role, 'MB');
   assert.ok(body.user.permissions?.includes('campaigns:read'));
   assert.equal(body.user.permissions?.includes('shards:read'), false);
@@ -164,10 +165,10 @@ test('dev mock campaign metrics echoes range and scales clicks by window', () =>
   assert.ok(campaignId);
 
   const week = resolveDevMockRequest(
-    `/api/v1/campaigns/metrics?ids=${encodeURIComponent(campaignId)}&from=2026-02-01T00:00:00.000Z&to=2026-02-08T00:00:00.000Z`,
+    `/api/v1/campaigns/metrics?ids=${encodeURIComponent(campaignId)}&from=2026-02-01T00:00:00.000Z&to=2026-02-08T00:00:00.000Z`
   );
   const month = resolveDevMockRequest(
-    `/api/v1/campaigns/metrics?ids=${encodeURIComponent(campaignId)}&from=2026-02-01T00:00:00.000Z&to=2026-03-01T00:00:00.000Z`,
+    `/api/v1/campaigns/metrics?ids=${encodeURIComponent(campaignId)}&from=2026-02-01T00:00:00.000Z&to=2026-03-01T00:00:00.000Z`
   );
   assert.equal(week?.status, 200);
   assert.equal(month?.status, 200);
@@ -194,7 +195,9 @@ test('dev mock campaign editor path', () => {
   const campaignId = (listed?.body as { items: { id: string }[] }).items[0]?.id;
   assert.ok(campaignId);
 
-  const editor = resolveDevMockRequest(`/api/v1/campaigns/${encodeURIComponent(campaignId)}/editor`);
+  const editor = resolveDevMockRequest(
+    `/api/v1/campaigns/${encodeURIComponent(campaignId)}/editor`
+  );
   assert.equal(editor?.status, 200);
 
   const body = editor?.body as {
@@ -218,7 +221,7 @@ test('dev mock clone-preview and owner assignment', () => {
     {
       method: 'POST',
       body: JSON.stringify({ name_suffix: ' copy' }),
-    },
+    }
   );
   assert.equal(preview?.status, 200);
   const previewBody = preview?.body as { source_id: string; name: string; would_create: object };
@@ -227,13 +230,10 @@ test('dev mock clone-preview and owner assignment', () => {
   assert.ok(previewBody.would_create);
 
   const ownerUserId = DEV_MOCK_USERS[1].id;
-  const owner = resolveDevMockRequest(
-    `/api/v1/campaigns/${encodeURIComponent(campaignId)}/owner`,
-    {
-      method: 'PUT',
-      body: JSON.stringify({ user_id: ownerUserId }),
-    },
-  );
+  const owner = resolveDevMockRequest(`/api/v1/campaigns/${encodeURIComponent(campaignId)}/owner`, {
+    method: 'PUT',
+    body: JSON.stringify({ user_id: ownerUserId }),
+  });
   assert.equal(owner?.status, 200);
 
   const campaign = resolveDevMockRequest(`/api/v1/campaigns/${encodeURIComponent(campaignId)}`);
@@ -273,7 +273,12 @@ test('dev mock consent record returns 204', () => {
 });
 
 test('dev mock bare-array list endpoints return JSON arrays', () => {
-  for (const path of ['/api/v1/landers', '/api/v1/offers', '/api/v1/flows', '/api/v1/cost-sync/networks']) {
+  for (const path of [
+    '/api/v1/landers',
+    '/api/v1/offers',
+    '/api/v1/flows',
+    '/api/v1/cost-sync/networks',
+  ]) {
     const response = resolveDevMockRequest(path);
     assert.equal(response?.status, 200);
     assert.ok(Array.isArray(response?.body), path);
@@ -296,11 +301,11 @@ test('dev mock cost-sync snapshot returns array fields', () => {
 test('dev mock auth login returns user envelope', () => {
   const response = resolveDevMockRequest('/api/v1/auth/login', {
     method: 'POST',
-    body: JSON.stringify({ email: 'operator@dev.local', password: 'dev' }),
+    body: JSON.stringify({ email: seedUserEmail(1), password: 'dev' }),
   });
   assert.equal(response?.status, 200);
   const body = response?.body as { user?: { email?: string } };
-  assert.equal(body.user?.email, 'operator@dev.local');
+  assert.equal(body.user?.email, DEV_MOCK_USERS[0].email);
 });
 
 test('dev mock auth refresh returns status ok', () => {
@@ -321,9 +326,7 @@ test('dev mock unhandled mutation returns 501', () => {
 });
 
 test('dev mock missing campaign returns 404', () => {
-  const response = resolveDevMockRequest(
-    '/api/v1/campaigns/00000000-0000-7000-8000-000000000099',
-  );
+  const response = resolveDevMockRequest('/api/v1/campaigns/00000000-0000-7000-8000-000000000099');
   assert.equal(response?.status, 404);
   const body = response?.body as { error?: { code?: string } };
   assert.equal(body.error?.code, 'NOT_FOUND');
@@ -346,17 +349,55 @@ test('dev mock wizard create rejects missing customer_id with 400', () => {
 
 test('dev mock buyer dashboard parses as portfolio shell', () => {
   const response = resolveDevMockRequest(
-    `/api/v1/dashboards/buyer?customer_id=${encodeURIComponent(DEV_MOCK_CUSTOMERS[0].id)}`,
+    `/api/v1/dashboards/buyer?customer_id=${encodeURIComponent(DEV_MOCK_CUSTOMERS[0].id)}`
   );
   assert.equal(response?.status, 200);
   const body = response?.body as {
     customer_id?: string;
     breakdowns?: { campaigns?: { rows: unknown[] } };
     recent_clicks?: unknown[];
+    series?: unknown[];
   };
   assert.equal(body.customer_id, DEV_MOCK_CUSTOMERS[0].id);
-  assert.ok(Array.isArray(body.breakdowns?.campaigns?.rows));
-  assert.ok(Array.isArray(body.recent_clicks));
+  assert.ok((body.breakdowns?.campaigns?.rows?.length ?? 0) > 0);
+  assert.ok((body.recent_clicks?.length ?? 0) > 0);
+  assert.ok((body.series?.length ?? 0) > 0);
+});
+
+test('dev mock billing summary and invoices are populated', () => {
+  const summary = resolveDevMockRequest('/api/v1/billing/summary');
+  assert.equal(summary?.status, 200);
+  const summaryBody = summary?.body as { invoiced_mtd_micro?: number; invoice_count_mtd?: number };
+  assert.ok((summaryBody.invoiced_mtd_micro ?? 0) > 0);
+  assert.ok((summaryBody.invoice_count_mtd ?? 0) > 0);
+
+  const invoices = resolveDevMockRequest('/api/v1/billing/invoices?limit=50');
+  assert.equal(invoices?.status, 200);
+  const invoiceBody = invoices?.body as { items: unknown[]; total: number };
+  assert.ok(invoiceBody.total >= 10);
+  assert.ok(invoiceBody.items.length > 0);
+});
+
+test('dev mock report catalog uses rows envelope', () => {
+  const response = resolveDevMockRequest('/api/v1/reports/catalog');
+  assert.equal(response?.status, 200);
+  const body = response?.body as { rows: { key: string }[] };
+  assert.ok(Array.isArray(body.rows));
+  assert.ok(body.rows.length >= 5);
+  assert.ok(body.rows.some((row) => row.key === 'click-log'));
+});
+
+test('dev mock directory lists return synthetic rows', () => {
+  const flows = resolveDevMockRequest('/api/v1/flows');
+  assert.equal(flows?.status, 200);
+  const flowRows = flows?.body as unknown[];
+  assert.ok(Array.isArray(flowRows));
+  assert.ok(flowRows.length >= 5);
+
+  const rtb = resolveDevMockRequest('/api/v1/rtb/deals');
+  assert.equal(rtb?.status, 200);
+  const dealRows = rtb?.body as unknown[];
+  assert.ok(dealRows.length >= 3);
 });
 
 test('dev mock audit list returns 403 for media buyer role', () => {
@@ -386,13 +427,10 @@ test('dev mock bulk action returns empty results for empty campaign_ids', () => 
 });
 
 test('dev mock patch campaign returns 404 for unknown id', () => {
-  const response = resolveDevMockRequest(
-    '/api/v1/campaigns/00000000-0000-7000-8000-000000000088',
-    {
-      method: 'PATCH',
-      body: JSON.stringify({ name: 'missing' }),
-    },
-  );
+  const response = resolveDevMockRequest('/api/v1/campaigns/00000000-0000-7000-8000-000000000088', {
+    method: 'PATCH',
+    body: JSON.stringify({ name: 'missing' }),
+  });
   assert.equal(response?.status, 404);
   const body = response?.body as { error?: { code?: string } };
   assert.equal(body.error?.code, 'NOT_FOUND');

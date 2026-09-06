@@ -1,4 +1,4 @@
--- Zero-copy body DFA: extract campaign_id from JSON, OpenRTB 3, or native protobuf wire.
+-- Body DFA: extract campaign_id from JSON, OpenRTB 3, or native protobuf wire (no cjson.decode).
 -- Runtime: all workers access phase via edge_track_policy (no ngx.shared; pure scan on body chunk).
 -- Must match Go ParseTrackRequestJSON* / vtproto budgets (parser.mdc).
 --
@@ -10,27 +10,28 @@
 -- Return codes (string):
 -- - ERR_OVERSIZE: CL or field exceeds budget.
 -- - ERR_MALFORMED: wire/JSON shape break inside scan window.
--- - nil campaign_id: allowed when id not found in scan window (may proxy without shard affinity).
+-- - nil campaign_id, nil err: id not found or scan window truncated; edge_track_policy rejects at scan cap without trusted header (campaign_id_scan_evasion).
 --
 -- State machine: check_content_length -> extract_campaign_id(body, cl, schema) -> format UUID or raw id.
 --
 -- Constants and limits (must match tracker):
 -- - MAX_BODY_BYTES 1048576 (1 MiB Content-Length cap).
 -- - MAX_SCAN_BYTES 8192 scan/peek window.
--- - MAX_CAMPAIGN_LEN 64; MAX_FIELD_LEN 65536.
+-- - MAX_CAMPAIGN_LEN 64; MAX_FIELD_LEN 65536; MAX_JSON_DEPTH 32 (OpenRTB walk); MAX_NATIVE_JSON_DEPTH 16 (track JSON).
 -- - TRACKER_INGRESS_SCHEMA ad_event_processor_native (protobuf field 1) or openrtb_3 (item[0].id JSON).
 -- - scan_limit_for: min(body_len, content_length, MAX_SCAN_BYTES).
--- - protobuf varint shift cap 35 bits; 16-byte binary UUID expanded to hyphenated hex.
+-- - protobuf varint shift cap 35 bits; 16-byte binary UUID expanded via module-local FFI buffer.
 --
--- HTTP mapping (via edge_track_policy): ERR_OVERSIZE -> 413; malformed may proxy with nil campaign_id.
+-- HTTP mapping (via edge_track_policy): ERR_OVERSIZE -> 413; ERR_MALFORMED -> 400; truncation -> scan evasion or IP RL fallback.
 --
--- Forbidden: full JSON decode; allocations beyond scan budget; schema drift from http1IngressCanonical.
+-- Forbidden: full JSON decode; schema drift from http1IngressCanonical.
 --
 -- Verify:
 -- luac -p deploy/nginx/lua/edge-parse-dfa.lua
 -- bash scripts/test/edge/lua_tests.sh edge_parse_dfa_fault
 -- go test ./internal/ingestion/ -run=TestChaos_CrossHop_NginxGnet -count=1
 local bit = require "bit"
+local ffi = require "ffi"
 
 local _M = {}
 
@@ -38,58 +39,44 @@ _M.MAX_BODY_BYTES = 1048576
 _M.MAX_SCAN_BYTES = 8192
 _M.MAX_CAMPAIGN_LEN = 64
 _M.MAX_FIELD_LEN = 65536
+_M.MAX_JSON_DEPTH = 32
+_M.MAX_NATIVE_JSON_DEPTH = 16
 
 local MAX_BODY_BYTES = _M.MAX_BODY_BYTES
 local MAX_SCAN_BYTES = _M.MAX_SCAN_BYTES
 local MAX_CAMPAIGN_LEN = _M.MAX_CAMPAIGN_LEN
 local MAX_FIELD_LEN = _M.MAX_FIELD_LEN
+local MAX_JSON_DEPTH = _M.MAX_JSON_DEPTH
+local MAX_NATIVE_JSON_DEPTH = _M.MAX_NATIVE_JSON_DEPTH
 
 local ERR_OVERSIZE = "oversize"
 local ERR_MALFORMED = "malformed"
 
+local DEFAULT_INGRESS_SCHEMA = os.getenv "TRACKER_INGRESS_SCHEMA" or "ad_event_processor_native"
+
 local byte = string.byte
-local char = string.char
 local sub = string.sub
 
 local HEX = "0123456789abcdef"
-
-local function byte_to_hex(b)
-    local hi = bit.rshift(b, 4) + 1
-    local lo = bit.band(b, 0x0f) + 1
-    return char(byte(HEX, hi), byte(HEX, lo))
-end
+local UUID_BUF = ffi.new "char[37]"
 
 local function format_campaign_id(raw)
     if not raw or raw == "" then
         return nil, nil
     end
     if #raw == 16 then
-        local g = function(i)
-            return byte_to_hex(byte(raw, i))
+        local p = 0
+        for i = 1, 16 do
+            local b = byte(raw, i)
+            UUID_BUF[p] = byte(HEX, bit.rshift(b, 4) + 1)
+            UUID_BUF[p + 1] = byte(HEX, bit.band(b, 0x0f) + 1)
+            p = p + 2
+            if i == 4 or i == 6 or i == 8 or i == 10 then
+                UUID_BUF[p] = 45
+                p = p + 1
+            end
         end
-        return table.concat {
-            g(1),
-            g(2),
-            g(3),
-            g(4),
-            "-",
-            g(5),
-            g(6),
-            "-",
-            g(7),
-            g(8),
-            "-",
-            g(9),
-            g(10),
-            "-",
-            g(11),
-            g(12),
-            g(13),
-            g(14),
-            g(15),
-            g(16),
-        },
-            nil
+        return ffi.string(UUID_BUF, 36), nil
     end
     if #raw > MAX_CAMPAIGN_LEN then
         return nil, ERR_OVERSIZE
@@ -129,6 +116,10 @@ local function scan_limit_for(body_len, content_length)
     return limit
 end
 
+function _M.scan_limit_for(body_len, content_length)
+    return scan_limit_for(body_len, content_length)
+end
+
 local function scan_proto_dfa(data, scan_limit)
     local pos = 1
     while pos <= scan_limit do
@@ -142,13 +133,16 @@ local function scan_proto_dfa(data, scan_limit)
 
         if wire == 0 then
             local _, next_pos, err = decode_varint(data, pos, scan_limit)
-            if err or not next_pos then
-                return nil, err or ERR_MALFORMED
+            if err then
+                return nil, err
+            end
+            if not next_pos then
+                return nil, nil
             end
             pos = next_pos
         elseif wire == 1 then
             if pos + 7 > scan_limit then
-                return nil, ERR_MALFORMED
+                return nil, nil
             end
             pos = pos + 8
         elseif wire == 2 then
@@ -156,11 +150,14 @@ local function scan_proto_dfa(data, scan_limit)
             if err then
                 return nil, err
             end
-            if not field_len or not new_pos or field_len > MAX_FIELD_LEN then
+            if not field_len or not new_pos then
+                return nil, nil
+            end
+            if field_len > MAX_FIELD_LEN then
                 return nil, ERR_OVERSIZE
             end
             if new_pos + field_len - 1 > scan_limit then
-                return nil, ERR_MALFORMED
+                return nil, nil
             end
             if field == 1 then
                 if field_len > MAX_CAMPAIGN_LEN then
@@ -172,7 +169,7 @@ local function scan_proto_dfa(data, scan_limit)
             pos = new_pos + field_len
         elseif wire == 5 then
             if pos + 3 > scan_limit then
-                return nil, ERR_MALFORMED
+                return nil, nil
             end
             pos = pos + 4
         else
@@ -203,38 +200,52 @@ local function is_json_ws(b)
     return b == 32 or b == 9 or b == 10 or b == 13
 end
 
-local function skip_json_value(data, pos, scan_limit)
+-- pos at opening quote; returns next pos after closing quote, or nil + optional err.
+local function advance_json_string(data, pos, scan_limit)
+    if byte(data, pos) ~= 34 then
+        return nil, ERR_MALFORMED
+    end
+    pos = pos + 1
+    while pos <= scan_limit do
+        local c = byte(data, pos)
+        if not c then
+            return nil, nil
+        end
+        if c == 92 then
+            pos = pos + 1
+            if pos > scan_limit or not byte(data, pos) then
+                return nil, nil
+            end
+            pos = pos + 1
+        elseif c == 34 then
+            return pos + 1, nil
+        else
+            pos = pos + 1
+        end
+    end
+    return nil, nil
+end
+
+local function skip_json_value(data, pos, scan_limit, depth, max_depth)
     local err
     local b = byte(data, pos)
     if not b then
         return nil, ERR_MALFORMED
     end
     if b == 34 then
-        pos = pos + 1
-        while pos <= scan_limit do
-            local c = byte(data, pos)
-            if not c then
-                return nil, ERR_MALFORMED
-            end
-            if c == 34 then
-                return pos + 1, nil
-            end
-            if c == 92 then
-                pos = pos + 2
-            else
-                pos = pos + 1
-            end
-        end
-        return nil, ERR_MALFORMED
+        return advance_json_string(data, pos, scan_limit)
     end
     if b == 123 then
+        if depth > max_depth then
+            return nil, ERR_MALFORMED
+        end
         pos = pos + 1
         while pos <= scan_limit do
             while pos <= scan_limit and is_json_ws(byte(data, pos)) do
                 pos = pos + 1
             end
             if pos > scan_limit then
-                return nil, ERR_MALFORMED
+                return nil, nil
             end
             if byte(data, pos) == 125 then
                 return pos + 1, nil
@@ -247,18 +258,21 @@ local function skip_json_value(data, pos, scan_limit)
                 pos = pos + 1
             end
             if pos > scan_limit then
-                return nil, ERR_MALFORMED
+                return nil, nil
             end
             pos = pos + 1
             while pos <= scan_limit and is_json_ws(byte(data, pos)) do
                 pos = pos + 1
             end
-            if pos > scan_limit or byte(data, pos) ~= 58 then
+            if pos > scan_limit then
+                return nil, nil
+            end
+            if byte(data, pos) ~= 58 then
                 return nil, ERR_MALFORMED
             end
             pos = pos + 1
             local next_pos
-            next_pos, err = skip_json_value(data, pos, scan_limit)
+            next_pos, err = skip_json_value(data, pos, scan_limit, depth + 1, max_depth)
             if not next_pos then
                 return nil, err
             end
@@ -267,7 +281,7 @@ local function skip_json_value(data, pos, scan_limit)
                 pos = pos + 1
             end
             if pos > scan_limit then
-                return nil, ERR_MALFORMED
+                return nil, nil
             end
             local sep = byte(data, pos)
             if sep == 125 then
@@ -278,22 +292,25 @@ local function skip_json_value(data, pos, scan_limit)
             end
             pos = pos + 1
         end
-        return nil, ERR_MALFORMED
+        return nil, nil
     end
     if b == 91 then
+        if depth > max_depth then
+            return nil, ERR_MALFORMED
+        end
         pos = pos + 1
         while pos <= scan_limit do
             while pos <= scan_limit and is_json_ws(byte(data, pos)) do
                 pos = pos + 1
             end
             if pos > scan_limit then
-                return nil, ERR_MALFORMED
+                return nil, nil
             end
             if byte(data, pos) == 93 then
                 return pos + 1, nil
             end
             local next_pos
-            next_pos, err = skip_json_value(data, pos, scan_limit)
+            next_pos, err = skip_json_value(data, pos, scan_limit, depth + 1, max_depth)
             if not next_pos then
                 return nil, err
             end
@@ -302,7 +319,7 @@ local function skip_json_value(data, pos, scan_limit)
                 pos = pos + 1
             end
             if pos > scan_limit then
-                return nil, ERR_MALFORMED
+                return nil, nil
             end
             local sep = byte(data, pos)
             if sep == 93 then
@@ -313,7 +330,7 @@ local function skip_json_value(data, pos, scan_limit)
             end
             pos = pos + 1
         end
-        return nil, ERR_MALFORMED
+        return nil, nil
     end
     if (b >= 48 and b <= 57) or b == 45 then
         pos = pos + 1
@@ -359,9 +376,15 @@ local function read_json_string(data, pos, scan_limit)
     while pos <= scan_limit do
         local c = byte(data, pos)
         if not c then
-            return nil, nil, ERR_MALFORMED
+            return nil, nil, nil
         end
-        if c == 34 then
+        if c == 92 then
+            pos = pos + 1
+            if pos > scan_limit or not byte(data, pos) then
+                return nil, nil, nil
+            end
+            pos = pos + 1
+        elseif c == 34 then
             local raw = sub(data, val_start, pos - 1)
             if #raw > MAX_CAMPAIGN_LEN then
                 return nil, nil, ERR_OVERSIZE
@@ -370,17 +393,13 @@ local function read_json_string(data, pos, scan_limit)
                 return nil, nil, ERR_MALFORMED
             end
             return raw, pos + 1, nil
-        end
-        if c == 0 then
+        elseif c == 0 then
             return nil, nil, ERR_MALFORMED
-        end
-        if c == 92 then
-            pos = pos + 2
         else
             pos = pos + 1
         end
     end
-    return nil, nil, ERR_MALFORMED
+    return nil, nil, nil
 end
 
 local function scan_json_dfa(data, scan_limit)
@@ -400,7 +419,7 @@ local function scan_json_dfa(data, scan_limit)
             pos = pos + 1
         end
         if pos > scan_limit then
-            return nil, ERR_MALFORMED
+            return last_cid, nil
         end
         if byte(data, pos) == 125 then
             return last_cid, nil
@@ -417,7 +436,7 @@ local function scan_json_dfa(data, scan_limit)
             pos = pos + 1
         end
         if pos > scan_limit then
-            return nil, ERR_MALFORMED
+            return last_cid, nil
         end
         local key = sub(data, key_start, pos - 1)
         pos = pos + 1
@@ -425,7 +444,10 @@ local function scan_json_dfa(data, scan_limit)
         while pos <= scan_limit and is_json_ws(byte(data, pos)) do
             pos = pos + 1
         end
-        if pos > scan_limit or byte(data, pos) ~= 58 then
+        if pos > scan_limit then
+            return last_cid, nil
+        end
+        if byte(data, pos) ~= 58 then
             return nil, ERR_MALFORMED
         end
         pos = pos + 1
@@ -433,7 +455,7 @@ local function scan_json_dfa(data, scan_limit)
             pos = pos + 1
         end
         if pos > scan_limit then
-            return nil, ERR_MALFORMED
+            return last_cid, nil
         end
 
         local kid = json_key_id(key)
@@ -441,14 +463,20 @@ local function scan_json_dfa(data, scan_limit)
             local raw
             raw, pos, err = read_json_string(data, pos, scan_limit)
             if not raw then
-                return nil, err
+                if err then
+                    return nil, err
+                end
+                return last_cid, nil
             end
             last_cid = raw
         else
             local next_pos
-            next_pos, err = skip_json_value(data, pos, scan_limit)
+            next_pos, err = skip_json_value(data, pos, scan_limit, 1, MAX_NATIVE_JSON_DEPTH)
             if not next_pos then
-                return nil, err
+                if err then
+                    return nil, err
+                end
+                return last_cid, nil
             end
             pos = next_pos
         end
@@ -457,7 +485,7 @@ local function scan_json_dfa(data, scan_limit)
             pos = pos + 1
         end
         if pos > scan_limit then
-            return nil, ERR_MALFORMED
+            return last_cid, nil
         end
         local sep = byte(data, pos)
         if sep == 125 then
@@ -468,10 +496,10 @@ local function scan_json_dfa(data, scan_limit)
         end
         pos = pos + 1
     end
-    return nil, ERR_MALFORMED
+    return last_cid, nil
 end
 
-local function scan_item_object(data, pos, scan_limit)
+local function scan_item_object(data, pos, scan_limit, depth)
     local err
     if byte(data, pos) ~= 123 then
         return nil, nil, ERR_MALFORMED
@@ -483,7 +511,7 @@ local function scan_item_object(data, pos, scan_limit)
             pos = pos + 1
         end
         if pos > scan_limit then
-            return nil, nil, ERR_MALFORMED
+            return item_id, nil, nil
         end
         if byte(data, pos) == 125 then
             return item_id, pos + 1, nil
@@ -497,14 +525,17 @@ local function scan_item_object(data, pos, scan_limit)
             pos = pos + 1
         end
         if pos > scan_limit then
-            return nil, nil, ERR_MALFORMED
+            return item_id, nil, nil
         end
         local key = sub(data, key_start, pos - 1)
         pos = pos + 1
         while pos <= scan_limit and is_json_ws(byte(data, pos)) do
             pos = pos + 1
         end
-        if pos > scan_limit or byte(data, pos) ~= 58 then
+        if pos > scan_limit then
+            return item_id, nil, nil
+        end
+        if byte(data, pos) ~= 58 then
             return nil, nil, ERR_MALFORMED
         end
         pos = pos + 1
@@ -515,14 +546,20 @@ local function scan_item_object(data, pos, scan_limit)
             local raw
             raw, pos, err = read_json_string(data, pos, scan_limit)
             if not raw then
-                return nil, nil, err
+                if err then
+                    return nil, nil, err
+                end
+                return item_id, nil, nil
             end
             item_id = raw
         else
             local next_pos
-            next_pos, err = skip_json_value(data, pos, scan_limit)
+            next_pos, err = skip_json_value(data, pos, scan_limit, depth, MAX_JSON_DEPTH)
             if not next_pos then
-                return nil, nil, err
+                if err then
+                    return nil, nil, err
+                end
+                return item_id, nil, nil
             end
             pos = next_pos
         end
@@ -530,7 +567,7 @@ local function scan_item_object(data, pos, scan_limit)
             pos = pos + 1
         end
         if pos > scan_limit then
-            return nil, nil, ERR_MALFORMED
+            return item_id, nil, nil
         end
         local sep = byte(data, pos)
         if sep == 125 then
@@ -541,14 +578,17 @@ local function scan_item_object(data, pos, scan_limit)
         end
         pos = pos + 1
     end
-    return nil, nil, ERR_MALFORMED
+    return item_id, nil, nil
 end
 
 local function scan_json_openrtb_dfa(data, scan_limit)
     local err
     local found = nil
 
-    local function walk_object(pos)
+    local function walk_object(pos, depth)
+        if depth > MAX_JSON_DEPTH then
+            return nil, ERR_MALFORMED
+        end
         if byte(data, pos) ~= 123 then
             return nil, ERR_MALFORMED
         end
@@ -558,7 +598,7 @@ local function scan_json_openrtb_dfa(data, scan_limit)
                 pos = pos + 1
             end
             if pos > scan_limit then
-                return nil, ERR_MALFORMED
+                return nil, nil
             end
             if byte(data, pos) == 125 then
                 return pos + 1, nil
@@ -572,14 +612,17 @@ local function scan_json_openrtb_dfa(data, scan_limit)
                 pos = pos + 1
             end
             if pos > scan_limit then
-                return nil, ERR_MALFORMED
+                return nil, nil
             end
             local key = sub(data, key_start, pos - 1)
             pos = pos + 1
             while pos <= scan_limit and is_json_ws(byte(data, pos)) do
                 pos = pos + 1
             end
-            if pos > scan_limit or byte(data, pos) ~= 58 then
+            if pos > scan_limit then
+                return nil, nil
+            end
+            if byte(data, pos) ~= 58 then
                 return nil, ERR_MALFORMED
             end
             pos = pos + 1
@@ -587,7 +630,7 @@ local function scan_json_openrtb_dfa(data, scan_limit)
                 pos = pos + 1
             end
             if pos > scan_limit then
-                return nil, ERR_MALFORMED
+                return nil, nil
             end
 
             local kid = json_key_id(key)
@@ -598,30 +641,36 @@ local function scan_json_openrtb_dfa(data, scan_limit)
                 end
                 if pos <= scan_limit and byte(data, pos) == 123 then
                     local id
-                    id, pos, err = scan_item_object(data, pos, scan_limit)
+                    id, pos, err = scan_item_object(data, pos, scan_limit, depth + 1)
                     if err then
                         return nil, err
                     end
                     found = id
+                    if not pos then
+                        return nil, nil
+                    end
                 end
-                local depth = 1
-                while pos <= scan_limit and depth > 0 do
+                local depth_arr = 1
+                while pos <= scan_limit and depth_arr > 0 do
                     local c = byte(data, pos)
+                    if not c then
+                        return nil, nil
+                    end
                     if c == 34 then
-                        pos = pos + 1
-                        while pos <= scan_limit and byte(data, pos) ~= 34 do
-                            if byte(data, pos) == 92 then
-                                pos = pos + 2
-                            else
-                                pos = pos + 1
+                        local next_pos
+                        next_pos, err = advance_json_string(data, pos, scan_limit)
+                        if not next_pos then
+                            if err then
+                                return nil, err
                             end
+                            return nil, nil
                         end
-                        pos = pos + 1
+                        pos = next_pos
                     elseif c == 91 then
-                        depth = depth + 1
+                        depth_arr = depth_arr + 1
                         pos = pos + 1
                     elseif c == 93 then
-                        depth = depth - 1
+                        depth_arr = depth_arr - 1
                         pos = pos + 1
                     else
                         pos = pos + 1
@@ -629,14 +678,14 @@ local function scan_json_openrtb_dfa(data, scan_limit)
                 end
             elseif byte(data, pos) == 123 then
                 local next_pos
-                next_pos, err = walk_object(pos)
+                next_pos, err = walk_object(pos, depth + 1)
                 if not next_pos then
                     return nil, err
                 end
                 pos = next_pos
             else
                 local next_pos
-                next_pos, err = skip_json_value(data, pos, scan_limit)
+                next_pos, err = skip_json_value(data, pos, scan_limit, depth, MAX_JSON_DEPTH)
                 if not next_pos then
                     return nil, err
                 end
@@ -647,7 +696,7 @@ local function scan_json_openrtb_dfa(data, scan_limit)
                 pos = pos + 1
             end
             if pos > scan_limit then
-                return nil, ERR_MALFORMED
+                return nil, nil
             end
             local sep = byte(data, pos)
             if sep == 125 then
@@ -658,14 +707,14 @@ local function scan_json_openrtb_dfa(data, scan_limit)
             end
             pos = pos + 1
         end
-        return nil, ERR_MALFORMED
+        return nil, nil
     end
 
     local pos = 1
     while pos <= scan_limit and is_json_ws(byte(data, pos)) do
         pos = pos + 1
     end
-    local _, werr = walk_object(pos)
+    local _, werr = walk_object(pos, 1)
     if werr and not found then
         return nil, werr
     end
@@ -673,6 +722,9 @@ local function scan_json_openrtb_dfa(data, scan_limit)
 end
 
 function _M.check_content_length(content_length)
+    if content_length and content_length < 0 then
+        return ERR_MALFORMED
+    end
     if content_length and content_length > MAX_BODY_BYTES then
         return ERR_OVERSIZE
     end
@@ -680,6 +732,9 @@ function _M.check_content_length(content_length)
 end
 
 function _M.extract_campaign_id(body, content_length, schema)
+    if content_length and content_length < 0 then
+        return nil, ERR_MALFORMED
+    end
     if content_length and content_length > MAX_BODY_BYTES then
         return nil, ERR_OVERSIZE
     end
@@ -697,7 +752,7 @@ function _M.extract_campaign_id(body, content_length, schema)
     end
 
     if not schema or schema == "" then
-        schema = os.getenv "TRACKER_INGRESS_SCHEMA" or "ad_event_processor_native"
+        schema = DEFAULT_INGRESS_SCHEMA
     end
 
     local pos = 1

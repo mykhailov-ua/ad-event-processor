@@ -10,7 +10,10 @@ export type StatusBadgeProps = {
 
 export function StatusBadge({ label, tone = 'muted', className, title }: StatusBadgeProps) {
   return (
-    <span className={cn(adminStatusBadgeBase, adminStatusBadgeClass[tone], className)} title={title ?? label}>
+    <span
+      className={cn(adminStatusBadgeBase, adminStatusBadgeClass[tone], className)}
+      title={title ?? label}
+    >
       {label}
     </span>
   );

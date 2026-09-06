@@ -12,7 +12,7 @@ test('buildCampaignListCountryOptions unions countries and applied filter', () =
 
   assert.deepEqual(
     options.map((option) => option.value),
-    ['__all__', 'CA', 'DE', 'GB', 'US'],
+    ['__all__', 'CA', 'DE', 'GB', 'US']
   );
 });
 
@@ -23,12 +23,12 @@ test('buildCampaignListOwnerOptions dedupes owners and keeps applied owner', () 
       { user_id: 'user-a', email: 'buyer@example.com' },
       { user_id: 'user-b', email: 'ops@example.com' },
     ],
-    'user-c',
+    'user-c'
   );
 
   assert.deepEqual(
     options.map((option) => option.value),
-    ['__all__', 'user-a', 'user-b', 'user-c'],
+    ['__all__', 'user-a', 'user-b', 'user-c']
   );
   assert.equal(options[1]?.label, 'buyer@example.com');
 });
@@ -39,14 +39,14 @@ test('buildCampaignListOwnerEmailById maps owner emails', () => {
       { user_id: 'user-a', email: 'buyer@example.com' },
       { user_id: 'user-b', email: '' },
     ]),
-    { 'user-a': 'buyer@example.com' },
+    { 'user-a': 'buyer@example.com' }
   );
 });
 
 test('buildCampaignListOwnerOptions keeps applied owner email from facets', () => {
   const options = buildCampaignListOwnerOptions(
     [{ user_id: 'user-a', email: 'buyer@example.com' }],
-    'user-a',
+    'user-a'
   );
 
   assert.equal(options.find((option) => option.value === 'user-a')?.label, 'buyer@example.com');

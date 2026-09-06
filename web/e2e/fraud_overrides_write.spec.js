@@ -13,7 +13,7 @@ test.beforeEach(async ({}, testInfo) => {
   await skipUnlessIntegrationReady(testInfo);
 });
 
-test('apply fraud override posts to API', async ({ page }) => {
+test('apply fraud override posts to API', { tag: '@write' }, async ({ page }) => {
   try {
     await loginAsAdmin(page);
   } catch {
@@ -40,7 +40,7 @@ test('apply fraud override posts to API', async ({ page }) => {
     (response) =>
       isApiPost('/api/v1/fraud/overrides', 200)(response) &&
       response.url().includes(`customer_id=${encodeURIComponent(customerId)}`),
-    { timeout: 20_000 },
+    { timeout: 20_000 }
   );
 
   await page.getByRole('button', { name: 'Apply override' }).click();

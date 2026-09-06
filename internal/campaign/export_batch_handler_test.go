@@ -16,6 +16,21 @@ type exportBatchCampaignStub struct {
 	bundles map[uuid.UUID]CampaignExportBundle
 }
 
+func (s *exportBatchCampaignStub) ExportCampaignsBatch(_ context.Context, ids []uuid.UUID) ExportCampaignsBatchResult {
+	out := ExportCampaignsBatchResult{
+		Items:  make(map[uuid.UUID]CampaignExportBundle),
+		Errors: make(map[uuid.UUID]error),
+	}
+	for _, id := range ids {
+		if bundle, ok := s.bundles[id]; ok {
+			out.Items[id] = bundle
+		} else {
+			out.Errors[id] = ErrCampaignNotFound
+		}
+	}
+	return out
+}
+
 func (s *exportBatchCampaignStub) GetCampaign(context.Context, uuid.UUID) (CampaignDTO, error) {
 	return CampaignDTO{}, ErrCampaignNotFound
 }
@@ -97,6 +112,10 @@ func (s *exportBatchCampaignStub) ArchiveCampaign(context.Context, uuid.UUID, st
 	return nil
 }
 
+func (s *exportBatchCampaignStub) BulkCampaignAction(ctx context.Context, action string, ids []uuid.UUID, reason string) map[uuid.UUID]error {
+	return RunBulkCampaignAction(ctx, action, ids, reason, s.PauseCampaign, s.ResumeCampaign, s.ArchiveCampaign)
+}
+
 func TestExportCampaignsBatch_returnsBundlesAndPerIdErrors(t *testing.T) {
 	t.Parallel()
 	okID := uuid.New()
@@ -122,4 +141,39 @@ func TestExportCampaignsBatch_returnsBundlesAndPerIdErrors(t *testing.T) {
 	require.Len(t, resp.Errors, 1)
 	assert.Equal(t, missingID.String(), resp.Errors[0].ID)
 	assert.Equal(t, "not_found", resp.Errors[0].ErrorCode)
+}
+
+type exportBatchHoldoutStub struct {
+	exportBatchCampaignStub
+	singleExportCalls int
+}
+
+func (s *exportBatchHoldoutStub) ExportCampaign(_ context.Context, _ uuid.UUID) (CampaignExportBundle, error) {
+	s.singleExportCalls++
+	return CampaignExportBundle{}, ErrCampaignNotFound
+}
+
+func (s *exportBatchHoldoutStub) BulkCampaignAction(ctx context.Context, action string, ids []uuid.UUID, reason string) map[uuid.UUID]error {
+	return RunBulkCampaignAction(ctx, action, ids, reason, s.PauseCampaign, s.ResumeCampaign, s.ArchiveCampaign)
+}
+
+func TestExportCampaignsBatch_holdout_skipsPerIDExportCampaign(t *testing.T) {
+	t.Parallel()
+	okID := uuid.New()
+	stub := &exportBatchHoldoutStub{
+		exportBatchCampaignStub: exportBatchCampaignStub{
+			bundles: map[uuid.UUID]CampaignExportBundle{
+				okID: {
+					ExportVersion: CampaignExportVersion,
+					Campaign:      CampaignExportCampaign{Name: "Batch Only"},
+				},
+			},
+		},
+	}
+	h := &CampaignsHTTPHandlers{Campaigns: stub}
+	req := httptest.NewRequest(http.MethodGet, "/api/v1/campaigns/export?ids="+okID.String(), http.NoBody)
+	rec := httptest.NewRecorder()
+	h.exportCampaignsBatch(rec, req)
+	require.Equal(t, http.StatusOK, rec.Code)
+	assert.Equal(t, 0, stub.singleExportCalls, "batch export must not call ExportCampaign per id")
 }

@@ -25,7 +25,7 @@ export function reportMapRowKey(
   row: Record<string, unknown>,
   columns: readonly string[],
   index: number,
-  prefix = '',
+  prefix = ''
 ): string {
   for (const field of ROW_ID_FIELDS) {
     const value = row[field];

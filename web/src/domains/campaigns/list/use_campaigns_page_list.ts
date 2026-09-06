@@ -1,9 +1,14 @@
-// Campaign list workspace fetch fan-out (RF-9 baseline; do not collapse without product sign-off):
-// - GET list campaigns (main page + optional width-probe duplicate when probe dataset not covered)
-// - POST metrics batch (merged page + probe ids)
+// L2 fetch orchestrator for campaigns directory (pages/campaigns_page.tsx).
+// L3 selection/export/column prefs: use_campaigns_directory_workspace.ts.
+// Campaign list workspace fetch fan-out (RF-9; Phase 6 trim):
+// Refresh lanes (up to 4 when paginated and filter totals not capped):
+// - GET list campaigns
+// - GET width-probe list (after main list snapshot; skipped when page rows cover probe dataset)
+// - POST metrics batch
 // - POST filter totals (skipped when total > CAMPAIGN_LIST_FILTER_TOTALS_MAX)
-// - GET list facets (customer_id only; not tied to list refreshToken)
-// - GET customers combobox (once per mount)
+// Mount-once / scoped (not on list refreshToken):
+// - GET list facets (customer_id only)
+// - GET customers combobox (session cache)
 // - GET self-serve templates (create overlay open only)
 import { useEffect, useMemo } from 'react';
 
@@ -30,6 +35,7 @@ import {
   buildCampaignListWidthProbeQuery,
   listResponseCoversWidthProbeDataset,
   mergeCampaignIdsForMetricsBatch,
+  shouldFetchCampaignListWidthProbe,
 } from '@/domains/campaigns/list/campaign_list_width_probe';
 import { campaignStatsQueryForRange } from '@/domains/campaigns/list/campaign_list_date_range';
 import { campaignListFilterTotalsFromApi } from '@/domains/campaigns/list/campaign_list_filter_totals';
@@ -75,7 +81,7 @@ export function useCampaignsPageList({
       query.pacing_mode,
       query.q,
       query.status,
-    ],
+    ]
   );
 
   const { data, error, fetching } = useResource(
@@ -96,23 +102,25 @@ export function useCampaignsPageList({
       query.from,
       query.to,
       refreshToken,
-    ],
+    ]
   );
 
   const listCoversWidthProbeDataset = useMemo(
     () => listResponseCoversWidthProbeDataset(data),
-    [data],
+    [data]
   );
+
+  const shouldFetchWidthProbeList = shouldFetchCampaignListWidthProbe(data);
 
   const { data: widthProbeData } = useResource(
     (signal) => {
-      if (listCoversWidthProbeDataset) {
+      if (!shouldFetchWidthProbeList) {
         return Promise.resolve(undefined);
       }
       return listCampaigns(widthProbeQuery, signal);
     },
     [
-      listCoversWidthProbeDataset,
+      shouldFetchWidthProbeList,
       widthProbeQuery.budget_min_micro,
       widthProbeQuery.budget_max_micro,
       widthProbeQuery.country,
@@ -122,17 +130,14 @@ export function useCampaignsPageList({
       widthProbeQuery.q,
       widthProbeQuery.status,
       refreshToken,
-    ],
+    ]
   );
 
-  const campaignIds = useMemo(
-    () => data?.items?.map((campaign) => campaign.id),
-    [data?.items],
-  );
+  const campaignIds = useMemo(() => data?.items?.map((campaign) => campaign.id), [data?.items]);
 
   const widthProbeIds = useMemo(
     () => widthProbeData?.items?.map((campaign) => campaign.id),
-    [widthProbeData?.items],
+    [widthProbeData?.items]
   );
 
   const metricsCampaignIds = useMemo(
@@ -140,12 +145,12 @@ export function useCampaignsPageList({
       listCoversWidthProbeDataset
         ? (campaignIds ?? [])
         : mergeCampaignIdsForMetricsBatch(campaignIds ?? [], widthProbeIds ?? []),
-    [campaignIds, listCoversWidthProbeDataset, widthProbeIds],
+    [campaignIds, listCoversWidthProbeDataset, widthProbeIds]
   );
 
   const { data: metricsBatch, error: metricsError } = useResource(
     (signal) => fetchCampaignListMetricsBatch(metricsCampaignIds, statsQuery, signal),
-    [metricsCampaignIds?.join(',') ?? '', refreshToken, statsQuery.from, statsQuery.to],
+    [metricsCampaignIds?.join(',') ?? '', refreshToken, statsQuery.from, statsQuery.to]
   );
 
   const filterTotalsQuery = useMemo(
@@ -168,7 +173,7 @@ export function useCampaignsPageList({
       query.pacing_mode,
       query.q,
       query.status,
-    ],
+    ]
   );
 
   const filterTotalsCapped = (data?.total ?? 0) > CAMPAIGN_LIST_FILTER_TOTALS_MAX;
@@ -198,21 +203,19 @@ export function useCampaignsPageList({
       refreshToken,
       statsQuery.from,
       statsQuery.to,
-    ],
+    ]
   );
 
   const filterTotals = useMemo(
     () => campaignListFilterTotalsFromApi(metricsTotalsResponse),
-    [metricsTotalsResponse],
+    [metricsTotalsResponse]
   );
 
   const metricsById = metricsBatch?.metricsById;
   const marginsById = metricsBatch?.marginsById;
 
   const columnWidthProbe = useMemo((): CampaignListColumnWidthProbe | undefined => {
-    const probeItems = listCoversWidthProbeDataset
-      ? data?.items
-      : widthProbeData?.items;
+    const probeItems = listCoversWidthProbeDataset ? data?.items : widthProbeData?.items;
     if (!probeItems?.length) {
       return undefined;
     }
@@ -231,27 +234,27 @@ export function useCampaignsPageList({
         }
         throw err;
       }),
-    [customerId],
+    [customerId]
   );
 
   const { facets: listFacets, degraded: listFacetsDegraded } = useMemo(
     () => resolveCampaignListFacets(listFacetsFromApi, listFacetsFetching),
-    [listFacetsFromApi, listFacetsFetching],
+    [listFacetsFromApi, listFacetsFetching]
   );
 
   const countryOptions = useMemo(
     () => buildCampaignListCountryOptions(listFacets?.countries ?? [], query.country),
-    [listFacets?.countries, query.country],
+    [listFacets?.countries, query.country]
   );
 
   const ownerEmailById = useMemo(
     () => buildCampaignListOwnerEmailById(listFacets?.owners ?? []),
-    [listFacets?.owners],
+    [listFacets?.owners]
   );
 
   const ownerOptions = useMemo(
     () => buildCampaignListOwnerOptions(listFacets?.owners ?? [], appliedOwnerUserId),
-    [appliedOwnerUserId, listFacets?.owners],
+    [appliedOwnerUserId, listFacets?.owners]
   );
 
   const statusTotals = data?.status_totals;
@@ -259,7 +262,7 @@ export function useCampaignsPageList({
 
   const { data: customersData, fetching: customersFetching } = useResource(
     (signal) => fetchCustomersComboboxCached(signal),
-    [],
+    []
   );
 
   const customerOptions = useMemo((): CustomerComboboxOption[] => {
@@ -293,7 +296,7 @@ export function useCampaignsPageList({
       }
       return listSelfServeTemplates(templateCustomerId, signal);
     },
-    [templateCustomerId, templatesRefreshToken, shouldLoadTemplates],
+    [templateCustomerId, templatesRefreshToken, shouldLoadTemplates]
   );
 
   return {

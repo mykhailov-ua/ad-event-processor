@@ -10,6 +10,7 @@ import (
 
 	"github.com/google/uuid"
 	"github.com/redis/go-redis/v9"
+	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 )
 
@@ -66,6 +67,33 @@ func (m *ingressRPDRedisMock) Pipeline() redis.Pipeliner {
 	}
 }
 
+type errIngressRPDPipeTracker struct {
+	mockPipeliner
+}
+
+func (p *errIngressRPDPipeTracker) Expire(ctx context.Context, key string, expiration time.Duration) *redis.BoolCmd {
+	cmd := redis.NewBoolCmd(ctx)
+	cmd.SetVal(true)
+	return cmd
+}
+
+func (p *errIngressRPDPipeTracker) Exec(ctx context.Context) ([]redis.Cmder, error) {
+	return nil, redis.ErrClosed
+}
+
+type errIngressRPDRedisMock struct {
+	mockRedisClient
+}
+
+func (m *errIngressRPDRedisMock) Pipeline() redis.Pipeliner {
+	return &errIngressRPDPipeTracker{
+		mockPipeliner: mockPipeliner{
+			incrCmd: redis.NewIntCmd(context.Background()),
+			doCmd:   redis.NewCmd(context.Background()),
+		},
+	}
+}
+
 func TestUnifiedFilter_applyLuaGoPrechecks_ingressRPDHandledExternally_holdout(t *testing.T) {
 	t.Parallel()
 	ctx := attachFilterDeadline(t.Context(), time.Second)
@@ -92,4 +120,51 @@ func TestUnifiedFilter_applyLuaGoPrechecks_ingressRPDHandledExternally_holdout(t
 	f.SetIngressRPDHandledExternally(false)
 	require.NoError(t, f.ApplyLuaGoPrechecks(ctx, evt, campInfo, redisClient, now))
 	require.Equal(t, 1, redisClient.incrCalls, "without external flag UnifiedFilter must INCR")
+}
+
+func TestUnifiedFilter_checkIngressRPD_redisError_failClosed_holdout(t *testing.T) {
+	t.Parallel()
+	ctx := attachFilterDeadline(t.Context(), time.Second)
+	campID := uuid.New()
+	custID := uuid.New()
+	now := time.Date(2026, 8, 24, 12, 0, 0, 0, time.UTC)
+	campInfo := &domain.Campaign{
+		ID:         campID,
+		CustomerID: custID,
+	}
+	evt := &domain.Event{
+		Type:       "impression",
+		CampaignID: campID,
+		ClickID:    uuid.NewString(),
+	}
+	reg := &entitlementsTestRegistry{maxRPD: 100}
+	f := NewUnifiedFilter(nil, nil, reg, nil, 0, time.Minute, time.Hour, time.Hour, 100, 10, "events", 1000)
+
+	err := f.ApplyLuaGoPrechecks(ctx, evt, campInfo, &errIngressRPDRedisMock{}, now)
+	require.Error(t, err)
+	kind, ok := classifyFilterErr(err)
+	require.True(t, ok)
+	assert.Equal(t, filterRejectInfra, kind)
+}
+
+func TestUnifiedFilter_checkIngressRPD_nilRedis_failClosed_holdout(t *testing.T) {
+	t.Parallel()
+	ctx := attachFilterDeadline(t.Context(), time.Second)
+	campID := uuid.New()
+	custID := uuid.New()
+	now := time.Date(2026, 8, 24, 12, 0, 0, 0, time.UTC)
+	campInfo := &domain.Campaign{
+		ID:         campID,
+		CustomerID: custID,
+	}
+	evt := &domain.Event{
+		Type:       "impression",
+		CampaignID: campID,
+		ClickID:    uuid.NewString(),
+	}
+	reg := &entitlementsTestRegistry{maxRPD: 100}
+	f := NewUnifiedFilter(nil, nil, reg, nil, 0, time.Minute, time.Hour, time.Hour, 100, 10, "events", 1000)
+
+	err := f.ApplyLuaGoPrechecks(ctx, evt, campInfo, nil, now)
+	require.ErrorIs(t, err, ErrShardUnavailable)
 }

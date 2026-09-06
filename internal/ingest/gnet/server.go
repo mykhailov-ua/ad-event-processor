@@ -1,7 +1,6 @@
 package gnet
 
 import (
-	"bytes"
 	"context"
 	"errors"
 	"log/slog"
@@ -155,14 +154,6 @@ func (s *Server) write(c pkgnet.Conn, data []byte, ctx *ConnContext) {
 
 func (s *Server) writeClose(c pkgnet.Conn, data []byte, ctx *ConnContext) {
 	s.writeMaybeClose(c, data, ctx, true)
-}
-
-func (s *Server) writeFilterReject(c pkgnet.Conn, data []byte, ctx *ConnContext) {
-	if s != nil && s.workerPool != nil && bytes.Equal(data, respDuplicate) {
-		s.writeClose(c, data, ctx)
-		return
-	}
-	s.write(c, data, ctx)
 }
 
 func (s *Server) writeMaybeClose(c pkgnet.Conn, data []byte, ctx *ConnContext, closeAfter bool) {
@@ -346,7 +337,7 @@ func (s *Server) OnTraffic(c pkgnet.Conn) (action pkgnet.Action) {
 }
 
 // runOffloadedRequest runs Tier B on a pinned worker: React, sync FilterEngine.Check (incl. EVALSHA), response write.
-func (s *Server) runOffloadedRequest(WorkerID int, ctx *ConnContext) {
+func (s *Server) runOffloadedRequest(workerID int, ctx *ConnContext) {
 	if ctx == nil {
 		return
 	}
@@ -364,7 +355,7 @@ func (s *Server) runOffloadedRequest(WorkerID int, ctx *ConnContext) {
 		}
 	}()
 
-	ctx.WorkerID = WorkerID
+	ctx.WorkerID = workerID
 	c := ctx.OffloadConn
 	if c == nil {
 		return

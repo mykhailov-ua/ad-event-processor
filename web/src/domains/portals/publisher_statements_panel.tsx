@@ -52,25 +52,25 @@ export function PublisherStatementsPanel({
         <EmptyState title="No statements" description="Publisher revenue statements are empty." />
       ) : (
         <DirectoryTable>
-            <TableHeader>
-              <TableRow>
-                <DirectoryTableHead>ID</DirectoryTableHead>
-                <DirectoryTableHead>Campaign</DirectoryTableHead>
-                <DirectoryTableHead>Amount (micro)</DirectoryTableHead>
-                <DirectoryTableHead>Created</DirectoryTableHead>
+          <TableHeader>
+            <TableRow>
+              <DirectoryTableHead>ID</DirectoryTableHead>
+              <DirectoryTableHead>Campaign</DirectoryTableHead>
+              <DirectoryTableHead>Amount (micro)</DirectoryTableHead>
+              <DirectoryTableHead>Created</DirectoryTableHead>
+            </TableRow>
+          </TableHeader>
+          <TableBody>
+            {(statements ?? []).map((row) => (
+              <TableRow key={String(row.id ?? row.idempotency_hash ?? row.created_at)}>
+                <TableCell>{row.id ?? ''}</TableCell>
+                <TableCell className="font-mono text-xs">{row.campaign_id ?? ''}</TableCell>
+                <TableCell>{displayMicro(row.amount_micro)}</TableCell>
+                <TableCell>{displayTimestamp(row.created_at)}</TableCell>
               </TableRow>
-            </TableHeader>
-            <TableBody>
-              {(statements ?? []).map((row) => (
-                <TableRow key={String(row.id ?? row.idempotency_hash ?? row.created_at)}>
-                  <TableCell>{row.id ?? ''}</TableCell>
-                  <TableCell className="font-mono text-xs">{row.campaign_id ?? ''}</TableCell>
-                  <TableCell>{displayMicro(row.amount_micro)}</TableCell>
-                  <TableCell>{displayTimestamp(row.created_at)}</TableCell>
-                </TableRow>
-              ))}
-            </TableBody>
-          </DirectoryTable>
+            ))}
+          </TableBody>
+        </DirectoryTable>
       )}
 
       {error && hasSnapshot ? portalsPanelError(error, 'Refresh failed') : null}

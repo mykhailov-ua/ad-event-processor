@@ -44,9 +44,7 @@ function Popover({
   const triggerRef = React.useRef<HTMLElement | null>(null);
 
   return (
-    <PopoverContext.Provider
-      value={{ open: Boolean(isOpen), setOpen: setIsOpen, triggerRef }}
-    >
+    <PopoverContext.Provider value={{ open: Boolean(isOpen), setOpen: setIsOpen, triggerRef }}>
       {children}
     </PopoverContext.Provider>
   );
@@ -106,7 +104,7 @@ PopoverTrigger.displayName = 'PopoverTrigger';
 const PopoverAnchor = React.forwardRef<HTMLDivElement, React.HTMLAttributes<HTMLDivElement>>(
   ({ className, ...props }, ref) => (
     <div ref={ref} className={cn('inline-flex', className)} {...props} />
-  ),
+  )
 );
 PopoverAnchor.displayName = 'PopoverAnchor';
 
@@ -134,7 +132,7 @@ const PopoverContent = React.forwardRef<
       style,
       ...props
     },
-    ref,
+    ref
   ) => {
     const { open, setOpen, triggerRef } = usePopoverContext();
     const contentRef = React.useRef<HTMLDivElement | null>(null);
@@ -179,7 +177,7 @@ const PopoverContent = React.forwardRef<
         }
         left = Math.max(
           edgePadding,
-          Math.min(left, window.innerWidth - contentWidth - edgePadding),
+          Math.min(left, window.innerWidth - contentWidth - edgePadding)
         );
         setPosition({ ...base, left });
       };
@@ -229,7 +227,7 @@ const PopoverContent = React.forwardRef<
             className={cn(
               adminChrome.panel,
               'shadow-lg',
-              flush ? 'w-auto max-w-[min(calc(100vw-1rem),44rem)]' : 'w-full',
+              flush ? 'w-auto max-w-[min(calc(100vw-1rem),44rem)]' : 'w-full'
             )}
             style={{ minWidth: triggerRef.current?.getBoundingClientRect().width }}
           >
@@ -239,7 +237,7 @@ const PopoverContent = React.forwardRef<
                   'ui-scrollbar max-h-[min(70vh,32rem)] overflow-y-auto overflow-x-auto',
                 scrollMode === 'inner' && 'max-h-[min(70vh,32rem)] overflow-hidden',
                 scrollMode === 'none' && 'overflow-visible',
-                !flush && 'p-4',
+                !flush && 'p-4'
               )}
             >
               {children}
@@ -248,7 +246,7 @@ const PopoverContent = React.forwardRef<
         </div>
       </OverlayRoot>
     );
-  },
+  }
 );
 PopoverContent.displayName = 'PopoverContent';
 

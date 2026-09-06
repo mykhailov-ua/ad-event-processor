@@ -17,7 +17,7 @@ export function defaultCampaignListStatsRange(): CampaignListStatsRange {
 
 export function parseCampaignListStatsRange(
   fromRaw: string | null,
-  toRaw: string | null,
+  toRaw: string | null
 ): CampaignListStatsRange {
   const fallback = defaultCampaignListStatsRange();
   const from = fromRaw?.trim() || fallback.from;
@@ -51,7 +51,7 @@ export function isCampaignListStatsRangeWithinLimit(range: CampaignListStatsRang
 /** Maps DateRangePicker Apply output (datetime-local) to wire ISO bounds. */
 export function campaignListStatsRangeFromDatetimeLocal(
   fromLocal: string,
-  toLocal: string,
+  toLocal: string
 ): CampaignListStatsRange | null {
   if (!fromLocal.trim() || !toLocal.trim()) {
     return null;
@@ -66,7 +66,7 @@ export function campaignListStatsRangeFromDatetimeLocal(
 
 /** Legacy preset param; maps to a bounded range when stats_from/stats_to are absent. */
 export function legacyStatsRangeFromPreset(
-  preset: string | null,
+  preset: string | null
 ): CampaignListStatsRange | undefined {
   if (!preset || preset === 'all_time') {
     return undefined;
@@ -105,7 +105,7 @@ export function legacyStatsRangeFromPreset(
 export function resolveCampaignListStatsRange(
   fromRaw: string | null,
   toRaw: string | null,
-  legacyPresetRaw: string | null,
+  legacyPresetRaw: string | null
 ): CampaignListStatsRange {
   if (fromRaw?.trim() || toRaw?.trim()) {
     return parseCampaignListStatsRange(fromRaw, toRaw);
@@ -119,6 +119,6 @@ function startOfUtcDay(date: Date): Date {
 
 function endOfUtcDay(date: Date): Date {
   return new Date(
-    Date.UTC(date.getUTCFullYear(), date.getUTCMonth(), date.getUTCDate(), 23, 59, 59, 999),
+    Date.UTC(date.getUTCFullYear(), date.getUTCMonth(), date.getUTCDate(), 23, 59, 59, 999)
   );
 }

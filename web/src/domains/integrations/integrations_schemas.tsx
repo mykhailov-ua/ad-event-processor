@@ -159,42 +159,42 @@ export function IntegrationsSchemas({
               <EmptyState title="No schemas" description="Integration schema catalog is empty." />
             ) : (
               <DirectoryTable>
-                  <TableHeader>
-                    <TableRow>
-                      <DirectoryTableHead>Name</DirectoryTableHead>
-                      <DirectoryTableHead>Kind</DirectoryTableHead>
-                      <DirectoryTableHead>Version</DirectoryTableHead>
-                      <DirectoryTableHead>Updated</DirectoryTableHead>
-                      <DirectoryTableHead className="w-[5rem]">Actions</DirectoryTableHead>
+                <TableHeader>
+                  <TableRow>
+                    <DirectoryTableHead>Name</DirectoryTableHead>
+                    <DirectoryTableHead>Kind</DirectoryTableHead>
+                    <DirectoryTableHead>Version</DirectoryTableHead>
+                    <DirectoryTableHead>Updated</DirectoryTableHead>
+                    <DirectoryTableHead className="w-[5rem]">Actions</DirectoryTableHead>
+                  </TableRow>
+                </TableHeader>
+                <TableBody>
+                  {schemas.map((row) => (
+                    <TableRow
+                      key={row.id}
+                      className="cursor-pointer"
+                      onClick={() => applyForm.onPrefillFromSchema(row)}
+                    >
+                      <TableCell>{row.name}</TableCell>
+                      <TableCell>{row.kind}</TableCell>
+                      <TableCell>{row.version}</TableCell>
+                      <TableCell>{displayTimestamp(row.updated_at)}</TableCell>
+                      <TableCell>
+                        <Button
+                          type="button"
+                          variant="outline"
+                          onClick={(event) => {
+                            event.stopPropagation();
+                            viewSchema.onView(row);
+                          }}
+                        >
+                          View
+                        </Button>
+                      </TableCell>
                     </TableRow>
-                  </TableHeader>
-                  <TableBody>
-                    {schemas.map((row) => (
-                      <TableRow
-                        key={row.id}
-                        className="cursor-pointer"
-                        onClick={() => applyForm.onPrefillFromSchema(row)}
-                      >
-                        <TableCell>{row.name}</TableCell>
-                        <TableCell>{row.kind}</TableCell>
-                        <TableCell>{row.version}</TableCell>
-                        <TableCell>{displayTimestamp(row.updated_at)}</TableCell>
-                        <TableCell>
-                          <Button
-                            type="button"
-                            variant="outline"
-                            onClick={(event) => {
-                              event.stopPropagation();
-                              viewSchema.onView(row);
-                            }}
-                          >
-                            View
-                          </Button>
-                        </TableCell>
-                      </TableRow>
-                    ))}
-                  </TableBody>
-                </DirectoryTable>
+                  ))}
+                </TableBody>
+              </DirectoryTable>
             )}
           </div>
 
@@ -212,12 +212,10 @@ export function IntegrationsSchemas({
                   Close
                 </Button>
               </div>
-              <pre className="ui-scrollbar overflow-x-auto rounded-2xl border border-border bg-muted p-4 text-xs text-foreground">
+              <pre className="ui-code-block overflow-x-auto">
                 {JSON.stringify(viewSchema.schema.schema, null, 2)}
               </pre>
-              <JsonPayloadView
-                payload={viewSchema.schema as unknown as Record<string, unknown>}
-              />
+              <JsonPayloadView payload={viewSchema.schema} />
             </section>
           ) : null}
         </section>
@@ -238,28 +236,31 @@ export function IntegrationsSchemas({
           <div className="grid gap-2">
             <h2 className="text-base font-semibold">Templates</h2>
             {templates.length === 0 ? (
-              <EmptyState title="No templates" description="Integration template catalog is empty." />
+              <EmptyState
+                title="No templates"
+                description="Integration template catalog is empty."
+              />
             ) : (
               <DirectoryTable>
-                  <TableHeader>
-                    <TableRow>
-                      <DirectoryTableHead>Name</DirectoryTableHead>
-                      <DirectoryTableHead>Kind</DirectoryTableHead>
-                      <DirectoryTableHead>Category</DirectoryTableHead>
-                      <DirectoryTableHead>Version</DirectoryTableHead>
+                <TableHeader>
+                  <TableRow>
+                    <DirectoryTableHead>Name</DirectoryTableHead>
+                    <DirectoryTableHead>Kind</DirectoryTableHead>
+                    <DirectoryTableHead>Category</DirectoryTableHead>
+                    <DirectoryTableHead>Version</DirectoryTableHead>
+                  </TableRow>
+                </TableHeader>
+                <TableBody>
+                  {templates.map((row) => (
+                    <TableRow key={`${row.name}-${row.file}`}>
+                      <TableCell>{row.name}</TableCell>
+                      <TableCell>{row.kind}</TableCell>
+                      <TableCell>{row.category}</TableCell>
+                      <TableCell>{row.version}</TableCell>
                     </TableRow>
-                  </TableHeader>
-                  <TableBody>
-                    {templates.map((row) => (
-                      <TableRow key={`${row.name}-${row.file}`}>
-                        <TableCell>{row.name}</TableCell>
-                        <TableCell>{row.kind}</TableCell>
-                        <TableCell>{row.category}</TableCell>
-                        <TableCell>{row.version}</TableCell>
-                      </TableRow>
-                    ))}
-                  </TableBody>
-                </DirectoryTable>
+                  ))}
+                </TableBody>
+              </DirectoryTable>
             )}
           </div>
         </section>

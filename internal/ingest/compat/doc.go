@@ -26,7 +26,7 @@
 //   - Rejected adding domain rules here: new logic belongs in filter, stream, or domain; compat only shrinks over time.
 //   - No RCU or snapshot layer: compat is not a runtime facade, only a compile-time name bridge.
 //   - No sync hot-path I/O: forwards are in-process calls; background loaders stay in filter/stream/watchers/conn.
-//   - Rejected growing compat past drain milestone: delete forwards as bundles import owning packages directly.
+//   - Rejected growing compat past compat drain: delete forwards as bundles import owning packages directly.
 //
 // Forbidden:
 //   - New domain rules, SQL, or filter chain logic (belongs in filter, stream, or ingest handlers).

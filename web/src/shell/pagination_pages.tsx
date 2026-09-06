@@ -45,8 +45,8 @@ export function PaginationPages({
             aria-current={active ? 'page' : undefined}
             aria-label={`Page ${pageNumber}`}
             className={cn(
-              'min-w-7 rounded-[5px] px-2 text-[13px] tabular-nums',
-              active && 'border-primary bg-primary text-primary-foreground hover:bg-primary/90',
+              'min-w-7 px-2 text-[13px] tabular-nums',
+              active && 'border-primary bg-primary text-primary-foreground hover:bg-primary/90'
             )}
             disabled={disabled}
             type="button"

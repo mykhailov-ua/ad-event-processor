@@ -13,7 +13,7 @@ import type {
 
 export async function login(
   body: AuthLoginRequest,
-  signal?: AbortSignal,
+  signal?: AbortSignal
 ): Promise<AuthLoginResponse> {
   return apiJson<AuthLoginResponse>('/api/v1/auth/login', {
     method: 'POST',
@@ -70,7 +70,7 @@ async function composeSessionBootstrap(signal?: AbortSignal): Promise<SessionBoo
 export async function getSessionBootstrap(signal?: AbortSignal): Promise<SessionBootstrap | null> {
   try {
     return await apiJson<SessionBootstrap>('/api/v1/session/bootstrap', { signal });
-  } catch (err) {
+  } catch (err: unknown) {
     if (!(err instanceof ApiError) || (err.status !== 401 && err.status !== 404)) {
       throw err;
     }
@@ -87,7 +87,7 @@ export async function getSessionBootstrap(signal?: AbortSignal): Promise<Session
 
 export async function publicActivate(
   body: PublicActivateRequest,
-  signal?: AbortSignal,
+  signal?: AbortSignal
 ): Promise<PublicLoginResponse> {
   return apiJson<PublicLoginResponse>('/api/v1/public/activate', {
     method: 'POST',
@@ -98,7 +98,7 @@ export async function publicActivate(
 
 export async function publicAcceptInvite(
   body: PublicAcceptInviteRequest,
-  signal?: AbortSignal,
+  signal?: AbortSignal
 ): Promise<PublicLoginResponse> {
   return apiJson<PublicLoginResponse>('/api/v1/public/invite/accept', {
     method: 'POST',

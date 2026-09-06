@@ -43,7 +43,7 @@ message AdStreamEvent {
   // Fraud score range [0, 100].
   uint32 fraud_score = 8;
   bytes fraud_reason = 9;
-  // Silent reject means processed/logged but excluded from billing.
+  // Non-blocking fraud response: processed and logged but excluded from billing.
   bool silent_reject_event = 10;
   bytes user_id = 11;
   bool review_routed_event = 12;

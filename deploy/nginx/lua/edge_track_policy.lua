@@ -13,22 +13,23 @@
 -- - else -> run(): EDGE_BODY_MODE full|stream|peek -> run_full|run_stream|run_peek.
 --
 -- POST /track parity (must match http1TrackEdgePolicy + parser.mdc):
--- - Content-Length required; chunked or obfuscated TE -> 411 chunked_reject metric.
+-- - Content-Length required; any Transfer-Encoding (chunked, gzip, etc.) -> 411 chunked_reject metric.
 -- - POST /openrtb/bid: chunked allowed; socket peek timeout 500 ms, MAX_SCAN_BYTES window.
 --
 -- apply_campaign_rl pipeline:
 -- - edge-fraud-tier tier block -> 403 fraud block metric + Retry-After.
 -- - edge-rl.allow false -> 429 campaign RL metric + Retry-After.
 -- - pass -> track_policy_pass metric.
+-- - ngx.ctx.campaign_id from edge-campaign-id.resolve_campaign_id (body DFA wins; trusted header fallback).
 --
 -- Constants and limits:
 -- - EDGE_MAX_BODY_BYTES default MAX_SCAN_BYTES 8192 (env EDGE_MAX_BODY_BYTES or /etc/nginx/lua/.edge_max_body_bytes).
 -- - INGRESS_SCHEMA TRACKER_INGRESS_SCHEMA default openrtb_3 (env or .edge_ingress_schema file).
--- - EDGE_BODY_MODE default full (env or .edge_body_mode): full|stream|peek.
+-- - EDGE_BODY_MODE default full (env or .edge_body_mode at module load): full|stream|peek.
 -- - edge-parse-dfa MAX_BODY_BYTES 1048576 for CL oversize; MAX_SCAN_BYTES 8192 for scan/peek.
 -- - get_uri_args limit 100 on /click; peek socket timeout 500 ms.
 --
--- HTTP: 411 missing CL/chunked /track; 413 oversize; 429 RL; 403 fraud tier block.
+-- HTTP: 411 missing CL/chunked /track; 413 oversize; 400 malformed body, campaign_id scan required, body read fail; 429 RL; 403 fraud tier block.
 --
 -- Forbidden: chunked /track; drift from http1IngressCanonical corpora; claiming edge policy replaces tracker FilterEngine.
 --
@@ -41,6 +42,7 @@ local edge_metrics = require "edge-metrics"
 local edge_parse_dfa = require "edge-parse-dfa"
 local edge_fraud_tier = require "edge-fraud-tier"
 local edge_click_query = require "edge-click-query"
+local edge_campaign_id = require "edge-campaign-id"
 
 local _M = {}
 
@@ -74,6 +76,7 @@ end
 
 local EDGE_MAX_BODY = tonumber(config_string("max_body_bytes", "EDGE_MAX_BODY_BYTES", tostring(MAX_SCAN_BYTES)))
 local INGRESS_SCHEMA = config_string("ingress_schema", "TRACKER_INGRESS_SCHEMA", "openrtb_3")
+local BODY_MODE = config_string("body_mode", "EDGE_BODY_MODE", "full")
 
 local request_headers
 
@@ -89,8 +92,13 @@ local function header_value(name)
     return request_headers[name] or request_headers[string.lower(name)]
 end
 
--- Parity with http1TrackEdgePolicy: obfuscated TE (tab/vertical tab) treated as non-chunked on /track.
--- Chunked on POST /track -> 411; allowed only on POST /openrtb/bid (run_openrtb).
+-- Parity with http1TrackEdgePolicy: any Transfer-Encoding on POST /track is rejected (chunked, gzip, obfuscated TE).
+-- Chunked on POST /openrtb/bid only (run_openrtb).
+local function transfer_encoding_present()
+    local te = header_value "Transfer-Encoding" or header_value "TE"
+    return te ~= nil and te ~= ""
+end
+
 local function transfer_encoding_chunked()
     local te = header_value "Transfer-Encoding" or header_value "TE"
     if not te or te == "" then
@@ -104,17 +112,36 @@ local function transfer_encoding_chunked()
 end
 
 local function fraud_score_from_headers()
-    local raw = header_value "X-Fraud-Score" or "0"
-    return tonumber(raw) or 0
+    edge_fraud_tier.sanitize_untrusted_fraud_score_headers()
+    return edge_fraud_tier.score_for_edge_rl()
 end
 
-local function campaign_id_from_headers()
-    return header_value "X-Campaign-Id"
+local function reject_parse_malformed()
+    edge_metrics.record_parse_malformed()
+    ngx.status = ngx.HTTP_BAD_REQUEST
+    ngx.say "malformed request body"
+    ngx.exit(ngx.HTTP_BAD_REQUEST)
+end
+
+local function reject_body_unavailable()
+    edge_metrics.record_body_read_failed()
+    ngx.status = ngx.HTTP_BAD_REQUEST
+    ngx.say "request body unavailable"
+    ngx.exit(ngx.HTTP_BAD_REQUEST)
 end
 
 local function reject_oversize()
     edge_metrics.record_parse_oversize()
     ngx.exit(ngx.HTTP_REQUEST_ENTITY_TOO_LARGE)
+end
+
+local function handle_parse_error(perr)
+    if perr == edge_parse_dfa.ERR_OVERSIZE then
+        reject_oversize()
+    end
+    if perr == edge_parse_dfa.ERR_MALFORMED then
+        reject_parse_malformed()
+    end
 end
 
 local function reject_chunked()
@@ -124,17 +151,33 @@ local function reject_chunked()
     ngx.exit(411)
 end
 
+local function reject_invalid_content_length()
+    edge_metrics.record_chunked_reject()
+    ngx.status = ngx.HTTP_BAD_REQUEST
+    ngx.say "invalid content-length"
+    ngx.exit(ngx.HTTP_BAD_REQUEST)
+end
+
 local function check_edge_limits(cl)
+    if cl and cl < 0 then
+        reject_invalid_content_length()
+    end
     if edge_parse_dfa.check_content_length(cl) == edge_parse_dfa.ERR_OVERSIZE then
         reject_oversize()
+    end
+    if edge_parse_dfa.check_content_length(cl) == edge_parse_dfa.ERR_MALFORMED then
+        reject_invalid_content_length()
     end
     if cl and cl > EDGE_MAX_BODY then
         reject_oversize()
     end
 end
 
--- POST /track: Content-Length mandatory; chunked rejected (TestChaos_CrossHop_NginxGnet differential_count=0).
+-- POST /track: Content-Length mandatory; any Transfer-Encoding rejected (TestChaos_CrossHop_NginxGnet differential_count=0).
 local function require_content_length()
+    if transfer_encoding_present() then
+        reject_chunked()
+    end
     local cl = content_length()
     if not cl then
         reject_chunked()
@@ -165,9 +208,50 @@ local function apply_campaign_rl(campaign_id, fraud_score)
     if tier == "block" then
         reject_fraud_block(fraud_score)
     end
-    if campaign_id and campaign_id ~= "" and not edge_rl.allow(campaign_id, fraud_score) then
+    if not edge_rl.allow(campaign_id, fraud_score) then
         reject_rate_limited(fraud_score)
     end
+end
+
+local function finish_policy_without_body(fraud_score, stream_metric)
+    local campaign_id = edge_campaign_id.resolve_campaign_id(nil)
+    if campaign_id and campaign_id ~= "" then
+        ngx.ctx.campaign_id = campaign_id
+    end
+    apply_campaign_rl(campaign_id, fraud_score)
+    if stream_metric then
+        edge_metrics.record_body_stream()
+    end
+    edge_metrics.record_track_policy_pass()
+end
+
+local function reject_campaign_id_scan_required()
+    edge_metrics.record_campaign_id_scan_reject()
+    ngx.status = ngx.HTTP_BAD_REQUEST
+    ngx.say "campaign_id required"
+    ngx.exit(ngx.HTTP_BAD_REQUEST)
+end
+
+-- campaign_id_scan_evasion: nil DFA id at scan/CL cap without trusted header must not fall back to IP-only edge_rl.
+-- malformed_dfa_no_proxy: ERR_MALFORMED from DFA must not proxy to tracker.
+local function resolve_campaign_id_for_rl(body, body_id, perr, cl)
+    handle_parse_error(perr)
+    local campaign_id = edge_campaign_id.resolve_campaign_id(body_id)
+    if campaign_id and campaign_id ~= "" then
+        return campaign_id
+    end
+    if edge_campaign_id.scan_evasion(body, body_id, perr, cl) then
+        reject_campaign_id_scan_required()
+    end
+    return campaign_id
+end
+
+local function apply_track_campaign_policy(body, body_id, perr, cl, fraud_score)
+    local campaign_id = resolve_campaign_id_for_rl(body, body_id, perr, cl)
+    if campaign_id and campaign_id ~= "" then
+        ngx.ctx.campaign_id = campaign_id
+    end
+    apply_campaign_rl(campaign_id, fraud_score)
 end
 
 local function read_bounded_body(cl)
@@ -177,7 +261,7 @@ local function read_bounded_body(cl)
     local read_ok, read_err = pcall(ngx.req.read_body)
     if not read_ok then
         ngx.log(ngx.ERR, "failed to read body: ", read_err)
-        return nil, cl
+        reject_body_unavailable()
     end
 
     local body = ngx.req.get_body_data()
@@ -196,6 +280,9 @@ local function read_bounded_body(cl)
     elseif #body > EDGE_MAX_BODY then
         reject_oversize()
     end
+    if not body and cl and cl > 0 then
+        reject_body_unavailable()
+    end
     return body, cl
 end
 
@@ -204,14 +291,8 @@ function _M.run_full()
     local cl = require_content_length()
     local body, _ = read_bounded_body(cl)
     local fraud_score = fraud_score_from_headers()
-    local campaign_id, perr = edge_parse_dfa.extract_campaign_id(body, cl, INGRESS_SCHEMA)
-    if perr == edge_parse_dfa.ERR_OVERSIZE then
-        reject_oversize()
-    end
-    if campaign_id and campaign_id ~= "" then
-        ngx.ctx.campaign_id = campaign_id
-    end
-    apply_campaign_rl(campaign_id, fraud_score)
+    local body_id, perr = edge_parse_dfa.extract_campaign_id(body, cl, INGRESS_SCHEMA)
+    apply_track_campaign_policy(body, body_id, perr, cl, fraud_score)
     edge_metrics.record_track_policy_pass()
 end
 
@@ -220,11 +301,13 @@ function _M.run_stream()
     local cl = require_content_length()
     check_edge_limits(cl)
     local fraud_score = fraud_score_from_headers()
-    local hdr_cid = campaign_id_from_headers()
-    if hdr_cid and hdr_cid ~= "" then
-        ngx.ctx.campaign_id = hdr_cid
+    edge_campaign_id.sanitize_untrusted_campaign_id_headers()
+    local campaign_id = edge_campaign_id.resolve_campaign_id(nil)
+    if not campaign_id or campaign_id == "" then
+        reject_campaign_id_scan_required()
     end
-    apply_campaign_rl(hdr_cid, fraud_score)
+    ngx.ctx.campaign_id = campaign_id
+    apply_campaign_rl(campaign_id, fraud_score)
     edge_metrics.record_body_stream()
     edge_metrics.record_track_policy_pass()
 end
@@ -237,9 +320,7 @@ function _M.run_peek()
     local sock, sock_err = ngx.req.socket()
     if not sock then
         ngx.log(ngx.ERR, "edge peek: socket unavailable: ", sock_err)
-        edge_metrics.record_body_stream()
-        edge_metrics.record_track_policy_pass()
-        return
+        reject_body_unavailable()
     end
 
     sock:settimeout(500)
@@ -248,20 +329,14 @@ function _M.run_peek()
 
     local fraud_score = fraud_score_from_headers()
     if chunk and #chunk > 0 then
-        local campaign_id, perr = edge_parse_dfa.extract_campaign_id(chunk, cl, INGRESS_SCHEMA)
-        if perr == edge_parse_dfa.ERR_OVERSIZE then
-            reject_oversize()
-        end
+        local body_id, perr = edge_parse_dfa.extract_campaign_id(chunk, cl, INGRESS_SCHEMA)
+        apply_track_campaign_policy(chunk, body_id, perr, cl, fraud_score)
+    else
+        local campaign_id = edge_campaign_id.resolve_campaign_id(nil)
         if campaign_id and campaign_id ~= "" then
             ngx.ctx.campaign_id = campaign_id
         end
         apply_campaign_rl(campaign_id, fraud_score)
-    else
-        local hdr_cid = campaign_id_from_headers()
-        if hdr_cid and hdr_cid ~= "" then
-            ngx.ctx.campaign_id = hdr_cid
-        end
-        apply_campaign_rl(hdr_cid, fraud_score)
     end
 
     edge_metrics.record_track_policy_pass()
@@ -299,28 +374,20 @@ function _M.run_openrtb()
         local sock, sock_err = ngx.req.socket()
         if not sock then
             ngx.log(ngx.ERR, "edge openrtb peek: socket unavailable: ", sock_err)
-            edge_metrics.record_body_stream()
-            edge_metrics.record_track_policy_pass()
-            return
+            reject_body_unavailable()
         end
         sock:settimeout(500)
         local chunk = sock:receive(MAX_SCAN_BYTES)
         edge_metrics.record_body_peek()
         if chunk and #chunk > 0 then
-            local campaign_id, perr = edge_parse_dfa.extract_campaign_id(chunk, cl, INGRESS_SCHEMA)
-            if perr == edge_parse_dfa.ERR_OVERSIZE then
-                reject_oversize()
-            end
+            local body_id, perr = edge_parse_dfa.extract_campaign_id(chunk, cl, INGRESS_SCHEMA)
+            apply_track_campaign_policy(chunk, body_id, perr, cl, fraud_score)
+        else
+            local campaign_id = edge_campaign_id.resolve_campaign_id(nil)
             if campaign_id and campaign_id ~= "" then
                 ngx.ctx.campaign_id = campaign_id
             end
             apply_campaign_rl(campaign_id, fraud_score)
-        else
-            local hdr_cid = campaign_id_from_headers()
-            if hdr_cid and hdr_cid ~= "" then
-                ngx.ctx.campaign_id = hdr_cid
-            end
-            apply_campaign_rl(hdr_cid, fraud_score)
         end
         edge_metrics.record_track_policy_pass()
         return
@@ -328,19 +395,23 @@ function _M.run_openrtb()
 
     local cl = require_content_length()
     local body, _ = read_bounded_body(cl)
-    local campaign_id, perr = edge_parse_dfa.extract_campaign_id(body, cl, INGRESS_SCHEMA)
-    if perr == edge_parse_dfa.ERR_OVERSIZE then
-        reject_oversize()
-    end
-    if campaign_id and campaign_id ~= "" then
-        ngx.ctx.campaign_id = campaign_id
-    end
-    apply_campaign_rl(campaign_id, fraud_score)
+    local body_id, perr = edge_parse_dfa.extract_campaign_id(body, cl, INGRESS_SCHEMA)
+    apply_track_campaign_policy(body, body_id, perr, cl, fraud_score)
+    edge_metrics.record_track_policy_pass()
+end
+
+function _M.apply_parse_error_gate(perr)
+    handle_parse_error(perr)
+end
+
+function _M.run_options_track()
+    local fraud_score = fraud_score_from_headers()
+    apply_campaign_rl(nil, fraud_score)
     edge_metrics.record_track_policy_pass()
 end
 
 function _M.run()
-    local mode = config_string("body_mode", "EDGE_BODY_MODE", "full")
+    local mode = BODY_MODE
     if mode == "stream" then
         _M.run_stream()
     elseif mode == "peek" then

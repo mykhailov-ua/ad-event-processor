@@ -1,8 +1,8 @@
 import { FilterApplyButton } from '@/shell/action_buttons';
 import {
-  DirectoryFilterForm,
   FilterField,
   FilterPanel,
+  INLINE_FILTER_ACTION_GRID_WIDE_CLASS,
 } from '@/shell/filter_panel';
 import { Input } from '@/components/ui/input';
 
@@ -22,8 +22,8 @@ export function CampaignScopeBar({
   return (
     <FilterPanel className="gap-2">
       <h2 className="text-base font-semibold">Campaign scope</h2>
-      <DirectoryFilterForm
-        className="max-w-xl grid-cols-[1fr_auto]"
+      <form
+        className={INLINE_FILTER_ACTION_GRID_WIDE_CLASS}
         onSubmit={(event) => {
           event.preventDefault();
           onApply();
@@ -37,7 +37,7 @@ export function CampaignScopeBar({
           />
         </FilterField>
         <FilterApplyButton>Apply</FilterApplyButton>
-      </DirectoryFilterForm>
+      </form>
       {appliedCampaignId ? (
         <p className="text-sm text-muted-foreground">
           Active scope:{' '}

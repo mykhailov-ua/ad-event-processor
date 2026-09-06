@@ -9,7 +9,7 @@ import (
 	"github.com/jackc/pgx/v5/pgxpool"
 )
 
-// PostgresPools: separate pgx pools so settlement lanes cannot exhaust tracker read conns.
+// PostgresPools separate pgx pools so settlement lanes cannot exhaust tracker read conns.
 type PostgresPools struct {
 	Read   *pgxpool.Pool
 	Settle *pgxpool.Pool
@@ -19,13 +19,18 @@ func ConnectPostgresPools(ctx context.Context, cfg *config.Config) (*PostgresPoo
 	if cfg == nil {
 		return nil, fmt.Errorf("config is nil")
 	}
+	if err := cfg.ValidatePostgresPoolBudget(); err != nil {
+		return nil, err
+	}
 	lanes := cfg.SettlementLaneCount()
 	settleMax := cfg.PostgresPoolSettleConns(lanes)
 	readMax := cfg.DBTrackerMaxConns
 	if readMax <= 0 {
 		readMax = 4
 	}
-	readPool, err := Connect(ctx, string(cfg.DBDSN), readMax, cfg.DBMinConns)
+	readPool, err := Connect(ctx, string(cfg.DBDSN), readMax, cfg.DBMinConns, PoolConfig{
+		StatementTimeout: cfg.AdminPGStatementTimeout(),
+	})
 	if err != nil {
 		return nil, fmt.Errorf("read pool: %w", err)
 	}

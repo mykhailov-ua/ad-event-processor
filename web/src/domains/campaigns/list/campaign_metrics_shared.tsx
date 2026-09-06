@@ -2,11 +2,9 @@ import type { CSSProperties, ReactNode } from 'react';
 
 import type { Campaign, CampaignStats } from '@/api/types';
 import type { CampaignStatusTone } from '@/domains/campaigns/list/campaign_list_row_tone';
-import {
-  campaignBudgetUsedPercent,
-  formatBudgetUsedPercent,
-} from '@/lib/campaign_budget_used';
+import { campaignBudgetUsedPercent, formatBudgetUsedPercent } from '@/lib/campaign_budget_used';
 import { displayMoneyDecimal } from '@/lib/display';
+import { adminKit } from '@/lib/admin_kit';
 import { cn } from '@/lib/utils';
 
 export type CampaignWithMoneyDisplay = Campaign & {
@@ -40,7 +38,7 @@ export function MetricRow({ label, value }: { label: string; value: string }) {
 
 export function MetricTile({ label, value }: { label: string; value: string }) {
   return (
-    <div className="rounded-xl bg-muted/30 px-3 py-2">
+    <div className={cn('bg-muted/30 px-3 py-2', adminKit.panelRadius)}>
       <p className="text-ui-caption text-muted-foreground">{label}</p>
       <p className="whitespace-nowrap text-sm font-medium tabular-nums">{value}</p>
     </div>
@@ -59,9 +57,7 @@ export function MetricsSection({
   return (
     <section className="grid gap-3">
       <div className="flex items-center justify-between gap-2">
-        <h3 className="text-ui-caption font-medium tracking-wide text-muted-foreground">
-          {title}
-        </h3>
+        <h3 className="text-ui-caption font-medium tracking-wide text-muted-foreground">{title}</h3>
         {meta}
       </div>
       {children}
@@ -99,14 +95,16 @@ export function BudgetUsedSummary({
         {percent != null ? formatBudgetUsedPercent(percent) : '-'}
       </span>
       {moneySummary ? (
-        <p className="whitespace-nowrap text-xs tabular-nums text-muted-foreground">{moneySummary}</p>
+        <p className="whitespace-nowrap text-xs tabular-nums text-muted-foreground">
+          {moneySummary}
+        </p>
       ) : null}
       {showBar && percent != null ? (
         <div aria-hidden className="h-1.5 overflow-hidden rounded-full bg-muted">
           <div
             className={cn(
               'h-full rounded-full bg-primary transition-all',
-              percent >= 90 && 'bg-destructive',
+              percent >= 90 && 'bg-destructive'
             )}
             style={{ width: `${percent}%` }}
           />
@@ -184,7 +182,7 @@ export function HourlyTrendChart({
     const shellHeight = height + 28;
     return (
       <div
-        className="h-[var(--hourly-chart-shell-height)] rounded-xl bg-muted/25"
+        className={cn('h-[var(--hourly-chart-shell-height)] bg-muted/25', adminKit.panelRadius)}
         style={{ '--hourly-chart-shell-height': `${shellHeight}px` } as CSSProperties}
       >
         <div className="flex h-full items-center justify-center text-xs text-muted-foreground">
@@ -210,7 +208,7 @@ export function HourlyTrendChart({
         </div>
       </div>
 
-      <div className="relative rounded-xl bg-muted/20 px-2 pt-2">
+      <div className={cn('relative grid gap-2 bg-muted/20 p-2', adminKit.panelRadius)}>
         <svg
           aria-hidden
           className="block w-full"
@@ -253,7 +251,7 @@ export function HourlyTrendChart({
               <path
                 d={buildLinePath(clicks, width, height, padding)}
                 fill="none"
-                stroke="#3b82f6"
+                stroke="hsl(var(--chart-1) / 0.78)"
                 strokeWidth={1.75}
               />
             </>
@@ -271,13 +269,13 @@ export function HourlyTrendChart({
         </svg>
 
         {!hasActivity ? (
-          <p className="pb-2 text-center text-ui-caption text-muted-foreground">
+          <p className="m-0 text-center text-ui-caption text-muted-foreground">
             No delivery activity in the last 24 hours
           </p>
         ) : null}
 
         {firstLabel || lastLabel ? (
-          <div className="flex items-center justify-between px-1 pb-1.5 text-ui-mini tabular-nums text-muted-foreground">
+          <div className="flex items-center justify-between px-1 text-ui-mini tabular-nums text-muted-foreground">
             <span>{firstLabel ?? ''}</span>
             <span>{lastLabel ?? ''}</span>
           </div>

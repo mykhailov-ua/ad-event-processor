@@ -9,6 +9,7 @@ import {
   buildCampaignListWidthProbeQuery,
   listResponseCoversWidthProbeDataset,
   mergeCampaignIdsForMetricsBatch,
+  shouldFetchCampaignListWidthProbe,
 } from './campaign_list_width_probe.ts';
 
 test('buildCampaignListWidthProbeQuery mirrors list filters with probe sort', () => {
@@ -44,13 +45,23 @@ test('buildCampaignListWidthProbeQuery mirrors list filters with probe sort', ()
   assert.equal(probe.from, undefined);
 });
 
+test('listResponseCoversWidthProbeDataset true for empty filter result', () => {
+  assert.equal(
+    listResponseCoversWidthProbeDataset({
+      total: 0,
+      items: [],
+    }),
+    true
+  );
+});
+
 test('listResponseCoversWidthProbeDataset when all filtered rows are on the list response', () => {
   assert.equal(
     listResponseCoversWidthProbeDataset({
       total: 12,
       items: Array.from({ length: 12 }, (_, index) => ({ id: `c${index}` })),
     }),
-    true,
+    true
   );
 });
 
@@ -60,7 +71,7 @@ test('listResponseCoversWidthProbeDataset_holdout rejects duplicate row ids', ()
       total: 2,
       items: [{ id: 'c1' }, { id: 'c1' }],
     }),
-    false,
+    false
   );
 });
 
@@ -70,7 +81,7 @@ test('listResponseCoversWidthProbeDataset_holdout rejects empty row ids', () => 
       total: 2,
       items: [{ id: 'c1' }, { id: '' }],
     }),
-    false,
+    false
   );
 });
 
@@ -80,16 +91,47 @@ test('listResponseCoversWidthProbeDataset false when paginated or over probe cap
       total: 80,
       items: Array.from({ length: 50 }, (_, index) => ({ id: `c${index}` })),
     }),
-    false,
+    false
   );
   assert.equal(
     listResponseCoversWidthProbeDataset({
       total: 150,
       items: Array.from({ length: 100 }, (_, index) => ({ id: `c${index}` })),
     }),
-    false,
+    false
   );
   assert.equal(listResponseCoversWidthProbeDataset(undefined), false);
+});
+
+test('shouldFetchCampaignListWidthProbe waits for main list snapshot', () => {
+  assert.equal(shouldFetchCampaignListWidthProbe(undefined), false);
+});
+
+test('shouldFetchCampaignListWidthProbe_holdout skips covered and empty datasets', () => {
+  assert.equal(
+    shouldFetchCampaignListWidthProbe({
+      total: 0,
+      items: [],
+    }),
+    false
+  );
+  assert.equal(
+    shouldFetchCampaignListWidthProbe({
+      total: 3,
+      items: [{ id: 'c1' }, { id: 'c2' }, { id: 'c3' }],
+    }),
+    false
+  );
+});
+
+test('shouldFetchCampaignListWidthProbe true when paginated', () => {
+  assert.equal(
+    shouldFetchCampaignListWidthProbe({
+      total: 80,
+      items: Array.from({ length: 50 }, (_, index) => ({ id: `c${index}` })),
+    }),
+    true
+  );
 });
 
 test('mergeCampaignIdsForMetricsBatch dedupes page and probe ids', () => {
@@ -104,11 +146,8 @@ test('mergeCampaignIdsForMetricsBatch_holdout skips non-uuid ids', () => {
   assert.deepEqual(
     mergeCampaignIdsForMetricsBatch(
       ['6ba7b810-9dad-11d1-80b4-00c04fd430c8', 'not-a-uuid'],
-      [probeId, ''],
+      [probeId, '']
     ),
-    [
-      '6ba7b810-9dad-11d1-80b4-00c04fd430c8',
-      probeId,
-    ],
+    ['6ba7b810-9dad-11d1-80b4-00c04fd430c8', probeId]
   );
 });

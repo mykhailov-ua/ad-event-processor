@@ -13,7 +13,10 @@ test('audit campaigns toolbar claims vs DOM', async ({ page }) => {
   await gotoCampaigns(page);
 
   const claims = [
-    { name: 'Create button', locator: page.getByRole('button', { name: 'Create', exact: true }) },
+    {
+      name: 'Quick create button',
+      locator: page.getByRole('button', { name: 'Quick create', exact: true }),
+    },
     { name: 'Clone button', locator: page.getByRole('button', { name: 'Clone' }) },
     { name: 'Columns control', locator: page.getByRole('button', { name: /^Columns/ }) },
     { name: 'Export CSV', locator: page.getByRole('button', { name: 'Export CSV' }) },

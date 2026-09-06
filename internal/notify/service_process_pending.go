@@ -133,7 +133,7 @@ func (s *Service) markGroupSent(
 	isAggregated bool,
 ) (int, error) {
 	dbSentProvider := db.NullNotifierProvider{NotifierProvider: sentProvider, Valid: true}
-	errorMessage := pgtypeTextOptional(deliveryNote)
+	errorMessage := pgtypeText(deliveryNote)
 
 	if _, err := s.queries.UpdateNotificationStatus(ctx, db.UpdateNotificationStatusParams{
 		ID:           lead.ID,

@@ -173,3 +173,8 @@ func LatencyBudget(baseline time.Duration) time.Duration {
 	}
 	return baseline * 2
 }
+
+// LatencyBudgetBurst adds slack for concurrent /track bursts where baseline*2 is tight on shared CI hosts.
+func LatencyBudgetBurst(baseline time.Duration) time.Duration {
+	return LatencyBudget(baseline) + 5*time.Millisecond
+}

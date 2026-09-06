@@ -11,7 +11,7 @@ test('buildBreadcrumbs links campaign list but not bare campaign id before edit'
 
   assert.deepEqual(
     crumbs.map((crumb) => crumb.label),
-    ['Campaigns', 'Summer promo', 'Editor'],
+    ['Campaigns', 'Summer promo', 'Editor']
   );
   assert.equal(crumbs[0]?.href, '/campaigns');
   assert.equal(crumbs[1]?.href, undefined);
@@ -24,7 +24,10 @@ test('buildBreadcrumbs does not link billing invoices index without a list route
     [invoiceId]: 'INV-42',
   });
 
-  assert.deepEqual(crumbs.map((crumb) => crumb.label), ['Billing', 'Invoices', 'INV-42']);
+  assert.deepEqual(
+    crumbs.map((crumb) => crumb.label),
+    ['Billing', 'Invoices', 'INV-42']
+  );
   assert.equal(crumbs[0]?.href, '/billing');
   assert.equal(crumbs[1]?.href, undefined);
 });

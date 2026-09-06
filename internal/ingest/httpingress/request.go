@@ -7,6 +7,7 @@ type Request struct {
 	Path                  []byte
 	ContentType           []byte
 	ClientIP              []byte
+	RealIP                []byte
 	UserAgent             []byte
 	Accept                []byte
 	AcceptEncoding        []byte

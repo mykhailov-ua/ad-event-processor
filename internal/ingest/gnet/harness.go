@@ -239,14 +239,14 @@ func ServeGnetHarness(h *Server, inbound []byte) (pkgnet.Action, *GnetHarnessCon
 	return h.OnTraffic(c), c
 }
 
-func ParseGnetHTTPStatus(Resp []byte) int {
-	if len(Resp) < 12 || !bytes.HasPrefix(Resp, []byte("HTTP/1.1 ")) {
+func ParseGnetHTTPStatus(resp []byte) int {
+	if len(resp) < 12 || !bytes.HasPrefix(resp, []byte("HTTP/1.1 ")) {
 		return 0
 	}
 	code := 0
-	for i := 9; i < len(Resp) && Resp[i] != ' '; i++ {
-		if Resp[i] >= '0' && Resp[i] <= '9' {
-			code = code*10 + int(Resp[i]-'0')
+	for i := 9; i < len(resp) && resp[i] != ' '; i++ {
+		if resp[i] >= '0' && resp[i] <= '9' {
+			code = code*10 + int(resp[i]-'0')
 		} else {
 			break
 		}
@@ -254,12 +254,12 @@ func ParseGnetHTTPStatus(Resp []byte) int {
 	return code
 }
 
-func ParseGnetHTTPBody(Resp []byte) []byte {
-	idx := bytes.Index(Resp, []byte("\r\n\r\n"))
+func ParseGnetHTTPBody(resp []byte) []byte {
+	idx := bytes.Index(resp, []byte("\r\n\r\n"))
 	if idx < 0 {
 		return nil
 	}
-	return Resp[idx+4:]
+	return resp[idx+4:]
 }
 
 func PostOpenRTBBidGnet(h *Server, body []byte) (int, []byte) {

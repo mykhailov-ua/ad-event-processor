@@ -5,7 +5,6 @@ import {
   SelectTrigger,
   SelectValue,
 } from '@/components/ui/select';
-import { cn } from '@/lib/utils';
 
 export type AdminSelectOption = {
   value: string;
@@ -34,23 +33,16 @@ export function AdminSelect({
   return (
     <div className="w-full min-w-0">
       <Select disabled={disabled} value={value} onValueChange={onValueChange}>
-      <SelectTrigger
-        aria-label={ariaLabel}
-        className={cn(
-          'flex min-h-7 w-full min-w-0 items-center justify-between rounded-[5px] border border-border bg-background px-2 py-1 text-[13px] leading-[18px] text-foreground',
-          className,
-        )}
-        title={title}
-      >
-        <SelectValue />
-      </SelectTrigger>
-      <SelectContent>
-        {options.map((option) => (
-          <SelectItem key={option.value} plain value={option.value}>
-            {option.label}
-          </SelectItem>
-        ))}
-      </SelectContent>
+        <SelectTrigger aria-label={ariaLabel} className={className} title={title}>
+          <SelectValue />
+        </SelectTrigger>
+        <SelectContent>
+          {options.map((option) => (
+            <SelectItem key={option.value} plain value={option.value}>
+              {option.label}
+            </SelectItem>
+          ))}
+        </SelectContent>
       </Select>
     </div>
   );

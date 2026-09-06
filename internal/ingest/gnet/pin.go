@@ -17,6 +17,7 @@ func PinParsedHTTPRequest(ctx *ConnContext, req Request) Request {
 		Path:                  pin(req.Path),
 		ContentType:           pin(req.ContentType),
 		ClientIP:              pin(req.ClientIP),
+		RealIP:                pin(req.RealIP),
 		UserAgent:             pin(req.UserAgent),
 		Accept:                pin(req.Accept),
 		AcceptEncoding:        pin(req.AcceptEncoding),

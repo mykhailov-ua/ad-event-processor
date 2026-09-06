@@ -1,5 +1,6 @@
 @import '@fontsource-variable/inter';
-@import '@fontsource-variable/jetbrains-mono';
+@import '@fontsource/ibm-plex-mono/200.css';
+@import '@fontsource/ibm-plex-mono/400.css';
 
 @tailwind base;
 @tailwind components;
@@ -7,53 +8,113 @@
 
 @layer base {
   :root {
-    --background: 42 28% 96%;
-    --foreground: 28 9% 24%;
-    --card: 40 32% 98%;
-    --card-foreground: 28 9% 24%;
-    --popover: 40 32% 98%;
-    --popover-foreground: 28 9% 24%;
-    --primary: 28 11% 32%;
-    --primary-foreground: 42 28% 96%;
-    --secondary: 38 18% 91%;
-    --secondary-foreground: 28 9% 24%;
-    --muted: 38 16% 92%;
-    --muted-foreground: 28 6% 44%;
-    --accent: 38 20% 90%;
-    --accent-foreground: 28 9% 24%;
-    --destructive: 0 62% 48%;
-    --destructive-foreground: 42 28% 98%;
-    --border: 36 12% 84%;
-    --input: 36 12% 84%;
-    --ring: 28 11% 32%;
+    --background: 0 0% 97%;
+    --foreground: 0 0% 2%;
+    --card: 0 0% 99%;
+    --card-foreground: 0 0% 2%;
+    --popover: 0 0% 99%;
+    --popover-foreground: 0 0% 2%;
+    --primary: 0 0% 2%;
+    --primary-foreground: 0 0% 99%;
+    --secondary: 0 0% 95%;
+    --secondary-foreground: 0 0% 2%;
+    --muted: 0 0% 95%;
+    --muted-foreground: 0 0% 39%;
+    --accent: 0 0% 91%;
+    --accent-foreground: 0 0% 2%;
+    --destructive: 355 63% 44%;
+    --destructive-foreground: 0 0% 99%;
+    --border: 0 0% 90%;
+    --input: 0 0% 87%;
+    --ring: 0 0% 52%;
     --radius: 0.5rem;
-    --font-numeric: "JetBrains Mono Variable", "JetBrains Mono", ui-monospace, monospace;
-    --scrollbar-thumb: 36 10% 72%;
-    --scrollbar-track: 38 16% 92%;
+    --font-sans: 'Inter Variable', 'Inter', system-ui, sans-serif;
+    --font-mono: 'IBM Plex Mono', ui-monospace, monospace;
+    --font-numeric: 'Inter Variable', 'Inter', system-ui, sans-serif;
+    --scrollbar-thumb: 0 0% 78%;
+    --scrollbar-track: 0 0% 95%;
+
+    --chart-1: 227 56% 50%;
+    --chart-2: 136 100% 29%;
+    --chart-3: 22 100% 52%;
+    --chart-4: 245 47% 51%;
+    --chart-5: 180 67% 47%;
+
+    --admin-brand: 0 0% 2%;
+    --admin-brand-hover: 0 0% 16%;
+    --admin-brand-fg: 0 0% 99%;
+    --admin-fg: 0 0% 2%;
+    --admin-fg-strong: 0 0% 2%;
+    --admin-fg-secondary: 0 0% 39%;
+    --admin-muted: 0 0% 52%;
+    --admin-positive-fg: 136 100% 29%;
+    --admin-negative-fg: 355 63% 44%;
+    --admin-metric-zero-fg: 0 0% 52%;
+    --admin-metric-conversion-fg: 0 0% 2%;
+    --admin-status-active: 136 100% 29%;
+    --admin-status-paused: 48 100% 48%;
+    --admin-status-draft: 227 56% 50%;
+    --admin-status-scheduled: 22 100% 52%;
+    --admin-warn-fg: 46 100% 37%;
+    --admin-warn-bg: 48 90% 95%;
+    --admin-warn-border: 48 95% 77%;
+    --admin-filters-bg: 0 0% 95%;
+    --admin-table-header-bg: 0 0% 95%;
+    --admin-table-row-hover: 0 0% 91%;
+    --admin-table-totals-bg: 0 0% 95%;
   }
 
   .dark {
-    --background: 220 8% 16%;
-    --foreground: 220 9% 84%;
-    --card: 220 8% 19%;
-    --card-foreground: 220 9% 84%;
-    --popover: 220 8% 19%;
-    --popover-foreground: 220 9% 84%;
-    --primary: 220 9% 86%;
-    --primary-foreground: 220 8% 16%;
-    --secondary: 220 7% 23%;
-    --secondary-foreground: 220 9% 84%;
-    --muted: 220 7% 23%;
-    --muted-foreground: 220 6% 58%;
-    --accent: 220 7% 25%;
-    --accent-foreground: 220 9% 84%;
-    --destructive: 0 52% 42%;
-    --destructive-foreground: 220 9% 92%;
-    --border: 220 7% 27%;
-    --input: 220 7% 27%;
-    --ring: 220 8% 62%;
-    --scrollbar-thumb: 220 6% 38%;
-    --scrollbar-track: 220 7% 21%;
+    --background: 228 6% 13%;
+    --foreground: 0 0% 99%;
+    --card: 228 5% 16%;
+    --card-foreground: 0 0% 99%;
+    --popover: 228 5% 17%;
+    --popover-foreground: 0 0% 99%;
+    --primary: 0 0% 99%;
+    --primary-foreground: 228 6% 13%;
+    --secondary: 228 4% 18%;
+    --secondary-foreground: 0 0% 99%;
+    --muted: 228 4% 18%;
+    --muted-foreground: 0 0% 52%;
+    --accent: 228 4% 20%;
+    --accent-foreground: 0 0% 99%;
+    --destructive: 356 58% 56%;
+    --destructive-foreground: 0 0% 99%;
+    --border: 228 4% 22%;
+    --input: 228 4% 22%;
+    --ring: 0 0% 70%;
+    --scrollbar-thumb: 228 3% 35%;
+    --scrollbar-track: 228 5% 15%;
+
+    --chart-1: 227 72% 65%;
+    --chart-2: 127 60% 55%;
+    --chart-3: 22 85% 49%;
+    --chart-4: 245 60% 65%;
+    --chart-5: 180 54% 41%;
+
+    --admin-brand: 0 0% 99%;
+    --admin-brand-hover: 0 0% 85%;
+    --admin-brand-fg: 228 6% 13%;
+    --admin-fg: 0 0% 99%;
+    --admin-fg-strong: 0 0% 99%;
+    --admin-fg-secondary: 0 0% 70%;
+    --admin-muted: 0 0% 52%;
+    --admin-positive-fg: 127 60% 55%;
+    --admin-negative-fg: 356 58% 56%;
+    --admin-metric-zero-fg: 0 0% 52%;
+    --admin-metric-conversion-fg: 0 0% 99%;
+    --admin-status-active: 127 60% 55%;
+    --admin-status-paused: 48 98% 62%;
+    --admin-status-draft: 227 72% 65%;
+    --admin-status-scheduled: 22 85% 49%;
+    --admin-warn-fg: 48 98% 62%;
+    --admin-warn-bg: 22 65% 19%;
+    --admin-warn-border: 22 62% 13%;
+    --admin-filters-bg: 228 4% 18%;
+    --admin-table-header-bg: 228 4% 18%;
+    --admin-table-row-hover: 228 4% 20%;
+    --admin-table-totals-bg: 228 5% 15%;
   }
 
   html {
@@ -65,12 +126,15 @@
   }
 
   h1 {
-    @apply m-0 text-xl font-normal tracking-tight text-foreground;
+    @apply m-0 text-xl font-semibold tracking-tight text-foreground;
   }
 
-  h2,
+  h2 {
+    @apply m-0 mb-2 text-base font-semibold tracking-tight text-foreground;
+  }
+
   h3 {
-    @apply m-0 mb-2 text-base font-normal tracking-tight text-foreground;
+    @apply m-0 mb-2 text-base font-medium tracking-tight text-foreground;
   }
 
   a {
@@ -119,7 +183,18 @@
   }
 
   .ui-filter-panel {
-    @apply rounded-md bg-muted p-3 text-muted-foreground;
+    @apply grid gap-4 rounded-md bg-muted p-3 text-muted-foreground;
+  }
+
+  .ui-section-table-host [data-directory-table],
+  .ops-section-card [data-directory-table],
+  .ui-filter-panel [data-directory-table],
+  .ui-surface [data-directory-table],
+  .ui-surface-raised [data-directory-table],
+  .ui-bento-card [data-directory-table],
+  [data-ui-card] [data-directory-table] {
+    border-width: 0;
+    box-shadow: none;
   }
 
   .ui-surface {
@@ -127,34 +202,20 @@
   }
 
   .ui-surface-raised {
-    @apply rounded-2xl border border-border/40 bg-card text-card-foreground;
+    @apply rounded-md border border-border/40 bg-card text-card-foreground;
   }
 
   .ui-code-block {
     @apply ui-scrollbar rounded-md border border-border bg-muted p-4 font-mono text-xs leading-relaxed text-foreground;
   }
-
 }
 
 @layer utilities {
-  .font-thin,
-  .font-extralight,
-  .font-light,
-  .font-normal,
-  .font-medium,
-  .font-semibold,
-  .font-bold,
-  .font-extrabold,
-  .font-black {
-    font-weight: 400;
-  }
-
   .ui-editor-mono-extralight,
   input.ui-editor-mono-extralight,
   textarea.ui-editor-mono-extralight {
-    font-family: var(--font-numeric);
+    font-family: var(--font-mono);
     font-weight: 200;
-    font-variation-settings: "wght" 200;
     font-synthesis: none;
   }
 }

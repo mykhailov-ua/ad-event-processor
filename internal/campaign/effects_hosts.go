@@ -169,23 +169,3 @@ type ClickPresetPatchEffects interface {
 	ReadHost
 	MutationNotifyHost
 }
-
-type previewResumeEffects interface {
-	PublishHost
-}
-
-type schedulePatchEffects interface {
-	MutationNotifyHost
-	PublishHost
-}
-
-type publishCampaignEffects interface {
-	PublishGateEffects
-	PublishHost
-	IntegrationHost
-}
-
-type enforcePublishGateEffects interface {
-	PublishGateEffects
-	MutationNotifyHost
-}

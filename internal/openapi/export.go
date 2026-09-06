@@ -29,7 +29,7 @@ func Export(repoRoot string) error {
 	bundlePath := filepath.Join(openAPIDir, BundleRel)
 	mainPath := filepath.Join(openAPIDir, MainSpecRel)
 
-	stubs, err := buildGeneratedStubs(controlplane.Catalog())
+	stubs, err := buildGeneratedStubs(controlplane.Catalog(), repoRoot)
 	if err != nil {
 		return err
 	}
@@ -39,13 +39,20 @@ func Export(repoRoot string) error {
 	return writeBundle(mainPath, generatedPath, bundlePath)
 }
 
-func buildGeneratedStubs(routes []controlplane.Route) (map[string]any, error) {
+func buildGeneratedStubs(routes []controlplane.Route, repoRoot string) (map[string]any, error) {
+	allow, err := LoadParityAllowlist(repoRoot)
+	if err != nil {
+		return nil, err
+	}
 	stubs := make(map[string]any)
 	seenOp := make(map[string]struct{})
 
 	for _, route := range routes {
 		key := route.Key()
 		if _, documented := DocumentedRoutes[key]; documented {
+			continue
+		}
+		if _, omitted := allow[key]; omitted {
 			continue
 		}
 		opID, err := uniqueOperationID(route, seenOp)

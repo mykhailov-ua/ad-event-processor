@@ -17,7 +17,7 @@ export function DirectoryTableSkeleton({
       aria-label="Loading table"
       className={cn(
         'motion-safe:animate-pulse overflow-hidden rounded-md border border-border bg-card',
-        className,
+        className
       )}
     >
       <div className="flex h-10 border-b border-border/40">
@@ -34,7 +34,7 @@ export function DirectoryTableSkeleton({
               <div
                 className={cn(
                   'h-3 rounded bg-muted',
-                  colIndex === 0 ? 'w-32' : colIndex === columns - 1 ? 'w-16' : 'w-24',
+                  colIndex === 0 ? 'w-32' : colIndex === columns - 1 ? 'w-16' : 'w-24'
                 )}
               />
             </div>

@@ -15,6 +15,16 @@ import (
 
 const migrationPullTimeout = 30 * time.Second
 
+const migrationPullImportTimeout = 60 * time.Second
+
+func PullTimeout() time.Duration {
+	return migrationPullTimeout
+}
+
+func PullImportTimeout() time.Duration {
+	return migrationPullImportTimeout
+}
+
 type PullSpec struct {
 	SourceKind SourceKind
 	BaseURL    string

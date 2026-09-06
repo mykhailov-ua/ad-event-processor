@@ -8,7 +8,7 @@
 //	SyncBlocklistFromRedis (this file):
 //	  SMEMBERS blacklist:manual, active blacklist:auto (TTL-filtered), blacklist:fraud
 //	  -> BlocklistStore.ApplyDiff -> LoadPinned maps via caller-held *ebpf.Map handles
-//	  -> host keys: blocklist_host_v4/v6 LRU HASH UpdateAny / Delete
+//	  -> host keys: blocklist_host_v4/v6 LRU HASH plus mirrored /32|/128 in blocklist_v4/v6 LPM
 //	  -> prefix keys: blocklist_v4/v6 LPM TRIE UpdateAny / Delete
 //	  -> IsProtected IPs skipped (aligns with allow-before-deny in edge_filter.c)
 //

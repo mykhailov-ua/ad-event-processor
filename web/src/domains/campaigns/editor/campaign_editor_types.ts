@@ -5,7 +5,13 @@ import type {
   CloneCampaignPreview,
   MacroPreviewResponse,
 } from '@/api/campaigns_api';
-import type { Campaign, CampaignPublishBlockedError, CampaignPublishCheck, CampaignValidateResponse, PatchCampaignRequest } from '@/api/types';
+import type {
+  Campaign,
+  CampaignPublishBlockedError,
+  CampaignPublishCheck,
+  CampaignValidateResponse,
+  PatchCampaignRequest,
+} from '@/api/types';
 
 export type CampaignEditorFormState = {
   name: string;
@@ -43,7 +49,7 @@ export type CampaignEditorProps = {
   hasSnapshot: boolean;
   onFieldChange: <K extends keyof CampaignEditorFormState>(
     field: K,
-    value: CampaignEditorFormState[K],
+    value: CampaignEditorFormState[K]
   ) => void;
   onSave: () => void;
   onOpenClone?: () => void;
@@ -66,7 +72,7 @@ export type CampaignEditorProps = {
   macroPreviewForm: MacroPreviewFormState;
   onMacroPreviewFieldChange: <K extends keyof MacroPreviewFormState>(
     field: K,
-    value: MacroPreviewFormState[K],
+    value: MacroPreviewFormState[K]
   ) => void;
   macroPreviewing: boolean;
   macroPreviewResult: MacroPreviewResponse | undefined;

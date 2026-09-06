@@ -235,5 +235,3 @@ func ObserveHistogramSampled(seq *atomic.Uint64, mask uint64, observer prometheu
 }
 
 func cachedUnixSec() uint64 { return CachedUnixSec() }
-
-func cachedUnixMilliAnyLoad() any { return CachedUnixMilliAnyLoad() }

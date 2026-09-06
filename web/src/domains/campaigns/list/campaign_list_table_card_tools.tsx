@@ -22,21 +22,16 @@ export function CampaignListTableCardTools({
         disabled={disabled}
         onColumnPrefsChange={onColumnPrefsChange}
       />
-      {disabled ? (
-        <span className="shrink-0 whitespace-nowrap text-[13px] font-medium text-emerald-500/50">
-          Reset view
-        </span>
-      ) : (
-        <Button
-          className="h-auto whitespace-nowrap border-0 bg-transparent p-0 font-medium text-emerald-500 underline underline-offset-2 shadow-none hover:bg-transparent hover:text-emerald-600"
-          title="Reset columns and widths"
-          type="button"
-          variant="link"
-          onClick={onResetWorkspaceClick}
-        >
-          Reset view
-        </Button>
-      )}
+      <Button
+        className="h-auto whitespace-nowrap border-0 bg-transparent p-0 font-medium text-admin-brand underline underline-offset-2 shadow-none hover:bg-transparent hover:text-admin-brand-hover disabled:bg-transparent disabled:text-admin-brand/50 disabled:no-underline disabled:hover:bg-transparent"
+        disabled={disabled}
+        title="Reset columns and widths"
+        type="button"
+        variant="link"
+        onClick={onResetWorkspaceClick}
+      >
+        Reset view
+      </Button>
     </div>
   );
 }

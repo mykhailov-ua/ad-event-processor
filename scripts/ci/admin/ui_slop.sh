@@ -105,7 +105,7 @@ for dir in "${COPY_SRC[@]}"; do
   fi
 done
 
-# Manual h-* overrides on form controls drift from --control-height; use web/src/lib/control_size.ts shells.
+# Manual h-* overrides on form controls drift from --control-height; use admin_kit.controlHeight / default primitives.
 for dir in "${CONTROL_SRC[@]}"; do
   [ -d "$dir" ] || continue
   if rg -n 'SelectTrigger[^>]*className="[^"]*\bh-[789]\b' "$dir" --glob '*.tsx' 2> /dev/null; then
@@ -184,7 +184,7 @@ if rg -n 'ui-table-frame' web/src --glob '*.tsx' 2> /dev/null; then
   failed=1
 fi
 
-# Hand-rolled text inputs bypass Input height contract (web/src/lib/control_size.ts).
+# Hand-rolled text inputs bypass Input height contract (admin_kit.controlHeight).
 for dir in web/src/domains web/src/shell web/src/pages; do
   [ -d "$dir" ] || continue
   if rg -n '<input[^>]*className="[^"]*h-8 w-full rounded-md border' "$dir" --glob '*.tsx' 2> /dev/null; then

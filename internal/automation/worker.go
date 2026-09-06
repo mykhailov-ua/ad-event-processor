@@ -22,6 +22,8 @@ import (
 
 const webhookTimeout = 45 * time.Second
 
+const automationTickTimeout = 2 * time.Minute
+
 type Executor interface {
 	Notify(ctx context.Context, webhookURL string, payload []byte) (status, errMsg string)
 	PauseCampaign(ctx context.Context, campaignID uuid.UUID, reason string) error
@@ -73,11 +75,13 @@ func (w *Worker) Start(ctx context.Context) {
 }
 
 func (w *Worker) tick(ctx context.Context) {
+	opCtx, cancel := coldpath.BoundedContext(ctx, automationTickTimeout)
+	defer cancel()
 	if w == nil || w.pool == nil || w.ch == nil {
 		return
 	}
 	recordWorkerTick(time.Now().UTC())
-	rules, err := db.New(w.pool).ListEnabledAutomationRules(ctx)
+	rules, err := db.New(w.pool).ListEnabledAutomationRules(opCtx)
 	if err != nil {
 		slog.Error("automation: list rules", "error", err)
 		return
@@ -86,7 +90,7 @@ func (w *Worker) tick(ctx context.Context) {
 		return
 	}
 	now := time.Now().UTC()
-	campaignsByCustomer, err := w.campaignsByCustomer(ctx, rules)
+	campaignsByCustomer, err := w.campaignsByCustomer(opCtx, rules)
 	if err != nil {
 		slog.Error("automation: list campaigns", "error", err)
 		return
@@ -105,7 +109,7 @@ func (w *Worker) tick(ctx context.Context) {
 			continue
 		}
 		evalsByCustomer[rule.CustomerID]++
-		_ = db.New(w.pool).UpdateAutomationRuleLastEvaluated(ctx, db.UpdateAutomationRuleLastEvaluatedParams{
+		_ = db.New(w.pool).UpdateAutomationRuleLastEvaluated(opCtx, db.UpdateAutomationRuleLastEvaluatedParams{
 			ID:              pgtype.UUID{Bytes: rule.ID, Valid: true},
 			LastEvaluatedAt: pgtype.Timestamptz{Time: now, Valid: true},
 		})
@@ -116,13 +120,13 @@ func (w *Worker) tick(ctx context.Context) {
 		if err != nil || len(campaignIDs) == 0 {
 			continue
 		}
-		matches, err := EvaluateRule(ctx, w.ch, rule, campaignIDs, now)
+		matches, err := EvaluateRule(opCtx, w.ch, rule, campaignIDs, now)
 		if err != nil {
 			slog.Warn("automation: evaluate", "rule_id", rule.ID, "error", err)
 			continue
 		}
 		for _, match := range matches {
-			if err := w.applyMatch(ctx, rule, match); err != nil {
+			if err := w.applyMatch(opCtx, rule, match); err != nil {
 				slog.Warn("automation: apply match", "rule_id", rule.ID, "error", err)
 			}
 		}

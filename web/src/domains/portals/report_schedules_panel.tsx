@@ -54,7 +54,7 @@ export type ReportSchedulesPanelProps = {
   onEditRowChange: (
     id: string,
     field: 'report_key' | 'cron_expr' | 'format' | 'enabled',
-    value: string,
+    value: string
   ) => void;
   onCreateSchedule: () => void;
   onUpdateSchedule: (scheduleId: string) => void;
@@ -229,106 +229,102 @@ export function ReportSchedulesPanel({
             />
           ) : (
             <DirectoryTable>
-                <TableHeader>
-                  <TableRow>
-                    <DirectoryTableHead>Report</DirectoryTableHead>
-                    <DirectoryTableHead>Format</DirectoryTableHead>
-                    <DirectoryTableHead>Cron</DirectoryTableHead>
-                    <DirectoryTableHead>Enabled</DirectoryTableHead>
-                    <DirectoryTableHead>Updated</DirectoryTableHead>
-                    <DirectoryTableHead />
-                  </TableRow>
-                </TableHeader>
-                <TableBody>
-                  {(schedules ?? []).map((row) => {
-                    const id = row.id ?? '';
-                    const edit = editRows[id] ?? {
-                      report_key: row.report_key ?? '',
-                      cron_expr: row.cron_expr ?? '',
-                      format: row.format ?? '',
-                      enabled: row.enabled === false ? 'no' : 'yes',
-                    };
-                    return (
-                      <TableRow key={id || row.report_key}>
-                        <TableCell>
-                          {id ? (
-                            <Input
-                              className="font-mono text-xs"
-                              value={edit.report_key}
-                              onChange={(event) =>
-                                onEditRowChange(id, 'report_key', event.target.value)
-                              }
-                            />
-                          ) : (
-                            <span className="font-mono text-xs">{row.report_key ?? ''}</span>
-                          )}
-                        </TableCell>
-                        <TableCell>
-                          {id ? (
-                            <Input
-                              className="text-sm"
-                              value={edit.format}
-                              onChange={(event) =>
-                                onEditRowChange(id, 'format', event.target.value)
-                              }
-                            />
-                          ) : (
-                            row.format ?? ''
-                          )}
-                        </TableCell>
-                        <TableCell>
-                          {id ? (
-                            <Input
-                              className="font-mono text-xs"
-                              value={edit.cron_expr}
-                              onChange={(event) =>
-                                onEditRowChange(id, 'cron_expr', event.target.value)
-                              }
-                            />
-                          ) : (
-                            <span className="font-mono text-xs">{row.cron_expr ?? ''}</span>
-                          )}
-                        </TableCell>
-                        <TableCell>
-                          {id ? (
-                            <Input
-                              className="text-sm"
-                              value={edit.enabled}
-                              onChange={(event) =>
-                                onEditRowChange(id, 'enabled', event.target.value)
-                              }
-                            />
-                          ) : row.enabled === false ? (
-                            'no'
-                          ) : (
-                            'yes'
-                          )}
-                        </TableCell>
-                        <TableCell>{displayTimestamp(row.updated_at)}</TableCell>
-                        <TableCell>
-                          {id ? (
-                            <RowActionsMenu ariaLabel="Schedule actions" disabled={acting}>
-                              <DropdownMenuItem
-                                disabled={acting}
-                                onClick={() => onUpdateSchedule(id)}
-                              >
-                                Save
-                              </DropdownMenuItem>
-                              <DropdownMenuItem
-                                className="text-destructive focus:text-destructive"
-                                disabled={acting}
-                                onClick={() => setDeleteScheduleId(id)}
-                              >
-                                Delete
-                              </DropdownMenuItem>
-                            </RowActionsMenu>
-                          ) : null}
-                        </TableCell>
-                      </TableRow>
-                    );
-                  })}
-                </TableBody>
-              </DirectoryTable>
+              <TableHeader>
+                <TableRow>
+                  <DirectoryTableHead>Report</DirectoryTableHead>
+                  <DirectoryTableHead>Format</DirectoryTableHead>
+                  <DirectoryTableHead>Cron</DirectoryTableHead>
+                  <DirectoryTableHead>Enabled</DirectoryTableHead>
+                  <DirectoryTableHead>Updated</DirectoryTableHead>
+                  <DirectoryTableHead />
+                </TableRow>
+              </TableHeader>
+              <TableBody>
+                {(schedules ?? []).map((row) => {
+                  const id = row.id ?? '';
+                  const edit = editRows[id] ?? {
+                    report_key: row.report_key ?? '',
+                    cron_expr: row.cron_expr ?? '',
+                    format: row.format ?? '',
+                    enabled: row.enabled === false ? 'no' : 'yes',
+                  };
+                  return (
+                    <TableRow key={id || row.report_key}>
+                      <TableCell>
+                        {id ? (
+                          <Input
+                            className="font-mono text-xs"
+                            value={edit.report_key}
+                            onChange={(event) =>
+                              onEditRowChange(id, 'report_key', event.target.value)
+                            }
+                          />
+                        ) : (
+                          <span className="font-mono text-xs">{row.report_key ?? ''}</span>
+                        )}
+                      </TableCell>
+                      <TableCell>
+                        {id ? (
+                          <Input
+                            className="text-sm"
+                            value={edit.format}
+                            onChange={(event) => onEditRowChange(id, 'format', event.target.value)}
+                          />
+                        ) : (
+                          (row.format ?? '')
+                        )}
+                      </TableCell>
+                      <TableCell>
+                        {id ? (
+                          <Input
+                            className="font-mono text-xs"
+                            value={edit.cron_expr}
+                            onChange={(event) =>
+                              onEditRowChange(id, 'cron_expr', event.target.value)
+                            }
+                          />
+                        ) : (
+                          <span className="font-mono text-xs">{row.cron_expr ?? ''}</span>
+                        )}
+                      </TableCell>
+                      <TableCell>
+                        {id ? (
+                          <Input
+                            className="text-sm"
+                            value={edit.enabled}
+                            onChange={(event) => onEditRowChange(id, 'enabled', event.target.value)}
+                          />
+                        ) : row.enabled === false ? (
+                          'no'
+                        ) : (
+                          'yes'
+                        )}
+                      </TableCell>
+                      <TableCell>{displayTimestamp(row.updated_at)}</TableCell>
+                      <TableCell>
+                        {id ? (
+                          <RowActionsMenu ariaLabel="Schedule actions" disabled={acting}>
+                            <DropdownMenuItem
+                              disabled={acting}
+                              onClick={() => onUpdateSchedule(id)}
+                            >
+                              Save
+                            </DropdownMenuItem>
+                            <DropdownMenuItem
+                              className="text-destructive focus:text-destructive"
+                              disabled={acting}
+                              onClick={() => setDeleteScheduleId(id)}
+                            >
+                              Delete
+                            </DropdownMenuItem>
+                          </RowActionsMenu>
+                        ) : null}
+                      </TableCell>
+                    </TableRow>
+                  );
+                })}
+              </TableBody>
+            </DirectoryTable>
           )}
         </div>
       )}

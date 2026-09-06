@@ -1,6 +1,6 @@
 import { test, expect } from '@playwright/test';
 
-import { gotoBilling, loginAsAdmin, skipUnlessIntegrationReady } from './helpers.js';
+import { gotoBilling, isApiGet, loginAsAdmin, skipUnlessIntegrationReady } from './helpers.js';
 
 test.beforeEach(async ({}, testInfo) => {
   await skipUnlessIntegrationReady(testInfo);
@@ -17,16 +17,36 @@ test('billing page shows ledger exports and operator tools', async ({ page }) =>
 
 test('billing grid opens invoice detail when invoices exist', async ({ page }) => {
   await loginAsAdmin(page);
+  const invoicesGet = page.waitForResponse(isApiGet('/api/v1/billing/invoices'), {
+    timeout: 20_000,
+  });
   await gotoBilling(page);
-
-  const invoiceLink = page.locator('main a[href^="/billing/invoices/"]').first();
-  const count = await invoiceLink.count();
-  if (count === 0) {
+  const invoicesResponse = await invoicesGet;
+  const invoicesBody = await invoicesResponse.json();
+  const firstInvoice = invoicesBody.items?.[0];
+  if (!firstInvoice?.id) {
     test.skip(true, 'integration: no invoices in billing grid');
     return;
   }
 
-  await invoiceLink.click();
+  const invoiceGet = page.waitForResponse(isApiGet(`/api/v1/billing/invoices/${firstInvoice.id}`), {
+    timeout: 20_000,
+  });
+  const ledgerGet = page.waitForResponse(
+    isApiGet(`/api/v1/billing/invoices/${firstInvoice.id}/ledger-lines`),
+    { timeout: 20_000 }
+  );
+  const deliveriesGet = page.waitForResponse(
+    isApiGet(`/api/v1/billing/invoices/${firstInvoice.id}/deliveries`),
+    { timeout: 20_000 }
+  );
+
+  await page.locator(`main a[href="/billing/invoices/${firstInvoice.id}"]`).first().click();
+
+  await invoiceGet;
+  await ledgerGet;
+  await deliveriesGet;
+
   await expect(page.getByRole('button', { name: 'Download PDF' })).toBeVisible();
   await expect(page.getByRole('heading', { name: 'Ledger lines' })).toBeVisible();
   await expect(page.getByRole('heading', { name: 'Deliveries' })).toBeVisible();

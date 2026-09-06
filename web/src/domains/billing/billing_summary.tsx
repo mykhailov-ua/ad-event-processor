@@ -14,7 +14,7 @@ export type BillingSummaryProps = {
 function KpiCard({ label, value }: { label: string; value: string }) {
   return (
     <Card>
-      <CardHeader className="pb-2">
+      <CardHeader>
         <CardTitle className="text-sm font-medium text-muted-foreground">{label}</CardTitle>
       </CardHeader>
       <CardContent>
@@ -54,14 +54,14 @@ export function BillingSummarySection({
           label="Undelivered notifications"
           value={displayCount(
             summary?.undelivered_invoice_notifications,
-            summary?.undelivered_invoice_notifications_display,
+            summary?.undelivered_invoice_notifications_display
           )}
         />
         <KpiCard
           label="Customers with spend"
           value={displayCount(
             summary?.customers_with_spend_in_month,
-            summary?.customers_with_spend_in_month_display,
+            summary?.customers_with_spend_in_month_display
           )}
         />
       </div>

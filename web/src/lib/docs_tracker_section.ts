@@ -21,7 +21,11 @@ export const TRACKER_DOCS_SECTION: DocsSection = {
           rows: [
             ['/click', 'GET', 'Traffic source click URL (banner, push, native, social ad)'],
             ['/track', 'POST (or GET query)', 'Server postback when a lead or sale happens'],
-            ['/static/track.js', 'GET', 'Browser pixel on the landing page (zero-redirect conversions)'],
+            [
+              '/static/track.js',
+              'GET',
+              'Browser pixel on the landing page (zero-redirect conversions)',
+            ],
           ],
         },
         {
@@ -73,8 +77,16 @@ export const TRACKER_DOCS_SECTION: DocsSection = {
             ['campaign_id', 'Yes', 'Campaign UUID from the admin UI'],
             ['click_id', 'No', 'Your correlation id; generated if omitted on some paths'],
             ['sub1 ... sub30', 'No', 'Labels for zones, placements, creatives, affiliate tokens'],
-            ['fbclid, gclid, ttclid, msclkid', 'No', 'Ad network click ids for CAPI / offline conversions'],
-            ['utm_source, utm_medium, utm_campaign', 'No', 'UTM tags stored and passed through macros'],
+            [
+              'fbclid, gclid, ttclid, msclkid',
+              'No',
+              'Ad network click ids for CAPI / offline conversions',
+            ],
+            [
+              'utm_source, utm_medium, utm_campaign',
+              'No',
+              'UTM tags stored and passed through macros',
+            ],
             ['cost, cpc, bid', 'No', 'Ingress spend when campaign ingress cost is enabled'],
           ],
         },
@@ -199,7 +211,7 @@ Content-Type: application/json
         {
           type: 'list',
           items: [
-            'Click test: open the smoke URL from Integration; expect 302 to lander or safe page, not 403/410.',
+            'Click test: open the smoke URL from Integration; expect 302 to lander or review-traffic alternate URL, not 403/410.',
             'Budget: campaign current spend increases after real clicks (Redis debit is immediate; list view may lag seconds).',
             'Conversion test: fire /track with the click_id from the lander URL; check Reports or campaign metrics for conversions in the stats window.',
             'Browser pixel: DevTools Network tab shows POST /track with 202 and JSON body.',
@@ -208,7 +220,7 @@ Content-Type: application/json
         },
         {
           type: 'note',
-          text: 'Silent reject and fraud blocks may return 202 with decoy content while analytics record a silent_reject_event. Check Fraud settings if clicks look accepted but funnel counts differ.',
+          text: 'Non-blocking fraud responses and hard blocks may return HTTP 202 with a standard acceptance body while analytics record silent_reject_event. Check Fraud settings if clicks look accepted but funnel counts differ.',
         },
       ],
     },

@@ -7,8 +7,7 @@ export function useCustomerScope() {
   const [searchParams, setSearchParams] = useSearchParams();
   const { session } = useSession();
 
-  const appliedCustomerId =
-    searchParams.get('customer_id') ?? session?.default_customer_id ?? '';
+  const appliedCustomerId = searchParams.get('customer_id') ?? session?.default_customer_id ?? '';
   const [draftCustomerId, setDraftCustomerId] = useState(appliedCustomerId);
 
   useEffect(() => {

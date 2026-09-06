@@ -12,7 +12,7 @@ local chunk_size = tonumber(ARGV[26]) or 0
 local refill_threshold_pct = tonumber(ARGV[27]) or 20
 
 -- ARGV[29] filter deadline monotonic ns; ARGV[30] now monotonic ns; ARGV[31] degrade_ns (default 2ms).
--- degraded=true skips pacing, fcap, TTC, and impression-ts writes but still debits when budget path runs.
+-- degraded=true skips pacing, fcap, TTC, and impression-ts writes; Go rejects code 20 with debit rollback.
 local deadline_ns = tonumber(ARGV[29]) or 0
 local now_mono_ns = tonumber(ARGV[30]) or 0
 local degrade_ns = tonumber(ARGV[31]) or 2000000
@@ -216,7 +216,7 @@ if ttc_bypass then
     return 10
 end
 if degraded then
-    -- Return 20: accept after debit; remaining deadline < degrade_ns; pacing/fcap/TTC paths skipped.
+    -- Return 20: remaining deadline < degrade_ns; pacing/fcap/TTC skipped; Go rollbacks debit and rejects.
     return 20
 end
 return 0

@@ -11,7 +11,8 @@
 --   edge-config sync connect/hmget fail; access-check perimeter_blacklist stale/missing sync;
 --   edge-circuit-log upstream 5xx or empty upstream_status when upstream_addr set.
 --
--- open(): errs/(total_curr+total_prev) > 0.95 after SAMPLE_WINDOW 100 combined samples; else fail-open.
+-- open(): errs/(total_curr+total_prev) > 0.95 after SAMPLE_WINDOW 100 combined samples;
+-- or after MIN_ERR_OPEN 10 samples when rate exceeds FAIL_THRESHOLD (circuit_breaker_min_samples).
 --
 -- Forbidden: record_err on edge-generated 503 without upstream (circuit/blacklist) via log_by_lua.
 --
@@ -27,6 +28,7 @@ local BUCKET_SEC = 10
 local KEY_TTL = 30
 local FAIL_THRESHOLD = 0.95
 local SAMPLE_WINDOW = 100
+local MIN_ERR_OPEN = 10
 
 function _M.buckets()
     local curr = math.floor(ngx.time() / BUCKET_SEC)
@@ -49,12 +51,18 @@ function _M.open(bucket_curr, bucket_prev)
     local total_curr = circuit_dict:get(bucket_curr .. ":total") or 0
     local total_prev = circuit_dict:get(bucket_prev .. ":total") or 0
     local total_reqs = total_curr + total_prev
-    if total_reqs <= SAMPLE_WINDOW then
+    if total_reqs <= 0 then
         return false
     end
     local errs_curr = circuit_dict:get(bucket_curr .. ":errs") or 0
     local errs_prev = circuit_dict:get(bucket_prev .. ":errs") or 0
     local redis_errs = errs_curr + errs_prev
+    if total_reqs <= SAMPLE_WINDOW then
+        if total_reqs >= MIN_ERR_OPEN and (redis_errs / total_reqs) > FAIL_THRESHOLD then
+            return true
+        end
+        return false
+    end
     return (redis_errs / total_reqs) > FAIL_THRESHOLD
 end
 

@@ -43,7 +43,7 @@ func TestFault_RedisShardFreezeIsolation(t *testing.T) {
 	})
 
 	baselineLatency := h.baselineLatency(0)
-	budget := testutil.LatencyBudget(baselineLatency)
+	budget := testutil.LatencyBudgetBurst(baselineLatency)
 
 	runtime.GC()
 	beforeG := runtime.NumGoroutine()

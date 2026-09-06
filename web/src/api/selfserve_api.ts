@@ -1,4 +1,4 @@
-import { apiFetch, apiJson } from './client.js';
+import { apiFetch, apiJson, parseApiError } from './client.js';
 import type {
   APIKeyCreatedResponse,
   BillingStatement,
@@ -30,7 +30,7 @@ export function buildSelfServeTemplatesPath(customerId: string): string {
 
 export async function listSelfServeTemplates(
   customerId: string,
-  signal?: AbortSignal,
+  signal?: AbortSignal
 ): Promise<SelfServeTemplateListResponse> {
   return apiJson<SelfServeTemplateListResponse>(buildSelfServeTemplatesPath(customerId), {
     signal,
@@ -39,7 +39,7 @@ export async function listSelfServeTemplates(
 
 export async function createSelfServeCampaign(
   body: SelfServeCreateCampaignRequest,
-  signal?: AbortSignal,
+  signal?: AbortSignal
 ): Promise<IDCreatedResponse> {
   return apiJson<IDCreatedResponse>('/api/v1/selfserve/campaigns', {
     method: 'POST',
@@ -53,7 +53,7 @@ export async function createSelfServeCampaign(
 
 export async function listSelfServeInvoices(
   params: SelfServeInvoicesQuery = {},
-  signal?: AbortSignal,
+  signal?: AbortSignal
 ): Promise<SelfServeInvoiceListResponse> {
   const search = new URLSearchParams();
   if (params.customer_id) {
@@ -72,7 +72,7 @@ export async function listSelfServeInvoices(
 
 export async function getSelfServeBillingStatement(
   params: { customer_id?: string; month?: string } = {},
-  signal?: AbortSignal,
+  signal?: AbortSignal
 ): Promise<BillingStatement> {
   const search = new URLSearchParams();
   if (params.customer_id) {
@@ -90,7 +90,7 @@ export async function getSelfServeBillingStatement(
 
 export async function createSelfServePaymentIntent(
   body: CreatePaymentIntentRequest,
-  signal?: AbortSignal,
+  signal?: AbortSignal
 ): Promise<PaymentIntentCreatedResponse> {
   return apiJson<PaymentIntentCreatedResponse>('/api/v1/selfserve/payment-intents', {
     method: 'POST',
@@ -104,7 +104,7 @@ export async function createSelfServePaymentIntent(
 
 export async function createSelfServeApiKey(
   body: CreateAPIKeyRequest,
-  signal?: AbortSignal,
+  signal?: AbortSignal
 ): Promise<APIKeyCreatedResponse> {
   return apiJson<APIKeyCreatedResponse>('/api/v1/selfserve/api-keys', {
     method: 'POST',
@@ -116,7 +116,7 @@ export async function createSelfServeApiKey(
 export async function pauseSelfServeCampaign(
   campaignId: string,
   body: SelfServePauseCampaignRequest = {},
-  signal?: AbortSignal,
+  signal?: AbortSignal
 ): Promise<void> {
   const response = await apiFetch(
     `/api/v1/selfserve/campaigns/${encodeURIComponent(campaignId)}/pause`,
@@ -124,17 +124,17 @@ export async function pauseSelfServeCampaign(
       method: 'POST',
       body: JSON.stringify(body),
       signal,
-    },
+    }
   );
   if (!response.ok && response.status !== 202) {
-    throw new Error(response.statusText || `HTTP ${response.status}`);
+    throw await parseApiError(response);
   }
 }
 
 export async function resumeSelfServeCampaign(
   campaignId: string,
   body: SelfServePauseCampaignRequest = {},
-  signal?: AbortSignal,
+  signal?: AbortSignal
 ): Promise<void> {
   const response = await apiFetch(
     `/api/v1/selfserve/campaigns/${encodeURIComponent(campaignId)}/resume`,
@@ -142,9 +142,9 @@ export async function resumeSelfServeCampaign(
       method: 'POST',
       body: JSON.stringify(body),
       signal,
-    },
+    }
   );
   if (!response.ok && response.status !== 202) {
-    throw new Error(response.statusText || `HTTP ${response.status}`);
+    throw await parseApiError(response);
   }
 }

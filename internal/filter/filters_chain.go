@@ -61,9 +61,9 @@ func (f *EntitlementsFilter) getRedisShardClient(id uuid.UUID) redis.UniversalCl
 }
 
 func (f *EntitlementsFilter) Check(ctx context.Context, evt *domain.Event) error {
-	campInfo, ok := GetCampaignFromEvent(f.registry, evt)
-	if !ok {
-		return ErrCampaignNotFound
+	campInfo, err := LookupCampaign(ctx, f.registry, evt)
+	if err != nil {
+		return err
 	}
 	custID := campInfo.CustomerID
 
@@ -108,7 +108,7 @@ func (f *EntitlementsFilter) Check(ctx context.Context, evt *domain.Event) error
 
 	redisClient := f.getRedisShardClient(custID)
 	if redisClient == nil {
-		return nil
+		return ErrShardUnavailable
 	}
 
 	pipe := redisClient.Pipeline()
@@ -117,7 +117,7 @@ func (f *EntitlementsFilter) Check(ctx context.Context, evt *domain.Event) error
 	_, execErr := pipe.Exec(ctx)
 	if execErr != nil {
 		slog.Warn("failed to increment daily quota counter in Redis", "customer_id", custID, "error", execErr)
-		return nil
+		return execErr
 	}
 
 	currentVal := incr.Val()
@@ -272,20 +272,20 @@ func (f *FraudBlacklistFilter) Check(ctx context.Context, evt *domain.Event) err
 
 	redisClient := PickGlobalReadShardForIP(f.redisShards, ip)
 	if redisClient == nil {
-		return nil
+		return ErrShardUnavailable
 	}
 
 	onList, err := redisClient.SIsMember(ctx, fraudBlacklistKey, ip).Result()
 	if err != nil {
-		return nil
+		return err
 	}
 
-	fraudBlacklistShardStore(shard, ip, fraudBlacklistCacheItem{
-		blacklisted: onList,
-		expiry:      nowMs + fraudBlacklistCacheTTL.Milliseconds(),
-	}, nowMs)
-
 	if onList {
+		// Positive-only cache: do not store SISMEMBER false (fresh blacklist:fraud must not hide behind 5s TTL).
+		fraudBlacklistShardStore(shard, ip, fraudBlacklistCacheItem{
+			blacklisted: true,
+			expiry:      nowMs + fraudBlacklistCacheTTL.Milliseconds(),
+		}, nowMs)
 		addFraudSignal(evt, FraudReasonL3Blocklist)
 	}
 	return nil
@@ -858,15 +858,6 @@ func (a *fraudAccumulator) layerDesyncCount() uint8 {
 		mask |= fraudDesyncLayerBit(a.signals[i])
 	}
 	return uint8(bits.OnesCount8(mask))
-}
-
-var fraudStreamLayerDesyncLabels = [6]string{"0", "1", "2", "3", "4", "5"}
-
-func observeFraudStreamLayerDesync(count uint8) {
-	if count > 5 {
-		count = 5
-	}
-	metrics.FraudStreamLayerDesyncTotal.WithLabelValues(fraudStreamLayerDesyncLabels[count]).Inc()
 }
 
 type preboundFraudMetrics struct {

@@ -1,6 +1,7 @@
 package openapi_test
 
 import (
+	"os"
 	"path/filepath"
 	"runtime"
 	"testing"
@@ -37,4 +38,12 @@ func TestExport_idempotent(t *testing.T) {
 	require.NoError(t, openapi.Export(root))
 	require.NoError(t, openapi.Export(root))
 	require.NoError(t, openapi.AssertCatalogParity(root))
+}
+
+func TestAllowlistedRoutesOmittedFromGeneratedStubs(t *testing.T) {
+	root := repoRoot(t)
+	require.NoError(t, openapi.Export(root))
+	raw, err := os.ReadFile(filepath.Join(root, openapi.OpenAPIDir, openapi.GeneratedRoutesRel))
+	require.NoError(t, err)
+	require.NotContains(t, string(raw), "ghost-impression-funnel")
 }

@@ -34,6 +34,15 @@ func closedLoopPacingControllerTx(ctx context.Context, tx pgx.Tx, merge Delivery
 	tolerancePPM := int64(fx.PacingToleranceMargin() * 1_000_000)
 
 	for _, row := range rows {
+		if row.Status != db.CampaignStatusTypeACTIVE {
+			continue
+		}
+
+		targetPacing, shouldUpdate := pacingAdjustmentFromStatsRow(row, hourWeights, now, tolerancePPM, fx)
+		if !shouldUpdate {
+			continue
+		}
+
 		camp, err := q.GetCampaignForUpdate(ctx, row.ID)
 		if err != nil {
 			return fmt.Errorf("failed to lock campaign for pacing: %w", err)
@@ -44,44 +53,24 @@ func closedLoopPacingControllerTx(ctx context.Context, tx pgx.Tx, merge Delivery
 
 		loc := fx.CampaignLocation(camp.Timezone)
 		localNow := now.In(loc)
-
 		daypart := camp.DaypartHours
 		if daypart == nil {
 			daypart = []int16{}
 		}
 		timeRatio := campaign.SmartPacingExpectedRatio(hourWeights, daypart, localNow)
-
 		budgetMicro := camp.DailyBudget
 		if budgetMicro == 0 {
 			budgetMicro = camp.BudgetLimit
 		}
-		if budgetMicro == 0 {
-			continue
-		}
-
 		actualSpendMicro := camp.CurrentSpend
 		ratioPPM := int64(timeRatio * 1_000_000)
 		expectedSpendMicro := money.ScalePPM(budgetMicro, ratioPPM)
 
-		var targetPacing db.PacingModeType
-		var shouldUpdate bool
-
-		overThresholdMicro := money.ScalePPM(expectedSpendMicro, 1_000_000+tolerancePPM)
-		underThresholdMicro := money.ScalePPM(expectedSpendMicro, 1_000_000-tolerancePPM)
-
-		if camp.PacingMode == db.PacingModeTypeASAP && actualSpendMicro > overThresholdMicro {
-			targetPacing = db.PacingModeTypeEVEN
-			shouldUpdate = true
-		} else if camp.PacingMode == db.PacingModeTypeEVEN && actualSpendMicro < underThresholdMicro {
-			targetPacing = db.PacingModeTypeASAP
-			shouldUpdate = true
-		}
-
-		if !shouldUpdate {
+		targetPacing, stillUpdate := pacingAdjustmentFromLockedCampaign(camp, expectedSpendMicro, actualSpendMicro, tolerancePPM)
+		if !stillUpdate {
 			continue
 		}
 
-		campID := uuid.UUID(camp.ID.Bytes)
 		if _, err = q.UpdateCampaignPacing(ctx, db.UpdateCampaignPacingParams{
 			ID:         camp.ID,
 			PacingMode: targetPacing,
@@ -89,6 +78,7 @@ func closedLoopPacingControllerTx(ctx context.Context, tx pgx.Tx, merge Delivery
 			return fmt.Errorf("failed to update pacing mode: %w", err)
 		}
 
+		campID := uuid.UUID(camp.ID.Bytes)
 		actualSpendStr := money.FormatDecimal(actualSpendMicro)
 		expectedSpendStr := money.FormatDecimal(expectedSpendMicro)
 		fx.AuditPacingLoopAdjustment(ctx, q, campID, string(camp.PacingMode), string(targetPacing), actualSpendStr, expectedSpendStr)
@@ -114,4 +104,55 @@ func closedLoopPacingControllerTx(ctx context.Context, tx pgx.Tx, merge Delivery
 	}
 
 	return nil
+}
+
+func pacingAdjustmentFromStatsRow(
+	row db.GetAllActiveCampaignsWithStatsRow,
+	hourWeights [24]float64,
+	now time.Time,
+	tolerancePPM int64,
+	fx PacingDeliveryHost,
+) (db.PacingModeType, bool) {
+	loc := fx.CampaignLocation(row.Timezone)
+	localNow := now.In(loc)
+	daypart := row.DaypartHours
+	if daypart == nil {
+		daypart = []int16{}
+	}
+	timeRatio := campaign.SmartPacingExpectedRatio(hourWeights, daypart, localNow)
+
+	budgetMicro := row.DailyBudget
+	if budgetMicro == 0 {
+		budgetMicro = row.BudgetLimit
+	}
+	if budgetMicro == 0 {
+		return "", false
+	}
+
+	ratioPPM := int64(timeRatio * 1_000_000)
+	expectedSpendMicro := money.ScalePPM(budgetMicro, ratioPPM)
+	return pacingAdjustmentFromLockedCampaign(
+		db.Campaign{PacingMode: row.PacingMode},
+		expectedSpendMicro,
+		row.CurrentSpend,
+		tolerancePPM,
+	)
+}
+
+func pacingAdjustmentFromLockedCampaign(
+	camp db.Campaign,
+	expectedSpendMicro int64,
+	actualSpendMicro int64,
+	tolerancePPM int64,
+) (db.PacingModeType, bool) {
+	overThresholdMicro := money.ScalePPM(expectedSpendMicro, 1_000_000+tolerancePPM)
+	underThresholdMicro := money.ScalePPM(expectedSpendMicro, 1_000_000-tolerancePPM)
+
+	if camp.PacingMode == db.PacingModeTypeASAP && actualSpendMicro > overThresholdMicro {
+		return db.PacingModeTypeEVEN, true
+	}
+	if camp.PacingMode == db.PacingModeTypeEVEN && actualSpendMicro < underThresholdMicro {
+		return db.PacingModeTypeASAP, true
+	}
+	return "", false
 }

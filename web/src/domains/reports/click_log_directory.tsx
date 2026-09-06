@@ -10,11 +10,7 @@ import {
   TableHeader,
   TableRow,
 } from '@/shell/directory_table';
-import {
-  DirectoryFilterForm,
-  FilterField,
-  FilterPanel,
-} from '@/shell/filter_panel';
+import { DirectoryFilterForm, FilterField, FilterPanel } from '@/shell/filter_panel';
 import { PageChrome } from '@/shell/page_chrome';
 import { EmptyState } from '@/shell/empty_state';
 import { ErrorBlock } from '@/shell/error_block';
@@ -153,7 +149,8 @@ export function ClickLogDirectory({
 
       {timelineMode ? (
         <p className="text-sm text-muted-foreground">
-          Timeline for click <span className="font-mono text-foreground">{draftClickId.trim()}</span>
+          Timeline for click{' '}
+          <span className="font-mono text-foreground">{draftClickId.trim()}</span>
         </p>
       ) : null}
 
@@ -231,7 +228,6 @@ export function ClickLogDirectory({
         <DirectoryPaginationFooter
           canGoNext={canGoNext}
           canGoPrev={canGoPrev}
-          layout="split"
           variant="outline"
           onNext={onNextPage}
           onPrev={onPrevPage}
@@ -241,7 +237,7 @@ export function ClickLogDirectory({
       {timelineMode && postbacks.length > 0 ? (
         <section className="ui-surface-raised grid gap-3 p-5">
           <h3 className="text-base font-medium tracking-tight">Postbacks</h3>
-          <DirectoryTable className="border-0 bg-transparent shadow-none" horizontalScroll>
+          <DirectoryTable horizontalScroll nested>
             <TableHeader>
               <TableRow>
                 <DirectoryTableHead>Status</DirectoryTableHead>

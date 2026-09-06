@@ -71,7 +71,7 @@ func (r *tcpEdgeCorrelationRule) Find(ctx context.Context) ([]SuspiciousIP, erro
 
 	ipByHash := make(map[string]string, len(ips))
 	for i, ip := range ips {
-		ipByHash[hashArgs[i]] = ip
+		ipByHash[hex.EncodeToString([]byte(hashArgs[i]))] = ip
 	}
 
 	var out []SuspiciousIP

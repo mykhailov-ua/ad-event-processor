@@ -61,9 +61,7 @@ export function ReportsHub({ rows, fetching, error, hasSnapshot }: ReportsHubPro
         </HubLinkGrid>
       )}
 
-      {error && hasSnapshot && (
-        <ErrorBlock title="Refresh failed" message={error.message} />
-      )}
+      {error && hasSnapshot && <ErrorBlock title="Refresh failed" message={error.message} />}
     </PageChrome>
   );
 }

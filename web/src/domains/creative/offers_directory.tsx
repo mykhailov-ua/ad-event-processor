@@ -1,4 +1,5 @@
-import { useEffect, useState } from 'react';
+import { useState } from 'react';
+import { useRunWhenTrue } from '@/hooks/use_run_when_true';
 
 import { PrimaryActionButton } from '@/shell/action_buttons';
 import { PageChrome } from '@/shell/page_chrome';
@@ -57,11 +58,7 @@ export function OffersDirectory({
 }: OffersDirectoryProps) {
   const [createOpen, setCreateOpen] = useState(false);
 
-  useEffect(() => {
-    if (createSuccess) {
-      setCreateOpen(false);
-    }
-  }, [createSuccess]);
+  useRunWhenTrue(createSuccess, () => setCreateOpen(false));
 
   if (fetching && !hasSnapshot && !error) {
     return <PageSkeleton variant="directory" columns={3} />;
@@ -136,23 +133,23 @@ export function OffersDirectory({
           />
         ) : (
           <DirectoryTable horizontalScroll>
-              <TableHeader>
-                <TableRow>
-                  <DirectoryTableHead>Name</DirectoryTableHead>
-                  <DirectoryTableHead>URL</DirectoryTableHead>
-                  <DirectoryTableHead>Created</DirectoryTableHead>
+            <TableHeader>
+              <TableRow>
+                <DirectoryTableHead>Name</DirectoryTableHead>
+                <DirectoryTableHead>URL</DirectoryTableHead>
+                <DirectoryTableHead>Created</DirectoryTableHead>
+              </TableRow>
+            </TableHeader>
+            <TableBody>
+              {(items ?? []).map((row) => (
+                <TableRow key={row.id}>
+                  <TableCell>{row.name}</TableCell>
+                  <TableCell className="whitespace-nowrap">{row.url}</TableCell>
+                  <TableCell className="tabular-nums">{displayTimestamp(row.created_at)}</TableCell>
                 </TableRow>
-              </TableHeader>
-              <TableBody>
-                {(items ?? []).map((row) => (
-                  <TableRow key={row.id}>
-                    <TableCell>{row.name}</TableCell>
-                    <TableCell className="whitespace-nowrap">{row.url}</TableCell>
-                    <TableCell className="tabular-nums">{displayTimestamp(row.created_at)}</TableCell>
-                  </TableRow>
-                ))}
-              </TableBody>
-            </DirectoryTable>
+              ))}
+            </TableBody>
+          </DirectoryTable>
         )}
       </div>
 

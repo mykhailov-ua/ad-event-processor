@@ -1,7 +1,9 @@
 package billingadmin
 
 import (
+	"context"
 	"encoding/json"
+	"errors"
 	"net/http"
 	"time"
 
@@ -16,11 +18,14 @@ import (
 )
 
 type CostSyncHTTPHandlers struct {
-	Pool              *pgxpool.Pool
-	EncryptionKey     []byte
-	Worker            *costsync.Worker
-	ApplyRateLimit    func(http.HandlerFunc) http.HandlerFunc
-	RequirePermission func(string, http.HandlerFunc) http.HandlerFunc
+	Pool                    *pgxpool.Pool
+	EncryptionKey           []byte
+	Worker                  *costsync.Worker
+	ApplyRateLimit          func(http.HandlerFunc) http.HandlerFunc
+	RequirePermission       func(string, http.HandlerFunc) http.HandlerFunc
+	ResolveBoundCustomerID  func(*http.Request, string) (string, error)
+	AuthorizeCustomerAccess func(*http.Request, string) error
+	WriteServiceError       func(http.ResponseWriter, error)
 }
 
 func (h *CostSyncHTTPHandlers) Register(mux *http.ServeMux) {
@@ -126,8 +131,40 @@ func costSyncCredentialDTO(row db.CostSyncCredential) (CostSyncCredentialDTO, er
 	return dto, nil
 }
 
+func (h *CostSyncHTTPHandlers) resolveCustomerFilter(r *http.Request, customerID string) (string, error) {
+	if h.ResolveBoundCustomerID != nil {
+		filtered, err := h.ResolveBoundCustomerID(r, customerID)
+		if err != nil {
+			return "", err
+		}
+		customerID = filtered
+	}
+	if customerID != "" && h.AuthorizeCustomerAccess != nil {
+		if err := h.AuthorizeCustomerAccess(r, customerID); err != nil {
+			return "", err
+		}
+	}
+	return customerID, nil
+}
+
+func (h *CostSyncHTTPHandlers) writeCostSyncError(w http.ResponseWriter, err error) {
+	if errors.Is(err, ErrForbidden) {
+		httpresponse.Error(w, http.StatusForbidden, "FORBIDDEN", "forbidden")
+		return
+	}
+	if h.WriteServiceError != nil {
+		h.WriteServiceError(w, err)
+		return
+	}
+	httpresponse.Error(w, http.StatusInternalServerError, "INTERNAL_ERROR", err.Error())
+}
+
 func (h *CostSyncHTTPHandlers) listCredentials(w http.ResponseWriter, r *http.Request) {
-	customerID := r.URL.Query().Get("customer_id")
+	customerID, err := h.resolveCustomerFilter(r, r.URL.Query().Get("customer_id"))
+	if err != nil {
+		h.writeCostSyncError(w, err)
+		return
+	}
 	if customerID != "" {
 		if _, err := uuid.Parse(customerID); err != nil {
 			httpresponse.Error(w, http.StatusBadRequest, "BAD_REQUEST", "invalid customer_id")
@@ -163,6 +200,16 @@ func (h *CostSyncHTTPHandlers) upsertCredential(w http.ResponseWriter, r *http.R
 		httpresponse.Error(w, http.StatusBadRequest, "BAD_REQUEST", "invalid json body")
 		return
 	}
+	filteredCustomerID, err := h.resolveCustomerFilter(r, req.CustomerID)
+	if err != nil {
+		h.writeCostSyncError(w, err)
+		return
+	}
+	if filteredCustomerID == "" {
+		httpresponse.Error(w, http.StatusBadRequest, "BAD_REQUEST", "customer_id is required")
+		return
+	}
+	req.CustomerID = filteredCustomerID
 	custID, err := uuid.Parse(req.CustomerID)
 	if err != nil {
 		httpresponse.Error(w, http.StatusBadRequest, "BAD_REQUEST", "invalid customer_id")
@@ -252,8 +299,12 @@ func (h *CostSyncHTTPHandlers) upsertCredential(w http.ResponseWriter, r *http.R
 
 func (h *CostSyncHTTPHandlers) deleteCredential(w http.ResponseWriter, r *http.Request) {
 	network := r.PathValue("network")
-	custStr := r.URL.Query().Get("customer_id")
-	custID, err := uuid.Parse(custStr)
+	customerID, err := h.resolveCustomerFilter(r, r.URL.Query().Get("customer_id"))
+	if err != nil {
+		h.writeCostSyncError(w, err)
+		return
+	}
+	custID, err := uuid.Parse(customerID)
 	if err != nil {
 		httpresponse.Error(w, http.StatusBadRequest, "BAD_REQUEST", "invalid customer_id")
 		return
@@ -286,6 +337,15 @@ func (h *CostSyncHTTPHandlers) runSync(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
+	filteredCustomerID, err := h.resolveCustomerFilter(r, req.CustomerID)
+	if err != nil {
+		h.writeCostSyncError(w, err)
+		return
+	}
+	if filteredCustomerID != "" {
+		req.CustomerID = filteredCustomerID
+	}
+
 	var custFilter *uuid.UUID
 	if req.CustomerID != "" {
 		cid, err := uuid.Parse(req.CustomerID)
@@ -315,15 +375,19 @@ func (h *CostSyncHTTPHandlers) runSync(w http.ResponseWriter, r *http.Request) {
 		to = parsed
 	}
 
-	if err := h.Worker.RunManual(r.Context(), custFilter, req.Network, from, to); err != nil {
-		httpresponse.Error(w, http.StatusInternalServerError, "INTERNAL_ERROR", err.Error())
+	if err := h.Worker.StartManualRun(context.Background(), custFilter, req.Network, from, to); err != nil {
+		httpresponse.Error(w, http.StatusBadRequest, "BAD_REQUEST", err.Error())
 		return
 	}
 	httpresponse.JSON(w, http.StatusAccepted, map[string]string{"status": "accepted"})
 }
 
 func (h *CostSyncHTTPHandlers) listHistory(w http.ResponseWriter, r *http.Request) {
-	customerID := r.URL.Query().Get("customer_id")
+	customerID, err := h.resolveCustomerFilter(r, r.URL.Query().Get("customer_id"))
+	if err != nil {
+		h.writeCostSyncError(w, err)
+		return
+	}
 	if customerID != "" {
 		if _, err := uuid.Parse(customerID); err != nil {
 			httpresponse.Error(w, http.StatusBadRequest, "BAD_REQUEST", "invalid customer_id")

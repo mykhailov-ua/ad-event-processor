@@ -174,7 +174,6 @@ func (w *OutboxWorker) ProcessOutbox(ctx context.Context, limit int32) (int, err
 			slog.Error("failed to handle outbox outboxEventent", "id", outboxEvent.ID, "error", err)
 			SettlementErrorsTotal.Inc()
 			w.markOutboxEventRetryable(ctx, outboxEvent, err)
-			batchErrs = append(batchErrs, fmt.Errorf("outbox event %d: %w", outboxEvent.ID, err))
 			continue
 		}
 		if PostSettlementMarkHook != nil {
@@ -182,7 +181,6 @@ func (w *OutboxWorker) ProcessOutbox(ctx context.Context, limit int32) (int, err
 				slog.Error("post-settlement hook failed", "id", outboxEvent.ID, "error", hookErr)
 				SettlementErrorsTotal.Inc()
 				w.markOutboxEventRetryable(ctx, outboxEvent, hookErr)
-				batchErrs = append(batchErrs, fmt.Errorf("outbox event %d post-settlement hook: %w", outboxEvent.ID, hookErr))
 				continue
 			}
 		}

@@ -1,11 +1,7 @@
 import { test, expect } from '@playwright/test';
 
 import { loginAsAdmin, skipUnlessIntegrationReady } from '../helpers.js';
-import {
-  assertPlaywrightBudget,
-  medianWallClockMs,
-  PLAYWRIGHT_BUDGETS,
-} from './helpers_perf.js';
+import { assertPlaywrightBudget, medianWallClockMs, PLAYWRIGHT_BUDGETS } from './helpers_perf.js';
 
 test.describe.configure({ mode: 'serial' });
 
@@ -25,10 +21,12 @@ test('dashboard chart region within perf budget (chart_mock=1)', async ({ page }
   assertPlaywrightBudget(
     'dashboard chart region visible',
     medianMs,
-    PLAYWRIGHT_BUDGETS.chartRegionMs,
+    PLAYWRIGHT_BUDGETS.chartRegionMs
   );
 
-  const rowBuildMs = await page.evaluate(() => window.__ADMIN_PERF__?.marks?.['dashboard-chart-rows']);
+  const rowBuildMs = await page.evaluate(
+    () => window.__ADMIN_PERF__?.marks?.['dashboard-chart-rows']
+  );
   if (rowBuildMs != null) {
     assertPlaywrightBudget('dashboard chart row build', rowBuildMs, 50);
   }

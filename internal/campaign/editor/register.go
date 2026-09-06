@@ -18,6 +18,7 @@ func RegisterRoutes(h *campaign.CampaignsHTTPHandlers, mux *http.ServeMux, limit
 	mux.HandleFunc("GET /api/v1/campaigns/{id}/geo-summary", limit(perm([]string{"campaigns:read", "campaigns:read:masked"}, route(h, getCampaignGeoSummary))))
 	mux.HandleFunc("GET /api/v1/campaigns/{id}/fraud-editor", limit(perm([]string{"campaigns:read"}, route(h, getCampaignFraudEditorSummary))))
 	mux.HandleFunc("POST /api/v1/campaigns/{id}/validate", limit(perm([]string{"campaigns:read"}, route(h, postCampaignValidate))))
+	mux.HandleFunc("POST /api/v1/campaigns/{id}/flow/validate", limit(perm([]string{"campaigns:read"}, route(h, postCampaignFlowValidate))))
 	mux.HandleFunc("GET /api/v1/campaigns/{id}/integration-panel", limit(perm([]string{"campaigns:read"}, route(h, getCampaignIntegrationPanel))))
 	mux.HandleFunc("POST /api/v1/campaigns/{id}/macro-preview", limit(perm([]string{"campaigns:read", "campaigns:read:masked"}, route(h, postCampaignMacroPreview))))
 	mux.HandleFunc("GET /api/v1/campaigns/{id}/diff", limit(perm([]string{"campaigns:read", "campaigns:read:masked"}, route(h, getCampaignDiff))))

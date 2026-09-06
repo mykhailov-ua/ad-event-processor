@@ -61,6 +61,74 @@ func NewBlocklistStore() *BlocklistStore {
 	}
 }
 
+func upsertHostDenyV4(maps BlocklistMaps, addr uint32, hostCount int) error {
+	if maps.V4Host != nil {
+		recordLRUEvictionBeforeInsert(maps.V4Host, "blocklist_host_v4", hostCount)
+		if err := maps.V4Host.Update(addr, blockedMarker, ebpf.UpdateAny); err != nil {
+			return err
+		}
+	}
+	if maps.V4Prefix != nil {
+		key := IPv4Key{PrefixLen: 32, Addr: addr}
+		if err := maps.V4Prefix.Update(key, blockedMarker, ebpf.UpdateAny); err != nil {
+			return err
+		}
+	}
+	return nil
+}
+
+func deleteHostDenyV4(maps BlocklistMaps, addr uint32) error {
+	if maps.V4Host != nil {
+		if err := maps.V4Host.Delete(addr); err != nil {
+			return err
+		}
+	}
+	if maps.V4Prefix != nil {
+		key := IPv4Key{PrefixLen: 32, Addr: addr}
+		if err := maps.V4Prefix.Delete(key); err != nil {
+			return err
+		}
+	}
+	return nil
+}
+
+func upsertHostDenyV6(maps BlocklistMaps, key IPv6Key, hostCount int) error {
+	if maps.V6Host != nil {
+		recordLRUEvictionBeforeInsert(maps.V6Host, "blocklist_host_v6", hostCount)
+		if err := maps.V6Host.Update(key.Addr, blockedMarker, ebpf.UpdateAny); err != nil {
+			return err
+		}
+	}
+	if maps.V6Prefix != nil {
+		lpm := key
+		if lpm.PrefixLen == 0 {
+			lpm.PrefixLen = 128
+		}
+		if err := maps.V6Prefix.Update(lpm, blockedMarker, ebpf.UpdateAny); err != nil {
+			return err
+		}
+	}
+	return nil
+}
+
+func deleteHostDenyV6(maps BlocklistMaps, key IPv6Key) error {
+	if maps.V6Host != nil {
+		if err := maps.V6Host.Delete(key.Addr); err != nil {
+			return err
+		}
+	}
+	if maps.V6Prefix != nil {
+		lpm := key
+		if lpm.PrefixLen == 0 {
+			lpm.PrefixLen = 128
+		}
+		if err := maps.V6Prefix.Delete(lpm); err != nil {
+			return err
+		}
+	}
+	return nil
+}
+
 func (s *BlocklistStore) Len() int {
 	s.mu.Lock()
 	defer s.mu.Unlock()
@@ -123,9 +191,8 @@ func (s *BlocklistStore) applyV4Diff(maps BlocklistMaps) (added, removed int, er
 		if _, ok := s.hosts[addr]; ok {
 			continue
 		}
-		if maps.V4Host != nil {
-			recordLRUEvictionBeforeInsert(maps.V4Host, "blocklist_host_v4", len(s.hosts))
-			if err := maps.V4Host.Update(addr, blockedMarker, ebpf.UpdateAny); err != nil {
+		if maps.V4Host != nil || maps.V4Prefix != nil {
+			if err := upsertHostDenyV4(maps, addr, len(s.hosts)); err != nil {
 				return added, removed, fmt.Errorf("upsert host %08x: %w", addr, err)
 			}
 		}
@@ -154,8 +221,8 @@ func (s *BlocklistStore) applyV4Diff(maps BlocklistMaps) (added, removed int, er
 		if _, ok := s.scratchHosts[addr]; ok {
 			continue
 		}
-		if maps.V4Host != nil {
-			if err := maps.V4Host.Delete(addr); err != nil {
+		if maps.V4Host != nil || maps.V4Prefix != nil {
+			if err := deleteHostDenyV4(maps, addr); err != nil {
 				return added, removed, fmt.Errorf("delete host %08x: %w", addr, err)
 			}
 		}
@@ -186,9 +253,8 @@ func (s *BlocklistStore) applyV6Diff(maps BlocklistMaps) (added, removed int, er
 		if _, ok := s.v6Hosts[id]; ok {
 			continue
 		}
-		if maps.V6Host != nil {
-			recordLRUEvictionBeforeInsert(maps.V6Host, "blocklist_host_v6", len(s.v6Hosts))
-			if err := maps.V6Host.Update(key.Addr, blockedMarker, ebpf.UpdateAny); err != nil {
+		if maps.V6Host != nil || maps.V6Prefix != nil {
+			if err := upsertHostDenyV6(maps, key, len(s.v6Hosts)); err != nil {
 				return added, removed, fmt.Errorf("upsert v6 host %s: %w", ipStr, err)
 			}
 		}
@@ -216,8 +282,8 @@ func (s *BlocklistStore) applyV6Diff(maps BlocklistMaps) (added, removed int, er
 		if _, ok := s.v6Scratch[id]; ok {
 			continue
 		}
-		if maps.V6Host != nil {
-			if err := maps.V6Host.Delete(key.Addr); err != nil {
+		if maps.V6Host != nil || maps.V6Prefix != nil {
+			if err := deleteHostDenyV6(maps, key); err != nil {
 				return added, removed, fmt.Errorf("delete v6 host %s: %w", netIPv6String(key.Addr), err)
 			}
 		}

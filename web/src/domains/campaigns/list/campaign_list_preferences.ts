@@ -116,7 +116,7 @@ export function campaignListColumnOptions(): { id: CampaignListMiddleColumnId; l
 }
 
 export function campaignListColumnPrefsFromPreset(
-  presetId: CampaignListColumnPresetId,
+  presetId: CampaignListColumnPresetId
 ): CampaignListColumnPrefs {
   const visible =
     presetId === 'traffic'
@@ -125,9 +125,7 @@ export function campaignListColumnPrefsFromPreset(
         ? FINANCE_COLUMNS
         : presetId === 'minimal'
           ? MINIMAL_COLUMNS
-          : CAMPAIGN_LIST_MIDDLE_COLUMNS.filter(
-              (id) => !CAMPAIGN_LIST_DEFAULT_HIDDEN.includes(id),
-            );
+          : CAMPAIGN_LIST_MIDDLE_COLUMNS.filter((id) => !CAMPAIGN_LIST_DEFAULT_HIDDEN.includes(id));
 
   const visibleSet = new Set(visible);
   return {

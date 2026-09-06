@@ -1,7 +1,7 @@
 import assert from 'node:assert/strict';
 import test from 'node:test';
 
-import { resolvePopoverAlign } from './popover_align.ts';
+import { resolvePopoverAlign, resolvePopoverSide } from './popover_align.ts';
 
 test('resolvePopoverAlign opens left when trigger is on the right', () => {
   const element = {
@@ -55,4 +55,40 @@ test('resolvePopoverAlign opens left when wide popover does not fit on the right
   } as HTMLElement;
 
   assert.equal(resolvePopoverAlign(element, 1280, 560), 'end');
+});
+
+test('resolvePopoverSide opens above when trigger is near the bottom', () => {
+  const element = {
+    getBoundingClientRect: () => ({
+      left: 24,
+      right: 200,
+      top: 820,
+      bottom: 848,
+      width: 176,
+      height: 28,
+      x: 24,
+      y: 820,
+      toJSON: () => ({}),
+    }),
+  } as HTMLElement;
+
+  assert.equal(resolvePopoverSide(element, 360, 12, 900), 'top');
+});
+
+test('resolvePopoverSide opens below when there is room under the trigger', () => {
+  const element = {
+    getBoundingClientRect: () => ({
+      left: 24,
+      right: 200,
+      top: 120,
+      bottom: 148,
+      width: 176,
+      height: 28,
+      x: 24,
+      y: 120,
+      toJSON: () => ({}),
+    }),
+  } as HTMLElement;
+
+  assert.equal(resolvePopoverSide(element, 360, 12, 900), 'bottom');
 });

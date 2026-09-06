@@ -102,7 +102,7 @@ func (q *ShardQuorumTracker) touch(slot *time.Time, active bool, now time.Time) 
 	*slot = time.Time{}
 }
 
-// DeadShardConfirmed: all three failure signals held for quorum duration; snapshot recon skips the shard.
+// DeadShardConfirmed all three failure signals held for quorum duration; snapshot recon skips the shard.
 func (q *ShardQuorumTracker) DeadShardConfirmed(shard int) bool {
 	if q == nil || shard < 0 || shard >= q.numShards {
 		return false

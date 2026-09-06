@@ -138,7 +138,7 @@ func NewConversionDatacenterIPChecker(geo netintel.GeoProvider, dc *netintel.DCA
 	return &ConversionDatacenterIPChecker{geo: geo, dc: dc}
 }
 
-// IsDatacenterIP: geo anonymous flag first; else ASN lookup + DCASNTable (both must be ready).
+// IsDatacenterIP geo anonymous flag first; else ASN lookup + DCASNTable (both must be ready).
 // Fail-open when geo lacks ASNLookup or DC table not loaded.
 func (c *ConversionDatacenterIPChecker) IsDatacenterIP(ip string) bool {
 	if c == nil || ip == "" {

@@ -22,7 +22,7 @@ test('sumCampaignListTotals_holdout prefers metrics batch micros over margin', (
         rtb_cost_micro: 2,
         advertiser_spend_micro: 3,
       },
-    },
+    }
   );
 
   assert.equal(totals.revenueMicro, 9_000_000);

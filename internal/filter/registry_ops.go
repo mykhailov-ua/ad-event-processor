@@ -4,6 +4,7 @@ import (
 	"context"
 	"crypto/ed25519"
 	"encoding/json"
+	"errors"
 	"hash/fnv"
 	"log/slog"
 	"strconv"
@@ -18,6 +19,7 @@ import (
 	"ad-event-processor/internal/metrics"
 
 	"github.com/google/uuid"
+	"github.com/jackc/pgx/v5"
 	redis "github.com/redis/go-redis/v9"
 )
 
@@ -286,6 +288,60 @@ func getCampaignFromEvent(registry domain.CampaignRegistry, evt *domain.Event) (
 
 func GetCampaignFromEvent(registry domain.CampaignRegistry, evt *domain.Event) (*domain.Campaign, bool) {
 	return getCampaignFromEvent(registry, evt)
+}
+
+func (r *Registry) SetStalePGGrace(enabled bool) {
+	if r == nil {
+		return
+	}
+	r.stalePGGrace.Store(enabled)
+}
+
+// resolveStaleCampaignMiss warms one campaign row from Postgres when registry pub/sub is stale.
+// Returns nil when the row is active and now in the local snapshot; ErrCampaignNotFound when PG has no active row.
+func (r *Registry) resolveStaleCampaignMiss(ctx context.Context, id uuid.UUID) error {
+	if r == nil || !r.IsStaleMode() {
+		return ErrCampaignNotFound
+	}
+	if !r.stalePGGrace.Load() {
+		return ErrRegistryStale
+	}
+	if r.repo == nil {
+		return ErrRegistryStale
+	}
+	if err := r.UpdateAndWarmCampaign(ctx, id); err != nil {
+		if errors.Is(err, pgx.ErrNoRows) {
+			return ErrCampaignNotFound
+		}
+		return ErrRegistryStale
+	}
+	if r.Exists(id) {
+		return nil
+	}
+	return ErrCampaignNotFound
+}
+
+// LookupCampaign resolves evt.CampaignID from the registry snapshot, or PG-warms once during stale mode.
+func LookupCampaign(ctx context.Context, registry domain.CampaignRegistry, evt *domain.Event) (*domain.Campaign, error) {
+	if registry == nil || evt == nil {
+		return nil, ErrCampaignNotFound
+	}
+	if camp, ok := GetCampaignFromEvent(registry, evt); ok {
+		return camp, nil
+	}
+	reg, ok := registry.(*Registry)
+	if !ok || !reg.IsStaleMode() {
+		return nil, ErrCampaignNotFound
+	}
+	if err := reg.resolveStaleCampaignMiss(ctx, evt.CampaignID); err != nil {
+		return nil, err
+	}
+	evt.FilterCampResolved = false
+	evt.FilterCamp = nil
+	if camp, ok := GetCampaignFromEvent(registry, evt); ok {
+		return camp, nil
+	}
+	return nil, ErrCampaignNotFound
 }
 
 type fileLicenseSnapshot struct {

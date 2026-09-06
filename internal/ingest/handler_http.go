@@ -85,10 +85,6 @@ func parseH2Ingress(buf []byte, st *h2ConnState, maxBody int64) (int, Request, u
 	return httpingress.ParseH2Ingress(buf, st, maxBody)
 }
 
-func isH2ClientPreface(buf []byte) bool {
-	return httpingress.IsH2ClientPreface(buf)
-}
-
 func h3ParseRequestFrames(buf []byte, maxBody int64) (int, Request, error) {
 	return httpingress.H3ParseRequestFrames(buf, maxBody)
 }
@@ -117,18 +113,6 @@ func http1AssignWireMetadataHeaders(req *Request, key, val []byte) {
 	httpingress.AssignWireMetadataHeaders(req, key, val)
 }
 
-func http1KeyMatchFold(key []byte, lit string) bool {
-	return httpingress.KeyMatchFold(key, lit)
-}
-
-func edgeHTTP1Disposition(wire []byte, maxBody int64) ingressDisposition {
-	return httpingress.EdgeHTTP1Disposition(wire, maxBody)
-}
-
-func gnetHTTP1Disposition(wire []byte, maxBody int64) ingressDisposition {
-	return httpingress.GnetHTTP1Disposition(wire, maxBody)
-}
-
 func http1IngressCanonical(wire []byte, maxBody int64) (ingressDisposition, ingressDisposition, bool) {
 	return httpingress.HTTP1IngressCanonical(wire, maxBody)
 }
@@ -143,10 +127,6 @@ func http1FaultMalformedCases() []http1FaultCase {
 
 func fraudHTTP1Cases2026() []fraudHTTP1Case {
 	return httpingress.FraudHTTP1Cases2026()
-}
-
-func dispositionFromHTTP1Parse(n int, req Request, err error) ingressDisposition {
-	return httpingress.DispositionFromHTTP1Parse(n, req, err)
 }
 
 func randomWireGarbage(n int) []byte {
@@ -181,8 +161,6 @@ type http1FaultCase = httpingress.HTTP1FaultCase
 type fraudHTTP1Case = httpingress.FraudHTTP1Case
 
 var nginxTrackCorpus = httpingress.NginxTrackCorpus
-
-const http1MaxBufferedOverhead = httpingress.MaxBufferedOverhead
 
 func bytesEqual(b []byte, s string) bool {
 	return httpingress.BytesEqual(b, s)

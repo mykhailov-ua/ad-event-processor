@@ -16,11 +16,9 @@ import (
 )
 
 type FraudFilter struct {
-	geo        GeoProvider
-	dcASN      *DCASNTable
-	asnLookup  ASNLookup
-	sampleSeq  atomic.Uint64
-	sampleMask uint64
+	geo       GeoProvider
+	dcASN     *DCASNTable
+	asnLookup ASNLookup
 }
 
 func NewFraudFilter(geo GeoProvider) *FraudFilter {
@@ -29,17 +27,12 @@ func NewFraudFilter(geo GeoProvider) *FraudFilter {
 	}
 }
 
-func (f *FraudFilter) ConfigureDCASN(table *DCASNTable, lookup ASNLookup, sampleMaskCfg int) {
+func (f *FraudFilter) ConfigureDCASN(table *DCASNTable, lookup ASNLookup, _ int) {
 	if f == nil {
 		return
 	}
 	f.dcASN = table
 	f.asnLookup = lookup
-	if sampleMaskCfg == 0 {
-		f.sampleMask = dcASNCheckSampleMask
-	} else {
-		f.sampleMask = HistogramSampleMaskFromConfig(sampleMaskCfg)
-	}
 }
 
 func (f *FraudFilter) Check(ctx context.Context, evt *domain.Event) error {
@@ -57,7 +50,7 @@ func (f *FraudFilter) Check(ctx context.Context, evt *domain.Event) error {
 		return nil
 	}
 
-	f.checkDCASN(evt, anonKnown && !isAnon)
+	f.checkDCASN(evt)
 	return nil
 }
 
@@ -68,13 +61,8 @@ func ingestAnonymousResolved(evt *domain.Event) (isAnon bool, ok bool) {
 	return evt.IngestAnonymous, true
 }
 
-const dcASNCheckSampleMask = 7
-
-func (f *FraudFilter) checkDCASN(evt *domain.Event, force bool) {
+func (f *FraudFilter) checkDCASN(evt *domain.Event) {
 	if f == nil || f.dcASN == nil || f.asnLookup == nil || !f.dcASN.Ready() || evt.IP == "" {
-		return
-	}
-	if !force && !ShouldSampleHistogram(f.sampleSeq.Add(1), f.sampleMask) {
 		return
 	}
 	metrics.DCASNCheckTotal.Inc()
@@ -92,6 +80,7 @@ type GeoFilter struct {
 	geo                  GeoProvider
 	registry             domain.CampaignRegistry
 	acceptLangGeoEnabled atomic.Bool
+	geoFailClosed        atomic.Bool
 }
 
 func NewGeoFilter(geo GeoProvider, registry domain.CampaignRegistry) *GeoFilter {
@@ -99,6 +88,7 @@ func NewGeoFilter(geo GeoProvider, registry domain.CampaignRegistry) *GeoFilter 
 		geo:      geo,
 		registry: registry,
 	}
+	f.geoFailClosed.Store(true)
 	return f
 }
 
@@ -106,9 +96,13 @@ func (f *GeoFilter) SetAcceptLangGeoEnabled(enabled bool) {
 	f.acceptLangGeoEnabled.Store(enabled)
 }
 
+func (f *GeoFilter) SetGeoFailClosed(enabled bool) {
+	f.geoFailClosed.Store(enabled)
+}
+
 func (f *GeoFilter) Check(ctx context.Context, evt *domain.Event) error {
 	start := MonotonicNano()
-	err := f.checkGeo(evt)
+	err := f.checkGeo(ctx, evt)
 	ObserveHistogramSampled(&geoMetricsSeq, luaMetricsSampleMask, filterGeoDuration, start)
 	if err != nil {
 		return err
@@ -134,13 +128,10 @@ func (f *GeoFilter) checkAcceptLangGeo(evt *domain.Event) {
 	}
 }
 
-func (f *GeoFilter) checkGeo(evt *domain.Event) error {
-	camp, ok := GetCampaignFromEvent(f.registry, evt)
-	if !ok {
-		if reg, ok := f.registry.(*Registry); ok && reg.IsStaleMode() {
-			return ErrRegistryStale
-		}
-		return ErrCampaignNotFound
+func (f *GeoFilter) checkGeo(ctx context.Context, evt *domain.Event) error {
+	camp, err := LookupCampaign(ctx, f.registry, evt)
+	if err != nil {
+		return err
 	}
 
 	if len(camp.TargetCountries) == 0 {
@@ -155,11 +146,17 @@ func (f *GeoFilter) checkGeo(evt *domain.Event) error {
 		country, err = f.geo.GetCountry(evt.IP)
 		if err != nil {
 			filterGeoLookupErrors.Inc()
+			if f.geoFailClosed.Load() {
+				return ErrGeoLookupFailed
+			}
 			return nil
 		}
 	}
 	if country == "" {
 		filterGeoLookupErrors.Inc()
+		if f.geoFailClosed.Load() {
+			return ErrGeoLookupFailed
+		}
 		return nil
 	}
 
@@ -187,10 +184,11 @@ func NewBudgetFilter(manager domain.BudgetManager, registry domain.CampaignRegis
 }
 
 func (f *BudgetFilter) Check(ctx context.Context, evt *domain.Event) error {
-	customerID, ok := f.registry.GetCustomerID(evt.CampaignID)
-	if !ok {
-		return ErrCampaignNotFound
+	camp, err := LookupCampaign(ctx, f.registry, evt)
+	if err != nil {
+		return err
 	}
+	customerID := camp.CustomerID
 
 	amount := f.clickAmount
 	if evt.Type == "impression" {
@@ -554,7 +552,7 @@ func (f *PlacementBlacklistFilter) Check(ctx context.Context, evt *domain.Event)
 
 	redisClient := PickGlobalReadShardForCampaign(f.redisShards, f.sharder, evt.CampaignID)
 	if redisClient == nil {
-		return nil
+		return ErrShardUnavailable
 	}
 
 	w := bufPool.Get().(*BufWrapper)
@@ -566,7 +564,7 @@ func (f *PlacementBlacklistFilter) Check(ctx context.Context, evt *domain.Event)
 	isBlacklisted, err := redisClient.HExists(ctx, redisKey, evt.PlacementID).Result()
 	bufPool.Put(w)
 	if err != nil {
-		return nil
+		return err
 	}
 
 	placementShardStore(shard, key, placementCacheItem{

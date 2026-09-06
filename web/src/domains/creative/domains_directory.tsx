@@ -1,4 +1,5 @@
-import { useEffect, useState } from 'react';
+import { useState } from 'react';
+import { useRunWhenTrue } from '@/hooks/use_run_when_true';
 
 import { PrimaryActionButton, SecondaryActionButton } from '@/shell/action_buttons';
 import { PageChrome } from '@/shell/page_chrome';
@@ -53,7 +54,7 @@ export type DomainsDirectoryProps = {
 };
 
 function healthBadgeVariant(
-  status: DomainHealth['health_status'],
+  status: DomainHealth['health_status']
 ): 'default' | 'secondary' | 'destructive' | 'outline' {
   if (status === 'healthy') {
     return 'default';
@@ -92,17 +93,8 @@ export function DomainsDirectory({
   const [registerOpen, setRegisterOpen] = useState(false);
   const [parkOpen, setParkOpen] = useState(false);
 
-  useEffect(() => {
-    if (actionMessage === 'Domain registered') {
-      setRegisterOpen(false);
-    }
-  }, [actionMessage]);
-
-  useEffect(() => {
-    if (parkMessage) {
-      setParkOpen(false);
-    }
-  }, [parkMessage]);
+  useRunWhenTrue(actionMessage === 'Domain registered', () => setRegisterOpen(false));
+  useRunWhenTrue(Boolean(parkMessage), () => setParkOpen(false));
 
   if (fetching && !hasSnapshot && !error) {
     return <PageSkeleton />;
@@ -178,7 +170,12 @@ export function DomainsDirectory({
             </div>
           </div>
           <DialogFooter>
-            <SecondaryActionButton loading={acting} onClick={onParkDomain} type="button" variant="secondary">
+            <SecondaryActionButton
+              loading={acting}
+              onClick={onParkDomain}
+              type="button"
+              variant="secondary"
+            >
               Park domain
             </SecondaryActionButton>
           </DialogFooter>
@@ -189,57 +186,51 @@ export function DomainsDirectory({
         <EmptyState title="No domains" description="Domain health list returned no entries." />
       ) : (
         <DirectoryTable>
-            <TableHeader>
-              <TableRow>
-                <DirectoryTableHead>Hostname</DirectoryTableHead>
-                <DirectoryTableHead>Role</DirectoryTableHead>
-                <DirectoryTableHead>Health</DirectoryTableHead>
-                <DirectoryTableHead>SSL</DirectoryTableHead>
-                <DirectoryTableHead>Last probe</DirectoryTableHead>
-                <DirectoryTableHead />
+          <TableHeader>
+            <TableRow>
+              <DirectoryTableHead>Hostname</DirectoryTableHead>
+              <DirectoryTableHead>Role</DirectoryTableHead>
+              <DirectoryTableHead>Health</DirectoryTableHead>
+              <DirectoryTableHead>SSL</DirectoryTableHead>
+              <DirectoryTableHead>Last probe</DirectoryTableHead>
+              <DirectoryTableHead />
+            </TableRow>
+          </TableHeader>
+          <TableBody>
+            {(items ?? []).map((row) => (
+              <TableRow key={row.hostname}>
+                <TableCell>{row.hostname}</TableCell>
+                <TableCell>{row.role}</TableCell>
+                <TableCell>
+                  <Badge variant={healthBadgeVariant(row.health_status)}>{row.health_status}</Badge>
+                </TableCell>
+                <TableCell>{row.ssl_status}</TableCell>
+                <TableCell>{displayTimestamp(row.last_probe_at)}</TableCell>
+                <TableCell>
+                  <RowActionsMenu ariaLabel="Domain actions" disabled={acting}>
+                    <DropdownMenuItem disabled={acting} onClick={() => onProbeDomain(row.hostname)}>
+                      Probe
+                    </DropdownMenuItem>
+                    <DropdownMenuItem disabled={acting} onClick={() => onSetupSsl(row.hostname)}>
+                      SSL setup
+                    </DropdownMenuItem>
+                    <DropdownMenuItem
+                      className="text-destructive focus:text-destructive"
+                      disabled={acting}
+                      onClick={() => onDeleteDomain(row.hostname)}
+                    >
+                      Delete
+                    </DropdownMenuItem>
+                  </RowActionsMenu>
+                </TableCell>
               </TableRow>
-            </TableHeader>
-            <TableBody>
-              {(items ?? []).map((row) => (
-                <TableRow key={row.hostname}>
-                  <TableCell>{row.hostname}</TableCell>
-                  <TableCell>{row.role}</TableCell>
-                  <TableCell>
-                    <Badge variant={healthBadgeVariant(row.health_status)}>
-                      {row.health_status}
-                    </Badge>
-                  </TableCell>
-                  <TableCell>{row.ssl_status}</TableCell>
-                  <TableCell>{displayTimestamp(row.last_probe_at)}</TableCell>
-                  <TableCell>
-                    <RowActionsMenu ariaLabel="Domain actions" disabled={acting}>
-                      <DropdownMenuItem disabled={acting} onClick={() => onProbeDomain(row.hostname)}>
-                        Probe
-                      </DropdownMenuItem>
-                      <DropdownMenuItem disabled={acting} onClick={() => onSetupSsl(row.hostname)}>
-                        SSL setup
-                      </DropdownMenuItem>
-                      <DropdownMenuItem
-                        className="text-destructive focus:text-destructive"
-                        disabled={acting}
-                        onClick={() => onDeleteDomain(row.hostname)}
-                      >
-                        Delete
-                      </DropdownMenuItem>
-                    </RowActionsMenu>
-                  </TableCell>
-                </TableRow>
-              ))}
-            </TableBody>
-          </DirectoryTable>
+            ))}
+          </TableBody>
+        </DirectoryTable>
       )}
 
-      {actionMessage ? (
-        <p className="text-sm text-muted-foreground">{actionMessage}</p>
-      ) : null}
-      {sslResult ? (
-        <JsonPayloadView payload={sslResult as unknown as Record<string, unknown>} />
-      ) : null}
+      {actionMessage ? <p className="text-sm text-muted-foreground">{actionMessage}</p> : null}
+      {sslResult ? <JsonPayloadView payload={sslResult} /> : null}
       {actionError ? creativePanelError(actionError, 'Domain action failed') : null}
       {error && hasSnapshot ? creativePanelError(error, 'Refresh failed') : null}
     </PageChrome>

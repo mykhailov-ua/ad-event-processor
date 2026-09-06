@@ -1,3 +1,4 @@
+// L3 campaign editor form: form undefined until syncFormFromCampaign; onFieldChange is no-op when form not seeded.
 import { useCallback, useState } from 'react';
 
 import {
@@ -25,10 +26,7 @@ export function useCampaignEditorForm() {
   const [form, setForm] = useState<CampaignEditorFormState | undefined>(undefined);
 
   const onFieldChange = useCallback(
-    <K extends keyof CampaignEditorFormState>(
-      field: K,
-      value: CampaignEditorFormState[K],
-    ) => {
+    <K extends keyof CampaignEditorFormState>(field: K, value: CampaignEditorFormState[K]) => {
       setForm((prev) => {
         if (!prev) {
           return prev;
@@ -36,7 +34,7 @@ export function useCampaignEditorForm() {
         return { ...prev, [field]: value };
       });
     },
-    [],
+    []
   );
 
   const syncFormFromCampaign = useCallback((campaign: Campaign) => {

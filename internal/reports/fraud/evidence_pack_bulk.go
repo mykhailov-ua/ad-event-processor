@@ -50,22 +50,30 @@ func writeFraudEvidencePackBulkZip(ctx context.Context, deps reports.ReportExpor
 	defer func() { _ = archive.Close() }()
 	rangeFrom := from.UTC().Format(time.RFC3339)
 	rangeTo := to.UTC().Format(time.RFC3339)
+
+	fraudByCampaign := map[string][]reports.FraudEvidenceFraudRowDTO{}
+	if deps.ClickHouseQuery != nil && len(campaignUUIDs) > 0 {
+		allRows, qerr := queryFraudEvidencePackFraudCH(ctx, deps.ClickHouseQuery, campaignUUIDs, "", from, to)
+		if qerr != nil {
+			return qerr
+		}
+		for i := range allRows {
+			fraudByCampaign[allRows[i].CampaignID] = append(fraudByCampaign[allRows[i].CampaignID], allRows[i])
+		}
+	}
+
 	for _, campUUID := range campaignUUIDs {
 		campaignID := campUUID.String()
 		pack := reports.FraudEvidencePackDTO{
-			ClickID:    "bulk:" + campaignID,
-			CustomerID: customerID.String(),
-			CampaignID: campaignID,
-			RangeFrom:  rangeFrom,
-			RangeTo:    rangeTo,
+			ClickID:     "bulk:" + campaignID,
+			CustomerID:  customerID.String(),
+			CampaignID:  campaignID,
+			RangeFrom:   rangeFrom,
+			RangeTo:     rangeTo,
+			FraudEvents: fraudByCampaign[campaignID],
 		}
-		if deps.ClickHouseQuery != nil {
-			fraudRows, qerr := queryFraudEvidencePackFraudCH(ctx, deps.ClickHouseQuery, []uuid.UUID{campUUID}, "", from, to)
-			if qerr != nil {
-				return qerr
-			}
-			pack.FraudEvents = fraudRows
-			pack.Signals = aggregateFraudEvidenceSignals(fraudRows)
+		if len(pack.FraudEvents) > 0 {
+			pack.Signals = aggregateFraudEvidenceSignals(pack.FraudEvents)
 		}
 		signed, serr := BuildSignedFraudEvidencePack(deps.FraudEvidencePackHMACSecret, pack)
 		if serr != nil {
@@ -75,8 +83,7 @@ func writeFraudEvidencePackBulkZip(ctx context.Context, deps reports.ReportExpor
 		if merr != nil {
 			return merr
 		}
-		memberName := campaignID + ".json"
-		writer, werr := archive.Create(memberName)
+		writer, werr := archive.Create(campaignID + ".json")
 		if werr != nil {
 			return werr
 		}

@@ -1,3 +1,8 @@
+import type {
+  OpsDomainRotationResponse,
+  OpsTlsAllowedHostResponse,
+  OpsTlsAllowedListResponse,
+} from '@/api/types';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
@@ -6,9 +11,9 @@ import { opsPanelError } from '@/domains/ops/ops_nav';
 import { OpsActionGroup, OpsPageLoading, OpsPageShell } from '@/domains/ops/ops_page_shell';
 
 export type OpsDomainsProps = {
-  rotation: Record<string, unknown> | undefined;
-  tlsAllowed: Record<string, unknown> | undefined;
-  tlsHost: Record<string, unknown> | undefined;
+  rotation: OpsDomainRotationResponse | undefined;
+  tlsAllowed: OpsTlsAllowedListResponse | undefined;
+  tlsHost: OpsTlsAllowedHostResponse | undefined;
   draftHostname: string;
   fetchingRotation: boolean;
   fetchingTlsList: boolean;
@@ -62,10 +67,20 @@ export function OpsDomains({
       actions={
         <>
           <OpsActionGroup label="Domain data">
-            <Button disabled={fetchingRotation} loading={fetchingRotation} type="button" onClick={onLoadRotation}>
+            <Button
+              disabled={fetchingRotation}
+              loading={fetchingRotation}
+              type="button"
+              onClick={onLoadRotation}
+            >
               Load rotation
             </Button>
-            <Button disabled={fetchingTlsList} loading={fetchingTlsList} type="button" onClick={onLoadTlsList}>
+            <Button
+              disabled={fetchingTlsList}
+              loading={fetchingTlsList}
+              type="button"
+              onClick={onLoadTlsList}
+            >
               Load TLS allowed list
             </Button>
           </OpsActionGroup>

@@ -100,14 +100,6 @@ func hostFromURL(raw string) string {
 	return u.Host
 }
 
-func drainHTTPBody(body io.ReadCloser) {
-	if body == nil {
-		return
-	}
-	_, _ = io.Copy(io.Discard, body)
-	_ = body.Close()
-}
-
 func (h *CampaignsHTTPHandlers) registerCampaignSmokeRoutes(mux *http.ServeMux, limit func(http.HandlerFunc) http.HandlerFunc, perm func([]string, http.HandlerFunc) http.HandlerFunc) {
 	write := []string{"campaigns:write"}
 	mux.HandleFunc("POST /api/v1/campaigns/{id}/smoke", limit(perm(write, h.postCampaignSmoke)))
@@ -163,7 +155,8 @@ func followCampaignSmokeHop(ctx context.Context, client *http.Client, current st
 	if err != nil {
 		return nil, "tracker_unreachable", "", err, true
 	}
-	defer drainHTTPBody(resp.Body)
+	defer func() { _ = resp.Body.Close() }()
+	_, _ = io.Copy(io.Discard, resp.Body)
 
 	chain = []CampaignSmokeRedirectHop{{URL: current, StatusCode: resp.StatusCode}}
 	if hop == 0 && resp.StatusCode == http.StatusForbidden {

@@ -1,7 +1,7 @@
 package ingest
 
 import (
-	"ad-event-processor/internal/ingest/pool"
+	"ad-event-processor/internal/ingest/domainhosts"
 
 	"github.com/panjf2000/gnet/v2"
 )
@@ -14,8 +14,8 @@ func (h *AdsPacketHandler) tryTrackingDomainRotation(req Request, ctx *ConnConte
 	if !ok || len(fallback) == 0 {
 		return false
 	}
-	scheme := pool.SchemeFromHost(req.Host)
-	loc := pool.BuildTrackingDomainRotation(ctx.ExtraBuf[:0], scheme, fallback, req.Path)
+	scheme := domainhosts.SchemeFromHost(req.Host)
+	loc := domainhosts.BuildTrackingDomainRotation(ctx.ExtraBuf[:0], scheme, fallback, req.Path)
 	ctx.ExtraBuf = loc
 	h.writeGnetClickLandingRedirect(ctx, c, startMono, loc, h.clickDmrActive(parsed.CampaignID, parsed.DMR))
 	return true

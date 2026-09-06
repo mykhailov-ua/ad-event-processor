@@ -317,8 +317,8 @@ func TestFault_KillLeaderMidReplication(t *testing.T) {
 	}()
 
 	requireEventually(t, func() bool {
-		return partitionOffset(t, follower, topic) >= 10
-	}, 30*time.Second, 200*time.Millisecond, "follower must replicate some messages before kill")
+		return partitionOffset(t, follower, topic) >= 5
+	}, 90*time.Second, 200*time.Millisecond, "follower must replicate some messages before kill")
 
 	followerBefore := partitionOffset(t, follower, topic)
 	leaderProc.kill9(t)

@@ -19,12 +19,24 @@ import (
 	"ad-event-processor/pkg/coldpath"
 
 	"github.com/google/uuid"
+	"github.com/jackc/pgx/v5/pgtype"
 	"github.com/jackc/pgx/v5/pgxpool"
 	"github.com/redis/go-redis/v9"
 )
 
 func (s *Service) GetCampaignRow(ctx context.Context, id uuid.UUID) (db.Campaign, error) {
 	return db.New(s.pool).GetCampaign(ctx, domain.ToUUID(id))
+}
+
+func (s *Service) ListCampaignRowsByIDs(ctx context.Context, ids []uuid.UUID) ([]db.Campaign, error) {
+	if len(ids) == 0 {
+		return nil, nil
+	}
+	pgIDs := make([]pgtype.UUID, len(ids))
+	for i, id := range ids {
+		pgIDs[i] = domain.ToUUID(id)
+	}
+	return db.New(s.pool).ListCampaignsByIDs(ctx, pgIDs)
 }
 
 func (s *Service) CreateCustomer(ctx context.Context, id uuid.UUID, name string, balance int64, currency string) error {
@@ -92,14 +104,6 @@ func (s *Service) FinalizeCancelledCampaign(ctx context.Context, campaignID uuid
 		feePercent = s.cfg.Management.CancellationFeePercent
 	}
 	return campaign.FinalizeCancelledCampaign(ctx, s.pool, s, feePercent, s.requirePgFencing, campaignID, reason)
-}
-
-func (s *Service) finalizeDrainingCampaign(ctx context.Context, q db.Querier, campaignID uuid.UUID, camp db.Campaign, reason string) error {
-	feePercent := 0.0
-	if s.cfg != nil {
-		feePercent = s.cfg.Management.CancellationFeePercent
-	}
-	return campaign.FinalizeDrainingCampaign(ctx, q, s, feePercent, campaignID, camp, reason)
 }
 
 func (s *Service) ledgerStore() *billingadmin.LedgerStore {

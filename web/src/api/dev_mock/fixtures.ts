@@ -2,6 +2,8 @@ import type { Campaign } from '@/api/types';
 
 import { seedDeterministicUuid } from '@/api/dev_mock/seed_uuid';
 
+import { seedUserEmail } from './fixture_names.ts';
+
 function devDisplayId(id: string): string {
   let hash = 0;
   for (let index = 0; index < id.length; index += 1) {
@@ -66,9 +68,9 @@ export const DEV_MOCK_CUSTOMERS: DevMockCustomer[] = CUSTOMER_NAMES.map((name, i
 }));
 
 export const DEV_MOCK_USERS: DevMockUser[] = [
-  { id: seedDeterministicUuid('user', 1), email: 'operator@dev.local' },
-  { id: seedDeterministicUuid('user', 2), email: 'buyer@dev.local' },
-  { id: seedDeterministicUuid('user', 3), email: 'analyst@dev.local' },
+  { id: seedDeterministicUuid('user', 1), email: seedUserEmail(1) },
+  { id: seedDeterministicUuid('user', 2), email: seedUserEmail(2) },
+  { id: seedDeterministicUuid('user', 3), email: seedUserEmail(3) },
 ];
 
 function campaignStatus(seq: number): (typeof STATUSES)[number] {

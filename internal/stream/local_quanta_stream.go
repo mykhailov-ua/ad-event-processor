@@ -66,7 +66,7 @@ type localQuantaStreamLane struct {
 	slots       []localQuantaStreamSlot
 }
 
-// LocalQuantaStreamPublisher: async stream lane for LOCAL_QUOTA_MODE=live full-skip. Tier B Enqueue
+// LocalQuantaStreamPublisher is the async stream lane for LOCAL_QUOTA_MODE=live full-skip. Tier B Enqueue
 // after local debit; laneWorker batches XADD + budget:sync INCRBY + fcap INCR off the request path.
 // When StreamProducer is wired, stream name is fcap:ignored so only one Go writer issues XADD.
 type LocalQuantaStreamPublisher struct {

@@ -9,14 +9,13 @@ type GuardConfig struct {
 }
 
 var (
-	guardTripped             atomic.Uint32
-	resetLicenseEpochHook    func()
-	invalidateLicenseEpochFn func()
+	guardTripped          atomic.Uint32
+	resetLicenseEpochHook func()
 )
 
 func SetLicenseEpochHooks(reset func(), invalidate func()) {
 	resetLicenseEpochHook = reset
-	invalidateLicenseEpochFn = invalidate
+	setInvalidateLicenseEpochHook(invalidate)
 }
 
 func GuardTripped() bool {
@@ -29,10 +28,4 @@ func ResetGuardForTest() {
 		resetLicenseEpochHook()
 	}
 	resetGuardHooksForTest()
-}
-
-func invalidateLicenseEpoch() {
-	if invalidateLicenseEpochFn != nil {
-		invalidateLicenseEpochFn()
-	}
 }

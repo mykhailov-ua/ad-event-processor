@@ -41,8 +41,10 @@ const MAP = {
   'admin-columns-menu__label': 'text-xs font-medium text-zinc-500 dark:text-zinc-400',
   'admin-columns-menu__item': 'flex items-center gap-2 text-sm',
   'admin-campaign-status__dot': 'h-1.5 w-1.5 shrink-0 rounded-full bg-current',
-  'admin-campaign-status--paused': 'inline-flex items-center gap-1.5 text-xs text-amber-700 dark:text-amber-300',
-  'admin-campaign-status--active': 'inline-flex items-center gap-1.5 text-xs text-green-700 dark:text-green-300',
+  'admin-campaign-status--paused':
+    'inline-flex items-center gap-1.5 text-xs text-amber-700 dark:text-amber-300',
+  'admin-campaign-status--active':
+    'inline-flex items-center gap-1.5 text-xs text-green-700 dark:text-green-300',
   'admin-campaign-status--archived': 'inline-flex items-center gap-1.5 text-xs text-zinc-500',
   'admin-campaign-status': 'inline-flex items-center gap-1.5 text-xs',
   'admin-table-td--indicator': 'w-6 px-0.5 text-center',
@@ -91,11 +93,13 @@ const MAP = {
   'admin-metric-rate-warn': 'tabular-nums text-amber-600 dark:text-amber-400',
   'admin-metric-zero': 'tabular-nums text-zinc-400 dark:text-zinc-600',
   'admin-metric-fill-bar-segments__item': 'min-w-0 flex-1 self-end rounded-sm bg-blue-600/75',
-  'admin-metric-fill-bar-segments': 'flex h-10 items-end gap-0.5 rounded bg-zinc-100 p-1 dark:bg-zinc-800/50',
+  'admin-metric-fill-bar-segments':
+    'flex h-10 items-end gap-0.5 rounded bg-zinc-100 p-1 dark:bg-zinc-800/50',
   'admin-metric-fill-bar__fill': 'h-full rounded-full transition-[width] duration-200',
   'admin-metric-fill-bar__track': 'h-1.5 overflow-hidden rounded-full bg-zinc-200 dark:bg-zinc-700',
   'admin-metric-fill-bar': 'flex flex-col gap-1',
-  'admin-dashboard-bar-list__date': 'm-0 text-[11px] font-semibold text-zinc-500 dark:text-zinc-400',
+  'admin-dashboard-bar-list__date':
+    'm-0 text-[11px] font-semibold text-zinc-500 dark:text-zinc-400',
   'admin-dashboard-bar-list__day': 'grid gap-2',
   'admin-dashboard-bar-list': 'grid max-h-[min(28rem,48vh)] gap-3 overflow-y-auto pr-0.5',
   'admin-dashboard-chart-legend': 'flex flex-wrap gap-3 text-xs',
@@ -114,7 +118,8 @@ const MAP = {
   'admin-dashboard-kpi--zero': 'opacity-80',
   'admin-dashboard-kpi--selected': 'ring-2 ring-blue-500',
   'admin-dashboard-kpi--clickable': 'cursor-pointer hover:bg-zinc-50 dark:hover:bg-zinc-900',
-  'admin-dashboard-kpi': 'min-w-0 rounded-md border border-zinc-200 p-3 text-left dark:border-zinc-800',
+  'admin-dashboard-kpi':
+    'min-w-0 rounded-md border border-zinc-200 p-3 text-left dark:border-zinc-800',
   'admin-country-badge__flag': 'h-3 w-4 shrink-0',
   'admin-country-badge__code': 'truncate',
   'admin-country-badge':
@@ -180,7 +185,8 @@ const MAP = {
   'admin-stack': 'flex flex-col gap-3',
   'admin-panel--raised':
     'rounded-md border border-zinc-200 bg-white p-3 shadow-sm dark:border-zinc-800 dark:bg-zinc-950',
-  'admin-panel': 'rounded-md border border-zinc-200 bg-white p-3 dark:border-zinc-800 dark:bg-zinc-950',
+  'admin-panel':
+    'rounded-md border border-zinc-200 bg-white p-3 dark:border-zinc-800 dark:bg-zinc-950',
   'admin-chip':
     'inline-flex items-center rounded-md border border-zinc-200 bg-zinc-50 px-2 py-0.5 text-xs dark:border-zinc-700 dark:bg-zinc-900',
   'admin-muted': 'text-zinc-500 dark:text-zinc-400',
@@ -196,7 +202,8 @@ const MAP = {
   'admin-import-panel__actions': 'flex flex-wrap gap-2',
   'admin-import-panel__job-row': 'flex flex-wrap items-center gap-2 text-sm',
   'admin-columns-menu': 'w-72',
-  'admin-columns-menu__presets': 'flex flex-wrap gap-1 border-b border-zinc-200 p-2 dark:border-zinc-800',
+  'admin-columns-menu__presets':
+    'flex flex-wrap gap-1 border-b border-zinc-200 p-2 dark:border-zinc-800',
   'admin-columns-menu__preset': 'text-xs text-blue-600 dark:text-blue-400',
   'admin-columns-menu__grid': 'grid max-h-64 grid-cols-2 gap-2 overflow-y-auto p-2',
   'admin-columns-menu__col': 'flex flex-col gap-1',
@@ -230,9 +237,11 @@ const MAP = {
   'admin-multi-select-chevron': 'h-4 w-4 opacity-50',
   'admin-multi-select-menu': 'w-64',
   'admin-multi-select-menu__list': 'max-h-64 overflow-y-auto p-1',
-  'admin-date-range-menu': 'rounded-md border border-zinc-200 bg-white p-0 shadow-lg dark:border-zinc-800 dark:bg-zinc-950',
+  'admin-date-range-menu':
+    'rounded-md border border-zinc-200 bg-white p-0 shadow-lg dark:border-zinc-800 dark:bg-zinc-950',
   'admin-date-range-menu__body': 'p-3',
-  'admin-date-range-menu__footer': 'flex justify-end gap-2 border-t border-zinc-200 p-2 dark:border-zinc-800',
+  'admin-date-range-menu__footer':
+    'flex justify-end gap-2 border-t border-zinc-200 p-2 dark:border-zinc-800',
   'admin-select-content': 'z-50 max-h-96 overflow-hidden',
   'admin-select-item': '',
   'admin-select-separator': 'my-1 h-px bg-zinc-200 dark:bg-zinc-800',
@@ -244,7 +253,8 @@ const MAP = {
   'admin-error-details__body': 'max-h-48 overflow-auto p-3 text-xs font-mono',
   'admin-error-page': 'flex min-h-0 flex-1 items-center justify-center p-6',
   'admin-error-page--standalone': 'min-h-screen bg-zinc-50 dark:bg-zinc-950',
-  'admin-error-page__card': 'w-full max-w-lg rounded-lg border border-zinc-200 bg-white p-6 dark:border-zinc-800 dark:bg-zinc-950',
+  'admin-error-page__card':
+    'w-full max-w-lg rounded-lg border border-zinc-200 bg-white p-6 dark:border-zinc-800 dark:bg-zinc-950',
   'admin-error-page__eyebrow': 'text-xs font-semibold uppercase tracking-wide text-zinc-500',
   'admin-error-page__title': 'mt-2 text-xl font-semibold',
   'admin-error-page__message': 'mt-2 text-sm text-zinc-600 dark:text-zinc-400',
@@ -257,7 +267,8 @@ const MAP = {
   'admin-status-links': 'flex flex-wrap gap-2',
   'admin-table-td--truncate': 'max-w-0 truncate',
   'admin-table-td--actions': 'w-10 text-center',
-  'admin-toolbar-row--sections': 'flex flex-wrap items-center gap-2 border-t border-zinc-200 pt-2 dark:border-zinc-800',
+  'admin-toolbar-row--sections':
+    'flex flex-wrap items-center gap-2 border-t border-zinc-200 pt-2 dark:border-zinc-800',
   'admin-country-badge--more': 'text-[10px] text-zinc-500',
   'admin-reset-dialog': 'max-w-md',
   'admin-reset-dialog__header': 'space-y-1',
@@ -293,8 +304,14 @@ function migrateTokens(classString) {
 
 function migrateContent(content) {
   let out = content;
-  out = out.replace(/className="([^"]*)"/g, (_, classes) => `className="${migrateTokens(classes)}"`);
-  out = out.replace(/className='([^']*)'/g, (_, classes) => `className='${migrateTokens(classes)}'`);
+  out = out.replace(
+    /className="([^"]*)"/g,
+    (_, classes) => `className="${migrateTokens(classes)}"`
+  );
+  out = out.replace(
+    /className='([^']*)'/g,
+    (_, classes) => `className='${migrateTokens(classes)}'`
+  );
   out = out.replace(/cn\(([^)]*)\)/g, (match, inner) => {
     const migrated = inner
       .replace(/'([^']*)'/g, (_, s) => `'${migrateTokens(s)}'`)

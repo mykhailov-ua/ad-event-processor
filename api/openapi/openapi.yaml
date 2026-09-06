@@ -128,6 +128,10 @@ paths:
     $ref: paths/campaigns.yaml#/paths/~1api~1v1~1campaigns~1{id}~1integration-health
   /api/v1/campaigns/{id}/editor:
     $ref: paths/campaigns.yaml#/paths/~1api~1v1~1campaigns~1{id}~1editor
+  /api/v1/campaigns/{id}/geo-summary:
+    $ref: paths/campaigns.yaml#/paths/~1api~1v1~1campaigns~1{id}~1geo-summary
+  /api/v1/campaigns/{id}/fraud-editor:
+    $ref: paths/campaigns.yaml#/paths/~1api~1v1~1campaigns~1{id}~1fraud-editor
   /api/v1/campaigns/{id}/integration-panel:
     $ref: paths/campaigns.yaml#/paths/~1api~1v1~1campaigns~1{id}~1integration-panel
   /api/v1/campaigns/{id}/flow/validate:
@@ -484,8 +488,6 @@ paths:
     $ref: paths/ops_reports.yaml#/paths/~1api~1v1~1reports~1fraud-breakdown
   /api/v1/reports/geo-roi:
     $ref: paths/ops_reports.yaml#/paths/~1api~1v1~1reports~1geo-roi
-  /api/v1/reports/ghost-impression-funnel:
-    $ref: paths/ops_reports.yaml#/paths/~1api~1v1~1reports~1ghost-impression-funnel
   /api/v1/reports/ivt-by-source:
     $ref: paths/ops_reports.yaml#/paths/~1api~1v1~1reports~1ivt-by-source
   /api/v1/reports/jobs:
@@ -566,6 +568,18 @@ paths:
     $ref: paths/platform.yaml#/paths/~1api~1v1~1license~1apply
   /api/v1/meta:
     $ref: paths/platform.yaml#/paths/~1api~1v1~1meta
+  /api/v1/auth/login:
+    $ref: paths/platform.yaml#/paths/~1api~1v1~1auth~1login
+  /api/v1/auth/logout:
+    $ref: paths/platform.yaml#/paths/~1api~1v1~1auth~1logout
+  /api/v1/auth/refresh:
+    $ref: paths/platform.yaml#/paths/~1api~1v1~1auth~1refresh
+  /api/v1/auth/me:
+    $ref: paths/platform.yaml#/paths/~1api~1v1~1auth~1me
+  /api/v1/public/activate:
+    $ref: paths/platform.yaml#/paths/~1api~1v1~1public~1activate
+  /api/v1/public/invite/accept:
+    $ref: paths/platform.yaml#/paths/~1api~1v1~1public~1invite~1accept
   /api/v1/session:
     $ref: paths/platform.yaml#/paths/~1api~1v1~1session
   /api/v1/session/bootstrap:
@@ -740,8 +754,38 @@ components:
       $ref: components/schemas/campaign.yaml#/CampaignMargin
     CloneCampaignRequest:
       $ref: components/schemas/campaign.yaml#/CloneCampaignRequest
+    CloneCampaignOptions:
+      $ref: components/schemas/campaign.yaml#/CloneCampaignOptions
+    CloneCampaignPreview:
+      $ref: components/schemas/campaign.yaml#/CloneCampaignPreview
     CloneCampaignResult:
       $ref: components/schemas/campaign.yaml#/CloneCampaignResult
+    MacroPreviewRequest:
+      $ref: components/schemas/campaign.yaml#/MacroPreviewRequest
+    MacroPreviewResponse:
+      $ref: components/schemas/campaign.yaml#/MacroPreviewResponse
+    CampaignDiffRow:
+      $ref: components/schemas/campaign.yaml#/CampaignDiffRow
+    CampaignDiffResponse:
+      $ref: components/schemas/campaign.yaml#/CampaignDiffResponse
+    CampaignBulkActionRequest:
+      $ref: components/schemas/campaign.yaml#/CampaignBulkActionRequest
+    CampaignBulkActionResultRow:
+      $ref: components/schemas/campaign.yaml#/CampaignBulkActionResultRow
+    CampaignBulkActionResponse:
+      $ref: components/schemas/campaign.yaml#/CampaignBulkActionResponse
+    CampaignGeoSummary:
+      $ref: components/schemas/campaign.yaml#/CampaignGeoSummary
+    CampaignFraudEditorSummary:
+      $ref: components/schemas/campaign.yaml#/CampaignFraudEditorSummary
+    CampaignFlowValidateRequest:
+      $ref: components/schemas/campaign.yaml#/CampaignFlowValidateRequest
+    CampaignFlowValidateResponse:
+      $ref: components/schemas/campaign.yaml#/CampaignFlowValidateResponse
+    PlacementBlockSuggestion:
+      $ref: components/schemas/campaign.yaml#/PlacementBlockSuggestion
+    PlacementBlockSuggestionsResponse:
+      $ref: components/schemas/campaign.yaml#/PlacementBlockSuggestionsResponse
     CampaignEventListResponse:
       $ref: components/schemas/campaign.yaml#/CampaignEventListResponse
     IntegrationHealthRow:
@@ -824,8 +868,18 @@ components:
       $ref: components/schemas/ops_reports.yaml#/DLQListResponse
     FraudDecision:
       $ref: components/schemas/ops_reports.yaml#/FraudDecision
+    FraudIntegration:
+      $ref: components/schemas/ops_reports.yaml#/FraudIntegration
     FraudPolicyPreset:
       $ref: components/schemas/ops_reports.yaml#/FraudPolicyPreset
+    FraudOverrideRequest:
+      $ref: components/schemas/ops_reports.yaml#/FraudOverrideRequest
+    PublicActivateRequest:
+      $ref: components/schemas/platform.yaml#/PublicActivateRequest
+    PublicAcceptInviteRequest:
+      $ref: components/schemas/platform.yaml#/PublicAcceptInviteRequest
+    PublicLoginResponse:
+      $ref: components/schemas/platform.yaml#/PublicLoginResponse
     TrackBehaviorTelemetryEvent:
       $ref: components/schemas/track_ingest.yaml#/TrackBehaviorTelemetryEvent
     TrackBehaviorTelemetry:

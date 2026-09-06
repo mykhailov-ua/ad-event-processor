@@ -2,7 +2,7 @@
 //
 // Role:
 //   - HTTP under /api/v1/traffic-optimizer/* for preset listing, rule CRUD, and dry-run.
-//   - rules_service.go persists rules in Postgres; worker.go ticks due rules and calls optimize_tx.go / creative_tx.go.
+//   - rules_service.go persists rules in Postgres; worker.go ticks due rules (trafficOptimizerTickTimeout 2 min per tick) and calls optimize_tx.go / creative_tx.go.
 //   - applier.go delegates Thompson and proportional updates to internal/flow bandit helpers.
 //
 // Topology:

@@ -1,14 +1,15 @@
 import { useCallback, useState } from 'react';
 
-import { applyLicense, getLicenseStatus } from '@/api/platform_api';
+import { applyLicense } from '@/api/platform_api';
 import { PrimaryActionButton } from '@/shell/action_buttons';
 import { ErrorBlock } from '@/shell/error_block';
 import { Label } from '@/components/ui/label';
 import { Textarea } from '@/components/ui/textarea';
 import type { LicenseStatus } from '@/api/types';
-import { useResource } from '@/api/use_resource';
+import type { LicenseApplyFormLoad } from '@/domains/onboarding/use_license_apply_form_load';
 
 export type LicenseApplyFormProps = {
+  load: LicenseApplyFormLoad;
   title?: string;
   description?: string;
   onApplied?: () => void;
@@ -17,6 +18,7 @@ export type LicenseApplyFormProps = {
 };
 
 export function LicenseApplyForm({
+  load,
   title = 'License JWT',
   description = 'Paste the license token from your deployment bundle or vendor portal.',
   onApplied,
@@ -27,17 +29,6 @@ export function LicenseApplyForm({
   const [applying, setApplying] = useState(false);
   const [error, setError] = useState<Error | undefined>();
   const [success, setSuccess] = useState(false);
-  const [refreshToken, setRefreshToken] = useState(0);
-
-  const { data: licenseStatus } = useResource(
-    (signal) => {
-      if (!showStatus) {
-        return Promise.resolve(undefined);
-      }
-      return getLicenseStatus(signal);
-    },
-    [showStatus, refreshToken],
-  );
 
   const onApply = useCallback(async () => {
     const token = draftToken.trim();
@@ -51,18 +42,23 @@ export function LicenseApplyForm({
       await applyLicense({ token });
       setSuccess(true);
       setDraftToken('');
-      setRefreshToken((value) => value + 1);
+      load.bumpStatusRefresh();
       onApplied?.();
-    } catch (err) {
+    } catch (err: unknown) {
       setError(err instanceof Error ? err : new Error(String(err)));
     } finally {
       setApplying(false);
     }
-  }, [draftToken, onApplied]);
+  }, [draftToken, load, onApplied]);
 
   return (
     <div className="grid gap-4">
-      {showStatus && licenseStatus ? <LicenseStatusSummary status={licenseStatus} /> : null}
+      {showStatus && load.licenseStatus ? (
+        <LicenseStatusSummary status={load.licenseStatus} />
+      ) : null}
+      {showStatus && load.statusError && !load.licenseStatus ? (
+        <ErrorBlock title="Could not load license status" message={load.statusError.message} />
+      ) : null}
       <div className="grid gap-2">
         <Label htmlFor="license-token">{title}</Label>
         {description ? <p className="text-sm text-muted-foreground">{description}</p> : null}

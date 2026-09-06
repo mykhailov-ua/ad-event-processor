@@ -83,32 +83,12 @@ func parseHTTP1RequestLine(data []byte, n int, req *Request) (int, error) {
 	if n >= 22 && *(*[22]byte)(unsafe.Pointer(&data[0])) == trackReqLine {
 		req.Method = data[0:4]
 		req.Path = data[5:11]
-		i := 22
-		for i < n && data[i] != '\r' {
-			i++
-		}
-		if i+1 >= n {
-			return 0, ErrIncomplete
-		}
-		if data[i+1] != '\n' {
-			return 0, ErrInvalid
-		}
-		return i + 2, nil
+		return 22, nil
 	}
 	if n >= 29 && *(*[29]byte)(unsafe.Pointer(&data[0])) == openrtbBidReqLine {
 		req.Method = data[0:4]
 		req.Path = data[5:18]
-		i := 29
-		for i < n && data[i] != '\r' {
-			i++
-		}
-		if i+1 >= n {
-			return 0, ErrIncomplete
-		}
-		if data[i+1] != '\n' {
-			return 0, ErrInvalid
-		}
-		return i + 2, nil
+		return 29, nil
 	}
 
 	i := 0
@@ -137,22 +117,22 @@ func parseHTTP1RequestLine(data []byte, n int, req *Request) (int, error) {
 		return 0, ErrInvalid
 	}
 	req.Path = data[pathStart:i]
-	if i+12 > n || data[i] != ' ' || data[i+1] != 'H' || data[i+2] != 'T' || data[i+3] != 'T' || data[i+4] != 'P' || data[i+5] != '/' {
+	if i+9 > n || data[i] != ' ' {
 		return 0, ErrInvalid
 	}
-	if !http1VersionValid(data[i+6 : i+12]) {
+	if !http1VersionValid(data[i+1 : i+9]) {
 		return 0, ErrInvalid
 	}
-	if i+12 >= n || data[i+12] != '\r' {
+	if i+9 >= n || data[i+9] != '\r' {
 		return 0, ErrInvalid
 	}
-	if i+13 >= n || data[i+13] != '\n' {
+	if i+10 >= n || data[i+10] != '\n' {
 		return 0, ErrInvalid
 	}
 	if !http1IngressValid(req.Method, req.Path) {
 		return 0, ErrInvalid
 	}
-	return i + 14, nil
+	return i + 11, nil
 }
 
 func parseHTTP1Headers(data []byte, i, n int, req *Request, hFlags *uint8, clValue *int) (int, uint8, int, error) {

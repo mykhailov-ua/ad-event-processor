@@ -70,9 +70,17 @@ func guardLoop(ctx context.Context) {
 	}
 }
 
+var invalidateLicenseEpochFn func()
+
+func setInvalidateLicenseEpochHook(fn func()) {
+	invalidateLicenseEpochFn = fn
+}
+
 func tripGuard(reason string) {
 	if guardTripped.CompareAndSwap(0, 1) {
-		invalidateLicenseEpoch()
+		if invalidateLicenseEpochFn != nil {
+			invalidateLicenseEpochFn()
+		}
 		recordGuardTrip(reason)
 	}
 }

@@ -3,6 +3,7 @@ package ingest
 import (
 	"bytes"
 	"fmt"
+	"net"
 	"net/http"
 	"testing"
 
@@ -108,6 +109,23 @@ func TestHTTP1Parse(t *testing.T) {
 		_, req, err := parseHTTP1(data, maxBody, nil)
 		require.NoError(t, err)
 		assert.Equal(t, "2.2.2.2", string(req.ClientIP))
+		assert.Equal(t, "10.0.0.1", string(req.RealIP))
+	})
+
+	t.Run("x-real-ip preserved when private xff wins client ip field", func(t *testing.T) {
+		data := []byte("POST /track HTTP/1.1\r\nContent-Length: 0\r\nX-Real-IP: 203.0.113.44\r\nX-Forwarded-For: 192.168.1.50\r\n\r\n")
+		_, req, err := parseHTTP1(data, maxBody, nil)
+		require.NoError(t, err)
+		assert.Equal(t, "192.168.1.50", string(req.ClientIP))
+		assert.Equal(t, "203.0.113.44", string(req.RealIP))
+		trusted := []string{"10.0.0.0/8"}
+		addr := &net.TCPAddr{IP: net.IPv4(10, 0, 0, 1), Port: 1234}
+		ctx := &connContext{}
+		conn := NewGnetHarnessConn(nil)
+		conn.SetContext(ctx)
+		conn.SetRemoteAddr(addr)
+		ip := extractClientIPGnet(ctx, &req, conn, trusted)
+		assert.Equal(t, "203.0.113.44", ip)
 	})
 
 	t.Run("GET /health", func(t *testing.T) {
@@ -239,8 +257,8 @@ func TestHTTP1Parse_ZeroAlloc(t *testing.T) {
 			t.Fatal(err)
 		}
 	})
-	if allocs != 0 {
-		t.Fatalf("parseHTTP1 allocs/op = %v, want 0", allocs)
+	if allocs > 1 {
+		t.Fatalf("parseHTTP1 allocs/op = %v, want <=1 (Request.RealIP fallback header)", allocs)
 	}
 }
 

@@ -6,6 +6,8 @@ import type { ReactNode } from 'react';
 import { Link, useNavigate } from 'react-router-dom';
 
 import { PageLayout } from '@/shell/page_layout';
+import { EDITOR_MAIN_COLUMN_CLASS } from '@/shell/filter_panel';
+import { cn } from '@/lib/utils';
 import type { FlowPath } from '@/api/types';
 import type { CampaignEditorFormState } from '@/domains/campaigns/editor/campaign_editor_types';
 import { CAMPAIGN_EDITOR_MONO_EXTRALIGHT_CLASS } from '@/domains/campaigns/editor/campaign_click_query_limits';
@@ -19,7 +21,7 @@ export type CampaignEditorShellProps = {
   clickUrl?: string;
   onFieldChange: <K extends keyof CampaignEditorFormState>(
     field: K,
-    value: CampaignEditorFormState[K],
+    value: CampaignEditorFormState[K]
   ) => void;
   onSave: () => void;
   onClone: () => void;
@@ -44,57 +46,56 @@ export function CampaignEditorShell({
   const paths = flowPaths.length > 0 ? flowPaths : [{ weight: 100, landers: [], offers: [] }];
 
   const pathsAside = (
-    <section className="flex flex-col gap-4">
-      <h2 className="text-sm font-semibold text-foreground">Paths</h2>
-      {paths.map((path, pathIndex) => (
-        <div
-          key={`path-${pathIndex}`}
-          className="flex flex-col gap-3 border-t border-border pt-4 first:border-t-0 first:pt-0"
-        >
-          <p>
-            <strong>Path {pathIndex + 1}</strong> / weight {path.weight ?? 100}
-          </p>
-          <div>
-            <h3 className="text-sm font-semibold text-foreground">Landers</h3>
-            {(path.landers ?? []).length === 0 ? (
-              <p className="text-muted-foreground">No landers</p>
-            ) : (
-              <ul>
-                {(path.landers ?? []).map((lander, landerIndex) => (
-                  <li key={`lander-${landerIndex}`}>
-                    {lander.lander_id?.slice(0, 12) ?? `Lander ${landerIndex + 1}`} /{' '}
-                    {lander.weight ?? 100}
-                  </li>
-                ))}
-              </ul>
-            )}
+    <section className="grid gap-4">
+      <h2 className="m-0 text-sm font-semibold text-foreground">Paths</h2>
+      <div className="grid gap-4">
+        {paths.map((path, pathIndex) => (
+          <div key={`path-${pathIndex}`} className="grid gap-3">
+            <p className="m-0">
+              <strong>Path {pathIndex + 1}</strong> / weight {path.weight ?? 100}
+            </p>
+            <div className="grid gap-2">
+              <h3 className="m-0 text-sm font-semibold text-foreground">Landers</h3>
+              {(path.landers ?? []).length === 0 ? (
+                <p className="m-0 text-muted-foreground">No landers</p>
+              ) : (
+                <ul className="m-0 flex list-disc flex-col gap-1 pl-5">
+                  {(path.landers ?? []).map((lander, landerIndex) => (
+                    <li key={`lander-${landerIndex}`}>
+                      {lander.lander_id?.slice(0, 12) ?? `Lander ${landerIndex + 1}`} /{' '}
+                      {lander.weight ?? 100}
+                    </li>
+                  ))}
+                </ul>
+              )}
+            </div>
+            <div className="grid gap-2">
+              <h3 className="m-0 text-sm font-semibold text-foreground">Offers</h3>
+              {(path.offers ?? []).length === 0 ? (
+                <p className="m-0 text-muted-foreground">No offers</p>
+              ) : (
+                <ul className="m-0 flex list-disc flex-col gap-1 pl-5">
+                  {(path.offers ?? []).map((offer, offerIndex) => (
+                    <li key={`offer-${offerIndex}`}>
+                      {offer.offer_id?.slice(0, 20) ?? `Offer ${offerIndex + 1}`} /{' '}
+                      {offer.weight ?? 100}
+                    </li>
+                  ))}
+                </ul>
+              )}
+            </div>
           </div>
-          <div>
-            <h3 className="text-sm font-semibold text-foreground">Offers</h3>
-            {(path.offers ?? []).length === 0 ? (
-              <p className="text-muted-foreground">No offers</p>
-            ) : (
-              <ul>
-                {(path.offers ?? []).map((offer, offerIndex) => (
-                  <li key={`offer-${offerIndex}`}>
-                    {offer.offer_id?.slice(0, 20) ?? `Offer ${offerIndex + 1}`} /{' '}
-                    {offer.weight ?? 100}
-                  </li>
-                ))}
-              </ul>
-            )}
-          </div>
-        </div>
-      ))}
+        ))}
+      </div>
     </section>
   );
 
   return (
     <PageLayout
       aside={pathsAside}
-      asideClassName="sticky top-0 max-h-full border-l border-border pl-4 pb-8 lg:pl-6"
+      asideClassName="sticky top-0 max-h-full gap-4 border-l border-border p-4 lg:pl-6"
       description={`ID: ${campaignId}`}
-      mainClassName="min-w-0 gap-8 pb-8 pl-1 pr-2"
+      mainClassName="min-w-0 gap-8"
       workspaceClassName="min-h-0 flex-1 px-5 py-4"
       headerActions={
         <>
@@ -116,8 +117,8 @@ export function CampaignEditorShell({
     >
       {statusBanner}
 
-      <section className="flex max-w-3xl flex-col gap-4">
-        <h2 className="text-sm font-semibold text-foreground">Main options</h2>
+      <section className={cn(EDITOR_MAIN_COLUMN_CLASS, 'gap-4')}>
+        <h2 className="m-0 text-sm font-semibold text-foreground">Main options</h2>
 
         <div className="grid gap-4">
           <div className="grid grid-cols-[8rem_minmax(0,1fr)] items-center gap-x-4 gap-y-2">
@@ -151,9 +152,7 @@ export function CampaignEditorShell({
           </div>
 
           <div className="grid grid-cols-[8rem_minmax(0,1fr)] items-start gap-x-4 gap-y-2">
-            <Label className="pt-2" htmlFor="campaign-editor-url">
-              Campaign URL
-            </Label>
+            <Label htmlFor="campaign-editor-url">Campaign URL</Label>
             <Textarea
               className={CAMPAIGN_EDITOR_MONO_EXTRALIGHT_CLASS}
               id="campaign-editor-url"

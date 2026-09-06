@@ -1,4 +1,4 @@
-import { apiFetch, apiJson, apiJsonArray, ApiError } from './client.js';
+import { apiFetch, apiJson, apiJsonArray, parseApiError } from './client.js';
 import type {
   DashboardMetrics,
   DashboardMetricsQuery,
@@ -19,6 +19,13 @@ import type {
   OpsOutboxListQuery,
   OpsShardCatchupResponse,
   OpsShardsResponse,
+  OpsConsentProofsResponse,
+  OpsDomainRotationResponse,
+  OpsMlModelEvalResponse,
+  OpsMlModelStatusResponse,
+  OpsRumResponse,
+  OpsTlsAllowedHostResponse,
+  OpsTlsAllowedListResponse,
   OutboxListResponse,
   ReconListQuery,
   ReconRun,
@@ -26,9 +33,7 @@ import type {
   StatusOKResponse,
 } from './types.js';
 
-export async function getStackHealthSnapshot(
-  signal?: AbortSignal,
-): Promise<StackHealthSnapshot> {
+export async function getStackHealthSnapshot(signal?: AbortSignal): Promise<StackHealthSnapshot> {
   return apiJson<StackHealthSnapshot>('/api/v1/ops/health/snapshot', { signal });
 }
 
@@ -36,9 +41,7 @@ export async function getOpsDoctor(signal?: AbortSignal): Promise<DoctorSummary>
   return apiJson<DoctorSummary>('/api/v1/ops/doctor', { signal });
 }
 
-export async function getOpsDashboardSummary(
-  signal?: AbortSignal,
-): Promise<DashboardSummary> {
+export async function getOpsDashboardSummary(signal?: AbortSignal): Promise<DashboardSummary> {
   return apiJson<DashboardSummary>('/api/v1/ops/dashboard/summary', { signal });
 }
 
@@ -65,7 +68,7 @@ export function buildDlqInboxPath(params: DlqInboxListQuery = {}): string {
 
 export async function listDlqInbox(
   params: DlqInboxListQuery = {},
-  signal?: AbortSignal,
+  signal?: AbortSignal
 ): Promise<DLQInboxListResponse> {
   return apiJson<DLQInboxListResponse>(buildDlqInboxPath(params), { signal });
 }
@@ -86,7 +89,7 @@ export function buildOpsDlqPath(params: DlqListQuery = {}): string {
 
 export async function listOpsDlq(
   params: DlqListQuery = {},
-  signal?: AbortSignal,
+  signal?: AbortSignal
 ): Promise<DLQListResponse> {
   return apiJson<DLQListResponse>(buildOpsDlqPath(params), { signal });
 }
@@ -98,34 +101,14 @@ export async function retryOpsDlqEntry(id: string, signal?: AbortSignal): Promis
   });
 
   if (!response.ok) {
-    let code = 'HTTP_ERROR';
-    let message = response.statusText || `HTTP ${response.status}`;
-    try {
-      const body: unknown = await response.json();
-      if (body && typeof body === 'object') {
-        const record = body as Record<string, unknown>;
-        const errorField = record.error;
-        if (errorField && typeof errorField === 'object') {
-          const errObj = errorField as Record<string, unknown>;
-          if (typeof errObj.code === 'string') {
-            code = errObj.code;
-          }
-          if (typeof errObj.message === 'string') {
-            message = errObj.message;
-          }
-        }
-      }
-    } catch {
-      // Non-JSON error body.
-    }
-    throw new ApiError(response.status, code, message);
+    throw await parseApiError(response);
   }
 }
 
 export async function retryDlqInboxEntry(
   id: string,
   source: string,
-  signal?: AbortSignal,
+  signal?: AbortSignal
 ): Promise<void> {
   const idempotencyKey =
     typeof crypto !== 'undefined' && 'randomUUID' in crypto
@@ -142,27 +125,7 @@ export async function retryDlqInboxEntry(
   });
 
   if (!response.ok) {
-    let code = 'HTTP_ERROR';
-    let message = response.statusText || `HTTP ${response.status}`;
-    try {
-      const body: unknown = await response.json();
-      if (body && typeof body === 'object') {
-        const record = body as Record<string, unknown>;
-        const errorField = record.error;
-        if (errorField && typeof errorField === 'object') {
-          const errObj = errorField as Record<string, unknown>;
-          if (typeof errObj.code === 'string') {
-            code = errObj.code;
-          }
-          if (typeof errObj.message === 'string') {
-            message = errObj.message;
-          }
-        }
-      }
-    } catch {
-      // Non-JSON error body.
-    }
-    throw new ApiError(response.status, code, message);
+    throw await parseApiError(response);
   }
 }
 
@@ -180,14 +143,14 @@ export function buildBlacklistPath(params: OpsBlacklistListQuery = {}): string {
 
 export async function listOpsBlacklist(
   params: OpsBlacklistListQuery = {},
-  signal?: AbortSignal,
+  signal?: AbortSignal
 ): Promise<OpsBlacklistListResponse> {
   return apiJson<OpsBlacklistListResponse>(buildBlacklistPath(params), { signal });
 }
 
 export async function addOpsBlacklistEntry(
   body: OpsBlacklistWriteRequest,
-  signal?: AbortSignal,
+  signal?: AbortSignal
 ): Promise<void> {
   await apiJson<void>('/api/v1/ops/blacklist', {
     method: 'POST',
@@ -198,7 +161,7 @@ export async function addOpsBlacklistEntry(
 
 export async function removeOpsBlacklistEntry(
   body: OpsBlacklistDeleteRequest,
-  signal?: AbortSignal,
+  signal?: AbortSignal
 ): Promise<void> {
   await apiJson<void>('/api/v1/ops/blacklist', {
     method: 'DELETE',
@@ -225,7 +188,7 @@ export function buildOpsOutboxPath(params: OpsOutboxListQuery = {}): string {
 
 export async function listOpsOutbox(
   params: OpsOutboxListQuery = {},
-  signal?: AbortSignal,
+  signal?: AbortSignal
 ): Promise<OutboxListResponse> {
   return apiJson<OutboxListResponse>(buildOpsOutboxPath(params), { signal });
 }
@@ -235,7 +198,7 @@ export async function listOpsShards(signal?: AbortSignal): Promise<OpsShardsResp
 }
 
 export async function triggerOpsShard0Catchup(
-  signal?: AbortSignal,
+  signal?: AbortSignal
 ): Promise<OpsShardCatchupResponse> {
   return apiJson<OpsShardCatchupResponse>('/api/v1/ops/shards/0/catchup', {
     method: 'POST',
@@ -243,16 +206,12 @@ export async function triggerOpsShard0Catchup(
   });
 }
 
-export async function getOpsMlModelStatus(
-  signal?: AbortSignal,
-): Promise<Record<string, unknown>> {
-  return apiJson<Record<string, unknown>>('/api/v1/ops/ml-model', { signal });
+export async function getOpsMlModelStatus(signal?: AbortSignal): Promise<OpsMlModelStatusResponse> {
+  return apiJson<OpsMlModelStatusResponse>('/api/v1/ops/ml-model', { signal });
 }
 
-export async function getOpsMlModelEval(
-  signal?: AbortSignal,
-): Promise<Record<string, unknown>> {
-  return apiJson<Record<string, unknown>>('/api/v1/ops/ml-model/eval', { signal });
+export async function getOpsMlModelEval(signal?: AbortSignal): Promise<OpsMlModelEvalResponse> {
+  return apiJson<OpsMlModelEvalResponse>('/api/v1/ops/ml-model/eval', { signal });
 }
 
 export async function listOpsMlLabels(signal?: AbortSignal): Promise<MLManualLabel[]> {
@@ -261,7 +220,7 @@ export async function listOpsMlLabels(signal?: AbortSignal): Promise<MLManualLab
 
 export async function addOpsMlLabel(
   body: FraudManualLabelRequest,
-  signal?: AbortSignal,
+  signal?: AbortSignal
 ): Promise<void> {
   await apiJson<void>('/api/v1/ops/ml-model/labels', {
     method: 'POST',
@@ -271,49 +230,45 @@ export async function addOpsMlLabel(
 }
 
 export async function getOpsDomainRotation(
-  signal?: AbortSignal,
-): Promise<Record<string, unknown>> {
-  return apiJson<Record<string, unknown>>('/api/v1/ops/domains/rotation', { signal });
+  signal?: AbortSignal
+): Promise<OpsDomainRotationResponse> {
+  return apiJson<OpsDomainRotationResponse>('/api/v1/ops/domains/rotation', { signal });
 }
 
 export async function getOpsTlsAllowedList(
-  signal?: AbortSignal,
-): Promise<Record<string, unknown>> {
-  return apiJson<Record<string, unknown>>('/api/v1/ops/domains/tls-allowed', { signal });
+  signal?: AbortSignal
+): Promise<OpsTlsAllowedListResponse> {
+  return apiJson<OpsTlsAllowedListResponse>('/api/v1/ops/domains/tls-allowed', { signal });
 }
 
 export async function getOpsTlsAllowedHost(
   hostname: string,
-  signal?: AbortSignal,
-): Promise<Record<string, unknown>> {
-  return apiJson<Record<string, unknown>>(
+  signal?: AbortSignal
+): Promise<OpsTlsAllowedHostResponse> {
+  return apiJson<OpsTlsAllowedHostResponse>(
     `/api/v1/ops/domains/${encodeURIComponent(hostname)}/tls-allowed`,
-    { signal },
+    { signal }
   );
 }
 
-export async function getOpsConsentProofs(
-  signal?: AbortSignal,
-): Promise<Record<string, unknown>> {
-  return apiJson<Record<string, unknown>>('/api/v1/ops/consent/proofs', { signal });
+export async function getOpsConsentProofs(signal?: AbortSignal): Promise<OpsConsentProofsResponse> {
+  return apiJson<OpsConsentProofsResponse>('/api/v1/ops/consent/proofs', { signal });
 }
 
-export async function getOpsRum(signal?: AbortSignal): Promise<Record<string, unknown>> {
-  return apiJson<Record<string, unknown>>('/api/v1/ops/rum', { signal });
+export async function getOpsRum(signal?: AbortSignal): Promise<OpsRumResponse> {
+  return apiJson<OpsRumResponse>('/api/v1/ops/rum', { signal });
 }
 
 export async function getOpsDashboardMetrics(
   params: DashboardMetricsQuery = {},
-  signal?: AbortSignal,
+  signal?: AbortSignal
 ): Promise<DashboardMetrics> {
   const search = new URLSearchParams();
   if (params.range) {
     search.set('range', params.range);
   }
   const query = search.toString();
-  const path = query
-    ? `/api/v1/ops/dashboard/metrics?${query}`
-    : '/api/v1/ops/dashboard/metrics';
+  const path = query ? `/api/v1/ops/dashboard/metrics?${query}` : '/api/v1/ops/dashboard/metrics';
   return apiJson<DashboardMetrics>(path, { signal });
 }
 
@@ -334,7 +289,7 @@ export function buildReconRunsPath(params: ReconListQuery = {}): string {
 
 export async function listReconRuns(
   params: ReconListQuery = {},
-  signal?: AbortSignal,
+  signal?: AbortSignal
 ): Promise<ReconRun[]> {
   return apiJsonArray<ReconRun>(buildReconRunsPath(params), { signal });
 }
@@ -361,36 +316,14 @@ function parseContentDispositionFilename(header: string | null): string | undefi
   return match?.[1];
 }
 
-export async function postOpsSupportBundle(
-  signal?: AbortSignal,
-): Promise<OpsSupportBundleResult> {
+export async function postOpsSupportBundle(signal?: AbortSignal): Promise<OpsSupportBundleResult> {
   const response = await apiFetch('/api/v1/ops/support/bundle', {
     method: 'POST',
     signal,
   });
 
   if (!response.ok) {
-    let code = 'HTTP_ERROR';
-    let message = response.statusText || `HTTP ${response.status}`;
-    try {
-      const body: unknown = await response.json();
-      if (body && typeof body === 'object') {
-        const record = body as Record<string, unknown>;
-        const errorField = record.error;
-        if (errorField && typeof errorField === 'object') {
-          const errObj = errorField as Record<string, unknown>;
-          if (typeof errObj.code === 'string') {
-            code = errObj.code;
-          }
-          if (typeof errObj.message === 'string') {
-            message = errObj.message;
-          }
-        }
-      }
-    } catch {
-      // Binary or empty body on error.
-    }
-    throw new ApiError(response.status, code, message);
+    throw await parseApiError(response);
   }
 
   return {
@@ -403,7 +336,7 @@ export async function postOpsSupportBundle(
 
 export function subscribeOpsDashboardStream(
   onSummary: (summary: DashboardSummary) => void,
-  onError?: (error: Error) => void,
+  onError?: (error: Error) => void
 ): () => void {
   const source = new EventSource('/api/v1/ops/dashboard/stream', { withCredentials: true });
 
@@ -413,7 +346,7 @@ export function subscribeOpsDashboardStream(
       if (payload.data) {
         onSummary(payload.data);
       }
-    } catch (err) {
+    } catch (err: unknown) {
       onError?.(err instanceof Error ? err : new Error(String(err)));
     }
   };

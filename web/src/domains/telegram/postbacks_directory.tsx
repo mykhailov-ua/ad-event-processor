@@ -1,4 +1,5 @@
-import { useEffect, useState } from 'react';
+import { useState } from 'react';
+import { useRunWhenTrue } from '@/hooks/use_run_when_true';
 
 import { PrimaryActionButton } from '@/shell/action_buttons';
 import { PageChrome } from '@/shell/page_chrome';
@@ -75,11 +76,7 @@ export function TelegramPostbacksDirectory({
 }: TelegramPostbacksDirectoryProps) {
   const [createOpen, setCreateOpen] = useState(false);
 
-  useEffect(() => {
-    if (createSuccess) {
-      setCreateOpen(false);
-    }
-  }, [createSuccess]);
+  useRunWhenTrue(createSuccess, () => setCreateOpen(false));
 
   if (!appliedCampaignId) {
     return (
@@ -143,62 +140,63 @@ export function TelegramPostbacksDirectory({
       ) : error && !hasSnapshot ? (
         telegramPanelError(error, 'Could not load postbacks')
       ) : (postbacks ?? []).length === 0 ? (
-        <EmptyState title="No postbacks" description="No Telegram postback URLs for this campaign." />
+        <EmptyState
+          title="No postbacks"
+          description="No Telegram postback URLs for this campaign."
+        />
       ) : (
         <DirectoryTable>
-            <TableHeader>
-              <TableRow>
-                <DirectoryTableHead>URL</DirectoryTableHead>
-                <DirectoryTableHead>Updated</DirectoryTableHead>
-                <DirectoryTableHead />
-              </TableRow>
-            </TableHeader>
-            <TableBody>
-              {(postbacks ?? []).map((row) => {
-                const id = row.id ?? '';
-                return (
-                  <TableRow key={id || row.postback_url}>
-                    <TableCell>
-                      {id ? (
-                        <Input
-                          className="font-mono text-xs"
-                          value={editUrls[id] ?? row.postback_url ?? ''}
-                          onChange={(event) => onEditUrlChange(id, event.target.value)}
-                        />
-                      ) : (
-                        <span className="font-mono text-xs">{row.postback_url ?? ''}</span>
-                      )}
-                    </TableCell>
-                    <TableCell>{displayTimestamp(row.updated_at)}</TableCell>
-                    <TableCell>
-                      {id ? (
-                        <RowActionsMenu ariaLabel="Postback actions" disabled={acting}>
-                          <DropdownMenuItem disabled={acting} onClick={() => onUpdatePostback(id)}>
-                            Save
-                          </DropdownMenuItem>
-                          <DropdownMenuItem disabled={acting} onClick={() => onTestPostback(id)}>
-                            Test
-                          </DropdownMenuItem>
-                          <DropdownMenuItem
-                            className="text-destructive focus:text-destructive"
-                            disabled={acting}
-                            onClick={() => onDeletePostback(id)}
-                          >
-                            Delete
-                          </DropdownMenuItem>
-                        </RowActionsMenu>
-                      ) : null}
-                    </TableCell>
-                  </TableRow>
-                );
-              })}
-            </TableBody>
-          </DirectoryTable>
+          <TableHeader>
+            <TableRow>
+              <DirectoryTableHead>URL</DirectoryTableHead>
+              <DirectoryTableHead>Updated</DirectoryTableHead>
+              <DirectoryTableHead />
+            </TableRow>
+          </TableHeader>
+          <TableBody>
+            {(postbacks ?? []).map((row) => {
+              const id = row.id ?? '';
+              return (
+                <TableRow key={id || row.postback_url}>
+                  <TableCell>
+                    {id ? (
+                      <Input
+                        className="font-mono text-xs"
+                        value={editUrls[id] ?? row.postback_url ?? ''}
+                        onChange={(event) => onEditUrlChange(id, event.target.value)}
+                      />
+                    ) : (
+                      <span className="font-mono text-xs">{row.postback_url ?? ''}</span>
+                    )}
+                  </TableCell>
+                  <TableCell>{displayTimestamp(row.updated_at)}</TableCell>
+                  <TableCell>
+                    {id ? (
+                      <RowActionsMenu ariaLabel="Postback actions" disabled={acting}>
+                        <DropdownMenuItem disabled={acting} onClick={() => onUpdatePostback(id)}>
+                          Save
+                        </DropdownMenuItem>
+                        <DropdownMenuItem disabled={acting} onClick={() => onTestPostback(id)}>
+                          Test
+                        </DropdownMenuItem>
+                        <DropdownMenuItem
+                          className="text-destructive focus:text-destructive"
+                          disabled={acting}
+                          onClick={() => onDeletePostback(id)}
+                        >
+                          Delete
+                        </DropdownMenuItem>
+                      </RowActionsMenu>
+                    ) : null}
+                  </TableCell>
+                </TableRow>
+              );
+            })}
+          </TableBody>
+        </DirectoryTable>
       )}
 
-      {actionMessage ? (
-        <p className="text-sm text-muted-foreground">{actionMessage}</p>
-      ) : null}
+      {actionMessage ? <p className="text-sm text-muted-foreground">{actionMessage}</p> : null}
       {actionError ? telegramPanelError(actionError, 'Postback action failed') : null}
       {error && hasSnapshot ? telegramPanelError(error, 'Refresh failed') : null}
     </PageChrome>

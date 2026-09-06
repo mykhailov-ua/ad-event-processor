@@ -581,12 +581,9 @@ func (f *UnifiedFilter) checkPass(ctx context.Context, evt *domain.Event) error 
 		return filt.ErrBudgetExhausted
 	}
 
-	campInfo, ok := f.getCampaign(evt)
-	if !ok {
-		if reg, ok := f.registry.(*filt.Registry); ok && reg.IsStaleMode() {
-			return filt.ErrRegistryStale
-		}
-		return filt.ErrCampaignNotFound
+	campInfo, err := filt.LookupCampaign(ctx, f.registry, evt)
+	if err != nil {
+		return err
 	}
 
 	if evt.ClickID == "" {
@@ -604,7 +601,9 @@ func (f *UnifiedFilter) checkPass(ctx context.Context, evt *domain.Event) error 
 	}
 
 	if f.fraudBL != nil {
-		_ = f.fraudBL.Check(ctx, evt)
+		if err := f.fraudBL.Check(ctx, evt); err != nil {
+			return err
+		}
 		if filt.EventHasFraudL3(evt) {
 			return nil
 		}

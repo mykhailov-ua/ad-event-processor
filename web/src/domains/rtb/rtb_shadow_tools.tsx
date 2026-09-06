@@ -1,8 +1,8 @@
 import { FilterApplyButton } from '@/shell/action_buttons';
+import { FilterField, INLINE_FILTER_ACTION_GRID_TWO_FIELDS_CLASS } from '@/shell/filter_panel';
 import { PageChrome } from '@/shell/page_chrome';
 import { PageSkeleton } from '@/shell/page_skeleton';
 import { Input } from '@/components/ui/input';
-import { Label } from '@/components/ui/label';
 import type { RtbReconcileExport, RtbShadowDiffSnapshot } from '@/api/types';
 import { JsonPayloadView } from '@/shell/json_payload_view';
 import { RtbNav, RtbLicenseStub, rtbPanelError } from '@/domains/rtb/rtb_nav';
@@ -61,43 +61,41 @@ export function RtbShadowTools({
       <RtbNav />
 
       <form
-        className="grid max-w-xl grid-cols-[1fr_1fr_auto] items-end gap-4"
+        className={INLINE_FILTER_ACTION_GRID_TWO_FIELDS_CLASS}
         onSubmit={(event) => {
           event.preventDefault();
           onApply();
         }}
       >
-        <div className="grid gap-2">
-          <Label htmlFor="rtb-shadow-window">Window</Label>
+        <FilterField htmlFor="rtb-shadow-window" label="Window">
           <Input
             id="rtb-shadow-window"
             placeholder="1h"
             value={draftWindow}
             onChange={(event) => onDraftWindowChange(event.target.value)}
           />
-        </div>
-        <div className="grid gap-2">
-          <Label htmlFor="rtb-reconcile-request-id">Reconcile request_id</Label>
+        </FilterField>
+        <FilterField htmlFor="rtb-reconcile-request-id" label="Reconcile request_id">
           <Input
             id="rtb-reconcile-request-id"
             value={draftRequestId}
             onChange={(event) => onDraftRequestIdChange(event.target.value)}
           />
-        </div>
+        </FilterField>
         <FilterApplyButton disabled={fetching}>Load</FilterApplyButton>
       </form>
 
       {shadow ? (
         <section className="grid gap-2">
           <h2 className="text-base font-semibold">Shadow diff</h2>
-          <JsonPayloadView payload={shadow as unknown as Record<string, unknown>} />
+          <JsonPayloadView payload={shadow} />
         </section>
       ) : null}
 
       {reconcile ? (
         <section className="grid gap-2">
           <h2 className="text-base font-semibold">Reconcile export</h2>
-          <JsonPayloadView payload={reconcile as unknown as Record<string, unknown>} />
+          <JsonPayloadView payload={reconcile} />
         </section>
       ) : null}
 

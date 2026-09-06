@@ -1,6 +1,7 @@
 package edge
 
 import (
+	"net"
 	"testing"
 )
 
@@ -55,11 +56,10 @@ func FuzzStatsAggregation(f *testing.F) {
 }
 
 func FuzzDecodeViolation(f *testing.F) {
-	seed := []byte{
-		0x01, 0x02, 0x03, 0x04, 0x05, 0x06, 0x07, 0x08,
-		0x0a, 0x00, 0x00, 0x02,
-		0x01,
-	}
+	seed := make([]byte, ViolationEventWireSize)
+	copy(seed[12:16], net.IPv4(10, 0, 0, 1).To4())
+	seed[8] = ViolationAddrFamilyV4
+	seed[9] = ViolationSYN
 	f.Add(seed)
 	f.Fuzz(func(t *testing.T, data []byte) {
 		defer func() {
@@ -67,9 +67,9 @@ func FuzzDecodeViolation(f *testing.F) {
 				t.Errorf("panic in decodeViolation: %v", r)
 			}
 		}()
-		if len(data) < 13 {
+		if len(data) < ViolationEventWireSize {
 			return
 		}
-		_ = decodeViolation(data)
+		_, _ = decodeViolation(data)
 	})
 }

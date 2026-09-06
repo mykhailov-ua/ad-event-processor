@@ -61,7 +61,7 @@ Full stack: `docs/DEVELOPMENT.md`.
 | `web/src/components/ui/` | First-party primitives (`Button`, `Table`, `Dialog`, …) |
 | `web/src/lib/admin_chrome.ts` | Shared zinc class tokens for primitives |
 | `web/src/styles/app.css` | Tailwind entry (`@tailwind` only + minimal base) |
-| `web/src/lib/control_size.ts` | Control height contract (`h-8` = 32px) |
+| `web/src/lib/admin_kit.ts` | Control height contract (`min-h-7` via `adminKit.controlHeight`) |
 
 Embed: `npm run build` → `sync_embed.mjs` → `internal/controlplane/admin_static_stub/`.
 

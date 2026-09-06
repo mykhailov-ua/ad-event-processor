@@ -1,4 +1,5 @@
-import { useEffect, useState } from 'react';
+import { useState } from 'react';
+import { useRunWhenTrue } from '@/hooks/use_run_when_true';
 import { Link } from 'react-router-dom';
 
 import { PrimaryActionButton } from '@/shell/action_buttons';
@@ -59,11 +60,7 @@ export function FlowsDirectory({
 }: FlowsDirectoryProps) {
   const [createOpen, setCreateOpen] = useState(false);
 
-  useEffect(() => {
-    if (createSuccess) {
-      setCreateOpen(false);
-    }
-  }, [createSuccess]);
+  useRunWhenTrue(createSuccess, () => setCreateOpen(false));
 
   if (fetching && !hasSnapshot && !error) {
     return <PageSkeleton variant="directory" columns={3} />;
@@ -139,27 +136,27 @@ export function FlowsDirectory({
           />
         ) : (
           <DirectoryTable>
-              <TableHeader>
-                <TableRow>
-                  <DirectoryTableHead>Name</DirectoryTableHead>
-                  <DirectoryTableHead>Paths</DirectoryTableHead>
-                  <DirectoryTableHead>Created</DirectoryTableHead>
+            <TableHeader>
+              <TableRow>
+                <DirectoryTableHead>Name</DirectoryTableHead>
+                <DirectoryTableHead>Paths</DirectoryTableHead>
+                <DirectoryTableHead>Created</DirectoryTableHead>
+              </TableRow>
+            </TableHeader>
+            <TableBody>
+              {(items ?? []).map((row) => (
+                <TableRow key={row.id}>
+                  <TableCell>
+                    <Link className="hover:underline" to={`/flows/${row.id}`}>
+                      {row.name}
+                    </Link>
+                  </TableCell>
+                  <TableCell className="tabular-nums">{row.paths?.length ?? 0}</TableCell>
+                  <TableCell className="tabular-nums">{displayTimestamp(row.created_at)}</TableCell>
                 </TableRow>
-              </TableHeader>
-              <TableBody>
-                {(items ?? []).map((row) => (
-                  <TableRow key={row.id}>
-                    <TableCell>
-                      <Link className="hover:underline" to={`/flows/${row.id}`}>
-                        {row.name}
-                      </Link>
-                    </TableCell>
-                    <TableCell className="tabular-nums">{row.paths?.length ?? 0}</TableCell>
-                    <TableCell className="tabular-nums">{displayTimestamp(row.created_at)}</TableCell>
-                  </TableRow>
-                ))}
-              </TableBody>
-            </DirectoryTable>
+              ))}
+            </TableBody>
+          </DirectoryTable>
         )}
       </div>
 

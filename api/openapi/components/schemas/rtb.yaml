@@ -192,6 +192,10 @@ RtbFloorsApplyResult:
     outbox_rows:
       type: integer
 
+OpenRtbBidRequest:
+  type: object
+  additionalProperties: true
+
 OpenRtbValidationResult:
   type: object
   properties:

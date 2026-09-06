@@ -19,10 +19,6 @@ test('campaign editor shows deep section headings', async ({ page }) => {
 
   await editLink.click();
 
-  await expect(
-    page.getByRole('heading', { name: 'Routing & ingress', exact: true }),
-  ).toBeVisible();
-  await expect(
-    page.getByRole('heading', { name: 'Macro preview', exact: true }),
-  ).toBeVisible();
+  await expect(page.getByRole('heading', { name: 'Routing & ingress', exact: true })).toBeVisible();
+  await expect(page.getByRole('heading', { name: 'Macro preview', exact: true })).toBeVisible();
 });

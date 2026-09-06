@@ -3,9 +3,7 @@ import { useCallback, useRef, useState, type DragEvent } from 'react';
 import { Checkbox } from '@/components/ui/checkbox';
 import type { CampaignListMetrics } from '@/api/campaigns_api';
 import type { Campaign, CampaignMargin, CampaignStatsQuery } from '@/api/types';
-import {
-  sumCampaignListTotals,
-} from '@/domains/campaigns/list/campaign_list_format';
+import { sumCampaignListTotals } from '@/domains/campaigns/list/campaign_list_format';
 import { sumCampaignFunnelTotals } from '@/domains/campaigns/list/campaign_list_funnel';
 import type { CampaignListFilterTotalsView } from '@/domains/campaigns/list/campaign_list_filter_totals';
 import {
@@ -103,22 +101,19 @@ export function CampaignsListTable({
     tableRef,
   });
   const columnWidthPxList = columns.map((columnId) =>
-    resolveCampaignListColumnWidthPx(columnId, columnWidths),
+    resolveCampaignListColumnWidthPx(columnId, columnWidths)
   );
   const tableWidthPx = columnWidthPxList.reduce((sum, widthPx) => sum + widthPx, 0);
   const [draggingColumnId, setDraggingColumnId] = useState<CampaignListReorderableColumnId | null>(
-    null,
+    null
   );
-  const allSelected = (items ?? []).length > 0 && (items ?? []).every((item) => selectedIds.has(item.id));
+  const allSelected =
+    (items ?? []).length > 0 && (items ?? []).every((item) => selectedIds.has(item.id));
   const totals =
     filterTotals?.totals ??
-    sumCampaignListTotals(
-      (items ?? []) as CampaignWithMoneyDisplay[],
-      metricsById,
-      marginsById,
-    );
+    sumCampaignListTotals((items ?? []) as CampaignWithMoneyDisplay[], metricsById, marginsById);
   const funnelTotals =
-    filterTotals?.funnelTotals ?? sumCampaignFunnelTotals((items ?? []), metricsById);
+    filterTotals?.funnelTotals ?? sumCampaignFunnelTotals(items ?? [], metricsById);
 
   function toggleAll(checked: boolean) {
     if (!checked) {
@@ -156,7 +151,7 @@ export function CampaignsListTable({
       onColumnPrefsChange(next);
       setDraggingColumnId(null);
     },
-    [columnPrefs, onColumnPrefsChange],
+    [columnPrefs, onColumnPrefsChange]
   );
 
   const clearDragState = useCallback(() => {
@@ -184,133 +179,133 @@ export function CampaignsListTable({
         tableLayout: 'fixed',
       }}
     >
-        <colgroup ref={colgroupRef}>
-          {columns.map((columnId, index) => {
-            const widthPx = columnWidthPxList[index] ?? CAMPAIGN_LIST_COLUMN_MIN_WIDTH_PX[columnId];
-            return <col key={columnId} style={{ width: `${widthPx}px` }} />;
-          })}
-        </colgroup>
-        <TableHeader>
-          <tr>
-            {columns.map((columnId) => {
-              const draggable = isCampaignListColumnDraggable(columnId);
-              const resizable = isCampaignListColumnResizable(columnId, columns);
-              const reorderableTarget = draggable ? columnId : null;
-              const isSelect = columnId === 'select';
+      <colgroup ref={colgroupRef}>
+        {columns.map((columnId, index) => {
+          const widthPx = columnWidthPxList[index] ?? CAMPAIGN_LIST_COLUMN_MIN_WIDTH_PX[columnId];
+          return <col key={columnId} style={{ width: `${widthPx}px` }} />;
+        })}
+      </colgroup>
+      <TableHeader>
+        <tr>
+          {columns.map((columnId) => {
+            const draggable = isCampaignListColumnDraggable(columnId);
+            const resizable = isCampaignListColumnResizable(columnId, columns);
+            const reorderableTarget = draggable ? columnId : null;
+            const isSelect = columnId === 'select';
 
-              return (
-                <th
-                  key={columnId}
-                  className={cn(
-                    campaignListThClass,
-                    isSelect ? 'px-4 text-center' : undefined,
-                    columnId === 'name'
+            return (
+              <th
+                key={columnId}
+                className={cn(
+                  campaignListThClass,
+                  isSelect ? 'px-4 text-center' : undefined,
+                  columnId === 'name'
+                    ? campaignListCellToolsClass
+                    : !isSelect
                       ? campaignListCellToolsClass
-                      : !isSelect
-                        ? campaignListCellToolsClass
-                        : undefined,
-                    draggingColumnId === columnId && 'opacity-60',
-                    resizable && 'relative',
-                  )}
-                >
-                  {isSelect ? (
-                    <div className={campaignListSelectCellClass}>
-                      <Checkbox
-                        aria-label="Select all campaigns"
-                        checked={allSelected}
-                        disabled={fetching}
-                        onCheckedChange={(checked) => toggleAll(checked === true)}
-                      />
-                    </div>
-                  ) : (
-                    <CampaignListTableHeaderCell
-                      appliedOrder={appliedOrder}
-                      appliedSort={appliedSort}
-                      columnId={columnId}
+                      : undefined,
+                  draggingColumnId === columnId && 'opacity-60',
+                  resizable && 'relative'
+                )}
+              >
+                {isSelect ? (
+                  <div className={campaignListSelectCellClass}>
+                    <Checkbox
+                      aria-label="Select all campaigns"
+                      checked={allSelected}
                       disabled={fetching}
-                      draggable={draggable}
-                      onColumnSort={onColumnSort}
-                      onDragEnd={clearDragState}
-                      onDragStart={() => {
-                        if (reorderableTarget) {
-                          setDraggingColumnId(reorderableTarget);
-                        }
-                      }}
-                      onDrop={(event) => {
-                        if (reorderableTarget) {
-                          handleColumnDrop(reorderableTarget, event);
-                        }
-                      }}
+                      onCheckedChange={(checked) => toggleAll(checked === true)}
                     />
-                  )}
-                  {resizable ? (
-                    <CampaignListColumnResizeHandle
-                      label={`Resize ${CAMPAIGN_LIST_COLUMN_LABELS[columnId]} column`}
-                      onPointerDown={(event) => {
-                        startResize(columnId, event);
-                      }}
-                    />
-                  ) : null}
-                </th>
-              );
-            })}
-          </tr>
-        </TableHeader>
-        <TableBody>
-          {(items ?? []).map((campaign) => (
-            <CampaignListTableBodyRow
-              key={campaign.id}
-              campaign={campaign}
-              columns={columns}
-              customerNameById={customerNameById}
-              fetching={fetching}
-              margin={marginsById[campaign.id]}
-              metrics={metricsById[campaign.id]}
-              ownerEmailById={ownerEmailById}
-              selected={selectedIds.has(campaign.id)}
-              onCampaignOverview={onCampaignOverview}
-              onToggleSelected={toggleOne}
-              statsCacheRevision={statsCacheRevision}
-              statsQuery={statsQuery}
-            />
-          ))}
-        </TableBody>
-        <TableFooter>
-          <tr>
-            {columns.map((columnId) => {
-              const isNum = isCampaignListNumericColumn(columnId);
-              return (
-                <td
-                  key={columnId}
-                  className={cn(
-                    campaignListTdClass,
-                    campaignListTfootTdClass,
-                    columnId === 'select'
-                      ? 'px-4 text-center'
-                      : columnId === 'name'
-                        ? campaignListCellToolsClass
-                        : cn(campaignListCellToolsClass, isNum && campaignListNumClass),
-                  )}
-                >
-                  <div className={campaignListHeaderCellClass}>
-                    <div className={campaignListCellContentClass}>
-                      <CampaignListTableTotalsCell
+                  </div>
+                ) : (
+                  <CampaignListTableHeaderCell
+                    appliedOrder={appliedOrder}
+                    appliedSort={appliedSort}
+                    columnId={columnId}
+                    disabled={fetching}
+                    draggable={draggable}
+                    onColumnSort={onColumnSort}
+                    onDragEnd={clearDragState}
+                    onDragStart={() => {
+                      if (reorderableTarget) {
+                        setDraggingColumnId(reorderableTarget);
+                      }
+                    }}
+                    onDrop={(event) => {
+                      if (reorderableTarget) {
+                        handleColumnDrop(reorderableTarget, event);
+                      }
+                    }}
+                  />
+                )}
+                {resizable ? (
+                  <CampaignListColumnResizeHandle
+                    label={`Resize ${CAMPAIGN_LIST_COLUMN_LABELS[columnId]} column`}
+                    onPointerDown={(event) => {
+                      startResize(columnId, event);
+                    }}
+                  />
+                ) : null}
+              </th>
+            );
+          })}
+        </tr>
+      </TableHeader>
+      <TableBody>
+        {(items ?? []).map((campaign) => (
+          <CampaignListTableBodyRow
+            key={campaign.id}
+            campaign={campaign}
+            columns={columns}
+            customerNameById={customerNameById}
+            fetching={fetching}
+            margin={marginsById[campaign.id]}
+            metrics={metricsById[campaign.id]}
+            ownerEmailById={ownerEmailById}
+            selected={selectedIds.has(campaign.id)}
+            onCampaignOverview={onCampaignOverview}
+            onToggleSelected={toggleOne}
+            statsCacheRevision={statsCacheRevision}
+            statsQuery={statsQuery}
+          />
+        ))}
+      </TableBody>
+      <TableFooter>
+        <tr>
+          {columns.map((columnId) => {
+            const isNum = isCampaignListNumericColumn(columnId);
+            return (
+              <td
+                key={columnId}
+                className={cn(
+                  campaignListTdClass,
+                  campaignListTfootTdClass,
+                  columnId === 'select'
+                    ? 'px-4 text-center'
+                    : columnId === 'name'
+                      ? campaignListCellToolsClass
+                      : cn(campaignListCellToolsClass, isNum && campaignListNumClass)
+                )}
+              >
+                <div className={campaignListHeaderCellClass}>
+                  <div className={campaignListCellContentClass}>
+                    <CampaignListTableTotalsCell
                       columnId={columnId}
                       funnelTotals={funnelTotals}
                       pageCount={(items ?? []).length}
                       totals={totals}
                       totalsLabel={filterTotals ? 'Filtered total' : 'Total'}
                     />
-                    </div>
-                    {columnId !== 'select' && columnId !== 'name' ? (
-                      <div aria-hidden className={campaignListBodyToolsGutterClass} />
-                    ) : null}
                   </div>
-                </td>
-              );
-            })}
-          </tr>
-        </TableFooter>
+                  {columnId !== 'select' && columnId !== 'name' ? (
+                    <div aria-hidden className={campaignListBodyToolsGutterClass} />
+                  ) : null}
+                </div>
+              </td>
+            );
+          })}
+        </tr>
+      </TableFooter>
     </DirectoryTable>
   );
 }

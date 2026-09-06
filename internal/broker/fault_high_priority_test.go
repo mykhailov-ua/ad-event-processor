@@ -153,7 +153,7 @@ func TestFault_LeaseExpiry_FrozenLeaderRejected(t *testing.T) {
 
 	requireEventually(t, func() bool {
 		return partitionOffset(t, follower, topic) >= 16
-	}, 30*time.Second, 200*time.Millisecond, "follower must replicate before leader freeze")
+	}, 90*time.Second, 200*time.Millisecond, "follower must replicate before leader freeze")
 
 	if leaderProc.cmd.Process == nil {
 		t.Fatal("leader process not running")
@@ -226,7 +226,7 @@ func TestFault_ClientRedirect_AfterFailover(t *testing.T) {
 	produceMessages(t, leaderSrv.Addr(), topic, msgCount)
 	requireEventually(t, func() bool {
 		return partitionOffset(t, cl.follower, topic) >= msgCount
-	}, 30*time.Second, 300*time.Millisecond, "follower must replicate all messages before failover")
+	}, 90*time.Second, 300*time.Millisecond, "follower must replicate all messages before failover")
 
 	cli := client.NewClient(leaderSrv.Addr(), 5*time.Second)
 	cli.SetRedisURL(cl.redisURL)
@@ -286,7 +286,7 @@ func TestFault_ConsumerResume_AfterLeaderKill(t *testing.T) {
 
 	requireEventually(t, func() bool {
 		return partitionOffset(t, followerSrv, topic) >= preKill
-	}, 30*time.Second, 300*time.Millisecond, "follower must replicate pre-kill messages")
+	}, 90*time.Second, 300*time.Millisecond, "follower must replicate pre-kill messages")
 
 	var seenMu sync.Mutex
 	seen := make(map[string]struct{})

@@ -1,3 +1,4 @@
+// L3 campaign editor page: composes load + form draft + actions; effectiveForm falls back to campaignToFormState when form unset.
 import { campaignToFormState } from '@/domains/campaigns/editor/campaign_editor';
 import type { CampaignEditorProps } from '@/domains/campaigns/editor/campaign_editor_types';
 import { useCampaignEditorActions } from '@/domains/campaigns/editor/use_campaign_editor_actions';
@@ -24,8 +25,7 @@ export function useCampaignEditorPage(): CampaignEditorProps {
     setPublishCheckError: load.setPublishCheckError,
   });
 
-  const effectiveForm =
-    form ?? (load.campaign ? campaignToFormState(load.campaign) : undefined);
+  const effectiveForm = form ?? (load.campaign ? campaignToFormState(load.campaign) : undefined);
 
   useBreadcrumbSegmentLabel(load.id, load.campaign?.name);
 

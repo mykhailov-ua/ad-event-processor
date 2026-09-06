@@ -1,91 +1,32 @@
-import { useEffect, useState } from 'react';
-
-import {
-  getCampaignEditorShell,
-  getCampaignFraudEditorSummary,
-  getCampaignGeoSummary,
-} from '@/api/campaigns_api';
-import { ApiError } from '@/api/client';
-import { ErrorBlock } from '@/shell/error_block';
-import { StubBanner } from '@/shell/stub_banner';
+import { campaignPanelError } from '@/domains/campaigns/editor/campaign_editor_shared';
 import { Button } from '@/components/ui/button';
 import { Checkbox } from '@/components/ui/checkbox';
 import { Label } from '@/components/ui/label';
 import { JsonPayloadView } from '@/shell/json_payload_view';
 import { formatCampaignJsonKey } from '@/domains/campaigns/editor/campaign_json_labels';
-import { useResource } from '@/api/use_resource';
+import type { useCampaignEditorContextLoad } from '@/domains/campaigns/editor/use_campaign_editor_context_load';
 
-function panelError(error: Error, title: string) {
-  if (error instanceof ApiError && error.status === 501) {
-    return <StubBanner title={`${title} unavailable`} message={error.message} />;
-  }
-  return <ErrorBlock title={title} message={error.message} />;
-}
-
-type ContextLoadKey = 'geo' | 'fraud' | 'shell';
-
-export function CampaignEditorContextPanel({ campaignId }: { campaignId: string }) {
-  const [loadKey, setLoadKey] = useState<ContextLoadKey | undefined>();
-  const [geoExpand, setGeoExpand] = useState(false);
-  const [fraudPreview, setFraudPreview] = useState(false);
-  const [loadToken, setLoadToken] = useState(0);
-
-  useEffect(() => {
-    setLoadKey(undefined);
-    setGeoExpand(false);
-    setFraudPreview(false);
-    setLoadToken(0);
-  }, [campaignId]);
-
-  const geoResource = useResource(
-    async (signal) => {
-      if (loadKey !== 'geo') {
-        return undefined;
-      }
-      return getCampaignGeoSummary(campaignId, { expand: geoExpand }, signal);
-    },
-    [campaignId, loadKey, geoExpand, loadToken],
-  );
-
-  const fraudResource = useResource(
-    async (signal) => {
-      if (loadKey !== 'fraud') {
-        return undefined;
-      }
-      return getCampaignFraudEditorSummary(campaignId, { preview: fraudPreview }, signal);
-    },
-    [campaignId, loadKey, fraudPreview, loadToken],
-  );
-
-  const shellResource = useResource(
-    async (signal) => {
-      if (loadKey !== 'shell') {
-        return undefined;
-      }
-      return getCampaignEditorShell(campaignId, signal);
-    },
-    [campaignId, loadKey, loadToken],
-  );
-
-  const onLoadGeo = () => {
-    setLoadKey('geo');
-    setLoadToken((token) => token + 1);
-  };
-
-  const onLoadFraud = () => {
-    setLoadKey('fraud');
-    setLoadToken((token) => token + 1);
-  };
-
-  const onLoadShell = () => {
-    setLoadKey('shell');
-    setLoadToken((token) => token + 1);
-  };
-
-  const busy =
-    (loadKey === 'geo' && geoResource.fetching) ||
-    (loadKey === 'fraud' && fraudResource.fetching) ||
-    (loadKey === 'shell' && shellResource.fetching);
+export function CampaignEditorContextPanel({
+  campaignId: _campaignId,
+  context,
+}: {
+  campaignId: string;
+  context: ReturnType<typeof useCampaignEditorContextLoad>;
+}) {
+  const {
+    loadKey,
+    geoExpand,
+    fraudPreview,
+    geoResource,
+    fraudResource,
+    shellResource,
+    busy,
+    onLoadGeo,
+    onLoadFraud,
+    onLoadShell,
+    onGeoExpandChange,
+    onFraudPreviewChange,
+  } = context;
 
   return (
     <div className="grid gap-4">
@@ -95,7 +36,7 @@ export function CampaignEditorContextPanel({ campaignId }: { campaignId: string 
             checked={geoExpand}
             disabled={busy}
             id="editor-context-geo-expand"
-            onCheckedChange={(checked) => setGeoExpand(checked === true)}
+            onCheckedChange={(checked) => onGeoExpandChange(checked === true)}
           />
           <Label htmlFor="editor-context-geo-expand">Expand geo rows</Label>
         </div>
@@ -104,7 +45,7 @@ export function CampaignEditorContextPanel({ campaignId }: { campaignId: string 
             checked={fraudPreview}
             disabled={busy}
             id="editor-context-fraud-preview"
-            onCheckedChange={(checked) => setFraudPreview(checked === true)}
+            onCheckedChange={(checked) => onFraudPreviewChange(checked === true)}
           />
           <Label htmlFor="editor-context-fraud-preview">Fraud preview query</Label>
         </div>
@@ -123,13 +64,13 @@ export function CampaignEditorContextPanel({ campaignId }: { campaignId: string 
       </div>
 
       {loadKey === 'geo' && geoResource.error
-        ? panelError(geoResource.error, 'Could not load geo summary')
+        ? campaignPanelError(geoResource.error, 'Could not load geo summary')
         : null}
       {loadKey === 'fraud' && fraudResource.error
-        ? panelError(fraudResource.error, 'Could not load fraud editor summary')
+        ? campaignPanelError(fraudResource.error, 'Could not load fraud editor summary')
         : null}
       {loadKey === 'shell' && shellResource.error
-        ? panelError(shellResource.error, 'Could not load editor shell')
+        ? campaignPanelError(shellResource.error, 'Could not load editor shell')
         : null}
 
       {loadKey === 'geo' && geoResource.data ? (
@@ -150,7 +91,7 @@ export function CampaignEditorContextPanel({ campaignId }: { campaignId: string 
         <JsonPayloadView
           formatColumn={formatCampaignJsonKey}
           formatKey={formatCampaignJsonKey}
-          payload={shellResource.data as unknown as Record<string, unknown>}
+          payload={shellResource.data}
         />
       ) : null}
     </div>

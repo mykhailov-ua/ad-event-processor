@@ -17,7 +17,7 @@ export type CampaignListRowMetrics = {
 
 export function resolveCampaignListRowMetrics(
   metrics: CampaignListMetrics | undefined,
-  margin: CampaignMargin | undefined,
+  margin: CampaignMargin | undefined
 ): CampaignListRowMetrics {
   const clicks = metrics?.clicks ?? 0;
   const impressions = metrics?.impressions ?? 0;

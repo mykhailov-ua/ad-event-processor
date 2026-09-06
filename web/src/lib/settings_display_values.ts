@@ -1,4 +1,4 @@
-import type { SettingsEmptyField } from '@/domains/settings/settings_empty';
+import type { SettingsEmptyField } from '@/lib/settings_empty_fields';
 
 const PROFILE_LABELS: Record<string, string> = {
   single_vps: 'Single VPS',
@@ -49,11 +49,7 @@ function titleCaseToken(token: string): string {
 }
 
 export function humanizeSettingsSlug(slug: string): string {
-  return slug
-    .split('_')
-    .filter(Boolean)
-    .map(titleCaseToken)
-    .join(' ');
+  return slug.split('_').filter(Boolean).map(titleCaseToken).join(' ');
 }
 
 export function formatSettingsDisplayValue(value: string, field: SettingsEmptyField): string {

@@ -520,3 +520,27 @@ func TestUpsertCredential_EncryptionRoundTrip(t *testing.T) {
 	require.Equal(t, "refresh", cred.RefreshToken)
 	require.Equal(t, "apikey", cred.APIKey)
 }
+
+func TestStartManualRun_returnsBeforeSyncDay_holdout(t *testing.T) {
+	pool := setupCostSyncDB(t)
+	gate := make(chan struct{})
+	worker := NewWorker(pool, []byte("postback-encryption-secret-key32"))
+	worker.testSyncDayBlock = gate
+
+	from := time.Date(2026, 3, 1, 0, 0, 0, 0, time.UTC)
+	done := make(chan struct{})
+	go func() {
+		err := worker.StartManualRun(context.Background(), nil, "", from, from)
+		require.NoError(t, err)
+		close(done)
+	}()
+
+	select {
+	case <-done:
+	case <-time.After(200 * time.Millisecond):
+		t.Fatal("StartManualRun blocked on syncDay")
+	}
+
+	close(gate)
+	worker.Wait()
+}

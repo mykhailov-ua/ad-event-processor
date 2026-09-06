@@ -60,6 +60,13 @@ func NotifyContext() (context.Context, context.CancelFunc) {
 	return signal.NotifyContext(context.Background(), os.Interrupt, syscall.SIGTERM)
 }
 
+func exitWithCancel(cancel context.CancelFunc, code int) {
+	if cancel != nil {
+		cancel()
+	}
+	os.Exit(code)
+}
+
 func RunCLI() {
 	logger := slog.New(slog.NewJSONHandler(os.Stdout, nil))
 	slog.SetDefault(logger)
@@ -75,6 +82,6 @@ func RunCLI() {
 
 	if err := RunFromCLI(ctx, cfg); err != nil && !errors.Is(err, context.Canceled) {
 		slog.Error("control plane stopped", "error", err)
-		os.Exit(1)
+		exitWithCancel(cancel, 1)
 	}
 }

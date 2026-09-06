@@ -4,7 +4,7 @@ export function computeTooltipCoords(
   rect: DOMRect,
   side: 'top' | 'bottom',
   align: 'center' | 'start' | 'end',
-  sideOffset: number,
+  sideOffset: number
 ): CSSProperties {
   const top = side === 'bottom' ? rect.bottom + sideOffset : rect.top - sideOffset;
 

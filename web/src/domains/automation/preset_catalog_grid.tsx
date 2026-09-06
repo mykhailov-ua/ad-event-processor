@@ -1,16 +1,15 @@
 import { ListTree, Sparkles, Workflow, Zap } from 'lucide-react';
 import type { LucideIcon } from 'lucide-react';
 
+import type { AutomationPreset } from '@/api/types';
 import { BentoCard, BentoGrid, bentoToneFromKey } from '@/shell/bento_card';
 
 const PRESET_ICONS: LucideIcon[] = [Sparkles, Workflow, Zap, ListTree];
 
-export type PresetCatalogRow = {
-  key?: string;
-  title?: string;
-  description?: string;
-  parameters_schema?: unknown[] | null;
-};
+export type PresetCatalogRow = Pick<
+  AutomationPreset,
+  'key' | 'title' | 'description' | 'parameters_schema'
+>;
 
 export function PresetCatalogGrid({ items }: { items?: PresetCatalogRow[] }) {
   return (

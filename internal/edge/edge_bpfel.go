@@ -73,10 +73,14 @@ const (
 	EdgeMapGlobalSyn            = "global_syn"
 	EdgeMapProgArray            = "prog_array"
 	EdgeMapRatelimitV4          = "ratelimit_v4"
+	EdgeMapRatelimitV6          = "ratelimit_v6"
 	EdgeMapRstRatelimitV4       = "rst_ratelimit_v4"
+	EdgeMapRstRatelimitV6       = "rst_ratelimit_v6"
 	EdgeMapStats                = "stats"
 	EdgeMapSynRatelimitV4       = "syn_ratelimit_v4"
+	EdgeMapSynRatelimitV6       = "syn_ratelimit_v6"
 	EdgeMapSynSubnetRatelimitV4 = "syn_subnet_ratelimit_v4"
+	EdgeMapSynSubnetRatelimitV6 = "syn_subnet_ratelimit_v6"
 	EdgeMapViolations           = "violations"
 	EdgeProgXdpEdgeFilter       = "xdp_edge_filter"
 	EdgeProgXdpSynCookie        = "xdp_syn_cookie"
@@ -143,10 +147,14 @@ type EdgeMapSpecs struct {
 	GlobalSyn            *ebpf.MapSpec `ebpf:"global_syn"`
 	ProgArray            *ebpf.MapSpec `ebpf:"prog_array"`
 	RatelimitV4          *ebpf.MapSpec `ebpf:"ratelimit_v4"`
+	RatelimitV6          *ebpf.MapSpec `ebpf:"ratelimit_v6"`
 	RstRatelimitV4       *ebpf.MapSpec `ebpf:"rst_ratelimit_v4"`
+	RstRatelimitV6       *ebpf.MapSpec `ebpf:"rst_ratelimit_v6"`
 	Stats                *ebpf.MapSpec `ebpf:"stats"`
 	SynRatelimitV4       *ebpf.MapSpec `ebpf:"syn_ratelimit_v4"`
+	SynRatelimitV6       *ebpf.MapSpec `ebpf:"syn_ratelimit_v6"`
 	SynSubnetRatelimitV4 *ebpf.MapSpec `ebpf:"syn_subnet_ratelimit_v4"`
+	SynSubnetRatelimitV6 *ebpf.MapSpec `ebpf:"syn_subnet_ratelimit_v6"`
 	Violations           *ebpf.MapSpec `ebpf:"violations"`
 }
 
@@ -187,10 +195,14 @@ type EdgeMaps struct {
 	GlobalSyn            *ebpf.Map `ebpf:"global_syn"`
 	ProgArray            *ebpf.Map `ebpf:"prog_array"`
 	RatelimitV4          *ebpf.Map `ebpf:"ratelimit_v4"`
+	RatelimitV6          *ebpf.Map `ebpf:"ratelimit_v6"`
 	RstRatelimitV4       *ebpf.Map `ebpf:"rst_ratelimit_v4"`
+	RstRatelimitV6       *ebpf.Map `ebpf:"rst_ratelimit_v6"`
 	Stats                *ebpf.Map `ebpf:"stats"`
 	SynRatelimitV4       *ebpf.Map `ebpf:"syn_ratelimit_v4"`
+	SynRatelimitV6       *ebpf.Map `ebpf:"syn_ratelimit_v6"`
 	SynSubnetRatelimitV4 *ebpf.Map `ebpf:"syn_subnet_ratelimit_v4"`
+	SynSubnetRatelimitV6 *ebpf.Map `ebpf:"syn_subnet_ratelimit_v6"`
 	Violations           *ebpf.Map `ebpf:"violations"`
 }
 
@@ -207,10 +219,14 @@ func (m *EdgeMaps) Close() error {
 		m.GlobalSyn,
 		m.ProgArray,
 		m.RatelimitV4,
+		m.RatelimitV6,
 		m.RstRatelimitV4,
+		m.RstRatelimitV6,
 		m.Stats,
 		m.SynRatelimitV4,
+		m.SynRatelimitV6,
 		m.SynSubnetRatelimitV4,
+		m.SynSubnetRatelimitV6,
 		m.Violations,
 	)
 }

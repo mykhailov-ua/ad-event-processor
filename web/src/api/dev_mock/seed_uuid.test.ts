@@ -1,11 +1,7 @@
 import assert from 'node:assert/strict';
 import test from 'node:test';
 
-import {
-  isTrivialSequentialUuid,
-  newRandomUuid,
-  seedDeterministicUuid,
-} from './seed_uuid.ts';
+import { isTrivialSequentialUuid, newRandomUuid, seedDeterministicUuid } from './seed_uuid.ts';
 
 test('seedDeterministicUuid matches Go seed_catalog parity vectors', () => {
   const cases: Array<[string, number, string]> = [

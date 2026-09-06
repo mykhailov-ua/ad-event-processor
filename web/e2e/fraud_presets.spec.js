@@ -1,13 +1,27 @@
 import { test, expect } from '@playwright/test';
 
-import { loginAsAdmin, skipUnlessIntegrationReady } from './helpers.js';
+import {
+  expectApiListBoundToDom,
+  gotoLiveAwaitGet,
+  loginAsAdmin,
+  mainHeading,
+  skipUnlessIntegrationReady,
+} from './helpers.js';
 
 test.beforeEach(async ({}, testInfo) => {
   await skipUnlessIntegrationReady(testInfo);
 });
 
-test('fraud presets page loads', async ({ page }) => {
+test('fraud presets page loads from GET /api/v1/fraud/presets', async ({ page }) => {
   await loginAsAdmin(page);
-  await page.goto('/fraud/presets');
-  await expect(page.getByRole('heading', { name: 'Fraud presets' })).toBeVisible();
+  const listResponse = await gotoLiveAwaitGet(page, '/fraud/presets', '/api/v1/fraud/presets');
+  await expect(mainHeading(page, 'Fraud presets')).toBeVisible();
+
+  const body = await listResponse.json();
+  expect(Array.isArray(body)).toBe(true);
+
+  await expectApiListBoundToDom(page, body, {
+    emptyTitle: 'No presets',
+    rowLabel: (row) => String(row.name ?? row.id ?? ''),
+  });
 });

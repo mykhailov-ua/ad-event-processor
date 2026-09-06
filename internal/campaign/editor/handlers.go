@@ -784,6 +784,8 @@ func postCampaignBulk(h *campaign.CampaignsHTTPHandlers, w http.ResponseWriter, 
 	}
 	results := make([]BulkCampaignResultRowDTO, 0, len(req.CampaignIDs))
 	reason := "bulk_" + action
+	parsedIDs := make([]uuid.UUID, 0, len(req.CampaignIDs))
+	idByRaw := make(map[uuid.UUID]string, len(req.CampaignIDs))
 	for _, rawID := range req.CampaignIDs {
 		row := BulkCampaignResultRowDTO{ID: rawID}
 		campaignID, err := uuid.Parse(strings.TrimSpace(rawID))
@@ -792,27 +794,37 @@ func postCampaignBulk(h *campaign.CampaignsHTTPHandlers, w http.ResponseWriter, 
 			results = append(results, row)
 			continue
 		}
-		if h.AuthorizeCampaignAccess != nil {
-			if err := h.AuthorizeCampaignAccess(r, campaignID); err != nil {
-				row.ErrorCode = "forbidden"
-				results = append(results, row)
-				continue
-			}
+		parsedIDs = append(parsedIDs, campaignID)
+		idByRaw[campaignID] = rawID
+	}
+	authErrors := h.AuthorizeCampaignIDs(r, parsedIDs)
+	for _, campaignID := range parsedIDs {
+		if _, denied := authErrors[campaignID]; denied {
+			results = append(results, BulkCampaignResultRowDTO{
+				ID:        idByRaw[campaignID],
+				ErrorCode: "forbidden",
+			})
+			delete(idByRaw, campaignID)
 		}
-		if action == "pause" {
-			err = h.Campaigns.PauseCampaign(r.Context(), campaignID, reason)
-		} else if action == "resume" {
-			err = h.Campaigns.ResumeCampaign(r.Context(), campaignID, reason)
-		} else {
-			err = h.Campaigns.ArchiveCampaign(r.Context(), campaignID, reason)
-		}
-		if err != nil {
-			row.ErrorCode = bulkCampaignErrorCode(err)
-			results = append(results, row)
+	}
+	allowedIDs := make([]uuid.UUID, 0, len(idByRaw))
+	for _, campaignID := range parsedIDs {
+		if _, ok := idByRaw[campaignID]; !ok {
 			continue
 		}
-		row.OK = true
-		results = append(results, row)
+		allowedIDs = append(allowedIDs, campaignID)
+	}
+	bulkErrors := h.Campaigns.BulkCampaignAction(r.Context(), action, allowedIDs, reason)
+	for _, campaignID := range allowedIDs {
+		rawID := idByRaw[campaignID]
+		if err, failed := bulkErrors[campaignID]; failed {
+			results = append(results, BulkCampaignResultRowDTO{
+				ID:        rawID,
+				ErrorCode: bulkCampaignErrorCode(err),
+			})
+			continue
+		}
+		results = append(results, BulkCampaignResultRowDTO{ID: rawID, OK: true})
 	}
 	httpresponse.JSON(w, http.StatusOK, BulkCampaignResponseDTO{Results: results})
 }

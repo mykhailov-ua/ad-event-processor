@@ -1,4 +1,4 @@
-import { apiFetch, apiJson, apiJsonArray } from './client.js';
+import { apiFetch, apiJson, apiJsonArray, parseApiError } from './client.js';
 import type {
   AdsTxtEntry,
   AdsTxtWriteRequest,
@@ -18,7 +18,7 @@ export async function listSupplySellers(signal?: AbortSignal): Promise<Seller[]>
 
 export async function createSupplySeller(
   body: SellerWriteRequest,
-  signal?: AbortSignal,
+  signal?: AbortSignal
 ): Promise<Seller> {
   return apiJson<Seller>('/api/v1/supply/sellers', {
     method: 'POST',
@@ -30,7 +30,7 @@ export async function createSupplySeller(
 export async function updateSupplySeller(
   id: number,
   body: SellerWriteRequest,
-  signal?: AbortSignal,
+  signal?: AbortSignal
 ): Promise<Seller> {
   return apiJson<Seller>(`/api/v1/supply/sellers/${encodeURIComponent(String(id))}`, {
     method: 'PUT',
@@ -45,7 +45,7 @@ export async function deleteSupplySeller(id: number, signal?: AbortSignal): Prom
     signal,
   });
   if (!response.ok && response.status !== 204) {
-    throw new Error(response.statusText || `HTTP ${response.status}`);
+    throw await parseApiError(response);
   }
 }
 
@@ -55,7 +55,7 @@ export async function listSupplyAdsTxt(signal?: AbortSignal): Promise<AdsTxtEntr
 
 export async function createSupplyAdsTxt(
   body: AdsTxtWriteRequest,
-  signal?: AbortSignal,
+  signal?: AbortSignal
 ): Promise<AdsTxtEntry> {
   return apiJson<AdsTxtEntry>('/api/v1/supply/ads-txt', {
     method: 'POST',
@@ -67,7 +67,7 @@ export async function createSupplyAdsTxt(
 export async function updateSupplyAdsTxt(
   id: number,
   body: AdsTxtWriteRequest,
-  signal?: AbortSignal,
+  signal?: AbortSignal
 ): Promise<AdsTxtEntry> {
   return apiJson<AdsTxtEntry>(`/api/v1/supply/ads-txt/${encodeURIComponent(String(id))}`, {
     method: 'PUT',
@@ -82,7 +82,7 @@ export async function deleteSupplyAdsTxt(id: number, signal?: AbortSignal): Prom
     signal,
   });
   if (!response.ok && response.status !== 204) {
-    throw new Error(response.statusText || `HTTP ${response.status}`);
+    throw await parseApiError(response);
   }
 }
 

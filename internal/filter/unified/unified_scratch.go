@@ -42,7 +42,7 @@ type UnifiedCheckScratch struct {
 	keyArgs                                                                      [unifiedFilterKeyCount]any
 }
 
-// UnifiedScratchPool: one scratch per Check on PinnedWorkerPool Tier B; Release is no-op (returned via defer Put).
+// UnifiedScratchPool one scratch per Check on PinnedWorkerPool Tier B; Release is no-op (returned via defer Put).
 var UnifiedScratchPool = sync.Pool{
 	New: func() any {
 		s := &UnifiedCheckScratch{

@@ -32,6 +32,22 @@ WHERE click_id = ?
  AND created_at < ?
 ORDER BY created_at ASC`
 
+const fraudEvidencePackBulkQuery = `
+SELECT
+ event_type,
+ campaign_id,
+ coalesce(JSONExtractString(payload, 'placement_id'), '') AS placement_id,
+ fraud_reason,
+ fraud_score,
+ silent_reject_event,
+ layer_desync_count,
+ created_at
+FROM fraud_events
+WHERE campaign_id IN (?)
+ AND created_at >= ?
+ AND created_at < ?
+ORDER BY campaign_id, created_at ASC`
+
 func registerFraudEvidencePackReport(h *reports.ReportsHTTPHandlers, mux *http.ServeMux) {
 	limit := h.ApplyRateLimit
 	permAny := h.RequireAnyPermission
@@ -155,10 +171,16 @@ func queryFraudEvidencePackFraudCH(
 	clickID string,
 	from, to time.Time,
 ) ([]reports.FraudEvidenceFraudRowDTO, error) {
-	if clickhouseQuery == nil || len(campaignIDs) == 0 || clickID == "" {
+	if clickhouseQuery == nil || len(campaignIDs) == 0 {
 		return nil, nil
 	}
-	rows, err := clickhouseQuery.Query(ctx, fraudEvidencePackQuery, clickID, campaignIDs, from, to)
+	query := fraudEvidencePackQuery
+	args := []any{clickID, campaignIDs, from, to}
+	if clickID == "" {
+		query = fraudEvidencePackBulkQuery
+		args = []any{campaignIDs, from, to}
+	}
+	rows, err := clickhouseQuery.Query(ctx, query, args...)
 	if err != nil {
 		return nil, err
 	}

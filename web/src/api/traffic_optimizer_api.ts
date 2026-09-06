@@ -8,26 +8,26 @@ import type {
 } from './types.js';
 
 export async function listTrafficOptimizerPresets(
-  signal?: AbortSignal,
+  signal?: AbortSignal
 ): Promise<TrafficOptimizerPreset[]> {
   return apiJsonArray<TrafficOptimizerPreset>('/api/v1/traffic-optimizer/presets', { signal });
 }
 
 export async function listTrafficOptimizerRules(
   params: TrafficOptimizerListRulesQuery,
-  signal?: AbortSignal,
+  signal?: AbortSignal
 ): Promise<TrafficOptimizerRule[]> {
   const search = new URLSearchParams();
   search.set('customer_id', params.customer_id);
   return apiJsonArray<TrafficOptimizerRule>(
     `/api/v1/traffic-optimizer/rules?${search.toString()}`,
-    { signal },
+    { signal }
   );
 }
 
 export async function createTrafficOptimizerRule(
   body: UpsertTrafficOptimizerRuleRequest,
-  signal?: AbortSignal,
+  signal?: AbortSignal
 ): Promise<TrafficOptimizerRule> {
   return apiJson<TrafficOptimizerRule>('/api/v1/traffic-optimizer/rules', {
     method: 'POST',
@@ -39,7 +39,7 @@ export async function createTrafficOptimizerRule(
 export async function updateTrafficOptimizerRule(
   ruleId: string,
   body: UpsertTrafficOptimizerRuleRequest,
-  signal?: AbortSignal,
+  signal?: AbortSignal
 ): Promise<TrafficOptimizerRule> {
   return apiJson<TrafficOptimizerRule>(
     `/api/v1/traffic-optimizer/rules/${encodeURIComponent(ruleId)}`,
@@ -47,13 +47,13 @@ export async function updateTrafficOptimizerRule(
       method: 'PUT',
       body: JSON.stringify(body),
       signal,
-    },
+    }
   );
 }
 
 export async function deleteTrafficOptimizerRule(
   ruleId: string,
-  signal?: AbortSignal,
+  signal?: AbortSignal
 ): Promise<void> {
   await apiJson<void>(`/api/v1/traffic-optimizer/rules/${encodeURIComponent(ruleId)}`, {
     method: 'DELETE',
@@ -63,10 +63,10 @@ export async function deleteTrafficOptimizerRule(
 
 export async function dryRunTrafficOptimizerRule(
   ruleId: string,
-  signal?: AbortSignal,
+  signal?: AbortSignal
 ): Promise<TrafficOptimizerDryRunResult> {
   return apiJson<TrafficOptimizerDryRunResult>(
     `/api/v1/traffic-optimizer/rules/${encodeURIComponent(ruleId)}/dry-run`,
-    { method: 'POST', signal },
+    { method: 'POST', signal }
   );
 }

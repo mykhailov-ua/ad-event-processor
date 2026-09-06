@@ -12,7 +12,10 @@ export function AdminDevBanner() {
   }
 
   return (
-    <div className="border-b border-amber-200 bg-amber-50 px-3 py-1 text-center text-sm text-amber-900 dark:border-amber-900 dark:bg-amber-950/40 dark:text-amber-200" role="status">
+    <div
+      className="border-b border-admin-warn-border bg-admin-warn-bg px-3 py-1 text-center text-sm text-admin-warn"
+      role="status"
+    >
       <span>
         <strong>Dev mode</strong> - mock API responses. UI works without control plane on :8188.
       </span>

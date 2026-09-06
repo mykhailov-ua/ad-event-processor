@@ -1,13 +1,16 @@
 import { EmptyState } from '@/shell/empty_state';
 import type { IncidentSnapshot } from '@/api/types';
 import { opsPanelError } from '@/domains/ops/ops_nav';
-import {
-  OpsPageBlockingError,
-  OpsPageLoading,
-  OpsPageShell,
-} from '@/domains/ops/ops_page_shell';
+import { OpsPageBlockingError, OpsPageLoading, OpsPageShell } from '@/domains/ops/ops_page_shell';
 import { OpsStatusChip } from '@/domains/ops/ops_status';
-import { OpsBlock, OpsTable, OpsTableCell, OpsTableHead, OpsTableHeaderRow, OpsTableRow } from '@/domains/ops/ops_table';
+import {
+  OpsBlock,
+  OpsTable,
+  OpsTableCell,
+  OpsTableHead,
+  OpsTableHeaderRow,
+  OpsTableRow,
+} from '@/domains/ops/ops_table';
 
 export type OpsIncidentsProps = {
   snapshot: IncidentSnapshot | undefined;
@@ -54,6 +57,7 @@ export function OpsIncidents({ snapshot, fetching, error, hasSnapshot }: OpsInci
       {shards.length > 0 ? (
         <OpsBlock title="Shard health">
           <OpsTable
+            horizontalScroll
             head={
               <OpsTableHeaderRow>
                 <OpsTableHead>Shard</OpsTableHead>

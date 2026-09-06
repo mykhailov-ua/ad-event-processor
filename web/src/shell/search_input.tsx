@@ -1,7 +1,8 @@
 import { Search } from 'lucide-react';
 import type { ComponentProps } from 'react';
 
-import { Input } from '@/components/ui/input';
+import { adminChrome } from '@/lib/admin_chrome';
+import { adminKit } from '@/lib/admin_kit';
 import { cn } from '@/lib/utils';
 
 export type SearchInputProps = Omit<ComponentProps<'input'>, 'type'> & {
@@ -10,12 +11,13 @@ export type SearchInputProps = Omit<ComponentProps<'input'>, 'type'> & {
 
 export function SearchInput({ className, wrapperClassName, ...props }: SearchInputProps) {
   return (
-    <div className={cn('relative flex min-w-0 items-center', wrapperClassName)}>
-      <Search
-        aria-hidden
-        className="pointer-events-none absolute left-2.5 h-3.5 w-3.5 text-muted-foreground"
+    <div className={cn(adminChrome.controlFieldGroup, 'min-w-0', wrapperClassName)}>
+      <Search aria-hidden className="size-3.5 shrink-0 text-muted-foreground" />
+      <input
+        className={cn(adminChrome.controlFieldInset, adminKit.controlText, className)}
+        type="search"
+        {...props}
       />
-      <Input className={cn('bg-background pl-8 text-foreground', className)} type="search" {...props} />
     </div>
   );
 }

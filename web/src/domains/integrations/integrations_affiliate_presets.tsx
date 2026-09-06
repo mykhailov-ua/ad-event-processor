@@ -43,27 +43,24 @@ export function IntegrationsAffiliatePresets({
       <IntegrationsNav />
 
       {(presets ?? []).length === 0 ? (
-        <EmptyState
-          title="No presets"
-          description="No affiliate status presets are configured."
-        />
+        <EmptyState title="No presets" description="No affiliate status presets are configured." />
       ) : (
         <DirectoryTable>
-            <TableHeader>
-              <TableRow>
-                <DirectoryTableHead>Name</DirectoryTableHead>
-                <DirectoryTableHead>Status mappings</DirectoryTableHead>
+          <TableHeader>
+            <TableRow>
+              <DirectoryTableHead>Name</DirectoryTableHead>
+              <DirectoryTableHead>Status mappings</DirectoryTableHead>
+            </TableRow>
+          </TableHeader>
+          <TableBody>
+            {(presets ?? []).map((row) => (
+              <TableRow key={row.name ?? 'preset'}>
+                <TableCell>{row.name ?? ''}</TableCell>
+                <TableCell>{row.statuses?.length ?? 0}</TableCell>
               </TableRow>
-            </TableHeader>
-            <TableBody>
-              {(presets ?? []).map((row) => (
-                <TableRow key={row.name ?? 'preset'}>
-                  <TableCell>{row.name ?? ''}</TableCell>
-                  <TableCell>{row.statuses?.length ?? 0}</TableCell>
-                </TableRow>
-              ))}
-            </TableBody>
-          </DirectoryTable>
+            ))}
+          </TableBody>
+        </DirectoryTable>
       )}
 
       {error && hasSnapshot ? integrationsPanelError(error, 'Refresh failed') : null}

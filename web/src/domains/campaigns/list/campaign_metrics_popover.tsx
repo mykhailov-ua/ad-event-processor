@@ -1,6 +1,5 @@
-import { useCallback, useEffect, useMemo, useRef, useState, type ReactNode } from 'react';
+import { useState, type ReactNode } from 'react';
 
-import { getCampaignStats } from '@/api/campaigns_api';
 import type { CampaignListMetrics } from '@/api/campaigns_api';
 import { ApiError } from '@/api/client';
 import type { CampaignStats, CampaignStatsQuery } from '@/api/types';
@@ -16,12 +15,7 @@ import {
   type CampaignWithMoneyDisplay,
 } from '@/domains/campaigns/list/campaign_metrics_shared';
 import { campaignMetricsPopoverClass } from '@/domains/campaigns/list/campaign_list_classes';
-import {
-  buildCampaignStatsCacheKey,
-  campaignStatsFromListMetrics,
-  readCachedCampaignStats,
-  writeCachedCampaignStats,
-} from '@/domains/campaigns/list/campaign_list_stats_cache';
+import { useCampaignMetricsPopoverLoad } from '@/domains/campaigns/list/use_campaign_metrics_popover_load';
 import { displayCount, displayMoneyDecimal } from '@/lib/display';
 
 function MetricsPopoverBody({
@@ -50,8 +44,8 @@ function MetricsPopoverBody({
     displayMoneyDecimal(campaign.current_spend, campaign.current_spend_display) || '-';
 
   return (
-    <div className="divide-y divide-border">
-      <header className="grid gap-3 p-4">
+    <div className="grid">
+      <header className="grid gap-3 border-b border-border p-4">
         <div className="grid gap-1">
           <p className="whitespace-nowrap text-sm tabular-nums leading-snug">{campaign.name}</p>
           <p className="text-xs text-muted-foreground">Campaign metrics</p>
@@ -129,7 +123,7 @@ function MetricsPopoverBody({
       </div>
 
       {onOpenOverview ? (
-        <footer className="p-4 pt-0">
+        <footer className="border-t border-border p-4">
           <Button
             className="w-full"
             onClick={() => onOpenOverview(campaign)}
@@ -170,70 +164,13 @@ export function CampaignMetricsPopover({
   triggerContent?: ReactNode;
 }) {
   const [open, setOpen] = useState(false);
-  const [stats, setStats] = useState<CampaignStats | undefined>();
-  const [error, setError] = useState<Error | undefined>();
-  const [loading, setLoading] = useState(false);
-  const [refreshNonce, setRefreshNonce] = useState(0);
-  const pendingRefreshRef = useRef(false);
-  const resolvedStatsQuery = useMemo(
-    () => statsQuery ?? {},
-    [statsQuery?.from, statsQuery?.granularity, statsQuery?.to],
-  );
-  const cacheKey = useMemo(
-    () => buildCampaignStatsCacheKey(campaign.id, resolvedStatsQuery, statsCacheRevision),
-    [campaign.id, resolvedStatsQuery, statsCacheRevision],
-  );
-
-  useEffect(() => {
-    if (!open) {
-      return;
-    }
-    const forceRefresh = pendingRefreshRef.current;
-    pendingRefreshRef.current = false;
-    if (!forceRefresh) {
-      const cached = readCachedCampaignStats(cacheKey);
-      if (cached) {
-        setStats(cached);
-        setError(undefined);
-        setLoading(false);
-        return;
-      }
-    }
-
-    const controller = new AbortController();
-    const seeded = listMetrics
-      ? campaignStatsFromListMetrics(campaign.id, listMetrics, resolvedStatsQuery)
-      : undefined;
-    setStats(seeded);
-    setLoading(true);
-    setError(undefined);
-
-    void getCampaignStats(campaign.id, resolvedStatsQuery, controller.signal)
-      .then((next) => {
-        writeCachedCampaignStats(cacheKey, next);
-        setStats(next);
-      })
-      .catch((err: unknown) => {
-        if (controller.signal.aborted) {
-          return;
-        }
-        setError(err instanceof Error ? err : new Error(String(err)));
-      })
-      .finally(() => {
-        if (!controller.signal.aborted) {
-          setLoading(false);
-        }
-      });
-
-    return () => {
-      controller.abort();
-    };
-  }, [cacheKey, campaign.id, listMetrics, open, refreshNonce, resolvedStatsQuery]);
-
-  const handleRefresh = useCallback(() => {
-    pendingRefreshRef.current = true;
-    setRefreshNonce((value) => value + 1);
-  }, []);
+  const { stats, error, loading, onRefresh } = useCampaignMetricsPopoverLoad({
+    open,
+    campaignId: campaign.id,
+    listMetrics,
+    statsCacheRevision,
+    statsQuery,
+  });
 
   const handleOpenOverview = (selected: CampaignWithMoneyDisplay) => {
     setOpen(false);
@@ -267,7 +204,7 @@ export function CampaignMetricsPopover({
           loading={loading}
           refreshing={loading}
           onOpenOverview={onOpenOverview ? handleOpenOverview : undefined}
-          onRefresh={handleRefresh}
+          onRefresh={onRefresh}
           stats={stats}
         />
       </PopoverContent>

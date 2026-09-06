@@ -8,9 +8,7 @@ export type CampaignListWidthProbeListSnapshot = {
 };
 
 // Width probe list: same filters, name sort, first OPTIMAL_LIST_LIMIT_MAX rows.
-export function buildCampaignListWidthProbeQuery(
-  query: CampaignListQuery,
-): CampaignListQuery {
+export function buildCampaignListWidthProbeQuery(query: CampaignListQuery): CampaignListQuery {
   return {
     customer_id: query.customer_id,
     status: query.status,
@@ -29,10 +27,13 @@ export function buildCampaignListWidthProbeQuery(
 
 // True when the page list already includes every filtered row (unique ids, total <= cap).
 export function listResponseCoversWidthProbeDataset(
-  data: CampaignListWidthProbeListSnapshot | undefined,
+  data: CampaignListWidthProbeListSnapshot | undefined
 ): boolean {
-  if (!data || data.total === 0) {
+  if (!data) {
     return false;
+  }
+  if (data.total === 0) {
+    return true;
   }
   if (data.total > OPTIMAL_LIST_LIMIT_MAX) {
     return false;
@@ -48,6 +49,16 @@ export function listResponseCoversWidthProbeDataset(
     ids.add(item.id);
   }
   return true;
+}
+
+// Width-probe list runs only after the main list snapshot exists and still needs extra rows.
+export function shouldFetchCampaignListWidthProbe(
+  data: CampaignListWidthProbeListSnapshot | undefined
+): boolean {
+  if (data === undefined) {
+    return false;
+  }
+  return !listResponseCoversWidthProbeDataset(data);
 }
 
 // Deduped ids for one metrics batch (page rows plus optional width-probe rows).

@@ -18,8 +18,10 @@ func reviewPolicyHandler(t *testing.T, action domain.ReviewTrafficAction, filter
 		filter = &countingFilter{}
 	}
 	cid := uuid.New()
+	brandID := uuid.New()
 	lockStaticCampaign(func(c *domain.Campaign) {
 		c.ID = cid
+		c.BrandID = &brandID
 		c.ReviewTrafficAction = action
 		c.CIDRBlockEnabled = true
 	})
@@ -33,8 +35,10 @@ func reviewPolicyHandler(t *testing.T, action domain.ReviewTrafficAction, filter
 	cachedMockCamp.Store(nil)
 
 	cfg := &config.Config{MaxRequestBodySize: 1 << 20}
-	h := NewAdsPacketHandler(cfg, &mockRegistry{}, NewFilterEngine(0, filter), nil, nil, NewJumpHashSharder(1), "fraud-stream", nil)
+	store := clickHookBrandStore(t, brandID)
+	h := NewAdsPacketHandler(cfg, &mockRegistry{}, NewFilterEngine(0, filter), nil, nil, NewJumpHashSharder(1), "fraud-stream", store)
 	h.ConfigureCIDR(cidrBlockTestTable(t, "203.0.113.0/24"))
+	configureClickHookRotationTables(h)
 	return h, cid
 }
 

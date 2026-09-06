@@ -48,7 +48,7 @@ func TestDomainHealthTLSAllowed_loopbackAllowed(t *testing.T) {
 		}},
 		TLSAskAllowLocal: true,
 	}
-	req := httptest.NewRequest(http.MethodGet, "/api/v1/domains/tls-allowed?domain=127.0.0.1", nil)
+	req := httptest.NewRequest(http.MethodGet, "/api/v1/domains/tls-allowed?domain=127.0.0.1", http.NoBody)
 	w := httptest.NewRecorder()
 	h.tlsAllowed(w, req)
 	require.Equal(t, http.StatusOK, w.Code)
@@ -59,7 +59,7 @@ func TestDomainHealthTLSAllowed_deniedUnknown(t *testing.T) {
 		Service:          &stubDomainHealthService{allowed: map[string]bool{}},
 		TLSAskAllowLocal: true,
 	}
-	req := httptest.NewRequest(http.MethodGet, "/api/v1/domains/tls-allowed?domain=unknown.example", nil)
+	req := httptest.NewRequest(http.MethodGet, "/api/v1/domains/tls-allowed?domain=unknown.example", http.NoBody)
 	w := httptest.NewRecorder()
 	h.tlsAllowed(w, req)
 	require.Equal(t, http.StatusForbidden, w.Code)
@@ -72,7 +72,7 @@ func TestDomainHealthTLSAllowed_caddyAskQuery(t *testing.T) {
 		}},
 		TLSAskAllowLocal: true,
 	}
-	req := httptest.NewRequest(http.MethodGet, "/api/v1/domains/tls-allowed?domain=track.example.com", nil)
+	req := httptest.NewRequest(http.MethodGet, "/api/v1/domains/tls-allowed?domain=track.example.com", http.NoBody)
 	w := httptest.NewRecorder()
 	h.tlsAllowed(w, req)
 	require.Equal(t, http.StatusOK, w.Code)
@@ -85,7 +85,7 @@ func TestDomainHealthTLSAllowed_tokenRequired(t *testing.T) {
 		}},
 		TLSAskToken: "secret",
 	}
-	req := httptest.NewRequest(http.MethodGet, "/api/v1/domains/tls-allowed?domain=track.example.com", nil)
+	req := httptest.NewRequest(http.MethodGet, "/api/v1/domains/tls-allowed?domain=track.example.com", http.NoBody)
 	w := httptest.NewRecorder()
 	h.tlsAllowed(w, req)
 	require.Equal(t, http.StatusUnauthorized, w.Code)

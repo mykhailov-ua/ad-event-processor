@@ -2,6 +2,13 @@ import type { ReactNode } from 'react';
 
 import { cn } from '@/lib/utils';
 
+/** Flat L0 workspace on main canvas; content panels own L1 borders (tables, cards). */
+export const pageWorkspaceFlatClass =
+  'flex min-h-0 flex-1 flex-col gap-3 border-0 bg-transparent p-0 dark:bg-transparent';
+
+const pageFooterFlatClass =
+  'flex shrink-0 flex-wrap items-center gap-2 border-0 border-t border-border bg-transparent p-0 pt-2 dark:bg-transparent';
+
 export type PageLayoutProps = {
   title?: ReactNode;
   description?: ReactNode;
@@ -40,16 +47,13 @@ export function PageLayout({
             {badge}
             {description ? <span className="text-muted-foreground">{description}</span> : null}
           </div>
-          {headerActions ? <div className="flex flex-wrap items-center gap-2">{headerActions}</div> : null}
+          {headerActions ? (
+            <div className="flex flex-wrap items-center gap-2">{headerActions}</div>
+          ) : null}
         </header>
       ) : null}
 
-      <div
-        className={cn(
-          'flex min-h-0 flex-1 flex-col gap-2 rounded-md border border-border bg-card p-2 text-card-foreground',
-          workspaceClassName,
-        )}
-      >
+      <div className={cn(pageWorkspaceFlatClass, workspaceClassName)}>
         {controlPanel ? (
           <div className="relative z-[5] flex shrink-0 flex-col gap-2">{controlPanel}</div>
         ) : null}
@@ -64,7 +68,7 @@ export function PageLayout({
           <main
             className={cn(
               'ui-scrollbar flex min-h-0 min-w-0 flex-1 flex-col gap-2 overflow-x-hidden overflow-y-auto',
-              mainClassName,
+              mainClassName
             )}
           >
             {children}
@@ -73,7 +77,7 @@ export function PageLayout({
             <aside
               className={cn(
                 'ui-scrollbar flex min-h-0 min-w-0 flex-col gap-2 self-start overflow-y-auto',
-                asideClassName,
+                asideClassName
               )}
             >
               {aside}
@@ -82,12 +86,7 @@ export function PageLayout({
         </div>
 
         {footer ? (
-          <footer
-            className={cn(
-              'relative z-[5] flex shrink-0 flex-wrap items-center gap-2 rounded-md border border-border bg-card p-2 text-card-foreground',
-              footerClassName,
-            )}
-          >
+          <footer className={cn('relative z-[5]', pageFooterFlatClass, footerClassName)}>
             {footer}
           </footer>
         ) : null}

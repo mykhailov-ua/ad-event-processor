@@ -1,17 +1,24 @@
 import {
-  Activity,
   AppWindow,
   BarChart3,
-  Crosshair,
-  FileText,
+  BookOpen,
+  Building2,
+  Gavel,
+  GitBranch,
   Globe,
   LayoutDashboard,
+  LayoutTemplate,
+  Layers,
+  Megaphone,
+  Palette,
   Plug,
+  Receipt,
   ScrollText,
   Settings,
-  Shield,
+  ShieldAlert,
   Tag,
   Users,
+  Workflow,
   Wrench,
   type LucideIcon,
 } from 'lucide-react';
@@ -24,29 +31,29 @@ export type TrackerNavItem = NavItem & {
 
 const TRACKER_NAV_ICONS: Record<string, LucideIcon> = {
   '/dashboards/buyer': LayoutDashboard,
-  '/customers': Users,
-  '/campaigns': Crosshair,
-  '/billing': BarChart3,
+  '/customers': Building2,
+  '/campaigns': Megaphone,
+  '/billing': Receipt,
   '/team': Users,
   '/ops': Wrench,
   '/audit': ScrollText,
   '/reports': BarChart3,
-  '/rtb': Activity,
-  '/fraud': Shield,
+  '/rtb': Gavel,
+  '/fraud': ShieldAlert,
   '/integrations': Plug,
-  '/creative': FileText,
-  '/automation': Activity,
+  '/creative': Palette,
+  '/automation': Workflow,
   '/portals': AppWindow,
   '/settings': Settings,
-  '/landers': FileText,
+  '/landers': LayoutTemplate,
   '/offers': Tag,
   '/domains': Globe,
-  '/flows': Activity,
-  '/docs': ScrollText,
+  '/flows': GitBranch,
+  '/docs': BookOpen,
 };
 
 function iconForPath(path: string): LucideIcon {
-  return TRACKER_NAV_ICONS[path] ?? Activity;
+  return TRACKER_NAV_ICONS[path] ?? Layers;
 }
 
 /** Lucide icon for the current pathname (longest registered nav prefix). */
@@ -63,7 +70,7 @@ export function trackerNavIconForPathname(pathname: string): LucideIcon {
       return icon;
     }
   }
-  return Activity;
+  return Layers;
 }
 
 /** Flat sidebar list in tracker-style order (dashboard and campaigns first). */

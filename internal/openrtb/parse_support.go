@@ -71,14 +71,6 @@ func newJSONScanBudget() jsonScanBudget {
 	}
 }
 
-func (b *jsonScanBudget) consumeWS(n int) bool {
-	if b == nil {
-		return true
-	}
-	b.wsLeft -= n
-	return b.wsLeft >= 0
-}
-
 func (b *jsonScanBudget) consumeStrByte() bool {
 	if b == nil {
 		return true

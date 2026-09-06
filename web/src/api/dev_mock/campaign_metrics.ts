@@ -29,7 +29,7 @@ export function buildDevMockCampaignMetrics(
   campaignId: string,
   seq: number,
   fromIso: string,
-  toIso: string,
+  toIso: string
 ): DevMockCampaignMetrics {
   const scale = devMockCampaignMetricsRangeScale(fromIso, toIso);
   const scaleCount = (value: number) => Math.max(0, Math.round(value * scale));
@@ -82,7 +82,7 @@ function devMockRatePercent(numerator: number, denominator: number): number | un
 // Same shape as enrichCampaignListMetricsRowDerived; keeps dev mock metrics batch aligned.
 export function enrichDevMockCampaignMetricsDerived(
   row: Record<string, unknown>,
-  metrics: DevMockCampaignMetrics,
+  metrics: DevMockCampaignMetrics
 ): void {
   syncDevMockCampaignLeadsRaw(metrics);
 
@@ -138,7 +138,7 @@ export function enrichDevMockCampaignMetricsDerived(
 export function compareDevMockCampaignMetricSort(
   sort: string,
   left: DevMockCampaignMetrics,
-  right: DevMockCampaignMetrics,
+  right: DevMockCampaignMetrics
 ): number {
   syncDevMockCampaignLeadsRaw(left);
   syncDevMockCampaignLeadsRaw(right);

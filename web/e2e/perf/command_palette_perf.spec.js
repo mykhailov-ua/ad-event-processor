@@ -1,11 +1,7 @@
 import { test, expect } from '@playwright/test';
 
 import { loginAsAdmin, skipUnlessIntegrationReady } from '../helpers.js';
-import {
-  assertPlaywrightBudget,
-  medianWallClockMs,
-  PLAYWRIGHT_BUDGETS,
-} from './helpers_perf.js';
+import { assertPlaywrightBudget, medianWallClockMs, PLAYWRIGHT_BUDGETS } from './helpers_perf.js';
 
 test.describe.configure({ mode: 'serial' });
 

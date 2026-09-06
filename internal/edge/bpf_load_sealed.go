@@ -126,9 +126,13 @@ func populateEdgeObjectsFromSpec(objs *EdgeObjects, spec *ebpf.CollectionSpec, o
 	assignMap(EdgeMapProgArray, &objs.ProgArray)
 	assignMap(EdgeMapRatelimitV4, &objs.RatelimitV4)
 	assignMap(EdgeMapRstRatelimitV4, &objs.RstRatelimitV4)
+	assignMap(EdgeMapRatelimitV6, &objs.RatelimitV6)
+	assignMap(EdgeMapRstRatelimitV6, &objs.RstRatelimitV6)
 	assignMap(EdgeMapStats, &objs.Stats)
 	assignMap(EdgeMapSynRatelimitV4, &objs.SynRatelimitV4)
 	assignMap(EdgeMapSynSubnetRatelimitV4, &objs.SynSubnetRatelimitV4)
+	assignMap(EdgeMapSynRatelimitV6, &objs.SynRatelimitV6)
+	assignMap(EdgeMapSynSubnetRatelimitV6, &objs.SynSubnetRatelimitV6)
 	assignMap(EdgeMapViolations, &objs.Violations)
 	assignMap(EdgeMapFingerprints, &objs.Fingerprints)
 	for name := range coll.Programs {

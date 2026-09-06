@@ -22,7 +22,14 @@ import {
   TableHeader,
   TableRow,
 } from '@/shell/directory_table';
-import type { APIKeyCreatedResponse, BillingStatement, Invoice, PaymentIntentCreatedResponse } from '@/api/types';
+import type {
+  APIKeyCreatedResponse,
+  BillingStatement,
+  Invoice,
+  PaymentIntentCreatedResponse,
+} from '@/api/types';
+import { CustomerDetailPanel } from '@/domains/customers/customer_detail_panel';
+import { CustomerDetailRow } from '@/domains/customers/customer_detail_row';
 import { PortalsNav, portalsPanelError } from '@/domains/portals/portals_nav';
 import { displayMicro } from '@/lib/display';
 
@@ -260,57 +267,56 @@ export function SelfServePortal({
       </Dialog>
 
       {statement ? (
-        <section className="ui-filter-panel gap-2">
+        <section className="grid gap-2">
           <h2 className="text-base font-semibold">Billing statement</h2>
-          <dl className="grid gap-1 text-sm">
-            <div>
-              <dt className="text-muted-foreground">Opening balance (micro)</dt>
-              <dd>{statement.opening_balance_micro ?? ''}</dd>
-            </div>
-            <div>
-              <dt className="text-muted-foreground">Closing balance (micro)</dt>
-              <dd>{statement.closing_balance_micro ?? ''}</dd>
-            </div>
-            <div>
-              <dt className="text-muted-foreground">Lines</dt>
-              <dd>{statement.lines?.length ?? 0}</dd>
-            </div>
-          </dl>
+          <CustomerDetailPanel>
+            <CustomerDetailRow
+              label="Opening balance (micro)"
+              value={statement.opening_balance_micro}
+            />
+            <CustomerDetailRow
+              label="Closing balance (micro)"
+              value={statement.closing_balance_micro}
+            />
+            <CustomerDetailRow label="Lines" value={statement.lines?.length ?? 0} />
+          </CustomerDetailPanel>
         </section>
       ) : null}
 
       {paymentResult ? (
-        <section className="ui-filter-panel gap-2">
+        <section className="grid gap-2">
           <h2 className="text-base font-semibold">Payment intent</h2>
-          <dl className="grid gap-1 text-sm">
-            <div>
-              <dt className="text-muted-foreground">Intent</dt>
-              <dd>{paymentResult.intent_id}</dd>
-            </div>
-            <div>
-              <dt className="text-muted-foreground">Status</dt>
-              <dd>{paymentResult.status}</dd>
-            </div>
+          <CustomerDetailPanel>
+            <CustomerDetailRow label="Intent" value={paymentResult.intent_id} />
+            <CustomerDetailRow label="Status" value={paymentResult.status} />
             {paymentResult.checkout_url ? (
-              <div>
-                <dt className="text-muted-foreground">Checkout</dt>
-                <dd>
-                  <a className="underline" href={paymentResult.checkout_url} rel="noreferrer" target="_blank">
+              <CustomerDetailRow
+                label="Checkout"
+                value={
+                  <a
+                    className="underline"
+                    href={paymentResult.checkout_url}
+                    rel="noreferrer"
+                    target="_blank"
+                  >
                     Open checkout
                   </a>
-                </dd>
-              </div>
+                }
+              />
             ) : null}
-          </dl>
+          </CustomerDetailPanel>
         </section>
       ) : null}
 
       {apiKeyResult ? (
-        <section className="ui-filter-panel gap-2">
+        <section className="grid gap-2">
           <h2 className="text-base font-semibold">API key</h2>
-          <p className="font-mono text-xs break-all">
-            raw_key (shown once): {apiKeyResult.raw_key}
-          </p>
+          <CustomerDetailPanel>
+            <CustomerDetailRow
+              label="raw_key (shown once)"
+              value={<span className="font-mono text-xs break-all">{apiKeyResult.raw_key}</span>}
+            />
+          </CustomerDetailPanel>
         </section>
       ) : null}
 
@@ -326,25 +332,25 @@ export function SelfServePortal({
           <EmptyState title="No invoices" description="Self-serve invoice list is empty." />
         ) : (
           <DirectoryTable>
-              <TableHeader>
-                <TableRow>
-                  <DirectoryTableHead>ID</DirectoryTableHead>
-                  <DirectoryTableHead>Status</DirectoryTableHead>
-                  <DirectoryTableHead>Period</DirectoryTableHead>
-                  <DirectoryTableHead>Total (micro)</DirectoryTableHead>
+            <TableHeader>
+              <TableRow>
+                <DirectoryTableHead>ID</DirectoryTableHead>
+                <DirectoryTableHead>Status</DirectoryTableHead>
+                <DirectoryTableHead>Period</DirectoryTableHead>
+                <DirectoryTableHead>Total (micro)</DirectoryTableHead>
+              </TableRow>
+            </TableHeader>
+            <TableBody>
+              {invoices.map((row) => (
+                <TableRow key={row.id}>
+                  <TableCell className="font-mono text-xs">{row.id}</TableCell>
+                  <TableCell>{row.status ?? ''}</TableCell>
+                  <TableCell>{row.billing_month}</TableCell>
+                  <TableCell>{displayMicro(row.total_micro, row.total_micro_display)}</TableCell>
                 </TableRow>
-              </TableHeader>
-              <TableBody>
-                {invoices.map((row) => (
-                  <TableRow key={row.id}>
-                    <TableCell className="font-mono text-xs">{row.id}</TableCell>
-                    <TableCell>{row.status ?? ''}</TableCell>
-                    <TableCell>{row.billing_month}</TableCell>
-                    <TableCell>{displayMicro(row.total_micro, row.total_micro_display)}</TableCell>
-                  </TableRow>
-                ))}
-              </TableBody>
-            </DirectoryTable>
+              ))}
+            </TableBody>
+          </DirectoryTable>
         )}
       </section>
 

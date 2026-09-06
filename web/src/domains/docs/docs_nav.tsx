@@ -20,7 +20,7 @@ export function DocsNav() {
               'block min-w-0 rounded-md px-3 py-2 text-sm leading-snug transition-colors',
               active
                 ? 'bg-primary font-medium text-primary-foreground'
-                : 'text-muted-foreground hover:bg-muted/70 hover:text-foreground',
+                : 'text-muted-foreground hover:bg-muted/70 hover:text-foreground'
             )}
           >
             <span className="block break-words">{section.title}</span>

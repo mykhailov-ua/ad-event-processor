@@ -61,7 +61,9 @@ export function devMockResetPlatformSettingsForTests(): void {
   devMockPlatformSettings = createDevMockPlatformSettings();
 }
 
-export function devMockPatchPlatformSettings(patch: Record<string, unknown>): Record<string, unknown> {
+export function devMockPatchPlatformSettings(
+  patch: Record<string, unknown>
+): Record<string, unknown> {
   const next = structuredClone(devMockPlatformSettings) as Record<string, unknown>;
   const config = isRecord(next.config) ? { ...next.config } : {};
   const secrets = isRecord(next.secrets) ? { ...next.secrets } : {};

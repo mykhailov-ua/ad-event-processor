@@ -10,7 +10,7 @@
 // Topology:
 //   - fraudadmin_bridge.go wires Service as fraudadmin.Host ports; HTTP handlers stay in this package.
 //   - ML enforcement on hot path is batch-only (cmd/fraud-scorer); admin toggles enqueue outbox Redis effects.
-//   - Silent reject and blacklist actions must not auto-flip campaign PG flags without operator intent.
+//   - Non-blocking fraud response and blacklist actions must not auto-flip campaign PG flags without operator intent.
 //
 // Invariants:
 //   - Fraud decision rate limits per customer (controlplane.Handler fraudDecisionLimiter).
@@ -19,7 +19,7 @@
 //
 // Forbidden:
 //   - Import into internal/ingest or tracker filter hot path.
-//   - Per-IP ghosting claims in handlers when production path is Redis blacklist/outbox only.
+//   - Per-IP policy routing claims in handlers when production path is Redis blacklist/outbox only.
 //
 // Verify:
 //

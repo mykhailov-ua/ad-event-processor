@@ -1,7 +1,10 @@
 import type { CampaignListMetrics } from '@/api/campaigns_api';
 import type { Campaign } from '@/api/types';
-import { visibleCampaignListColumns, defaultCampaignListColumnPrefs } from '@/domains/campaigns/list/campaign_list_columns';
-import { seedDeterministicUuid } from '@/api/dev_mock/seed_uuid';
+import {
+  visibleCampaignListColumns,
+  defaultCampaignListColumnPrefs,
+} from '@/domains/campaigns/list/campaign_list_columns';
+import { seedDeterministicUuid } from '@/lib/uuid';
 
 export function buildLargeCampaignListFixture(rowCount: number): {
   items: Campaign[];

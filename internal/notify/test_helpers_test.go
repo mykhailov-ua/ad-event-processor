@@ -48,6 +48,6 @@ func newBroadcastTestConfig(failProvider db.NotifierProvider) (Config, Breakers)
 
 func countNotificationsByStatus(ctx context.Context, pool *pgxpool.Pool, status db.NotifierNotificationStatus) (int, error) {
 	var count int
-	err := pool.QueryRow(ctx, `SELECT COUNT(*) FROM notify.notifications WHERE status = $1`, status).Scan(&count)
+	err := pool.QueryRow(ctx, `SELECT COUNT(*) FROM notifier.notifications WHERE status = $1`, status).Scan(&count)
 	return count, err
 }

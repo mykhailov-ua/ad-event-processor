@@ -12,7 +12,7 @@ import (
 
 const redisConfigVersionKey = "config:version"
 
-// GetShardHealth: PG outbox pending count + per-shard Redis probe (2s timeout each).
+// GetShardHealth reports PG outbox pending count and per-shard Redis probe (2s timeout each).
 func GetShardHealth(ctx context.Context, host HealthHost) (ShardHealthReport, error) {
 	var report ShardHealthReport
 	report.Shards = make([]ShardHealthStatus, 0, len(host.RedisShards()))

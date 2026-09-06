@@ -1,4 +1,5 @@
 import { useEffect, useMemo, useState } from 'react';
+import { toast } from 'sonner';
 
 import type { DashboardSeriesPoint } from '@/domains/dashboards/buyer_dashboard_types';
 import {
@@ -17,6 +18,7 @@ import {
 import { EmptyState } from '@/shell/empty_state';
 import { Button } from '@/components/ui/button';
 import { DashboardCard } from '@/domains/dashboards/dashboard_card';
+import { adminKit } from '@/lib/admin_kit';
 import { cn } from '@/lib/utils';
 
 export type DashboardMultiAxisChartProps = {
@@ -63,14 +65,17 @@ function ChartLegendContent({
     <ul className="flex flex-wrap items-center justify-center gap-x-4 gap-y-2 px-2 pt-2 text-xs">
       {metrics.map((metric) => {
         const active = activeIds.includes(metric.id);
+        const isLastActive = active && activeIds.length <= 1;
         return (
           <li key={metric.id}>
             <Button
               aria-pressed={active}
               className={cn(
                 'h-auto flex items-center gap-1.5 rounded-full px-1 py-0.5 shadow-none',
-                !active && 'opacity-45',
+                !active && 'opacity-45'
               )}
+              disabled={isLastActive}
+              title={isLastActive ? 'At least one metric must stay visible' : undefined}
               type="button"
               variant="ghost"
               onClick={() => onToggle(metric.id)}
@@ -91,7 +96,11 @@ function ChartLegendContent({
   );
 }
 
-export function DashboardMultiAxisChart({ series, chartMetricIds, className }: DashboardMultiAxisChartProps) {
+export function DashboardMultiAxisChart({
+  series,
+  chartMetricIds,
+  className,
+}: DashboardMultiAxisChartProps) {
   const [activeMetricIds, setActiveMetricIds] = useState<DashboardMetricId[]>(chartMetricIds);
 
   useEffect(() => {
@@ -100,18 +109,19 @@ export function DashboardMultiAxisChart({ series, chartMetricIds, className }: D
 
   const configuredMetrics = useMemo(
     () => DASHBOARD_CHART_SERIES_STYLES.filter((metric) => chartMetricIds.includes(metric.id)),
-    [chartMetricIds],
+    [chartMetricIds]
   );
 
   const visibleMetrics = useMemo(
     () => configuredMetrics.filter((metric) => activeMetricIds.includes(metric.id)),
-    [activeMetricIds, configuredMetrics],
+    [activeMetricIds, configuredMetrics]
   );
 
   function toggleChartMetric(metricId: DashboardMetricId) {
     setActiveMetricIds((current) => {
       if (current.includes(metricId)) {
         if (current.length <= 1) {
+          toast.message('At least one metric must stay visible');
           return current;
         }
         return current.filter((id) => id !== metricId);
@@ -140,7 +150,7 @@ export function DashboardMultiAxisChart({ series, chartMetricIds, className }: D
   const moneyYScale = useMemo(() => moneyScale(chartRows), [chartRows]);
   const dateAxisTicks = useMemo(
     () => buildDateAxisTicks(chartRows.map((row) => row.label)),
-    [chartRows],
+    [chartRows]
   );
 
   if (series.length === 0) {
@@ -156,8 +166,12 @@ export function DashboardMultiAxisChart({ series, chartMetricIds, className }: D
   }
 
   return (
-    <DashboardCard bodyClassName="pb-3 pt-0" className={cn('overflow-hidden', className)} title="Performance">
-      <div className="rounded-[8px] border border-border bg-muted/10 p-2 sm:p-3">
+    <DashboardCard
+      bodyClassName="pb-3 pt-0"
+      className={cn('overflow-hidden', className)}
+      title="Performance"
+    >
+      <div className={cn('border border-border bg-muted/10 p-2 sm:p-3', adminKit.panelRadius)}>
         <DashboardMultiAxisChartCanvas
           activeMetricIds={activeMetricIds}
           chartRows={chartRows}

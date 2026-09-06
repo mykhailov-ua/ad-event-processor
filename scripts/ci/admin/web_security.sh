@@ -27,6 +27,7 @@ while IFS= read -r file; do
       web/src/components/* | */web/src/components/* | \
       web/src/api/use_*.ts | */web/src/api/use_*.ts | \
       web/src/providers/* | */web/src/providers/* | \
+      web/src/context/* | */web/src/context/* | \
       web/src/hooks/* | */web/src/hooks/* | \
       web/src/lib/*_context.tsx | */web/src/lib/*_context.tsx | \
       web/src/lib/as_child.tsx | */web/src/lib/as_child.tsx | \

@@ -1,10 +1,7 @@
 import assert from 'node:assert/strict';
 import test from 'node:test';
 
-import {
-  campaignBudgetUsedPercent,
-  formatBudgetUsedPercent,
-} from './campaign_budget_used.ts';
+import { campaignBudgetUsedPercent, formatBudgetUsedPercent } from './campaign_budget_used.ts';
 
 test('campaignBudgetUsedPercent returns share of budget spent', () => {
   assert.equal(campaignBudgetUsedPercent('100.00', '25.50'), 25.5);

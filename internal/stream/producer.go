@@ -18,7 +18,7 @@ import (
 	redis "github.com/redis/go-redis/v9"
 )
 
-// ErrQueueFull: buffered chan has no slot after TryReserve succeeded. Post-debit path; ingest must
+// ErrQueueFull means the buffered chan has no slot after TryReserve succeeded. Post-debit path; ingest must
 // run budget-rollback.lua and bump ad_stream_producer_post_debit_rejected_total. Distinct from
 // TryReserve false (pre-debit 503 filterRejectProducerOverload).
 var ErrQueueFull = errors.New("producer queue full")
@@ -73,6 +73,7 @@ func (rb *IDRingBuffer) Next() PregeneratedID {
 		h := atomic.LoadUint32(&rb.head)
 		t := atomic.LoadUint32(&rb.tail)
 		if h == t {
+			metrics.StreamIDRingBufferEmptyTotal.Inc()
 			id := filter.NewFastUUID()
 			return PregeneratedID{
 				UUID:   id,

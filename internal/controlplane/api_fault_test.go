@@ -19,11 +19,13 @@ import (
 
 	"ad-event-processor/internal/billingadmin"
 	"ad-event-processor/internal/campaign"
+	campaignruntime "ad-event-processor/internal/campaign/runtime"
 	"ad-event-processor/internal/clickhouse/migrate"
 	"ad-event-processor/internal/config"
 	"ad-event-processor/internal/database"
 	"ad-event-processor/internal/domain"
 	"ad-event-processor/internal/platformadmin"
+	"ad-event-processor/pkg/piihash"
 
 	"github.com/google/uuid"
 	"github.com/redis/go-redis/v9"
@@ -174,10 +176,13 @@ func TestFault_APIChLagStaleOK(t *testing.T) {
 	statsURL := "/api/v1/campaigns/" + campID.String() + "/stats?from=" + from + "&to=" + to
 
 	staleHour := queryHour.Add(-2 * time.Hour)
+	chPII := piihash.TestHasher()
+	staleIPHash := piihash.FixedString16(chPII.HashIP("1.1.1.1"))
+	staleUAHash := piihash.FixedString16(chPII.HashUA("ua"))
 	require.NoError(t, conn.Exec(ctx, `
-		INSERT INTO impressions (click_id, campaign_id, ip_address, user_agent, payload, created_at)
-		VALUES (?, ?, '1.1.1.1', 'ua', '{}', ?)`,
-		"stale-click", campID, staleHour.Add(5*time.Minute)))
+		INSERT INTO impressions (click_id, campaign_id, ip_hash, ua_hash, pii_salt_version, payload, created_at)
+		VALUES (?, ?, ?, ?, ?, '{}', ?)`,
+		"stale-click", campID, staleIPHash, staleUAHash, chPII.Version(), staleHour.Add(5*time.Minute)))
 
 	reqStale, _ := http.NewRequest("GET", statsURL, http.NoBody)
 	withSessionUser(reqStale, tokenMaker, ctrlhttp.RoleUser, custID)
@@ -192,9 +197,10 @@ func TestFault_APIChLagStaleOK(t *testing.T) {
 	assert.Equal(t, pgImpressions, staleReport.Metrics.Impressions, "PG metrics must remain readable during CH lag")
 
 	require.NoError(t, conn.Exec(ctx, `
-		INSERT INTO impressions (click_id, campaign_id, ip_address, user_agent, payload, created_at)
-		VALUES (?, ?, '1.1.1.1', 'ua', '{}', ?)`,
-		"fresh-click", campID, now))
+		INSERT INTO impressions (click_id, campaign_id, ip_hash, ua_hash, pii_salt_version, payload, created_at)
+		VALUES (?, ?, ?, ?, ?, '{}', ?)`,
+		"fresh-click", campID, staleIPHash, staleUAHash, chPII.Version(), now))
+	campaignruntime.ResetClickHouseIngestionLagCache()
 
 	reqFresh, _ := http.NewRequest("GET", statsURL, http.NoBody)
 	withSessionUser(reqFresh, tokenMaker, ctrlhttp.RoleUser, custID)

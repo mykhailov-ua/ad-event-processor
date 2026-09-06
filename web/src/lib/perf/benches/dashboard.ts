@@ -8,11 +8,13 @@ import {
   DASHBOARD_MOCK_DEFAULT_FROM,
   DASHBOARD_MOCK_DEFAULT_TO,
 } from '@/domains/dashboards/dashboard_series_mock';
+import { DASHBOARD_AXIS_SCALE_BUDGET, DASHBOARD_MOCK_SERIES_BUDGET } from '@/lib/perf/budgets';
 import {
-  DASHBOARD_AXIS_SCALE_BUDGET,
-  DASHBOARD_MOCK_SERIES_BUDGET,
-} from '@/lib/perf/budgets';
-import { assertPerfBudget, formatBenchResult, runPerfBudget, type BenchResult } from '@/lib/perf/measure';
+  assertPerfBudget,
+  formatBenchResult,
+  runPerfBudget,
+  type BenchResult,
+} from '@/lib/perf/measure';
 
 export function benchDashboardHotPath(): BenchResult[] {
   const results: BenchResult[] = [];
@@ -20,7 +22,7 @@ export function benchDashboardHotPath(): BenchResult[] {
   results.push(
     runPerfBudget(DASHBOARD_MOCK_SERIES_BUDGET, () => {
       buildDashboardMockSeries(DASHBOARD_MOCK_DEFAULT_FROM, DASHBOARD_MOCK_DEFAULT_TO);
-    }),
+    })
   );
 
   const series = buildDashboardMockSeries(DASHBOARD_MOCK_DEFAULT_FROM, DASHBOARD_MOCK_DEFAULT_TO);
@@ -36,7 +38,7 @@ export function benchDashboardHotPath(): BenchResult[] {
       buildVolumeAxisScale(maxClicks);
       buildMoneyAxisScale(minMoney, maxMoney);
       buildDateAxisTicks(labels);
-    }),
+    })
   );
 
   return results;

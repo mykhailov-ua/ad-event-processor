@@ -21,8 +21,6 @@ import (
 
 var respClickSafeViewCIDR = track.RespClickSafeViewCIDR
 
-var safeViewCIDRBody = track.SafeViewCIDRBody
-
 type cidrBlockMetrics struct {
 	match [CIDRFeedCount]prometheus.Counter
 }
@@ -44,19 +42,29 @@ func (m *cidrBlockMetrics) recordMatch(feed uint8) {
 }
 
 func (h *AdsPacketHandler) cidrBlockShouldSafeView(ip string, campaignID uuid.UUID) (bool, uint8) {
+	if h.registry != nil {
+		if camp, ok := h.registry.GetCampaign(campaignID); ok && camp != nil {
+			if !camp.CIDRBlockEnabled {
+				return false, 0
+			}
+			t := h.cidrTable
+			if t == nil || !t.Ready() {
+				return true, CIDRFeedOther
+			}
+			return t.MatchIP(ip)
+		}
+	}
 	t := h.cidrTable
 	if t == nil || !t.Ready() {
 		return false, 0
-	}
-	if h.registry != nil {
-		if camp, ok := h.registry.GetCampaign(campaignID); ok && camp != nil && !camp.CIDRBlockEnabled {
-			return false, 0
-		}
 	}
 	return t.MatchIP(ip)
 }
 
 func (h *AdsPacketHandler) writeGnetSafeViewCIDR(c gnet.Conn, ctx *ConnContext, startMono int64, feed uint8) {
+	if h.cidrMetrics.match[0] == nil {
+		h.cidrMetrics = newCIDRBlockMetrics()
+	}
 	h.cidrMetrics.recordMatch(feed)
 	h.write(c, respClickSafeViewCIDR, ctx)
 	h.recordMetrics(startMono, http.StatusOK)
@@ -89,14 +97,23 @@ func (m *l1IPv4RotationMetrics) recordShadow() {
 }
 
 func (h *AdsPacketHandler) l1IPv4RotationObserve(ip, userID string, campaignID uuid.UUID, parsed *clickQueryParsed, nowMono int64) (shouldSafeView bool) {
+	if h.registry != nil {
+		if camp, ok := h.registry.GetCampaign(campaignID); ok && camp != nil {
+			if !camp.CIDRBlockEnabled {
+				return false
+			}
+			t := h.ipv4RotationTable
+			if t == nil || !t.Ready() {
+				if _, _, ok := track.IPv4HostAndSubnet24(ip); ok {
+					return true
+				}
+				return false
+			}
+		}
+	}
 	t := h.ipv4RotationTable
 	if t == nil || !t.Ready() {
 		return false
-	}
-	if h.registry != nil {
-		if camp, ok := h.registry.GetCampaign(campaignID); ok && camp != nil && !camp.CIDRBlockEnabled {
-			return false
-		}
 	}
 	host, subnet24, ok := track.IPv4HostAndSubnet24(ip)
 	if !ok {
@@ -154,14 +171,23 @@ func (m *l1IPv6RotationMetrics) recordShadow() {
 }
 
 func (h *AdsPacketHandler) l1IPv6RotationObserve(ip string, campaignID uuid.UUID, parsed *clickQueryParsed, nowMono int64) (shouldSafeView bool) {
+	if h.registry != nil {
+		if camp, ok := h.registry.GetCampaign(campaignID); ok && camp != nil {
+			if !camp.CIDRBlockEnabled {
+				return false
+			}
+			t := h.ipv6RotationTable
+			if t == nil || !t.Ready() {
+				if _, _, ok := parseIPv6To128(ip); ok {
+					return true
+				}
+				return false
+			}
+		}
+	}
 	t := h.ipv6RotationTable
 	if t == nil || !t.Ready() {
 		return false
-	}
-	if h.registry != nil {
-		if camp, ok := h.registry.GetCampaign(campaignID); ok && camp != nil && !camp.CIDRBlockEnabled {
-			return false
-		}
 	}
 	hi, lo, ok := parseIPv6To128(ip)
 	if !ok {
@@ -217,19 +243,28 @@ func connTypePolicyBlocks(policy domain.ConnTypePolicy, match bool, connType uin
 }
 
 func (h *AdsPacketHandler) proxyVPNBlockShouldSafeView(ip string, campaignID uuid.UUID) (bool, uint8) {
-	t := h.proxyVPNTable
-	if t == nil || !t.Ready() {
-		return false, 0
-	}
-	policy := domain.ConnTypeBlockVPNHosting
 	if h.registry != nil {
 		if camp, ok := h.registry.GetCampaign(campaignID); ok && camp != nil {
 			if !camp.ProxyVPNBlockEnabled {
 				return false, 0
 			}
-			policy = camp.ConnTypePolicy
+			t := h.proxyVPNTable
+			if t == nil || !t.Ready() {
+				return true, ProxyVPNConnHosting
+			}
+			policy := camp.ConnTypePolicy
+			match, connType, _ := t.MatchIP(ip)
+			if !connTypePolicyBlocks(policy, match, connType) {
+				return false, 0
+			}
+			return true, connType
 		}
 	}
+	t := h.proxyVPNTable
+	if t == nil || !t.Ready() {
+		return false, 0
+	}
+	policy := domain.ConnTypeBlockVPNHosting
 	match, connType, _ := t.MatchIP(ip)
 	if !connTypePolicyBlocks(policy, match, connType) {
 		return false, 0
@@ -238,6 +273,9 @@ func (h *AdsPacketHandler) proxyVPNBlockShouldSafeView(ip string, campaignID uui
 }
 
 func (h *AdsPacketHandler) writeGnetSafeViewProxyVPN(c gnet.Conn, ctx *ConnContext, startMono int64, connType uint8) {
+	if h.proxyVPNBlockMetrics.match[0] == nil {
+		h.proxyVPNBlockMetrics = newProxyVPNBlockMetrics()
+	}
 	h.proxyVPNBlockMetrics.recordMatch(connType)
 	h.write(c, respClickSafeViewProxyVPN, ctx)
 	h.recordMetrics(startMono, http.StatusOK)
@@ -258,10 +296,6 @@ func newTLSFingerprintMetrics() tlsFingerprintMetrics {
 }
 
 func (h *AdsPacketHandler) tlsFingerprintShouldSafeView(ja3, ja4 []byte, campaignID uuid.UUID, ua string) (bool, string) {
-	t := h.tlsFingerprintTable
-	if t == nil || !t.Ready() {
-		return false, ""
-	}
 	var camp *domain.Campaign
 	if h.registry != nil {
 		c, ok := h.registry.GetCampaign(campaignID)
@@ -269,6 +303,14 @@ func (h *AdsPacketHandler) tlsFingerprintShouldSafeView(ja3, ja4 []byte, campaig
 			return false, ""
 		}
 		camp = c
+		t := h.tlsFingerprintTable
+		if t == nil || !t.Ready() {
+			return true, "ja3"
+		}
+	}
+	t := h.tlsFingerprintTable
+	if t == nil || !t.Ready() {
+		return false, ""
 	}
 	if camp != nil && camp.SocialInAppEnabled && uaMatchesInAppWebView(ua) {
 		return false, ""
@@ -283,6 +325,9 @@ func (h *AdsPacketHandler) tlsFingerprintShouldSafeView(ja3, ja4 []byte, campaig
 }
 
 func (h *AdsPacketHandler) writeGnetSafeViewTLS(c gnet.Conn, ctx *ConnContext, startMono int64, kind string) {
+	if h.tlsFingerprintMetrics.matchJA3 == nil {
+		h.tlsFingerprintMetrics = newTLSFingerprintMetrics()
+	}
 	switch kind {
 	case "ja4":
 		h.tlsFingerprintMetrics.matchJA4.Inc()
@@ -291,10 +336,6 @@ func (h *AdsPacketHandler) writeGnetSafeViewTLS(c gnet.Conn, ctx *ConnContext, s
 	}
 	h.write(c, respClickSafeViewTLS, ctx)
 	h.recordMetrics(startMono, http.StatusOK)
-}
-
-func eventTypeUsesBrandLanding(eventType string) bool {
-	return track.EventTypeUsesBrandLanding(eventType)
 }
 
 func ResolveLandingURL(ctx context.Context, registry domain.CampaignRegistry, store *BrandCreativeStore, evt *domain.Event) string {
@@ -307,10 +348,6 @@ func ResolveLandingURLBytes(ctx context.Context, registry domain.CampaignRegistr
 
 func parseDmrQueryFlag(decoded []byte) bool {
 	return track.ParseDmrQueryFlag(decoded)
-}
-
-func parseLinkExpires(b []byte) (int64, bool) {
-	return track.ParseLinkExpires(b)
 }
 
 func AppendLinkSignature(dst, secret []byte, clickID []byte, expiresUnix int64) []byte {
@@ -379,9 +416,7 @@ func (h *AdsPacketHandler) verifyLinkSignature(clickID, sig []byte, expiresUnix,
 }
 
 type (
-	clickQueryKeyID  = track.ClickQueryKeyID
 	clickQueryParsed = track.ClickQueryParsed
-	redirectMacroID  = track.RedirectMacroID
 	ipv6RotationCell = track.IPv6RotationCell
 )
 
@@ -419,14 +454,6 @@ func buildRedirectLocation(dst, base []byte, clickID, userID string, subs SubIDS
 
 func expandRedirectMacros(dst, base []byte, clickID, userID string, subs SubIDSlots) []byte {
 	return track.ExpandRedirectMacros(dst, base, clickID, userID, subs)
-}
-
-func splitClickPathQuery(path []byte) (base, query []byte, ok bool) {
-	return track.SplitClickPathQuery(path)
-}
-
-func matchClickQueryKey(key []byte) clickQueryKeyID {
-	return track.MatchClickQueryKey(key)
 }
 
 func (h *AdsPacketHandler) writeGnetClickRedirect(ctx *ConnContext, c gnet.Conn, startMono int64, location []byte) {
@@ -614,10 +641,7 @@ func (h *AdsPacketHandler) reactClickRedirect(req Request, c gnet.Conn, ctx *Con
 					}
 					break
 				}
-				if !h.publishAcceptedTrack(evt, &admissionLease) {
-					if h.filterEngine != nil {
-						h.filterEngine.RollbackDebit(context.Background(), evt, h.registry)
-					}
+				if !h.publishAcceptedOrRollback(context.Background(), evt, &admissionLease) {
 					spec := filterRejectSpecs[filterRejectProducerOverload]
 					h.recordTrackReject(ctx, evt, filterRejectProducerOverload)
 					h.writeFilterReject(c, spec.gnetResp, ctx)
@@ -819,11 +843,6 @@ func (h *AdsPacketHandler) reactSafePageStub(req Request, c gnet.Conn, ctx *Conn
 }
 
 func bodyLenDigits(n int) int { return track.BodyLenDigits(n) }
-
-var (
-	safePageStubHTTPPrefix = track.SafePageStubHTTPPrefix
-	safePageStubHTTPMiddle = track.SafePageStubHTTPMiddle
-)
 
 const (
 	safePageAttestOK                   = ""

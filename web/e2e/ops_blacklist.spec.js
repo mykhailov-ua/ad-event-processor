@@ -1,13 +1,21 @@
 import { test, expect } from '@playwright/test';
 
-import { loginAsAdmin, skipUnlessIntegrationReady } from './helpers.js';
+import {
+  gotoLiveAwaitGet,
+  loginAsAdmin,
+  mainHeading,
+  skipUnlessIntegrationReady,
+} from './helpers.js';
 
 test.beforeEach(async ({}, testInfo) => {
   await skipUnlessIntegrationReady(testInfo);
 });
 
-test('ops blacklist page loads', async ({ page }) => {
+test('ops blacklist page loads from GET /api/v1/ops/blacklist', async ({ page }) => {
   await loginAsAdmin(page);
-  await page.goto('/ops/blacklist');
-  await expect(page.getByRole('heading', { name: 'Fraud blacklist' })).toBeVisible();
+  const listResponse = await gotoLiveAwaitGet(page, '/ops/blacklist', '/api/v1/ops/blacklist');
+  await expect(mainHeading(page, 'Fraud blacklist')).toBeVisible();
+  expect(listResponse.ok()).toBe(true);
+  const body = await listResponse.json();
+  expect(body).toBeTruthy();
 });

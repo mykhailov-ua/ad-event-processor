@@ -24,7 +24,8 @@ export const DOCS_SECTIONS: DocsSection[] = [
       },
       {
         problem: 'Session bootstrap 404',
-        symptom: 'Network tab shows GET /api/v1/session/bootstrap as 404; UI may still work via fallback.',
+        symptom:
+          'Network tab shows GET /api/v1/session/bootstrap as 404; UI may still work via fallback.',
         fix: 'Rebuild control image: bash scripts/dev/stack/stack.sh build && bash scripts/dev/stack/stack.sh ingest-only. Or use web dev proxy (cd web && npm run dev) against :8188.',
       },
       {
@@ -140,7 +141,7 @@ export const DOCS_SECTIONS: DocsSection[] = [
   {
     id: 'fraud',
     title: 'Fraud & traffic quality',
-    summary: 'Labels, presets, silent reject, and decision overrides.',
+    summary: 'Labels, presets, non-blocking fraud responses, and decision overrides.',
     topics: [
       {
         problem: 'Label change not affecting traffic',
@@ -148,9 +149,9 @@ export const DOCS_SECTIONS: DocsSection[] = [
         fix: 'Labels apply on next scoring batch or edge snapshot refresh. Check Fraud -> Integrations sync status; not instant on hot path.',
       },
       {
-        problem: 'Silent reject confusion',
+        problem: 'Non-blocking response analytics mismatch',
         symptom: 'Events accepted with 202 but analytics differ.',
-        fix: 'Silent reject is per-IP decoy, not campaign flag toggle alone. Verify silent_reject_event in CH funnels, not legacy ghost_* columns.',
+        fix: 'Non-blocking fraud response is per-IP policy routing, not the campaign toggle alone. Verify silent_reject_event in ClickHouse funnels, not legacy analytics column names.',
       },
       {
         problem: 'Preset patch no effect',

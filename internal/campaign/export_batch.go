@@ -10,6 +10,11 @@ import (
 
 const CampaignExportBatchMaxIDs = 50
 
+type ExportCampaignsBatchResult struct {
+	Items  map[uuid.UUID]CampaignExportBundle
+	Errors map[uuid.UUID]error
+}
+
 type CampaignExportBatchResponse struct {
 	Items  map[string]CampaignExportBundle   `json:"items"`
 	Errors []CampaignExportBatchResultRowDTO `json:"errors,omitempty"`

@@ -21,7 +21,7 @@ func TestH2Incomplete_IdleClosesDripWithProgress(t *testing.T) {
 	}
 	h := NewAdsPacketHandler(cfg, &mockRegistry{}, nil, nil, nil, NewJumpHashSharder(1), "fraud", nil)
 
-	preface := append([]byte(nil), h2ClientPreface[:]...)
+	preface := append([]byte(nil), h2ClientPreface...)
 	partialFrame := []byte{0x00, 0x00, 0x00}
 	conn := newFaultGnetConn()
 	conn.Append(preface)
@@ -53,7 +53,7 @@ func TestH2Incomplete_IdleIncrementsHostileMetric(t *testing.T) {
 	h := NewAdsPacketHandler(cfg, &mockRegistry{}, nil, nil, nil, NewJumpHashSharder(1), "fraud", nil)
 	before := testutil.ToFloat64(metrics.H2HostileDisconnectTotal)
 
-	preface := append([]byte(nil), h2ClientPreface[:]...)
+	preface := append([]byte(nil), h2ClientPreface...)
 	conn := newFaultGnetConn()
 	conn.Append(preface)
 	buf := conn.InboundBytes()

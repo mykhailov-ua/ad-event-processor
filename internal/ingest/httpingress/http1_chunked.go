@@ -124,21 +124,22 @@ func ParseHTTP1ChunkedBody(data []byte, off int, maxBody int64, scratchPtr *[]by
 			return 0, nil, 0, ErrInvalid
 		}
 
-		if fragmented {
+		switch {
+		case fragmented:
 			scratch := growChunkScratch(scratchPtr, scratchLen+size)
 			copy(scratch[scratchLen:], data[pos:pos+size])
 			scratchLen += size
-		} else if firstStart >= 0 && pos != contiguousEnd {
+		case firstStart >= 0 && pos != contiguousEnd:
 			fragmented = true
 			prefixLen := contiguousEnd - firstStart
 			scratch := growChunkScratch(scratchPtr, prefixLen+size)
 			copy(scratch, data[firstStart:contiguousEnd])
 			copy(scratch[prefixLen:], data[pos:pos+size])
 			scratchLen = prefixLen + size
-		} else if firstStart < 0 {
+		case firstStart < 0:
 			firstStart = pos
 			contiguousEnd = pos + size
-		} else {
+		default:
 			contiguousEnd = pos + size
 		}
 		totalLen += size

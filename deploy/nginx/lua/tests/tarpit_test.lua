@@ -1,6 +1,6 @@
 -- Role: edge-tarpit slow-path delay on oversized headers/body; disabled by default.
 -- Execution context: access phase before upstream; EDGE_TARPIT_* env knobs (max headers, body bytes, max sec).
--- Invariants proved: disabled never sleeps; normal requests skip; delay capped at min(EDGE_TARPIT_MAX_SEC, 15s hard max).
+-- Invariants proved: disabled never sleeps; normal requests skip; delay capped at 2s hard max (tarpit_delay_cap).
 -- Verify: bash scripts/test/edge/lua_tests.sh all
 package.path = arg[1] .. "/?.lua;;"
 
@@ -23,8 +23,9 @@ ngx = {
 
 ngx.shared = {
     edge_metrics = {
-        incr = function(_, key, val)
-            metrics_store[key] = (metrics_store[key] or 0) + val
+        incr = function(_, key, val, init)
+            metrics_store[key] = (metrics_store[key] or init or 0) + val
+            return metrics_store[key]
         end,
         get = function(_, key)
             return metrics_store[key]
@@ -120,7 +121,7 @@ edge_tarpit.set_getenv_for_test(function(name)
     return env_on(name)
 end)
 delay = edge_tarpit.compute_delay(1000, 0)
-assert_true(delay <= 15, "hard max 15s cap")
+assert_true(delay <= 2, "hard max 2s cap")
 
 edge_tarpit.set_getenv_for_test(env_on)
 delay = edge_tarpit.compute_delay(1, 200000)

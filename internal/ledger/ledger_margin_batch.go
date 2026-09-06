@@ -40,7 +40,7 @@ func (w *Worker) evaluateLedgerMarginBatch(ctx context.Context, policies []*Poli
 		pgIDs[i] = pgtype.UUID{Bytes: id, Valid: true}
 	}
 
-	windowStart := time.Now().Add(-ledgerMarginWindow)
+	windowStart := time.Now().Add(-ledgerMarginWindow).UTC()
 	q := db.New(w.pool)
 	sumRows, err := q.SumCampaignMarginWindowByCampaignIDs(ctx, db.SumCampaignMarginWindowByCampaignIDsParams{
 		CampaignIds: pgIDs,

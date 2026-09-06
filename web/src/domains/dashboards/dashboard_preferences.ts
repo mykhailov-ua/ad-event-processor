@@ -183,13 +183,15 @@ export function defaultBuyerDashboardPreferences(): BuyerDashboardPreferences {
 function normalizeSelection<T extends string>(
   value: unknown,
   allowed: readonly T[],
-  fallback: readonly T[],
+  fallback: readonly T[]
 ): T[] {
   if (!Array.isArray(value)) {
     return [...fallback];
   }
   const allowedSet = new Set(allowed);
-  const selected = value.filter((item): item is T => typeof item === 'string' && allowedSet.has(item as T));
+  const selected = value.filter(
+    (item): item is T => typeof item === 'string' && allowedSet.has(item as T)
+  );
   return selected.length > 0 ? selected : [...fallback];
 }
 
@@ -202,21 +204,25 @@ export function parseBuyerDashboardPreferences(raw: string | null): BuyerDashboa
     const parsed = JSON.parse(raw) as Partial<BuyerDashboardPreferences>;
     return {
       kpiMetrics: normalizeSelection(parsed.kpiMetrics, ALL_KPI_METRIC_IDS, defaults.kpiMetrics),
-      chartMetrics: normalizeSelection(parsed.chartMetrics, ALL_CHART_METRIC_IDS, defaults.chartMetrics),
+      chartMetrics: normalizeSelection(
+        parsed.chartMetrics,
+        ALL_CHART_METRIC_IDS,
+        defaults.chartMetrics
+      ),
       breakdownEntities: normalizeSelection(
         parsed.breakdownEntities,
         ALL_BREAKDOWN_ENTITIES,
-        defaults.breakdownEntities,
+        defaults.breakdownEntities
       ),
       breakdownColumns: normalizeSelection(
         parsed.breakdownColumns,
         ALL_BREAKDOWN_COLUMNS,
-        defaults.breakdownColumns,
+        defaults.breakdownColumns
       ),
       recentClickColumns: normalizeSelection(
         parsed.recentClickColumns,
         ALL_RECENT_CLICK_COLUMNS,
-        defaults.recentClickColumns,
+        defaults.recentClickColumns
       ),
     };
   } catch {
@@ -228,7 +234,9 @@ export function loadBuyerDashboardPreferences(): BuyerDashboardPreferences {
   if (typeof window === 'undefined') {
     return defaultBuyerDashboardPreferences();
   }
-  return parseBuyerDashboardPreferences(window.localStorage.getItem(BUYER_DASHBOARD_PREFS_STORAGE_KEY));
+  return parseBuyerDashboardPreferences(
+    window.localStorage.getItem(BUYER_DASHBOARD_PREFS_STORAGE_KEY)
+  );
 }
 
 export function saveBuyerDashboardPreferences(prefs: BuyerDashboardPreferences): void {

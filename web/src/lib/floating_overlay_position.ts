@@ -1,5 +1,8 @@
 import type { CSSProperties } from 'react';
 
+// Viewport-fixed overlay positioning for directory filters and combobox menus.
+// position: fixed tracks trigger getBoundingClientRect; subscribeFloatingPosition re-runs on
+// window resize and ancestor scroll (capture) so menus stay aligned while tbody scrolls.
 export type FloatingAlign = 'start' | 'center' | 'end';
 export type FloatingSide = 'top' | 'bottom';
 
@@ -26,15 +29,14 @@ export function computeFloatingPosition(
     side?: FloatingSide;
     gap?: number;
     edgePadding?: number;
-  } = {},
+  } = {}
 ): CSSProperties {
   const align = options.align ?? 'start';
   const side = options.side ?? 'bottom';
   const gap = options.gap ?? 4;
   const edgePadding = options.edgePadding ?? 12;
 
-  let top =
-    side === 'top' ? triggerRect.top - contentHeight - gap : triggerRect.bottom + gap;
+  let top = side === 'top' ? triggerRect.top - contentHeight - gap : triggerRect.bottom + gap;
   let left = triggerRect.left;
   if (align === 'center') {
     left = triggerRect.left + triggerRect.width / 2 - contentWidth / 2;
@@ -54,7 +56,7 @@ export function computeFloatingPosition(
 
 export function subscribeFloatingPosition(
   trigger: HTMLElement | null,
-  onUpdate: () => void,
+  onUpdate: () => void
 ): () => void {
   if (!trigger) {
     return () => {};

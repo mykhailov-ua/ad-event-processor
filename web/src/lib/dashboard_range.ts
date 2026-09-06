@@ -1,10 +1,4 @@
-export type DashboardRangePreset =
-  | 'today'
-  | 'yesterday'
-  | '7d'
-  | '30d'
-  | 'this_month'
-  | 'custom';
+export type DashboardRangePreset = 'today' | 'yesterday' | '7d' | '30d' | 'this_month' | 'custom';
 
 export function dashboardPresetRange(preset: DashboardRangePreset): { from: string; to: string } {
   const to = new Date();

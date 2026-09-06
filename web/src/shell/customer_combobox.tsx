@@ -67,17 +67,17 @@ export function CustomerCombobox({
           variant="outline"
           role="combobox"
           aria-expanded={open}
-          className="w-full min-w-0 justify-between text-sm font-normal"
+          className="w-full min-w-0 justify-between gap-2 text-sm font-normal"
           disabled={disabled || loading}
         >
           <span className="min-w-0 flex-1 whitespace-nowrap text-left">{triggerLabel}</span>
-          <ChevronsUpDown className="ml-2 h-4 w-4 shrink-0 opacity-50" />
+          <ChevronsUpDown className="h-4 w-4 shrink-0 opacity-50" aria-hidden />
         </Button>
       </PopoverTrigger>
       <PopoverContent className="p-0" align={align}>
         <Command>
           <CommandInput placeholder="Search customer..." />
-          <CommandList>
+          <CommandList className="overflow-x-auto">
             <CommandEmpty>No customer found.</CommandEmpty>
             <CommandGroup>
               <CommandItem
@@ -87,9 +87,7 @@ export function CustomerCombobox({
                   setOpen(false);
                 }}
               >
-                <Check
-                  className={cn('h-4 w-4', value === '' ? 'opacity-100' : 'opacity-0')}
-                />
+                <Check className={cn('h-4 w-4', value === '' ? 'opacity-100' : 'opacity-0')} />
                 All customers
               </CommandItem>
               {options.map((customer) => (
@@ -102,12 +100,9 @@ export function CustomerCombobox({
                   }}
                 >
                   <Check
-                    className={cn(
-                      'h-4 w-4',
-                      value === customer.id ? 'opacity-100' : 'opacity-0',
-                    )}
+                    className={cn('h-4 w-4', value === customer.id ? 'opacity-100' : 'opacity-0')}
                   />
-                  <span className="truncate">{customer.name}</span>
+                  <span className="whitespace-nowrap">{customer.name}</span>
                 </CommandItem>
               ))}
             </CommandGroup>

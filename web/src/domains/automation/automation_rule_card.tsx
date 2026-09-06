@@ -73,49 +73,54 @@ export function AutomationRuleCard({
       }
       tone={tone}
     >
-      <div className="grid gap-3 sm:grid-cols-3">
-        <div className="grid gap-1.5">
-          <Label className="text-xs text-muted-foreground" htmlFor={`rule-metric-${ruleId}`}>
-            Metric
-          </Label>
-          <Input
-            id={`rule-metric-${ruleId}`}
-            value={draft.metric}
-            onChange={(event) => onDraftChange({ metric: event.target.value })}
-          />
+      <div className="grid gap-3">
+        <div className="grid gap-3 sm:grid-cols-3">
+          <div className="grid gap-1.5">
+            <Label className="text-xs text-muted-foreground" htmlFor={`rule-metric-${ruleId}`}>
+              Metric
+            </Label>
+            <Input
+              id={`rule-metric-${ruleId}`}
+              value={draft.metric}
+              onChange={(event) => onDraftChange({ metric: event.target.value })}
+            />
+          </div>
+          <div className="grid gap-1.5">
+            <Label className="text-xs text-muted-foreground" htmlFor={`rule-operator-${ruleId}`}>
+              Operator
+            </Label>
+            <Input
+              id={`rule-operator-${ruleId}`}
+              value={draft.operator}
+              onChange={(event) => onDraftChange({ operator: event.target.value })}
+            />
+          </div>
+          <div className="grid gap-1.5">
+            <Label className="text-xs text-muted-foreground" htmlFor={`rule-threshold-${ruleId}`}>
+              Threshold
+            </Label>
+            <Input
+              id={`rule-threshold-${ruleId}`}
+              inputMode="decimal"
+              value={draft.threshold}
+              onChange={(event) => onDraftChange({ threshold: event.target.value })}
+            />
+          </div>
         </div>
-        <div className="grid gap-1.5">
-          <Label className="text-xs text-muted-foreground" htmlFor={`rule-operator-${ruleId}`}>
-            Operator
-          </Label>
-          <Input
-            id={`rule-operator-${ruleId}`}
-            value={draft.operator}
-            onChange={(event) => onDraftChange({ operator: event.target.value })}
+        <div className="flex items-center gap-2">
+          <Checkbox
+            aria-label={`Enabled for rule ${ruleId}`}
+            checked={draft.enabled}
+            id={`rule-enabled-${ruleId}`}
+            onCheckedChange={(checked) => onDraftChange({ enabled: checked === true })}
           />
-        </div>
-        <div className="grid gap-1.5">
-          <Label className="text-xs text-muted-foreground" htmlFor={`rule-threshold-${ruleId}`}>
-            Threshold
+          <Label
+            className="text-sm font-normal text-muted-foreground"
+            htmlFor={`rule-enabled-${ruleId}`}
+          >
+            Run when condition matches
           </Label>
-          <Input
-            id={`rule-threshold-${ruleId}`}
-            inputMode="decimal"
-            value={draft.threshold}
-            onChange={(event) => onDraftChange({ threshold: event.target.value })}
-          />
         </div>
-      </div>
-      <div className="flex items-center gap-2 pt-1">
-        <Checkbox
-          aria-label={`Enabled for rule ${ruleId}`}
-          checked={draft.enabled}
-          id={`rule-enabled-${ruleId}`}
-          onCheckedChange={(checked) => onDraftChange({ enabled: checked === true })}
-        />
-        <Label className="text-sm font-normal text-muted-foreground" htmlFor={`rule-enabled-${ruleId}`}>
-          Run when condition matches
-        </Label>
       </div>
     </BentoCard>
   );

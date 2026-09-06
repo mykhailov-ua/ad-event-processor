@@ -2,7 +2,7 @@ import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { EmptyState } from '@/shell/empty_state';
-import type { MLManualLabel } from '@/api/types';
+import type { MLManualLabel, OpsMlModelEvalResponse, OpsMlModelStatusResponse } from '@/api/types';
 import { JsonPayloadView } from '@/shell/json_payload_view';
 import { opsPanelError } from '@/domains/ops/ops_nav';
 import { OpsActionGroup, OpsPageLoading, OpsPageShell } from '@/domains/ops/ops_page_shell';
@@ -15,8 +15,8 @@ import {
 } from '@/domains/ops/ops_table';
 
 export type OpsMlModelProps = {
-  status: Record<string, unknown> | undefined;
-  evalBlock: Record<string, unknown> | undefined;
+  status: OpsMlModelStatusResponse | undefined;
+  evalBlock: OpsMlModelEvalResponse | undefined;
   labels?: MLManualLabel[];
   draftIpHash: string;
   draftLabel: string;
@@ -110,13 +110,28 @@ export function OpsMlModel({
       actions={
         <>
           <OpsActionGroup label="ML data">
-            <Button disabled={fetchingStatus} loading={fetchingStatus} type="button" onClick={onLoadStatus}>
+            <Button
+              disabled={fetchingStatus}
+              loading={fetchingStatus}
+              type="button"
+              onClick={onLoadStatus}
+            >
               Load status
             </Button>
-            <Button disabled={fetchingEval} loading={fetchingEval} type="button" onClick={onLoadEval}>
+            <Button
+              disabled={fetchingEval}
+              loading={fetchingEval}
+              type="button"
+              onClick={onLoadEval}
+            >
               Load eval
             </Button>
-            <Button disabled={fetchingLabels} loading={fetchingLabels} type="button" onClick={onLoadLabels}>
+            <Button
+              disabled={fetchingLabels}
+              loading={fetchingLabels}
+              type="button"
+              onClick={onLoadLabels}
+            >
               Load labels
             </Button>
           </OpsActionGroup>
@@ -128,9 +143,13 @@ export function OpsMlModel({
         </>
       }
     >
-      {statusError && !hasStatusSnapshot ? opsPanelError(statusError, 'Could not load ML status') : null}
+      {statusError && !hasStatusSnapshot
+        ? opsPanelError(statusError, 'Could not load ML status')
+        : null}
       {evalError && !hasEvalSnapshot ? opsPanelError(evalError, 'Could not load ML eval') : null}
-      {labelsError && !hasLabelsSnapshot ? opsPanelError(labelsError, 'Could not load ML labels') : null}
+      {labelsError && !hasLabelsSnapshot
+        ? opsPanelError(labelsError, 'Could not load ML labels')
+        : null}
 
       {status ? <JsonPayloadView payload={status} /> : null}
       {evalBlock ? <JsonPayloadView payload={evalBlock} /> : null}
@@ -148,6 +167,7 @@ export function OpsMlModel({
 
       {labelRows.length > 0 ? (
         <OpsTable
+          horizontalScroll
           head={
             <OpsTableHeaderRow>
               <OpsTableHead>IP hash</OpsTableHead>
@@ -161,7 +181,7 @@ export function OpsMlModel({
               key={
                 row.ip_hash && row.created_at
                   ? `${row.ip_hash}:${row.created_at}`
-                  : row.ip_hash ?? `row-${index}`
+                  : (row.ip_hash ?? `row-${index}`)
               }
             >
               <OpsTableCell className="font-mono text-xs text-muted-foreground">

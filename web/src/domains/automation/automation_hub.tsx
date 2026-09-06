@@ -87,29 +87,31 @@ export function AutomationHub() {
     >
       <AutomationNav />
 
-      <BentoSection title="Catalog">
-        <HubLinkGrid>
-          {CATALOG_LINKS.map((item) => (
-            <HubLinkCard key={item.path} {...item} />
-          ))}
-        </HubLinkGrid>
-      </BentoSection>
+      <div className="grid gap-6">
+        <BentoSection title="Catalog">
+          <HubLinkGrid>
+            {CATALOG_LINKS.map((item) => (
+              <HubLinkCard key={item.path} {...item} />
+            ))}
+          </HubLinkGrid>
+        </BentoSection>
 
-      <BentoSection title="Rules">
-        <HubLinkGrid>
-          {RULES_LINKS.map((item) => (
-            <HubLinkCard key={item.path} {...item} />
-          ))}
-        </HubLinkGrid>
-      </BentoSection>
+        <BentoSection title="Rules">
+          <HubLinkGrid>
+            {RULES_LINKS.map((item) => (
+              <HubLinkCard key={item.path} {...item} />
+            ))}
+          </HubLinkGrid>
+        </BentoSection>
 
-      <BentoSection title="Monitoring">
-        <HubLinkGrid>
-          {MONITORING_LINKS.map((item) => (
-            <HubLinkCard key={item.path} {...item} />
-          ))}
-        </HubLinkGrid>
-      </BentoSection>
+        <BentoSection title="Monitoring">
+          <HubLinkGrid>
+            {MONITORING_LINKS.map((item) => (
+              <HubLinkCard key={item.path} {...item} />
+            ))}
+          </HubLinkGrid>
+        </BentoSection>
+      </div>
     </PageChrome>
   );
 }

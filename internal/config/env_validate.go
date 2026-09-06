@@ -76,6 +76,9 @@ func validateAndApplyDefaults(cfg *Config) error {
 	if cfg.Env == "production" && cfg.TrackerPGFallback {
 		return fmt.Errorf("production TRACKER_PG_FALLBACK must be 0")
 	}
+	if cfg.StreamProducerAdmissionPct < 0 || cfg.StreamProducerAdmissionPct > 100 {
+		return fmt.Errorf("STREAM_PRODUCER_ADMISSION_PCT must be 0-100 (got %d)", cfg.StreamProducerAdmissionPct)
+	}
 
 	if cfg.BrokerPrimaryCH() && strings.TrimSpace(cfg.Broker.URL) == "" {
 		return errors.New("CH_INGEST_SOURCE=broker requires BROKER_URL")
@@ -121,5 +124,28 @@ func validateAndApplyDefaults(cfg *Config) error {
 		cfg.Billing.ExportJobTimeoutMin = 15
 	}
 
+	if err := validatePostgresPoolBudget(cfg); err != nil {
+		return err
+	}
+
+	cfg.TrustedProxies = trimNonEmptyStrings(cfg.TrustedProxies)
+	if cfg.Env == "production" && len(cfg.TrustedProxies) == 0 {
+		return errors.New("production TRUSTED_PROXIES must list edge or nginx proxy CIDRs")
+	}
+
 	return nil
+}
+
+func trimNonEmptyStrings(in []string) []string {
+	if len(in) == 0 {
+		return nil
+	}
+	out := make([]string, 0, len(in))
+	for _, s := range in {
+		s = strings.TrimSpace(s)
+		if s != "" {
+			out = append(out, s)
+		}
+	}
+	return out
 }

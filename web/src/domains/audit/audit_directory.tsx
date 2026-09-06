@@ -1,9 +1,6 @@
 import { SecondaryActionButton } from '@/shell/action_buttons';
 import { DirectoryListMeta } from '@/shell/directory_list_meta';
-import {
-  DirectoryFilterForm,
-  FilterPanel,
-} from '@/shell/filter_panel';
+import { DirectoryFilterForm, FilterPanel } from '@/shell/filter_panel';
 import { PageChrome } from '@/shell/page_chrome';
 import { EmptyState } from '@/shell/empty_state';
 import { ErrorBlock } from '@/shell/error_block';
@@ -72,32 +69,30 @@ export function AuditDirectory({
   return (
     <PageChrome title="Audit">
       <FilterPanel>
-        <DirectoryFilterForm
-          onSubmit={(event) => event.preventDefault()}
-        >
-        <div className="flex items-center gap-2">
-          <Checkbox
-            checked={draftRedactPii}
-            id="audit-redact-pii"
-            onCheckedChange={(checked) => onDraftRedactPiiChange(checked === true)}
+        <DirectoryFilterForm onSubmit={(event) => event.preventDefault()}>
+          <div className="flex items-center gap-2">
+            <Checkbox
+              checked={draftRedactPii}
+              id="audit-redact-pii"
+              onCheckedChange={(checked) => onDraftRedactPiiChange(checked === true)}
+            />
+            <Label htmlFor="audit-redact-pii">Redact PII in export</Label>
+          </div>
+          <SecondaryActionButton
+            disabled={exporting}
+            loading={exporting}
+            onClick={onExportCsv}
+            type="button"
+          >
+            Export CSV
+          </SecondaryActionButton>
+          <DirectoryPaginationFooter
+            canGoNext={canGoNext}
+            canGoPrev={canGoPrev}
+            disabled={fetching}
+            onNext={() => onPageChange(offset + limit)}
+            onPrev={() => onPageChange(Math.max(0, offset - limit))}
           />
-          <Label htmlFor="audit-redact-pii">Redact PII in export</Label>
-        </div>
-        <SecondaryActionButton
-          disabled={exporting}
-          loading={exporting}
-          onClick={onExportCsv}
-          type="button"
-        >
-          Export CSV
-        </SecondaryActionButton>
-        <DirectoryPaginationFooter
-          canGoNext={canGoNext}
-          canGoPrev={canGoPrev}
-          disabled={fetching}
-          onNext={() => onPageChange(offset + limit)}
-          onPrev={() => onPageChange(Math.max(0, offset - limit))}
-        />
         </DirectoryFilterForm>
         <DirectoryListMeta>
           {total > 0
@@ -147,9 +142,7 @@ export function AuditDirectory({
         </DirectoryTable>
       )}
 
-      {error && hasSnapshot && (
-        <ErrorBlock title="Refresh failed" message={error.message} />
-      )}
+      {error && hasSnapshot && <ErrorBlock title="Refresh failed" message={error.message} />}
     </PageChrome>
   );
 }

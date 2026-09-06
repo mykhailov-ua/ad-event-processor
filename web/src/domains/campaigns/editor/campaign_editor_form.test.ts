@@ -20,11 +20,11 @@ test('click query params field hint documents whole-json and per-value limits', 
   assert.match(CAMPAIGN_CLICK_QUERY_PARAMS_FIELD_HINT, /21,442/);
   assert.match(
     CAMPAIGN_CLICK_QUERY_PARAMS_FIELD_HINT,
-    new RegExp(String(CAMPAIGN_CLICK_QUERY_PARAM_MAX_VALUE_LEN)),
+    new RegExp(String(CAMPAIGN_CLICK_QUERY_PARAM_MAX_VALUE_LEN))
   );
   assert.match(
     CAMPAIGN_CLICK_QUERY_PARAMS_FIELD_HINT,
-    new RegExp(String(CAMPAIGN_CLICK_QUERY_PARAM_MAX_KEYS)),
+    new RegExp(String(CAMPAIGN_CLICK_QUERY_PARAM_MAX_KEYS))
   );
   assert.equal(CAMPAIGN_CLICK_QUERY_PARAMS_JSON_MAX_CHARS, 21442);
 });
@@ -67,17 +67,14 @@ test('campaignToFormState maps ingress and click query params with sorted keys',
         policy: 'cap',
       },
       click_query_params: { sub1: 'x', country: 'US' },
-    }),
+    })
   );
 
   assert.equal(form.ingress_param, 'cost');
   assert.equal(form.ingress_scale, '1.5');
   assert.equal(form.ingress_max_micro, '2500');
   assert.equal(form.ingress_policy, 'cap');
-  assert.equal(
-    form.click_query_params_json,
-    JSON.stringify({ country: 'US', sub1: 'x' }, null, 2),
-  );
+  assert.equal(form.click_query_params_json, JSON.stringify({ country: 'US', sub1: 'x' }, null, 2));
 });
 
 test('buildCampaignPatchBody returns empty body when form matches snapshot', () => {
@@ -140,7 +137,9 @@ test('buildCampaignPatchBody_holdoutRejectsInvalidIngressMaxMicro', () => {
 });
 
 test('parseClickQueryParamsJson rejects JSON longer than server bound', () => {
-  const result = parseClickQueryParamsJson(`{${' '.repeat(CAMPAIGN_CLICK_QUERY_PARAMS_JSON_MAX_CHARS + 1)}}`);
+  const result = parseClickQueryParamsJson(
+    `{${' '.repeat(CAMPAIGN_CLICK_QUERY_PARAMS_JSON_MAX_CHARS + 1)}}`
+  );
   assert.equal(result.ok, false);
 });
 
@@ -155,7 +154,7 @@ test('parseClickQueryParamsJson rejects too many keys', () => {
 
 test('parseClickQueryParamsJson rejects value longer than server bound', () => {
   const result = parseClickQueryParamsJson(
-    JSON.stringify({ sub1: 'a'.repeat(CAMPAIGN_CLICK_QUERY_PARAM_MAX_VALUE_LEN + 1) }),
+    JSON.stringify({ sub1: 'a'.repeat(CAMPAIGN_CLICK_QUERY_PARAM_MAX_VALUE_LEN + 1) })
   );
   assert.equal(result.ok, false);
 });

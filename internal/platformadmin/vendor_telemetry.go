@@ -35,13 +35,18 @@ func (m vendorProbeMetrics) ObserveProbeError(vendor string) {
 	metrics.VendorProbeErrorsTotal.WithLabelValues(vendor).Inc()
 }
 
-func StartVendorTelemetryWorker(ctx context.Context, host VendorTelemetryHost) {
+// StartVendorTelemetryWorker probes configured vendor endpoints on an interval.
+func StartVendorTelemetryWorker(ctx context.Context, host VendorTelemetryHost) { //nolint:contextcheck // nil ctx uses host worker or background root
 	if host == nil || !host.VendorTelemetryEnabled() {
 		return
 	}
 	runCtx := ctx
 	if runCtx == nil {
-		runCtx = host.WorkerContext()
+		if workerCtx := host.WorkerContext(); workerCtx != nil {
+			runCtx = workerCtx //nolint:contextcheck // host worker replaces nil caller ctx
+		} else {
+			runCtx = context.Background() //nolint:contextcheck // no caller or host ctx available
+		}
 	}
 	opts := Options{
 		GeoIPDBPath:      host.GeoIPDBPath(),

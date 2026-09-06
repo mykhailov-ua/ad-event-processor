@@ -19,14 +19,14 @@ export type CampaignListExportRow = {
 };
 
 export function exportableCampaignListColumns(
-  columns: ReadonlyArray<CampaignListColumnId>,
+  columns: ReadonlyArray<CampaignListColumnId>
 ): CampaignListDataColumnId[] {
   return columns.filter((columnId): columnId is CampaignListDataColumnId => columnId !== 'select');
 }
 
 export function campaignListExportCellValue(
   columnId: CampaignListDataColumnId,
-  vm: CampaignRowVm,
+  vm: CampaignRowVm
 ): string {
   if (columnId === 'id') {
     return vm.displayId;
@@ -46,7 +46,7 @@ export function buildCampaignListExportRows(
   metricsById: Record<string, CampaignListMetrics>,
   marginsById: Record<string, CampaignMargin>,
   customerNameById: Record<string, string>,
-  ownerEmailById: Record<string, string>,
+  ownerEmailById: Record<string, string>
 ): CampaignListExportRow[] {
   if (columns.length === 0) {
     return [];
@@ -59,7 +59,7 @@ export function buildCampaignListExportRows(
       marginsById[campaign.id],
       customerNameById,
       ownerEmailById,
-      false,
+      false
     ),
   }));
 }
@@ -70,11 +70,11 @@ function csvEscape(value: string): string {
 
 export function buildCampaignListExportCsv(
   columns: ReadonlyArray<CampaignListDataColumnId>,
-  rows: ReadonlyArray<CampaignListExportRow>,
+  rows: ReadonlyArray<CampaignListExportRow>
 ): string {
   const header = columns.map((columnId) => CAMPAIGN_LIST_COLUMN_LABELS[columnId]);
   const lines = rows.map((row) =>
-    columns.map((columnId) => csvEscape(campaignListExportCellValue(columnId, row.vm))).join(','),
+    columns.map((columnId) => csvEscape(campaignListExportCellValue(columnId, row.vm))).join(',')
   );
   return [header.join(','), ...lines].join('\n');
 }

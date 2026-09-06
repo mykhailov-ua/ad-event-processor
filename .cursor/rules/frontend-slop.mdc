@@ -1627,7 +1627,6 @@ Violations usually mean full-table React reconcile or `table-layout: fixed` refl
 
 Reference files: `campaign_list_columns.ts` (`moveDataColumn`, `visibleCampaignListColumns`), `campaign_list_table_header_cell.tsx`, `use_campaign_list_column_resize.ts`, `campaign_list_table_body_row.tsx`, `campaign_list_column_widths.ts` (`computeCampaignListColumnWidths`).
 
-
 ### Fake promises (banned)
 
 `useResource` and page fetchers must not simulate API success with in-memory stubs.

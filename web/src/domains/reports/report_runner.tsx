@@ -1,12 +1,17 @@
 import { useMemo } from 'react';
 import { Link } from 'react-router-dom';
 
-import { FilterApplyButton, PrimaryActionButton, SecondaryActionButton } from '@/shell/action_buttons';
+import {
+  FilterApplyButton,
+  PrimaryActionButton,
+  SecondaryActionButton,
+} from '@/shell/action_buttons';
 import { PageChrome } from '@/shell/page_chrome';
 import { EmptyState } from '@/shell/empty_state';
 import { ErrorBlock } from '@/shell/error_block';
 import { PageSkeleton } from '@/shell/page_skeleton';
 import { DirectoryPaginationFooter } from '@/shell/directory_pagination_footer';
+import { FILTER_PANEL_SUMMARY_CLASS } from '@/shell/filter_panel';
 import { ReportMapTable } from '@/shell/report_map_table';
 import { StubBanner } from '@/shell/stub_banner';
 import { Badge } from '@/components/ui/badge';
@@ -84,11 +89,11 @@ export function ReportRunner({
 }: ReportRunnerProps) {
   const timelineColumns = useMemo(
     () => deriveColumns((evidencePack?.timeline ?? []) as ReportMapRow[]),
-    [evidencePack?.timeline],
+    [evidencePack?.timeline]
   );
   const fraudEventColumns = useMemo(
     () => deriveColumns((evidencePack?.fraud_events ?? []) as ReportMapRow[]),
-    [evidencePack?.fraud_events],
+    [evidencePack?.fraud_events]
   );
 
   if (fetching && !hasSnapshot && !error) {
@@ -180,7 +185,6 @@ export function ReportRunner({
             canGoNext={canGoNext}
             canGoPrev={canGoPrev}
             disabled={fetching}
-            layout="split"
             variant="outline"
             onNext={() => onPageChange(offset + limit)}
             onPrev={() => onPageChange(Math.max(0, offset - limit))}
@@ -230,10 +234,7 @@ export function ReportRunner({
 
       {mode === 'table' ? (
         rows.length === 0 ? (
-          <EmptyState
-            title="No rows"
-            description="Adjust filters and run the report again."
-          />
+          <EmptyState title="No rows" description="Adjust filters and run the report again." />
         ) : (
           <ReportMapTable columns={columns} rowKeyPrefix={reportKey} rows={rows} />
         )
@@ -246,16 +247,16 @@ export function ReportRunner({
 
 function CardSummary({ evidencePack }: { evidencePack: FraudEvidencePack }) {
   return (
-    <div className="ui-filter-panel gap-2 text-sm">
+    <div className={FILTER_PANEL_SUMMARY_CLASS}>
       <div className="flex flex-wrap gap-4">
         <span>Click: {evidencePack.click_id}</span>
         <span>Customer: {evidencePack.customer_id}</span>
         {evidencePack.campaign_id ? <span>Campaign: {evidencePack.campaign_id}</span> : null}
       </div>
-      <div className="text-muted-foreground">
-        Generated {displayTimestamp(evidencePack.generated_at, evidencePack.generated_at_display)}{' '}
-        | digest {evidencePack.digest_sha256}
-      </div>
+      <p className="m-0 text-muted-foreground">
+        Generated {displayTimestamp(evidencePack.generated_at, evidencePack.generated_at_display)} |
+        digest {evidencePack.digest_sha256}
+      </p>
     </div>
   );
 }

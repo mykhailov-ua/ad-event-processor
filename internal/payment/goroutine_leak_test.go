@@ -13,5 +13,7 @@ func TestMain(m *testing.M) {
 		goleak.IgnoreTopFunction("ad-event-processor/internal/stream.(*IDRingBuffer).refillWorker"),
 		goleak.IgnoreTopFunction("github.com/panjf2000/ants/v2.(*poolCommon).purgeStaleWorkers"),
 		goleak.IgnoreTopFunction("github.com/panjf2000/ants/v2.(*poolCommon).ticktock"),
+		goleak.IgnoreTopFunction("github.com/jackc/pgx/v5/pgxpool.(*Pool).backgroundHealthCheck"),
+		goleak.IgnoreTopFunction("github.com/jackc/pgx/v5/pgxpool.NewWithConfig.func5"),
 	)
 }

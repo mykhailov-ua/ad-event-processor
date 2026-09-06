@@ -1,7 +1,12 @@
 import { Button, type ButtonProps } from '@/components/ui/button';
 import { cn } from '@/lib/utils';
 
-export function PrimaryActionButton({ className, shape = 'default', variant = 'brand', ...props }: ButtonProps) {
+export function PrimaryActionButton({
+  className,
+  shape = 'default',
+  variant = 'brand',
+  ...props
+}: ButtonProps) {
   return <Button shape={shape} variant={variant} className={cn(className)} {...props} />;
 }
 
@@ -29,7 +34,13 @@ export function FilterApplyButton({
   ...props
 }: ButtonProps) {
   return (
-    <Button shape={shape} type={type} variant={variant} className={cn('text-sm leading-none', className)} {...props} />
+    <Button
+      shape={shape}
+      type={type}
+      variant={variant}
+      className={cn('text-sm leading-none', className)}
+      {...props}
+    />
   );
 }
 

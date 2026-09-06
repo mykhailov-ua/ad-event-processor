@@ -3,11 +3,7 @@ package controlplane
 import (
 	"context"
 	"fmt"
-	"os"
-	"path/filepath"
-	"runtime"
 	"strconv"
-	"strings"
 	"sync"
 	"sync/atomic"
 	"testing"
@@ -18,6 +14,7 @@ import (
 	bserver "ad-event-processor/internal/broker"
 	"ad-event-processor/internal/config"
 	"ad-event-processor/internal/pgfailover"
+	"ad-event-processor/internal/testutil"
 
 	"github.com/google/uuid"
 	"github.com/jackc/pgx/v5/pgxpool"
@@ -111,26 +108,7 @@ func setupPgFailoverFaultInfra(t *testing.T) (*postgresFailoverFaultInfra, func(
 
 func applyPgFailoverMigrations(t *testing.T, pool *pgxpool.Pool) {
 	t.Helper()
-	ctx := context.Background()
-	_, filename, _, _ := runtime.Caller(0)
-	migrationsDir := filepath.Join(filepath.Dir(filename), "..", "ingestion", "migrations")
-	entries, err := os.ReadDir(migrationsDir)
-	require.NoError(t, err)
-	for _, entry := range entries {
-		if entry.IsDir() || !strings.HasSuffix(entry.Name(), ".sql") {
-			continue
-		}
-		sqlBytes, err := os.ReadFile(filepath.Join(migrationsDir, entry.Name()))
-		require.NoError(t, err)
-		sql := string(sqlBytes)
-		parts := strings.Split(sql, "-- +goose Down")
-		upPart := parts[0]
-		upPart = strings.ReplaceAll(upPart, "-- +goose Up", "")
-		upPart = strings.ReplaceAll(upPart, "-- +goose StatementBegin", "")
-		upPart = strings.ReplaceAll(upPart, "-- +goose StatementEnd", "")
-		_, err = pool.Exec(ctx, upPart)
-		require.NoError(t, err, "migration %s", entry.Name())
-	}
+	testutil.ApplyMigrations(t, pool, testutil.AdsMigrationsDir())
 }
 
 func syncPgFailoverSnapshot(t *testing.T, primary, standby *pgxpool.Pool) {

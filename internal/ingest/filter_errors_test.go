@@ -48,3 +48,23 @@ func TestClassifyFilterErr_noAccidental504(t *testing.T) {
 		assert.NotEqual(t, http.StatusGatewayTimeout, filterRejectSpecs[kind].status, "err=%v kind=%d", err, kind)
 	}
 }
+
+func TestClassifyFilterErr_infraFailClosed503_holdout(t *testing.T) {
+	infraCases := []struct {
+		err        error
+		wantKind   filterRejectKind
+		wantStatus int
+	}{
+		{ErrRegistryStale, filterRejectRegistryStale, http.StatusServiceUnavailable},
+		{ErrShardUnavailable, filterRejectShardUnavailable, http.StatusServiceUnavailable},
+		{ErrGeoLookupFailed, filterRejectInfra, http.StatusServiceUnavailable},
+		{database.ErrRedisCircuitOpen, filterRejectInfra, http.StatusServiceUnavailable},
+	}
+	for _, tc := range infraCases {
+		kind, ok := classifyFilterErr(tc.err)
+		require.True(t, ok, tc.err)
+		assert.Equal(t, tc.wantKind, kind)
+		assert.Equal(t, tc.wantStatus, filterRejectSpecs[kind].status)
+		assert.NotEqual(t, http.StatusNotFound, filterRejectSpecs[kind].status)
+	}
+}

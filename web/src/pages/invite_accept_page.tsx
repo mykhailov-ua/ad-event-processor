@@ -32,9 +32,13 @@ export function InviteAcceptPage() {
     try {
       await publicAcceptInvite({ token: inviteToken, password });
       window.location.replace('/');
-    } catch (err) {
+    } catch (err: unknown) {
       const message =
-        err instanceof ApiError ? err.message : err instanceof Error ? err.message : 'Invite accept failed';
+        err instanceof ApiError
+          ? err.message
+          : err instanceof Error
+            ? err.message
+            : 'Invite accept failed';
       setError(message);
     } finally {
       setSubmitting(false);

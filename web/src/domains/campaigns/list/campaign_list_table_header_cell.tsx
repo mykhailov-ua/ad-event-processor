@@ -69,7 +69,7 @@ export function CampaignListTableHeaderCell({
       <Button
         className={cn(
           'inline-flex h-auto max-w-full items-center justify-start gap-0.5 border-0 bg-transparent p-0 font-normal shadow-none hover:bg-transparent',
-          active && 'text-foreground',
+          active && 'text-foreground'
         )}
         disabled={disabled}
         title={label}
@@ -80,9 +80,9 @@ export function CampaignListTableHeaderCell({
         {label}
         {active ? (
           appliedOrder === 'asc' ? (
-            <ArrowUp aria-hidden className="ml-0.5 h-3 w-3 shrink-0" />
+            <ArrowUp aria-hidden className="h-3 w-3 shrink-0" />
           ) : (
-            <ArrowDown aria-hidden className="ml-0.5 h-3 w-3 shrink-0" />
+            <ArrowDown aria-hidden className="h-3 w-3 shrink-0" />
           )
         ) : null}
       </Button>

@@ -1,12 +1,4 @@
-import {
-  createContext,
-  useCallback,
-  useContext,
-  useEffect,
-  useMemo,
-  useState,
-  type ReactNode,
-} from 'react';
+import { createContext, useCallback, useEffect, useMemo, useState, type ReactNode } from 'react';
 
 import {
   applyTheme,
@@ -22,7 +14,9 @@ type ThemeContextValue = {
   setTheme: (theme: Theme) => void;
 };
 
-const ThemeContext = createContext<ThemeContextValue | null>(null);
+export type { ThemeContextValue };
+
+export const ThemeContext = createContext<ThemeContextValue | null>(null);
 
 export function ThemeProvider({ children }: { children: ReactNode }) {
   const [theme, setThemeState] = useState<Theme>(() => readThemeFromDocument());
@@ -36,13 +30,6 @@ export function ThemeProvider({ children }: { children: ReactNode }) {
       persistTheme(next);
       return next;
     });
-  }, []);
-
-  useEffect(() => {
-    const next = readStoredTheme();
-    applyTheme(next);
-    persistTheme(next);
-    setThemeState((current) => (current === next ? current : next));
   }, []);
 
   useEffect(() => {
@@ -74,12 +61,4 @@ export function ThemeProvider({ children }: { children: ReactNode }) {
   const value = useMemo(() => ({ theme, setTheme }), [theme, setTheme]);
 
   return <ThemeContext.Provider value={value}>{children}</ThemeContext.Provider>;
-}
-
-export function useTheme(): ThemeContextValue {
-  const value = useContext(ThemeContext);
-  if (!value) {
-    throw new Error('useTheme must be used within ThemeProvider');
-  }
-  return value;
 }

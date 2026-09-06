@@ -10,8 +10,6 @@ import (
 	"github.com/google/uuid"
 )
 
-const dashboardBreakdownTopN = 6
-
 var flowEntityBreakdownFields = map[string]struct{}{
 	"lander_id": {},
 	"offer_id":  {},
@@ -305,7 +303,8 @@ func QueryCustomerDailyEconomicsCH(
 ) (map[string]struct {
 	SpendMicro   int64
 	RevenueMicro int64
-}, error) {
+}, error,
+) {
 	out := make(map[string]struct {
 		SpendMicro   int64
 		RevenueMicro int64

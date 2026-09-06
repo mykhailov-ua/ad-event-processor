@@ -56,12 +56,7 @@ func (h *PublicHTTPHandlers) postActivate(w http.ResponseWriter, r *http.Request
 		httpresponse.Error(w, http.StatusBadRequest, "BAD_REQUEST", "invalid activate request")
 		return
 	}
-	owner, err := h.Activation.ActivateOwner(r.Context(), ActivateOwnerRequest{
-		LicenseToken: req.LicenseToken,
-		Email:        req.Email,
-		Password:     req.Password,
-		TeamName:     req.TeamName,
-	})
+	owner, err := h.Activation.ActivateOwner(r.Context(), ActivateOwnerRequest(req))
 	if err != nil {
 		h.writeServiceError(w, err)
 		return
@@ -78,10 +73,7 @@ func (h *PublicHTTPHandlers) postAcceptInvite(w http.ResponseWriter, r *http.Req
 		httpresponse.Error(w, http.StatusBadRequest, "BAD_REQUEST", "invalid invite accept request")
 		return
 	}
-	owner, err := h.Activation.AcceptTeamInvite(r.Context(), AcceptTeamInviteRequest{
-		Token:    req.Token,
-		Password: req.Password,
-	})
+	owner, err := h.Activation.AcceptTeamInvite(r.Context(), AcceptTeamInviteRequest(req))
 	if err != nil {
 		h.writeServiceError(w, err)
 		return

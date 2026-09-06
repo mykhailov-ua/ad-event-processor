@@ -10,11 +10,11 @@ import (
 	pkgnet "github.com/panjf2000/gnet/v2"
 )
 
-func (h *Server) h2BodyIdleDuration() time.Duration {
-	return h.http1BodyIdleDuration()
+func (s *Server) h2BodyIdleDuration() time.Duration {
+	return s.http1BodyIdleDuration()
 }
 
-func (h *Server) h2ResetIncompleteIdle(st *httpingress.H2ConnState, c pkgnet.Conn) {
+func (s *Server) h2ResetIncompleteIdle(st *httpingress.H2ConnState, c pkgnet.Conn) {
 	if st == nil {
 		return
 	}
@@ -25,11 +25,11 @@ func (h *Server) h2ResetIncompleteIdle(st *httpingress.H2ConnState, c pkgnet.Con
 	}
 }
 
-func (h *Server) h2ArmIncompleteIdle(c pkgnet.Conn, st *httpingress.H2ConnState) {
+func (s *Server) h2ArmIncompleteIdle(c pkgnet.Conn, st *httpingress.H2ConnState) {
 	if st == nil || c == nil || st.IncompleteIdleArmed {
 		return
 	}
-	idle := h.h2BodyIdleDuration()
+	idle := s.h2BodyIdleDuration()
 	if idle <= 0 {
 		return
 	}
@@ -38,15 +38,15 @@ func (h *Server) h2ArmIncompleteIdle(c pkgnet.Conn, st *httpingress.H2ConnState)
 	st.IncompleteIdleArmed = true
 }
 
-func (h *Server) h2CheckConnDeadlines(c pkgnet.Conn, ctx *ConnContext) pkgnet.Action {
+func (s *Server) h2CheckConnDeadlines(c pkgnet.Conn, ctx *ConnContext) pkgnet.Action {
 	if ctx == nil {
 		return pkgnet.None
 	}
-	maxLife := h.http1MaxConnLifetimeDuration()
+	maxLife := s.http1MaxConnLifetimeDuration()
 	if maxLife > 0 && ctx.HTTP1ConnOpenedMono > 0 &&
 		filter.MonotonicNano()-ctx.HTTP1ConnOpenedMono >= maxLife.Nanoseconds() {
 		metrics.H2HostileDisconnectTotal.Inc()
-		h.h2ResetIncompleteIdle(&ctx.H2, c)
+		s.h2ResetIncompleteIdle(&ctx.H2, c)
 		return pkgnet.Close
 	}
 	st := &ctx.H2
@@ -57,6 +57,6 @@ func (h *Server) h2CheckConnDeadlines(c pkgnet.Conn, ctx *ConnContext) pkgnet.Ac
 		return pkgnet.None
 	}
 	metrics.H2HostileDisconnectTotal.Inc()
-	h.h2ResetIncompleteIdle(st, c)
+	s.h2ResetIncompleteIdle(st, c)
 	return pkgnet.Close
 }

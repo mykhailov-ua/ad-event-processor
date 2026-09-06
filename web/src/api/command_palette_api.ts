@@ -1,4 +1,4 @@
-import { apiFetch, apiJson } from './client.js';
+import { apiFetch, apiJson, parseApiError } from './client.js';
 import type {
   CommandPaletteItem,
   CommandPaletteOpenRequest,
@@ -11,7 +11,7 @@ import type {
 
 export async function searchCommandPalette(
   params: CommandPaletteSearchQuery,
-  signal?: AbortSignal,
+  signal?: AbortSignal
 ): Promise<CommandPaletteSearchResponse> {
   const search = new URLSearchParams();
   search.set('customer_id', params.customer_id);
@@ -28,19 +28,19 @@ export async function searchCommandPalette(
   }
   return apiJson<CommandPaletteSearchResponse>(
     `/api/v1/command-palette/search?${search.toString()}`,
-    { signal },
+    { signal }
   );
 }
 
 export async function listCommandPaletteRoutes(
-  signal?: AbortSignal,
+  signal?: AbortSignal
 ): Promise<CommandPaletteRoutesResponse> {
   return apiJson<CommandPaletteRoutesResponse>('/api/v1/command-palette/routes', { signal });
 }
 
 export async function recordCommandPaletteOpen(
   body: CommandPaletteOpenRequest = {},
-  signal?: AbortSignal,
+  signal?: AbortSignal
 ): Promise<{ status?: string }> {
   return apiJson<{ status?: string }>('/api/v1/command-palette/open', {
     method: 'POST',
@@ -51,18 +51,18 @@ export async function recordCommandPaletteOpen(
 
 export async function listCommandPaletteRecents(
   customerId: string,
-  signal?: AbortSignal,
+  signal?: AbortSignal
 ): Promise<CommandPaletteRecentsResponse> {
   const search = new URLSearchParams({ customer_id: customerId });
   return apiJson<CommandPaletteRecentsResponse>(
     `/api/v1/command-palette/recents?${search.toString()}`,
-    { signal },
+    { signal }
   );
 }
 
 export async function recordCommandPaletteRecent(
   body: CommandPaletteRecordRecentRequest,
-  signal?: AbortSignal,
+  signal?: AbortSignal
 ): Promise<void> {
   const response = await apiFetch('/api/v1/command-palette/recents', {
     method: 'POST',
@@ -70,7 +70,7 @@ export async function recordCommandPaletteRecent(
     signal,
   });
   if (!response.ok && response.status !== 204) {
-    throw new Error(response.statusText || `HTTP ${response.status}`);
+    throw await parseApiError(response);
   }
 }
 

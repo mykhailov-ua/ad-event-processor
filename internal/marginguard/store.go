@@ -84,7 +84,7 @@ func (st *Store) GetCampaignMargin(ctx context.Context, campaignID uuid.UUID) (C
 	if st.poolOrNil() == nil {
 		return CampaignMargin{}, fmt.Errorf("service unavailable")
 	}
-	windowStart := time.Now().Add(-1 * time.Hour)
+	windowStart := time.Now().Add(-1 * time.Hour).UTC()
 	q := db.New(st.pool)
 	sums, err := q.SumCampaignMarginWindow(ctx, db.SumCampaignMarginWindowParams{
 		CampaignID: domain.ToUUID(campaignID),
@@ -212,7 +212,7 @@ func (st *Store) BatchMarginBreach(ctx context.Context, campaignIDs []uuid.UUID)
 		pgIDs[i] = domain.ToUUID(id)
 	}
 
-	windowStart := time.Now().Add(-1 * time.Hour)
+	windowStart := time.Now().Add(-1 * time.Hour).UTC()
 	q := db.New(st.pool)
 
 	sumsByCampaign := make(map[uuid.UUID]marginSums, len(campaignIDs))

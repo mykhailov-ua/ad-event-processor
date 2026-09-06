@@ -1,4 +1,4 @@
-import { ApiError, apiFetch, apiJson } from './client.js';
+import { apiFetch, apiJson, parseApiError } from './client.js';
 import type {
   BillingForecast,
   BillingStatement,
@@ -57,7 +57,7 @@ export async function getBillingSummary(signal?: AbortSignal): Promise<BillingSu
 
 export async function listInvoices(
   params: InvoiceListQuery = {},
-  signal?: AbortSignal,
+  signal?: AbortSignal
 ): Promise<InvoiceListResponse> {
   return apiJson<InvoiceListResponse>(buildInvoicesListPath(params), { signal });
 }
@@ -65,35 +65,32 @@ export async function listInvoices(
 export async function getCustomerBillingStatement(
   customerId: string,
   month: string,
-  signal?: AbortSignal,
+  signal?: AbortSignal
 ): Promise<BillingStatement> {
   const search = new URLSearchParams({ month });
   return apiJson<BillingStatement>(
     `/api/v1/customers/${encodeURIComponent(customerId)}/billing/statement?${search}`,
-    { signal },
+    { signal }
   );
 }
 
 export async function getCustomerBillingForecast(
   customerId: string,
-  signal?: AbortSignal,
+  signal?: AbortSignal
 ): Promise<BillingForecast> {
   return apiJson<BillingForecast>(
     `/api/v1/customers/${encodeURIComponent(customerId)}/billing/forecast`,
-    { signal },
+    { signal }
   );
 }
 
-export async function getCustomerWallet(
-  customerId: string,
-  signal?: AbortSignal,
-): Promise<Wallet> {
+export async function getCustomerWallet(customerId: string, signal?: AbortSignal): Promise<Wallet> {
   return apiJson<Wallet>(`/api/v1/customers/${encodeURIComponent(customerId)}/wallet`, { signal });
 }
 
 export function buildCustomerPaymentsPath(
   customerId: string,
-  params: CustomerPaymentsListQuery = {},
+  params: CustomerPaymentsListQuery = {}
 ): string {
   const search = new URLSearchParams();
 
@@ -112,52 +109,46 @@ export function buildCustomerPaymentsPath(
 export async function listCustomerPayments(
   customerId: string,
   params: CustomerPaymentsListQuery = {},
-  signal?: AbortSignal,
+  signal?: AbortSignal
 ): Promise<PaymentHistoryListResponse> {
-  return apiJson<PaymentHistoryListResponse>(
-    buildCustomerPaymentsPath(customerId, params),
-    { signal },
-  );
+  return apiJson<PaymentHistoryListResponse>(buildCustomerPaymentsPath(customerId, params), {
+    signal,
+  });
 }
 
 export async function getCustomerTaxProfile(
   customerId: string,
-  signal?: AbortSignal,
+  signal?: AbortSignal
 ): Promise<TaxProfile> {
-  return apiJson<TaxProfile>(
-    `/api/v1/customers/${encodeURIComponent(customerId)}/tax-profile`,
-    { signal },
-  );
+  return apiJson<TaxProfile>(`/api/v1/customers/${encodeURIComponent(customerId)}/tax-profile`, {
+    signal,
+  });
 }
 
 export async function putCustomerTaxProfile(
   customerId: string,
   body: TaxProfile,
-  signal?: AbortSignal,
+  signal?: AbortSignal
 ): Promise<TaxProfile> {
-  return apiJson<TaxProfile>(
-    `/api/v1/customers/${encodeURIComponent(customerId)}/tax-profile`,
-    {
-      method: 'PUT',
-      body: JSON.stringify(body),
-      signal,
-    },
-  );
+  return apiJson<TaxProfile>(`/api/v1/customers/${encodeURIComponent(customerId)}/tax-profile`, {
+    method: 'PUT',
+    body: JSON.stringify(body),
+    signal,
+  });
 }
 
 export async function getCustomerBalance(
   customerId: string,
-  signal?: AbortSignal,
+  signal?: AbortSignal
 ): Promise<CustomerBalance> {
-  return apiJson<CustomerBalance>(
-    `/api/v1/customers/${encodeURIComponent(customerId)}/balance`,
-    { signal },
-  );
+  return apiJson<CustomerBalance>(`/api/v1/customers/${encodeURIComponent(customerId)}/balance`, {
+    signal,
+  });
 }
 
 export function buildCustomerLedgerPath(
   customerId: string,
-  params: CustomerLedgerListQuery = {},
+  params: CustomerLedgerListQuery = {}
 ): string {
   const search = new URLSearchParams();
 
@@ -176,7 +167,7 @@ export function buildCustomerLedgerPath(
 export async function listCustomerLedger(
   customerId: string,
   params: CustomerLedgerListQuery = {},
-  signal?: AbortSignal,
+  signal?: AbortSignal
 ): Promise<CustomerLedgerListResponse> {
   return apiJson<CustomerLedgerListResponse>(buildCustomerLedgerPath(customerId, params), {
     signal,
@@ -190,7 +181,7 @@ export type CustomerBalanceExportResult = {
 export async function exportCustomerBalanceCsv(
   customerId: string,
   cursor?: string,
-  signal?: AbortSignal,
+  signal?: AbortSignal
 ): Promise<CustomerBalanceExportResult> {
   const search = new URLSearchParams({ format: 'csv' });
   if (cursor) {
@@ -199,31 +190,11 @@ export async function exportCustomerBalanceCsv(
 
   const response = await apiFetch(
     `/api/v1/customers/${encodeURIComponent(customerId)}/balance/export?${search.toString()}`,
-    { signal },
+    { signal }
   );
 
   if (!response.ok) {
-    let code = 'HTTP_ERROR';
-    let message = response.statusText || `HTTP ${response.status}`;
-    try {
-      const body: unknown = await response.json();
-      if (body && typeof body === 'object') {
-        const record = body as Record<string, unknown>;
-        const errorField = record.error;
-        if (errorField && typeof errorField === 'object') {
-          const errObj = errorField as Record<string, unknown>;
-          if (typeof errObj.code === 'string') {
-            code = errObj.code;
-          }
-          if (typeof errObj.message === 'string') {
-            message = errObj.message;
-          }
-        }
-      }
-    } catch {
-      // CSV or empty body on error.
-    }
-    throw new ApiError(response.status, code, message);
+    throw await parseApiError(response);
   }
 
   return { blob: await response.blob() };
@@ -231,7 +202,7 @@ export async function exportCustomerBalanceCsv(
 
 export async function getBillingInvariant(
   params: BillingInvariantQuery = {},
-  signal?: AbortSignal,
+  signal?: AbortSignal
 ): Promise<BillingInvariant> {
   const search = new URLSearchParams();
   if (params.customer_id) {
@@ -251,14 +222,14 @@ export async function downloadInvoicePdf(id: string, signal?: AbortSignal): Prom
     signal,
   });
   if (!response.ok) {
-    throw new ApiError(response.status, 'HTTP_ERROR', response.statusText || `HTTP ${response.status}`);
+    throw await parseApiError(response);
   }
   return response.blob();
 }
 
 export function buildInvoiceLedgerLinesPath(
   id: string,
-  params: InvoiceLedgerLinesQuery = {},
+  params: InvoiceLedgerLinesQuery = {}
 ): string {
   const search = new URLSearchParams();
   if (params.cursor) {
@@ -275,35 +246,32 @@ export function buildInvoiceLedgerLinesPath(
 export async function listInvoiceLedgerLines(
   id: string,
   params: InvoiceLedgerLinesQuery = {},
-  signal?: AbortSignal,
+  signal?: AbortSignal
 ): Promise<InvoiceLedgerLinesResponse> {
   return apiJson<InvoiceLedgerLinesResponse>(buildInvoiceLedgerLinesPath(id, params), { signal });
 }
 
 export async function listInvoiceDeliveries(
   id: string,
-  signal?: AbortSignal,
+  signal?: AbortSignal
 ): Promise<InvoiceDeliveryListResponse> {
   return apiJson<InvoiceDeliveryListResponse>(
     `/api/v1/billing/invoices/${encodeURIComponent(id)}/deliveries`,
-    { signal },
+    { signal }
   );
 }
 
 export async function retryInvoiceDelivery(
   id: string,
   idempotencyKey: string,
-  signal?: AbortSignal,
+  signal?: AbortSignal
 ): Promise<void> {
-  await apiJson<unknown>(
-    `/api/v1/billing/invoices/${encodeURIComponent(id)}/deliveries/retry`,
-    {
-      method: 'POST',
-      headers: { 'Idempotency-Key': idempotencyKey },
-      body: JSON.stringify({}),
-      signal,
-    },
-  );
+  await apiJson<unknown>(`/api/v1/billing/invoices/${encodeURIComponent(id)}/deliveries/retry`, {
+    method: 'POST',
+    headers: { 'Idempotency-Key': idempotencyKey },
+    body: JSON.stringify({}),
+    signal,
+  });
 }
 
 export async function voidInvoice(id: string, signal?: AbortSignal): Promise<void> {
@@ -315,7 +283,7 @@ export async function voidInvoice(id: string, signal?: AbortSignal): Promise<voi
 
 export async function previewInvoice(
   body: PreviewInvoiceRequest,
-  signal?: AbortSignal,
+  signal?: AbortSignal
 ): Promise<InvoicePreview> {
   return apiJson<InvoicePreview>('/api/v1/billing/invoices/preview', {
     method: 'POST',
@@ -326,7 +294,7 @@ export async function previewInvoice(
 
 export async function createBillingExportJob(
   body: BillingExportJobSpec,
-  signal?: AbortSignal,
+  signal?: AbortSignal
 ): Promise<BillingExportJobCreatedResponse> {
   return apiJson<BillingExportJobCreatedResponse>('/api/v1/billing/exports', {
     method: 'POST',
@@ -337,7 +305,7 @@ export async function createBillingExportJob(
 
 export async function getBillingExportJob(
   jobId: string,
-  signal?: AbortSignal,
+  signal?: AbortSignal
 ): Promise<BillingExportJob> {
   return apiJson<BillingExportJob>(`/api/v1/billing/exports/${encodeURIComponent(jobId)}`, {
     signal,
@@ -345,12 +313,11 @@ export async function getBillingExportJob(
 }
 
 export async function downloadBillingExportJob(jobId: string, signal?: AbortSignal): Promise<Blob> {
-  const response = await apiFetch(
-    `/api/v1/billing/exports/${encodeURIComponent(jobId)}/download`,
-    { signal },
-  );
+  const response = await apiFetch(`/api/v1/billing/exports/${encodeURIComponent(jobId)}/download`, {
+    signal,
+  });
   if (!response.ok) {
-    throw new ApiError(response.status, 'HTTP_ERROR', response.statusText || `HTTP ${response.status}`);
+    throw await parseApiError(response);
   }
   return response.blob();
 }

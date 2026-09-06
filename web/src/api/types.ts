@@ -23,28 +23,65 @@ export type {
   TaxProfile,
 };
 
+type OperationQuery<O extends keyof operations> = NonNullable<operations[O]['parameters']['query']>;
+
+type OperationJsonBody<O extends keyof operations> = operations[O] extends {
+  responses: {
+    200: {
+      content: {
+        'application/json': infer Body;
+      };
+    };
+  };
+}
+  ? Body
+  : operations[O] extends {
+        responses: {
+          201: {
+            content: {
+              'application/json': infer Body;
+            };
+          };
+        };
+      }
+    ? Body
+    : operations[O] extends {
+          responses: {
+            202: {
+              content: {
+                'application/json': infer Body;
+              };
+            };
+          };
+        }
+      ? Body
+      : never;
+
+type OperationJsonRequestBody<O extends keyof operations> = operations[O] extends {
+  requestBody?: {
+    content: {
+      'application/json': infer Body;
+    };
+  };
+}
+  ? Body
+  : never;
+
 export type CustomerListResponse = components['schemas']['CustomerListResponse'] & {
   freshness_label?: string;
 };
 
-export type CustomerListQuery = NonNullable<
-  operations['customersList']['parameters']['query']
->;
+export type CustomerListQuery = OperationQuery<'customersList'>;
 
 import type { CampaignListApiSortField } from '@/domains/campaigns/list/campaign_list_sort';
 
-export type CampaignListQuery = Omit<
-  NonNullable<operations['campaignsList']['parameters']['query']>,
-  'sort'
-> & {
+export type CampaignListQuery = Omit<OperationQuery<'campaignsList'>, 'sort'> & {
   sort?: CampaignListApiSortField;
   from?: string;
   to?: string;
 };
 
-export type CampaignListMetricsQuery = NonNullable<
-  operations['campaignsListMetrics']['parameters']['query']
->;
+export type CampaignListMetricsQuery = OperationQuery<'campaignsListMetrics'>;
 
 export type CampaignListMetricsRow = components['schemas']['CampaignListMetricsRow'];
 export type CampaignListMetricsBatchResponse =
@@ -52,9 +89,7 @@ export type CampaignListMetricsBatchResponse =
 
 export type CampaignStatusTotals = components['schemas']['CampaignStatusTotals'];
 
-export type InvoiceListQuery = NonNullable<
-  operations['billingListInvoices']['parameters']['query']
->;
+export type InvoiceListQuery = OperationQuery<'billingListInvoices'>;
 
 export type BillingStatement = components['schemas']['BillingStatement'];
 export type BillingForecast = components['schemas']['BillingForecast'];
@@ -64,39 +99,31 @@ export type PaymentSummary = components['schemas']['PaymentSummary'];
 export type PaymentHistoryRow = components['schemas']['PaymentHistoryRow'];
 export type BillingInvoiceLine = components['schemas']['BillingInvoiceLine'];
 export type BillingInvariant = components['schemas']['BillingInvariant'];
-export type BillingInvariantQuery = NonNullable<
-  operations['billingInvariant']['parameters']['query']
->;
+export type BillingInvariantQuery = OperationQuery<'billingInvariant'>;
 export type PreviewInvoiceRequest = components['schemas']['PreviewInvoiceRequest'];
 export type InvoicePreview = components['schemas']['InvoicePreview'];
 export type InvoiceDelivery = components['schemas']['InvoiceDelivery'];
 export type InvoiceDeliveryListResponse = components['schemas']['InvoiceDeliveryListResponse'];
 export type BillingLedgerLine = components['schemas']['BillingLedgerLine'];
 export type InvoiceLedgerLinesResponse = components['schemas']['InvoiceLedgerLinesResponse'];
-export type InvoiceLedgerLinesQuery = NonNullable<
-  operations['billingInvoiceLedgerLines']['parameters']['query']
->;
+export type InvoiceLedgerLinesQuery = OperationQuery<'billingInvoiceLedgerLines'>;
 export type BillingExportJobSpec = components['schemas']['BillingExportJobSpec'];
 export type BillingExportJob = components['schemas']['BillingExportJob'];
 export type BillingExportJobCreatedResponse =
   components['schemas']['BillingExportJobCreatedResponse'];
 
-export type CustomerPaymentsListQuery = NonNullable<
-  operations['billingCustomerPayments']['parameters']['query']
->;
+export type CustomerPaymentsListQuery = OperationQuery<'billingCustomerPayments'>;
 
 export type DoctorSummary = components['schemas']['DoctorSummary'];
 export type StackHealthSnapshot = components['schemas']['StackHealthSnapshot'];
 export type DashboardSummary = components['schemas']['DashboardSummary'];
 export type AuditLog = components['schemas']['AuditLog'];
-export type AuditListQuery = NonNullable<operations['auditList']['parameters']['query']>;
-export type AuditExportQuery = NonNullable<operations['auditExport']['parameters']['query']>;
+export type AuditListQuery = OperationQuery<'auditList'>;
+export type AuditExportQuery = OperationQuery<'auditExport'>;
 export type CustomerBalance = components['schemas']['CustomerBalance'];
 export type BalanceLedgerEntry = components['schemas']['BalanceLedgerEntry'];
 export type CustomerLedgerListResponse = components['schemas']['CustomerLedgerListResponse'];
-export type CustomerLedgerListQuery = NonNullable<
-  operations['billingCustomerLedger']['parameters']['query']
->;
+export type CustomerLedgerListQuery = OperationQuery<'billingCustomerLedger'>;
 export type ReportCatalogResponse = components['schemas']['ReportCatalogResponse'];
 export type ReportCatalogRow = components['schemas']['ReportCatalogRow'];
 export type ReportMapEnvelope = components['schemas']['ReportMapEnvelope'];
@@ -114,44 +141,20 @@ export type DLQInboxListResponse = components['schemas']['DLQInboxListResponse']
 export type DLQEntry = components['schemas']['DLQEntry'];
 export type DLQListResponse = components['schemas']['DLQListResponse'];
 export type ConsentRecord = components['schemas']['ConsentRecord'];
-export type FraudIntegration = {
-  campaign_id: string;
-  name?: string;
-  provider?: string;
-  configured?: boolean;
-  health_status?: string;
-  last_success_at?: string;
-  dlq_count?: number;
-  last_error?: string;
-};
+export type FraudIntegration = components['schemas']['FraudIntegration'];
 
-export type ReportRunQuery = {
+export type ReportRunQuery = Omit<OperationQuery<'reportConversionTypePayout'>, 'customer_id'> & {
   customer_id?: string;
-  from?: string;
-  to?: string;
-  campaign_id?: string;
   click_id?: string;
-  limit?: number;
-  offset?: number;
-  cursor?: string;
 };
 
-export type ClickLogReportQuery = {
-  customer_id: string;
-  from?: string;
-  to?: string;
-  campaign_id?: string;
-  click_id?: string;
-  cursor?: string;
-};
+export type ClickLogReportQuery = OperationQuery<'reportClickLog'>;
 
-export type DlqInboxListQuery = {
-  limit?: number;
-  cursor?: string;
+export type DlqInboxListQuery = OperationQuery<'opsListDlqInbox'> & {
   source?: string;
 };
 
-export type DlqListQuery = NonNullable<operations['opsListDlq']['parameters']['query']>;
+export type DlqListQuery = OperationQuery<'opsListDlq'>;
 
 export type MLManualLabel = components['schemas']['MLManualLabel'];
 export type FraudManualLabelRequest = components['schemas']['FraudManualLabelRequest'];
@@ -159,66 +162,32 @@ export type FraudManualLabelBulkRequest = components['schemas']['FraudManualLabe
 export type FraudManualLabelBulkResponse = components['schemas']['FraudManualLabelBulkResponse'];
 export type FraudPolicyPreset = components['schemas']['FraudPolicyPreset'];
 export type PatchFraudPolicyPresetRequest = components['schemas']['PatchFraudPolicyPresetRequest'];
-export type FraudOverrideRequest = {
-  campaign_id?: string;
-  ip?: string;
-  ip_hash?: string;
-};
+export type FraudOverrideRequest = components['schemas']['FraudOverrideRequest'];
 export type RoleDashboard = components['schemas']['RoleDashboard'];
-export type DashboardRole =
-  | 'buyer'
-  | 'adops'
-  | 'cfo'
-  | 'accountant'
-  | 'fraud'
-  | 'operator';
+export type DashboardRole = 'buyer' | 'adops' | 'cfo' | 'accountant' | 'fraud' | 'operator';
 
-export type DashboardQuery = {
-  customer_id: string;
-  campaign_id?: string;
-  from?: string;
-  to?: string;
-};
+export type DashboardQuery = OperationQuery<'dashboardBuyer'>;
 
-export type FraudLabelsQuery = {
-  customer_id: string;
-  limit?: number;
-  offset?: number;
-};
+export type CampaignDashboardQuery = OperationQuery<'dashboardCampaign'>;
+
+export type FraudLabelsQuery = OperationQuery<'listFraudLabels'>;
 
 export type FraudLabelsListResponse = components['schemas']['FraudLabelsListResponse'];
 
-export type FraudDecisionQuery = {
-  customer_id: string;
-  ip_hash: string;
-  campaign_id?: string;
-  hours?: number;
-};
+export type FraudDecisionQuery = OperationQuery<'getFraudDecision'>;
 
-export type TeamOverviewQuery = {
-  customer_id?: string;
-};
+export type TeamOverviewQuery = operations['teamOverview']['parameters']['query'];
 
-export type TeamBudgetApprovalsQuery = {
-  customer_id: string;
-  limit?: number;
-  offset?: number;
-};
+export type TeamBudgetApprovalsQuery = OperationQuery<'teamBudgetApprovalsList'>;
 
-export type TeamBudgetApprovalsListResponse = components['schemas']['TeamBudgetApprovalsListResponse'];
+export type TeamBudgetApprovalsListResponse =
+  components['schemas']['TeamBudgetApprovalsListResponse'];
 
-export type TeamMembersQuery = {
-  customer_id: string;
-  limit?: number;
-  offset?: number;
-};
+export type TeamMembersQuery = OperationQuery<'teamMembersList'>;
 
 export type TeamMembersListResponse = components['schemas']['TeamMembersListResponse'];
 
-export type OpsBlacklistListQuery = {
-  limit?: number;
-  offset?: number;
-};
+export type OpsBlacklistListQuery = OperationQuery<'opsListBlacklist'>;
 
 export type PlatformSettingsView = components['schemas']['PlatformSettingsView'];
 export type PlatformSettingsPatch = components['schemas']['PlatformSettingsPatch'];
@@ -240,28 +209,17 @@ export type IncidentSnapshot = components['schemas']['IncidentSnapshot'];
 export type OutboxListResponse = components['schemas']['OutboxListResponse'];
 export type OutboxEvent = components['schemas']['OutboxEvent'];
 export type ShardHealthStatus = components['schemas']['ShardHealthStatus'];
-export type OpsShardsResponse = {
-  emergency_breaker?: string;
-  shards?: ShardHealthStatus[];
-};
-export type OpsShardCatchupResponse = {
-  status?: string;
-};
+export type OpsShardsResponse = OperationJsonBody<'opsListShards'>;
+export type OpsShardCatchupResponse = OperationJsonBody<'opsShard0Catchup'>;
 export type DashboardMetrics = components['schemas']['DashboardMetrics'];
-export type DashboardMetricsQuery = NonNullable<
-  operations['opsDashboardMetrics']['parameters']['query']
->;
+export type DashboardMetricsQuery = OperationQuery<'opsDashboardMetrics'>;
 export type ReconRun = components['schemas']['ReconRun'];
-export type ReconListQuery = NonNullable<operations['reconListRuns']['parameters']['query']>;
+export type ReconListQuery = OperationQuery<'reconListRuns'>;
 
-export type OpsOutboxListQuery = {
-  limit?: number;
-  cursor?: string;
-};
+export type OpsOutboxListQuery = OperationQuery<'opsListOutbox'>;
 
 export type SelfServeCampaignTemplate = components['schemas']['SelfServeCampaignTemplate'];
-export type SelfServeTemplateListResponse =
-  components['schemas']['SelfServeTemplateListResponse'];
+export type SelfServeTemplateListResponse = components['schemas']['SelfServeTemplateListResponse'];
 export type SelfServeCreateCampaignRequest =
   components['schemas']['SelfServeCreateCampaignRequest'];
 
@@ -283,26 +241,36 @@ export type AssignCampaignOwnerRequest = components['schemas']['AssignCampaignOw
 export type CampaignExportBundle = components['schemas']['CampaignExportBundle'];
 export type CampaignEditorShell = components['schemas']['CampaignEditorShell'];
 
-export type PlacementBlockSuggestion = {
-  placement_id: string;
-  impressions?: number;
-  ivt_rate?: number;
-  ivt_rate_label?: string;
-  reason_label?: string;
-  suggested_action?: string;
-};
-
-export type PlacementBlockSuggestionsResponse = {
-  items: PlacementBlockSuggestion[];
-  campaign_id?: string;
-  from?: string;
-  to?: string;
-};
+export type PlacementBlockSuggestion = components['schemas']['PlacementBlockSuggestion'];
+export type PlacementBlockSuggestionsResponse =
+  components['schemas']['PlacementBlockSuggestionsResponse'];
 
 export type CampaignIntegrationPanel = components['schemas']['CampaignIntegrationPanel'];
+export type IntegrationHealthRow = components['schemas']['IntegrationHealthRow'];
 export type CampaignIntegrationHealth = components['schemas']['CampaignIntegrationHealth'];
 export type ApplyCampaignTemplatesRequest = components['schemas']['ApplyCampaignTemplatesRequest'];
 export type ApplyCampaignTemplatesResult = components['schemas']['ApplyCampaignTemplatesResult'];
+
+export type CampaignFlowPathError = components['schemas']['CampaignFlowPathError'];
+export type CampaignFlowValidateRequest = components['schemas']['CampaignFlowValidateRequest'];
+export type CampaignFlowValidateResponse = components['schemas']['CampaignFlowValidateResponse'];
+
+export type MacroPreviewRequest = components['schemas']['MacroPreviewRequest'];
+export type MacroPreviewResponse = components['schemas']['MacroPreviewResponse'];
+export type CloneCampaignOptions = components['schemas']['CloneCampaignOptions'];
+export type CloneCampaignRequest = components['schemas']['CloneCampaignRequest'];
+export type CloneCampaignPreview = components['schemas']['CloneCampaignPreview'];
+export type CloneCampaignResult = components['schemas']['CloneCampaignResult'];
+export type CampaignDiffRow = components['schemas']['CampaignDiffRow'];
+export type CampaignDiffResponse = components['schemas']['CampaignDiffResponse'];
+export type CampaignBulkActionRequest = components['schemas']['CampaignBulkActionRequest'];
+export type CampaignBulkAction = CampaignBulkActionRequest['action'];
+export type CampaignBulkActionResultRow = components['schemas']['CampaignBulkActionResultRow'];
+export type CampaignBulkActionResponse = components['schemas']['CampaignBulkActionResponse'];
+export type CampaignGeoSummary = components['schemas']['CampaignGeoSummary'];
+export type CampaignFraudEditorSummary = components['schemas']['CampaignFraudEditorSummary'];
+
+export type OpenRtbBidRequest = components['schemas']['OpenRtbBidRequest'];
 
 export type CampaignFraudConfig = components['schemas']['CampaignFraudConfig'];
 export type PatchCampaignFraudRequest = components['schemas']['PatchCampaignFraudRequest'];
@@ -310,21 +278,15 @@ export type PreviewCampaignFraudRequest = components['schemas']['PreviewCampaign
 export type CampaignFraudPreview = components['schemas']['CampaignFraudPreview'];
 
 export type CampaignStats = components['schemas']['CampaignStats'];
-export type CampaignStatsQuery = NonNullable<
-  operations['campaignsGetStats']['parameters']['query']
->;
+export type CampaignStatsQuery = OperationQuery<'campaignsGetStats'>;
 export type CampaignMargin = components['schemas']['CampaignMargin'];
 export type CampaignEventListResponse = components['schemas']['CampaignEventListResponse'];
-export type CampaignEventListQuery = NonNullable<
-  operations['campaignsListEvents']['parameters']['query']
->;
-export type ConversionMappingListResponse =
-  components['schemas']['ConversionMappingListResponse'];
+export type CampaignEventListQuery = OperationQuery<'campaignsListEvents'>;
+export type ConversionMappingListResponse = components['schemas']['ConversionMappingListResponse'];
 export type ConversionMapping = components['schemas']['ConversionMapping'];
 export type ReplaceConversionMappingsRequest =
   components['schemas']['ReplaceConversionMappingsRequest'];
-export type BlockCampaignPlacementRequest =
-  components['schemas']['BlockCampaignPlacementRequest'];
+export type BlockCampaignPlacementRequest = components['schemas']['BlockCampaignPlacementRequest'];
 export type CampaignSmokeResult = components['schemas']['CampaignSmokeResult'];
 
 export type CampaignWizardSession = components['schemas']['CampaignWizardSession'];
@@ -339,12 +301,8 @@ export type UpsertCostSyncCredentialRequest =
 export type CostSyncRun = components['schemas']['CostSyncRun'];
 export type RunCostSyncRequest = components['schemas']['RunCostSyncRequest'];
 export type RunCostSyncAcceptedResponse = components['schemas']['RunCostSyncAcceptedResponse'];
-export type CostSyncCredentialsQuery = NonNullable<
-  operations['costSyncListCredentials']['parameters']['query']
->;
-export type CostSyncHistoryQuery = NonNullable<
-  operations['costSyncListHistory']['parameters']['query']
->;
+export type CostSyncCredentialsQuery = OperationQuery<'costSyncListCredentials'>;
+export type CostSyncHistoryQuery = OperationQuery<'costSyncListHistory'>;
 
 export type PostbackConfig = components['schemas']['PostbackConfig'];
 export type UpdatePostbackConfigRequest = components['schemas']['UpdatePostbackConfigRequest'];
@@ -356,8 +314,7 @@ export type StatusOKResponse = components['schemas']['StatusOKResponse'];
 export type IntegrationSchema = components['schemas']['IntegrationSchema'];
 export type CreateIntegrationSchemaRequest =
   components['schemas']['CreateIntegrationSchemaRequest'];
-export type ApplyIntegrationSchemaRequest =
-  components['schemas']['ApplyIntegrationSchemaRequest'];
+export type ApplyIntegrationSchemaRequest = components['schemas']['ApplyIntegrationSchemaRequest'];
 export type ApplyIntegrationSchemaResponse =
   components['schemas']['ApplyIntegrationSchemaResponse'];
 export type IntegrationTemplateCatalogEntry =
@@ -371,9 +328,7 @@ export type UpsertPlatformCampaignLinkRequest =
 export type PlatformCampaignMutationRequest =
   components['schemas']['PlatformCampaignMutationRequest'];
 export type PlatformCampaignMutation = components['schemas']['PlatformCampaignMutation'];
-export type PlatformCampaignLinksQuery = NonNullable<
-  operations['platformCampaignsListLinks']['parameters']['query']
->;
+export type PlatformCampaignLinksQuery = OperationQuery<'platformCampaignsListLinks'>;
 export type PlatformCampaignSyncRunRequest =
   components['schemas']['PlatformCampaignSyncRunRequest'];
 
@@ -393,7 +348,7 @@ export type Brand = components['schemas']['Brand'];
 export type CreateBrandRequest = components['schemas']['CreateBrandRequest'];
 export type BrandCreative = components['schemas']['BrandCreative'];
 export type UpdateBrandCreativeRequest = components['schemas']['UpdateBrandCreativeRequest'];
-export type BrandsListQuery = NonNullable<operations['brandsList']['parameters']['query']>;
+export type BrandsListQuery = OperationQuery<'brandsList'>;
 export type DomainHealth = components['schemas']['DomainHealth'];
 export type AddDomainRequest = components['schemas']['AddDomainRequest'];
 export type ParkDomainRequest = components['schemas']['ParkDomainRequest'];
@@ -418,63 +373,46 @@ export type RtbReconcileExport = components['schemas']['RtbReconcileExport'];
 export type OpenRtbValidationResult = components['schemas']['OpenRtbValidationResult'];
 
 export type AutomationPreset = components['schemas']['AutomationPreset'];
+export type AutomationPresetParameter = components['schemas']['AutomationPresetParameter'];
 export type AutomationRule = components['schemas']['AutomationRule'];
 export type AutomationDryRunResult = components['schemas']['AutomationDryRunResult'];
 export type UpsertAutomationRuleRequest = components['schemas']['UpsertAutomationRuleRequest'];
-export type AutomationListRulesQuery = NonNullable<
-  operations['automationListRules']['parameters']['query']
->;
+export type AutomationListRulesQuery = OperationQuery<'automationListRules'>;
 
 export type TrafficOptimizerPreset = components['schemas']['TrafficOptimizerPreset'];
 export type TrafficOptimizerRule = components['schemas']['TrafficOptimizerRule'];
 export type TrafficOptimizerDryRunResult = components['schemas']['TrafficOptimizerDryRunResult'];
 export type UpsertTrafficOptimizerRuleRequest =
   components['schemas']['UpsertTrafficOptimizerRuleRequest'];
-export type TrafficOptimizerListRulesQuery = NonNullable<
-  operations['trafficOptimizerListRules']['parameters']['query']
->;
+export type TrafficOptimizerListRulesQuery = OperationQuery<'trafficOptimizerListRules'>;
 
 export type SmartAlertRule = components['schemas']['SmartAlertRule'];
 export type SmartAlertEvent = components['schemas']['SmartAlertEvent'];
 export type UpsertSmartAlertRuleRequest = components['schemas']['UpsertSmartAlertRuleRequest'];
-export type SmartAlertsListRulesQuery = NonNullable<
-  operations['smartAlertsListRules']['parameters']['query']
->;
-export type SmartAlertsListHistoryQuery = NonNullable<
-  operations['smartAlertsListHistory']['parameters']['query']
->;
+export type SmartAlertsListRulesQuery = OperationQuery<'smartAlertsListRules'>;
+export type SmartAlertsListHistoryQuery = OperationQuery<'smartAlertsListHistory'>;
 
 export type MarginGuardPolicy = components['schemas']['MarginGuardPolicy'];
 export type MarginGuardActivity = components['schemas']['MarginGuardActivity'];
 export type MarginGuardOverrideRequest = components['schemas']['MarginGuardOverrideRequest'];
-export type MarginGuardListPoliciesQuery = NonNullable<
-  operations['marginGuardListPolicies']['parameters']['query']
->;
-export type MarginGuardListActivityQuery = NonNullable<
-  operations['marginGuardListActivity']['parameters']['query']
->;
+export type MarginGuardListPoliciesQuery = OperationQuery<'marginGuardListPolicies'>;
+export type MarginGuardListActivityQuery = OperationQuery<'marginGuardListActivity'>;
 
 export type PublisherDashboard = components['schemas']['PublisherDashboard'];
 export type PublisherStatement = components['schemas']['PublisherStatement'];
 export type PublisherStatementListResponse =
   components['schemas']['PublisherStatementListResponse'];
-export type PublisherStatementsQuery = NonNullable<
-  operations['publisherStatements']['parameters']['query']
->;
+export type PublisherStatementsQuery = OperationQuery<'publisherStatements'>;
 
 export type ReportSchedule = components['schemas']['ReportSchedule'];
 export type CreateReportScheduleRequest = components['schemas']['CreateReportScheduleRequest'];
 export type UpdateReportScheduleRequest = components['schemas']['UpdateReportScheduleRequest'];
-export type ReportSchedulesListQuery = NonNullable<
-  operations['reportSchedulesList']['parameters']['query']
->;
+export type ReportSchedulesListQuery = OperationQuery<'reportSchedulesList'>;
 
 export type SavedView = components['schemas']['SavedView'];
 export type CreateSavedViewRequest = components['schemas']['CreateSavedViewRequest'];
 export type UpdateSavedViewRequest = components['schemas']['UpdateSavedViewRequest'];
-export type SavedViewsListQuery = NonNullable<
-  operations['listSavedViews']['parameters']['query']
->;
+export type SavedViewsListQuery = OperationQuery<'listSavedViews'>;
 
 export type TelegramBot = components['schemas']['TelegramBot'];
 export type TelegramPostback = components['schemas']['TelegramPostback'];
@@ -482,17 +420,13 @@ export type TelegramUpdatePostbackRequest = components['schemas']['TelegramUpdat
 export type TelegramDeeplink = components['schemas']['TelegramDeeplink'];
 export type TelegramValidateRequest = components['schemas']['TelegramValidateRequest'];
 export type TelegramValidateResult = components['schemas']['TelegramValidateResult'];
-export type TelegramListPostbacksQuery = NonNullable<
-  operations['telegramListPostbacks']['parameters']['query']
->;
+export type TelegramListPostbacksQuery = OperationQuery<'telegramListPostbacks'>;
 
 export type CampaignForecast = components['schemas']['CampaignForecast'];
 export type CampaignForecastRequest = components['schemas']['CampaignForecastRequest'];
 
 export type SelfServeInvoiceListResponse = components['schemas']['SelfServeInvoiceListResponse'];
-export type SelfServeInvoicesQuery = NonNullable<
-  operations['selfserveListInvoices']['parameters']['query']
->;
+export type SelfServeInvoicesQuery = OperationQuery<'selfserveListInvoices'>;
 export type CreatePaymentIntentRequest = components['schemas']['CreatePaymentIntentRequest'];
 export type PaymentIntentCreatedResponse = components['schemas']['PaymentIntentCreatedResponse'];
 export type CreateAPIKeyRequest = components['schemas']['CreateAPIKeyRequest'];
@@ -505,12 +439,8 @@ export type CommandPaletteRoutesResponse = components['schemas']['CommandPalette
 export type CommandPaletteRecentsResponse = components['schemas']['CommandPaletteRecentsResponse'];
 export type CommandPaletteRecordRecentRequest =
   components['schemas']['CommandPaletteRecordRecentRequest'];
-export type CommandPaletteSearchQuery = NonNullable<
-  operations['commandPaletteSearch']['parameters']['query']
->;
-export type CommandPaletteOpenRequest = {
-  source?: string;
-};
+export type CommandPaletteSearchQuery = OperationQuery<'commandPaletteSearch'>;
+export type CommandPaletteOpenRequest = OperationJsonRequestBody<'commandPaletteOpen'>;
 
 export type EulaStatus = components['schemas']['EulaStatus'];
 export type AcceptEulaRequest = components['schemas']['AcceptEulaRequest'];
@@ -519,7 +449,7 @@ export type ApplyLicenseRequest = components['schemas']['ApplyLicenseRequest'];
 export type MetaResponse = components['schemas']['MetaResponse'];
 export type DisputeRow = components['schemas']['DisputeRow'];
 export type DisputeListResponse = components['schemas']['DisputeListResponse'];
-export type DisputeListQuery = NonNullable<operations['disputesList']['parameters']['query']>;
+export type DisputeListQuery = OperationQuery<'disputesList'>;
 export type SupportFeedbackMeta = components['schemas']['SupportFeedbackMeta'];
 export type CreateSupportFeedbackRequest = components['schemas']['SupportFeedbackRequest'];
 export type SupportFeedbackResponse = components['schemas']['SupportFeedbackResponse'];
@@ -552,44 +482,19 @@ export type IntegrationSnapshot = {
   templates: IntegrationTemplateCatalogEntry[];
 };
 
-/**
- * Auth wire types mirror internal/control/http/http_auth.go.
- * Login routes are not fully described in api/openapi yet; keep aligned with handler DTOs.
- */
-export type AuthLoginRequest = {
-  email: string;
-  password: string;
-};
+export type AuthLoginRequest = components['schemas']['AuthLoginRequest'];
+export type AuthUser = components['schemas']['SessionBootstrapUser'];
+export type AuthLoginResponse = components['schemas']['PublicLoginResponse'];
+export type AuthRefreshResponse = components['schemas']['AuthRefreshResponse'];
+export type PublicActivateRequest = components['schemas']['PublicActivateRequest'];
+export type PublicAcceptInviteRequest = components['schemas']['PublicAcceptInviteRequest'];
+export type PublicLoginResponse = components['schemas']['PublicLoginResponse'];
 
-export type AuthUser = {
-  id: string;
-  email?: string;
-  role: string;
-  customer_id: string;
-  permissions?: string[];
-};
-
-export type AuthLoginResponse = {
-  user: AuthUser;
-};
-
-/** Mirrors api/openapi/components/schemas/platform.yaml until bundle regen includes public auth schemas. */
-export type PublicActivateRequest = {
-  license_token: string;
-  email: string;
-  password: string;
-  team_name: string;
-};
-
-export type PublicAcceptInviteRequest = {
-  token: string;
-  password: string;
-};
-
-export type PublicLoginResponse = {
-  user: AuthUser;
-};
-
-export type AuthRefreshResponse = {
-  status: string;
-};
+export type OpsMlModelStatusResponse = OperationJsonBody<'opsMlModelStatus'>;
+export type OpsMlModelEvalResponse = OperationJsonBody<'opsMlModelEval'>;
+export type OpsDomainRotationResponse = OperationJsonBody<'opsDomainRotation'>;
+export type OpsTlsAllowedListResponse = OperationJsonBody<'opsTlsAllowedList'>;
+export type OpsTlsAllowedHostResponse = OperationJsonBody<'opsTlsAllowedHost'>;
+export type OpsConsentProofsResponse = OperationJsonBody<'opsConsentProofs'>;
+export type OpsRumResponse = OperationJsonBody<'opsRum'>;
+export type TelegramReportExportResponse = OperationJsonBody<'reportTelegramExport'>;

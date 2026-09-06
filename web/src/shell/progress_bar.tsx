@@ -1,3 +1,5 @@
+import { cn } from '@/lib/utils';
+
 export type ProgressBarProps = {
   label: string;
   valuePct: number;
@@ -9,8 +11,8 @@ export function ProgressBar({ label, valuePct, className, showValue = true }: Pr
   const clamped = Math.max(0, Math.min(100, valuePct));
 
   return (
-    <div className={className}>
-      <div className="mb-1.5 flex items-center justify-between gap-2 text-[13px] leading-[18px]">
+    <div className={cn('flex flex-col gap-1.5', className)}>
+      <div className="flex items-center justify-between gap-2 text-[13px] leading-[18px]">
         <span className="font-medium text-foreground">{label}</span>
         {showValue ? (
           <span className="font-semibold text-foreground tabular-nums">{clamped.toFixed(0)}%</span>

@@ -1,4 +1,10 @@
-import { useCallback, useEffect, useRef, type PointerEvent as ReactPointerEvent, type RefObject } from 'react';
+import {
+  useCallback,
+  useEffect,
+  useRef,
+  type PointerEvent as ReactPointerEvent,
+  type RefObject,
+} from 'react';
 
 type ResizeState<T extends string> = {
   columnId: T;
@@ -11,11 +17,13 @@ function sumColumnWidthsPx<T extends string>(
   columns: readonly T[],
   widths: Readonly<Record<T, number>>,
   minWidthPx: (columnId: T) => number,
-  override?: { columnId: T; widthPx: number },
+  override?: { columnId: T; widthPx: number }
 ): number {
   return columns.reduce((sum, columnId) => {
     const widthPx =
-      override?.columnId === columnId ? override.widthPx : widths[columnId] ?? minWidthPx(columnId);
+      override?.columnId === columnId
+        ? override.widthPx
+        : (widths[columnId] ?? minWidthPx(columnId));
     return sum + widthPx;
   }, 0);
 }
@@ -25,7 +33,7 @@ function applyTableColumnWidths<T extends string>(
   columns: readonly T[],
   widths: Readonly<Record<T, number>>,
   minWidthPx: (columnId: T) => number,
-  override?: { columnId: T; widthPx: number },
+  override?: { columnId: T; widthPx: number }
 ): number {
   const totalWidthPx = sumColumnWidthsPx(columns, widths, minWidthPx, override);
   columns.forEach((columnId, index) => {
@@ -34,7 +42,9 @@ function applyTableColumnWidths<T extends string>(
       return;
     }
     const widthPx =
-      override?.columnId === columnId ? override.widthPx : widths[columnId] ?? minWidthPx(columnId);
+      override?.columnId === columnId
+        ? override.widthPx
+        : (widths[columnId] ?? minWidthPx(columnId));
     col.style.width = `${widthPx}px`;
   });
   return totalWidthPx;
@@ -81,7 +91,7 @@ export function useDirectoryColumnResize<T extends string>({
       };
       draftWidthRef.current = startWidth;
     },
-    [columnWidths, columns, minWidthPx],
+    [columnWidths, columns, minWidthPx]
   );
 
   useEffect(() => {
@@ -94,9 +104,7 @@ export function useDirectoryColumnResize<T extends string>({
       }
       const widthPx = clampUserWidth(
         state.columnId,
-        draftWidthRef.current ??
-          columnWidths[state.columnId] ??
-          minWidthPx(state.columnId),
+        draftWidthRef.current ?? columnWidths[state.columnId] ?? minWidthPx(state.columnId)
       );
       onColumnWidthCommit(state.columnId, widthPx);
       resizeRef.current = null;
@@ -136,7 +144,15 @@ export function useDirectoryColumnResize<T extends string>({
       window.removeEventListener('pointerup', onPointerUp);
       window.removeEventListener('pointercancel', onPointerUp);
     };
-  }, [clampUserWidth, colgroupRef, columnWidths, columns, minWidthPx, onColumnWidthCommit, tableRef]);
+  }, [
+    clampUserWidth,
+    colgroupRef,
+    columnWidths,
+    columns,
+    minWidthPx,
+    onColumnWidthCommit,
+    tableRef,
+  ]);
 
   return { startResize };
 }

@@ -13,21 +13,21 @@ export type PlatformCampaignLinkFormProps = {
   draftDailyBudgetMicro: string;
   saving: boolean;
   deleting: boolean;
-    refreshing: boolean;
-    syncing: boolean;
-    pausing: boolean;
+  refreshing: boolean;
+  syncing: boolean;
+  pausing: boolean;
   resuming: boolean;
   settingBudget: boolean;
   saveError: Error | undefined;
   deleteError: Error | undefined;
-    refreshError: Error | undefined;
-    syncError: Error | undefined;
-    mutationError: Error | undefined;
+  refreshError: Error | undefined;
+  syncError: Error | undefined;
+  mutationError: Error | undefined;
   saveSuccess: boolean;
   deleteSuccess: boolean;
-    refreshSuccess: boolean;
-    syncSuccess: boolean;
-    mutationResult: PlatformCampaignMutation | undefined;
+  refreshSuccess: boolean;
+  syncSuccess: boolean;
+  mutationResult: PlatformCampaignMutation | undefined;
   onDraftCampaignIdChange: (value: string) => void;
   onDraftNetworkChange: (value: string) => void;
   onDraftExternalCampaignIdChange: (value: string) => void;
@@ -35,9 +35,9 @@ export type PlatformCampaignLinkFormProps = {
   onDraftDailyBudgetMicroChange: (value: string) => void;
   onSave: () => void;
   onDelete: () => void;
-    onRefresh: () => void;
-    onSyncRun: () => void;
-    onPause: () => void;
+  onRefresh: () => void;
+  onSyncRun: () => void;
+  onPause: () => void;
   onResume: () => void;
   onSetBudget: () => void;
 };
@@ -51,21 +51,21 @@ export function PlatformCampaignLinkForm({
   draftDailyBudgetMicro,
   saving,
   deleting,
-    refreshing,
-    syncing,
-    pausing,
+  refreshing,
+  syncing,
+  pausing,
   resuming,
   settingBudget,
   saveError,
   deleteError,
-    refreshError,
-    syncError,
-    mutationError,
+  refreshError,
+  syncError,
+  mutationError,
   saveSuccess,
   deleteSuccess,
-    refreshSuccess,
-    syncSuccess,
-    mutationResult,
+  refreshSuccess,
+  syncSuccess,
+  mutationResult,
   onDraftCampaignIdChange,
   onDraftNetworkChange,
   onDraftExternalCampaignIdChange,
@@ -73,9 +73,9 @@ export function PlatformCampaignLinkForm({
   onDraftDailyBudgetMicroChange,
   onSave,
   onDelete,
-    onRefresh,
-    onSyncRun,
-    onPause,
+  onRefresh,
+  onSyncRun,
+  onPause,
   onResume,
   onSetBudget,
 }: PlatformCampaignLinkFormProps) {
@@ -87,8 +87,7 @@ export function PlatformCampaignLinkForm({
   const canLinkAction =
     !disabled && draftCampaignId.trim().length > 0 && draftNetwork.trim().length > 0;
   const canMutate = canLinkAction;
-  const canSetBudget =
-    canMutate && draftDailyBudgetMicro.trim().length > 0;
+  const canSetBudget = canMutate && draftDailyBudgetMicro.trim().length > 0;
 
   const canSyncRun = !disabled && draftCampaignId.trim().length > 0;
 
@@ -176,12 +175,7 @@ export function PlatformCampaignLinkForm({
         >
           {syncing ? 'Syncing...' : 'Run platform sync'}
         </Button>
-        <Button
-          disabled={pausing || !canMutate}
-          onClick={onPause}
-          type="button"
-          variant="outline"
-        >
+        <Button disabled={pausing || !canMutate} onClick={onPause} type="button" variant="outline">
           {pausing ? 'Pausing...' : 'Pause campaign'}
         </Button>
         <Button

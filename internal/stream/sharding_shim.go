@@ -16,9 +16,3 @@ func NewStaticSlotSharder(numBuckets int) *StaticSlotSharder {
 func NewJumpHashSharder(numBuckets int) *JumpHashSharder {
 	return domain.NewJumpHashSharder(numBuckets)
 }
-
-type slotTable = domain.SlotTable
-
-func buildSlotTable(numBuckets int) *slotTable {
-	return domain.BuildSlotTable(numBuckets)
-}

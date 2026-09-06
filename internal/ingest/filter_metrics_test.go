@@ -22,6 +22,7 @@ func TestGeoFilter_lookupErrorIncrementsCounter(t *testing.T) {
 	t.Cleanup(func() { cachedMockCamp.Store(nil) })
 
 	f := NewGeoFilter(errGeoProvider{}, &mockRegistry{})
+	f.SetGeoFailClosed(false)
 	err := f.Check(context.Background(), &domain.Event{IP: "8.8.8.8", CampaignID: campID})
 	require.NoError(t, err)
 	require.Equal(t, before+1, testutil.ToFloat64(filterGeoLookupErrors))

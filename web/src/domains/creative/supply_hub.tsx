@@ -1,9 +1,6 @@
 import { Link } from 'react-router-dom';
 
-import {
-  SUPPLY_PREVIEW_ADS_TXT_PATH,
-  SUPPLY_PREVIEW_SELLERS_JSON_PATH,
-} from '@/api/supply_api';
+import { SUPPLY_PREVIEW_ADS_TXT_PATH, SUPPLY_PREVIEW_SELLERS_JSON_PATH } from '@/api/supply_api';
 import { PageChrome } from '@/shell/page_chrome';
 import { EmptyState } from '@/shell/empty_state';
 import { PageSkeleton } from '@/shell/page_skeleton';
@@ -16,12 +13,7 @@ import {
   TableHeader,
   TableRow,
 } from '@/shell/directory_table';
-import type {
-  AdsTxtEntry,
-  Seller,
-  SupplyExportPath,
-  SupplyValidation,
-} from '@/api/types';
+import type { AdsTxtEntry, Seller, SupplyExportPath, SupplyValidation } from '@/api/types';
 import { CreativeNav, creativePanelError } from '@/domains/creative/creative_nav';
 
 export type SupplyHubProps = {
@@ -64,12 +56,22 @@ export function SupplyHub({
         <h2 className="text-base font-semibold">Server previews</h2>
         <ul className="list-inside list-disc text-sm">
           <li>
-            <a className="underline" href={SUPPLY_PREVIEW_SELLERS_JSON_PATH} target="_blank" rel="noreferrer">
+            <a
+              className="underline"
+              href={SUPPLY_PREVIEW_SELLERS_JSON_PATH}
+              target="_blank"
+              rel="noreferrer"
+            >
               sellers.json preview
             </a>
           </li>
           <li>
-            <a className="underline" href={SUPPLY_PREVIEW_ADS_TXT_PATH} target="_blank" rel="noreferrer">
+            <a
+              className="underline"
+              href={SUPPLY_PREVIEW_ADS_TXT_PATH}
+              target="_blank"
+              rel="noreferrer"
+            >
               ads.txt preview
             </a>
           </li>
@@ -111,25 +113,25 @@ export function SupplyHub({
           <EmptyState title="No sellers" description="Supply sellers table is empty." />
         ) : (
           <DirectoryTable>
-              <TableHeader>
-                <TableRow>
-                  <DirectoryTableHead>Seller ID</DirectoryTableHead>
-                  <DirectoryTableHead>Domain</DirectoryTableHead>
-                  <DirectoryTableHead>Type</DirectoryTableHead>
-                  <DirectoryTableHead>Name</DirectoryTableHead>
+            <TableHeader>
+              <TableRow>
+                <DirectoryTableHead>Seller ID</DirectoryTableHead>
+                <DirectoryTableHead>Domain</DirectoryTableHead>
+                <DirectoryTableHead>Type</DirectoryTableHead>
+                <DirectoryTableHead>Name</DirectoryTableHead>
+              </TableRow>
+            </TableHeader>
+            <TableBody>
+              {sellers.map((row) => (
+                <TableRow key={row.id}>
+                  <TableCell className="font-mono text-xs">{row.seller_id}</TableCell>
+                  <TableCell>{row.domain}</TableCell>
+                  <TableCell>{row.seller_type}</TableCell>
+                  <TableCell>{row.name}</TableCell>
                 </TableRow>
-              </TableHeader>
-              <TableBody>
-                {sellers.map((row) => (
-                  <TableRow key={row.id}>
-                    <TableCell className="font-mono text-xs">{row.seller_id}</TableCell>
-                    <TableCell>{row.domain}</TableCell>
-                    <TableCell>{row.seller_type}</TableCell>
-                    <TableCell>{row.name}</TableCell>
-                  </TableRow>
-                ))}
-              </TableBody>
-            </DirectoryTable>
+              ))}
+            </TableBody>
+          </DirectoryTable>
         )}
       </section>
 
@@ -139,25 +141,25 @@ export function SupplyHub({
           <EmptyState title="No ads.txt rows" description="Supply ads.txt table is empty." />
         ) : (
           <DirectoryTable>
-              <TableHeader>
-                <TableRow>
-                  <DirectoryTableHead>Domain</DirectoryTableHead>
-                  <DirectoryTableHead>Account</DirectoryTableHead>
-                  <DirectoryTableHead>Relationship</DirectoryTableHead>
-                  <DirectoryTableHead>Order</DirectoryTableHead>
+            <TableHeader>
+              <TableRow>
+                <DirectoryTableHead>Domain</DirectoryTableHead>
+                <DirectoryTableHead>Account</DirectoryTableHead>
+                <DirectoryTableHead>Relationship</DirectoryTableHead>
+                <DirectoryTableHead>Order</DirectoryTableHead>
+              </TableRow>
+            </TableHeader>
+            <TableBody>
+              {adsTxt.map((row) => (
+                <TableRow key={row.id}>
+                  <TableCell>{row.domain}</TableCell>
+                  <TableCell className="font-mono text-xs">{row.publisher_account_id}</TableCell>
+                  <TableCell>{row.relationship}</TableCell>
+                  <TableCell>{row.sort_order}</TableCell>
                 </TableRow>
-              </TableHeader>
-              <TableBody>
-                {adsTxt.map((row) => (
-                  <TableRow key={row.id}>
-                    <TableCell>{row.domain}</TableCell>
-                    <TableCell className="font-mono text-xs">{row.publisher_account_id}</TableCell>
-                    <TableCell>{row.relationship}</TableCell>
-                    <TableCell>{row.sort_order}</TableCell>
-                  </TableRow>
-                ))}
-              </TableBody>
-            </DirectoryTable>
+              ))}
+            </TableBody>
+          </DirectoryTable>
         )}
       </section>
 

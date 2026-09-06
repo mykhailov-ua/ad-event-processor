@@ -5,8 +5,11 @@ import { deriveColumns, reportMapRowKey } from './report_table.ts';
 
 test('deriveColumns unions keys across rows', () => {
   assert.deepEqual(
-    deriveColumns([{ b: 1, a: 2 }, { c: 3, a: 4 }]),
-    ['a', 'b', 'c'],
+    deriveColumns([
+      { b: 1, a: 2 },
+      { c: 3, a: 4 },
+    ]),
+    ['a', 'b', 'c']
   );
 });
 

@@ -1,3 +1,5 @@
+// L3 dashboard page: URL searchParams are applied filters; draft* mirrors controls until commitFilters.
+// GET /dashboards/{role} requires customer_id; 403 clears error when licenseGated (StubBanner path).
 import { useCallback, useEffect, useMemo, useState } from 'react';
 import { useNavigate, useParams, useSearchParams } from 'react-router-dom';
 
@@ -15,7 +17,10 @@ import { dashboardPresetRange } from '@/lib/dashboard_range';
 import { defaultReportRange } from '@/lib/report_paths';
 import { fromDatetimeLocalValue, toDatetimeLocalValue } from '@/lib/datetime_range';
 
-function resolveDefaultRole(sessionRole: string | undefined, paramRole: string | undefined): DashboardRole {
+function resolveDefaultRole(
+  sessionRole: string | undefined,
+  paramRole: string | undefined
+): DashboardRole {
   const normalized = (paramRole ?? sessionRole ?? 'buyer').toLowerCase();
   if (isDashboardRole(normalized)) {
     return normalized;
@@ -33,8 +38,7 @@ export function useDashboardPage() {
   const defaultRange = useMemo(() => defaultReportRange('7d'), []);
   const role = resolveDefaultRole(session?.role, roleParam);
 
-  const appliedCustomerId =
-    searchParams.get('customer_id') ?? session?.default_customer_id ?? '';
+  const appliedCustomerId = searchParams.get('customer_id') ?? session?.default_customer_id ?? '';
   const appliedCampaignId = searchParams.get('campaign_id') ?? '';
   const appliedFrom = searchParams.get('from') ?? defaultRange.from;
   const appliedTo = searchParams.get('to') ?? defaultRange.to;
@@ -46,10 +50,7 @@ export function useDashboardPage() {
   const [draftTo, setDraftTo] = useState(toDatetimeLocalValue(appliedTo));
   const [rangePreset, setRangePreset] = useState<DashboardRangePreset>('7d');
 
-  const { data: customersData } = useResource(
-    (signal) => fetchCustomersComboboxCached(signal),
-    [],
-  );
+  const { data: customersData } = useResource((signal) => fetchCustomersComboboxCached(signal), []);
 
   const customerOptions = useMemo((): CustomerComboboxOption[] => {
     return (customersData?.items ?? [])
@@ -68,7 +69,7 @@ export function useDashboardPage() {
       }
       return listCampaigns({ customer_id: customerId, limit: 200, offset: 0 }, signal);
     },
-    [appliedCustomerId],
+    [appliedCustomerId]
   );
 
   const campaignOptions = useMemo(() => {
@@ -104,10 +105,10 @@ export function useDashboardPage() {
           from: appliedFrom,
           to: appliedTo,
         },
-        signal,
+        signal
       );
     },
-    [appliedCampaignId, appliedCustomerId, appliedFrom, appliedTo, refreshToken, role, shouldFetch],
+    [appliedCampaignId, appliedCustomerId, appliedFrom, appliedTo, refreshToken, role, shouldFetch]
   );
 
   const licenseGated = error instanceof ApiError && error.status === 403;
@@ -137,7 +138,7 @@ export function useDashboardPage() {
       params.set('to', next.to);
       setSearchParams(params, { replace: true });
     },
-    [draftRole, navigate, roleParam, setSearchParams],
+    [draftRole, navigate, roleParam, setSearchParams]
   );
 
   const onRefresh = useCoalescedBumpRefresh(bumpRefresh, fetching);
@@ -161,7 +162,7 @@ export function useDashboardPage() {
         to: toIso,
       });
     },
-    [commitFilters, draftCampaignId, draftCustomerId],
+    [commitFilters, draftCampaignId, draftCustomerId]
   );
 
   const onRangePresetChange = useCallback(
@@ -186,7 +187,7 @@ export function useDashboardPage() {
         nextRole: draftRole,
       });
     },
-    [commitFilters, draftCampaignId, draftCustomerId, draftRole],
+    [commitFilters, draftCampaignId, draftCustomerId, draftRole]
   );
 
   const onDraftFromChange = useCallback(
@@ -204,7 +205,15 @@ export function useDashboardPage() {
         nextRole: draftRole,
       });
     },
-    [commitFilters, defaultRange.from, defaultRange.to, draftCampaignId, draftCustomerId, draftRole, draftTo],
+    [
+      commitFilters,
+      defaultRange.from,
+      defaultRange.to,
+      draftCampaignId,
+      draftCustomerId,
+      draftRole,
+      draftTo,
+    ]
   );
 
   const onDraftToChange = useCallback(
@@ -222,7 +231,15 @@ export function useDashboardPage() {
         nextRole: draftRole,
       });
     },
-    [commitFilters, defaultRange.from, defaultRange.to, draftCampaignId, draftCustomerId, draftFrom, draftRole],
+    [
+      commitFilters,
+      defaultRange.from,
+      defaultRange.to,
+      draftCampaignId,
+      draftCustomerId,
+      draftFrom,
+      draftRole,
+    ]
   );
 
   const onDraftCampaignIdChange = useCallback(
@@ -238,7 +255,7 @@ export function useDashboardPage() {
         to: fromDatetimeLocalValue(draftTo) ?? defaultRange.to,
       });
     },
-    [commitFilters, defaultRange.from, defaultRange.to, draftCustomerId, draftFrom, draftTo],
+    [commitFilters, defaultRange.from, defaultRange.to, draftCustomerId, draftFrom, draftTo]
   );
 
   const onDraftCustomerIdChange = useCallback(
@@ -252,7 +269,7 @@ export function useDashboardPage() {
         to: fromDatetimeLocalValue(draftTo) ?? defaultRange.to,
       });
     },
-    [commitFilters, defaultRange.from, defaultRange.to, draftFrom, draftTo],
+    [commitFilters, defaultRange.from, defaultRange.to, draftFrom, draftTo]
   );
 
   const onDraftRoleChange = useCallback(
@@ -274,7 +291,7 @@ export function useDashboardPage() {
       draftCustomerId,
       draftFrom,
       draftTo,
-    ],
+    ]
   );
 
   const clickLogHref = useMemo(() => {

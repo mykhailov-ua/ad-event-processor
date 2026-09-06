@@ -1,4 +1,5 @@
-import { useEffect, useState } from 'react';
+import { useState } from 'react';
+import { useRunWhenTrue } from '@/hooks/use_run_when_true';
 import { Link } from 'react-router-dom';
 
 import { PrimaryActionButton } from '@/shell/action_buttons';
@@ -59,11 +60,7 @@ export function LandersDirectory({
 }: LandersDirectoryProps) {
   const [createOpen, setCreateOpen] = useState(false);
 
-  useEffect(() => {
-    if (createSuccess) {
-      setCreateOpen(false);
-    }
-  }, [createSuccess]);
+  useRunWhenTrue(createSuccess, () => setCreateOpen(false));
 
   if (fetching && !hasSnapshot && !error) {
     return <PageSkeleton variant="directory" columns={4} />;
@@ -138,35 +135,37 @@ export function LandersDirectory({
           />
         ) : (
           <DirectoryTable horizontalScroll>
-              <TableHeader>
-                <TableRow>
-                  <DirectoryTableHead>Name</DirectoryTableHead>
-                  <DirectoryTableHead>URL</DirectoryTableHead>
-                  <DirectoryTableHead>Hosted</DirectoryTableHead>
-                  <DirectoryTableHead>Created</DirectoryTableHead>
+            <TableHeader>
+              <TableRow>
+                <DirectoryTableHead>Name</DirectoryTableHead>
+                <DirectoryTableHead>URL</DirectoryTableHead>
+                <DirectoryTableHead>Hosted</DirectoryTableHead>
+                <DirectoryTableHead>Created</DirectoryTableHead>
+              </TableRow>
+            </TableHeader>
+            <TableBody>
+              {(items ?? []).map((row) => (
+                <TableRow key={row.id}>
+                  <TableCell>
+                    {row.hosted_asset_id ? (
+                      <Link className="hover:underline" to={`/landers/${row.id}/editor`}>
+                        {row.name}
+                      </Link>
+                    ) : (
+                      row.name
+                    )}
+                  </TableCell>
+                  <TableCell className="whitespace-nowrap">
+                    {row.url ?? row.hosted_url ?? ''}
+                  </TableCell>
+                  <TableCell>
+                    {row.hosted_asset_id ? <Badge variant="outline">hosted</Badge> : ''}
+                  </TableCell>
+                  <TableCell className="tabular-nums">{displayTimestamp(row.created_at)}</TableCell>
                 </TableRow>
-              </TableHeader>
-              <TableBody>
-                {(items ?? []).map((row) => (
-                  <TableRow key={row.id}>
-                    <TableCell>
-                      {row.hosted_asset_id ? (
-                        <Link className="hover:underline" to={`/landers/${row.id}/editor`}>
-                          {row.name}
-                        </Link>
-                      ) : (
-                        row.name
-                      )}
-                    </TableCell>
-                    <TableCell className="whitespace-nowrap">{row.url ?? row.hosted_url ?? ''}</TableCell>
-                    <TableCell>
-                      {row.hosted_asset_id ? <Badge variant="outline">hosted</Badge> : ''}
-                    </TableCell>
-                    <TableCell className="tabular-nums">{displayTimestamp(row.created_at)}</TableCell>
-                  </TableRow>
-                ))}
-              </TableBody>
-            </DirectoryTable>
+              ))}
+            </TableBody>
+          </DirectoryTable>
         )}
       </div>
 

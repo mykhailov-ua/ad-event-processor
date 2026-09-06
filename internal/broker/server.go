@@ -42,7 +42,7 @@ var fetchRespPool = sync.Pool{
 	},
 }
 
-// Server: gnet event loop + mmap partition logs (pkg/broker/log). diskGate blocks Append when
+// Server runs gnet event loop and mmap partition logs (pkg/broker/log). diskGate blocks Append when
 // dataDir is not writable; coord gates Produce to Redis-elected leader per topic partition.
 type Server struct {
 	*gnet.BuiltinEventEngine
@@ -439,7 +439,7 @@ func (s *Server) isAdmissionShedding() bool {
 	return s.connCount.Load() >= threshold
 }
 
-// OnTraffic: length-prefixed broker frames on gnet; malformed length closes conn (DoS guard).
+// OnTraffic handles length-prefixed broker frames on gnet; malformed length closes conn (DoS guard).
 func (s *Server) OnTraffic(c gnet.Conn) gnet.Action {
 	ctx := s.ensureConnState(c)
 	if s.connMaxLifetimeExceeded(ctx) {

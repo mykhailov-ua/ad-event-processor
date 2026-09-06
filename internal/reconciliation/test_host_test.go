@@ -165,7 +165,7 @@ func applyPendingReconciliationAdjusts(ctx context.Context, host Host, pool *pgx
 		if err := applier.Apply(ctx, id, payload); err != nil {
 			return err
 		}
-		_, err = pool.Exec(ctx, `UPDATE outbox_events SET status = 'PROCESSED', processed_at = NOW() WHERE id = $1`, id)
+		_, err = pool.Exec(ctx, `UPDATE outbox_events SET status = 'PROCESSED', processing_started_at = NULL WHERE id = $1`, id)
 		if err != nil {
 			return err
 		}

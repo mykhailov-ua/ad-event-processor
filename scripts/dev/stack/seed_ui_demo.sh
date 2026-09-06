@@ -39,7 +39,7 @@ fi
 SEED_UI_DEMO_COUNT="${SEED_UI_DEMO_COUNT:-50}"
 
 if [[ -x "$ROOT/scripts/test/load/seed_ingest_only_campaigns.sh" ]]; then
-  campaign_count="$(docker exec ad-event-processor-db-1 psql -h localhost -p 5430 -U ad_event_processor_user -d ad_event_processor -tAc 'SELECT count(*) FROM campaigns;' 2>/dev/null || echo 0)"
+  campaign_count="$(docker exec ad-event-processor-db-1 psql -h localhost -p 5430 -U ad_event_processor_user -d ad_event_processor -tAc 'SELECT count(*) FROM campaigns;' 2> /dev/null || echo 0)"
   if [[ "${campaign_count:-0}" -lt "${SEED_UI_DEMO_COUNT}" ]]; then
     log "ensuring base campaigns exist (found ${campaign_count:-0}, need ${SEED_UI_DEMO_COUNT})"
     SEED_INGEST_CAMPAIGN_COUNT="${SEED_UI_DEMO_COUNT}" bash "$ROOT/scripts/test/load/seed_ingest_only_campaigns.sh"

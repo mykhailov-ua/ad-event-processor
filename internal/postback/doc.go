@@ -2,7 +2,7 @@
 //
 // Role:
 //   - postback_sender_worker.go claims SEND_POSTBACK outbox rows and dispatches HTTP to Facebook, TikTok, Google,
-//     Taboola, Outbrain, Microsoft, native S2S, and webhook providers.
+//     Taboola, Outbrain, Microsoft, native S2S, and webhook providers; ProcessBatch uses postbackBatchTimeout (2 min).
 //   - macro_engine.go expands click macros; conversion_outbox.go enqueues post-settlement conversion events.
 //   - conversion_reject.go filters conversions before outbox enqueue; conversion_reject_clickhouse.go writes reject
 //     analytics rows for operator replay.

@@ -13,7 +13,7 @@ export type CampaignBulkActionResult = {
 async function runInChunks<T>(
   ids: string[],
   chunkSize: number,
-  runner: (chunk: string[]) => Promise<T>,
+  runner: (chunk: string[]) => Promise<T>
 ): Promise<T[]> {
   const results: T[] = [];
   for (let offset = 0; offset < ids.length; offset += chunkSize) {
@@ -24,14 +24,14 @@ async function runInChunks<T>(
 
 async function bulkCampaignActionChunked(
   action: CampaignBulkAction,
-  campaignIds: string[],
+  campaignIds: string[]
 ): Promise<CampaignBulkActionResult> {
   if (campaignIds.length === 0) {
     return { succeeded: [], failed: [] };
   }
 
   const chunkResults = await runInChunks(campaignIds, CAMPAIGN_LIST_BULK_CHUNK_SIZE, (chunk) =>
-    bulkCampaignAction({ action, campaign_ids: chunk }),
+    bulkCampaignAction({ action, campaign_ids: chunk })
   );
 
   const succeeded: string[] = [];
@@ -50,7 +50,7 @@ async function bulkCampaignActionChunked(
 
 export async function bulkPauseOrResumeCampaigns(
   action: Extract<CampaignBulkAction, 'pause' | 'resume'>,
-  campaignIds: string[],
+  campaignIds: string[]
 ): Promise<CampaignBulkActionResult> {
   return bulkCampaignActionChunked(action, campaignIds);
 }

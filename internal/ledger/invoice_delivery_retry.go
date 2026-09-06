@@ -23,7 +23,7 @@ func (s *Service) RetryInvoiceDelivery(ctx context.Context, inv *domain.Invoice,
 	var notifID string
 	err := s.pool.QueryRow(ctx, `
 		SELECT id::text
-		FROM notify.notifications
+		FROM notifier.notifications
 		WHERE dedup_key = $1 AND status = 'FAILED'
 		ORDER BY created_at DESC
 		LIMIT 1`, dedupKey).Scan(&notifID)
@@ -35,7 +35,7 @@ func (s *Service) RetryInvoiceDelivery(ctx context.Context, inv *domain.Invoice,
 	}
 
 	tag, err := s.pool.Exec(ctx, `
-		UPDATE notify.notifications
+		UPDATE notifier.notifications
 		SET status = 'PENDING',
 		 retry_count = 0,
 		 error_message = NULL,

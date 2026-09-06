@@ -10,7 +10,14 @@ import {
   OpsPageShell,
 } from '@/domains/ops/ops_page_shell';
 import { OpsStatusChip } from '@/domains/ops/ops_status';
-import { OpsBlock, OpsTable, OpsTableCell, OpsTableHead, OpsTableHeaderRow, OpsTableRow } from '@/domains/ops/ops_table';
+import {
+  OpsBlock,
+  OpsTable,
+  OpsTableCell,
+  OpsTableHead,
+  OpsTableHeaderRow,
+  OpsTableRow,
+} from '@/domains/ops/ops_table';
 import { displayTimestamp } from '@/lib/display';
 
 export type OpsHomeProps = {
@@ -53,11 +60,7 @@ export function OpsHome({
 
   if (error && !hasSnapshot) {
     return (
-      <OpsPageBlockingError
-        error={error}
-        pageTitle="Ops"
-        title="Could not load ops snapshot"
-      />
+      <OpsPageBlockingError error={error} pageTitle="Ops" title="Could not load ops snapshot" />
     );
   }
 
@@ -81,12 +84,7 @@ export function OpsHome({
       title="Ops"
       actions={
         <OpsActionGroup label="Support">
-          <Button
-            type="button"
-            variant="outline"
-            disabled={reloadingRoles}
-            onClick={onReloadRoles}
-          >
+          <Button type="button" variant="outline" disabled={reloadingRoles} onClick={onReloadRoles}>
             {reloadingRoles ? 'Reloading...' : 'Reload roles'}
           </Button>
           <Button
@@ -114,7 +112,10 @@ export function OpsHome({
 
       <OpsStatGrid>
         <OpsStatPanel status={stackHealth.status} title="Stack health">
-          <OpsKvRow label="ClickHouse lag" value={formatSeconds(stackHealth.clickhouse_lag_seconds)} />
+          <OpsKvRow
+            label="ClickHouse lag"
+            value={formatSeconds(stackHealth.clickhouse_lag_seconds)}
+          />
           <OpsKvRow
             label="Outbox oldest pending"
             value={formatSeconds(stackHealth.outbox_oldest_pending_seconds)}
@@ -138,7 +139,7 @@ export function OpsHome({
               label="Generated"
               value={displayTimestamp(
                 dashboardSummary.generated_at,
-                dashboardSummary.generated_at_display,
+                dashboardSummary.generated_at_display
               )}
             />
           ) : null}
@@ -195,6 +196,7 @@ export function OpsHome({
           <p className="text-muted-foreground">No doctor checks returned.</p>
         ) : (
           <OpsTable
+            horizontalScroll
             head={
               <OpsTableHeaderRow>
                 <OpsTableHead>Check</OpsTableHead>
@@ -212,9 +214,7 @@ export function OpsHome({
                   <OpsStatusChip status={check.status} />
                 </OpsTableCell>
                 <OpsTableCell>{check.message ?? ''}</OpsTableCell>
-                <OpsTableCell className="text-muted-foreground">
-                  {check.hint ?? ''}
-                </OpsTableCell>
+                <OpsTableCell className="text-muted-foreground">{check.hint ?? ''}</OpsTableCell>
                 <OpsTableCell numeric>
                   {check.latency_ms != null ? `${check.latency_ms} ms` : ''}
                 </OpsTableCell>

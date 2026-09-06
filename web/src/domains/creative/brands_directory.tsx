@@ -1,4 +1,5 @@
-import { useEffect, useState } from 'react';
+import { useState } from 'react';
+import { useRunWhenTrue } from '@/hooks/use_run_when_true';
 import { Link } from 'react-router-dom';
 
 import { PrimaryActionButton } from '@/shell/action_buttons';
@@ -63,11 +64,7 @@ export function BrandsDirectory({
 }: BrandsDirectoryProps) {
   const [createOpen, setCreateOpen] = useState(false);
 
-  useEffect(() => {
-    if (createSuccess) {
-      setCreateOpen(false);
-    }
-  }, [createSuccess]);
+  useRunWhenTrue(createSuccess, () => setCreateOpen(false));
 
   if (!appliedCustomerId) {
     return (
@@ -79,10 +76,7 @@ export function BrandsDirectory({
           onApply={onApplyCustomerScope}
           onDraftCustomerIdChange={onDraftCustomerIdChange}
         />
-        <EmptyState
-          title="Customer required"
-          description="Apply a customer ID to list brands."
-        />
+        <EmptyState title="Customer required" description="Apply a customer ID to list brands." />
       </PageChrome>
     );
   }
@@ -128,41 +122,41 @@ export function BrandsDirectory({
 
       {onCreateBrand ? (
         <Dialog onOpenChange={setCreateOpen} open={createOpen}>
-            <DialogContent className="max-w-md">
-              <DialogHeader>
-                <DialogTitle>Create brand</DialogTitle>
-              </DialogHeader>
-              <div className="grid gap-2">
-                <Label htmlFor="brand-create-name">Brand name</Label>
-                <Input
-                  id="brand-create-name"
-                  value={draftBrandName}
-                  onChange={(event) => onDraftBrandNameChange?.(event.target.value)}
-                />
-              </div>
-              {createError ? (
-                <div>{creativePanelError(createError, 'Could not create brand')}</div>
-              ) : null}
-              <DialogFooter>
-                <PrimaryActionButton loading={creating} onClick={onCreateBrand} type="button">
-                  Create brand
-                </PrimaryActionButton>
-              </DialogFooter>
-            </DialogContent>
-          </Dialog>
+          <DialogContent className="max-w-md">
+            <DialogHeader>
+              <DialogTitle>Create brand</DialogTitle>
+            </DialogHeader>
+            <div className="grid gap-2">
+              <Label htmlFor="brand-create-name">Brand name</Label>
+              <Input
+                id="brand-create-name"
+                value={draftBrandName}
+                onChange={(event) => onDraftBrandNameChange?.(event.target.value)}
+              />
+            </div>
+            {createError ? (
+              <div>{creativePanelError(createError, 'Could not create brand')}</div>
+            ) : null}
+            <DialogFooter>
+              <PrimaryActionButton loading={creating} onClick={onCreateBrand} type="button">
+                Create brand
+              </PrimaryActionButton>
+            </DialogFooter>
+          </DialogContent>
+        </Dialog>
       ) : null}
 
       <div aria-atomic="true" aria-live="polite">
-      {(items ?? []).length === 0 ? (
-        <EmptyState
-          variant="blank-slate"
-          title="No brands"
-          description="Create a brand to organize creatives for this customer."
-          actionLabel={onCreateBrand ? 'Create brand' : undefined}
-          onAction={onCreateBrand ? () => setCreateOpen(true) : undefined}
-        />
-      ) : (
-        <DirectoryTable>
+        {(items ?? []).length === 0 ? (
+          <EmptyState
+            variant="blank-slate"
+            title="No brands"
+            description="Create a brand to organize creatives for this customer."
+            actionLabel={onCreateBrand ? 'Create brand' : undefined}
+            onAction={onCreateBrand ? () => setCreateOpen(true) : undefined}
+          />
+        ) : (
+          <DirectoryTable>
             <TableHeader>
               <TableRow>
                 <DirectoryTableHead>Name</DirectoryTableHead>
@@ -190,7 +184,7 @@ export function BrandsDirectory({
               ))}
             </TableBody>
           </DirectoryTable>
-      )}
+        )}
       </div>
 
       {error && hasSnapshot ? creativePanelError(error, 'Refresh failed') : null}

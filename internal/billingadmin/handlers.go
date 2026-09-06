@@ -1144,14 +1144,14 @@ type InvariantDTO struct {
 }
 
 type SummaryDTO struct {
-	InvoicedMTDMicro                      int64  `json:"invoiced_mtd_micro"`
-	InvoicedMTDDisplay                    string `json:"invoiced_mtd_display,omitempty"`
-	InvoiceCountMTD                       int64  `json:"invoice_count_mtd"`
-	InvoiceCountMTDDisplay                string `json:"invoice_count_mtd_display,omitempty"`
-	UndeliveredInvoiceNotifications       int64  `json:"undelivered_invoice_notifications"`
+	InvoicedMTDMicro                       int64  `json:"invoiced_mtd_micro"`
+	InvoicedMTDDisplay                     string `json:"invoiced_mtd_display,omitempty"`
+	InvoiceCountMTD                        int64  `json:"invoice_count_mtd"`
+	InvoiceCountMTDDisplay                 string `json:"invoice_count_mtd_display,omitempty"`
+	UndeliveredInvoiceNotifications        int64  `json:"undelivered_invoice_notifications"`
 	UndeliveredInvoiceNotificationsDisplay string `json:"undelivered_invoice_notifications_display,omitempty"`
-	CustomersWithSpendInMonth             int64  `json:"customers_with_spend_in_month"`
-	CustomersWithSpendInMonthDisplay      string `json:"customers_with_spend_in_month_display,omitempty"`
+	CustomersWithSpendInMonth              int64  `json:"customers_with_spend_in_month"`
+	CustomersWithSpendInMonthDisplay       string `json:"customers_with_spend_in_month_display,omitempty"`
 }
 
 type DeliveryDTO struct {
@@ -1508,7 +1508,7 @@ func (s *CompositeReadService) GetSummary(ctx context.Context) (SummaryDTO, erro
 	var undelivered int64
 	err = s.pool.QueryRow(ctx, `
 		SELECT COUNT(*)::bigint
-		FROM notify.notifications
+		FROM notifier.notifications
 		WHERE template_id = 'invoice_monthly' AND status NOT IN ('SENT')`).Scan(&undelivered)
 	if err != nil {
 		return SummaryDTO{}, err
@@ -1533,7 +1533,7 @@ func (s *CompositeReadService) ListDeliveries(ctx context.Context, invoiceID str
 	dedupKey := "invoice:" + invoiceID
 	rows, err := s.pool.Query(ctx, `
 		SELECT id, status::text, provider::text, recipient, template_id, error_message, retry_count, created_at, updated_at
-		FROM notify.notifications
+		FROM notifier.notifications
 		WHERE dedup_key = $1
 		ORDER BY created_at DESC`, dedupKey)
 	if err != nil {

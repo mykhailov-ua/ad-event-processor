@@ -10,7 +10,12 @@ import {
   CAMPAIGN_LIST_WIDTHS_100_BUDGET,
 } from '@/lib/perf/budgets';
 import { buildLargeCampaignListFixture } from '@/lib/perf/fixtures/campaign_list_large';
-import { assertPerfBudget, formatBenchResult, runPerfBudget, type BenchResult } from '@/lib/perf/measure';
+import {
+  assertPerfBudget,
+  formatBenchResult,
+  runPerfBudget,
+  type BenchResult,
+} from '@/lib/perf/measure';
 
 export function benchCampaignListHotPath(): BenchResult[] {
   const fixture100 = buildLargeCampaignListFixture(100);
@@ -25,7 +30,7 @@ export function benchCampaignListHotPath(): BenchResult[] {
         marginsById: {},
         customerNameById: fixture100.customerNameById,
       });
-    }),
+    })
   );
 
   results.push(
@@ -37,10 +42,10 @@ export function benchCampaignListHotPath(): BenchResult[] {
           undefined,
           fixture100.customerNameById,
           {},
-          false,
+          false
         );
       }
-    }),
+    })
   );
 
   const prefs = defaultCampaignListColumnPrefs();
@@ -52,7 +57,7 @@ export function benchCampaignListHotPath(): BenchResult[] {
         draft = moveDataColumn(draft, 'clicks', 'impressions');
         draft = moveDataColumn(draft, 'impressions', 'clicks');
       }
-    }),
+    })
   );
 
   return results;

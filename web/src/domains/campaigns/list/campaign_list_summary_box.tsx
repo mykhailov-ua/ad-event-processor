@@ -1,4 +1,7 @@
-import { formatTableCount, formatTableMoneyFromMicro } from '@/domains/campaigns/list/campaign_list_format';
+import {
+  formatTableCount,
+  formatTableMoneyFromMicro,
+} from '@/domains/campaigns/list/campaign_list_format';
 import type { CampaignListSummary } from '@/domains/campaigns/list/campaign_list_summary';
 import { CAMPAIGN_LIST_FILTER_TOTALS_MAX } from '@/domains/campaigns/list/campaign_list_limits';
 import { cn } from '@/lib/utils';
@@ -37,7 +40,7 @@ export function CampaignListSummaryBox({
     <div
       className={cn(
         'inline-flex max-w-full flex-wrap items-center gap-2 rounded-md border border-border bg-card px-2.5 py-1 text-card-foreground',
-        className,
+        className
       )}
     >
       <p className="m-0 whitespace-nowrap text-xs leading-[16px] text-muted-foreground">
@@ -61,7 +64,9 @@ export function CampaignListSummaryBox({
         <>
           <SummaryDivider />
           <span className="shrink-0 text-[11px] text-muted-foreground">
-            {summary.scope === 'filter' ? 'Filtered totals may be stale' : `Stale stats: ${summary.staleCount}`}
+            {summary.scope === 'filter'
+              ? 'Filtered totals may be stale'
+              : `Stale stats: ${summary.staleCount}`}
           </span>
         </>
       ) : null}
@@ -69,15 +74,17 @@ export function CampaignListSummaryBox({
         <>
           <SummaryDivider />
           <span className="shrink-0 text-[11px] text-muted-foreground">
-            Filter totals unavailable above {CAMPAIGN_LIST_FILTER_TOTALS_MAX.toLocaleString()} campaigns (
-            {filteredTotal.toLocaleString()} matched)
+            Filter totals unavailable above {CAMPAIGN_LIST_FILTER_TOTALS_MAX.toLocaleString()}{' '}
+            campaigns ({filteredTotal.toLocaleString()} matched)
           </span>
         </>
       ) : null}
       {metricsStale && !filterTotalsCapped && summary.staleCount === 0 ? (
         <>
           <SummaryDivider />
-          <span className="shrink-0 text-[11px] italic text-muted-foreground">Page metrics may be stale</span>
+          <span className="shrink-0 text-[11px] italic text-muted-foreground">
+            Page metrics may be stale
+          </span>
         </>
       ) : null}
     </div>

@@ -31,7 +31,7 @@ func newTrackProcessor(filterEngine *FilterEngine, registry domain.CampaignRegis
 }
 
 // processTrack runs synchronously on a Tier B pinned worker (LockOSThread). Caller must
-// tryAcquireStreamAdmission (TryReserve) before debit and publishAcceptedTrack after accept;
+// tryAcquireStreamAdmission (TryReserve) before debit and TrackPublishDeps.PublishAcceptedOrRollback after accept;
 // this file owns filter + landing only, not stream enqueue.
 func processTrack(ctx context.Context, p trackProcessor, evt *domain.Event, deviceType []byte) trackOutcome {
 	slot := uint32(0)

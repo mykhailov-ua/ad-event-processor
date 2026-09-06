@@ -10,7 +10,7 @@ export type CampaignListFacetOwnerInput = {
 
 export function buildCampaignListCountryOptions(
   countries: readonly string[],
-  appliedCountry?: string,
+  appliedCountry?: string
 ): CampaignsListFilterOption[] {
   const codes = new Set<string>();
   for (const code of countries) {
@@ -32,7 +32,7 @@ export function buildCampaignListCountryOptions(
 
 export function buildCampaignListOwnerOptions(
   owners: readonly CampaignListFacetOwnerInput[],
-  appliedOwnerUserId?: string,
+  appliedOwnerUserId?: string
 ): CampaignsListFilterOption[] {
   const options: CampaignsListFilterOption[] = [{ value: ALL_OWNERS_VALUE, label: 'All owners' }];
   const seen = new Set<string>([ALL_OWNERS_VALUE]);
@@ -57,7 +57,7 @@ export function buildCampaignListOwnerOptions(
 }
 
 export function buildCampaignListOwnerEmailById(
-  owners: readonly CampaignListFacetOwnerInput[],
+  owners: readonly CampaignListFacetOwnerInput[]
 ): Record<string, string> {
   const map: Record<string, string> = {};
   for (const owner of owners) {

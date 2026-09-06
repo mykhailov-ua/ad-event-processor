@@ -22,7 +22,7 @@ const (
 	LocalQuantaLive   uint32 = 2
 )
 
-// LocalQuantaCell: one open-addressed slot in the fixed 4096-cell ledger. campaignHash tags the
+// LocalQuantaCell is one open-addressed slot in the fixed 4096-cell ledger. campaignHash tags the
 // occupant; remaining is micro-units debited locally before async stream/refill reconciles Redis.
 type LocalQuantaCell struct {
 	campaignHash uint32
@@ -34,7 +34,7 @@ type LocalQuantaCell struct {
 	_            [localQuantaCacheLine - 8 - 8 - 8 - 8 - 16]byte
 }
 
-// LocalQuantaLedger: per-tracker in-memory budget chunks. Refill via local-quota-refill.lua;
+// LocalQuantaLedger is the per-tracker in-memory budget chunks. Refill via local-quota-refill.lua;
 // post-debit rollback and pause/shutdown flush via local-quota-return.lua (see local_quanta_refill.go).
 type LocalQuantaLedger struct {
 	cells [localQuantaSlotCount]LocalQuantaCell
@@ -122,7 +122,7 @@ func (l *LocalQuantaLedger) TrySpendLocal(id uuid.UUID, amountMicro int64) bool 
 	return l.TrySpendDebit(id, 0, amountMicro)
 }
 
-// TrySpendDebit: hot-path local debit; false when cell empty or hash mismatch (triggers refill Signal).
+// TrySpendDebit performs hot-path local debit; false when cell empty or hash mismatch (triggers refill Signal).
 func (l *LocalQuantaLedger) TrySpendDebit(id uuid.UUID, subSlot int, amountMicro int64) bool {
 	if amountMicro <= 0 {
 		return true
@@ -161,7 +161,7 @@ func (l *LocalQuantaLedger) CreditDebit(id uuid.UUID, subSlot int, amountMicro, 
 	cell.remaining.Add(amountMicro)
 }
 
-// NeedsRefill: true when remaining < thresholdPct of chunkSize; QuotaRefillWorker polls on Signal.
+// NeedsRefill reports true when remaining is below thresholdPct of chunkSize; QuotaRefillWorker polls on Signal.
 func (l *LocalQuantaLedger) NeedsRefill(id uuid.UUID, thresholdPct int) bool {
 	cell, h := l.cellFor(id)
 	if cell.campaignHash != h || cell.chunkSize <= 0 {

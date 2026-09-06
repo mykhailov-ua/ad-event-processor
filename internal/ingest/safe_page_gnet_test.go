@@ -15,8 +15,10 @@ import (
 
 func TestClickRedirectGnet_forceSafeInPlace(t *testing.T) {
 	cid := uuid.New()
+	brandID := uuid.New()
 	lockStaticCampaign(func(c *domain.Campaign) {
 		c.ID = cid
+		c.BrandID = &brandID
 		c.SafePageEnabled = true
 		c.SafePageURL = "https://safe.example/white"
 	})
@@ -24,7 +26,8 @@ func TestClickRedirectGnet_forceSafeInPlace(t *testing.T) {
 
 	cfg := &config.Config{MaxRequestBodySize: 1 << 20}
 	engine := NewFilterEngine(0, &countingFilter{})
-	h := NewAdsPacketHandler(cfg, &mockRegistry{}, engine, nil, nil, NewJumpHashSharder(1), "fraud-stream", nil)
+	store := clickHookBrandStore(t, brandID)
+	h := NewAdsPacketHandler(cfg, &mockRegistry{}, engine, nil, nil, NewJumpHashSharder(1), "fraud-stream", store)
 
 	path := "/click?campaign_id=" + cid.String() + "&type=click&gclid=GCLID1"
 	_, conn := ServeGnetHarness(h, BuildGnetHTTP("GET", path, map[string]string{

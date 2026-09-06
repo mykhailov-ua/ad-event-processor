@@ -1,3 +1,5 @@
+// L3 campaign editor load: GET campaign + flow; campaignSnapshot tracks post-mutation state separate from useResource data.
+// Auto publish-check once when status is PAUSED (autoPublishCheckDone ref resets on id change).
 import { useEffect, useMemo, useRef, useState } from 'react';
 import { useParams } from 'react-router-dom';
 
@@ -11,9 +13,7 @@ export type UseCampaignEditorLoadArgs = {
   syncFormFromCampaign: (campaign: Campaign) => void;
 };
 
-export function useCampaignEditorLoad({
-  syncFormFromCampaign,
-}: UseCampaignEditorLoadArgs) {
+export function useCampaignEditorLoad({ syncFormFromCampaign }: UseCampaignEditorLoadArgs) {
   const { id } = useParams<{ id: string }>();
   const [campaignSnapshot, setCampaignSnapshot] = useState<Campaign | undefined>(undefined);
   const [checking, setChecking] = useState(false);
@@ -28,7 +28,7 @@ export function useCampaignEditorLoad({
       }
       return getCampaign(id, signal);
     },
-    [id],
+    [id]
   );
 
   const flowId = (campaignSnapshot ?? data)?.flow_id?.trim() ?? '';
@@ -40,7 +40,7 @@ export function useCampaignEditorLoad({
       }
       return getFlow(flowId, signal);
     },
-    [flowId],
+    [flowId]
   );
 
   useEffect(() => {

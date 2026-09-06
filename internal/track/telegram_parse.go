@@ -183,11 +183,6 @@ func AppendUUIDStr(dst []byte, u uuid.UUID) []byte {
 	return append(dst, buf[:]...)
 }
 
-const (
-	telegramPathClick      = "/tg/click"
-	telegramPathImpression = "/tg/impression"
-)
-
 var (
 	RespTelegram204 = []byte("HTTP/1.1 204 No Content\r\nContent-Length: 0\r\nConnection: keep-alive\r\n\r\n")
 	RespTelegram400 = []byte("HTTP/1.1 400 Bad Request\r\nContent-Length: 15\r\nContent-Type: text/plain\r\nConnection: keep-alive\r\n\r\nInvalid Request")
@@ -512,15 +507,15 @@ func DispatchTelegramRedirectMacro(base []byte, i int) (TelegramRedirectMacroID,
 	return telegramRedirectMacroNone, i
 }
 
-func ExpandTelegramRedirectMacros(dst, base []byte, ClickID, BridgeToken string, Subs [5]string) []byte {
-	clickB := filter.UnsafeBytes(ClickID)
-	bridgeB := filter.UnsafeBytes(BridgeToken)
+func ExpandTelegramRedirectMacros(dst, base []byte, clickID, bridgeToken string, subs [5]string) []byte {
+	clickB := filter.UnsafeBytes(clickID)
+	bridgeB := filter.UnsafeBytes(bridgeToken)
 	subB := [5][]byte{
-		filter.UnsafeBytes(Subs[0]),
-		filter.UnsafeBytes(Subs[1]),
-		filter.UnsafeBytes(Subs[2]),
-		filter.UnsafeBytes(Subs[3]),
-		filter.UnsafeBytes(Subs[4]),
+		filter.UnsafeBytes(subs[0]),
+		filter.UnsafeBytes(subs[1]),
+		filter.UnsafeBytes(subs[2]),
+		filter.UnsafeBytes(subs[3]),
+		filter.UnsafeBytes(subs[4]),
 	}
 
 	n := len(base)
@@ -567,16 +562,16 @@ func ExpandTelegramRedirectMacros(dst, base []byte, ClickID, BridgeToken string,
 	return dst
 }
 
-func BuildTelegramRedirectLocation(dst, base []byte, ClickID, BridgeToken string, Subs [5]string, Passthrough []byte) ([]byte, bool) {
+func BuildTelegramRedirectLocation(dst, base []byte, clickID, bridgeToken string, subs [5]string, passthrough []byte) ([]byte, bool) {
 	if !RedirectBaseValid(base) {
 		return dst, false
 	}
 	dst = dst[:0]
-	dst = ExpandTelegramRedirectMacros(dst, base, ClickID, BridgeToken, Subs)
+	dst = ExpandTelegramRedirectMacros(dst, base, clickID, bridgeToken, subs)
 	if len(dst) > maxRedirectLocation {
 		return dst, false
 	}
-	if len(Passthrough) == 0 {
+	if len(passthrough) == 0 {
 		return dst, true
 	}
 	sep := byte('?')
@@ -586,15 +581,15 @@ func BuildTelegramRedirectLocation(dst, base []byte, ClickID, BridgeToken string
 			break
 		}
 	}
-	if len(dst)+1+len(Passthrough) > maxRedirectLocation {
+	if len(dst)+1+len(passthrough) > maxRedirectLocation {
 		return dst, false
 	}
 	dst = append(dst, sep)
-	dst = append(dst, Passthrough...)
+	dst = append(dst, passthrough...)
 	return dst, true
 }
 
-func AppendTelegramClickLink(dst []byte, baseURL string, CampaignID, ClickID uuid.UUID, WidgetID []byte) []byte {
+func AppendTelegramClickLink(dst []byte, baseURL string, campaignID, clickID uuid.UUID, widgetID []byte) []byte {
 	dst = append(dst, baseURL...)
 	sep := byte('?')
 	for i := range len(dst) {
@@ -605,12 +600,12 @@ func AppendTelegramClickLink(dst []byte, baseURL string, CampaignID, ClickID uui
 	}
 	dst = append(dst, sep)
 	dst = append(dst, "campaign_id="...)
-	dst = AppendUUIDStr(dst, CampaignID)
+	dst = AppendUUIDStr(dst, campaignID)
 	dst = append(dst, "&click_id="...)
-	dst = AppendUUIDStr(dst, ClickID)
-	if len(WidgetID) > 0 {
+	dst = AppendUUIDStr(dst, clickID)
+	if len(widgetID) > 0 {
 		dst = append(dst, "&widget_id="...)
-		dst = append(dst, WidgetID...)
+		dst = append(dst, widgetID...)
 	}
 	return dst
 }
