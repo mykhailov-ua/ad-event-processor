@@ -95,7 +95,7 @@ export function CampaignEditorShell({
       aside={pathsAside}
       asideClassName="sticky top-0 max-h-full gap-4 border-l border-border p-4 lg:pl-6"
       description={`ID: ${campaignId}`}
-      mainClassName="min-w-0 gap-8"
+      mainClassName="min-w-0"
       workspaceClassName="min-h-0 flex-1 px-5 py-4"
       headerActions={
         <>

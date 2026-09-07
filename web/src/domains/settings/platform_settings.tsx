@@ -4,6 +4,7 @@ import { PrimaryActionButton } from '@/shell/action_buttons';
 import { ErrorBlock } from '@/shell/error_block';
 import { FilterField } from '@/shell/filter_panel';
 import { PageChrome } from '@/shell/page_chrome';
+import { PageSectionStack } from '@/shell/page_layout';
 import { PageSkeleton } from '@/shell/page_skeleton';
 import { Badge } from '@/components/ui/badge';
 import { Input } from '@/components/ui/input';
@@ -116,7 +117,7 @@ export function PlatformSettings({
         </div>
       }
     >
-      <div className="grid min-h-0 flex-1 auto-rows-max gap-3">
+      <PageSectionStack className="min-h-0 flex-1 auto-rows-max">
         {showBootstrap ? (
           <SettingsCard title="Initial setup">
             <SettingsFormStack
@@ -306,7 +307,7 @@ export function PlatformSettings({
         {error && hasSnapshot ? (
           <ErrorBlock title="Refresh failed" message={error.message} />
         ) : null}
-      </div>
+      </PageSectionStack>
     </PageChrome>
   );
 }

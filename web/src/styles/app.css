@@ -208,6 +208,22 @@
   .ui-code-block {
     @apply ui-scrollbar rounded-md border border-border bg-muted p-4 font-mono text-xs leading-relaxed text-foreground;
   }
+
+  /* Sonner: bottom-right stack; close control on the right, always visible. */
+  .toaster[data-sonner-toaster] {
+    --toast-close-button-start: unset;
+    --toast-close-button-end: 0.75rem;
+    --toast-close-button-transform: translate(0, 0.75rem);
+    pointer-events: none;
+  }
+
+  .toaster[data-sonner-toaster] [data-sonner-toast] {
+    pointer-events: auto;
+  }
+
+  .toaster[data-sonner-toaster] [data-sonner-toast] [data-close-button] {
+    opacity: 1;
+  }
 }
 
 @layer utilities {

@@ -6,6 +6,7 @@ import { ErrorBlock } from '@/shell/error_block';
 import { StubBanner } from '@/shell/stub_banner';
 import type { CloneCampaignOptions } from '@/api/campaigns_api';
 import { adminKit } from '@/lib/admin_kit';
+import { pageSectionStackClass } from '@/shell/page_layout';
 import { cn } from '@/lib/utils';
 
 /** Bordered editor/wizard section card. */
@@ -20,7 +21,7 @@ export const campaignEditorInsetPanelClass = cn(
   adminKit.panelRadius
 );
 
-export const campaignEditorWizardRootClass = 'grid gap-6';
+export const campaignEditorWizardRootClass = pageSectionStackClass;
 
 export const campaignEditorActionsRowClass = 'flex flex-wrap justify-end gap-2';
 

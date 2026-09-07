@@ -1,7 +1,6 @@
 import type { ReactNode } from 'react';
 
 import { PageLayout } from '@/shell/page_layout';
-import { cn } from '@/lib/utils';
 
 export type PageChromeProps = {
   title: ReactNode;
@@ -36,7 +35,7 @@ export function PageChrome({
       description={description}
       footer={footer}
       headerActions={actions}
-      mainClassName={cn('gap-4', mainClassName)}
+      mainClassName={mainClassName}
       title={title}
       workspaceClassName={workspaceClassName}
     >
