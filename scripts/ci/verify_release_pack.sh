@@ -83,4 +83,29 @@ if ! echo "$LIST" | grep -q 'install.sh'; then
   exit 1
 fi
 
+if ! echo "$LIST" | grep -q 'TESTER_QUICKSTART.md'; then
+  echo "verify_release_pack: missing TESTER_QUICKSTART.md in $TARBALL" >&2
+  exit 1
+fi
+
+if ! echo "$LIST" | grep -q 'deploy/compose/scripts/init-run-volume.sh'; then
+  echo "verify_release_pack: missing deploy/compose/scripts/init-run-volume.sh in $TARBALL" >&2
+  exit 1
+fi
+
+if ! echo "$LIST" | grep -q 'bin/broker'; then
+  echo "verify_release_pack: missing bin/broker in $TARBALL" >&2
+  exit 1
+fi
+
+if ! echo "$LIST" | grep -q 'scripts/lib/ci_artifacts.sh'; then
+  echo "verify_release_pack: missing scripts/lib/ci_artifacts.sh in $TARBALL" >&2
+  exit 1
+fi
+
+if ! echo "$LIST" | grep -q 'scripts/lib/safe_paths.sh'; then
+  echo "verify_release_pack: missing scripts/lib/safe_paths.sh in $TARBALL" >&2
+  exit 1
+fi
+
 echo "verify_release_pack: OK ($TARBALL)"

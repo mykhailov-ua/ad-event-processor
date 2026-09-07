@@ -24,7 +24,7 @@ export const OpsMetricsSnapshotMeta = memo(function OpsMetricsSnapshotMeta({
   }
 
   return (
-    <p className="text-muted-foreground">
+    <p className="mb-3 text-muted-foreground">
       Range {metrics.range ?? draftRange} / bucket {metrics.bucket_sec ?? ''}s / generated{' '}
       {displayTimestamp(metrics.generated_at)}
     </p>

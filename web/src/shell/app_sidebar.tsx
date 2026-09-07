@@ -30,9 +30,9 @@ function AppSidebarBrand() {
     <div className="flex shrink-0 items-center gap-2 px-3 py-3">
       <span
         aria-hidden
-        className="inline-flex h-7 w-7 shrink-0 items-center justify-center rounded-md bg-primary"
+        className="inline-flex h-7 w-7 shrink-0 items-center justify-center rounded-md bg-primary text-primary-foreground"
       >
-        <span className="h-3 w-3 rounded-sm border-2 border-primary-foreground/80" />
+        <span className="h-3 w-3 rounded-sm border-2 border-primary-foreground/90" />
       </span>
       <span className="whitespace-nowrap text-sm font-bold text-foreground">
         ad-event-processor
@@ -57,8 +57,8 @@ export function AppSidebarNav({ items, onNavigate }: AppSidebarNavProps) {
               cn(
                 'flex items-center gap-1.5 rounded px-2 py-1 text-[13px] font-medium no-underline transition-colors',
                 isActive
-                  ? 'border-l-2 border-primary bg-accent pl-[calc(0.5rem-2px)] font-semibold text-foreground'
-                  : 'text-muted-foreground hover:bg-accent hover:text-foreground'
+                  ? 'border-l-2 border-primary bg-primary/10 pl-[calc(0.5rem-2px)] font-semibold text-primary'
+                  : 'text-muted-foreground hover:bg-primary/5 hover:text-primary'
               )
             }
             to={item.path}

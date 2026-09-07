@@ -9,6 +9,7 @@ source "$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)/lib/paths.sh"
 source "$SCRIPTS/lib/installer_env.sh"
 source "$SCRIPTS/lib/redis_topology.sh"
 source "$SCRIPTS/lib/dev_bind_mounts.sh"
+source "$SCRIPTS/lib/install_cli.sh"
 cd "$ROOT"
 
 INSTALL_ROOT="${AD_EVENT_PROCESSOR_INSTALL_ROOT:-$ROOT}"
@@ -27,7 +28,7 @@ aed_install_root() {
 require_binaries() {
   local root="$1"
   local missing=0
-  for bin in control tracker processor; do
+  for bin in control tracker processor broker; do
     if [[ ! -x "${root}/bin/${bin}" ]]; then
       echo "mode_systemd: missing executable ${root}/bin/${bin}" >&2
       missing=1
@@ -46,7 +47,7 @@ copy_binaries_if_requested() {
     return 0
   fi
   mkdir -p "${root}/bin"
-  for bin in control tracker processor; do
+  for bin in control tracker processor broker; do
     if [[ -x "${src}/${bin}" ]]; then
       install -m 0755 "${src}/${bin}" "${root}/bin/${bin}"
     fi
@@ -61,7 +62,7 @@ render_systemd_units() {
     echo "mode_systemd: sudo required to install systemd units" >&2
     exit 1
   fi
-  for svc in ad-event-processor-control ad-event-processor-tracker ad-event-processor-processor; do
+  for svc in ad-event-processor-control ad-event-processor-broker ad-event-processor-tracker ad-event-processor-processor; do
     sed "s|__INSTALL_ROOT__|${root}|g" "${ROOT}/deploy/systemd/${svc}.service" \
       | sudo tee "${unit_dir}/${svc}.service" > /dev/null
     sudo chmod 644 "${unit_dir}/${svc}.service"
@@ -83,9 +84,22 @@ render_secrets_env() {
   fi
 }
 
+apply_systemd_docker_env() {
+  if [[ "$SYSTEMD_INFRA" != "docker" ]]; then
+    return 0
+  fi
+  install_cli_apply_systemd_host_tcp_defaults "${ROOT}/.env"
+  set -a
+  # shellcheck disable=SC1091
+  source "${ROOT}/.env"
+  set +a
+}
+
 start_infra_docker() {
-  echo "mode_systemd: starting docker infra (db, redis, broker)..."
-  bash "$SCRIPTS/dev/stack/stack.sh" infra-only
+  apply_systemd_docker_env
+  echo "mode_systemd: starting docker infra (db, redis)..."
+  AD_EVENT_PROCESSOR_SYSTEMD_INFRA=1 COMPOSE_MEMORY_PROFILE= \
+    bash "$SCRIPTS/dev/stack/stack.sh" infra-only
 }
 
 start_ingress_docker() {
@@ -105,6 +119,7 @@ stop_conflicting_docker_apps() {
 systemd_up() {
   local root
   root="$(aed_install_root)"
+  apply_systemd_docker_env
   copy_binaries_if_requested "$root"
   require_binaries "$root"
 
@@ -116,15 +131,18 @@ systemd_up() {
     start_infra_docker
   fi
 
+  mkdir -p "${root}/var/broker"
   bash "$SCRIPTS/ops/bootstrap_pg_schema.sh"
   render_secrets_env "${ROOT}/.env"
   stop_conflicting_docker_apps
   render_systemd_units "$root"
 
   sudo systemctl daemon-reload
-  sudo systemctl enable ad-event-processor-control ad-event-processor-tracker ad-event-processor-processor
+  sudo systemctl enable ad-event-processor-control ad-event-processor-broker ad-event-processor-tracker ad-event-processor-processor
   sudo systemctl restart ad-event-processor-control
   sleep 3
+  sudo systemctl restart ad-event-processor-broker
+  sleep 2
   sudo systemctl restart ad-event-processor-processor ad-event-processor-tracker
 
   start_ingress_docker
@@ -160,12 +178,14 @@ systemd_up() {
 systemd_bootstrap_schema() {
   if [[ "$SYSTEMD_INFRA" == "docker" ]] && check_docker; then
     start_infra_docker
+  else
+    apply_systemd_docker_env
   fi
   bash "$SCRIPTS/ops/bootstrap_pg_schema.sh"
 }
 
 systemd_status() {
-  sudo systemctl status ad-event-processor-control ad-event-processor-tracker ad-event-processor-processor --no-pager || true
+  sudo systemctl status ad-event-processor-control ad-event-processor-broker ad-event-processor-tracker ad-event-processor-processor --no-pager || true
   if check_docker; then
     bash "$SCRIPTS/dev/stack/stack.sh" status 2> /dev/null || true
   fi

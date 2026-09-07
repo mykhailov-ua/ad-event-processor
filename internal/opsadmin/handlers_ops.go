@@ -5,6 +5,7 @@ import (
 	"log/slog"
 	"net/http"
 	"strconv"
+	"strings"
 
 	"ad-event-processor/pkg/coldpath"
 	"ad-event-processor/pkg/httpresponse"
@@ -247,14 +248,19 @@ func (h *HTTPHandlers) blockIP(w http.ResponseWriter, r *http.Request) {
 	req, err := coldpath.DecodeRequest[struct {
 		IP         string `json:"ip"`
 		Source     string `json:"source"`
+		Reason     string `json:"reason"`
 		TTLSeconds *int64 `json:"ttl_seconds,omitempty"`
 	}](w, r, coldpath.DefaultMaxBody)
 	if err != nil || req.IP == "" {
 		httpresponse.Error(w, http.StatusBadRequest, "BAD_REQUEST", "invalid request body")
 		return
 	}
+	source := strings.TrimSpace(req.Source)
+	if source == "" {
+		source = strings.TrimSpace(req.Reason)
+	}
 	if r.Header.Get("X-Dry-Run") == "1" || r.URL.Query().Get("dry_run") == "1" {
-		preview, err := h.Blacklist.PreviewBlockIP(r.Context(), req.IP, req.Source, req.TTLSeconds)
+		preview, err := h.Blacklist.PreviewBlockIP(r.Context(), req.IP, source, req.TTLSeconds)
 		if err != nil {
 			h.writeServiceError(w, err)
 			return
@@ -262,7 +268,7 @@ func (h *HTTPHandlers) blockIP(w http.ResponseWriter, r *http.Request) {
 		httpresponse.JSON(w, http.StatusOK, preview)
 		return
 	}
-	if err := h.Blacklist.BlockIPWithTTL(r.Context(), req.IP, req.Source, req.TTLSeconds); err != nil {
+	if err := h.Blacklist.BlockIPWithTTL(r.Context(), req.IP, source, req.TTLSeconds); err != nil {
 		h.writeServiceError(w, err)
 		return
 	}

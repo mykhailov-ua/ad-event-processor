@@ -4,7 +4,7 @@ import { cn } from '@/lib/utils';
 
 /** Flat L0 workspace on main canvas; content panels own L1 borders (tables, cards). */
 export const pageWorkspaceFlatClass =
-  'flex min-h-0 flex-1 flex-col gap-3 border-0 bg-transparent p-0 dark:bg-transparent';
+  'flex flex-col gap-3 border-0 bg-transparent p-0 dark:bg-transparent';
 
 const pageFooterFlatClass =
   'flex shrink-0 flex-wrap items-center gap-2 border-0 border-t border-border bg-transparent p-0 pt-2 dark:bg-transparent';
@@ -39,7 +39,7 @@ export function PageLayout({
   children,
 }: PageLayoutProps) {
   return (
-    <div className="flex min-h-0 flex-1 flex-col gap-2">
+    <div className="flex flex-col gap-2">
       {title != null && title !== '' ? (
         <header className="flex flex-wrap items-start justify-between gap-2">
           <div className="flex min-w-0 flex-wrap items-center gap-2">
@@ -61,25 +61,13 @@ export function PageLayout({
         <div
           className={
             aside
-              ? 'grid min-h-0 flex-1 grid-cols-1 gap-2 lg:grid-cols-[minmax(0,1fr)_minmax(16rem,22rem)]'
-              : 'grid min-h-0 flex-1 grid-cols-1 gap-2'
+              ? 'grid grid-cols-1 gap-2 lg:grid-cols-[minmax(0,1fr)_minmax(16rem,22rem)]'
+              : 'grid grid-cols-1 gap-2'
           }
         >
-          <main
-            className={cn(
-              'ui-scrollbar flex min-h-0 min-w-0 flex-1 flex-col gap-2 overflow-x-hidden overflow-y-auto',
-              mainClassName
-            )}
-          >
-            {children}
-          </main>
+          <main className={cn('flex min-w-0 flex-col gap-2', mainClassName)}>{children}</main>
           {aside ? (
-            <aside
-              className={cn(
-                'ui-scrollbar flex min-h-0 min-w-0 flex-col gap-2 self-start overflow-y-auto',
-                asideClassName
-              )}
-            >
+            <aside className={cn('flex min-w-0 flex-col gap-2 self-start', asideClassName)}>
               {aside}
             </aside>
           ) : null}

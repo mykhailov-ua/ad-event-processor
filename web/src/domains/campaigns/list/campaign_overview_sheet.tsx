@@ -14,12 +14,13 @@ import {
 } from '@/domains/campaigns/list/campaign_metrics_shared';
 import { formatTableMoneyFromMicro } from '@/domains/campaigns/list/campaign_list_format';
 import { resolveCampaignStatusKey } from '@/domains/campaigns/list/campaign_list_row_tone';
-import { adminStaleHintClass } from '@/lib/admin_metric_tone';
+import { adminKpiAccentValueClass, adminStaleHintClass } from '@/lib/admin_metric_tone';
 import {
   campaignOverviewDialogClass,
   campaignOverviewEmptyBannerClass,
   campaignOverviewFooterClass,
   campaignOverviewHeaderClass,
+  campaignOverviewMetricCardAccentClass,
   campaignOverviewMetricCardClass,
   campaignOverviewMetricLabelClass,
   campaignOverviewMetricValueClass,
@@ -109,11 +110,21 @@ function OverviewRow({
   );
 }
 
-function DeliveryMetricCard({ label, value }: { label: string; value: string }) {
+function DeliveryMetricCard({
+  label,
+  value,
+  accent,
+}: {
+  label: string;
+  value: string;
+  accent: 1 | 2 | 3;
+}) {
   return (
-    <div className={campaignOverviewMetricCardClass}>
+    <div className={cn(campaignOverviewMetricCardClass, campaignOverviewMetricCardAccentClass[accent])}>
       <p className={cn('m-0', campaignOverviewMetricLabelClass)}>{label}</p>
-      <p className={cn('m-0', campaignOverviewMetricValueClass)}>{value}</p>
+      <p className={cn('m-0', campaignOverviewMetricValueClass, adminKpiAccentValueClass[accent])}>
+        {value}
+      </p>
     </div>
   );
 }
@@ -126,7 +137,7 @@ function DeliveryRateRow({ label, percent }: { label: string; percent: number })
         <span className="tabular-nums">{percent}%</span>
       </div>
       <div aria-hidden className="h-1 overflow-hidden rounded-full bg-muted">
-        <div className="h-full rounded-full bg-primary" style={{ width: `${percent}%` }} />
+        <div className="h-full rounded-full bg-chart-1 transition-all" style={{ width: `${percent}%` }} />
       </div>
     </div>
   );
@@ -292,14 +303,17 @@ export function CampaignOverviewSheet({
                 <div className="grid gap-3">
                   <div className="grid grid-cols-3 gap-2">
                     <DeliveryMetricCard
+                      accent={1}
                       label="Impressions"
                       value={stats ? displayCount(stats.metrics?.impressions) : '-'}
                     />
                     <DeliveryMetricCard
+                      accent={2}
                       label="Clicks"
                       value={stats ? displayCount(stats.metrics?.clicks) : '-'}
                     />
                     <DeliveryMetricCard
+                      accent={3}
                       label="Conversions"
                       value={stats ? displayCount(stats.metrics?.conversions) : '-'}
                     />

@@ -93,8 +93,11 @@ aed_append_compose_extra_file() {
 aed_compose() {
   dev_prepare_compose_mounts
   # memory-dev overlay caps cgroup RAM on laptops; unset COMPOSE_MEMORY_PROFILE for compose defaults.
-  if [[ "${COMPOSE_MEMORY_PROFILE:-dev}" == "dev" ]]; then
+  if [[ "${COMPOSE_MEMORY_PROFILE:-dev}" == "dev" ]] \
+    && [[ -f "$ROOT/deploy/compose/docker-compose.memory-dev.yaml" ]]; then
     aed_append_compose_extra_file "deploy/compose/docker-compose.memory-dev.yaml"
+  elif [[ "${COMPOSE_MEMORY_PROFILE:-dev}" == "dev" ]]; then
+    echo "stack.sh: docker-compose.memory-dev.yaml missing; using base compose limits" >&2
   else
     export COMPOSE_FILE="${COMPOSE_FILE:-$ROOT/docker-compose.yaml}"
   fi
@@ -298,7 +301,11 @@ case "$CMD" in
     ;;
   infra-only | up-infra-only)
     read -ra redis_shards <<< "$(redis_topology_services "$(redis_topology_count)")"
-    aed_compose up -d run-dir-init db broker "${redis_shards[@]}"
+    if [[ "${AD_EVENT_PROCESSOR_SYSTEMD_INFRA:-}" == "1" ]]; then
+      aed_compose up -d run-dir-init db "${redis_shards[@]}"
+    else
+      aed_compose up -d run-dir-init db broker "${redis_shards[@]}"
+    fi
     ;;
   ingress-only | up-ingress-only)
     bash "$SCRIPTS/install/render_ingress.sh"

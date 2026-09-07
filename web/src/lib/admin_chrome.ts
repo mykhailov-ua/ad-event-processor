@@ -50,6 +50,7 @@ function cnControl(): string {
 export type ButtonVariant =
   | 'default'
   | 'brand'
+  | 'accent'
   | 'secondary'
   | 'outline'
   | 'ghost'
@@ -60,11 +61,13 @@ export const buttonVariantClass: Record<ButtonVariant, string> = {
   default: 'border-primary bg-primary text-primary-foreground hover:bg-primary/90',
   brand:
     'border-admin-brand bg-admin-brand text-admin-brand-foreground hover:border-admin-brand-hover hover:bg-admin-brand-hover',
+  accent:
+    'border-chart-1/40 bg-chart-1/12 text-chart-1 hover:border-chart-1/60 hover:bg-chart-1/20',
   secondary: 'border-border bg-secondary text-secondary-foreground hover:bg-secondary/80',
   outline:
-    'border-border bg-background text-foreground hover:bg-accent hover:text-accent-foreground',
+    'border-primary/25 bg-background text-foreground hover:border-primary/40 hover:bg-primary/5 hover:text-primary',
   ghost:
-    'border-transparent bg-transparent text-muted-foreground hover:bg-accent hover:text-foreground',
+    'border-transparent bg-transparent text-muted-foreground hover:bg-primary/10 hover:text-primary',
   destructive:
     'border-destructive bg-destructive text-destructive-foreground hover:bg-destructive/90',
   link: 'border-0 bg-transparent text-primary underline-offset-4 hover:underline',

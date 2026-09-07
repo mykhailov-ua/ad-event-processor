@@ -9,8 +9,8 @@ import { cn } from '@/lib/utils';
 export type BentoIconTone = 'brand' | 'accent' | 'neutral';
 
 const TONE_STYLES: Record<BentoIconTone, string> = {
-  brand: 'bg-admin-brand-soft text-admin-brand',
-  accent: 'bg-accent text-accent-foreground',
+  brand: 'bg-admin-brand/15 text-admin-brand',
+  accent: 'bg-chart-1/15 text-chart-1',
   neutral: 'bg-muted text-muted-foreground',
 };
 
@@ -147,7 +147,7 @@ export function BentoLinkCard({
         action={
           <span
             className={cn(
-              'bg-secondary px-2.5 py-1 text-xs text-muted-foreground transition-colors group-hover:text-foreground',
+              'bg-primary/10 px-2.5 py-1 text-xs text-primary transition-colors group-hover:bg-primary/20',
               adminKit.pillRadius
             )}
           >

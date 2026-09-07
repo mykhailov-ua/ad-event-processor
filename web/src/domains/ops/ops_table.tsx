@@ -13,7 +13,7 @@ import {
 /** Ops matrix chrome: sticky headers, zebra rows, numeric column alignment. */
 export const OPS_DIRECTORY_TABLE_CLASS = cn(
   'w-full border-collapse text-ui-dense',
-  '[&_th]:sticky [&_th]:top-0 [&_th]:z-[2] [&_th]:bg-muted/50 [&_th]:px-3 [&_th]:py-1.5 [&_th]:text-xs [&_th]:font-semibold [&_th]:text-muted-foreground',
+  '[&_th]:sticky [&_th]:top-0 [&_th]:z-[2] [&_th]:bg-card [&_th]:px-3 [&_th]:py-1.5 [&_th]:text-xs [&_th]:font-semibold [&_th]:text-muted-foreground [&_th]:shadow-sm',
   '[&_td]:px-3 [&_td]:py-1.5',
   '[&_tbody_tr:nth-child(even)_td]:bg-muted/30',
   '[&_tbody_tr:last-child_td]:border-b-0'

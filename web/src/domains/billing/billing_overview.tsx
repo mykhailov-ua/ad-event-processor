@@ -79,7 +79,7 @@ export function BillingOverview({
       title="Billing"
       controlPanel={
         <div className="flex flex-wrap gap-4 text-sm">
-          <Link className="text-muted-foreground hover:underline" to="/billing/exports">
+          <Link className="text-sm font-medium text-primary hover:underline" to="/billing/exports">
             Ledger exports
           </Link>
         </div>

@@ -4,6 +4,10 @@ import {
 } from '@/domains/campaigns/list/campaign_list_format';
 import type { CampaignListSummary } from '@/domains/campaigns/list/campaign_list_summary';
 import { CAMPAIGN_LIST_FILTER_TOTALS_MAX } from '@/domains/campaigns/list/campaign_list_limits';
+import {
+  adminMetricPositiveClass,
+  adminKpiAccentValueClass,
+} from '@/lib/admin_metric_tone';
 import { cn } from '@/lib/utils';
 
 export type CampaignListSummaryBoxProps = {
@@ -39,17 +43,17 @@ export function CampaignListSummaryBox({
   return (
     <div
       className={cn(
-        'inline-flex max-w-full flex-wrap items-center gap-2 rounded-md border border-border bg-card px-2.5 py-1 text-card-foreground',
+        'inline-flex max-w-full flex-wrap items-center gap-2 rounded-md border border-primary/20 bg-primary/5 px-2.5 py-1 text-card-foreground',
         className
       )}
     >
       <p className="m-0 whitespace-nowrap text-xs leading-[16px] text-muted-foreground">
         <span>{scopeLabel}: </span>
-        <span className="font-bold text-foreground">{clicks}</span>
+        <span className={cn('font-bold', adminKpiAccentValueClass[1])}>{clicks}</span>
         <span> clicks, </span>
-        <span className="font-bold text-foreground">{leads}</span>
+        <span className={cn('font-bold', adminKpiAccentValueClass[3])}>{leads}</span>
         <span> leads, </span>
-        <span className="font-bold text-foreground">{profit}</span>
+        <span className={cn('font-bold', adminMetricPositiveClass)}>{profit}</span>
         <span> profit</span>
       </p>
       {summary.marginBreachCount > 0 ? (

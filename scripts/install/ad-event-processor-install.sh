@@ -154,6 +154,11 @@ while [[ $# -gt 0 ]]; do
   esac
 done
 
+# Release tarball (no go.mod): appliance default is systemd, not compose-all-in-docker.
+if [[ ! -f go.mod ]] && [[ "$INSTALL_MODE" == "docker" ]]; then
+  INSTALL_MODE=systemd
+fi
+
 read_env_var() {
   local key="$1"
   local file val
@@ -444,6 +449,9 @@ require_eula_acceptance() {
 }
 
 collect_config() {
+  if installer_ui_activation_enabled; then
+    return 0
+  fi
   local tracking_domain="${TRACKING_DOMAIN:-}"
   local currency="${DEFAULT_CURRENCY:-USD}"
   local timezone="${TIMEZONE:-UTC}"
@@ -457,7 +465,9 @@ collect_config() {
 
   if [[ "$YES" == "1" ]]; then
     if [[ -z "$admin_email" ]] || [[ -z "$admin_password" ]]; then
-      echo "ad-event-processor-install: set ADMIN_BOOTSTRAP_EMAIL and ADMIN_BOOTSTRAP_PASSWORD in install.env or env" >&2
+      echo "ad-event-processor-install: set ADMIN_BOOTSTRAP_EMAIL and ADMIN_BOOTSTRAP_PASSWORD in install.env" >&2
+      echo "ad-event-processor-install: or use default UI onboarding: sudo bash install.sh systemd up then open /activate" >&2
+      echo "ad-event-processor-install: remove AD_EVENT_PROCESSOR_CLI_BOOTSTRAP=1 to skip CLI bootstrap" >&2
       exit 1
     fi
   else
@@ -728,6 +738,7 @@ cmd_up_systemd() {
   fi
   ensure_env
   load_install_env
+  install_cli_autodetect_yes
   require_eula_acceptance
   setup_offline_license
   set -a

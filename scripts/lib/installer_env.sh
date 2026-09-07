@@ -63,10 +63,15 @@ installer_license_required() {
 }
 
 # Owner completes license + account at /activate (default for appliance install).
-installer_ui_activation_enabled() {
+# Legacy AD_EVENT_PROCESSOR_UI_ACTIVATION=0 is ignored unless CLI bootstrap is explicit.
+installer_cli_bootstrap_enabled() {
   local v
-  v="$(installer_env_dual AD_EVENT_PROCESSOR_UI_ACTIVATION AD_EVENT_PROCESSOR_UI_ACTIVATION)"
-  if [[ "$v" == "0" ]]; then
+  v="$(installer_env_dual AD_EVENT_PROCESSOR_CLI_BOOTSTRAP AD_EVENT_PROCESSOR_CLI_BOOTSTRAP)"
+  [[ "$v" == "1" ]]
+}
+
+installer_ui_activation_enabled() {
+  if installer_cli_bootstrap_enabled; then
     return 1
   fi
   return 0

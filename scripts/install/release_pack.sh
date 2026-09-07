@@ -32,10 +32,14 @@ cp "$ROOT/docker-compose.yaml" "$STAGE/ad-event-processor/"
 mkdir -p "$STAGE/ad-event-processor/deploy/compose"
 cp "$ROOT/deploy/compose/docker-compose.yaml" "$STAGE/ad-event-processor/deploy/compose/"
 cp "$ROOT/deploy/compose/docker-compose.release.yaml" "$STAGE/ad-event-processor/deploy/compose/"
+cp "$ROOT/deploy/compose/docker-compose.memory-dev.yaml" "$STAGE/ad-event-processor/deploy/compose/"
+mkdir -p "$STAGE/ad-event-processor/deploy/compose/scripts"
+cp "$ROOT/deploy/compose/scripts/init-run-volume.sh" "$STAGE/ad-event-processor/deploy/compose/scripts/"
 
 cp "$ROOT/.env.example" "$STAGE/ad-event-processor/"
 mkdir -p "$STAGE/ad-event-processor/deploy/installer"
 cp "$ROOT/deploy/installer/install.env.example" "$STAGE/ad-event-processor/deploy/installer/"
+cp "$ROOT/deploy/installer/TESTER_QUICKSTART.md" "$STAGE/ad-event-processor/TESTER_QUICKSTART.md"
 cp "$ROOT/deploy/installer/install.yaml.example" "$STAGE/ad-event-processor/deploy/installer/"
 cp "$ROOT/deploy/installer/packages.yaml" "$STAGE/ad-event-processor/deploy/installer/"
 
@@ -50,6 +54,7 @@ cp "$ROOT/scripts/install/preflight.sh" "$STAGE/ad-event-processor/scripts/insta
 cp "$ROOT/scripts/install/get.sh" "$STAGE/ad-event-processor/scripts/install/"
 cp "$ROOT/scripts/lib/install_cli.sh" "$STAGE/ad-event-processor/scripts/lib/"
 cp "$ROOT/deploy/systemd/ad-event-processor-control.service" "$STAGE/ad-event-processor/deploy/systemd/"
+cp "$ROOT/deploy/systemd/ad-event-processor-broker.service" "$STAGE/ad-event-processor/deploy/systemd/"
 cp "$ROOT/deploy/systemd/ad-event-processor-tracker.service" "$STAGE/ad-event-processor/deploy/systemd/"
 cp "$ROOT/deploy/systemd/ad-event-processor-processor.service" "$STAGE/ad-event-processor/deploy/systemd/"
 cp "$ROOT/scripts/install/install.sh" "$STAGE/ad-event-processor/install.sh"
@@ -66,6 +71,7 @@ cp "$ROOT/scripts/ops/bootstrap_pg_schema.sh" "$STAGE/ad-event-processor/scripts
 cp "$ROOT/scripts/lib/paths.sh" "$STAGE/ad-event-processor/scripts/lib/"
 cp "$ROOT/scripts/lib/installer_env.sh" "$STAGE/ad-event-processor/scripts/lib/"
 cp "$ROOT/scripts/lib/safe_paths.sh" "$STAGE/ad-event-processor/scripts/lib/"
+cp "$ROOT/scripts/lib/ci_artifacts.sh" "$STAGE/ad-event-processor/scripts/lib/"
 cp "$ROOT/scripts/lib/go.sh" "$STAGE/ad-event-processor/scripts/lib/"
 cp "$ROOT/scripts/lib/redis_topology.sh" "$STAGE/ad-event-processor/scripts/lib/"
 cp "$ROOT/scripts/lib/dev_bind_mounts.sh" "$STAGE/ad-event-processor/scripts/lib/"
@@ -85,11 +91,14 @@ chmod +x "$STAGE/ad-event-processor/bin/ad-event-processor-install"
 echo "release_pack: building linux/amd64 migrate-cold-path..."
 CGO_ENABLED=0 GOOS=linux GOARCH=amd64 go build -o "$STAGE/ad-event-processor/bin/migrate-cold-path" ./cmd/migrate-cold-path
 chmod +x "$STAGE/ad-event-processor/bin/migrate-cold-path"
+echo "release_pack: building linux/amd64 broker..."
+CGO_ENABLED=0 GOOS=linux GOARCH=amd64 go build -o "$STAGE/ad-event-processor/bin/broker" ./cmd/broker
+chmod +x "$STAGE/ad-event-processor/bin/broker"
 
 BIN_SRC="${AD_EVENT_PROCESSOR_RELEASE_BIN_DIR:-}"
 if [[ -n "$BIN_SRC" ]]; then
   echo "release_pack: bundling garbled binaries from ${BIN_SRC}..."
-  for bin in control tracker processor; do
+  for bin in control tracker processor broker; do
     if [[ -x "${BIN_SRC}/${bin}" ]]; then
       install -m 0755 "${BIN_SRC}/${bin}" "$STAGE/ad-event-processor/bin/${bin}"
     else

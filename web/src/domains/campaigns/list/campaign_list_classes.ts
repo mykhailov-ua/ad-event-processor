@@ -135,11 +135,17 @@ export const campaignOverviewMetricCardClass = cn(
   adminKit.panelRadius
 );
 
+export const campaignOverviewMetricCardAccentClass: Record<1 | 2 | 3, string> = {
+  1: 'border-chart-1/35 bg-chart-1/10',
+  2: 'border-chart-2/35 bg-chart-2/10',
+  3: 'border-chart-3/35 bg-chart-3/10',
+};
+
 export const campaignOverviewMetricLabelClass =
   'm-0 text-[10px] font-semibold uppercase leading-[14px] text-muted-foreground';
 
 export const campaignOverviewMetricValueClass =
-  'm-0 text-xs font-bold leading-[16px] tabular-nums text-foreground';
+  'm-0 text-xs font-bold leading-[16px] tabular-nums';
 
 export const campaignOverviewRatesClass = 'grid gap-2';
 

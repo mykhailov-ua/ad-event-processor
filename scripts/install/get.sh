@@ -93,7 +93,7 @@ main() {
   cd "$INSTALL_DIR"
   local -a args=("$@")
   if [[ ${#args[@]} -eq 0 ]]; then
-    args=(docker up)
+    args=(systemd up)
   fi
   if [[ -x "$INSTALL_DIR/install.sh" ]]; then
     exec bash "$INSTALL_DIR/install.sh" --yes "${args[@]}"

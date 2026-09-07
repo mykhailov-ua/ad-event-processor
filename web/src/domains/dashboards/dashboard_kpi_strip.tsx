@@ -1,4 +1,10 @@
 import {
+  adminKpiAccentSurfaceClass,
+  adminKpiAccentTopBarClass,
+  adminKpiAccentValueClass,
+  type AdminKpiAccent,
+} from '@/lib/admin_metric_tone';
+import {
   dashboardKpiGridClass,
   dashboardKpiTileClass,
 } from '@/domains/dashboards/dashboard_classes';
@@ -8,7 +14,7 @@ export type DashboardKpiTile = {
   id: string;
   label: string;
   value: string;
-  accent?: 1 | 2 | 3 | 4 | 5;
+  accent?: AdminKpiAccent;
 };
 
 export type DashboardKpiStripProps = {
@@ -28,11 +34,23 @@ export function DashboardKpiStrip({ tiles, className }: DashboardKpiStripProps) 
       role="region"
     >
       {tiles.map((tile) => (
-        <div key={tile.id} className={dashboardKpiTileClass}>
+        <div
+          key={tile.id}
+          className={cn(
+            dashboardKpiTileClass,
+            tile.accent ? adminKpiAccentSurfaceClass[tile.accent] : null,
+            tile.accent ? adminKpiAccentTopBarClass[tile.accent] : null
+          )}
+        >
           <p className="whitespace-nowrap text-ui-caption tracking-wide text-muted-foreground sm:text-xs">
             {tile.label}
           </p>
-          <p className="whitespace-nowrap font-numeric text-base font-semibold tabular-nums tracking-tight sm:text-lg">
+          <p
+            className={cn(
+              'whitespace-nowrap font-numeric text-base font-semibold tabular-nums tracking-tight sm:text-lg',
+              tile.accent ? adminKpiAccentValueClass[tile.accent] : 'text-foreground'
+            )}
+          >
             {tile.value}
           </p>
         </div>

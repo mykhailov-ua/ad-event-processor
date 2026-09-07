@@ -1,8 +1,12 @@
 import { ArrowDown, ArrowUp } from 'lucide-react';
 
 import {
+  adminKpiAccentSurfaceClass,
+  adminKpiAccentTopBarClass,
+  adminKpiAccentValueClass,
   adminMetricDeltaNegativeClass,
   adminMetricDeltaPositiveClass,
+  type AdminKpiAccent,
 } from '@/lib/admin_metric_tone';
 import { adminKit } from '@/lib/admin_kit';
 import { cn } from '@/lib/utils';
@@ -11,17 +15,24 @@ export type MetricCardProps = {
   label: string;
   value: string;
   deltaPct?: number | null;
+  accent?: AdminKpiAccent;
   className?: string;
 };
 
-export function MetricCard({ label, value, deltaPct, className }: MetricCardProps) {
+export function MetricCard({ label, value, deltaPct, accent, className }: MetricCardProps) {
   const delta = deltaPct ?? null;
   const showDelta = delta != null && Number.isFinite(delta);
   const positive = showDelta && delta >= 0;
 
   return (
     <div
-      className={cn('grid gap-2 border border-border bg-card p-4', adminKit.panelRadius, className)}
+      className={cn(
+        'grid gap-2 border border-border bg-card p-4',
+        adminKit.panelRadius,
+        accent ? adminKpiAccentSurfaceClass[accent] : null,
+        accent ? adminKpiAccentTopBarClass[accent] : null,
+        className
+      )}
     >
       <div className="flex items-start justify-between gap-2">
         <p className="m-0 text-[11px] font-semibold uppercase leading-[14px] text-muted-foreground">
@@ -44,7 +55,14 @@ export function MetricCard({ label, value, deltaPct, className }: MetricCardProp
           </span>
         ) : null}
       </div>
-      <p className="m-0 text-2xl font-bold leading-none text-foreground tabular-nums">{value}</p>
+      <p
+        className={cn(
+          'm-0 text-2xl font-bold leading-none tabular-nums',
+          accent ? adminKpiAccentValueClass[accent] : 'text-foreground'
+        )}
+      >
+        {value}
+      </p>
     </div>
   );
 }

@@ -40,7 +40,15 @@ func (h *Handler) adminRequirePermission() func(string, http.HandlerFunc) http.H
 func (h *Handler) adminRequireAuth() func(http.HandlerFunc) http.HandlerFunc {
 	return func(next http.HandlerFunc) http.HandlerFunc {
 		if h.authMiddleware != nil {
-			return h.authMiddleware.RequireAuth(ctrlhttp.RoleAdmin, ctrlhttp.RoleManager, ctrlhttp.RoleUser, ctrlhttp.RoleBuyer, ctrlhttp.RoleSupport)(next)
+			return h.authMiddleware.RequireAuth(
+				ctrlhttp.RoleAdmin,
+				ctrlhttp.RoleManager,
+				ctrlhttp.RoleUser,
+				ctrlhttp.RoleBuyer,
+				ctrlhttp.RoleSupport,
+				ctrlhttp.RoleTeamLead,
+				ctrlhttp.RoleMediaBuyer,
+			)(next)
 		}
 		return h.authFallback(next)
 	}

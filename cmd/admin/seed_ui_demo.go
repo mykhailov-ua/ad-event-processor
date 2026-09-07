@@ -12,7 +12,10 @@ import (
 
 const defaultUIDemoCampaignCount = 50
 
-var uiDemoCampaignCount int
+var (
+	uiDemoCampaignCount int
+	uiDemoStatsDays     int
+)
 
 var seedUIDemoCmd = &cobra.Command{
 	Use:   "seed-ui",
@@ -79,7 +82,7 @@ WHERE id = $1`,
 			}
 			updated++
 
-			for dayOffset := range 14 {
+			for dayOffset := range uiDemoStatsDays {
 				statsDate := today.AddDate(0, 0, -dayOffset)
 				imp, clk, conv := seedUIDemoDeliveryCounts(seq, dayOffset)
 				_, err = tx.Exec(ctx, `
@@ -114,7 +117,7 @@ ON CONFLICT (campaign_id, date) DO UPDATE SET
 		if skipped > 0 {
 			fmt.Printf("  Campaigns skipped (missing): %d\n", skipped)
 		}
-		fmt.Println("  Stats window: last 14 days (includes today)")
+		fmt.Printf("  Stats window: last %d days (includes today)\n", uiDemoStatsDays)
 		fmt.Println("  Open Campaigns in admin UI and click Budget used to view charts")
 		return nil
 	},
@@ -122,6 +125,7 @@ ON CONFLICT (campaign_id, date) DO UPDATE SET
 
 func init() {
 	seedUIDemoCmd.Flags().IntVar(&uiDemoCampaignCount, "count", defaultUIDemoCampaignCount, "Max deterministic campaign seq to upsert (1..N)")
+	seedUIDemoCmd.Flags().IntVar(&uiDemoStatsDays, "stats-days", 14, "Days of campaign_stats rows per campaign (includes today)")
 }
 
 func seedUIDemoBudgetMicro(seq int) int64 {

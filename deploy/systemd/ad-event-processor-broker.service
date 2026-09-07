@@ -1,0 +1,18 @@
+[Unit]
+Description=ad-event-processor broker (host WAL, Redis coordination)
+After=network-online.target
+Wants=network-online.target
+Before=ad-event-processor-tracker.service ad-event-processor-processor.service
+
+[Service]
+Type=simple
+WorkingDirectory=__INSTALL_ROOT__
+EnvironmentFile=-/etc/ad-event-processor/secrets.env
+ExecStartPre=/bin/mkdir -p /run/ad-event-processor/broker
+ExecStart=__INSTALL_ROOT__/bin/broker serve -addr=/run/ad-event-processor/broker/gnet.sock -health-addr=/run/ad-event-processor/broker/health.sock -data-dir=__INSTALL_ROOT__/var/broker -node-id=broker-1
+Restart=on-failure
+RestartSec=5
+LimitNOFILE=1048576
+
+[Install]
+WantedBy=multi-user.target

@@ -215,8 +215,6 @@ install_cli_apply() {
     install_cli_set_env_key "$install_env" AD_EVENT_PROCESSOR_LICENSE_KEY "$AD_EVENT_PROCESSOR_LICENSE_KEY"
     install_cli_set_env_key "$install_env" AD_EVENT_PROCESSOR_LICENSE_MODE file
     install_cli_set_env_key "$install_env" AD_EVENT_PROCESSOR_LICENSE_REQUIRED 1
-    install_cli_set_env_key "$install_env" AD_EVENT_PROCESSOR_UI_ACTIVATION 0
-    install_cli_set_env_key "$dotenv" AD_EVENT_PROCESSOR_UI_ACTIVATION 0
   fi
   if [[ -n "${ADMIN_DOMAIN:-}" ]]; then
     install_cli_set_env_key "$install_env" ADMIN_DOMAIN "$ADMIN_DOMAIN"
@@ -245,15 +243,30 @@ install_cli_apply() {
 
   install_cli_set_env_key "$dotenv" AD_EVENT_PROCESSOR_INSTALL_MODE "$INSTALL_MODE"
   install_cli_set_env_key "$dotenv" AD_EVENT_PROCESSOR_INSTALL_INFRA "$INSTALL_INFRA"
-  install_cli_set_env_key "$install_env" AD_EVENT_PROCESSOR_UI_ACTIVATION "${AD_EVENT_PROCESSOR_UI_ACTIVATION:-1}"
-  install_cli_set_env_key "$dotenv" AD_EVENT_PROCESSOR_UI_ACTIVATION "${AD_EVENT_PROCESSOR_UI_ACTIVATION:-1}"
+
+  local cli_bootstrap ui_activation
+  cli_bootstrap="$(grep -m1 '^AD_EVENT_PROCESSOR_CLI_BOOTSTRAP=' "$install_env" 2> /dev/null | cut -d= -f2- || true)"
+  if [[ "$cli_bootstrap" == "1" ]]; then
+    ui_activation="0"
+  else
+    cli_bootstrap="0"
+    ui_activation="1"
+    install_cli_set_env_key "$install_env" AD_EVENT_PROCESSOR_CLI_BOOTSTRAP "0"
+    install_cli_set_env_key "$dotenv" AD_EVENT_PROCESSOR_CLI_BOOTSTRAP "0"
+  fi
+  install_cli_set_env_key "$install_env" AD_EVENT_PROCESSOR_UI_ACTIVATION "$ui_activation"
+  install_cli_set_env_key "$dotenv" AD_EVENT_PROCESSOR_UI_ACTIVATION "$ui_activation"
 
   if [[ "$INSTALL_MODE" == "docker" ]]; then
     install_cli_set_env_key "$install_env" AD_EVENT_PROCESSOR_USE_RELEASE_IMAGES "${AD_EVENT_PROCESSOR_USE_RELEASE_IMAGES:-1}"
   fi
 
-  if [[ "$INSTALL_MODE" == "systemd" && "$INSTALL_INFRA" == "docker" ]]; then
-    install_cli_apply_systemd_host_tcp_defaults "$dotenv"
+  if [[ "$INSTALL_MODE" == "systemd" ]] || [[ ! -f "${ROOT}/go.mod" ]]; then
+    if [[ "${INSTALL_INFRA:-docker}" == "docker" ]]; then
+      install_cli_apply_systemd_host_tcp_defaults "$dotenv"
+    fi
+    # Appliance serves embedded admin stub on CONTROL_PORT; dev Vite redirect breaks /activate.
+    install_cli_set_env_key "$dotenv" ADMIN_UI_DEV_URL ""
   fi
 
   install_cli_ensure_secret "$dotenv" TOKEN_SYMMETRIC_KEY "$(openssl rand -hex 16)"
@@ -268,14 +281,18 @@ install_cli_apply_systemd_host_tcp_defaults() {
   db_user="$(grep -m1 '^DB_USER=' "$dotenv" | cut -d= -f2-)"
   db_pass="$(grep -m1 '^DB_PASSWORD=' "$dotenv" | cut -d= -f2-)"
   db_name="$(grep -m1 '^DB_NAME=' "$dotenv" | cut -d= -f2-)"
-  db_port="$(grep -m1 '^DB_PORT=' "$dotenv" | cut -d= -f2-)"
-  db_port="${db_port:-5430}"
+  db_port="5430"
   db_user="${db_user:-ad_event_processor_user}"
   db_name="${db_name:-ad_event_processor}"
   redis_pass="$(grep -m1 '^REDIS_PASSWORD=' "$dotenv" | cut -d= -f2-)"
   shard_count="$(grep -m1 '^REDIS_SHARD_COUNT=' "$dotenv" | cut -d= -f2-)"
-  shard_count="${shard_count:-4}"
+  shard_count="${shard_count:-2}"
 
+  install_cli_set_env_key "$dotenv" DB_PORT "$db_port"
+  install_cli_set_env_key "$dotenv" REDIS_SHARD_COUNT "$shard_count"
+  install_cli_set_env_key "$dotenv" INGEST_REDIS_SHARD_COUNT "$shard_count"
+
+  install_cli_set_env_key "$dotenv" DB_PORT "$db_port"
   install_cli_set_env_key "$dotenv" DB_DSN "postgres://${db_user}:${db_pass}@127.0.0.1:${db_port}/${db_name}?sslmode=disable"
   install_cli_set_env_key "$dotenv" PAYMENT_DB_DSN "postgres://${db_user}:${db_pass}@127.0.0.1:${db_port}/${db_name}?sslmode=disable"
 
@@ -283,11 +300,7 @@ install_cli_apply_systemd_host_tcp_defaults() {
   i=0
   while [[ "$i" -lt "$shard_count" ]]; do
     port=$((6479 + i))
-    if [[ -n "$redis_pass" ]]; then
-      entry="redis://:${redis_pass}@127.0.0.1:${port}/0"
-    else
-      entry="127.0.0.1:${port}"
-    fi
+    entry="127.0.0.1:${port}"
     if [[ -n "$addrs" ]]; then
       addrs="${addrs},${entry}"
     else
@@ -296,5 +309,7 @@ install_cli_apply_systemd_host_tcp_defaults() {
     i=$((i + 1))
   done
   install_cli_set_env_key "$dotenv" REDIS_ADDRS "$addrs"
+  install_cli_set_env_key "$dotenv" BROKER_REDIS_URL "redis://:${redis_pass}@127.0.0.1:6479/0"
+  install_cli_set_env_key "$dotenv" COMPOSE_MEMORY_PROFILE ""
   install_cli_set_env_key "$dotenv" ENV development
 }

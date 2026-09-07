@@ -14,19 +14,19 @@
     --card-foreground: 0 0% 2%;
     --popover: 0 0% 99%;
     --popover-foreground: 0 0% 2%;
-    --primary: 0 0% 2%;
-    --primary-foreground: 0 0% 99%;
+    --primary: 227 56% 50%;
+    --primary-foreground: 0 0% 100%;
     --secondary: 0 0% 95%;
     --secondary-foreground: 0 0% 2%;
     --muted: 0 0% 95%;
     --muted-foreground: 0 0% 39%;
-    --accent: 0 0% 91%;
-    --accent-foreground: 0 0% 2%;
+    --accent: 227 45% 94%;
+    --accent-foreground: 227 56% 32%;
     --destructive: 355 63% 44%;
     --destructive-foreground: 0 0% 99%;
     --border: 0 0% 90%;
     --input: 0 0% 87%;
-    --ring: 0 0% 52%;
+    --ring: 227 56% 50%;
     --radius: 0.5rem;
     --font-sans: 'Inter Variable', 'Inter', system-ui, sans-serif;
     --font-mono: 'IBM Plex Mono', ui-monospace, monospace;
@@ -40,9 +40,9 @@
     --chart-4: 245 47% 51%;
     --chart-5: 180 67% 47%;
 
-    --admin-brand: 0 0% 2%;
-    --admin-brand-hover: 0 0% 16%;
-    --admin-brand-fg: 0 0% 99%;
+    --admin-brand: 227 56% 50%;
+    --admin-brand-hover: 227 56% 42%;
+    --admin-brand-fg: 0 0% 100%;
     --admin-fg: 0 0% 2%;
     --admin-fg-strong: 0 0% 2%;
     --admin-fg-secondary: 0 0% 39%;
@@ -50,7 +50,7 @@
     --admin-positive-fg: 136 100% 29%;
     --admin-negative-fg: 355 63% 44%;
     --admin-metric-zero-fg: 0 0% 52%;
-    --admin-metric-conversion-fg: 0 0% 2%;
+    --admin-metric-conversion-fg: 227 56% 50%;
     --admin-status-active: 136 100% 29%;
     --admin-status-paused: 48 100% 48%;
     --admin-status-draft: 227 56% 50%;
@@ -71,19 +71,19 @@
     --card-foreground: 0 0% 99%;
     --popover: 228 5% 17%;
     --popover-foreground: 0 0% 99%;
-    --primary: 0 0% 99%;
+    --primary: 227 72% 65%;
     --primary-foreground: 228 6% 13%;
     --secondary: 228 4% 18%;
     --secondary-foreground: 0 0% 99%;
     --muted: 228 4% 18%;
     --muted-foreground: 0 0% 52%;
-    --accent: 228 4% 20%;
-    --accent-foreground: 0 0% 99%;
+    --accent: 227 35% 22%;
+    --accent-foreground: 227 72% 75%;
     --destructive: 356 58% 56%;
     --destructive-foreground: 0 0% 99%;
     --border: 228 4% 22%;
     --input: 228 4% 22%;
-    --ring: 0 0% 70%;
+    --ring: 227 72% 65%;
     --scrollbar-thumb: 228 3% 35%;
     --scrollbar-track: 228 5% 15%;
 
@@ -93,8 +93,8 @@
     --chart-4: 245 60% 65%;
     --chart-5: 180 54% 41%;
 
-    --admin-brand: 0 0% 99%;
-    --admin-brand-hover: 0 0% 85%;
+    --admin-brand: 227 72% 65%;
+    --admin-brand-hover: 227 72% 72%;
     --admin-brand-fg: 228 6% 13%;
     --admin-fg: 0 0% 99%;
     --admin-fg-strong: 0 0% 99%;
@@ -103,7 +103,7 @@
     --admin-positive-fg: 127 60% 55%;
     --admin-negative-fg: 356 58% 56%;
     --admin-metric-zero-fg: 0 0% 52%;
-    --admin-metric-conversion-fg: 0 0% 99%;
+    --admin-metric-conversion-fg: 227 72% 65%;
     --admin-status-active: 127 60% 55%;
     --admin-status-paused: 48 98% 62%;
     --admin-status-draft: 227 72% 65%;
@@ -183,7 +183,7 @@
   }
 
   .ui-filter-panel {
-    @apply grid gap-4 rounded-md bg-muted p-3 text-muted-foreground;
+    @apply grid gap-4 rounded-md border border-primary/15 bg-primary/5 p-3 text-muted-foreground;
   }
 
   .ui-section-table-host [data-directory-table],

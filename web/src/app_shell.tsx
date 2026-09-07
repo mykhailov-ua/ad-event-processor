@@ -115,14 +115,18 @@ export function AppShell() {
                     </div>
                   </header>
                   <main
-                    className="flex min-h-0 flex-1 flex-col overflow-hidden bg-background p-4"
+                    className="flex min-h-0 flex-1 flex-col overflow-hidden bg-background"
                     id="main-content"
                     tabIndex={-1}
                   >
-                    <div className="flex min-h-0 min-w-0 flex-1 flex-col">
-                      <AppErrorBoundary layout="embedded">
-                        <Outlet />
-                      </AppErrorBoundary>
+                    <div
+                      className="ui-scrollbar min-h-0 min-w-0 flex-1 overflow-x-hidden overflow-y-auto"
+                    >
+                      <div className="flex min-w-0 flex-col p-4">
+                        <AppErrorBoundary layout="embedded">
+                          <Outlet />
+                        </AppErrorBoundary>
+                      </div>
                     </div>
                   </main>
                 </BreadcrumbProvider>

@@ -276,6 +276,17 @@ telegram-hotpath-gate:
 edge-preflight:
 	bash scripts/ops/edge_preflight.sh
 
+.PHONY: deploy-appliance deploy-appliance-check deploy-appliance-fast
+
+deploy-appliance:
+	bash scripts/ops/deploy_appliance.sh
+
+deploy-appliance-check:
+	bash scripts/ops/deploy_appliance.sh --check
+
+deploy-appliance-fast:
+	SKIP_BUILD=1 SKIP_SEED=1 bash scripts/ops/deploy_appliance.sh
+
 proto:
 	bash scripts/ci/gen.sh --proto
 
