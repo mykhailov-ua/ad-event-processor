@@ -45,7 +45,7 @@ export function LoginPage() {
   }
 
   if (!bootstrapComplete) {
-    return <Navigate replace to="/setup" />;
+    return <Navigate replace to="/activate" />;
   }
 
   return (
@@ -87,12 +87,8 @@ export function LoginPage() {
           <AdminDevModeEntry />
           <p className="text-center text-sm text-muted-foreground">
             First install?{' '}
-            <Link className="text-foreground underline" to="/setup">
-              Run setup
-            </Link>{' '}
-            or{' '}
             <Link className="text-foreground underline" to="/activate">
-              activate with license
+              Activate with license
             </Link>
             .
           </p>

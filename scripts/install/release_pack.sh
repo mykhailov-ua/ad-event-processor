@@ -42,26 +42,61 @@ cp "$ROOT/deploy/installer/packages.yaml" "$STAGE/ad-event-processor/deploy/inst
 mkdir -p "$STAGE/ad-event-processor/deploy/geoip"
 touch "$STAGE/ad-event-processor/deploy/geoip/.gitkeep"
 
-mkdir -p "$STAGE/ad-event-processor/scripts/install" "$STAGE/ad-event-processor/scripts/dev" "$STAGE/ad-event-processor/scripts/lib" "$STAGE/ad-event-processor/scripts/ci"
+mkdir -p "$STAGE/ad-event-processor/scripts/install" "$STAGE/ad-event-processor/scripts/dev" "$STAGE/ad-event-processor/scripts/lib" "$STAGE/ad-event-processor/scripts/ci" "$STAGE/ad-event-processor/deploy/systemd"
 cp "$ROOT/scripts/install/ad-event-processor-install.sh" "$STAGE/ad-event-processor/scripts/install/"
+cp "$ROOT/scripts/install/install.sh" "$STAGE/ad-event-processor/scripts/install/"
+cp "$ROOT/scripts/install/mode_systemd.sh" "$STAGE/ad-event-processor/scripts/install/"
 cp "$ROOT/scripts/install/preflight.sh" "$STAGE/ad-event-processor/scripts/install/"
 cp "$ROOT/scripts/install/get.sh" "$STAGE/ad-event-processor/scripts/install/"
+cp "$ROOT/scripts/lib/install_cli.sh" "$STAGE/ad-event-processor/scripts/lib/"
+cp "$ROOT/deploy/systemd/ad-event-processor-control.service" "$STAGE/ad-event-processor/deploy/systemd/"
+cp "$ROOT/deploy/systemd/ad-event-processor-tracker.service" "$STAGE/ad-event-processor/deploy/systemd/"
+cp "$ROOT/deploy/systemd/ad-event-processor-processor.service" "$STAGE/ad-event-processor/deploy/systemd/"
+cp "$ROOT/scripts/install/install.sh" "$STAGE/ad-event-processor/install.sh"
 mkdir -p "$STAGE/ad-event-processor/deploy/ingress/caddy"
 cp "$ROOT/deploy/ingress/caddy/Caddyfile.example" "$STAGE/ad-event-processor/deploy/ingress/caddy/"
 mkdir -p "$STAGE/ad-event-processor/deploy/ingress/caddy/generated" "$STAGE/ad-event-processor/deploy/ingress/certs"
 touch "$STAGE/ad-event-processor/deploy/ingress/caddy/generated/.gitkeep"
 touch "$STAGE/ad-event-processor/deploy/ingress/certs/.gitkeep"
 cp "$ROOT/scripts/install/render_ingress.sh" "$STAGE/ad-event-processor/scripts/install/"
-cp "$ROOT/scripts/dev/stack/stack.sh" "$STAGE/ad-event-processor/scripts/dev/"
+mkdir -p "$STAGE/ad-event-processor/scripts/dev/stack"
+cp "$ROOT/scripts/dev/stack/stack.sh" "$STAGE/ad-event-processor/scripts/dev/stack/"
+mkdir -p "$STAGE/ad-event-processor/scripts/ops"
+cp "$ROOT/scripts/ops/bootstrap_pg_schema.sh" "$STAGE/ad-event-processor/scripts/ops/"
 cp "$ROOT/scripts/lib/paths.sh" "$STAGE/ad-event-processor/scripts/lib/"
 cp "$ROOT/scripts/lib/installer_env.sh" "$STAGE/ad-event-processor/scripts/lib/"
 cp "$ROOT/scripts/lib/safe_paths.sh" "$STAGE/ad-event-processor/scripts/lib/"
+cp "$ROOT/scripts/lib/go.sh" "$STAGE/ad-event-processor/scripts/lib/"
+cp "$ROOT/scripts/lib/redis_topology.sh" "$STAGE/ad-event-processor/scripts/lib/"
+cp "$ROOT/scripts/lib/dev_bind_mounts.sh" "$STAGE/ad-event-processor/scripts/lib/"
 cp "$ROOT/scripts/ci/deps.sh" "$STAGE/ad-event-processor/scripts/ci/"
+
+mkdir -p "$STAGE/ad-event-processor/internal/ingest/migrations" \
+  "$STAGE/ad-event-processor/internal/identity/migrations" \
+  "$STAGE/ad-event-processor/internal/ledger/migrations"
+cp -a "$ROOT/internal/ingest/migrations/." "$STAGE/ad-event-processor/internal/ingest/migrations/"
+cp -a "$ROOT/internal/identity/migrations/." "$STAGE/ad-event-processor/internal/identity/migrations/"
+cp -a "$ROOT/internal/ledger/migrations/." "$STAGE/ad-event-processor/internal/ledger/migrations/"
 
 mkdir -p "$STAGE/ad-event-processor/bin"
 echo "release_pack: building linux/amd64 ad-event-processor-install CLI..."
 CGO_ENABLED=0 GOOS=linux GOARCH=amd64 go build -o "$STAGE/ad-event-processor/bin/ad-event-processor-install" ./cmd/installer
 chmod +x "$STAGE/ad-event-processor/bin/ad-event-processor-install"
+echo "release_pack: building linux/amd64 migrate-cold-path..."
+CGO_ENABLED=0 GOOS=linux GOARCH=amd64 go build -o "$STAGE/ad-event-processor/bin/migrate-cold-path" ./cmd/migrate-cold-path
+chmod +x "$STAGE/ad-event-processor/bin/migrate-cold-path"
+
+BIN_SRC="${AD_EVENT_PROCESSOR_RELEASE_BIN_DIR:-}"
+if [[ -n "$BIN_SRC" ]]; then
+  echo "release_pack: bundling garbled binaries from ${BIN_SRC}..."
+  for bin in control tracker processor; do
+    if [[ -x "${BIN_SRC}/${bin}" ]]; then
+      install -m 0755 "${BIN_SRC}/${bin}" "$STAGE/ad-event-processor/bin/${bin}"
+    else
+      echo "release_pack: warning: missing ${BIN_SRC}/${bin}" >&2
+    fi
+  done
+fi
 
 mkdir -p "$STAGE/ad-event-processor/deploy/vendor"
 if [[ -f "$ROOT/deploy/vendor/license_public.key" ]]; then

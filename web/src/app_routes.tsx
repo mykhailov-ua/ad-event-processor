@@ -105,7 +105,7 @@ function ProtectedLayout() {
   }
 
   if (!bootstrapComplete) {
-    return <Navigate replace to="/setup" />;
+    return <Navigate replace to="/activate" />;
   }
 
   if (forbidden) {

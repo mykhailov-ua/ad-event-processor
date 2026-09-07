@@ -1,0 +1,18 @@
+[Unit]
+Description=ad-event-processor control plane (admin API and workers)
+After=network-online.target
+Wants=network-online.target
+StartLimitIntervalSec=30
+StartLimitBurst=5
+
+[Service]
+Type=simple
+WorkingDirectory=__INSTALL_ROOT__
+EnvironmentFile=-/etc/ad-event-processor/secrets.env
+ExecStart=__INSTALL_ROOT__/bin/control
+Restart=on-failure
+RestartSec=5
+LimitNOFILE=1048576
+
+[Install]
+WantedBy=multi-user.target

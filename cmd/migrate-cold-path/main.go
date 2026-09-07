@@ -7,6 +7,7 @@ import (
 	"flag"
 	"log/slog"
 	"os"
+	"path/filepath"
 	"strings"
 
 	"ad-event-processor/internal/database"
@@ -96,12 +97,26 @@ func parseOnly(raw string) map[string]bool {
 }
 
 func repoRoot() (string, error) {
+	if root := strings.TrimSpace(os.Getenv("AD_EVENT_PROCESSOR_REPO_ROOT")); root != "" {
+		if hasMigrationTree(root) {
+			return root, nil
+		}
+		return "", errors.New("AD_EVENT_PROCESSOR_REPO_ROOT missing internal/ingest/migrations")
+	}
 	wd, err := os.Getwd()
 	if err != nil {
 		return "", err
 	}
+	if hasMigrationTree(wd) {
+		return wd, nil
+	}
 	if _, err := os.Stat(wd + "/go.mod"); err == nil {
 		return wd, nil
 	}
-	return "", errors.New("run from repository root")
+	return "", errors.New("run from repository root or set AD_EVENT_PROCESSOR_REPO_ROOT")
+}
+
+func hasMigrationTree(root string) bool {
+	_, err := os.Stat(filepath.Join(root, "internal", "ingest", "migrations"))
+	return err == nil
 }

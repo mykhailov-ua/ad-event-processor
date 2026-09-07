@@ -1,5 +1,5 @@
 import { type FormEvent, useState } from 'react';
-import { Link, Navigate } from 'react-router-dom';
+import { Navigate } from 'react-router-dom';
 
 import { publicActivate } from '@/api/auth_api';
 import { ApiError } from '@/api/client';
@@ -58,31 +58,28 @@ export function ActivatePage() {
     <div className="flex min-h-screen items-center justify-center bg-background p-4">
       <Card className="w-full max-w-lg">
         <CardHeader>
-          <CardTitle>Activate deployment</CardTitle>
+          <CardTitle>Activate your deployment</CardTitle>
           <CardDescription>
-            Create the owner account and apply your license in one step. Alternative to JSON setup
-            on{' '}
-            <Link className="text-foreground underline" to="/setup">
-              Initial setup
-            </Link>
-            .
+            Create the owner account and paste the license key from your vendor. One step, then you
+            are signed in.
           </CardDescription>
         </CardHeader>
         <CardContent className="grid gap-4">
           {error ? <ErrorBlock title="Activation failed" message={error} /> : null}
           <form className="grid gap-4" onSubmit={handleSubmit}>
             <div className="grid gap-2">
-              <Label htmlFor="activate-license">License JWT</Label>
+              <Label htmlFor="activate-license">License key</Label>
               <Textarea
                 id="activate-license"
                 className="font-mono text-xs"
+                placeholder="Paste JWT from vendor email"
                 required
                 value={licenseToken}
                 onChange={(event) => setLicenseToken(event.target.value)}
               />
             </div>
             <div className="grid gap-2">
-              <Label htmlFor="activate-email">Owner email</Label>
+              <Label htmlFor="activate-email">Your email</Label>
               <Input
                 id="activate-email"
                 type="email"
@@ -104,7 +101,7 @@ export function ActivatePage() {
               />
             </div>
             <div className="grid gap-2">
-              <Label htmlFor="activate-team">Team name</Label>
+              <Label htmlFor="activate-team">Team / company name</Label>
               <Input
                 id="activate-team"
                 required

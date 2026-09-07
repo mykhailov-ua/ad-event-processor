@@ -3,6 +3,7 @@ package controlplane
 import (
 	"context"
 	"errors"
+	"fmt"
 	"log/slog"
 	"strings"
 	"time"
@@ -21,6 +22,7 @@ import (
 	"ad-event-processor/internal/reports"
 	"ad-event-processor/internal/shardadmin"
 	"ad-event-processor/internal/supply"
+	"ad-event-processor/pkg/platformconfig"
 
 	"ad-event-processor/internal/automation"
 	"ad-event-processor/pkg/domainhealth"
@@ -398,6 +400,14 @@ func (s *Service) AuditOwnerActivation(ctx context.Context, deploymentID, custom
 		"customer_id":   customerID.String(),
 		"owner_user_id": ownerUserID.String(),
 	}, nil)
+}
+
+func (s *Service) BootstrapPlatformOnActivation(ctx context.Context, adminEmail string) error {
+	if s == nil {
+		return fmt.Errorf("service unavailable")
+	}
+	cfg := platformconfig.MergeDefaults(platformconfig.Default())
+	return s.PlatformStore().BootstrapFromOwnerActivation(ctx, adminEmail, cfg)
 }
 
 func (s *Service) handleMediaBuyerBudgetIncrease(ctx context.Context, locked db.Campaign, userID uuid.UUID, newLimit int64) error {

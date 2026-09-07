@@ -46,9 +46,9 @@ export const DOCS_SECTIONS: DocsSection[] = [
     summary: 'First-run setup, EULA gate, and license tier limits.',
     topics: [
       {
-        problem: 'Stuck on /setup',
-        symptom: 'Bootstrap never completes.',
-        fix: 'Open GET /api/v1/meta - bootstrap_complete must be true. Finish platform bootstrap in Settings or run stack seed.',
+        problem: 'Stuck before sign-in',
+        symptom: 'Redirected away from the console on first visit.',
+        fix: 'Open /activate, paste license JWT, create owner email and password. GET /api/v1/meta should show bootstrap_complete=true after success.',
       },
       {
         problem: 'EULA modal blocks navigation',

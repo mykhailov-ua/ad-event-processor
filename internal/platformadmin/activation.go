@@ -23,6 +23,7 @@ import (
 type ActivationHost interface {
 	Pool() *pgxpool.Pool
 	ApplyLicenseToken(ctx context.Context, token string) error
+	BootstrapPlatformOnActivation(ctx context.Context, adminEmail string) error
 	ErrValidation(msg string) error
 	AuditOwnerActivation(ctx context.Context, deploymentID, customerID, ownerUserID uuid.UUID)
 }
@@ -138,6 +139,10 @@ func ActivateOwner(ctx context.Context, host ActivationHost, req ActivateOwnerRe
 		if errors.As(err, &pgErr) && pgErr.Code == "23505" {
 			return ActivatedOwner{}, host.ErrValidation("email already registered")
 		}
+		return ActivatedOwner{}, err
+	}
+
+	if err := host.BootstrapPlatformOnActivation(ctx, req.Email); err != nil {
 		return ActivatedOwner{}, err
 	}
 

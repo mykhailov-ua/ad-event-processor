@@ -55,7 +55,21 @@ installer_license_mode() {
 installer_license_required() {
   local v
   v="$(installer_env_dual AD_EVENT_PROCESSOR_LICENSE_REQUIRED AD_EVENT_PROCESSOR_LICENSE_REQUIRED)"
+  if installer_ui_activation_enabled; then
+    echo "0"
+    return 0
+  fi
   echo "${v:-1}"
+}
+
+# Owner completes license + account at /activate (default for appliance install).
+installer_ui_activation_enabled() {
+  local v
+  v="$(installer_env_dual AD_EVENT_PROCESSOR_UI_ACTIVATION AD_EVENT_PROCESSOR_UI_ACTIVATION)"
+  if [[ "$v" == "0" ]]; then
+    return 1
+  fi
+  return 0
 }
 
 aed_read_env() { installer_read_env "$1"; }

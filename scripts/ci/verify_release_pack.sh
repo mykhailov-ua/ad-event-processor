@@ -38,4 +38,49 @@ if ! echo "$LIST" | grep -q 'scripts/install/preflight.sh'; then
   exit 1
 fi
 
+if ! echo "$LIST" | grep -q 'bin/migrate-cold-path'; then
+  echo "verify_release_pack: missing bin/migrate-cold-path in $TARBALL" >&2
+  exit 1
+fi
+
+if ! echo "$LIST" | grep -q 'internal/ingest/migrations/00001_init_schema.sql'; then
+  echo "verify_release_pack: missing internal/ingest/migrations in $TARBALL" >&2
+  exit 1
+fi
+
+if ! echo "$LIST" | grep -q 'scripts/ops/bootstrap_pg_schema.sh'; then
+  echo "verify_release_pack: missing scripts/ops/bootstrap_pg_schema.sh in $TARBALL" >&2
+  exit 1
+fi
+
+if ! echo "$LIST" | grep -q 'scripts/install/ad-event-processor-install.sh'; then
+  echo "verify_release_pack: missing scripts/install/ad-event-processor-install.sh in $TARBALL" >&2
+  exit 1
+fi
+
+if ! echo "$LIST" | grep -q 'scripts/dev/stack/stack.sh'; then
+  echo "verify_release_pack: missing scripts/dev/stack/stack.sh in $TARBALL" >&2
+  exit 1
+fi
+
+if ! echo "$LIST" | grep -q 'scripts/lib/install_cli.sh'; then
+  echo "verify_release_pack: missing scripts/lib/install_cli.sh in $TARBALL" >&2
+  exit 1
+fi
+
+if ! echo "$LIST" | grep -q 'scripts/install/mode_systemd.sh'; then
+  echo "verify_release_pack: missing scripts/install/mode_systemd.sh in $TARBALL" >&2
+  exit 1
+fi
+
+if ! echo "$LIST" | grep -q 'deploy/systemd/ad-event-processor-control.service'; then
+  echo "verify_release_pack: missing deploy/systemd units in $TARBALL" >&2
+  exit 1
+fi
+
+if ! echo "$LIST" | grep -q 'install.sh'; then
+  echo "verify_release_pack: missing install.sh in $TARBALL" >&2
+  exit 1
+fi
+
 echo "verify_release_pack: OK ($TARBALL)"

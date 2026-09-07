@@ -11,6 +11,7 @@ VERSION="${AD_EVENT_PROCESSOR_VERSION:-latest}"
 INSTALL_DIR="${AD_EVENT_PROCESSOR_INSTALL_DIR:-${HOME}/ad-event-processor}"
 USE_GIT="${AD_EVENT_PROCESSOR_INSTALL_FROM_GIT:-0}"
 GET_SCRIPT_URL="${AD_EVENT_PROCESSOR_GET_SCRIPT_URL:-}"
+RELEASE_BASE_URL="${AD_EVENT_PROCESSOR_RELEASE_BASE_URL:-}"
 
 log() {
   echo "ad-event-processor-get: $*"
@@ -31,8 +32,14 @@ install_from_tarball() {
   local tag="$1"
   local tmp
   tmp="$(mktemp -d)"
-  for name in ad-event-processor-installer; do
-    local url="https://github.com/${REPO}/releases/download/${tag}/${name}.tar.gz"
+  local -a urls=()
+  if [[ -n "$RELEASE_BASE_URL" ]]; then
+    urls+=("${RELEASE_BASE_URL%/}/ad-event-processor-installer-${tag#v}.tar.gz")
+    urls+=("${RELEASE_BASE_URL%/}/ad-event-processor-installer.tar.gz")
+  fi
+  urls+=("https://github.com/${REPO}/releases/download/${tag}/ad-event-processor-installer.tar.gz")
+  urls+=("https://github.com/${REPO}/releases/download/${tag}/ad-event-processor-installer-${tag#v}.tar.gz")
+  for url in "${urls[@]}"; do
     log "downloading ${url}"
     if curl -fsSL "$url" | tar -xz -C "$tmp" 2> /dev/null; then
       rm -rf "$INSTALL_DIR"
@@ -84,7 +91,14 @@ main() {
   fi
 
   cd "$INSTALL_DIR"
-  exec bash scripts/install/ad-event-processor-install.sh --yes "$@"
+  local -a args=("$@")
+  if [[ ${#args[@]} -eq 0 ]]; then
+    args=(docker up)
+  fi
+  if [[ -x "$INSTALL_DIR/install.sh" ]]; then
+    exec bash "$INSTALL_DIR/install.sh" --yes "${args[@]}"
+  fi
+  exec bash scripts/install/ad-event-processor-install.sh --yes "${args[@]}"
 }
 
 if [[ -n "$GET_SCRIPT_URL" ]]; then

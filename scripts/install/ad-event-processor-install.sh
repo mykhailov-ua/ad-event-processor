@@ -1,5 +1,5 @@
 #!/usr/bin/env bash
-# Role: Full appliance installer: compose profiles, license, GeoIP, stack up, and admin seed.
+# Role: Full appliance installer: compose profiles, license, GeoIP, PG schema bootstrap, stack up, and admin seed.
 # Execution context: Repo root or release tarball; primary production install entrypoint.
 # Env knobs: INGRESS_ENABLED; REDIS_SHARD_COUNT; CH_ENABLED; AD_EVENT_PROCESSOR_USE_RELEASE_IMAGES;
 #   profile flags via install subcommands (ingest-only, single-vps, etc.).
@@ -8,8 +8,12 @@ set -euo pipefail
 
 source "$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)/lib/paths.sh"
 source "$SCRIPTS/lib/installer_env.sh"
+source "$SCRIPTS/lib/install_cli.sh"
 source "$SCRIPTS/lib/dev_bind_mounts.sh"
 cd "$ROOT"
+
+INSTALL_MODE="${AD_EVENT_PROCESSOR_INSTALL_MODE:-docker}"
+INSTALL_INFRA="${AD_EVENT_PROCESSOR_INSTALL_INFRA:-docker}"
 
 DEV_LICENSE_REL="var/license.jwt"
 
@@ -62,13 +66,48 @@ ENV_FILE=""
 CMD="up"
 
 usage() {
-  echo "usage: $0 [--yes] [--skip-provision] [--skip-preflight] [--accept-eula] [--env-file PATH] {up|status|apply|doctor|license-apply [JWT]}" >&2
+  install_cli_usage
+  echo "" >&2
+  echo "Legacy: --mode docker|systemd, --license, --admin-domain, ... (prefer install.env)" >&2
 }
 
 while [[ $# -gt 0 ]]; do
   case "$1" in
+    --mode)
+      INSTALL_MODE="${2:-}"
+      shift 2
+      ;;
+    --infra)
+      INSTALL_INFRA="${2:-}"
+      shift 2
+      ;;
+    --license | --license-key)
+      AD_EVENT_PROCESSOR_LICENSE_KEY="${2:-}"
+      shift 2
+      ;;
+    --admin-domain)
+      ADMIN_DOMAIN="${2:-}"
+      shift 2
+      ;;
+    --tracking-domain)
+      TRACKING_DOMAIN="${2:-}"
+      shift 2
+      ;;
+    --acme-email)
+      CADDY_ACME_EMAIL="${2:-}"
+      shift 2
+      ;;
+    --admin-email)
+      ADMIN_BOOTSTRAP_EMAIL="${2:-}"
+      shift 2
+      ;;
+    --admin-password)
+      ADMIN_BOOTSTRAP_PASSWORD="${2:-}"
+      shift 2
+      ;;
     --yes)
       YES=1
+      ACCEPT_EULA=1
       shift
       ;;
     --skip-provision)
@@ -87,7 +126,19 @@ while [[ $# -gt 0 ]]; do
       ENV_FILE="${2:-}"
       shift 2
       ;;
-    up | status | apply | doctor | license-apply)
+    docker)
+      INSTALL_MODE=docker
+      shift
+      ;;
+    systemd)
+      INSTALL_MODE=systemd
+      shift
+      ;;
+    external)
+      INSTALL_INFRA=external
+      shift
+      ;;
+    up | status | apply | doctor | license-apply | bootstrap-schema)
       CMD="$1"
       shift
       ;;
@@ -238,6 +289,10 @@ setup_offline_license() {
   fi
 
   if [[ -z "$jwt" ]]; then
+    if installer_ui_activation_enabled; then
+      echo "ad-event-processor-install: license not preloaded; owner activates at /activate in the browser"
+      return 0
+    fi
     echo "ad-event-processor-install: set AD_EVENT_PROCESSOR_LICENSE_KEY (or legacy AD_EVENT_PROCESSOR_LICENSE_KEY) to the monthly license JWT in install.env" >&2
     exit 1
   fi
@@ -373,10 +428,6 @@ EULA_VERSION="2026-01"
 require_eula_acceptance() {
   if [[ "$ACCEPT_EULA" == "1" ]]; then
     return 0
-  fi
-  if [[ "$YES" == "1" ]]; then
-    echo "ad-event-processor-install: re-run with --accept-eula (required for install)" >&2
-    exit 1
   fi
   echo ""
   echo "ad-event-processor on-premise license agreement (version ${EULA_VERSION})"
@@ -567,38 +618,47 @@ PY
 }
 
 print_summary() {
-  local port tracking_domain
+  local port tracking_domain admin_domain activate_url
   port="$(read_env_var MANAGEMENT_PORT)"
   port="${port:-8188}"
   tracking_domain="${TRACKING_DOMAIN:-}"
+  admin_domain="${ADMIN_DOMAIN:-}"
   if [[ -z "$tracking_domain" ]] && [[ -f platform_config.json ]]; then
     tracking_domain="$(python3 -c 'import json; print(json.load(open("platform_config.json")).get("tracking_domain",""))' 2> /dev/null || true)"
   fi
+  if [[ -z "$admin_domain" ]]; then
+    admin_domain="$(read_env_var ADMIN_DOMAIN)"
+  fi
   echo ""
   echo "ad-event-processor ready"
-  echo "Control UI:  http://127.0.0.1:${port}"
-  echo "Login:       http://127.0.0.1:${port}/login"
-  echo "Bootstrap UI: http://127.0.0.1:${port}/bootstrap (alternative to CLI install)"
-  echo "Checklist:    http://127.0.0.1:${port}/install/done"
   local ingress_enabled="${INGRESS_ENABLED:-}"
   if [[ -z "$ingress_enabled" ]]; then
     ingress_enabled="$(read_env_var INGRESS_ENABLED)"
   fi
+  if installer_ui_activation_enabled; then
+    if [[ -n "$admin_domain" && "$ingress_enabled" == "1" ]]; then
+      activate_url="https://${admin_domain}/activate"
+    else
+      activate_url="http://127.0.0.1:${port}/activate"
+    fi
+    echo "Activate:    ${activate_url}"
+    echo "             Create owner account and paste license JWT in the browser."
+  else
+    echo "Control UI:  http://127.0.0.1:${port}"
+    echo "Login:       http://127.0.0.1:${port}/login"
+  fi
   if [[ -n "$tracking_domain" ]]; then
     if [[ "$ingress_enabled" == "1" ]]; then
       echo "Tracking:    https://${tracking_domain}/click?campaign_id={campaign_id}&sub1={sub1}"
-      local admin_domain="${ADMIN_DOMAIN:-}"
-      if [[ -n "$admin_domain" ]]; then
+      if [[ -n "$admin_domain" ]] && ! installer_ui_activation_enabled; then
         echo "Control UI:  https://${admin_domain}"
-      else
-        echo "Control UI:  http://127.0.0.1:${port} (set ADMIN_DOMAIN for HTTPS admin host)"
       fi
     else
       echo "Click URL:   https://${tracking_domain}/click?campaign_id={campaign_id}&sub1={sub1}"
       echo "DNS:         point ${tracking_domain} A-record to this server"
       echo "TLS:         set INGRESS_ENABLED=1 in install.env for automatic HTTPS (Caddy)"
     fi
-  else
+  elif [[ -z "$admin_domain" ]] && ! installer_ui_activation_enabled; then
     echo "Tracking:    set TRACKING_DOMAIN in install.env and run: $0 apply"
   fi
   echo "Status:      $0 status"
@@ -606,7 +666,22 @@ print_summary() {
 }
 
 cmd_up() {
+  ensure_env
+  load_install_env
+  install_cli_autodetect_yes
   run_preflight
+  install_cli_apply
+  case "$INSTALL_MODE" in
+    systemd)
+      cmd_up_systemd
+      return
+      ;;
+    docker) ;;
+    *)
+      echo "ad-event-processor-install: invalid INSTALL_MODE=${INSTALL_MODE}" >&2
+      exit 2
+      ;;
+  esac
   provision_host
   if ! check_docker; then
     echo "ad-event-processor-install: docker not available" >&2
@@ -621,7 +696,9 @@ cmd_up() {
   source .env
   set +a
 
-  collect_config
+  if ! installer_ui_activation_enabled; then
+    collect_config
+  fi
 
   if installer_use_release_images; then
     echo "ad-event-processor-install: pulling release images ($(installer_release_app_image):-from .env})..."
@@ -634,27 +711,86 @@ cmd_up() {
   bash scripts/dev/stack/stack.sh single-vps
   wait_control_health
 
-  bootstrap_platform
-  apply_platform_config || true
+  if ! installer_ui_activation_enabled; then
+    bootstrap_platform
+    apply_platform_config || true
+  fi
 
   run_doctor || true
   print_summary
+}
+
+cmd_up_systemd() {
+  provision_host
+  if [[ "$INSTALL_INFRA" == "docker" ]] && ! check_docker; then
+    echo "ad-event-processor-install: docker required for systemd --infra docker" >&2
+    exit 1
+  fi
+  ensure_env
+  load_install_env
+  require_eula_acceptance
+  setup_offline_license
+  set -a
+  source .env
+  set +a
+  if ! installer_ui_activation_enabled; then
+    collect_config
+  fi
+  export INSTALL_INFRA
+  bash "$SCRIPTS/install/mode_systemd.sh" up
+  print_summary
+  run_doctor || true
+}
+
+cmd_bootstrap_schema() {
+  ensure_env
+  load_install_env
+  load_install_mode_from_env
+  set -a
+  source .env
+  set +a
+  install_cli_apply
+  case "$INSTALL_MODE" in
+    systemd)
+      export INSTALL_INFRA
+      bash "$SCRIPTS/install/mode_systemd.sh" bootstrap-schema
+      ;;
+    docker)
+      if check_docker; then
+        bash scripts/dev/stack/stack.sh migrate-pg
+      else
+        bash scripts/ops/bootstrap_pg_schema.sh
+      fi
+      ;;
+    *)
+      bash scripts/ops/bootstrap_pg_schema.sh
+      ;;
+  esac
+}
+
+load_install_mode_from_env() {
+  local saved
+  saved="$(read_env_var AD_EVENT_PROCESSOR_INSTALL_MODE)"
+  if [[ -n "$saved" ]]; then
+    INSTALL_MODE="$saved"
+  fi
+  saved="$(read_env_var AD_EVENT_PROCESSOR_INSTALL_INFRA)"
+  if [[ -n "$saved" ]]; then
+    INSTALL_INFRA="$saved"
+  fi
 }
 
 cmd_license_apply() {
   local token="${1:-}"
   ensure_env
   load_install_env
+  load_install_mode_from_env
   if [[ -z "$token" ]]; then
     token="$(installer_license_key)"
   fi
   if [[ -z "$token" ]]; then
     echo "ad-event-processor-install: pass JWT argument or set AD_EVENT_PROCESSOR_LICENSE_KEY" >&2
     exit 2
-  fi
-  if ! check_docker; then
-    echo "ad-event-processor-install: docker not available" >&2
-    exit 1
   fi
   set -a
 
@@ -689,19 +825,37 @@ cmd_license_apply() {
 }
 
 cmd_status() {
-  if ! check_docker; then
-    echo "ad-event-processor-install: docker not available" >&2
-    exit 1
-  fi
-  bash scripts/dev/stack/stack.sh status
+  ensure_env
+  load_install_env
+  load_install_mode_from_env
   local port
   port="$(read_env_var MANAGEMENT_PORT)"
   port="${port:-8188}"
+  case "$INSTALL_MODE" in
+    systemd)
+      bash "$SCRIPTS/install/mode_systemd.sh" status
+      ;;
+    docker)
+      if ! check_docker; then
+        echo "ad-event-processor-install: docker not available" >&2
+        exit 1
+      fi
+      bash scripts/dev/stack/stack.sh status
+      ;;
+    *)
+      echo "ad-event-processor-install: unknown install mode ${INSTALL_MODE}" >&2
+      exit 2
+      ;;
+  esac
   if curl -sf "http://127.0.0.1:${port}/health" > /dev/null; then
     echo "control: healthy (http://127.0.0.1:${port})"
   else
     echo "control: not reachable (http://127.0.0.1:${port})"
-    echo "hint: docker compose logs control" >&2
+    if [[ "$INSTALL_MODE" == "systemd" ]]; then
+      echo "hint: sudo journalctl -u ad-event-processor-control -n 50" >&2
+    else
+      echo "hint: docker compose logs control" >&2
+    fi
   fi
 }
 
@@ -746,6 +900,9 @@ case "$CMD" in
     ;;
   license-apply)
     cmd_license_apply "${1:-}"
+    ;;
+  bootstrap-schema)
+    cmd_bootstrap_schema
     ;;
   *)
     usage

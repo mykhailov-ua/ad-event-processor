@@ -7,8 +7,9 @@ import (
 	"os"
 	"path/filepath"
 
-	db "ad-event-processor/internal/domain/db"
+	"ad-event-processor/internal/domain/db"
 	"ad-event-processor/pkg/coldpath"
+	"ad-event-processor/pkg/legal"
 	"ad-event-processor/pkg/platformconfig"
 
 	"github.com/jackc/pgx/v5"
@@ -96,6 +97,45 @@ func (st *Store) Bootstrap(ctx context.Context, req platformconfig.BootstrapRequ
 			if err := st.host.SaveBootstrapEula(ctx, q, req.EulaVersion, req.AdminEmail); err != nil {
 				return err
 			}
+		}
+		st.host.AuditBootstrap(ctx, q, st.host.ActorUserID(ctx), cfg)
+		return nil
+	})
+	if err != nil {
+		return err
+	}
+	return st.host.SyncEdgeExpose(ctx, cfg)
+}
+
+func (st *Store) BootstrapFromOwnerActivation(ctx context.Context, adminEmail string, cfg platformconfig.Config) error {
+	if st.poolOrNil() == nil || st.host == nil {
+		return fmt.Errorf("service unavailable")
+	}
+	_, bootstrapped, err := st.loadConfig(ctx)
+	if err != nil {
+		return err
+	}
+	if bootstrapped {
+		return nil
+	}
+	cfg = platformconfig.MergeDefaults(cfg)
+	if err := cfg.Validate(); err != nil {
+		return st.host.ErrValidation(err.Error())
+	}
+	err = pgx.BeginFunc(ctx, st.pool, func(tx pgx.Tx) error {
+		q := db.New(tx)
+		_, bootstrapped, err := st.loadConfigTx(ctx, q)
+		if err != nil {
+			return err
+		}
+		if bootstrapped {
+			return nil
+		}
+		if err := st.saveConfigTx(ctx, q, cfg); err != nil {
+			return err
+		}
+		if err := st.host.SaveBootstrapEula(ctx, q, legal.Version, adminEmail); err != nil {
+			return err
 		}
 		st.host.AuditBootstrap(ctx, q, st.host.ActorUserID(ctx), cfg)
 		return nil

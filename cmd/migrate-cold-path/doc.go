@@ -7,7 +7,7 @@
 //   - Tracked apply via pkg/coldpath.ApplyTrackedSchemaMigrations.
 //
 // Topology:
-//   - One-shot CLI; must run from repository root (go.mod discoverable).
+//   - One-shot CLI; repository root via cwd, go.mod, or AD_EVENT_PROCESSOR_REPO_ROOT (release tarball layout).
 //   - Pool max 4 conns, min 1; no Redis or ClickHouse.
 //
 // Invariants:

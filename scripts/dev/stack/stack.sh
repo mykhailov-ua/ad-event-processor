@@ -4,7 +4,8 @@
 # Env knobs: REDIS_SHARD_COUNT (shards, max 6); INGEST_REDIS_SHARD_COUNT (ingest-only subset);
 #   CH_ENABLED (0 default, 1 for clickhouse/minimal); COMPOSE_MEMORY_PROFILE (dev applies memory-dev overlay);
 #   CPU_ISOLATION_ENABLED (1 adds cpu-isolation profile); EDGE_SYSCTL_AUTO_APPLY (1 applies host sysctl);
-#   INGRESS_ENABLED (1 adds ingress profile); AD_EVENT_PROCESSOR_COMPOSE_EXTRA_FILES (comma compose overlays).
+#   INGRESS_ENABLED (1 adds ingress profile); AD_EVENT_PROCESSOR_SKIP_PG_MIGRATE=1 skips bootstrap_pg_schema;
+#   AD_EVENT_PROCESSOR_COMPOSE_EXTRA_FILES (comma compose overlays).
 # Verify: bash scripts/dev/stack/stack.sh ingest-only && bash scripts/dev/stack/preflight.sh
 set -euo pipefail
 
@@ -62,6 +63,19 @@ aed_stack_hardening() {
       echo "stack.sh: WARN cpu isolation verify failed (tracker-0 running with profile cpu-isolation?)" >&2
     fi
   fi
+}
+
+aed_start_postgres_for_migrate() {
+  echo "stack.sh: starting postgres for schema bootstrap..."
+  aed_compose up -d run-dir-init db
+}
+
+aed_bootstrap_pg_schema() {
+  if [[ "${AD_EVENT_PROCESSOR_SKIP_PG_MIGRATE:-}" == "1" ]]; then
+    echo "stack.sh: skipping PG schema bootstrap (AD_EVENT_PROCESSOR_SKIP_PG_MIGRATE=1)" >&2
+    return 0
+  fi
+  bash "$SCRIPTS/ops/bootstrap_pg_schema.sh"
 }
 
 aed_append_compose_extra_file() {
@@ -176,6 +190,8 @@ case "$CMD" in
     ;;
   full | up-full)
     echo "stack.sh: full runs single-vps monolith (no ClickHouse; use: stack.sh clickhouse)" >&2
+    aed_start_postgres_for_migrate
+    aed_bootstrap_pg_schema
     CH_ENABLED=0 aed_compose --profile single_vps up -d "${SINGLE_VPS[@]}"
     aed_stack_hardening
     ;;
@@ -185,6 +201,8 @@ case "$CMD" in
       prof+=(--profile ingress)
       bash "$SCRIPTS/install/render_ingress.sh"
     fi
+    aed_start_postgres_for_migrate
+    aed_bootstrap_pg_schema
     if aed_use_release_images; then
       aed_compose "${prof[@]}" pull tracker-0 processor control
       CH_ENABLED=0 aed_compose "${prof[@]}" up -d --no-build "${SINGLE_VPS[@]}"
@@ -196,6 +214,8 @@ case "$CMD" in
   ingest-only | up-ingest-only)
     # Canonical laptop path: no CH, cold-path workers off, control-dev overlay for payment stubs.
     aed_stop_vps_extras
+    aed_start_postgres_for_migrate
+    aed_bootstrap_pg_schema
     CPU_ISOLATION_ENABLED=0 CH_ENABLED=0 CONTROL_ENABLE_PAYMENT=0 CONTROL_ENABLE_BILLING=0 CONTROL_ENABLE_NOTIFIER=0 \
       CONTROL_ENABLE_MARGIN_GUARD=0 CONTROL_ENABLE_COST_SYNC=0 \
       AD_EVENT_PROCESSOR_COMPOSE_EXTRA_FILES="$INGEST_DEV_COMPOSE" \
@@ -206,6 +226,8 @@ case "$CMD" in
   minimal | up-minimal)
     echo "stack.sh: minimal profile runs tracker+control+PG+single Redis+CH; antifraud ML disabled." >&2
     aed_stop_vps_extras
+    aed_start_postgres_for_migrate
+    aed_bootstrap_pg_schema
     if [[ -f "$ROOT/deploy/compose/minimal.stack.env.example" ]]; then
       echo "stack.sh: merge deploy/compose/minimal.stack.env.example into .env for stable defaults." >&2
     fi
@@ -270,6 +292,21 @@ case "$CMD" in
         ;;
     esac
     ;;
+  migrate-pg | pg-migrate)
+    aed_start_postgres_for_migrate
+    aed_bootstrap_pg_schema
+    ;;
+  infra-only | up-infra-only)
+    read -ra redis_shards <<< "$(redis_topology_services "$(redis_topology_count)")"
+    aed_compose up -d run-dir-init db broker "${redis_shards[@]}"
+    ;;
+  ingress-only | up-ingress-only)
+    bash "$SCRIPTS/install/render_ingress.sh"
+    aed_compose --profile ingress up -d --no-deps ingress
+    ;;
+  stop-app-containers)
+    aed_compose stop control tracker-0 processor 2> /dev/null || true
+    ;;
   down)
     aed_compose down
     ;;
@@ -303,7 +340,7 @@ case "$CMD" in
     esac
     ;;
   *)
-    echo "usage: $0 {infra|clickhouse|full|single-vps|ingest-only|minimal|network-operator|analytics-ml|sentinel|multi-region|crypto|down|status|build|bpf|probe}" >&2
+    echo "usage: $0 {infra|clickhouse|full|single-vps|ingest-only|minimal|infra-only|ingress-only|stop-app-containers|migrate-pg|network-operator|analytics-ml|sentinel|multi-region|crypto|down|status|build|bpf|probe}" >&2
     exit 2
     ;;
 esac
