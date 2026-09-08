@@ -115,6 +115,9 @@ func (h *AdsPacketHandler) clickProxyDeliver(c gnet.Conn, ctx *ConnContext, job 
 
 	resp, err := h.clickProxyClient.Do(req)
 	if err != nil {
+		if isClickProxyTimeoutErr(err) {
+			metrics.ClickIngressLatencyBudgetExceededTotal.WithLabelValues("click_proxy").Inc()
+		}
 		if isClickProxyTimeoutErr(err) && job.timeoutFallback && len(job.fallbackLocation) > 0 {
 			metrics.ClickProxyFallbackTotal.Inc()
 			h.writeGnetClickRedirect(ctx, c, job.startMono, job.fallbackLocation)

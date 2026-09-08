@@ -29,7 +29,12 @@ export function useRtbPageWorkspace() {
     setDraftTo(toDatetimeLocalValue(appliedTo));
   }, [appliedFrom, appliedTo]);
 
-  const { data, error, fetching, revalidating: listRevalidating } = useResource(
+  const {
+    data,
+    error,
+    fetching,
+    revalidating: listRevalidating,
+  } = useResource(
     async (signal) => {
       const params = { from: appliedFrom, to: appliedTo, limit: 50, offset: 0 };
       const [overview, noBid, geoDevice] = await Promise.all([

@@ -1,6 +1,10 @@
 import { Link } from 'react-router-dom';
 
-import { FilterApplyButton, PrimaryActionButton, SecondaryActionButton } from '@/shell/action_buttons';
+import {
+  FilterApplyButton,
+  PrimaryActionButton,
+  SecondaryActionButton,
+} from '@/shell/action_buttons';
 import { PageLayout } from '@/shell/page_layout';
 import { EmptyState } from '@/shell/empty_state';
 import { ErrorBlock } from '@/shell/error_block';
@@ -148,10 +152,7 @@ export function FraudLabels({
             </DirectoryFilterForm>
           </FilterPanel>
           <FilterPanel>
-            <DirectoryFilterForm
-              layout="auto-fill"
-              onSubmit={(event) => event.preventDefault()}
-            >
+            <DirectoryFilterForm layout="auto-fill" onSubmit={(event) => event.preventDefault()}>
               <div className="grid gap-2 md:col-span-2">
                 <Label htmlFor="labels-ip-hash">IP hash (32 hex)</Label>
                 <Input
@@ -213,7 +214,7 @@ export function FraudLabels({
                   <TableRow key={row.id}>
                     <TableCell>
                       <Input
-                        className="font-mono text-xs"
+                        className="text-xs"
                         value={row.ip_hash}
                         onChange={(event) =>
                           onBulkRowChange(row.id, { ip_hash: event.target.value })
@@ -243,10 +244,7 @@ export function FraudLabels({
                       />
                     </TableCell>
                     <TableCell>
-                      <SecondaryActionButton
-                        onClick={() => onRemoveBulkRow(row.id)}
-                        type="button"
-                      >
+                      <SecondaryActionButton onClick={() => onRemoveBulkRow(row.id)} type="button">
                         Remove
                       </SecondaryActionButton>
                     </TableCell>
@@ -271,7 +269,9 @@ export function FraudLabels({
                 Bulk upsert
               </PrimaryActionButton>
             </div>
-            {bulkError ? <ErrorBlock title="Bulk upsert failed" message={bulkError.message} /> : null}
+            {bulkError ? (
+              <ErrorBlock title="Bulk upsert failed" message={bulkError.message} />
+            ) : null}
             {bulkSuccess ? (
               <p className="m-0 text-sm text-muted-foreground" role="status">
                 Bulk upsert complete{bulkUpserted != null ? ` (${bulkUpserted} rows)` : ''}.
@@ -311,8 +311,8 @@ export function FraudLabels({
           <TableBody>
             {(items ?? []).map((row) => (
               <TableRow key={`${row.ip_hash}-${row.created_at}`}>
-                <TableCell className="font-mono text-xs">{row.ip_hash ?? ''}</TableCell>
-                <TableCell className="tabular-nums">{row.label ?? ''}</TableCell>
+                <TableCell className="text-xs">{row.ip_hash ?? ''}</TableCell>
+                <TableCell>{row.label ?? ''}</TableCell>
                 <TableCell>{row.reason ?? ''}</TableCell>
                 <TableCell>{row.source ?? ''}</TableCell>
                 <TableCell>{displayTimestamp(row.created_at, row.created_at_display)}</TableCell>

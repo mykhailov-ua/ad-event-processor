@@ -19,7 +19,11 @@ export function ToolbarBand({ split = false, className, children, ...props }: To
   );
 }
 
-export function ToolbarBandActions({ className, children, ...props }: HTMLAttributes<HTMLDivElement>) {
+export function ToolbarBandActions({
+  className,
+  children,
+  ...props
+}: HTMLAttributes<HTMLDivElement>) {
   return (
     <div className={cn(uiSurfaces.toolbarBandActions, className)} role="toolbar" {...props}>
       {children}
@@ -69,7 +73,11 @@ export type TableHostProps = HTMLAttributes<HTMLDivElement> & {
 export function TableHost({ fill = false, className, children, ...props }: TableHostProps) {
   return (
     <div
-      className={cn(fill ? uiSurfaces.tableHostFill : uiSurfaces.tableHost, adminKit.panelRadius, className)}
+      className={cn(
+        fill ? uiSurfaces.tableHostFill : uiSurfaces.tableHost,
+        adminKit.panelRadius,
+        className
+      )}
       {...props}
     >
       {children}

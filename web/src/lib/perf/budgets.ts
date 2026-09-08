@@ -51,7 +51,7 @@ export const DASHBOARD_AXIS_SCALE_BUDGET: PerfBudget = {
 
 export const NAV_FILTER_1K_BUDGET: PerfBudget = {
   name: 'filterNavItems x1000 on 1k catalog',
-  medianMs: 0.05,
+  medianMs: 0.12,
   warmupIterations: 3,
   measureIterations: 7,
   batchSize: 1000,

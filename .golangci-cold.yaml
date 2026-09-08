@@ -68,6 +68,12 @@ linters:
       - path: "internal/installer/"
         linters:
           - forbidigo
+      - path: "internal/fraud/admin_hooks/"
+        linters:
+          - staticcheck
+      - path: "internal/opsadmin/metric_sample_rate.go"
+        linters:
+          - staticcheck
       - path: 'cmd/.+/main\.go'
         linters:
           - gocritic

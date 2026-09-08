@@ -1,7 +1,9 @@
 package domain
 
-const AntifraudMaxRTTSamples = 8
-const AntifraudMaxChallengeToken = 96
+const (
+	AntifraudMaxRTTSamples     = 8
+	AntifraudMaxChallengeToken = 96
+)
 
 // AntifraudSnapshot is the compact server-side view of client antifraud telemetry.
 // Populated from /track JSON key "antifraud" by ingest hand-rolled parser.

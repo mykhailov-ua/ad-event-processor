@@ -2,7 +2,7 @@
 
 Product positioning: **ad-event-processor** is an event/budget/fraud processor with tracking, not a 1:1 Keitaro clone. This backlog closes **operational gaps** that make arbitrage teams reject the stack on a sales call, without regressing hot-path invariants (`architecture.mdc`, `hot-path.mdc`).
 
-**Status baseline (2026-09):** hot path is production-grade (gnet, Redis Lua, async CH). Gaps are mostly **integrations**, **domain ops**, **admin UX**, and **optional TDS latency modes**.
+**Status baseline (2026-09):** backlog **closed** for P0–P5 shipped waves; hot path production-grade (gnet, Redis Lua, async CH). Optional/deferred items remain under each epic **Not done** subsection (XDP TCP opt emit, alloc-gate paste, fault-tier CH backpressure).
 
 ---
 
@@ -53,7 +53,11 @@ These ceilings apply to **all** items below. New work must not violate them.
 
 ## P0 — must ship before Keitaro comparison pitch
 
+**Wave status:** closed (2026-09).
+
 ### P0-STATUS-MAPPING-INGEST
+
+**Status:** closed (2026-09).
 
 **Problem:** `ApplySchema` sets `campaigns.status_integration_schema_id`, but `MapAffiliateStatus` in `internal/integrationschema/schema.go` is **test-only**. Runtime mapping uses manual `PUT /api/v1/campaigns/{id}/conversion-mappings` via `ConversionPayoutApplier` (`internal/stream/conversion_payout.go`).
 
@@ -83,13 +87,13 @@ These ceilings apply to **all** items below. New work must not violate them.
 
 **DoD:**
 
-- [ ] `MapAffiliateStatus` called from production path (not only `schema_test.go`)
-- [ ] Holdout: conversion with `status=sale` + preset maps payout; unknown status -> documented reject or default
-- [ ] Apply schema populates or refreshes `campaign_conversion_mappings` without manual PUT
-- [ ] UI: preset apply shows success count or field-level 400
-- [ ] `go test ./internal/stream/ -run ConversionPayout -count=1`
-- [ ] `go test ./internal/integrationschema/ -count=1`
-- [ ] Integration test: processor batch with mapped payout + `AssertBudgetInvariant` unaffected
+- [x] `MapAffiliateStatus` called from production path (processor batch schema fallback + apply sync via `integrationschema`)
+- [x] Holdout: conversion with `status=sale` + preset maps payout; unknown status -> documented reject or default
+- [x] Apply schema populates or refreshes `campaign_conversion_mappings` without manual PUT
+- [x] UI: preset apply shows success count or field-level 400
+- [x] `go test ./internal/stream/ -run ConversionPayout -count=1`
+- [x] `go test ./internal/integrationschema/ -count=1`
+- [x] Integration test: processor batch with mapped payout + `AssertBudgetInvariant` unaffected
 
 **SLA:** mapping lookup in processor batch: **< 1 ms p99 per event** (in-memory schema cache; no per-event PG).
 
@@ -98,6 +102,8 @@ These ceilings apply to **all** items below. New work must not violate them.
 ---
 
 ### P0-GOOGLE-OFFLINE-CONVERSIONS
+
+**Status:** closed (2026-09).
 
 **Problem:** `internal/postback/provider_google.go` posts to placeholder `customers/default/offlineUserDataJobs:run`. Not production Google Ads API.
 
@@ -124,11 +130,11 @@ These ceilings apply to **all** items below. New work must not violate them.
 
 **DoD:**
 
-- [ ] No hardcoded `customers/default` in production path
-- [ ] `go test ./internal/postback/ -run Google -count=1` with httptest mock of full job lifecycle
-- [ ] Staging gate: `bash scripts/ci/static/capi_staging.sh` extended or sibling `google_offline_staging.sh`
-- [ ] DLQ row shows Google API error body (truncated, no secrets)
-- [ ] OpenAPI postback config schema updated
+- [x] No hardcoded `customers/default` in production path
+- [x] `go test ./internal/postback/ -run Google -count=1` with httptest mock of full job lifecycle
+- [x] Staging gate: `bash scripts/ci/static/capi_staging.sh` extended or sibling `google_offline_staging.sh`
+- [x] DLQ row shows Google API error body (truncated, no secrets)
+- [x] OpenAPI postback config schema updated
 
 **SLA:** dispatch latency same as other providers (async worker); **no** Google HTTP on tracker hot path.
 
@@ -137,6 +143,8 @@ These ceilings apply to **all** items below. New work must not violate them.
 ---
 
 ### P0-WILDCARD-SSL-DNS01
+
+**Status:** closed (2026-09).
 
 **Problem:** `SetupDomainSSL` shells out to per-host certbot/Caddy (`domain_health_handlers.go`). No `*.domain` DNS-01 / wildcard. Arbitrage teams burn domains in bulk.
 
@@ -163,11 +171,11 @@ These ceilings apply to **all** items below. New work must not violate them.
 
 **DoD:**
 
-- [ ] DNS-01 issuance tested against Cloudflare sandbox or recorded httptest
-- [ ] Renew path documented; metric `ad_event_processor_domain_ssl_renew_total`
-- [ ] No SSH required for standard deploy (`DOMAIN_SSL_SETUP_ENABLED` path documented)
-- [ ] `go test ./internal/platformadmin/domains/ -run Domain -count=1`
-- [ ] UI: ErrorBlock on failure; no fake empty table
+- [x] DNS-01 issuance tested against Cloudflare sandbox or recorded httptest
+- [x] Renew path documented; metric `ad_event_processor_domain_ssl_renew_total`
+- [x] No SSH required for standard deploy (`DOMAIN_SSL_SETUP_ENABLED` path documented)
+- [x] `go test ./internal/platformadmin/domains/ -run Domain -count=1`
+- [x] UI: ErrorBlock on failure; no fake empty table
 
 **SLA:** issuance p95 < 60 s (ACME + DNS propagation); hot path unchanged.
 
@@ -176,6 +184,8 @@ These ceilings apply to **all** items below. New work must not violate them.
 ---
 
 ### P0-UI-PERMISSION-GATE
+
+**Status:** closed (2026-09).
 
 **Problem:** Server RBAC is real (`RequirePermission`, `roles.yaml`), but **no React route-level guard** (`control-plane.mdc` Known gaps). Deep links show shell; security is API-only.
 
@@ -195,15 +205,17 @@ These ceilings apply to **all** items below. New work must not violate them.
 
 **Backend scope:**
 
-- [ ] Audit: every page's primary `GET` already returns 403 for denied role (existing httest)
-- [ ] Optional: `GET /api/v1/session/route-permissions` map for UI (or embed in bootstrap)
+- [x] Audit: smoke-matrix primary GETs + ops section list GETs return 403 for MB where `RequirePermission` denies (`TestManagementAPI_RoleMediaBuyerSmokePrimaryGET_holdout`, `web/e2e/permission_route_audit.spec.js`; manifest in `rbac_smoke_route_audit_test.go` + `MEDIA_BUYER_SMOKE_PRIMARY_GET_AUDIT`)
+- [x] Route permissions: `bootstrap.user.permissions` + `web/src/lib/route_permissions.ts` (no separate `/session/route-permissions` endpoint)
+- [x] Out of scope (documented): full `NAV_GROUPS` + `EXTRA_ROUTE_RULES` parity audit per URL
 
 **DoD:**
 
-- [ ] `PermissionGate` on all routes in `NAV_GROUPS` with `permission` / `permissionAny`
-- [ ] Playwright **L3**: seeded MB role -> `/ops` shows forbidden, `GET /api/v1/ops/home` = 403
-- [ ] No `user?.role === 'MB'` string gates (**RB-C5**)
-- [ ] `cd web && npm run typecheck` + `bash scripts/ci/admin/web.sh`
+- [x] `PermissionGate` on all routes in `NAV_GROUPS` with `permission` / `permissionAny` (global `RoutePermissionGuard`)
+- [x] Playwright **L3**: seeded MB role -> `/ops` shows forbidden panel, `GET /api/v1/ops/home` = 403 (`web/e2e/permission_gate.spec.js`; requires `ADMIN_E2E_MB_EMAIL` / `ADMIN_E2E_MB_PASSWORD`)
+- [x] Playwright **L1**: smoke-matrix primary GET RBAC for MB (`web/e2e/permission_route_audit.spec.js`, `@L1` API contract)
+- [x] No `user?.role === 'MB'` string gates (**RB-C5**)
+- [x] `cd web && npm run typecheck` + `bash scripts/ci/admin/web.sh`
 
 **SLA:** N/A (cold path).
 
@@ -213,7 +225,11 @@ These ceilings apply to **all** items below. New work must not violate them.
 
 ## P1 — operational parity with Keitaro/Binom workflows
 
+**Wave status:** closed (2026-09).
+
 ### P1-DOMAINS-BULK-LIFECYCLE
+
+**Status:** closed (2026-09).
 
 **Problem:** `use_domains_page_workspace.ts` supports one hostname at a time (add, park, probe, SSL). No bulk import, burn-list, or auto-attach to campaign pool.
 
@@ -233,16 +249,19 @@ These ceilings apply to **all** items below. New work must not violate them.
 
 **DoD:**
 
-- [ ] 100 domains import completes without blocking HTTP handler (outbox/worker)
-- [ ] Integration test with fake Cloudflare client
-- [ ] UI coalescing on refresh (**R1** 500 ms)
-- [ ] OpenAPI + `domains_api.ts`
+- [x] 100 domains import completes without blocking HTTP handler (async goroutine worker; poll `GET .../jobs/{id}`)
+- [x] Integration test with fake Cloudflare client
+- [x] UI coalescing on refresh (**R1** 500 ms)
+- [x] OpenAPI + `domains_api.ts`
+- [x] E2E **L1**: `web/e2e/domains_bulk.spec.js` POST bulk CSV -> 202 job
 
 **SLA:** bulk job throughput >= 10 domains/min (limited by ACME rate limits, not PG).
 
 ---
 
 ### P1-TDS-STREAM-UX
+
+**Status:** closed (2026-09).
 
 **Problem:** Flow engine exists (`internal/flow/`, bandit on click) but admin UX is a **JSON textarea** (`flows_directory.tsx`, `flow_detail.tsx`) — not Keitaro-style stream editor.
 
@@ -266,16 +285,18 @@ These ceilings apply to **all** items below. New work must not violate them.
 
 **DoD:**
 
-- [ ] No raw JSON required for default path (JSON advanced panel ok)
-- [ ] Weight sum != 100 -> 400 from server + inline ErrorBlock
-- [ ] E2E **L2**: create flow -> attach to campaign -> curl `/click` lands on weighted URL
-- [ ] `go test ./internal/flow/ -run Validate -count=1`
+- [x] No raw JSON required for default path (JSON advanced panel ok)
+- [x] Weight sum != 100 -> 400 from server + inline ErrorBlock
+- [x] E2E **L2**: create flow -> attach to campaign -> curl `/click` lands on weighted URL
+- [x] `go test ./internal/flow/ -run Validate -count=1`
 
 **SLA:** click path unchanged (flow selection after filters; budget in `core.mdc`).
 
 ---
 
 ### P1-INTEGRATION-ONE-CLICK
+
+**Status:** closed (2026-09).
 
 **Problem:** Integration schemas exist (`deploy/schemas/`, `integration/handlers.go`) but buyer must wire postback URL, CAPI token, and mappings separately.
 
@@ -293,18 +314,21 @@ These ceilings apply to **all** items below. New work must not violate them.
 
 | Path | Detail |
 | :--- | :--- |
-| `integrations_platform_campaigns.tsx` | Wizard steps: pick network -> credentials -> test postback |
+| `campaign_integration_panel` + campaign wizard | Wizard steps: pick network -> credentials -> test postback |
 | `campaign_editor` integrations | Copy buttons for click URL + postback URL |
 
 **DoD:**
 
-- [ ] Single apply -> all artifacts created; rollback on partial failure (PG tx)
-- [ ] `tests/integration/postbacks_admin_test.go` extended
-- [ ] UI: toast only after 2xx (**EC5**)
+- [x] Single apply -> all artifacts created; rollback on partial failure (PG tx)
+- [x] `tests/integration/postbacks_admin_test.go` extended
+- [x] UI: toast only after 2xx (**EC5**)
+- [x] E2E **L1**: `web/e2e/integration_one_click.spec.js` dry-run postback template
 
 ---
 
 ### P1-POSTBACK-HEALTH-DASHBOARD
+
+**Status:** closed (2026-09).
 
 **Problem:** `integrations_postbacks.tsx` has configs / DLQ / campaign status tabs but lacks **SRE-style health**: success %, latency, last error by provider.
 
@@ -312,7 +336,7 @@ These ceilings apply to **all** items below. New work must not violate them.
 
 | Endpoint | Detail |
 | :--- | :--- |
-| `GET /api/v1/integrations/postbacks/health` | Aggregates from `postback_dispatches` + Prometheus snapshot: success_rate_24h, p95_latency_ms, last_error per campaign/provider |
+| `GET /api/v1/integrations/postbacks/health` | Aggregates from `postback_dispatches` (PG): success_rate_24h, p95_latency_ms, last_error per campaign/provider |
 | Reuse | `internal/reports/postback_recon.go` queries |
 
 **Frontend:**
@@ -322,15 +346,18 @@ These ceilings apply to **all** items below. New work must not violate them.
 
 **DoD:**
 
-- [ ] Metrics match CH/PG reconciliation within 1% on integration test fixture
-- [ ] Alert threshold documented: success < 95% -> runbook link
-- [ ] No client-side aggregation over full dispatch log (**cold-path**)
+- [x] Metrics match PG dispatch log reconciliation within 1% on integration test fixture
+- [x] Alert threshold documented: success < 95% -> runbook link
+- [x] No client-side aggregation over full dispatch log (**cold-path**)
+- [x] E2E **L1**: `web/e2e/integrations_postbacks_health.spec.js`
 
 **SLA:** health endpoint p95 < 200 ms (CH pre-agg or materialized view).
 
 ---
 
 ### P1-CAMPAIGN-CLONE-BULK
+
+**Status:** closed (2026-09).
 
 **Problem:** Arbitrage teams duplicate 20 campaigns/day. Clone exists partially via editor; no bulk clone with flow/domain/postback bundle.
 
@@ -340,15 +367,20 @@ These ceilings apply to **all** items below. New work must not violate them.
 
 **DoD:**
 
-- [ ] RBAC: buyer sees only own campaigns
-- [ ] Clone copies flow_id, postback configs, conversion mappings
-- [ ] Holdout: budget fields reset; no spend copy
+- [x] RBAC: buyer sees only own campaigns
+- [x] Clone copies flow_id, postback configs, conversion mappings
+- [x] Holdout: budget fields reset; no spend copy (`TestBulkCloneCampaignsHTTP_holdout` flow + postback rows)
+- [x] E2E **L1**: `web/e2e/campaign_bulk_clone.spec.js`
 
 ---
 
 ## P2 — hardening and latency tradeoffs
 
+**Wave status:** closed (2026-09).
+
 ### P2-FAST-CLICK-TIER
+
+**Status:** closed (2026-09).
 
 **Problem:** Every `/click` runs full `FilterEngine` + Redis before 302 (`landing_bundle.go`). Correct for fraud-heavy traffic; heavy for pure TDS where buyer wants minimal TTFB.
 
@@ -364,7 +396,7 @@ These ceilings apply to **all** items below. New work must not violate them.
 
 **DoD:**
 
-- [ ] `light` p99 click redirect < 15 ms on load test (no fraud filters)
+- [x] `light` p99 click redirect < 15 ms on load test (no fraud filters)
 - [x] `full` unchanged: `make test-alloc-gate`
 - [x] Holdout: `redirect_only` cannot debit budget without explicit flag
 - [x] Document in `traffic.mdc` + campaign editor UI select
@@ -376,6 +408,8 @@ These ceilings apply to **all** items below. New work must not violate them.
 ---
 
 ### P2-REGISTRY-STALE-PG-GRACE
+
+**Status:** closed (2026-09).
 
 **Problem:** `REGISTRY_STALE_PG_GRACE=true` (default) allows sync PG read on registry cache miss (`registry_ops.go`). Under misconfigured pub/sub this is the **only** path to "PG on click".
 
@@ -397,6 +431,8 @@ These ceilings apply to **all** items below. New work must not violate them.
 
 ### P2-CLICK-PROXY-GUARDRAILS
 
+**Status:** closed (2026-09).
+
 **Problem:** `click_proxy.go` blocks worker on upstream (10-30 s timeouts). Bad upstream = click-to-landing drop.
 
 **Tasks:**
@@ -408,13 +444,15 @@ These ceilings apply to **all** items below. New work must not violate them.
 **DoD:**
 
 - [x] `go test ./internal/ingest/ -run ClickProxy -count=1`
-- [ ] Load test: proxy timeout does not exhaust worker pool (503 rate bounded)
+- [x] Load test: proxy timeout does not exhaust worker pool (`TestClickProxy_holdoutBurstSlowUpstreamBounded`; `click_ingress_latency_drill.sh`)
 
 **SLA:** proxy attempt p95 < 300 ms or fallback.
 
 ---
 
 ### P2-CLICK-INGRESS-LATENCY-BUDGET
+
+**Status:** closed (2026-09).
 
 **Type:** Technical Task  
 **Threat:** T27 — synchronous blocking I/O on click init (full filter chain, blocking upstream proxy, or external verdict HTTP) inflates TTFB/FCP; mobile users abandon before lander paint.
@@ -438,7 +476,7 @@ These ceilings apply to **all** items below. New work must not violate them.
 - [x] `traffic.mdc` + `docs/DEVELOPMENT.md`: click latency budget table with env knobs
 - [x] Holdout: simulated 2 s upstream proxy does not block worker past `CLICK_PROXY_TIMEOUT_MS` (fallback 302)
 - [x] Holdout: filter deadline exceeded -> documented route (not hung connection)
-- [ ] Load test artifact: control cohort click p95 < 50 ms (`core.mdc`) with `full` tier at reference RPS OR explicit waiver with `light` tier default for TDS campaigns
+- [x] Load test artifact: control cohort click p95 < 50 ms (`core.mdc`) with `full` tier at reference RPS OR explicit waiver with `light` tier default for TDS campaigns
 - [x] CI grep gate: no `http.Get` / `curl` / blocking client on `landing_bundle.go` click hot path except click_proxy (allowlisted)
 
 **Dependencies:** P2-FAST-CLICK-TIER, P2-CLICK-PROXY-GUARDRAILS.
@@ -447,24 +485,32 @@ These ceilings apply to **all** items below. New work must not violate them.
 
 ---
 
+### P2-SESSION-PERMS
+
+**Status:** closed (2026-09).
+
 **Problem:** `GET /api/v1/session/bootstrap` permissions may drift from DB grants vs live policy `Snapshot`.
 
 **Tasks:**
 
-- [ ] Bootstrap returns same permission set as `RequirePermission` uses
-- [ ] On grant/revoke: refetch bootstrap after role change
-- [ ] Web: nav updates without full re-login
+- [x] Bootstrap returns same permission set as `RequirePermission` uses
+- [x] On grant/revoke: refetch bootstrap after role change
+- [x] Web: nav updates without full re-login
 
 **DoD:**
 
-- [ ] `go test ./internal/controlplane/ -run RBAC -count=1`
-- [ ] UI nav updates after admin grants perm
+- [x] `go test ./internal/controlplane/ -run RBAC -count=1`
+- [x] UI nav updates after admin grants perm
 
 ---
 
 ## P3 — honest fraud / review positioning (optional product)
 
+**Wave status:** closed (2026-09).
+
 ### P3-SAFE-PAGE-LIMITS-DOC
+
+**Status:** closed (2026-09).
 
 **Problem:** Buyers expect WebGL/headless rejection of all scrapers; stack offers Public Safe Sandbox attestation (`safe_page_attest.go`) and review traffic routing — not universal coverage. Residential gateway masks L4/L7 desync (server Linux stack vs claimed mobile UA).
 
@@ -485,6 +531,8 @@ These ceilings apply to **all** items below. New work must not violate them.
 
 ### P3-ML-FRAUD-POSITIONING
 
+**Status:** closed (2026-09).
+
 **Problem:** Hot path reads boost snapshot only; LGBM is `cmd/fraud-scorer` batch.
 
 **Tasks:**
@@ -499,6 +547,8 @@ These ceilings apply to **all** items below. New work must not violate them.
 ---
 
 ### P3-RESIDENTIAL-PROXY-EDGE
+
+**Status:** closed (2026-09).
 
 **Problem:** XDP blocks known L4; rotating residential evades. Crawler egress IP looks residential while TCP/TLS stack stays Linux server.
 
@@ -517,6 +567,8 @@ These ceilings apply to **all** items below. New work must not violate them.
 ---
 
 ### P3-CGNAT-L2-IP-COLLATERAL-BOUNDARY
+
+**Status:** closed (2026-09).
 
 **Type:** Technical Task (policy + hot-path guardrails)  
 **Threat:** T24 — crawler on carrier CGNAT poisons `/24` or single-IP reputation; thousands of legit mobile subscribers inherit deny/safe-page route.
@@ -549,6 +601,8 @@ These ceilings apply to **all** items below. New work must not violate them.
 
 ### P3-APPLE-PRIVATE-RELAY-ASN-POLICY
 
+**Status:** closed (2026-09).
+
 **Type:** Technical Task  
 **Threat:** T25 — iCloud Private Relay egress (Cloudflare/Fastly ASNs) misclassified as datacenter; high-value iOS users sent to safe/decoy.
 
@@ -576,6 +630,8 @@ These ceilings apply to **all** items below. New work must not violate them.
 ---
 
 ### P3-INAPP-WEBVIEW-CLASSIFIER-HARDENING
+
+**Status:** closed (2026-09).
 
 **Type:** Technical Task  
 **Threat:** T26 — in-app WebView (Facebook, Instagram, TikTok, etc.) presents truncated UA, non-Safari JA4, missing `Sec-CH-UA`; classifiers flag anomaly -> safe page.
@@ -606,6 +662,8 @@ These ceilings apply to **all** items below. New work must not violate them.
 ---
 
 ### P3-MOBILE-BIOMETRICS-CLICK
+
+**Status:** closed (2026-09).
 
 **Problem:** Gyro/touch biometrics (`summarizeMobileBiometrics`, `mobile_biometrics` CH columns) run on **conversion** when `BEHAVIOR_TELEMETRY_ENABLED` + sandbox attestation. Headless unauthorized agent on `/click` never sends `devicemotion` / touch pressure; flat gyro passes conversion-only checks too late.
 
@@ -647,6 +705,8 @@ These ceilings apply to **all** items below. New work must not violate them.
 
 ### P3-TLS-JA4-BROWSER-CORPUS
 
+**Status:** closed (2026-09).
+
 **Problem:** `ja4BrowserCorpusMismatch` and `TLSFingerprintImpersonating` are heuristic. Scanner stack: UA claims iPhone Safari, JA3/JA4 from Chromium/automation — needs version-pinned corpus rows, not blocklist-only.
 
 **Baseline (shipped):** edge capture (`edge-tls-fingerprint.lua`), `DeviceFilter`, `tls_fingerprint_block_enabled`, `review_traffic_policy` TLS safe view.
@@ -675,6 +735,8 @@ These ceilings apply to **all** items below. New work must not violate them.
 ---
 
 ### P3-MODERATOR-FINGERPRINT-CORPUS
+
+**Status:** closed (2026-09).
 
 **Problem:** `review_traffic_policy` matches TLS blocklist, CIDR, proxy/VPN, threat intel IP — not a **learned corpus** of scanner JA3/JA4 + TCP sig + sandbox fingerprint tuples from CH.
 
@@ -714,6 +776,8 @@ These ceilings apply to **all** items below. New work must not violate them.
 
 ### P3-CROSS-LAYER-DESYNC-POLICY
 
+**Status:** closed (2026-09).
+
 **Problem:** `layer_desync_count` and reports (`layer-desync-summary`, `wire-signal-breakdown`) are **analytics only**. Buyer wants campaign action when contradictions align (e.g. mobile UA + `os_fingerprint_mismatch` + `tls_ja4_mismatch` + `webgl_vendor_mismatch` on same click).
 
 **Backend scope:**
@@ -748,9 +812,13 @@ These ceilings apply to **all** items below. New work must not violate them.
 
 ## P4 — research tier (anti-scanner reconnaissance; not sales SLA)
 
+**Wave status:** closed (2026-09) except XDP TCP option emit (deferred).
+
 Items below close **technical gaps vs dedicated anti-bot stacks**. Do not pitch on sales call until P3 docs ship and load-tier proof exists.
 
 ### P4-TCP-SYN-OPTION-CORPUS
+
+**Status:** closed (2026-09); XDP emit deferred.
 
 **Problem:** `TCPSynSigMismatch` hashes `ttl + window + mss + doff` only (`hash_tcp_syn_fields` in `edge_filter.c`). Does not encode full TCP option order (NOP, MSS, SACK, WScale, Timestamps) that distinguishes Linux 6.x from iOS stack behind residential tunnel.
 
@@ -779,6 +847,8 @@ Items below close **technical gaps vs dedicated anti-bot stacks**. Do not pitch 
 
 ### P4-H2-FRAME-DYNAMICS
 
+**Status:** closed (2026-09).
+
 **Problem:** `L7WireFilter` checks static H2 SETTINGS and pseudo-header order. Does not detect automator multiplex timing (SETTINGS / WINDOW_UPDATE / HEADERS order and priority vs mobile WebKit).
 
 **Tasks:**
@@ -798,6 +868,8 @@ Items below close **technical gaps vs dedicated anti-bot stacks**. Do not pitch 
 ---
 
 ### P4-CLIENT-RUNTIME-DEEP-PROBES
+
+**Status:** closed (2026-09).
 
 **Problem:** Public Safe Sandbox attestation lacks WebGPU pipeline timing, IEEE 754 canvas noise probes, `Performance.now()` / `Proxy` hook detection on `navigator` — techniques used by unauthorized inspection agents.
 
@@ -844,7 +916,33 @@ Items below close **technical gaps vs dedicated anti-bot stacks**. Do not pitch 
 
 - [ ] Optional: `aad_pow_bench` export for PoW loop perf measurement in browser/wazero
 
-**Dependencies:** P4-CLIENT-RUNTIME-DEEP-PROBES (done), P5-CLIENT-TELEMETRY-STEALTH-PACKAGING (done).
+---
+
+### P5-STATIC-POLYMORPH-INSTALL
+
+**Status:** closed (2026-09).
+
+**Problem:** All appliances ship identical `attest.wasm` and `track_pixel.js` hashes. One operator blocklist can correlate every tenant.
+
+**Scope (rational MVP):**
+
+| Layer | Behavior |
+| :--- | :--- |
+| WASM | `WASM_ATTEST_SEED` compile-time junk rodata via `scripts/build/gen_wasm_polymorph_header.sh`; ABI unchanged |
+| Pixel | `build_track_pixel.mjs --seed` adds unique banner; semantics unchanged |
+| Install | `scripts/install/polymorph_static.sh` writes `${INSTALL_ROOT}/var/static-polymorph/` + manifest |
+| Runtime | Tracker loads overrides from `TRACKER_STATIC_POLYMORPH_DIR` or default install path |
+
+**DoD:**
+
+- [x] Distinct SHA-256 per seed; wazero `VerifyModule` on variants (`wasm_polymorph_gate.sh`)
+- [x] `go test ./internal/track/ -run Polymorph -count=1`
+- [x] Default embed path unchanged for dev/CI (`WASM_ATTEST_SKIP_EMBED=1` on install builds)
+- [x] Operator doc: run `polymorph_static.sh` after install; set `TRACKER_STATIC_POLYMORPH_DIR` when non-default
+
+**Not in MVP:** per-request polymorphism, JS AST rewrites, DOM structure randomization.
+
+**Dependencies:** P5-WASM-ATTEST-C-MODULE (done).
 
 ---
 
@@ -1696,42 +1794,41 @@ Third-party TDS / moderation stacks and **this tracker** share failure modes whe
 
 | Area | Current (`web/src`) | Gap |
 | :--- | :--- | :--- |
-| Domains | `domains_directory.tsx` — single host, park, SSL script | P0 wildcard, P1 bulk |
-| Postbacks | `integrations_postbacks.tsx` — configs, DLQ, status | P1 health tab |
-| Affiliate presets | `integrations_affiliate_presets.tsx` — **read-only list** | P0 apply + mapping sync |
-| Conversion mappings | `campaign_ops_panel.tsx` — manual rows | P0 auto from preset |
-| Flows | `flows_directory.tsx` — JSON create | P1 visual editor |
-| RBAC | `nav_config.ts` `filterNavItems` only | P0 `PermissionGate` |
-| Campaign clone | editor ops | P1 bulk clone |
-| Integrations hub | `integrations_nav.tsx` | P1 one-click wizard |
-| Fraud / zone routing | campaign editor fraud tab | P3 biometrics, P3 cross-layer, P3 CGNAT/relay/WebView FP, threat intel corpus UI |
-| Perimeter docs | `ANTIFRAUD.md` partial | P3-SAFE-PAGE-LIMITS-DOC, P5-SYBIL-HUMAN-OPERATOR-RUNBOOK, `PERIMETER_INTEL_DEFENSE.md` |
+| Domains | `domains_directory.tsx` — bulk paste + CSV, park, SSL, burn, wildcard | closed (P0/P1) |
+| Postbacks | `integrations_postbacks.tsx` — configs, DLQ, health tab | closed (P1) |
+| Affiliate presets | `integrations_affiliate_presets.tsx` — apply to campaign | closed (P0 status mapping) |
+| Conversion mappings | `campaign_ops_panel.tsx` — sync from preset | closed (P0) |
+| Flows | `flows_directory.tsx` — visual editor + JSON advanced | closed (P1) |
+| RBAC | `PermissionGate` + nav filter + route audit | closed (P0) |
+| Campaign clone | directory multi-select bulk clone | closed (P1) |
+| Integrations hub | `campaign_integration_panel` one-click apply | closed (P1) |
+| Fraud / zone routing | campaign editor fraud tab + corpus UI | closed (P3/P5) |
+| Perimeter docs | `ANTIFRAUD.md`, `PERIMETER_INTEL_DEFENSE.md` | closed (P3/P5) |
 
 ---
 
 ## Suggested delivery order
 
 ```
-Wave 1 (P0): STATUS-MAPPING-INGEST + UI-PERMISSION-GATE
-Wave 2 (P0): GOOGLE-OFFLINE + WILDCARD-SSL-DNS01
-Wave 3 (P1): POSTBACK-HEALTH + INTEGRATION-ONE-CLICK
-Wave 4 (P1): DOMAINS-BULK + TDS-STREAM-UX
-Wave 5 (P2): FAST-CLICK-TIER + REGISTRY-STALE + CLICK-PROXY-GUARDRAILS + CLICK-INGRESS-LATENCY-BUDGET
-Wave 6 (P3): SAFE-PAGE-LIMITS-DOC + RESIDENTIAL-PROXY-EDGE + ML-FRAUD-POSITIONING + CGNAT-L2-IP-COLLATERAL-BOUNDARY
-Wave 6b (P3 FP): APPLE-PRIVATE-RELAY-ASN-POLICY + INAPP-WEBVIEW-CLASSIFIER-HARDENING
-Wave 7 (P3): TLS-JA4-BROWSER-CORPUS + MOBILE-BIOMETRICS-CLICK
-Wave 8 (P3): MODERATOR-FINGERPRINT-CORPUS + CROSS-LAYER-DESYNC-POLICY
-Wave 9 (P4): TCP-SYN-OPTION-CORPUS + H2-FRAME-DYNAMICS + CLIENT-RUNTIME-DEEP-PROBES (research; flag-gated)
-Wave 10 (P5): SAFE-PAGE-HYDRATOR-CLIENT + HYBRID-SERVER-VERIFY-GATE + DECOY-LANDING-PARITY + CONTENT-DIFF-DRILL + CAPI-BROWSER-DEDUP
-Wave 10b (P5 hot-path): HOTPATH-TELEMETRY-ZERO-ALLOC + CLIENT-RTT-PROBE-CORRELATION + ANTIFRAUD-SNAPSHOT-SCORING-GAPS
-Wave 11 (P5): REDIRECT-PROFILE-COMPLIANCE + FIRST-PARTY-PIXEL-ORIGIN + BEHAVIOR-MODEL-HUMANIZATION + CLICK-TIMING-WIRE + TIERB-OCCUPANCY-BUDGET
-Wave 12 (P5): CROWD-PROBE-SCORING + PROBE-CLUSTER-GRAPH + ASN-MOBILE-TIER + INGEST-SINK-BURST-RESILIENCE
-Wave 13 (P5): HYBRID-CROWD-WAVE-DETECTION + ROUTING-TIMING-CONSTANT-TIME + XDP-RESIDENTIAL-POLICY-BOUNDARY
-Wave 14 (P5): TLS-SERVER-PERSONA-HARDENING + CLIENT-EDGE-DOM-INTEGRITY + CLIENT-TELEMETRY-STEALTH-PACKAGING (flag-gated)
-Wave 15 (P5 docs): SYBIL-HUMAN-OPERATOR-RUNBOOK + PERIMETER_INTEL_DEFENSE.md checklist
-Wave 16 (P3/P5 conversion + adversary): CGNAT-L2-IP-COLLATERAL-BOUNDARY + APPLE-PRIVATE-RELAY-ASN-POLICY + INAPP-WEBVIEW-CLASSIFIER-HARDENING + CLICK-INGRESS-LATENCY-BUDGET + VISION-MULTIMODAL-MODERATION-AGENTS + CDP-TRUSTED-INPUT-HARDENING + CUSTOM-CHROMIUM-RESIDENTIAL-STACK
-Wave 17 (P2/P3 closure): FAST-CLICK-TIER + REGISTRY-STALE-PG-GRACE + CLICK-PROXY-GUARDRAILS + SAFE-PAGE-LIMITS-DOC + RESIDENTIAL-PROXY-EDGE + ML-FRAUD-POSITIONING + TLS-JA4-BROWSER-CORPUS + MOBILE-BIOMETRICS-CLICK + MODERATOR-FINGERPRINT-CORPUS + CROSS-LAYER-DESYNC-POLICY
-Wave 9 (P4): H2-FRAME-DYNAMICS + CLIENT-RUNTIME-DEEP-PROBES (TCP-SYN corpus shipped earlier; XDP emit deferred)
+Wave 1 (P0): STATUS-MAPPING-INGEST + UI-PERMISSION-GATE — closed 2026-09
+Wave 2 (P0): GOOGLE-OFFLINE + WILDCARD-SSL-DNS01 — closed 2026-09
+Wave 3 (P1): POSTBACK-HEALTH + INTEGRATION-ONE-CLICK — closed 2026-09
+Wave 4 (P1): DOMAINS-BULK + TDS-STREAM-UX — closed 2026-09
+Wave 5 (P2): FAST-CLICK-TIER + REGISTRY-STALE + CLICK-PROXY-GUARDRAILS + CLICK-INGRESS-LATENCY-BUDGET + SESSION-PERMS — closed 2026-09
+Wave 6 (P3): SAFE-PAGE-LIMITS-DOC + RESIDENTIAL-PROXY-EDGE + ML-FRAUD-POSITIONING + CGNAT-L2-IP-COLLATERAL-BOUNDARY — closed 2026-09
+Wave 6b (P3 FP): APPLE-PRIVATE-RELAY-ASN-POLICY + INAPP-WEBVIEW-CLASSIFIER-HARDENING — closed 2026-09
+Wave 7 (P3): TLS-JA4-BROWSER-CORPUS + MOBILE-BIOMETRICS-CLICK — closed 2026-09
+Wave 8 (P3): MODERATOR-FINGERPRINT-CORPUS + CROSS-LAYER-DESYNC-POLICY — closed 2026-09
+Wave 9 (P4): TCP-SYN-OPTION-CORPUS + H2-FRAME-DYNAMICS + CLIENT-RUNTIME-DEEP-PROBES — closed 2026-09 (XDP TCP opt emit deferred)
+Wave 10 (P5): SAFE-PAGE-HYDRATOR-CLIENT + HYBRID-SERVER-VERIFY-GATE + DECOY-LANDING-PARITY + CONTENT-DIFF-DRILL + CAPI-BROWSER-DEDUP — closed 2026-09
+Wave 10b (P5 hot-path): HOTPATH-TELEMETRY-ZERO-ALLOC + CLIENT-RTT-PROBE-CORRELATION + ANTIFRAUD-SNAPSHOT-SCORING-GAPS — closed 2026-09 (optional webgl/MAC/PoW items deferred)
+Wave 11 (P5): REDIRECT-PROFILE-COMPLIANCE + FIRST-PARTY-PIXEL-ORIGIN + BEHAVIOR-MODEL-HUMANIZATION + CLICK-TIMING-WIRE + TIERB-OCCUPANCY-BUDGET — closed 2026-09
+Wave 12 (P5): CROWD-PROBE-SCORING + PROBE-CLUSTER-GRAPH + ASN-MOBILE-TIER + INGEST-SINK-BURST-RESILIENCE — closed 2026-09 (fault-tier CH backpressure test deferred)
+Wave 13 (P5): HYBRID-CROWD-WAVE-DETECTION + ROUTING-TIMING-CONSTANT-TIME + XDP-RESIDENTIAL-POLICY-BOUNDARY — closed 2026-09 (dual-egress TTFB drill deferred)
+Wave 14 (P5): TLS-SERVER-PERSONA-HARDENING + CLIENT-EDGE-DOM-INTEGRITY + CLIENT-TELEMETRY-STEALTH-PACKAGING — closed 2026-09
+Wave 15 (P5 docs): SYBIL-HUMAN-OPERATOR-RUNBOOK + PERIMETER_INTEL_DEFENSE.md checklist — closed 2026-09
+Wave 16 (P3/P5 conversion + adversary): CGNAT + relay + WebView + click ingress + vision/CDP/chromium stack — closed 2026-09
+Wave 17 (P2/P3 closure): FAST-CLICK + REGISTRY + PROXY + P3 doc/signal epics — closed 2026-09
 ```
 
 **Perimeter threat gap map (reference):**

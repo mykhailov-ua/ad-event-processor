@@ -86,14 +86,14 @@ export function CampaignEditorAdvancedMacroSection({
         <div className={cn(campaignEditorSectionClass, 'gap-3')}>
           <div className="grid gap-2">
             <p className="text-sm font-medium">Resolved click URL</p>
-            <p className="break-all font-mono text-xs text-muted-foreground">
+            <p className="break-all text-xs text-muted-foreground">
               {formatReadonly(macroPreviewResult.resolved_click_url)}
             </p>
           </div>
           {macroPreviewResult.resolved_postback_url ? (
             <div className="grid gap-2">
               <p className="text-sm font-medium">Resolved postback URL</p>
-              <p className="break-all font-mono text-xs text-muted-foreground">
+              <p className="break-all text-xs text-muted-foreground">
                 {macroPreviewResult.resolved_postback_url}
               </p>
             </div>

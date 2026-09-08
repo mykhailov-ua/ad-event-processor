@@ -1,6 +1,7 @@
 package wasmattest
 
 import (
+	"context"
 	"encoding/hex"
 	"os"
 	"path/filepath"
@@ -39,7 +40,7 @@ func findModuleRoot(t *testing.T) string {
 
 func TestWasmAttest_verifyModule_holdout(t *testing.T) {
 	wasm := loadTestModule(t)
-	require.NoError(t, VerifyModule(wasm, DefaultLimits()))
+	require.NoError(t, VerifyModule(context.Background(), wasm, DefaultLimits()))
 }
 
 func TestWasmAttest_powParity_holdout(t *testing.T) {

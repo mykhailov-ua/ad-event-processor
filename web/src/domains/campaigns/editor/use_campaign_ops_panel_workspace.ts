@@ -95,7 +95,10 @@ export function useCampaignOpsPanelWorkspace({
   const [syncingPreset, setSyncingPreset] = useState(false);
   const [syncPresetMessage, setSyncPresetMessage] = useState<string | undefined>();
 
-  const { data: campaignMeta } = useResource((signal) => getCampaign(campaignId, signal), [campaignId]);
+  const { data: campaignMeta } = useResource(
+    (signal) => getCampaign(campaignId, signal),
+    [campaignId]
+  );
 
   const resolvedStatsQuery = useMemo(
     () => statsQuery ?? {},

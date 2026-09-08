@@ -17,6 +17,7 @@ const REPORT_KEY_PATH_OVERRIDES: Record<string, string> = {
 /** OpenAPI reportClicks alias; catalog and SPA use click-log. */
 export const REPORT_CATALOG_KEY_ALIASES: Record<string, string> = {
   clicks: 'click-log',
+  'ghost-impression-funnel': 'silent-reject-impression-funnel',
 };
 
 export function reportHubPath(key: string): string {
@@ -32,18 +33,20 @@ export function reportHubPath(key: string): string {
   if (key.startsWith('telegram/')) {
     return `/reports/telegram/${key.slice('telegram/'.length)}`;
   }
+  if (key.startsWith('ml/')) {
+    return `/reports/ml/${key.slice('ml/'.length)}`;
+  }
   if (key.includes('/')) {
     return `/reports/${encodeURIComponent(key)}`;
   }
   return `/reports/${encodeURIComponent(key)}`;
 }
 
-export const EVIDENCE_PACK_REPORT_KEYS = new Set([
-  'customer-fraud-evidence',
-  'fraud-evidence-pack',
-]);
+/** Async ZIP export jobs only; no synchronous GET report body. */
+export const TYPED_EXPORT_ONLY_REPORT_KEYS = new Set(['fraud-evidence-pack-bulk']);
 
-export const EXPORT_ONLY_REPORT_KEYS = new Set(['fraud-evidence-pack-bulk']);
+/** CI live_routes gate scans this name for export-only catalog keys. */
+export const EXPORT_ONLY_REPORT_KEYS = TYPED_EXPORT_ONLY_REPORT_KEYS;
 
 /** Catalog keys with dedicated typed admin pages (registered before reports/:key). */
 export const TYPED_CUSTOMER_REPORT_KEYS = new Set([
@@ -69,6 +72,38 @@ export const TYPED_CUSTOMER_REPORT_KEYS = new Set([
   'campaign-toggle-cohort',
   'filter-rejects',
   'conversion-type-payout',
+  'campaign-overview',
+  'campaign-geo-device',
+  'spend-velocity',
+  'daypart-heatmap',
+  'true-roi',
+  'cost-sync-coverage',
+  'customer-portfolio',
+  'discrepancy-buy-sell',
+]);
+
+export const TYPED_TELEGRAM_REPORT_KEYS = new Set([
+  'telegram',
+  'telegram/summary',
+  'telegram/funnel',
+  'telegram/bots',
+  'telegram/premium',
+  'telegram/fraud',
+]);
+
+export const TYPED_OPS_REPORT_KEYS = new Set(['edge-parity']);
+
+export const TYPED_ML_REPORT_KEYS = new Set([
+  'ml/feature-spikes',
+  'ml/score-distribution',
+  'ml/shadow-delta',
+]);
+
+export const TYPED_CAMPAIGN_STATS_REPORT_KEYS = new Set(['campaign-stats']);
+
+export const TYPED_EVIDENCE_PACK_REPORT_KEYS = new Set([
+  'customer-fraud-evidence',
+  'fraud-evidence-pack',
 ]);
 
 export const TYPED_RTB_REPORT_KEYS = new Set([
@@ -78,20 +113,29 @@ export const TYPED_RTB_REPORT_KEYS = new Set([
 ]);
 
 export function typedReportRedirectPath(key: string): string | undefined {
-  if (TYPED_RTB_REPORT_KEYS.has(key)) {
+  const resolved = resolveReportCatalogKey(key);
+  if (!isTypedCatalogReportKey(resolved)) {
+    return undefined;
+  }
+  if (TYPED_RTB_REPORT_KEYS.has(resolved)) {
     return '/rtb';
   }
-  if (TYPED_CUSTOMER_REPORT_KEYS.has(key)) {
-    return reportHubPath(key);
-  }
-  return undefined;
+  return reportHubPath(resolved);
 }
 
 export function isTypedCatalogReportKey(key: string): boolean {
-  return TYPED_CUSTOMER_REPORT_KEYS.has(key) || TYPED_RTB_REPORT_KEYS.has(key);
+  const resolved = resolveReportCatalogKey(key);
+  return (
+    TYPED_CUSTOMER_REPORT_KEYS.has(resolved) ||
+    TYPED_RTB_REPORT_KEYS.has(resolved) ||
+    TYPED_TELEGRAM_REPORT_KEYS.has(resolved) ||
+    TYPED_OPS_REPORT_KEYS.has(resolved) ||
+    TYPED_ML_REPORT_KEYS.has(resolved) ||
+    TYPED_CAMPAIGN_STATS_REPORT_KEYS.has(resolved) ||
+    TYPED_EVIDENCE_PACK_REPORT_KEYS.has(resolved) ||
+    TYPED_EXPORT_ONLY_REPORT_KEYS.has(resolved)
+  );
 }
-
-export const CAMPAIGN_STATS_REPORT_KEYS = new Set(['campaign-stats']);
 
 export function resolveReportCatalogKey(key: string): string {
   return REPORT_CATALOG_KEY_ALIASES[key] ?? key;

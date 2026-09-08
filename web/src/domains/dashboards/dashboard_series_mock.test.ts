@@ -69,7 +69,10 @@ test('fillBuyerDashboardPortfolioGaps fills empty CH breakdowns when traffic exi
     },
     series: [{ label: '2026-09-01', clicks: 224_710, conversions: 11_858 }],
     breakdowns: {
-      campaigns: { rows: [{ id: 'c1', name: 'Live campaign', clicks: 1000 }], totals: { clicks: 1000 } },
+      campaigns: {
+        rows: [{ id: 'c1', name: 'Live campaign', clicks: 1000 }],
+        totals: { clicks: 1000 },
+      },
       landers: { rows: [] },
       offers: { rows: [] },
       sources: { rows: [] },

@@ -160,7 +160,7 @@ export const DOCS_SECTIONS: DocsSection[] = [
       {
         problem: 'Safe-page bypass expectation',
         symptom: 'Moderator still reaches offer despite attestation.',
-        fix: 'Read Documentation -> Fraud signal limits. Residential egress + real browser may pass single-layer checks; cross-layer reports are analytics until campaign desync policy ships.',
+        fix: 'Read Documentation -> Fraud signal limits. Residential egress + real browser may pass single-layer checks; enable cross_layer_desync_action when stacked mismatches should route to safe page.',
       },
     ],
   },
@@ -176,20 +176,63 @@ export const DOCS_SECTIONS: DocsSection[] = [
         blocks: [
           {
             type: 'note',
-            text:
-              'Residential crawler on datacenter egress is detectable when edge headers are present. Residential crawler on residential egress is not fully detectable at L4 alone.',
+            text: 'Residential crawler on datacenter egress is detectable when edge headers are present. Residential crawler on residential egress is not fully detectable at L4 alone.',
           },
           {
             type: 'table',
             headers: ['Layer', 'Signal', 'Evades when'],
             rows: [
               ['L4 XDP', 'Host map / flood drop', 'Rotating residential IP, CDN front door'],
-              ['TCP ingress', 'TTL/window vs UA', 'CDN path; OS_FINGERPRINT_MISMATCH_ENABLED=false'],
-              ['TLS ingress', 'JA3/JA4 blocklist + corpus', 'TLS terminated at CDN (headers missing)'],
-              ['Safe-page JS', 'Canvas/WebGL/timezone attestation', 'safe_page_enabled=false or real mobile browser'],
-              ['Mobile biometrics', 'Gyro/touch (conversion path)', 'No probe on /click; see backlog P3-MOBILE-BIOMETRICS-CLICK'],
-              ['ML boost', 'Redis snapshot on /track', 'Not inline LGBM; cmd/fraud-scorer batch + outbox only'],
-              ['ResidentialProxyFilter', 'Farm/heuristic intel', 'Clean residential IP; not moderator proof'],
+              [
+                'TCP ingress',
+                'TTL/window vs UA',
+                'CDN path; OS_FINGERPRINT_MISMATCH_ENABLED=false',
+              ],
+              [
+                'TLS ingress',
+                'JA3/JA4 blocklist + corpus',
+                'TLS terminated at CDN (headers missing)',
+              ],
+              [
+                'Safe-page JS',
+                'Canvas/WebGL/timezone attestation',
+                'safe_page_enabled=false or real mobile browser',
+              ],
+              [
+                'Mobile biometrics',
+                'Gyro/touch on safe-page verify (click when enabled)',
+                'MOBILE_BIOMETRICS_CLICK_ENABLED=0 or attestation off',
+              ],
+              [
+                'Cross-layer desync',
+                'Campaign cross_layer_desync_action (boost/safe_page/block)',
+                'Residential IP may pass individual L2 signals; needs stacked mismatches',
+              ],
+              [
+                'CGNAT collateral',
+                'Mobile carrier blacklist bypass',
+                'Probe cluster corroboration still hard-routes',
+              ],
+              [
+                'Apple Private Relay',
+                'DCASN exempt for relay ASN + Apple UA',
+                'Non-Apple UA on relay ASN still datacenter_ip',
+              ],
+              [
+                'In-app WebView',
+                'Sec-Fetch/JA4 relax + social_in_app preset',
+                'Desktop Chrome spoofing WebView substring',
+              ],
+              [
+                'ML boost',
+                'Redis snapshot on /track',
+                'Not inline LGBM; cmd/fraud-scorer batch + outbox only',
+              ],
+              [
+                'ResidentialProxyFilter',
+                'Farm/heuristic intel',
+                'Clean residential IP; not moderator proof',
+              ],
             ],
           },
         ],
@@ -200,8 +243,7 @@ export const DOCS_SECTIONS: DocsSection[] = [
         blocks: [
           {
             type: 'paragraph',
-            text:
-              'Tracker FilterEngine adds a fraud score boost from an in-memory snapshot (SettingsWatcher). LightGBM inference runs only in cmd/fraud-scorer or embedded ivt-detector batch workers. Suspect-tier scores enqueue ML_SCORE_BOOST outbox rows; they do not run synchronously on POST /track.',
+            text: 'Tracker FilterEngine adds a fraud score boost from an in-memory snapshot (SettingsWatcher). LightGBM inference runs only in cmd/fraud-scorer or embedded ivt-detector batch workers. Suspect-tier scores enqueue ML_SCORE_BOOST outbox rows; they do not run synchronously on POST /track.',
           },
           {
             type: 'list',
@@ -224,6 +266,61 @@ export const DOCS_SECTIONS: DocsSection[] = [
         problem: 'XDP should block residential crawlers',
         symptom: 'Moderator on residential IP passes edge.',
         fix: 'XDP is flood + blocklist, not cloaking detection. Use ResidentialProxyFilter heuristics + review corpus; expect fail-open on unknown residential egress.',
+      },
+    ],
+  },
+  {
+    id: 'perimeter-sybil-controls',
+    title: 'Perimeter Sybil controls (T2)',
+    summary:
+      'Human-in-the-loop operators on residential cellular: operational limits, wave response, and honest buyer copy. Canonical: deploy/vendor/PERIMETER_INTEL_DEFENSE.md section T2.',
+    guides: [
+      {
+        id: 'sybil-limits',
+        title: 'What ingress cannot block',
+        blocks: [
+          {
+            type: 'note',
+            text: 'Real mobile device + LTE egress + human SOP may pass safe-page attestation. Automated threat intel feeds may not list the session. Operational and contractual controls are required.',
+          },
+          {
+            type: 'list',
+            items: [
+              'Do not promise buyers "blocks all scrapers" or guaranteed moderator block.',
+              'When crowd wave alerts fire, investigate before widening production routing.',
+              'Do not bulk-promote residential/mobile IPs into XDP deny maps (CGNAT collateral).',
+              'Separate authorized audit windows (known ASN/IP allowlist) from open production traffic.',
+            ],
+          },
+        ],
+      },
+      {
+        id: 'sybil-signals',
+        title: 'Signals to monitor',
+        blocks: [
+          {
+            type: 'table',
+            headers: ['Signal', 'Surface'],
+            rows: [
+              ['ad_hybrid_crowd_wave_total', 'Prometheus'],
+              ['GET /api/v1/fraud/crowd-waves/{campaign_id}', 'Admin cold API'],
+              ['crowd_probe_score, crowd_wave_active', 'ClickHouse click rows'],
+              ['Safe-page verify rate vs clicks', 'Reports / CH drill'],
+            ],
+          },
+        ],
+      },
+    ],
+    topics: [
+      {
+        problem: 'Moderator still reaches offer',
+        symptom: 'Human on phone passes attestation despite safe-page enabled.',
+        fix: 'Expected for clean Sybil sessions. Enable crowd wave + cross-layer policy; read PERIMETER_INTEL_DEFENSE.md T2 response playbook. Escalate via contract, not `/24` IP ban alone.',
+      },
+      {
+        problem: 'Crowd wave alert during traffic spike',
+        symptom: 'Wave score high after partner send or geo shift.',
+        fix: 'Confirm organic burst before changing presets. Keep review_traffic_action=safe_page until investigated.',
       },
     ],
   },

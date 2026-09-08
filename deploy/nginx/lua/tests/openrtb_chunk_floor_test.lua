@@ -126,7 +126,7 @@ end, "micro_chunk_reject")
 
 if (ngx._metrics.chunked_reject_total or 0) < 1 then
     failed = failed + 1
-    io.write("FAIL micro_chunk_metric: chunked_reject_total missing\n")
+    io.write "FAIL micro_chunk_metric: chunked_reject_total missing\n"
 else
     passed = passed + 1
 end

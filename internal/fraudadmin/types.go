@@ -143,3 +143,11 @@ type ModeratorCorpusService interface {
 	PreviewMatchCount7d(ctx context.Context, ja3 string) (int64, error)
 	FeedLastRefresh(ctx context.Context) (string, bool)
 }
+
+type ProbeClusterService interface {
+	GetSummary(ctx context.Context, clusterIDHex string) (ProbeClusterSummaryDTO, error)
+}
+
+type CrowdWaveService interface {
+	GetSummary(ctx context.Context, campaignID string) (CrowdWaveSummaryDTO, error)
+}

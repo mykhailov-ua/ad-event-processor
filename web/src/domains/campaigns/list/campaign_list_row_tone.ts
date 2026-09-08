@@ -38,25 +38,30 @@ export function isInactiveCampaignStatus(statusKey: CampaignStatusKey): boolean 
 
 export type CampaignListRowAccent = 'none' | 'muted' | 'warning' | 'critical';
 
+export type CampaignListRowAlert = 'none' | 'warning' | 'critical';
+
 export function resolveCampaignListRowAccent(
+  _status: string,
+  _statusTone?: CampaignStatusTone
+): CampaignListRowAccent {
+  return 'none';
+}
+
+export function resolveCampaignListRowAlert(
   status: string,
   statusTone?: CampaignStatusTone,
   options?: {
     budgetUsedPct?: number | null;
     marginBreach?: boolean;
   }
-): CampaignListRowAccent {
+): CampaignListRowAlert {
   const statusKey = resolveCampaignStatusKey(status, statusTone);
   if (statusKey === 'PAUSED' || statusKey === 'ARCHIVED') {
-    return 'muted';
+    return 'none';
   }
 
   const normalized = status.trim().toUpperCase();
-  if (
-    options?.marginBreach === true ||
-    normalized === 'ERROR' ||
-    normalized === 'FAILED'
-  ) {
+  if (options?.marginBreach === true || normalized === 'ERROR' || normalized === 'FAILED') {
     return 'critical';
   }
 
@@ -68,61 +73,23 @@ export function resolveCampaignListRowAccent(
   return 'none';
 }
 
-export function campaignListRowClass(
+export function campaignListRowDataAttributes(
   selected: boolean,
   accent: CampaignListRowAccent = 'none'
-): string {
-  const tone: string[] = [];
+): {
+  'data-row-selected'?: true;
+  'data-row-accent'?: Exclude<CampaignListRowAccent, 'none'>;
+} {
   if (selected) {
-    tone.push(
-      '[&>td:not([data-col-pin])]:!bg-primary/22',
-      'dark:[&>td:not([data-col-pin])]:!bg-primary/30',
-      '[&>td:first-child]:shadow-[inset_3px_0_0_0_hsl(var(--primary))]',
-      'hover:[&>td:not([data-col-pin])]:!bg-primary/26',
-      'dark:hover:[&>td:not([data-col-pin])]:!bg-primary/34'
-    );
-    return tone.join(' ');
+    return { 'data-row-selected': true };
   }
-
-  switch (accent) {
-    case 'muted':
-      tone.push(
-        '[&>td:not([data-col-pin])]:!bg-muted/30',
-        'even:[&>td:not([data-col-pin])]:!bg-muted/38',
-        'hover:[&>td:not([data-col-pin])]:!bg-muted/42'
-      );
-      break;
-    case 'warning':
-      tone.push(
-        '[&>td:not([data-col-pin])]:!bg-admin-warn-bg/80',
-        'hover:[&>td:not([data-col-pin])]:!bg-admin-warn-bg'
-      );
-      break;
-    case 'critical':
-      tone.push(
-        '[&>td:not([data-col-pin])]:!bg-destructive/12',
-        'dark:[&>td:not([data-col-pin])]:!bg-destructive/18',
-        'hover:[&>td:not([data-col-pin])]:!bg-destructive/16',
-        'dark:hover:[&>td:not([data-col-pin])]:!bg-destructive/22'
-      );
-      break;
-    default:
-      tone.push(
-        'odd:[&_td]:bg-card',
-        'even:[&_td]:bg-muted/25',
-        'odd:[&_td[data-col-pin]]:bg-admin-table-pin',
-        'even:[&_td[data-col-pin]]:bg-admin-table-pin',
-        'hover:[&_td]:bg-admin-table-hover/70',
-        'hover:[&_td[data-col-pin]]:bg-admin-table-hover'
-      );
+  if (accent !== 'none') {
+    return { 'data-row-accent': accent };
   }
-  return tone.join(' ');
+  return {};
 }
 
-export function campaignStatusCellClass(
-  status: string,
-  statusTone?: CampaignStatusTone
-): string {
+export function campaignStatusCellClass(status: string, statusTone?: CampaignStatusTone): string {
   const tone = campaignStatusToAdminTone(status, statusTone);
   switch (tone) {
     case 'active':

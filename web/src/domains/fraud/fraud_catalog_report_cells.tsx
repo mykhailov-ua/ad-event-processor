@@ -70,14 +70,14 @@ export function renderFraudCatalogCell(
     return <Badge variant={variant}>{text}</Badge>;
   }
   if (column.kind === 'mono') {
-    return <span className="font-mono text-xs">{text || '-'}</span>;
+    return <span className="text-xs">{text || '-'}</span>;
   }
   return text || '-';
 }
 
 export function fraudCatalogColumnClass(kind: FraudCatalogColumnKind): string | undefined {
   if (kind === 'mono') {
-    return 'font-mono text-xs';
+    return 'text-xs';
   }
   return undefined;
 }

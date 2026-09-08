@@ -10,7 +10,7 @@
 // - GET list facets (customer_id only)
 // - GET customers combobox (session cache)
 // - GET self-serve templates (create overlay open only)
-import { useEffect, useMemo, useState } from 'react';
+import { useEffect, useMemo } from 'react';
 
 import {
   fetchCampaignListFacets,
@@ -84,7 +84,13 @@ export function useCampaignsPageList({
     ]
   );
 
-  const { data, error, fetching, revalidating: listRevalidating } = useResource(
+  const {
+    data,
+    error,
+    fetching,
+    revalidating: listRevalidating,
+    updatedAt: listLastUpdatedAt,
+  } = useResource(
     (signal) => fetchCampaignListCached(query, statsQuery.from, statsQuery.to, signal),
     [
       query.customer_id,
@@ -104,14 +110,6 @@ export function useCampaignsPageList({
       refreshToken,
     ]
   );
-
-  const [listLastUpdatedAt, setListLastUpdatedAt] = useState<string | null>(null);
-
-  useEffect(() => {
-    if (!fetching && !listRevalidating && data && !error) {
-      setListLastUpdatedAt(new Date().toISOString());
-    }
-  }, [data, error, fetching, listRevalidating]);
 
   const listCoversWidthProbeDataset = useMemo(
     () => listResponseCoversWidthProbeDataset(data),

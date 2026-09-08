@@ -4,7 +4,7 @@
 #   AED_TARGET (default root@45.94.158.106)
 #   AED_SSH_PORT (default 2222)
 #   AED_INSTALL_ROOT (default /opt/platform/ad-event-processor)
-#   SKIP_BUILD=1, SKIP_SEED=1
+#   SKIP_BUILD=1, SKIP_SEED=1, SKIP_PG_MIGRATE=1
 # Verify:
 #   bash scripts/ops/deploy_appliance.sh --check
 #   make deploy-appliance
@@ -72,6 +72,8 @@ fi
 
 if [[ "${SKIP_BUILD:-}" != "1" ]]; then
   log "building web embed"
+  (cd "$ROOT/web" && npm run typecheck)
+  (cd "$ROOT/web" && npm test)
   (cd "$ROOT/web" && npm run build)
   log "building linux control + admin"
   CGO_ENABLED=0 GOOS=linux GOARCH=amd64 go build -o "$CONTROL_BIN" ./cmd/control
@@ -86,6 +88,18 @@ log "upload binaries"
 upload "$CONTROL_BIN" "${INSTALL_ROOT}/bin/control.new"
 upload "$ADMIN_BIN" "${INSTALL_ROOT}/bin/admin.new"
 upload "$ROOT/scripts/ops/seed_appliance_demo.sh" "${INSTALL_ROOT}/scripts/ops/seed_appliance_demo.sh"
+upload "$ROOT/scripts/ops/bootstrap_pg_schema.sh" "${INSTALL_ROOT}/scripts/ops/bootstrap_pg_schema.sh"
+
+log "sync clickhouse config (must be files, not docker-created directories)"
+remote "mkdir -p '${INSTALL_ROOT}/deploy/clickhouse'"
+for ch_file in config.yaml config.unix.yaml users.yaml init.sql recon_materialized_views.sql; do
+  remote "rm -rf '${INSTALL_ROOT}/deploy/clickhouse/${ch_file}'"
+  upload "$ROOT/deploy/clickhouse/${ch_file}" "${INSTALL_ROOT}/deploy/clickhouse/${ch_file}"
+done
+
+log "sync postgres migrations"
+remote "mkdir -p '${INSTALL_ROOT}/internal/ingest/migrations'"
+scp "${scp_base[@]}" -r "$ROOT/internal/ingest/migrations/." "${TARGET}:${INSTALL_ROOT}/internal/ingest/migrations/"
 
 log "install on target"
 remote "set -euo pipefail
@@ -97,6 +111,13 @@ mv -f bin/control.new bin/control
 mv -f bin/admin.new bin/admin
 chmod +x bin/control bin/admin
 "
+
+if [[ "${SKIP_PG_MIGRATE:-}" != "1" ]]; then
+  log "apply postgres migrations"
+  remote "bash '${INSTALL_ROOT}/scripts/ops/bootstrap_pg_schema.sh'"
+else
+  log "SKIP_PG_MIGRATE=1"
+fi
 
 if [[ "${SKIP_SEED:-}" != "1" ]]; then
   log "run synthetic PG seed"

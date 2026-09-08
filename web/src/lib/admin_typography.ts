@@ -1,14 +1,14 @@
-/** JetBrains Mono 200 for numeric columns, KPIs, and metrics. */
-export const ADMIN_TABULAR_CLASS = 'font-numeric';
+/** Inter prose for numeric columns, KPIs, and metrics. */
+export const ADMIN_TABULAR_CLASS = '';
 
 /** Alias used in dashboard components. */
-export const ADMIN_NUMERIC_CLASS = 'font-numeric';
+export const ADMIN_NUMERIC_CLASS = '';
 
-/** IBM Plex Mono for UUIDs, hashes, URLs, JSON, secrets. */
-export const ADMIN_MONO_CLASS = 'font-mono tabular-nums';
+/** Inter for UUIDs, hashes, URLs, JSON, secrets. */
+export const ADMIN_MONO_CLASS = 'text-xs';
 
-/** JetBrains Mono for slug identifiers (integration_schema, template keys, traffic family). */
-export const ADMIN_SLUG_CLASS = 'font-numeric text-xs';
+/** Inter for slug identifiers (integration_schema, template keys, traffic family). */
+export const ADMIN_SLUG_CLASS = 'text-xs';
 
 export type AdminTypographyRole = 'prose' | 'tabular' | 'mono' | 'slug';
 

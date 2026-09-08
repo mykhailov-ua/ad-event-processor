@@ -130,7 +130,7 @@ export function BrandCreativesDirectory({
         Back to brands
       </Link>
       <p className="text-sm text-muted-foreground">
-        Brand ID: <span className="font-mono text-xs text-foreground">{brandId}</span>
+        Brand ID: <span className="text-xs text-foreground">{brandId}</span>
       </p>
 
       <Dialog onOpenChange={setCreateOpen} open={createOpen}>

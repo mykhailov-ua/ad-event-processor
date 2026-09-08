@@ -1,5 +1,8 @@
 /** Client-side permission check aligned with authz.Snapshot.Has (including wildcard). */
-export function sessionHasPermission(permissions: string[] | undefined, permission: string): boolean {
+export function sessionHasPermission(
+  permissions: string[] | undefined,
+  permission: string
+): boolean {
   if (permissions === undefined) {
     return true;
   }
@@ -9,7 +12,10 @@ export function sessionHasPermission(permissions: string[] | undefined, permissi
   return permissions.includes(permission);
 }
 
-export function sessionHasAnyPermission(permissions: string[] | undefined, required: string[]): boolean {
+export function sessionHasAnyPermission(
+  permissions: string[] | undefined,
+  required: string[]
+): boolean {
   if (permissions === undefined) {
     return true;
   }

@@ -150,12 +150,8 @@ export function BillingPreviewPanel({
                 {lines.map((line, index) => (
                   <TableRow key={`${line.ledger_type ?? 'line'}-${index}`}>
                     <TableCell>{line.ledger_type ?? ''}</TableCell>
-                    <TableCell className="text-right tabular-nums">
-                      {displayMicro(line.amount_micro)}
-                    </TableCell>
-                    <TableCell className="text-right tabular-nums">
-                      {line.entry_count ?? ''}
-                    </TableCell>
+                    <TableCell className="text-right">{displayMicro(line.amount_micro)}</TableCell>
+                    <TableCell className="text-right">{line.entry_count ?? ''}</TableCell>
                   </TableRow>
                 ))}
               </TableBody>

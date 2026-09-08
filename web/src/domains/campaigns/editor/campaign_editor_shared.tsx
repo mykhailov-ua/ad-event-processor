@@ -61,7 +61,7 @@ export function FieldErrorsPanel({
       <ul className="m-0 flex list-disc flex-col gap-1 pl-5 text-sm text-muted-foreground">
         {entries.map(([field, message]) => (
           <li key={field}>
-            <span className="font-mono text-xs">{field}</span>: {message}
+            <span className="text-xs">{field}</span>: {message}
           </li>
         ))}
       </ul>

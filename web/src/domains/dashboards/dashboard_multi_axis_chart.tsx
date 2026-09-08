@@ -172,7 +172,9 @@ export function DashboardMultiAxisChart({
       headerClassName="border-b-0 pb-0 pt-3"
       title="Performance"
     >
-      <div className={cn('border border-border bg-muted/10 px-2 py-3 sm:px-3', adminKit.panelRadius)}>
+      <div
+        className={cn('border border-border bg-muted/10 px-2 py-3 sm:px-3', adminKit.panelRadius)}
+      >
         <DashboardMultiAxisChartCanvas
           activeMetricIds={activeMetricIds}
           chartRows={chartRows}

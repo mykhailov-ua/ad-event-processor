@@ -8,7 +8,11 @@ import {
   getPlatformSettings,
   patchPlatformSettings,
 } from '@/api/settings_api';
-import type { PlatformBootstrapRequest, PlatformSettingsPatch, PlatformSettingsView } from '@/api/types';
+import type {
+  PlatformBootstrapRequest,
+  PlatformSettingsPatch,
+  PlatformSettingsView,
+} from '@/api/types';
 import type { SettingsBootstrapDraft } from '@/domains/settings/settings_bootstrap_form';
 import { useCoalescedBumpRefresh, useRefreshToken } from '@/hooks/use_coalesced_refresh_token';
 import { useResource } from '@/api/use_resource';
@@ -144,7 +148,9 @@ export function useSettingsPageWorkspace() {
       if (!token) {
         return;
       }
-      if (!confirmDestructiveAction('Run initial platform bootstrap with the provided install token?')) {
+      if (
+        !confirmDestructiveAction('Run initial platform bootstrap with the provided install token?')
+      ) {
         return;
       }
       setBootstrapping(true);

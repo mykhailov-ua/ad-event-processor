@@ -5,6 +5,7 @@ import (
 	"context"
 	"encoding/json"
 	"fmt"
+	"io"
 	"net/http"
 	"strings"
 	"time"
@@ -86,7 +87,7 @@ func parseGoogleAdsConfig(urlTemplate string) (googleAdsConfig, error) {
 
 	parts := strings.Split(t, "|")
 	if len(parts) < 2 || len(parts) > 3 {
-		return googleAdsConfig{}, fmt.Errorf("google: url_template must be customer_id|conversion_action_id or customers/.../conversionActions/...")
+		return googleAdsConfig{}, fmt.Errorf("google: url_template must be customer_id|conversion_action_id or full conversionActions resource path")
 	}
 	customerID := strings.TrimSpace(parts[0])
 	actionPart := strings.TrimSpace(parts[1])
@@ -125,29 +126,6 @@ func parseGoogleAdsConfig(urlTemplate string) (googleAdsConfig, error) {
 	}, nil
 }
 
-func parseGoogleAccessToken(apiTokenDecrypted, developerTokenFromConfig string) (accessToken, developerToken, loginCustomerID string) {
-	raw := strings.TrimSpace(apiTokenDecrypted)
-	if raw == "" {
-		return "", strings.TrimSpace(developerTokenFromConfig), ""
-	}
-	if strings.HasPrefix(raw, "{") {
-		var parsed struct {
-			AccessToken     string `json:"access_token"`
-			DeveloperToken  string `json:"developer_token"`
-			LoginCustomerID string `json:"login_customer_id"`
-		}
-		if json.Unmarshal([]byte(raw), &parsed) == nil {
-			access := strings.TrimSpace(parsed.AccessToken)
-			dev := strings.TrimSpace(parsed.DeveloperToken)
-			if dev == "" {
-				dev = strings.TrimSpace(developerTokenFromConfig)
-			}
-			return access, dev, strings.TrimSpace(parsed.LoginCustomerID)
-		}
-	}
-	return raw, strings.TrimSpace(developerTokenFromConfig), ""
-}
-
 func googleUploadEndpoint(cfg googleAdsConfig) string {
 	if cfg.CustomEndpoint != "" {
 		return cfg.CustomEndpoint
@@ -170,9 +148,9 @@ func (a *GoogleAdapter) Send(ctx context.Context, client *http.Client, payload *
 		return err
 	}
 
-	accessToken, developerToken, loginCustomerID := parseGoogleAccessToken(apiTokenDecrypted, payload.TestEventCode)
-	if accessToken == "" {
-		return fmt.Errorf("google: oauth access token required")
+	accessToken, developerToken, loginCustomerID, err := resolveGoogleAccessToken(ctx, client, apiTokenDecrypted, payload.TestEventCode)
+	if err != nil {
+		return err
 	}
 	if developerToken == "" && cfg.CustomEndpoint == "" {
 		return fmt.Errorf("google: developer token required (test_event_code or api_token JSON)")
@@ -217,5 +195,23 @@ func (a *GoogleAdapter) Send(ctx context.Context, client *http.Client, payload *
 	}
 	defer func() { _ = resp.Body.Close() }()
 
-	return checkHTTPResponse(resp)
+	body, readErr := io.ReadAll(io.LimitReader(resp.Body, 8192))
+	if readErr != nil {
+		return fmt.Errorf("google: read response: %w", readErr)
+	}
+	if resp.StatusCode >= 200 && resp.StatusCode < 300 {
+		var partial struct {
+			PartialFailureError struct {
+				Message string `json:"message"`
+			} `json:"partialFailureError"`
+		}
+		if json.Unmarshal(body, &partial) == nil && strings.TrimSpace(partial.PartialFailureError.Message) != "" {
+			return &DispatchHTTPError{
+				StatusCode: http.StatusBadRequest,
+				Body:       partial.PartialFailureError.Message,
+			}
+		}
+		return nil
+	}
+	return &DispatchHTTPError{StatusCode: resp.StatusCode, Body: string(body)}
 }

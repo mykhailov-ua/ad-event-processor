@@ -20,7 +20,12 @@ export function useRtbShadowPageWorkspace() {
     setDraftRequestId(appliedRequestId);
   }, [appliedRequestId, appliedWindow]);
 
-  const { data, error, fetching, revalidating: listRevalidating } = useResource(
+  const {
+    data,
+    error,
+    fetching,
+    revalidating: listRevalidating,
+  } = useResource(
     async (signal) => {
       const [shadow, reconcile] = await Promise.all([
         getRtbShadowDiff(appliedWindow, signal),

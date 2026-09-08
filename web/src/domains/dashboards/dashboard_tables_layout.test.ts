@@ -22,8 +22,13 @@ test('buildDashboardTablesLayout places campaigns on top and pairs the rest', ()
 
   assert.equal(layout.top?.id, 'campaigns');
   assert.deepEqual(
-    layout.pairRows.map((row) => row.map((slot) => slot.kind === 'breakdown' ? slot.section.id : slot.kind)),
-    [['landers', 'offers'], ['sources', 'recent_clicks']]
+    layout.pairRows.map((row) =>
+      row.map((slot) => (slot.kind === 'breakdown' ? slot.section.id : slot.kind))
+    ),
+    [
+      ['landers', 'offers'],
+      ['sources', 'recent_clicks'],
+    ]
   );
 });
 

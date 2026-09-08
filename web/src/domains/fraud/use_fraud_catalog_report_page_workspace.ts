@@ -92,7 +92,12 @@ export function useFraudCatalogReportPageWorkspace(reportKey: FraudCatalogReport
 
   const shouldFetch = meta.requiresCustomer ? Boolean(appliedCustomerId.trim()) : true;
 
-  const { data, error, fetching, revalidating: listRevalidating } = useResource(
+  const {
+    data,
+    error,
+    fetching,
+    revalidating: listRevalidating,
+  } = useResource(
     (signal) => {
       if (!shouldFetch) {
         return Promise.resolve(undefined);

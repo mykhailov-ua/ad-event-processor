@@ -10,7 +10,10 @@ import { Badge } from '@/components/ui/badge';
 import { Input } from '@/components/ui/input';
 import { settingsFieldLabel } from '@/lib/settings_labels';
 import { SettingsBentoGrid } from '@/domains/settings/settings_bento_grid';
-import { SettingsBootstrapForm, type SettingsBootstrapDraft } from '@/domains/settings/settings_bootstrap_form';
+import {
+  SettingsBootstrapForm,
+  type SettingsBootstrapDraft,
+} from '@/domains/settings/settings_bootstrap_form';
 import { SettingsPatchForm } from '@/domains/settings/settings_patch_form';
 import { SettingsCard } from '@/domains/settings/settings_card';
 import {
@@ -191,7 +194,6 @@ export function PlatformSettings({
             <FilterField htmlFor="settings-install-root" label="Installation directory (optional)">
               <Input
                 id="settings-install-root"
-                className="font-mono"
                 value={draftInstallRoot}
                 onChange={(event) => onDraftInstallRootChange(event.target.value)}
                 placeholder="/opt/ad-event-processor"
@@ -203,7 +205,7 @@ export function PlatformSettings({
               </PrimaryActionButton>
               {applySuccess && applyWrittenPath ? (
                 <p className={settingsHintClass} role="status">
-                  Saved to <span className="font-mono">{applyWrittenPath}</span>.
+                  Saved to <span>{applyWrittenPath}</span>.
                 </p>
               ) : null}
             </SettingsFormActions>

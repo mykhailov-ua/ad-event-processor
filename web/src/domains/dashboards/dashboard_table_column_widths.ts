@@ -1,7 +1,10 @@
 import { CAMPAIGN_LIST_COLUMN_MIN_WIDTH_PX } from '@/domains/campaigns/list/campaign_list_columns';
 import type { DashboardBreakdownRow } from '@/domains/dashboards/buyer_dashboard_types';
 import { formatDashboardBreakdownCellText } from '@/domains/dashboards/dashboard_breakdown_cell_text';
-import { BREAKDOWN_COLUMN_LABELS, RECENT_CLICK_COLUMN_LABELS } from '@/domains/dashboards/dashboard_preferences';
+import {
+  BREAKDOWN_COLUMN_LABELS,
+  RECENT_CLICK_COLUMN_LABELS,
+} from '@/domains/dashboards/dashboard_preferences';
 import type { DashboardBreakdownColumnId } from '@/domains/dashboards/dashboard_preferences';
 import type { DashboardRecentClickColumnId } from '@/domains/dashboards/dashboard_preferences';
 

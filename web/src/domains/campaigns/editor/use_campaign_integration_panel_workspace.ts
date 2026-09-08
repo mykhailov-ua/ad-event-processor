@@ -30,7 +30,10 @@ export function useCampaignIntegrationPanelWorkspace(campaignId: string) {
   const [healthError, setHealthError] = useState<Error | undefined>();
   const [healthLoading, setHealthLoading] = useState(false);
 
-  const { data: campaignMeta } = useResource((signal) => getCampaign(campaignId, signal), [campaignId]);
+  const { data: campaignMeta } = useResource(
+    (signal) => getCampaign(campaignId, signal),
+    [campaignId]
+  );
 
   useEffect(() => {
     setApplyResult(undefined);

@@ -101,19 +101,19 @@ export function campaignListTotalsCellDisplayText(
     }
     case 'revenue': {
       const res = formatTableMoneyFromMicro(totals.revenueMicro);
-      return res.isZero ? '0.00' : res.text;
+      return res.text;
     }
     case 'cost': {
       const res = formatTableMoneyFromMicro(totals.costMicro);
-      return res.isZero ? '0.00' : res.text;
+      return res.text;
     }
     case 'profit': {
       const profitRes = formatTableMoneyFromMicro(totals.profitMicro);
-      return profitRes.isZero ? '0.00' : profitRes.text;
+      return profitRes.text;
     }
     case 'roi': {
       const roiRes = formatTableRoi(totals.profitMicro, totals.costMicro);
-      return roiRes.isZero ? '0%' : roiRes.text;
+      return roiRes.text;
     }
     case 'group':
       return `${pageCount} on page`;

@@ -92,153 +92,153 @@ export function LanderHostedEditor({
   return (
     <PageChrome title={`Hosted editor: ${state.name}`}>
       <CreativeDirectoryStack>
-      <MetaLinksBand>
-        <Link to="/landers">Back to landers</Link>
-      </MetaLinksBand>
+        <MetaLinksBand>
+          <Link to="/landers">Back to landers</Link>
+        </MetaLinksBand>
 
-      <section className="grid gap-2">
-        <h2 className="text-base font-semibold">Draft status</h2>
-        <ActionLinksBand className="text-sm">
-          <Badge variant="outline">Draft v{state.draft_version}</Badge>
-          <Badge variant="outline">Published v{state.published_version}</Badge>
-          {state.has_unpublished_draft ? (
-            <Badge variant="secondary">Unpublished draft</Badge>
-          ) : null}
-        </ActionLinksBand>
-      </section>
-
-      {onUploadZip || onPublish ? (
-        <section className={FILTER_PANEL_NARROW_CLASS}>
-          <h2 className="text-base font-semibold">Hosted actions</h2>
-          {onUploadZip ? (
-            <FilterField htmlFor="lander-upload-zip" label="Upload ZIP">
-              <input
-                id="lander-upload-zip"
-                type="file"
-                accept=".zip,application/zip"
-                disabled={acting}
-                onChange={(event) => {
-                  const file = event.target.files?.[0];
-                  if (file) {
-                    onUploadZip(file);
-                  }
-                }}
-              />
-            </FilterField>
-          ) : null}
-          {onPublish ? (
-            <Button disabled={acting} onClick={onPublish} type="button">
-              {acting ? 'Publishing...' : 'Publish hosted lander'}
-            </Button>
-          ) : null}
-          {actionMessage ? (
-            <p className="text-sm text-muted-foreground" role="status">
-              {actionMessage}
-            </p>
-          ) : null}
-          {actionError ? creativePanelError(actionError, 'Hosted lander action failed') : null}
-        </section>
-      ) : null}
-
-      {previewUrl ? (
         <section className="grid gap-2">
-          <h2 className="text-base font-semibold">Preview</h2>
-          <p className="text-sm">
-            <a
-              className="text-foreground underline"
-              href={previewUrl}
-              rel="noreferrer"
-              target="_blank"
-            >
-              Open server preview
-            </a>
-          </p>
-          <iframe
-            className={cn(
-              'min-h-[480px] w-full border border-border/50 bg-muted/40',
-              adminKit.panelRadius
-            )}
-            src={previewUrl}
-            title={`Preview for lander ${landerId}`}
-          />
+          <h2 className="text-base font-semibold">Draft status</h2>
+          <ActionLinksBand className="text-sm">
+            <Badge variant="outline">Draft v{state.draft_version}</Badge>
+            <Badge variant="outline">Published v{state.published_version}</Badge>
+            {state.has_unpublished_draft ? (
+              <Badge variant="secondary">Unpublished draft</Badge>
+            ) : null}
+          </ActionLinksBand>
         </section>
-      ) : null}
 
-      <section className="grid gap-2">
-        <h2 className="text-base font-semibold">Files</h2>
-        <TableHost>
-          <DirectoryTable nested>
-          <TableHeader>
-            <TableRow>
-              <DirectoryTableHead>Path</DirectoryTableHead>
-              <DirectoryTableHead>Size</DirectoryTableHead>
-              <DirectoryTableHead>Editable</DirectoryTableHead>
-            </TableRow>
-          </TableHeader>
-          <TableBody>
-            {(state.files ?? []).map((file) => {
-              const isSelected = selectedFilePath === file.path;
-              const canEdit = file.editable && onSelectFile;
-              return (
-                <TableRow
-                  key={file.path}
-                  className={
-                    canEdit
-                      ? `cursor-pointer ${isSelected ? 'bg-muted/50' : 'hover:bg-muted/30'}`
-                      : undefined
-                  }
-                  onClick={
-                    canEdit
-                      ? () => {
-                          onSelectFile(file.path);
-                        }
-                      : undefined
-                  }
-                >
-                  <TableCell className="font-mono text-xs">{file.path}</TableCell>
-                  <TableCell>{file.size}</TableCell>
-                  <TableCell>{file.editable ? 'yes' : 'no'}</TableCell>
-                </TableRow>
-              );
-            })}
-          </TableBody>
-        </DirectoryTable>
-        </TableHost>
-      </section>
-
-      {selectedFilePath && onSaveFile ? (
-        <section className="grid gap-4">
-          <h2 className="text-base font-semibold">Edit file</h2>
-          <p className="font-mono text-xs text-muted-foreground">{selectedFilePath}</p>
-          {fileLoading ? (
-            <p className="text-sm text-muted-foreground">Loading file...</p>
-          ) : (
-            <>
-              <FilterField htmlFor="lander-file-content" label="Content">
-                <Textarea
-                  id="lander-file-content"
-                  className="min-h-64 font-mono text-sm"
-                  value={fileContent}
-                  onChange={(event) => onFileContentChange?.(event.target.value)}
+        {onUploadZip || onPublish ? (
+          <section className={FILTER_PANEL_NARROW_CLASS}>
+            <h2 className="text-base font-semibold">Hosted actions</h2>
+            {onUploadZip ? (
+              <FilterField htmlFor="lander-upload-zip" label="Upload ZIP">
+                <input
+                  id="lander-upload-zip"
+                  type="file"
+                  accept=".zip,application/zip"
+                  disabled={acting}
+                  onChange={(event) => {
+                    const file = event.target.files?.[0];
+                    if (file) {
+                      onUploadZip(file);
+                    }
+                  }}
                 />
               </FilterField>
-              {fileError ? creativePanelError(fileError, 'Could not save file') : null}
-              <div>
-                <PrimaryActionButton
-                  disabled={fileLoading}
-                  loading={fileSaving}
-                  onClick={onSaveFile}
-                  type="button"
-                >
-                  Save file
-                </PrimaryActionButton>
-              </div>
-            </>
-          )}
-        </section>
-      ) : null}
+            ) : null}
+            {onPublish ? (
+              <Button disabled={acting} onClick={onPublish} type="button">
+                {acting ? 'Publishing...' : 'Publish hosted lander'}
+              </Button>
+            ) : null}
+            {actionMessage ? (
+              <p className="text-sm text-muted-foreground" role="status">
+                {actionMessage}
+              </p>
+            ) : null}
+            {actionError ? creativePanelError(actionError, 'Hosted lander action failed') : null}
+          </section>
+        ) : null}
 
-      {error && hasSnapshot ? creativePanelError(error, 'Refresh failed') : null}
+        {previewUrl ? (
+          <section className="grid gap-2">
+            <h2 className="text-base font-semibold">Preview</h2>
+            <p className="text-sm">
+              <a
+                className="text-foreground underline"
+                href={previewUrl}
+                rel="noreferrer"
+                target="_blank"
+              >
+                Open server preview
+              </a>
+            </p>
+            <iframe
+              className={cn(
+                'min-h-[480px] w-full border border-border/50 bg-muted/40',
+                adminKit.panelRadius
+              )}
+              src={previewUrl}
+              title={`Preview for lander ${landerId}`}
+            />
+          </section>
+        ) : null}
+
+        <section className="grid gap-2">
+          <h2 className="text-base font-semibold">Files</h2>
+          <TableHost>
+            <DirectoryTable nested>
+              <TableHeader>
+                <TableRow>
+                  <DirectoryTableHead>Path</DirectoryTableHead>
+                  <DirectoryTableHead>Size</DirectoryTableHead>
+                  <DirectoryTableHead>Editable</DirectoryTableHead>
+                </TableRow>
+              </TableHeader>
+              <TableBody>
+                {(state.files ?? []).map((file) => {
+                  const isSelected = selectedFilePath === file.path;
+                  const canEdit = file.editable && onSelectFile;
+                  return (
+                    <TableRow
+                      key={file.path}
+                      className={canEdit ? 'cursor-pointer' : undefined}
+                      onClick={
+                        canEdit
+                          ? () => {
+                              onSelectFile(file.path);
+                            }
+                          : undefined
+                      }
+                    >
+                      <TableCell className={cn('text-xs', isSelected && 'bg-muted/50')}>
+                        {file.path}
+                      </TableCell>
+                      <TableCell className={cn(isSelected && 'bg-muted/50')}>{file.size}</TableCell>
+                      <TableCell className={cn(isSelected && 'bg-muted/50')}>
+                        {file.editable ? 'yes' : 'no'}
+                      </TableCell>
+                    </TableRow>
+                  );
+                })}
+              </TableBody>
+            </DirectoryTable>
+          </TableHost>
+        </section>
+
+        {selectedFilePath && onSaveFile ? (
+          <section className="grid gap-4">
+            <h2 className="text-base font-semibold">Edit file</h2>
+            <p className="text-xs text-muted-foreground">{selectedFilePath}</p>
+            {fileLoading ? (
+              <p className="text-sm text-muted-foreground">Loading file...</p>
+            ) : (
+              <>
+                <FilterField htmlFor="lander-file-content" label="Content">
+                  <Textarea
+                    id="lander-file-content"
+                    className="min-h-64 text-sm"
+                    value={fileContent}
+                    onChange={(event) => onFileContentChange?.(event.target.value)}
+                  />
+                </FilterField>
+                {fileError ? creativePanelError(fileError, 'Could not save file') : null}
+                <div>
+                  <PrimaryActionButton
+                    disabled={fileLoading}
+                    loading={fileSaving}
+                    onClick={onSaveFile}
+                    type="button"
+                  >
+                    Save file
+                  </PrimaryActionButton>
+                </div>
+              </>
+            )}
+          </section>
+        ) : null}
+
+        {error && hasSnapshot ? creativePanelError(error, 'Refresh failed') : null}
       </CreativeDirectoryStack>
     </PageChrome>
   );

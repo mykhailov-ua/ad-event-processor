@@ -6,6 +6,32 @@ OUT="${WASM_ATTEST_OUT:-${ROOT}/var/wasm/attest.wasm}"
 SRC_DIR="${ROOT}/wasm/attest"
 MANIFEST="${ROOT}/var/wasm/attest.manifest"
 WASI_SDK_DIR="${WASI_SDK_DIR:-${ROOT}/var/wasi-sdk}"
+POLY_HEADER="${WASM_ATTEST_POLY_HEADER:-${ROOT}/var/wasm/polymorph_seed.h}"
+SEED="${WASM_ATTEST_SEED:-0}"
+SKIP_EMBED="${WASM_ATTEST_SKIP_EMBED:-0}"
+
+while [[ $# -gt 0 ]]; do
+  case "$1" in
+    --seed=*)
+      SEED="${1#*=}"
+      shift
+      ;;
+    --seed)
+      SEED="${2:-0}"
+      shift 2
+      ;;
+    --out=*)
+      OUT="${1#*=}"
+      shift
+      ;;
+    *)
+      shift
+      ;;
+  esac
+done
+
+export WASM_ATTEST_SEED="${SEED}"
+bash "${ROOT}/scripts/build/gen_wasm_polymorph_header.sh" "${POLY_HEADER}"
 
 ensure_wasi_sdk() {
   if [[ -n "${CLANG:-}" && -n "${WASM_LD:-}" ]]; then
@@ -59,6 +85,7 @@ fi
   -nostdlib \
   -fno-builtin \
   -I"${SRC_DIR}" \
+  -include "${POLY_HEADER}" \
   -fuse-ld="${LD_BIN}" \
   -Wl,--no-entry \
   -Wl,--strip-all \
@@ -68,17 +95,23 @@ fi
   -Wl,--export=aad_data_off \
   -Wl,--export=aad_pow_solve \
   -Wl,--export=aad_float_noise_ieee \
+  -Wl,--export=aad_sha256_one_shot \
   -Wl,--export=aad_bench_mul \
+  -Wl,--export=aad_poly_seed \
+  -Wl,--export=aad_poly_tag \
   -o "${OUT}" \
   "${SRC_DIR}/attest.c" \
+  "${SRC_DIR}/polymorph.c" \
   "${SRC_DIR}/sha256.c"
 
 if command -v wasm-opt > /dev/null 2>&1; then
   wasm-opt -Oz "${OUT}" -o "${OUT}"
 fi
 
-EMBED_DST="${ROOT}/internal/track/attest.wasm"
-cp "${OUT}" "${EMBED_DST}"
+if [[ "${SKIP_EMBED}" != "1" ]]; then
+  EMBED_DST="${ROOT}/internal/track/attest.wasm"
+  cp "${OUT}" "${EMBED_DST}"
+fi
 
 BYTES="$(wc -c < "${OUT}" | tr -d ' ')"
 SHA="$(sha256sum "${OUT}" | awk '{print $1}')"
@@ -86,7 +119,8 @@ SHA="$(sha256sum "${OUT}" | awk '{print $1}')"
   echo "bytes=${BYTES}"
   echo "sha256=${SHA}"
   echo "abi_version=1"
-  echo "exports=memory,aad_abi_version,aad_pow_solve,aad_float_noise_ieee,aad_sha256_one_shot,aad_bench_mul"
+  echo "seed=${SEED}"
+  echo "exports=memory,aad_abi_version,aad_pow_solve,aad_float_noise_ieee,aad_sha256_one_shot,aad_bench_mul,aad_poly_seed,aad_poly_tag"
 } > "${MANIFEST}"
 
-echo "wasm_attest: wrote ${OUT} (${BYTES} bytes)"
+echo "wasm_attest: wrote ${OUT} (${BYTES} bytes) seed=${SEED} sha256=${SHA}"

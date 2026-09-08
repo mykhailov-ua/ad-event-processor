@@ -99,10 +99,8 @@ export function CustomerDetailPaymentsTab({
                 <TableBody>
                   {(items ?? []).map((row) => (
                     <TableRow key={`${row.intent_id ?? 'payment'}-${row.created_at ?? ''}`}>
-                      <TableCell className="font-mono text-xs">{row.intent_id ?? ''}</TableCell>
-                      <TableCell className="text-right tabular-nums">
-                        {displayMicro(row.amount_micro)}
-                      </TableCell>
+                      <TableCell className="text-xs">{row.intent_id ?? ''}</TableCell>
+                      <TableCell className="text-right">{displayMicro(row.amount_micro)}</TableCell>
                       <TableCell>{row.currency ?? ''}</TableCell>
                       <TableCell>{row.status ?? ''}</TableCell>
                       <TableCell>{row.provider ?? ''}</TableCell>

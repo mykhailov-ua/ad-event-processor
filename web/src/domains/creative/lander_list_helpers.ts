@@ -50,7 +50,7 @@ export function landerHostedCellText(lander: Lander): string {
   if (lander.published_version && lander.published_version > 0) {
     parts.push(`v${lander.published_version}`);
   }
-  return parts.join(' · ');
+  return parts.join(' | ');
 }
 
 export function landerHostedCellTitle(lander: Lander): string | undefined {
@@ -59,5 +59,5 @@ export function landerHostedCellTitle(lander: Lander): string | undefined {
   if (!hostedUrl) {
     return label;
   }
-  return `${label} — ${hostedUrl}`;
+  return `${label} - ${hostedUrl}`;
 }

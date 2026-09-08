@@ -269,6 +269,7 @@ func main() {
 		clickhouseStore = ingestion.NewClickHouseStore(clickhouseConn, time.Duration(cfg.WriteTimeoutMs)*time.Millisecond, cfg.ClickHouseSpoolDir, spoolCfg, processorClickHouseGate)
 		clickhouseStore.SetPIIHasher(piiHasher)
 		conversionPayoutApplier = ingestion.NewConversionPayoutApplier(settleQueries)
+		conversionPayoutApplier.SetStatusSchemaStore(ingestion.NewPgxAffiliateStatusSchemaStore(pool))
 		clickhouseStore.SetConversionPayoutApplier(conversionPayoutApplier)
 		if err := clickhouseStore.RecoverSpool(ctx); err != nil {
 			slog.Error("failed to recover clickhouse spool", "error", err)

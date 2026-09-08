@@ -78,7 +78,7 @@ export function SettingsLicense({
               label="Deployment"
               value={
                 meta?.deployment_id?.trim() ? (
-                  <span className="break-all font-mono text-xs">{meta.deployment_id}</span>
+                  <span className="break-all text-xs">{meta.deployment_id}</span>
                 ) : (
                   settingsEmptyValue('license_deployment')
                 )

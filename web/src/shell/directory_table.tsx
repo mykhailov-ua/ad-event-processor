@@ -26,6 +26,10 @@ export const SECTION_TABLE_HOST_CLASS = 'ui-section-table-host mt-2 min-w-0';
 export type DirectoryTableProps = {
   children: ReactNode;
   className?: string;
+  hostClassName?: string;
+  hostRef?: Ref<HTMLDivElement>;
+  hostStyle?: CSSProperties;
+  pinnedEdgeWidthPx?: number;
   scrollable?: boolean;
   horizontalScroll?: boolean;
   fixedLayout?: boolean;
@@ -58,6 +62,10 @@ function directoryTableUsesContentWidth(tableStyle?: CSSProperties): boolean {
 export function DirectoryTable({
   children,
   className,
+  hostClassName,
+  hostRef,
+  hostStyle,
+  pinnedEdgeWidthPx,
   scrollable = false,
   horizontalScroll = false,
   fixedLayout = false,
@@ -67,27 +75,43 @@ export function DirectoryTable({
   tableRef,
 }: DirectoryTableProps) {
   const contentWidth = directoryTableUsesContentWidth(tableStyle);
+  const explicitTableWidth = tableStyle?.width != null;
 
   return (
     <div
+      ref={hostRef}
       data-directory-table=""
       className={cn(
-        'ui-scrollbar min-w-0 border border-border',
+        'ui-scrollbar relative min-w-0 border border-border',
         nested && 'border-0 shadow-none',
         scrollable && 'max-h-[min(70vh,48rem)] overflow-y-auto',
         horizontalScroll && 'overflow-x-auto',
-        className
+        className,
+        hostClassName
       )}
+      style={hostStyle}
     >
+      {pinnedEdgeWidthPx != null && pinnedEdgeWidthPx > 0 ? (
+        <div
+          aria-hidden
+          className="directory-table-pinned-edge-shadow pointer-events-none"
+          data-directory-pinned-edge=""
+          style={{ left: `${pinnedEdgeWidthPx}px` }}
+        />
+      ) : null}
       <Table
         bare
         ref={tableRef}
         className={cn(
           'border-collapse text-[13px] leading-[18px]',
-          '[&_thead_th]:border-b [&_thead_th]:border-border',
-          '[&_tbody_td]:border-b [&_tbody_td]:border-border',
+          '[&_thead_th]:border-b [&_thead_th]:border-r [&_thead_th]:border-border',
+          '[&_tbody_td]:border-b [&_tbody_td]:border-r [&_tbody_td]:border-border',
+          '[&_tfoot_td]:border-r [&_tfoot_td]:border-border',
+          '[&_thead_tr_th:last-child]:border-r-0',
+          '[&_tbody_tr_td:last-child]:border-r-0',
+          '[&_tfoot_tr_td:last-child]:border-r-0',
           '[&_tbody_tr:last-child_td]:border-b-0',
-          contentWidth ? 'w-max' : 'w-full',
+          !explicitTableWidth && (contentWidth ? 'w-max' : 'w-full'),
           fixedLayout && '[&_td]:whitespace-nowrap [&_th]:whitespace-nowrap',
           tableClassName
         )}
@@ -106,7 +130,11 @@ type HeadAlign = 'start' | 'end';
 function DirectoryTableHeadShell({ className, ...props }: ComponentProps<typeof TableHead>) {
   return (
     <TableHead
-      className={cn(DIRECTORY_TABLE_HEAD_ROW_CLASS, 'bg-admin-table-header p-0 backdrop-blur-sm', className)}
+      className={cn(
+        DIRECTORY_TABLE_HEAD_ROW_CLASS,
+        'bg-admin-table-header p-0 backdrop-blur-sm',
+        className
+      )}
       {...props}
     />
   );

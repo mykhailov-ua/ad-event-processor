@@ -24,7 +24,7 @@ export function AppliedCustomerBanner({
     >
       <span className="text-muted-foreground">Customer scope</span>
       <span className="font-medium text-foreground">{customerName}</span>
-      <span className="font-mono text-xs text-muted-foreground">{customerId}</span>
+      <span className="text-xs text-muted-foreground">{customerId}</span>
       <Button
         aria-label="Clear customer scope"
         className="gap-1 px-2 text-xs"

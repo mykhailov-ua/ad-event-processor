@@ -177,7 +177,7 @@ export function PostbackConfigForm({
           {testResult.http_status != null ? <p>HTTP status: {testResult.http_status}</p> : null}
           {testResult.error ? <p className="text-destructive">{testResult.error}</p> : null}
           {testResult.rendered_url ? (
-            <p className="break-all font-mono text-xs">{testResult.rendered_url}</p>
+            <p className="break-all text-xs">{testResult.rendered_url}</p>
           ) : null}
         </div>
       ) : null}

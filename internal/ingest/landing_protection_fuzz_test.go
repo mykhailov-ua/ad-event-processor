@@ -27,7 +27,7 @@ func FuzzLinkSignerVerify(f *testing.F) {
 }
 
 func FuzzSafePageVerifyParse(f *testing.F) {
-	f.Add(`{"campaign_id":"550e8400-e29b-41d4-a716-446655440000","events":[{"t":"mousemove","ts":1,"x":1,"y":2}],"fingerprint":{"ua":"x","lang":"en","languages":["en"],"canvas_hash":"abcdef0123456789abcdef0123456789abcdef0123456789abcdef0123456789","audio_hash":"fedcba9876543210fedcba9876543210fedcba9876543210fedcba9876543210","notification_permission":"denied","notification_query":"denied"}}`)
+	f.Add(`{"campaign_id":"550e8400-e29b-41d4-a716-446655440000","events":[{"t":"mousemove","ts":1,"x":1,"y":2}],"fingerprint":{"ua":"x","lang":"en","languages":["en"],"canvas_hash":"abcdef0123456789abcdef0123456789abcdef0123456789abcdef0123456789","audio_hash":"fedcba9876543210fedcba9876543210fedcba9876543210fedcba9876543210","notification_permission":"denied","notification_query":"denied","runtime_probes":{"shader_compile_ms":12,"float_noise_hash":"abc","navigator_getter_us":3}}}`)
 	f.Fuzz(func(t *testing.T, body string) {
 		req, ok := parseSafePageVerifyRequest([]byte(body))
 		if !ok {

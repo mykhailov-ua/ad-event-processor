@@ -3,6 +3,7 @@ import { createContext, useCallback, useMemo, useState, type ReactNode } from 'r
 import { getSessionBootstrap } from '@/api/auth_api';
 import { ApiError } from '@/api/client';
 import type { AuthUser, SessionResponse } from '@/api/types';
+import { useSessionRefetchOnVisibility } from '@/hooks/use_session_refetch_on_visibility';
 import { useResource } from '@/api/use_resource';
 
 // Root session snapshot for the SPA shell. Single GET /session bootstrap via useResource.
@@ -80,6 +81,7 @@ export function SessionProvider({ children }: SessionProviderProps) {
   const refetchSession = useCallback(() => {
     setRefreshToken((value) => value + 1);
   }, []);
+  useSessionRefetchOnVisibility(refetchSession);
   const value = useMemo(
     () => ({
       ...buildSessionValue(data, error, fetching),

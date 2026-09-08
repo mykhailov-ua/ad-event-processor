@@ -1,2 +1,33 @@
-import{Cb as a,Lb as f,Mb as d,Nb as n,bb as i,c as t,f as v,hb as p,n as o,o as r,p as m}from"./chunks/chunk-G2DE4X7R.js";var P=t(v(),1);var e=t(i(),1),u=document.getElementById("root");u&&(0,P.createRoot)(u).render((0,e.jsx)(m,{children:(0,e.jsx)(p,{children:(0,e.jsx)(a,{children:(0,e.jsxs)(r,{children:[(0,e.jsx)(o,{element:(0,e.jsx)(n,{}),path:"/setup"}),(0,e.jsx)(o,{element:(0,e.jsx)(f,{}),path:"/activate"}),(0,e.jsx)(o,{element:(0,e.jsx)(d,{}),path:"*"})]})})})}));
+import {
+  Db as a,
+  Mb as f,
+  Nb as d,
+  Ob as n,
+  bb as i,
+  c as t,
+  f as v,
+  hb as p,
+  n as o,
+  o as r,
+  p as m,
+} from './chunks/chunk-CSP4VPOX.js';
+var P = t(v(), 1);
+var e = t(i(), 1),
+  u = document.getElementById('root');
+u &&
+  (0, P.createRoot)(u).render(
+    (0, e.jsx)(m, {
+      children: (0, e.jsx)(p, {
+        children: (0, e.jsx)(a, {
+          children: (0, e.jsxs)(r, {
+            children: [
+              (0, e.jsx)(o, { element: (0, e.jsx)(n, {}), path: '/setup' }),
+              (0, e.jsx)(o, { element: (0, e.jsx)(f, {}), path: '/activate' }),
+              (0, e.jsx)(o, { element: (0, e.jsx)(d, {}), path: '*' }),
+            ],
+          }),
+        }),
+      }),
+    })
+  );
 //# sourceMappingURL=login.js.map

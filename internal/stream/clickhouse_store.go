@@ -397,6 +397,13 @@ func (st *ClickHouseStore) insertTable(ctx context.Context, table string, evts [
 				e.MobileBiometricSet,
 				e.MobileBiometricMobile,
 				e.CrossLayerDesyncFired,
+				e.ProbeBehaviorScore,
+				e.ProbeFooterReachMs,
+				e.EventOrderEntropyMilli,
+				e.BehaviorSimhash,
+				e.CrowdWaveActive,
+				e.CrowdWaveScore,
+				e.InAppWebViewClass,
 			)
 		case table == "tg_events_raw":
 			var p telegramEventPayload
@@ -451,6 +458,13 @@ func (st *ClickHouseStore) insertTable(ctx context.Context, table string, evts [
 				e.MobileBiometricSet,
 				e.MobileBiometricMobile,
 				e.CreatedAt,
+				e.ProbeBehaviorScore,
+				e.ProbeFooterReachMs,
+				e.EventOrderEntropyMilli,
+				e.BehaviorSimhash,
+				e.CrowdWaveActive,
+				e.CrowdWaveScore,
+				e.InAppWebViewClass,
 			)
 		default:
 			dims := track.ExtractAnalyticsDimensions(e)

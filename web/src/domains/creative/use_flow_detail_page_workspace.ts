@@ -34,8 +34,8 @@ export function useFlowDetailPageWorkspace() {
     [flowId, refreshToken]
   );
 
-  const { data: landers } = useResource((signal) => listLanders(signal), [refreshToken]);
-  const { data: offers } = useResource((signal) => listOffers(signal), [refreshToken]);
+  const { data: landers } = useResource((signal) => listLanders(signal), []);
+  const { data: offers } = useResource((signal) => listOffers(signal), []);
 
   const bumpRefreshCoalesced = useCoalescedBumpRefresh(bumpRefresh, fetching);
 

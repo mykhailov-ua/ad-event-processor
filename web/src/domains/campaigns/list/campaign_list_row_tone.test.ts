@@ -2,12 +2,13 @@ import assert from 'node:assert/strict';
 import test from 'node:test';
 
 import {
-  campaignListRowClass,
+  campaignListRowDataAttributes,
   campaignStatusBadgeClass,
   campaignStatusCellClass,
   isInactiveCampaignStatus,
   normalizeCampaignStatus,
   resolveCampaignListRowAccent,
+  resolveCampaignListRowAlert,
   resolveCampaignStatusKey,
 } from './campaign_list_row_tone.ts';
 
@@ -24,49 +25,43 @@ test('resolveCampaignStatusKey prefers status_tone', () => {
 
 test('inactive statuses do not tint table rows', () => {
   assert.equal(isInactiveCampaignStatus('PAUSED'), true);
-  assert.ok(campaignListRowClass(false).includes('odd:[&_td]:bg-card'));
-  assert.ok(campaignListRowClass(false).includes('[&_td[data-col-pin]]:bg-admin-table-pin'));
-  assert.equal(campaignListRowClass(false).includes('[&>td]:!bg-primary/22'), false);
+  assert.deepEqual(campaignListRowDataAttributes(false), {});
 });
 
-test('campaignListRowClass_holdout: pinned cells use opaque pin background', () => {
-  const rowClass = campaignListRowClass(false);
-  assert.equal(rowClass.includes('bg-admin-table-pin/90'), false);
-  assert.ok(rowClass.includes('even:[&_td[data-col-pin]]:bg-admin-table-pin'));
+test('campaignListRowDataAttributes_holdout: selection wins over accent', () => {
+  assert.deepEqual(campaignListRowDataAttributes(true, 'warning'), { 'data-row-selected': true });
+  assert.equal(campaignListRowDataAttributes(true, 'warning')['data-row-accent'], undefined);
 });
 
-test('resolveCampaignListRowAccent maps lifecycle and problem signals', () => {
-  assert.equal(resolveCampaignListRowAccent('PAUSED'), 'muted');
-  assert.equal(resolveCampaignListRowAccent('ARCHIVED'), 'muted');
-  assert.equal(
-    resolveCampaignListRowAccent('ACTIVE', undefined, { marginBreach: true }),
-    'critical'
-  );
-  assert.equal(resolveCampaignListRowAccent('EXHAUSTED'), 'warning');
-  assert.equal(
-    resolveCampaignListRowAccent('ACTIVE', undefined, { budgetUsedPct: 92 }),
-    'warning'
-  );
+test('resolveCampaignListRowAccent_holdout does not tint rows; alerts use name badge only', () => {
+  assert.equal(resolveCampaignListRowAccent('PAUSED'), 'none');
+  assert.equal(resolveCampaignListRowAccent('ARCHIVED'), 'none');
   assert.equal(resolveCampaignListRowAccent('ACTIVE'), 'none');
 });
 
-test('campaignListRowClass tints whole row for muted warning and critical accents', () => {
-  assert.ok(campaignListRowClass(false, 'muted').includes('[&>td:not([data-col-pin])]:!bg-muted/30'));
-  assert.ok(
-    campaignListRowClass(false, 'warning').includes('[&>td:not([data-col-pin])]:!bg-admin-warn-bg/80')
+test('resolveCampaignListRowAlert maps problem signals for name column badge', () => {
+  assert.equal(
+    resolveCampaignListRowAlert('ACTIVE', undefined, { marginBreach: true }),
+    'critical'
   );
-  assert.ok(
-    campaignListRowClass(false, 'critical').includes('[&>td:not([data-col-pin])]:!bg-destructive/12')
-  );
+  assert.equal(resolveCampaignListRowAlert('EXHAUSTED'), 'warning');
+  assert.equal(resolveCampaignListRowAlert('ACTIVE', undefined, { budgetUsedPct: 92 }), 'warning');
+  assert.equal(resolveCampaignListRowAlert('PAUSED', undefined, { budgetUsedPct: 92 }), 'none');
+  assert.equal(resolveCampaignListRowAlert('ACTIVE'), 'none');
 });
 
-test('selected row tints scrollable cells and left rail on first column', () => {
-  assert.ok(campaignListRowClass(true).includes('[&>td:not([data-col-pin])]:!bg-primary/22'));
-  assert.ok(
-    campaignListRowClass(true).includes('[&>td:first-child]:shadow-[inset_3px_0_0_0_hsl(var(--primary))]')
-  );
-  assert.equal(campaignListRowClass(true).includes('[&>td]:!bg-primary/22'), false);
-  assert.equal(campaignListRowClass(true).includes('shadow-[inset_3px_0_0_0_hsl(var(--primary))]'), false);
+test('campaignListRowDataAttributes maps accent tones to data-row-accent', () => {
+  assert.deepEqual(campaignListRowDataAttributes(false, 'muted'), { 'data-row-accent': 'muted' });
+  assert.deepEqual(campaignListRowDataAttributes(false, 'warning'), {
+    'data-row-accent': 'warning',
+  });
+  assert.deepEqual(campaignListRowDataAttributes(false, 'critical'), {
+    'data-row-accent': 'critical',
+  });
+});
+
+test('selected row uses data-row-selected only', () => {
+  assert.deepEqual(campaignListRowDataAttributes(true), { 'data-row-selected': true });
 });
 
 test('campaignStatusCellClass fills status column with muted tone colors', () => {

@@ -18,6 +18,18 @@ func trackJSONWithTelemetry(eventsJSON string) []byte {
 	return []byte(`{"type":"conversion","campaign_id":"a0eebc99-9c0b-4ef8-bb6d-6bb9bd380a11","user_id":"u1","telemetry":{"events":[` + eventsJSON + `]}}`)
 }
 
+func TestParseTrackTelemetry_holdoutParsesHumanizedFields(t *testing.T) {
+	body := trackJSONWithTelemetry(`{"t":"pointerdown","ts":1000,"x":10,"y":20,"fx":10.25,"fy":20.75,"trusted":1}`)
+	var req TrackRequest
+	require.NoError(t, ParseTrackRequestJSONOpt(&req, body))
+	require.Len(t, req.TelemetryEvents, 1)
+	assert.Equal(t, "pointerdown", req.TelemetryEvents[0].T)
+	assert.Equal(t, int64(1000), req.TelemetryEvents[0].TS)
+	assert.InDelta(t, 10.25, float64(req.TelemetryEvents[0].FX), 0.001)
+	assert.InDelta(t, 20.75, float64(req.TelemetryEvents[0].FY), 0.001)
+	assert.Equal(t, uint8(1), req.TelemetryEvents[0].Trusted)
+}
+
 func TestParseTrackTelemetry_holdoutParsesMouseEvents(t *testing.T) {
 	body := trackJSONWithTelemetry(`{"t":"mousemove","ts":100,"x":10,"y":20},{"t":"mousemove","ts":110,"x":15,"y":25}`)
 	var req TrackRequest

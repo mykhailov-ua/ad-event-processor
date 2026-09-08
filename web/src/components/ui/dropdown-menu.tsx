@@ -295,7 +295,10 @@ function DropdownMenuSubContent({
   ...props
 }: React.HTMLAttributes<HTMLDivElement>) {
   return (
-    <div className={cn(adminChrome.floating, 'min-w-[8rem] overflow-hidden p-0', className)} {...props}>
+    <div
+      className={cn(adminChrome.floating, 'min-w-[8rem] overflow-hidden p-0', className)}
+      {...props}
+    >
       <div className={DROPDOWN_MENU_SCROLL_BODY_CLASS} onWheel={stopMenuWheel}>
         {children}
       </div>

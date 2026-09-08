@@ -41,7 +41,8 @@ function matchesDomainFilter(row: DomainHealth, filter: DomainHealthFilter): boo
   }
   if (filter === 'degraded') {
     return (
-      (row.health_status === 'degraded' || row.health_status === 'down') && row.pool_status !== 'banned'
+      (row.health_status === 'degraded' || row.health_status === 'down') &&
+      row.pool_status !== 'banned'
     );
   }
   return true;
@@ -69,6 +70,7 @@ export function useDomainsPageWorkspace() {
   const [healthFilter, setHealthFilter] = useState<DomainHealthFilter>('all');
   const [bulkOpen, setBulkOpen] = useState(false);
   const [draftBulkText, setDraftBulkText] = useState('');
+  const [draftBulkCsv, setDraftBulkCsv] = useState('');
   const [draftBulkZoneId, setDraftBulkZoneId] = useState('');
   const [bulkJobId, setBulkJobId] = useState('');
   const [bulkJob, setBulkJob] = useState<DomainBulkJobStatus | undefined>(undefined);
@@ -116,7 +118,9 @@ export function useDomainsPageWorkspace() {
         if (status.status === 'completed' || status.status === 'failed') {
           bumpReload();
           if (status.status === 'completed') {
-            toast.success(`Bulk job finished (${status.completed - status.failed}/${status.total} ok)`);
+            toast.success(
+              `Bulk job finished (${status.completed - status.failed}/${status.total} ok)`
+            );
           } else {
             toast.error(status.error ?? 'Bulk job failed');
           }
@@ -289,8 +293,35 @@ export function useDomainsPageWorkspace() {
       });
   }, [bumpReload, draftParkDomain, draftParkZoneId]);
 
+  const parseBulkHostnames = useCallback(() => {
+    return draftBulkText
+      .split(/\r?\n/)
+      .map((line) => line.trim())
+      .filter(Boolean);
+  }, [draftBulkText]);
+
+  const hasBulkInput = useCallback(() => {
+    return parseBulkHostnames().length > 0 || draftBulkCsv.trim().length > 0;
+  }, [draftBulkCsv, parseBulkHostnames]);
+
+  const onBulkCsvFileSelected = useCallback((file: File | undefined) => {
+    if (!file) {
+      return;
+    }
+    void file
+      .text()
+      .then((text) => {
+        setDraftBulkCsv(text);
+        setActionError(undefined);
+      })
+      .catch((err: unknown) => {
+        setActionError(err instanceof Error ? err : new Error(String(err)));
+      });
+  }, []);
+
   const onOpenBulkDialog = useCallback(() => {
     setBulkOpen(true);
+    setDraftBulkCsv('');
     setBulkJob(undefined);
     setBulkJobError(undefined);
     setBulkJobId('');
@@ -304,17 +335,19 @@ export function useDomainsPageWorkspace() {
 
   const onStartBulkPark = useCallback(() => {
     const cloudflareZoneId = draftBulkZoneId.trim();
-    const hostnames = draftBulkText
-      .split(/\r?\n/)
-      .map((line) => line.trim())
-      .filter(Boolean);
-    if (!cloudflareZoneId || hostnames.length === 0) {
-      setActionError(new Error('Zone ID and at least one hostname are required'));
+    const hostnames = parseBulkHostnames();
+    const csv = draftBulkCsv.trim();
+    if (!cloudflareZoneId || !hasBulkInput()) {
+      setActionError(new Error('Zone ID and hostnames (paste or CSV file) are required'));
       return;
     }
     setActing(true);
     setActionError(undefined);
-    void startBulkDomainPark({ hostnames, cloudflare_zone_id: cloudflareZoneId })
+    void startBulkDomainPark({
+      hostnames,
+      csv: csv || undefined,
+      cloudflare_zone_id: cloudflareZoneId,
+    })
       .then((job) => {
         setBulkJobId(job.job_id);
         setBulkJob(job);
@@ -326,20 +359,18 @@ export function useDomainsPageWorkspace() {
       .finally(() => {
         setActing(false);
       });
-  }, [draftBulkText, draftBulkZoneId]);
+  }, [draftBulkCsv, draftBulkZoneId, hasBulkInput, parseBulkHostnames]);
 
   const onStartBulkSSL = useCallback(() => {
-    const hostnames = draftBulkText
-      .split(/\r?\n/)
-      .map((line) => line.trim())
-      .filter(Boolean);
-    if (hostnames.length === 0) {
-      setActionError(new Error('At least one hostname is required'));
+    const hostnames = parseBulkHostnames();
+    const csv = draftBulkCsv.trim();
+    if (!hasBulkInput()) {
+      setActionError(new Error('At least one hostname (paste or CSV file) is required'));
       return;
     }
     setActing(true);
     setActionError(undefined);
-    void startBulkDomainSSL({ hostnames })
+    void startBulkDomainSSL({ hostnames, csv: csv || undefined })
       .then((job) => {
         setBulkJobId(job.job_id);
         setBulkJob(job);
@@ -351,7 +382,7 @@ export function useDomainsPageWorkspace() {
       .finally(() => {
         setActing(false);
       });
-  }, [draftBulkText]);
+  }, [draftBulkCsv, hasBulkInput, parseBulkHostnames]);
 
   const onOpenWildcardWizard = useCallback(() => {
     setWildcardOpen(true);
@@ -433,6 +464,8 @@ export function useDomainsPageWorkspace() {
     onOpenBulkDialog,
     draftBulkText,
     onDraftBulkTextChange: setDraftBulkText,
+    draftBulkCsvLoaded: draftBulkCsv.trim().length > 0,
+    onBulkCsvFileSelected,
     draftBulkZoneId,
     onDraftBulkZoneIdChange: setDraftBulkZoneId,
     onStartBulkPark,

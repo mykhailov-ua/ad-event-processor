@@ -11,11 +11,7 @@ import {
   TableRow,
   directoryTableRevalidatingClass,
 } from '@/shell/directory_table';
-import {
-  DirectoryFilterForm,
-  FilterField,
-  FilterPanel,
-} from '@/shell/filter_panel';
+import { DirectoryFilterForm, FilterField, FilterPanel } from '@/shell/filter_panel';
 import { PageLayout } from '@/shell/page_layout';
 import { EmptyState } from '@/shell/empty_state';
 import { ErrorBlock } from '@/shell/error_block';
@@ -104,8 +100,9 @@ export function CustomerReportDirectory<Row>({
       ? extras.telemetry_missing_rate_display
       : undefined;
 
-  const badge = config.badge?.({ freshness }) ?? (
-    freshness?.stale ? (
+  const badge =
+    config.badge?.({ freshness }) ??
+    (freshness?.stale ? (
       <Badge variant="secondary">Stale data</Badge>
     ) : telemetryMissing ? (
       <span className="text-xs text-muted-foreground">Telemetry missing: {telemetryMissing}</span>
@@ -113,8 +110,7 @@ export function CustomerReportDirectory<Row>({
       <span className="text-xs text-muted-foreground">
         As of {displayTimestamp(freshness.as_of)}
       </span>
-    ) : null
-  );
+    ) : null);
 
   return (
     <PageLayout
@@ -200,34 +196,40 @@ export function CustomerReportDirectory<Row>({
       ) : rows.length === 0 ? (
         <EmptyState title="No rows" description="No rows for the current filters." />
       ) : (
-        <TableHost className="w-full">
-          <DirectoryTable
-            className={cn('w-full', directoryTableRevalidatingClass(listRevalidating))}
-            horizontalScroll
-            nested
-          >
-            <TableHeader>
-              <TableRow>
-                {config.columns.map((column) => (
-                  <DirectoryTableHead key={column.id} align={column.align}>
-                    {column.label}
-                  </DirectoryTableHead>
-                ))}
-              </TableRow>
-            </TableHeader>
-            <TableBody>
-              {rows.map((row, index) => (
-                <TableRow key={config.rowKey(row, index)}>
+        <DirectoryStack>
+          {config.summaryBand?.(extras) ?? null}
+          <TableHost className="w-full">
+            <DirectoryTable
+              className={cn('w-full', directoryTableRevalidatingClass(listRevalidating))}
+              horizontalScroll
+              nested
+            >
+              <TableHeader>
+                <TableRow>
                   {config.columns.map((column) => (
-                    <TableCell key={column.id} className={column.align === 'end' ? 'text-right' : undefined}>
-                      {column.cell(row)}
-                    </TableCell>
+                    <DirectoryTableHead key={column.id} align={column.align}>
+                      {column.label}
+                    </DirectoryTableHead>
                   ))}
                 </TableRow>
-              ))}
-            </TableBody>
-          </DirectoryTable>
-        </TableHost>
+              </TableHeader>
+              <TableBody>
+                {rows.map((row, index) => (
+                  <TableRow key={config.rowKey(row, index)}>
+                    {config.columns.map((column) => (
+                      <TableCell
+                        key={column.id}
+                        className={column.align === 'end' ? 'text-right' : undefined}
+                      >
+                        {column.cell(row)}
+                      </TableCell>
+                    ))}
+                  </TableRow>
+                ))}
+              </TableBody>
+            </DirectoryTable>
+          </TableHost>
+        </DirectoryStack>
       )}
     </PageLayout>
   );

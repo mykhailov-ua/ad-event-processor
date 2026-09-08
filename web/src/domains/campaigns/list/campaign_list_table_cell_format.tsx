@@ -8,7 +8,7 @@ export function tableCellClass(
   emphasis?: 'primary' | 'secondary' | 'conversion' | 'approved'
 ): string {
   return cn(
-    'font-numeric num',
+    ' num',
     isZero && 'text-muted-foreground/60',
     emphasis === 'primary' && !isZero && 'font-semibold text-foreground',
     emphasis === 'secondary' && !isZero && 'text-muted-foreground',

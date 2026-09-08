@@ -183,7 +183,7 @@ func parseTrackRequestJSON(v *TrackRequest, data []byte) error {
 				// subs alias body bytes; lifetime ends when TrackRequest returns to pool after parseTrackIngest.
 				v.subs[idx-1] = unsafeString(data[valStart : end-1])
 				i = end
-			} else if matchTelemetryKey(keyBytes) {
+			} else if matchTelemetryKey(keyBytes) { //nolint:gocritic // ifElseChain: subs vs telemetry key branches share parse budget
 				end, events, ok := parseTrackTelemetryValue(data, i, n, &bud, v.TelemetryEvents)
 				if !ok {
 					return parser.ErrMalformed

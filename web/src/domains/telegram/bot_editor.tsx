@@ -115,7 +115,7 @@ export function TelegramBotEditor({
       <Link className="text-sm text-muted-foreground hover:underline" to="/telegram/bots">
         Back to bots
       </Link>
-      <p className="text-sm text-muted-foreground font-mono">Campaign {campaignId}</p>
+      <p className="text-sm text-muted-foreground">Campaign {campaignId}</p>
       {bot?.bot_id != null ? (
         <p className="text-sm text-muted-foreground">Bot ID: {bot.bot_id}</p>
       ) : null}

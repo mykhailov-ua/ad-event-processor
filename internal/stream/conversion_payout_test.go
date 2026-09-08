@@ -95,3 +95,48 @@ func TestConversionPayoutApplier_unknownStatusPassThrough(t *testing.T) {
 	applier.ApplyBatch(context.Background(), []*domain.Event{evt})
 	require.Equal(t, original, string(evt.Payload))
 }
+
+type stubStatusSchemaStore struct {
+	schemas map[uuid.UUID]*affiliateStatusSchema
+}
+
+func (s *stubStatusSchemaStore) ListAffiliateStatusSchemasByCampaignIDs(
+	_ context.Context,
+	ids []pgtype.UUID,
+) (map[uuid.UUID]*affiliateStatusSchema, error) {
+	if s == nil || len(s.schemas) == 0 {
+		return nil, nil
+	}
+	out := make(map[uuid.UUID]*affiliateStatusSchema, len(ids))
+	for _, id := range ids {
+		if id.Valid {
+			campID := uuid.UUID(id.Bytes)
+			if schema := s.schemas[campID]; schema != nil {
+				out[campID] = schema
+			}
+		}
+	}
+	return out, nil
+}
+
+func TestConversionPayoutApplier_schemaFallbackMapAffiliateStatus_holdout(t *testing.T) {
+	campID := uuid.New()
+	body := []byte(`{
+		"version": 1,
+		"status_map": {"sale": "approved"}
+	}`)
+
+	applier := NewConversionPayoutApplier(&stubConversionMappingStore{})
+	applier.SetStatusSchemaStore(&stubStatusSchemaStore{
+		schemas: map[uuid.UUID]*affiliateStatusSchema{
+			campID: {body: body},
+		},
+	})
+	evt := &domain.Event{
+		Type:       "conversion",
+		CampaignID: campID,
+		Payload:    []byte(`{"status":"sale"}`),
+	}
+	applier.ApplyBatch(context.Background(), []*domain.Event{evt})
+	require.Contains(t, string(evt.Payload), `"goal_name":"approved"`)
+}

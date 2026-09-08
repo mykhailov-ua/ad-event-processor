@@ -1,1 +1,70 @@
-"use strict";(()=>{function r(t){let n=new URLSearchParams(window.location.search);for(let o of["fbclid","gclid","ttclid","msclkid","tblci"]){let c=n.get(o);c&&(t[o]=c)}let e=n.get("ob_click_id")||n.get("obclid");e&&(t.ob_click_id=e)}async function d(t,n){let e=[],o=globalThis.trackTelemetrySnapshot;if(typeof o=="function"){let i=o();i&&i.events&&i.events.length&&(e=e.concat(i.events))}let c=globalThis.trackBiometricsSnapshot;if(typeof c=="function"){let i=c();i&&i.events&&i.events.length&&(e=e.concat(i.events))}e.length&&(t.telemetry={events:e});let a=globalThis.trackAntifraudArm;typeof a=="function"&&n&&a(n);let s=globalThis.trackAntifraudWhenReady;typeof s=="function"&&await s();let f=globalThis.trackAntifraudSnapshot;if(typeof f=="function"){let i=f();i&&(t.antifraud=i)}}async function l(t){let n={campaign_id:t.campaignId,type:t.type},e=t.eventId||(typeof crypto!="undefined"&&typeof crypto.randomUUID=="function"?crypto.randomUUID():"");e&&(n.event_id=e),t.clickId&&(n.click_id=t.clickId),t.userId&&(n.user_id=t.userId);let o=t.subs||{};for(let c=1;c<=30;c+=1){let a=`sub${c}`;o[a]&&(n[a]=o[a])}return r(n),await d(n,t.campaignId),fetch(t.endpoint,{method:"POST",headers:{"Content-Type":"application/json"},body:JSON.stringify(n),keepalive:!0,credentials:"omit"})}globalThis.trackEvent=l;})();
+'use strict';
+(() => {
+  function f(t) {
+    let n = new URLSearchParams(window.location.search);
+    for (let c of ['fbclid', 'gclid', 'ttclid', 'msclkid', 'tblci']) {
+      let o = n.get(c);
+      o && (t[c] = o);
+    }
+    let e = n.get('ob_click_id') || n.get('obclid');
+    e && (t.ob_click_id = e);
+  }
+  async function l(t, n) {
+    let e = [],
+      c = globalThis.trackTelemetrySnapshot;
+    if (typeof c == 'function') {
+      let i = c();
+      i && i.events && i.events.length && (e = e.concat(i.events));
+    }
+    let o = globalThis.trackBiometricsSnapshot;
+    if (typeof o == 'function') {
+      let i = o();
+      i && i.events && i.events.length && (e = e.concat(i.events));
+    }
+    e.length && (t.telemetry = { events: e });
+    let a = globalThis.trackAntifraudArm;
+    typeof a == 'function' && n && a(n);
+    let s = globalThis.trackAntifraudWhenReady;
+    typeof s == 'function' && (await s());
+    let r = globalThis.trackAntifraudSnapshot;
+    if (typeof r == 'function') {
+      let i = r();
+      i && (t.antifraud = i);
+    }
+  }
+  async function d(t) {
+    let n = Number(t);
+    if (!n || n <= 0) return;
+    let e = performance.now();
+    for (; performance.now() - e < n; ) await new Promise((c) => setTimeout(c, Math.min(n, 32)));
+  }
+  async function u(t) {
+    let n = { campaign_id: t.campaignId, type: t.type },
+      e =
+        t.eventId ||
+        (typeof crypto != 'undefined' && typeof crypto.randomUUID == 'function'
+          ? crypto.randomUUID()
+          : '');
+    e && (n.event_id = e),
+      t.clickId && (n.click_id = t.clickId),
+      t.userId && (n.user_id = t.userId);
+    let c = t.subs || {};
+    for (let o = 1; o <= 30; o += 1) {
+      let a = `sub${o}`;
+      c[a] && (n[a] = c[a]);
+    }
+    return (
+      f(n),
+      await l(n, t.campaignId),
+      await d(t.minDwellMs),
+      fetch(t.endpoint, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(n),
+        keepalive: !0,
+        credentials: 'omit',
+      })
+    );
+  }
+  globalThis.trackEvent = u;
+})();

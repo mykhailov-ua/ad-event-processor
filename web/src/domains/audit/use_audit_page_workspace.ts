@@ -27,10 +27,12 @@ export function useAuditPageWorkspace() {
   const [exportTruncated, setExportTruncated] = useState(false);
   const [exportNextCursor, setExportNextCursor] = useState<string | undefined>();
 
-  const { data, error, fetching, revalidating: listRevalidating } = useResource(
-    (signal) => listAudit(query, signal),
-    [query.limit, query.offset]
-  );
+  const {
+    data,
+    error,
+    fetching,
+    revalidating: listRevalidating,
+  } = useResource((signal) => listAudit(query, signal), [query.limit, query.offset]);
 
   const onPageChange = useCallback(
     (nextOffset: number) => {

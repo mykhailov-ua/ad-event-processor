@@ -17,13 +17,14 @@ const (
 )
 
 type Entry struct {
-	IP          string
-	TCPHash     uint32
-	TTL         uint8
-	Window      uint16
-	MSS         uint8
-	TCPOptTrace string
-	SeenAt      time.Time
+	IP           string
+	TCPHash      uint32
+	TTL          uint8
+	Window       uint16
+	MSS          uint8
+	TCPOptTrace  string
+	H2FrameTrace string
+	SeenAt       time.Time
 }
 
 func Record(ctx context.Context, redisClient redis.Cmdable, e Entry) error {
@@ -41,6 +42,9 @@ func Record(ctx context.Context, redisClient redis.Cmdable, e Entry) error {
 	}
 	if trace := strings.TrimSpace(e.TCPOptTrace); trace != "" {
 		fields["tcp_opt_trace"] = trace
+	}
+	if h2 := strings.TrimSpace(e.H2FrameTrace); h2 != "" {
+		fields["h2_frame_trace"] = h2
 	}
 	pipe := redisClient.Pipeline()
 	pipe.ZAdd(ctx, redisRecentKey, redis.Z{Score: score, Member: member})

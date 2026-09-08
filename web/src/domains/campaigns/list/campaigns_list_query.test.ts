@@ -5,7 +5,12 @@ import {
   applyCampaignListQueryPatch,
   buildCampaignListQuery,
   parseCampaignListSort,
+  parseCampaignListStatus,
 } from './campaigns_list_query.ts';
+
+test('parseCampaignListStatus accepts WARNINGS filter', () => {
+  assert.equal(parseCampaignListStatus('WARNINGS'), 'WARNINGS');
+});
 
 test('parseCampaignListSort keeps id sort field', () => {
   assert.equal(parseCampaignListSort('id'), 'id');

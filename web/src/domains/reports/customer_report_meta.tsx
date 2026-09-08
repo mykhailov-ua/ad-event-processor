@@ -1,26 +1,44 @@
 import type { ReactNode } from 'react';
 
 import {
+  getCampaignGeoDeviceReport,
+  getCampaignOverviewReport,
   getConversionTypePayoutReport,
+  getCostSyncCoverageReport,
+  getCustomerPortfolioReport,
   getDataQualityReport,
+  getDaypartHeatmapReport,
+  getDiscrepancyBuySellReport,
   getGeoRoiReport,
   getKeywordsReport,
   getPacingDriftReport,
   getPlacementsReport,
+  getSpendVelocityReport,
   getTrafficSourcesReport,
+  getTrueRoiReport,
 } from '@/api/reports_api';
 import type {
+  CampaignGeoDeviceRow,
+  CampaignOverviewRow,
   ConversionTypePayoutRow,
+  CostSyncCoverageRow,
+  CustomerPortfolioCampaignRow,
+  CustomerPortfolioSummary,
   DataQualityRow,
+  DaypartHeatmapRow,
+  DiscrepancyBuySellRow,
   GeoROIRow,
   KeywordReportRow,
   PacingDriftRow,
   PlacementReportRow,
+  SpendVelocityRow,
   TrafficSourceRow,
+  TrueRoiReportRow,
 } from '@/api/types';
 import { formatPct, formatRatio, metricCell } from '@/domains/reports/report_metric_display';
 import type { CustomerReportFetcher } from '@/domains/reports/use_customer_scoped_report_workspace';
 import { displayCount, displayMicro } from '@/lib/display';
+import { resolveEconomicsProfitMicro, resolveEconomicsRoiPct } from '@/lib/economics';
 import { Badge } from '@/components/ui/badge';
 
 export type CustomerReportKey =
@@ -30,7 +48,15 @@ export type CustomerReportKey =
   | 'traffic-sources'
   | 'data-quality'
   | 'pacing-drift'
-  | 'conversion-type-payout';
+  | 'conversion-type-payout'
+  | 'campaign-overview'
+  | 'campaign-geo-device'
+  | 'spend-velocity'
+  | 'daypart-heatmap'
+  | 'true-roi'
+  | 'cost-sync-coverage'
+  | 'customer-portfolio'
+  | 'discrepancy-buy-sell';
 
 export type CustomerReportColumn<Row> = {
   id: string;
@@ -47,6 +73,7 @@ export type CustomerReportConfig<Row> = {
   fetch: CustomerReportFetcher<Row>;
   columns: CustomerReportColumn<Row>[];
   rowKey: (row: Row, index: number) => string;
+  summaryBand?: (extras?: Record<string, unknown>) => ReactNode;
   badge?: (data: { freshness?: { stale?: boolean; as_of?: string } }) => ReactNode;
 };
 
@@ -90,13 +117,19 @@ const metricsColumns = {
     id: 'profit',
     label: 'Profit',
     align: 'end' as const,
-    cell: (row: { profit_micro?: number }) => displayMicro(row.profit_micro) || '-',
+    cell: (row: { revenue_micro?: number; spend_micro?: number; profit_micro?: number }) =>
+      displayMicro(resolveEconomicsProfitMicro(row)) || '-',
   },
   roi: {
     id: 'roi',
     label: 'ROI',
     align: 'end' as const,
-    cell: (row: { roi_pct?: number }) => formatPct(row.roi_pct),
+    cell: (row: {
+      revenue_micro?: number;
+      spend_micro?: number;
+      profit_micro?: number;
+      roi_pct?: number;
+    }) => formatPct(resolveEconomicsRoiPct(row)),
   },
   cpa: {
     id: 'cpa',
@@ -123,7 +156,11 @@ async function fetchPlacements(
   signal?: AbortSignal
 ) {
   const payload = await getPlacementsReport(params, signal);
-  return { rows: payload.rows ?? [], freshness: payload.freshness, next_cursor: payload.next_cursor };
+  return {
+    rows: payload.rows ?? [],
+    freshness: payload.freshness,
+    next_cursor: payload.next_cursor,
+  };
 }
 
 async function fetchKeywords(
@@ -131,15 +168,20 @@ async function fetchKeywords(
   signal?: AbortSignal
 ) {
   const payload = await getKeywordsReport(params, signal);
-  return { rows: payload.rows ?? [], freshness: payload.freshness, next_cursor: payload.next_cursor };
+  return {
+    rows: payload.rows ?? [],
+    freshness: payload.freshness,
+    next_cursor: payload.next_cursor,
+  };
 }
 
-async function fetchGeoRoi(
-  params: Parameters<typeof getGeoRoiReport>[0],
-  signal?: AbortSignal
-) {
+async function fetchGeoRoi(params: Parameters<typeof getGeoRoiReport>[0], signal?: AbortSignal) {
   const payload = await getGeoRoiReport(params, signal);
-  return { rows: payload.rows ?? [], freshness: payload.freshness, next_cursor: payload.next_cursor };
+  return {
+    rows: payload.rows ?? [],
+    freshness: payload.freshness,
+    next_cursor: payload.next_cursor,
+  };
 }
 
 async function fetchTrafficSources(
@@ -147,7 +189,11 @@ async function fetchTrafficSources(
   signal?: AbortSignal
 ) {
   const payload = await getTrafficSourcesReport(params, signal);
-  return { rows: payload.rows ?? [], freshness: payload.freshness, next_cursor: payload.next_cursor };
+  return {
+    rows: payload.rows ?? [],
+    freshness: payload.freshness,
+    next_cursor: payload.next_cursor,
+  };
 }
 
 async function fetchDataQuality(
@@ -171,7 +217,11 @@ async function fetchPacingDrift(
   signal?: AbortSignal
 ) {
   const payload = await getPacingDriftReport(params, signal);
-  return { rows: payload.rows ?? [], freshness: payload.freshness, next_cursor: payload.next_cursor };
+  return {
+    rows: payload.rows ?? [],
+    freshness: payload.freshness,
+    next_cursor: payload.next_cursor,
+  };
 }
 
 async function fetchConversionTypePayout(
@@ -179,7 +229,134 @@ async function fetchConversionTypePayout(
   signal?: AbortSignal
 ) {
   const payload = await getConversionTypePayoutReport(params, signal);
-  return { rows: payload.rows ?? [], freshness: payload.freshness, next_cursor: payload.next_cursor };
+  return {
+    rows: payload.rows ?? [],
+    freshness: payload.freshness,
+    next_cursor: payload.next_cursor,
+  };
+}
+
+async function fetchCampaignOverview(
+  params: Parameters<typeof getCampaignOverviewReport>[0],
+  signal?: AbortSignal
+) {
+  const payload = await getCampaignOverviewReport(params, signal);
+  return { rows: payload.rows ?? [], freshness: payload.freshness };
+}
+
+async function fetchCampaignGeoDevice(
+  params: Parameters<typeof getCampaignGeoDeviceReport>[0],
+  signal?: AbortSignal
+) {
+  const payload = await getCampaignGeoDeviceReport(params, signal);
+  return {
+    rows: payload.rows ?? [],
+    freshness: payload.freshness,
+    next_cursor: payload.next_cursor,
+  };
+}
+
+async function fetchSpendVelocity(
+  params: Parameters<typeof getSpendVelocityReport>[0],
+  signal?: AbortSignal
+) {
+  const payload = await getSpendVelocityReport(params, signal);
+  return {
+    rows: payload.rows ?? [],
+    freshness: payload.freshness,
+    next_cursor: payload.next_cursor,
+  };
+}
+
+async function fetchDaypartHeatmap(
+  params: Parameters<typeof getDaypartHeatmapReport>[0],
+  signal?: AbortSignal
+) {
+  const payload = await getDaypartHeatmapReport(params, signal);
+  return {
+    rows: payload.rows ?? [],
+    freshness: payload.freshness,
+    next_cursor: payload.next_cursor,
+  };
+}
+
+async function fetchTrueRoi(params: Parameters<typeof getTrueRoiReport>[0], signal?: AbortSignal) {
+  const payload = await getTrueRoiReport(params, signal);
+  return {
+    rows: payload.rows ?? [],
+    freshness: payload.freshness,
+    next_cursor: payload.next_cursor,
+  };
+}
+
+async function fetchCostSyncCoverage(
+  params: Parameters<typeof getCostSyncCoverageReport>[0],
+  signal?: AbortSignal
+) {
+  const payload = await getCostSyncCoverageReport(params, signal);
+  return {
+    rows: payload.rows ?? [],
+    freshness: payload.freshness,
+    next_cursor: payload.next_cursor,
+  };
+}
+
+async function fetchDiscrepancyBuySell(
+  params: Parameters<typeof getDiscrepancyBuySellReport>[0],
+  signal?: AbortSignal
+) {
+  const payload = await getDiscrepancyBuySellReport(params, signal);
+  return {
+    rows: payload.rows ?? [],
+    freshness: payload.freshness,
+    next_cursor: payload.next_cursor,
+  };
+}
+
+async function fetchCustomerPortfolio(
+  params: Parameters<typeof getCustomerPortfolioReport>[0],
+  signal?: AbortSignal
+) {
+  const payload = await getCustomerPortfolioReport(params, signal);
+  return {
+    rows: payload.campaigns ?? [],
+    freshness: payload.freshness,
+    extras: { summary: payload.summary },
+  };
+}
+
+function portfolioSummaryBand(extras?: Record<string, unknown>) {
+  const summary = extras?.summary as CustomerPortfolioSummary | undefined;
+  if (!summary) {
+    return null;
+  }
+  const items = [
+    { label: 'Active', value: displayCount(summary.active) },
+    { label: 'Paused', value: displayCount(summary.paused) },
+    { label: 'Archived', value: displayCount(summary.archived) },
+    { label: 'Impressions (7d)', value: displayCount(summary.impressions_7d) },
+    { label: 'Clicks (7d)', value: displayCount(summary.clicks_7d) },
+    { label: 'Overspend', value: displayCount(summary.overspend_count) },
+    { label: 'Attention', value: displayCount(summary.attention_count) },
+    { label: 'Campaigns', value: displayCount(summary.campaigns_sample) },
+  ];
+  return (
+    <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-4">
+      {items.map((item) => (
+        <div key={item.label} className="rounded-md border p-3">
+          <div className="text-xs text-muted-foreground">{item.label}</div>
+          <div className="text-lg font-medium">{item.value || '-'}</div>
+        </div>
+      ))}
+    </div>
+  );
+}
+
+function formatDaypartHour(hour?: number): string {
+  if (hour == null) {
+    return '-';
+  }
+  return `${String(hour).padStart(2, '0')}:00`;
 }
 
 export const CUSTOMER_REPORT_CONFIGS: {
@@ -190,6 +367,14 @@ export const CUSTOMER_REPORT_CONFIGS: {
   'data-quality': CustomerReportConfig<DataQualityRow>;
   'pacing-drift': CustomerReportConfig<PacingDriftRow>;
   'conversion-type-payout': CustomerReportConfig<ConversionTypePayoutRow>;
+  'campaign-overview': CustomerReportConfig<CampaignOverviewRow>;
+  'campaign-geo-device': CustomerReportConfig<CampaignGeoDeviceRow>;
+  'spend-velocity': CustomerReportConfig<SpendVelocityRow>;
+  'daypart-heatmap': CustomerReportConfig<DaypartHeatmapRow>;
+  'true-roi': CustomerReportConfig<TrueRoiReportRow>;
+  'cost-sync-coverage': CustomerReportConfig<CostSyncCoverageRow>;
+  'customer-portfolio': CustomerReportConfig<CustomerPortfolioCampaignRow>;
+  'discrepancy-buy-sell': CustomerReportConfig<DiscrepancyBuySellRow>;
 } = {
   placements: {
     key: 'placements',
@@ -202,12 +387,12 @@ export const CUSTOMER_REPORT_CONFIGS: {
       {
         id: 'placement',
         label: 'Placement',
-        cell: (row) => <span className="font-mono text-xs">{row.placement_id ?? '-'}</span>,
+        cell: (row) => <span className="text-xs">{row.placement_id ?? '-'}</span>,
       },
       {
         id: 'campaign',
         label: 'Campaign',
-        cell: (row) => <span className="font-mono text-xs">{row.campaign_id ?? '-'}</span>,
+        cell: (row) => <span className="text-xs">{row.campaign_id ?? '-'}</span>,
       },
       metricsColumns.impressions(),
       metricsColumns.clicks,
@@ -233,7 +418,7 @@ export const CUSTOMER_REPORT_CONFIGS: {
       {
         id: 'campaign',
         label: 'Campaign',
-        cell: (row) => <span className="font-mono text-xs">{row.campaign_id ?? '-'}</span>,
+        cell: (row) => <span className="text-xs">{row.campaign_id ?? '-'}</span>,
       },
       metricsColumns.impressions(),
       metricsColumns.clicks,
@@ -303,7 +488,7 @@ export const CUSTOMER_REPORT_CONFIGS: {
       {
         id: 'campaign',
         label: 'Campaign',
-        cell: (row) => <span className="font-mono text-xs">{row.campaign_id ?? '-'}</span>,
+        cell: (row) => <span className="text-xs">{row.campaign_id ?? '-'}</span>,
       },
       { id: 'date', label: 'Date', cell: (row) => row.date ?? '-' },
       {
@@ -327,8 +512,7 @@ export const CUSTOMER_REPORT_CONFIGS: {
       {
         id: 'severity',
         label: 'Severity',
-        cell: (row) =>
-          row.severity ? <Badge variant="outline">{row.severity}</Badge> : '-',
+        cell: (row) => (row.severity ? <Badge variant="outline">{row.severity}</Badge> : '-'),
       },
     ],
   },
@@ -343,7 +527,7 @@ export const CUSTOMER_REPORT_CONFIGS: {
       {
         id: 'campaign',
         label: 'Campaign',
-        cell: (row) => <span className="font-mono text-xs">{row.campaign_id ?? '-'}</span>,
+        cell: (row) => <span className="text-xs">{row.campaign_id ?? '-'}</span>,
       },
       { id: 'date', label: 'Date', cell: (row) => row.date ?? '-' },
       {
@@ -378,7 +562,7 @@ export const CUSTOMER_REPORT_CONFIGS: {
       {
         id: 'campaign',
         label: 'Campaign',
-        cell: (row) => <span className="font-mono text-xs">{row.campaign_id ?? '-'}</span>,
+        cell: (row) => <span className="text-xs">{row.campaign_id ?? '-'}</span>,
       },
       { id: 'goal', label: 'Goal', cell: (row) => row.goal_name ?? '-' },
       {
@@ -392,6 +576,277 @@ export const CUSTOMER_REPORT_CONFIGS: {
         label: 'Payout',
         align: 'end',
         cell: (row) => displayMicro(row.payout_micro) || '-',
+      },
+    ],
+  },
+  'campaign-overview': {
+    key: 'campaign-overview',
+    title: 'Campaign overview',
+    description: 'Campaign economics and pacing signals (7-day rollup).',
+    showCompare: false,
+    fetch: fetchCampaignOverview,
+    rowKey: (row, index) => `${row.campaign_id ?? 'c'}-${index}`,
+    columns: [
+      {
+        id: 'campaign',
+        label: 'Campaign',
+        cell: (row) => <span className="text-xs">{row.campaign_id ?? '-'}</span>,
+      },
+      { id: 'name', label: 'Name', cell: (row) => row.name ?? '-' },
+      { id: 'status', label: 'Status', cell: (row) => row.status ?? '-' },
+      {
+        id: 'impressions',
+        label: 'Impressions (7d)',
+        align: 'end',
+        cell: (row) => displayCount(row.impressions_7d) || '-',
+      },
+      {
+        id: 'clicks',
+        label: 'Clicks (7d)',
+        align: 'end',
+        cell: (row) => displayCount(row.clicks_7d) || '-',
+      },
+      {
+        id: 'utilization',
+        label: 'Utilization',
+        align: 'end',
+        cell: (row) => formatRatio(row.utilization_pct),
+      },
+      {
+        id: 'pacing_drift',
+        label: 'Pacing drift',
+        align: 'end',
+        cell: (row) => formatRatio(row.pacing_drift_pct),
+      },
+      {
+        id: 'overspend',
+        label: 'Overspend risk',
+        cell: (row) => (row.overspend_risk ? <Badge variant="destructive">Risk</Badge> : '-'),
+      },
+    ],
+  },
+  'campaign-geo-device': {
+    key: 'campaign-geo-device',
+    title: 'Campaign geo and device',
+    description: 'Click volume by country and device.',
+    showCompare: false,
+    fetch: fetchCampaignGeoDevice,
+    rowKey: (row, index) => `${row.country ?? 'ZZ'}-${row.device ?? 'd'}-${index}`,
+    columns: [
+      { id: 'country', label: 'Country', cell: (row) => row.country ?? '-' },
+      { id: 'device', label: 'Device', cell: (row) => row.device ?? '-' },
+      {
+        id: 'clicks',
+        label: 'Clicks',
+        align: 'end',
+        cell: (row) => displayCount(row.clicks) || '-',
+      },
+    ],
+  },
+  'spend-velocity': {
+    key: 'spend-velocity',
+    title: 'Spend velocity',
+    description: 'Hourly spend and click volume.',
+    showCompare: true,
+    fetch: fetchSpendVelocity,
+    rowKey: (row, index) => `${row.bucket ?? 'b'}-${index}`,
+    columns: [
+      { id: 'bucket', label: 'Hour', cell: (row) => row.bucket ?? '-' },
+      {
+        id: 'spend',
+        label: 'Spend',
+        align: 'end',
+        cell: (row) => metricCell(row.spend_micro, row.compare?.spend_micro_delta, 'micro'),
+      },
+      {
+        id: 'clicks',
+        label: 'Clicks',
+        align: 'end',
+        cell: (row) => metricCell(row.clicks, row.compare?.clicks_delta),
+      },
+    ],
+  },
+  'daypart-heatmap': {
+    key: 'daypart-heatmap',
+    title: 'Daypart heatmap',
+    description: 'Click volume by hour of day (UTC).',
+    showCompare: true,
+    fetch: fetchDaypartHeatmap,
+    rowKey: (row, index) => `${row.hour ?? 'h'}-${index}`,
+    columns: [
+      { id: 'hour', label: 'Hour (UTC)', cell: (row) => formatDaypartHour(row.hour) },
+      {
+        id: 'clicks',
+        label: 'Clicks',
+        align: 'end',
+        cell: (row) => metricCell(row.clicks, row.compare?.clicks_delta),
+      },
+    ],
+  },
+  'true-roi': {
+    key: 'true-roi',
+    title: 'True ROI',
+    description: 'ROI after synced ad spend and revenue.',
+    showCompare: true,
+    fetch: fetchTrueRoi,
+    rowKey: (row, index) => `${row.campaign_id ?? 'c'}-${index}`,
+    columns: [
+      {
+        id: 'campaign',
+        label: 'Campaign',
+        cell: (row) => <span className="text-xs">{row.campaign_id ?? '-'}</span>,
+      },
+      {
+        id: 'ad_spend',
+        label: 'Ad spend',
+        align: 'end',
+        cell: (row) => metricCell(row.ad_spend_micro, row.compare?.spend_micro_delta, 'micro'),
+      },
+      {
+        id: 'revenue',
+        label: 'Revenue',
+        align: 'end',
+        cell: (row) => metricCell(row.revenue_micro, row.compare?.revenue_micro_delta, 'micro'),
+      },
+      {
+        id: 'profit',
+        label: 'True profit',
+        align: 'end',
+        cell: (row) => displayMicro(resolveEconomicsProfitMicro(row, row.true_profit_micro)) || '-',
+      },
+      {
+        id: 'roi',
+        label: 'True ROI',
+        align: 'end',
+        cell: (row) => formatPct(resolveEconomicsRoiPct(row, row.true_roi_pct)),
+      },
+      {
+        id: 'cpa',
+        label: 'True CPA',
+        align: 'end',
+        cell: (row) => displayMicro(row.true_cpa_micro) || '-',
+      },
+      {
+        id: 'conversions',
+        label: 'Conversions',
+        align: 'end',
+        cell: (row) => metricCell(row.conversions, row.compare?.conversions_delta),
+      },
+    ],
+  },
+  'cost-sync-coverage': {
+    key: 'cost-sync-coverage',
+    title: 'Cost sync coverage',
+    description: 'Campaigns with clicks but missing cost snapshots.',
+    showCompare: false,
+    fetch: fetchCostSyncCoverage,
+    rowKey: (row, index) => `${row.campaign_id ?? 'c'}-${index}`,
+    columns: [
+      {
+        id: 'campaign',
+        label: 'Campaign',
+        cell: (row) => <span className="text-xs">{row.campaign_id ?? '-'}</span>,
+      },
+      {
+        id: 'clicks',
+        label: 'Clicks',
+        align: 'end',
+        cell: (row) => displayCount(row.clicks) || '-',
+      },
+      {
+        id: 'spend',
+        label: 'Spend',
+        align: 'end',
+        cell: (row) => displayMicro(row.spend_micro) || '-',
+      },
+      { id: 'gap', label: 'Coverage gap', cell: (row) => row.coverage_gap ?? '-' },
+      { id: 'network', label: 'Network', cell: (row) => row.network ?? '-' },
+      { id: 'sync', label: 'Last sync', cell: (row) => row.last_sync_status ?? '-' },
+    ],
+  },
+  'customer-portfolio': {
+    key: 'customer-portfolio',
+    title: 'Customer portfolio',
+    description: 'Portfolio KPIs and campaign pacing snapshot.',
+    showCompare: false,
+    fetch: fetchCustomerPortfolio,
+    summaryBand: portfolioSummaryBand,
+    rowKey: (row, index) => `${row.campaign_id ?? 'c'}-${index}`,
+    columns: [
+      {
+        id: 'campaign',
+        label: 'Campaign',
+        cell: (row) => <span className="text-xs">{row.campaign_id ?? '-'}</span>,
+      },
+      { id: 'name', label: 'Name', cell: (row) => row.name ?? '-' },
+      { id: 'status', label: 'Status', cell: (row) => row.status ?? '-' },
+      {
+        id: 'impressions',
+        label: 'Impressions (7d)',
+        align: 'end',
+        cell: (row) => displayCount(row.impressions_7d) || '-',
+      },
+      {
+        id: 'clicks',
+        label: 'Clicks (7d)',
+        align: 'end',
+        cell: (row) => displayCount(row.clicks_7d) || '-',
+      },
+      {
+        id: 'utilization',
+        label: 'Utilization',
+        align: 'end',
+        cell: (row) => formatRatio(row.utilization_pct),
+      },
+      {
+        id: 'pacing_drift',
+        label: 'Pacing drift',
+        align: 'end',
+        cell: (row) => formatRatio(row.pacing_drift_pct),
+      },
+      {
+        id: 'overspend',
+        label: 'Overspend risk',
+        cell: (row) => (row.overspend_risk ? <Badge variant="destructive">Risk</Badge> : '-'),
+      },
+    ],
+  },
+  'discrepancy-buy-sell': {
+    key: 'discrepancy-buy-sell',
+    title: 'Buy vs sell discrepancy',
+    description: 'Buy spend vs sell revenue delta by campaign.',
+    showCompare: false,
+    fetch: fetchDiscrepancyBuySell,
+    rowKey: (row, index) => `${row.campaign_id ?? 'c'}-${index}`,
+    columns: [
+      {
+        id: 'campaign',
+        label: 'Campaign',
+        cell: (row) => <span className="text-xs">{row.campaign_id ?? '-'}</span>,
+      },
+      {
+        id: 'buy',
+        label: 'Buy spend',
+        align: 'end',
+        cell: (row) => displayMicro(row.buy_spend_micro) || '-',
+      },
+      {
+        id: 'sell',
+        label: 'Sell revenue',
+        align: 'end',
+        cell: (row) => displayMicro(row.sell_rev_micro) || '-',
+      },
+      {
+        id: 'delta',
+        label: 'Delta',
+        align: 'end',
+        cell: (row) => displayMicro(row.delta_micro) || '-',
+      },
+      {
+        id: 'delta_pct',
+        label: 'Delta %',
+        align: 'end',
+        cell: (row) => formatRatio(row.delta_pct),
       },
     ],
   },

@@ -29,6 +29,8 @@ export type CampaignEditorFormState = {
   click_filter_tier: string;
   mobile_biometrics_click_enabled: boolean;
   decoy_lander_id: string;
+  redirect_compliance_mode: string;
+  dmr_enabled: boolean;
 };
 
 export type BuildCampaignPatchResult =

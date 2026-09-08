@@ -119,6 +119,56 @@ func TestFraudFilter_DCASN_alwaysChecks_holdout(t *testing.T) {
 	}
 }
 
+func TestFraudFilter_AppleRelay_holdoutExempt(t *testing.T) {
+	beforeExempt := testutil.ToFloat64(metrics.AppleRelayExemptTotal)
+
+	table := NewDCASNTable()
+	table.Publish(buildDCASNSnapshot(map[uint32]struct{}{13335: {}}, 1))
+
+	geo := &MockGeoProvider{ASN: map[string]uint32{"198.51.100.1": 13335}}
+	f := NewFraudFilter(geo)
+	f.ConfigureDCASN(table, geo, -1)
+	f.ConfigureApplePrivateRelay(NewApplePrivateRelayTable(nil))
+
+	evt := domain.EventPool.Get().(*domain.Event)
+	defer domain.EventPool.Put(evt)
+	evt.Reset()
+	acc := attachFraudAccumulator(evt)
+	defer releaseFraudAccumulator(evt, acc)
+	evt.IP = "198.51.100.1"
+	evt.UA = "Mozilla/5.0 (iPhone; CPU iPhone OS 17_0 like Mac OS X)"
+
+	require.NoError(t, f.Check(context.Background(), evt))
+	assert.False(t, acc.Has(FraudReasonDatacenterIP))
+	assert.Equal(t, beforeExempt+1, testutil.ToFloat64(metrics.AppleRelayExemptTotal))
+}
+
+func TestFraudFilter_AppleRelay_holdoutWindowsUARejected(t *testing.T) {
+	beforeReject := testutil.ToFloat64(metrics.AppleRelayRejectTotal)
+	beforeMatch := testutil.ToFloat64(metrics.DCASNMatchTotal)
+
+	table := NewDCASNTable()
+	table.Publish(buildDCASNSnapshot(map[uint32]struct{}{13335: {}}, 1))
+
+	geo := &MockGeoProvider{ASN: map[string]uint32{"198.51.100.2": 13335}}
+	f := NewFraudFilter(geo)
+	f.ConfigureDCASN(table, geo, -1)
+	f.ConfigureApplePrivateRelay(NewApplePrivateRelayTable(nil))
+
+	evt := domain.EventPool.Get().(*domain.Event)
+	defer domain.EventPool.Put(evt)
+	evt.Reset()
+	acc := attachFraudAccumulator(evt)
+	defer releaseFraudAccumulator(evt, acc)
+	evt.IP = "198.51.100.2"
+	evt.UA = "Mozilla/5.0 (Windows NT 10.0; Win64; x64)"
+
+	require.NoError(t, f.Check(context.Background(), evt))
+	assert.True(t, acc.Has(FraudReasonDatacenterIP))
+	assert.Equal(t, beforeReject+1, testutil.ToFloat64(metrics.AppleRelayRejectTotal))
+	assert.Equal(t, beforeMatch+1, testutil.ToFloat64(metrics.DCASNMatchTotal))
+}
+
 func TestFraudFilter_DCASN_holdout(t *testing.T) {
 	table := NewDCASNTable()
 	table.Publish(buildDCASNSnapshot(map[uint32]struct{}{16509: {}}, 1))

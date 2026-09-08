@@ -80,12 +80,25 @@ func registerMLReports(h *reports.ReportsHTTPHandlers, mux *http.ServeMux) {
 }
 
 func getMLScoreDistributionReport(h *reports.ReportsHTTPHandlers, w http.ResponseWriter, r *http.Request) {
-	writeMLReport(h, w, r, queryMLScoreDistributionRows)
+	writeMLReport(h, w, r, queryMLScoreDistributionRows, func(rows []map[string]any, freshness reports.DataFreshnessDTO, nextCursor string) any {
+		return reports.MLScoreDistributionReportResponse{
+			Rows:       reports.MLScoreDistributionRowsFromMaps(rows),
+			Freshness:  freshness,
+			NextCursor: nextCursor,
+		}
+	})
 }
 
 func getMLShadowDeltaReport(h *reports.ReportsHTTPHandlers, w http.ResponseWriter, r *http.Request) {
+	buildShadowDelta := func(rows []map[string]any, freshness reports.DataFreshnessDTO, nextCursor string) any {
+		return reports.MLShadowDeltaReportResponse{
+			Rows:       reports.MLShadowDeltaRowsFromMaps(rows),
+			Freshness:  freshness,
+			NextCursor: nextCursor,
+		}
+	}
 	if h.Pool == nil {
-		writeMLReport(h, w, r, QueryMLShadowDeltaRows)
+		writeMLReport(h, w, r, QueryMLShadowDeltaRows, buildShadowDelta)
 		return
 	}
 	snap, ok, err := LoadMLShadowDeltaSnapshot(r.Context(), h.Pool)
@@ -94,7 +107,7 @@ func getMLShadowDeltaReport(h *reports.ReportsHTTPHandlers, w http.ResponseWrite
 		return
 	}
 	if !ok {
-		writeMLReport(h, w, r, QueryMLShadowDeltaRows)
+		writeMLReport(h, w, r, QueryMLShadowDeltaRows, buildShadowDelta)
 		return
 	}
 	page, err := coldpath.ParseCursorPagination(r, 50, 1000)
@@ -107,16 +120,28 @@ func getMLShadowDeltaReport(h *reports.ReportsHTTPHandlers, w http.ResponseWrite
 	if int64(page.Offset)+int64(len(rows)) < total {
 		nextCursor = coldpath.EncodeCursor(page.Offset + page.Limit)
 	}
-	httpresponse.JSON(w, http.StatusOK, reports.NewReportRowsResponse(rows, MLShadowDeltaSnapshotFreshness(snap, time.Now().UTC()), nextCursor))
+	httpresponse.JSON(w, http.StatusOK, reports.MLShadowDeltaReportResponse{
+		Rows:       reports.MLShadowDeltaRowsFromMaps(rows),
+		Freshness:  MLShadowDeltaSnapshotFreshness(snap, time.Now().UTC()),
+		NextCursor: nextCursor,
+	})
 }
 
 func getMLFeatureSpikesReport(h *reports.ReportsHTTPHandlers, w http.ResponseWriter, r *http.Request) {
-	writeMLReport(h, w, r, queryMLFeatureSpikeRows)
+	writeMLReport(h, w, r, queryMLFeatureSpikeRows, func(rows []map[string]any, freshness reports.DataFreshnessDTO, nextCursor string) any {
+		return reports.MLFeatureSpikesReportResponse{
+			Rows:       reports.MLFeatureSpikeRowsFromMaps(rows),
+			Freshness:  freshness,
+			NextCursor: nextCursor,
+		}
+	})
 }
 
 type mlReportQueryFunc func(ctx context.Context, clickhouseQuery *database.ClickHouseQuery, from, to time.Time, limit, offset int) ([]map[string]any, int64, error)
 
-func writeMLReport(h *reports.ReportsHTTPHandlers, w http.ResponseWriter, r *http.Request, queryFn mlReportQueryFunc) {
+type mlReportResponseFunc func([]map[string]any, reports.DataFreshnessDTO, string) any
+
+func writeMLReport(h *reports.ReportsHTTPHandlers, w http.ResponseWriter, r *http.Request, queryFn mlReportQueryFunc, buildResponse mlReportResponseFunc) {
 	if h.ClickHouseQuery == nil {
 		httpresponse.Error(w, http.StatusServiceUnavailable, "CLICKHOUSE_UNAVAILABLE", "clickhouse not configured")
 		return
@@ -142,7 +167,7 @@ func writeMLReport(h *reports.ReportsHTTPHandlers, w http.ResponseWriter, r *htt
 	if int64(page.Offset)+int64(len(rows)) < total {
 		nextCursor = coldpath.EncodeCursor(page.Offset + page.Limit)
 	}
-	httpresponse.JSON(w, http.StatusOK, reports.NewReportRowsResponse(rows, h.ReportFreshness(r.Context()), nextCursor))
+	httpresponse.JSON(w, http.StatusOK, buildResponse(rows, h.ReportFreshness(r.Context()), nextCursor))
 }
 
 func queryMLScoreDistributionRows(

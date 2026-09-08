@@ -128,7 +128,12 @@ export function ClickLogDirectory({
               value={draftFrom}
               onChange={onDraftFromChange}
             />
-            <DatetimePicker id="click-log-to" label="To" value={draftTo} onChange={onDraftToChange} />
+            <DatetimePicker
+              id="click-log-to"
+              label="To"
+              value={draftTo}
+              onChange={onDraftToChange}
+            />
             <FilterField htmlFor="click-log-campaign" label="Campaign ID">
               <Input
                 id="click-log-campaign"
@@ -164,11 +169,9 @@ export function ClickLogDirectory({
       }
       title="Click log"
     >
-
       {timelineMode ? (
         <p className="text-sm text-muted-foreground">
-          Timeline for click{' '}
-          <span className="font-mono text-foreground">{draftClickId.trim()}</span>
+          Timeline for click <span className="text-foreground">{draftClickId.trim()}</span>
         </p>
       ) : null}
 
@@ -203,7 +206,7 @@ export function ClickLogDirectory({
             {events.map((event) => (
               <TableRow key={`${event.click_id}-${event.event_type}-${event.created_at}`}>
                 <TableCell className="capitalize text-sm">{event.event_type ?? 'click'}</TableCell>
-                <TableCell className="whitespace-nowrap font-mono text-xs">
+                <TableCell className="whitespace-nowrap text-xs">
                   {event.click_id ? (
                     <Link
                       className="text-primary hover:underline"
@@ -215,9 +218,7 @@ export function ClickLogDirectory({
                     '-'
                   )}
                 </TableCell>
-                <TableCell className="text-sm tabular-nums">
-                  {displayTimestamp(event.created_at)}
-                </TableCell>
+                <TableCell className="text-sm">{displayTimestamp(event.created_at)}</TableCell>
                 <TableCell className="whitespace-nowrap text-sm">
                   {event.campaign_id ? (
                     <Link
@@ -234,10 +235,10 @@ export function ClickLogDirectory({
                 <TableCell className="whitespace-nowrap text-sm" title={event.sub1}>
                   {event.sub1 ?? '-'}
                 </TableCell>
-                <TableCell className="text-right text-sm tabular-nums">
+                <TableCell className="text-right text-sm">
                   {displayMicro(event.attributed_cost_micro)}
                 </TableCell>
-                <TableCell className="text-right text-sm tabular-nums">
+                <TableCell className="text-right text-sm">
                   {displayMicro(event.revenue_micro)}
                 </TableCell>
               </TableRow>
@@ -261,9 +262,7 @@ export function ClickLogDirectory({
               {postbacks.map((postback) => (
                 <TableRow key={`${postback.status}-${postback.created_at}`}>
                   <TableCell>{postback.status}</TableCell>
-                  <TableCell className="tabular-nums">
-                    {displayTimestamp(postback.created_at)}
-                  </TableCell>
+                  <TableCell>{displayTimestamp(postback.created_at)}</TableCell>
                   <TableCell className="whitespace-nowrap text-muted-foreground">
                     {postback.error_message ?? '-'}
                   </TableCell>

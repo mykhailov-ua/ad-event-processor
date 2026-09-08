@@ -47,7 +47,7 @@ export function DashboardKpiStrip({ tiles, className }: DashboardKpiStripProps) 
           </p>
           <p
             className={cn(
-              'whitespace-nowrap font-numeric text-base font-semibold tracking-tight sm:text-lg',
+              'whitespace-nowrap  text-base font-semibold tracking-tight sm:text-lg',
               tile.accent ? adminKpiAccentValueClass[tile.accent] : 'text-foreground'
             )}
           >

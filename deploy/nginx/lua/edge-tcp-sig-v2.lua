@@ -24,7 +24,7 @@ function _M.validate_trace(raw)
     if raw == "" or #raw > MAX_TRACE_LEN then
         return nil
     end
-    if raw:find("[%c]") then
+    if raw:find "[%c]" then
         return nil
     end
     raw = string.lower(raw)

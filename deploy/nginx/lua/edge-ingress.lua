@@ -14,6 +14,7 @@
 -- - w:{ip} (number 0..65535): window -> X-TCP-WINDOW.
 -- - h:{ip} (string 8 hex): tcp_hash -> X-TCP-SIG.
 -- - o:{ip} (string): tcp_opt_trace -> X-TCP-SIG-V2 (option-order corpus).
+-- - f:{ip} (string): h2_frame_trace -> X-H2-FRAME-TRACE (frame timing corpus).
 --
 -- ngx.ctx inputs (optional, override SHM):
 -- - tls_hash, tls_ja3, tls_ja4, tls_alpn; tcp_mss, tcp_ttl, tcp_window, tcp_sig, tcp_sig_opt.
@@ -23,7 +24,7 @@
 -- Upstream headers when data present:
 -- - X-Original-Method, X-Original-Path.
 -- - X-TLS-Hash (ctx or ssl_protocol:ssl_cipher), X-TLS-JA3, X-TLS-JA4, X-TLS-ALPN.
--- - X-TCP-MSS, X-TCP-TTL, X-TCP-WINDOW, X-TCP-SIG, X-TCP-SIG-V2.
+-- - X-TCP-MSS, X-TCP-TTL, X-TCP-WINDOW, X-TCP-SIG, X-TCP-SIG-V2, X-H2-FRAME-TRACE.
 -- - X-TTFB-APP-MS from connection_time (1..65535 ms); X-RTT-SYN-MS from tcpinfo_rtt us.
 --
 -- Constants and limits:
@@ -40,6 +41,7 @@
 -- go test ./internal/ingestion/ -run=TestChaos_CrossHop_NginxGnet -count=1
 local edge_metrics = require "edge-metrics"
 local tcp_sig_v2 = require "edge-tcp-sig-v2"
+local h2_frame_trace = require "edge-h2-frame-trace"
 
 local _M = {}
 
@@ -130,6 +132,17 @@ function _M.record_and_forward()
         local trace = tcp_sig_v2.validate_trace(sig_opt)
         if trace then
             ngx.req.set_header("X-TCP-SIG-V2", trace)
+        end
+    end
+
+    local h2_trace = ngx.ctx.h2_frame_trace
+    if not h2_trace and tcp_fp_cache then
+        h2_trace = tcp_fp_cache:get("f:" .. remote)
+    end
+    if h2_trace and h2_trace ~= "" then
+        local trace = h2_frame_trace.validate_trace(h2_trace)
+        if trace then
+            ngx.req.set_header("X-H2-FRAME-TRACE", trace)
         end
     end
 

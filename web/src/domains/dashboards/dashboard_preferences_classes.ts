@@ -57,6 +57,6 @@ export const dashboardPrefsCheckboxLabelClass = 'text-[13px] leading-[18px] text
 export const dashboardPrefsDialogFooterClass = shellChrome.sectionFooterBandLgClass;
 
 export const dashboardPrefsRestoreClass =
-  'text-[13px] font-medium leading-[18px] text-admin-positive transition-colors hover:text-admin-brand';
+  'text-[13px] font-medium leading-[18px] text-admin-positive transition-colors hover:text-primary';
 
 export const dashboardPrefsFooterActionsClass = 'flex flex-wrap items-center gap-2';

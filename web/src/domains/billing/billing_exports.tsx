@@ -71,10 +71,7 @@ export function BillingExports({
         <div className="grid gap-3">
           <BillingNav />
           <FilterPanel>
-            <DirectoryFilterForm
-              layout="auto-fill"
-              onSubmit={(event) => event.preventDefault()}
-            >
+            <DirectoryFilterForm layout="auto-fill" onSubmit={(event) => event.preventDefault()}>
               <div className="grid gap-2 md:col-span-2">
                 <Label htmlFor="export-customer-id">Customer ID</Label>
                 <Input
@@ -89,7 +86,12 @@ export function BillingExports({
                 value={draftFrom}
                 onChange={onDraftFromChange}
               />
-              <DatetimePicker id="export-to" label="To" value={draftTo} onChange={onDraftToChange} />
+              <DatetimePicker
+                id="export-to"
+                label="To"
+                value={draftTo}
+                onChange={onDraftToChange}
+              />
               <div className="grid gap-2">
                 <Label htmlFor="export-format">Format</Label>
                 <Select
@@ -134,7 +136,12 @@ export function BillingExports({
               >
                 Poll
               </Button>
-              <Button disabled={!canDownload} onClick={onDownloadJob} type="button" variant="secondary">
+              <Button
+                disabled={!canDownload}
+                onClick={onDownloadJob}
+                type="button"
+                variant="secondary"
+              >
                 Download
               </Button>
             </DirectoryFilterForm>

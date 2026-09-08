@@ -191,6 +191,9 @@ func PublishHostedDraft(ctx context.Context, host HostedLanderHost, landerID uui
 	if publishVersion <= 0 {
 		return LanderDTO{}, fmt.Errorf("version is required")
 	}
+	if err := lintHostedVersion(ctx, host, landerID, publishVersion); err != nil {
+		return LanderDTO{}, err
+	}
 	if err := st.PublishVersion(landerID, publishVersion); err != nil {
 		return LanderDTO{}, err
 	}

@@ -69,7 +69,7 @@ export function PublisherStatementsPanel({
             {(statements ?? []).map((row) => (
               <TableRow key={String(row.id ?? row.idempotency_hash ?? row.created_at)}>
                 <TableCell>{row.id ?? ''}</TableCell>
-                <TableCell className="font-mono text-xs">{row.campaign_id ?? ''}</TableCell>
+                <TableCell className="text-xs">{row.campaign_id ?? ''}</TableCell>
                 <TableCell>{displayMicro(row.amount_micro)}</TableCell>
                 <TableCell>{displayTimestamp(row.created_at)}</TableCell>
               </TableRow>

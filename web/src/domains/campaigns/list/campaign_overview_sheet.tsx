@@ -23,6 +23,7 @@ import {
   campaignOverviewHeaderClass,
   campaignOverviewMetricCardAccentClass,
   campaignOverviewMetricCardClass,
+  campaignOverviewMetricGridClass,
   campaignOverviewMetricLabelClass,
   campaignOverviewMetricValueClass,
   campaignOverviewOutlineButtonClass,
@@ -85,7 +86,7 @@ function OverviewSection({
 }) {
   return (
     <section className={cn(campaignOverviewSectionClass, className)}>
-      <div className="grid grid-cols-[1fr_auto] items-center gap-2">
+      <div className="grid justify-items-center gap-2">
         <h3 className={campaignOverviewSectionTitleClass}>{title}</h3>
         {meta}
       </div>
@@ -106,7 +107,7 @@ function OverviewRow({
   return (
     <div className={campaignOverviewRowClass}>
       <span className="text-muted-foreground">{label}</span>
-      <span className={cn('tabular-nums text-foreground', valueClassName)}>{value}</span>
+      <span className={cn('text-foreground', valueClassName)}>{value}</span>
     </div>
   );
 }
@@ -121,7 +122,9 @@ function DeliveryMetricCard({
   accent: 1 | 2 | 3;
 }) {
   return (
-    <div className={cn(campaignOverviewMetricCardClass, campaignOverviewMetricCardAccentClass[accent])}>
+    <div
+      className={cn(campaignOverviewMetricCardClass, campaignOverviewMetricCardAccentClass[accent])}
+    >
       <p className={cn('m-0', campaignOverviewMetricLabelClass)}>{label}</p>
       <p className={cn('m-0', campaignOverviewMetricValueClass, adminKpiAccentValueClass[accent])}>
         {value}
@@ -135,10 +138,13 @@ function DeliveryRateRow({ label, percent }: { label: string; percent: number })
     <div className={campaignOverviewRateRowClass}>
       <div className="grid grid-cols-[1fr_auto] items-center gap-2 text-[11px] font-semibold uppercase leading-[14px] text-muted-foreground">
         <span>{label}</span>
-        <span className="tabular-nums">{percent}%</span>
+        <span>{percent}%</span>
       </div>
       <div aria-hidden className="h-1 overflow-hidden rounded-full bg-muted">
-        <div className="h-full rounded-full bg-chart-1 transition-all" style={{ width: `${percent}%` }} />
+        <div
+          className="h-full rounded-full bg-chart-1 transition-all"
+          style={{ width: `${percent}%` }}
+        />
       </div>
     </div>
   );
@@ -153,7 +159,7 @@ function BudgetProgress({ campaign }: { campaign: CampaignWithMoneyDisplay }) {
   const budgetLabel = overviewMoney(campaign.budget_limit, campaign.budget_limit_display);
 
   return (
-    <div className="grid gap-2">
+    <div className="mx-auto grid w-full max-w-md gap-2">
       <div aria-hidden className="h-2 overflow-hidden rounded-full bg-muted">
         <div
           className={cn(
@@ -163,7 +169,7 @@ function BudgetProgress({ campaign }: { campaign: CampaignWithMoneyDisplay }) {
           style={{ width: `${Math.max(0, Math.min(100, percent ?? 0))}%` }}
         />
       </div>
-      <p className="m-0 text-[13px] leading-[18px] tabular-nums">
+      <p className="m-0 text-[13px] leading-[18px]">
         <span className="text-muted-foreground">{spendLabel}</span>
         {budgetLabel !== '-' ? <span className="text-foreground"> / {budgetLabel}</span> : null}
         {percent != null ? (
@@ -236,7 +242,7 @@ export function CampaignOverviewSheet({
       >
         <div className={campaignOverviewScrollClass}>
           <header className={campaignOverviewHeaderClass}>
-            <div className="flex flex-wrap items-center gap-x-3 gap-y-1">
+            <div className="flex flex-wrap items-center justify-center gap-x-3 gap-y-1">
               <span
                 className={cn(
                   'inline-flex items-center px-2 py-0.5 text-[11px] font-bold uppercase leading-[14px]',
@@ -252,10 +258,10 @@ export function CampaignOverviewSheet({
             </div>
 
             <div className="grid min-w-0 gap-1">
-              <h2 className="m-0 whitespace-nowrap text-lg tabular-nums leading-[24px] text-foreground">
+              <h2 className="m-0 whitespace-nowrap text-lg leading-[24px] text-foreground">
                 {campaign.name}
               </h2>
-              <p className="m-0 break-all font-mono text-[13px] leading-[18px] text-muted-foreground">
+              <p className="m-0 break-all text-[13px] font-normal leading-[18px] text-muted-foreground">
                 {campaign.id}
               </p>
             </div>
@@ -305,7 +311,7 @@ export function CampaignOverviewSheet({
 
               {stats || loading ? (
                 <div className="grid gap-3">
-                  <div className="grid grid-cols-3 gap-2">
+                  <div className={campaignOverviewMetricGridClass}>
                     <DeliveryMetricCard
                       accent={1}
                       label="Impressions"

@@ -12,6 +12,7 @@ import {
   clampUserResizedCampaignListColumnWidthPx,
   type CampaignListColumnId,
 } from '@/domains/campaigns/list/campaign_list_columns';
+import { syncDirectoryPinnedEdgeShadow } from '@/domains/campaigns/list/campaign_list_pinned_columns';
 
 type ResizeState = {
   columnId: CampaignListColumnId;
@@ -61,12 +62,14 @@ export function useCampaignListColumnResize({
   onColumnWidthCommit,
   colgroupRef,
   tableRef,
+  hostRef,
 }: {
   columnWidths: Record<CampaignListColumnId, number>;
   columns: CampaignListColumnId[];
   onColumnWidthCommit: (columnId: CampaignListColumnId, widthPx: number) => void;
   colgroupRef: RefObject<HTMLTableColElement | null>;
   tableRef: RefObject<HTMLTableElement | null>;
+  hostRef?: RefObject<HTMLDivElement | null>;
 }) {
   const resizeRef = useRef<ResizeState | null>(null);
   const draftWidthRef = useRef<number | null>(null);
@@ -112,6 +115,10 @@ export function useCampaignListColumnResize({
         table.style.width = `${totalWidthPx}px`;
         table.style.minWidth = `${totalWidthPx}px`;
       }
+      syncDirectoryPinnedEdgeShadow(hostRef?.current, columns, columnWidths, {
+        columnId: state.columnId,
+        widthPx,
+      });
     }
 
     function finishResize(state: ResizeState) {
@@ -173,7 +180,7 @@ export function useCampaignListColumnResize({
       document.body.style.cursor = '';
       document.body.style.userSelect = '';
     };
-  }, [colgroupRef, columnWidths, columns, onColumnWidthCommit, tableRef]);
+  }, [colgroupRef, columnWidths, columns, hostRef, onColumnWidthCommit, tableRef]);
 
   return { startResize };
 }

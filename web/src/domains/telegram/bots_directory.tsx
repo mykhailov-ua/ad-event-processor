@@ -104,11 +104,11 @@ export function TelegramBotsDirectory({
               return (
                 <TableRow key={String(row.bot_id ?? campaignId ?? row.webhook_url)}>
                   <TableCell>{row.bot_id ?? ''}</TableCell>
-                  <TableCell className="font-mono text-xs">{campaignId}</TableCell>
-                  <TableCell className="whitespace-nowrap font-mono text-xs">
+                  <TableCell className="text-xs">{campaignId}</TableCell>
+                  <TableCell className="whitespace-nowrap text-xs">
                     {row.webhook_url ?? ''}
                   </TableCell>
-                  <TableCell className="whitespace-nowrap font-mono text-xs">
+                  <TableCell className="whitespace-nowrap text-xs">
                     {row.mini_app_url ?? ''}
                   </TableCell>
                   <TableCell>{displayTimestamp(row.updated_at)}</TableCell>

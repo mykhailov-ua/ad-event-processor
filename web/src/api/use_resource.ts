@@ -8,6 +8,8 @@ export type UseResourceState<T> = {
   fetching: boolean;
   /** True while refetching after the first snapshot (sort/filter/page). */
   revalidating: boolean;
+  /** ISO timestamp of the last successful snapshot. */
+  updatedAt: string | null;
 };
 
 /**
@@ -26,6 +28,7 @@ export function useResource<T>(
   const [error, setError] = useState<Error | undefined>(undefined);
   const [fetching, setFetching] = useState(true);
   const [revalidating, setRevalidating] = useState(false);
+  const [updatedAt, setUpdatedAt] = useState<string | null>(null);
   const generationRef = useRef(0);
   const snapshotRef = useRef(false);
 
@@ -49,6 +52,7 @@ export function useResource<T>(
         snapshotRef.current = true;
         setData(next);
         setError(undefined);
+        setUpdatedAt(new Date().toISOString());
       })
       .catch((err: unknown) => {
         if (generation !== generationRef.current) {
@@ -73,5 +77,5 @@ export function useResource<T>(
     };
   }, deps);
 
-  return { data, error, fetching, revalidating };
+  return { data, error, fetching, revalidating, updatedAt };
 }

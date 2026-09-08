@@ -21,6 +21,9 @@ const Command = React.forwardRef<
 ));
 Command.displayName = CommandPrimitive.displayName;
 
+const commandDialogClass =
+  '[&_[cmdk-group]:not([hidden])_~[cmdk-group]]:pt-0 [&_[cmdk-input-wrapper]_svg]:h-4 [&_[cmdk-input-wrapper]_svg]:w-4';
+
 const CommandDialog = ({
   children,
   shouldFilter = true,
@@ -28,11 +31,8 @@ const CommandDialog = ({
 }: DialogProps & { shouldFilter?: boolean }) => {
   return (
     <Dialog {...props}>
-      <DialogContent className="overflow-hidden p-0">
-        <Command
-          shouldFilter={shouldFilter}
-          className="[&_[cmdk-group-heading]]:px-2 [&_[cmdk-group-heading]]:font-medium [&_[cmdk-group-heading]]:text-muted-foreground [&_[cmdk-group]:not([hidden])_~[cmdk-group]]:pt-0 [&_[cmdk-group]]:px-2 [&_[cmdk-input-wrapper]_svg]:h-5 [&_[cmdk-input-wrapper]_svg]:w-5 [&_[cmdk-input]]:min-h-7 [&_[cmdk-item]]:px-2 [&_[cmdk-item]]:py-3 [&_[cmdk-item]_svg]:h-5 [&_[cmdk-item]_svg]:w-5"
-        >
+      <DialogContent className="max-w-xl overflow-hidden p-0" showCloseButton={false}>
+        <Command shouldFilter={shouldFilter} className={commandDialogClass}>
           {children}
         </Command>
       </DialogContent>
@@ -72,7 +72,10 @@ const CommandList = React.forwardRef<
 >(({ className, ...props }, ref) => (
   <CommandPrimitive.List
     ref={ref}
-    className={cn('ui-scrollbar max-h-[320px] overflow-y-auto overflow-x-hidden', className)}
+    className={cn(
+      'ui-scrollbar max-h-[min(320px,50vh)] overflow-y-auto overflow-x-hidden px-1 pb-2',
+      className
+    )}
     onWheel={(event) => event.stopPropagation()}
     {...props}
   />
@@ -121,7 +124,11 @@ const CommandItem = React.forwardRef<
   <CommandPrimitive.Item
     ref={ref}
     className={cn(
-      'relative flex cursor-default select-none items-center gap-2 whitespace-nowrap px-2 py-1.5 text-sm outline-none data-[disabled=true]:pointer-events-none data-[selected=true]:bg-accent data-[selected=true]:text-accent-foreground data-[disabled=true]:opacity-50 [&_svg]:pointer-events-none [&_svg]:size-4 [&_svg]:shrink-0',
+      'relative flex cursor-default select-none items-center gap-3 px-2 py-2 text-sm outline-none',
+      'data-[disabled=true]:pointer-events-none data-[disabled=true]:opacity-50',
+      'data-[selected=true]:bg-accent data-[selected=true]:text-accent-foreground',
+      'data-[selected=true]:[&_[data-command-meta]]:text-accent-foreground/80',
+      '[&_svg]:pointer-events-none [&_svg]:size-4 [&_svg]:shrink-0',
       adminKit.controlRadius,
       className
     )}

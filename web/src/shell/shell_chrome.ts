@@ -7,8 +7,7 @@ export const shellChrome = {
   trackerHeaderClass:
     'grid h-11 shrink-0 grid-cols-[minmax(0,1fr)_minmax(12rem,28rem)_minmax(0,1fr)] items-center gap-3 border-b border-border bg-card p-2 text-card-foreground',
   /** Section/card title row inside bordered panels. */
-  sectionHeaderBandClass:
-    'grid grid-cols-[1fr_auto] items-center gap-2 border-b border-border p-3',
+  sectionHeaderBandClass: 'grid grid-cols-[1fr_auto] items-center gap-2 border-b border-border p-3',
   /** Dialog or raised panel title row. */
   sectionHeaderBandLgClass: 'shrink-0 border-b border-border p-4 text-left',
   /** Dialog footer band. */

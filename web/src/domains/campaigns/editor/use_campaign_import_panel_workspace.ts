@@ -284,6 +284,30 @@ export function useCampaignImportPanelWorkspace(enabled: boolean) {
     setDraftCustomerId(defaultCustomerId);
   }, [defaultCustomerId, draftCustomerId]);
 
+  useEffect(() => {
+    if (enabled) {
+      return;
+    }
+    setActionError(undefined);
+    setDraftCustomerId(defaultCustomerId);
+    setDraftSourceKind('keitaro_json');
+    setDraftPayload('{\n  \n}');
+    setDraftNamePrefix('');
+    setDraftPullBaseUrl('');
+    setDraftPullToken('');
+    setDraftPullSourceKind('keitaro_admin_api');
+    setValidateResult(undefined);
+    setImportResult(undefined);
+    setPullPreview(undefined);
+    setValidating(false);
+    setEnqueueing(false);
+    setImporting(false);
+    setMigrating(false);
+    setPullPreviewing(false);
+    setPullImporting(false);
+    load.resetJobLane();
+  }, [defaultCustomerId, enabled, load]);
+
   return {
     load,
     sourceLabels,

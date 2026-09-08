@@ -38,7 +38,9 @@ function parseGroupByParam(searchParams: URLSearchParams): SourceQualityGroupBy[
 }
 
 export function sourceQualityNeedsDetailRows(groupBy: SourceQualityGroupBy[]): boolean {
-  return groupBy.some((dim) => dim === 'country' || dim === 'city' || dim === 'device' || dim === 'sub_id');
+  return groupBy.some(
+    (dim) => dim === 'country' || dim === 'city' || dim === 'device' || dim === 'sub_id'
+  );
 }
 
 export function useSourceQualityPageWorkspace() {
@@ -93,7 +95,12 @@ export function useSourceQualityPageWorkspace() {
   const shouldFetch = Boolean(appliedCustomerId.trim());
   const detailMode = sourceQualityNeedsDetailRows(appliedGroupBy);
 
-  const { data, error, fetching, revalidating: listRevalidating } = useResource(
+  const {
+    data,
+    error,
+    fetching,
+    revalidating: listRevalidating,
+  } = useResource(
     (signal) => {
       if (!shouldFetch) {
         return Promise.resolve(undefined);

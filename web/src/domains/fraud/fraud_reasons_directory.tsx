@@ -11,11 +11,7 @@ import {
   TableRow,
   directoryTableRevalidatingClass,
 } from '@/shell/directory_table';
-import {
-  DirectoryFilterForm,
-  FilterField,
-  FilterPanel,
-} from '@/shell/filter_panel';
+import { DirectoryFilterForm, FilterField, FilterPanel } from '@/shell/filter_panel';
 import { PageLayout } from '@/shell/page_layout';
 import { EmptyState } from '@/shell/empty_state';
 import { ErrorBlock } from '@/shell/error_block';
@@ -46,7 +42,12 @@ function formatSilentRejectRatio(value?: number): string {
 }
 
 function reasonLabel(row: FraudReasonRow): string {
-  return row.fraud_reason?.trim() || row.fraud_category_label?.trim() || row.fraud_category?.trim() || '-';
+  return (
+    row.fraud_reason?.trim() ||
+    row.fraud_category_label?.trim() ||
+    row.fraud_category?.trim() ||
+    '-'
+  );
 }
 
 export type FraudReasonsDirectoryProps = {
@@ -226,14 +227,14 @@ export function FraudReasonsDirectory({
             tableStyle={{ width: '100%', tableLayout: 'fixed' }}
           >
             <colgroup>
-              <col style={{ width: showPlacement ? '14%' : '16%' }} />
-              <col style={{ width: showPlacement ? '22%' : '26%' }} />
-              <col style={{ width: showPlacement ? '16%' : '18%' }} />
-              {showPlacement ? <col style={{ width: '14%' }} /> : null}
-              <col style={{ width: '10%' }} />
-              <col style={{ width: '12%' }} />
-              <col style={{ width: '10%' }} />
-              {showDegraded ? <col style={{ width: '10%' }} /> : null}
+              <col className={showPlacement ? 'w-[14%]' : 'w-[16%]'} />
+              <col className={showPlacement ? 'w-[22%]' : 'w-[26%]'} />
+              <col className={showPlacement ? 'w-[16%]' : 'w-[18%]'} />
+              {showPlacement ? <col className="w-[14%]" /> : null}
+              <col className="w-[10%]" />
+              <col className="w-[12%]" />
+              <col className="w-[10%]" />
+              {showDegraded ? <col className="w-[10%]" /> : null}
             </colgroup>
             <TableHeader>
               <TableRow>
@@ -256,7 +257,10 @@ export function FraudReasonsDirectory({
                     <TableCell className={campaignListTdClass}>
                       {row.campaign_id ? (
                         <Link
-                          className={cn(campaignListCellContentClass, 'text-primary hover:underline')}
+                          className={cn(
+                            campaignListCellContentClass,
+                            'text-primary hover:underline'
+                          )}
                           to={`/campaigns/${row.campaign_id}/edit`}
                         >
                           {row.campaign_id}

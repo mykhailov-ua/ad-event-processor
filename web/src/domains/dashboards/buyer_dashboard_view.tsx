@@ -1,6 +1,9 @@
 import { Link } from 'react-router-dom';
-import { useMemo } from 'react';
+import { useCallback, useEffect, useMemo, useState } from 'react';
 
+import { Button } from '@/components/ui/button';
+import { getRoleDashboard } from '@/api/dashboards_api';
+import { useResource } from '@/api/use_resource';
 import { DashboardKpiStrip } from '@/domains/dashboards/dashboard_kpi_strip';
 import {
   campaignReportBreakdownLink,
@@ -8,6 +11,7 @@ import {
 } from '@/domains/dashboards/dashboard_breakdown_table';
 import {
   dashboardTablesPairRowClass,
+  dashboardTablesPairSlotClass,
   dashboardTablesStackClass,
 } from '@/domains/dashboards/dashboard_classes';
 import { buildKpiTiles } from '@/domains/dashboards/dashboard_metrics';
@@ -27,7 +31,11 @@ import {
   buildDashboardTablesLayout,
   type DashboardBreakdownSectionConfig,
 } from '@/domains/dashboards/dashboard_tables_layout';
-import type { BuyerPortfolio } from '@/domains/dashboards/buyer_dashboard_types';
+import type {
+  BuyerPortfolio,
+  DashboardBreakdownTable,
+} from '@/domains/dashboards/buyer_dashboard_types';
+import { parseBuyerPortfolio } from '@/domains/dashboards/buyer_dashboard_types';
 import { buildCampaignsDirectoryHref, campaignReportPath } from '@/lib/campaign_nav';
 import { StubBanner } from '@/shell/stub_banner';
 import { cn } from '@/lib/utils';
@@ -42,6 +50,16 @@ export type BuyerDashboardViewProps = {
   periodTo?: string;
 };
 
+function resolveScopedBreakdownTable(
+  portfolio: BuyerPortfolio | undefined,
+  key: 'landers' | 'offers'
+): DashboardBreakdownTable | undefined {
+  if (!portfolio) {
+    return undefined;
+  }
+  return resolveBuyerDashboardPortfolio(portfolio).breakdowns?.[key];
+}
+
 export function BuyerDashboardView({
   portfolio,
   preferences,
@@ -51,6 +69,12 @@ export function BuyerDashboardView({
   periodFrom,
   periodTo,
 }: BuyerDashboardViewProps) {
+  const [selectedCampaignId, setSelectedCampaignId] = useState<string | null>(null);
+
+  useEffect(() => {
+    setSelectedCampaignId(null);
+  }, [customerId, periodFrom, periodTo]);
+
   const resolvedPortfolio = useMemo(() => resolveBuyerDashboardPortfolio(portfolio), [portfolio]);
   const kpiTiles = useMemo(
     () => buildKpiTiles(resolvedPortfolio, preferences.kpiMetrics),
@@ -70,6 +94,58 @@ export function BuyerDashboardView({
     [customerId, periodFrom, periodTo]
   );
 
+  const shouldFetchScopedBreakdowns = Boolean(selectedCampaignId && customerId);
+  const { data: scopedPortfolioPayload } = useResource(
+    (signal) => {
+      if (!shouldFetchScopedBreakdowns || !selectedCampaignId || !customerId) {
+        return Promise.resolve(undefined);
+      }
+      return getRoleDashboard(
+        'buyer',
+        {
+          customer_id: customerId,
+          campaign_id: selectedCampaignId,
+          from: periodFrom,
+          to: periodTo,
+        },
+        signal
+      );
+    },
+    [customerId, periodFrom, periodTo, selectedCampaignId, shouldFetchScopedBreakdowns]
+  );
+  const scopedPortfolio = useMemo(
+    () => parseBuyerPortfolio(scopedPortfolioPayload),
+    [scopedPortfolioPayload]
+  );
+
+  const landersTable = useMemo(() => {
+    if (!selectedCampaignId) {
+      return resolvedPortfolio.breakdowns?.landers;
+    }
+    if (!scopedPortfolio) {
+      return { rows: [] };
+    }
+    return resolveScopedBreakdownTable(scopedPortfolio, 'landers');
+  }, [resolvedPortfolio.breakdowns?.landers, scopedPortfolio, selectedCampaignId]);
+
+  const offersTable = useMemo(() => {
+    if (!selectedCampaignId) {
+      return resolvedPortfolio.breakdowns?.offers;
+    }
+    if (!scopedPortfolio) {
+      return { rows: [] };
+    }
+    return resolveScopedBreakdownTable(scopedPortfolio, 'offers');
+  }, [resolvedPortfolio.breakdowns?.offers, scopedPortfolio, selectedCampaignId]);
+
+  const clearCampaignFilter = useCallback(() => {
+    setSelectedCampaignId(null);
+  }, []);
+
+  const handleCampaignRowSelect = useCallback((rowId: string) => {
+    setSelectedCampaignId(rowId);
+  }, []);
+
   const breakdownSections = useMemo((): DashboardBreakdownSectionConfig[] => {
     const sections: DashboardBreakdownSectionConfig[] = [
       {
@@ -81,12 +157,12 @@ export function BuyerDashboardView({
       {
         id: 'landers',
         title: BREAKDOWN_ENTITY_LABELS.landers,
-        table: resolvedPortfolio.breakdowns?.landers,
+        table: landersTable,
       },
       {
         id: 'offers',
         title: BREAKDOWN_ENTITY_LABELS.offers,
-        table: resolvedPortfolio.breakdowns?.offers,
+        table: offersTable,
       },
       {
         id: 'sources',
@@ -104,6 +180,8 @@ export function BuyerDashboardView({
       return true;
     });
   }, [
+    landersTable,
+    offersTable,
     preferences.breakdownEntities,
     resolvedPortfolio.breakdowns,
     scopedCampaignId,
@@ -114,9 +192,15 @@ export function BuyerDashboardView({
     [breakdownSections]
   );
 
+  const clearFilterAction = selectedCampaignId ? (
+    <Button type="button" variant="link" onClick={clearCampaignFilter}>
+      Сбросить фильтр
+    </Button>
+  ) : null;
+
   const renderBreakdownSection = (
     section: DashboardBreakdownSectionConfig,
-    options?: { fillContainer?: boolean }
+    options?: { fillContainer?: boolean; fillHeight?: boolean }
   ) => (
     <DashboardBreakdownTableSection
       key={section.id}
@@ -124,7 +208,9 @@ export function BuyerDashboardView({
       emptyDescription={
         section.id === 'campaigns' ? DASHBOARD_TOP_CAMPAIGNS_EMPTY_DESCRIPTION : undefined
       }
+      enableCampaignSort={section.id === 'campaigns'}
       fillContainer={options?.fillContainer ?? true}
+      fillHeight={options?.fillHeight ?? false}
       meta={
         section.id === 'campaigns' ? (
           <Link className="text-sm text-primary hover:underline" to={campaignsDirectoryHref}>
@@ -134,27 +220,37 @@ export function BuyerDashboardView({
       }
       nameLink={section.nameLink}
       scope={section.id}
+      selectedRowId={section.id === 'campaigns' ? selectedCampaignId : undefined}
       table={section.table}
       title={section.title}
+      titleSuffix={section.id === 'landers' ? clearFilterAction : undefined}
+      onRowSelect={section.id === 'campaigns' ? handleCampaignRowSelect : undefined}
     />
   );
 
-  const renderGridSlot = (slot: (typeof tablesLayout.pairRows)[number][number]) => {
+  const renderGridSlot = (
+    slot: (typeof tablesLayout.pairRows)[number][number],
+    options?: { fillHeight?: boolean }
+  ) => {
     if (slot.kind === 'recent_clicks') {
       return (
         <DashboardRecentClicks
           key="recent_clicks"
           columns={preferences.recentClickColumns}
           events={resolvedPortfolio.recent_clicks ?? []}
+          fillContainer
+          fillHeight={options?.fillHeight ?? false}
           viewAllHref={clickLogHref}
         />
       );
     }
-    return renderBreakdownSection(slot.section, { fillContainer: false });
+    return renderBreakdownSection(slot.section, {
+      fillContainer: true,
+      fillHeight: options?.fillHeight ?? false,
+    });
   };
 
-  const hasTables =
-    tablesLayout.top != null || tablesLayout.pairRows.some((row) => row.length > 0);
+  const hasTables = tablesLayout.top != null || tablesLayout.pairRows.some((row) => row.length > 0);
 
   return (
     <div className="grid min-w-0 gap-3">
@@ -184,16 +280,18 @@ export function BuyerDashboardView({
 
       {hasTables ? (
         <div className={dashboardTablesStackClass}>
-          {tablesLayout.top ? renderBreakdownSection(tablesLayout.top, { fillContainer: true }) : null}
+          {tablesLayout.top
+            ? renderBreakdownSection(tablesLayout.top, { fillContainer: true })
+            : null}
 
           {tablesLayout.pairRows.map((pair, rowIndex) => (
             <div key={rowIndex} className={dashboardTablesPairRowClass}>
               {pair.map((slot) => (
                 <div
                   key={slot.kind === 'breakdown' ? slot.section.id : slot.kind}
-                  className={cn('min-w-0', pair.length === 1 && 'lg:col-span-2')}
+                  className={cn(dashboardTablesPairSlotClass, pair.length === 1 && 'lg:col-span-2')}
                 >
-                  {renderGridSlot(slot)}
+                  {renderGridSlot(slot, { fillHeight: true })}
                 </div>
               ))}
             </div>

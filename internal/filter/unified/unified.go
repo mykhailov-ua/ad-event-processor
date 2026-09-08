@@ -743,7 +743,7 @@ func (f *UnifiedFilter) checkPassRedisLua(ctx context.Context, evt *domain.Event
 			return err
 		}
 		if evt.LocalFcapLookup != 0 {
-			f.scheduleFcapBumpForEvent(redisClient, evt, campInfo, fastScratch)
+			f.scheduleFcapBumpForEvent(redisClient, evt, campInfo, fastScratch) //nolint:contextcheck // fcap bump worker is redis-bound, not ctx-bound
 		}
 		return nil
 	}

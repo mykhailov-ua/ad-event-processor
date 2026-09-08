@@ -360,6 +360,12 @@ func countCampaignStatusTotals(
 	for _, row := range rows {
 		campaign.ApplyCampaignStatusCount(&totals, row.Status, row.Count)
 	}
+	warningsParams := campaign.CampaignCountWarningsParamsFromFilter(filter)
+	warningsCount, warnErr := dbq.CountCampaignWarnings(ctx, warningsParams)
+	if warnErr != nil {
+		return campaign.CampaignStatusTotalsDTO{}, warnErr
+	}
+	totals.Warnings = warningsCount
 	return totals, nil
 }
 
@@ -481,6 +487,7 @@ func scrubCampaignDTO(ctx context.Context, c db.Campaign) campaign.CampaignDTO {
 		AttestationMode:              c.AttestationMode,
 		AttestationTTLSec:            c.AttestationTtlSec,
 		DmrEnabled:                   c.DmrEnabled,
+		RedirectComplianceMode:       string(domain.ParseRedirectComplianceMode(c.RedirectComplianceMode)),
 		CIDRBlockEnabled:             c.CidrBlockEnabled,
 		ProxyVPNBlockEnabled:         c.ProxyVpnBlockEnabled,
 		ModeratorIntelEnabled:        c.ModeratorIntelEnabled,
@@ -692,7 +699,7 @@ func patchCampaign(ctx context.Context, pool *pgxpool.Pool, fx campaign.Effects,
 	adminPatch := req.Name != nil || req.DailyBudgetMicro != nil || req.Timezone != nil ||
 		req.FreqLimit != nil || req.FreqWindow != nil || req.TargetCountries != nil ||
 		req.TargetURL != nil || req.ReferrerFilter != nil ||
-		req.SafePageURL != nil || req.SafePageEnabled != nil || req.DecoyLanderID != nil || req.AttestationEnabled != nil || req.AttestationMode != nil || req.AttestationTTLSec != nil || req.DmrEnabled != nil ||
+		req.SafePageURL != nil || req.SafePageEnabled != nil || req.DecoyLanderID != nil || req.AttestationEnabled != nil || req.AttestationMode != nil || req.AttestationTTLSec != nil || req.DmrEnabled != nil || req.RedirectComplianceMode != nil ||
 		req.CIDRBlockEnabled != nil || req.ProxyVPNBlockEnabled != nil || req.ModeratorIntelEnabled != nil ||
 		req.ReviewTrafficAction != nil ||
 		req.TLSFingerprintBlockEnabled != nil || req.ConnTypePolicy != nil ||
@@ -837,6 +844,14 @@ func patchCampaign(ctx context.Context, pool *pgxpool.Pool, fx campaign.Effects,
 			if req.DmrEnabled != nil {
 				dmrEnabled = *req.DmrEnabled
 			}
+			redirectComplianceMode := locked.RedirectComplianceMode
+			if req.RedirectComplianceMode != nil {
+				parsed := domain.ParseRedirectComplianceMode(*req.RedirectComplianceMode)
+				if parsed != domain.RedirectComplianceStrict && parsed != domain.RedirectComplianceLegacyDMR {
+					return fmt.Errorf("invalid redirect_compliance_mode")
+				}
+				redirectComplianceMode = string(parsed)
+			}
 			cidrBlock := locked.CidrBlockEnabled
 			if req.CIDRBlockEnabled != nil {
 				cidrBlock = *req.CIDRBlockEnabled
@@ -936,6 +951,7 @@ func patchCampaign(ctx context.Context, pool *pgxpool.Pool, fx campaign.Effects,
 				AttestationTtlSec:            attestationTTL,
 				AttestationMode:              attestationMode,
 				DmrEnabled:                   dmrEnabled,
+				RedirectComplianceMode:       redirectComplianceMode,
 				ClickDelivery:                clickDelivery,
 				ProxyUpstreamUrl:             proxyUpstream,
 				ProxyRewriteAssets:           proxyRewrite,

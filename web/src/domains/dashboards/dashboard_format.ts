@@ -1,4 +1,9 @@
 import type { BuyerPortfolio } from '@/domains/dashboards/buyer_dashboard_types';
+import {
+  resolveEconomicsProfitMicro,
+  resolveEconomicsRoiPct,
+  type EconomicsMicroRow,
+} from '@/lib/economics';
 
 export { formatDashboardCrPct, formatDashboardRoiPct } from '@/lib/display_metrics';
 
@@ -36,6 +41,14 @@ export function resolvePortfolioProfitMicro(portfolio: BuyerPortfolio): number |
     return kpis.profit_micro;
   }
   return undefined;
+}
+
+export function resolveBreakdownProfitMicro(row: EconomicsMicroRow): number | undefined {
+  return resolveEconomicsProfitMicro(row);
+}
+
+export function resolveBreakdownRoiPct(row: EconomicsMicroRow): number | undefined {
+  return resolveEconomicsRoiPct(row);
 }
 
 export function derivePortfolioRoiPct(portfolio: BuyerPortfolio): number | undefined {

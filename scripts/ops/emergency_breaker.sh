@@ -9,7 +9,7 @@ source "$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)/lib/paths.sh"
 cd "$ROOT"
 
 usage() {
-  cat <<'EOF'
+  cat << 'EOF'
 Usage: emergency_breaker.sh on|off "reason"
 
 Enqueues UPDATE_SETTINGS outbox row and updates system_settings.emergency_breaker.
@@ -27,7 +27,7 @@ REASON="$2"
 ENV_FILE="${ENV_FILE:-$ROOT/.env}"
 
 case "$STATE" in
-  on|off) ;;
+  on | off) ;;
   *)
     usage >&2
     exit 1
@@ -46,7 +46,7 @@ if [[ -z "${DB_DSN:-}" ]]; then
   exit 1
 fi
 
-if ! command -v psql >/dev/null 2>&1; then
+if ! command -v psql > /dev/null 2>&1; then
   printf 'emergency-breaker: ERROR: psql not found\n' >&2
   exit 1
 fi
@@ -62,7 +62,7 @@ log() { printf 'emergency-breaker: %s\n' "$*"; }
 
 log "setting emergency_breaker=${VAL} reason=${REASON}"
 
-psql "$DB_DSN" -v ON_ERROR_STOP=1 <<SQL
+psql "$DB_DSN" -v ON_ERROR_STOP=1 << SQL
 BEGIN;
 INSERT INTO system_settings (key, value)
 VALUES ('emergency_breaker', '${VAL}')

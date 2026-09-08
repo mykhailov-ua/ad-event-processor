@@ -141,6 +141,8 @@ export function campaignToFormState(campaign: Campaign): CampaignEditorFormState
     click_filter_tier: campaign.click_filter_tier ?? 'full',
     mobile_biometrics_click_enabled: campaign.mobile_biometrics_click_enabled ?? false,
     decoy_lander_id: campaign.decoy_lander_id ?? '',
+    redirect_compliance_mode: campaign.redirect_compliance_mode ?? 'strict',
+    dmr_enabled: campaign.dmr_enabled ?? false,
   };
 }
 
@@ -198,7 +200,9 @@ export function buildCampaignPatchBody(
     body.click_filter_tier = form.click_filter_tier as PatchCampaignRequest['click_filter_tier'];
   }
 
-  if (form.mobile_biometrics_click_enabled !== (original.mobile_biometrics_click_enabled ?? false)) {
+  if (
+    form.mobile_biometrics_click_enabled !== (original.mobile_biometrics_click_enabled ?? false)
+  ) {
     body.mobile_biometrics_click_enabled = form.mobile_biometrics_click_enabled;
   }
 
@@ -208,6 +212,16 @@ export function buildCampaignPatchBody(
   );
   if (nextDecoyLanderID !== undefined) {
     body.decoy_lander_id = nextDecoyLanderID;
+  }
+
+  const originalRedirectMode = original.redirect_compliance_mode ?? 'strict';
+  if (form.redirect_compliance_mode !== originalRedirectMode) {
+    body.redirect_compliance_mode =
+      form.redirect_compliance_mode as PatchCampaignRequest['redirect_compliance_mode'];
+  }
+
+  if (form.dmr_enabled !== (original.dmr_enabled ?? false)) {
+    body.dmr_enabled = form.dmr_enabled;
   }
 
   return { ok: true, body };

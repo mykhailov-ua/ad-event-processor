@@ -69,6 +69,24 @@ export function useCampaignWizardPanelWorkspace({
     setDraftTemplateKey(templates[0]?.key as TemplateKey);
   }, [draftTemplateKey, templates]);
 
+  useEffect(() => {
+    if (enabled) {
+      return;
+    }
+    setActionError(undefined);
+    setCommitResult(undefined);
+    setCreating(false);
+    setSavingStep(false);
+    setCommitting(false);
+    setPublishOnCommit(false);
+    setDraftTemplateKey('');
+    setTrafficDraft(defaultTrafficDraft(undefined));
+    setIntegrationDraft(defaultIntegrationDraft(undefined));
+    setFlowDraft(defaultFlowDraft(undefined));
+    setBudgetDraft(defaultBudgetDraft());
+    load.resetSession();
+  }, [enabled, load]);
+
   const selectedTemplate = useMemo(
     () => templates.find((item) => item.key === draftTemplateKey),
     [draftTemplateKey, templates]

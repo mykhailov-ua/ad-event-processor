@@ -11,6 +11,8 @@ import (
 	"encoding/pem"
 	"errors"
 	"fmt"
+	"os"
+	"path/filepath"
 	"strings"
 	"time"
 
@@ -23,11 +25,12 @@ const (
 )
 
 type wildcardIssueRequest struct {
-	ZoneName    string
-	IncludeApex bool
-	Email       string
-	ZoneID      string
-	Directory   string
+	ZoneName       string
+	IncludeApex    bool
+	Email          string
+	ZoneID         string
+	Directory      string
+	AccountKeyPath string
 }
 
 type wildcardIssueResult struct {
@@ -59,9 +62,9 @@ func (a *acmeDNS01Issuer) Issue(ctx context.Context, cf DomainCloudflareClient, 
 		directory = acmeLEProductionDirectory
 	}
 
-	accountKey, err := ecdsa.GenerateKey(elliptic.P256(), rand.Reader)
+	accountKey, err := loadOrCreateACMEAccountKey(req.AccountKeyPath)
 	if err != nil {
-		return wildcardIssueResult{}, fmt.Errorf("acme account key: %w", err)
+		return wildcardIssueResult{}, err
 	}
 	certKey, err := ecdsa.GenerateKey(elliptic.P256(), rand.Reader)
 	if err != nil {
@@ -76,6 +79,9 @@ func (a *acmeDNS01Issuer) Issue(ctx context.Context, cf DomainCloudflareClient, 
 	account, err = client.Register(ctx, account, acme.AcceptTOS)
 	if err != nil {
 		return wildcardIssueResult{}, fmt.Errorf("acme register: %w", err)
+	}
+	if err := persistACMEAccountKey(req.AccountKeyPath, accountKey); err != nil {
+		return wildcardIssueResult{}, err
 	}
 	client.KID = acme.KeyID(account.URI)
 
@@ -115,8 +121,8 @@ func (a *acmeDNS01Issuer) Issue(ctx context.Context, cf DomainCloudflareClient, 
 		if err != nil {
 			return wildcardIssueResult{}, fmt.Errorf("cloudflare acme txt: %w", err)
 		}
-		cleanupFns = append(cleanupFns, func() error {
-			return cf.DeleteDNSRecord(context.Background(), req.ZoneID, recordID)
+		cleanupFns = append(cleanupFns, func() error { //nolint:contextcheck // ACME cleanup runs after issue ctx cancel
+			return cf.DeleteDNSRecord(context.Background(), req.ZoneID, recordID) //nolint:contextcheck // ACME cleanup runs after issue ctx cancel
 		})
 		if _, err := client.Accept(ctx, challenge); err != nil {
 			return wildcardIssueResult{}, fmt.Errorf("acme accept challenge: %w", err)
@@ -186,6 +192,52 @@ func encodePrivateKeyPEM(key crypto.Signer) ([]byte, error) {
 		return nil, fmt.Errorf("marshal private key: %w", err)
 	}
 	return pem.EncodeToMemory(&pem.Block{Type: "PRIVATE KEY", Bytes: der}), nil
+}
+
+func loadOrCreateACMEAccountKey(path string) (*ecdsa.PrivateKey, error) {
+	path = strings.TrimSpace(path)
+	if path != "" {
+		data, err := os.ReadFile(path)
+		if err == nil {
+			block, _ := pem.Decode(data)
+			if block != nil {
+				key, parseErr := x509.ParsePKCS8PrivateKey(block.Bytes)
+				if parseErr == nil {
+					ecKey, ok := key.(*ecdsa.PrivateKey)
+					if ok {
+						return ecKey, nil
+					}
+				}
+			}
+		}
+	}
+	accountKey, err := ecdsa.GenerateKey(elliptic.P256(), rand.Reader)
+	if err != nil {
+		return nil, fmt.Errorf("acme account key: %w", err)
+	}
+	return accountKey, nil
+}
+
+func persistACMEAccountKey(path string, accountKey *ecdsa.PrivateKey) error {
+	path = strings.TrimSpace(path)
+	if path == "" || accountKey == nil {
+		return nil
+	}
+	if _, err := os.Stat(path); err == nil {
+		return nil
+	}
+	keyPEM, err := encodePrivateKeyPEM(accountKey)
+	if err != nil {
+		return err
+	}
+	dir := filepath.Dir(path)
+	if err := os.MkdirAll(dir, 0o755); err != nil {
+		return fmt.Errorf("acme account key mkdir: %w", err)
+	}
+	if err := os.WriteFile(path, keyPEM, 0o600); err != nil {
+		return fmt.Errorf("acme account key write: %w", err)
+	}
+	return nil
 }
 
 func normalizeZoneName(zone string) string {

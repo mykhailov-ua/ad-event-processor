@@ -197,7 +197,7 @@ export function SupplySellersDirectory({
                 <TableRow key={row.id}>
                   <TableCell>
                     <Input
-                      className="font-mono text-xs"
+                      className="text-xs"
                       value={edit.seller_id}
                       onChange={(event) => onEditRowChange(row.id, 'seller_id', event.target.value)}
                     />

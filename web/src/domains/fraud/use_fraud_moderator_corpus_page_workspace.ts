@@ -35,8 +35,7 @@ export function useFraudModeratorCorpusPageWorkspace() {
   const appliedOffset = parseListOffset(searchParams.get('offset'));
 
   const { data, error, fetching, revalidating } = useResource(
-    (signal) =>
-      listModeratorCorpus({ limit: appliedLimit, offset: appliedOffset }, signal),
+    (signal) => listModeratorCorpus({ limit: appliedLimit, offset: appliedOffset }, signal),
     [appliedLimit, appliedOffset, refreshToken]
   );
 

@@ -3,6 +3,7 @@ package postback
 import (
 	"context"
 	"encoding/json"
+	"errors"
 	"io"
 	"net/http"
 	"net/http/httptest"
@@ -158,8 +159,7 @@ func TestGoogleAdapter_APIErrorSurfacesBody(t *testing.T) {
 	if err == nil {
 		t.Fatal("expected error")
 	}
-	httpErr, ok := err.(*DispatchHTTPError)
-	if !ok {
+	if !errors.As(err, &httpErr) {
 		t.Fatalf("expected DispatchHTTPError, got %T: %v", err, err)
 	}
 	if httpErr.StatusCode != 403 || !strings.Contains(httpErr.Body, "PERMISSION_DENIED") {
@@ -167,5 +167,57 @@ func TestGoogleAdapter_APIErrorSurfacesBody(t *testing.T) {
 	}
 	if !httpErr.Permanent() {
 		t.Fatalf("expected permanent 4xx error, got %v", err)
+	}
+}
+
+func TestGoogleAdapter_PartialFailureOn200(t *testing.T) {
+	srv := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		w.WriteHeader(http.StatusOK)
+		_, _ = w.Write([]byte(`{"partialFailureError":{"code":3,"message":"The click ID is invalid."}}`))
+	}))
+	defer srv.Close()
+
+	a := &GoogleAdapter{}
+	err := a.Send(context.Background(), srv.Client(), &PostbackPayload{
+		GCLID:         "gclid-bad",
+		TestEventCode: "dev",
+	}, srv.URL, `{"access_token":"oauth"}`)
+	var httpErr *DispatchHTTPError
+	if err == nil {
+		t.Fatal("expected error")
+	}
+	if !errors.As(err, &httpErr) {
+		t.Fatalf("expected DispatchHTTPError, got %T: %v", err, err)
+	}
+	if httpErr.StatusCode != 400 || !strings.Contains(httpErr.Body, "click ID") {
+		t.Fatalf("err=%v", err)
+	}
+}
+
+func TestRefreshGoogleOAuth(t *testing.T) {
+	var gotRefresh string
+	srv := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		body, _ := io.ReadAll(r.Body)
+		gotRefresh = string(body)
+		_ = json.NewEncoder(w).Encode(map[string]any{
+			"access_token": "fresh-token",
+			"expires_in":   3600,
+		})
+	}))
+	defer srv.Close()
+
+	client := srv.Client()
+	transport := client.Transport
+	if transport == nil {
+		transport = http.DefaultTransport
+	}
+	client.Transport = roundTripRewriteHost(srv.URL, transport)
+
+	token, _, err := refreshGoogleOAuth(context.Background(), client, "client-id", "client-secret", "refresh-abc")
+	if err != nil {
+		t.Fatalf("refresh: %v", err)
+	}
+	if token != "fresh-token" || !strings.Contains(gotRefresh, "refresh-abc") {
+		t.Fatalf("token=%q refresh=%q", token, gotRefresh)
 	}
 }

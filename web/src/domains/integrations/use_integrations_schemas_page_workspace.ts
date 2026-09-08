@@ -124,9 +124,7 @@ export function useIntegrationsSchemasPageWorkspace() {
       return;
     }
     if (
-      !confirmDestructiveAction(
-        `Apply integration schema ${schemaId} to campaign ${campaignId}?`
-      )
+      !confirmDestructiveAction(`Apply integration schema ${schemaId} to campaign ${campaignId}?`)
     ) {
       return;
     }

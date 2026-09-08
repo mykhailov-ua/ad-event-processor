@@ -295,6 +295,8 @@ func startBuiltinServiceWorkers(s *Service, ctx context.Context, cfg *config.Con
 	s.startWorker(func() {
 		fraudadmin.NewMLEvalMetricsWorker(s).Start(ctx)
 	})
+	s.StartProbeClusterExportWorker()
+	s.StartCrowdWaveExportWorker()
 	return s
 }
 

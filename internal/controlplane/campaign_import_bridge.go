@@ -112,7 +112,7 @@ func (s *Service) StartMigrationPullImport(parent context.Context, spec campaign
 		return campaign.ErrServiceUnavailable()
 	}
 	if parent == nil {
-		parent = context.Background()
+		parent = context.Background() //nolint:contextcheck // detached migration job when HTTP handler omits ctx
 	}
 	s.migrationPullWG.Add(1)
 	go func() {

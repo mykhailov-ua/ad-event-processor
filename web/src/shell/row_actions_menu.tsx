@@ -1,12 +1,12 @@
 import { MoreHorizontal } from 'lucide-react';
 import type { ReactNode } from 'react';
 
-import { Button } from '@/components/ui/button';
 import {
   DropdownMenu,
   DropdownMenuContent,
   DropdownMenuTrigger,
 } from '@/components/ui/dropdown-menu';
+import { directoryTableRowMenuButtonClass } from '@/shell/directory_table_row_actions';
 
 export type RowActionsMenuProps = {
   disabled?: boolean;
@@ -22,15 +22,15 @@ export function RowActionsMenu({
   return (
     <DropdownMenu>
       <DropdownMenuTrigger asChild>
-        <Button
+        <button
           aria-label={ariaLabel}
-          className="h-5 w-5 p-0"
+          className={directoryTableRowMenuButtonClass}
           disabled={disabled}
           type="button"
-          variant="ghost"
+          onClick={(event) => event.stopPropagation()}
         >
           <MoreHorizontal aria-hidden="true" className="h-4 w-4" />
-        </Button>
+        </button>
       </DropdownMenuTrigger>
       <DropdownMenuContent align="end">{children}</DropdownMenuContent>
     </DropdownMenu>

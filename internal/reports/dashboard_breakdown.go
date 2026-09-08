@@ -366,7 +366,8 @@ func QueryCustomerDailyEconomicsCH(
 func customerDailyEconomicsTotal(m map[string]struct {
 	SpendMicro   int64
 	RevenueMicro int64
-}) int64 {
+},
+) int64 {
 	var total int64
 	for _, row := range m {
 		total += row.SpendMicro + row.RevenueMicro

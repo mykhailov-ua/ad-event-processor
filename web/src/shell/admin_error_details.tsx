@@ -35,7 +35,7 @@ export function AdminErrorDetails({ details }: AdminErrorDetailsProps) {
           {copied ? 'Copied' : 'Copy'}
         </Button>
       </div>
-      <pre className="max-h-48 overflow-auto p-3 text-xs font-mono">{details}</pre>
+      <pre className="max-h-48 overflow-auto p-3 text-xs">{details}</pre>
     </div>
   );
 }

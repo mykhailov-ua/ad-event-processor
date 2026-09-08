@@ -123,88 +123,100 @@ const DialogContent = React.forwardRef<
     onEscapeKeyDown?: (event: KeyboardEvent) => void;
     onInteractOutside?: (event: Event) => void;
     panelClassName?: string;
+    showCloseButton?: boolean;
   }
->(({ className, children, onEscapeKeyDown, onInteractOutside, panelClassName, ...props }, ref) => {
-  const { open, setOpen } = useDialogContext();
-  const flush = /\bp-0\b/.test(className ?? '');
-  const scrollBody = React.Children.toArray(children).some(
-    (child) =>
-      React.isValidElement(child) &&
-      (child.type as { displayName?: string }).displayName === 'DialogBody'
-  );
-  const useCompactShell = !scrollBody && !flush;
+>(
+  (
+    {
+      className,
+      children,
+      onEscapeKeyDown,
+      onInteractOutside,
+      panelClassName,
+      showCloseButton = true,
+      ...props
+    },
+    ref
+  ) => {
+    const { open, setOpen } = useDialogContext();
+    const flush = /\bp-0\b/.test(className ?? '');
+    const scrollBody = React.Children.toArray(children).some(
+      (child) =>
+        React.isValidElement(child) &&
+        (child.type as { displayName?: string }).displayName === 'DialogBody'
+    );
+    const useCompactShell = !scrollBody && !flush;
 
-  if (!open) {
-    return null;
-  }
+    if (!open) {
+      return null;
+    }
 
-  return (
-    <DialogPortal>
-      <DialogOverlay
-        onClick={(event) => {
-          if (onInteractOutside) {
-            onInteractOutside(event.nativeEvent);
-            if (event.defaultPrevented) {
-              return;
-            }
-          }
-          setOpen(false);
-        }}
-      />
-      <div
-        ref={ref}
-        className={cn(
-          'fixed left-1/2 top-1/2 z-50 w-full max-w-lg -translate-x-1/2 -translate-y-1/2 border-0 bg-transparent p-0',
-          className
-        )}
-        role="dialog"
-        aria-modal="true"
-        onKeyDown={(event) => {
-          if (event.key === 'Escape') {
-            if (onEscapeKeyDown) {
-              onEscapeKeyDown(event.nativeEvent);
+    return (
+      <DialogPortal>
+        <DialogOverlay
+          onClick={(event) => {
+            if (onInteractOutside) {
+              onInteractOutside(event.nativeEvent);
               if (event.defaultPrevented) {
                 return;
               }
             }
-            event.preventDefault();
             setOpen(false);
-          }
-        }}
-        {...props}
-      >
-        <DialogLayoutContext.Provider value={{ scrollBody }}>
-          <div
-            className={cn(
-              adminChrome.panel,
-              'relative w-full shadow-lg',
-              panelClassName,
-              scrollBody
-                ? 'flex max-h-[min(90vh,48rem)] flex-col gap-0 overflow-hidden'
-                : flush || useCompactShell
-                  ? 'overflow-hidden'
-                  : 'ui-scrollbar flex max-h-[min(90vh,48rem)] flex-col gap-4 overflow-y-auto p-6'
-            )}
-          >
-            {useCompactShell ? (
-              <div className="grid w-full gap-4 p-6">{children}</div>
-            ) : (
-              children
-            )}
-            <button
-              type="button"
-              className="absolute right-4 top-4 z-10 rounded-sm p-1 text-muted-foreground hover:text-foreground"
-              aria-label="Close"
-              onClick={() => setOpen(false)}
+          }}
+        />
+        <div
+          ref={ref}
+          className={cn(
+            'fixed left-1/2 top-1/2 z-50 w-full max-w-lg -translate-x-1/2 -translate-y-1/2 border-0 bg-transparent p-0',
+            className
+          )}
+          role="dialog"
+          aria-modal="true"
+          onKeyDown={(event) => {
+            if (event.key === 'Escape') {
+              if (onEscapeKeyDown) {
+                onEscapeKeyDown(event.nativeEvent);
+                if (event.defaultPrevented) {
+                  return;
+                }
+              }
+              event.preventDefault();
+              setOpen(false);
+            }
+          }}
+          {...props}
+        >
+          <DialogLayoutContext.Provider value={{ scrollBody }}>
+            <div
+              className={cn(
+                adminChrome.panel,
+                'relative w-full shadow-lg',
+                panelClassName,
+                scrollBody
+                  ? 'flex max-h-[min(90vh,48rem)] flex-col gap-0 overflow-hidden'
+                  : flush || useCompactShell
+                    ? 'overflow-hidden'
+                    : 'ui-scrollbar flex max-h-[min(90vh,48rem)] flex-col gap-4 overflow-y-auto p-6'
+              )}
             >
-              <X className="h-4 w-4" />
-            </button>
-          </div>
-        </DialogLayoutContext.Provider>
-      </div>
-    </DialogPortal>
-  );
-});
+              {useCompactShell ? <div className="grid w-full gap-4 p-6">{children}</div> : children}
+              {showCloseButton ? (
+                <button
+                  type="button"
+                  className="absolute right-4 top-4 z-10 rounded-sm p-1 text-muted-foreground hover:text-foreground"
+                  aria-label="Close"
+                  onClick={() => setOpen(false)}
+                >
+                  <X className="h-4 w-4" />
+                </button>
+              ) : null}
+            </div>
+          </DialogLayoutContext.Provider>
+        </div>
+      </DialogPortal>
+    );
+  }
+);
 DialogContent.displayName = 'DialogContent';
 
 const DialogHeader = ({ className, ...props }: React.HTMLAttributes<HTMLDivElement>) => {

@@ -38,9 +38,7 @@ export function CustomerCombobox({
   const resolvedValue = value || '';
   const selected =
     selectOptions.find((option) => option.value === resolvedValue) ??
-    (resolvedValue
-      ? { value: resolvedValue, label: resolvedValue }
-      : selectOptions[0]);
+    (resolvedValue ? { value: resolvedValue, label: resolvedValue } : selectOptions[0]);
 
   const displayOptions = useMemo(() => {
     if (!resolvedValue || selectOptions.some((option) => option.value === resolvedValue)) {

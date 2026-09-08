@@ -145,7 +145,7 @@ export function BillingInvoices({
                 <TableCell>
                   {invoice.id ? (
                     <Link
-                      className="font-mono text-xs hover:underline"
+                      className="text-xs hover:underline"
                       to={`/billing/invoices/${invoice.id}`}
                     >
                       {invoice.id}
@@ -155,15 +155,13 @@ export function BillingInvoices({
                   )}
                 </TableCell>
                 <TableCell>{invoice.billing_month}</TableCell>
-                <TableCell className="font-mono text-xs">{invoice.customer_id}</TableCell>
+                <TableCell className="text-xs">{invoice.customer_id}</TableCell>
                 <TableCell>{invoice.status ?? ''}</TableCell>
-                <TableCell className="tabular-nums">
+                <TableCell>
                   {displayMicro(invoice.subtotal_micro, invoice.subtotal_micro_display)}
                 </TableCell>
-                <TableCell className="tabular-nums">
-                  {displayMicro(invoice.tax_micro, invoice.tax_micro_display)}
-                </TableCell>
-                <TableCell className="tabular-nums">
+                <TableCell>{displayMicro(invoice.tax_micro, invoice.tax_micro_display)}</TableCell>
+                <TableCell>
                   {displayMicro(invoice.total_micro, invoice.total_micro_display)}
                 </TableCell>
                 <TableCell>{invoice.currency}</TableCell>

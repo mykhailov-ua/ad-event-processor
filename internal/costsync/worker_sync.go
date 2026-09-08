@@ -259,7 +259,7 @@ func (w *Worker) StartManualRun(parent context.Context, customerID *uuid.UUID, n
 		return fmt.Errorf("invalid date range")
 	}
 	if parent == nil {
-		parent = context.Background()
+		parent = context.Background() //nolint:contextcheck // manual cost-sync trigger may omit parent ctx
 	}
 	w.cycleWG.Add(1)
 	go func() {

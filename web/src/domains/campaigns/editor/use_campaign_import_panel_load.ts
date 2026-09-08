@@ -40,6 +40,11 @@ export function useCampaignImportPanelLoad(enabled: boolean) {
     setPollToken((value) => value + 1);
   }, []);
 
+  const resetJobLane = useCallback(() => {
+    setDraftJobId('');
+    setPollToken(0);
+  }, []);
+
   return {
     sources: sourcesResource.data,
     sourcesError: sourcesResource.error,
@@ -51,6 +56,7 @@ export function useCampaignImportPanelLoad(enabled: boolean) {
     setDraftJobId,
     pollJob,
     onJobEnqueued,
+    resetJobLane,
   };
 }
 

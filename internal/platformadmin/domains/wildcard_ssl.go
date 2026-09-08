@@ -90,12 +90,14 @@ func (dh *DomainHealth) SetupWildcardSSL(ctx context.Context, req WildcardSSLReq
 
 	email := acmeEmailFromConfig(dh.host.Config())
 	directory := acmeDirectoryFromConfig(dh.host.Config())
+	_, _, accountKeyPath := wildcardIngressCertPaths(dh.host.Config(), zoneName)
 	issueReq := wildcardIssueRequest{
-		ZoneName:    zoneName,
-		IncludeApex: req.IncludeApex,
-		Email:       email,
-		ZoneID:      zoneID,
-		Directory:   directory,
+		ZoneName:       zoneName,
+		IncludeApex:    req.IncludeApex,
+		Email:          email,
+		ZoneID:         zoneID,
+		Directory:      directory,
+		AccountKeyPath: accountKeyPath,
 	}
 	issued, issueErr := defaultWildcardIssuer.Issue(ctx, cf, issueReq)
 
@@ -145,10 +147,18 @@ func (dh *DomainHealth) SetupWildcardSSL(ctx context.Context, req WildcardSSLReq
 		return WildcardSSLResponse{}, err
 	}
 
+	if deployErr := deployWildcardIngressTLS(dh.host.Config(), zoneName, issued.CertPEM, issued.KeyPEM); deployErr != nil {
+		resp.Message = "wildcard certificate issued; ingress deploy: " + deployErr.Error()
+	} else if resp.Message == "" {
+		resp.Message = "wildcard certificate issued"
+	}
+
 	resp.ID = storedID.String()
 	resp.AcmeState = "valid"
 	resp.SSLNotAfter = &issued.NotAfter
-	resp.Message = "wildcard certificate issued"
+	if resp.Message == "" {
+		resp.Message = "wildcard certificate issued"
+	}
 	return resp, nil
 }
 

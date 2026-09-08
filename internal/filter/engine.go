@@ -10,6 +10,7 @@ import (
 	"unsafe"
 
 	"ad-event-processor/internal/domain"
+	"ad-event-processor/internal/filter/netintel"
 	"ad-event-processor/internal/metrics"
 
 	"github.com/google/uuid"
@@ -17,9 +18,10 @@ import (
 )
 
 type FraudFilter struct {
-	geo       GeoProvider
-	dcASN     *DCASNTable
-	asnLookup ASNLookup
+	geo        GeoProvider
+	dcASN      *DCASNTable
+	asnLookup  ASNLookup
+	appleRelay *netintel.ApplePrivateRelayTable
 }
 
 func NewFraudFilter(geo GeoProvider) *FraudFilter {
@@ -34,6 +36,13 @@ func (f *FraudFilter) ConfigureDCASN(table *DCASNTable, lookup ASNLookup, _ int)
 	}
 	f.dcASN = table
 	f.asnLookup = lookup
+}
+
+func (f *FraudFilter) ConfigureApplePrivateRelay(table *netintel.ApplePrivateRelayTable) {
+	if f == nil {
+		return
+	}
+	f.appleRelay = table
 }
 
 func (f *FraudFilter) Check(ctx context.Context, evt *domain.Event) error {
@@ -71,7 +80,14 @@ func (f *FraudFilter) checkDCASN(evt *domain.Event) {
 	if !ok {
 		return
 	}
+	if f.appleRelay != nil && f.appleRelay.ExemptFromDCASN(asn, evt.UA) {
+		metrics.AppleRelayExemptTotal.Inc()
+		return
+	}
 	if f.dcASN.IsDatacenter(asn) {
+		if f.appleRelay != nil && f.appleRelay.IsRelayASN(asn) {
+			metrics.AppleRelayRejectTotal.Inc()
+		}
 		metrics.DCASNMatchTotal.Inc()
 		addFraudSignal(evt, FraudReasonDatacenterIP)
 	}

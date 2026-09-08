@@ -117,7 +117,7 @@ export function FraudPresets({
                   <TableCell>
                     <Input
                       aria-label={`Pass threshold for ${presetName}`}
-                      className="min-w-[4rem] font-mono text-xs"
+                      className="min-w-[4rem] text-xs"
                       inputMode="numeric"
                       value={draft.pass}
                       onChange={(event) =>
@@ -128,7 +128,7 @@ export function FraudPresets({
                   <TableCell>
                     <Input
                       aria-label={`Suspect threshold for ${presetName}`}
-                      className="min-w-[4rem] font-mono text-xs"
+                      className="min-w-[4rem] text-xs"
                       inputMode="numeric"
                       value={draft.suspect}
                       onChange={(event) =>
@@ -139,7 +139,7 @@ export function FraudPresets({
                   <TableCell>
                     <Input
                       aria-label={`IVT threshold for ${presetName}`}
-                      className="min-w-[4rem] font-mono text-xs"
+                      className="min-w-[4rem] text-xs"
                       inputMode="numeric"
                       value={draft.ivt}
                       onChange={(event) =>
@@ -150,7 +150,7 @@ export function FraudPresets({
                   <TableCell>
                     <Input
                       aria-label={`Block threshold for ${presetName}`}
-                      className="min-w-[4rem] font-mono text-xs"
+                      className="min-w-[4rem] text-xs"
                       inputMode="numeric"
                       value={draft.block}
                       onChange={(event) =>

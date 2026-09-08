@@ -26,7 +26,7 @@ func TestEnrichCampaignListMetricsRowDerived_ratesAndMoney(t *testing.T) {
 
 	require.Equal(t, int64(1_000_000), entry.RevenueMicro)
 	require.Equal(t, int64(600_000), entry.CostMicro)
-	require.Equal(t, int64(100_000), entry.ProfitMicro)
+	require.Equal(t, int64(400_000), entry.ProfitMicro)
 	require.Equal(t, int64(2_000), entry.EpcMicro)
 	require.Equal(t, int64(1_200), entry.CpcMicro)
 	require.Equal(t, int64(12_000), entry.CpaMicro)
@@ -37,7 +37,7 @@ func TestEnrichCampaignListMetricsRowDerived_ratesAndMoney(t *testing.T) {
 	require.InDelta(t, 80.0, entry.ApproveRatePct, 1e-9)
 	require.InDelta(t, 5.0, entry.BlockPct, 1e-9)
 	require.InDelta(t, 2.0, entry.BotPct, 1e-9)
-	require.InDelta(t, 100.0/6.0, entry.RoiPct, 1e-9)
+	require.InDelta(t, 400.0/6.0, entry.RoiPct, 1e-9)
 	require.Equal(t, "0.06", entry.CpmUsd)
 }
 
@@ -60,6 +60,20 @@ func TestEnrichCampaignListMetricsRowDerived_omitsNonComputable_holdout(t *testi
 	require.Zero(t, entry.BotPct)
 	require.Zero(t, entry.RoiPct)
 	require.Empty(t, entry.CpmUsd)
+}
+
+func TestEnrichCampaignListMetricsRowDerived_negativeProfit_holdout(t *testing.T) {
+	entry := CampaignListMetricsRowDTO{
+		AdvertiserSpendMicro: 2_670_000,
+		OperatorMarginMicro:  0,
+		RtbCostMicro:         3_777_930_000,
+	}
+	enrichCampaignListMetricsRowDerived(&entry)
+
+	require.Equal(t, int64(2_670_000), entry.RevenueMicro)
+	require.Equal(t, int64(3_777_930_000), entry.CostMicro)
+	require.Equal(t, int64(-3_775_260_000), entry.ProfitMicro)
+	require.InDelta(t, -99.929, entry.RoiPct, 0.01)
 }
 
 func TestAttachCampaignBudgetUsedPct_clampsAndOmits(t *testing.T) {

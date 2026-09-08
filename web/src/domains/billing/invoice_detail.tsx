@@ -243,10 +243,8 @@ function InvoiceLinesTable({ caption, lines }: { caption: string; lines: Billing
           {lines.map((line, index) => (
             <TableRow key={`${line.ledger_type ?? 'line'}-${index}`}>
               <TableCell>{line.ledger_type ?? ''}</TableCell>
-              <TableCell className="text-right tabular-nums">
-                {displayMicro(line.amount_micro)}
-              </TableCell>
-              <TableCell className="text-right tabular-nums">{line.entry_count ?? ''}</TableCell>
+              <TableCell className="text-right">{displayMicro(line.amount_micro)}</TableCell>
+              <TableCell className="text-right">{line.entry_count ?? ''}</TableCell>
             </TableRow>
           ))}
         </TableBody>
@@ -269,11 +267,9 @@ function LedgerLinesTable({ lines }: { lines: BillingLedgerLine[] }) {
       <TableBody>
         {lines.map((row) => (
           <TableRow key={row.id ?? `${row.created_at}-${row.ledger_type}`}>
-            <TableCell className="tabular-nums">{row.id ?? ''}</TableCell>
+            <TableCell>{row.id ?? ''}</TableCell>
             <TableCell>{row.ledger_type ?? ''}</TableCell>
-            <TableCell className="text-right tabular-nums">
-              {displayMicro(row.amount_micro)}
-            </TableCell>
+            <TableCell className="text-right">{displayMicro(row.amount_micro)}</TableCell>
             <TableCell>{displayTimestamp(row.created_at)}</TableCell>
           </TableRow>
         ))}
@@ -301,7 +297,7 @@ function DeliveriesTable({ items }: { items?: InvoiceDelivery[] }) {
             <TableCell>{row.status}</TableCell>
             <TableCell>{row.provider}</TableCell>
             <TableCell>{row.recipient}</TableCell>
-            <TableCell className="tabular-nums">{row.retry_count}</TableCell>
+            <TableCell>{row.retry_count}</TableCell>
             <TableCell>{displayTimestamp(row.updated_at)}</TableCell>
             <TableCell className="whitespace-nowrap">{row.error_message ?? ''}</TableCell>
           </TableRow>

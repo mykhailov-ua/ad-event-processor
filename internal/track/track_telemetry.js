@@ -3,6 +3,11 @@
   const maxEvents = 64;
   const events = [];
   let armed = false;
+  const navStart = performance.now();
+
+  function monoTs() {
+    return Math.round((performance.now() - navStart) * 1000);
+  }
 
   function push(evt) {
     if (events.length >= maxEvents) {
@@ -11,8 +16,40 @@
     events.push(evt);
   }
 
+  function pushPointer(type, e) {
+    const fx = e.clientX;
+    const fy = e.clientY;
+    push({
+      t: type,
+      ts: monoTs(),
+      x: fx | 0,
+      y: fy | 0,
+      fx: fx,
+      fy: fy,
+      trusted: e.isTrusted ? 1 : 0,
+    });
+  }
+
+  function onPointerDown(e) {
+    pushPointer('pointerdown', e);
+  }
+
+  function onClick(e) {
+    pushPointer('click', e);
+  }
+
   function onMouse(e) {
-    push({ t: 'mousemove', ts: Date.now(), x: e.clientX | 0, y: e.clientY | 0 });
+    const fx = e.clientX;
+    const fy = e.clientY;
+    push({
+      t: 'mousemove',
+      ts: monoTs(),
+      x: fx | 0,
+      y: fy | 0,
+      fx: fx,
+      fy: fy,
+      trusted: e.isTrusted ? 1 : 0,
+    });
   }
 
   function onTouch(e) {
@@ -20,11 +57,51 @@
     if (!touch) {
       return;
     }
-    push({ t: 'touchstart', ts: Date.now(), x: touch.clientX | 0, y: touch.clientY | 0 });
+    const fx = touch.clientX;
+    const fy = touch.clientY;
+    push({
+      t: 'touchstart',
+      ts: monoTs(),
+      x: fx | 0,
+      y: fy | 0,
+      fx: fx,
+      fy: fy,
+      trusted: e.isTrusted ? 1 : 0,
+    });
   }
 
   function onScroll() {
-    push({ t: 'scroll', ts: Date.now(), x: window.scrollX | 0, y: window.scrollY | 0 });
+    const fx = window.scrollX;
+    const fy = window.scrollY;
+    push({
+      t: 'scroll',
+      ts: monoTs(),
+      x: fx | 0,
+      y: fy | 0,
+      fx: fx,
+      fy: fy,
+      trusted: 1,
+    });
+  }
+
+  function onKeydown(e) {
+    push({
+      t: 'keydown',
+      ts: monoTs(),
+      x: 0,
+      y: 0,
+      trusted: e.isTrusted ? 1 : 0,
+    });
+  }
+
+  function onVisibility() {
+    push({
+      t: 'visibilitychange',
+      ts: monoTs(),
+      x: document.visibilityState === 'visible' ? 1 : 0,
+      y: 0,
+      trusted: 1,
+    });
   }
 
   function arm() {
@@ -32,9 +109,13 @@
       return;
     }
     armed = true;
+    window.addEventListener('pointerdown', onPointerDown, { passive: true });
+    window.addEventListener('click', onClick, { passive: true });
     window.addEventListener('mousemove', onMouse, { passive: true });
     window.addEventListener('touchstart', onTouch, { passive: true });
     window.addEventListener('scroll', onScroll, { passive: true });
+    window.addEventListener('keydown', onKeydown, { passive: true });
+    document.addEventListener('visibilitychange', onVisibility, { passive: true });
   }
 
   function snapshot() {

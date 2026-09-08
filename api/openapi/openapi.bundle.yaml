@@ -653,6 +653,8 @@ paths:
         $ref: paths/ops_reports.yaml#/paths/~1api~1v1~1fraud~1overrides
     /api/v1/fraud/presets:
         $ref: paths/ops_reports.yaml#/paths/~1api~1v1~1fraud~1presets
+    /api/v1/fraud/probe-clusters/{cluster_id}:
+        $ref: paths/ops_reports.yaml#/paths/~1api~1v1~1fraud~1probe-clusters~1{cluster_id}
     /api/v1/integration/affiliate-status-presets:
         $ref: paths/integrations.yaml#/paths/~1api~1v1~1integration~1affiliate-status-presets
     /api/v1/integration/schemas:

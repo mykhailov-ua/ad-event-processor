@@ -64,7 +64,7 @@ export function LicenseApplyForm({
         {description ? <p className="text-sm text-muted-foreground">{description}</p> : null}
         <Textarea
           id="license-token"
-          className="min-h-[7.5rem] font-mono text-xs"
+          className="min-h-[7.5rem] text-xs"
           rows={textareaRows}
           value={draftToken}
           onChange={(event) => setDraftToken(event.target.value)}
@@ -104,7 +104,7 @@ function LicenseStatusSummary({ status }: { status: LicenseStatus }) {
       {status.deployment_id ? (
         <div>
           <dt className="text-muted-foreground">Deployment</dt>
-          <dd className="font-mono text-xs">{status.deployment_id}</dd>
+          <dd className="text-xs">{status.deployment_id}</dd>
         </div>
       ) : null}
     </dl>

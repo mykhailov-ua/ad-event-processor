@@ -1,7 +1,8 @@
 import { RefreshCw } from 'lucide-react';
 
 import { Button } from '@/components/ui/button';
-import { displayRelativeTimestamp, displayTimestamp } from '@/lib/display';
+import { useLiveRelativeTimestamp } from '@/hooks/use_live_relative_timestamp';
+import { displayTimestamp } from '@/lib/display';
 import { cn } from '@/lib/utils';
 
 export type ListRefreshBandProps = {
@@ -23,11 +24,8 @@ export function ListRefreshBand({
   onRefresh,
   title,
 }: ListRefreshBandProps) {
-  const updatedLabel = lastUpdatedAt
-    ? displayRelativeTimestamp(lastUpdatedAt)
-    : 'Not loaded yet';
-  const statusText =
-    updatedLabel === 'Not loaded yet' ? updatedLabel : `Updated ${updatedLabel}`;
+  const updatedLabel = useLiveRelativeTimestamp(lastUpdatedAt);
+  const statusText = updatedLabel && lastUpdatedAt ? `Updated ${updatedLabel}` : 'Not loaded yet';
   const busy = loading || disabled;
 
   return (
@@ -56,10 +54,7 @@ export function ListRefreshBand({
           onRefresh();
         }}
       >
-        <RefreshCw
-          aria-hidden
-          className={cn('h-4 w-4 shrink-0', loading && 'animate-spin')}
-        />
+        <RefreshCw aria-hidden className={cn('h-4 w-4 shrink-0', loading && 'animate-spin')} />
       </Button>
     </div>
   );

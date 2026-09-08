@@ -45,7 +45,7 @@ export function parseCampaignListOrder(raw: string | null): SortOrder {
 }
 
 export function parseCampaignListStatus(raw: string | null): CampaignStatusFilter {
-  if (raw === 'ACTIVE' || raw === 'PAUSED' || raw === 'ARCHIVED') {
+  if (raw === 'ACTIVE' || raw === 'PAUSED' || raw === 'ARCHIVED' || raw === 'WARNINGS') {
     return raw;
   }
   return '';

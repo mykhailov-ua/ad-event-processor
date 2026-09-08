@@ -513,6 +513,33 @@ bash scripts/ci/static/click_ingress_hotpath_gate.sh
 bash scripts/test/edge/content_diff_drill.sh --holdout
 ```
 
+### Click filter tier (`light`)
+
+Campaign field `click_filter_tier` or env `CLICK_FILTER_TIER_DEFAULT`. Tier `light` skips unified Lua debit and stream publish; see `traffic.mdc`.
+
+| Check | Command | Tier |
+| :--- | :--- | :--- |
+| In-process p99 < 15 ms | `go test ./internal/ingest/ -run TestClickRedirectGnet_lightTierLatency_holdout -count=1` | unit (no compose) |
+| Microbench | `go test ./internal/ingest/ -run='^$' -bench=BenchmarkClickRedirectGnet_lightTier -benchmem -count=1` | unit |
+| Live wrk p99 | `TRACK_URL=http://127.0.0.1:8181 CAMPAIGN_ID=<uuid> bash scripts/test/load/click_tier_light_drill.sh` | load (compose up) |
+
+SLA reference: `light` tier tracker p95 < 25 ms at 10k RPS control cohort (`ARBITRAGE_CLOSURE_BACKLOG.md` P2-FAST-CLICK-TIER).
+
+```bash
+bash scripts/test/load/click_tier_light_drill.sh
+```
+
+Control cohort (`full` tier, `core.mdc` p95 < 50 ms at reference RPS):
+
+```bash
+bash scripts/test/load/click_ingress_latency_drill.sh
+# live tier (auto-probes :8181/:8182 when stack is up):
+# eval "$(go run ./cmd/admin db seed-uuids-shell --count 1)" && bash scripts/test/load/click_ingress_latency_drill.sh
+# artifact: var/load-test/click-ingress-latency/holdout_summary.txt or live_wrk_summary.txt
+```
+
+TDS waiver when live `full` tier wrk is unavailable: set campaign `click_filter_tier=light` (or env `CLICK_FILTER_TIER_DEFAULT=light`) and use `click_tier_light_drill.sh` for p99 < 15 ms proof.
+
 ### Do not
 
 - Raise `WORKER_POOL_QUEUE_DEPTH` or set `STREAM_PRODUCER_ADMISSION_PCT=0` to "fix" overload (disables `TryReserve`).
@@ -674,6 +701,8 @@ Or use `edge.Record` with `TCPOptTrace` from a small Go snippet / integration te
 **Safe-page runtime deep probes:** Opt-in via lander meta `aed-runtime-probes=1`. Shader timing, IEEE754 float-noise hash, and `navigator` getter timing are evaluated only on `POST /track/verify` (not `/track`). Disclose collection in operator privacy copy for EU SKUs.
 
 **C WASM attest module (minimal bundle):** Shared `wasm/attest/*.c` builds to `var/wasm/attest.wasm` (~2.1 KiB). Server sandbox: `pkg/wasmattest` (wazero, zero imports). Client loader: `GET /static/wasm-attest-loader.js`. Build: `bash scripts/build/wasm_attest.sh` (or `WASM_ATTEST_FETCH_WASI_SDK=1` on first run). Gate: `bash scripts/ci/static/wasm_attest_gate.sh`. Not wired to `/track` hot path; integrate behind `attestation_mode=strict` in a follow-up.
+
+**Per-install static polymorph (optional):** After appliance install, run `bash scripts/install/polymorph_static.sh` to emit unique `attest.wasm` and `track_pixel.js` hashes per seed under `${INSTALL_ROOT}/var/static-polymorph/` (manifest `polymorph-manifest.json`). Tracker reads overrides from `TRACKER_STATIC_POLYMORPH_DIR` when set; default is `${INSTALL_ROOT}/var/static-polymorph`. Dev/CI embed path unchanged when polymorph dir is absent. Gate: `bash scripts/ci/static/wasm_polymorph_gate.sh`.
 
 ---
 

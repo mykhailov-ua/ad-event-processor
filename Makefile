@@ -288,7 +288,7 @@ deploy-appliance-check:
 	bash scripts/ops/deploy_appliance.sh --check
 
 deploy-appliance-fast:
-	SKIP_BUILD=1 SKIP_SEED=1 bash scripts/ops/deploy_appliance.sh
+	SKIP_BUILD=1 SKIP_SEED=1 SKIP_PG_MIGRATE=1 bash scripts/ops/deploy_appliance.sh
 
 proto:
 	bash scripts/ci/gen.sh --proto

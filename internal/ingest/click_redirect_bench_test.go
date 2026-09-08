@@ -15,13 +15,21 @@ var (
 )
 
 func benchClickHandler(b *testing.B) (*AdsPacketHandler, []byte) {
+	return benchClickHandlerTier(b, "")
+}
+
+func benchClickHandlerTier(b *testing.B, tier string) (*AdsPacketHandler, []byte) {
 	WithStaticCampaign(func(campPtr **domain.Campaign) {
-		*campPtr = &domain.Campaign{
+		camp := &domain.Campaign{
 			ID:         benchClickCampaignID,
 			CustomerID: uuid.Nil,
 			BrandID:    &benchClickBrandID,
 			Location:   (*campPtr).Location,
 		}
+		if tier != "" {
+			camp.ClickFilterTier = tier
+		}
+		*campPtr = camp
 	})
 	cachedMockCamp.Store(nil)
 
@@ -81,6 +89,23 @@ func BenchmarkBuildRedirectLocation(b *testing.B) {
 
 func BenchmarkClickRedirectGnet_E2E(b *testing.B) {
 	h, inbound := benchClickHandler(b)
+	_, req, err := parseHTTP1(inbound, 1<<20, nil)
+	if err != nil {
+		b.Fatal(err)
+	}
+	conn := NewGnetBenchConn(inbound)
+	h.React(&req, conn)
+	b.ReportAllocs()
+	b.SetBytes(int64(len(inbound)))
+	for b.Loop() {
+		conn.ClearWritten()
+		conn.ClearResponses()
+		h.React(&req, conn)
+	}
+}
+
+func BenchmarkClickRedirectGnet_lightTier(b *testing.B) {
+	h, inbound := benchClickHandlerTier(b, "light")
 	_, req, err := parseHTTP1(inbound, 1<<20, nil)
 	if err != nil {
 		b.Fatal(err)

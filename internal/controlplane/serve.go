@@ -358,7 +358,7 @@ func ServeWithOptions(ctx context.Context, cfg *config.Config, opts ServeOptions
 	}
 
 	authHandler.RegisterRoutes(mux)
-	controlHandler.RegisterRoutes(mux)
+	controlHandler.RegisterRoutes(mux) //nolint:contextcheck // mux registration is process-lifetime, not request-scoped
 
 	validateMW, err := wireOpenAPIRequestValidation(ctx, cfg)
 	if err != nil {

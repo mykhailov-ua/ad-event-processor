@@ -93,7 +93,9 @@ export function CampaignOpsPanel({ workspace }: CampaignOpsPanelProps) {
             </Button>
           ) : null}
           {syncPresetMessage ? (
-            <p className="text-sm text-muted-foreground" role="status">{syncPresetMessage}</p>
+            <p className="text-sm text-muted-foreground" role="status">
+              {syncPresetMessage}
+            </p>
           ) : null}
         </FilterPanel>
       ) : null}
@@ -104,19 +106,19 @@ export function CampaignOpsPanel({ workspace }: CampaignOpsPanelProps) {
           <div className="grid grid-cols-2 gap-2 sm:grid-cols-4">
             <div>
               <span className="text-muted-foreground">Current spend</span>
-              <p className="tabular-nums">{stats.current_spend ?? ''}</p>
+              <p>{stats.current_spend ?? ''}</p>
             </div>
             <div>
               <span className="text-muted-foreground">Clicks</span>
-              <p className="tabular-nums">{stats.metrics?.clicks ?? 0}</p>
+              <p>{stats.metrics?.clicks ?? 0}</p>
             </div>
             <div>
               <span className="text-muted-foreground">Conversions</span>
-              <p className="tabular-nums">{stats.metrics?.conversions ?? 0}</p>
+              <p>{stats.metrics?.conversions ?? 0}</p>
             </div>
             <div>
               <span className="text-muted-foreground">Impressions</span>
-              <p className="tabular-nums">{stats.metrics?.impressions ?? 0}</p>
+              <p>{stats.metrics?.impressions ?? 0}</p>
             </div>
           </div>
         </FilterPanel>
@@ -151,7 +153,7 @@ export function CampaignOpsPanel({ workspace }: CampaignOpsPanelProps) {
               <TableRow key={`${row.click_id ?? 'event'}-${index}`}>
                 <TableCell>{displayTimestamp(row.created_at)}</TableCell>
                 <TableCell>{row.event_type ?? ''}</TableCell>
-                <TableCell className="font-mono text-xs">{row.click_id ?? ''}</TableCell>
+                <TableCell className="text-xs">{row.click_id ?? ''}</TableCell>
               </TableRow>
             ))}
           </TableBody>
@@ -242,7 +244,7 @@ export function CampaignOpsPanel({ workspace }: CampaignOpsPanelProps) {
           <TableBody>
             {suggestions.map((row) => (
               <TableRow key={row.placement_id}>
-                <TableCell className="font-mono text-xs">{row.placement_id}</TableCell>
+                <TableCell className="text-xs">{row.placement_id}</TableCell>
                 <TableCell>{row.ivt_rate_label ?? row.ivt_rate ?? ''}</TableCell>
                 <TableCell>{row.reason_label ?? row.suggested_action ?? ''}</TableCell>
                 <TableCell>

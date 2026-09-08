@@ -32,7 +32,7 @@ export const adminKit = {
   tableHeader: 'text-[11px] font-semibold uppercase leading-[14px] text-muted-foreground',
   tableRowHeight: 'h-[34px]',
   /** Error surfaces: flat alpha tint; no backdrop-filter (avoids scroll jank). */
-  errorSurface: 'ui-message-surface ui-message-surface--error',
+  errorSurface: 'ui-message-surface ui-message-surface-error',
   toastSurface:
     'border-border/60 bg-card/90 text-card-foreground shadow-md shadow-black/10 backdrop-blur-none',
 } as const;
@@ -62,9 +62,9 @@ export const adminStatusBadgeBase =
 export type AdminAlertTone = 'success' | 'error' | 'warning';
 
 export const adminAlertClass: Record<AdminAlertTone, string> = {
-  success: 'ui-message-surface--success',
-  error: 'ui-message-surface--error',
-  warning: 'ui-message-surface--warning',
+  success: 'ui-message-surface-success',
+  error: 'ui-message-surface-error',
+  warning: 'ui-message-surface-warning',
 };
 
 export function campaignStatusToAdminTone(

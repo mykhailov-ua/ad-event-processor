@@ -112,9 +112,7 @@ export function OpsRecon({
         >
           {(items ?? []).map((row) => (
             <OpsTableRow key={`${row.service ?? 'svc'}-${row.id ?? row.created_at}`}>
-              <OpsTableCell className="font-mono text-xs text-muted-foreground">
-                {row.id ?? ''}
-              </OpsTableCell>
+              <OpsTableCell className="text-xs text-muted-foreground">{row.id ?? ''}</OpsTableCell>
               <OpsTableCell>{row.service ?? ''}</OpsTableCell>
               <OpsTableCell>{row.status ?? ''}</OpsTableCell>
               <OpsTableCell>{displayTimestamp(row.period_start)}</OpsTableCell>

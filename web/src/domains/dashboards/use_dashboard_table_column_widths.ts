@@ -1,5 +1,5 @@
 // L3 dashboard table widths: localStorage overrides per scope; name column uses probe width from row labels.
-import { useCallback, useDeferredValue, useMemo, useState } from 'react';
+import { useCallback, useMemo, useState } from 'react';
 
 import type { DashboardBreakdownTable } from '@/domains/dashboards/buyer_dashboard_types';
 import type { DashboardBreakdownColumnId } from '@/domains/dashboards/dashboard_preferences';
@@ -26,39 +26,31 @@ export function useDashboardBreakdownColumnWidths(
   nameLabels: readonly string[],
   widthProbeTable?: DashboardBreakdownTable
 ) {
-  const deferredColumns = useDeferredValue(columns);
-  const deferredNameLabels = useDeferredValue(nameLabels);
-  const deferredProbeRows = useDeferredValue(widthProbeTable?.rows ?? []);
-  const deferredProbeTotals = useDeferredValue(widthProbeTable?.totals);
   const [widthOverrides, setWidthOverrides] = useState(() => loadDashboardTableColumnWidths(scope));
 
   const nameProbeWidthPx = useMemo(
-    () =>
-      probeDashboardNameColumnWidthPx(
-        deferredNameLabels,
-        DASHBOARD_BREAKDOWN_COLUMN_WIDTH_PX.name
-      ),
-    [deferredNameLabels]
+    () => probeDashboardNameColumnWidthPx(nameLabels, DASHBOARD_BREAKDOWN_COLUMN_WIDTH_PX.name),
+    [nameLabels]
   );
 
   const dataProbeWidths = useMemo(() => {
     const widths = {} as Partial<Record<DashboardBreakdownColumnId, number>>;
-    for (const columnId of deferredColumns) {
+    for (const columnId of columns) {
       if (columnId === 'name') {
         continue;
       }
       widths[columnId] = probeDashboardBreakdownDataColumnWidthPx(
         columnId,
-        deferredProbeRows,
-        deferredProbeTotals
+        widthProbeTable?.rows ?? [],
+        widthProbeTable?.totals
       );
     }
     return widths;
-  }, [deferredColumns, deferredProbeRows, deferredProbeTotals]);
+  }, [columns, widthProbeTable?.rows, widthProbeTable?.totals]);
 
   const columnWidths = useMemo((): Record<DashboardBreakdownColumnId, number> => {
     const widths = {} as Record<DashboardBreakdownColumnId, number>;
-    for (const columnId of deferredColumns) {
+    for (const columnId of columns) {
       widths[columnId] = resolveDashboardBreakdownColumnWidthPx(
         columnId,
         widthOverrides as Partial<Record<DashboardBreakdownColumnId, number>>,
@@ -67,7 +59,7 @@ export function useDashboardBreakdownColumnWidths(
       );
     }
     return widths;
-  }, [dataProbeWidths, deferredColumns, nameProbeWidthPx, widthOverrides]);
+  }, [columns, dataProbeWidths, nameProbeWidthPx, widthOverrides]);
 
   const handleColumnWidthCommit = useCallback(
     (columnId: DashboardBreakdownColumnId, widthPx: number) => {
@@ -84,20 +76,19 @@ export function useDashboardBreakdownColumnWidths(
 export function useDashboardRecentClickColumnWidths(
   columns: readonly DashboardRecentClickColumnId[]
 ) {
-  const deferredColumns = useDeferredValue(columns);
   const scope: DashboardTableWidthScope = 'recent_clicks';
   const [widthOverrides, setWidthOverrides] = useState(() => loadDashboardTableColumnWidths(scope));
 
   const columnWidths = useMemo((): Record<DashboardRecentClickColumnId, number> => {
     const widths = {} as Record<DashboardRecentClickColumnId, number>;
-    for (const columnId of deferredColumns) {
+    for (const columnId of columns) {
       widths[columnId] = resolveDashboardRecentClickColumnWidthPx(
         columnId,
         widthOverrides as Partial<Record<DashboardRecentClickColumnId, number>>
       );
     }
     return widths;
-  }, [deferredColumns, widthOverrides]);
+  }, [columns, widthOverrides]);
 
   const handleColumnWidthCommit = useCallback(
     (columnId: DashboardRecentClickColumnId, widthPx: number) => {
@@ -105,7 +96,7 @@ export function useDashboardRecentClickColumnWidths(
       const nextOverrides = saveDashboardTableColumnWidth(scope, columnId, nextWidth);
       setWidthOverrides(nextOverrides);
     },
-    []
+    [scope]
   );
 
   return { columnWidths, handleColumnWidthCommit };

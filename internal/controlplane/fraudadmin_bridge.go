@@ -52,6 +52,8 @@ var (
 	_ fraudadmin.MLShadowDeltaSnapshotHost = (*Service)(nil)
 	_ fraudadmin.MLSyncHost                = (*Service)(nil)
 	_ fraudadmin.ModeratorCorpusHost       = (*Service)(nil)
+	_ fraudadmin.ProbeClusterHost          = (*Service)(nil)
+	_ fraudadmin.CrowdWaveHost             = (*Service)(nil)
 )
 
 func (s *Service) LabelsPool() *pgxpool.Pool                      { return s.GetPool() }
@@ -85,6 +87,7 @@ func (s *Service) ConfigMLBoostLastRefreshedAt(ctx context.Context, campaignID u
 	}
 	return time.Time{}, false
 }
+
 func (s *Service) FraudExplainLiveScoreEnabled() bool {
 	return s != nil && s.cfg != nil && s.cfg.FraudScoring.ExplainLiveScore
 }

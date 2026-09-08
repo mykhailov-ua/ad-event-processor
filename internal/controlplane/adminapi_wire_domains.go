@@ -338,6 +338,9 @@ func (h *Handler) wireAdminDomainRoutes(reg *RouteRegistry, e adminWireEnv) {
 		LicenseFeatureAllowed:      licenseFeatureAllowed,
 		ReportJobs:                 reportJobs,
 		WriteServiceError:          writeErr,
+		TrackerPublicBaseURL:       func() string { return svc.TrackerPublicBaseURL() },
+		LanderPublicBaseURL:        func() string { return svc.landerPublicBase(context.Background()) },
+		ResolveTrackingDomain:      func(ctx context.Context) string { return svc.TrackingDomain(ctx, "") },
 	}
 	reg.FraudHTTP = &fraudadmin.HTTPHandlers{
 		Labels:                  fraudadmin.LabelsAPI{Host: svc},
@@ -346,6 +349,8 @@ func (h *Handler) wireAdminDomainRoutes(reg *RouteRegistry, e adminWireEnv) {
 		Overrides:               fraudadmin.OverridesAPI{Host: svc, MapErr: mapFraudadminErr},
 		Presets:                 fraudPresets,
 		ModeratorCorpus:         fraudadmin.ModeratorCorpusAPI{Host: svc, MapErr: mapFraudadminErr},
+		ProbeClusters:           svc.ProbeClusterService(),
+		CrowdWaves:              svc.CrowdWaveService(),
 		ApplyRateLimit:          limit,
 		AllowFraudDecision:      h.allowFraudDecision,
 		RequirePermission:       perm,
@@ -388,7 +393,7 @@ func (h *Handler) wireAdminDomainRoutes(reg *RouteRegistry, e adminWireEnv) {
 				return portfolioFreshness(time.Now().UTC(), true, lag)
 			}
 			return reports.DataFreshnessDTO{Consistency: "eventual"}
-		})
+		}, h.authMiddleware)
 		sh.ApplyRateLimit = limit
 		sh.RequireAuth = h.adminRequireAuth()
 		return sh

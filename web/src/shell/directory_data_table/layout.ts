@@ -89,6 +89,83 @@ export function proportionalDirectoryColumnWidths<T extends string>(
   return stretched;
 }
 
+/** Distribute pixel remainder so column sum equals targetWidthPx when stretching to fill. */
+export function normalizeDirectoryColumnWidths<T extends string>(
+  columns: readonly T[],
+  widths: Readonly<Record<T, number>>,
+  targetWidthPx: number
+): Record<T, number> {
+  const normalized = { ...widths } as Record<T, number>;
+  if (targetWidthPx <= 0 || columns.length === 0) {
+    return normalized;
+  }
+
+  let remaining = targetWidthPx - directoryTableWidthPx(columns, normalized);
+  if (remaining === 0) {
+    return normalized;
+  }
+
+  let guard = 0;
+  let index = columns.length - 1;
+  while (remaining !== 0 && guard < columns.length * 4096) {
+    const columnId = columns[index % columns.length];
+    if (remaining > 0) {
+      normalized[columnId] += 1;
+      remaining -= 1;
+    } else if (normalized[columnId] > 1) {
+      normalized[columnId] -= 1;
+      remaining += 1;
+    }
+    index += 1;
+    guard += 1;
+  }
+
+  return normalized;
+}
+
+export function directoryTableStretchColumnId<T extends string>(
+  columns: readonly T[]
+): T | undefined {
+  return columns.length > 0 ? columns[columns.length - 1] : undefined;
+}
+
+/** True when base column mins exceed the visible host width (horizontal scroll). */
+export function directoryTableNeedsHorizontalScroll<T extends string>(
+  columns: readonly T[],
+  baseWidths: Readonly<Record<T, number>>,
+  containerWidthPx: number
+): boolean {
+  if (containerWidthPx <= 0) {
+    return false;
+  }
+  return directoryTableWidthPx(columns, baseWidths) >= containerWidthPx;
+}
+
+export function resolveDirectoryDataTableLayoutWidths<T extends string>(
+  columns: readonly T[],
+  baseWidths: Readonly<Record<T, number>>,
+  containerWidthPx: number,
+  maxWidths: Partial<Record<T, number>> = {}
+): { layoutWidths: Record<T, number>; fillContainer: boolean } {
+  const baseTotal = directoryTableWidthPx(columns, baseWidths);
+  if (containerWidthPx <= 0 || baseTotal <= 0) {
+    return { layoutWidths: { ...baseWidths }, fillContainer: false };
+  }
+
+  if (baseTotal >= containerWidthPx) {
+    return { layoutWidths: { ...baseWidths }, fillContainer: false };
+  }
+
+  const stretched = proportionalDirectoryColumnWidths(
+    columns,
+    baseWidths,
+    containerWidthPx,
+    maxWidths
+  );
+  const layoutWidths = normalizeDirectoryColumnWidths(columns, stretched, containerWidthPx);
+  return { layoutWidths, fillContainer: true };
+}
+
 export function resolveDashboardBreakdownLayoutMaxWidths(
   containerWidthPx: number
 ): Partial<Record<string, number>> {

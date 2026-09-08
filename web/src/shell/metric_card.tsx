@@ -41,7 +41,7 @@ export function MetricCard({ label, value, deltaPct, accent, className }: Metric
         {showDelta ? (
           <span
             className={cn(
-              'inline-flex items-center gap-0.5 font-numeric text-[11px]',
+              'inline-flex items-center gap-0.5  text-[11px]',
               positive ? adminMetricDeltaPositiveClass : adminMetricDeltaNegativeClass
             )}
           >
@@ -57,7 +57,7 @@ export function MetricCard({ label, value, deltaPct, accent, className }: Metric
       </div>
       <p
         className={cn(
-          'm-0 font-numeric text-2xl leading-none',
+          'm-0  text-2xl leading-none',
           accent ? adminKpiAccentValueClass[accent] : 'text-foreground'
         )}
       >

@@ -38,6 +38,13 @@ func campaignListSortDesc(order string) pgtype.Bool {
 	return pgtype.Bool{Bool: strings.EqualFold(strings.TrimSpace(order), "desc"), Valid: true}
 }
 
+func campaignListWarningsOnlyParam(filter ListCampaignsFilter) pgtype.Bool {
+	if !filter.WarningsOnly {
+		return pgtype.Bool{}
+	}
+	return pgtype.Bool{Bool: true, Valid: true}
+}
+
 func CampaignCountParamsFromFilter(filter ListCampaignsFilter) db.CountCampaignsParams {
 	var customerID pgtype.UUID
 	if filter.CustomerID != uuid.Nil {
@@ -54,6 +61,7 @@ func CampaignCountParamsFromFilter(filter ListCampaignsFilter) db.CountCampaigns
 	return db.CountCampaignsParams{
 		CustomerID:     customerID,
 		Status:         status,
+		WarningsOnly:   campaignListWarningsOnlyParam(filter),
 		OwnerUserID:    filter.OwnerUserID,
 		TargetCountry:  targetCountry,
 		BudgetMinMicro: filter.BudgetMinMicro,
@@ -99,6 +107,7 @@ func CampaignListKeysParamsFromFilter(filter ListCampaignsFilter) db.ListCampaig
 	return db.ListCampaignListKeysForFilterParams{
 		CustomerID:     customerID,
 		Status:         status,
+		WarningsOnly:   campaignListWarningsOnlyParam(filter),
 		OwnerUserID:    filter.OwnerUserID,
 		TargetCountry:  targetCountry,
 		BudgetMinMicro: filter.BudgetMinMicro,
@@ -124,6 +133,7 @@ func CampaignCountFlowsParamsFromFilter(filter ListCampaignsFilter) db.CountCamp
 	return db.CountCampaignFlowsForFilterParams{
 		CustomerID:     customerID,
 		Status:         status,
+		WarningsOnly:   campaignListWarningsOnlyParam(filter),
 		OwnerUserID:    filter.OwnerUserID,
 		TargetCountry:  targetCountry,
 		BudgetMinMicro: filter.BudgetMinMicro,
@@ -157,6 +167,7 @@ func CampaignListParamsFromFilter(filter ListCampaignsFilter) db.ListCampaignsPa
 		Offset:         filter.Offset,
 		CustomerID:     customerID,
 		Status:         status,
+		WarningsOnly:   campaignListWarningsOnlyParam(filter),
 		OwnerUserID:    filter.OwnerUserID,
 		TargetCountry:  targetCountry,
 		BudgetMinMicro: filter.BudgetMinMicro,
@@ -168,6 +179,26 @@ func CampaignListParamsFromFilter(filter ListCampaignsFilter) db.ListCampaignsPa
 	}
 }
 
+func CampaignCountWarningsParamsFromFilter(filter ListCampaignsFilter) db.CountCampaignWarningsParams {
+	var customerID pgtype.UUID
+	if filter.CustomerID != uuid.Nil {
+		customerID = domain.ToUUID(filter.CustomerID)
+	}
+	var targetCountry pgtype.Text
+	if filter.TargetCountry != "" {
+		targetCountry = pgtype.Text{String: filter.TargetCountry, Valid: true}
+	}
+	return db.CountCampaignWarningsParams{
+		CustomerID:     customerID,
+		OwnerUserID:    filter.OwnerUserID,
+		TargetCountry:  targetCountry,
+		BudgetMinMicro: filter.BudgetMinMicro,
+		BudgetMaxMicro: filter.BudgetMaxMicro,
+		SearchQuery:    optionalCampaignSearchText(filter.SearchQuery),
+		PacingMode:     optionalCampaignPacingMode(filter.PacingMode),
+	}
+}
+
 func CampaignListSortedByStatsParamsFromFilter(filter ListCampaignsFilter) db.ListCampaignsSortedByStatsParams {
 	customerID, status, targetCountry := campaignListBaseParams(filter)
 	return db.ListCampaignsSortedByStatsParams{
@@ -175,6 +206,7 @@ func CampaignListSortedByStatsParamsFromFilter(filter ListCampaignsFilter) db.Li
 		Offset:         filter.Offset,
 		CustomerID:     customerID,
 		Status:         status,
+		WarningsOnly:   campaignListWarningsOnlyParam(filter),
 		OwnerUserID:    filter.OwnerUserID,
 		TargetCountry:  targetCountry,
 		BudgetMinMicro: filter.BudgetMinMicro,

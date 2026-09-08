@@ -44,8 +44,11 @@ export function PermissionGate({
 
 export function RoutePermissionGuard({ children }: { children: ReactNode }) {
   const { pathname } = useLocation();
-  const { user } = useSession();
+  const { user, loading } = useSession();
   const rule = resolveRoutePermission(pathname);
+  if (loading && rule) {
+    return null;
+  }
   const allowed = sessionHasRoutePermission(user?.permissions, rule);
   if (!allowed) {
     return <ForbiddenPanel />;

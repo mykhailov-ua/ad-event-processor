@@ -63,33 +63,33 @@ export function CampaignForecastPanel({
             onDraftCustomerIdChange={onDraftCustomerIdChange}
           />
           <FilterPanel className="w-full max-w-xl gap-4">
-        <div className="grid gap-2">
-          <Label htmlFor="forecast-budget-micro">Budget limit (micro)</Label>
-          <Input
-            id="forecast-budget-micro"
-            value={draftBudgetLimitMicro}
-            onChange={(event) => onDraftBudgetLimitMicroChange(event.target.value)}
-          />
-        </div>
-        <div className="grid gap-2">
-          <Label htmlFor="forecast-start-at">Start (ISO 8601)</Label>
-          <Input
-            id="forecast-start-at"
-            value={draftStartAt}
-            onChange={(event) => onDraftStartAtChange(event.target.value)}
-          />
-        </div>
-        <div className="grid gap-2">
-          <Label htmlFor="forecast-end-at">End (ISO 8601)</Label>
-          <Input
-            id="forecast-end-at"
-            value={draftEndAt}
-            onChange={(event) => onDraftEndAtChange(event.target.value)}
-          />
-        </div>
-        <Button disabled={fetching || !canRun} onClick={onRunForecast} type="button">
-          Run forecast
-        </Button>
+            <div className="grid gap-2">
+              <Label htmlFor="forecast-budget-micro">Budget limit (micro)</Label>
+              <Input
+                id="forecast-budget-micro"
+                value={draftBudgetLimitMicro}
+                onChange={(event) => onDraftBudgetLimitMicroChange(event.target.value)}
+              />
+            </div>
+            <div className="grid gap-2">
+              <Label htmlFor="forecast-start-at">Start (ISO 8601)</Label>
+              <Input
+                id="forecast-start-at"
+                value={draftStartAt}
+                onChange={(event) => onDraftStartAtChange(event.target.value)}
+              />
+            </div>
+            <div className="grid gap-2">
+              <Label htmlFor="forecast-end-at">End (ISO 8601)</Label>
+              <Input
+                id="forecast-end-at"
+                value={draftEndAt}
+                onChange={(event) => onDraftEndAtChange(event.target.value)}
+              />
+            </div>
+            <Button disabled={fetching || !canRun} onClick={onRunForecast} type="button">
+              Run forecast
+            </Button>
           </FilterPanel>
         </div>
       }

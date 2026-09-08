@@ -107,8 +107,8 @@ export const JsonPayloadView = memo(function JsonPayloadView({
                 className={cn(
                   'text-sm',
                   (typeof value === 'object' && value != null) || key.includes('template')
-                    ? 'break-all font-mono text-xs'
-                    : 'tabular-nums'
+                    ? 'break-all  text-xs'
+                    : ''
                 )}
               >
                 {formatMapCell(value)}

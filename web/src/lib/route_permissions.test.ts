@@ -23,6 +23,11 @@ test('sessionHasRoutePermission denies media buyer on ops routes', () => {
   assert.equal(sessionHasRoutePermission(['campaigns:read', 'customers:read'], rule), false);
 });
 
+test('sessionHasRoutePermission denies guarded routes while permissions are undefined', () => {
+  const rule = resolveRoutePermission('/ops');
+  assert.equal(sessionHasRoutePermission(undefined, rule), false);
+});
+
 test('sessionHasRoutePermission allows operator on ops routes', () => {
   const rule = resolveRoutePermission('/ops');
   assert.equal(sessionHasRoutePermission(['shards:read'], rule), true);

@@ -17,7 +17,11 @@ func ConversionMappingsFromStatusSchema(s *integrationschema.StatusMappingSchema
 		return nil, fmt.Errorf("status_map is required")
 	}
 	out := make([]ConversionMappingDTO, 0, len(s.StatusMap))
-	for inbound, goal := range s.StatusMap {
+	for inbound := range s.StatusMap {
+		goal, ok := integrationschema.MapAffiliateStatus(s, inbound)
+		if !ok {
+			continue
+		}
 		out = append(out, ConversionMappingDTO{
 			InboundStatus: inbound,
 			GoalName:      goal,

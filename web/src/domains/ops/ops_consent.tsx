@@ -146,7 +146,9 @@ export function OpsConsent({
       ) : (
         <p className="text-muted-foreground">No consent proof payload returned.</p>
       )}
-      {listRevalidating ? <p className="text-sm text-muted-foreground">Refreshing proofs...</p> : null}
+      {listRevalidating ? (
+        <p className="text-sm text-muted-foreground">Refreshing proofs...</p>
+      ) : null}
       {error && hasSnapshot ? opsPanelError(error, 'Refresh failed') : null}
     </OpsPageShell>
   );

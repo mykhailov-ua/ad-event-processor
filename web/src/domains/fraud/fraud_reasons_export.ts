@@ -157,8 +157,7 @@ export function exportFraudReasonRowsCsv(
   }
   const columns = exportColumnsForReportKey(reportKey);
   const csv = buildFraudReasonsExportCsv(columns, rows);
-  const filename = reportKey === 'wire-signal-breakdown'
-    ? 'wire-fraud-signals.csv'
-    : 'fraud-reasons.csv';
+  const filename =
+    reportKey === 'wire-signal-breakdown' ? 'wire-fraud-signals.csv' : 'fraud-reasons.csv';
   downloadBlob(new Blob([csv], { type: 'text/csv;charset=utf-8' }), filename);
 }

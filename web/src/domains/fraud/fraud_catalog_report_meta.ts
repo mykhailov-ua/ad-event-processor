@@ -1,12 +1,6 @@
 import type { FraudCatalogReportKey } from '@/domains/fraud/fraud_catalog_report_types';
 
-export type FraudCatalogColumnKind =
-  | 'text'
-  | 'mono'
-  | 'count'
-  | 'ratio'
-  | 'percent'
-  | 'badge';
+export type FraudCatalogColumnKind = 'text' | 'mono' | 'count' | 'ratio' | 'percent' | 'badge';
 
 export type FraudCatalogColumnDef = {
   id: string;
@@ -41,7 +35,13 @@ const SILENT_REJECT_FUNNEL_META: FraudCatalogReportMeta = {
   columns: [
     { id: 'campaign', label: 'Campaign', field: 'campaign_id', kind: 'mono' },
     { id: 'placement', label: 'Placement', field: 'placement_id', kind: 'mono' },
-    { id: 'billable', label: 'Billable', field: 'billable_impressions', kind: 'count', align: 'right' },
+    {
+      id: 'billable',
+      label: 'Billable',
+      field: 'billable_impressions',
+      kind: 'count',
+      align: 'right',
+    },
     {
       id: 'silent',
       label: 'Non-blocking',
@@ -77,7 +77,13 @@ const SIGNAL_EFFECTIVENESS_META: FraudCatalogReportMeta = {
   showSliceFilter: false,
   columns: [
     { id: 'signal', label: 'Signal', field: 'signal_code', kind: 'mono' },
-    { id: 'category', label: 'Category', field: 'fraud_category_label', kind: 'text', displayField: 'fraud_category' },
+    {
+      id: 'category',
+      label: 'Category',
+      field: 'fraud_category_label',
+      kind: 'text',
+      displayField: 'fraud_category',
+    },
     { id: 'volume', label: 'Events', field: 'event_volume', kind: 'count', align: 'right' },
     {
       id: 'block',
@@ -110,7 +116,13 @@ const CUSTOMER_FRAUD_BY_DIMENSION_META: FraudCatalogReportMeta = {
   columns: [
     { id: 'dimension', label: 'Dimension', field: 'dimension_value', kind: 'text' },
     { id: 'campaign', label: 'Campaign', field: 'campaign_id', kind: 'mono' },
-    { id: 'impressions', label: 'Impressions', field: 'impressions', kind: 'count', align: 'right' },
+    {
+      id: 'impressions',
+      label: 'Impressions',
+      field: 'impressions',
+      kind: 'count',
+      align: 'right',
+    },
     { id: 'clicks', label: 'Clicks', field: 'clicks', kind: 'count', align: 'right' },
     { id: 'ivt', label: 'IVT events', field: 'ivt_events', kind: 'count', align: 'right' },
     { id: 'blocked', label: 'Blocked', field: 'blocked_events', kind: 'count', align: 'right' },
@@ -146,7 +158,13 @@ const IVT_BY_SOURCE_META: FraudCatalogReportMeta = {
     { id: 'sub1', label: 'Sub1', field: 'sub1', kind: 'text' },
     { id: 'sub2', label: 'Sub2', field: 'sub2', kind: 'text' },
     { id: 'country', label: 'Country', field: 'country', kind: 'text' },
-    { id: 'impressions', label: 'Impressions', field: 'impressions', kind: 'count', align: 'right' },
+    {
+      id: 'impressions',
+      label: 'Impressions',
+      field: 'impressions',
+      kind: 'count',
+      align: 'right',
+    },
     { id: 'clicks', label: 'Clicks', field: 'clicks', kind: 'count', align: 'right' },
     { id: 'ivt', label: 'IVT events', field: 'ivt_events', kind: 'count', align: 'right' },
     { id: 'ivt_rate', label: 'IVT rate', field: 'ivt_rate', kind: 'ratio', align: 'right' },
@@ -163,7 +181,13 @@ const LAYER_DESYNC_SUMMARY_META: FraudCatalogReportMeta = {
   showSliceFilter: false,
   columns: [
     { id: 'campaign', label: 'Campaign', field: 'campaign_id', kind: 'mono' },
-    { id: 'desync', label: 'Desync layers', field: 'layer_desync_count', kind: 'count', align: 'right' },
+    {
+      id: 'desync',
+      label: 'Desync layers',
+      field: 'layer_desync_count',
+      kind: 'count',
+      align: 'right',
+    },
     { id: 'events', label: 'Events', field: 'event_count', kind: 'count', align: 'right' },
     {
       id: 'silent',

@@ -8,8 +8,6 @@ const config: Config = {
     extend: {
       fontFamily: {
         sans: ['"Inter Variable"', '"Inter"', 'sans-serif'],
-        mono: ['"IBM Plex Mono"', 'ui-monospace', 'monospace'],
-        numeric: ['"JetBrains Mono"', 'ui-monospace', 'monospace'],
       },
       colors: {
         border: 'hsl(var(--border))',

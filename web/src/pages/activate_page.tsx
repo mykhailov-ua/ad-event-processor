@@ -71,7 +71,7 @@ export function ActivatePage() {
               <Label htmlFor="activate-license">License key</Label>
               <Textarea
                 id="activate-license"
-                className="font-mono text-xs"
+                className="text-xs"
                 placeholder="Paste JWT from vendor email"
                 required
                 value={licenseToken}

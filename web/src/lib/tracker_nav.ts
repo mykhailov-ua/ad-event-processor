@@ -133,9 +133,7 @@ const EXTRA_TRACKER_NAV: NavItem[] = [
   { path: '/domains', label: 'Domains', permission: 'campaigns:read' },
 ];
 
-function buildTrackerNavItemMap(
-  permissions: string[] | undefined
-): Map<string, TrackerNavItem> {
+function buildTrackerNavItemMap(permissions: string[] | undefined): Map<string, TrackerNavItem> {
   const flat = [...NAV_GROUPS.flatMap((group) => group.items), ...EXTRA_TRACKER_NAV];
   const filtered = filterNavItems(flat, permissions);
   const byPath = new Map<string, TrackerNavItem>();

@@ -1,10 +1,5 @@
 import { apiFetch, apiJson, apiJsonArray, parseApiError } from './client.js';
-import type {
-  CreateFlowRequest,
-  Flow,
-  FlowValidateResponse,
-  UpdateFlowRequest,
-} from './types.js';
+import type { CreateFlowRequest, Flow, FlowValidateResponse, UpdateFlowRequest } from './types.js';
 import type { FlowPath } from './types.js';
 
 export async function listFlows(signal?: AbortSignal): Promise<Flow[]> {
@@ -69,8 +64,10 @@ export async function validateFlowPaths(
   const payload = (await response.json()) as FlowValidateResponse;
   if (!response.ok) {
     const message =
-      payload.path_errors?.map((row) => row.message).filter(Boolean).join('; ') ||
-      'Flow validation failed';
+      payload.path_errors
+        ?.map((row) => row.message)
+        .filter(Boolean)
+        .join('; ') || 'Flow validation failed';
     throw new Error(message);
   }
   return payload;

@@ -14,7 +14,7 @@ func enrichCampaignListMetricsRowDerived(entry *CampaignListMetricsRowDTO) {
 
 	entry.RevenueMicro = entry.AdvertiserSpendMicro + entry.OperatorMarginMicro
 	entry.CostMicro = entry.RtbCostMicro
-	entry.ProfitMicro = entry.OperatorMarginMicro
+	entry.ProfitMicro = entry.RevenueMicro - entry.CostMicro
 
 	clicks := entry.Clicks
 	impressions := entry.Impressions

@@ -93,7 +93,7 @@ export function OpsIncidents({ snapshot, fetching, error, hasSnapshot }: OpsInci
           >
             {campaigns.map((row) => (
               <OpsTableRow key={row.campaign_id ?? row.name}>
-                <OpsTableCell className="font-mono text-xs text-muted-foreground">
+                <OpsTableCell className="text-xs text-muted-foreground">
                   {row.campaign_id ?? ''}
                 </OpsTableCell>
                 <OpsTableCell>{row.name ?? ''}</OpsTableCell>

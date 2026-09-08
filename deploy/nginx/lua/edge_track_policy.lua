@@ -78,7 +78,8 @@ end
 local EDGE_MAX_BODY = tonumber(config_string("max_body_bytes", "EDGE_MAX_BODY_BYTES", tostring(MAX_SCAN_BYTES)))
 local INGRESS_SCHEMA = config_string("ingress_schema", "TRACKER_INGRESS_SCHEMA", "openrtb_3")
 local BODY_MODE = config_string("body_mode", "EDGE_BODY_MODE", "full")
-local MIN_CHUNKED_DATA_BYTES = tonumber(config_string("min_chunked_data_bytes", "EDGE_MIN_CHUNKED_DATA_BYTES", "1")) or 1
+local MIN_CHUNKED_DATA_BYTES = tonumber(config_string("min_chunked_data_bytes", "EDGE_MIN_CHUNKED_DATA_BYTES", "1"))
+    or 1
 
 local request_headers
 
@@ -181,7 +182,7 @@ local function enforce_openrtb_chunk_floor(sock)
         return
     end
     sock:settimeout(500)
-    local line, err = sock:receive("*l")
+    local line, err = sock:receive "*l"
     if not line then
         ngx.log(ngx.ERR, "edge openrtb chunk size: ", err or "unknown")
         reject_body_unavailable()
@@ -372,15 +373,10 @@ function _M.run_peek()
     if chunk and #chunk > 0 then
         local body_id, perr = edge_parse_dfa.extract_campaign_id(chunk, cl, INGRESS_SCHEMA)
         apply_track_campaign_policy(chunk, body_id, perr, cl, fraud_score)
+        edge_metrics.record_track_policy_pass()
     else
-        local campaign_id = edge_campaign_id.resolve_campaign_id(nil)
-        if campaign_id and campaign_id ~= "" then
-            ngx.ctx.campaign_id = campaign_id
-        end
-        apply_campaign_rl(campaign_id, fraud_score)
+        finish_policy_without_body(fraud_score, false)
     end
-
-    edge_metrics.record_track_policy_pass()
 end
 
 function _M.run_click()
@@ -424,14 +420,10 @@ function _M.run_openrtb()
         if chunk and #chunk > 0 then
             local body_id, perr = edge_parse_dfa.extract_campaign_id(chunk, cl, INGRESS_SCHEMA)
             apply_track_campaign_policy(chunk, body_id, perr, cl, fraud_score)
+            edge_metrics.record_track_policy_pass()
         else
-            local campaign_id = edge_campaign_id.resolve_campaign_id(nil)
-            if campaign_id and campaign_id ~= "" then
-                ngx.ctx.campaign_id = campaign_id
-            end
-            apply_campaign_rl(campaign_id, fraud_score)
+            finish_policy_without_body(fraud_score, false)
         end
-        edge_metrics.record_track_policy_pass()
         return
     end
 

@@ -44,22 +44,24 @@ type Sandbox struct {
 	dataOff uint32
 }
 
-func VerifyModule(wasm []byte, lim Limits) error {
+func VerifyModule(ctx context.Context, wasm []byte, lim Limits) error {
 	if lim.MaxModuleBytes == 0 {
 		lim = DefaultLimits()
 	}
 	if uint32(len(wasm)) > lim.MaxModuleBytes {
 		return ErrModuleTooLarge
 	}
-	ctx := context.Background()
+	if ctx == nil {
+		ctx = context.Background() //nolint:contextcheck // VerifyModule allows nil ctx for compile-only checks
+	}
 	rt := wazero.NewRuntime(ctx)
-	defer rt.Close(ctx)
+	defer func() { _ = rt.Close(ctx) }()
 
 	mod, err := rt.Instantiate(ctx, wasm)
 	if err != nil {
 		return err
 	}
-	defer mod.Close(ctx)
+	defer func() { _ = mod.Close(ctx) }()
 
 	if err := checkExports(mod); err != nil {
 		return err
@@ -78,31 +80,31 @@ func LoadSandbox(ctx context.Context, wasm []byte, lim Limits) (*Sandbox, error)
 	if lim.MaxModuleBytes == 0 {
 		lim = DefaultLimits()
 	}
-	if err := VerifyModule(wasm, lim); err != nil {
+	if err := VerifyModule(ctx, wasm, lim); err != nil {
 		return nil, err
 	}
 	rt := wazero.NewRuntime(ctx)
 	mod, err := rt.Instantiate(ctx, wasm)
 	if err != nil {
-		rt.Close(ctx)
+		_ = rt.Close(ctx)
 		return nil, err
 	}
 	mem := mod.Memory()
 	if mem == nil {
-		mod.Close(ctx)
-		rt.Close(ctx)
+		_ = mod.Close(ctx)
+		_ = rt.Close(ctx)
 		return nil, ErrExportMissing
 	}
 	ver, err := callU32(ctx, lim, mod, "aad_abi_version")
 	if err != nil {
-		mod.Close(ctx)
-		rt.Close(ctx)
+		_ = mod.Close(ctx)
+		_ = rt.Close(ctx)
 		return nil, err
 	}
 	dataOff, err := callU32(ctx, lim, mod, "aad_data_off")
 	if err != nil {
-		mod.Close(ctx)
-		rt.Close(ctx)
+		_ = mod.Close(ctx)
+		_ = rt.Close(ctx)
 		return nil, err
 	}
 	return &Sandbox{

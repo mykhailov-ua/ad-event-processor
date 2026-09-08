@@ -81,7 +81,9 @@ export function FraudModeratorCorpus(props: FraudModeratorCorpusProps) {
           ) : null}
         </div>
 
-        {props.error ? <ErrorBlock message={props.error.message} title="Failed to load corpus" /> : null}
+        {props.error ? (
+          <ErrorBlock message={props.error.message} title="Failed to load corpus" />
+        ) : null}
 
         <section className="flex flex-col gap-3">
           <h2 className="text-sm font-medium">Upsert tuple</h2>
@@ -125,7 +127,9 @@ export function FraudModeratorCorpus(props: FraudModeratorCorpusProps) {
               Preview 7d matches
             </Button>
           </div>
-          {props.saveError ? <ErrorBlock message={props.saveError.message} title="Save failed" /> : null}
+          {props.saveError ? (
+            <ErrorBlock message={props.saveError.message} title="Save failed" />
+          ) : null}
           {props.previewError ? (
             <ErrorBlock message={props.previewError.message} title="Preview failed" />
           ) : null}
@@ -139,7 +143,7 @@ export function FraudModeratorCorpus(props: FraudModeratorCorpusProps) {
         <section className="flex flex-col gap-3">
           <h2 className="text-sm font-medium">CSV import</h2>
           <Textarea
-            className="min-h-28 font-mono text-xs"
+            className="min-h-28 text-xs"
             placeholder="ja3,ja4,tcp_sig,webgl_renderer,layer_desync_count,note"
             value={props.draftCsv}
             onChange={(e) => props.setDraftCsv(e.target.value)}
@@ -178,13 +182,15 @@ export function FraudModeratorCorpus(props: FraudModeratorCorpusProps) {
               <TableBody>
                 {rows.map((row) => (
                   <TableRow key={row.id}>
-                    <TableCell className="font-mono text-xs">{row.ja3}</TableCell>
-                    <TableCell className="font-mono text-xs">{row.ja4 || '—'}</TableCell>
-                    <TableCell className="font-mono text-xs">{row.tcp_sig || '—'}</TableCell>
-                    <TableCell>{row.webgl_renderer || '—'}</TableCell>
+                    <TableCell className="text-xs">{row.ja3}</TableCell>
+                    <TableCell className="text-xs">{row.ja4 || '-'}</TableCell>
+                    <TableCell className="text-xs">{row.tcp_sig || '-'}</TableCell>
+                    <TableCell>{row.webgl_renderer || '-'}</TableCell>
                     <TableCell>{row.layer_desync_count ?? 0}</TableCell>
-                    <TableCell>{row.source || '—'}</TableCell>
-                    <TableCell>{displayTimestamp(row.updated_at_display ?? row.updated_at)}</TableCell>
+                    <TableCell>{row.source || '-'}</TableCell>
+                    <TableCell>
+                      {displayTimestamp(row.updated_at_display ?? row.updated_at)}
+                    </TableCell>
                   </TableRow>
                 ))}
               </TableBody>

@@ -187,7 +187,7 @@ export function useCampaignsPage(): CampaignsDirectoryProps {
     templatesRefreshToken,
   });
 
-  const refreshList = useCoalescedBumpRefresh(bumpRefresh, fetching);
+  const refreshList = useCoalescedBumpRefresh(bumpRefresh, fetching || listRevalidating);
 
   const { onLoadTemplates, onCreateCampaign } = useCampaignsPageMutations({
     customerId,
@@ -208,6 +208,15 @@ export function useCampaignsPage(): CampaignsDirectoryProps {
     setTemplatesRefreshToken,
     refreshList,
   });
+
+  useEffect(() => {
+    if (createSectionOpen) {
+      return;
+    }
+    setActionError(undefined);
+    setDraftCreateName('');
+    setDraftBudgetLimitMicro('');
+  }, [createSectionOpen]);
 
   useEffect(() => {
     if (error && data != null) {

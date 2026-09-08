@@ -153,7 +153,9 @@ export function CampaignsDirectoryOverlays({
 
   return (
     <>
-      {actionError ? <ErrorBlock title="Action failed" message={actionError.message} /> : null}
+      {actionError && !createSectionOpen ? (
+        <ErrorBlock title="Action failed" message={actionError.message} />
+      ) : null}
 
       <Dialog open={createSectionOpen} onOpenChange={onCreateSectionOpenChange}>
         <DialogContent className="max-w-lg">
@@ -254,6 +256,9 @@ export function CampaignsDirectoryOverlays({
 
             {templatesError ? (
               <ErrorBlock title="Could not load templates" message={templatesError.message} />
+            ) : null}
+            {actionError ? (
+              <ErrorBlock title="Action failed" message={actionError.message} />
             ) : null}
             {effectiveCreateCustomerId &&
             !templatesLoading &&

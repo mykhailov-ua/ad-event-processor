@@ -82,7 +82,12 @@ export function FlowEditorVisual({
         >
           Normalize weights
         </SecondaryActionButton>
-        <SecondaryActionButton disabled={disabled} onClick={onAddRow} type="button" variant="secondary">
+        <SecondaryActionButton
+          disabled={disabled}
+          onClick={onAddRow}
+          type="button"
+          variant="secondary"
+        >
           Add path
         </SecondaryActionButton>
       </div>
@@ -90,10 +95,7 @@ export function FlowEditorVisual({
       {validationError ? <ErrorBlock message={validationError} title="Flow validation" /> : null}
 
       {rows.map((row, index) => (
-        <section
-          key={row.row_id}
-          className="grid gap-3 rounded-md border border-border p-3"
-        >
+        <section key={row.row_id} className="grid gap-3 rounded-md border border-border p-3">
           <div className="flex items-center justify-between gap-2">
             <h3 className="text-sm font-semibold">Path {index + 1}</h3>
             {rows.length > 1 ? (
@@ -182,9 +184,10 @@ export function FlowEditorVisual({
                       disabled={disabled}
                       id={`flow-device-${row.row_id}-${device}`}
                       onCheckedChange={(next) => {
-                        const devices = next === true
-                          ? [...row.devices, device]
-                          : row.devices.filter((value) => value !== device);
+                        const devices =
+                          next === true
+                            ? [...row.devices, device]
+                            : row.devices.filter((value) => value !== device);
                         updateRow(index, { devices });
                       }}
                     />

@@ -40,7 +40,12 @@ export function useOpsDlqPageWorkspace() {
     [searchParams]
   );
 
-  const { data, error, fetching, revalidating: listRevalidating } = useResource(
+  const {
+    data,
+    error,
+    fetching,
+    revalidating: listRevalidating,
+  } = useResource(
     (signal) => listDlqInbox({ limit, cursor }, signal),
     [limit, cursor, refreshToken]
   );

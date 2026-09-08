@@ -290,9 +290,7 @@ func parseAntifraudChallengeToken(data []byte, start, n int, bud *jsonScanBudget
 		return start, false
 	}
 	snap.ChallengeTokenLen = uint8(len(raw))
-	for j := 0; j < len(raw); j++ {
-		snap.ChallengeToken[j] = raw[j]
-	}
+	copy(snap.ChallengeToken[:], raw)
 	return end, true
 }
 

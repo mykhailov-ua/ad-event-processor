@@ -21,7 +21,12 @@ export function useDisputesPageWorkspace() {
     useTransitionSearchParams();
   const query = useMemo(() => readListQuery(searchParams), [searchParams]);
 
-  const { data, error, fetching, revalidating: listRevalidating } = useResource(
+  const {
+    data,
+    error,
+    fetching,
+    revalidating: listRevalidating,
+  } = useResource(
     (signal) =>
       listDisputes(
         {

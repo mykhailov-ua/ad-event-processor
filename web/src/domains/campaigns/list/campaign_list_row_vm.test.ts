@@ -47,7 +47,7 @@ test('buildCampaignRowVm_holdout does not derive KPI rates from raw counts', () 
     bots: 10,
   };
 
-  const vm = buildCampaignRowVm(baseCampaign, metrics, baseMargin, {}, {}, false);
+  const vm = buildCampaignRowVm(baseCampaign, metrics, baseMargin, {}, {});
 
   assert.equal(vm.ctr, null);
   assert.equal(vm.roi.text, '-');
@@ -64,6 +64,9 @@ test('buildCampaignRowVm maps server derived fields', () => {
     roi_pct: 100 / 6,
     epc_micro: 2_000_000,
     cpm_usd: '0.06',
+    cost_micro: 600_000,
+    revenue_micro: 1_000_000,
+    profit_micro: 400_000,
   };
 
   const vm = buildCampaignRowVm(
@@ -71,28 +74,69 @@ test('buildCampaignRowVm maps server derived fields', () => {
     metrics,
     baseMargin,
     {},
-    {},
-    false
+    {}
   );
 
   assert.equal(vm.ctr?.valPct, 5);
-  assert.equal(vm.roi.text, '+16.67%');
+  assert.equal(vm.roi.text, '+66.67%');
   assert.equal(vm.epc.text, '2.00');
   assert.equal(vm.budgetPct, 25);
   assert.equal(vm.cpm, '0.06');
+  assert.equal(vm.rowAlert, 'none');
+});
+
+test('buildCampaignRowVm_holdout shows negative profit and roi when cost exceeds revenue', () => {
+  const metrics: CampaignListMetrics = {
+    revenue_micro: 2_670_000,
+    cost_micro: 3_777_930_000,
+    profit_micro: -3_775_260_000,
+    roi_pct: -99.93,
+  };
+  const vm = buildCampaignRowVm(baseCampaign, metrics, undefined, {}, {});
+
+  assert.equal(vm.profit.text, '-3,775.26');
+  assert.match(vm.roi.text, /^-/);
+  assert.match(vm.profitToneClass, /text-admin-negative/);
+  assert.match(vm.roiToneClass, /text-admin-negative/);
+});
+
+test('buildCampaignRowVm sets row alert for high budget usage', () => {
+  const vm = buildCampaignRowVm(
+    { ...baseCampaign, budget_used_pct: 92 },
+    undefined,
+    undefined,
+    {},
+    {}
+  );
+
+  assert.equal(vm.rowAlert, 'warning');
+  assert.equal(vm.rowAccent, 'none');
 });
 
 test('buildCampaignRowVm_holdout does not use current_spend for revenue before metrics load', () => {
-  const vm = buildCampaignRowVm(baseCampaign, undefined, undefined, {}, {}, false);
+  const vm = buildCampaignRowVm(baseCampaign, undefined, undefined, {}, {});
 
   assert.equal(vm.revenue.text, '0.00');
   assert.equal(vm.cost.text, '25.00');
 });
 
+test('buildCampaignRowVm_holdout ignores stale zero profit_micro when revenue and cost are present', () => {
+  const metrics: CampaignListMetrics = {
+    revenue_micro: 2_670_000,
+    cost_micro: 3_777_930_000,
+    profit_micro: 0,
+    roi_pct: 0,
+  };
+  const vm = buildCampaignRowVm(baseCampaign, metrics, undefined, {}, {});
+
+  assert.equal(vm.profit.text, '-3,775.26');
+  assert.match(vm.roi.text, /^-/);
+});
+
 test('buildCampaignRowVm uses profit_micro for profit tone', () => {
   const metrics: CampaignListMetrics = { profit_micro: 500_000 };
   const margin: CampaignMargin = { ...baseMargin, operator_margin_micro: 0 };
-  const vm = buildCampaignRowVm(baseCampaign, metrics, margin, {}, {}, false);
+  const vm = buildCampaignRowVm(baseCampaign, metrics, margin, {}, {});
 
   assert.match(vm.profitToneClass, /text-admin-positive/);
 });

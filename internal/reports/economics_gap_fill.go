@@ -12,7 +12,7 @@ const (
 )
 
 func chartDayUnit(label string, salt uint32) float64 {
-	var h uint32 = 2166136261 ^ salt
+	h := 2166136261 ^ salt
 	for i := 0; i < len(label); i++ {
 		h ^= uint32(label[i])
 		h *= 16777619

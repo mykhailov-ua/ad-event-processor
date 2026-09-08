@@ -43,6 +43,8 @@ require (
 	pgregory.net/rapid v1.2.0
 )
 
+require github.com/tetratelabs/wazero v1.9.0 // indirect
+
 require (
 	github.com/getkin/kin-openapi v0.133.0
 	github.com/go-openapi/jsonpointer v0.21.0 // indirect

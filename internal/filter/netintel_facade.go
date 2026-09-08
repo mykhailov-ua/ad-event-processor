@@ -5,26 +5,29 @@ import (
 )
 
 type (
-	GeoProvider           = netintel.GeoProvider
-	MaxMindProvider       = netintel.MaxMindProvider
-	MockGeoProvider       = netintel.MockGeoProvider
-	DCASNTable            = netintel.DCASNTable
-	DCASNSnapshot         = netintel.DCASNSnapshot
-	CIDRTable             = netintel.CIDRTable
-	CIDRSnapshot          = netintel.CIDRSnapshot
-	CIDRBuilder           = netintel.CIDRBuilder
-	CIDRNode              = netintel.CIDRNode
-	ProxyVPNTable         = netintel.ProxyVPNTable
-	ProxyVPNSnapshot      = netintel.ProxyVPNSnapshot
-	ProxyVPNBuilder       = netintel.ProxyVPNBuilder
-	ResidentialIntelTable = netintel.ResidentialIntelTable
-	ResidentialProxyRing  = netintel.ResidentialProxyRing
-	ResidentialProxyRow   = netintel.ResidentialProxyRow
-	ModeratorIPTable      = netintel.ModeratorIPTable
-	MobileCarrierASNTable = netintel.MobileCarrierASNTable
-	GeoIPUpdaterConfig    = netintel.GeoIPUpdaterConfig
-	GeoIPUpdater          = netintel.GeoIPUpdater
-	GeoIPWatcher          = netintel.GeoIPWatcher
+	GeoProvider            = netintel.GeoProvider
+	MaxMindProvider        = netintel.MaxMindProvider
+	MockGeoProvider        = netintel.MockGeoProvider
+	DCASNTable             = netintel.DCASNTable
+	DCASNSnapshot          = netintel.DCASNSnapshot
+	CIDRTable              = netintel.CIDRTable
+	CIDRSnapshot           = netintel.CIDRSnapshot
+	CIDRBuilder            = netintel.CIDRBuilder
+	CIDRNode               = netintel.CIDRNode
+	ProxyVPNTable          = netintel.ProxyVPNTable
+	ProxyVPNSnapshot       = netintel.ProxyVPNSnapshot
+	ProxyVPNBuilder        = netintel.ProxyVPNBuilder
+	ResidentialIntelTable  = netintel.ResidentialIntelTable
+	ResidentialProxyRing   = netintel.ResidentialProxyRing
+	ResidentialProxyRow    = netintel.ResidentialProxyRow
+	ModeratorIPTable       = netintel.ModeratorIPTable
+	MobileCarrierASNTable  = netintel.MobileCarrierASNTable
+	ApplePrivateRelayTable = netintel.ApplePrivateRelayTable
+	MobileTierTable        = netintel.MobileTierTable
+	MobileProbeRiskWeights = netintel.MobileProbeRiskWeights
+	GeoIPUpdaterConfig     = netintel.GeoIPUpdaterConfig
+	GeoIPUpdater           = netintel.GeoIPUpdater
+	GeoIPWatcher           = netintel.GeoIPWatcher
 )
 
 var (
@@ -39,6 +42,12 @@ var (
 	NewResidentialProxyRing              = netintel.NewResidentialProxyRing
 	NewModeratorIPTable                  = netintel.NewModeratorIPTable
 	NewMobileCarrierASNTable             = netintel.NewMobileCarrierASNTable
+	NewApplePrivateRelayTable            = netintel.NewApplePrivateRelayTable
+	NewMobileTierTable                   = netintel.NewMobileTierTable
+	NewMobileASNTierFeedLoader           = netintel.NewMobileASNTierFeedLoader
+	MobileProbeRiskWeightsFromEnv        = netintel.MobileProbeRiskWeightsFromEnv
+	DefaultMobileProbeRiskWeights        = netintel.DefaultMobileProbeRiskWeights
+	ComputeMobileProbeRisk               = netintel.ComputeMobileProbeRisk
 	CIDRFeedNames                        = netintel.CIDRFeedNames
 	BuildCIDRTableFromPrefixes           = netintel.BuildCIDRTableFromPrefixes
 	BuildDCASNSnapshot                   = netintel.BuildDCASNSnapshot

@@ -5,8 +5,8 @@ import (
 	"testing"
 	"time"
 
-	filt "ad-event-processor/internal/filter"
 	"ad-event-processor/internal/domain"
+	filt "ad-event-processor/internal/filter"
 
 	"github.com/google/uuid"
 	redis "github.com/redis/go-redis/v9"

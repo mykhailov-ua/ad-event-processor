@@ -314,7 +314,7 @@ export function SelfServePortal({
           <CustomerDetailPanel>
             <CustomerDetailRow
               label="raw_key (shown once)"
-              value={<span className="font-mono text-xs break-all">{apiKeyResult.raw_key}</span>}
+              value={<span className="text-xs break-all">{apiKeyResult.raw_key}</span>}
             />
           </CustomerDetailPanel>
         </section>
@@ -343,7 +343,7 @@ export function SelfServePortal({
             <TableBody>
               {invoices.map((row) => (
                 <TableRow key={row.id}>
-                  <TableCell className="font-mono text-xs">{row.id}</TableCell>
+                  <TableCell className="text-xs">{row.id}</TableCell>
                   <TableCell>{row.status ?? ''}</TableCell>
                   <TableCell>{row.billing_month}</TableCell>
                   <TableCell>{displayMicro(row.total_micro, row.total_micro_display)}</TableCell>

@@ -65,7 +65,14 @@ run_nginx_config() {
   rm -rf "$cert_dir"
 }
 
+run_tls_persona_audit() {
+  echo "lint_configs_gate: tls server persona manifest..."
+  bash "$SCRIPTS/test/edge/tls_server_persona_audit.sh" --config
+  bash "$SCRIPTS/test/edge/tls_server_persona_audit.sh" --holdout
+}
+
 run_compose_config
 run_nginx_config
+run_tls_persona_audit
 bash "$SCRIPTS/ci/admin/openapi.sh"
 echo "lint_configs_gate: OK"

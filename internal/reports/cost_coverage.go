@@ -86,7 +86,10 @@ func (h *ReportsHTTPHandlers) getCostSyncCoverageReport(w http.ResponseWriter, r
 		return
 	}
 	if len(campaignIDs) == 0 {
-		httpresponse.JSON(w, http.StatusOK, NewReportRowsResponse(nil, h.reportFreshness(r.Context()), ""))
+		httpresponse.JSON(w, http.StatusOK, CostSyncCoverageReportResponse{
+			Rows:      []CostCoverageRowDTO{},
+			Freshness: h.reportFreshness(r.Context()),
+		})
 		return
 	}
 
@@ -97,22 +100,15 @@ func (h *ReportsHTTPHandlers) getCostSyncCoverageReport(w http.ResponseWriter, r
 		h.writeServiceError(w, err)
 		return
 	}
-	out := make([]map[string]any, 0, len(rows))
-	for _, row := range rows {
-		out = append(out, map[string]any{
-			"campaign_id":      row.CampaignID,
-			"clicks":           row.Clicks,
-			"spend_micro":      row.SpendMicro,
-			"coverage_gap":     row.CoverageGap,
-			"network":          row.Network,
-			"last_sync_status": row.LastSyncStatus,
-		})
-	}
 	var nextCursor string
-	if int64(page.Offset)+int64(len(out)) < total {
+	if int64(page.Offset)+int64(len(rows)) < total {
 		nextCursor = coldpath.EncodeCursor(page.Offset + page.Limit)
 	}
-	httpresponse.JSON(w, http.StatusOK, NewReportRowsResponse(out, h.reportFreshness(r.Context()), nextCursor))
+	httpresponse.JSON(w, http.StatusOK, CostSyncCoverageReportResponse{
+		Rows:       rows,
+		Freshness:  h.reportFreshness(r.Context()),
+		NextCursor: nextCursor,
+	})
 }
 
 func queryCostCoverageRows(

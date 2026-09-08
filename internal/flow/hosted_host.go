@@ -15,4 +15,5 @@ type HostedLanderHost interface {
 	LanderPreviewSecret() []byte
 	LanderManagementURL() string
 	LanderMaxZipBytes() int64
+	LanderCSPEnabled() bool
 }

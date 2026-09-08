@@ -27,7 +27,12 @@ export function useOpsReconPageWorkspace() {
     [appliedService, limit, offset]
   );
 
-  const { data, error, fetching, revalidating: listRevalidating } = useResource(
+  const {
+    data,
+    error,
+    fetching,
+    revalidating: listRevalidating,
+  } = useResource(
     (signal) => listReconRuns(query, signal),
     [query.limit, query.offset, query.service]
   );

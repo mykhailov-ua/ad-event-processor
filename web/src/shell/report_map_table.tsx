@@ -68,9 +68,7 @@ export function ReportMapTable({
 
   return (
     <div className="grid gap-0">
-      <p className={cn(shellChrome.tableCaptionBandClass, 'rounded-t-md')}>
-        {caption}
-      </p>
+      <p className={cn(shellChrome.tableCaptionBandClass, 'rounded-t-md')}>{caption}</p>
       {table}
     </div>
   );

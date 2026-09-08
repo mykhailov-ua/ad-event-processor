@@ -165,7 +165,7 @@ export function MarginGuardActivityDirectory({
           <TableBody>
             {(items ?? []).map((row) => (
               <TableRow key={row.id}>
-                <TableCell className="font-mono text-xs">{row.placement_id}</TableCell>
+                <TableCell className="text-xs">{row.placement_id}</TableCell>
                 <TableCell>
                   <Badge variant="outline">{row.action}</Badge>
                 </TableCell>

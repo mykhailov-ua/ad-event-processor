@@ -732,6 +732,7 @@ func parseTrackTelemetryEventObject(data []byte, start, n int, bud *jsonScanBudg
 				i = valEnd
 			}
 		case 2:
+			//nolint:gocritic // ifElseChain: track JSON key dispatch by length
 			if key[0] == 't' && key[1] == 's' {
 				v, end, ok := parseJSONIntValue(data, i, n, bud)
 				if !ok {

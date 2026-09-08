@@ -9,7 +9,7 @@ import { cn } from '@/lib/utils';
 export type BentoIconTone = 'brand' | 'accent' | 'neutral';
 
 const TONE_STYLES: Record<BentoIconTone, string> = {
-  brand: 'bg-admin-brand/15 text-admin-brand',
+  brand: 'bg-primary/15 text-primary',
   accent: 'bg-chart-1/15 text-chart-1',
   neutral: 'bg-muted text-muted-foreground',
 };

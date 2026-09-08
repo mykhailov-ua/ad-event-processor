@@ -3,6 +3,7 @@ import test from 'node:test';
 
 import {
   campaignListPinnedColumnLeftPx,
+  campaignListPinnedEdgeWidthPx,
   isCampaignListLastPinnedColumn,
 } from './campaign_list_pinned_columns.ts';
 
@@ -23,4 +24,15 @@ test('isCampaignListLastPinnedColumn marks name when pinned trio is visible', ()
   const columns = ['select', 'id', 'name', 'status'] as const;
   assert.equal(isCampaignListLastPinnedColumn('name', columns), true);
   assert.equal(isCampaignListLastPinnedColumn('id', columns), false);
+});
+
+test('campaignListPinnedEdgeWidthPx sums contiguous pinned column widths', () => {
+  const columns = ['select', 'id', 'name', 'status'] as const;
+  const widths = {
+    select: 48,
+    id: 80,
+    name: 200,
+    status: 96,
+  };
+  assert.equal(campaignListPinnedEdgeWidthPx(columns, widths), 328);
 });

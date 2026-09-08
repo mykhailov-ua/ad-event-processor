@@ -65,6 +65,26 @@ func CgnatBypassForCampaign(
 	return shouldBypassCGNATIPVelocity(globalBypass, camp, carrierTable, lookup, ip, signal)
 }
 
+// ShouldBypassCGNATIPBlacklist skips hard blacklist:fraud L3 when mobile carrier CGNAT policy
+// is active and probe-cluster graph has not corroborated the session (T24 collateral guard).
+func ShouldBypassCGNATIPBlacklist(
+	globalBypass bool,
+	camp *domain.Campaign,
+	carrierTable *MobileCarrierASNTable,
+	lookup ASNLookup,
+	ip string,
+	evt *domain.Event,
+) bool {
+	if !shouldBypassCGNATIPVelocity(globalBypass, camp, carrierTable, lookup, ip, "ip_blacklist") {
+		return false
+	}
+	if evt != nil && evt.ProbeClusterSet != 0 && evt.ProbeClusterRoute != 0 {
+		return false
+	}
+	metrics.CGNATCollateralSkipTotal.WithLabelValues("ip_blacklist").Inc()
+	return true
+}
+
 func AsnLookupFromGeo(geo GeoProvider) ASNLookup {
 	if geo == nil {
 		return nil

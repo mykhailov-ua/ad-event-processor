@@ -69,6 +69,10 @@ func loadIngestModules(cfg *Config, appEnv string) error {
 	if cfg.TrackerTelegramClickBaseURL == "" {
 		cfg.TrackerTelegramClickBaseURL = "http://track.local/tg/click"
 	}
+	cfg.TrackerStaticPolymorphDir = strings.TrimSpace(os.Getenv("TRACKER_STATIC_POLYMORPH_DIR"))
+	if cfg.TrackerStaticPolymorphDir == "" {
+		cfg.TrackerStaticPolymorphDir = strings.TrimSpace(os.Getenv("AD_EVENT_PROCESSOR_STATIC_POLYMORPH_DIR"))
+	}
 	cfg.RtbExchangeSeatID = os.Getenv("RTB_EXCHANGE_SEAT_ID")
 	if cfg.RtbExchangeSeatID == "" {
 		cfg.RtbExchangeSeatID = "1"

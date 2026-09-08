@@ -74,10 +74,7 @@ const TableRow = React.forwardRef<HTMLTableRowElement, React.HTMLAttributes<HTML
   ({ className, ...props }, ref) => (
     <tr
       ref={ref}
-      className={cn(
-        'border-b border-border transition-colors hover:bg-accent data-[state=selected]:bg-accent/80',
-        className
-      )}
+      className={cn('border-b border-border data-[state=selected]:bg-accent/80', className)}
       {...props}
     />
   )
@@ -91,7 +88,7 @@ const TableHead = React.forwardRef<
   <th
     ref={ref}
     className={cn(
-      'h-[34px] max-h-[34px] bg-muted/50 px-4 py-0 text-left align-middle text-[11px] font-semibold uppercase leading-[14px] tracking-normal text-muted-foreground [&:has([role=checkbox])]:pr-0 [&>[role=checkbox]]:translate-y-[2px]',
+      'h-[34px] max-h-[34px] border-r border-border bg-muted/50 px-4 py-0 text-left align-middle text-[11px] font-semibold uppercase leading-[14px] tracking-normal text-muted-foreground last:border-r-0 [&:has([role=checkbox])]:pr-0 [&>[role=checkbox]]:translate-y-[2px]',
       className
     )}
     {...props}
@@ -106,7 +103,7 @@ const TableCell = React.forwardRef<
   <td
     ref={ref}
     className={cn(
-      'h-[34px] max-h-[34px] px-4 py-0 align-middle text-[13px] leading-[18px] text-foreground [&:has([role=checkbox])]:pr-0 [&>[role=checkbox]]:translate-y-[2px]',
+      'h-[34px] max-h-[34px] border-r border-border px-4 py-0 align-middle text-[13px] leading-[18px] text-foreground transition-colors last:border-r-0 hover:bg-accent/60 [&:has([role=checkbox])]:pr-0 [&>[role=checkbox]]:translate-y-[2px]',
       className
     )}
     {...props}

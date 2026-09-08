@@ -55,15 +55,10 @@ export function visualRowsToFlowPaths(rows: FlowPathVisualRow[]): FlowPath[] {
   return rows.map((row) => {
     const countries = parseCountries(row.countries);
     const devices = row.devices.filter(Boolean);
-    const filters =
-      countries.length > 0 || devices.length > 0
-        ? { countries, devices }
-        : undefined;
+    const filters = countries.length > 0 || devices.length > 0 ? { countries, devices } : undefined;
     return {
       weight: Math.round(row.weight),
-      landers: row.lander_id
-        ? [{ lander_id: row.lander_id, weight: 100 }]
-        : [],
+      landers: row.lander_id ? [{ lander_id: row.lander_id, weight: 100 }] : [],
       offers: row.offer_id ? [{ offer_id: row.offer_id, weight: 100 }] : [],
       filters,
     };
@@ -117,7 +112,10 @@ export function normalizeVisualPathWeights(rows: FlowPathVisualRow[]): FlowPathV
   return scaled;
 }
 
-export function applySplitPreset(rows: FlowPathVisualRow[], weights: number[]): FlowPathVisualRow[] {
+export function applySplitPreset(
+  rows: FlowPathVisualRow[],
+  weights: number[]
+): FlowPathVisualRow[] {
   if (weights.length === 0) {
     return rows;
   }

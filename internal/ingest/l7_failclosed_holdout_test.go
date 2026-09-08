@@ -16,7 +16,7 @@ import (
 )
 
 func TestExtractClientIP_untrustedRemote_ignoresXFF_holdout(t *testing.T) {
-	req, err := http.NewRequest(http.MethodPost, "/track", nil)
+	req, err := http.NewRequest(http.MethodPost, "/track", http.NoBody)
 	require.NoError(t, err)
 	req.RemoteAddr = "203.0.113.5:1234"
 	req.Header.Set("X-Forwarded-For", "198.51.100.99")
@@ -45,7 +45,7 @@ func TestGeoFilter_lookupError_failClosed503_holdout(t *testing.T) {
 }
 
 func TestExtractClientIP_trustedProxy_privateXFF_fallsBackToXRealIP_holdout(t *testing.T) {
-	req, err := http.NewRequest(http.MethodPost, "/track", nil)
+	req, err := http.NewRequest(http.MethodPost, "/track", http.NoBody)
 	require.NoError(t, err)
 	req.RemoteAddr = "10.0.0.1:1234"
 	req.Header.Set("X-Forwarded-For", "192.168.1.50, 10.0.0.99")
@@ -72,7 +72,7 @@ func TestExtractClientIPGnet_trustedProxy_privateXFF_fallsBackToXRealIP_holdout(
 }
 
 func TestExtractClientIP_trustedProxy_privateXFFOnly_returnsProxyIP_holdout(t *testing.T) {
-	req, err := http.NewRequest(http.MethodPost, "/track", nil)
+	req, err := http.NewRequest(http.MethodPost, "/track", http.NoBody)
 	require.NoError(t, err)
 	req.RemoteAddr = "10.0.0.1:1234"
 	req.Header.Set("X-Forwarded-For", "192.168.1.50, 10.0.0.99")

@@ -60,6 +60,17 @@ async function appendTelemetry(body, campaignId) {
   }
 }
 
+async function waitMinDwellMs(ms) {
+  const dwell = Number(ms);
+  if (!dwell || dwell <= 0) {
+    return;
+  }
+  const start = performance.now();
+  while (performance.now() - start < dwell) {
+    await new Promise((resolve) => setTimeout(resolve, Math.min(dwell, 32)));
+  }
+}
+
 export async function trackEvent(opts) {
   const body = {
     campaign_id: opts.campaignId,
@@ -88,6 +99,7 @@ export async function trackEvent(opts) {
   }
   appendQueryAttribution(body);
   await appendTelemetry(body, opts.campaignId);
+  await waitMinDwellMs(opts.minDwellMs);
   return fetch(opts.endpoint, {
     method: 'POST',
     headers: { 'Content-Type': 'application/json' },

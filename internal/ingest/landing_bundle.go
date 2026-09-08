@@ -1,6 +1,7 @@
 package ingest
 
 import (
+	"bytes"
 	"context"
 	"crypto/subtle"
 	_ "embed"
@@ -20,8 +21,6 @@ import (
 	"github.com/prometheus/client_golang/prometheus"
 )
 
-var respClickSafeViewCIDR = track.RespClickSafeViewCIDR
-
 type cidrBlockMetrics struct {
 	match [CIDRFeedCount]prometheus.Counter
 }
@@ -32,14 +31,6 @@ func newCIDRBlockMetrics() cidrBlockMetrics {
 		m.match[i] = metrics.CIDRLPMMatchTotal.WithLabelValues(cidrFeedNames[i])
 	}
 	return m
-}
-
-func (m *cidrBlockMetrics) recordMatch(feed uint8) {
-	if feed < CIDRFeedCount {
-		m.match[feed].Inc()
-		return
-	}
-	m.match[CIDRFeedOther].Inc()
 }
 
 func (h *AdsPacketHandler) cidrBlockShouldSafeView(ip string, campaignID uuid.UUID) (bool, uint8) {
@@ -61,17 +52,6 @@ func (h *AdsPacketHandler) cidrBlockShouldSafeView(ip string, campaignID uuid.UU
 	}
 	return t.MatchIP(ip)
 }
-
-func (h *AdsPacketHandler) writeGnetSafeViewCIDR(c gnet.Conn, ctx *ConnContext, startMono int64, feed uint8) {
-	if h.cidrMetrics.match[0] == nil {
-		h.cidrMetrics = newCIDRBlockMetrics()
-	}
-	h.cidrMetrics.recordMatch(feed)
-	h.write(c, respClickSafeViewCIDR, ctx)
-	h.recordMetrics(startMono, http.StatusOK)
-}
-
-var respClickSafeViewIPv4Rotation = track.RespClickSafeViewIPv4Rotation
 
 type IPv4RotationTable = track.IPv4RotationTable
 
@@ -140,13 +120,6 @@ func (h *AdsPacketHandler) l1IPv4RotationObserve(ip, userID string, campaignID u
 	return false
 }
 
-func (h *AdsPacketHandler) writeGnetSafeViewIPv4Rotation(c gnet.Conn, ctx *ConnContext, startMono int64) {
-	h.write(c, respClickSafeViewIPv4Rotation, ctx)
-	h.recordMetrics(startMono, http.StatusOK)
-}
-
-var respClickSafeViewIPv6Rotation = track.RespClickSafeViewIPv6Rotation
-
 type IPv6RotationTable = track.IPv6RotationTable
 
 var NewIPv6RotationTable = track.NewIPv6RotationTable
@@ -210,13 +183,6 @@ func (h *AdsPacketHandler) l1IPv6RotationObserve(ip string, campaignID uuid.UUID
 	return false
 }
 
-func (h *AdsPacketHandler) writeGnetSafeViewIPv6Rotation(c gnet.Conn, ctx *ConnContext, startMono int64) {
-	h.write(c, respClickSafeViewIPv6Rotation, ctx)
-	h.recordMetrics(startMono, http.StatusOK)
-}
-
-var respClickSafeViewProxyVPN = track.RespClickSafeViewProxyVPN
-
 type proxyVPNBlockMetrics struct {
 	match [2]prometheus.Counter
 }
@@ -227,15 +193,6 @@ func newProxyVPNBlockMetrics() proxyVPNBlockMetrics {
 			metrics.ProxyVPNLPMMatchTotal.WithLabelValues("vpn"),
 			metrics.ProxyVPNLPMMatchTotal.WithLabelValues("hosting"),
 		},
-	}
-}
-
-func (m *proxyVPNBlockMetrics) recordMatch(connType uint8) {
-	if connType&ProxyVPNConnVPN != 0 {
-		m.match[0].Inc()
-	}
-	if connType&ProxyVPNConnHosting != 0 {
-		m.match[1].Inc()
 	}
 }
 
@@ -272,17 +229,6 @@ func (h *AdsPacketHandler) proxyVPNBlockShouldSafeView(ip string, campaignID uui
 	}
 	return true, connType
 }
-
-func (h *AdsPacketHandler) writeGnetSafeViewProxyVPN(c gnet.Conn, ctx *ConnContext, startMono int64, connType uint8) {
-	if h.proxyVPNBlockMetrics.match[0] == nil {
-		h.proxyVPNBlockMetrics = newProxyVPNBlockMetrics()
-	}
-	h.proxyVPNBlockMetrics.recordMatch(connType)
-	h.write(c, respClickSafeViewProxyVPN, ctx)
-	h.recordMetrics(startMono, http.StatusOK)
-}
-
-var respClickSafeViewTLS = track.RespClickSafeViewTLS
 
 type tlsFingerprintMetrics struct {
 	matchJA3 prometheus.Counter
@@ -323,20 +269,6 @@ func (h *AdsPacketHandler) tlsFingerprintShouldSafeView(ja3, ja4 []byte, campaig
 		return true, "ja4"
 	}
 	return false, ""
-}
-
-func (h *AdsPacketHandler) writeGnetSafeViewTLS(c gnet.Conn, ctx *ConnContext, startMono int64, kind string) {
-	if h.tlsFingerprintMetrics.matchJA3 == nil {
-		h.tlsFingerprintMetrics = newTLSFingerprintMetrics()
-	}
-	switch kind {
-	case "ja4":
-		h.tlsFingerprintMetrics.matchJA4.Inc()
-	default:
-		h.tlsFingerprintMetrics.matchJA3.Inc()
-	}
-	h.write(c, respClickSafeViewTLS, ctx)
-	h.recordMetrics(startMono, http.StatusOK)
 }
 
 func ResolveLandingURL(ctx context.Context, registry domain.CampaignRegistry, store *BrandCreativeStore, evt *domain.Event) string {
@@ -860,18 +792,6 @@ func parseSafePageStubCampaignID(path []byte) (uuid.UUID, bool) {
 	return track.ParseSafePageStubCampaignID(path)
 }
 
-func safePageURLAttrBytes(url string) ([]byte, bool) {
-	return track.SafePageURLAttrBytes(url)
-}
-
-func appendSafePageStubBody(dst []byte) []byte {
-	return track.AppendSafePageStubBody(dst)
-}
-
-func appendSafePageDecoyBody(dst []byte, safeURL []byte) []byte {
-	return track.AppendSafePageDecoyBody(dst, safeURL)
-}
-
 func decoyTemplateInput(h *AdsPacketHandler, campaignID uuid.UUID, fallbackURL string) track.DecoyTemplateInput {
 	in := track.DecoyTemplateInput{SafePageURL: fallbackURL}
 	if campaignID == uuid.Nil || h == nil || h.registry == nil {
@@ -1143,7 +1063,7 @@ func (h *AdsPacketHandler) writeTelemetryStealthHydrateJSON(c gnet.Conn, ctx *Co
 	if status != http.StatusOK {
 		statusLine = []byte("HTTP/1.1 400 Bad Request\r\n")
 	}
-	prefix := append(statusLine, []byte("Content-Type: application/json; charset=utf-8\r\nConnection: keep-alive\r\nContent-Length: ")...)
+	prefix := append(bytes.Clone(statusLine), []byte("Content-Type: application/json; charset=utf-8\r\nConnection: keep-alive\r\nContent-Length: ")...)
 	total := len(prefix) + bodyLenDigits(len(payload)) + len(track.JSONHTTPMiddle) + len(payload)
 	buf := ctx.BufSlice
 	if cap(buf) < total {
@@ -1215,8 +1135,6 @@ func (h *AdsPacketHandler) writeGnetVerifyJSON(c gnet.Conn, ctx *ConnContext, st
 	h.recordMetrics(startMono, status)
 }
 
-var respClickSafeViewModerator = track.RespClickSafeViewModerator
-
 type moderatorIntelMetrics struct {
 	match [5]prometheus.Counter
 }
@@ -1228,13 +1146,6 @@ func newModeratorIntelMetrics() moderatorIntelMetrics {
 		m.match[i] = metrics.ModeratorIntelLPMMatchTotal.WithLabelValues(moderatorintel.NetworkName(netID))
 	}
 	return m
-}
-
-func (m *moderatorIntelMetrics) recordMatch(network uint8) {
-	if network == 0 || network > uint8(len(m.match)) {
-		return
-	}
-	m.match[network-1].Inc()
 }
 
 func (h *AdsPacketHandler) moderatorIPShouldSafeView(ip string, campaignID uuid.UUID) (bool, uint8) {
@@ -1250,14 +1161,6 @@ func (h *AdsPacketHandler) moderatorIPShouldSafeView(ip string, campaignID uuid.
 	return t.MatchIP(ip)
 }
 
-func (h *AdsPacketHandler) writeGnetSafeViewModerator(c gnet.Conn, ctx *ConnContext, startMono int64, network uint8) {
-	h.moderatorMetrics.recordMatch(network)
-	h.write(c, respClickSafeViewModerator, ctx)
-	h.recordMetrics(startMono, http.StatusOK)
-}
-
-var respClickSafeViewModeratorCorpus = track.RespClickSafeViewModeratorCorpus
-
 func (h *AdsPacketHandler) moderatorCorpusShouldSafeView(ja3, ja4 []byte, tcpSig uint32, tcpSigSet uint8) bool {
 	if h == nil || h.cfg == nil || !h.cfg.ModeratorCorpusEnabled {
 		return false
@@ -1271,11 +1174,6 @@ func (h *AdsPacketHandler) moderatorCorpusShouldSafeView(ja3, ja4 []byte, tcpSig
 	}
 	metrics.ModeratorCorpusMatchTotal.Inc()
 	return true
-}
-
-func (h *AdsPacketHandler) writeGnetSafeViewModeratorCorpus(c gnet.Conn, ctx *ConnContext, startMono int64) {
-	h.write(c, respClickSafeViewModeratorCorpus, ctx)
-	h.recordMetrics(startMono, http.StatusOK)
 }
 
 func (h *AdsPacketHandler) resolveClickFilterTier(campaignID uuid.UUID) domain.ClickFilterTier {

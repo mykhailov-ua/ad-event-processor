@@ -239,10 +239,9 @@ export async function checkOpsTlsAllowed(
   signal?: AbortSignal
 ): Promise<OpsTlsAllowedResponse> {
   const query = new URLSearchParams({ domain: hostname });
-  return apiJson<OpsTlsAllowedResponse>(
-    `/api/v1/ops/domains/tls-allowed?${query.toString()}`,
-    { signal }
-  );
+  return apiJson<OpsTlsAllowedResponse>(`/api/v1/ops/domains/tls-allowed?${query.toString()}`, {
+    signal,
+  });
 }
 
 export async function getOpsConsentProofs(signal?: AbortSignal): Promise<OpsConsentProofsResponse> {

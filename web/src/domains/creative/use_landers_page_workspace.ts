@@ -1,13 +1,8 @@
 // L3 landers directory: list, refresh band, create/edit/delete, row actions (EH-SI1).
-import { useCallback, useEffect, useState } from 'react';
+import { useCallback, useState } from 'react';
 import { toast } from 'sonner';
 
-import {
-  createLander,
-  deleteLander,
-  listLanders,
-  updateLander,
-} from '@/api/landers_api';
+import { createLander, deleteLander, listLanders, updateLander } from '@/api/landers_api';
 import type { Lander } from '@/api/types';
 import { confirmDestructiveAction, mutationError } from '@/lib/mutation_audit';
 import { useCoalescedBumpRefresh, useRefreshToken } from '@/hooks/use_coalesced_refresh_token';
@@ -15,19 +10,16 @@ import { useResource } from '@/api/use_resource';
 
 export function useLandersPageWorkspace() {
   const { refreshToken, bumpRefresh } = useRefreshToken();
-  const { data, error, fetching } = useResource(async (signal) => {
-    const items = await listLanders(signal);
-    return items;
-  }, [refreshToken]);
+  const { data, error, fetching, revalidating, updatedAt } = useResource(
+    async (signal) => {
+      const items = await listLanders(signal);
+      return items;
+    },
+    [refreshToken]
+  );
 
-  const bumpRefreshCoalesced = useCoalescedBumpRefresh(bumpRefresh, fetching);
-  const [listLastUpdatedAt, setListLastUpdatedAt] = useState<string | null>(null);
-
-  useEffect(() => {
-    if (data != null && !fetching) {
-      setListLastUpdatedAt(new Date().toISOString());
-    }
-  }, [data, fetching, refreshToken]);
+  const listBusy = fetching || revalidating;
+  const bumpRefreshCoalesced = useCoalescedBumpRefresh(bumpRefresh, listBusy);
 
   const onRefresh = useCallback(() => {
     bumpRefreshCoalesced();
@@ -154,9 +146,10 @@ export function useLandersPageWorkspace() {
   return {
     items: data,
     fetching,
+    listRevalidating: revalidating,
     error,
     hasSnapshot: data != null,
-    listLastUpdatedAt,
+    listLastUpdatedAt: updatedAt,
     onRefresh,
     draftName,
     draftUrl,

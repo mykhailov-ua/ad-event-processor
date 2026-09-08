@@ -53,7 +53,7 @@ export function DirectoryTablePagination({
         >
           Previous
         </Button>
-        <span className="px-1 tabular-nums">
+        <span className="px-1">
           {page + 1} / {pageCount}
         </span>
         <Button

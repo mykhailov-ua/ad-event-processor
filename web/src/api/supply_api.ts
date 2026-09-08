@@ -94,10 +94,7 @@ export async function getSupplyValidation(signal?: AbortSignal): Promise<SupplyV
   return apiJson<SupplyValidation>('/api/v1/supply/validation', { signal });
 }
 
-export async function fetchSupplyPreviewText(
-  path: string,
-  signal?: AbortSignal
-): Promise<string> {
+export async function fetchSupplyPreviewText(path: string, signal?: AbortSignal): Promise<string> {
   const response = await apiFetch(path, { signal });
   if (!response.ok) {
     throw await parseApiError(response);

@@ -23,6 +23,8 @@ export const CAMPAIGN_EDITOR_EMPTY_FORM: CampaignEditorFormState = {
   click_filter_tier: 'full',
   mobile_biometrics_click_enabled: false,
   decoy_lander_id: '',
+  redirect_compliance_mode: 'strict',
+  dmr_enabled: false,
 };
 
 export function useCampaignEditorForm() {

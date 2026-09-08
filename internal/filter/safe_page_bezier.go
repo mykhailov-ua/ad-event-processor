@@ -10,10 +10,13 @@ const (
 )
 
 type SafePageVerifyEvent struct {
-	T  string
-	TS int64
-	X  int
-	Y  int
+	T       string
+	TS      int64
+	X       int
+	Y       int
+	FX      float64
+	FY      float64
+	Trusted uint8
 }
 
 type safePageMousePoint struct {

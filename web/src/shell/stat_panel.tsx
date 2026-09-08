@@ -33,7 +33,7 @@ export function StatRow({ label, value }: { label: string; value: ReactNode }) {
   return (
     <div className="grid grid-cols-[1fr_auto] gap-4">
       <span className="text-muted-foreground">{label}</span>
-      <span className="font-numeric text-foreground">{value}</span>
+      <span className="text-foreground">{value}</span>
     </div>
   );
 }

@@ -135,14 +135,20 @@ export function SettingsBootstrapForm({
           onChange={(event) => setAdminPassword(event.target.value)}
         />
       </FilterField>
-      <FilterField htmlFor="settings-bootstrap-tracking-domain" label={settingsFieldLabel('tracking_domain')}>
+      <FilterField
+        htmlFor="settings-bootstrap-tracking-domain"
+        label={settingsFieldLabel('tracking_domain')}
+      >
         <Input
           id="settings-bootstrap-tracking-domain"
           value={trackingDomain}
           onChange={(event) => setTrackingDomain(event.target.value)}
         />
       </FilterField>
-      <FilterField htmlFor="settings-bootstrap-currency" label={settingsFieldLabel('default_currency')}>
+      <FilterField
+        htmlFor="settings-bootstrap-currency"
+        label={settingsFieldLabel('default_currency')}
+      >
         <Input
           id="settings-bootstrap-currency"
           value={defaultCurrency}
@@ -156,7 +162,10 @@ export function SettingsBootstrapForm({
           onChange={(event) => setTimezone(event.target.value)}
         />
       </FilterField>
-      <FilterField htmlFor="settings-bootstrap-ingress-schema" label={settingsFieldLabel('ingress_schema')}>
+      <FilterField
+        htmlFor="settings-bootstrap-ingress-schema"
+        label={settingsFieldLabel('ingress_schema')}
+      >
         <Select value={ingressSchema} onValueChange={setIngressSchema}>
           <SelectTrigger id="settings-bootstrap-ingress-schema" className="w-full">
             <SelectValue />
@@ -170,7 +179,10 @@ export function SettingsBootstrapForm({
           </SelectContent>
         </Select>
       </FilterField>
-      <FilterField htmlFor="settings-bootstrap-network-interface" label={settingsFieldLabel('network_interface')}>
+      <FilterField
+        htmlFor="settings-bootstrap-network-interface"
+        label={settingsFieldLabel('network_interface')}
+      >
         <Input
           id="settings-bootstrap-network-interface"
           value={networkInterface}
@@ -179,7 +191,9 @@ export function SettingsBootstrapForm({
       </FilterField>
       <div className="grid gap-3 sm:grid-cols-2">
         <div className="flex items-center justify-between gap-2 rounded-md border p-3">
-          <Label htmlFor="settings-bootstrap-telemetry">{settingsFieldLabel('telemetry_enabled')}</Label>
+          <Label htmlFor="settings-bootstrap-telemetry">
+            {settingsFieldLabel('telemetry_enabled')}
+          </Label>
           <Switch
             checked={telemetryEnabled}
             id="settings-bootstrap-telemetry"
@@ -191,7 +205,9 @@ export function SettingsBootstrapForm({
           <Switch checked={edgeXdp} id="settings-bootstrap-edge-xdp" onCheckedChange={setEdgeXdp} />
         </div>
         <div className="flex items-center justify-between gap-2 rounded-md border p-3">
-          <Label htmlFor="settings-bootstrap-edge-click">{settingsFieldLabel('edge_expose_click')}</Label>
+          <Label htmlFor="settings-bootstrap-edge-click">
+            {settingsFieldLabel('edge_expose_click')}
+          </Label>
           <Switch
             checked={edgeExposeClick}
             id="settings-bootstrap-edge-click"
@@ -199,7 +215,9 @@ export function SettingsBootstrapForm({
           />
         </div>
         <div className="flex items-center justify-between gap-2 rounded-md border p-3">
-          <Label htmlFor="settings-bootstrap-edge-openrtb">{settingsFieldLabel('edge_expose_openrtb')}</Label>
+          <Label htmlFor="settings-bootstrap-edge-openrtb">
+            {settingsFieldLabel('edge_expose_openrtb')}
+          </Label>
           <Switch
             checked={edgeExposeOpenRtb}
             id="settings-bootstrap-edge-openrtb"
@@ -236,7 +254,11 @@ export function SettingsBootstrapForm({
         />
       </FilterField>
       <SettingsFormActions>
-        <PrimaryActionButton disabled={bootstrapping || !canSubmit} loading={bootstrapping} type="submit">
+        <PrimaryActionButton
+          disabled={bootstrapping || !canSubmit}
+          loading={bootstrapping}
+          type="submit"
+        >
           {bootstrapping ? 'Setting up...' : 'Complete setup'}
         </PrimaryActionButton>
         {bootstrapSuccess ? (

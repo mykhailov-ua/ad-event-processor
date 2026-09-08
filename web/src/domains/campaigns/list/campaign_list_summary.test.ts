@@ -8,8 +8,22 @@ test('computeCampaignListSummary aggregates current page when nothing selected',
     [{ id: 'a', flow_id: 'flow-1' } as never, { id: 'b' } as never],
     new Set(),
     {
-      a: { clicks: 10, conversions: 2, stale: false },
-      b: { clicks: 5, conversions: 1, stale: true },
+      a: {
+        clicks: 10,
+        conversions: 2,
+        stale: false,
+        revenue_micro: 400,
+        cost_micro: 200,
+        profit_micro: 200,
+      },
+      b: {
+        clicks: 5,
+        conversions: 1,
+        stale: true,
+        revenue_micro: 0,
+        cost_micro: 100,
+        profit_micro: -100,
+      },
     },
     {
       a: { operator_margin_micro: 100, rtb_cost_micro: 200, advertiser_spend_micro: 300 },
@@ -23,7 +37,7 @@ test('computeCampaignListSummary aggregates current page when nothing selected',
   assert.equal(summary.conversions, 3);
   assert.equal(summary.flows, 1);
   assert.equal(summary.staleCount, 1);
-  assert.equal(summary.profitMicro, 50);
+  assert.equal(summary.profitMicro, 100);
 });
 
 test('computeCampaignListSummary_holdout prefers metrics batch micros over margin', () => {

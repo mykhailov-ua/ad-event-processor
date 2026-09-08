@@ -62,6 +62,9 @@ type CampaignsHTTPHandlers struct {
 	LicenseFeatureAllowed      func(featureKey string) (allowed bool, planCode string)
 	ReportJobs                 *reportjob.ReportJobRunner
 	WriteServiceError          func(http.ResponseWriter, error)
+	TrackerPublicBaseURL       func() string
+	LanderPublicBaseURL        func() string
+	ResolveTrackingDomain      func(context.Context) string
 }
 
 func (h *CampaignsHTTPHandlers) Register(mux *http.ServeMux) {
@@ -124,6 +127,7 @@ func (h *CampaignsHTTPHandlers) listCampaigns(w http.ResponseWriter, r *http.Req
 	}
 
 	status := q.Get("status")
+	statusFilter, warningsOnly := normalizeCampaignListStatusFilter(status)
 	sortField, order, sortErr := parseListSort(r, CampaignListAllowedSortFields(), "updated_at")
 	if sortErr != nil {
 		httpresponse.Error(w, http.StatusBadRequest, "BAD_REQUEST", sortErr.Error())
@@ -134,7 +138,8 @@ func (h *CampaignsHTTPHandlers) listCampaigns(w http.ResponseWriter, r *http.Req
 	limit, offset := coldpath.ParseAPIPagination(r)
 	listFilter := ListCampaignsFilter{
 		CustomerID:     customerID,
-		Status:         status,
+		Status:         statusFilter,
+		WarningsOnly:   warningsOnly,
 		OwnerUserID:    ResolveListOwnerUserFilter(r.Context(), r),
 		TargetCountry:  parseTargetCountryQuery(r),
 		BudgetMinMicro: parseOptionalBudgetMicroQuery(r, "budget_min_micro"),
@@ -178,6 +183,7 @@ func (h *CampaignsHTTPHandlers) listCampaigns(w http.ResponseWriter, r *http.Req
 		h.Campaigns.AttachCampaignListMarginBreach(r.Context(), items)
 	}
 	for i := range items {
+		AttachCampaignBudgetUsedPct(&items[i])
 		items[i].StatusLabel = campaignStatusLabel(items[i].Status)
 		items[i].StatusTone = campaignStatusTone(items[i].Status)
 	}

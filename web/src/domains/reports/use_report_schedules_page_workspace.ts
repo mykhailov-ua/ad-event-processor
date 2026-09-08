@@ -32,13 +32,23 @@ function parseEnabled(value: string): boolean | undefined {
 }
 
 export function useReportSchedulesPageWorkspace() {
-  const { appliedCustomerId, draftCustomerId, setDraftCustomerId, applyCustomerScope, listQueryPending } =
-    useCustomerScope();
+  const {
+    appliedCustomerId,
+    draftCustomerId,
+    setDraftCustomerId,
+    applyCustomerScope,
+    listQueryPending,
+  } = useCustomerScope();
 
   const { refreshToken, bumpRefresh } = useRefreshToken();
   const shouldFetch = Boolean(appliedCustomerId);
 
-  const { data, error, fetching, revalidating: listRevalidating } = useResource(
+  const {
+    data,
+    error,
+    fetching,
+    revalidating: listRevalidating,
+  } = useResource(
     (signal) => {
       if (!shouldFetch) {
         return Promise.resolve(undefined);

@@ -184,7 +184,7 @@ export function OpsMlModel({
                   : (row.ip_hash ?? `row-${index}`)
               }
             >
-              <OpsTableCell className="font-mono text-xs text-muted-foreground">
+              <OpsTableCell className="text-xs text-muted-foreground">
                 {row.ip_hash ?? ''}
               </OpsTableCell>
               <OpsTableCell>{row.label ?? ''}</OpsTableCell>

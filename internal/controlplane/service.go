@@ -81,6 +81,7 @@ type Service struct {
 	supplyStore              *supply.Store
 	flowStore                *flow.Store
 	platformStore            *platformadmin.Store
+	domainHealth             *platformadmin.DomainHealth
 	marginGuardStore         *marginguard.Store
 	settingsStore            *settingsadmin.Store
 	privacyStore             *privacyadmin.Store

@@ -24,12 +24,12 @@ func filterAllowedForClickTier(f EventFilter, tier domain.ClickFilterTier) bool 
 	if tier == "" || tier == domain.ClickFilterTierFull {
 		return true
 	}
-	min := clickTierMinForFilter(f)
+	minTier := clickTierMinForFilter(f)
 	switch tier {
 	case domain.ClickFilterTierRedirectOnly:
-		return min == domain.ClickFilterTierRedirectOnly
+		return minTier == domain.ClickFilterTierRedirectOnly
 	case domain.ClickFilterTierLight:
-		return min == domain.ClickFilterTierRedirectOnly || min == domain.ClickFilterTierLight
+		return minTier == domain.ClickFilterTierRedirectOnly || minTier == domain.ClickFilterTierLight
 	default:
 		return true
 	}

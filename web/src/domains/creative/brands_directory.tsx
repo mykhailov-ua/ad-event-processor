@@ -98,13 +98,13 @@ export function BrandsDirectory({
     return (
       <PageChrome title="Brands">
         <CreativeDirectoryStack>
-        <CustomerScopeBar
-          appliedCustomerId={appliedCustomerId}
-          draftCustomerId={draftCustomerId}
-          onApply={onApplyCustomerScope}
-          onDraftCustomerIdChange={onDraftCustomerIdChange}
-        />
-        <EmptyState title="Customer required" description="Apply a customer ID to list brands." />
+          <CustomerScopeBar
+            appliedCustomerId={appliedCustomerId}
+            draftCustomerId={draftCustomerId}
+            onApply={onApplyCustomerScope}
+            onDraftCustomerIdChange={onDraftCustomerIdChange}
+          />
+          <EmptyState title="Customer required" description="Apply a customer ID to list brands." />
         </CreativeDirectoryStack>
       </PageChrome>
     );
@@ -118,13 +118,13 @@ export function BrandsDirectory({
     return (
       <PageChrome title="Brands">
         <CreativeDirectoryStack>
-        <CustomerScopeBar
-          appliedCustomerId={appliedCustomerId}
-          draftCustomerId={draftCustomerId}
-          onApply={onApplyCustomerScope}
-          onDraftCustomerIdChange={onDraftCustomerIdChange}
-        />
-        {creativePanelError(error, 'Could not load brands')}
+          <CustomerScopeBar
+            appliedCustomerId={appliedCustomerId}
+            draftCustomerId={draftCustomerId}
+            onApply={onApplyCustomerScope}
+            onDraftCustomerIdChange={onDraftCustomerIdChange}
+          />
+          {creativePanelError(error, 'Could not load brands')}
         </CreativeDirectoryStack>
       </PageChrome>
     );
@@ -142,138 +142,138 @@ export function BrandsDirectory({
       }
     >
       <CreativeDirectoryStack>
-      <CustomerScopeBar
-        appliedCustomerId={appliedCustomerId}
-        draftCustomerId={draftCustomerId}
-        onApply={onApplyCustomerScope}
-        onDraftCustomerIdChange={onDraftCustomerIdChange}
-      />
+        <CustomerScopeBar
+          appliedCustomerId={appliedCustomerId}
+          draftCustomerId={draftCustomerId}
+          onApply={onApplyCustomerScope}
+          onDraftCustomerIdChange={onDraftCustomerIdChange}
+        />
 
-      {onCreateBrand ? (
-        <Dialog onOpenChange={setCreateOpen} open={createOpen}>
-          <DialogContent className="max-w-md">
-            <DialogHeader>
-              <DialogTitle>Create brand</DialogTitle>
-            </DialogHeader>
-            <FilterField htmlFor="brand-create-name" label="Brand name">
-              <Input
-                id="brand-create-name"
-                value={draftBrandName}
-                onChange={(event) => onDraftBrandNameChange?.(event.target.value)}
-              />
-            </FilterField>
-            {createError ? (
-              <div>{creativePanelError(createError, 'Could not create brand')}</div>
-            ) : null}
-            <DialogFooter>
-              <PrimaryActionButton loading={creating} onClick={onCreateBrand} type="button">
-                Create brand
-              </PrimaryActionButton>
-            </DialogFooter>
-          </DialogContent>
-        </Dialog>
-      ) : null}
+        {onCreateBrand ? (
+          <Dialog onOpenChange={setCreateOpen} open={createOpen}>
+            <DialogContent className="max-w-md">
+              <DialogHeader>
+                <DialogTitle>Create brand</DialogTitle>
+              </DialogHeader>
+              <FilterField htmlFor="brand-create-name" label="Brand name">
+                <Input
+                  id="brand-create-name"
+                  value={draftBrandName}
+                  onChange={(event) => onDraftBrandNameChange?.(event.target.value)}
+                />
+              </FilterField>
+              {createError ? (
+                <div>{creativePanelError(createError, 'Could not create brand')}</div>
+              ) : null}
+              <DialogFooter>
+                <PrimaryActionButton loading={creating} onClick={onCreateBrand} type="button">
+                  Create brand
+                </PrimaryActionButton>
+              </DialogFooter>
+            </DialogContent>
+          </Dialog>
+        ) : null}
 
-      {onSaveBrand && onCloseEditBrand ? (
-        <Dialog
-          onOpenChange={(open) => {
-            if (!open) {
-              onCloseEditBrand();
-            }
-          }}
-          open={editOpen}
-        >
-          <DialogContent className="max-w-md">
-            <DialogHeader>
-              <DialogTitle>Edit brand</DialogTitle>
-            </DialogHeader>
-            <FilterField htmlFor="brand-edit-name" label="Brand name">
-              <Input
-                id="brand-edit-name"
-                value={editBrandName}
-                onChange={(event) => onEditBrandNameChange?.(event.target.value)}
-              />
-            </FilterField>
-            {editError ? (
-              <div>{creativePanelError(editError, 'Could not update brand')}</div>
-            ) : null}
-            <DialogFooter>
-              <SecondaryActionButton onClick={onCloseEditBrand} type="button">
-                Cancel
-              </SecondaryActionButton>
-              <PrimaryActionButton loading={saving} onClick={onSaveBrand} type="button">
-                Save brand
-              </PrimaryActionButton>
-            </DialogFooter>
-          </DialogContent>
-        </Dialog>
-      ) : null}
+        {onSaveBrand && onCloseEditBrand ? (
+          <Dialog
+            onOpenChange={(open) => {
+              if (!open) {
+                onCloseEditBrand();
+              }
+            }}
+            open={editOpen}
+          >
+            <DialogContent className="max-w-md">
+              <DialogHeader>
+                <DialogTitle>Edit brand</DialogTitle>
+              </DialogHeader>
+              <FilterField htmlFor="brand-edit-name" label="Brand name">
+                <Input
+                  id="brand-edit-name"
+                  value={editBrandName}
+                  onChange={(event) => onEditBrandNameChange?.(event.target.value)}
+                />
+              </FilterField>
+              {editError ? (
+                <div>{creativePanelError(editError, 'Could not update brand')}</div>
+              ) : null}
+              <DialogFooter>
+                <SecondaryActionButton onClick={onCloseEditBrand} type="button">
+                  Cancel
+                </SecondaryActionButton>
+                <PrimaryActionButton loading={saving} onClick={onSaveBrand} type="button">
+                  Save brand
+                </PrimaryActionButton>
+              </DialogFooter>
+            </DialogContent>
+          </Dialog>
+        ) : null}
 
-      <div aria-atomic="true" aria-live="polite">
-        {(items ?? []).length === 0 ? (
-          <EmptyState
-            variant="blank-slate"
-            title="No brands"
-            description="Create a brand to organize creatives for this customer."
-            actionLabel={onCreateBrand ? 'Create brand' : undefined}
-            onAction={onCreateBrand ? () => setCreateOpen(true) : undefined}
-          />
-        ) : (
-          <TableHost>
-            <DirectoryTable nested>
-            <TableHeader>
-              <TableRow>
-                <DirectoryTableHead>Name</DirectoryTableHead>
-                <DirectoryTableHead>Freq limit</DirectoryTableHead>
-                <DirectoryTableHead>Updated</DirectoryTableHead>
-                <DirectoryTableHead className="w-12" />
-              </TableRow>
-            </TableHeader>
-            <TableBody>
-              {(items ?? []).map((row) => (
-                <TableRow key={row.id}>
-                  <TableCell>
-                    <Link
-                      className="hover:underline"
-                      state={{ brandName: row.name }}
-                      to={`/brand-creatives/${row.id}`}
-                    >
-                      {row.name}
-                    </Link>
-                  </TableCell>
-                  <TableCell>
-                    {row.freq_limit}/{row.freq_window}
-                  </TableCell>
-                  <TableCell>{displayTimestamp(row.updated_at)}</TableCell>
-                  <TableCell>
-                    {onOpenEditBrand || onDeleteBrand ? (
-                      <RowActionsMenu
-                        disabled={acting && actingBrandId === row.id}
-                        ariaLabel={`Actions for ${row.name}`}
-                      >
-                        {onOpenEditBrand ? (
-                          <DropdownMenuItem onClick={() => onOpenEditBrand(row)}>
-                            Edit
-                          </DropdownMenuItem>
+        <div aria-atomic="true" aria-live="polite">
+          {(items ?? []).length === 0 ? (
+            <EmptyState
+              variant="blank-slate"
+              title="No brands"
+              description="Create a brand to organize creatives for this customer."
+              actionLabel={onCreateBrand ? 'Create brand' : undefined}
+              onAction={onCreateBrand ? () => setCreateOpen(true) : undefined}
+            />
+          ) : (
+            <TableHost>
+              <DirectoryTable nested>
+                <TableHeader>
+                  <TableRow>
+                    <DirectoryTableHead>Name</DirectoryTableHead>
+                    <DirectoryTableHead>Freq limit</DirectoryTableHead>
+                    <DirectoryTableHead>Updated</DirectoryTableHead>
+                    <DirectoryTableHead className="w-12" />
+                  </TableRow>
+                </TableHeader>
+                <TableBody>
+                  {(items ?? []).map((row) => (
+                    <TableRow key={row.id}>
+                      <TableCell>
+                        <Link
+                          className="hover:underline"
+                          state={{ brandName: row.name }}
+                          to={`/brand-creatives/${row.id}`}
+                        >
+                          {row.name}
+                        </Link>
+                      </TableCell>
+                      <TableCell>
+                        {row.freq_limit}/{row.freq_window}
+                      </TableCell>
+                      <TableCell>{displayTimestamp(row.updated_at)}</TableCell>
+                      <TableCell>
+                        {onOpenEditBrand || onDeleteBrand ? (
+                          <RowActionsMenu
+                            disabled={acting && actingBrandId === row.id}
+                            ariaLabel={`Actions for ${row.name}`}
+                          >
+                            {onOpenEditBrand ? (
+                              <DropdownMenuItem onClick={() => onOpenEditBrand(row)}>
+                                Edit
+                              </DropdownMenuItem>
+                            ) : null}
+                            {onDeleteBrand ? (
+                              <DropdownMenuItem onClick={() => onDeleteBrand(row)}>
+                                Delete
+                              </DropdownMenuItem>
+                            ) : null}
+                          </RowActionsMenu>
                         ) : null}
-                        {onDeleteBrand ? (
-                          <DropdownMenuItem onClick={() => onDeleteBrand(row)}>
-                            Delete
-                          </DropdownMenuItem>
-                        ) : null}
-                      </RowActionsMenu>
-                    ) : null}
-                  </TableCell>
-                </TableRow>
-              ))}
-            </TableBody>
-          </DirectoryTable>
-          </TableHost>
-        )}
-      </div>
+                      </TableCell>
+                    </TableRow>
+                  ))}
+                </TableBody>
+              </DirectoryTable>
+            </TableHost>
+          )}
+        </div>
 
-      {actionError ? creativePanelError(actionError, 'Brand action failed') : null}
-      {error && hasSnapshot ? creativePanelError(error, 'Refresh failed') : null}
+        {actionError ? creativePanelError(actionError, 'Brand action failed') : null}
+        {error && hasSnapshot ? creativePanelError(error, 'Refresh failed') : null}
       </CreativeDirectoryStack>
     </PageChrome>
   );

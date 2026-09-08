@@ -153,6 +153,7 @@ case "$MODE" in
     EDGE_MIN_CHUNKED_DATA_BYTES=64 run_lua_test openrtb_chunk_floor_test.lua
     run_lua_test edge_rl_fallback_test.lua
     run_lua_test tcp_sig_v2_test.lua
+    run_lua_test h2_frame_trace_test.lua
     run_security_holdout_tests
     ;;
   security)
@@ -166,7 +167,7 @@ case "$MODE" in
     ;;
   unit)
     skipped=0
-    for lua_test in tarpit_test.lua blacklist_sync_test.lua node_weights_test.lua edge_slot_map_test.lua edge_net_test.lua tls_alpn_test.lua circuit_breaker_test.lua edge_config_test.lua asn_sync_failclosed_test.lua asn_trust_test.lua fraud_score_trust_test.lua campaign_id_trust_test.lua bl_pending_cap_test.lua bl_pending_drain_test.lua track_policy_failclosed_test.lua route_gate_env_test.lua safe_page_cid_test.lua edge_rl_fallback_test.lua tcp_sig_v2_test.lua; do
+    for lua_test in tarpit_test.lua blacklist_sync_test.lua node_weights_test.lua edge_slot_map_test.lua edge_net_test.lua tls_alpn_test.lua circuit_breaker_test.lua edge_config_test.lua asn_sync_failclosed_test.lua asn_trust_test.lua fraud_score_trust_test.lua campaign_id_trust_test.lua bl_pending_cap_test.lua bl_pending_drain_test.lua track_policy_failclosed_test.lua route_gate_env_test.lua safe_page_cid_test.lua edge_rl_fallback_test.lua tcp_sig_v2_test.lua h2_frame_trace_test.lua; do
       if ! run_lua_test "$lua_test"; then
         rc=$?
         if [[ "$rc" -eq 2 ]]; then

@@ -40,8 +40,7 @@ export function CampaignScopeBar({
       </form>
       {appliedCampaignId ? (
         <p className="text-sm text-muted-foreground">
-          Active scope:{' '}
-          <span className="font-mono text-xs text-foreground">{appliedCampaignId}</span>
+          Active scope: <span className="text-xs text-foreground">{appliedCampaignId}</span>
         </p>
       ) : (
         <p className="text-sm text-muted-foreground">

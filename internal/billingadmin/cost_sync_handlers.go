@@ -1,7 +1,6 @@
 package billingadmin
 
 import (
-	"context"
 	"encoding/json"
 	"errors"
 	"net/http"
@@ -375,7 +374,7 @@ func (h *CostSyncHTTPHandlers) runSync(w http.ResponseWriter, r *http.Request) {
 		to = parsed
 	}
 
-	if err := h.Worker.StartManualRun(context.Background(), custFilter, req.Network, from, to); err != nil {
+	if err := h.Worker.StartManualRun(r.Context(), custFilter, req.Network, from, to); err != nil {
 		httpresponse.Error(w, http.StatusBadRequest, "BAD_REQUEST", err.Error())
 		return
 	}

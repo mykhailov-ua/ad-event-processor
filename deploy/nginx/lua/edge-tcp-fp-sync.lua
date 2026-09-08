@@ -5,7 +5,7 @@
 --
 -- Redis keys (shard 0 staging, written by edge-xdp):
 -- - edge:tcp_fp:recent ZSET; member {ip}:{tcp_hash_hex}; ZREVRANGE 0 511 picks hot IPs.
--- - edge:tcp_fp:ip:{ip} HASH fields ttl, window, mss, tcp_hash, tcp_opt_trace (Redis TTL 1 h).
+-- - edge:tcp_fp:ip:{ip} HASH fields ttl, window, mss, tcp_hash, tcp_opt_trace, h2_frame_trace (Redis TTL 1 h).
 --
 -- ngx.shared tcp_fp_cache mapping (each set TTL 3600 s):
 -- - {ip}           -> mss (0..255)
@@ -13,6 +13,7 @@
 -- - w:{ip}         -> window (0..65535)
 -- - h:{ip}         -> tcp_hash 8-char hex sig
 -- - o:{ip}         -> tcp_opt_trace normalized token string -> X-TCP-SIG-V2
+-- - f:{ip}         -> h2_frame_trace normalized token string -> X-H2-FRAME-TRACE
 --
 -- sync pipeline: ZREVRANGE recent -> parse ip from member -> HMGET pipeline per ip -> validate ranges -> cache:set.
 -- Empty recent set: return true (no SHM mutation).
@@ -30,6 +31,7 @@
 -- go test ./internal/edge/... -count=1
 local blacklist_sync = require "edge-blacklist-sync"
 local tcp_sig_v2 = require "edge-tcp-sig-v2"
+local h2_frame_trace = require "edge-h2-frame-trace"
 
 local _M = {}
 
@@ -68,7 +70,7 @@ function _M.sync()
 
     red:init_pipeline()
     for _, ip in ipairs(ips) do
-        red:hmget(IP_KEY_PREFIX .. ip, "ttl", "window", "mss", "tcp_hash", "tcp_opt_trace")
+        red:hmget(IP_KEY_PREFIX .. ip, "ttl", "window", "mss", "tcp_hash", "tcp_opt_trace", "h2_frame_trace")
     end
     local results, perr = red:commit_pipeline()
     red:set_keepalive(10000, 100)
@@ -79,11 +81,11 @@ function _M.sync()
     local stamped = 0
     for i, ip in ipairs(ips) do
         local res = results[i]
-        local ttl, win, mss, tcp_hash, tcp_opt_trace
+        local ttl, win, mss, tcp_hash, tcp_opt_trace, h2_frame_trace_raw
         if type(res) == "table" then
-            ttl, win, mss, tcp_hash, tcp_opt_trace = res[1], res[2], res[3], res[4], res[5]
+            ttl, win, mss, tcp_hash, tcp_opt_trace, h2_frame_trace_raw = res[1], res[2], res[3], res[4], res[5], res[6]
         else
-            ttl, win, mss, tcp_hash, tcp_opt_trace = res, nil, nil, nil, nil
+            ttl, win, mss, tcp_hash, tcp_opt_trace, h2_frame_trace_raw = res, nil, nil, nil, nil, nil
         end
         if mss and mss ~= ngx.null then
             local n = tonumber(mss)
@@ -111,6 +113,12 @@ function _M.sync()
             local trace = tcp_sig_v2.validate_trace(tcp_opt_trace)
             if trace then
                 cache:set("o:" .. ip, trace, 3600)
+            end
+        end
+        if h2_frame_trace_raw and h2_frame_trace_raw ~= ngx.null and type(h2_frame_trace_raw) == "string" then
+            local trace = h2_frame_trace.validate_trace(h2_frame_trace_raw)
+            if trace then
+                cache:set("f:" .. ip, trace, 3600)
             end
         end
     end

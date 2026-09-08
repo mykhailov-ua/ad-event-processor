@@ -60,7 +60,7 @@ export function CampaignListTableMiddleCell({
     case 'group':
       return (
         <Link
-          className="block max-w-full whitespace-nowrap tabular-nums"
+          className="block max-w-full whitespace-nowrap"
           title={vm.groupLabel ?? vm.groupCustomerId}
           to={`/customers/${vm.groupCustomerId}`}
           onClick={(event) => event.stopPropagation()}
@@ -159,15 +159,11 @@ export function CampaignListTableMiddleCell({
             vm.profit.isZero ? undefined : 'primary'
           )}
         >
-          {vm.profit.isZero ? '0.00' : vm.profit.text}
+          {vm.profit.text}
         </span>
       );
     case 'roi':
-      return (
-        <span className={tableCellClass(vm.roi.isZero, vm.roiToneClass)}>
-          {vm.roi.isZero ? '0%' : vm.roi.text}
-        </span>
-      );
+      return <span className={tableCellClass(vm.roi.isZero, vm.roiToneClass)}>{vm.roi.text}</span>;
     case 'budget_pct':
       if (vm.budgetPct == null) {
         return <span className={tableCellClass(true)}>-</span>;
@@ -184,14 +180,14 @@ export function CampaignListTableMiddleCell({
       );
     case 'flow':
       return (
-        <span className="tabular-nums text-muted-foreground" title={vm.flowId ?? ''}>
+        <span className="text-muted-foreground" title={vm.flowId ?? ''}>
           {vm.flowId ? vm.flowId.slice(0, 8) : '-'}
         </span>
       );
     case 'owner':
       return (
         <span
-          className="block max-w-full whitespace-nowrap tabular-nums text-muted-foreground"
+          className="block max-w-full whitespace-nowrap text-muted-foreground"
           title={vm.ownerId}
         >
           {vm.ownerLabel}

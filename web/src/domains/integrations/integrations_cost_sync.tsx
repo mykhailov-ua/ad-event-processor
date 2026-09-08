@@ -231,7 +231,7 @@ export function IntegrationsCostSync({
               <TableBody>
                 {networks.map((row) => (
                   <TableRow key={row.network}>
-                    <TableCell className="font-mono text-xs">{row.network}</TableCell>
+                    <TableCell className="text-xs">{row.network}</TableCell>
                     <TableCell>{row.label}</TableCell>
                     <TableCell>{row.account_id_label ?? ''}</TableCell>
                   </TableRow>
@@ -303,7 +303,7 @@ export function IntegrationsCostSync({
                         className="cursor-pointer"
                         onClick={() => credentialForm.onPrefillFromCredential(row)}
                       >
-                        <TableCell className="font-mono text-xs">{row.network}</TableCell>
+                        <TableCell className="text-xs">{row.network}</TableCell>
                         <TableCell>{row.account_id ?? ''}</TableCell>
                         <TableCell>{row.sync_interval_minutes}</TableCell>
                         <TableCell>{displayTimestamp(row.updated_at)}</TableCell>
@@ -351,7 +351,7 @@ export function IntegrationsCostSync({
                   {history.map((row) => (
                     <TableRow key={row.id}>
                       <TableCell>{row.id}</TableCell>
-                      <TableCell className="font-mono text-xs">{row.network}</TableCell>
+                      <TableCell className="text-xs">{row.network}</TableCell>
                       <TableCell>{row.cost_date}</TableCell>
                       <TableCell>
                         <Badge variant="outline">{row.status}</Badge>

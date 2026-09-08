@@ -108,8 +108,7 @@ export function OpsDomains({
       <p className="text-sm text-muted-foreground">
         <Link className="text-primary underline-offset-4 hover:underline" to="/domains">
           Open domains directory
-        </Link>
-        {' '}
+        </Link>{' '}
         for bulk import, SSL setup, wildcard certs, and burn workflows.
       </p>
 
@@ -124,15 +123,15 @@ export function OpsDomains({
             <ul className="grid gap-2">
               {rotationHosts.map((row) => (
                 <li key={row.hostname} className="grid gap-0.5">
-                  <span className="font-mono text-xs">{row.hostname}</span>
+                  <span className="text-xs">{row.hostname}</span>
                   <span className="text-muted-foreground">
                     {row.role ?? 'role n/a'}
-                    {row.health_status ? ` · health ${row.health_status}` : ''}
-                    {row.ssl_status ? ` · SSL ${row.ssl_status}` : ''}
-                    {row.pool_domain_status ? ` · pool ${row.pool_domain_status}` : ''}
-                    {row.dmr_campaign_count != null ? ` · DMR ${row.dmr_campaign_count}` : ''}
+                    {row.health_status ? ` | health ${row.health_status}` : ''}
+                    {row.ssl_status ? ` | SSL ${row.ssl_status}` : ''}
+                    {row.pool_domain_status ? ` | pool ${row.pool_domain_status}` : ''}
+                    {row.dmr_campaign_count != null ? ` | DMR ${row.dmr_campaign_count}` : ''}
                     {row.active_campaign_count != null
-                      ? ` · active campaigns ${row.active_campaign_count}`
+                      ? ` | active campaigns ${row.active_campaign_count}`
                       : ''}
                   </span>
                 </li>
@@ -147,7 +146,7 @@ export function OpsDomains({
       {tlsHost ? (
         <div className="flex flex-wrap items-center gap-2 text-sm">
           <span className="font-medium">
-            TLS allowed for <span className="font-mono text-xs">{draftHostname.trim() || 'hostname'}</span>
+            TLS allowed for <span className="text-xs">{draftHostname.trim() || 'hostname'}</span>
           </span>
           <Badge variant="default">yes</Badge>
         </div>

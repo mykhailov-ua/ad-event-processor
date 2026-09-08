@@ -943,39 +943,6 @@ func (tc *TemplateCatalog) loadIntegrationSchema(ctx context.Context, schemaID u
 	return kind, schemaBody, nil
 }
 
-func (tc *TemplateCatalog) applyIntegrationSchema(ctx context.Context, campaignID, schemaID uuid.UUID, trackingDomain string) (map[string]string, error) {
-	if _, err := db.New(tc.pool).GetCampaign(ctx, pgtype.UUID{Bytes: campaignID, Valid: true}); err != nil {
-		if errors.Is(err, pgx.ErrNoRows) {
-			return nil, fmt.Errorf("campaign not found")
-		}
-		return nil, err
-	}
-
-	tx, err := tc.pool.Begin(ctx)
-	if err != nil {
-		return nil, err
-	}
-	defer func() { _ = tx.Rollback(ctx) }()
-
-	key := []byte("postback-encryption-secret-key32")
-	if tc.host != nil {
-		if k := tc.host.PostbackEncryptionKey(); len(k) > 0 {
-			key = k
-		}
-	}
-	applied, err := tc.applyIntegrationSchemaInTx(ctx, tx, campaignID, schemaID, trackingDomain, key)
-	if err != nil {
-		return nil, err
-	}
-	if err := tx.Commit(ctx); err != nil {
-		return nil, err
-	}
-	if tc.host != nil {
-		tc.host.PublishCampaignUpdate(ctx, campaignID.String())
-	}
-	return applied, nil
-}
-
 func (tc *TemplateCatalog) applyIntegrationSchemaInTx(ctx context.Context, tx pgx.Tx, campaignID, schemaID uuid.UUID, trackingDomain string, key []byte) (map[string]string, error) {
 	kind, schemaBody, err := tc.loadIntegrationSchema(ctx, schemaID)
 	if err != nil {
@@ -2282,7 +2249,7 @@ func (h *CampaignsHTTPHandlers) importMigrationPull(w http.ResponseWriter, r *ht
 		httpresponse.Error(w, http.StatusBadRequest, "BAD_REQUEST", "source_kind does not support live pull")
 		return
 	}
-	if err := svc.StartMigrationPullImport(context.Background(), PullMigrationImportSpec{
+	if err := svc.StartMigrationPullImport(r.Context(), PullMigrationImportSpec{
 		PullMigrationPreviewSpec: PullMigrationPreviewSpec{
 			SourceKind: kind,
 			BaseURL:    req.BaseURL,

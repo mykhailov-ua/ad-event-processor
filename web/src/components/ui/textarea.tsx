@@ -59,7 +59,6 @@ const Textarea = React.forwardRef<HTMLTextAreaElement, TextareaProps>(
             rows={rows}
             className={cn(
               'flex min-h-[5rem] w-full resize-none overflow-hidden border-0 bg-transparent px-3 py-2 text-sm text-foreground transition-colors placeholder:text-muted-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring disabled:cursor-not-allowed disabled:opacity-50',
-              !className?.includes('ui-editor-mono-extralight') && 'font-mono',
               showCounter && maxLength != null && 'pb-7',
               className
             )}
@@ -74,7 +73,7 @@ const Textarea = React.forwardRef<HTMLTextAreaElement, TextareaProps>(
         </div>
         {showCounter && maxLength != null ? (
           <span
-            className="pointer-events-none absolute bottom-2 right-3 text-xs tabular-nums text-muted-foreground"
+            className="pointer-events-none absolute bottom-2 right-3 text-xs text-muted-foreground"
             aria-hidden="true"
           >
             {length}/{maxLength.toLocaleString()}

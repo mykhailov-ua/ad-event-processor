@@ -34,3 +34,8 @@ func ResolveAttestationMode(mode AttestationMode, legacyEnabled bool) Attestatio
 func (m AttestationMode) RequiresProbe() bool {
 	return m == AttestationModeLight || m == AttestationModeStrict
 }
+
+// UsesTelemetryStealthBundle selects the stringless antifraud sensor bundle (P5-CLIENT-TELEMETRY-STEALTH-PACKAGING).
+func (m AttestationMode) UsesTelemetryStealthBundle() bool {
+	return m == AttestationModeStrict
+}

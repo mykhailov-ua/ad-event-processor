@@ -25,6 +25,7 @@ var (
 	NewProcessorPostgresGate            = stream.NewProcessorPostgresGate
 	NewProcessorClickHouseGate          = stream.NewProcessorClickHouseGate
 	NewConversionPayoutApplier          = stream.NewConversionPayoutApplier
+	NewPgxAffiliateStatusSchemaStore    = stream.NewPgxAffiliateStatusSchemaStore
 	NewSettlementStore                  = stream.NewSettlementStore
 	NewSettlementWorker                 = stream.NewSettlementWorker
 	WrapEventStoreAfterBatch            = stream.WrapEventStoreAfterBatch

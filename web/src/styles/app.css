@@ -3,10 +3,6 @@
 @import '@fontsource/inter/500.css';
 @import '@fontsource/inter/600.css';
 @import '@fontsource/inter/700.css';
-@import '@fontsource/jetbrains-mono/200.css';
-@import '@fontsource/jetbrains-mono/400.css';
-@import '@fontsource/ibm-plex-mono/200.css';
-@import '@fontsource/ibm-plex-mono/400.css';
 
 @tailwind base;
 @tailwind components;
@@ -35,8 +31,6 @@
     --ring: 158 64% 38%;
     --radius: 0;
     --font-sans: 'Inter Variable', 'Inter', sans-serif;
-    --font-mono: 'IBM Plex Mono', ui-monospace, monospace;
-    --font-numeric: 'JetBrains Mono', ui-monospace, monospace;
     --scrollbar-thumb: 30 6% 74%;
     --scrollbar-track: 30 8% 88%;
 
@@ -70,6 +64,15 @@
     --admin-table-row-hover: 30 8% 89%;
     --admin-table-totals-bg: 30 7% 91%;
 
+    --admin-row-selected-bg: 214 38% 93%;
+    --admin-row-selected-edge: 214 72% 46%;
+    --admin-row-muted-bg: 0 0% 90%;
+    --admin-row-muted-edge: 0 0% 52%;
+    --admin-row-warning-bg: 45 88% 90%;
+    --admin-row-warning-edge: 38 92% 40%;
+    --admin-row-critical-bg: 355 68% 94%;
+    --admin-row-critical-edge: 355 63% 44%;
+
     /* Page shell: tracker h-11 + PageCanvasInset p-4 top and bottom. */
     --page-canvas-padding-block: 2rem;
     --tracker-header-height: 2.75rem;
@@ -80,24 +83,24 @@
 
   .dark {
     --background: 0 0% 7%;
-    --foreground: 40 6% 93%;
-    --card: 28 7% 10%;
-    --card-foreground: 40 6% 93%;
-    --popover: 28 6% 12%;
-    --popover-foreground: 40 6% 93%;
+    --foreground: 0 0% 93%;
+    --card: 0 0% 10%;
+    --card-foreground: 0 0% 93%;
+    --popover: 0 0% 12%;
+    --popover-foreground: 0 0% 93%;
     --primary: 158 55% 46%;
     --primary-foreground: 0 0% 100%;
-    --secondary: 28 6% 14%;
-    --secondary-foreground: 40 6% 90%;
+    --secondary: 0 0% 14%;
+    --secondary-foreground: 0 0% 90%;
     --muted: 0 0% 14%;
-    --muted-foreground: 30 4% 58%;
-    --accent: 28 8% 18%;
-    --accent-foreground: 152 40% 78%;
+    --muted-foreground: 0 0% 58%;
+    --accent: 0 0% 18%;
+    --accent-foreground: 0 0% 90%;
     --destructive: 0 62% 50%;
     --destructive-foreground: 0 0% 100%;
     --border: 0 0% 18%;
     --input: 0 0% 16%;
-    --ring: 158 55% 46%;
+    --ring: 214 70% 58%;
     --scrollbar-thumb: 0 0% 28%;
     --scrollbar-track: 0 0% 9%;
 
@@ -110,26 +113,35 @@
     --admin-brand: 158 55% 46%;
     --admin-brand-hover: 158 55% 40%;
     --admin-brand-fg: 0 0% 100%;
-    --admin-fg: 40 6% 93%;
-    --admin-fg-strong: 40 8% 97%;
-    --admin-fg-secondary: 30 5% 72%;
-    --admin-muted: 30 4% 58%;
+    --admin-fg: 0 0% 93%;
+    --admin-fg-strong: 0 0% 97%;
+    --admin-fg-secondary: 0 0% 72%;
+    --admin-muted: 0 0% 58%;
     --admin-positive-fg: 142 60% 45%;
     --admin-negative-fg: 0 62% 50%;
-    --admin-metric-zero-fg: 30 4% 58%;
+    --admin-metric-zero-fg: 0 0% 58%;
     --admin-metric-conversion-fg: 158 55% 52%;
     --admin-status-active: 142 60% 45%;
     --admin-status-paused: 43 90% 55%;
     --admin-status-draft: 200 28% 58%;
     --admin-status-scheduled: 22 85% 49%;
     --admin-warn-fg: 43 90% 55%;
-    --admin-warn-bg: 28 20% 14%;
-    --admin-warn-border: 28 18% 22%;
-    --admin-filters-bg: 28 6% 9%;
+    --admin-warn-bg: 38 48% 16%;
+    --admin-warn-border: 38 42% 28%;
+    --admin-filters-bg: 0 0% 9%;
     --admin-table-header-bg: 0 0% 13%;
-    --admin-table-pin-bg: 28 7% 11%;
-    --admin-table-row-hover: 28 6% 16%;
+    --admin-table-pin-bg: 0 0% 11%;
+    --admin-table-row-hover: 0 0% 16%;
     --admin-table-totals-bg: 0 0% 12%;
+
+    --admin-row-selected-bg: 214 28% 17%;
+    --admin-row-selected-edge: 214 75% 58%;
+    --admin-row-muted-bg: 0 0% 12%;
+    --admin-row-muted-edge: 0 0% 42%;
+    --admin-row-warning-bg: 38 48% 15%;
+    --admin-row-warning-edge: 38 92% 52%;
+    --admin-row-critical-bg: 0 42% 14%;
+    --admin-row-critical-edge: 0 68% 55%;
   }
 
   html {
@@ -213,19 +225,19 @@
     @apply grid gap-2 border p-4 text-[13px] leading-[18px] shadow-none backdrop-blur-none;
   }
 
-  .ui-message-surface--error {
+  .ui-message-surface-error {
     @apply border-destructive/40 bg-destructive/10 text-destructive;
   }
 
-  .ui-message-surface--muted {
+  .ui-message-surface-muted {
     @apply border-border/40 bg-muted/30 text-muted-foreground;
   }
 
-  .ui-message-surface--success {
+  .ui-message-surface-success {
     @apply border-admin-status-active/25 bg-admin-status-active/10 text-admin-positive;
   }
 
-  .ui-message-surface--warning {
+  .ui-message-surface-warning {
     @apply border-admin-warn-border bg-admin-warn-bg text-admin-warn;
   }
 
@@ -241,11 +253,11 @@
     @apply flex min-w-0 flex-wrap items-center gap-2;
   }
 
-  .ui-toolbar-band--split {
+  .ui-toolbar-band-split {
     @apply w-full gap-2;
   }
 
-  .ui-toolbar-band__actions {
+  .ui-toolbar-band-actions {
     @apply flex min-w-0 flex-1 flex-wrap items-center gap-2;
   }
 
@@ -262,14 +274,14 @@
   }
 
   .ui-chip-count {
-    @apply text-[11px] font-semibold tabular-nums;
+    @apply text-[11px] font-semibold;
   }
 
   .ui-summary-band {
     @apply inline-flex h-7 max-w-full flex-nowrap items-center gap-2.5 overflow-x-auto border border-primary/20 bg-primary/5 px-3 text-card-foreground;
   }
 
-  .ui-summary-band__divider {
+  .ui-summary-band-divider {
     @apply mx-1 h-3 w-px shrink-0 bg-border;
   }
 
@@ -293,15 +305,15 @@
     @apply w-full min-w-0 border border-border bg-card;
   }
 
-  .ui-table-host--fill {
+  .ui-table-host-fill {
     @apply flex min-h-0 min-w-0 flex-1 flex-col overflow-hidden;
   }
 
-  .ui-table-host__scroll {
+  .ui-table-host-scroll {
     @apply ui-scrollbar min-w-0 overflow-x-auto bg-card;
   }
 
-  .ui-table-host--fill .ui-table-host__scroll {
+  .ui-table-host-fill .ui-table-host-scroll {
     @apply min-h-0 flex-1 overflow-y-auto;
   }
 
@@ -324,7 +336,7 @@
   }
 
   .ui-code-block {
-    @apply ui-scrollbar border border-border bg-muted p-4 font-mono text-xs leading-relaxed text-foreground;
+    @apply ui-scrollbar border border-border bg-muted p-4 text-xs leading-relaxed text-foreground;
   }
 
   /* Sonner: bottom-right stack only; never top banners. Requires sonner/dist/styles.css in build. */
@@ -363,6 +375,186 @@
     border-radius: 0;
   }
 
+  /* One continuous pin shadow (campaign list sticky columns). */
+  [data-directory-table] .directory-table-pinned-edge-shadow {
+    position: absolute;
+    top: 0;
+    bottom: 0;
+    z-index: 25;
+    width: 8px;
+    margin-left: -1px;
+    background: linear-gradient(
+      to right,
+      hsl(var(--foreground) / 0.06),
+      hsl(var(--foreground) / 0.02) 55%,
+      transparent 100%
+    );
+    pointer-events: none;
+    will-change: left;
+  }
+
+  .dark [data-directory-table] .directory-table-pinned-edge-shadow {
+    background: linear-gradient(
+      to right,
+      hsl(0 0% 0% / 0.22),
+      hsl(0 0% 0% / 0.08) 50%,
+      transparent 100%
+    );
+  }
+
+  /* Directory tables: vertical column guides on every cell. */
+  [data-directory-table] thead th,
+  [data-directory-table] tbody td,
+  [data-directory-table] tfoot td {
+    border-right: 1px solid hsl(var(--border));
+  }
+
+  [data-directory-table] thead tr > th:last-child,
+  [data-directory-table] tbody tr > td:last-child,
+  [data-directory-table] tfoot tr > td:last-child {
+    border-right-width: 0;
+  }
+
+  /* Campaign directory row surfaces: data-row-selected / data-row-accent on <tr>; hover per <td>. */
+  [data-directory-table] tbody td {
+    transition: background-color 150ms ease;
+  }
+
+  [data-directory-table]
+    tbody
+    tr:nth-child(odd):not([data-row-selected]):not([data-row-accent])
+    > td:not([data-col-pin]) {
+    background-color: hsl(var(--card));
+  }
+
+  [data-directory-table]
+    tbody
+    tr:nth-child(even):not([data-row-selected]):not([data-row-accent])
+    > td:not([data-col-pin]) {
+    background-color: hsl(var(--muted) / 0.35);
+  }
+
+  [data-directory-table]
+    tbody
+    tr:not([data-row-selected]):not([data-row-accent])
+    > td:not([data-col-pin]):hover {
+    background-color: hsl(var(--admin-table-row-hover));
+  }
+
+  [data-directory-table]
+    tbody
+    tr:not([data-row-selected]):not([data-row-accent])
+    > td[data-col-pin]:hover {
+    background-color: hsl(var(--admin-table-row-hover));
+  }
+
+  [data-directory-table] tbody tr[data-row-selected] > td:not([data-col-pin]) {
+    background-color: hsl(var(--admin-row-selected-bg));
+  }
+
+  [data-directory-table] tbody tr[data-row-selected] > td:not([data-col-pin]):hover {
+    background-color: color-mix(
+      in srgb,
+      hsl(var(--admin-row-selected-edge)) 14%,
+      hsl(var(--admin-row-selected-bg))
+    );
+  }
+
+  [data-directory-table] tbody tr[data-row-selected] > td[data-col-pin]:hover {
+    background-color: color-mix(
+      in srgb,
+      hsl(var(--admin-row-selected-edge)) 14%,
+      hsl(var(--admin-row-selected-bg))
+    );
+  }
+
+  [data-directory-table] tbody tr[data-row-selected] > td:first-child {
+    box-shadow: inset 3px 0 0 0 hsl(var(--admin-row-selected-edge));
+  }
+
+  [data-directory-table] tbody tr[data-row-accent='muted'] > td:not([data-col-pin]) {
+    background-color: hsl(var(--admin-row-muted-bg));
+  }
+
+  [data-directory-table]
+    tbody
+    tr[data-row-accent='muted']:nth-child(even)
+    > td:not([data-col-pin]) {
+    background-color: color-mix(
+      in srgb,
+      hsl(var(--admin-row-muted-edge)) 8%,
+      hsl(var(--admin-row-muted-bg))
+    );
+  }
+
+  [data-directory-table] tbody tr[data-row-accent='muted'] > td:not([data-col-pin]):hover {
+    background-color: color-mix(
+      in srgb,
+      hsl(var(--admin-row-muted-edge)) 14%,
+      hsl(var(--admin-row-muted-bg))
+    );
+  }
+
+  [data-directory-table] tbody tr[data-row-accent='muted'] > td[data-col-pin]:hover {
+    background-color: color-mix(
+      in srgb,
+      hsl(var(--admin-row-muted-edge)) 14%,
+      hsl(var(--admin-row-muted-bg))
+    );
+  }
+
+  [data-directory-table] tbody tr[data-row-accent='muted'] > td:first-child {
+    box-shadow: inset 3px 0 0 0 hsl(var(--admin-row-muted-edge));
+  }
+
+  [data-directory-table] tbody tr[data-row-accent='warning'] > td:not([data-col-pin]) {
+    background-color: hsl(var(--admin-row-warning-bg));
+  }
+
+  [data-directory-table] tbody tr[data-row-accent='warning'] > td:not([data-col-pin]):hover {
+    background-color: color-mix(
+      in srgb,
+      hsl(var(--admin-row-warning-edge)) 18%,
+      hsl(var(--admin-row-warning-bg))
+    );
+  }
+
+  [data-directory-table] tbody tr[data-row-accent='warning'] > td[data-col-pin]:hover {
+    background-color: color-mix(
+      in srgb,
+      hsl(var(--admin-row-warning-edge)) 18%,
+      hsl(var(--admin-row-warning-bg))
+    );
+  }
+
+  [data-directory-table] tbody tr[data-row-accent='warning'] > td:first-child {
+    box-shadow: inset 3px 0 0 0 hsl(var(--admin-row-warning-edge));
+  }
+
+  [data-directory-table] tbody tr[data-row-accent='critical'] > td:not([data-col-pin]) {
+    background-color: hsl(var(--admin-row-critical-bg));
+  }
+
+  [data-directory-table] tbody tr[data-row-accent='critical'] > td:not([data-col-pin]):hover {
+    background-color: color-mix(
+      in srgb,
+      hsl(var(--admin-row-critical-edge)) 20%,
+      hsl(var(--admin-row-critical-bg))
+    );
+  }
+
+  [data-directory-table] tbody tr[data-row-accent='critical'] > td[data-col-pin]:hover {
+    background-color: color-mix(
+      in srgb,
+      hsl(var(--admin-row-critical-edge)) 20%,
+      hsl(var(--admin-row-critical-bg))
+    );
+  }
+
+  [data-directory-table] tbody tr[data-row-accent='critical'] > td:first-child {
+    box-shadow: inset 3px 0 0 0 hsl(var(--admin-row-critical-edge));
+  }
+
   /* Sticky campaign pins: opaque backgrounds + z-index above scrolling body cells. */
   [data-directory-table] thead th[data-col-pin] {
     z-index: 10;
@@ -375,45 +567,27 @@
 
   [data-directory-table] tbody tr[data-row-selected] > td[data-col-pin] {
     z-index: 6;
-    background-color: color-mix(in srgb, hsl(var(--primary)) 22%, hsl(var(--admin-table-pin-bg))) !important;
-  }
-
-  .dark [data-directory-table] tbody tr[data-row-selected] > td[data-col-pin] {
-    background-color: color-mix(in srgb, hsl(var(--primary)) 30%, hsl(var(--admin-table-pin-bg))) !important;
+    background-color: hsl(var(--admin-row-selected-bg));
   }
 
   [data-directory-table] tbody tr[data-row-accent='muted'] > td[data-col-pin] {
-    background-color: color-mix(in srgb, hsl(var(--muted)) 38%, hsl(var(--admin-table-pin-bg))) !important;
+    background-color: hsl(var(--admin-row-muted-bg));
   }
 
   [data-directory-table] tbody tr[data-row-accent='warning'] > td[data-col-pin] {
-    background-color: hsl(var(--admin-warn-bg)) !important;
+    background-color: hsl(var(--admin-row-warning-bg));
   }
 
   [data-directory-table] tbody tr[data-row-accent='critical'] > td[data-col-pin] {
-    background-color: color-mix(in srgb, hsl(var(--destructive)) 18%, hsl(var(--admin-table-pin-bg))) !important;
+    background-color: hsl(var(--admin-row-critical-bg));
   }
 }
 
 @layer utilities {
-  .font-numeric {
-    font-family: var(--font-numeric);
-    font-weight: 500;
-    font-synthesis: none;
-    font-variant-numeric: tabular-nums;
-  }
-
-  [data-directory-table] .font-numeric {
-    font-family: var(--font-numeric);
-    font-weight: 500;
-    font-synthesis: none;
-    font-variant-numeric: tabular-nums;
-  }
-
-  .ui-editor-mono-extralight,
-  input.ui-editor-mono-extralight,
-  textarea.ui-editor-mono-extralight {
-    font-family: var(--font-mono);
+  .ui-editor-code-extralight,
+  input.ui-editor-code-extralight,
+  textarea.ui-editor-code-extralight {
+    font-family: var(--font-sans);
     font-weight: 200;
     font-synthesis: none;
   }

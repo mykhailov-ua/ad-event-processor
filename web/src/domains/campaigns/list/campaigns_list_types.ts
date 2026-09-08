@@ -10,6 +10,6 @@ export type CampaignSortField =
 
 export type SortOrder = 'asc' | 'desc';
 
-export type CampaignStatusFilter = '' | 'ACTIVE' | 'PAUSED' | 'ARCHIVED';
+export type CampaignStatusFilter = '' | 'ACTIVE' | 'PAUSED' | 'ARCHIVED' | 'WARNINGS';
 
 export type CampaignPacingFilter = '' | 'EVEN' | 'ASAP';

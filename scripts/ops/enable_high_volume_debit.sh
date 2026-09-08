@@ -11,7 +11,7 @@ cd "$ROOT"
 HIGH_VOLUME_DEBIT_FLAG=256
 
 usage() {
-  cat <<'EOF'
+  cat << 'EOF'
 Usage: enable_high_volume_debit.sh <campaign-uuid> [campaign-uuid...]
 
 Sets behavior_flags |= 256 (BehaviorHighVolumeDebit) on each campaign.

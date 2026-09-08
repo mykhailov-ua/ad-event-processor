@@ -14,11 +14,7 @@ import type { LandersHostingCounts } from '@/domains/creative/use_landers_list_v
 import { CreativeDirectoryStack } from '@/domains/creative/creative_directory_stack';
 import { campaignListFilterFieldClass } from '@/domains/campaigns/list/campaign_list_classes';
 import { FilterField, FilterPanel, FILTER_PANEL_FLAT_CLASS } from '@/shell/filter_panel';
-import {
-  StatusMetricsBand,
-  ToolbarBand,
-  ToolbarBandActions,
-} from '@/shell/ui_bands';
+import { StatusMetricsBand, ToolbarBand, ToolbarBandActions } from '@/shell/ui_bands';
 import { cn } from '@/lib/utils';
 
 export type LandersListToolbarProps = {
@@ -29,6 +25,7 @@ export type LandersListToolbarProps = {
   filtersActive: boolean;
   fetching?: boolean;
   listLastUpdatedAt?: string | null;
+  listRevalidating?: boolean;
   acting?: boolean;
   onDraftSearchChange: (value: string) => void;
   onHostingFilterChange: (value: LanderHostingFilter) => void;
@@ -44,6 +41,7 @@ export function LandersListToolbar({
   filtersActive,
   fetching = false,
   listLastUpdatedAt = null,
+  listRevalidating = false,
   acting = false,
   onDraftSearchChange,
   onHostingFilterChange,
@@ -65,7 +63,7 @@ export function LandersListToolbar({
           ariaLabel="Refresh lander list"
           disabled={acting}
           lastUpdatedAt={listLastUpdatedAt}
-          loading={fetching}
+          loading={fetching || listRevalidating}
           title="Refresh lander list"
           onRefresh={onRefresh}
         />
@@ -85,7 +83,11 @@ export function LandersListToolbar({
         />
       </StatusMetricsBand>
 
-      <FilterPanel aria-label="List filters" className={cn(FILTER_PANEL_FLAT_CLASS, 'w-full')} role="search">
+      <FilterPanel
+        aria-label="List filters"
+        className={cn(FILTER_PANEL_FLAT_CLASS, 'w-full')}
+        role="search"
+      >
         <FilterField className={cn(campaignListFilterFieldClass, 'max-w-xl')} label="Search">
           <Input
             aria-label="Search landers"

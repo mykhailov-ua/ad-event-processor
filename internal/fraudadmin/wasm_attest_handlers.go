@@ -70,7 +70,7 @@ func (h *HTTPHandlers) postWasmAttestDryRun(w http.ResponseWriter, r *http.Reque
 		h.writeServiceError(w, err)
 		return
 	}
-	defer sb.Close(r.Context())
+	defer func() { _ = sb.Close(r.Context()) }() //nolint:contextcheck // defer closes sandbox on handler exit
 
 	nonce, err := sb.PoWSolve(r.Context(), salt, req.Difficulty, req.MaxTries)
 	if err != nil {

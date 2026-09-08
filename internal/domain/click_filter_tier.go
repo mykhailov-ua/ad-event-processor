@@ -69,7 +69,7 @@ func CampaignRequiresFullClickFilters(c *Campaign) bool {
 }
 
 func ResolveClickFilterTier(c *Campaign, envDefault string, redirectOnlyLicensed bool) ClickFilterTier {
-	tier := ClickFilterTierFull
+	var tier ClickFilterTier
 	if c != nil && strings.TrimSpace(c.ClickFilterTier) != "" {
 		tier = NormalizeClickFilterTier(c.ClickFilterTier)
 	} else {

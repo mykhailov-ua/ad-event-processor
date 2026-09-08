@@ -50,7 +50,13 @@ func (s *Service) disputesAdmin() *platformadmin.Disputes {
 }
 
 func (s *Service) domainHealthAdmin() *platformadmin.DomainHealth {
-	return platformadmin.NewDomainHealth(s)
+	if s == nil {
+		return nil
+	}
+	if s.domainHealth == nil {
+		s.domainHealth = platformadmin.NewDomainHealth(s)
+	}
+	return s.domainHealth
 }
 
 func (s *Service) PlatformStore() *platformadmin.Store {

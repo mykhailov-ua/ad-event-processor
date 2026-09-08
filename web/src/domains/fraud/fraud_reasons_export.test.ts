@@ -27,5 +27,8 @@ test('buildFraudReasonsExportCsv escapes reason commas', () => {
     ]
   );
   assert.match(csv, /"tls_ja4_mismatch, h2"/);
-  assert.equal(fraudReasonExportCellValue('silent_reject_ratio', { silent_reject_ratio: 0.125 }), '12.5%');
+  assert.equal(
+    fraudReasonExportCellValue('silent_reject_ratio', { silent_reject_ratio: 0.125 }),
+    '12.5%'
+  );
 });

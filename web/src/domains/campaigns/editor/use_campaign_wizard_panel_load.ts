@@ -55,6 +55,12 @@ export function useCampaignWizardPanelLoad(enabled: boolean) {
     setLocalSession(undefined);
   }, []);
 
+  const resetSession = useCallback(() => {
+    setSessionId('');
+    setLocalSession(undefined);
+    setPollToken(0);
+  }, []);
+
   return {
     templates: (templatesResource.data ?? []) as CampaignOnboardingTemplate[],
     templatesError: templatesResource.error,
@@ -67,6 +73,7 @@ export function useCampaignWizardPanelLoad(enabled: boolean) {
     onSessionUpdated,
     onSessionCommitted,
     onStartAnother,
+    resetSession,
     bumpSessionPoll,
   };
 }

@@ -24,7 +24,7 @@ func TestBuildDmrResponse_Correctness(t *testing.T) {
 
 	assert.Contains(t, string(res), "https://offer.com/lander?sub1=123&amp;sub2=test&quot;&amp;name=John&#39;s&lt;/script&gt;")
 
-	assert.Contains(t, string(res), "https:\\/\\/offer.com\\/lander?sub1=123&sub2=test\\\"&name=John\\'s\\x3c\\/script\\x3e")
+	assert.Contains(t, string(res), "https:\\/\\/offer.com\\/lander?sub1=123&sub2=test\\\"&name=John\\'s<\\/script>")
 
 	idx := bytes.Index(res, []byte("\r\n\r\n"))
 	require.True(t, idx > 0)
@@ -117,13 +117,23 @@ func TestParseDmrQueryFlag(t *testing.T) {
 
 func TestClickDmrEnabled(t *testing.T) {
 	t.Parallel()
-	camp := &domain.Campaign{DmrEnabled: true}
+	camp := &domain.Campaign{DmrEnabled: true, RedirectComplianceMode: domain.RedirectComplianceLegacyDMR}
 	require.True(t, clickDmrEnabled(true, nil))
 	require.True(t, clickDmrEnabled(true, camp))
 	require.True(t, clickDmrEnabled(false, camp))
 	require.False(t, clickDmrEnabled(false, nil))
 	camp.DmrEnabled = false
 	require.False(t, clickDmrEnabled(false, camp))
+}
+
+func TestClickDmrEnabled_strictProfileBlocksDMR(t *testing.T) {
+	t.Parallel()
+	camp := &domain.Campaign{
+		DmrEnabled:             true,
+		RedirectComplianceMode: domain.RedirectComplianceStrict,
+	}
+	require.False(t, clickDmrEnabled(false, camp))
+	require.False(t, clickDmrEnabled(true, camp))
 }
 
 func TestWriteGnetClickDmrRedirect_PreSizesConnBuf(t *testing.T) {

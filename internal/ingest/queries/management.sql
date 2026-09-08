@@ -246,7 +246,19 @@ SELECT COUNT(*) FROM recon_runs;
 SELECT COUNT(*) FROM campaigns
 WHERE deleted_at IS NULL
   AND (sqlc.narg('customer_id')::uuid IS NULL OR customer_id = sqlc.narg('customer_id')::uuid)
-  AND (sqlc.narg('status')::text IS NULL OR status::text = sqlc.narg('status')::text)
+  AND (
+    COALESCE(sqlc.narg('warnings_only')::boolean, false)
+    OR sqlc.narg('status')::text IS NULL
+    OR status::text = sqlc.narg('status')::text
+  )
+  AND (
+    NOT COALESCE(sqlc.narg('warnings_only')::boolean, false)
+    OR (
+      status::text = 'ACTIVE'
+      AND budget_limit > 0
+      AND current_spend >= (budget_limit * 9 / 10)
+    )
+  )
   AND (sqlc.narg('owner_user_id')::uuid IS NULL OR owner_user_id = sqlc.narg('owner_user_id')::uuid)
   AND (sqlc.narg('target_country')::text IS NULL OR sqlc.narg('target_country')::text = ANY(target_countries))
   AND (sqlc.narg('budget_min_micro')::bigint IS NULL OR budget_limit >= sqlc.narg('budget_min_micro')::bigint)
@@ -303,12 +315,47 @@ WHERE deleted_at IS NULL
   )
 GROUP BY status;
 
+-- name: CountCampaignWarnings :one
+SELECT COUNT(*)::bigint FROM campaigns
+WHERE deleted_at IS NULL
+  AND status::text = 'ACTIVE'
+  AND budget_limit > 0
+  AND current_spend >= (budget_limit * 9 / 10)
+  AND (sqlc.narg('customer_id')::uuid IS NULL OR customer_id = sqlc.narg('customer_id')::uuid)
+  AND (sqlc.narg('owner_user_id')::uuid IS NULL OR owner_user_id = sqlc.narg('owner_user_id')::uuid)
+  AND (sqlc.narg('target_country')::text IS NULL OR sqlc.narg('target_country')::text = ANY(target_countries))
+  AND (sqlc.narg('budget_min_micro')::bigint IS NULL OR budget_limit >= sqlc.narg('budget_min_micro')::bigint)
+  AND (sqlc.narg('budget_max_micro')::bigint IS NULL OR budget_limit <= sqlc.narg('budget_max_micro')::bigint)
+  AND (
+    sqlc.narg('search_query')::text IS NULL
+    OR btrim(sqlc.narg('search_query')::text) = ''
+    OR name ILIKE '%' || btrim(sqlc.narg('search_query')::text) || '%'
+    OR id::text ILIKE '%' || btrim(sqlc.narg('search_query')::text) || '%'
+  )
+  AND (
+    sqlc.narg('pacing_mode')::text IS NULL
+    OR btrim(sqlc.narg('pacing_mode')::text) = ''
+    OR pacing_mode::text ILIKE btrim(sqlc.narg('pacing_mode')::text)
+  );
+
 -- name: CountCampaignFlowsForFilter :one
 SELECT COUNT(*)::bigint FROM campaigns
 WHERE deleted_at IS NULL
   AND flow_id IS NOT NULL
   AND (sqlc.narg('customer_id')::uuid IS NULL OR customer_id = sqlc.narg('customer_id')::uuid)
-  AND (sqlc.narg('status')::text IS NULL OR status::text = sqlc.narg('status')::text)
+  AND (
+    COALESCE(sqlc.narg('warnings_only')::boolean, false)
+    OR sqlc.narg('status')::text IS NULL
+    OR status::text = sqlc.narg('status')::text
+  )
+  AND (
+    NOT COALESCE(sqlc.narg('warnings_only')::boolean, false)
+    OR (
+      status::text = 'ACTIVE'
+      AND budget_limit > 0
+      AND current_spend >= (budget_limit * 9 / 10)
+    )
+  )
   AND (sqlc.narg('owner_user_id')::uuid IS NULL OR owner_user_id = sqlc.narg('owner_user_id')::uuid)
   AND (sqlc.narg('target_country')::text IS NULL OR sqlc.narg('target_country')::text = ANY(target_countries))
   AND (sqlc.narg('budget_min_micro')::bigint IS NULL OR budget_limit >= sqlc.narg('budget_min_micro')::bigint)
@@ -329,7 +376,19 @@ WHERE deleted_at IS NULL
 SELECT id, name FROM campaigns
 WHERE deleted_at IS NULL
   AND (sqlc.narg('customer_id')::uuid IS NULL OR customer_id = sqlc.narg('customer_id')::uuid)
-  AND (sqlc.narg('status')::text IS NULL OR status::text = sqlc.narg('status')::text)
+  AND (
+    COALESCE(sqlc.narg('warnings_only')::boolean, false)
+    OR sqlc.narg('status')::text IS NULL
+    OR status::text = sqlc.narg('status')::text
+  )
+  AND (
+    NOT COALESCE(sqlc.narg('warnings_only')::boolean, false)
+    OR (
+      status::text = 'ACTIVE'
+      AND budget_limit > 0
+      AND current_spend >= (budget_limit * 9 / 10)
+    )
+  )
   AND (sqlc.narg('owner_user_id')::uuid IS NULL OR owner_user_id = sqlc.narg('owner_user_id')::uuid)
   AND (sqlc.narg('target_country')::text IS NULL OR sqlc.narg('target_country')::text = ANY(target_countries))
   AND (sqlc.narg('budget_min_micro')::bigint IS NULL OR budget_limit >= sqlc.narg('budget_min_micro')::bigint)
@@ -351,7 +410,19 @@ SELECT campaigns.* FROM campaigns
 LEFT JOIN customers customer_group ON customer_group.id = campaigns.customer_id
 WHERE campaigns.deleted_at IS NULL
   AND (sqlc.narg('customer_id')::uuid IS NULL OR campaigns.customer_id = sqlc.narg('customer_id')::uuid)
-  AND (sqlc.narg('status')::text IS NULL OR campaigns.status::text = sqlc.narg('status')::text)
+  AND (
+    COALESCE(sqlc.narg('warnings_only')::boolean, false)
+    OR sqlc.narg('status')::text IS NULL
+    OR campaigns.status::text = sqlc.narg('status')::text
+  )
+  AND (
+    NOT COALESCE(sqlc.narg('warnings_only')::boolean, false)
+    OR (
+      campaigns.status::text = 'ACTIVE'
+      AND campaigns.budget_limit > 0
+      AND campaigns.current_spend >= (campaigns.budget_limit * 9 / 10)
+    )
+  )
   AND (sqlc.narg('owner_user_id')::uuid IS NULL OR campaigns.owner_user_id = sqlc.narg('owner_user_id')::uuid)
   AND (sqlc.narg('target_country')::text IS NULL OR sqlc.narg('target_country')::text = ANY(campaigns.target_countries))
   AND (sqlc.narg('budget_min_micro')::bigint IS NULL OR campaigns.budget_limit >= sqlc.narg('budget_min_micro')::bigint)
@@ -408,7 +479,19 @@ LEFT JOIN (
     SELECT id FROM campaigns
     WHERE deleted_at IS NULL
       AND (sqlc.narg('customer_id')::uuid IS NULL OR customer_id = sqlc.narg('customer_id')::uuid)
-      AND (sqlc.narg('status')::text IS NULL OR status::text = sqlc.narg('status')::text)
+      AND (
+        COALESCE(sqlc.narg('warnings_only')::boolean, false)
+        OR sqlc.narg('status')::text IS NULL
+        OR status::text = sqlc.narg('status')::text
+      )
+      AND (
+        NOT COALESCE(sqlc.narg('warnings_only')::boolean, false)
+        OR (
+          status::text = 'ACTIVE'
+          AND budget_limit > 0
+          AND current_spend >= (budget_limit * 9 / 10)
+        )
+      )
       AND (sqlc.narg('owner_user_id')::uuid IS NULL OR owner_user_id = sqlc.narg('owner_user_id')::uuid)
       AND (sqlc.narg('target_country')::text IS NULL OR sqlc.narg('target_country')::text = ANY(target_countries))
       AND (sqlc.narg('budget_min_micro')::bigint IS NULL OR budget_limit >= sqlc.narg('budget_min_micro')::bigint)
@@ -431,7 +514,19 @@ LEFT JOIN (
 ) stats ON stats.campaign_id = campaigns.id
 WHERE deleted_at IS NULL
   AND (sqlc.narg('customer_id')::uuid IS NULL OR customer_id = sqlc.narg('customer_id')::uuid)
-  AND (sqlc.narg('status')::text IS NULL OR status::text = sqlc.narg('status')::text)
+  AND (
+    COALESCE(sqlc.narg('warnings_only')::boolean, false)
+    OR sqlc.narg('status')::text IS NULL
+    OR status::text = sqlc.narg('status')::text
+  )
+  AND (
+    NOT COALESCE(sqlc.narg('warnings_only')::boolean, false)
+    OR (
+      status::text = 'ACTIVE'
+      AND budget_limit > 0
+      AND current_spend >= (budget_limit * 9 / 10)
+    )
+  )
   AND (sqlc.narg('owner_user_id')::uuid IS NULL OR owner_user_id = sqlc.narg('owner_user_id')::uuid)
   AND (sqlc.narg('target_country')::text IS NULL OR sqlc.narg('target_country')::text = ANY(target_countries))
   AND (sqlc.narg('budget_min_micro')::bigint IS NULL OR budget_limit >= sqlc.narg('budget_min_micro')::bigint)

@@ -13,7 +13,7 @@ func TestCountCompleteHTTP1Messages_pipelineDepth(t *testing.T) {
 	pipelined := bytes.Repeat(minimalPOST, 5)
 	assert.Equal(t, 5, CountCompleteHTTP1Messages(pipelined, 1<<20, nil, ParseLimits{}))
 
-	partial := append(pipelined, []byte("POST /track HTTP/1.1\r\n")...)
+	partial := append(bytes.Clone(pipelined), []byte("POST /track HTTP/1.1\r\n")...)
 	assert.Equal(t, 5, CountCompleteHTTP1Messages(partial, 1<<20, nil, ParseLimits{}))
 }
 
@@ -35,7 +35,7 @@ func TestParseHTTP1_incompleteMidHeaderLine_holdout(t *testing.T) {
 
 func TestParseHTTP1_incompleteBodyAfterHeaders_holdout(t *testing.T) {
 	hdr := []byte("POST /track HTTP/1.1\r\nContent-Type: application/json\r\nContent-Length: 5\r\n\r\n")
-	wire := append(hdr, []byte("hel")...)
+	wire := append(bytes.Clone(hdr), []byte("hel")...)
 	var req Request
 	consumed, err := ParseHTTP1LimitsInto(wire, 1<<20, nil, ParseLimits{}, &req)
 	require.ErrorIs(t, err, ErrIncomplete)
@@ -44,7 +44,7 @@ func TestParseHTTP1_incompleteBodyAfterHeaders_holdout(t *testing.T) {
 
 func TestParseHTTP1Chunked_incompleteAfterHeaders_holdout(t *testing.T) {
 	hdr := []byte("POST /openrtb/bid HTTP/1.1\r\nTransfer-Encoding: chunked\r\n\r\n")
-	wire := append(hdr, []byte("5\r\nhel")...)
+	wire := append(bytes.Clone(hdr), []byte("5\r\nhel")...)
 	consumed, _, _, err := ParseHTTP1ChunkedBody(wire, len(hdr), 1<<20, 0, nil)
 	require.ErrorIs(t, err, ErrIncomplete)
 	assert.Equal(t, len(hdr), consumed)

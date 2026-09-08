@@ -31,7 +31,7 @@ export function OpsKvRow({ label, value }: { label: string; value: ReactNode }) 
   return (
     <div className="grid grid-cols-[1fr_auto] items-baseline gap-2 text-sm">
       <dt className="text-muted-foreground">{label}</dt>
-      <dd className="font-semibold tabular-nums num">{value}</dd>
+      <dd className="font-semibold">{value}</dd>
     </div>
   );
 }

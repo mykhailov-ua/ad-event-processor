@@ -49,6 +49,8 @@ type Request struct {
 	TCPSigSet             uint8
 	TCPSigOptHash         uint32
 	TCPSigOptSet          uint8
+	H2FrameTraceHash      uint32
+	H2FrameTraceSet       uint8
 	RTTSynMS              uint16
 	TTFBAppMS             uint16
 	ConnTimingSet         uint8

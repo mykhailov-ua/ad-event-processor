@@ -3,7 +3,7 @@ import test from 'node:test';
 
 import { trackEvent } from './track.js';
 
-function withMockWindow(run, { search = '?msclkid=ms-1&ob_click_id=ob-9' } = {}) {
+async function withMockWindow(run, { search = '?msclkid=ms-1&ob_click_id=ob-9' } = {}) {
   const previousWindow = globalThis.window;
   const previousFetch = globalThis.fetch;
   const previousCrypto = globalThis.crypto;
@@ -25,7 +25,7 @@ function withMockWindow(run, { search = '?msclkid=ms-1&ob_click_id=ob-9' } = {})
   };
 
   try {
-    return run(() => capturedBody);
+    return await run(() => capturedBody);
   } finally {
     globalThis.window = previousWindow;
     globalThis.fetch = previousFetch;
@@ -38,9 +38,34 @@ function withMockWindow(run, { search = '?msclkid=ms-1&ob_click_id=ob-9' } = {})
   }
 }
 
-test('trackEvent maps core fields and query attribution', () => {
-  withMockWindow((readBody) => {
-    void trackEvent({
+test('trackEvent honors minDwellMs before fetch', async () => {
+  const previousWindow = globalThis.window;
+  const previousFetch = globalThis.fetch;
+  let capturedBody;
+  globalThis.window = { location: { search: '' } };
+  globalThis.fetch = async (_url, init) => {
+    capturedBody = JSON.parse(String(init.body));
+    return { ok: true };
+  };
+  try {
+    const started = performance.now();
+    await trackEvent({
+      endpoint: 'https://track.example/track',
+      campaignId: 'camp-dwell',
+      type: 'conversion',
+      minDwellMs: 35,
+    });
+    assert.ok(performance.now() - started >= 30);
+    assert.equal(capturedBody.campaign_id, 'camp-dwell');
+  } finally {
+    globalThis.window = previousWindow;
+    globalThis.fetch = previousFetch;
+  }
+});
+
+test('trackEvent maps core fields and query attribution', async () => {
+  await withMockWindow(async (readBody) => {
+    await trackEvent({
       endpoint: 'https://track.example/track',
       campaignId: 'camp-1',
       type: 'conversion',
@@ -64,10 +89,10 @@ test('trackEvent maps core fields and query attribution', () => {
   });
 });
 
-test('trackEvent maps full query attribution and obclid alias', () => {
-  withMockWindow(
-    (readBody) => {
-      void trackEvent({
+test('trackEvent maps full query attribution and obclid alias', async () => {
+  await withMockWindow(
+    async (readBody) => {
+      await trackEvent({
         endpoint: 'https://track.example/track',
         campaignId: 'camp-attrib',
         type: 'click',
@@ -87,14 +112,14 @@ test('trackEvent maps full query attribution and obclid alias', () => {
   );
 });
 
-test('trackEvent maps subs sub1 through sub30', () => {
-  withMockWindow((readBody) => {
+test('trackEvent maps subs sub1 through sub30', async () => {
+  await withMockWindow(async (readBody) => {
     const subs = {};
     for (let index = 1; index <= 30; index += 1) {
       subs[`sub${index}`] = `value-${index}`;
     }
 
-    void trackEvent({
+    await trackEvent({
       endpoint: 'https://track.example/track',
       campaignId: 'camp-subs',
       type: 'click',
@@ -110,12 +135,12 @@ test('trackEvent maps subs sub1 through sub30', () => {
   });
 });
 
-test('trackEvent auto event_id and telemetry snapshots', () => {
-  withMockWindow((readBody) => {
+test('trackEvent auto event_id and telemetry snapshots', async () => {
+  await withMockWindow(async (readBody) => {
     globalThis.trackTelemetrySnapshot = () => ({ events: [{ kind: 'telemetry' }] });
     globalThis.trackBiometricsSnapshot = () => ({ events: [{ kind: 'bio' }] });
 
-    void trackEvent({
+    await trackEvent({
       endpoint: 'https://track.example/track',
       campaignId: 'camp-2',
       type: 'impression',

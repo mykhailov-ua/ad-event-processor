@@ -121,43 +121,43 @@ export function FraudIntegrations({
             horizontalScroll
             nested
           >
-          <TableHeader>
-            <TableRow>
-              <DirectoryTableHead>Campaign</DirectoryTableHead>
-              <DirectoryTableHead>Name</DirectoryTableHead>
-              <DirectoryTableHead>Provider</DirectoryTableHead>
-              <DirectoryTableHead>Configured</DirectoryTableHead>
-              <DirectoryTableHead>Health</DirectoryTableHead>
-              <DirectoryTableHead className="text-right">DLQ</DirectoryTableHead>
-              <DirectoryTableHead>Last success</DirectoryTableHead>
-              <DirectoryTableHead>Error</DirectoryTableHead>
-            </TableRow>
-          </TableHeader>
-          <TableBody>
-            {(items ?? []).map((row) => (
-              <TableRow key={`${row.campaign_id}-${row.provider ?? row.name}`}>
-                <TableCell className="font-mono text-xs">{row.campaign_id}</TableCell>
-                <TableCell>{row.name ?? ''}</TableCell>
-                <TableCell>{row.provider ?? ''}</TableCell>
-                <TableCell>{row.configured ? 'yes' : 'no'}</TableCell>
-                <TableCell>
-                  {row.health_status ? (
-                    <Badge variant={statusBadgeVariant(row.health_status)}>
-                      {row.health_status}
-                    </Badge>
-                  ) : (
-                    ''
-                  )}
-                </TableCell>
-                <TableCell className="text-right">{row.dlq_count ?? 0}</TableCell>
-                <TableCell>{displayTimestamp(row.last_success_at)}</TableCell>
-                <TableCell className="whitespace-nowrap text-muted-foreground">
-                  {row.last_error ?? ''}
-                </TableCell>
+            <TableHeader>
+              <TableRow>
+                <DirectoryTableHead>Campaign</DirectoryTableHead>
+                <DirectoryTableHead>Name</DirectoryTableHead>
+                <DirectoryTableHead>Provider</DirectoryTableHead>
+                <DirectoryTableHead>Configured</DirectoryTableHead>
+                <DirectoryTableHead>Health</DirectoryTableHead>
+                <DirectoryTableHead className="text-right">DLQ</DirectoryTableHead>
+                <DirectoryTableHead>Last success</DirectoryTableHead>
+                <DirectoryTableHead>Error</DirectoryTableHead>
               </TableRow>
-            ))}
-          </TableBody>
-        </DirectoryTable>
+            </TableHeader>
+            <TableBody>
+              {(items ?? []).map((row) => (
+                <TableRow key={`${row.campaign_id}-${row.provider ?? row.name}`}>
+                  <TableCell className="text-xs">{row.campaign_id}</TableCell>
+                  <TableCell>{row.name ?? ''}</TableCell>
+                  <TableCell>{row.provider ?? ''}</TableCell>
+                  <TableCell>{row.configured ? 'yes' : 'no'}</TableCell>
+                  <TableCell>
+                    {row.health_status ? (
+                      <Badge variant={statusBadgeVariant(row.health_status)}>
+                        {row.health_status}
+                      </Badge>
+                    ) : (
+                      ''
+                    )}
+                  </TableCell>
+                  <TableCell className="text-right">{row.dlq_count ?? 0}</TableCell>
+                  <TableCell>{displayTimestamp(row.last_success_at)}</TableCell>
+                  <TableCell className="whitespace-nowrap text-muted-foreground">
+                    {row.last_error ?? ''}
+                  </TableCell>
+                </TableRow>
+              ))}
+            </TableBody>
+          </DirectoryTable>
         </TableHost>
       )}
 

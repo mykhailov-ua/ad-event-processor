@@ -92,6 +92,12 @@ import { PublisherStatementsPage } from '@/pages/publisher_statements_page';
 import { ReportSchedulesPage } from '@/pages/report_schedules_page';
 import { SavedViewsPage } from '@/pages/saved_views_page';
 import { SelfServePortalPage } from '@/pages/selfserve_portal_page';
+import { CampaignStatsReportPage } from '@/pages/campaign_stats_report_page';
+import { EdgeParityPage } from '@/pages/edge_parity_page';
+import { EvidencePackReportPage } from '@/pages/evidence_pack_report_page';
+import { FraudEvidencePackBulkPage } from '@/pages/fraud_evidence_pack_bulk_page';
+import { MlReportPage } from '@/pages/ml_report_page';
+import { TelegramReportPage } from '@/pages/telegram_report_page';
 import { TelegramBotsPage } from '@/pages/telegram_bots_page';
 import { TelegramBotEditorPage } from '@/pages/telegram_bot_editor_page';
 import { TelegramPostbacksPage } from '@/pages/telegram_postbacks_page';
@@ -194,12 +200,12 @@ export function AppRoutes() {
             path="reports/wire-signal-breakdown"
           />
           <Route element={<CustomerFraudByTypePage />} path="reports/customer-fraud-by-type" />
-          <Route
-            element={<PostbackReconciliationPage />}
-            path="reports/postback-reconciliation"
-          />
+          <Route element={<PostbackReconciliationPage />} path="reports/postback-reconciliation" />
           <Route element={<SourceQualityPage />} path="reports/source-quality" />
-          <Route element={<CustomerReportPage reportKey="placements" />} path="reports/placements" />
+          <Route
+            element={<CustomerReportPage reportKey="placements" />}
+            path="reports/placements"
+          />
           <Route element={<CustomerReportPage reportKey="keywords" />} path="reports/keywords" />
           <Route element={<CustomerReportPage reportKey="geo-roi" />} path="reports/geo-roi" />
           <Route
@@ -219,9 +225,36 @@ export function AppRoutes() {
             path="reports/conversion-type-payout"
           />
           <Route
-            element={
-              <FraudCatalogReportPage reportKey="silent-reject-impression-funnel" />
-            }
+            element={<CustomerReportPage reportKey="campaign-overview" />}
+            path="reports/campaign-overview"
+          />
+          <Route
+            element={<CustomerReportPage reportKey="campaign-geo-device" />}
+            path="reports/campaign-geo-device"
+          />
+          <Route
+            element={<CustomerReportPage reportKey="spend-velocity" />}
+            path="reports/spend-velocity"
+          />
+          <Route
+            element={<CustomerReportPage reportKey="daypart-heatmap" />}
+            path="reports/daypart-heatmap"
+          />
+          <Route element={<CustomerReportPage reportKey="true-roi" />} path="reports/true-roi" />
+          <Route
+            element={<CustomerReportPage reportKey="cost-sync-coverage" />}
+            path="reports/cost-sync-coverage"
+          />
+          <Route
+            element={<CustomerReportPage reportKey="customer-portfolio" />}
+            path="reports/customer-portfolio"
+          />
+          <Route
+            element={<CustomerReportPage reportKey="discrepancy-buy-sell" />}
+            path="reports/discrepancy-buy-sell"
+          />
+          <Route
+            element={<FraudCatalogReportPage reportKey="silent-reject-impression-funnel" />}
             path="reports/silent-reject-impression-funnel"
           />
           <Route
@@ -248,16 +281,55 @@ export function AppRoutes() {
             element={<FraudCatalogReportPage reportKey="rtt-split-tunnel" />}
             path="reports/rtt-split-tunnel"
           />
-          <Route
-            element={<CampaignToggleCohortPage />}
-            path="reports/campaign-toggle-cohort"
-          />
+          <Route element={<CampaignToggleCohortPage />} path="reports/campaign-toggle-cohort" />
           <Route
             element={<FraudCatalogReportPage reportKey="filter-rejects" />}
             path="reports/filter-rejects"
           />
-          <Route element={<ReportRunnerPage reportKey="telegram" />} path="reports/telegram" />
-          <Route element={<ReportRunnerPage />} path="reports/telegram/:segment" />
+          <Route element={<EdgeParityPage />} path="reports/edge-parity" />
+          <Route element={<CampaignStatsReportPage />} path="reports/campaign-stats" />
+          <Route
+            element={<EvidencePackReportPage reportKey="customer-fraud-evidence" />}
+            path="reports/customer-fraud-evidence"
+          />
+          <Route
+            element={<EvidencePackReportPage reportKey="fraud-evidence-pack" />}
+            path="reports/fraud-evidence-pack"
+          />
+          <Route element={<FraudEvidencePackBulkPage />} path="reports/fraud-evidence-pack-bulk" />
+          <Route
+            element={<MlReportPage reportKey="ml/feature-spikes" />}
+            path="reports/ml/feature-spikes"
+          />
+          <Route
+            element={<MlReportPage reportKey="ml/score-distribution" />}
+            path="reports/ml/score-distribution"
+          />
+          <Route
+            element={<MlReportPage reportKey="ml/shadow-delta" />}
+            path="reports/ml/shadow-delta"
+          />
+          <Route element={<TelegramReportPage reportKey="telegram" />} path="reports/telegram" />
+          <Route
+            element={<TelegramReportPage reportKey="telegram/summary" />}
+            path="reports/telegram/summary"
+          />
+          <Route
+            element={<TelegramReportPage reportKey="telegram/funnel" />}
+            path="reports/telegram/funnel"
+          />
+          <Route
+            element={<TelegramReportPage reportKey="telegram/bots" />}
+            path="reports/telegram/bots"
+          />
+          <Route
+            element={<TelegramReportPage reportKey="telegram/premium" />}
+            path="reports/telegram/premium"
+          />
+          <Route
+            element={<TelegramReportPage reportKey="telegram/fraud" />}
+            path="reports/telegram/fraud"
+          />
           <Route element={<ReportRunnerPage />} path="reports/:key" />
           <Route element={<RtbPage />} path="rtb" />
           <Route element={<RtbDealsPage />} path="rtb/deals" />

@@ -23,23 +23,20 @@ const CHIP_TONE: Record<
   { idle: string; active: string; countIdle: string; countActive: string }
 > = {
   '': {
-    idle:
-      'border-border bg-card text-foreground hover:border-foreground/35 hover:bg-accent hover:text-foreground',
+    idle: 'border-border bg-card text-foreground hover:border-foreground/35 hover:bg-accent hover:text-foreground',
     active:
       'border-foreground/40 bg-accent text-foreground hover:border-foreground/55 hover:bg-accent/80',
     countIdle: 'text-muted-foreground group-hover:text-foreground',
     countActive: 'text-muted-foreground',
   },
   external: {
-    idle:
-      'border-border bg-card text-muted-foreground hover:border-primary/40 hover:bg-primary/10 hover:text-foreground',
+    idle: 'border-border bg-card text-muted-foreground hover:border-primary/40 hover:bg-primary/10 hover:text-foreground',
     active: 'border-primary/40 bg-primary/15 text-foreground hover:border-primary/55',
     countIdle: 'text-muted-foreground group-hover:text-foreground',
     countActive: 'text-muted-foreground',
   },
   hosted: {
-    idle:
-      'border-border bg-card text-muted-foreground hover:border-chart-2/50 hover:bg-chart-2/10 hover:text-foreground',
+    idle: 'border-border bg-card text-muted-foreground hover:border-chart-2/50 hover:bg-chart-2/10 hover:text-foreground',
     active: 'border-chart-2/50 bg-chart-2/15 text-foreground hover:border-chart-2/70',
     countIdle: 'text-muted-foreground group-hover:text-foreground',
     countActive: 'text-muted-foreground',
@@ -88,10 +85,7 @@ export function LandersListHostingChips({
             {option.label}
             {option.count != null ? (
               <span
-                className={cn(
-                  uiSurfaces.chipCount,
-                  selected ? tone.countActive : tone.countIdle
-                )}
+                className={cn(uiSurfaces.chipCount, selected ? tone.countActive : tone.countIdle)}
               >
                 {option.count}
               </span>

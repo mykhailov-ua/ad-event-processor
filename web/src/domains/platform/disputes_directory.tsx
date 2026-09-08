@@ -87,8 +87,8 @@ export function DisputesDirectory({
           <TableBody>
             {disputes.map((row) => (
               <TableRow key={row.provider_dispute_id ?? row.intent_id ?? row.updated_at}>
-                <TableCell className="font-mono text-xs">{row.intent_id ?? ''}</TableCell>
-                <TableCell className="font-mono text-xs">{row.provider_dispute_id ?? ''}</TableCell>
+                <TableCell className="text-xs">{row.intent_id ?? ''}</TableCell>
+                <TableCell className="text-xs">{row.provider_dispute_id ?? ''}</TableCell>
                 <TableCell>{displayMicro(row.amount_micro)}</TableCell>
                 <TableCell>{row.currency ?? ''}</TableCell>
                 <TableCell>{displayTimestamp(row.updated_at)}</TableCell>

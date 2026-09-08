@@ -109,7 +109,7 @@ func seedApplianceLandersOffers(ctx context.Context, tx pgx.Tx, count int) ([]uu
 	for seq := 1; seq <= count; seq++ {
 		landerID := seedDeterministicUUID("lander", seq)
 		offerID := seedDeterministicUUID("offer", seq)
-		landerName := fmt.Sprintf("%s LP", seedCampaignGoalLabels[(seq-1)%len(seedCampaignGoalLabels)])
+		landerName := fmt.Sprintf("%s — %s", seedCampaignName(seq), seedCampaignFlightLabels[(seq-1)%len(seedCampaignFlightLabels)])
 		offerName := fmt.Sprintf("%s offer", seedCampaignName(seq))
 
 		_, err := tx.Exec(ctx, `
@@ -161,7 +161,26 @@ func seedApplianceExtendedCampaigns(
 		creativePayload, _ := json.Marshal(map[string]string{
 			"headline": seedCampaignName(seq),
 			"cta":      seedCampaignGoalLabels[(seq-1)%len(seedCampaignGoalLabels)],
+			"subhead":  seedCampaignFlightLabels[(seq-1)%len(seedCampaignFlightLabels)],
 		})
+		clickQueryPayload, _ := json.Marshal(map[string]string{
+			"utm_source":   seedBuyerTrafficSources[(seq-1)%len(seedBuyerTrafficSources)],
+			"utm_medium":   "cpc",
+			"utm_campaign": fmt.Sprintf("camp-%03d", seq),
+			"sub_id":       fmt.Sprintf("pub-%02d", seq%24),
+			"click_id":     "{click_id}",
+		})
+		fraudPass := uint8(22 + (seq % 38))
+		fraudSuspect := fraudPass + uint8(12+(seq%8))
+		fraudIVT := fraudSuspect + uint8(10+(seq%6))
+		fraudBlock := fraudIVT + uint8(8+(seq%5))
+		if fraudBlock > 98 {
+			fraudBlock = 98
+		}
+		attestationModes := []string{"off", "light", "strict"}
+		reviewActions := []string{"safe_page", "block", "passthrough"}
+		connPolicies := []string{"block_vpn_hosting", "mobile_only", "residential_only"}
+		clickDeliveries := []string{"redirect", "proxy"}
 
 		tag, err := tx.Exec(ctx, `
 UPDATE campaigns
@@ -174,6 +193,31 @@ SET start_at = $2,
     creative_payload = $8::jsonb,
     target_url = $9,
     silent_reject_enabled = $10,
+    fraud_threshold_pass = $11,
+    fraud_threshold_suspect = $12,
+    fraud_threshold_ivt = $13,
+    fraud_threshold_block = $14,
+    behavior_flags = $15,
+    reserve_micro = $16,
+    click_query_params = $17::jsonb,
+    link_signing_enabled = $18,
+    link_signing_ttl_sec = $19,
+    attestation_enabled = $20,
+    attestation_mode = $21,
+    attestation_ttl_sec = $22,
+    cidr_block_enabled = $23,
+    proxy_vpn_block_enabled = $24,
+    dmr_enabled = $25,
+    moderator_intel_enabled = $26,
+    review_traffic_action = $27,
+    tls_fingerprint_block_enabled = $28,
+    conn_type_policy = $29,
+    click_delivery = $30,
+    social_in_app_enabled = $31,
+    canvas_retest_enabled = $32,
+    cgnat_ip_policy_enabled = $33,
+    accept_lang_geo_enabled = $34,
+    json_serialization_enabled = $35,
     updated_at = CURRENT_TIMESTAMP
 WHERE id = $1`,
 			pgtype.UUID{Bytes: campID, Valid: true},
@@ -186,6 +230,31 @@ WHERE id = $1`,
 			string(creativePayload),
 			fmt.Sprintf("https://trk.horizon-media.io/%d?cid={click_id}", seq),
 			seq%13 == 0,
+			fraudPass,
+			fraudSuspect,
+			fraudIVT,
+			fraudBlock,
+			uint32(seq%17),
+			int64(250_000+(seq%9)*75_000),
+			string(clickQueryPayload),
+			seq%5 == 0,
+			int32(300+(seq%7)*60),
+			seq%4 != 0,
+			attestationModes[seq%len(attestationModes)],
+			int32(120+(seq%5)*30),
+			seq%6 == 0,
+			seq%7 == 0,
+			seq%8 == 0,
+			seq%9 == 0,
+			reviewActions[seq%len(reviewActions)],
+			seq%10 == 0,
+			connPolicies[seq%len(connPolicies)],
+			clickDeliveries[seq%len(clickDeliveries)],
+			seq%3 == 0,
+			seq%12 == 0,
+			seq%14 == 0,
+			seq%15 == 0,
+			seq%16 == 0,
 		)
 		if err != nil {
 			return updated, fmt.Errorf("campaign enrich seq=%d: %w", seq, err)
@@ -251,7 +320,7 @@ ON CONFLICT (idempotency_hash) DO NOTHING`,
 				entry.amount,
 				entry.typ,
 				hash,
-				now.Add(-time.Duration(seq%72) * time.Hour),
+				now.Add(-time.Duration(seq%72)*time.Hour),
 			)
 			if err != nil {
 				return rows, fmt.Errorf("balance_ledger seq=%d: %w", seq, err)
@@ -362,7 +431,7 @@ SET customer_id = $1,
 WHERE id IN (
   SELECT id FROM campaigns
   WHERE deleted_at IS NULL
-  ORDER BY created_at
+  ORDER BY id
   LIMIT $2
 )`,
 		pgtype.UUID{Bytes: gloryID, Valid: true},

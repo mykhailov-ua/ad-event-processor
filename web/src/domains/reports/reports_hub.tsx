@@ -17,14 +17,7 @@ export type ReportsHubProps = {
   hasSnapshot: boolean;
 };
 
-const CATEGORY_ORDER = [
-  'traffic',
-  'fraud',
-  'billing',
-  'telegram',
-  'rtb',
-  'ops',
-] as const;
+const CATEGORY_ORDER = ['traffic', 'fraud', 'billing', 'telegram', 'rtb', 'ops'] as const;
 
 function categoryLabel(category: string): string {
   if (!category) {
@@ -33,7 +26,9 @@ function categoryLabel(category: string): string {
   return category.charAt(0).toUpperCase() + category.slice(1);
 }
 
-function groupRowsByCategory(rows: ReportCatalogRow[]): Array<{ category: string; rows: ReportCatalogRow[] }> {
+function groupRowsByCategory(
+  rows: ReportCatalogRow[]
+): Array<{ category: string; rows: ReportCatalogRow[] }> {
   const buckets = new Map<string, ReportCatalogRow[]>();
   for (const row of rows) {
     const category = row.category?.trim() || 'other';
@@ -84,7 +79,9 @@ export function ReportsHub({ rows, fetching, error, hasSnapshot }: ReportsHubPro
         <div className="grid gap-6">
           {sections.map((section) => (
             <section key={section.category} className="grid gap-3">
-              <h2 className="text-sm font-medium text-foreground">{categoryLabel(section.category)}</h2>
+              <h2 className="text-sm font-medium text-foreground">
+                {categoryLabel(section.category)}
+              </h2>
               <HubLinkGrid className="sm:grid-cols-[repeat(auto-fit,minmax(300px,1fr))]">
                 {section.rows.map((row) => {
                   const key = row.key ?? row.title ?? 'unknown';

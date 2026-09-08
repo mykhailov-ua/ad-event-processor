@@ -348,6 +348,10 @@ var (
 	NewSettingsWatcher                   = cp.NewSettingsWatcher
 	NewDCASNTable                        = cp.NewDCASNTable
 	NewMobileCarrierASNTable             = cp.NewMobileCarrierASNTable
+	NewApplePrivateRelayTable            = cp.NewApplePrivateRelayTable
+	NewMobileTierTable                   = cp.NewMobileTierTable
+	NewMobileASNTierFeedLoader           = cp.NewMobileASNTierFeedLoader
+	MobileProbeRiskWeightsFromEnv        = cp.MobileProbeRiskWeightsFromEnv
 	NewLatencyRing                       = cp.NewLatencyRing
 	NewCIDRTable                         = cp.NewCIDRTable
 	BuildCIDRTableFromPrefixes           = cp.BuildCIDRTableFromPrefixes

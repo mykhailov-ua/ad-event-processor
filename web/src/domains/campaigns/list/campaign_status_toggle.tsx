@@ -1,6 +1,6 @@
 import { Pause, Play } from 'lucide-react';
 
-import { Button } from '@/components/ui/button';
+import { directoryTableRowMenuButtonClass } from '@/shell/directory_table_row_actions';
 
 export type CampaignStatusToggleProps = {
   disabled?: boolean;
@@ -27,16 +27,15 @@ export function CampaignStatusToggle({
   const paused = normalized === 'PAUSED';
 
   return (
-    <Button
-      className="size-7 shrink-0 p-0"
+    <button
+      className={directoryTableRowMenuButtonClass}
       disabled={disabled}
       onClick={paused ? onResume : onPause}
       title={paused ? 'Resume campaign' : 'Pause campaign'}
       type="button"
-      variant="ghost"
     >
       {paused ? <Play className="h-3.5 w-3.5" /> : <Pause className="h-3.5 w-3.5" />}
       <span className="sr-only">{paused ? 'Resume campaign' : 'Pause campaign'}</span>
-    </Button>
+    </button>
   );
 }

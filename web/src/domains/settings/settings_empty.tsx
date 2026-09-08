@@ -32,7 +32,7 @@ export function settingsTextValue(value: string, field: SettingsEmptyField): Rea
 export function settingsMonoValue(value: string, field: SettingsEmptyField): ReactNode {
   const trimmed = value.trim();
   if (trimmed) {
-    return <span className="font-mono text-xs">{trimmed}</span>;
+    return <span className="text-xs">{trimmed}</span>;
   }
   return settingsEmptyValue(field);
 }

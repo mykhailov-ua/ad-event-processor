@@ -31,7 +31,9 @@ test('report runner page loads from catalog link', async ({ page }) => {
   }
 
   const firstKey = String(reports[0].key ?? '');
-  const runnerHref = firstKey.includes('/') ? `/reports/${encodeURIComponent(firstKey)}` : `/reports/${firstKey}`;
+  const runnerHref = firstKey.includes('/')
+    ? `/reports/${encodeURIComponent(firstKey)}`
+    : `/reports/${firstKey}`;
   await page.locator(`main a[href="${runnerHref}"]`).first().click();
   await expect(page.getByRole('button', { name: 'Run report' })).toBeVisible();
   await expect(page.getByRole('link', { name: 'Back to catalog' })).toBeVisible();

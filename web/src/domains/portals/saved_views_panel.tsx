@@ -261,14 +261,14 @@ export function SavedViewsPanel({
                       <TableCell>
                         {id ? (
                           <Input
-                            className="font-mono text-xs"
+                            className="text-xs"
                             value={edit.report_key}
                             onChange={(event) =>
                               onEditRowChange(id, 'report_key', event.target.value)
                             }
                           />
                         ) : (
-                          <span className="font-mono text-xs">{row.report_key ?? ''}</span>
+                          <span className="text-xs">{row.report_key ?? ''}</span>
                         )}
                       </TableCell>
                       <TableCell>{displayTimestamp(row.updated_at)}</TableCell>

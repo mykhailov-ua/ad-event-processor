@@ -214,6 +214,7 @@ func (s *Server) resetConnContextForReuse(ctx *ConnContext) {
 		ctx.Evt.StringBuffer = make([]byte, 0, 128)
 	}
 	ctx.Resp = pb.TrackResponse{}
+	//nolint:gocritic // ifElseChain: oversized buffer trim vs reuse
 	if cap(ctx.BufSlice) > connContextBufSliceCapLimit {
 		metrics.ConnContextOversizedBufferTotal.Inc()
 		ctx.BufSlice = make([]byte, 4096)

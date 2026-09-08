@@ -9,6 +9,24 @@ import (
 	"github.com/stretchr/testify/assert"
 )
 
+func TestCrossLayerDesyncPolicy_holdoutResidentialMobileLinuxStack(t *testing.T) {
+	reg := &Registry{}
+	campID := uuid.New()
+	reg.SeedCampaignForTest(&domain.Campaign{
+		ID:                        campID,
+		CrossLayerDesyncAction:    domain.CrossLayerDesyncSafePage,
+		CrossLayerDesyncThreshold: 3,
+	})
+	evt := &domain.Event{
+		CampaignID:       campID,
+		UA:               "Mozilla/5.0 (iPhone; CPU iPhone OS 17_0 like Mac OS X)",
+		LayerDesyncCount: 3,
+	}
+	got := evalCrossLayerDesyncClickPolicy(reg, evt)
+	assert.True(t, got.Fired)
+	assert.True(t, got.ForceSafePage)
+}
+
 func TestCrossLayerDesyncPolicy_holdoutOffPreservesRoute(t *testing.T) {
 	reg := &Registry{}
 	campID := uuid.New()

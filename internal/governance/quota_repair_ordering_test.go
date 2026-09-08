@@ -160,8 +160,8 @@ func TestApplyQuotaRepair_topUpRedis_retryAfterPgCommit(t *testing.T) {
 		domain.ToUUID(campID)).Scan(&auditCount))
 	assert.Equal(t, 1, auditCount, "PG audit must commit before Redis")
 
-	assert.Equal(t, beforeQuota, failRdb.mockRedisForQuota.getVal(quotaKey), "Redis INCRBY must not apply on first failure")
+	assert.Equal(t, beforeQuota, failRdb.getVal(quotaKey), "Redis INCRBY must not apply on first failure")
 
 	require.NoError(t, ob.ApplyQuotaRepair(ctx, 88, payload))
-	assert.Equal(t, beforeQuota+500_000, failRdb.mockRedisForQuota.getVal(quotaKey))
+	assert.Equal(t, beforeQuota+500_000, failRdb.getVal(quotaKey))
 }

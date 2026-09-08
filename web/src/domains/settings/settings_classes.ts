@@ -13,7 +13,8 @@ export const settingsCardClass = cn(
 
 export const settingsCardHeaderClass = shellChrome.sectionHeaderBandClass;
 
-export const settingsCardTitleClass = 'm-0 text-[13px] font-semibold leading-[18px] text-foreground';
+export const settingsCardTitleClass =
+  'm-0 text-[13px] font-semibold leading-[18px] text-foreground';
 
 export const settingsCardBodyClass = 'px-5 py-4';
 
@@ -60,8 +61,7 @@ export const settingsColumnPanelClass = cn(
   adminKit.panelRadius
 );
 
-export const settingsCollapsibleSummaryClass =
-  `grid cursor-pointer list-none grid-cols-[1fr_auto] items-center gap-2 ${shellChrome.compactHeaderBandClass} marker:content-none [&::-webkit-details-marker]:hidden`;
+export const settingsCollapsibleSummaryClass = `grid cursor-pointer list-none grid-cols-[1fr_auto] items-center gap-2 ${shellChrome.compactHeaderBandClass} marker:content-none [&::-webkit-details-marker]:hidden`;
 
 export const settingsCollapsibleBodyClass = 'border-t border-border px-5 py-4';
 

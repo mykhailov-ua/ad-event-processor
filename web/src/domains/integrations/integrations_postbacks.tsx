@@ -173,13 +173,13 @@ export function IntegrationsPostbacks({
                       className="cursor-pointer"
                       onClick={() => configForm.onPrefillFromConfig(row)}
                     >
-                      <TableCell className="font-mono text-xs">{row.campaign_id}</TableCell>
+                      <TableCell className="text-xs">{row.campaign_id}</TableCell>
                       <TableCell>{row.provider}</TableCell>
                       <TableCell>{row.target_event}</TableCell>
-                      <TableCell className="max-w-xs truncate font-mono text-xs" title={row.url_template}>
+                      <TableCell className="max-w-xs truncate text-xs" title={row.url_template}>
                         {row.url_template}
                       </TableCell>
-                      <TableCell className="font-mono text-xs">{row.test_event_code ?? ''}</TableCell>
+                      <TableCell className="text-xs">{row.test_event_code ?? ''}</TableCell>
                       <TableCell>{row.has_api_token ? 'set' : 'missing'}</TableCell>
                     </TableRow>
                   ))}
@@ -215,8 +215,8 @@ export function IntegrationsPostbacks({
                   return (
                     <TableRow key={rowId || row.campaign_id}>
                       <TableCell>{row.id}</TableCell>
-                      <TableCell className="font-mono text-xs">{row.campaign_id ?? ''}</TableCell>
-                      <TableCell className="font-mono text-xs">{row.click_id ?? ''}</TableCell>
+                      <TableCell className="text-xs">{row.campaign_id ?? ''}</TableCell>
+                      <TableCell className="text-xs">{row.click_id ?? ''}</TableCell>
                       <TableCell>{row.event_type ?? ''}</TableCell>
                       <TableCell>{row.status ?? ''}</TableCell>
                       <TableCell>{row.failures_count ?? ''}</TableCell>
@@ -268,7 +268,7 @@ export function IntegrationsPostbacks({
               <TableBody>
                 {campaignStatus.map((row) => (
                   <TableRow key={`${row.campaign_id}-${row.provider}`}>
-                    <TableCell className="font-mono text-xs">{row.campaign_id}</TableCell>
+                    <TableCell className="text-xs">{row.campaign_id}</TableCell>
                     <TableCell>{row.provider}</TableCell>
                     <TableCell>{displayTimestamp(row.last_success_at)}</TableCell>
                     <TableCell>
@@ -294,7 +294,10 @@ export function IntegrationsPostbacks({
               Alert when success rate drops below {healthAlertThreshold}%
             </span>
             {healthRunbookPath ? (
-              <a className="text-sm text-primary underline-offset-4 hover:underline" href={healthRunbookPath}>
+              <a
+                className="text-sm text-primary underline-offset-4 hover:underline"
+                href={healthRunbookPath}
+              >
                 Runbook
               </a>
             ) : null}
@@ -324,7 +327,7 @@ export function IntegrationsPostbacks({
               <TableBody>
                 {healthRows.map((row) => (
                   <TableRow key={`${row.campaign_id}-${row.provider}`}>
-                    <TableCell className="font-mono text-xs">{row.campaign_id}</TableCell>
+                    <TableCell className="text-xs">{row.campaign_id}</TableCell>
                     <TableCell>{row.provider}</TableCell>
                     <TableCell>
                       {row.success_rate_24h != null ? `${row.success_rate_24h}%` : 'n/a'}
@@ -348,11 +351,7 @@ export function IntegrationsPostbacks({
                     <TableCell className="whitespace-nowrap">{row.last_error ?? ''}</TableCell>
                     <TableCell>
                       {row.dlq_pending_count > 0 ? (
-                        <Button
-                          onClick={() => onTabChange('dlq')}
-                          type="button"
-                          variant="outline"
-                        >
+                        <Button onClick={() => onTabChange('dlq')} type="button" variant="outline">
                           {row.dlq_pending_count} pending
                         </Button>
                       ) : (

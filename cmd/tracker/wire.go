@@ -28,10 +28,13 @@ import (
 	"ad-event-processor/internal/metrics"
 	"ad-event-processor/internal/pgfailover"
 	"ad-event-processor/internal/rtb"
+	"ad-event-processor/internal/track"
+	"ad-event-processor/pkg/crowdwave"
 	"ad-event-processor/pkg/lifecycle"
 	"ad-event-processor/pkg/logger"
 	"ad-event-processor/pkg/netaddr"
 	"ad-event-processor/pkg/piihash"
+	"ad-event-processor/pkg/probecluster"
 
 	"github.com/google/uuid"
 	"github.com/jackc/pgx/v5/pgxpool"
@@ -48,6 +51,15 @@ func exitWithCancel(cancel context.CancelFunc, code int) {
 }
 
 func runTracker(cfg *config.Config) {
+	polyDir := cfg.TrackerStaticPolymorphDir
+	if polyDir == "" {
+		polyDir = track.StaticPolymorphDirFromInstallRoot(config.InstallRootFromEnv())
+	}
+	if err := track.ApplyStaticPolymorphOverrides(polyDir); err != nil {
+		slog.Error("static polymorph overrides failed", "dir", polyDir, "error", err)
+		os.Exit(1)
+	}
+
 	// Phase 1: retry policy, autotune, structured logger (15s disk metrics reporter).
 	ingestion.SetStoreRetryPolicy(
 		cfg.MaxRetries,
@@ -280,6 +292,7 @@ func runTracker(cfg *config.Config) {
 			fraudFilter.ConfigureDCASN(dcASNTable, lookup, cfg.DCASNSampleMask)
 		}
 	}
+	fraudFilter.ConfigureApplePrivateRelay(ingestion.NewApplePrivateRelayTable(nil))
 	var tcpMSSFilter ingestion.EventFilter
 	if cfg.TCPMSSAnomalyEnabled || cfg.TCPMSSTunnelEnabled {
 		mssFilter := ingestion.NewTCPMSSFilter(cfg.TCPMSSAnomalyMinByte)
@@ -328,6 +341,7 @@ func runTracker(cfg *config.Config) {
 	deviceFilter.SetJA4BrowserCorpusEnabled(cfg.TLSJA4BrowserCorpusEnabled)
 	deviceFilter.SetTCPSynSigEnabled(cfg.TCPSynSigEnabled)
 	deviceFilter.SetTCPSynOptCorpusEnabled(cfg.TCPSynOptCorpusEnabled)
+	deviceFilter.SetH2FrameTraceCorpusEnabled(cfg.H2FrameTraceCorpusEnabled)
 	jsonSerializationFilter := ingestion.NewJSONSerializationFilter(registry)
 	jsonSerializationFilter.SetEnabled(cfg.JSONSerializationFingerprintEnabled)
 	behaviorTelemetryFilter := ingestion.NewBehaviorTelemetryFilter(registry)
@@ -338,6 +352,56 @@ func runTracker(cfg *config.Config) {
 	if cfg.AntifraudTelemetryEnabled && len(cfg.AttestationHMACSecret) > 0 {
 		antifraudTelemetryFilter.SetVerifyCrypto(true)
 		antifraudTelemetryFilter.SetChallengeSecret([]byte(cfg.AttestationHMACSecret))
+	}
+	crowdProbeFilter := ingestion.NewCrowdProbeFilter(registry)
+	crowdProbeFilter.SetEnabled(cfg.CrowdProbeEnabled)
+	mobileTierTable := ingestion.NewMobileTierTable()
+	if cfg.MobileASNTierEnabled {
+		if tierLoader := ingestion.NewMobileASNTierFeedLoader(cfg, mobileTierTable); tierLoader != nil {
+			go tierLoader.Start(ctx)
+			slog.Info("mobile asn tier loader started",
+				"dir", cfg.MobileASNTierFeedDir,
+				"refresh", cfg.MobileASNTierFeedRefresh)
+		}
+	}
+	if cfg.CrowdProbeEnabled {
+		crowdProbeFilter.SetPriorReader(ingestion.NewCrowdProbeRedisPrior(firstConnectedRedis(redisShards)))
+		crowdProbeFilter.SetASNLookup(ingestion.AsnLookupFromGeo(geoProvider))
+		if cfg.MobileASNTierEnabled {
+			crowdProbeFilter.SetMobileTierTable(mobileTierTable)
+			crowdProbeFilter.SetResidentialProxyRing(proxyRing)
+			crowdProbeFilter.SetASNMobileRisk(
+				ingestion.MobileProbeRiskWeightsFromEnv(),
+				uint8(cfg.CrowdProbeASNMinTier),
+				uint8(cfg.CrowdProbeASNMinScore),
+			)
+		}
+	}
+	probeClusterFilter := ingestion.NewProbeClusterFilter(registry)
+	probeClusterFilter.SetEnabled(cfg.ProbeClusterEnabled)
+	if cfg.ProbeClusterEnabled {
+		ttl := time.Duration(cfg.ProbeClusterTTLDays) * 24 * time.Hour
+		probeClusterFilter.SetStore(ingestion.NewProbeClusterStore(firstConnectedRedis(redisShards), ttl))
+		if len(cfg.AttestationHMACSecret) > 0 {
+			probeClusterFilter.SetSecret([]byte(cfg.AttestationHMACSecret))
+		}
+		probeClusterFilter.SetPolicy(probecluster.Policy{
+			MinSessions:    cfg.ProbeClusterMinSessions,
+			MinCampaigns:   cfg.ProbeClusterMinCampaigns,
+			ScoreThreshold: cfg.ProbeClusterScoreThreshold,
+		})
+	}
+	crowdWaveFilter := ingestion.NewCrowdWaveFilter(registry)
+	crowdWaveFilter.SetEnabled(cfg.CrowdWaveEnabled)
+	if cfg.CrowdWaveEnabled {
+		window := time.Duration(cfg.CrowdWaveWindowSec) * time.Second
+		policy := crowdwave.WavePolicy{
+			WindowSec:           int64(cfg.CrowdWaveWindowSec),
+			MinUniqueClusters:   cfg.CrowdWaveMinUniqueClusters,
+			MinSimhashNeighbors: cfg.CrowdWaveMinSimhashNeighbors,
+			SimhashMaxDist:      cfg.CrowdWaveSimhashMaxDist,
+		}
+		crowdWaveFilter.SetStore(ingestion.NewCrowdWaveStore(firstConnectedRedis(redisShards), window, policy))
 	}
 	var l7WireFilter ingestion.EventFilter
 	if cfg.SecFetchValidateEnabled || cfg.ClientHintsPlatformEnabled || cfg.TLSALPNMismatchEnabled ||
@@ -527,6 +591,7 @@ func runTracker(cfg *config.Config) {
 	fraudBL := ingestion.NewFraudBlacklistFilter(redisShards)
 	unifiedFilter.SetFraudBlacklistFilter(fraudBL)
 	if fraudBL != nil {
+		fraudBL.ConfigureCGNAT(cfg.CGNATMobileIPBypassEnabled(), mobileCarrierASN, asnLookup, registry)
 		go fraudBL.RunInvalidationSubscriber(ctx, "")
 	}
 	unifiedFilter.SetIngressRPDHandledExternally(true)
@@ -548,7 +613,7 @@ func runTracker(cfg *config.Config) {
 	//   - tryAcquireStreamAdmission (TryReserve on StreamProducer or BrokerProducer) runs before Check (fail-closed 503 overload).
 	//   - evt fields on ConnContext use unsafeString over copied offload buffer; AsyncWrite clones response bytes (no frame lifetime).
 	//   - LOCAL_QUOTA_MODE live: local quanta full-skip skips sync EVALSHA; LocalQuantaStreamPublisher async lane is separate from TryReserve.
-	filterEngine := ingestion.NewFilterEngine(time.Duration(cfg.FilterTimeoutMs)*time.Millisecond, licenseFilter, licenseRPSFilter, breakerFilter, geoFilter, scheduleFilter, vppFilter, fraudFilter, residentialProxyFilter, tcpMSSFilter, deviceFilter, l7WireFilter, jsonSerializationFilter, behaviorTelemetryFilter, antifraudTelemetryFilter, consentFilter, segmentFilter, entitlementsFilter, unifiedFilter)
+	filterEngine := ingestion.NewFilterEngine(time.Duration(cfg.FilterTimeoutMs)*time.Millisecond, licenseFilter, licenseRPSFilter, breakerFilter, geoFilter, scheduleFilter, vppFilter, fraudFilter, residentialProxyFilter, tcpMSSFilter, deviceFilter, l7WireFilter, jsonSerializationFilter, behaviorTelemetryFilter, antifraudTelemetryFilter, crowdProbeFilter, probeClusterFilter, crowdWaveFilter, consentFilter, segmentFilter, entitlementsFilter, unifiedFilter)
 	filterEngine.SetSettingsWatcher(settingsWatcher)
 
 	// Phase 6: optional RTB catalog (in-process auction; no full FilterEngine on /openrtb/bid).
@@ -802,6 +867,7 @@ func runTracker(cfg *config.Config) {
 		slog.Info("tcp routing snapshot client enabled", "control_addr", cfg.TCPControlAddr)
 	}
 	gnetHandler.ConfigureIngestGeo(geoProvider)
+	gnetHandler.ConfigureCrowdWave(crowdWaveFilter)
 	gnetHandler.ConfigureMobileCarrierASN(mobileCarrierASN)
 	if cfg.CIDRBlockEnabled {
 		cidrTable := ingestion.NewCIDRTable()

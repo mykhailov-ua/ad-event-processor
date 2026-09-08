@@ -129,85 +129,85 @@ export function CampaignWizardPanel({ workspace }: CampaignWizardPanelProps) {
             <p className="text-sm text-muted-foreground">Loading templates...</p>
           ) : (
             <>
-          <div className={campaignEditorFormColumnsClass}>
-            <div className="grid gap-2">
-              <Label htmlFor="wizard-customer">Customer</Label>
-              <Select
-                disabled={creating || customerOptions.length === 0}
-                value={draftCustomerId || undefined}
-                onValueChange={setDraftCustomerId}
-              >
-                <SelectTrigger id="wizard-customer">
-                  <SelectValue placeholder="Select customer" />
-                </SelectTrigger>
-                <SelectContent>
-                  {customerOptions.length === 0 ? (
-                    <SelectItem disabled value="__none__">
-                      No customers
-                    </SelectItem>
-                  ) : (
-                    customerOptions.map((customer) => (
-                      <SelectItem key={customer.id} value={customer.id}>
-                        {customer.name}
-                      </SelectItem>
-                    ))
-                  )}
-                </SelectContent>
-              </Select>
-            </div>
+              <div className={campaignEditorFormColumnsClass}>
+                <div className="grid gap-2">
+                  <Label htmlFor="wizard-customer">Customer</Label>
+                  <Select
+                    disabled={creating || customerOptions.length === 0}
+                    value={draftCustomerId || undefined}
+                    onValueChange={setDraftCustomerId}
+                  >
+                    <SelectTrigger id="wizard-customer">
+                      <SelectValue placeholder="Select customer" />
+                    </SelectTrigger>
+                    <SelectContent>
+                      {customerOptions.length === 0 ? (
+                        <SelectItem disabled value="__none__">
+                          No customers
+                        </SelectItem>
+                      ) : (
+                        customerOptions.map((customer) => (
+                          <SelectItem key={customer.id} value={customer.id}>
+                            {customer.name}
+                          </SelectItem>
+                        ))
+                      )}
+                    </SelectContent>
+                  </Select>
+                </div>
 
-            <div className="grid gap-2">
-              <Label htmlFor="wizard-template">Template</Label>
-              <Select
-                disabled={creating || templates.length === 0}
-                value={draftTemplateKey}
-                onValueChange={(value) => setDraftTemplateKey(value as TemplateKey)}
-              >
-                <SelectTrigger id="wizard-template">
-                  <SelectValue placeholder="Select template" />
-                </SelectTrigger>
-                <SelectContent>
-                  {templates.map((template: CampaignOnboardingTemplate) => (
-                    <SelectItem key={template.key} value={template.key ?? ''}>
-                      {template.title ?? template.key}
-                    </SelectItem>
-                  ))}
-                </SelectContent>
-              </Select>
-            </div>
-          </div>
+                <div className="grid gap-2">
+                  <Label htmlFor="wizard-template">Template</Label>
+                  <Select
+                    disabled={creating || templates.length === 0}
+                    value={draftTemplateKey}
+                    onValueChange={(value) => setDraftTemplateKey(value as TemplateKey)}
+                  >
+                    <SelectTrigger id="wizard-template">
+                      <SelectValue placeholder="Select template" />
+                    </SelectTrigger>
+                    <SelectContent>
+                      {templates.map((template: CampaignOnboardingTemplate) => (
+                        <SelectItem key={template.key} value={template.key ?? ''}>
+                          {template.title ?? template.key}
+                        </SelectItem>
+                      ))}
+                    </SelectContent>
+                  </Select>
+                </div>
+              </div>
 
-          {selectedTemplate ? (
-            <div className={campaignEditorInsetPanelClass}>
-              <p className="font-semibold text-foreground">{selectedTemplate.title}</p>
-              <p className="text-muted-foreground">{selectedTemplate.description}</p>
-              <p className="text-muted-foreground">
-                Traffic family:{' '}
-                <span className={cn(ADMIN_SLUG_CLASS, 'text-foreground')}>
-                  {selectedTemplate.traffic_family}
-                </span>
-              </p>
-              {selectedTemplate.integration_schema_refs?.length ? (
-                <p className="text-muted-foreground">
-                  Integration schemas:{' '}
-                  <span className={cn(ADMIN_SLUG_CLASS, 'text-foreground')}>
-                    {selectedTemplate.integration_schema_refs.join(', ')}
-                  </span>
-                </p>
+              {selectedTemplate ? (
+                <div className={campaignEditorInsetPanelClass}>
+                  <p className="font-semibold text-foreground">{selectedTemplate.title}</p>
+                  <p className="text-muted-foreground">{selectedTemplate.description}</p>
+                  <p className="text-muted-foreground">
+                    Traffic family:{' '}
+                    <span className={cn(ADMIN_SLUG_CLASS, 'text-foreground')}>
+                      {selectedTemplate.traffic_family}
+                    </span>
+                  </p>
+                  {selectedTemplate.integration_schema_refs?.length ? (
+                    <p className="text-muted-foreground">
+                      Integration schemas:{' '}
+                      <span className={cn(ADMIN_SLUG_CLASS, 'text-foreground')}>
+                        {selectedTemplate.integration_schema_refs.join(', ')}
+                      </span>
+                    </p>
+                  ) : null}
+                </div>
               ) : null}
-            </div>
-          ) : null}
 
-          <div className="flex flex-wrap gap-2">
-            <Button
-              disabled={creating || !draftCustomerId || !draftTemplateKey}
-              loading={creating}
-              type="button"
-              onClick={onCreateSession}
-            >
-              Start wizard
-            </Button>
-          </div>
+              <div className="flex flex-wrap gap-2">
+                <Button
+                  disabled={creating || !draftCustomerId || !draftTemplateKey}
+                  loading={creating}
+                  type="button"
+                  onClick={onCreateSession}
+                >
+                  Start wizard
+                </Button>
+              </div>
             </>
           )}
         </section>
@@ -264,7 +264,6 @@ export function CampaignWizardPanel({ workspace }: CampaignWizardPanelProps) {
                 <div className="text-sm font-medium text-foreground grid gap-2">
                   <Label>Traffic template ID</Label>
                   <Input
-                    className="font-numeric"
                     value={trafficDraft.traffic_template_id}
                     onChange={(event) =>
                       setTrafficDraft((current) => ({
@@ -319,7 +318,6 @@ export function CampaignWizardPanel({ workspace }: CampaignWizardPanelProps) {
                 <div className="text-sm font-medium text-foreground grid gap-2">
                   <Label>Integration schema</Label>
                   <Input
-                    className="font-numeric"
                     list="wizard-integration-schemas"
                     value={integrationDraft.integration_schema}
                     onChange={(event) =>
@@ -379,7 +377,10 @@ export function CampaignWizardPanel({ workspace }: CampaignWizardPanelProps) {
               <h3 className="text-sm font-semibold text-foreground">Flow skeleton</h3>
               <p className="text-sm text-muted-foreground">
                 Create a single-path flow or{' '}
-                <Link className="underline" to="/flows">open the stream editor</Link> for split tests.
+                <Link className="underline" to="/flows">
+                  open the stream editor
+                </Link>{' '}
+                for split tests.
               </p>
               <div className="text-sm font-medium text-foreground grid gap-2">
                 <Label>Flow name</Label>
@@ -518,7 +519,7 @@ export function CampaignWizardPanel({ workspace }: CampaignWizardPanelProps) {
                   </div>
                   <div>
                     <dt className="text-muted-foreground">Budget</dt>
-                    <dd className="tabular-nums">
+                    <dd>
                       $
                       {microQueryParamToUsdInput(
                         String(activeSession.review.preview.budget_limit_micro ?? '')

@@ -519,14 +519,6 @@ func initBudgetFastScratch(s *budgetFastScratch) {
 	}
 }
 
-var budgetFastScratchPool = sync.Pool{
-	New: func() any {
-		s := &budgetFastScratch{}
-		initBudgetFastScratch(s)
-		return s
-	},
-}
-
 type rollbackKeyScratch struct {
 	wQuota    filt.BufWrapper
 	wIdem     filt.BufWrapper

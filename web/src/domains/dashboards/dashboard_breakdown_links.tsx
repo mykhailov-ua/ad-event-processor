@@ -1,6 +1,9 @@
 import { Link } from 'react-router-dom';
 
-import { campaignListEllipsisTextClass, campaignListNameTextClass } from '@/domains/campaigns/list/campaign_list_classes';
+import {
+  campaignListEllipsisTextClass,
+  campaignListNameTextClass,
+} from '@/domains/campaigns/list/campaign_list_classes';
 import { campaignReportPath } from '@/lib/campaign_nav';
 import { cn } from '@/lib/utils';
 

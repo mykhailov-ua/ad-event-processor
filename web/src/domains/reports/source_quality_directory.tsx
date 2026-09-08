@@ -12,11 +12,7 @@ import {
   TableRow,
   directoryTableRevalidatingClass,
 } from '@/shell/directory_table';
-import {
-  DirectoryFilterForm,
-  FilterField,
-  FilterPanel,
-} from '@/shell/filter_panel';
+import { DirectoryFilterForm, FilterField, FilterPanel } from '@/shell/filter_panel';
 import { PageLayout } from '@/shell/page_layout';
 import { EmptyState } from '@/shell/empty_state';
 import { ErrorBlock } from '@/shell/error_block';
@@ -28,6 +24,7 @@ import { DatetimePicker } from '@/components/ui/datetime_picker';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { displayCount, displayMicro } from '@/lib/display';
+import { resolveEconomicsProfitMicro, resolveEconomicsRoiPct } from '@/lib/economics';
 import { DirectoryStack, MetaLinksBand, TableHost } from '@/shell/ui_bands';
 import { cn } from '@/lib/utils';
 import { useSourceQualityPageWorkspace } from '@/domains/reports/use_source_quality_page_workspace';
@@ -63,9 +60,12 @@ function deltaSuffix(delta?: number): string {
   return ` (${sign}${displayCount(delta)})`;
 }
 
-function metricCell(value: number | undefined, delta?: number, format: 'count' | 'micro' = 'count') {
-  const text =
-    format === 'micro' ? displayMicro(value) || '-' : displayCount(value) || '-';
+function metricCell(
+  value: number | undefined,
+  delta?: number,
+  format: 'count' | 'micro' = 'count'
+) {
+  const text = format === 'micro' ? displayMicro(value) || '-' : displayCount(value) || '-';
   const suffix = deltaSuffix(delta);
   if (!suffix) {
     return text;
@@ -88,14 +88,14 @@ function SourceQualityRowCells({
   const compare: ReportCompareDeltas | undefined = row.compare;
   return (
     <>
-      <TableCell className="font-mono text-xs">{row.placement_id ?? '-'}</TableCell>
-      <TableCell className="font-mono text-xs">{row.campaign_id ?? '-'}</TableCell>
+      <TableCell className="text-xs">{row.placement_id ?? '-'}</TableCell>
+      <TableCell className="text-xs">{row.campaign_id ?? '-'}</TableCell>
       {detailMode ? (
         <>
           <TableCell>{row.country ?? '-'}</TableCell>
           <TableCell>{row.city ?? '-'}</TableCell>
           <TableCell>{row.device ?? '-'}</TableCell>
-          <TableCell className="font-mono text-xs">{row.sub1 ?? '-'}</TableCell>
+          <TableCell className="text-xs">{row.sub1 ?? '-'}</TableCell>
         </>
       ) : null}
       <TableCell className="text-right">
@@ -111,8 +111,10 @@ function SourceQualityRowCells({
       <TableCell className="text-right">
         {metricCell(row.revenue_micro, compare?.revenue_micro_delta, 'micro')}
       </TableCell>
-      <TableCell className="text-right">{displayMicro(row.profit_micro) || '-'}</TableCell>
-      <TableCell className="text-right">{formatPct(row.roi_pct)}</TableCell>
+      <TableCell className="text-right">
+        {displayMicro(resolveEconomicsProfitMicro(row)) || '-'}
+      </TableCell>
+      <TableCell className="text-right">{formatPct(resolveEconomicsRoiPct(row))}</TableCell>
       <TableCell className="text-right">{displayMicro(row.cpa_micro) || '-'}</TableCell>
       <TableCell className="text-right">{formatRatio(row.ctr)}</TableCell>
       <TableCell className="text-right">{formatRatio(row.ivt_rate)}</TableCell>
@@ -217,9 +219,7 @@ export function SourceQualityDirectory() {
                       <Checkbox
                         checked={draftGroupBy.includes(option.id)}
                         id={`source-quality-group-${option.id}`}
-                        onCheckedChange={(checked) =>
-                          onToggleGroupBy(option.id, checked === true)
-                        }
+                        onCheckedChange={(checked) => onToggleGroupBy(option.id, checked === true)}
                       />
                       <Label htmlFor={`source-quality-group-${option.id}`}>{option.label}</Label>
                     </div>

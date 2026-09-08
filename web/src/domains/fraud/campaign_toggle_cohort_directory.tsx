@@ -11,11 +11,7 @@ import {
   TableRow,
   directoryTableRevalidatingClass,
 } from '@/shell/directory_table';
-import {
-  DirectoryFilterForm,
-  FilterField,
-  FilterPanel,
-} from '@/shell/filter_panel';
+import { DirectoryFilterForm, FilterField, FilterPanel } from '@/shell/filter_panel';
 import { PageLayout } from '@/shell/page_layout';
 import { EmptyState } from '@/shell/empty_state';
 import { ErrorBlock } from '@/shell/error_block';
@@ -123,9 +119,7 @@ export function CampaignToggleCohortDirectory() {
               <FilterField htmlFor="toggle-cohort-field" label="Toggle field">
                 <Select
                   value={draftToggleField}
-                  onValueChange={(value) =>
-                    onDraftToggleFieldChange(value as CampaignToggleField)
-                  }
+                  onValueChange={(value) => onDraftToggleFieldChange(value as CampaignToggleField)}
                 >
                   <SelectTrigger id="toggle-cohort-field" className="w-full">
                     <SelectValue />
@@ -198,14 +192,10 @@ export function CampaignToggleCohortDirectory() {
             <TableBody>
               {rows.map((row) => (
                 <TableRow key={row.window ?? 'unknown'}>
-                  <TableCell className="font-mono text-xs">{row.window ?? '-'}</TableCell>
-                  <TableCell className="text-right">
-                    {displayCount(row.impressions ?? 0)}
-                  </TableCell>
+                  <TableCell className="text-xs">{row.window ?? '-'}</TableCell>
+                  <TableCell className="text-right">{displayCount(row.impressions ?? 0)}</TableCell>
                   <TableCell className="text-right">{displayCount(row.rejects ?? 0)}</TableCell>
-                  <TableCell className="text-right">
-                    {displayCount(row.conversions ?? 0)}
-                  </TableCell>
+                  <TableCell className="text-right">{displayCount(row.conversions ?? 0)}</TableCell>
                   <TableCell className="text-right">{formatRoi(row.roi_pct)}</TableCell>
                   <TableCell>{renderDelta(row)}</TableCell>
                 </TableRow>

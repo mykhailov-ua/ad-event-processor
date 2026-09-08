@@ -32,6 +32,27 @@ test('campaignListFilterTotalsFromApi maps server totals row', () => {
   assert.equal(view.funnelTotals.rawLeads, 25);
   assert.equal(view.campaignCount, 12);
   assert.equal(view.marginBreachCount, 2);
+  assert.equal(view.totals.profitMicro, 2_000_000);
+});
+
+test('campaignListFilterTotalsFromApi_holdout derives profit from revenue minus cost when profit_micro is stale', () => {
+  const view = campaignListFilterTotalsFromApi({
+    campaign_count: 1,
+    flow_count: 0,
+    margin_breach_count: 0,
+    from: '2026-01-01T00:00:00Z',
+    to: '2026-01-08T00:00:00Z',
+    stale: false,
+    totals: {
+      campaign_id: '',
+      revenue_micro: 2_670_000,
+      cost_micro: 3_777_930_000,
+      profit_micro: 0,
+    },
+  });
+
+  assert.ok(view);
+  assert.equal(view.totals.profitMicro, -3_775_260_000);
 });
 
 test('campaignListFilterTotalsFromApi returns undefined without response', () => {

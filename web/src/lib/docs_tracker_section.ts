@@ -97,6 +97,28 @@ export const TRACKER_DOCS_SECTION: DocsSection = {
       ],
     },
     {
+      id: 'redirect-compliance',
+      title: 'Redirect compliance profile',
+      blocks: [
+        {
+          type: 'paragraph',
+          text: 'New campaigns default to strict: GET /click responds with HTTP 302 and Referrer-Policy: no-referrer. Legacy DMR (200 HTML meta refresh plus location.replace) is opt-in per campaign because multi-mechanism redirect chains fingerprint ingress policy.',
+        },
+        {
+          type: 'table',
+          headers: ['redirect_compliance_mode', 'DMR behavior'],
+          rows: [
+            ['strict (default)', '302 only; dmr_enabled and dmr=1 query are ignored'],
+            ['legacy_dmr', 'DMR when campaign dmr_enabled or click URL includes dmr=1'],
+          ],
+        },
+        {
+          type: 'note',
+          text: 'Campaign editor Advanced routing sets the profile and DMR toggle. Prefer strict for new traffic; enable legacy_dmr only when a buyer network still requires referer stripping via DMR.',
+        },
+      ],
+    },
+    {
       id: 'conversions-s2s',
       title: 'Server postbacks (/track)',
       blocks: [
@@ -153,6 +175,32 @@ Content-Type: application/json
           text: 'For conversions that happen in the browser (form submit, thank-you page), embed the tracker script on the lander. It POSTs to /track with click_id read from the landing page URL query string.',
         },
         {
+          type: 'heading',
+          text: 'First-party script (recommended when LANDER_PUBLIC_BASE_URL is set)',
+        },
+        {
+          type: 'paragraph',
+          text: 'Nginx on the lander host proxies /_aed/track.js to the tracker /static/track.js so the browser loads telemetry as same-origin. Campaign Integration tab copies the snippet with conversionEventId; POST /track still targets the tracker hostname (TRACK_CORS_ORIGINS must include the lander origin; tracker config auto-merges LANDER_PUBLIC_BASE_URL when set).',
+        },
+        {
+          type: 'code',
+          code: `<script src="https://{lander_host}/_aed/track.js"></script>
+<script>
+  const conversionEventId = crypto.randomUUID();
+  trackEvent({
+    endpoint: 'https://{track_host}/track',
+    campaignId: '{campaign_uuid}',
+    type: 'conversion',
+    clickId: new URLSearchParams(location.search).get('click_id'),
+    eventId: conversionEventId
+  });
+</script>`,
+        },
+        {
+          type: 'heading',
+          text: 'Tracker-origin script (fallback)',
+        },
+        {
           type: 'code',
           code: `<script src="https://{track_host}/static/track.js"></script>
 <script>
@@ -168,8 +216,10 @@ Content-Type: application/json
         {
           type: 'list',
           items: [
-            'Set TRACK_CORS_ORIGINS on the tracker to include your lander origin (comma-separated hostnames).',
-            'Copy the ready-made snippet from Campaign -> Integration -> Zero-redirect (browser pixel).',
+            'Set LANDER_PUBLIC_BASE_URL to the hosted /lp/ origin when using first-party /_aed/track.js.',
+            'Set TRACK_CORS_ORIGINS on the tracker to include your lander origin (comma-separated). Auto-merged from LANDER_PUBLIC_BASE_URL at tracker boot when unset.',
+            'Copy the snippet from Campaign -> Integration (browser pixel block after templates apply).',
+            'Verify: bash scripts/test/edge/first_party_pixel_drill.sh with LANDER_PUBLIC_BASE_URL set.',
             'Optional: fire type impression on DOMContentLoaded for LP view diagnostics (does not replace conversion postback).',
             'Verify in browser DevTools: POST /track returns 202; payload includes click_id and event_id.',
           ],

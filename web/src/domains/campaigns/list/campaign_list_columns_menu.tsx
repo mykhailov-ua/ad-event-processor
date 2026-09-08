@@ -109,7 +109,7 @@ export function CampaignListColumnsMenu({
               <Button
                 key={presetId}
                 className={cn(
-                  'h-auto min-h-7 shadow-none',
+                  'h-auto shadow-none',
                   adminKit.controlPaddingX,
                   'text-[13px]',
                   activePreset === presetId
@@ -163,7 +163,7 @@ export function CampaignListColumnsMenu({
         <div className="border-t border-border px-2 py-1.5 text-center">
           <Button
             className={cn(
-              'h-auto min-h-7 font-medium text-primary underline-offset-2 shadow-none hover:bg-transparent hover:underline',
+              'h-auto font-medium text-primary underline-offset-2 shadow-none hover:bg-transparent hover:underline',
               adminKit.controlPaddingX,
               'text-[13px]'
             )}

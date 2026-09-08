@@ -55,11 +55,9 @@ export function TelegramBotsPanel({ bots, fetching, error, hasSnapshot }: Telegr
             {(bots ?? []).map((row) => (
               <TableRow key={String(row.bot_id ?? row.campaign_id ?? row.webhook_url)}>
                 <TableCell>{row.bot_id ?? ''}</TableCell>
-                <TableCell className="font-mono text-xs">{row.campaign_id ?? ''}</TableCell>
-                <TableCell className="whitespace-nowrap font-mono text-xs">
-                  {row.webhook_url ?? ''}
-                </TableCell>
-                <TableCell className="whitespace-nowrap font-mono text-xs">
+                <TableCell className="text-xs">{row.campaign_id ?? ''}</TableCell>
+                <TableCell className="whitespace-nowrap text-xs">{row.webhook_url ?? ''}</TableCell>
+                <TableCell className="whitespace-nowrap text-xs">
                   {row.mini_app_url ?? ''}
                 </TableCell>
                 <TableCell>{displayTimestamp(row.updated_at)}</TableCell>

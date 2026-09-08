@@ -246,11 +246,6 @@ export function CampaignsDirectory({
                 workspace.onResumeSelected();
               }}
               onWizardClick={handleWizardClick}
-              canGoNext={canGoNext}
-              canGoPrev={canGoPrev}
-              paginationDisabled={fetching}
-              onPageNext={() => onPageChange(offset + limit)}
-              onPagePrev={() => onPageChange(Math.max(0, offset - limit))}
               tableViewTools={
                 <CampaignListTableCardTools
                   columnPrefs={workspace.columnPrefs}

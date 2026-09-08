@@ -87,9 +87,8 @@ export function useCampaignFraudPanelWorkspace({
   const [draftCgnatPolicy, setDraftCgnatPolicy] = useState(false);
   const [draftAcceptLangGeo, setDraftAcceptLangGeo] = useState(false);
   const [draftJsonSerialization, setDraftJsonSerialization] = useState(false);
-  const [draftConversionRules, setDraftConversionRules] = useState<ConversionRejectDraft>(
-    conversionRulesToDraft()
-  );
+  const [draftConversionRules, setDraftConversionRules] =
+    useState<ConversionRejectDraft>(conversionRulesToDraft());
   const [draftCrossLayerAction, setDraftCrossLayerAction] = useState('boost');
   const [draftCrossLayerThreshold, setDraftCrossLayerThreshold] = useState('3');
   const [saving, setSaving] = useState(false);

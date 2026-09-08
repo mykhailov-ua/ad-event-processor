@@ -1,15 +1,20 @@
 package netintel
 
 import (
+	"context"
 	"hash/crc32"
 	"net/netip"
 	"os"
+	"path/filepath"
 	"strconv"
+	"strings"
 	"sync/atomic"
 	"time"
 	_ "unsafe"
 
+	"ad-event-processor/internal/config"
 	"ad-event-processor/internal/domain"
+	"ad-event-processor/internal/metrics"
 
 	"github.com/google/uuid"
 )
@@ -359,6 +364,248 @@ func envFloatPolicy(key string, fallback float64) float64 {
 		return fallback
 	}
 	return v
+}
+
+const (
+	mobileTierMin = 0
+	mobileTierMax = 4
+)
+
+type mobileTierSnapshot struct {
+	gen   uint64
+	tiers map[uint32]uint8
+}
+
+type MobileTierTable struct {
+	active atomic.Pointer[mobileTierSnapshot]
+}
+
+func NewMobileTierTable() *MobileTierTable {
+	t := &MobileTierTable{}
+	t.Publish(builtinMobileTierASNs(), 1)
+	return t
+}
+
+func (t *MobileTierTable) Publish(tiers map[uint32]uint8, gen uint64) {
+	if t == nil {
+		return
+	}
+	dup := make(map[uint32]uint8, len(tiers))
+	for asn, tier := range tiers {
+		if asn == 0 {
+			continue
+		}
+		dup[asn] = clampMobileTier(tier)
+	}
+	t.active.Store(&mobileTierSnapshot{gen: gen, tiers: dup})
+}
+
+func (t *MobileTierTable) Ready() bool {
+	return t != nil && t.active.Load() != nil
+}
+
+func (t *MobileTierTable) MobileTier(asn uint32) uint8 {
+	if t == nil || asn == 0 {
+		return 0
+	}
+	snap := t.active.Load()
+	if snap == nil || len(snap.tiers) == 0 {
+		return 0
+	}
+	tier, ok := snap.tiers[asn]
+	if !ok {
+		return 0
+	}
+	return tier
+}
+
+func clampMobileTier(tier uint8) uint8 {
+	if tier < mobileTierMin {
+		return mobileTierMin
+	}
+	if tier > mobileTierMax {
+		return mobileTierMax
+	}
+	return tier
+}
+
+func builtinMobileTierASNs() map[uint32]uint8 {
+	return map[uint32]uint8{
+		310410: 4,
+		58453:  4,
+		45400:  4,
+		26615:  3,
+		21928:  3,
+		20057:  3,
+		6167:   2,
+		3215:   2,
+		12479:  2,
+		3209:   2,
+		12956:  2,
+		3320:   2,
+		9808:   2,
+		2856:   2,
+	}
+}
+
+type mobileASNTierFeedLoader struct {
+	dir     string
+	refresh time.Duration
+	table   *MobileTierTable
+	gen     atomic.Uint64
+}
+
+func NewMobileASNTierFeedLoader(cfg *config.Config, table *MobileTierTable) *mobileASNTierFeedLoader {
+	if cfg == nil || table == nil || !cfg.MobileASNTierEnabled {
+		return nil
+	}
+	dir := cfg.MobileASNTierFeedDir
+	if dir == "" {
+		dir = "/var/lib/ad-event-processor/mobile-asn-tier"
+	}
+	refresh := cfg.MobileASNTierFeedRefresh
+	if refresh <= 0 {
+		refresh = 60 * time.Second
+	}
+	return &mobileASNTierFeedLoader{dir: dir, refresh: refresh, table: table}
+}
+
+func (l *mobileASNTierFeedLoader) Start(ctx context.Context) {
+	l.refreshOnce()
+	ticker := time.NewTicker(l.refresh)
+	defer ticker.Stop()
+	for {
+		select {
+		case <-ctx.Done():
+			return
+		case <-ticker.C:
+			l.refreshOnce()
+		}
+	}
+}
+
+func (l *mobileASNTierFeedLoader) refreshOnce() {
+	path := filepath.Join(l.dir, "mobile_asn_tier.txt")
+	data, err := os.ReadFile(path)
+	if err != nil {
+		metrics.MobileASNTierFeedRefreshErrorsTotal.Inc()
+		if l.table.Ready() {
+			return
+		}
+		metrics.MobileASNTierUninitialized.Set(1)
+		return
+	}
+	tiers := parseMobileTierFeed(data)
+	if len(tiers) == 0 {
+		metrics.MobileASNTierFeedRefreshErrorsTotal.Inc()
+		if l.table.Ready() {
+			return
+		}
+	}
+	merged := mergeMobileTierFeeds(builtinMobileTierASNs(), tiers)
+	gen := l.gen.Add(1)
+	l.table.Publish(merged, gen)
+	metrics.MobileASNTierFeedRefreshTotal.Inc()
+	metrics.MobileASNTierEntries.Set(float64(len(merged)))
+	metrics.MobileASNTierUninitialized.Set(0)
+}
+
+func mergeMobileTierFeeds(builtin, file map[uint32]uint8) map[uint32]uint8 {
+	out := make(map[uint32]uint8, len(builtin)+len(file))
+	for asn, tier := range builtin {
+		out[asn] = tier
+	}
+	for asn, tier := range file {
+		if asn != 0 {
+			out[asn] = clampMobileTier(tier)
+		}
+	}
+	return out
+}
+
+func parseMobileTierFeed(data []byte) map[uint32]uint8 {
+	out := make(map[uint32]uint8)
+	for line := range splitLineIter(data) {
+		asn, tier, ok := parseMobileTierLine(line)
+		if ok {
+			out[asn] = tier
+		}
+	}
+	return out
+}
+
+func parseMobileTierLine(line string) (uint32, uint8, bool) {
+	line = strings.TrimSpace(line)
+	if line == "" || strings.HasPrefix(line, "#") {
+		return 0, 0, false
+	}
+	fields := strings.Fields(line)
+	if len(fields) < 2 {
+		return 0, 0, false
+	}
+	asn, ok := ParseASNLine(fields[0])
+	if !ok {
+		return 0, 0, false
+	}
+	tier64, err := strconv.ParseUint(fields[1], 10, 8)
+	if err != nil {
+		return 0, 0, false
+	}
+	return asn, clampMobileTier(uint8(tier64)), true
+}
+
+type MobileProbeRiskWeights struct {
+	Alpha float64
+	Beta  float64
+	Gamma float64
+}
+
+func DefaultMobileProbeRiskWeights() MobileProbeRiskWeights {
+	return MobileProbeRiskWeights{Alpha: 1.0, Beta: 0.5, Gamma: 0.25}
+}
+
+func MobileProbeRiskWeightsFromEnv() MobileProbeRiskWeights {
+	def := DefaultMobileProbeRiskWeights()
+	return MobileProbeRiskWeights{
+		Alpha: envFloatPolicy("CROWD_PROBE_ASN_WEIGHT_ALPHA", def.Alpha),
+		Beta:  envFloatPolicy("CROWD_PROBE_ASN_WEIGHT_BETA", def.Beta),
+		Gamma: envFloatPolicy("CROWD_PROBE_ASN_WEIGHT_GAMMA", def.Gamma),
+	}
+}
+
+func ComputeMobileProbeRisk(weights MobileProbeRiskWeights, asnTier uint8, probeScore uint8, clusterHistory float64) float64 {
+	if clusterHistory < 0 {
+		clusterHistory = 0
+	}
+	if clusterHistory > 1 {
+		clusterHistory = 1
+	}
+	return weights.Alpha*float64(asnTier) +
+		weights.Beta*float64(probeScore) +
+		weights.Gamma*clusterHistory*100
+}
+
+func (r *ResidentialProxyRing) Peek(campaignHash uint32) (row ResidentialProxyRow, signal bool) {
+	if r == nil {
+		return ResidentialProxyRow{}, false
+	}
+	start := residentialProxySlotHash(campaignHash)
+	for probe := range residentialProxyMaxProbe {
+		idx := (start + uint32(probe)) & residentialProxySlotMask
+		cell := &r.cells[idx]
+		if cell.campaignHash.Load() != campaignHash {
+			continue
+		}
+		row = residentialProxyRow{
+			Events:      int(cell.events.Load()),
+			Clicks:      int(cell.clicks.Load()),
+			UniqueUsers: countDistinctHashes(cell.userHashes[:]),
+			UniqueUAs:   countDistinctHashes(cell.uaHashes[:]),
+		}
+		signal = residentialProxySignal(row, r.policySnapshot())
+		return row, signal
+	}
+	return ResidentialProxyRow{}, false
 }
 
 //go:linkname monotonicNano runtime.nanotime

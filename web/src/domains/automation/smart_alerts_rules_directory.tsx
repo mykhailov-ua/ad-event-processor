@@ -182,7 +182,11 @@ export function SmartAlertsRulesDirectory({
                 onChange={(event) => onCreateDraftChange({ window_minutes: event.target.value })}
               />
             </FilterField>
-            <FilterField className="md:col-span-2" htmlFor="smart-alert-create-webhook" label="Webhook URL">
+            <FilterField
+              className="md:col-span-2"
+              htmlFor="smart-alert-create-webhook"
+              label="Webhook URL"
+            >
               <Input
                 id="smart-alert-create-webhook"
                 value={createDraft.webhook_url}
@@ -288,7 +292,7 @@ export function SmartAlertsRulesDirectory({
                   <TableCell>
                     <Input
                       aria-label={`Webhook for rule ${ruleId}`}
-                      className="min-w-[10rem] font-mono text-xs"
+                      className="min-w-[10rem] text-xs"
                       value={draft.webhook_url}
                       onChange={(event) =>
                         onRuleDraftChange(ruleId, { webhook_url: event.target.value })

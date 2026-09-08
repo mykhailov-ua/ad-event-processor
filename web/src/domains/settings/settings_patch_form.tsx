@@ -45,14 +45,18 @@ export function SettingsPatchForm({
   const [ingressSchema, setIngressSchema] = useState(snapshot.config.ingressSchema);
   const [profile, setProfile] = useState(snapshot.config.profile);
   const [networkInterface, setNetworkInterface] = useState(snapshot.config.networkInterface);
-  const [telemetryEnabled, setTelemetryEnabled] = useState(snapshot.config.telemetryEnabled ?? false);
+  const [telemetryEnabled, setTelemetryEnabled] = useState(
+    snapshot.config.telemetryEnabled ?? false
+  );
   const [edgeXdp, setEdgeXdp] = useState(snapshot.config.edgeXdp ?? false);
   const [edgeExposeClick, setEdgeExposeClick] = useState(snapshot.config.edgeExposeClick ?? false);
   const [edgeExposeOpenRtb, setEdgeExposeOpenRtb] = useState(
     snapshot.config.edgeExposeOpenRTB ?? false
   );
   const [stripeEnabled, setStripeEnabled] = useState(snapshot.config.stripeEnabled ?? false);
-  const [stripeSuccessUrl, setStripeSuccessUrl] = useState(snapshot.config.stripeCheckoutSuccessUrl);
+  const [stripeSuccessUrl, setStripeSuccessUrl] = useState(
+    snapshot.config.stripeCheckoutSuccessUrl
+  );
   const [stripeCancelUrl, setStripeCancelUrl] = useState(snapshot.config.stripeCheckoutCancelUrl);
 
   useEffect(() => {
@@ -158,7 +162,10 @@ export function SettingsPatchForm({
           onChange={(event) => setTrackingDomain(event.target.value)}
         />
       </FilterField>
-      <FilterField htmlFor="settings-default-currency" label={settingsFieldLabel('default_currency')}>
+      <FilterField
+        htmlFor="settings-default-currency"
+        label={settingsFieldLabel('default_currency')}
+      >
         <Input
           id="settings-default-currency"
           value={defaultCurrency}
@@ -173,7 +180,10 @@ export function SettingsPatchForm({
         />
       </FilterField>
       <FilterField htmlFor="settings-ingress-schema" label={settingsFieldLabel('ingress_schema')}>
-        <Select value={ingressSchema || INGRESS_SCHEMA_OPTIONS[0].value} onValueChange={setIngressSchema}>
+        <Select
+          value={ingressSchema || INGRESS_SCHEMA_OPTIONS[0].value}
+          onValueChange={setIngressSchema}
+        >
           <SelectTrigger id="settings-ingress-schema" className="w-full">
             <SelectValue />
           </SelectTrigger>
@@ -187,9 +197,16 @@ export function SettingsPatchForm({
         </Select>
       </FilterField>
       <FilterField htmlFor="settings-profile" label={settingsFieldLabel('profile')}>
-        <Input id="settings-profile" value={profile} onChange={(event) => setProfile(event.target.value)} />
+        <Input
+          id="settings-profile"
+          value={profile}
+          onChange={(event) => setProfile(event.target.value)}
+        />
       </FilterField>
-      <FilterField htmlFor="settings-network-interface" label={settingsFieldLabel('network_interface')}>
+      <FilterField
+        htmlFor="settings-network-interface"
+        label={settingsFieldLabel('network_interface')}
+      >
         <Input
           id="settings-network-interface"
           value={networkInterface}
@@ -198,7 +215,9 @@ export function SettingsPatchForm({
       </FilterField>
       <div className="grid gap-3 sm:grid-cols-2">
         <div className="flex items-center justify-between gap-2 rounded-md border p-3">
-          <Label htmlFor="settings-telemetry-enabled">{settingsFieldLabel('telemetry_enabled')}</Label>
+          <Label htmlFor="settings-telemetry-enabled">
+            {settingsFieldLabel('telemetry_enabled')}
+          </Label>
           <Switch
             checked={telemetryEnabled}
             id="settings-telemetry-enabled"
@@ -210,7 +229,9 @@ export function SettingsPatchForm({
           <Switch checked={edgeXdp} id="settings-edge-xdp" onCheckedChange={setEdgeXdp} />
         </div>
         <div className="flex items-center justify-between gap-2 rounded-md border p-3">
-          <Label htmlFor="settings-edge-expose-click">{settingsFieldLabel('edge_expose_click')}</Label>
+          <Label htmlFor="settings-edge-expose-click">
+            {settingsFieldLabel('edge_expose_click')}
+          </Label>
           <Switch
             checked={edgeExposeClick}
             id="settings-edge-expose-click"
@@ -218,7 +239,9 @@ export function SettingsPatchForm({
           />
         </div>
         <div className="flex items-center justify-between gap-2 rounded-md border p-3">
-          <Label htmlFor="settings-edge-expose-openrtb">{settingsFieldLabel('edge_expose_openrtb')}</Label>
+          <Label htmlFor="settings-edge-expose-openrtb">
+            {settingsFieldLabel('edge_expose_openrtb')}
+          </Label>
           <Switch
             checked={edgeExposeOpenRtb}
             id="settings-edge-expose-openrtb"
@@ -260,7 +283,9 @@ export function SettingsPatchForm({
           </p>
         ) : null}
       </SettingsFormActions>
-      {patchError ? <ErrorBlock title="Could not apply changes" message={patchError.message} /> : null}
+      {patchError ? (
+        <ErrorBlock title="Could not apply changes" message={patchError.message} />
+      ) : null}
     </SettingsFormStack>
   );
 }

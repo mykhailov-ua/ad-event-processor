@@ -72,15 +72,7 @@ func mappedFlowToExportShape(flow *MappedFlow) *ExportFlowShape {
 		out.Name = "imported-flow"
 	}
 	for _, path := range flow.Paths {
-		out.Paths = append(out.Paths, ExportFlowPathShape{
-			Weight:     path.Weight,
-			LanderRef:  path.LanderRef,
-			LanderName: path.LanderName,
-			LanderURL:  path.LanderURL,
-			OfferRef:   path.OfferRef,
-			OfferName:  path.OfferName,
-			OfferURL:   path.OfferURL,
-		})
+		out.Paths = append(out.Paths, ExportFlowPathShape(path))
 	}
 	return out
 }

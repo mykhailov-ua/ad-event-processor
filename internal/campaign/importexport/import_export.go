@@ -661,16 +661,6 @@ func resolveImportFlowRefs(
 	return landerIDs, offerIDs, bundle.Flow.Paths, nil
 }
 
-func upsertLanderByNameURL(ctx context.Context, tx pgx.Tx, name, url string) (uuid.UUID, error) {
-	ids, err := batchUpsertLandersByNameURL(ctx, tx, map[string]campaign.CampaignExportLander{
-		"__single__": {Name: name, URL: url},
-	})
-	if err != nil {
-		return uuid.Nil, err
-	}
-	return ids["__single__"], nil
-}
-
 func batchUpsertLandersByNameURL(ctx context.Context, tx pgx.Tx, byRef map[string]campaign.CampaignExportLander) (map[string]uuid.UUID, error) {
 	if len(byRef) == 0 {
 		return nil, nil
@@ -772,16 +762,6 @@ RETURNING id, name, COALESCE(url, '')`, missingNames, missingURLs)
 
 func landerNameURLKey(name, url string) string {
 	return strings.TrimSpace(name) + "\x00" + strings.TrimSpace(url)
-}
-
-func upsertOfferByNameURL(ctx context.Context, tx pgx.Tx, name, url string) (uuid.UUID, error) {
-	ids, err := batchUpsertOffersByNameURL(ctx, tx, map[string]campaign.CampaignExportOffer{
-		"__single__": {Name: name, URL: url},
-	})
-	if err != nil {
-		return uuid.Nil, err
-	}
-	return ids["__single__"], nil
 }
 
 func batchUpsertOffersByNameURL(ctx context.Context, tx pgx.Tx, byRef map[string]campaign.CampaignExportOffer) (map[string]uuid.UUID, error) {

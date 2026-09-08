@@ -3,10 +3,7 @@ import { useCallback, useEffect, useState } from 'react';
 import { toast } from 'sonner';
 
 import { bulkCloneCampaigns } from '@/api/campaigns_api';
-import type {
-  BulkCloneCampaignResultRow,
-  CloneCampaignOptions,
-} from '@/api/campaigns_types';
+import type { BulkCloneCampaignResultRow, CloneCampaignOptions } from '@/api/campaigns_types';
 import {
   buildCloneRequestBody,
   DEFAULT_CLONE_OPTIONS,
@@ -107,4 +104,6 @@ function summarizeBulkCloneResults(results: BulkCloneCampaignResultRow[]) {
   return { succeeded, failed };
 }
 
-export type CampaignBulkCloneDialogWorkspace = ReturnType<typeof useCampaignBulkCloneDialogWorkspace>;
+export type CampaignBulkCloneDialogWorkspace = ReturnType<
+  typeof useCampaignBulkCloneDialogWorkspace
+>;

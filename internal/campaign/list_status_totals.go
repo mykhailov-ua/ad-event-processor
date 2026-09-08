@@ -8,6 +8,7 @@ type CampaignStatusTotalsDTO struct {
 	Active   int64 `json:"active"`
 	Paused   int64 `json:"paused"`
 	Archived int64 `json:"archived"`
+	Warnings int64 `json:"warnings"`
 	Total    int64 `json:"total"`
 }
 

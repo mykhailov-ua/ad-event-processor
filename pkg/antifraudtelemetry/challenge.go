@@ -28,7 +28,7 @@ const (
 )
 
 var (
-	ErrChallengeNoSecret = errors.New("antifraud challenge: missing secret")
+	ErrChallengeNoSecret  = errors.New("antifraud challenge: missing secret")
 	ErrChallengeMalformed = errors.New("antifraud challenge: malformed token")
 	ErrChallengeExpired   = errors.New("antifraud challenge: expired")
 	ErrChallengeCampaign  = errors.New("antifraud challenge: campaign mismatch")

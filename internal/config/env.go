@@ -19,6 +19,7 @@ type Config struct {
 	ProcessorPort                       string
 	ManagementPort                      string
 	TrackerUnixSocket                   string
+	TrackerStaticPolymorphDir           string
 	ControlUnixSocket                   string
 	ClickHouseUnixSocket                string
 	AdminDomain                         string
@@ -215,6 +216,7 @@ type Config struct {
 		DomainSSLSetupEnabled                      bool
 		DomainSSLSetupScript                       string
 		DomainSSLAcmeEmail                         string
+		IngressTLSDir                              string
 		DomainWildcardSSLStaging                   bool
 		ACMEDirectoryURL                           string
 		CaddyTLSAskToken                           Secret

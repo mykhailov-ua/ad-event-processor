@@ -153,7 +153,8 @@ function SettingsUrlCopyChip({
     return (
       <span
         className={cn(
-          'inline-flex h-7 max-w-full items-center border border-dashed border-border px-2.5 text-xs text-muted-foreground',
+          'inline-flex max-w-full items-center border border-dashed border-border px-2.5 text-xs text-muted-foreground',
+          adminKit.controlHeight,
           adminKit.controlRadius
         )}
       >
@@ -166,7 +167,7 @@ function SettingsUrlCopyChip({
     <Tooltip>
       <TooltipTrigger asChild>
         <Button
-          className="h-7 max-w-full gap-1.5 px-2 text-xs"
+          className="max-w-full gap-1.5 px-2 text-xs"
           type="button"
           variant="outline"
           onClick={() => {
@@ -279,13 +280,13 @@ function StripeSecretsDialog({
             >
               <p>
                 Current secret key:{' '}
-                <span className="font-mono text-foreground">
+                <span className="text-foreground">
                   {snapshot.secrets.stripeSecretKey || 'not set'}
                 </span>
               </p>
               <p>
                 Current webhook secret:{' '}
-                <span className="font-mono text-foreground">
+                <span className="text-foreground">
                   {snapshot.secrets.stripeWebhookSecret || 'not set'}
                 </span>
               </p>
@@ -401,7 +402,7 @@ function buildColumns(
         },
         {
           label: 'Locale',
-          value: <span className="break-words tabular-nums">{localeLine}</span>,
+          value: <span className="break-words">{localeLine}</span>,
         },
         {
           label: 'URL templates',

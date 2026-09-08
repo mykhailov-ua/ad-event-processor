@@ -73,26 +73,28 @@ export function useFraudReasonsPageWorkspace(reportKey: FraudReasonsReportKey) {
     appliedOffset,
   ];
 
-  const { data, error, fetching, revalidating: listRevalidating } = useResource(
-    (signal) => {
-      if (!shouldFetch) {
-        return Promise.resolve(undefined);
-      }
-      return getFraudReasonsReport(
-        reportKey,
-        {
-          customer_id: appliedCustomerId,
-          from: appliedFrom,
-          to: appliedTo,
-          campaign_id: appliedCampaignId || undefined,
-          limit: appliedLimit,
-          offset: appliedOffset,
-        },
-        signal
-      );
-    },
-    queryKey
-  );
+  const {
+    data,
+    error,
+    fetching,
+    revalidating: listRevalidating,
+  } = useResource((signal) => {
+    if (!shouldFetch) {
+      return Promise.resolve(undefined);
+    }
+    return getFraudReasonsReport(
+      reportKey,
+      {
+        customer_id: appliedCustomerId,
+        from: appliedFrom,
+        to: appliedTo,
+        campaign_id: appliedCampaignId || undefined,
+        limit: appliedLimit,
+        offset: appliedOffset,
+      },
+      signal
+    );
+  }, queryKey);
 
   const updateQuery = useCallback(
     (patch: {
@@ -178,15 +180,12 @@ export function useFraudReasonsPageWorkspace(reportKey: FraudReasonsReportKey) {
     setExporting(true);
     setExportError(undefined);
     setExportTruncated(false);
-    void listAllFraudReasonRowsForExport(
-      reportKey,
-      {
-        customer_id: customerId,
-        from: appliedFrom,
-        to: appliedTo,
-        campaign_id: appliedCampaignId || undefined,
-      }
-    )
+    void listAllFraudReasonRowsForExport(reportKey, {
+      customer_id: customerId,
+      from: appliedFrom,
+      to: appliedTo,
+      campaign_id: appliedCampaignId || undefined,
+    })
       .then((dataset) => {
         if (dataset.rows.length === 0) {
           toast.message('No rows to export for the current filters.');

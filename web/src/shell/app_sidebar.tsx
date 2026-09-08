@@ -85,13 +85,7 @@ export function AppSidebarNav({ groups, onNavigate }: AppSidebarNavProps) {
     >
       {groups.map((group, groupIndex) => (
         <section key={group.id} className="flex flex-col gap-px">
-          <h2
-            className={cn(
-              adminKit.labelCaps,
-              'px-2.5 pb-1',
-              groupIndex === 0 ? 'pt-1' : 'pt-3'
-            )}
-          >
+          <h2 className={cn(adminKit.labelCaps, 'px-2.5 pb-1', groupIndex === 0 ? 'pt-1' : 'pt-3')}>
             {group.label}
           </h2>
           {group.items.map((item) => (

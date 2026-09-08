@@ -47,7 +47,7 @@ export function CampaignListTableTotalsCell({
     case 'id':
       return null;
     case 'name':
-      return <span className="tabular-nums">{totalsLabel}</span>;
+      return <span>{totalsLabel}</span>;
     case 'clicks': {
       const res = formatTableCount(totals.clicks);
       return <span className={tableCellClass(res.isZero)}>{res.text}</span>;
@@ -184,15 +184,11 @@ export function CampaignListTableTotalsCell({
     }
     case 'revenue': {
       const res = formatTableMoneyFromMicro(totals.revenueMicro);
-      return (
-        <span className={tableCellClass(res.isZero, undefined, 'primary')}>
-          {res.isZero ? '0.00' : res.text}
-        </span>
-      );
+      return <span className={tableCellClass(res.isZero, undefined, 'primary')}>{res.text}</span>;
     }
     case 'cost': {
       const res = formatTableMoneyFromMicro(totals.costMicro);
-      return <span className={tableCellClass(res.isZero)}>{res.isZero ? '0.00' : res.text}</span>;
+      return <span className={tableCellClass(res.isZero)}>{res.text}</span>;
     }
     case 'profit': {
       const profitRes = formatTableMoneyFromMicro(totals.profitMicro);
@@ -205,7 +201,7 @@ export function CampaignListTableTotalsCell({
             profitRes.isZero ? undefined : 'primary'
           )}
         >
-          {profitRes.isZero ? '0.00' : profitRes.text}
+          {profitRes.text}
         </span>
       );
     }
@@ -213,12 +209,12 @@ export function CampaignListTableTotalsCell({
       const roiRes = formatTableRoi(totals.profitMicro, totals.costMicro);
       return (
         <span className={tableCellClass(roiRes.isZero, roiToneClassFromRate(roiRes))}>
-          {roiRes.isZero ? '0%' : roiRes.text}
+          {roiRes.text}
         </span>
       );
     }
     case 'group':
-      return <span className="tabular-nums text-muted-foreground">{pageCount} on page</span>;
+      return <span className="text-muted-foreground">{pageCount} on page</span>;
     default:
       return null;
   }

@@ -23,7 +23,7 @@ export function CampaignListTableCardTools({
         onColumnPrefsChange={onColumnPrefsChange}
       />
       <Button
-        className="h-auto whitespace-nowrap border-0 bg-transparent p-0 font-medium text-admin-brand underline underline-offset-2 shadow-none hover:bg-transparent hover:text-admin-brand-hover disabled:bg-transparent disabled:text-admin-brand/50 disabled:no-underline disabled:hover:bg-transparent"
+        className="h-auto p-0 font-medium underline underline-offset-2 shadow-none disabled:no-underline"
         disabled={disabled}
         title="Reset columns and widths"
         type="button"

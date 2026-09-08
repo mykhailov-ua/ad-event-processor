@@ -382,7 +382,7 @@ func applyRtbAuction(proc trackProcessor, evt *domain.Event, deviceType []byte) 
 	var dealIDLen uint8
 	var dealIDBuf []byte
 
-	if evt != nil && len(evt.Payload) == 0 {
+	if len(evt.Payload) == 0 {
 		geoHash := uint32(0)
 		if evt.IngestGeoResolved {
 			geoHash = evt.GeoHash

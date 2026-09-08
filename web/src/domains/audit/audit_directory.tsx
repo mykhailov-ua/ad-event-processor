@@ -140,7 +140,7 @@ export function AuditDirectory({
                 <TableCell>{row.admin_id ?? ''}</TableCell>
                 <TableCell>{row.action ?? ''}</TableCell>
                 <TableCell>{row.target_type ?? ''}</TableCell>
-                <TableCell className="font-mono text-xs">{row.target_id ?? ''}</TableCell>
+                <TableCell className="text-xs">{row.target_id ?? ''}</TableCell>
                 <TableCell>
                   {row.is_masked ? <Badge variant="secondary">masked</Badge> : ''}
                 </TableCell>

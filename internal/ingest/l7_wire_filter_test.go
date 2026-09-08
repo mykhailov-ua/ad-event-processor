@@ -40,6 +40,18 @@ func TestTLSALPNMismatch_holdoutChromeH1Only(t *testing.T) {
 	assert.False(t, tlsALPNBrowserMismatch("curl/8.0", "http/1.1"))
 }
 
+func TestWebView_holdoutL7WireClassifiesInstagram(t *testing.T) {
+	f := NewL7WireFilter()
+	evt := domain.EventPool.Get().(*domain.Event)
+	defer domain.EventPool.Put(evt)
+	evt.Reset()
+	evt.UA = "Instagram 300.0.0.0 Android"
+
+	require.NoError(t, f.Check(context.Background(), evt))
+	assert.True(t, uaMatchesInAppWebView(evt.UA))
+	assert.NotZero(t, evt.InAppWebViewClass)
+}
+
 func TestL7WireFilter_signals(t *testing.T) {
 	f := NewL7WireFilter()
 

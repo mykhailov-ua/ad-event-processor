@@ -19,6 +19,9 @@ type BehaviorTelemetryEvent struct {
 	X       int
 	Y       int
 	Z       int
+	FX      float32
+	FY      float32
+	Trusted uint8
 	Force   float32
 	RadiusX float32
 	RadiusY float32
@@ -91,6 +94,8 @@ type Event struct {
 	TCPSigSet              uint8
 	TCPSigOptHash          uint32
 	TCPSigOptSet           uint8
+	H2FrameTraceHash       uint32
+	H2FrameTraceSet        uint8
 	RTTSynMS               uint16
 	TTFBAppMS              uint16
 	RTTSplitDeltaMS        uint16
@@ -107,6 +112,18 @@ type Event struct {
 	MobileBiometricSet     uint8
 	MobileBiometricMobile  uint8
 	ClickFilterTier        ClickFilterTier
+	ProbeBehaviorScore     uint8
+	ProbeFooterReachMs     uint32
+	EventOrderEntropyMilli uint16
+	ProbeFeaturesSet       uint8
+	ProbeClusterID         [16]byte
+	ProbeClusterSet        uint8
+	ProbeClusterRoute      uint8
+	BehaviorSimhash        uint64
+	BehaviorSimhashSet     uint8
+	CrowdWaveActive        uint8
+	CrowdWaveScore         uint16
+	InAppWebViewClass      uint8
 	// LocalQuantaDebitMicro: pending local-quanta debit before FinalizeLocalQuantaPublish (full-skip path).
 	LocalQuantaDebitMicro int64
 	// LocalFcapLookup: non-zero when local fcap TryAcquire succeeded; cleared on RollbackDebit.
@@ -180,6 +197,8 @@ func (e *Event) Reset() {
 	e.TCPSigSet = 0
 	e.TCPSigOptHash = 0
 	e.TCPSigOptSet = 0
+	e.H2FrameTraceHash = 0
+	e.H2FrameTraceSet = 0
 	e.RTTSynMS = 0
 	e.TTFBAppMS = 0
 	e.RTTSplitDeltaMS = 0
@@ -199,6 +218,18 @@ func (e *Event) Reset() {
 	e.MobileGyroFlat = 0
 	e.MobileBiometricSet = 0
 	e.MobileBiometricMobile = 0
+	e.ProbeBehaviorScore = 0
+	e.ProbeFooterReachMs = 0
+	e.EventOrderEntropyMilli = 0
+	e.ProbeFeaturesSet = 0
+	e.ProbeClusterID = [16]byte{}
+	e.ProbeClusterSet = 0
+	e.ProbeClusterRoute = 0
+	e.BehaviorSimhash = 0
+	e.BehaviorSimhashSet = 0
+	e.CrowdWaveActive = 0
+	e.CrowdWaveScore = 0
+	e.InAppWebViewClass = 0
 	e.LocalQuantaDebitMicro = 0
 	e.LocalFcapLookup = 0
 	if cap(e.StringBuffer) > 2048 {

@@ -43,3 +43,38 @@ test('buildBreadcrumbs routes brand creatives through brands list', () => {
   assert.equal(crumbs[1]?.label, 'Velox Checkout');
   assert.equal(crumbs[1]?.href, undefined);
 });
+
+test('buildBreadcrumbs does not link nested report segments without routes', () => {
+  const crumbs = buildBreadcrumbs('/reports/ml/score-distribution');
+
+  assert.deepEqual(
+    crumbs.map((crumb) => crumb.label),
+    ['Reports', 'Ml', 'Score Distribution']
+  );
+  assert.equal(crumbs[0]?.href, '/reports');
+  assert.equal(crumbs[1]?.href, undefined);
+  assert.equal(crumbs[2]?.href, undefined);
+});
+
+test('buildBreadcrumbs aliases dashboards root to buyer dashboard', () => {
+  const crumbs = buildBreadcrumbs('/dashboards/buyer');
+
+  assert.deepEqual(
+    crumbs.map((crumb) => ({ label: crumb.label, href: crumb.href })),
+    [
+      { label: 'Dashboards', href: '/dashboards/buyer' },
+      { label: 'Dashboard', href: undefined },
+    ]
+  );
+});
+
+test('buildBreadcrumbs links landers list from editor path', () => {
+  const landerId = '550e8400-e29b-41d4-a716-446655440003';
+  const crumbs = buildBreadcrumbs(`/landers/${landerId}/editor`, {
+    [landerId]: 'Main lander',
+  });
+
+  assert.equal(crumbs[0]?.href, '/landers');
+  assert.equal(crumbs[1]?.href, undefined);
+  assert.equal(crumbs[2]?.href, undefined);
+});

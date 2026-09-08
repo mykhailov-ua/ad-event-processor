@@ -406,6 +406,31 @@ paths:
       - fraud-admin
       x-permissions:
       - audit:read
+  /api/v1/fraud/probe-clusters/{cluster_id}:
+    get:
+      operationId: getProbeClusterSummary
+      parameters:
+      - in: path
+        name: cluster_id
+        required: true
+        schema:
+          type: string
+          minLength: 32
+          maxLength: 32
+      responses:
+        '200':
+          content:
+            application/json:
+              schema:
+                $ref: ../components/schemas/ops_reports.yaml#/ProbeClusterSummary
+          description: Probe cluster Redis summary
+        default:
+          $ref: ../openapi.yaml#/components/responses/Error
+      summary: Read probe cluster cardinality summary
+      tags:
+      - fraud-admin
+      x-permissions:
+      - audit:read
   /api/v1/ops/blacklist:
     delete:
       operationId: opsRemoveBlacklist
@@ -1089,8 +1114,8 @@ paths:
           content:
             application/json:
               schema:
-                $ref: ../components/schemas/ops_reports.yaml#/ReportMapEnvelope
-          description: Report rows
+                $ref: ../components/schemas/ops_reports.yaml#/CampaignGeoDeviceReportResponse
+          description: Geo and device breakdown rows
         default:
           $ref: ../openapi.yaml#/components/responses/Error
       summary: Geo and device breakdown
@@ -1117,8 +1142,8 @@ paths:
           content:
             application/json:
               schema:
-                $ref: ../components/schemas/ops_reports.yaml#/ReportMapEnvelope
-          description: Report rows
+                $ref: ../components/schemas/ops_reports.yaml#/CampaignOverviewReportResponse
+          description: Campaign overview rows
         default:
           $ref: ../openapi.yaml#/components/responses/Error
       summary: Campaign overview rollup
@@ -1205,8 +1230,8 @@ paths:
           content:
             application/json:
               schema:
-                $ref: ../components/schemas/ops_reports.yaml#/ReportMapEnvelope
-          description: Report rows
+                $ref: ../components/schemas/ops_reports.yaml#/CostSyncCoverageReportResponse
+          description: Cost sync coverage rows
         default:
           $ref: ../openapi.yaml#/components/responses/Error
       summary: Cost sync attribution coverage
@@ -1260,8 +1285,8 @@ paths:
           content:
             application/json:
               schema:
-                $ref: ../components/schemas/ops_reports.yaml#/ReportMapEnvelope
-          description: Report rows
+                $ref: ../components/schemas/ops_reports.yaml#/CustomerPortfolioReportResponse
+          description: Customer portfolio summary and campaign rows
         default:
           $ref: ../openapi.yaml#/components/responses/Error
       summary: Customer portfolio KPIs
@@ -1316,8 +1341,8 @@ paths:
           content:
             application/json:
               schema:
-                $ref: ../components/schemas/ops_reports.yaml#/ReportMapEnvelope
-          description: Report rows
+                $ref: ../components/schemas/ops_reports.yaml#/DaypartHeatmapReportResponse
+          description: Daypart heatmap rows
         default:
           $ref: ../openapi.yaml#/components/responses/Error
       summary: Hour-of-day performance heatmap
@@ -1344,8 +1369,8 @@ paths:
           content:
             application/json:
               schema:
-                $ref: ../components/schemas/ops_reports.yaml#/ReportMapEnvelope
-          description: Report rows
+                $ref: ../components/schemas/ops_reports.yaml#/DiscrepancyBuySellReportResponse
+          description: Buy vs sell discrepancy rows
         default:
           $ref: ../openapi.yaml#/components/responses/Error
       summary: Buy vs sell discrepancy
@@ -1372,8 +1397,8 @@ paths:
           content:
             application/json:
               schema:
-                $ref: ../components/schemas/ops_reports.yaml#/ReportMapEnvelope
-          description: Report rows
+                $ref: ../components/schemas/ops_reports.yaml#/EdgeParityReportResponse
+          description: Edge vs tracker parity snapshot
         default:
           $ref: ../openapi.yaml#/components/responses/Error
       summary: Edge vs tracker parity drift
@@ -1976,7 +2001,7 @@ paths:
           content:
             application/json:
               schema:
-                $ref: ../components/schemas/ops_reports.yaml#/ReportMapEnvelope
+                $ref: ../components/schemas/ops_reports.yaml#/MLFeatureSpikesReportResponse
           description: Report rows
         default:
           $ref: ../openapi.yaml#/components/responses/Error
@@ -2004,7 +2029,7 @@ paths:
           content:
             application/json:
               schema:
-                $ref: ../components/schemas/ops_reports.yaml#/ReportMapEnvelope
+                $ref: ../components/schemas/ops_reports.yaml#/MLScoreDistributionReportResponse
           description: Report rows
         default:
           $ref: ../openapi.yaml#/components/responses/Error
@@ -2032,7 +2057,7 @@ paths:
           content:
             application/json:
               schema:
-                $ref: ../components/schemas/ops_reports.yaml#/ReportMapEnvelope
+                $ref: ../components/schemas/ops_reports.yaml#/MLShadowDeltaReportResponse
           description: Report rows
         default:
           $ref: ../openapi.yaml#/components/responses/Error
@@ -2295,8 +2320,8 @@ paths:
           content:
             application/json:
               schema:
-                $ref: ../components/schemas/ops_reports.yaml#/ReportMapEnvelope
-          description: Report rows
+                $ref: ../components/schemas/ops_reports.yaml#/SpendVelocityReportResponse
+          description: Spend velocity time series rows
         default:
           $ref: ../openapi.yaml#/components/responses/Error
       summary: Spend velocity time series
@@ -2322,8 +2347,8 @@ paths:
           content:
             application/json:
               schema:
-                $ref: ../components/schemas/ops_reports.yaml#/ReportMapEnvelope
-          description: Telegram report payload
+                $ref: ../components/schemas/ops_reports.yaml#/TelegramSummaryReportResponse
+          description: Telegram rollup KPIs
         default:
           $ref: ../openapi.yaml#/components/responses/Error
       summary: Telegram Mini App rollup
@@ -2346,8 +2371,8 @@ paths:
           content:
             application/json:
               schema:
-                $ref: ../components/schemas/ops_reports.yaml#/ReportMapEnvelope
-          description: Telegram report payload
+                $ref: ../components/schemas/ops_reports.yaml#/TelegramBotsReportResponse
+          description: Telegram bot breakdown rows
         default:
           $ref: ../openapi.yaml#/components/responses/Error
       summary: Telegram bot performance
@@ -2395,8 +2420,8 @@ paths:
           content:
             application/json:
               schema:
-                $ref: ../components/schemas/ops_reports.yaml#/ReportMapEnvelope
-          description: Telegram report payload
+                $ref: ../components/schemas/ops_reports.yaml#/TelegramFraudReportResponse
+          description: Telegram fraud signal counts
         default:
           $ref: ../openapi.yaml#/components/responses/Error
       summary: Telegram fraud signals
@@ -2419,8 +2444,8 @@ paths:
           content:
             application/json:
               schema:
-                $ref: ../components/schemas/ops_reports.yaml#/ReportMapEnvelope
-          description: Telegram report payload
+                $ref: ../components/schemas/ops_reports.yaml#/TelegramFunnelReportResponse
+          description: Telegram funnel rows
         default:
           $ref: ../openapi.yaml#/components/responses/Error
       summary: Telegram conversion funnel
@@ -2443,8 +2468,8 @@ paths:
           content:
             application/json:
               schema:
-                $ref: ../components/schemas/ops_reports.yaml#/ReportMapEnvelope
-          description: Telegram report payload
+                $ref: ../components/schemas/ops_reports.yaml#/TelegramPremiumReportResponse
+          description: Telegram premium click split
         default:
           $ref: ../openapi.yaml#/components/responses/Error
       summary: Telegram premium users
@@ -2467,8 +2492,8 @@ paths:
           content:
             application/json:
               schema:
-                $ref: ../components/schemas/ops_reports.yaml#/ReportMapEnvelope
-          description: Telegram report payload
+                $ref: ../components/schemas/ops_reports.yaml#/TelegramSummaryReportResponse
+          description: Telegram summary KPIs
         default:
           $ref: ../openapi.yaml#/components/responses/Error
       summary: Telegram summary KPIs
@@ -2524,8 +2549,8 @@ paths:
           content:
             application/json:
               schema:
-                $ref: ../components/schemas/ops_reports.yaml#/ReportMapEnvelope
-          description: Report rows
+                $ref: ../components/schemas/ops_reports.yaml#/TrueRoiReportResponse
+          description: True ROI rows
         default:
           $ref: ../openapi.yaml#/components/responses/Error
       summary: True ROI after cost sync

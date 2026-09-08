@@ -185,9 +185,9 @@ export function IntegrationsPlatformCampaigns({
                 className="cursor-pointer"
                 onClick={() => linkForm.onPrefillFromLink(row)}
               >
-                <TableCell className="font-mono text-xs">{row.campaign_id}</TableCell>
+                <TableCell className="text-xs">{row.campaign_id}</TableCell>
                 <TableCell>{row.network}</TableCell>
-                <TableCell className="font-mono text-xs">{row.external_campaign_id}</TableCell>
+                <TableCell className="text-xs">{row.external_campaign_id}</TableCell>
                 <TableCell>
                   {row.sync_error ? (
                     <Badge variant="destructive">{row.external_status ?? 'error'}</Badge>

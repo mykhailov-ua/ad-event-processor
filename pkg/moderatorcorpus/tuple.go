@@ -1,6 +1,7 @@
 package moderatorcorpus
 
 import (
+	"errors"
 	"hash/crc32"
 	"strconv"
 	"strings"
@@ -287,6 +288,6 @@ func (e validationError) Error() string { return string(e) }
 func ValidationError(msg string) error { return validationError(msg) }
 
 func IsValidationError(err error) bool {
-	_, ok := err.(validationError)
-	return ok
+	var ve validationError
+	return errors.As(err, &ve)
 }

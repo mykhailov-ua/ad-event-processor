@@ -53,7 +53,7 @@ export function DirectoryPaginationFooter({
   return (
     <div className={cn('flex flex-wrap items-center gap-3', className)}>
       {rangeLabel ? (
-        <DirectoryListMeta className="shrink-0 text-[13px] tabular-nums text-muted-foreground">
+        <DirectoryListMeta className="shrink-0 text-[13px] text-muted-foreground">
           {rangeLabel}
         </DirectoryListMeta>
       ) : null}

@@ -20,7 +20,9 @@ test('moderator corpus page lists tuples and upserts JA3', { tag: '@write' }, as
 
   const ja3 = `771,4865-${Date.now()}`;
 
-  const listGet = page.waitForResponse(isApiGet('/api/v1/fraud/moderator-corpus'), { timeout: 20_000 });
+  const listGet = page.waitForResponse(isApiGet('/api/v1/fraud/moderator-corpus'), {
+    timeout: 20_000,
+  });
   await listGet;
 
   const upsertPost = page.waitForResponse(isApiPost('/api/v1/fraud/moderator-corpus', 200), {

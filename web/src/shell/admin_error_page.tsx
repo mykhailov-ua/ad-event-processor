@@ -76,9 +76,7 @@ export function AdminErrorPage({
               {kind === 'not-found' ? '404' : kind === 'forbidden' ? '403' : 'Error'}
             </h1>
             <p className="m-0 text-sm text-muted-foreground">{resolvedMessage}</p>
-            {devHint ? (
-              <p className="m-0 font-mono text-xs text-muted-foreground">{devHint}</p>
-            ) : null}
+            {devHint ? <p className="m-0 text-xs text-muted-foreground">{devHint}</p> : null}
           </div>
           <div className="flex flex-wrap gap-2">
             <Button type="button" variant="default" onClick={handleReload}>

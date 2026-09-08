@@ -100,6 +100,10 @@ func (s *Service) LanderMaxZipBytes() int64 {
 	return s.cfg.LanderMaxZipBytes
 }
 
+func (s *Service) LanderCSPEnabled() bool {
+	return s != nil && s.cfg != nil && s.cfg.LanderCSPEnabled
+}
+
 func (s *Service) landerPublicBase(ctx context.Context) string {
 	if s == nil {
 		return ""

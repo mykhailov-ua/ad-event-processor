@@ -35,7 +35,7 @@ export function useCampaignDashboardPageWorkspace() {
 
   const { refreshToken, bumpRefresh } = useRefreshToken();
 
-  const { data, error, fetching } = useResource(
+  const { data, error, fetching, revalidating, updatedAt } = useResource(
     (signal) => {
       if (!shouldFetch) {
         return Promise.resolve(undefined);
@@ -68,7 +68,7 @@ export function useCampaignDashboardPageWorkspace() {
 
   const licenseGated = error instanceof ApiError && error.status === 403;
 
-  const onRefresh = useCoalescedBumpRefresh(bumpRefresh, fetching);
+  const onRefresh = useCoalescedBumpRefresh(bumpRefresh, fetching || revalidating);
 
   const onDimensionChange = useCallback(
     (dimension: CampaignReportDimension) => {
@@ -104,9 +104,11 @@ export function useCampaignDashboardPageWorkspace() {
     series: payload?.series,
     breakdown: payload?.breakdown,
     fetching,
+    revalidating,
     error: licenseGated ? undefined : error,
     hasSnapshot: !shouldFetch || data != null || licenseGated,
     licenseGated,
+    lastUpdatedAt: updatedAt,
     onDimensionChange,
     onRefresh,
   };

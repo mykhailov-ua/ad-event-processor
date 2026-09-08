@@ -10,7 +10,10 @@ const REPO_ROOT = join(WEB_ROOT, '..');
 const SRC = join(WEB_ROOT, 'src/static/track.js');
 const TRACK_PIXEL_OUT = join(REPO_ROOT, 'internal/track/track_pixel.js');
 
-function buildTrackPixelBundle() {
+function buildTrackPixelBundle(seed) {
+  const banner = seed
+    ? `/*aed:${createHash('sha256').update(String(seed)).digest('hex').slice(0, 16)}*/`
+    : '';
   const result = buildSync({
     entryPoints: [SRC],
     bundle: true,
@@ -19,24 +22,31 @@ function buildTrackPixelBundle() {
     write: false,
     legalComments: 'none',
     target: 'es2018',
+    banner: banner ? { js: banner } : undefined,
   });
 
   const code = result.outputFiles[0].text;
   return code;
 }
 
-function copyToDist(distRoot) {
+function copyToDist(distRoot, seed) {
   const distTrack = join(distRoot, 'src/static/track.js');
   mkdirSync(dirname(distTrack), { recursive: true });
-  writeFileSync(distTrack, buildTrackPixelBundle());
+  writeFileSync(distTrack, buildTrackPixelBundle(seed));
 }
 
-export function buildTrackPixel({ check = false, distRoot } = {}) {
+export function buildTrackPixel({ check = false, distRoot, seed = '', variantOut } = {}) {
   if (!existsSync(SRC)) {
     throw new Error(`missing canonical track source: ${SRC}`);
   }
 
-  const built = buildTrackPixelBundle();
+  const built = buildTrackPixelBundle(seed);
+
+  if (variantOut) {
+    writeFileSync(variantOut, built);
+    console.log(`track_pixel: wrote variant ${variantOut} (${built.length} bytes)`);
+    return built;
+  }
 
   if (check) {
     if (!existsSync(TRACK_PIXEL_OUT)) {
@@ -63,7 +73,7 @@ export function buildTrackPixel({ check = false, distRoot } = {}) {
   console.log(`track_pixel: wrote ${TRACK_PIXEL_OUT} (${built.length} bytes)`);
 
   if (distRoot) {
-    copyToDist(distRoot);
+    copyToDist(distRoot, seed);
     console.log(`track_pixel: wrote ${join(distRoot, 'src/static/track.js')}`);
   }
 
@@ -73,5 +83,9 @@ export function buildTrackPixel({ check = false, distRoot } = {}) {
 const checkMode = process.argv.includes('--check');
 const distArg = process.argv.find((arg) => arg.startsWith('--dist='));
 const distRoot = distArg ? distArg.slice('--dist='.length) : undefined;
+const seedArg = process.argv.find((arg) => arg.startsWith('--seed='));
+const seed = seedArg ? seedArg.slice('--seed='.length) : '';
+const variantArg = process.argv.find((arg) => arg.startsWith('--variant-out='));
+const variantOut = variantArg ? variantArg.slice('--variant-out='.length) : undefined;
 
-buildTrackPixel({ check: checkMode, distRoot });
+buildTrackPixel({ check: checkMode, distRoot, seed, variantOut });

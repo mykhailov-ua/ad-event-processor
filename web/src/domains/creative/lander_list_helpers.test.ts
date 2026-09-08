@@ -69,7 +69,7 @@ test('landerHostedCellText flattens hosted state into one label', () => {
       has_unpublished_draft: true,
       published_version: 3,
     }),
-    'Hosted · Draft · v3'
+    'Hosted | Draft | v3'
   );
   assert.match(landerHostedCellTitle(hostedLander) ?? '', /Hosted/);
 });

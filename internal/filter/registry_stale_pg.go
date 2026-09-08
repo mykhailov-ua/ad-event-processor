@@ -22,8 +22,8 @@ func (g *stalePGReadGate) allow(now time.Time) bool {
 	if g == nil {
 		return true
 	}
-	max := g.maxPerSec.Load()
-	if max <= 0 {
+	limit := g.maxPerSec.Load()
+	if limit <= 0 {
 		return true
 	}
 	sec := now.Unix()
@@ -32,7 +32,7 @@ func (g *stalePGReadGate) allow(now time.Time) bool {
 		g.windowUnix.Store(sec)
 		g.windowCount.Store(0)
 	}
-	return g.windowCount.Add(1) <= uint64(max)
+	return g.windowCount.Add(1) <= uint64(limit)
 }
 
 func (r *Registry) SetStalePGMaxRPS(maxPerSec int) {

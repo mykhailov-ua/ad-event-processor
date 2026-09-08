@@ -66,6 +66,7 @@ type campaignReplicaDTO struct {
 	AttestationMode          string                `json:"attestation_mode,omitempty"`
 	AttestationTTLSec        int32                 `json:"attestation_ttl_sec"`
 	DmrEnabled               bool                  `json:"dmr_enabled"`
+	RedirectComplianceMode   string                `json:"redirect_compliance_mode,omitempty"`
 
 	CIDRBlockEnabled             bool   `json:"cidr_block_enabled"`
 	ProxyVPNBlockEnabled         bool   `json:"proxy_vpn_block_enabled"`
@@ -450,6 +451,7 @@ func (r *Registry) saveReplica(m map[uuid.UUID]campaignInfo) error {
 			AttestationMode:              string(info.campaign.AttestationMode),
 			AttestationTTLSec:            info.campaign.AttestationTTLSec,
 			DmrEnabled:                   info.campaign.DmrEnabled,
+			RedirectComplianceMode:       string(info.campaign.RedirectComplianceMode),
 			CIDRBlockEnabled:             info.campaign.CIDRBlockEnabled,
 			ProxyVPNBlockEnabled:         info.campaign.ProxyVPNBlockEnabled,
 			ModeratorIntelEnabled:        info.campaign.ModeratorIntelEnabled,
@@ -581,6 +583,7 @@ func (r *Registry) loadReplica() (*campaignMapSnapshot, error) {
 				AttestationMode:              domain.ResolveAttestationMode(domain.ParseAttestationMode(dto.AttestationMode), dto.AttestationEnabled),
 				AttestationTTLSec:            dto.AttestationTTLSec,
 				DmrEnabled:                   dto.DmrEnabled,
+				RedirectComplianceMode:       domain.ParseRedirectComplianceMode(dto.RedirectComplianceMode),
 				CIDRBlockEnabled:             dto.CIDRBlockEnabled,
 				ProxyVPNBlockEnabled:         dto.ProxyVPNBlockEnabled,
 				ModeratorIntelEnabled:        dto.ModeratorIntelEnabled,

@@ -202,6 +202,22 @@ if rg -n "className=\\{cn\\([^)]*admin-[^)]*!" web/src/domains web/src/shell web
   failed=1
 fi
 
+# Legacy BEM hooks in app.css surface tokens (flat ui-*-segment only).
+if [ -f web/src/styles/app.css ]; then
+  if rg -n '\.ui-[a-z0-9-]+(__|--)[a-z0-9-]+' web/src/styles/app.css 2> /dev/null; then
+    echo "Error: UI slop - BEM __ or -- modifier in web/src/styles/app.css; use flat ui-*-segment class names"
+    failed=1
+  fi
+fi
+
+for dir in web/src/domains web/src/shell web/src/pages; do
+  [ -d "$dir" ] || continue
+  if rg -n '\!bg-' "$dir" --glob '*.tsx' --glob '*.ts' 2> /dev/null; then
+    echo "Error: UI slop - Tailwind !bg-* row/cell overrides under ${dir}; use data-row-accent / app.css pin rules"
+    failed=1
+  fi
+done
+
 # Legacy admin-* BEM hooks in class strings (text-ui-* typography tokens are allowed).
 for dir in web/src/domains web/src/shell web/src/pages; do
   [ -d "$dir" ] || continue

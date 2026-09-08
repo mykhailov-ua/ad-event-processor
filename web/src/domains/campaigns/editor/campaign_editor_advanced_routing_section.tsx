@@ -21,6 +21,7 @@ import {
 import type { Campaign } from '@/api/types';
 import type { CampaignEditorFormState } from '@/domains/campaigns/editor/campaign_editor_types';
 import { FraudLimitsDocLink } from '@/domains/fraud/fraud_limits_doc_link';
+import { RedirectComplianceDocLink } from '@/domains/campaigns/editor/redirect_compliance_doc_link';
 import { cn } from '@/lib/utils';
 
 function sandboxPreviewPath(decoyLanderId: string, safePageUrl: string | undefined): string | null {
@@ -77,7 +78,7 @@ export function CampaignEditorAdvancedRoutingSection({
                 </SelectContent>
               </Select>
               {form.flow_id ? (
-                <p className="text-xs text-muted-foreground font-mono">{form.flow_id}</p>
+                <p className="text-xs text-muted-foreground">{form.flow_id}</p>
               ) : null}
             </div>
             <div className="grid gap-2">
@@ -89,6 +90,52 @@ export function CampaignEditorAdvancedRoutingSection({
                 disabled={saving}
                 onChange={(event) => onFieldChange('brand_id', event.target.value)}
               />
+            </div>
+          </div>
+
+          <div className="grid gap-2 sm:grid-cols-2">
+            <div className="grid gap-2">
+              <Label htmlFor="campaign-redirect-compliance-mode">Redirect compliance</Label>
+              <Select
+                disabled={saving}
+                value={form.redirect_compliance_mode || 'strict'}
+                onValueChange={(value) => onFieldChange('redirect_compliance_mode', value)}
+              >
+                <SelectTrigger id="campaign-redirect-compliance-mode">
+                  <SelectValue />
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="strict">Strict (302 only)</SelectItem>
+                  <SelectItem value="legacy_dmr">Legacy DMR</SelectItem>
+                </SelectContent>
+              </Select>
+              <p className="text-xs text-muted-foreground">
+                Strict is the default for new campaigns. Legacy DMR uses 200 meta refresh and may
+                fingerprint redirect chains.
+              </p>
+              <RedirectComplianceDocLink />
+            </div>
+            <div className="grid gap-2">
+              <div className="flex items-start gap-2">
+                <Checkbox
+                  checked={form.dmr_enabled}
+                  disabled={saving || form.redirect_compliance_mode !== 'legacy_dmr'}
+                  id="campaign-dmr-enabled"
+                  onCheckedChange={(checked) => onFieldChange('dmr_enabled', checked === true)}
+                />
+                <div className="grid gap-1">
+                  <Label htmlFor="campaign-dmr-enabled">DMR on campaign clicks</Label>
+                  <p className="text-xs text-muted-foreground">
+                    Requires legacy DMR profile. Also available per click via dmr=1 on the click
+                    URL.
+                  </p>
+                  {form.redirect_compliance_mode === 'legacy_dmr' ? (
+                    <p className="text-xs text-amber-700 dark:text-amber-400">
+                      Warning: legacy DMR increases redirect-chain observability for scanners.
+                    </p>
+                  ) : null}
+                </div>
+              </div>
             </div>
           </div>
 
@@ -111,9 +158,9 @@ export function CampaignEditorAdvancedRoutingSection({
               </Select>
               {form.click_filter_tier !== 'full' ? (
                 <p className="text-xs text-amber-700 dark:text-amber-400">
-                  Non-full tiers skip fraud filters and click budget debit. Tracker escalates to full
-                  when fraud enforcement flags are enabled. redirect_only requires operator license
-                  on the tracker (`CLICK_FILTER_REDIRECT_ONLY_LICENSED`).
+                  Non-full tiers skip fraud filters and click budget debit. Tracker escalates to
+                  full when fraud enforcement flags are enabled. redirect_only requires operator
+                  license on the tracker (`CLICK_FILTER_REDIRECT_ONLY_LICENSED`).
                 </p>
               ) : (
                 <p className="text-xs text-muted-foreground">
@@ -191,8 +238,8 @@ export function CampaignEditorAdvancedRoutingSection({
               </Label>
               <p className="text-xs text-muted-foreground">
                 Enforces gyro variance and touch pressure on safe-page verify before offer redirect.
-                Requires tracker <span className="font-mono">MOBILE_BIOMETRICS_CLICK_ENABLED=1</span>,
-                campaign safe-page + attestation, and probe JS sending devicemotion / touch force.
+                Requires tracker <span>MOBILE_BIOMETRICS_CLICK_ENABLED=1</span>, campaign safe-page
+                + attestation, and probe JS sending devicemotion / touch force.
               </p>
               <FraudLimitsDocLink />
             </div>
@@ -209,15 +256,15 @@ export function CampaignEditorAdvancedRoutingSection({
                 onChange={(event) => onFieldChange('decoy_lander_id', event.target.value)}
               />
               <p className="text-xs text-muted-foreground">
-                Sandbox decoy uses the hosted lander shell at /lp/&#123;id&#125;/ for structural parity
-                with production. When empty, the tracker derives from safe_page_url when it points at
-                /lp/.
+                Sandbox decoy uses the hosted lander shell at /lp/&#123;id&#125;/ for structural
+                parity with production. When empty, the tracker derives from safe_page_url when it
+                points at /lp/.
               </p>
             </div>
             {sandboxPreview ? (
               <div className="grid gap-2">
                 <Label>Sandbox preview</Label>
-                <p className="font-mono text-xs text-foreground">{sandboxPreview}</p>
+                <p className="text-xs text-foreground">{sandboxPreview}</p>
                 <p className="text-xs text-muted-foreground">
                   Open on the tracker origin to inspect decoy asset graph parity.
                 </p>

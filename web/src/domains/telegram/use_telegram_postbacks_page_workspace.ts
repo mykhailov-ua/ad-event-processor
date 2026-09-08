@@ -15,13 +15,23 @@ import { useCoalescedBumpRefresh, useRefreshToken } from '@/hooks/use_coalesced_
 import { useResource } from '@/api/use_resource';
 
 export function useTelegramPostbacksPageWorkspace() {
-  const { appliedCampaignId, draftCampaignId, setDraftCampaignId, applyCampaignScope, listQueryPending } =
-    useCampaignScope();
+  const {
+    appliedCampaignId,
+    draftCampaignId,
+    setDraftCampaignId,
+    applyCampaignScope,
+    listQueryPending,
+  } = useCampaignScope();
 
   const { refreshToken, bumpRefresh } = useRefreshToken();
   const shouldFetch = Boolean(appliedCampaignId);
 
-  const { data, error, fetching, revalidating: listRevalidating } = useResource(
+  const {
+    data,
+    error,
+    fetching,
+    revalidating: listRevalidating,
+  } = useResource(
     (signal) => {
       if (!shouldFetch) {
         return Promise.resolve(undefined);

@@ -1,4 +1,4 @@
-import { useCallback, useMemo, useRef, useState, type DragEvent } from 'react';
+import { useCallback, useEffect, useMemo, useRef, useState, type DragEvent } from 'react';
 
 import { Checkbox } from '@/components/ui/checkbox';
 import type { CampaignListMetrics } from '@/api/campaigns_api';
@@ -24,6 +24,8 @@ import {
 import {
   campaignListPinnedCellClassName,
   campaignListPinnedColumnStyle,
+  campaignListPinnedEdgeWidthPx,
+  syncDirectoryPinnedEdgeShadow,
 } from '@/domains/campaigns/list/campaign_list_pinned_columns';
 import { buildCampaignRowVmCache } from '@/domains/campaigns/list/campaign_list_row_vm';
 import { CampaignListTableBodyRow } from '@/domains/campaigns/list/campaign_list_table_body_row';
@@ -44,7 +46,13 @@ import {
   campaignListTfootTdClass,
   campaignListThClass,
 } from '@/domains/campaigns/list/campaign_list_classes';
-import { DirectoryTable, TableBody, TableFooter, TableHeader, directoryTableRevalidatingClass } from '@/shell/directory_table';
+import {
+  DirectoryTable,
+  TableBody,
+  TableFooter,
+  TableHeader,
+  directoryTableRevalidatingClass,
+} from '@/shell/directory_table';
 import { cn } from '@/lib/utils';
 
 export type CampaignsListTableProps = {
@@ -108,10 +116,12 @@ export function CampaignsListTable({
   );
   const tableRef = useRef<HTMLTableElement>(null);
   const colgroupRef = useRef<HTMLTableColElement>(null);
+  const hostRef = useRef<HTMLDivElement>(null);
   const { startResize } = useCampaignListColumnResize({
     columnWidths,
     columns,
     colgroupRef,
+    hostRef,
     onColumnWidthCommit,
     tableRef,
   });
@@ -119,6 +129,15 @@ export function CampaignsListTable({
     resolveCampaignListColumnWidthPx(columnId, columnWidths)
   );
   const tableWidthPx = columnWidthPxList.reduce((sum, widthPx) => sum + widthPx, 0);
+  const pinnedEdgeWidthPx = useMemo(
+    () => campaignListPinnedEdgeWidthPx(columns, columnWidths),
+    [columns, columnWidths]
+  );
+
+  useEffect(() => {
+    syncDirectoryPinnedEdgeShadow(hostRef.current, columns, columnWidths);
+  }, [columns, columnWidths, pinnedEdgeWidthPx]);
+
   const [draggingColumnId, setDraggingColumnId] = useState<CampaignListReorderableColumnId | null>(
     null
   );
@@ -188,8 +207,10 @@ export function CampaignsListTable({
         directoryTableRevalidatingClass(listRevalidating)
       )}
       fixedLayout
+      hostRef={hostRef}
       horizontalScroll
       nested
+      pinnedEdgeWidthPx={pinnedEdgeWidthPx}
       tableClassName={campaignListTableClass}
       tableRef={tableRef}
       tableStyle={{
@@ -299,7 +320,7 @@ export function CampaignsListTable({
                 className={cn(
                   campaignListTdClass,
                   campaignListTfootTdClass,
-                  columnId === 'select' ? 'p-0' : undefined,
+                  columnId === 'select' || columnId === 'id' ? 'p-0' : undefined,
                   isCampaignListPinnedColumn(columnId) &&
                     campaignListPinnedCellClassName(columnId, columns, 'footer')
                 )}
@@ -307,9 +328,7 @@ export function CampaignsListTable({
                 style={campaignListPinnedColumnStyle(columnId, columns, columnWidths)}
               >
                 <div
-                  className={
-                    isNum ? campaignListCellContentNumClass : campaignListCellContentClass
-                  }
+                  className={isNum ? campaignListCellContentNumClass : campaignListCellContentClass}
                 >
                   <CampaignListTableTotalsCell
                     columnId={columnId}

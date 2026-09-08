@@ -30,8 +30,8 @@ export function DocsHub({ sectionId }: DocsHubProps) {
           )}
         >
           Operator notes for common admin issues. Deep runbooks live in{' '}
-          <span className="font-mono text-xs text-foreground">docs/DEVELOPMENT.md</span> and{' '}
-          <span className="font-mono text-xs text-foreground">deploy/vendor/</span> on the server.
+          <span className="text-xs text-foreground">docs/DEVELOPMENT.md</span> and{' '}
+          <span className="text-xs text-foreground">deploy/vendor/</span> on the server.
         </p>
 
         <div className="grid min-w-0 gap-4 lg:grid-cols-[minmax(11rem,14rem)_minmax(0,1fr)] lg:items-start">

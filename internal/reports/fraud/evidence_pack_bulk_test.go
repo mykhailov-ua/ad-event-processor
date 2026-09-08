@@ -1,6 +1,7 @@
 package fraud
 
 import (
+	"context"
 	"testing"
 	"time"
 
@@ -16,7 +17,7 @@ func TestFraudEvidencePackBulkQuery_holdoutNoClickIDFilter(t *testing.T) {
 
 func TestQueryFraudEvidencePackFraudCH_bulkMode_holdoutUsesBulkQuery(t *testing.T) {
 	t.Parallel()
-	rows, err := queryFraudEvidencePackFraudCH(nil, nil, []uuid.UUID{uuid.New()}, "", time.Now(), time.Now())
+	rows, err := queryFraudEvidencePackFraudCH(context.TODO(), nil, []uuid.UUID{uuid.New()}, "", time.Now(), time.Now())
 	require.NoError(t, err)
 	require.Nil(t, rows)
 }

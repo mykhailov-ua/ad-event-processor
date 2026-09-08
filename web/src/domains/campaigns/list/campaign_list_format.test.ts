@@ -3,7 +3,11 @@ import test from 'node:test';
 
 import type { CampaignWithMoneyDisplay } from '@/domains/campaigns/list/campaign_metrics_shared';
 
-import { sumCampaignListTotals } from './campaign_list_format.ts';
+import { formatTableMoneyFromMicro, sumCampaignListTotals } from './campaign_list_format.ts';
+
+test('formatTableMoneyFromMicro formats negative micro amounts', () => {
+  assert.equal(formatTableMoneyFromMicro(-3_775_260_000).text, '-3,775.26');
+});
 
 test('sumCampaignListTotals_holdout prefers metrics batch micros over margin', () => {
   const totals = sumCampaignListTotals(

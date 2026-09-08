@@ -281,7 +281,7 @@ export function TrafficOptimizerRulesDirectory({
               <TableBody>
                 {(dryRunResult.arms ?? []).map((arm) => (
                   <TableRow key={arm.entity_id}>
-                    <TableCell className="font-mono text-xs">{arm.entity_id}</TableCell>
+                    <TableCell className="text-xs">{arm.entity_id}</TableCell>
                     <TableCell>{arm.current_weight}</TableCell>
                     <TableCell>{arm.proposed_weight}</TableCell>
                     <TableCell>{arm.observed_value}</TableCell>

@@ -9,7 +9,7 @@ install_cli_defaults() {
 }
 
 install_cli_usage() {
-  cat <<'EOF'
+  cat << 'EOF'
 usage: install.sh <docker|systemd> [command] [options]
 
 Commands (default: up):

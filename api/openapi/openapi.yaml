@@ -428,6 +428,8 @@ paths:
     $ref: paths/ops_reports.yaml#/paths/~1api~1v1~1fraud~1moderator-corpus~1import
   /api/v1/fraud/moderator-corpus/preview:
     $ref: paths/ops_reports.yaml#/paths/~1api~1v1~1fraud~1moderator-corpus~1preview
+  /api/v1/fraud/probe-clusters/{cluster_id}:
+    $ref: paths/ops_reports.yaml#/paths/~1api~1v1~1fraud~1probe-clusters~1{cluster_id}
   /api/v1/ops/blacklist:
     $ref: paths/ops_reports.yaml#/paths/~1api~1v1~1ops~1blacklist
   /api/v1/ops/consent/proofs:

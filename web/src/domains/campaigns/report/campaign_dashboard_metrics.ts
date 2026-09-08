@@ -2,7 +2,11 @@ import type { DashboardKpiTile } from '@/domains/dashboards/dashboard_kpi_strip'
 import type { DashboardMetricId } from '@/domains/dashboards/dashboard_metrics';
 import type { DashboardBreakdownColumnId } from '@/domains/dashboards/dashboard_preferences';
 import { formatDashboardCrPct, formatDashboardRoiPct } from '@/lib/display_metrics';
-import { formatDashboardUsdFromMicro } from '@/domains/dashboards/dashboard_format';
+import {
+  formatDashboardUsdFromMicro,
+  resolveBreakdownProfitMicro,
+  resolveBreakdownRoiPct,
+} from '@/domains/dashboards/dashboard_format';
 import { displayCount } from '@/lib/display';
 
 export type CampaignDashboardKpis = {
@@ -56,7 +60,7 @@ export const CAMPAIGN_DASHBOARD_KPI_METRICS: CampaignDashboardMetricConfig[] = [
     id: 'profit',
     label: 'Profit',
     accent: 1,
-    value: (kpis) => formatDashboardUsdFromMicro(kpis.profit_micro),
+    value: (kpis) => formatDashboardUsdFromMicro(resolveBreakdownProfitMicro(kpis)),
   },
   {
     id: 'cpc',
@@ -77,7 +81,12 @@ export const CAMPAIGN_DASHBOARD_KPI_METRICS: CampaignDashboardMetricConfig[] = [
     accent: 2,
     value: (kpis) => formatDashboardUsdFromMicro(kpis.epc_micro),
   },
-  { id: 'roi', label: 'ROI', accent: 2, value: (kpis) => formatDashboardRoiPct(kpis.roi_pct ?? 0) },
+  {
+    id: 'roi',
+    label: 'ROI',
+    accent: 2,
+    value: (kpis) => formatDashboardRoiPct(resolveBreakdownRoiPct(kpis) ?? 0),
+  },
 ];
 
 export function buildCampaignDashboardKpiTiles(

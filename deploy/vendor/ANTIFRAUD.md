@@ -4,6 +4,8 @@ Operator and engineering reference for tracker fraud layers, cold-path IVT/ML wo
 
 This document describes **what the tree does today**. It does not claim features that exist only as registry entries, admin flags without hot-path readers, or marketing SLAs from unit microbenches.
 
+Perimeter AppSec threat catalog (T1–T30), Sybil operator runbook, and pre-production checklist: [deploy/vendor/PERIMETER_INTEL_DEFENSE.md](PERIMETER_INTEL_DEFENSE.md).
+
 ---
 
 ## Hot vs cold
@@ -320,8 +322,11 @@ Buyers often expect WebGL/headless bypass on every click. This stack combines ed
 | Ingress TLS | JA4 browser corpus (`tls_ja4_mismatch`) | `DeviceFilter` + `ja4BrowserCorpusMismatch` | Corpus miss fail-open; Chromium UA on Safari row fires signal |
 | Ingress HTTP/2 | SETTINGS / pseudo-order (edge) | nginx Lua -> headers | CDN normalizes H2; signal degraded |
 | Safe-page JS | Canvas/WebGL/timezone attestation | `safe_page_attest.go` | Attestation off (`safe_page_enabled=false`); headless without probe |
-| Mobile biometrics | Gyro/touch on conversion | `BehaviorTelemetryFilter` / IVT `mobile_biometrics` | Flat gyro on `/click` when biometrics not wired on click path (see P3-MOBILE-BIOMETRICS-CLICK) |
-| Cross-layer | `layer_desync_count` (CH) | Reports only unless campaign policy set | Residential egress masks single-layer mismatch |
+| Mobile biometrics | Gyro/touch on safe-page verify | `evaluateSafePageAttestation` + `BehaviorTelemetryFilter` on click when `MOBILE_BIOMETRICS_CLICK_ENABLED=1` | Attestation off; desktop UA skips mobile checks |
+| Cross-layer | `cross_layer_desync_action` + `layer_desync_count` | `evalCrossLayerDesyncClickPolicy` on `/click` | Residential egress may pass individual L2 signals; needs stacked mismatches |
+| CGNAT collateral | `ShouldBypassCGNATIPBlacklist` | `FraudBlacklistFilter` on mobile carrier ASN | Probe cluster corroboration still hard-routes |
+| Apple Private Relay | DCASN exempt | `ApplePrivateRelayTable` + Apple UA | Windows UA on relay ASN still `datacenter_ip` |
+| In-app WebView | Sec-Fetch / JA4 relax | `UAMatchesInAppWebView` + `social_in_app` preset | Desktop Chrome with WebView substring still cross-layer checked |
 | Residential intel | `ResidentialProxyFilter` | Farm/heuristic table | Not per-session moderator proof; rotating clean IP passes |
 | ML boost | `ml:score:boost:{campaign_id}` snapshot | `FilterEngine` read only | No inline LGBM on `/track`; batch `cmd/fraud-scorer` |
 

@@ -15,7 +15,7 @@ export function ProgressBar({ label, valuePct, className, showValue = true }: Pr
       <div className="grid grid-cols-[1fr_auto] items-center gap-2 text-[13px] leading-[18px]">
         <span className="font-medium text-foreground">{label}</span>
         {showValue ? (
-          <span className="font-semibold text-foreground tabular-nums">{clamped.toFixed(0)}%</span>
+          <span className="font-semibold text-foreground">{clamped.toFixed(0)}%</span>
         ) : null}
       </div>
       <div aria-hidden className="h-2 overflow-hidden rounded-full bg-muted">

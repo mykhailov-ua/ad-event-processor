@@ -5,12 +5,12 @@ import {
   campaignListCellContentNumClass,
   campaignListCopyRowClass,
   campaignListCopyToolsSlotClass,
-  campaignListDashboardHeaderLabelClass,
-  campaignListEllipsisTextClass,
   campaignListHeaderShellClass,
-  campaignListTableClass,
+  campaignListHeaderLabelClass,
+  campaignListEllipsisTextClass,
 } from '@/domains/campaigns/list/campaign_list_classes';
 import {
+  dashboardTableClass,
   dashboardTableSurfaceClass,
   dashboardTableTdClass,
   dashboardTableThClass,
@@ -69,7 +69,7 @@ function renderRecentClickCell(columnId: DashboardRecentClickColumnId, event: Cl
 export function DashboardRecentClicksListTable({
   events,
   columns,
-  fillContainer = false,
+  fillContainer = true,
 }: DashboardRecentClicksListTableProps) {
   const visibleColumns =
     columns.length > 0
@@ -107,19 +107,14 @@ export function DashboardRecentClicksListTable({
               <span
                 className={cn(
                   campaignListEllipsisTextClass,
-                  'min-w-0 flex-1 font-numeric text-xs text-muted-foreground'
+                  'min-w-0 flex-1  text-xs text-muted-foreground'
                 )}
                 title={event.click_id}
               >
                 {event.click_id}
               </span>
               <div className={campaignListCopyToolsSlotClass}>
-                <CopyButton
-                  flashOnCopy
-                  label="Event id"
-                  showToast={false}
-                  value={event.click_id}
-                />
+                <CopyButton flashOnCopy label="Event id" showToast={false} value={event.click_id} />
               </div>
             </div>
           );
@@ -130,7 +125,7 @@ export function DashboardRecentClicksListTable({
               <span
                 className={cn(
                   campaignListEllipsisTextClass,
-                  'min-w-0 flex-1 font-numeric text-xs text-muted-foreground'
+                  'min-w-0 flex-1  text-xs text-muted-foreground'
                 )}
                 title={event.campaign_id}
               >
@@ -166,7 +161,7 @@ export function DashboardRecentClicksListTable({
         const label = RECENT_CLICK_COLUMN_LABELS[columnId];
         return (
           <div className={campaignListHeaderShellClass}>
-            <div className={campaignListDashboardHeaderLabelClass}>
+            <div className={campaignListHeaderLabelClass}>
               <span className="whitespace-nowrap" title={label}>
                 {label}
               </span>
@@ -187,7 +182,7 @@ export function DashboardRecentClicksListTable({
       rowKey={(event) => `${event.click_id}-${event.created_at}`}
       rows={events}
       surfaceClassName={dashboardTableSurfaceClass}
-      tableClassName={campaignListTableClass}
+      tableClassName={dashboardTableClass}
       tableRef={tableRef}
     />
   );

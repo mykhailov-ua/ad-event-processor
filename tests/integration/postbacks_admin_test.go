@@ -15,6 +15,8 @@ import (
 	"testing"
 
 	"ad-event-processor/internal/campaign"
+	"ad-event-processor/internal/campaign/integration"
+	"ad-event-processor/internal/controlplane"
 	db "ad-event-processor/internal/domain/db"
 	"ad-event-processor/internal/testutil"
 
@@ -215,4 +217,111 @@ func TestPostbacksHealthEndpointIntegration(t *testing.T) {
 	require.InDelta(t, 66.67, *health.Rows[0].SuccessRate24h, 0.1)
 	require.Equal(t, "fail", health.Rows[0].HealthStatus)
 	require.Equal(t, "timeout", health.Rows[0].LastError)
+	require.NotNil(t, health.Rows[0].P95LatencyMs)
+	require.GreaterOrEqual(t, *health.Rows[0].P95LatencyMs, int64(120))
+
+	var sentCount, totalCount int64
+	err = dbPool.QueryRow(ctx, `
+		SELECT
+			COUNT(*) FILTER (WHERE status = 'SENT'),
+			COUNT(*) FILTER (WHERE status IN ('SENT', 'FAILED'))
+		FROM postback_dispatches
+		WHERE campaign_id = $1
+		  AND created_at >= NOW() - INTERVAL '24 hours'`,
+		campaignID,
+	).Scan(&sentCount, &totalCount)
+	require.NoError(t, err)
+	require.Equal(t, int64(2), sentCount)
+	require.Equal(t, int64(3), totalCount)
+	expectedRate := 100.0 * float64(sentCount) / float64(totalCount)
+	require.InDelta(t, expectedRate, *health.Rows[0].SuccessRate24h, 1.0)
+	require.Equal(t, "/docs/INTEGRATIONS.md#postback-health", health.RunbookPath)
+}
+
+func TestApplyCampaignTemplatesOneClickIntegration(t *testing.T) {
+	if testing.Short() {
+		t.Skip("integration: run make test-integration (Docker testcontainers)")
+	}
+
+	ctx := context.Background()
+	cfgPostgres := testutil.DefaultPostgresConfig()
+	cfgPostgres.MigrationDirs = []string{testutil.AdsMigrationsDir()}
+	dbPool, cleanupDB := testutil.SetupPostgres(t, cfgPostgres)
+	defer cleanupDB()
+
+	customerID := uuid.New()
+	campaignID := uuid.New()
+	_, err := dbPool.Exec(ctx, `INSERT INTO customers (id, name, balance, currency) VALUES ($1, 'c', 0, 'USD')`, customerID)
+	require.NoError(t, err)
+	_, err = dbPool.Exec(ctx, `
+		INSERT INTO campaigns (id, name, status, customer_id)
+		VALUES ($1, 'camp', 'ACTIVE', $2)`,
+		campaignID,
+		customerID,
+	)
+	require.NoError(t, err)
+
+	svc := controlplane.NewService(ctx, dbPool, nil, nil, nil)
+	defer svc.Close()
+	h := &integration.IntegrationSchemaHTTPHandlers{
+		Pool:            dbPool,
+		TemplateCatalog: svc.TemplateCatalog(dbPool),
+		ResolveTrackingDomain: func(context.Context) string {
+			return "trk.example.com"
+		},
+	}
+	mux := http.NewServeMux()
+	h.Register(mux)
+
+	importBody, err := json.Marshal(integration.ImportTemplatesRequest{})
+	require.NoError(t, err)
+	req := httptest.NewRequest(http.MethodPost, "/api/v1/integration/templates/import", bytes.NewReader(importBody))
+	rec := httptest.NewRecorder()
+	mux.ServeHTTP(rec, req)
+	require.Equal(t, http.StatusOK, rec.Code, rec.Body.String())
+
+	applyBody, err := json.Marshal(integration.ApplyCampaignTemplatesRequest{
+		TrafficSource:    "traffic_propellerads",
+		AffiliateNetwork: "affiliate_everad",
+		TrackingDomain:   "trk.example.com",
+	})
+	require.NoError(t, err)
+	req = httptest.NewRequest(http.MethodPost, "/api/v1/campaigns/"+campaignID.String()+"/apply-templates", bytes.NewReader(applyBody))
+	rec = httptest.NewRecorder()
+	mux.ServeHTTP(rec, req)
+	require.Equal(t, http.StatusOK, rec.Code, rec.Body.String())
+
+	var targetURL string
+	err = dbPool.QueryRow(ctx, `SELECT COALESCE(target_url, '') FROM campaigns WHERE id = $1`, campaignID).Scan(&targetURL)
+	require.NoError(t, err)
+	require.Contains(t, targetURL, "sub1={sub1}")
+
+	var postbackURL string
+	err = dbPool.QueryRow(ctx, `SELECT url_template FROM postback_configs WHERE campaign_id = $1`, campaignID).Scan(&postbackURL)
+	require.NoError(t, err)
+	require.Contains(t, postbackURL, "{payout}")
+
+	var statusSchemaID uuid.UUID
+	err = dbPool.QueryRow(ctx, `SELECT status_integration_schema_id FROM campaigns WHERE id = $1`, campaignID).Scan(&statusSchemaID)
+	require.NoError(t, err)
+	require.NotEqual(t, uuid.Nil, statusSchemaID)
+
+	var mappingCount int
+	err = dbPool.QueryRow(ctx, `SELECT COUNT(*) FROM campaign_conversion_mappings WHERE campaign_id = $1`, campaignID).Scan(&mappingCount)
+	require.NoError(t, err)
+	require.Greater(t, mappingCount, 0)
+
+	dryRunBody, err := json.Marshal(integration.ApplyCampaignTemplatesRequest{
+		AffiliateNetwork: "affiliate_everad",
+		TrackingDomain:   "trk.example.com",
+	})
+	require.NoError(t, err)
+	req = httptest.NewRequest(http.MethodPost, "/api/v1/campaigns/"+campaignID.String()+"/apply-templates/dry-run", bytes.NewReader(dryRunBody))
+	rec = httptest.NewRecorder()
+	mux.ServeHTTP(rec, req)
+	require.Equal(t, http.StatusOK, rec.Code, rec.Body.String())
+
+	var dryRun campaign.DryRunCampaignTemplatesResult
+	require.NoError(t, json.Unmarshal(rec.Body.Bytes(), &dryRun))
+	require.NotEmpty(t, dryRun.PostbackURLTemplate)
 }

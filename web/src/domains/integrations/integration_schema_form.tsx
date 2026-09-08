@@ -96,7 +96,7 @@ export function IntegrationSchemaCreateForm({
               <Label htmlFor="integration-schema-json">Schema JSON</Label>
               <Textarea
                 id="integration-schema-json"
-                className="min-h-32 font-mono text-xs"
+                className="min-h-32 text-xs"
                 value={draftSchemaJson}
                 onChange={(event) => onDraftSchemaJsonChange(event.target.value)}
               />
@@ -175,7 +175,11 @@ export function IntegrationSchemaApplyForm({
             />
           )}
         </FilterField>
-        <FilterField className="md:col-span-2" htmlFor="integration-apply-campaign-id" label="Campaign ID">
+        <FilterField
+          className="md:col-span-2"
+          htmlFor="integration-apply-campaign-id"
+          label="Campaign ID"
+        >
           <Input
             id="integration-apply-campaign-id"
             value={draftCampaignId}
@@ -197,15 +201,13 @@ export function IntegrationSchemaApplyForm({
             Status: {applyResult.status} ({applyResult.kind})
           </p>
           {applyResult.url_template ? (
-            <p className="break-all font-mono text-xs">URL: {applyResult.url_template}</p>
+            <p className="break-all text-xs">URL: {applyResult.url_template}</p>
           ) : null}
           {applyResult.panel_postback_url ? (
-            <p className="break-all font-mono text-xs">
-              Postback: {applyResult.panel_postback_url}
-            </p>
+            <p className="break-all text-xs">Postback: {applyResult.panel_postback_url}</p>
           ) : null}
           {applyResult.target_url ? (
-            <p className="break-all font-mono text-xs">Target: {applyResult.target_url}</p>
+            <p className="break-all text-xs">Target: {applyResult.target_url}</p>
           ) : null}
           {applyResult.mappings_applied_count != null ? (
             <p className="text-sm text-muted-foreground">

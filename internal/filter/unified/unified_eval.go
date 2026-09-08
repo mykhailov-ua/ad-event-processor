@@ -110,10 +110,23 @@ func (f *L7WireFilter) SetAcceptEncodingEnabled(enabled bool) {
 	f.acceptEncodingEnabled.Store(enabled)
 }
 
+func recordInAppWebViewClass(evt *domain.Event) {
+	if evt == nil || evt.InAppWebViewClass != 0 {
+		return
+	}
+	platform, class := filt.InAppWebViewClassification(evt.UA)
+	if class == filt.InAppWebViewClassNone {
+		return
+	}
+	evt.InAppWebViewClass = class
+	metrics.InAppWebViewClassifiedTotal.WithLabelValues(platform).Inc()
+}
+
 func (f *L7WireFilter) Check(ctx context.Context, evt *domain.Event) error {
 	if f == nil || evt == nil {
 		return nil
 	}
+	recordInAppWebViewClass(evt)
 	if f.secFetchEnabled.Load() && filt.SecFetchAnomaly(evt.UA, evt.SecFetchPresent, evt.SecFetchMode, evt.SecFetchDest) {
 		filt.AddFraudSignal(evt, filt.FraudReasonSecFetchAnomaly)
 	}
@@ -461,7 +474,7 @@ func (f *UnifiedFilter) checkLocalQuanta(
 		return true, err
 	}
 	if evt.LocalFcapLookup != 0 {
-		f.scheduleFcapBumpForEvent(redisClient, evt, campInfo, fastScratch)
+		f.scheduleFcapBumpForEvent(redisClient, evt, campInfo, fastScratch) //nolint:contextcheck // fcap bump worker is redis-bound, not ctx-bound
 	}
 	return true, nil
 }
@@ -511,6 +524,7 @@ func (f *UnifiedFilter) FinalizeLocalQuantaPublish(
 }
 
 func (f *UnifiedFilter) enqueueLocalQuantaFullSkip(shard int, evt *domain.Event, camp *domain.Campaign, amountMicro int64) error {
+	//nolint:gocritic // ifElseChain: stream-hot vs legacy producer enqueue
 	if f.localQuantaStreamHot != nil {
 		if !f.localQuantaStreamHot.Enqueue(shard, evt, camp, amountMicro) {
 			return filt.ErrShardUnavailable
@@ -1053,13 +1067,6 @@ var (
 	numKeys9Any   any = budgetFastKeyCount
 	numKeys1Any   any = 1
 )
-
-var evalWirePool = sync.Pool{
-	New: func() any {
-		s := make([]any, 56, 64)
-		return &s
-	},
-}
 
 var evalCmdPool = sync.Pool{
 	New: func() any {

@@ -34,10 +34,12 @@ export function useOpsOutboxPageWorkspace() {
     [searchParams]
   );
 
-  const { data, error, fetching, revalidating: listRevalidating } = useResource(
-    (signal) => listOpsOutbox({ limit, cursor }, signal),
-    [limit, cursor]
-  );
+  const {
+    data,
+    error,
+    fetching,
+    revalidating: listRevalidating,
+  } = useResource((signal) => listOpsOutbox({ limit, cursor }, signal), [limit, cursor]);
 
   const updateCursors = useCallback(
     (nextCursor: string | undefined, nextStack: string[]) => {

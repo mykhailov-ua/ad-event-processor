@@ -11,11 +11,7 @@ import {
   TableRow,
   directoryTableRevalidatingClass,
 } from '@/shell/directory_table';
-import {
-  DirectoryFilterForm,
-  FilterField,
-  FilterPanel,
-} from '@/shell/filter_panel';
+import { DirectoryFilterForm, FilterField, FilterPanel } from '@/shell/filter_panel';
 import { PageLayout } from '@/shell/page_layout';
 import { EmptyState } from '@/shell/empty_state';
 import { ErrorBlock } from '@/shell/error_block';
@@ -204,7 +200,7 @@ export function CustomerFraudByTypeDirectory({
             <TableBody>
               {rows.map((row, index) => (
                 <TableRow key={`${row.campaign_id}-${row.fraud_category}-${index}`}>
-                  <TableCell className="font-mono text-xs">{row.campaign_id ?? ''}</TableCell>
+                  <TableCell className="text-xs">{row.campaign_id ?? ''}</TableCell>
                   <TableCell>
                     {row.fraud_category_label?.trim() || row.fraud_category?.trim() || '-'}
                   </TableCell>

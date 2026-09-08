@@ -7,7 +7,12 @@ import { useResource } from '@/api/use_resource';
 
 export function useTelegramBotsPageWorkspace() {
   const navigate = useNavigate();
-  const { data, error, fetching, revalidating: listRevalidating } = useResource((signal) => listTelegramBots(signal), []);
+  const {
+    data,
+    error,
+    fetching,
+    revalidating: listRevalidating,
+  } = useResource((signal) => listTelegramBots(signal), []);
 
   const [draftCampaignId, setDraftCampaignId] = useState('');
   const [actionError, setActionError] = useState<Error | undefined>(undefined);

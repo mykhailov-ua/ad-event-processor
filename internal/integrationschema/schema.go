@@ -8,6 +8,7 @@ import (
 	"strings"
 
 	"ad-event-processor/internal/postback"
+	"ad-event-processor/pkg/affiliatestatus"
 
 	"gopkg.in/yaml.v3"
 )
@@ -325,8 +326,7 @@ func MapAffiliateStatus(s *StatusMappingSchema, external string) (string, bool) 
 	if s == nil || len(s.StatusMap) == 0 {
 		return "", false
 	}
-	mapped, ok := s.StatusMap[strings.ToLower(strings.TrimSpace(external))]
-	return mapped, ok
+	return affiliatestatus.Map(s.StatusMap, external)
 }
 
 func BuildInboundClickQuery(s *InboundTokensSchema, values map[string]string) (string, error) {

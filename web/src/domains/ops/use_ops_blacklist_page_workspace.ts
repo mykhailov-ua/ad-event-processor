@@ -22,7 +22,12 @@ export function useOpsBlacklistPageWorkspace() {
   const limit = parseListLimit(searchParams.get('limit'));
   const offset = parseListOffset(searchParams.get('offset'));
 
-  const { data, error, fetching, revalidating: listRevalidating } = useResource(
+  const {
+    data,
+    error,
+    fetching,
+    revalidating: listRevalidating,
+  } = useResource(
     (signal) => listOpsBlacklist({ limit, offset }, signal),
     [limit, offset, refreshToken]
   );

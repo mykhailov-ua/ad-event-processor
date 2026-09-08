@@ -14,9 +14,12 @@ import {
   campaignListPinnedCellClassName,
   campaignListPinnedColumnStyle,
 } from '@/domains/campaigns/list/campaign_list_pinned_columns';
-import { buildCampaignRowVm, type CampaignRowVm } from '@/domains/campaigns/list/campaign_list_row_vm';
-import { campaignListRowClass } from '@/domains/campaigns/list/campaign_list_row_tone';
-import { CampaignMarginBreachBadge } from '@/domains/campaigns/list/campaign_margin_badge';
+import {
+  buildCampaignRowVm,
+  type CampaignRowVm,
+} from '@/domains/campaigns/list/campaign_list_row_vm';
+import { campaignListRowDataAttributes } from '@/domains/campaigns/list/campaign_list_row_tone';
+import { CampaignListRowAlertBadge } from '@/domains/campaigns/list/campaign_list_row_alert_badge';
 import { CampaignListTableMiddleCell } from '@/domains/campaigns/list/campaign_list_table_middle_cell';
 import { CampaignListTableRowMenu } from '@/domains/campaigns/list/campaign_list_table_row_menu';
 import {
@@ -25,7 +28,7 @@ import {
   campaignListCopyRowClass,
   campaignListCopyTextClass,
   campaignListCopyToolsSlotClass,
-  campaignListEllipsisTextClass,
+  campaignListIdCellInnerClass,
   campaignListNameRowCellClass,
   campaignListNameRowMenuSlotClass,
   campaignListNameRowTextClass,
@@ -73,13 +76,12 @@ export const CampaignListTableBodyRow = memo(function CampaignListTableBodyRow({
   const vm = useMemo(() => {
     const cached = rowVmCache?.get(campaign.id);
     if (cached) {
-      return {
-        ...cached,
-        rowClass: campaignListRowClass(selected, cached.rowAccent),
-      };
+      return cached;
     }
-    return buildCampaignRowVm(campaign, metrics, margin, customerNameById, ownerEmailById, selected);
-  }, [campaign, customerNameById, margin, metrics, ownerEmailById, rowVmCache, selected]);
+    return buildCampaignRowVm(campaign, metrics, margin, customerNameById, ownerEmailById);
+  }, [campaign, customerNameById, margin, metrics, ownerEmailById, rowVmCache]);
+
+  const rowDataAttributes = campaignListRowDataAttributes(selected, vm.rowAccent);
 
   function pinnedCellProps(columnId: CampaignListColumnId) {
     if (!isCampaignListPinnedColumn(columnId)) {
@@ -93,11 +95,7 @@ export const CampaignListTableBodyRow = memo(function CampaignListTableBodyRow({
   }
 
   return (
-    <tr
-      className={vm.rowClass}
-      data-row-accent={vm.rowAccent !== 'none' && !selected ? vm.rowAccent : undefined}
-      data-row-selected={selected || undefined}
-    >
+    <tr {...rowDataAttributes}>
       {columns.map((columnId) => {
         const isNum = isCampaignListNumericColumn(columnId);
         const pin = pinnedCellProps(columnId);
@@ -125,11 +123,13 @@ export const CampaignListTableBodyRow = memo(function CampaignListTableBodyRow({
 
         if (columnId === 'id') {
           return (
-            <td key={columnId} {...pin} className={cn(campaignListTdClass, pin.className)} style={pin.style}>
-              <div className={campaignListCopyRowClass}>
-                <span className={campaignListCopyTextClass} title={campaign.id}>
-                  {vm.displayId}
-                </span>
+            <td
+              key={columnId}
+              {...pin}
+              className={cn(campaignListTdClass, 'p-0', pin.className)}
+              style={pin.style}
+            >
+              <div className={campaignListIdCellInnerClass}>
                 <div className={campaignListCopyToolsSlotClass}>
                   <CopyButton
                     flashOnCopy
@@ -138,6 +138,9 @@ export const CampaignListTableBodyRow = memo(function CampaignListTableBodyRow({
                     value={vm.displayId}
                   />
                 </div>
+                <span className={campaignListCopyTextClass} title={campaign.id}>
+                  {vm.displayId}
+                </span>
               </div>
             </td>
           );
@@ -145,15 +148,30 @@ export const CampaignListTableBodyRow = memo(function CampaignListTableBodyRow({
 
         if (columnId === 'name') {
           return (
-            <td key={columnId} {...pin} className={cn(campaignListTdClass, pin.className)} style={pin.style}>
+            <td
+              key={columnId}
+              {...pin}
+              className={cn(campaignListTdClass, 'overflow-visible', pin.className)}
+              style={pin.style}
+            >
               <div className={campaignListNameRowCellClass}>
-                <div className={campaignListNameRowTextClass}>
+                <div
+                  className={cn(campaignListNameRowTextClass, 'flex min-w-0 items-center gap-1.5')}
+                >
+                  {vm.rowAlert !== 'none' ? (
+                    <CampaignListRowAlertBadge
+                      alert={vm.rowAlert}
+                      budgetUsedPct={vm.budgetPct}
+                      marginBreach={
+                        vm.rowAlert === 'critical' &&
+                        (margin?.margin_breach === true || campaign.margin_breach === true)
+                      }
+                      status={campaign.status}
+                    />
+                  ) : null}
                   {onCampaignOverview ? (
                     <button
-                      className={cn(
-                        campaignListEllipsisTextClass,
-                        'text-left text-[13px] font-semibold text-foreground hover:underline'
-                      )}
+                      className={cn(campaignListNameTextClass, 'text-left hover:underline')}
                       title={vm.rawName}
                       type="button"
                       onClick={() => onCampaignOverview(campaign)}
@@ -188,7 +206,6 @@ export const CampaignListTableBodyRow = memo(function CampaignListTableBodyRow({
                 <span className="whitespace-nowrap text-[13px] font-medium leading-[18px]">
                   {vm.statusLabel}
                 </span>
-                {margin?.margin_breach === true ? <CampaignMarginBreachBadge /> : null}
               </div>
             </td>
           );

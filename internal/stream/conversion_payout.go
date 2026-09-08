@@ -24,8 +24,13 @@ type conversionMappingStore interface {
 	ListConversionMappingsByCampaignIDs(ctx context.Context, ids []pgtype.UUID) ([]db.CampaignConversionMapping, error)
 }
 
+type campaignStatusSchemaStore interface {
+	ListAffiliateStatusSchemasByCampaignIDs(ctx context.Context, ids []pgtype.UUID) (map[uuid.UUID]*affiliateStatusSchema, error)
+}
+
 type ConversionPayoutApplier struct {
 	queries conversionMappingStore
+	schemas campaignStatusSchemaStore
 }
 
 func NewConversionPayoutApplier(queries conversionMappingStore) *ConversionPayoutApplier {
@@ -33,6 +38,12 @@ func NewConversionPayoutApplier(queries conversionMappingStore) *ConversionPayou
 		return nil
 	}
 	return &ConversionPayoutApplier{queries: queries}
+}
+
+func (a *ConversionPayoutApplier) SetStatusSchemaStore(schemas campaignStatusSchemaStore) {
+	if a != nil {
+		a.schemas = schemas
+	}
 }
 
 func (a *ConversionPayoutApplier) SetStore(queries conversionMappingStore) {
@@ -62,7 +73,7 @@ func (a *ConversionPayoutApplier) ApplyBatch(ctx context.Context, events []*doma
 		ids = append(ids, pgtype.UUID{Bytes: id, Valid: true})
 	}
 	rows, err := a.queries.ListConversionMappingsByCampaignIDs(ctx, ids)
-	if err != nil || len(rows) == 0 {
+	if err != nil {
 		return
 	}
 	byCampaign := make(map[uuid.UUID]conversionPayoutLookup, len(campaignSet))
@@ -86,6 +97,10 @@ func (a *ConversionPayoutApplier) ApplyBatch(ctx context.Context, events []*doma
 			payoutMicro: row.PayoutMicro,
 		}
 	}
+	var schemaByCampaign map[uuid.UUID]*affiliateStatusSchema
+	if a.schemas != nil {
+		schemaByCampaign, _ = a.schemas.ListAffiliateStatusSchemasByCampaignIDs(ctx, ids)
+	}
 	for _, evt := range events {
 		if evt == nil || evt.Type != "conversion" {
 			continue
@@ -93,16 +108,22 @@ func (a *ConversionPayoutApplier) ApplyBatch(ctx context.Context, events []*doma
 		if domain.ConversionValidationPending(evt.Payload) {
 			continue
 		}
-		table := byCampaign[evt.CampaignID]
-		if len(table) == 0 {
-			continue
-		}
 		status := extractInboundStatus(evt.Payload)
 		if status == "" {
 			continue
 		}
+		table := byCampaign[evt.CampaignID]
 		mapped, ok := table[status]
 		if !ok {
+			schema := schemaByCampaign[evt.CampaignID]
+			if schema == nil {
+				continue
+			}
+			goal, schemaOK := schema.MapAffiliateStatus(status)
+			if !schemaOK {
+				continue
+			}
+			evt.Payload = mergeConversionPayoutPayload(evt.Payload, goal, 0)
 			continue
 		}
 		evt.Payload = mergeConversionPayoutPayload(evt.Payload, mapped.goalName, mapped.payoutMicro)

@@ -2,7 +2,7 @@
  * Metric and ops status colors backed by --admin-* tokens in app.css.
  * Domains import these instead of ad-hoc Tailwind hue families.
  */
-export const adminMetricMutedZeroClass = 'font-numeric text-muted-foreground/60';
+export const adminMetricMutedZeroClass = 'text-muted-foreground/60';
 
 export const adminMetricPositiveClass = 'font-semibold text-admin-positive';
 
@@ -12,10 +12,9 @@ export const adminMetricDeltaPositiveClass = 'text-admin-positive';
 
 export const adminMetricDeltaNegativeClass = 'text-admin-negative';
 
-export const adminMetricConversionClass =
-  'font-numeric text-[hsl(var(--admin-metric-conversion-fg))]';
+export const adminMetricConversionClass = 'text-[hsl(var(--admin-metric-conversion-fg))]';
 
-export const adminMetricApprovedClass = 'font-numeric text-admin-positive';
+export const adminMetricApprovedClass = 'text-admin-positive';
 
 export const adminOpsHealthyClass = 'text-admin-positive';
 

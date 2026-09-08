@@ -1,33 +1,32 @@
-import { useEffect, useRef, useState } from 'react';
+import { useEffect, useLayoutEffect, useRef, useState } from 'react';
+
+function readContainerWidthPx(node: HTMLElement | null): number {
+  return node?.clientWidth ?? 0;
+}
 
 export function useDirectoryTableContainerWidth() {
   const hostRef = useRef<HTMLDivElement>(null);
   const [containerWidthPx, setContainerWidthPx] = useState(0);
+
+  useLayoutEffect(() => {
+    setContainerWidthPx(readContainerWidthPx(hostRef.current));
+  }, []);
 
   useEffect(() => {
     const node = hostRef.current;
     if (!node) {
       return;
     }
-    let frame = 0;
-    const commit = () => {
-      frame = 0;
-      setContainerWidthPx(node.clientWidth);
-    };
-    const schedule = () => {
-      if (frame) {
-        cancelAnimationFrame(frame);
-      }
-      frame = requestAnimationFrame(commit);
-    };
-    schedule();
-    const observer = new ResizeObserver(schedule);
+
+    const observer = new ResizeObserver(() => {
+      const nextWidthPx = readContainerWidthPx(node);
+      setContainerWidthPx((currentWidthPx) =>
+        currentWidthPx === nextWidthPx ? currentWidthPx : nextWidthPx
+      );
+    });
     observer.observe(node);
     return () => {
       observer.disconnect();
-      if (frame) {
-        cancelAnimationFrame(frame);
-      }
     };
   }, []);
 

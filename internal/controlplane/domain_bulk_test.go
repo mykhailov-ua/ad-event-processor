@@ -79,7 +79,7 @@ func TestDomainBulkPark_returnsJobWithoutBlocking_holdout(t *testing.T) {
 
 	deadline := time.Now().Add(30 * time.Second)
 	for time.Now().Before(deadline) {
-		statusReq := httptest.NewRequest(http.MethodGet, "/api/v1/ops/domains/jobs/"+job.JobID, nil)
+		statusReq := httptest.NewRequest(http.MethodGet, "/api/v1/ops/domains/jobs/"+job.JobID, http.NoBody)
 		statusRec := httptest.NewRecorder()
 		mux.ServeHTTP(statusRec, statusReq)
 		require.Equal(t, http.StatusOK, statusRec.Code)

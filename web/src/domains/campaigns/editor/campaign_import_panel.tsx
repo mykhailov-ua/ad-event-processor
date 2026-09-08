@@ -115,7 +115,7 @@ export function CampaignImportPanel({ workspace }: { workspace: CampaignImportPa
             <textarea
               id="import-payload"
               className={cn(
-                'min-h-40 w-full border border-border bg-background px-3 py-2 font-mono text-sm text-foreground',
+                'min-h-40 w-full border border-border bg-background px-3 py-2  text-sm text-foreground',
                 adminKit.controlRadius
               )}
               value={draftPayload}
@@ -186,8 +186,7 @@ export function CampaignImportPanel({ workspace }: { workspace: CampaignImportPa
 
           {importedCampaignIds.length > 0 ? (
             <p className="text-sm text-muted-foreground text-sm" role="status">
-              Imported campaign ID(s):{' '}
-              <strong className="font-mono">{importedCampaignIds.join(', ')}</strong>
+              Imported campaign ID(s): <strong>{importedCampaignIds.join(', ')}</strong>
             </p>
           ) : null}
 

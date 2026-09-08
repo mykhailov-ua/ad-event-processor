@@ -172,12 +172,12 @@ export function TelegramPostbacksDirectory({
                   <TableCell>
                     {id ? (
                       <Input
-                        className="font-mono text-xs"
+                        className="text-xs"
                         value={editUrls[id] ?? row.postback_url ?? ''}
                         onChange={(event) => onEditUrlChange(id, event.target.value)}
                       />
                     ) : (
-                      <span className="font-mono text-xs">{row.postback_url ?? ''}</span>
+                      <span className="text-xs">{row.postback_url ?? ''}</span>
                     )}
                   </TableCell>
                   <TableCell>{displayTimestamp(row.updated_at)}</TableCell>

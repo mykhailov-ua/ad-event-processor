@@ -92,12 +92,8 @@ export function CampaignEditorAdvancedCompareSection({
                 {diffResult.rows.map((row) => (
                   <TableRow key={row.path}>
                     <TableCell className="font-medium">{row.label}</TableCell>
-                    <TableCell className="font-mono text-xs">
-                      {formatReadonly(row.left_display)}
-                    </TableCell>
-                    <TableCell className="font-mono text-xs">
-                      {formatReadonly(row.right_display)}
-                    </TableCell>
+                    <TableCell className="text-xs">{formatReadonly(row.left_display)}</TableCell>
+                    <TableCell className="text-xs">{formatReadonly(row.right_display)}</TableCell>
                     <TableCell>
                       <Badge variant={diffSeverityVariant(row.severity)}>{row.severity}</Badge>
                     </TableCell>

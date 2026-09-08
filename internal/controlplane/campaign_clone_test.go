@@ -155,6 +155,21 @@ func TestBulkCloneCampaignsHTTP_holdout(t *testing.T) {
 		require.NoError(t, err)
 	}
 
+	flowID := uuid.New()
+	paths := json.RawMessage(`[{"weight":100,"landers":[],"offers":[]}]`)
+	var err error
+	_, err = pool.Exec(ctx, `INSERT INTO flows (id, name, paths) VALUES ($1, 'bulk-src-flow', $2)`, flowID, paths)
+	require.NoError(t, err)
+	require.NoError(t, svc.AssignCampaignFlow(ctx, srcIDs[0], flowID))
+	_, err = pool.Exec(ctx, `
+		INSERT INTO postback_configs (campaign_id, provider, url_template, api_token_encrypted, target_event)
+		VALUES ($1, 'custom', 'https://aff.example/pb?cid={click_id}', '\x00', 'conversion')`, srcIDs[0])
+	require.NoError(t, err)
+
+	var srcFlowPaths json.RawMessage
+	err = pool.QueryRow(ctx, `SELECT paths FROM flows WHERE id = $1`, flowID).Scan(&srcFlowPaths)
+	require.NoError(t, err)
+
 	otherCust := uuid.New()
 	require.NoError(t, svc.CreateCustomer(ctx, otherCust, "Other", 100_000_000, "USD"))
 	foreignID, err := svc.CreateCampaign(ctx, testCampaignSpec(otherCust, "Foreign", 10_000_000, "bulk-foreign"))
@@ -201,6 +216,21 @@ func TestBulkCloneCampaignsHTTP_holdout(t *testing.T) {
 		err = pool.QueryRow(ctx, `SELECT COUNT(*) FROM campaign_conversion_mappings WHERE campaign_id = $1`, cloneID).Scan(&mappingCount)
 		require.NoError(t, err)
 		assert.Equal(t, 1, mappingCount)
+
+		if row.SourceID == srcIDs[0].String() {
+			require.True(t, cloneRow.FlowID.Valid)
+			assert.NotEqual(t, flowID, uuid.UUID(cloneRow.FlowID.Bytes))
+
+			var clonePaths json.RawMessage
+			err = pool.QueryRow(ctx, `SELECT paths FROM flows WHERE id = $1`, uuid.UUID(cloneRow.FlowID.Bytes)).Scan(&clonePaths)
+			require.NoError(t, err)
+			assert.JSONEq(t, string(srcFlowPaths), string(clonePaths))
+
+			var postbackURL string
+			err = pool.QueryRow(ctx, `SELECT url_template FROM postback_configs WHERE campaign_id = $1`, cloneID).Scan(&postbackURL)
+			require.NoError(t, err)
+			assert.Contains(t, postbackURL, "{click_id}")
+		}
 	}
 	assert.Equal(t, 2, okCount)
 }

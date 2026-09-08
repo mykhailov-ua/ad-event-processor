@@ -60,7 +60,12 @@ export function useFraudLabelsPageWorkspace() {
 
   const shouldFetch = Boolean(appliedCustomerId);
 
-  const { data, error, fetching, revalidating: listRevalidating } = useResource(
+  const {
+    data,
+    error,
+    fetching,
+    revalidating: listRevalidating,
+  } = useResource(
     (signal) => {
       if (!shouldFetch) {
         return Promise.resolve(undefined);
@@ -169,10 +174,11 @@ export function useFraudLabelsPageWorkspace() {
   }, []);
 
   const onBulkRowChange = useCallback(
-    (rowId: string, patch: Partial<Pick<FraudLabelBulkDraftRow, 'ip_hash' | 'label' | 'reason'>>) => {
-      setBulkRows((rows) =>
-        rows.map((row) => (row.id === rowId ? { ...row, ...patch } : row))
-      );
+    (
+      rowId: string,
+      patch: Partial<Pick<FraudLabelBulkDraftRow, 'ip_hash' | 'label' | 'reason'>>
+    ) => {
+      setBulkRows((rows) => rows.map((row) => (row.id === rowId ? { ...row, ...patch } : row)));
     },
     []
   );

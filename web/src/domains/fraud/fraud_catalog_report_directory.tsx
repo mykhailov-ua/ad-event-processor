@@ -11,11 +11,7 @@ import {
   TableRow,
   directoryTableRevalidatingClass,
 } from '@/shell/directory_table';
-import {
-  DirectoryFilterForm,
-  FilterField,
-  FilterPanel,
-} from '@/shell/filter_panel';
+import { DirectoryFilterForm, FilterField, FilterPanel } from '@/shell/filter_panel';
 import { PageLayout } from '@/shell/page_layout';
 import { EmptyState } from '@/shell/empty_state';
 import { ErrorBlock } from '@/shell/error_block';
@@ -270,7 +266,10 @@ export function FraudCatalogReportDirectory({
             <TableHeader>
               <TableRow>
                 {meta.columns.map((column) => (
-                  <DirectoryTableHead key={column.id} align={column.align === 'right' ? 'end' : undefined}>
+                  <DirectoryTableHead
+                    key={column.id}
+                    align={column.align === 'right' ? 'end' : undefined}
+                  >
                     {column.label}
                   </DirectoryTableHead>
                 ))}
@@ -280,7 +279,10 @@ export function FraudCatalogReportDirectory({
               {rows.map((row, index) => (
                 <TableRow key={`${meta.key}-row-${index}`}>
                   {meta.columns.map((column) => (
-                    <TableCell key={column.id} className={column.align === 'right' ? 'text-right' : undefined}>
+                    <TableCell
+                      key={column.id}
+                      className={column.align === 'right' ? 'text-right' : undefined}
+                    >
                       {renderFraudCatalogCell(row, column)}
                     </TableCell>
                   ))}
@@ -297,7 +299,10 @@ export function FraudCatalogReportDirectory({
             <TableHeader>
               <TableRow>
                 {meta.seriesColumns.map((column) => (
-                  <DirectoryTableHead key={column.id} align={column.align === 'right' ? 'end' : undefined}>
+                  <DirectoryTableHead
+                    key={column.id}
+                    align={column.align === 'right' ? 'end' : undefined}
+                  >
                     {column.label}
                   </DirectoryTableHead>
                 ))}
@@ -307,7 +312,10 @@ export function FraudCatalogReportDirectory({
               {seriesRows.map((row, index) => (
                 <TableRow key={`${meta.key}-series-${index}`}>
                   {meta.seriesColumns?.map((column) => (
-                    <TableCell key={column.id} className={column.align === 'right' ? 'text-right' : undefined}>
+                    <TableCell
+                      key={column.id}
+                      className={column.align === 'right' ? 'text-right' : undefined}
+                    >
                       {renderFraudCatalogCell(row, column)}
                     </TableCell>
                   ))}

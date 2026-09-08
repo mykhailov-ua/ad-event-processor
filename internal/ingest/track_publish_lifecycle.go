@@ -89,36 +89,6 @@ func (h *AdsPacketHandler) publishAcceptedOrRollback(ctx context.Context, evt *d
 	return h.trackPublishDeps().PublishAcceptedOrRollback(ctx, evt, lease)
 }
 
-// streamAdmissionGuard pairs TryReserve with Release on filter reject paths.
-type streamAdmissionGuard struct {
-	lease streamAdmissionLease
-	held  bool
-}
-
-func (g *streamAdmissionGuard) Acquire(deps TrackPublishDeps, campaignID uuid.UUID) (filter.FilterRejectKind, bool) {
-	lease, kind, ok := deps.Reserve(campaignID)
-	if !ok {
-		return kind, false
-	}
-	g.lease = lease
-	g.held = true
-	return 0, true
-}
-
-func (g *streamAdmissionGuard) Release() {
-	if g.held {
-		g.lease.Release()
-		g.held = false
-	}
-}
-
-func (g *streamAdmissionGuard) LeasePtr() *streamAdmissionLease {
-	if !g.held {
-		return nil
-	}
-	return &g.lease
-}
-
 // httpTrackRejectProducerOverload writes 503 after PublishAcceptedOrRollback failed (rollback already applied).
 func httpTrackRejectProducerOverload(w http.ResponseWriter, evt *domain.Event) int {
 	recordHTTPFilterReject(filterRejectProducerOverload, evt)

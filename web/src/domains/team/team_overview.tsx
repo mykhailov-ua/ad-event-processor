@@ -306,76 +306,74 @@ export function TeamOverviewView({
             <EmptyState title="No members" description="Team roster is empty for this customer." />
           ) : (
             <DirectoryTable className={directoryTableRevalidatingClass(membersListRevalidating)}>
-                <TableHeader>
-                  <TableRow>
-                    <DirectoryTableHead>Email</DirectoryTableHead>
-                    <DirectoryTableHead>Role</DirectoryTableHead>
-                    <DirectoryTableHead>Campaigns</DirectoryTableHead>
-                    <DirectoryTableHead>Spend cap</DirectoryTableHead>
-                    <DirectoryTableHead>Blocked</DirectoryTableHead>
-                    <DirectoryTableHead>Joined</DirectoryTableHead>
-                    <DirectoryTableHead />
-                  </TableRow>
-                </TableHeader>
-                <TableBody>
-                  {membersList.map((member) => {
-                    const memberId = member.user_id ?? '';
-                    const draft = memberDrafts[memberId] ?? memberDraftFromRow(member);
-                    const updating = memberUpdatingId === memberId;
-                    return (
-                      <TableRow key={memberId || member.email}>
-                        <TableCell>{member.email ?? ''}</TableCell>
-                        <TableCell>
-                          <Input
-                            aria-label={`Role for ${member.email ?? memberId}`}
-                            className="min-w-[5rem]"
-                            value={draft.role}
-                            onChange={(event) =>
-                              onMemberDraftChange(memberId, { role: event.target.value })
-                            }
-                          />
-                        </TableCell>
-                        <TableCell className="tabular-nums">
-                          {member.campaigns_owned ?? ''}
-                        </TableCell>
-                        <TableCell>
-                          <Input
-                            aria-label={`Spend cap for ${member.email ?? memberId}`}
-                            className="min-w-[6rem] font-mono text-xs"
-                            inputMode="numeric"
-                            value={draft.spend_cap_micro}
-                            onChange={(event) =>
-                              onMemberDraftChange(memberId, { spend_cap_micro: event.target.value })
-                            }
-                          />
-                        </TableCell>
-                        <TableCell>
-                          <Checkbox
-                            aria-label={`Blocked for ${member.email ?? memberId}`}
-                            checked={draft.is_blocked}
-                            onCheckedChange={(checked) =>
-                              onMemberDraftChange(memberId, { is_blocked: checked === true })
-                            }
-                          />
-                        </TableCell>
-                        <TableCell>
-                          {displayTimestamp(member.created_at, member.created_at_display)}
-                        </TableCell>
-                        <TableCell className="text-right">
-                          <Button
-                            disabled={!memberId || updating}
-                            onClick={() => onSaveMember(memberId)}
-                            type="button"
-                            variant="outline"
-                          >
-                            {updating ? 'Saving...' : 'Save'}
-                          </Button>
-                        </TableCell>
-                      </TableRow>
-                    );
-                  })}
-                </TableBody>
-              </DirectoryTable>
+              <TableHeader>
+                <TableRow>
+                  <DirectoryTableHead>Email</DirectoryTableHead>
+                  <DirectoryTableHead>Role</DirectoryTableHead>
+                  <DirectoryTableHead>Campaigns</DirectoryTableHead>
+                  <DirectoryTableHead>Spend cap</DirectoryTableHead>
+                  <DirectoryTableHead>Blocked</DirectoryTableHead>
+                  <DirectoryTableHead>Joined</DirectoryTableHead>
+                  <DirectoryTableHead />
+                </TableRow>
+              </TableHeader>
+              <TableBody>
+                {membersList.map((member) => {
+                  const memberId = member.user_id ?? '';
+                  const draft = memberDrafts[memberId] ?? memberDraftFromRow(member);
+                  const updating = memberUpdatingId === memberId;
+                  return (
+                    <TableRow key={memberId || member.email}>
+                      <TableCell>{member.email ?? ''}</TableCell>
+                      <TableCell>
+                        <Input
+                          aria-label={`Role for ${member.email ?? memberId}`}
+                          className="min-w-[5rem]"
+                          value={draft.role}
+                          onChange={(event) =>
+                            onMemberDraftChange(memberId, { role: event.target.value })
+                          }
+                        />
+                      </TableCell>
+                      <TableCell>{member.campaigns_owned ?? ''}</TableCell>
+                      <TableCell>
+                        <Input
+                          aria-label={`Spend cap for ${member.email ?? memberId}`}
+                          className="min-w-[6rem] text-xs"
+                          inputMode="numeric"
+                          value={draft.spend_cap_micro}
+                          onChange={(event) =>
+                            onMemberDraftChange(memberId, { spend_cap_micro: event.target.value })
+                          }
+                        />
+                      </TableCell>
+                      <TableCell>
+                        <Checkbox
+                          aria-label={`Blocked for ${member.email ?? memberId}`}
+                          checked={draft.is_blocked}
+                          onCheckedChange={(checked) =>
+                            onMemberDraftChange(memberId, { is_blocked: checked === true })
+                          }
+                        />
+                      </TableCell>
+                      <TableCell>
+                        {displayTimestamp(member.created_at, member.created_at_display)}
+                      </TableCell>
+                      <TableCell className="text-right">
+                        <Button
+                          disabled={!memberId || updating}
+                          onClick={() => onSaveMember(memberId)}
+                          type="button"
+                          variant="outline"
+                        >
+                          {updating ? 'Saving...' : 'Save'}
+                        </Button>
+                      </TableCell>
+                    </TableRow>
+                  );
+                })}
+              </TableBody>
+            </DirectoryTable>
           )}
 
           {membersError ? (
@@ -399,59 +397,55 @@ export function TeamOverviewView({
             />
           ) : (
             <DirectoryTable className={directoryTableRevalidatingClass(approvalsListRevalidating)}>
-                <TableHeader>
-                  <TableRow>
-                    <DirectoryTableHead>Status</DirectoryTableHead>
-                    <DirectoryTableHead>User</DirectoryTableHead>
-                    <DirectoryTableHead>Campaign</DirectoryTableHead>
-                    <DirectoryTableHead>Requested</DirectoryTableHead>
-                    <DirectoryTableHead>Previous</DirectoryTableHead>
-                    <DirectoryTableHead>Created</DirectoryTableHead>
-                    <DirectoryTableHead />
-                  </TableRow>
-                </TableHeader>
-                <TableBody>
-                  {approvals.map((row) => {
-                    const rowId = row.id ?? '';
-                    return (
-                      <TableRow key={rowId}>
-                        <TableCell>{row.status ?? ''}</TableCell>
-                        <TableCell className="font-mono text-xs">{row.user_id ?? ''}</TableCell>
-                        <TableCell className="font-mono text-xs">{row.campaign_id ?? ''}</TableCell>
-                        <TableCell className="tabular-nums">
-                          {row.requested_budget_micro ?? ''}
-                        </TableCell>
-                        <TableCell className="tabular-nums">
-                          {row.previous_budget_micro ?? ''}
-                        </TableCell>
-                        <TableCell>
-                          {displayTimestamp(row.created_at, row.created_at_display)}
-                        </TableCell>
-                        <TableCell className="text-right">
-                          <RowActionsMenu
-                            ariaLabel="Approval actions"
+              <TableHeader>
+                <TableRow>
+                  <DirectoryTableHead>Status</DirectoryTableHead>
+                  <DirectoryTableHead>User</DirectoryTableHead>
+                  <DirectoryTableHead>Campaign</DirectoryTableHead>
+                  <DirectoryTableHead>Requested</DirectoryTableHead>
+                  <DirectoryTableHead>Previous</DirectoryTableHead>
+                  <DirectoryTableHead>Created</DirectoryTableHead>
+                  <DirectoryTableHead />
+                </TableRow>
+              </TableHeader>
+              <TableBody>
+                {approvals.map((row) => {
+                  const rowId = row.id ?? '';
+                  return (
+                    <TableRow key={rowId}>
+                      <TableCell>{row.status ?? ''}</TableCell>
+                      <TableCell className="text-xs">{row.user_id ?? ''}</TableCell>
+                      <TableCell className="text-xs">{row.campaign_id ?? ''}</TableCell>
+                      <TableCell>{row.requested_budget_micro ?? ''}</TableCell>
+                      <TableCell>{row.previous_budget_micro ?? ''}</TableCell>
+                      <TableCell>
+                        {displayTimestamp(row.created_at, row.created_at_display)}
+                      </TableCell>
+                      <TableCell className="text-right">
+                        <RowActionsMenu
+                          ariaLabel="Approval actions"
+                          disabled={!rowId || actingId === rowId}
+                        >
+                          <DropdownMenuItem
                             disabled={!rowId || actingId === rowId}
+                            onClick={() => onApprove(rowId)}
                           >
-                            <DropdownMenuItem
-                              disabled={!rowId || actingId === rowId}
-                              onClick={() => onApprove(rowId)}
-                            >
-                              Approve
-                            </DropdownMenuItem>
-                            <DropdownMenuItem
-                              className="text-destructive focus:text-destructive"
-                              disabled={!rowId || actingId === rowId}
-                              onClick={() => onDeny(rowId)}
-                            >
-                              Deny
-                            </DropdownMenuItem>
-                          </RowActionsMenu>
-                        </TableCell>
-                      </TableRow>
-                    );
-                  })}
-                </TableBody>
-              </DirectoryTable>
+                            Approve
+                          </DropdownMenuItem>
+                          <DropdownMenuItem
+                            className="text-destructive focus:text-destructive"
+                            disabled={!rowId || actingId === rowId}
+                            onClick={() => onDeny(rowId)}
+                          >
+                            Deny
+                          </DropdownMenuItem>
+                        </RowActionsMenu>
+                      </TableCell>
+                    </TableRow>
+                  );
+                })}
+              </TableBody>
+            </DirectoryTable>
           )}
 
           {approvalsError ? (

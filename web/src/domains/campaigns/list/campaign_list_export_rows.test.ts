@@ -86,8 +86,7 @@ test('buildCampaignListExportCsv matches visible column labels and row VM values
     metrics,
     margin,
     { [baseCampaign.customer_id]: 'Horizon Media Group' },
-    {},
-    false
+    {}
   );
   const csv = buildCampaignListExportCsv(columns, [{ campaign: baseCampaign, vm }]);
 
@@ -99,7 +98,7 @@ test('buildCampaignListExportCsv matches visible column labels and row VM values
 });
 
 test('campaignListExportCellValue_holdout uses VM not raw campaign counters', () => {
-  const vm = buildCampaignRowVm(baseCampaign, metrics, margin, {}, {}, false);
+  const vm = buildCampaignRowVm(baseCampaign, metrics, margin, {}, {});
   assert.equal(campaignListExportCellValue('clicks', vm), '120');
   assert.notEqual(campaignListExportCellValue('clicks', vm), String(baseCampaign.current_spend));
 });

@@ -19,3 +19,9 @@ func TestAttestationMode_RequiresProbe_holdout(t *testing.T) {
 	require.True(t, AttestationModeLight.RequiresProbe())
 	require.True(t, AttestationModeStrict.RequiresProbe())
 }
+
+func TestAttestationMode_UsesTelemetryStealthBundle_holdout(t *testing.T) {
+	require.False(t, AttestationModeOff.UsesTelemetryStealthBundle())
+	require.False(t, AttestationModeLight.UsesTelemetryStealthBundle())
+	require.True(t, AttestationModeStrict.UsesTelemetryStealthBundle())
+}

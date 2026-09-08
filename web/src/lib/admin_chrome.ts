@@ -62,10 +62,8 @@ export const buttonVariantClass: Record<ButtonVariant, string> = {
     'border-primary bg-primary text-primary-foreground hover:border-primary hover:bg-primary/90',
   brand:
     'border-admin-brand bg-admin-brand text-admin-brand-foreground hover:border-admin-brand-hover hover:bg-admin-brand-hover',
-  accent:
-    'border-chart-1/70 bg-chart-1/12 text-chart-1 hover:border-chart-1 hover:bg-chart-1/20',
-  secondary:
-    'border-border bg-muted/50 text-foreground hover:border-border hover:bg-muted',
+  accent: 'border-chart-1/70 bg-chart-1/12 text-chart-1 hover:border-chart-1 hover:bg-chart-1/20',
+  secondary: 'border-border bg-muted/50 text-foreground hover:border-border hover:bg-muted',
   outline:
     'border-border bg-card text-foreground hover:border-primary hover:bg-primary/10 hover:text-primary',
   ghost:

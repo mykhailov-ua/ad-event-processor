@@ -4,10 +4,7 @@ import {
 } from '@/domains/campaigns/list/campaign_list_format';
 import type { CampaignListSummary } from '@/domains/campaigns/list/campaign_list_summary';
 import { CAMPAIGN_LIST_FILTER_TOTALS_MAX } from '@/domains/campaigns/list/campaign_list_limits';
-import {
-  adminMetricPositiveClass,
-  adminKpiAccentValueClass,
-} from '@/lib/admin_metric_tone';
+import { adminMetricPositiveClass, adminKpiAccentValueClass } from '@/lib/admin_metric_tone';
 import { cn } from '@/lib/utils';
 import { SummaryBand, SummaryBandDivider } from '@/shell/ui_bands';
 

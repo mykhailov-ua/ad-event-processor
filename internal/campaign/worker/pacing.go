@@ -38,7 +38,7 @@ func closedLoopPacingControllerTx(ctx context.Context, tx pgx.Tx, merge Delivery
 			continue
 		}
 
-		targetPacing, shouldUpdate := pacingAdjustmentFromStatsRow(row, hourWeights, now, tolerancePPM, fx)
+		_, shouldUpdate := pacingAdjustmentFromStatsRow(row, hourWeights, now, tolerancePPM, fx)
 		if !shouldUpdate {
 			continue
 		}

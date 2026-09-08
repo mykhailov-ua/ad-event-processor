@@ -166,3 +166,21 @@ ALTER TABLE clicks ADD COLUMN IF NOT EXISTS mobile_biometric_set UInt8 DEFAULT 0
 ALTER TABLE clicks ADD COLUMN IF NOT EXISTS mobile_biometric_mobile UInt8 DEFAULT 0;
 
 ALTER TABLE clicks ADD COLUMN IF NOT EXISTS cross_layer_desync_fired UInt8 DEFAULT 0;
+
+ALTER TABLE clicks ADD COLUMN IF NOT EXISTS probe_behavior_score UInt8 DEFAULT 0;
+ALTER TABLE clicks ADD COLUMN IF NOT EXISTS footer_reach_ms UInt32 DEFAULT 0;
+ALTER TABLE clicks ADD COLUMN IF NOT EXISTS event_order_entropy UInt16 DEFAULT 0;
+
+ALTER TABLE conversions ADD COLUMN IF NOT EXISTS probe_behavior_score UInt8 DEFAULT 0;
+ALTER TABLE conversions ADD COLUMN IF NOT EXISTS footer_reach_ms UInt32 DEFAULT 0;
+ALTER TABLE conversions ADD COLUMN IF NOT EXISTS event_order_entropy UInt16 DEFAULT 0;
+
+ALTER TABLE clicks ADD COLUMN IF NOT EXISTS behavior_simhash UInt64 DEFAULT 0;
+ALTER TABLE clicks ADD COLUMN IF NOT EXISTS crowd_wave_active UInt8 DEFAULT 0;
+ALTER TABLE clicks ADD COLUMN IF NOT EXISTS crowd_wave_score UInt16 DEFAULT 0;
+ALTER TABLE clicks ADD COLUMN IF NOT EXISTS in_app_webview_class UInt8 DEFAULT 0;
+
+ALTER TABLE conversions ADD COLUMN IF NOT EXISTS behavior_simhash UInt64 DEFAULT 0;
+ALTER TABLE conversions ADD COLUMN IF NOT EXISTS crowd_wave_active UInt8 DEFAULT 0;
+ALTER TABLE conversions ADD COLUMN IF NOT EXISTS crowd_wave_score UInt16 DEFAULT 0;
+ALTER TABLE conversions ADD COLUMN IF NOT EXISTS in_app_webview_class UInt8 DEFAULT 0;

@@ -4,15 +4,20 @@ import { formatDashboardCrPct, formatDashboardRoiPct } from '@/lib/display_metri
 import {
   formatTableCount,
   formatTableMoneyFromMicro,
+  formatTableRoi,
   parseAndFormatTableMoneyStr,
 } from '@/domains/campaigns/list/campaign_list_format';
 import type { CampaignFunnelCounts } from '@/domains/campaigns/list/campaign_list_funnel';
-import { resolveCampaignListRowMetrics } from '@/domains/campaigns/list/campaign_list_row_metrics';
 import {
-  campaignListRowClass,
+  metricsBatchHasMoneyFields,
+  resolveCampaignListRowMetrics,
+} from '@/domains/campaigns/list/campaign_list_row_metrics';
+import {
   campaignStatusCellClass,
   resolveCampaignListRowAccent,
+  resolveCampaignListRowAlert,
   type CampaignListRowAccent,
+  type CampaignListRowAlert,
 } from '@/domains/campaigns/list/campaign_list_row_tone';
 import {
   profitToneClassFromMicro,
@@ -37,7 +42,7 @@ export type CampaignRowVm = {
   statusCellClass: string;
 
   rowAccent: CampaignListRowAccent;
-  rowClass: string;
+  rowAlert: CampaignListRowAlert;
 
   funnel: CampaignFunnelCounts;
   clicks: VmCell;
@@ -122,8 +127,7 @@ export function buildCampaignRowVmCache(
         metricsById[campaign.id],
         marginsById[campaign.id],
         customerNameById,
-        ownerEmailById,
-        false
+        ownerEmailById
       )
     );
   }
@@ -135,8 +139,7 @@ export function buildCampaignRowVm(
   metrics: CampaignListMetrics | undefined,
   margin: CampaignMargin | undefined,
   customerNameById: Record<string, string>,
-  ownerEmailById: Record<string, string>,
-  selected: boolean
+  ownerEmailById: Record<string, string>
 ): CampaignRowVm {
   const row = campaign as CampaignWithMoneyDisplay;
   const { clicks, impressions, blocks, costMicro, profitMicro, revenueMicro, funnel } =
@@ -146,11 +149,12 @@ export function buildCampaignRowVm(
 
   const statusLabel = formatCampaignStatusLabel(campaign.status, row.status_label);
   const statusCellClass = campaignStatusCellClass(campaign.status, row.status_tone);
-  const rowAccent = resolveCampaignListRowAccent(campaign.status, row.status_tone, {
+  const marginBreach = margin?.margin_breach === true || campaign.margin_breach === true;
+  const rowAccent = resolveCampaignListRowAccent(campaign.status, row.status_tone);
+  const rowAlert = resolveCampaignListRowAlert(campaign.status, row.status_tone, {
     budgetUsedPct: campaign.budget_used_pct,
-    marginBreach: margin?.margin_breach === true || campaign.margin_breach === true,
+    marginBreach,
   });
-  const rowClass = campaignListRowClass(selected, rowAccent);
 
   const ctr = vmOptionalRate(metrics?.ctr_pct);
   const lpCtr = vmOptionalRate(metrics?.lp_ctr_pct);
@@ -166,7 +170,11 @@ export function buildCampaignRowVm(
       ? formatTableMoneyFromMicro(costMicro)
       : parseAndFormatTableMoneyStr(row.current_spend_display ?? row.current_spend);
   const profitRes = formatTableMoneyFromMicro(profitMicro);
-  const roiRes = vmRoi(metrics?.roi_pct);
+  const hasMoneyFields = metricsBatchHasMoneyFields(metrics) || (metrics == null && margin != null);
+  const roiRes =
+    costMicro > 0 && hasMoneyFields
+      ? formatTableRoi(profitMicro, costMicro)
+      : vmRoi(metrics?.roi_pct);
 
   const budgetPct = campaign.budget_used_pct ?? null;
 
@@ -183,7 +191,7 @@ export function buildCampaignRowVm(
     statusCellClass,
 
     rowAccent,
-    rowClass,
+    rowAlert,
 
     funnel,
     clicks: formatTableCount(clicks),
@@ -286,9 +294,9 @@ export function campaignListMiddleCellDisplayText(
     case 'cost':
       return vm.cost.text;
     case 'profit':
-      return vm.profit.isZero ? '0.00' : vm.profit.text;
+      return vm.profit.text;
     case 'roi':
-      return vm.roi.isZero ? '0%' : vm.roi.text;
+      return vm.roi.text;
     case 'budget_pct':
       return vm.budgetPct == null ? '-' : `${vm.budgetPct.toFixed(1)}%`;
     case 'flow':

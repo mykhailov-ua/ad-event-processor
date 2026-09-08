@@ -51,7 +51,7 @@ export function PaginationPageSize({
         inputMode="numeric"
         min={1}
         max={OPTIMAL_LIST_LIMIT_MAX}
-        className={cn(adminKit.controlHeight, 'w-14 px-2 py-0 tabular-nums', adminKit.controlText)}
+        className={cn(adminKit.controlHeight, 'w-14 px-2 py-0 ', adminKit.controlText)}
         disabled={disabled}
         value={draft}
         onChange={(event) => setDraft(event.target.value)}

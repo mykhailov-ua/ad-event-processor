@@ -26,11 +26,11 @@ local function assert_nil(v, msg)
     end
 end
 
-assert_eq(tcp_sig_v2.validate_trace("nop,nop,sackok,mss:1460"), "nop,nop,sackok,mss:1460", "linux trace")
-assert_eq(tcp_sig_v2.validate_trace("  NOP , MSS:1440 "), "nop,mss:1440", "trim and lower-case")
-assert_nil(tcp_sig_v2.validate_trace(""), "empty trace")
+assert_eq(tcp_sig_v2.validate_trace "nop,nop,sackok,mss:1460", "nop,nop,sackok,mss:1460", "linux trace")
+assert_eq(tcp_sig_v2.validate_trace "  NOP , MSS:1440 ", "nop,mss:1440", "trim and lower-case")
+assert_nil(tcp_sig_v2.validate_trace "", "empty trace")
 assert_nil(tcp_sig_v2.validate_trace(string.rep("a", 513)), "trace too long")
-assert_nil(tcp_sig_v2.validate_trace("ok\nbad"), "control char rejected")
+assert_nil(tcp_sig_v2.validate_trace "ok\nbad", "control char rejected")
 assert_nil(tcp_sig_v2.validate_trace(string.rep("x", 65)), "token too long")
 
 if failed > 0 then

@@ -60,7 +60,7 @@ test('computeCampaignListColumnWidths fits eight-digit id with copy control', ()
     customerNameById: {},
   });
 
-  assert.ok(widths.id >= 116, `id column too narrow for display id: ${widths.id}`);
+  assert.ok(widths.id >= 100, `id column too narrow for display id: ${widths.id}`);
   assert.ok(widths.id > 96, `id column still capped at legacy 96px max: ${widths.id}`);
 });
 

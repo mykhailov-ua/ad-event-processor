@@ -10,6 +10,7 @@ import (
 	"time"
 
 	"ad-event-processor/internal/campaign"
+	"ad-event-processor/internal/track"
 
 	"ad-event-processor/internal/controlplane/authz"
 	"ad-event-processor/internal/database"
@@ -69,10 +70,14 @@ type CampaignAdvisoryDTO struct {
 }
 
 type CampaignIntegrationPanelDTO struct {
-	OverallStatus      string                          `json:"overall_status"`
-	OverallStatusLabel string                          `json:"overall_status_label"`
-	OverallStatusTone  string                          `json:"overall_status_tone"`
-	Rows               []campaign.IntegrationHealthRow `json:"rows"`
+	OverallStatus          string                          `json:"overall_status"`
+	OverallStatusLabel     string                          `json:"overall_status_label"`
+	OverallStatusTone      string                          `json:"overall_status_tone"`
+	Rows                   []campaign.IntegrationHealthRow `json:"rows"`
+	BrowserPixelScriptURL  string                          `json:"browser_pixel_script_url,omitempty"`
+	BrowserPixelTrackURL   string                          `json:"browser_pixel_track_url,omitempty"`
+	BrowserPixelSnippet    string                          `json:"browser_pixel_snippet,omitempty"`
+	BrowserPixelFirstParty bool                            `json:"browser_pixel_first_party,omitempty"`
 }
 
 func getCampaignEditorShell(h *campaign.CampaignsHTTPHandlers, w http.ResponseWriter, r *http.Request) {
@@ -194,8 +199,42 @@ func getCampaignIntegrationPanel(h *campaign.CampaignsHTTPHandlers, w http.Respo
 		h.WriteHandlerError(w, err)
 		return
 	}
+	camp, err := h.Campaigns.GetCampaign(r.Context(), campaignID)
+	if err != nil {
+		h.WriteHandlerError(w, err)
+		return
+	}
 	panel := buildCampaignIntegrationPanel(health)
+	enrichCampaignIntegrationPanelBrowserPixel(h, r.Context(), &panel, camp.ID)
 	httpresponse.JSON(w, http.StatusOK, panel)
+}
+
+func enrichCampaignIntegrationPanelBrowserPixel(h *campaign.CampaignsHTTPHandlers, ctx context.Context, panel *CampaignIntegrationPanelDTO, campaignID string) {
+	if h == nil || panel == nil {
+		return
+	}
+	campaignID = strings.TrimSpace(campaignID)
+	if campaignID == "" {
+		return
+	}
+	var landerBase, trackerBase string
+	if h.LanderPublicBaseURL != nil {
+		landerBase = h.LanderPublicBaseURL()
+	}
+	if h.ResolveTrackingDomain != nil {
+		trackerBase = h.ResolveTrackingDomain(ctx)
+	}
+	if trackerBase == "" && h.TrackerPublicBaseURL != nil {
+		trackerBase = h.TrackerPublicBaseURL()
+	}
+	bundle := track.ResolveBrowserPixel(landerBase, trackerBase, campaignID)
+	if bundle.ScriptURL == "" {
+		return
+	}
+	panel.BrowserPixelScriptURL = bundle.ScriptURL
+	panel.BrowserPixelTrackURL = bundle.TrackURL
+	panel.BrowserPixelSnippet = bundle.Snippet
+	panel.BrowserPixelFirstParty = bundle.FirstParty
 }
 
 func buildCampaignEditorSections(ctx context.Context, handlers *campaign.CampaignsHTTPHandlers, camp campaign.CampaignDTO, health campaign.IntegrationHealthDTO) []CampaignEditorSectionDTO {
@@ -830,10 +869,10 @@ func postCampaignBulk(h *campaign.CampaignsHTTPHandlers, w http.ResponseWriter, 
 }
 
 type BulkCloneCampaignsHTTPRequest struct {
-	SourceCampaignIDs []string `json:"source_campaign_ids"`
-	CustomerID        string   `json:"customer_id,omitempty"`
-	NamePrefix        string   `json:"name_prefix,omitempty"`
-	NameSuffix        string   `json:"name_suffix,omitempty"`
+	SourceCampaignIDs []string                      `json:"source_campaign_ids"`
+	CustomerID        string                        `json:"customer_id,omitempty"`
+	NamePrefix        string                        `json:"name_prefix,omitempty"`
+	NameSuffix        string                        `json:"name_suffix,omitempty"`
 	Options           campaign.CloneCampaignOptions `json:"options,omitempty"`
 }
 

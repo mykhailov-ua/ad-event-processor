@@ -1,9 +1,9 @@
 import { MoreHorizontal } from 'lucide-react';
 
-import { Button } from '@/components/ui/button';
 import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover';
 import { campaignCountriesOverflowPopoverPanelClass } from '@/domains/campaigns/list/campaign_list_classes';
 import { CountryFlagIcon } from '@/domains/campaigns/list/country_flag_icon';
+import { directoryTableRowCopyButtonClass } from '@/shell/directory_table_row_actions';
 import { cn } from '@/lib/utils';
 
 const COUNTRY_TONE_BY_CODE: Record<string, string> = {
@@ -51,8 +51,7 @@ function countryBadgeTone(code: string): string {
     amber: 'border-admin-warn-border/60 bg-admin-warn-bg/50 text-admin-warn',
     rose: 'border-destructive/30 bg-destructive/10 text-destructive',
     sky: 'border-border bg-muted text-foreground',
-    emerald:
-      'border-admin-status-active/30 bg-admin-status-active/15 text-admin-status-active',
+    emerald: 'border-admin-status-active/30 bg-admin-status-active/15 text-admin-status-active',
     indigo: 'border-primary/25 bg-primary/10 text-primary',
     cyan: 'border-border bg-muted/80 text-muted-foreground',
     orange:
@@ -78,7 +77,7 @@ function CountryCodeBadge({
   return (
     <span
       className={cn(
-        'inline-flex shrink-0 items-center gap-1 rounded border border-border px-1.5 py-0.5 text-xs tabular-nums',
+        'inline-flex shrink-0 items-center gap-1 rounded border border-border px-1.5 py-0.5 text-xs ',
         !listItem && 'max-w-full overflow-hidden',
         listItem && 'text-ui-mini',
         countryBadgeTone(code)
@@ -136,15 +135,14 @@ export function CampaignCountryBadges({
         overflowMenu ? (
           <Popover>
             <PopoverTrigger asChild>
-              <Button
+              <button
                 aria-label={`Show all ${codes.length} countries`}
-                className="size-6 shrink-0 p-0 text-muted-foreground hover:text-foreground"
+                className={directoryTableRowCopyButtonClass}
                 type="button"
-                variant="ghost"
                 onClick={(event) => event.stopPropagation()}
               >
                 <MoreHorizontal aria-hidden className="h-4 w-4" />
-              </Button>
+              </button>
             </PopoverTrigger>
             <PopoverContent
               align="start"

@@ -99,8 +99,10 @@ func NewJumpHashSharder(numBuckets int) *JumpHashSharder {
 
 const CampaignEpochKey = shard.CampaignEpochKey
 
-var CRC32Castagnoli = domain.CRC32Castagnoli
-var CRC32UUID = domain.CRC32UUID
+var (
+	CRC32Castagnoli = domain.CRC32Castagnoli
+	CRC32UUID       = domain.CRC32UUID
+)
 
 const (
 	SlotMask  = domain.SlotMask

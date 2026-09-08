@@ -94,4 +94,35 @@ func TestCampaignList_MediaBuyerScope(t *testing.T) {
 	recPatch := httptest.NewRecorder()
 	mux.ServeHTTP(recPatch, reqPatch)
 	require.Equal(t, http.StatusForbidden, recPatch.Code)
+
+	cloneBody := `{}`
+	reqClone, _ := http.NewRequest(http.MethodPost, "/api/v1/campaigns/"+campB.String()+"/clone", strings.NewReader(cloneBody))
+	reqClone.Header.Set("Content-Type", "application/json")
+	reqClone.Header.Set("Idempotency-Key", "clone-forbidden-holdout")
+	reqClone.AddCookie(&http.Cookie{Name: "accessToken", Value: token})
+	recClone := httptest.NewRecorder()
+	mux.ServeHTTP(recClone, reqClone)
+	require.Equal(t, http.StatusForbidden, recClone.Code, recClone.Body.String())
+
+	bulkBody, err := json.Marshal(map[string]any{
+		"source_campaign_ids": []string{campB.String()},
+		"customer_id":         custID.String(),
+	})
+	require.NoError(t, err)
+	reqBulk, _ := http.NewRequest(http.MethodPost, "/api/v1/campaigns/bulk-clone", strings.NewReader(string(bulkBody)))
+	reqBulk.Header.Set("Content-Type", "application/json")
+	reqBulk.Header.Set("Idempotency-Key", "bulk-clone-forbidden-holdout")
+	reqBulk.AddCookie(&http.Cookie{Name: "accessToken", Value: token})
+	recBulk := httptest.NewRecorder()
+	mux.ServeHTTP(recBulk, reqBulk)
+	require.Equal(t, http.StatusOK, recBulk.Code, recBulk.Body.String())
+	var bulkResp struct {
+		Results []struct {
+			SourceID  string `json:"source_id"`
+			ErrorCode string `json:"error_code"`
+		} `json:"results"`
+	}
+	require.NoError(t, json.Unmarshal(recBulk.Body.Bytes(), &bulkResp))
+	require.Len(t, bulkResp.Results, 1)
+	require.Equal(t, "forbidden", bulkResp.Results[0].ErrorCode)
 }

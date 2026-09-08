@@ -20,16 +20,13 @@ export const campaignListPinnedThClass = 'sticky bg-admin-table-header';
 
 export const campaignListPinnedTdClass = 'sticky';
 
-export const campaignListPinnedEdgeClass =
-  'shadow-[4px_0_10px_-4px_hsl(var(--foreground)/0.16)] dark:shadow-[4px_0_12px_-4px_hsl(0_0%_0%/0.55)]';
-
 export const campaignListTdClass =
-  'h-[34px] max-h-[34px] overflow-hidden whitespace-nowrap border-b border-border px-4 py-0 align-middle text-[13px] text-foreground';
+  'h-[34px] max-h-[34px] overflow-hidden whitespace-nowrap border-b border-r border-border px-4 py-0 align-middle text-[13px] text-foreground last:border-r-0';
 
 export const campaignListTfootTdClass =
-  'border-t border-border bg-admin-table-totals font-normal text-foreground';
+  'border-t border-r border-border bg-admin-table-totals font-normal text-foreground last:border-r-0';
 
-export const campaignListNameRowCellClass = 'flex h-[34px] w-full min-w-0 items-center gap-4';
+export const campaignListNameRowCellClass = 'flex h-[34px] w-full min-w-0 items-center gap-1.5';
 
 export const campaignListNameRowTextClass = 'min-w-0 flex-1';
 
@@ -47,8 +44,7 @@ export const campaignListHeaderShellClass =
   'absolute inset-0 z-[1] flex min-w-0 items-center px-4 text-left';
 
 /** Dashboard/analytics tables: full header labels; horizontal scroll when tight. */
-export const campaignListDashboardHeaderLabelClass =
-  'min-w-0 flex-1 whitespace-nowrap text-left';
+export const campaignListDashboardHeaderLabelClass = 'min-w-0 flex-1 whitespace-nowrap text-left';
 
 /** Ellipsis for long text in fixed-layout directory tables (campaigns width-probe, landers % cols). */
 export const campaignListEllipsisTextClass =
@@ -72,16 +68,19 @@ export const campaignListColDragGripClass =
 
 /** Numeric body cells: end-aligned tabular figures. */
 export const campaignListCellContentNumClass =
-  'block min-w-0 max-w-full whitespace-nowrap text-right font-numeric tabular-nums';
+  'block min-w-0 max-w-full whitespace-nowrap text-right  ';
 
-/** ID / UUID body row: text then copy control (left-aligned with header). */
+/** ID / UUID body row: copy control then text; compact horizontal padding (td uses p-0). */
+export const campaignListIdCellInnerClass =
+  'flex h-[34px] w-full min-w-0 items-center justify-start gap-1 px-2';
+
 export const campaignListCopyRowClass =
   'flex h-[34px] w-full min-w-0 items-center justify-start gap-1.5';
 
 export const campaignListCopyTextClass =
-  'shrink-0 select-text whitespace-nowrap font-numeric text-xs font-medium text-foreground';
+  'shrink-0 select-text whitespace-nowrap  text-xs font-medium text-foreground';
 
-export const campaignListCopyToolsSlotClass = 'flex w-7 shrink-0 items-center justify-center';
+export const campaignListCopyToolsSlotClass = 'flex w-6 shrink-0 items-center justify-center';
 
 export const campaignListCellContentClass = 'block min-w-0 max-w-full whitespace-nowrap';
 
@@ -143,28 +142,31 @@ export const campaignMetricsPopoverPanelClass = 'w-[22rem] min-w-[22rem]';
 export const campaignCountriesOverflowPopoverPanelClass =
   'w-max min-w-[12rem] max-w-[min(calc(100vw-2rem),16rem)]';
 
-export const campaignOverviewDialogClass = 'w-[calc(100%-2rem)] max-w-md gap-0 p-0';
+export const campaignOverviewDialogClass = 'w-[calc(100%-2rem)] max-w-xl gap-0 p-0';
 
 export const campaignOverviewDialogPanelClass =
   'flex max-h-[min(88vh,44rem)] flex-col gap-0 overflow-hidden p-0 shadow-xl';
 
 export const campaignOverviewScrollClass =
-  'ui-scrollbar grid min-h-0 flex-1 auto-rows-max gap-4 overflow-y-auto px-6 pb-4 pt-5 pr-12';
+  'ui-scrollbar grid min-h-0 flex-1 auto-rows-max gap-4 overflow-y-auto px-6 pb-4 pt-5 text-center';
 
-export const campaignOverviewHeaderClass = 'grid gap-3';
+export const campaignOverviewHeaderClass = 'grid gap-3 text-center';
 
 export const campaignOverviewSectionClass = cn(
   shellChrome.sectionPanelClass,
-  adminKit.panelRadius
+  adminKit.panelRadius,
+  'text-center'
 );
 
 export const campaignOverviewSectionTitleClass =
   'm-0 text-[11px] font-semibold uppercase leading-[14px] text-muted-foreground';
 
-export const campaignOverviewRowsClass = 'grid';
+export const campaignOverviewRowsClass = 'mx-auto grid w-full max-w-md';
 
 export const campaignOverviewRowClass =
-  'grid grid-cols-[1fr_auto] items-center gap-4 border-b border-border py-2.5 text-[13px] leading-[18px] last:border-b-0';
+  'grid grid-cols-[1fr_auto] items-center gap-4 border-b border-border py-2.5 text-left text-[13px] leading-[18px] last:border-b-0';
+
+export const campaignOverviewMetricGridClass = 'mx-auto grid w-full max-w-md grid-cols-3 gap-2';
 
 export const campaignOverviewMetricCardClass = cn(
   'grid min-h-[4.5rem] auto-rows-min content-center justify-items-center gap-1 border border-border bg-card px-1.5 py-2 text-center',
@@ -180,10 +182,9 @@ export const campaignOverviewMetricCardAccentClass: Record<1 | 2 | 3, string> = 
 export const campaignOverviewMetricLabelClass =
   'm-0 text-[10px] font-semibold uppercase leading-[14px] text-muted-foreground';
 
-export const campaignOverviewMetricValueClass =
-  'm-0 font-numeric text-xs leading-[16px]';
+export const campaignOverviewMetricValueClass = 'm-0  text-xs leading-[16px]';
 
-export const campaignOverviewRatesClass = 'grid gap-2';
+export const campaignOverviewRatesClass = 'mx-auto grid w-full max-w-md gap-2 text-left';
 
 export const campaignOverviewRateRowClass =
   'grid gap-1 border-b border-border py-2 last:border-b-0';
@@ -194,12 +195,12 @@ export const campaignOverviewEmptyBannerClass = cn(
 );
 
 export const campaignOverviewFooterClass =
-  'grid shrink-0 grid-cols-2 gap-2 border-t border-border bg-muted/30 px-6 py-4';
+  'grid shrink-0 grid-cols-4 gap-2 border-t border-border bg-muted/30 px-4 py-4 sm:px-6';
 
 export const campaignOverviewFooterButtonClass = cn(
   adminKit.controlHeight,
   adminKit.buttonShell,
-  'w-full justify-center px-3 font-semibold shadow-none',
+  'w-full justify-center px-2 text-[12px] leading-4 font-semibold shadow-none sm:px-3 sm:text-[13px] sm:leading-[18px]',
   adminKit.controlRadius
 );
 

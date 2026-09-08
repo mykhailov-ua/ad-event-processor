@@ -41,8 +41,7 @@ export function CustomerScopeBar({
       </form>
       {appliedCustomerId ? (
         <p className="text-sm text-muted-foreground">
-          Active scope:{' '}
-          <span className="font-mono text-xs text-foreground">{appliedCustomerId}</span>
+          Active scope: <span className="text-xs text-foreground">{appliedCustomerId}</span>
         </p>
       ) : (
         <p className="text-sm text-muted-foreground">

@@ -48,6 +48,8 @@
 // Verify:
 //
 //	go test ./pkg/landerhost/... -short -run TestExtractZipSafe_holdoutPathTraversal -count=1
+//	go test ./pkg/landerhost/... -short -run TestDomLint -count=1
+//	go test ./internal/flow/ -short -run LanderDomLint -count=1
 //	go test ./pkg/landerhost/... -short -run TestExtractZipPublish_roundTrip -count=1
 //	go test ./pkg/landerhost/... -short -run TestPreviewToken_roundTrip -count=1
 package landerhost

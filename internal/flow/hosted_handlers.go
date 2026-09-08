@@ -118,6 +118,10 @@ func (h *HTTPHandlers) serveHostedLander(w http.ResponseWriter, r *http.Request,
 		return
 	}
 	defer func() { _ = rc.Close() }()
+	if lh, ok := h.Service.(HostedLanderHost); ok && lh.LanderCSPEnabled() {
+		w.Header().Set("Content-Security-Policy", landerhost.DefaultCSPPolicy)
+		w.Header().Set("Referrer-Policy", "strict-origin-when-cross-origin")
+	}
 	w.Header().Set("Content-Type", ctype)
 	w.Header().Set("Cache-Control", "public, max-age=300")
 	w.WriteHeader(http.StatusOK)

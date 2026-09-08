@@ -229,6 +229,7 @@ func loadManagementModules(cfg *Config) {
 	cfg.Management.DomainSSLSetupEnabled = getEnvBool("DOMAIN_SSL_SETUP_ENABLED", true)
 	cfg.Management.DomainSSLSetupScript = strings.TrimSpace(os.Getenv("DOMAIN_SSL_SETUP_SCRIPT"))
 	cfg.Management.DomainSSLAcmeEmail = strings.TrimSpace(os.Getenv("CADDY_ACME_EMAIL"))
+	cfg.Management.IngressTLSDir = strings.TrimSpace(os.Getenv("INGRESS_TLS_DIR"))
 	cfg.Management.DomainWildcardSSLStaging = getEnvBool("DOMAIN_WILDCARD_SSL_STAGING", false)
 	cfg.Management.ACMEDirectoryURL = strings.TrimSpace(os.Getenv("ACME_DIRECTORY_URL"))
 	cfg.Management.CloudflareAPIToken = Secret(strings.TrimSpace(os.Getenv("CLOUDFLARE_API_TOKEN")))

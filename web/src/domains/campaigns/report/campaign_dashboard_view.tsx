@@ -1,10 +1,11 @@
 import { useMemo } from 'react';
 import { Link } from 'react-router-dom';
 
+import { Button } from '@/components/ui/button';
 import { DashboardKpiStrip } from '@/domains/dashboards/dashboard_kpi_strip';
 import { DashboardMultiAxisChart } from '@/domains/dashboards/dashboard_multi_axis_chart';
 import { DashboardBreakdownTableSection } from '@/domains/dashboards/dashboard_breakdown_table';
-import { Button } from '@/components/ui/button';
+import { ListRefreshBand } from '@/shell/list_refresh_band';
 import { PageLayout } from '@/shell/page_layout';
 import { ErrorBlock } from '@/shell/error_block';
 import { PageSkeleton } from '@/shell/page_skeleton';
@@ -44,9 +45,11 @@ export type CampaignDashboardViewProps = {
   series?: DashboardSeriesPoint[];
   breakdown?: DashboardBreakdownTable;
   fetching: boolean;
+  revalidating?: boolean;
   error: Error | undefined;
   hasSnapshot: boolean;
   licenseGated: boolean;
+  lastUpdatedAt?: string | null;
   onRefresh: () => void;
   onDimensionChange: (dimension: CampaignReportDimension) => void;
 };
@@ -60,9 +63,11 @@ export function CampaignDashboardView({
   series,
   breakdown,
   fetching,
+  revalidating = false,
   error,
   hasSnapshot,
   licenseGated,
+  lastUpdatedAt = null,
   onRefresh,
   onDimensionChange,
 }: CampaignDashboardViewProps) {
@@ -136,21 +141,18 @@ export function CampaignDashboardView({
               </Button>
             ))}
           </div>
-          <div className="flex items-center gap-2 text-sm text-muted-foreground">
+          <div className="flex flex-wrap items-center gap-2 text-sm text-muted-foreground">
             <span>
               {period?.from && period?.to
                 ? `${period.from.slice(0, 10)} to ${period.to.slice(0, 10)}`
                 : null}
             </span>
-            <Button
-              type="button"
-              variant="secondary"
-              onClick={onRefresh}
-              disabled={fetching}
-              loading={fetching}
-            >
-              Refresh
-            </Button>
+            <ListRefreshBand
+              ariaLabel="Refresh campaign report"
+              lastUpdatedAt={lastUpdatedAt}
+              loading={fetching || revalidating}
+              onRefresh={onRefresh}
+            />
           </div>
         </div>
       }

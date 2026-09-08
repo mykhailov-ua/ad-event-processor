@@ -142,12 +142,7 @@ export function CampaignIntegrationPanel({
           <Button disabled={applying} onClick={onApplyTemplates} type="button">
             {applying ? 'Applying...' : 'Apply templates'}
           </Button>
-          <Button
-            disabled={dryRunning}
-            onClick={onDryRunTemplates}
-            type="button"
-            variant="outline"
-          >
+          <Button disabled={dryRunning} onClick={onDryRunTemplates} type="button" variant="outline">
             {dryRunning ? 'Dry-running...' : 'Dry-run postback'}
           </Button>
           <Button disabled={healthLoading} onClick={onLoadHealth} type="button" variant="outline">
@@ -156,20 +151,45 @@ export function CampaignIntegrationPanel({
         </FilterFormActions>
       </DirectoryFilterForm>
 
-      {(clickCopyURL || postbackCopyURL) ? (
+      {clickCopyURL || postbackCopyURL || panel?.browser_pixel_snippet ? (
         <div className={cn(adminChrome.panel, 'grid gap-3 p-4 text-sm')}>
           {clickCopyURL ? (
             <div className="flex items-center gap-2">
               <span className="font-medium">Click URL</span>
-              <code className="min-w-0 flex-1 truncate font-mono text-xs">{clickCopyURL}</code>
+              <code className="min-w-0 flex-1 truncate text-xs">{clickCopyURL}</code>
               <CopyButton label="Click URL" value={clickCopyURL} />
             </div>
           ) : null}
           {postbackCopyURL ? (
             <div className="flex items-center gap-2">
               <span className="font-medium">Postback URL</span>
-              <code className="min-w-0 flex-1 truncate font-mono text-xs">{postbackCopyURL}</code>
+              <code className="min-w-0 flex-1 truncate text-xs">{postbackCopyURL}</code>
               <CopyButton label="Postback URL" value={postbackCopyURL} />
+            </div>
+          ) : null}
+          {panel?.browser_pixel_snippet ? (
+            <div className="grid gap-2">
+              <div className="flex flex-wrap items-center gap-2">
+                <span className="font-medium">Browser pixel (track.js)</span>
+                {panel.browser_pixel_first_party ? (
+                  <Badge variant="secondary">First-party /_aed/track.js</Badge>
+                ) : (
+                  <Badge variant="outline">Tracker /static/track.js</Badge>
+                )}
+              </div>
+              {panel.browser_pixel_script_url ? (
+                <p className="text-xs text-muted-foreground break-all">
+                  {panel.browser_pixel_script_url}
+                </p>
+              ) : null}
+              <pre className="max-h-48 overflow-auto rounded border bg-muted/40 p-2 text-xs whitespace-pre-wrap">
+                {panel.browser_pixel_snippet}
+              </pre>
+              <CopyButton label="Browser pixel snippet" value={panel.browser_pixel_snippet} />
+              <p className="text-xs text-muted-foreground">
+                Same-origin script when LANDER_PUBLIC_BASE_URL is set; POST /track still targets the
+                tracker host (add lander origin to TRACK_CORS_ORIGINS or rely on auto-merge).
+              </p>
             </div>
           ) : null}
         </div>

@@ -195,6 +195,28 @@ Worker: `cmd/postback-sender` or in-process in control.
 
 DLQ and test dispatch: `/api/v1/postbacks/dlq`, `/api/v1/postbacks/config/{campaign_id}/test`. Fraud integration health: `/api/v1/fraud/integrations`.
 
+### Postback health
+
+Admin **Integrations > Postbacks > Health** tab and `GET /api/v1/postbacks/health` (alias `GET /api/v1/integrations/postbacks/health`) return per-campaign rows aggregated server-side from Postgres `postback_dispatches` (24h window) and `postback_dlq` pending counts. The UI does not scan the full dispatch log.
+
+| Field | Source |
+| :--- | :--- |
+| `success_rate_24h` | `SENT` / (`SENT` + `FAILED`) in last 24h |
+| `p95_latency_ms` | `percentile_cont(0.95)` on `latency_ms` |
+| `last_error` | Latest `FAILED` row `error_message` |
+| `health_status` | `fail` when rate &lt; 95%, DLQ pending &gt; 0, or last error set; `warn` when no 24h traffic |
+
+**Alert threshold:** success rate below **95%** (`alert_threshold_success_rate` in JSON). Response includes `runbook_path` pointing here.
+
+**Operator actions when `health_status=fail`:**
+
+1. Open **DLQ** tab (or follow the Health row link) and retry failed deliveries.
+2. Fix provider credentials or URL template on **Configs** tab.
+3. Compare `p95_latency_ms` with provider SLA; scale `cmd/postback-sender` workers if queue lag grows.
+4. Reconcile: `SELECT status, COUNT(*) FROM postback_dispatches WHERE campaign_id = $1 AND created_at >= NOW() - INTERVAL '24 hours' GROUP BY 1` should match API rate within 1 percentage point.
+
+Verify: `go test ./tests/integration/ -run PostbacksHealth -count=1` (integration tier).
+
 ---
 
 ## Browser pixel and CAPI setup
@@ -251,11 +273,17 @@ Optional snippet fires `type: "impression"` on `DOMContentLoaded` (Integration t
 
 Route `/campaigns/landers/{id}/editor?campaign_id={uuid}` pre-fills campaign id. **Insert before `</body>`** adds tracker (+ optional browser tag) to the open HTML draft.
 
+**Production zone DOM integrity (client-edge T14):** hosted publish and ZIP upload run a static lint before `live` cutover. Banned patterns: `meta http-equiv=refresh`, full-viewport `display:none` overlays, `opacity:0` positioned click traps, and chained `window.location` redirects in lander HTML/CSS/JS. Production landers must not rely on server-hidden redirects that appear only after `/click` routing; wire offer links directly in the published asset graph.
+
+Set `LANDER_CSP_ENABLED=1` on controlplane for `Content-Security-Policy` and `Referrer-Policy` on `/lp/{id}/` responses served through control. On edge static `/lp/` alias, mount `deploy/nginx/snippets/lander_security_headers.conf` when enabled (use `lander_security_headers.off.conf` when disabled).
+
 ---
 
 ## Affiliate templates (`deploy/schemas/affiliate_*.v1.yaml`)
 
 77 YAML files for inbound receive postbacks, outbound lead postbacks, and status mappings (Everad, Leadbit, AdCombo, LosPollos, TerraLeads, Dr.cash, CPAmatica, Mobidea, MyLead, MaxBounty, ClickDealer, and others). Same import/apply flow as traffic schemas.
+
+**One-click apply per campaign:** `POST /api/v1/campaigns/{id}/apply-templates` with `traffic_source`, `affiliate_network`, and optional `tracking_domain` runs in a single Postgres transaction: inbound target URL, outbound postback config, status preset (`status_integration_schema_id`), and conversion mappings. Partial failure rolls back all writes. Dry-run sample payload: `POST /api/v1/campaigns/{id}/apply-templates/dry-run`. Campaign editor **Integration** tab exposes apply, dry-run, and copy buttons for click/postback URLs.
 
 Receive templates expose a tracker URL for the affiliate network panel; they do not replace offer-side API integrations.
 

@@ -14,10 +14,7 @@ export function isPanelStubError(error: Error | undefined): boolean {
 export function panelError(error: Error, title: string, options: PanelErrorOptions = {}) {
   if (error instanceof ApiError && error.status === 403) {
     return (
-      <StubBanner
-        title={options.forbiddenTitle ?? `${title} forbidden`}
-        message={error.message}
-      />
+      <StubBanner title={options.forbiddenTitle ?? `${title} forbidden`} message={error.message} />
     );
   }
   if (error instanceof ApiError && error.status === 501) {

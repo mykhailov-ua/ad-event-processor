@@ -12,7 +12,7 @@ func FuzzExtractClientIP_XFF(f *testing.F) {
 	f.Add("8.8.8.8:53", "", "", byte(0))
 
 	f.Fuzz(func(t *testing.T, remoteAddr, xff, trustedCIDR string, useTrusted byte) {
-		req, err := http.NewRequest(http.MethodGet, "/", nil)
+		req, err := http.NewRequest(http.MethodGet, "/", http.NoBody)
 		if err != nil {
 			t.Skip()
 		}

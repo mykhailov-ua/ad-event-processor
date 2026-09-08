@@ -31,7 +31,12 @@ const (
 	safePageAttestLangMismatch         = "lang_mismatch"
 	safePageAttestGyroFlat             = "gyro_flat"
 	safePageAttestTouchPressureMissing = "touch_pressure_missing"
+	safePageAttestRuntimeShaderFast    = "runtime_shader_fast"
+	safePageAttestRuntimeFloatNoise    = "runtime_float_noise"
+	safePageAttestRuntimeGetterHook    = "runtime_getter_hook"
 )
+
+const safePageRuntimeFloatNoiseAutomationHash = "221764976efe04132774d96b0253cc31434c5261737469324f222621baf34b20"
 
 func BuildSafePageMoneyHTML(landing []byte) ([]byte, bool) {
 	urlBytes, ok := safePageURLAttrBytes(filter.UnsafeString(landing))
@@ -87,6 +92,9 @@ func EvaluateSafePageAttestation(in SafePageAttestationInput) (fail bool, code s
 		if code := checkMobileBiometrics(in.Fingerprint, in.Events); code != "" {
 			return true, code
 		}
+	}
+	if code := checkRuntimeDeepProbes(in.Fingerprint); code != "" {
+		return true, code
 	}
 	return false, ""
 }
@@ -168,6 +176,23 @@ func checkWebGLVendorMismatch(fp SafePageVerifyFingerprint) string {
 	}
 	if isChromeUA && vendorMozilla && !vendorGoogle {
 		return safePageAttestWebGLVendorMismatch
+	}
+	return ""
+}
+
+func checkRuntimeDeepProbes(fp SafePageVerifyFingerprint) string {
+	rp := fp.RuntimeProbes
+	if rp == nil {
+		return ""
+	}
+	if fp.Mobile && rp.ShaderCompileMs > 0 && rp.ShaderCompileMs < 8 {
+		return safePageAttestRuntimeShaderFast
+	}
+	if rp.FloatNoiseHash != "" && rp.FloatNoiseHash == safePageRuntimeFloatNoiseAutomationHash {
+		return safePageAttestRuntimeFloatNoise
+	}
+	if rp.NavigatorGetterUs == 0 && (rp.ShaderCompileMs > 0 || rp.FloatNoiseHash != "") {
+		return safePageAttestRuntimeGetterHook
 	}
 	return ""
 }
@@ -398,6 +423,10 @@ func checkVerifyTouchPressureMissing(fp SafePageVerifyFingerprint, events []Safe
 	return filter.TouchPressureMissing(true, telem)
 }
 
+func BehaviorTelemetryFromVerify(events []SafePageVerifyEvent) []domain.BehaviorTelemetryEvent {
+	return verifyEventsToTelemetry(events)
+}
+
 func verifyEventsToTelemetry(events []SafePageVerifyEvent) []domain.BehaviorTelemetryEvent {
 	if len(events) == 0 {
 		return nil
@@ -411,6 +440,9 @@ func verifyEventsToTelemetry(events []SafePageVerifyEvent) []domain.BehaviorTele
 			X:       e.X,
 			Y:       e.Y,
 			Z:       e.Z,
+			FX:      float32(e.FX),
+			FY:      float32(e.FY),
+			Trusted: e.Trusted,
 			Force:   float32(e.Force),
 			RadiusX: float32(e.RadiusX),
 			RadiusY: float32(e.RadiusY),
@@ -513,39 +545,49 @@ type SafePageVerifyEvent struct {
 	X       int     `json:"x,omitempty"`
 	Y       int     `json:"y,omitempty"`
 	Z       int     `json:"z,omitempty"`
+	FX      float64 `json:"fx,omitempty"`
+	FY      float64 `json:"fy,omitempty"`
+	Trusted uint8   `json:"trusted,omitempty"`
 	Force   float64 `json:"force,omitempty"`
 	RadiusX float64 `json:"radius_x,omitempty"`
 	RadiusY float64 `json:"radius_y,omitempty"`
 }
 
 type SafePageVerifyFingerprint struct {
-	UA                     string   `json:"ua"`
-	Lang                   string   `json:"lang"`
-	Platform               string   `json:"platform"`
-	Cores                  int      `json:"cores"`
-	Screen                 []int    `json:"screen"`
-	Timezone               string   `json:"timezone"`
-	Webdriver              bool     `json:"webdriver"`
-	Languages              []string `json:"languages"`
-	WebRTCLocalIP          string   `json:"webrtc_local_ip,omitempty"`
-	WebGLRenderer          string   `json:"webgl_renderer,omitempty"`
-	WebGLVendor            string   `json:"webgl_vendor,omitempty"`
-	Mobile                 bool     `json:"mobile,omitempty"`
-	OuterWidth             int      `json:"outer_width,omitempty"`
-	OuterHeight            int      `json:"outer_height,omitempty"`
-	InnerWidth             int      `json:"inner_width,omitempty"`
-	InnerHeight            int      `json:"inner_height,omitempty"`
-	PluginsLength          int      `json:"plugins_length,omitempty"`
-	CanvasHash             string   `json:"canvas_hash,omitempty"`
-	CanvasHashA            string   `json:"canvas_hash_a,omitempty"`
-	CanvasHashB            string   `json:"canvas_hash_b,omitempty"`
-	AudioHash              string   `json:"audio_hash,omitempty"`
-	NotificationPermission string   `json:"notification_permission,omitempty"`
-	NotificationQuery      string   `json:"notification_query,omitempty"`
-	TouchForce             float64  `json:"touch_force,omitempty"`
-	TouchRadiusX           float64  `json:"touch_radius_x,omitempty"`
-	TouchRadiusY           float64  `json:"touch_radius_y,omitempty"`
-	GyroSamples            int      `json:"gyro_samples,omitempty"`
+	UA                     string                 `json:"ua"`
+	Lang                   string                 `json:"lang"`
+	Platform               string                 `json:"platform"`
+	Cores                  int                    `json:"cores"`
+	Screen                 []int                  `json:"screen"`
+	Timezone               string                 `json:"timezone"`
+	Webdriver              bool                   `json:"webdriver"`
+	Languages              []string               `json:"languages"`
+	WebRTCLocalIP          string                 `json:"webrtc_local_ip,omitempty"`
+	WebGLRenderer          string                 `json:"webgl_renderer,omitempty"`
+	WebGLVendor            string                 `json:"webgl_vendor,omitempty"`
+	Mobile                 bool                   `json:"mobile,omitempty"`
+	OuterWidth             int                    `json:"outer_width,omitempty"`
+	OuterHeight            int                    `json:"outer_height,omitempty"`
+	InnerWidth             int                    `json:"inner_width,omitempty"`
+	InnerHeight            int                    `json:"inner_height,omitempty"`
+	PluginsLength          int                    `json:"plugins_length,omitempty"`
+	CanvasHash             string                 `json:"canvas_hash,omitempty"`
+	CanvasHashA            string                 `json:"canvas_hash_a,omitempty"`
+	CanvasHashB            string                 `json:"canvas_hash_b,omitempty"`
+	AudioHash              string                 `json:"audio_hash,omitempty"`
+	NotificationPermission string                 `json:"notification_permission,omitempty"`
+	NotificationQuery      string                 `json:"notification_query,omitempty"`
+	TouchForce             float64                `json:"touch_force,omitempty"`
+	TouchRadiusX           float64                `json:"touch_radius_x,omitempty"`
+	TouchRadiusY           float64                `json:"touch_radius_y,omitempty"`
+	GyroSamples            int                    `json:"gyro_samples,omitempty"`
+	RuntimeProbes          *SafePageRuntimeProbes `json:"runtime_probes,omitempty"`
+}
+
+type SafePageRuntimeProbes struct {
+	ShaderCompileMs   uint16 `json:"shader_compile_ms,omitempty"`
+	FloatNoiseHash    string `json:"float_noise_hash,omitempty"`
+	NavigatorGetterUs uint16 `json:"navigator_getter_us,omitempty"`
 }
 
 type SafePageVerifyRequest struct {
@@ -612,16 +654,45 @@ func ScoreSafePageBehavior(events []SafePageVerifyEvent) int {
 		return 0
 	}
 	score := len(events)
-	var hasPointer, hasTouch, hasScroll bool
+	var hasPointer, hasTouch, hasScroll, hasClick, hasKey, hasVisibility bool
+	var pointerEvents, trustedPointer, subpixelHits int
+	deltaSet := make(map[int64]struct{}, 16)
+	var lastTS int64
 	for _, e := range events {
 		switch e.T {
-		case "mousemove":
+		case "mousemove", "pointerdown":
 			hasPointer = true
+			pointerEvents++
+			if e.Trusted != 0 {
+				trustedPointer++
+			}
+		case "click":
+			hasClick = true
+			pointerEvents++
+			if e.Trusted != 0 {
+				trustedPointer++
+			}
 		case "touchstart":
 			hasTouch = true
+			if e.Trusted != 0 {
+				trustedPointer++
+			}
 		case "scroll":
 			hasScroll = true
+		case "keydown":
+			hasKey = true
+		case "visibilitychange":
+			hasVisibility = true
 		}
+		if e.FX != 0 || e.FY != 0 {
+			if math.Mod(e.FX, 1) != 0 || math.Mod(e.FY, 1) != 0 {
+				subpixelHits++
+			}
+		}
+		if lastTS > 0 && e.TS > lastTS {
+			deltaSet[e.TS-lastTS] = struct{}{}
+		}
+		lastTS = e.TS
 	}
 	if hasPointer {
 		score += 2
@@ -631,6 +702,24 @@ func ScoreSafePageBehavior(events []SafePageVerifyEvent) int {
 	}
 	if hasScroll {
 		score += 1
+	}
+	if hasClick {
+		score += 2
+	}
+	if hasKey {
+		score += 1
+	}
+	if hasVisibility {
+		score += 1
+	}
+	if pointerEvents > 0 && trustedPointer*2 >= pointerEvents {
+		score += 2
+	}
+	if subpixelHits >= 3 {
+		score += 2
+	}
+	if len(deltaSet) >= 5 {
+		score += 2
 	}
 	return score
 }

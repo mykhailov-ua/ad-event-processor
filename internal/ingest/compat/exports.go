@@ -132,6 +132,10 @@ var (
 	NewSettingsWatcher                   = filter.NewSettingsWatcher
 	NewDCASNTable                        = filter.NewDCASNTable
 	NewMobileCarrierASNTable             = filter.NewMobileCarrierASNTable
+	NewApplePrivateRelayTable            = filter.NewApplePrivateRelayTable
+	NewMobileTierTable                   = filter.NewMobileTierTable
+	NewMobileASNTierFeedLoader           = filter.NewMobileASNTierFeedLoader
+	MobileProbeRiskWeightsFromEnv        = filter.MobileProbeRiskWeightsFromEnv
 	NewLatencyRing                       = filter.NewLatencyRing
 	NewCIDRTable                         = filter.NewCIDRTable
 	BuildCIDRTableFromPrefixes           = filter.BuildCIDRTableFromPrefixes

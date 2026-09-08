@@ -197,10 +197,6 @@ func copyLocalQuantaField(dst []byte, s string) int {
 	return n
 }
 
-func marshalEventToProto(evt *domain.Event) ([]byte, *ByteSliceValue, *[]byte) {
-	return marshalEventToProtoBuf(evt, nil)
-}
-
 func marshalEventToProtoBuf(evt *domain.Event, inline []byte) ([]byte, *ByteSliceValue, *[]byte) {
 	var pbEvt pb.AdStreamEvent
 	pbEvt.ClickId = UnsafeBytes(evt.ClickID)

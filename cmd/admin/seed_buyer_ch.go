@@ -33,6 +33,7 @@ var (
 	buyerCHCampaignCount int
 	buyerCHCustomerSeq   int
 	buyerCHReplace       bool
+	buyerCHHistoryDays   int
 )
 
 var seedBuyerCHCmd = &cobra.Command{
@@ -46,6 +47,7 @@ func init() {
 	seedBuyerCHCmd.Flags().IntVar(&buyerCHCampaignCount, "count", defaultBuyerCHCampaignCount, "Deterministic campaign seq to seed (1..N)")
 	seedBuyerCHCmd.Flags().IntVar(&buyerCHCustomerSeq, "customer-seq", 1, "Customer seq used when resolving portfolio owner")
 	seedBuyerCHCmd.Flags().BoolVar(&buyerCHReplace, "replace", true, "Delete existing CH rows for seeded campaigns before insert")
+	seedBuyerCHCmd.Flags().IntVar(&buyerCHHistoryDays, "history-days", seedBuyerHistoryDays, "Days of traffic history (includes today)")
 	dbCmd.AddCommand(seedBuyerCHCmd)
 }
 
@@ -117,9 +119,9 @@ func runSeedBuyerCH(cmd *cobra.Command, args []string) error {
 	}
 
 	clickCap, convCap := buyerSeedInsertCaps(buyerCHCampaignCount)
-	historyDays := seedBuyerHistoryDays
-	if buyerCHCampaignCount > buyerCHLightCampaignThreshold {
-		historyDays = 7
+	historyDays := buyerCHHistoryDays
+	if historyDays < 1 {
+		return fmt.Errorf("history-days must be >= 1")
 	}
 	today := time.Now().UTC().Truncate(24 * time.Hour)
 	fromDay := today.AddDate(0, 0, -(historyDays - 1))

@@ -11,7 +11,12 @@ import {
 } from '@/domains/dashboards/dashboard_classes';
 import { DashboardPreferencesDialog } from '@/domains/dashboards/dashboard_preferences_dialog';
 import type { BuyerDashboardPreferences } from '@/domains/dashboards/dashboard_preferences';
-import { DirectoryFilterForm, FilterField, FilterPanel, FILTER_PANEL_FLAT_CLASS } from '@/shell/filter_panel';
+import {
+  DirectoryFilterForm,
+  FilterField,
+  FilterPanel,
+  FILTER_PANEL_FLAT_CLASS,
+} from '@/shell/filter_panel';
 
 const ALL_OPTION_VALUE = '__all__';
 
@@ -103,9 +108,7 @@ export function BuyerDashboardToolbar({
               options={campaignSelectOptions}
               searchPlaceholder="All campaigns"
               title={
-                customerSelected
-                  ? 'Limit analytics to one campaign'
-                  : 'Select a customer first'
+                customerSelected ? 'Limit analytics to one campaign' : 'Select a customer first'
               }
               value={draftCampaignId || ALL_OPTION_VALUE}
               onValueChange={(value) =>

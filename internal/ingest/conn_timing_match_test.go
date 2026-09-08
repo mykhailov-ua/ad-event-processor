@@ -38,3 +38,20 @@ func TestFillConnTimingFromRequest_holdoutSetsEventDelta(t *testing.T) {
 	assert.Equal(t, uint16(300), evt.TTFBAppMS)
 	assert.Equal(t, uint16(250), evt.RTTSplitDeltaMS)
 }
+
+func TestClick_fillConnTiming_holdoutEdgeHeaders(t *testing.T) {
+	wire := []byte("GET /click HTTP/1.1\r\nX-RTT-SYN-MS: 88\r\nX-TTFB-APP-MS: 320\r\nUser-Agent: test\r\nContent-Length: 0\r\n\r\n")
+	_, req, err := parseHTTP1(wire, 1<<20, nil)
+	require.NoError(t, err)
+	require.Equal(t, uint8(connTimingRTTBit|connTimingTTFBBit), req.ConnTimingSet)
+
+	evt := domain.EventPool.Get().(*domain.Event)
+	defer domain.EventPool.Put(evt)
+	evt.Reset()
+	evt.Type = "click"
+	fillConnTimingFromRequest(evt, &req)
+	assert.Equal(t, uint8(connTimingRTTBit|connTimingTTFBBit), evt.ConnTimingSet)
+	assert.Equal(t, uint16(88), evt.RTTSynMS)
+	assert.Equal(t, uint16(320), evt.TTFBAppMS)
+	assert.Equal(t, uint16(232), evt.RTTSplitDeltaMS)
+}

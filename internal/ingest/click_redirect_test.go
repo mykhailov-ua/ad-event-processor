@@ -136,7 +136,9 @@ func setupClickRedirectHarness(t *testing.T, mut func(*domain.Campaign)) (*AdsPa
 }
 
 func TestClickRedirectGnet_DMR_queryFlag(t *testing.T) {
-	h, cid, _ := setupClickRedirectHarness(t, nil)
+	h, cid, _ := setupClickRedirectHarness(t, func(c *domain.Campaign) {
+		c.RedirectComplianceMode = domain.RedirectComplianceLegacyDMR
+	})
 	path := "/click?campaign_id=" + cid.String() + "&type=click&user_id=u1&dmr=1"
 	_, conn := ServeGnetHarness(h, BuildGnetHTTP("GET", path, map[string]string{
 		"Connection":     "keep-alive",
@@ -149,6 +151,7 @@ func TestClickRedirectGnet_DMR_queryFlag(t *testing.T) {
 func TestClickRedirectGnet_DMR_campaignEnabled(t *testing.T) {
 	h, cid, _ := setupClickRedirectHarness(t, func(c *domain.Campaign) {
 		c.DmrEnabled = true
+		c.RedirectComplianceMode = domain.RedirectComplianceLegacyDMR
 	})
 	path := "/click?campaign_id=" + cid.String() + "&type=click&user_id=u1"
 	_, conn := ServeGnetHarness(h, BuildGnetHTTP("GET", path, map[string]string{
@@ -157,6 +160,22 @@ func TestClickRedirectGnet_DMR_campaignEnabled(t *testing.T) {
 		"User-Agent":     "Mozilla/5.0",
 	}, nil))
 	requireGnetDmrResponse(t, conn.Written(), "lander.test/go")
+}
+
+func TestClickRedirectGnet_DmrStrictProfileUses302(t *testing.T) {
+	h, cid, _ := setupClickRedirectHarness(t, func(c *domain.Campaign) {
+		c.DmrEnabled = true
+		c.RedirectComplianceMode = domain.RedirectComplianceStrict
+	})
+	path := "/click?campaign_id=" + cid.String() + "&type=click&user_id=u1&dmr=1"
+	_, conn := ServeGnetHarness(h, BuildGnetHTTP("GET", path, map[string]string{
+		"Connection":     "keep-alive",
+		"Content-Length": "0",
+		"User-Agent":     "Mozilla/5.0",
+	}, nil))
+	require.Equal(t, http.StatusFound, ParseGnetHTTPStatus(conn.Written()))
+	require.Contains(t, string(conn.Written()), "302 Found")
+	require.Contains(t, string(conn.Written()), "lander.test/go")
 }
 
 func TestClickRedirectGnet_302(t *testing.T) {

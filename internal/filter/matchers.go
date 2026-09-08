@@ -233,6 +233,37 @@ func scanUAWebViewMarkers(ua string, n int) bool {
 	return false
 }
 
+const (
+	InAppWebViewClassNone      uint8 = 0
+	InAppWebViewClassFacebook  uint8 = 1
+	InAppWebViewClassInstagram uint8 = 2
+	InAppWebViewClassTikTok    uint8 = 3
+	InAppWebViewClassOther     uint8 = 4
+)
+
+// InAppWebViewClassification returns Prometheus platform label and class enum for in-app WebView UAs.
+func InAppWebViewClassification(ua string) (platform string, class uint8) {
+	if !uaMatchesInAppWebView(ua) {
+		return "", InAppWebViewClassNone
+	}
+	n := len(ua)
+	if n > uaWebViewScanMax {
+		n = uaWebViewScanMax
+	}
+	for i := range n {
+		if MatchUAAt(ua, i, n, "Instagram") {
+			return "instagram", InAppWebViewClassInstagram
+		}
+		if MatchUAAt(ua, i, n, "musical_ly") {
+			return "tiktok", InAppWebViewClassTikTok
+		}
+		if MatchUAAt(ua, i, n, "FBAN") || MatchUAAt(ua, i, n, "FBAV") {
+			return "facebook", InAppWebViewClassFacebook
+		}
+	}
+	return "other", InAppWebViewClassOther
+}
+
 func MatchUAAt(ua string, i, n int, needle string) bool {
 	m := len(needle)
 	if i+m > n {

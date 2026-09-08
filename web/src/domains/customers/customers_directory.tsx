@@ -175,9 +175,7 @@ export function CustomersDirectory({
                       </span>
                     )}
                   </TableCell>
-                  <TableCell className="text-right tabular-nums">
-                    {customer.balance ?? ''}
-                  </TableCell>
+                  <TableCell className="text-right">{customer.balance ?? ''}</TableCell>
                   <TableCell className="whitespace-nowrap">{customer.currency ?? ''}</TableCell>
                   <TableCell
                     className="whitespace-nowrap"
@@ -185,12 +183,8 @@ export function CustomersDirectory({
                   >
                     {customer.cost_center ?? ''}
                   </TableCell>
-                  <TableCell className="text-right tabular-nums">
-                    {customer.active_campaigns ?? ''}
-                  </TableCell>
-                  <TableCell className="text-right tabular-nums">
-                    {customer.total_spend ?? ''}
-                  </TableCell>
+                  <TableCell className="text-right">{customer.active_campaigns ?? ''}</TableCell>
+                  <TableCell className="text-right">{customer.total_spend ?? ''}</TableCell>
                   <TableCell
                     className="whitespace-nowrap text-muted-foreground"
                     title={createdLabel}

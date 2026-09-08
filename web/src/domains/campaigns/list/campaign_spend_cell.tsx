@@ -24,7 +24,7 @@ export function CampaignSpendCell({
 
   return (
     <div className="flex min-w-0 items-center gap-2" title={utilizationTitle}>
-      <span className="shrink-0 tabular-nums">{spendLabel}</span>
+      <span className="shrink-0">{spendLabel}</span>
       {ratio != null && percent != null ? (
         <div
           aria-hidden

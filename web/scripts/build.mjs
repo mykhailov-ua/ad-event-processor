@@ -136,10 +136,6 @@ async function buildAppCss() {
     '@fontsource/inter/500.css',
     '@fontsource/inter/600.css',
     '@fontsource/inter/700.css',
-    '@fontsource/jetbrains-mono/200.css',
-    '@fontsource/jetbrains-mono/400.css',
-    '@fontsource/ibm-plex-mono/200.css',
-    '@fontsource/ibm-plex-mono/400.css',
   ];
   for (const pkg of FONT_IMPORTS) {
     const token = `@import '${pkg}';`;

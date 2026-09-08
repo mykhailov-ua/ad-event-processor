@@ -16,8 +16,11 @@ import { ToolbarDateRangePicker } from '@/shell/toolbar_date_range_picker';
 import { Input } from '@/components/ui/input';
 import { CampaignListCountrySelect } from '@/domains/campaigns/list/campaign_list_country_select';
 import type { CampaignsListFilterOption } from '@/domains/campaigns/list/campaigns_list_filter_select';
-import { CampaignsListFilterSelect, CampaignsListSearchableFilterSelect } from '@/domains/campaigns/list/campaigns_list_filter_select';
-import { CampaignListRefreshBand } from '@/domains/campaigns/list/campaign_list_refresh_band';
+import {
+  CampaignsListFilterSelect,
+  CampaignsListSearchableFilterSelect,
+} from '@/domains/campaigns/list/campaigns_list_filter_select';
+import { ListRefreshBand } from '@/shell/list_refresh_band';
 import type { CampaignListSummary } from '@/domains/campaigns/list/campaign_list_summary';
 import { CampaignListSummaryBox } from '@/domains/campaigns/list/campaign_list_summary_box';
 import { CampaignListStatusChips } from '@/domains/campaigns/list/campaign_list_status_chips';
@@ -30,9 +33,19 @@ import type {
   CampaignPacingFilter,
   CampaignStatusFilter,
 } from '@/domains/campaigns/list/campaigns_list_types';
-import { DirectoryFilterForm, FilterField, FilterPanel, FILTER_PANEL_FLAT_CLASS } from '@/shell/filter_panel';
+import {
+  DirectoryFilterForm,
+  FilterField,
+  FilterPanel,
+  FILTER_PANEL_FLAT_CLASS,
+} from '@/shell/filter_panel';
 import { PaginationPrevNext } from '@/shell/pagination_prev_next';
-import { StatusMetricsBand, ToolbarBand, ToolbarBandActions, DirectoryStack } from '@/shell/ui_bands';
+import {
+  StatusMetricsBand,
+  ToolbarBand,
+  ToolbarBandActions,
+  DirectoryStack,
+} from '@/shell/ui_bands';
 import { cn } from '@/lib/utils';
 
 const ALL_OPTION_VALUE = '__all__';
@@ -185,6 +198,11 @@ export function CampaignsListToolbar({
         label: 'Archived',
         count: statusTotals?.archived,
       },
+      {
+        value: 'WARNINGS' as CampaignStatusFilter,
+        label: 'Warnings',
+        count: statusTotals?.warnings,
+      },
     ],
     [statusTotals]
   );
@@ -199,16 +217,22 @@ export function CampaignsListToolbar({
           </Button>
           <div className="flex flex-nowrap items-center gap-2" aria-label="Selected campaigns">
             <Button
+              disabled={bulkActionBusy || !hasSelection}
               type="button"
               variant="outline"
-              title={singleSelected ? 'Clone selected campaign' : 'Select exactly one campaign'}
-              onClick={() =>
-                runBulkAction(singleSelected, 'Select exactly one campaign', onCloneClick)
+              title={
+                hasSelection
+                  ? singleSelected
+                    ? 'Clone selected campaign'
+                    : 'Bulk clone selected campaigns'
+                  : 'Select campaigns first'
               }
+              onClick={() => runBulkAction(hasSelection, 'Select campaigns first', onCloneClick)}
             >
               Clone
             </Button>
             <Button
+              disabled={bulkActionBusy || !singleSelected}
               type="button"
               variant="outline"
               title={
@@ -222,6 +246,7 @@ export function CampaignsListToolbar({
               Report
             </Button>
             <Button
+              disabled={bulkActionBusy || !hasSelection}
               type="button"
               variant="outline"
               title={hasSelection ? 'Pause selected campaigns' : 'Select campaigns first'}
@@ -230,6 +255,7 @@ export function CampaignsListToolbar({
               Pause
             </Button>
             <Button
+              disabled={bulkActionBusy || !hasSelection}
               type="button"
               variant="outline"
               title={hasSelection ? 'Resume selected campaigns' : 'Select campaigns first'}
@@ -238,6 +264,7 @@ export function CampaignsListToolbar({
               Resume
             </Button>
             <Button
+              disabled={bulkActionBusy || !hasSelection}
               type="button"
               variant="outline"
               className={campaignListArchiveButtonClass}
@@ -268,7 +295,8 @@ export function CampaignsListToolbar({
             </DropdownMenuContent>
           </DropdownMenu>
         </ToolbarBandActions>
-        <CampaignListRefreshBand
+        <ListRefreshBand
+          ariaLabel="Refresh campaign list"
           lastUpdatedAt={listLastUpdatedAt}
           loading={fetching || listRevalidating}
           onRefresh={onRefresh}
@@ -293,11 +321,7 @@ export function CampaignsListToolbar({
         />
       </StatusMetricsBand>
 
-      <FilterPanel
-        aria-label="List filters"
-        className={FILTER_PANEL_FLAT_CLASS}
-        role="search"
-      >
+      <FilterPanel aria-label="List filters" className={FILTER_PANEL_FLAT_CLASS} role="search">
         <DirectoryFilterForm
           layout="campaigns"
           onKeyDown={(event) => {

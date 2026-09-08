@@ -61,9 +61,3 @@ func (l *moderatorCorpusFeedLoader) Start(ctx context.Context) {
 		l.inner.Start(ctx)
 	}
 }
-
-func (l *moderatorCorpusFeedLoader) refreshOnce() {
-	if l != nil && l.inner != nil {
-		l.inner.RefreshOnce()
-	}
-}

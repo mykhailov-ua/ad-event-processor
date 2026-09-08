@@ -22,7 +22,5 @@ export async function signConsentHmacHex(secret: string, bodyUtf8: string): Prom
     ['sign']
   );
   const signature = await crypto.subtle.sign('HMAC', key, new TextEncoder().encode(bodyUtf8));
-  return [...new Uint8Array(signature)]
-    .map((byte) => byte.toString(16).padStart(2, '0'))
-    .join('');
+  return [...new Uint8Array(signature)].map((byte) => byte.toString(16).padStart(2, '0')).join('');
 }

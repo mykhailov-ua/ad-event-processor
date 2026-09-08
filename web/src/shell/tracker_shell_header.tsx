@@ -11,10 +11,7 @@ export type TrackerShellSidebarToggleProps = {
   onToggle: () => void;
 };
 
-export function TrackerShellSidebarToggle({
-  expanded,
-  onToggle,
-}: TrackerShellSidebarToggleProps) {
+export function TrackerShellSidebarToggle({ expanded, onToggle }: TrackerShellSidebarToggleProps) {
   return (
     <Button
       aria-expanded={expanded}

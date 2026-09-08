@@ -35,10 +35,10 @@ import { displayRelativeTimestamp, displayTimestamp } from '@/lib/display';
 import { cn } from '@/lib/utils';
 
 const COLUMN_WIDTHS = {
-  name: '20%',
-  url: '50%',
-  hosted: '18%',
-  created: '12%',
+  name: 'w-[20%]',
+  url: 'w-[50%]',
+  hosted: 'w-[18%]',
+  created: 'w-[12%]',
 } as const;
 
 export type LandersListTableProps = {
@@ -88,10 +88,10 @@ export function LandersListTable({
         }}
       >
         <colgroup>
-          <col style={{ width: COLUMN_WIDTHS.name }} />
-          <col style={{ width: COLUMN_WIDTHS.url }} />
-          <col style={{ width: COLUMN_WIDTHS.hosted }} />
-          <col style={{ width: COLUMN_WIDTHS.created }} />
+          <col className={COLUMN_WIDTHS.name} />
+          <col className={COLUMN_WIDTHS.url} />
+          <col className={COLUMN_WIDTHS.hosted} />
+          <col className={COLUMN_WIDTHS.created} />
         </colgroup>
         <TableHeader>
           <tr>
@@ -130,7 +130,10 @@ export function LandersListTable({
                           Open editor
                         </DropdownMenuItem>
                         {onOpenEditLander ? (
-                          <DropdownMenuItem disabled={rowActing} onClick={() => onOpenEditLander(row)}>
+                          <DropdownMenuItem
+                            disabled={rowActing}
+                            onClick={() => onOpenEditLander(row)}
+                          >
                             Edit
                           </DropdownMenuItem>
                         ) : null}
@@ -153,7 +156,10 @@ export function LandersListTable({
                           </DropdownMenuItem>
                         ) : null}
                         {primaryUrl && onCopyUrl ? (
-                          <DropdownMenuItem disabled={rowActing} onClick={() => onCopyUrl(primaryUrl)}>
+                          <DropdownMenuItem
+                            disabled={rowActing}
+                            onClick={() => onCopyUrl(primaryUrl)}
+                          >
                             Copy URL
                           </DropdownMenuItem>
                         ) : null}
@@ -186,7 +192,7 @@ export function LandersListTable({
                         {primaryUrl}
                       </a>
                       <div className={campaignListCopyToolsSlotClass}>
-                        <CopyButton label="URL" showToast={false} value={primaryUrl} />
+                        <CopyButton flashOnCopy label="URL" showToast={false} value={primaryUrl} />
                       </div>
                     </div>
                   ) : (

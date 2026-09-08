@@ -27,7 +27,8 @@ export type LandersDirectoryProps = {
   error: Error | undefined;
   hasSnapshot: boolean;
   listLastUpdatedAt?: string | null;
-  onRefresh?: () => void;
+  listRevalidating?: boolean;
+  onRefresh: () => void;
   draftName?: string;
   draftUrl?: string;
   creating?: boolean;
@@ -58,6 +59,7 @@ export function LandersDirectory({
   error,
   hasSnapshot,
   listLastUpdatedAt = null,
+  listRevalidating = false,
   onRefresh,
   draftName = '',
   draftUrl = '',
@@ -119,10 +121,11 @@ export function LandersDirectory({
             hostingCounts={listView.hostingCounts}
             hostingFilter={listView.hostingFilter}
             listLastUpdatedAt={listLastUpdatedAt}
+            listRevalidating={listRevalidating}
             onCreateClick={() => setCreateOpen(true)}
             onDraftSearchChange={listView.onDraftSearchChange}
             onHostingFilterChange={listView.onHostingFilterChange}
-            onRefresh={onRefresh ?? (() => undefined)}
+            onRefresh={onRefresh}
           />
         }
         footer={
@@ -140,9 +143,7 @@ export function LandersDirectory({
               showPrevNext={false}
               onLimitChange={listView.onPageSizeChange}
               onNext={() => listView.onPageChange(listView.offset + listView.limit)}
-              onPageChange={(nextPage) =>
-                listView.onPageChange((nextPage - 1) * listView.limit)
-              }
+              onPageChange={(nextPage) => listView.onPageChange((nextPage - 1) * listView.limit)}
               onPrev={() => listView.onPageChange(Math.max(0, listView.offset - listView.limit))}
             />
           ) : undefined

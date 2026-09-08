@@ -48,7 +48,10 @@ export function campaignListFilterTotalsFromApi(
   totals.conversions = row.conversions ?? 0;
   totals.revenueMicro = row.revenue_micro ?? 0;
   totals.costMicro = row.cost_micro ?? 0;
-  totals.profitMicro = row.profit_micro ?? 0;
+  totals.profitMicro =
+    row.revenue_micro != null && row.cost_micro != null
+      ? (row.revenue_micro ?? 0) - (row.cost_micro ?? 0)
+      : (row.profit_micro ?? 0);
   return {
     totals,
     funnelTotals,

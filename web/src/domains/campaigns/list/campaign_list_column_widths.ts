@@ -26,12 +26,13 @@ import type { CampaignListFilterTotalsView } from '@/domains/campaigns/list/camp
 import type { CampaignWithMoneyDisplay } from '@/domains/campaigns/list/campaign_metrics_shared';
 
 const CELL_HORIZONTAL_PADDING_PX = 32;
+const ID_CELL_HORIZONTAL_PADDING_PX = 16;
 const HEADER_DRAG_GRIP_ICON_PX = 12;
 const HEADER_SORT_ICON_PX = 12;
-const COPY_CONTROL_SLOT_PX = 28;
+const COPY_CONTROL_SLOT_PX = 24;
 const COPY_BUTTON_TEXT_GAP_PX = 6;
 const NAME_ROW_MENU_PX = 28;
-const NAME_ROW_MENU_GAP_PX = 16;
+const NAME_ROW_MENU_GAP_PX = 6;
 const STATUS_BADGE_HORIZONTAL_PADDING_PX = 16;
 const COUNTRY_FLAG_ICON_PX = 18;
 const COUNTRY_FLAG_GAP_PX = 2;
@@ -42,6 +43,7 @@ type ColumnContentWidthOptions = {
   header?: boolean;
   headerChromePx?: number;
   copyControl?: boolean;
+  compactCell?: boolean;
   name?: boolean;
 };
 
@@ -75,15 +77,16 @@ function columnContentWidth(
   if (options.name) {
     extra += NAME_ROW_MENU_PX + NAME_ROW_MENU_GAP_PX;
   }
-  return Math.max(minWidth, estimateTextWidthPx(text) + CELL_HORIZONTAL_PADDING_PX + extra);
+  const horizontalPadding = options.compactCell
+    ? ID_CELL_HORIZONTAL_PADDING_PX
+    : CELL_HORIZONTAL_PADDING_PX;
+  return Math.max(minWidth, estimateTextWidthPx(text) + horizontalPadding + extra);
 }
 
 export function campaignStatusCellContentWidthPx(label: string, minWidth: number): number {
   return Math.max(
     minWidth,
-    estimateTextWidthPx(label) +
-      STATUS_BADGE_HORIZONTAL_PADDING_PX +
-      CELL_HORIZONTAL_PADDING_PX
+    estimateTextWidthPx(label) + STATUS_BADGE_HORIZONTAL_PADDING_PX + CELL_HORIZONTAL_PADDING_PX
   );
 }
 
@@ -98,10 +101,7 @@ export function campaignCountriesCellContentWidthPx(
     countryCount > COUNTRY_BADGES_MAX_VISIBLE
       ? COUNTRY_OVERFLOW_BUTTON_PX + COUNTRY_FLAG_GAP_PX
       : 0;
-  return Math.max(
-    minWidth,
-    flagsWidth + overflowWidth + CELL_HORIZONTAL_PADDING_PX
-  );
+  return Math.max(minWidth, flagsWidth + overflowWidth + CELL_HORIZONTAL_PADDING_PX);
 }
 
 export function campaignListMiddleCellText(
@@ -115,7 +115,7 @@ export function campaignListMiddleCellText(
 ): string {
   const vm =
     rowVmCache?.get(campaign.id) ??
-    buildCampaignRowVm(campaign, metrics, margin, customerNameById, ownerEmailById, false);
+    buildCampaignRowVm(campaign, metrics, margin, customerNameById, ownerEmailById);
   return campaignListMiddleCellDisplayText(columnId, vm);
 }
 
@@ -138,7 +138,10 @@ export function defaultCampaignListColumnWidths(
             header: true,
             headerChromePx,
           }),
-          campaignCountriesCellContentWidthPx(COUNTRY_BADGES_MAX_VISIBLE, CAMPAIGN_LIST_COLUMN_MIN_WIDTH_PX[columnId])
+          campaignCountriesCellContentWidthPx(
+            COUNTRY_BADGES_MAX_VISIBLE,
+            CAMPAIGN_LIST_COLUMN_MIN_WIDTH_PX[columnId]
+          )
         )
       );
       continue;
@@ -202,7 +205,10 @@ export function computeCampaignListColumnWidths({
       for (const campaign of items) {
         maxWidth = Math.max(
           maxWidth,
-          columnContentWidth(campaignDisplayId(campaign), widths[columnId], { copyControl: true })
+          columnContentWidth(campaignDisplayId(campaign), widths[columnId], {
+            copyControl: true,
+            compactCell: true,
+          })
         );
       }
     } else if (columnId === 'name') {
@@ -262,10 +268,7 @@ export function computeCampaignListColumnWidths({
       totalsLabel
     );
     if (totalsText) {
-      maxWidth = Math.max(
-        maxWidth,
-        columnContentWidth(totalsText, widths[columnId])
-      );
+      maxWidth = Math.max(maxWidth, columnContentWidth(totalsText, widths[columnId]));
     }
 
     widths[columnId] = clampCampaignListColumnWidthPx(columnId, maxWidth);

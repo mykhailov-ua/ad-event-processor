@@ -14,6 +14,7 @@ import {
 import type { CampaignFraudConfig } from '@/api/types';
 import type { CampaignFraudPanelWorkspace } from '@/domains/campaigns/editor/use_campaign_fraud_panel_workspace';
 import { FraudLimitsDocLink } from '@/domains/fraud/fraud_limits_doc_link';
+import { PerimeterSybilDocLink } from '@/domains/fraud/perimeter_sybil_doc_link';
 import { displayTimestamp } from '@/lib/display';
 
 export type CampaignFraudPanelProps = {
@@ -71,15 +72,21 @@ export function CampaignFraudPanel({
   return (
     <div className="grid gap-4">
       <FraudLimitsDocLink />
+      <PerimeterSybilDocLink />
+      <p className="text-sm text-muted-foreground">
+        Ingress attestation and crowd-wave signals do not replace contractual controls for
+        authorized human auditors on residential mobile. See Documentation for the Sybil operator
+        runbook.
+      </p>
       <p className="text-sm text-muted-foreground">
         ML fraud boost is applied from a Redis snapshot on the tracker. Batch scoring runs in{' '}
-        <span className="font-mono text-xs">cmd/fraud-scorer</span>; there is no inline model call on{' '}
-        <span className="font-mono text-xs">/track</span>.
+        <span className="text-xs">cmd/fraud-scorer</span>; there is no inline model call on{' '}
+        <span className="text-xs">/track</span>.
       </p>
       {fraudConfig?.ml_boost_last_refreshed_at ? (
         <p className="text-sm text-muted-foreground">
           Last ML boost refresh:{' '}
-          <span className="font-mono text-xs text-foreground">
+          <span className="text-xs text-foreground">
             {displayTimestamp(fraudConfig.ml_boost_last_refreshed_at)}
           </span>
         </p>
@@ -96,6 +103,12 @@ export function CampaignFraudPanel({
             onChange={(event) => setDraftPreset(event.target.value)}
           />
         </FilterField>
+        {draftPreset.trim().toLowerCase() === 'social_in_app' ? (
+          <p className="md:col-span-2 text-sm text-muted-foreground">
+            Social in-app preset relaxes Sec-Fetch and TLS/JA4 checks for known FB/IG/TikTok WebView
+            UAs. Cross-layer desync and behavioral probes still apply.
+          </p>
+        ) : null}
         <FilterField htmlFor="fraud-pass" label="Pass threshold">
           <Input
             id="fraud-pass"
@@ -255,9 +268,9 @@ export function CampaignFraudPanel({
         </FilterField>
       </DirectoryFilterForm>
       <p className="text-xs text-muted-foreground">
-        Cross-layer policy counts distinct wire/safe-page mismatch layers (TCP, TLS JA4, client hints,
-        Sec-Fetch, H2). Residential IPs may still pass individual L2 signals; see fraud signal limits
-        doc.
+        Cross-layer policy counts distinct wire/safe-page mismatch layers (TCP, TLS JA4, client
+        hints, Sec-Fetch, H2). Residential IPs may still pass individual L2 signals; see fraud
+        signal limits doc.
       </p>
 
       <div className="flex flex-wrap gap-2">

@@ -153,8 +153,7 @@
   function probeWebGL() {
     try {
       const canvas = document.createElement('canvas');
-      const gl =
-        canvas.getContext('webgl') || canvas.getContext('experimental-webgl');
+      const gl = canvas.getContext('webgl') || canvas.getContext('experimental-webgl');
       if (!gl) {
         return;
       }
@@ -203,6 +202,44 @@
         resolve();
       }
     });
+  }
+
+  async function probeRuntimeDeep() {
+    const runtime = {};
+    try {
+      const t0 = performance.now();
+      const canvas = document.createElement('canvas');
+      const gl = canvas.getContext('webgl');
+      if (gl) {
+        const vs = gl.createShader(gl.VERTEX_SHADER);
+        gl.shaderSource(vs, 'attribute vec4 p;void main(){gl_Position=p;}');
+        gl.compileShader(vs);
+        runtime.shader_compile_ms = Math.min(
+          65535,
+          Math.max(0, Math.round(performance.now() - t0))
+        );
+      }
+    } catch (_err) {}
+    try {
+      const noise = (0.1 + 0.2).toString();
+      runtime.float_noise_hash = await sha256Hex(new TextEncoder().encode(noise));
+    } catch (_err) {}
+    try {
+      const g0 = performance.now();
+      void navigator.userAgent;
+      runtime.navigator_getter_us = Math.min(
+        65535,
+        Math.max(1, Math.round((performance.now() - g0) * 1000))
+      );
+    } catch (_err) {
+      runtime.navigator_getter_us = 0;
+    }
+    return runtime;
+  }
+
+  function runtimeDeepProbesEnabled() {
+    const meta = document.querySelector('meta[name="aed-runtime-probes"]');
+    return meta && meta.getAttribute('content') === '1';
   }
 
   function mergeTelemetryEvents() {
@@ -292,6 +329,9 @@
       events: mergeTelemetryEvents(),
       fingerprint: buildFingerprint(),
     };
+    if (runtimeDeepProbesEnabled()) {
+      body.fingerprint.runtime_probes = await probeRuntimeDeep();
+    }
     if (snap) {
       body.antifraud = snap;
     }

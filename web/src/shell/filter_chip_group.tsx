@@ -58,7 +58,7 @@ export function FilterChipGroup<T extends string>({
               <span
                 className={cn(
                   adminKit.controlRadius,
-                  'inline-flex min-w-[1.25rem] items-center justify-center px-2 text-[11px] font-semibold tabular-nums',
+                  'inline-flex min-w-[1.25rem] items-center justify-center px-2 text-[11px] font-semibold ',
                   selected
                     ? 'bg-primary-foreground/20 text-primary-foreground'
                     : 'bg-muted text-muted-foreground'

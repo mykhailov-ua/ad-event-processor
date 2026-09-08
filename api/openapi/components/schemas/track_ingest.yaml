@@ -4,11 +4,11 @@ TrackBehaviorTelemetryEvent:
   properties:
     t:
       type: string
-      description: Event kind (mousemove, touchstart, scroll, ...)
+      description: Event kind (mousemove, pointerdown, click, keydown, visibilitychange, touchstart, scroll)
     ts:
       type: integer
       format: int64
-      description: Client monotonic or wall timestamp in milliseconds
+      description: Monotonic offset from page load in microseconds (performance.now based)
     x:
       type: integer
       format: int32
@@ -19,6 +19,18 @@ TrackBehaviorTelemetryEvent:
       type: integer
       format: int32
       description: Optional third axis (touch force, device motion z)
+    fx:
+      type: number
+      format: float
+      description: Subpixel client X where supported
+    fy:
+      type: number
+      format: float
+      description: Subpixel client Y where supported
+    trusted:
+      type: integer
+      format: int32
+      description: 1 when Event.isTrusted, else 0
     force:
       type: number
       format: float

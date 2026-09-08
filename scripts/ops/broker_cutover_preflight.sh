@@ -20,7 +20,7 @@ die() {
 }
 
 case "$MODE" in
-  shadow|live) ;;
+  shadow | live) ;;
   *)
     die "usage: $0 shadow|live"
     ;;

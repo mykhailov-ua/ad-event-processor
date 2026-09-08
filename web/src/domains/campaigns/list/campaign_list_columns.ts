@@ -192,8 +192,8 @@ export const CAMPAIGN_LIST_COLUMN_MIN_WIDTH_PX: Record<CampaignListColumnId, num
 
 const CAMPAIGN_LIST_COLUMN_MAX_WIDTH_PX: Partial<Record<CampaignListColumnId, number>> = {
   select: CAMPAIGN_LIST_SELECTION_COLUMN_WIDTH_PX,
-  id: 148,
-  name: 320,
+  id: 120,
+  name: 480,
   status: CAMPAIGN_LIST_STATUS_COLUMN_WIDTH_PX,
   group: 220,
   owner: 220,
@@ -312,9 +312,6 @@ const NUMERIC_MIDDLE_COLUMNS = new Set<CampaignListMiddleColumnId>([
 ]);
 
 export function isCampaignListNumericColumn(id: CampaignListColumnId): boolean {
-  if (id === 'id') {
-    return true;
-  }
   return isCampaignListMiddleColumnId(id) && NUMERIC_MIDDLE_COLUMNS.has(id);
 }
 

@@ -61,7 +61,11 @@ export function IntegrationsAffiliatePresets({
       <IntegrationsNav />
 
       <DirectoryFilterForm layout="auto-fill" onSubmit={(event) => event.preventDefault()}>
-        <FilterField className="md:col-span-2" htmlFor="affiliate-preset-campaign-id" label="Campaign ID">
+        <FilterField
+          className="md:col-span-2"
+          htmlFor="affiliate-preset-campaign-id"
+          label="Campaign ID"
+        >
           <Input
             id="affiliate-preset-campaign-id"
             value={draftCampaignId}

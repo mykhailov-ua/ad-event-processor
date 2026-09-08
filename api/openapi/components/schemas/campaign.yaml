@@ -95,6 +95,10 @@ Campaign:
       format: int32
     dmr_enabled:
       type: boolean
+    redirect_compliance_mode:
+      type: string
+      enum: [strict, legacy_dmr]
+      description: strict uses 302 only; legacy_dmr allows meta-refresh DMR when dmr_enabled or dmr=1 on /click.
     cidr_block_enabled:
       type: boolean
     proxy_vpn_block_enabled:
@@ -194,7 +198,7 @@ Campaign:
 
 CampaignStatusTotals:
   type: object
-  required: [active, paused, archived, total]
+  required: [active, paused, archived, warnings, total]
   properties:
     active:
       type: integer
@@ -203,6 +207,9 @@ CampaignStatusTotals:
       type: integer
       format: int64
     archived:
+      type: integer
+      format: int64
+    warnings:
       type: integer
       format: int64
     total:
@@ -284,6 +291,10 @@ PatchCampaignRequest:
       description: Optional hosted lander for sandbox decoy shell (/lp/{id}/). When unset, derive from safe_page_url when it points at /lp/.
     dmr_enabled:
       type: boolean
+    redirect_compliance_mode:
+      type: string
+      enum: [strict, legacy_dmr]
+      description: strict uses 302 only; legacy_dmr allows meta-refresh DMR when dmr_enabled or dmr=1 on /click.
     cidr_block_enabled:
       type: boolean
     proxy_vpn_block_enabled:
@@ -2303,6 +2314,18 @@ CampaignIntegrationPanel:
       items:
         type: object
         additionalProperties: true
+    browser_pixel_script_url:
+      type: string
+      description: track.js script URL; uses /_aed/track.js on LANDER_PUBLIC_BASE_URL when configured.
+    browser_pixel_track_url:
+      type: string
+      description: POST /track endpoint for browser pixel snippet.
+    browser_pixel_snippet:
+      type: string
+      description: Copy-paste HTML with conversionEventId and trackEvent call.
+    browser_pixel_first_party:
+      type: boolean
+      description: True when script is served same-origin via lander /_aed/track.js proxy.
 
 MacroPreviewRequest:
   type: object

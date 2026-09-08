@@ -19,14 +19,14 @@ func AdminLongRouteTimeouts() map[string]time.Duration {
 
 // ManagementWriteTimeout is the http.Server WriteTimeout ceiling for the admin gateway.
 func ManagementWriteTimeout(defaultMs int, longRoutes map[string]time.Duration) time.Duration {
-	max := time.Duration(defaultMs) * time.Millisecond
-	if max <= 0 {
-		max = 10 * time.Second
+	maxTimeout := time.Duration(defaultMs) * time.Millisecond
+	if maxTimeout <= 0 {
+		maxTimeout = 10 * time.Second
 	}
 	for _, d := range longRoutes {
-		if d > max {
-			max = d
+		if d > maxTimeout {
+			maxTimeout = d
 		}
 	}
-	return max
+	return maxTimeout
 }

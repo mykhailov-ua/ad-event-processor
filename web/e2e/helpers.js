@@ -8,6 +8,30 @@ import { expect } from '@playwright/test';
 export const baseURL =
   process.env.ADMIN_E2E_BASE_URL || process.env.PLAYWRIGHT_BASE_URL || 'http://localhost:8188';
 
+export const trackerBaseURL =
+  process.env.ADMIN_E2E_TRACKER_URL || process.env.TRACKER_BASE_URL || 'http://127.0.0.1:8181';
+
+/**
+ * @returns {Promise<boolean>}
+ */
+export async function probeTrackerBaseUrl() {
+  const clickProbe = new URL('/click?type=click', trackerBaseURL).toString();
+  const controller = new AbortController();
+  const timeout = setTimeout(() => controller.abort(), 5000);
+  try {
+    const response = await fetch(clickProbe, {
+      method: 'GET',
+      redirect: 'manual',
+      signal: controller.signal,
+    });
+    return response.status >= 300 && response.status < 600;
+  } catch {
+    return false;
+  } finally {
+    clearTimeout(timeout);
+  }
+}
+
 const DEFAULT_EMAIL = 'admin@test.local';
 const DEFAULT_PASSWORD = 'Password123!';
 
@@ -27,6 +51,32 @@ export function getAdminCredentials() {
     process.env.ADMIN_BOOTSTRAP_PASSWORD ||
     DEFAULT_PASSWORD;
   return { email, password };
+}
+
+/**
+ * @param {import('@playwright/test').Page} page
+ * @param {string} email
+ * @param {string} password
+ */
+export async function loginWithCredentials(page, email, password) {
+  for (let attempt = 0; attempt < 2; attempt++) {
+    await page.goto('/login');
+    await page.getByLabel('Email').fill(email);
+    await page.getByLabel('Password').fill(password);
+    await page.getByRole('button', { name: 'Sign in' }).click();
+
+    const navigated = await page
+      .waitForURL((url) => !url.pathname.endsWith('/login'), { timeout: 15_000 })
+      .then(() => true)
+      .catch(() => false);
+    if (navigated) {
+      return;
+    }
+
+    if (attempt === 1) {
+      throw new Error('login failed: still on /login');
+    }
+  }
 }
 
 /**
@@ -223,6 +273,34 @@ export const OPS_SECTION_READS = [
 ];
 
 /**
+ * MB smoke-matrix primary GET RBAC audit (not full nav catalog).
+ * Keep in sync with internal/controlplane/rbac_smoke_route_audit_test.go.
+ */
+export const MEDIA_BUYER_SMOKE_PRIMARY_GET_AUDIT = [
+  { api: '/api/v1/customers', wantForbidden: false },
+  { api: '/api/v1/campaigns', wantForbidden: false },
+  { api: '/api/v1/billing/invoices', wantForbidden: false },
+  { api: '/api/v1/settings/platform', wantForbidden: true },
+  { api: '/api/v1/license/status', wantForbidden: false },
+  { api: '/api/v1/team/overview', wantForbidden: false },
+  { api: '/api/v1/audit', wantForbidden: true },
+  { api: '/api/v1/reports/catalog', wantForbidden: false },
+  { api: '/api/v1/ops/home', wantForbidden: true },
+  { api: '/api/v1/fraud/presets', wantForbidden: false },
+  { api: '/api/v1/ops/dlq/inbox', wantForbidden: true },
+  { api: '/api/v1/ops/blacklist', wantForbidden: true },
+  { api: '/api/v1/ops/incidents', wantForbidden: true },
+  { api: '/api/v1/ops/outbox', wantForbidden: true },
+  { api: '/api/v1/ops/shards', wantForbidden: true },
+  { api: '/api/v1/ops/ml-model', wantForbidden: true },
+  { api: '/api/v1/ops/domains/rotation', wantForbidden: true },
+  { api: '/api/v1/ops/recon', wantForbidden: true },
+  { api: '/api/v1/ops/consent/proofs', wantForbidden: true },
+  { api: '/api/v1/ops/rum', wantForbidden: true },
+  { api: '/api/v1/ops/dashboard/metrics', wantForbidden: true },
+];
+
+/**
  * @returns {string}
  */
 export function randomHex32() {
@@ -398,32 +476,8 @@ export async function gotoCampaignsLive(page) {
  */
 export async function loginAsAdmin(page) {
   const { email, password } = getAdminCredentials();
-
-  for (let attempt = 0; attempt < 2; attempt++) {
-    await page.goto('/login');
-    await page.getByLabel('Email').fill(email);
-    await page.getByLabel('Password').fill(password);
-    await page.getByRole('button', { name: 'Sign in' }).click();
-
-    const navigated = await page
-      .waitForURL((url) => !url.pathname.endsWith('/login'), { timeout: 15_000 })
-      .then(() => true)
-      .catch(() => false);
-    if (navigated) {
-      await mainNav(page).waitFor({ timeout: 15_000 });
-      return;
-    }
-
-    if (attempt === 1) {
-      const invalidCredentials = await page
-        .getByText('invalid credentials')
-        .isVisible()
-        .catch(() => false);
-      throw new Error(
-        invalidCredentials ? 'login failed: invalid credentials' : 'login failed: still on /login'
-      );
-    }
-  }
+  await loginWithCredentials(page, email, password);
+  await mainNav(page).waitFor({ timeout: 15_000 });
 }
 
 /**

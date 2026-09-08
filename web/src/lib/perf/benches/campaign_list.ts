@@ -41,8 +41,7 @@ export function benchCampaignListHotPath(): BenchResult[] {
           fixture100.metricsById[campaign.id],
           undefined,
           fixture100.customerNameById,
-          {},
-          false
+          {}
         );
       }
     })

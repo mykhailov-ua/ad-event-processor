@@ -56,7 +56,7 @@ export function SupportFeedbackForm({
           {meta.deployment_id ? (
             <div>
               <dt>Deployment</dt>
-              <dd className="font-mono text-xs text-foreground">{meta.deployment_id}</dd>
+              <dd className="text-xs text-foreground">{meta.deployment_id}</dd>
             </div>
           ) : null}
           {meta.binary_version ? (

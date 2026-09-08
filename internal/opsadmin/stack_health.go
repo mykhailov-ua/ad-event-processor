@@ -116,10 +116,8 @@ func ComputeStackHealthStatus(snap StackHealthSnapshot) string {
 		return "critical"
 	}
 
-	degraded := false
-	if snap.OutboxOldestPendingSeconds >= stackHealthOutboxDegradedSeconds {
-		degraded = true
-	}
+	degraded := snap.OutboxOldestPendingSeconds >= stackHealthOutboxDegradedSeconds
+
 	if snap.ClickHouseLagSeconds >= stackHealthClickHouseDegradedSeconds {
 		degraded = true
 	}

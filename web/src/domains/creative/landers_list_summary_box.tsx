@@ -21,9 +21,7 @@ export function LandersListSummaryBox({
     <SummaryBand className={className}>
       <p className="m-0 shrink-0 whitespace-nowrap text-xs leading-none text-muted-foreground">
         <span className={cn('font-bold', adminKpiAccentValueClass[1])}>{scopeLabel}</span>
-        {filtersActive && filteredTotal !== total ? (
-          <span>{` of ${total}`}</span>
-        ) : null}
+        {filtersActive && filteredTotal !== total ? <span>{` of ${total}`}</span> : null}
       </p>
     </SummaryBand>
   );

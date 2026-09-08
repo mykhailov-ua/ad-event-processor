@@ -1,4 +1,3 @@
-import { RefreshCw } from 'lucide-react';
 import { Link } from 'react-router-dom';
 import { toast } from 'sonner';
 
@@ -12,7 +11,10 @@ import { PageSkeleton } from '@/shell/page_skeleton';
 import { StubBanner } from '@/shell/stub_banner';
 import { DASHBOARD_ROLES, formatDashboardRoleLabel } from '@/api/dashboards_api';
 import type { DashboardRole } from '@/api/types';
-import { CampaignsListFilterSelect, CampaignsListSearchableFilterSelect } from '@/domains/campaigns/list/campaigns_list_filter_select';
+import {
+  CampaignsListFilterSelect,
+  CampaignsListSearchableFilterSelect,
+} from '@/domains/campaigns/list/campaigns_list_filter_select';
 import {
   BuyerDashboardToolbar,
   type BuyerDashboardCampaignOption,
@@ -30,7 +32,13 @@ import {
 import { DASHBOARD_BUYER_PAGE_DESCRIPTION } from '@/domains/dashboards/dashboard_preferences';
 import { opsStatusTone } from '@/domains/ops/ops_status';
 import { useBuyerDashboardPreferences } from '@/hooks/use_buyer_dashboard_preferences';
-import { DirectoryFilterForm, FilterField, FilterPanel, FILTER_PANEL_FLAT_CLASS } from '@/shell/filter_panel';
+import {
+  DirectoryFilterForm,
+  FilterField,
+  FilterPanel,
+  FILTER_PANEL_FLAT_CLASS,
+} from '@/shell/filter_panel';
+import { ListRefreshBand } from '@/shell/list_refresh_band';
 import { cn } from '@/lib/utils';
 
 // L3 dashboard shell: loading/error/stale-while-revalidate (EH-SI2).
@@ -62,6 +70,8 @@ export type RoleDashboardViewProps = {
   campaignOptions: BuyerDashboardCampaignOption[];
   payload: Record<string, unknown> | undefined;
   fetching: boolean;
+  dashboardRevalidating?: boolean;
+  dashboardLastUpdatedAt?: string | null;
   error: Error | undefined;
   hasSnapshot: boolean;
   customerRequired: boolean;
@@ -257,6 +267,8 @@ export function RoleDashboardView({
   campaignOptions,
   payload,
   fetching,
+  dashboardRevalidating = false,
+  dashboardLastUpdatedAt = null,
   error,
   hasSnapshot,
   customerRequired,
@@ -340,18 +352,14 @@ export function RoleDashboardView({
         )
       }
       headerActions={
-        <Button
-          aria-label="Refresh dashboard"
-          className="size-7 p-0"
+        <ListRefreshBand
+          ariaLabel="Refresh dashboard"
           disabled={customerRequired}
-          loading={fetching}
+          lastUpdatedAt={dashboardLastUpdatedAt}
+          loading={fetching || dashboardRevalidating}
+          onRefresh={onRefresh}
           title={customerRequired ? 'Select a customer' : 'Refresh dashboard'}
-          type="button"
-          variant="secondary"
-          onClick={onRefresh}
-        >
-          <RefreshCw aria-hidden className="h-4 w-4" />
-        </Button>
+        />
       }
       title={pageTitle}
       workspaceClassName={dashboardPageWorkspaceClass}

@@ -153,10 +153,29 @@ const NON_LINKABLE_PATHS = new Set([
   '/brand-creatives',
 ]);
 
+/** Listed in STATIC_PATH_LABELS for copy only; no matching SPA route. */
+const UNLINKABLE_CRUMB_PATHS = new Set([
+  '/forecast',
+  '/margin-guard',
+  '/publisher',
+  '/smart-alerts',
+  '/traffic-optimizer',
+]);
+
+const CRUMB_HREF_ALIASES: Record<string, string> = {
+  '/dashboards': '/dashboards/buyer',
+};
+
 for (const item of NAV_ITEMS) {
   STATIC_PATH_LABELS[item.path] = item.label;
 }
 STATIC_PATH_LABELS['/docs'] = 'Documentation';
+
+const LINKABLE_CRUMB_PATHS = new Set(
+  Object.keys(STATIC_PATH_LABELS).filter(
+    (path) => !NON_LINKABLE_PATHS.has(path) && !UNLINKABLE_CRUMB_PATHS.has(path)
+  )
+);
 
 type CrumbStep = {
   segment: string;
@@ -253,6 +272,15 @@ function resolveCrumbHref(steps: CrumbStep[], stepIndex: number): string | undef
   }
 
   if (NON_LINKABLE_PATHS.has(step.path)) {
+    return undefined;
+  }
+
+  const alias = CRUMB_HREF_ALIASES[step.path];
+  if (alias) {
+    return alias;
+  }
+
+  if (!LINKABLE_CRUMB_PATHS.has(step.path)) {
     return undefined;
   }
 

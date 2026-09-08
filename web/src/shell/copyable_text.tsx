@@ -18,15 +18,12 @@ export function CopyableText({ className, label, mono = false, title, value }: C
   return (
     <span className={cn('inline-flex min-w-0 max-w-full items-center gap-1.5', className)}>
       <span
-        className={cn(
-          'min-w-0 select-text whitespace-nowrap',
-          mono && 'font-mono text-xs tabular-nums'
-        )}
+        className={cn('min-w-0 select-text whitespace-nowrap', mono && 'text-xs')}
         title={title ?? trimmed}
       >
         {trimmed}
       </span>
-      <CopyButton className="size-6 shrink-0" label={label ?? 'Value'} value={trimmed} />
+      <CopyButton label={label ?? 'Value'} value={trimmed} />
     </span>
   );
 }

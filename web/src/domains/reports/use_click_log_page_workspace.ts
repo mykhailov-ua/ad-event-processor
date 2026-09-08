@@ -56,7 +56,12 @@ export function useClickLogPageWorkspace() {
 
   const shouldFetch = Boolean(appliedCustomerId.trim());
 
-  const { data, error, fetching, revalidating: listRevalidating } = useResource(
+  const {
+    data,
+    error,
+    fetching,
+    revalidating: listRevalidating,
+  } = useResource(
     (signal) => {
       if (!shouldFetch) {
         return Promise.resolve(undefined);

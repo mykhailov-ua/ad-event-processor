@@ -115,7 +115,7 @@ function ChartTooltipContent({
                 />
                 {metric.label}
               </span>
-              <span className="font-numeric text-foreground">{formatted}</span>
+              <span className="text-foreground">{formatted}</span>
             </div>
           );
         })}
@@ -229,7 +229,7 @@ export const DashboardMultiAxisChartCanvas = memo(function DashboardMultiAxisCha
               tick={{
                 fill: chartAxisLabelColor,
                 fontSize: 10,
-                fontFamily: 'var(--font-numeric)',
+                fontFamily: 'var(--font-sans)',
                 fontWeight: 200,
               }}
               tickLine={false}
@@ -248,7 +248,7 @@ export const DashboardMultiAxisChartCanvas = memo(function DashboardMultiAxisCha
               tick={{
                 fill: chartAxisLabelColor,
                 fontSize: 10,
-                fontFamily: 'var(--font-numeric)',
+                fontFamily: 'var(--font-sans)',
                 fontWeight: 200,
               }}
               tickLine={false}

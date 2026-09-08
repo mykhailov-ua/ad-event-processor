@@ -393,7 +393,8 @@ function portfolioTotalsFromPortfolio(portfolio: BuyerPortfolio): AggregateTotal
     Math.round(clicks * 0.86)
   );
   const roi_pct =
-    kpis?.roi_pct ?? (cost_micro > 0 ? (profit_micro / cost_micro) * 100 : seriesTotals?.roi_pct ?? 0);
+    kpis?.roi_pct ??
+    (cost_micro > 0 ? (profit_micro / cost_micro) * 100 : (seriesTotals?.roi_pct ?? 0));
   return {
     clicks,
     unique_clicks,

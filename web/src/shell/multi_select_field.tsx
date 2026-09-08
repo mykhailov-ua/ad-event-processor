@@ -96,9 +96,7 @@ export function MultiSelectField<T extends string>({
                       checked={selected}
                       onCheckedChange={(next) => toggleOption(option.id, next === true)}
                     />
-                    <span className="font-medium text-muted-foreground">
-                      {option.label}
-                    </span>
+                    <span className="font-medium text-muted-foreground">{option.label}</span>
                   </label>
                 </li>
               );

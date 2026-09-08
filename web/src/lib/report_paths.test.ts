@@ -1,10 +1,19 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
 
-import { buildReportJobsHref, reportHubPath, reportKeyToApiPath, resolveReportCatalogKey } from './report_paths.ts';
+import {
+  buildReportJobsHref,
+  reportHubPath,
+  reportKeyToApiPath,
+  resolveReportCatalogKey,
+  typedReportRedirectPath,
+} from './report_paths.ts';
 
 test('reportKeyToApiPath maps nested ML report keys', () => {
-  assert.equal(reportKeyToApiPath('ml/score-distribution'), '/api/v1/reports/ml/score-distribution');
+  assert.equal(
+    reportKeyToApiPath('ml/score-distribution'),
+    '/api/v1/reports/ml/score-distribution'
+  );
   assert.equal(reportKeyToApiPath('ml/feature-spikes'), '/api/v1/reports/ml/feature-spikes');
   assert.equal(reportKeyToApiPath('ml/shadow-delta'), '/api/v1/reports/ml/shadow-delta');
 });
@@ -36,11 +45,24 @@ test('buildReportJobsHref pre-fills query params', () => {
 
 test('resolveReportCatalogKey maps clicks alias', () => {
   assert.equal(resolveReportCatalogKey('clicks'), 'click-log');
+  assert.equal(
+    resolveReportCatalogKey('ghost-impression-funnel'),
+    'silent-reject-impression-funnel'
+  );
+});
+
+test('typedReportRedirectPath resolves legacy ghost funnel alias', () => {
+  assert.equal(
+    typedReportRedirectPath('ghost-impression-funnel'),
+    '/reports/silent-reject-impression-funnel'
+  );
 });
 
 test('reportHubPath maps telegram and slash keys to SPA routes', () => {
   assert.equal(reportHubPath('telegram'), '/reports/telegram');
   assert.equal(reportHubPath('telegram/summary'), '/reports/telegram/summary');
   assert.equal(reportHubPath('click-log'), '/reports/click-log');
-  assert.equal(reportHubPath('ml/score-distribution'), '/reports/ml%2Fscore-distribution');
+  assert.equal(reportHubPath('ml/score-distribution'), '/reports/ml/score-distribution');
+  assert.equal(reportHubPath('campaign-stats'), '/reports/campaign-stats');
+  assert.equal(reportHubPath('fraud-evidence-pack-bulk'), '/reports/fraud-evidence-pack-bulk');
 });

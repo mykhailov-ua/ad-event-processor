@@ -95,7 +95,13 @@ export function useDashboardPage() {
   const shouldFetch = Boolean(appliedCustomerId.trim());
   const customerRequired = !shouldFetch;
 
-  const { data, error, fetching, revalidating: dashboardRevalidating } = useResource(
+  const {
+    data,
+    error,
+    fetching,
+    revalidating: dashboardRevalidating,
+    updatedAt: dashboardLastUpdatedAt,
+  } = useResource(
     (signal) => {
       if (!shouldFetch) {
         return Promise.resolve(undefined);
@@ -146,7 +152,8 @@ export function useDashboardPage() {
     [draftRole, navigate, replaceSearchParams, roleParam, startFilterTransition]
   );
 
-  const onRefresh = useCoalescedBumpRefresh(bumpRefresh, fetching);
+  const dashboardBusy = fetching || dashboardRevalidating || filterQueryPending;
+  const onRefresh = useCoalescedBumpRefresh(bumpRefresh, dashboardBusy);
 
   const onDraftRangeChange = useCallback(
     (from: string, to: string) => {
@@ -330,6 +337,7 @@ export function useDashboardPage() {
     payload: data as Record<string, unknown> | undefined,
     fetching,
     dashboardRevalidating: dashboardRevalidating || filterQueryPending,
+    dashboardLastUpdatedAt,
     error: licenseGated ? undefined : error,
     hasSnapshot: !shouldFetch || data != null || licenseGated,
     customerRequired,

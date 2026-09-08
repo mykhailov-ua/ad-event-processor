@@ -9,6 +9,6 @@ test('percentRate returns null for empty denominators', () => {
 });
 
 test('rateBenchmarkToneClass warns below 1%', () => {
-  assert.equal(rateBenchmarkToneClass(0.5), 'tabular-nums text-admin-warn');
+  assert.equal(rateBenchmarkToneClass(0.5), 'text-admin-warn');
   assert.equal(rateBenchmarkToneClass(3.2), undefined);
 });

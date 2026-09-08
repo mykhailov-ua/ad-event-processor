@@ -4,6 +4,8 @@ import (
 	"strings"
 	"testing"
 
+	"ad-event-processor/internal/domain"
+
 	"github.com/stretchr/testify/require"
 )
 
@@ -16,6 +18,21 @@ func TestSafePageStubBody_holdout_noCommercialURL(t *testing.T) {
 	require.Contains(t, html, "/static/track-telemetry.js")
 	require.Contains(t, html, "/static/antifraud-telemetry.js")
 	require.Contains(t, html, "/track/verify")
+}
+
+func TestSafePageStubBody_strictAttestation_usesStealthBundle_holdout(t *testing.T) {
+	camp := &domain.Campaign{
+		SafePageEnabled:    true,
+		AttestationEnabled: true,
+		AttestationMode:    domain.AttestationModeStrict,
+	}
+	body := AppendSafePageStubBodyForCampaign(nil, camp)
+	html := string(body)
+	require.Contains(t, html, "/static/telemetry-stealth-poc.js")
+	require.NotContains(t, html, "/static/antifraud-telemetry.js")
+	require.NotContains(t, html, "/track/verify")
+	require.Contains(t, html, "aedSensBootstrap")
+	require.NotContains(t, html, "WebGLRenderingContext")
 }
 
 func TestSafePageHydrator_holdout_serverAuthoritativeUnlock(t *testing.T) {

@@ -150,9 +150,7 @@ export function AppShell() {
                     id="main-content"
                     tabIndex={-1}
                   >
-                    <div
-                      className="ui-scrollbar min-h-0 min-w-0 flex-1 overflow-x-hidden overflow-y-auto"
-                    >
+                    <div className="ui-scrollbar min-h-0 min-w-0 flex-1 overflow-x-hidden overflow-y-auto">
                       <PageCanvasInset>
                         <AppErrorBoundary layout="embedded">
                           <RoutePermissionGuard>

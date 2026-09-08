@@ -2,6 +2,7 @@ package reports
 
 import (
 	"context"
+	"errors"
 	"net/http"
 	"time"
 
@@ -42,19 +43,78 @@ func (h *ReportsHTTPHandlers) registerExtendedReports(mux *http.ServeMux) {
 }
 
 func (h *ReportsHTTPHandlers) getSpendVelocityReport(w http.ResponseWriter, r *http.Request) {
-	h.writeClickHouseReportRows(w, r, querySpendVelocityRows, nil)
+	fetch, ok := h.fetchClickHouseReportRows(w, r, querySpendVelocityRows)
+	if !ok {
+		return
+	}
+	out := spendVelocityRowsFromMaps(fetch.Rows)
+	if parseComparePrevious(r) {
+		prevRows, perr := h.loadClickHouseReportRowsPrevious(r, querySpendVelocityRows)
+		if perr != nil {
+			h.writeLoadedReportError(w, perr)
+			return
+		}
+		attachSpendVelocityCompareDeltas(out, spendVelocityRowsFromMaps(prevRows))
+	}
+	httpresponse.JSON(w, http.StatusOK, SpendVelocityReportResponse{
+		Rows:       out,
+		Freshness:  fetch.Freshness,
+		NextCursor: fetch.NextCursor,
+	})
 }
 
 func (h *ReportsHTTPHandlers) getTrueROIReport(w http.ResponseWriter, r *http.Request) {
-	h.writeClickHouseReportRows(w, r, queryTrueROIRows, []string{"campaign_id"})
+	fetch, ok := h.fetchClickHouseReportRows(w, r, queryTrueROIRows)
+	if !ok {
+		return
+	}
+	out := trueROIRowsFromMaps(fetch.Rows)
+	if parseComparePrevious(r) {
+		prevRows, perr := h.loadClickHouseReportRowsPrevious(r, queryTrueROIRows)
+		if perr != nil {
+			h.writeLoadedReportError(w, perr)
+			return
+		}
+		attachTrueROICompareDeltas(out, trueROIRowsFromMaps(prevRows))
+	}
+	httpresponse.JSON(w, http.StatusOK, TrueROIReportResponse{
+		Rows:       out,
+		Freshness:  fetch.Freshness,
+		NextCursor: fetch.NextCursor,
+	})
 }
 
 func (h *ReportsHTTPHandlers) getDaypartHeatmapReport(w http.ResponseWriter, r *http.Request) {
-	h.writeClickHouseReportRows(w, r, queryDaypartHeatmapRows, []string{"hour"})
+	fetch, ok := h.fetchClickHouseReportRows(w, r, queryDaypartHeatmapRows)
+	if !ok {
+		return
+	}
+	out := daypartHeatmapRowsFromMaps(fetch.Rows)
+	if parseComparePrevious(r) {
+		prevRows, perr := h.loadClickHouseReportRowsPrevious(r, queryDaypartHeatmapRows)
+		if perr != nil {
+			h.writeLoadedReportError(w, perr)
+			return
+		}
+		attachDaypartHeatmapCompareDeltas(out, daypartHeatmapRowsFromMaps(prevRows))
+	}
+	httpresponse.JSON(w, http.StatusOK, DaypartHeatmapReportResponse{
+		Rows:       out,
+		Freshness:  fetch.Freshness,
+		NextCursor: fetch.NextCursor,
+	})
 }
 
 func (h *ReportsHTTPHandlers) getCampaignGeoDeviceReport(w http.ResponseWriter, r *http.Request) {
-	h.writeClickHouseReportRows(w, r, queryGeoDeviceRows, nil)
+	fetch, ok := h.fetchClickHouseReportRows(w, r, queryGeoDeviceRows)
+	if !ok {
+		return
+	}
+	httpresponse.JSON(w, http.StatusOK, CampaignGeoDeviceReportResponse{
+		Rows:       campaignGeoDeviceRowsFromMaps(fetch.Rows),
+		Freshness:  fetch.Freshness,
+		NextCursor: fetch.NextCursor,
+	})
 }
 
 func (h *ReportsHTTPHandlers) getSourceQualityReport(w http.ResponseWriter, r *http.Request) {
@@ -166,7 +226,15 @@ func (h *ReportsHTTPHandlers) getSourceQualityReport(w http.ResponseWriter, r *h
 }
 
 func (h *ReportsHTTPHandlers) getDiscrepancyBuySellReport(w http.ResponseWriter, r *http.Request) {
-	h.writeClickHouseReportRows(w, r, queryDiscrepancyRows, nil)
+	fetch, ok := h.fetchClickHouseReportRows(w, r, queryDiscrepancyRows)
+	if !ok {
+		return
+	}
+	httpresponse.JSON(w, http.StatusOK, DiscrepancyBuySellReportResponse{
+		Rows:       discrepancyBuySellRowsFromMaps(fetch.Rows),
+		Freshness:  fetch.Freshness,
+		NextCursor: fetch.NextCursor,
+	})
 }
 
 func (h *ReportsHTTPHandlers) getCampaignOverviewReport(w http.ResponseWriter, r *http.Request) {
@@ -183,20 +251,10 @@ func (h *ReportsHTTPHandlers) getCampaignOverviewReport(w http.ResponseWriter, r
 		h.writeServiceError(w, err)
 		return
 	}
-	rows := make([]map[string]any, 0, len(portfolio.Campaigns))
-	for _, c := range portfolio.Campaigns {
-		rows = append(rows, map[string]any{
-			"campaign_id":      c.ID,
-			"name":             c.Name,
-			"status":           c.Status,
-			"impressions_7d":   c.Impressions7d,
-			"clicks_7d":        c.Clicks7d,
-			"utilization_pct":  c.UtilizationPct,
-			"pacing_drift_pct": c.PacingDriftPct,
-			"overspend_risk":   c.OverspendRisk,
-		})
-	}
-	httpresponse.JSON(w, http.StatusOK, NewReportRowsResponse(rows, h.reportFreshness(r.Context()), ""))
+	httpresponse.JSON(w, http.StatusOK, CampaignOverviewReportResponse{
+		Rows:      campaignOverviewRowsFromPortfolio(portfolio.Campaigns),
+		Freshness: h.reportFreshness(r.Context()),
+	})
 }
 
 func (h *ReportsHTTPHandlers) getCustomerPortfolioReport(w http.ResponseWriter, r *http.Request) {
@@ -213,89 +271,125 @@ func (h *ReportsHTTPHandlers) getCustomerPortfolioReport(w http.ResponseWriter, 
 		h.writeServiceError(w, err)
 		return
 	}
-	rows := []map[string]any{
-		{
-			"active":           portfolio.Active,
-			"paused":           portfolio.Paused,
-			"archived":         portfolio.Archived,
-			"impressions_7d":   portfolio.Impressions7d,
-			"clicks_7d":        portfolio.Clicks7d,
-			"overspend_count":  portfolio.OverspendCount,
-			"attention_count":  len(portfolio.Attention),
-			"campaigns_sample": len(portfolio.Campaigns),
-		},
-	}
-	for _, c := range portfolio.Campaigns {
-		rows = append(rows, map[string]any{
-			"campaign_id":      c.ID,
-			"name":             c.Name,
-			"status":           c.Status,
-			"impressions_7d":   c.Impressions7d,
-			"clicks_7d":        c.Clicks7d,
-			"utilization_pct":  c.UtilizationPct,
-			"pacing_drift_pct": c.PacingDriftPct,
-			"overspend_risk":   c.OverspendRisk,
-			"row_type":         "campaign",
-		})
-	}
-	httpresponse.JSON(w, http.StatusOK, NewReportRowsResponse(rows, h.reportFreshness(r.Context()), ""))
+	httpresponse.JSON(w, http.StatusOK, CustomerPortfolioReportResponse{
+		Summary:   customerPortfolioSummaryFromDTO(portfolio),
+		Campaigns: customerPortfolioCampaignRowsFromDTO(portfolio.Campaigns),
+		Freshness: h.reportFreshness(r.Context()),
+	})
 }
 
 type clickhouseReportRowsFunc func(ctx context.Context, clickhouseQuery *database.ClickHouseQuery, campaignIDs []uuid.UUID, from, to time.Time, limit, offset int) ([]map[string]any, int64, error)
 
-func (h *ReportsHTTPHandlers) writeClickHouseReportRows(
-	w http.ResponseWriter,
+type clickhouseReportFetch struct {
+	Rows       []map[string]any
+	NextCursor string
+	Freshness  DataFreshnessDTO
+}
+
+func (h *ReportsHTTPHandlers) loadClickHouseReportRows(
 	r *http.Request,
 	queryFn clickhouseReportRowsFunc,
-	compareKeyFields []string,
-) {
-	customerID, ok := h.resolveReportCustomerID(w, r)
-	if !ok {
-		return
+) (clickhouseReportFetch, error) {
+	customerID, err := h.parseReportCustomerID(r)
+	if err != nil {
+		return clickhouseReportFetch{}, err
 	}
 	if h.ClickHouseQuery == nil {
-		httpresponse.Error(w, http.StatusServiceUnavailable, "CLICKHOUSE_UNAVAILABLE", "clickhouse not configured")
-		return
+		return clickhouseReportFetch{}, errClickHouseUnavailable
 	}
 	from, to, err := ParseReportRange(r)
 	if err != nil {
-		h.writeServiceError(w, err)
-		return
+		return clickhouseReportFetch{}, err
 	}
 	page, err := coldpath.ParseCursorPagination(r, 50, 1000)
 	if err != nil {
-		httpresponse.Error(w, http.StatusBadRequest, "BAD_REQUEST", "invalid cursor")
-		return
+		return clickhouseReportFetch{}, errInvalidReportCursor
 	}
 	limit, offset := page.Limit, page.Offset
 	campaignIDs, err := listCustomerCampaignIDs(r.Context(), h.Pool, customerID)
 	if err != nil {
-		h.writeServiceError(w, err)
-		return
+		return clickhouseReportFetch{}, err
 	}
+	freshness := h.reportFreshness(r.Context())
 	if len(campaignIDs) == 0 {
-		httpresponse.JSON(w, http.StatusOK, NewReportRowsResponse(nil, h.reportFreshness(r.Context()), ""))
-		return
+		return clickhouseReportFetch{Freshness: freshness}, nil
 	}
 	clickhouseCtx, cancel := context.WithTimeout(r.Context(), reportClickHouseQueryTimeout)
 	defer cancel()
 	rows, total, err := queryFn(clickhouseCtx, h.ClickHouseQuery, campaignIDs, from, to, limit, offset)
 	if err != nil {
-		h.writeServiceError(w, err)
-		return
-	}
-	if parseComparePrevious(r) && len(compareKeyFields) > 0 {
-		prevFrom, prevTo := previousReportRange(from, to)
-		prevRows, _, perr := queryFn(clickhouseCtx, h.ClickHouseQuery, campaignIDs, prevFrom, prevTo, limit, offset)
-		if perr != nil {
-			h.writeServiceError(w, perr)
-			return
-		}
-		attachMapCompareDeltas(rows, prevRows, compareKeyFields...)
+		return clickhouseReportFetch{}, err
 	}
 	var nextCursor string
 	if int64(offset)+int64(len(rows)) < total {
 		nextCursor = coldpath.EncodeCursor(offset + limit)
 	}
-	httpresponse.JSON(w, http.StatusOK, NewReportRowsResponse(rows, h.reportFreshness(r.Context()), nextCursor))
+	return clickhouseReportFetch{
+		Rows:       rows,
+		NextCursor: nextCursor,
+		Freshness:  freshness,
+	}, nil
+}
+
+func (h *ReportsHTTPHandlers) loadClickHouseReportRowsPrevious(
+	r *http.Request,
+	queryFn clickhouseReportRowsFunc,
+) ([]map[string]any, error) {
+	customerID, err := h.parseReportCustomerID(r)
+	if err != nil {
+		return nil, err
+	}
+	if h.ClickHouseQuery == nil {
+		return nil, errClickHouseUnavailable
+	}
+	from, to, err := ParseReportRange(r)
+	if err != nil {
+		return nil, err
+	}
+	prevFrom, prevTo := previousReportRange(from, to)
+	page, err := coldpath.ParseCursorPagination(r, 50, 1000)
+	if err != nil {
+		return nil, errInvalidReportCursor
+	}
+	limit, offset := page.Limit, page.Offset
+	campaignIDs, err := listCustomerCampaignIDs(r.Context(), h.Pool, customerID)
+	if err != nil {
+		return nil, err
+	}
+	if len(campaignIDs) == 0 {
+		return nil, nil
+	}
+	clickhouseCtx, cancel := context.WithTimeout(r.Context(), reportClickHouseQueryTimeout)
+	defer cancel()
+	rows, _, err := queryFn(clickhouseCtx, h.ClickHouseQuery, campaignIDs, prevFrom, prevTo, limit, offset)
+	return rows, err
+}
+
+func (h *ReportsHTTPHandlers) fetchClickHouseReportRows(
+	w http.ResponseWriter,
+	r *http.Request,
+	queryFn clickhouseReportRowsFunc,
+) (*clickhouseReportFetch, bool) {
+	if _, ok := h.resolveReportCustomerID(w, r); !ok {
+		return nil, false
+	}
+	fetch, err := h.loadClickHouseReportRows(r, queryFn)
+	if err != nil {
+		h.writeLoadedReportError(w, err)
+		return nil, false
+	}
+	return &fetch, true
+}
+
+func (h *ReportsHTTPHandlers) writeLoadedReportError(w http.ResponseWriter, err error) {
+	switch {
+	case errors.Is(err, errClickHouseUnavailable):
+		httpresponse.Error(w, http.StatusServiceUnavailable, "CLICKHOUSE_UNAVAILABLE", "clickhouse not configured")
+	case errors.Is(err, errInvalidReportCursor):
+		httpresponse.Error(w, http.StatusBadRequest, "BAD_REQUEST", "invalid cursor")
+	case errors.Is(err, errInvalidReportCustomerID), errors.Is(err, errReportCustomerIDRequired):
+		httpresponse.Error(w, http.StatusBadRequest, "BAD_REQUEST", err.Error())
+	default:
+		h.writeServiceError(w, err)
+	}
 }

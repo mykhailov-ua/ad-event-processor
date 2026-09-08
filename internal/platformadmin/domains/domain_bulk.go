@@ -159,7 +159,7 @@ func (dh *DomainHealth) startBulkJob(ctx context.Context, spec domainBulkJobSpec
 	}
 	jobs[jobID] = rec
 
-	dh.host.StartBackgroundWorker(func() {
+	dh.host.StartBackgroundWorker(func() { //nolint:contextcheck // bulk domain job outlives HTTP request
 		dh.runBulkJob(context.Background(), jobID)
 	})
 	return rec.status, nil
@@ -216,6 +216,7 @@ func (dh *DomainHealth) runBulkJob(ctx context.Context, jobID string) {
 			}
 		case "ssl":
 			result, err := dh.SetupDomainSSL(ctx, host)
+			//nolint:gocritic // ifElseChain: ssl setup status mapping
 			if err != nil {
 				row.Error = err.Error()
 			} else if result.Status == "failed" {

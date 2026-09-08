@@ -20,6 +20,7 @@ const campaignListMetricsMaxRange = 90 * 24 * time.Hour
 type ListCampaignsFilter struct {
 	CustomerID     uuid.UUID
 	Status         string
+	WarningsOnly   bool
 	OwnerUserID    pgtype.UUID
 	TargetCountry  string
 	BudgetMinMicro pgtype.Int8

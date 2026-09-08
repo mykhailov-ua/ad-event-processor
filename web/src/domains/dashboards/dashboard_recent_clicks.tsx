@@ -4,6 +4,10 @@ import { useMemo } from 'react';
 import { EmptyState } from '@/shell/empty_state';
 import type { ClickLogEvent } from '@/domains/dashboards/buyer_dashboard_types';
 import { DashboardCard } from '@/domains/dashboards/dashboard_card';
+import {
+  dashboardTableScrollHostBoundedClass,
+  dashboardTableScrollHostClass,
+} from '@/domains/dashboards/dashboard_classes';
 import { DashboardRecentClicksListTable } from '@/domains/dashboards/dashboard_recent_clicks_list_table';
 import type { DashboardRecentClickColumnId } from '@/domains/dashboards/dashboard_preferences';
 import { DirectoryTablePagination } from '@/shell/directory_data_table/directory_table_pagination';
@@ -11,6 +15,7 @@ import {
   sliceDirectoryTableRows,
   useDirectoryTablePagination,
 } from '@/shell/directory_data_table/use_directory_table_pagination';
+import { cn } from '@/lib/utils';
 
 export type DashboardRecentClicksProps = {
   events: ClickLogEvent[];
@@ -18,6 +23,7 @@ export type DashboardRecentClicksProps = {
   viewAllHref?: string;
   pageSize?: number;
   fillContainer?: boolean;
+  fillHeight?: boolean;
 };
 
 export function DashboardRecentClicks({
@@ -25,7 +31,8 @@ export function DashboardRecentClicks({
   columns,
   viewAllHref,
   pageSize = 10,
-  fillContainer = false,
+  fillContainer = true,
+  fillHeight = false,
 }: DashboardRecentClicksProps) {
   const pagination = useDirectoryTablePagination(events.length, pageSize);
   const pageEvents = useMemo(
@@ -33,20 +40,26 @@ export function DashboardRecentClicks({
     [events, pagination.end, pagination.start]
   );
 
-  const content =
+  const tableBody =
     events.length === 0 ? (
       <EmptyState
-        className="border-0 bg-transparent py-8 shadow-none"
+        className={cn('border-0 bg-transparent py-8 shadow-none', fillHeight && 'min-h-0 flex-1')}
         description="Clicks will appear here when traffic is recorded for the selected period."
         variant="no-results"
       />
     ) : (
       <>
-        <DashboardRecentClicksListTable
-          columns={columns}
-          events={pageEvents}
-          fillContainer={fillContainer}
-        />
+        <div
+          className={
+            fillHeight ? dashboardTableScrollHostClass : dashboardTableScrollHostBoundedClass
+          }
+        >
+          <DashboardRecentClicksListTable
+            columns={columns}
+            events={pageEvents}
+            fillContainer={fillContainer}
+          />
+        </div>
         <DirectoryTablePagination
           end={pagination.end}
           page={pagination.page}
@@ -59,10 +72,17 @@ export function DashboardRecentClicks({
       </>
     );
 
+  const content = fillHeight ? (
+    <div className="flex min-h-0 flex-1 flex-col">{tableBody}</div>
+  ) : (
+    tableBody
+  );
+
   return (
     <DashboardCard
       bodyClassName="p-0"
       className="min-w-0"
+      fillHeight={fillHeight}
       meta={
         viewAllHref ? (
           <Link className="text-sm text-primary hover:underline" to={viewAllHref}>

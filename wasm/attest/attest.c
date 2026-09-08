@@ -1,4 +1,5 @@
 #include "abi.h"
+#include "polymorph.h"
 #include "sha256.h"
 #include <stddef.h>
 
@@ -31,6 +32,12 @@ static int pow_hash_ok(const uint8_t *salt, uint32_t nonce, uint32_t difficulty)
 }
 
 __attribute__((export_name("aad_abi_version"))) uint32_t aad_abi_version(void) { return AAD_ABI_VERSION; }
+
+__attribute__((export_name("aad_poly_seed"))) uint32_t aad_poly_seed(void) { return AAD_POLY_SEED; }
+
+__attribute__((export_name("aad_poly_tag"))) uint32_t aad_poly_tag(void) {
+	return (uint32_t)aad_poly_junk[0] | ((uint32_t)aad_poly_junk[1] << 8);
+}
 
 __attribute__((export_name("aad_data_off"))) uint32_t aad_data_off(void) {
     return (uint32_t)(uintptr_t)aad_mem;
@@ -74,7 +81,7 @@ uint32_t aad_float_noise_ieee(uint32_t out_off) {
 }
 
 __attribute__((export_name("aad_sha256_one_shot")))
-uint32_t aad_sha256_one_shot_export(uint32_t msg_off, uint32_t msg_len, uint32_t out_off) {
+uint32_t aad_sha256_one_shot(uint32_t msg_off, uint32_t msg_len, uint32_t out_off) {
     if (msg_len > AAD_MEM_SIZE || out_off + AAD_HASH_LEN > AAD_MEM_SIZE) {
         return 1u;
     }
@@ -89,10 +96,10 @@ __attribute__((export_name("aad_bench_mul")))
 uint32_t aad_bench_mul(uint32_t rounds) {
     uint32_t i;
     uint32_t acc = 0x9e3779b9u;
-    if (rounds > 2000000u) {
-        rounds = 2000000u;
-    }
-    for (i = 0; i < rounds; ++i) {
+	if (rounds > 2000000u) {
+		rounds = 2000000u;
+	}
+	for (i = 0; i < rounds; ++i) {
         acc = (acc * 1664525u) + 1013904223u;
     }
     return acc;

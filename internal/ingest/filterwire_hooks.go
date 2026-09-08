@@ -50,6 +50,9 @@ func recordHTTPFilterReject(kind filter.FilterRejectKind, evt *domain.Event) {
 
 func (h *AdsPacketHandler) recordTrackReject(ctx *ConnContext, evt *domain.Event, kind filter.FilterRejectKind) {
 	h.trackMetrics.recordFilterReject(kind)
+	if kind == filter.FilterRejectTimeout && evt != nil && evt.Type == "click" {
+		metrics.ClickIngressLatencyBudgetExceededTotal.WithLabelValues("filter").Inc()
+	}
 	if ctx == nil || evt == nil {
 		return
 	}

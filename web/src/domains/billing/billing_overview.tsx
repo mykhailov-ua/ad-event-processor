@@ -91,10 +91,7 @@ export function BillingOverview({
   }
 
   return (
-    <PageChrome
-      title="Billing"
-      controlPanel={<BillingNav />}
-    >
+    <PageChrome title="Billing" controlPanel={<BillingNav />}>
       <BillingSummarySection
         summary={summary}
         fetching={summaryFetching}

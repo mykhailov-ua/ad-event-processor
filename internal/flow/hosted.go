@@ -67,6 +67,10 @@ func UploadHostedLanderZip(ctx context.Context, host HostedLanderHost, landerID 
 	if err != nil {
 		return LanderDTO{}, err
 	}
+	if err := lintHostedVersion(ctx, host, landerID, nextVersion); err != nil {
+		_ = os.RemoveAll(st.VersionDir(landerID, nextVersion))
+		return LanderDTO{}, err
+	}
 
 	tx2, err := pool.Begin(ctx)
 	if err != nil {

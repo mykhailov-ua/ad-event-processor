@@ -47,7 +47,7 @@ function MetricsPopoverBody({
     <div className="grid">
       <header className="grid gap-3 border-b border-border p-4">
         <div className="grid gap-1">
-          <p className="whitespace-nowrap text-sm tabular-nums leading-snug">{campaign.name}</p>
+          <p className="whitespace-nowrap text-sm leading-snug">{campaign.name}</p>
           <p className="text-xs text-muted-foreground">Campaign metrics</p>
         </div>
         <BudgetUsedSummary campaign={campaign} className="max-w-none" />
@@ -144,7 +144,7 @@ function formatRemaining(campaign: CampaignWithMoneyDisplay): string {
   if (!Number.isFinite(budget) || !Number.isFinite(spend)) {
     return '-';
   }
-  const remaining = Math.max(0, budget - spend);
+  const remaining = budget - spend;
   return displayMoneyDecimal(remaining.toFixed(2)) || '-';
 }
 

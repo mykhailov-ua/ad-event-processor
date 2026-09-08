@@ -43,47 +43,51 @@ export function CommandPalette({ open: controlledOpen, onOpenChange }: CommandPa
         value={query}
         onValueChange={setQuery}
       />
-      <div className="grid gap-2 px-3 pb-3">
-        {degraded ? (
-          <p className="m-0 text-xs text-muted-foreground">Search results may be incomplete.</p>
-        ) : null}
-        {paletteForbidden ? (
+      {degraded ? (
+        <p className="m-0 border-b border-border px-3 py-2 text-xs text-muted-foreground">
+          Search results may be incomplete.
+        </p>
+      ) : null}
+      {paletteForbidden ? (
+        <div className="px-3 py-3">
           <ErrorBlock title="Command palette forbidden" message={activeError?.message ?? ''} />
-        ) : activeError && !paletteForbidden ? (
+        </div>
+      ) : activeError && !paletteForbidden ? (
+        <div className="px-3 py-3">
           <ErrorBlock title="Command palette failed" message={activeError.message} />
-        ) : (
-          <CommandList aria-label="Command palette results">
-            <CommandEmpty>
-              {activeLoading ? 'Loading...' : isSearching ? 'No matches.' : 'No entries.'}
-            </CommandEmpty>
-            {isSearching ? (
-              <CommandGroup heading="Results">
-                {searchItems.map((item) => (
-                  <CommandPaletteRow key={item.id} item={item} onSelect={onSelectItem} />
-                ))}
-              </CommandGroup>
-            ) : (
-              <>
-                {recents.length > 0 ? (
-                  <CommandGroup heading="Recent">
-                    {recents.map((item) => (
-                      <CommandPaletteRow key={item.id} item={item} onSelect={onSelectItem} />
-                    ))}
-                  </CommandGroup>
-                ) : null}
-                {recents.length > 0 && catalogItems.length > 0 ? <CommandSeparator /> : null}
-                {catalogItems.length > 0 ? (
-                  <CommandGroup heading="Routes">
-                    {catalogItems.map((item) => (
-                      <CommandPaletteRow key={item.id} item={item} onSelect={onSelectItem} />
-                    ))}
-                  </CommandGroup>
-                ) : null}
-              </>
-            )}
-          </CommandList>
-        )}
-      </div>
+        </div>
+      ) : (
+        <CommandList aria-label="Command palette results">
+          <CommandEmpty>
+            {activeLoading ? 'Loading...' : isSearching ? 'No matches.' : 'No entries.'}
+          </CommandEmpty>
+          {isSearching ? (
+            <CommandGroup heading="Results">
+              {searchItems.map((item) => (
+                <CommandPaletteRow key={item.id} item={item} onSelect={onSelectItem} />
+              ))}
+            </CommandGroup>
+          ) : (
+            <>
+              {recents.length > 0 ? (
+                <CommandGroup heading="Recent">
+                  {recents.map((item) => (
+                    <CommandPaletteRow key={item.id} item={item} onSelect={onSelectItem} />
+                  ))}
+                </CommandGroup>
+              ) : null}
+              {recents.length > 0 && catalogItems.length > 0 ? <CommandSeparator /> : null}
+              {catalogItems.length > 0 ? (
+                <CommandGroup heading="Routes">
+                  {catalogItems.map((item) => (
+                    <CommandPaletteRow key={item.id} item={item} onSelect={onSelectItem} />
+                  ))}
+                </CommandGroup>
+              ) : null}
+            </>
+          )}
+        </CommandList>
+      )}
     </CommandDialog>
   );
 }

@@ -12,6 +12,74 @@ import (
 	"github.com/stretchr/testify/require"
 )
 
+func TestClickProxy_holdoutSlowUpstreamRespectsTimeoutBudget(t *testing.T) {
+	block := make(chan struct{})
+
+	up := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, _ *http.Request) {
+		<-block
+		w.WriteHeader(http.StatusOK)
+	}))
+	t.Cleanup(func() {
+		close(block)
+		up.Close()
+	})
+
+	cfg := &config.Config{ProxyAllowHTTPInsecure: true, ClickProxyTimeoutMs: 200}
+	h := NewAdsPacketHandler(cfg, &mockRegistry{}, nil, nil, nil, NewJumpHashSharder(1), "fraud-stream", nil)
+	h.initClickProxyClient()
+
+	start := time.Now()
+	conn := NewGnetHarnessConn(nil)
+	fallback := []byte("https://landing.example/offer")
+	h.clickProxyDeliver(conn, &connContext{BufSlice: make([]byte, 0, 4096)}, clickProxyJob{
+		upstream:         up.URL,
+		timeoutFallback:  true,
+		fallbackLocation: fallback,
+		startMono:        monotonicNano(),
+	})
+	elapsed := time.Since(start)
+	require.Less(t, elapsed, 2*time.Second, "holdout: proxy must not block past CLICK_PROXY_TIMEOUT_MS budget")
+	resp := string(conn.Written())
+	require.Contains(t, resp, "302 Found")
+	require.Contains(t, resp, "landing.example")
+}
+
+func TestClickProxy_holdoutBurstSlowUpstreamBounded(t *testing.T) {
+	block := make(chan struct{})
+
+	up := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, _ *http.Request) {
+		<-block
+		w.WriteHeader(http.StatusOK)
+	}))
+	t.Cleanup(func() {
+		close(block)
+		up.Close()
+	})
+
+	cfg := &config.Config{ProxyAllowHTTPInsecure: true, ClickProxyTimeoutMs: 200}
+	h := NewAdsPacketHandler(cfg, &mockRegistry{}, nil, nil, nil, NewJumpHashSharder(1), "fraud-stream", nil)
+	h.initClickProxyClient()
+
+	const workers = 16
+	start := time.Now()
+	for i := 0; i < workers; i++ {
+		conn := NewGnetHarnessConn(nil)
+		fallback := []byte("https://landing.example/offer")
+		h.clickProxyDeliver(conn, &connContext{BufSlice: make([]byte, 0, 4096)}, clickProxyJob{
+			upstream:         up.URL,
+			timeoutFallback:  true,
+			fallbackLocation: fallback,
+			startMono:        monotonicNano(),
+		})
+		resp := string(conn.Written())
+		require.Contains(t, resp, "302 Found")
+		require.Contains(t, resp, "landing.example")
+	}
+	elapsed := time.Since(start)
+	perWorkerBudget := h.clickProxyTimeout() + 100*time.Millisecond
+	require.Less(t, elapsed, perWorkerBudget*time.Duration(workers), "holdout: burst proxy timeouts must stay within per-worker budget")
+}
+
 func TestClickProxy_SlowUpstream_GatewayTimeout(t *testing.T) {
 	block := make(chan struct{})
 

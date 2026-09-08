@@ -104,7 +104,10 @@ export function CampaignListTableHeaderCell({
   return (
     <div
       ref={rootRef}
-      className={isNum ? campaignListHeaderCellNumClass : campaignListHeaderCellClass}
+      className={cn(
+        isNum ? campaignListHeaderCellNumClass : campaignListHeaderCellClass,
+        columnId === 'id' && 'px-2'
+      )}
       onDragEnd={() => {
         setDragOverHighlight(false);
         onDragEnd();

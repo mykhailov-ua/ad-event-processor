@@ -123,15 +123,19 @@ func buildSessionNav(ctx context.Context) []platformadmin.SessionNavItemDTO {
 	return items
 }
 
-func resolveBootstrapAuthUser(ctx context.Context) (platformadmin.BootstrapUserDTO, bool) {
+func resolveBootstrapAuthUser(ctx context.Context, authMW *AuthMiddleware) (platformadmin.BootstrapUserDTO, bool) {
 	u, ok := GetUser(ctx)
 	if !ok {
 		return platformadmin.BootstrapUserDTO{}, false
 	}
 	role := authz.NormalizeRole(u.Role)
-	perms := ctrlhttp.GetPermissionsForRole(u.Role)
+	var perms []string
 	if snap, ok := authz.SnapshotFromContext(ctx); ok {
 		perms = authz.PermissionsList(snap)
+	} else if authMW != nil {
+		perms = authMW.SessionPermissions(ctx, u.UserID, u.Role)
+	} else {
+		perms = ctrlhttp.GetPermissionsForRole(u.Role)
 	}
 	return platformadmin.BootstrapUserDTO{
 		ID:          u.UserID.String(),
@@ -171,12 +175,15 @@ func resolveSessionUser(ctx context.Context) (platformadmin.SessionUser, bool) {
 func wireSessionHTTPHandlers(
 	svc *Service,
 	freshness func(context.Context) reports.DataFreshnessDTO,
+	authMW *AuthMiddleware,
 ) *platformadmin.SessionHTTPHandlers {
 	return &platformadmin.SessionHTTPHandlers{
-		Freshness:       freshness,
-		BuildNav:        buildSessionNav,
-		ResolveUser:     resolveSessionUser,
-		ResolveAuthUser: resolveBootstrapAuthUser,
+		Freshness:   freshness,
+		BuildNav:    buildSessionNav,
+		ResolveUser: resolveSessionUser,
+		ResolveAuthUser: func(ctx context.Context) (platformadmin.BootstrapUserDTO, bool) {
+			return resolveBootstrapAuthUser(ctx, authMW)
+		},
 		EulaSnapshot: func(ctx context.Context) (platformadmin.EulaBootstrapDTO, error) {
 			return resolveEulaBootstrap(ctx, svc)
 		},

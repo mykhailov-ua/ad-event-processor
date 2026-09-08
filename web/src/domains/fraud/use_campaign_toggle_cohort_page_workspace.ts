@@ -34,7 +34,9 @@ export function useCampaignToggleCohortPageWorkspace() {
   const [draftToggleField, setDraftToggleField] = useState<CampaignToggleField>(appliedToggleField);
   const [draftToggleAt, setDraftToggleAt] = useState(toDatetimeLocalValue(appliedToggleAt));
   const [draftWindowHours, setDraftWindowHours] = useState(
-    Number.isFinite(appliedWindowHours) && appliedWindowHours > 0 ? String(appliedWindowHours) : '72'
+    Number.isFinite(appliedWindowHours) && appliedWindowHours > 0
+      ? String(appliedWindowHours)
+      : '72'
   );
 
   useEffect(() => {
@@ -42,7 +44,9 @@ export function useCampaignToggleCohortPageWorkspace() {
     setDraftToggleField(appliedToggleField);
     setDraftToggleAt(toDatetimeLocalValue(appliedToggleAt));
     setDraftWindowHours(
-      Number.isFinite(appliedWindowHours) && appliedWindowHours > 0 ? String(appliedWindowHours) : '72'
+      Number.isFinite(appliedWindowHours) && appliedWindowHours > 0
+        ? String(appliedWindowHours)
+        : '72'
     );
   }, [appliedCampaignId, appliedToggleAt, appliedToggleField, appliedWindowHours]);
 
@@ -89,13 +93,7 @@ export function useCampaignToggleCohortPageWorkspace() {
       }
       replaceSearchParams(next);
     },
-    [
-      draftCampaignId,
-      draftToggleAt,
-      draftToggleField,
-      draftWindowHours,
-      replaceSearchParams,
-    ]
+    [draftCampaignId, draftToggleAt, draftToggleField, draftWindowHours, replaceSearchParams]
   );
 
   return {

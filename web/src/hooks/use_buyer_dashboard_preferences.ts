@@ -12,12 +12,15 @@ export function useBuyerDashboardPreferences() {
   );
   const [, startPreferenceTransition] = useTransition();
 
-  const applyPreferences = useCallback((next: BuyerDashboardPreferences) => {
-    startPreferenceTransition(() => {
-      setPreferences(next);
-      saveBuyerDashboardPreferences(next);
-    });
-  }, [startPreferenceTransition]);
+  const applyPreferences = useCallback(
+    (next: BuyerDashboardPreferences) => {
+      startPreferenceTransition(() => {
+        setPreferences(next);
+        saveBuyerDashboardPreferences(next);
+      });
+    },
+    [startPreferenceTransition]
+  );
 
   return { preferences, applyPreferences };
 }

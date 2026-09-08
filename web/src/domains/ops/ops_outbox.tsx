@@ -74,9 +74,7 @@ export function OpsOutbox({
         >
           {(items ?? []).map((row) => (
             <OpsTableRow key={row.id ?? `${row.event_type}-${row.created_at}`}>
-              <OpsTableCell className="font-mono text-xs text-muted-foreground">
-                {row.id ?? ''}
-              </OpsTableCell>
+              <OpsTableCell className="text-xs text-muted-foreground">{row.id ?? ''}</OpsTableCell>
               <OpsTableCell>{row.event_type ?? ''}</OpsTableCell>
               <OpsTableCell>{row.status ?? ''}</OpsTableCell>
               <OpsTableCell>{displayTimestamp(row.created_at)}</OpsTableCell>

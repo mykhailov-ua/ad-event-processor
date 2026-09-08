@@ -12,15 +12,6 @@ import (
 
 const http1MaxBufferedOverhead = 8192
 
-func http1HeadersComplete(data []byte) bool {
-	for i := 0; i+3 < len(data); i++ {
-		if data[i] == '\r' && data[i+1] == '\n' && data[i+2] == '\r' && data[i+3] == '\n' {
-			return true
-		}
-	}
-	return false
-}
-
 func (s *Server) http1IncompleteMax() uint8 {
 	limit := uint8(3)
 	if s == nil || s.cfg == nil {

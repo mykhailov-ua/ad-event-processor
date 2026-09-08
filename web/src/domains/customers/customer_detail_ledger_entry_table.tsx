@@ -28,10 +28,10 @@ export function CustomerDetailLedgerEntryTable({ items }: CustomerDetailLedgerEn
       <TableBody>
         {items.map((row) => (
           <TableRow key={row.id ?? `${row.created_at}-${row.type}`}>
-            <TableCell className="tabular-nums">{row.id ?? ''}</TableCell>
+            <TableCell>{row.id ?? ''}</TableCell>
             <TableCell>{row.type ?? ''}</TableCell>
-            <TableCell className="text-right tabular-nums">{row.amount ?? ''}</TableCell>
-            <TableCell className="font-mono text-xs">{row.campaign_id ?? ''}</TableCell>
+            <TableCell className="text-right">{row.amount ?? ''}</TableCell>
+            <TableCell className="text-xs">{row.campaign_id ?? ''}</TableCell>
             <TableCell>{displayTimestamp(row.created_at)}</TableCell>
           </TableRow>
         ))}

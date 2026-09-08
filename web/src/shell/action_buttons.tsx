@@ -16,14 +16,7 @@ export function SecondaryActionButton({
   variant = 'outline',
   ...props
 }: ButtonProps) {
-  return (
-    <Button
-      shape={shape}
-      variant={variant}
-      className={cn('px-4', className)}
-      {...props}
-    />
-  );
+  return <Button shape={shape} variant={variant} className={cn('px-4', className)} {...props} />;
 }
 
 export function FilterApplyButton({
@@ -34,13 +27,7 @@ export function FilterApplyButton({
   ...props
 }: ButtonProps) {
   return (
-    <Button
-      shape={shape}
-      type={type}
-      variant={variant}
-      className={cn(className)}
-      {...props}
-    />
+    <Button shape={shape} type={type} variant={variant} className={cn(className)} {...props} />
   );
 }
 
@@ -52,12 +39,6 @@ export function FilterResetButton({
   ...props
 }: ButtonProps) {
   return (
-    <Button
-      shape={shape}
-      type={type}
-      variant={variant}
-      className={cn(className)}
-      {...props}
-    />
+    <Button shape={shape} type={type} variant={variant} className={cn(className)} {...props} />
   );
 }

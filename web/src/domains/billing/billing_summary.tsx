@@ -38,7 +38,9 @@ export function BillingSummarySection({
         <MetricCard
           accent={4}
           label="Invoice count MTD"
-          value={displayCount(summary?.invoice_count_mtd, summary?.invoice_count_mtd_display) || '-'}
+          value={
+            displayCount(summary?.invoice_count_mtd, summary?.invoice_count_mtd_display) || '-'
+          }
         />
         <MetricCard
           accent={3}

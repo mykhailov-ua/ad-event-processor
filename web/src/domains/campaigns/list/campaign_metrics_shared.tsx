@@ -31,7 +31,7 @@ export function MetricRow({ label, value }: { label: string; value: string }) {
   return (
     <div className="grid grid-cols-[1fr_auto] items-center gap-4 text-sm">
       <span className="text-muted-foreground">{label}</span>
-      <span className="tabular-nums text-foreground">{value}</span>
+      <span className="text-foreground">{value}</span>
     </div>
   );
 }
@@ -40,7 +40,7 @@ export function MetricTile({ label, value }: { label: string; value: string }) {
   return (
     <div className={cn('bg-muted/30 px-3 py-2', adminKit.panelRadius)}>
       <p className="text-ui-caption text-muted-foreground">{label}</p>
-      <p className="whitespace-nowrap text-sm font-medium tabular-nums">{value}</p>
+      <p className="whitespace-nowrap text-sm font-medium">{value}</p>
     </div>
   );
 }
@@ -91,13 +91,11 @@ export function BudgetUsedSummary({
 
   return (
     <div className={cn('grid min-w-[6.5rem] max-w-[10rem] gap-1', className)}>
-      <span className="tabular-nums text-sm font-medium">
+      <span className="text-sm font-medium">
         {percent != null ? formatBudgetUsedPercent(percent) : '-'}
       </span>
       {moneySummary ? (
-        <p className="whitespace-nowrap text-xs tabular-nums text-muted-foreground">
-          {moneySummary}
-        </p>
+        <p className="whitespace-nowrap text-xs text-muted-foreground">{moneySummary}</p>
       ) : null}
       {showBar && percent != null ? (
         <div aria-hidden className="h-1.5 overflow-hidden rounded-full bg-muted">
@@ -275,7 +273,7 @@ export function HourlyTrendChart({
         ) : null}
 
         {firstLabel || lastLabel ? (
-          <div className="grid grid-cols-[1fr_auto] items-center px-1 text-ui-mini tabular-nums text-muted-foreground">
+          <div className="grid grid-cols-[1fr_auto] items-center px-1 text-ui-mini text-muted-foreground">
             <span>{firstLabel ?? ''}</span>
             <span>{lastLabel ?? ''}</span>
           </div>

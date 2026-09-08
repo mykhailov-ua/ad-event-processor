@@ -2,8 +2,7 @@ import { Check, Copy } from 'lucide-react';
 import { useEffect, useRef, useState } from 'react';
 import { toast } from 'sonner';
 
-import { buttonVariantClass } from '@/lib/admin_chrome';
-import { adminKit } from '@/lib/admin_kit';
+import { directoryTableRowCopyButtonClass } from '@/shell/directory_table_row_actions';
 import { cn } from '@/lib/utils';
 
 export type CopyButtonProps = {
@@ -74,15 +73,7 @@ export function CopyButton({
   return (
     <button
       aria-label={label ? `Copy ${label}` : 'Copy to clipboard'}
-      className={cn(
-        'inline-flex size-6 shrink-0 items-center justify-center border border-transparent p-0',
-        adminKit.controlRadius,
-        'text-muted-foreground transition-none active:scale-100',
-        'hover:bg-accent hover:text-foreground',
-        'focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 focus-visible:ring-offset-background',
-        buttonVariantClass.ghost,
-        className
-      )}
+      className={cn(directoryTableRowCopyButtonClass, className)}
       type="button"
       onClick={() => {
         void onCopy();

@@ -51,7 +51,12 @@ export function useCustomerFraudByTypePageWorkspace() {
 
   const shouldFetch = Boolean(appliedCustomerId.trim());
 
-  const { data, error, fetching, revalidating: listRevalidating } = useResource(
+  const {
+    data,
+    error,
+    fetching,
+    revalidating: listRevalidating,
+  } = useResource(
     (signal) => {
       if (!shouldFetch) {
         return Promise.resolve(undefined);
@@ -108,14 +113,7 @@ export function useCustomerFraudByTypePageWorkspace() {
       next.set('offset', '0');
       replaceSearchParams(next);
     },
-    [
-      appliedLimit,
-      draftCampaignId,
-      draftCustomerId,
-      draftFrom,
-      draftTo,
-      replaceSearchParams,
-    ]
+    [appliedLimit, draftCampaignId, draftCustomerId, draftFrom, draftTo, replaceSearchParams]
   );
 
   const onPageChange = useCallback(

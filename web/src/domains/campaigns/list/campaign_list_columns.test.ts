@@ -15,7 +15,7 @@ import {
 } from './campaign_list_columns.ts';
 
 test('clampCampaignListColumnWidthPx caps oversized name column', () => {
-  assert.equal(clampCampaignListColumnWidthPx('name', 2000), 320);
+  assert.equal(clampCampaignListColumnWidthPx('name', 2000), 480);
   assert.equal(clampCampaignListColumnWidthPx('clicks', 12), 60);
 });
 

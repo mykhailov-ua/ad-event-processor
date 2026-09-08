@@ -35,7 +35,21 @@ Keitaro/Voluum: Campaign URL (click) != Postback URL (`/track`). Admin Integrati
 | Tier `redirect_only` | License gates only; parse + macro redirect; **no** Redis; requires `CLICK_FILTER_REDIRECT_ONLY_LICENSED=1` on tracker |
 | Fail-closed | `light` / `redirect_only` escalate to `full` when campaign has fraud enforcement flags (silent reject, segments, behavior flags, etc.) |
 | Edge gate | `EDGE_EXPOSE_CLICK=true` (404 on :8180 when off). Tracker :8181-8184 always serves click |
-| DMR referer | `dmr=1` or campaign `dmr_enabled`: **200** meta refresh + `location.replace` instead of 302; `Referrer-Policy: no-referrer` on plain 302 |
+| DMR referer | `legacy_dmr` profile only: `dmr=1` or campaign `dmr_enabled` uses **200** meta refresh + `location.replace` instead of 302; `strict` (default) is **302** only |
+| Strict redirect | `redirect_compliance_mode=strict` (PG default): ignores `dmr_enabled` and `dmr=1`; `Referrer-Policy: no-referrer` on plain 302 |
+
+### Click ingress latency budget (T27)
+
+Per-path ceilings on synchronous `/click` work before first byte (302 or safe view). Exceeding a stage increments `ad_click_ingress_latency_budget_exceeded_total{stage}`.
+
+| Stage | Env knob | Default | Ceiling |
+| :--- | :--- | :--- | :--- |
+| Local parse + L7 wire filters | (inline) | n/a | < 5 ms p99 target |
+| FilterEngine + Redis EVALSHA | `FILTER_TIMEOUT_MS` | 5000 dev / 100 prod | hard deadline; 504 on exceed |
+| Click upstream proxy | `CLICK_PROXY_TIMEOUT_MS` | 300 | fallback 302 when `proxy_timeout_fallback` enabled |
+| Safe-page verify hop | `SAFE_PAGE_VERIFY_TIMEOUT_MS` | campaign/env | async on conversion; not on first click byte |
+
+Banned on `landing_bundle.go` click hot path: sync `http.Get` / outbound verdict HTTP (use `click_proxy.go` only). Gate: `bash scripts/ci/static/click_ingress_hotpath_gate.sh`.
 
 ## POST /track
 

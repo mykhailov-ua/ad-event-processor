@@ -126,7 +126,6 @@ export type CustomerLedgerListResponse = components['schemas']['CustomerLedgerLi
 export type CustomerLedgerListQuery = OperationQuery<'billingCustomerLedger'>;
 export type ReportCatalogResponse = components['schemas']['ReportCatalogResponse'];
 export type ReportCatalogRow = components['schemas']['ReportCatalogRow'];
-export type ReportMapEnvelope = components['schemas']['ReportMapEnvelope'];
 export type ReportMapRow = components['schemas']['ReportMapRow'];
 export type ClickLogEvent = components['schemas']['ClickLogEvent'];
 export type ClickLogPostback = components['schemas']['ClickLogPostback'];
@@ -180,6 +179,57 @@ export type PacingDriftReportResponse = components['schemas']['PacingDriftReport
 export type ConversionTypePayoutRow = components['schemas']['ConversionTypePayoutRow'];
 export type ConversionTypePayoutReportResponse =
   components['schemas']['ConversionTypePayoutReportResponse'];
+export type CampaignOverviewRow = components['schemas']['CampaignOverviewRow'];
+export type CampaignOverviewReportResponse =
+  components['schemas']['CampaignOverviewReportResponse'];
+export type CampaignGeoDeviceRow = components['schemas']['CampaignGeoDeviceRow'];
+export type CampaignGeoDeviceReportResponse =
+  components['schemas']['CampaignGeoDeviceReportResponse'];
+export type SpendVelocityRow = components['schemas']['SpendVelocityRow'];
+export type SpendVelocityReportResponse = components['schemas']['SpendVelocityReportResponse'];
+export type DaypartHeatmapRow = components['schemas']['DaypartHeatmapRow'];
+export type DaypartHeatmapReportResponse = components['schemas']['DaypartHeatmapReportResponse'];
+export type TrueRoiReportRow = components['schemas']['TrueRoiReportRow'];
+export type TrueRoiReportResponse = components['schemas']['TrueRoiReportResponse'];
+export type CostSyncCoverageRow = components['schemas']['CostSyncCoverageRow'];
+export type CostSyncCoverageReportResponse =
+  components['schemas']['CostSyncCoverageReportResponse'];
+export type DiscrepancyBuySellRow = components['schemas']['DiscrepancyBuySellRow'];
+export type DiscrepancyBuySellReportResponse =
+  components['schemas']['DiscrepancyBuySellReportResponse'];
+export type CustomerPortfolioSummary = components['schemas']['CustomerPortfolioSummary'];
+export type CustomerPortfolioCampaignRow = components['schemas']['CustomerPortfolioCampaignRow'];
+export type CustomerPortfolioReportResponse =
+  components['schemas']['CustomerPortfolioReportResponse'];
+export type EdgeParityReportResponse = components['schemas']['EdgeParityReportResponse'];
+export type MLScoreBucketRow = components['schemas']['MLScoreBucketRow'];
+export type MLScoreDistributionReportResponse =
+  components['schemas']['MLScoreDistributionReportResponse'];
+export type MLShadowDeltaRow = components['schemas']['MLShadowDeltaRow'];
+export type MLShadowDeltaReportResponse = components['schemas']['MLShadowDeltaReportResponse'];
+export type MLFeatureSpikeRow = components['schemas']['MLFeatureSpikeRow'];
+export type MLFeatureSpikesReportResponse = components['schemas']['MLFeatureSpikesReportResponse'];
+export type MlReportQuery = {
+  from?: string;
+  to?: string;
+  limit?: number;
+  offset?: number;
+  cursor?: string;
+};
+export type TelegramReportFreshness = components['schemas']['TelegramReportFreshness'];
+export type TelegramSummaryReportResponse = components['schemas']['TelegramSummaryReportResponse'];
+export type TelegramFunnelRow = components['schemas']['TelegramFunnelRow'];
+export type TelegramFunnelReportResponse = components['schemas']['TelegramFunnelReportResponse'];
+export type TelegramBotBreakdownRow = components['schemas']['TelegramBotBreakdownRow'];
+export type TelegramBotsReportResponse = components['schemas']['TelegramBotsReportResponse'];
+export type TelegramPremiumReportResponse = components['schemas']['TelegramPremiumReportResponse'];
+export type TelegramFraudReportResponse = components['schemas']['TelegramFraudReportResponse'];
+export type TelegramReportQuery = {
+  customer_id?: string;
+  campaign_id?: string;
+  from?: string;
+  to?: string;
+};
 export type RtbOverviewRow = components['schemas']['RtbOverviewRow'];
 export type RtbOverviewReportResponse = components['schemas']['RtbOverviewReportResponse'];
 export type RtbNoBidReasonRow = components['schemas']['RtbNoBidReasonRow'];

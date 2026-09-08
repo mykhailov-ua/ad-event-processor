@@ -15,8 +15,9 @@ export function formatTableMoneyNumber(amount?: number | null): { text: string; 
   const formatted = new Intl.NumberFormat('en-US', {
     minimumFractionDigits: 2,
     maximumFractionDigits: 2,
-  }).format(amount);
-  return { text: formatted, isZero: false };
+  }).format(Math.abs(amount));
+  const text = amount < 0 ? `-${formatted}` : formatted;
+  return { text, isZero: false };
 }
 
 export function formatTableMoneyFromMicro(micro?: number | null): {

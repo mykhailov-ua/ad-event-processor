@@ -167,7 +167,7 @@ const RtbReportTables = memo(function RtbReportTables({
               <TableBody>
                 {overviewRows.map((row, index) => (
                   <TableRow key={`${row.deal_id ?? 'deal'}-${index}`}>
-                    <TableCell className="font-mono text-xs">{row.deal_id ?? '-'}</TableCell>
+                    <TableCell className="text-xs">{row.deal_id ?? '-'}</TableCell>
                     <TableCell className="text-right">{displayCount(row.bids) || '-'}</TableCell>
                     <TableCell className="text-right">{displayCount(row.wins) || '-'}</TableCell>
                     <TableCell className="text-right">{formatRatio(row.win_rate)}</TableCell>
@@ -196,7 +196,9 @@ const RtbReportTables = memo(function RtbReportTables({
                 {noBidRows.map((row, index) => (
                   <TableRow key={`${row.no_bid_reason ?? 'reason'}-${index}`}>
                     <TableCell>{row.no_bid_reason ?? '-'}</TableCell>
-                    <TableCell className="text-right">{displayCount(row.bid_count) || '-'}</TableCell>
+                    <TableCell className="text-right">
+                      {displayCount(row.bid_count) || '-'}
+                    </TableCell>
                   </TableRow>
                 ))}
               </TableBody>

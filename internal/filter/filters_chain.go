@@ -222,8 +222,12 @@ type fraudBlacklistShardSnapshot struct {
 }
 
 type FraudBlacklistFilter struct {
-	redisShards []redis.UniversalClient
-	shards      [fraudBlacklistCacheShards]fraudBlacklistCacheShard
+	redisShards       []redis.UniversalClient
+	shards            [fraudBlacklistCacheShards]fraudBlacklistCacheShard
+	cgnatGlobalBypass bool
+	mobileCarrierASN  *MobileCarrierASNTable
+	asnLookup         ASNLookup
+	registry          domain.CampaignRegistry
 }
 
 func NewFraudBlacklistFilter(redisShards []redis.UniversalClient) *FraudBlacklistFilter {
@@ -237,6 +241,21 @@ func NewFraudBlacklistFilter(redisShards []redis.UniversalClient) *FraudBlacklis
 		})
 	}
 	return f
+}
+
+func (f *FraudBlacklistFilter) ConfigureCGNAT(
+	globalBypass bool,
+	carrierTable *MobileCarrierASNTable,
+	lookup ASNLookup,
+	registry domain.CampaignRegistry,
+) {
+	if f == nil {
+		return
+	}
+	f.cgnatGlobalBypass = globalBypass
+	f.mobileCarrierASN = carrierTable
+	f.asnLookup = lookup
+	f.registry = registry
 }
 
 func fraudBlacklistShardIndex(ip string) uint32 {
@@ -256,6 +275,14 @@ func (f *FraudBlacklistFilter) Check(ctx context.Context, evt *domain.Event) err
 	}
 
 	ip := evt.IP
+	var camp *domain.Campaign
+	if f.registry != nil && evt.CampaignID != uuid.Nil {
+		camp, _ = f.registry.GetCampaign(evt.CampaignID)
+	}
+	skipBlacklist := func() bool {
+		return ShouldBypassCGNATIPBlacklist(f.cgnatGlobalBypass, camp, f.mobileCarrierASN, f.asnLookup, ip, evt)
+	}
+
 	shardIdx := fraudBlacklistShardIndex(ip)
 	shard := &f.shards[shardIdx]
 
@@ -263,7 +290,7 @@ func (f *FraudBlacklistFilter) Check(ctx context.Context, evt *domain.Event) err
 	snap := shard.snap.Load()
 	if snap != nil {
 		if item, ok := snap.entries[ip]; ok && nowMs < item.expiry {
-			if item.blacklisted {
+			if item.blacklisted && !skipBlacklist() {
 				addFraudSignal(evt, FraudReasonL3Blocklist)
 			}
 			return nil
@@ -281,6 +308,9 @@ func (f *FraudBlacklistFilter) Check(ctx context.Context, evt *domain.Event) err
 	}
 
 	if onList {
+		if skipBlacklist() {
+			return nil
+		}
 		// Positive-only cache: do not store SISMEMBER false (fresh blacklist:fraud must not hide behind 5s TTL).
 		fraudBlacklistShardStore(shard, ip, fraudBlacklistCacheItem{
 			blacklisted: true,
@@ -838,7 +868,7 @@ func fraudDesyncLayerBit(id FraudReasonID) uint8 {
 		return fraudDesyncLayerClientHints
 	case FraudReasonSecFetchAnomaly:
 		return fraudDesyncLayerSecFetch
-	case FraudReasonH2SettingsMismatch, FraudReasonH2PseudoOrder, FraudReasonH2DowngradeArtifact:
+	case FraudReasonH2SettingsMismatch, FraudReasonH2PseudoOrder, FraudReasonH2DowngradeArtifact, FraudReasonH2FrameTraceMismatch:
 		return fraudDesyncLayerH2
 	default:
 		return 0

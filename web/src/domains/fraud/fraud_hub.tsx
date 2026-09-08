@@ -49,6 +49,13 @@ const FRAUD_LINKS = [
     meta: 'Operator doc',
   },
   {
+    path: '/docs/perimeter-sybil-controls',
+    title: 'Sybil runbook (T2)',
+    description: 'Human operator limits, crowd-wave response, and honest perimeter copy.',
+    icon: ShieldAlert,
+    meta: 'Perimeter doc',
+  },
+  {
     path: '/fraud/decisions',
     title: 'Decision explain',
     description: 'Explain fraud tier decision for an IP hash.',
@@ -59,7 +66,10 @@ const FRAUD_LINKS = [
 
 export function FraudHub() {
   return (
-    <PageChrome description="Integrations, labels, overrides, analytics, and decision explain." title="Fraud">
+    <PageChrome
+      description="Integrations, labels, overrides, analytics, and decision explain."
+      title="Fraud"
+    >
       <BentoSection title="Fraud operations">
         <HubLinkGrid>
           {FRAUD_LINKS.map((item) => (

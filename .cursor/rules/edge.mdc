@@ -24,6 +24,28 @@ Edge: OpenResty/nginx ingress + optional XDP L4 filter. BPF C hot path: `xdp-bpf
 
 Dev certs: `deploy/nginx/certs/generate-dev-certs.sh`. Perimeter timeouts: `client_body_timeout` / `client_header_timeout` **5s**.
 
+## TLS server persona (T15)
+
+Edge `:443` must present a **Mozilla Intermediate** TLS stack so passive scanners cannot fingerprint a non-standard protection intermediary from cipher order alone.
+
+| Surface | Policy |
+| :--- | :--- |
+| Cipher profile | `deploy/nginx/snippets/ssl_server.conf` — Intermediate suite; `ssl_prefer_server_ciphers off` |
+| Baseline | `deploy/nginx/baselines/tls_server_persona.manifest` — do not drift without manifest update + audit |
+| HTTP/2 | `http2 on` on TLS listener (`nginx.conf`); H2 SETTINGS frame parity with Chrome is research-tier (`P4-H2-FRAME-DYNAMICS`) |
+| kTLS | `ssl_conf_command Options KTLS` when kernel supports offload (`scripts/test/edge/ktls_smoke.sh`) |
+| Forbidden | Custom `ssl_ciphers` reorder in prod without manifest review; weak ciphers prepended |
+
+Verify:
+
+```bash
+bash scripts/test/edge/tls_server_persona_audit.sh --config
+bash scripts/test/edge/tls_server_persona_audit.sh --holdout
+TLS_PERSONA_LIVE=1 bash scripts/test/edge/tls_server_persona_audit.sh --live
+```
+
+CI: `bash scripts/ci/lint/configs.sh` runs config + holdout. Live openssl artifact: `var/ci/tls_persona/openssl_tls12_fingerprint.sha256`.
+
 ## L7 pipeline (`access-check.lua`)
 
 ```
@@ -199,6 +221,7 @@ Stop bpf-sync -> stop edge-xdp; Nginx Lua blacklist remains.
 
 ```bash
 bash scripts/test/edge/lua_tests.sh unit
+bash scripts/test/edge/tls_server_persona_audit.sh --config
 bash scripts/ci/compliance.sh
 go test ./internal/edge/... -count=1
 go test ./internal/ingestion/ -run=TestChaos_CrossHop_NginxGnet -count=1

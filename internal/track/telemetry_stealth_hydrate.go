@@ -12,7 +12,7 @@ import (
 )
 
 const (
-	TelemetryStealthHydratePath = "/collect/g.gif"
+	TelemetryStealthHydratePath    = "/collect/g.gif"
 	telemetryStealthHydrateMaxBody = 16384
 )
 

@@ -2,25 +2,21 @@ import { MoreHorizontal } from 'lucide-react';
 import { useNavigate } from 'react-router-dom';
 
 import type { Campaign } from '@/api/types';
-import { Button } from '@/components/ui/button';
 import {
   DropdownMenu,
   DropdownMenuContent,
   DropdownMenuItem,
   DropdownMenuTrigger,
 } from '@/components/ui/dropdown-menu';
-
-import { cn } from '@/lib/utils';
+import { directoryTableRowMenuButtonClass } from '@/shell/directory_table_row_actions';
 
 export type CampaignListTableRowMenuProps = {
   campaign: Campaign;
-  className?: string;
   onOpenOverview?: (campaign: Campaign) => void;
 };
 
 export function CampaignListTableRowMenu({
   campaign,
-  className,
   onOpenOverview,
 }: CampaignListTableRowMenuProps) {
   const navigate = useNavigate();
@@ -28,15 +24,14 @@ export function CampaignListTableRowMenu({
   return (
     <DropdownMenu>
       <DropdownMenuTrigger asChild>
-        <Button
+        <button
           aria-label={`Actions for ${campaign.name}`}
-          className={cn('size-7 shrink-0 p-0', className)}
+          className={directoryTableRowMenuButtonClass}
           type="button"
-          variant="ghost"
           onClick={(event) => event.stopPropagation()}
         >
           <MoreHorizontal className="h-4 w-4" aria-hidden />
-        </Button>
+        </button>
       </DropdownMenuTrigger>
       <DropdownMenuContent align="end" className="w-40">
         <DropdownMenuItem onSelect={() => onOpenOverview?.(campaign)}>Overview</DropdownMenuItem>

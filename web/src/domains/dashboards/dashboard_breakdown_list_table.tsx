@@ -1,24 +1,36 @@
-import { useMemo, useRef, type ReactNode } from 'react';
+import { useCallback, useMemo, useRef, type ReactNode } from 'react';
 
 import {
   campaignListCellContentClass,
   campaignListCellContentNumClass,
-  campaignListDashboardHeaderLabelClass,
   campaignListHeaderShellClass,
+  campaignListHeaderLabelClass,
   campaignListNameRowCellClass,
   campaignListNameRowTextClass,
   campaignListNameTextClass,
-  campaignListTableClass,
 } from '@/domains/campaigns/list/campaign_list_classes';
+import { campaignListRowDataAttributes } from '@/domains/campaigns/list/campaign_list_row_tone';
 import {
+  dashboardTableClass,
   dashboardTableSurfaceClass,
   dashboardTableTdClass,
   dashboardTableTfootTdClass,
   dashboardTableThClass,
 } from '@/domains/dashboards/dashboard_classes';
-import { formatDashboardBreakdownCellText } from '@/domains/dashboards/dashboard_breakdown_cell_text';
+import {
+  dashboardBreakdownMetricToneClass,
+  formatDashboardBreakdownCellText,
+} from '@/domains/dashboards/dashboard_breakdown_cell_text';
+import {
+  isDashboardBreakdownSortableColumn,
+  type DashboardBreakdownSortState,
+  toggleDashboardBreakdownSort,
+} from '@/domains/dashboards/dashboard_breakdown_sort';
 import { CampaignListColumnResizeHandle } from '@/domains/campaigns/list/campaign_list_table_header_cell';
-import type { DashboardBreakdownRow, DashboardBreakdownTable } from '@/domains/dashboards/buyer_dashboard_types';
+import type {
+  DashboardBreakdownRow,
+  DashboardBreakdownTable,
+} from '@/domains/dashboards/buyer_dashboard_types';
 import type { DashboardBreakdownColumnId } from '@/domains/dashboards/dashboard_preferences';
 import { BREAKDOWN_COLUMN_LABELS } from '@/domains/dashboards/dashboard_preferences';
 import type { DashboardBreakdownScope } from '@/domains/dashboards/dashboard_table_column_prefs';
@@ -29,6 +41,7 @@ import {
 } from '@/domains/dashboards/dashboard_table_column_widths';
 import { useDashboardBreakdownColumnWidths } from '@/domains/dashboards/use_dashboard_table_column_widths';
 import { DirectoryDataTableEngine } from '@/shell/directory_data_table/directory_data_table_engine';
+import { SortableTableHead } from '@/shell/directory_table';
 import { resolveDashboardBreakdownLayoutMaxWidths } from '@/shell/directory_data_table/layout';
 import { useDirectoryColumnResize } from '@/shell/directory_column_resize';
 import { cn } from '@/lib/utils';
@@ -40,6 +53,10 @@ export type DashboardBreakdownListTableProps = {
   columns: DashboardBreakdownColumnId[];
   nameLink?: (row: { id?: string; name?: string }) => ReactNode;
   fillContainer?: boolean;
+  selectedRowId?: string | null;
+  onRowSelect?: (row: DashboardBreakdownRow) => void;
+  sortState?: DashboardBreakdownSortState;
+  onSortChange?: (state: DashboardBreakdownSortState) => void;
 };
 
 type BreakdownCellContext = {
@@ -65,6 +82,10 @@ export function DashboardBreakdownListTable({
   columns,
   nameLink,
   fillContainer = true,
+  selectedRowId = null,
+  onRowSelect,
+  sortState,
+  onSortChange,
 }: DashboardBreakdownListTableProps) {
   const rows = table?.rows ?? [];
   const totals = table?.totals;
@@ -94,6 +115,17 @@ export function DashboardBreakdownListTable({
     colgroupRef,
     tableRef,
   });
+  const resolveRowKey = useCallback((row: DashboardBreakdownRow) => row.id ?? row.name ?? '', []);
+  const getRowAttributes = useCallback(
+    (row: DashboardBreakdownRow) => {
+      if (!onRowSelect) {
+        return undefined;
+      }
+      const rowKey = resolveRowKey(row);
+      return campaignListRowDataAttributes(selectedRowId != null && selectedRowId === rowKey);
+    },
+    [onRowSelect, resolveRowKey, selectedRowId]
+  );
 
   return (
     <DirectoryDataTableEngine<DashboardBreakdownRow, DashboardBreakdownColumnId>
@@ -104,6 +136,7 @@ export function DashboardBreakdownListTable({
       fillContainer={fillContainer}
       footerCellClassName={cn(dashboardTableTdClass, dashboardTableTfootTdClass)}
       footerRow={totals as DashboardBreakdownRow | undefined}
+      getRowAttributes={getRowAttributes}
       headerCellClassName={dashboardTableThClass}
       isResizableColumn={(columnId) =>
         isDashboardBreakdownColumnResizable(columnId, visibleColumns)
@@ -112,7 +145,10 @@ export function DashboardBreakdownListTable({
         if (columnId === 'name') {
           return (
             <div className={campaignListNameRowCellClass}>
-              <div className={campaignListNameRowTextClass}>
+              <div
+                className={campaignListNameRowTextClass}
+                onClick={nameLink ? (event) => event.stopPropagation() : undefined}
+              >
                 {nameLink ? (
                   nameLink(row)
                 ) : (
@@ -125,7 +161,12 @@ export function DashboardBreakdownListTable({
           );
         }
         return (
-          <div className={campaignListCellContentNumClass}>
+          <div
+            className={cn(
+              campaignListCellContentNumClass,
+              dashboardBreakdownMetricToneClass(columnId, row)
+            )}
+          >
             {renderBreakdownCell(columnId, { row })}
           </div>
         );
@@ -142,9 +183,26 @@ export function DashboardBreakdownListTable({
       }}
       renderHeaderLabel={(columnId) => {
         const label = BREAKDOWN_COLUMN_LABELS[columnId];
+        if (sortState && onSortChange && isDashboardBreakdownSortableColumn(columnId)) {
+          return (
+            <SortableTableHead
+              activeOrder={sortState.order}
+              activeSort={sortState.column}
+              className="h-auto p-0"
+              label={label}
+              numeric={columnId !== 'name'}
+              sortField={columnId}
+              onSort={(field) =>
+                onSortChange(
+                  toggleDashboardBreakdownSort(sortState, field as DashboardBreakdownColumnId)
+                )
+              }
+            />
+          );
+        }
         return (
           <div className={campaignListHeaderShellClass}>
-            <div className={campaignListDashboardHeaderLabelClass}>
+            <div className={campaignListHeaderLabelClass}>
               <span className="whitespace-nowrap" title={label}>
                 {label}
               </span>
@@ -161,14 +219,19 @@ export function DashboardBreakdownListTable({
           />
         );
       }}
+      onRowClick={onRowSelect}
       resolveColumnMaxWidths={resolveDashboardBreakdownLayoutMaxWidths}
-      rowKey={(row) => row.id ?? row.name ?? ''}
+      rowClassName={onRowSelect ? 'cursor-pointer' : undefined}
+      rowKey={resolveRowKey}
       rows={rows}
       surfaceClassName={dashboardTableSurfaceClass}
-      tableClassName={campaignListTableClass}
+      tableClassName={dashboardTableClass}
       tableRef={tableRef}
     />
   );
 }
 
-export { campaignReportBreakdownLink, campaignBreakdownLink } from '@/domains/dashboards/dashboard_breakdown_links';
+export {
+  campaignReportBreakdownLink,
+  campaignBreakdownLink,
+} from '@/domains/dashboards/dashboard_breakdown_links';

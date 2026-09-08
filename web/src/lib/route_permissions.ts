@@ -41,7 +41,9 @@ function buildRouteRules(): RoutePermissionRule[] {
     permission: item.permission,
     permissionAny: item.permissionAny,
   }));
-  return [...fromNav, ...EXTRA_ROUTE_RULES].sort((left, right) => right.prefix.length - left.prefix.length);
+  return [...fromNav, ...EXTRA_ROUTE_RULES].sort(
+    (left, right) => right.prefix.length - left.prefix.length
+  );
 }
 
 const ROUTE_RULES = buildRouteRules();
@@ -64,7 +66,7 @@ export function sessionHasRoutePermission(
     return true;
   }
   if (permissions === undefined) {
-    return true;
+    return false;
   }
   if (rule.permissionAny) {
     return sessionHasAnyPermission(permissions, rule.permissionAny);

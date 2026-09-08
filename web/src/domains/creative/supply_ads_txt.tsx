@@ -203,7 +203,7 @@ export function SupplyAdsTxtDirectory({
                   </TableCell>
                   <TableCell>
                     <Input
-                      className="font-mono text-xs"
+                      className="text-xs"
                       value={edit.publisher_account_id}
                       onChange={(event) =>
                         onEditRowChange(row.id, 'publisher_account_id', event.target.value)

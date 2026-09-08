@@ -50,7 +50,12 @@ export function useCustomersPageWorkspace() {
   const appliedSort = parseSort(searchParams.get('sort'));
   const appliedOrder = parseOrder(searchParams.get('order'));
 
-  const { data, error, fetching, revalidating: listRevalidating } = useResource(
+  const {
+    data,
+    error,
+    fetching,
+    revalidating: listRevalidating,
+  } = useResource(
     (signal) => listCustomers(query, signal),
     [query.limit, query.offset, query.sort, query.order]
   );

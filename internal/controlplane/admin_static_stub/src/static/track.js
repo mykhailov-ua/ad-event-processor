@@ -1,1 +1,70 @@
-"use strict";(()=>{function s(n){let e=new URLSearchParams(window.location.search);for(let c of["fbclid","gclid","ttclid","msclkid","tblci"]){let t=e.get(c);t&&(n[c]=t)}let i=e.get("ob_click_id")||e.get("obclid");i&&(n.ob_click_id=i)}function a(n){let e=[],i=globalThis.trackTelemetrySnapshot;if(typeof i=="function"){let t=i();t&&t.events&&t.events.length&&(e=e.concat(t.events))}let c=globalThis.trackBiometricsSnapshot;if(typeof c=="function"){let t=c();t&&t.events&&t.events.length&&(e=e.concat(t.events))}e.length&&(n.telemetry={events:e})}function r(n){let e={campaign_id:n.campaignId,type:n.type},i=n.eventId||(typeof crypto!="undefined"&&typeof crypto.randomUUID=="function"?crypto.randomUUID():"");i&&(e.event_id=i),n.clickId&&(e.click_id=n.clickId),n.userId&&(e.user_id=n.userId);let c=n.subs||{};for(let t=1;t<=30;t+=1){let o=`sub${t}`;c[o]&&(e[o]=c[o])}return s(e),a(e),fetch(n.endpoint,{method:"POST",headers:{"Content-Type":"application/json"},body:JSON.stringify(e),keepalive:!0,credentials:"omit"})}globalThis.trackEvent=r;})();
+'use strict';
+(() => {
+  function f(t) {
+    let n = new URLSearchParams(window.location.search);
+    for (let c of ['fbclid', 'gclid', 'ttclid', 'msclkid', 'tblci']) {
+      let o = n.get(c);
+      o && (t[c] = o);
+    }
+    let e = n.get('ob_click_id') || n.get('obclid');
+    e && (t.ob_click_id = e);
+  }
+  async function l(t, n) {
+    let e = [],
+      c = globalThis.trackTelemetrySnapshot;
+    if (typeof c == 'function') {
+      let i = c();
+      i && i.events && i.events.length && (e = e.concat(i.events));
+    }
+    let o = globalThis.trackBiometricsSnapshot;
+    if (typeof o == 'function') {
+      let i = o();
+      i && i.events && i.events.length && (e = e.concat(i.events));
+    }
+    e.length && (t.telemetry = { events: e });
+    let a = globalThis.trackAntifraudArm;
+    typeof a == 'function' && n && a(n);
+    let s = globalThis.trackAntifraudWhenReady;
+    typeof s == 'function' && (await s());
+    let r = globalThis.trackAntifraudSnapshot;
+    if (typeof r == 'function') {
+      let i = r();
+      i && (t.antifraud = i);
+    }
+  }
+  async function d(t) {
+    let n = Number(t);
+    if (!n || n <= 0) return;
+    let e = performance.now();
+    for (; performance.now() - e < n; ) await new Promise((c) => setTimeout(c, Math.min(n, 32)));
+  }
+  async function u(t) {
+    let n = { campaign_id: t.campaignId, type: t.type },
+      e =
+        t.eventId ||
+        (typeof crypto != 'undefined' && typeof crypto.randomUUID == 'function'
+          ? crypto.randomUUID()
+          : '');
+    e && (n.event_id = e),
+      t.clickId && (n.click_id = t.clickId),
+      t.userId && (n.user_id = t.userId);
+    let c = t.subs || {};
+    for (let o = 1; o <= 30; o += 1) {
+      let a = `sub${o}`;
+      c[a] && (n[a] = c[a]);
+    }
+    return (
+      f(n),
+      await l(n, t.campaignId),
+      await d(t.minDwellMs),
+      fetch(t.endpoint, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(n),
+        keepalive: !0,
+        credentials: 'omit',
+      })
+    );
+  }
+  globalThis.trackEvent = u;
+})();

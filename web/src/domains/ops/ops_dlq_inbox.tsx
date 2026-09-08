@@ -97,7 +97,7 @@ export function OpsDlqInbox({
                 <OpsTableCell>
                   {entry.status ? <OpsStatusChip status={entry.status} /> : ''}
                 </OpsTableCell>
-                <OpsTableCell className="font-mono text-xs text-muted-foreground">
+                <OpsTableCell className="text-xs text-muted-foreground">
                   {entry.campaign_id ?? ''}
                 </OpsTableCell>
                 <OpsTableCell>{entry.event_type ?? ''}</OpsTableCell>

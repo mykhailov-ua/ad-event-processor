@@ -28,7 +28,10 @@ import type { Flow, Lander, Offer } from '@/api/types';
 import { CreativeDirectoryStack } from '@/domains/creative/creative_directory_stack';
 import { creativePanelError } from '@/domains/creative/creative_nav';
 import { FlowEditorVisual } from '@/domains/creative/flow_editor_visual';
-import { validateVisualPathWeights, type FlowPathVisualRow } from '@/domains/creative/flow_path_model';
+import {
+  validateVisualPathWeights,
+  type FlowPathVisualRow,
+} from '@/domains/creative/flow_path_model';
 import { ErrorBlock } from '@/shell/error_block';
 import { TableHost } from '@/shell/ui_bands';
 import { displayTimestamp } from '@/lib/display';
@@ -120,7 +123,9 @@ export function FlowsDirectory({
                   validationError={validationError ?? undefined}
                   onRowsChange={(rows) => onDraftRowsChange?.(rows)}
                 />
-                {createError ? <ErrorBlock message={createError.message} title="Could not create flow" /> : null}
+                {createError ? (
+                  <ErrorBlock message={createError.message} title="Could not create flow" />
+                ) : null}
               </div>
               <DialogFooter>
                 <PrimaryActionButton loading={creating} onClick={onCreateFlow} type="button">
@@ -158,8 +163,8 @@ export function FlowsDirectory({
                           {row.name}
                         </Link>
                       </TableCell>
-                      <TableCell className="tabular-nums">{row.paths?.length ?? 0}</TableCell>
-                      <TableCell className="tabular-nums">{displayTimestamp(row.created_at)}</TableCell>
+                      <TableCell>{row.paths?.length ?? 0}</TableCell>
+                      <TableCell>{displayTimestamp(row.created_at)}</TableCell>
                     </TableRow>
                   ))}
                 </TableBody>
