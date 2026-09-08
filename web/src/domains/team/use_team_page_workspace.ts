@@ -11,6 +11,7 @@ import {
   listTeamMembers,
   updateTeamMember,
 } from '@/api/team_api';
+import { refreshSession } from '@/api/auth_api';
 import type { TeamMemberEditDraft, TeamRosterTab } from '@/domains/team/team_overview';
 import { confirmDestructiveAction, mutationError } from '@/lib/mutation_audit';
 import { useResource } from '@/api/use_resource';
@@ -21,7 +22,7 @@ import { parseListLimit, parseListOffset } from '@/lib/list_query';
 export function useTeamPageWorkspace() {
   const [searchParams, { isPending: listQueryPending, replaceSearchParams }] =
     useTransitionSearchParams();
-  const { session } = useSession();
+  const { session, user, refetchSession } = useSession();
   const [rosterTab, setRosterTab] = useState<TeamRosterTab>('members');
   const [overviewRefreshToken, setOverviewRefreshToken] = useState(0);
   const [rosterRefreshToken, setRosterRefreshToken] = useState(0);
@@ -230,6 +231,10 @@ export function useTeamPageWorkspace() {
           is_blocked: draft.is_blocked,
           spend_cap_micro: spendCapMicro,
         });
+        if (user?.id === memberId) {
+          await refreshSession();
+          refetchSession();
+        }
         toast.success('Member updated');
         setRosterRefreshToken((value) => value + 1);
       } catch (err: unknown) {
@@ -240,7 +245,7 @@ export function useTeamPageWorkspace() {
         setMemberUpdatingId(undefined);
       }
     },
-    [appliedCustomerId, memberDrafts]
+    [appliedCustomerId, memberDrafts, refetchSession, user?.id]
   );
 
   const onInvite = useCallback(async () => {

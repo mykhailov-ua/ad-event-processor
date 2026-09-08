@@ -27,3 +27,8 @@ test('sessionHasRoutePermission allows operator on ops routes', () => {
   const rule = resolveRoutePermission('/ops');
   assert.equal(sessionHasRoutePermission(['shards:read'], rule), true);
 });
+
+test('sessionHasRoutePermission honors wildcard permissions', () => {
+  const rule = resolveRoutePermission('/ops');
+  assert.equal(sessionHasRoutePermission(['*'], rule), true);
+});

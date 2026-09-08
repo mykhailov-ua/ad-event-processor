@@ -2,9 +2,11 @@ package authz
 
 import (
 	"context"
+	"sort"
 	"sync"
 
 	"github.com/google/uuid"
+	"github.com/jackc/pgx/v5/pgxpool"
 )
 
 type Scope string
@@ -57,6 +59,30 @@ func (s Snapshot) HasAny(permissions ...string) bool {
 		}
 	}
 	return false
+}
+
+// PermissionsList returns sorted permission keys from a snapshot (including "*" when present).
+func PermissionsList(snap Snapshot) []string {
+	if len(snap.Permissions) == 0 {
+		return nil
+	}
+	out := make([]string, 0, len(snap.Permissions))
+	for p := range snap.Permissions {
+		out = append(out, p)
+	}
+	sort.Strings(out)
+	return out
+}
+
+// SessionPermissionsList prefers the request snapshot; otherwise resolves from the policy store.
+func SessionPermissionsList(ctx context.Context, store *Store, pool *pgxpool.Pool, userID uuid.UUID, role string) []string {
+	if snap, ok := SnapshotFromContext(ctx); ok {
+		return PermissionsList(snap)
+	}
+	if store != nil {
+		return PermissionsList(store.EffectivePermissionsDB(ctx, pool, userID, role))
+	}
+	return nil
 }
 
 type ctxKey struct{}

@@ -1,4 +1,5 @@
 import { NAV_GROUPS, type NavItem } from '@/lib/nav_config';
+import { sessionHasAnyPermission, sessionHasPermission } from '@/lib/session_permissions';
 
 export type RoutePermission = Pick<NavItem, 'permission' | 'permissionAny'>;
 
@@ -66,10 +67,10 @@ export function sessionHasRoutePermission(
     return true;
   }
   if (rule.permissionAny) {
-    return rule.permissionAny.some((permission) => permissions.includes(permission));
+    return sessionHasAnyPermission(permissions, rule.permissionAny);
   }
   if (rule.permission) {
-    return permissions.includes(rule.permission);
+    return sessionHasPermission(permissions, rule.permission);
   }
   return true;
 }

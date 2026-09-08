@@ -5,6 +5,7 @@ import (
 	"encoding/json"
 	"net/http"
 	"net/http/httptest"
+	"strings"
 	"testing"
 	"time"
 
@@ -61,7 +62,8 @@ func TestDomainBulkPark_returnsJobWithoutBlocking_holdout(t *testing.T) {
 	h.Register(mux)
 
 	body := `{"hostnames":["bulk-a.test","bulk-b.test"],"cloudflare_zone_id":"zone-bulk"}`
-	req := httptest.NewRequest(http.MethodPost, "/api/v1/ops/domains/bulk", []byte(body))
+	req := httptest.NewRequest(http.MethodPost, "/api/v1/ops/domains/bulk", strings.NewReader(body))
+	req = req.WithContext(ctx)
 	rec := httptest.NewRecorder()
 	start := time.Now()
 	mux.ServeHTTP(rec, req)

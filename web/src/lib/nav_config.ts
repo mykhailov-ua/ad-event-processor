@@ -1,4 +1,5 @@
 import { PORTAL_PERMISSIONS } from '@/lib/portal_access';
+import { sessionHasAnyPermission, sessionHasPermission } from '@/lib/session_permissions';
 
 export type NavItem = {
   path: string;
@@ -73,10 +74,10 @@ export function filterNavItems(items: NavItem[], permissions: string[] | undefin
   }
   return items.filter((item) => {
     if (item.permissionAny) {
-      return item.permissionAny.some((permission) => permissions.includes(permission));
+      return sessionHasAnyPermission(permissions, item.permissionAny);
     }
     if (item.permission) {
-      return permissions.includes(item.permission);
+      return sessionHasPermission(permissions, item.permission);
     }
     return true;
   });

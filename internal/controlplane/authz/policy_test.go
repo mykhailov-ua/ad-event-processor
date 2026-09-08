@@ -10,6 +10,13 @@ import (
 	"github.com/stretchr/testify/require"
 )
 
+func TestPermissionsList_sorted(t *testing.T) {
+	store := authz.NewStore()
+	store.SetRole("MB", authz.ScopeTeam, []string{"campaigns:write", "campaigns:read", "customers:read"})
+	snap := store.EffectivePermissions(uuid.Nil, "MB")
+	require.Equal(t, []string{"campaigns:read", "campaigns:write", "customers:read"}, authz.PermissionsList(snap))
+}
+
 func TestMaskLevelFromPermissions(t *testing.T) {
 	full := map[string]struct{}{authz.PermCampaignsRead: {}}
 	masked := map[string]struct{}{authz.PermCampaignsReadMasked: {}}

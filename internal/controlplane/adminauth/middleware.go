@@ -68,6 +68,14 @@ func (m *Middleware) RefreshUserPolicy(userID uuid.UUID, role string) {
 	}
 }
 
+func (m *Middleware) SessionPermissions(ctx context.Context, userID uuid.UUID, role string) []string {
+	perms := authz.SessionPermissionsList(ctx, m.policy, m.pool, userID, role)
+	if len(perms) > 0 {
+		return perms
+	}
+	return ctrlhttp.GetPermissionsForRole(role)
+}
+
 func (m *Middleware) SetControlRedisShards(redisShards []redis.UniversalClient) {
 	m.controlRdbs = redisShards
 }

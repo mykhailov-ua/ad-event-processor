@@ -43,7 +43,7 @@ func (g *AdminUIGate) bootFromRequest(r *http.Request) (AdminBootJSON, bool) {
 	if !ok {
 		return AdminBootJSON{}, false
 	}
-	perms := ctrlhttp.GetPermissionsForRole(user.Role)
+	perms := g.auth.SessionPermissions(r.Context(), user.UserID, user.Role)
 	dto := ctrlhttp.UserDTO{
 		ID:          user.UserID.String(),
 		Role:        user.Role,

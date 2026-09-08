@@ -7,6 +7,7 @@ import (
 	"strings"
 	"time"
 
+	ctrlhttp "ad-event-processor/internal/control/http"
 	"ad-event-processor/internal/controlplane/authz"
 	"ad-event-processor/pkg/coldpath"
 	"ad-event-processor/pkg/httpresponse"
@@ -111,6 +112,7 @@ type TeamHTTPHandlers struct {
 	ResolveCustomerID    func(*http.Request, *uuid.UUID) (uuid.UUID, error)
 	SnapshotFromRequest  func(*http.Request) (authz.Snapshot, bool)
 	ActorUserID          func(*http.Request) (uuid.UUID, bool)
+	PolicyRefresh        ctrlhttp.LoginPolicyRefresher
 	WriteServiceError    func(http.ResponseWriter, error)
 }
 

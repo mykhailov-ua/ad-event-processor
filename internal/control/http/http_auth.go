@@ -36,6 +36,7 @@ type RegisterGate interface {
 
 type LoginPolicyRefresher interface {
 	RefreshUserPolicy(userID uuid.UUID, role string)
+	SessionPermissions(ctx context.Context, userID uuid.UUID, role string) []string
 }
 
 type RedisShardPicker func([]redis.UniversalClient) redis.UniversalClient
@@ -202,6 +203,7 @@ func (h *AuthHandler) login(w http.ResponseWriter, r *http.Request) {
 	}
 	if h.policyRefresh != nil {
 		h.policyRefresh.RefreshUserPolicy(resp.User.ID, userDTO.Role)
+		userDTO.Permissions = h.policyRefresh.SessionPermissions(r.Context(), resp.User.ID, userDTO.Role)
 	}
 
 	httpresponse.JSON(w, http.StatusOK, LoginResponse{User: userDTO})
@@ -294,6 +296,9 @@ func (h *AuthHandler) me(w http.ResponseWriter, r *http.Request) {
 		Role:        NormalizeRole(payload.Role),
 		CustomerID:  payload.CustomerID.String(),
 		Permissions: GetPermissionsForRole(payload.Role),
+	}
+	if h.policyRefresh != nil {
+		dto.Permissions = h.policyRefresh.SessionPermissions(r.Context(), payload.UserID, dto.Role)
 	}
 
 	if err := issueCSRFToken(w, r); err != nil {

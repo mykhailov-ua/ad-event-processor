@@ -261,6 +261,7 @@ func (h *Handler) wireAdminDomainRoutes(reg *RouteRegistry, e adminWireEnv) {
 			u, ok := GetUser(r.Context())
 			return u.UserID, ok
 		},
+		PolicyRefresh:     h.authMiddleware,
 		WriteServiceError: writeErr,
 	}
 	reg.PublisherHTTP = &dashboardadmin.PublisherHTTPHandlers{

@@ -136,6 +136,9 @@ func (h *TeamHTTPHandlers) patchMember(w http.ResponseWriter, r *http.Request) {
 		h.writeServiceError(w, err)
 		return
 	}
+	if h.PolicyRefresh != nil && req.Role != nil {
+		h.PolicyRefresh.RefreshUserPolicy(userID, member.Role)
+	}
 	httpresponse.JSON(w, http.StatusOK, member)
 }
 

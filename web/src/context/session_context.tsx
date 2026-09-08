@@ -1,4 +1,4 @@
-import { createContext, useMemo, type ReactNode } from 'react';
+import { createContext, useCallback, useMemo, useState, type ReactNode } from 'react';
 
 import { getSessionBootstrap } from '@/api/auth_api';
 import { ApiError } from '@/api/client';
@@ -34,12 +34,14 @@ export type SessionContextValue = {
   user: AuthUser | undefined;
   error: Error | undefined;
   loading: boolean;
+  revalidating: boolean;
   authenticated: boolean;
   forbidden: boolean;
   unauthenticated: boolean;
   eulaRequired: boolean | undefined;
   eulaAccepted: boolean | undefined;
   eulaVersion: string | undefined;
+  refetchSession: () => void;
 };
 
 export const SessionContext = createContext<SessionContextValue | undefined>(undefined);
@@ -73,8 +75,19 @@ export type SessionProviderProps = {
 };
 
 export function SessionProvider({ children }: SessionProviderProps) {
-  const { data, error, fetching } = useResource(fetchSessionState, []);
-  const value = useMemo(() => buildSessionValue(data, error, fetching), [data, error, fetching]);
+  const [refreshToken, setRefreshToken] = useState(0);
+  const { data, error, fetching, revalidating } = useResource(fetchSessionState, [refreshToken]);
+  const refetchSession = useCallback(() => {
+    setRefreshToken((value) => value + 1);
+  }, []);
+  const value = useMemo(
+    () => ({
+      ...buildSessionValue(data, error, fetching),
+      revalidating,
+      refetchSession,
+    }),
+    [data, error, fetching, revalidating, refetchSession]
+  );
 
   return <SessionContext.Provider value={value}>{children}</SessionContext.Provider>;
 }

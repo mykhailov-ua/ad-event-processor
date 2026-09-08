@@ -129,11 +129,15 @@ func resolveBootstrapAuthUser(ctx context.Context) (platformadmin.BootstrapUserD
 		return platformadmin.BootstrapUserDTO{}, false
 	}
 	role := authz.NormalizeRole(u.Role)
+	perms := ctrlhttp.GetPermissionsForRole(u.Role)
+	if snap, ok := authz.SnapshotFromContext(ctx); ok {
+		perms = authz.PermissionsList(snap)
+	}
 	return platformadmin.BootstrapUserDTO{
 		ID:          u.UserID.String(),
 		Role:        role,
 		CustomerID:  u.CustomerID.String(),
-		Permissions: ctrlhttp.GetPermissionsForRole(u.Role),
+		Permissions: perms,
 	}, true
 }
 
