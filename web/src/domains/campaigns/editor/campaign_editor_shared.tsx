@@ -5,6 +5,7 @@ import { Badge } from '@/components/ui/badge';
 import { ErrorBlock } from '@/shell/error_block';
 import { StubBanner } from '@/shell/stub_banner';
 import type { CloneCampaignOptions } from '@/api/campaigns_api';
+import { cloneMutationErrorMessage } from '@/domains/campaigns/editor/campaign_clone_request';
 import { adminKit } from '@/lib/admin_kit';
 import { cn } from '@/lib/utils';
 
@@ -205,13 +206,6 @@ export function editorApiErrorBlock(
     return <StubBanner title={stubTitle} message={error.message} />;
   }
   return <ErrorBlock title={errorTitle} message={messageOverride ?? error.message} />;
-}
-
-export function cloneMutationErrorMessage(error: Error): string {
-  if (error instanceof ApiError && error.message.toLowerCase().includes('insufficient balance')) {
-    return 'Customer balance is too low to reserve this campaign budget. Reduce budget_limit or increase customer balance, then retry clone.';
-  }
-  return error.message;
 }
 
 export function campaignPanelError(error: Error, title: string): ReactNode {

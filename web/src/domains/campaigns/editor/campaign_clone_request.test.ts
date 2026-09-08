@@ -2,7 +2,7 @@ import assert from 'node:assert/strict';
 import test from 'node:test';
 
 import { ApiError } from '@/api/client';
-import { cloneMutationErrorMessage } from '@/domains/campaigns/editor/campaign_editor_shared';
+import { cloneMutationErrorMessage } from '@/domains/campaigns/editor/campaign_clone_request';
 
 test('cloneMutationErrorMessage maps insufficient balance to operator guidance', () => {
   const err = new ApiError(400, 'BAD_REQUEST', 'insufficient balance');
