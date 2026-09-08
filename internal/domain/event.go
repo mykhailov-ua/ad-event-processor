@@ -98,6 +98,8 @@ type Event struct {
 	JSONSerializationFlags uint8
 	TelemetrySet           uint8
 	TelemetryEvents        []BehaviorTelemetryEvent
+	AntifraudSet           uint8
+	AntifraudSnapshot      AntifraudSnapshot
 	MobileTouchCount       uint8
 	MobileGyroSamples      uint8
 	MobileGyroVariance     uint16
@@ -189,6 +191,8 @@ func (e *Event) Reset() {
 	} else {
 		e.TelemetryEvents = e.TelemetryEvents[:0]
 	}
+	e.AntifraudSet = 0
+	e.AntifraudSnapshot = AntifraudSnapshot{}
 	e.MobileTouchCount = 0
 	e.MobileGyroSamples = 0
 	e.MobileGyroVariance = 0

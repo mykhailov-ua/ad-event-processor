@@ -123,17 +123,23 @@ func SafePageHydratorJS() []byte {
 }
 
 var (
-	SafePageStubHTMLHead = []byte("<!DOCTYPE html><html lang=\"en\"><head><meta charset=\"utf-8\"><meta name=\"viewport\" content=\"width=device-width,initial-scale=1\"><title>Loading</title></head><body><main><iframe src=\"")
-	SafePageStubHTMLMid  = []byte("\" title=\"content\" style=\"border:0;width:100%;height:100vh\"></iframe></main><script>")
-	SafePageStubHTMLTail = []byte("</script></body></html>")
+	SafePageStubHTMLHead = []byte("<!DOCTYPE html><html lang=\"en\"><head><meta charset=\"utf-8\"><meta name=\"viewport\" content=\"width=device-width,initial-scale=1\"><title>Loading</title></head><body><main id=\"aed-mount\"><p>Loading</p></main><script src=\"/static/track-telemetry.js\"></script><script src=\"/static/antifraud-telemetry.js\"></script><script>")
+	SafePageStubHTMLTail   = []byte("</script></body></html>")
+	SafePageDecoyHTMLHead  = []byte("<!DOCTYPE html><html lang=\"en\"><head><meta charset=\"utf-8\"><meta name=\"viewport\" content=\"width=device-width,initial-scale=1\"><title>Loading</title></head><body><main><iframe src=\"")
+	SafePageDecoyHTMLMid   = []byte("\" title=\"content\" style=\"border:0;width:100%;height:100vh\"></iframe></main></body></html>")
 )
 
-func AppendSafePageStubBody(dst []byte, safeURL []byte) []byte {
+func AppendSafePageStubBody(dst []byte) []byte {
 	dst = append(dst, SafePageStubHTMLHead...)
-	dst = append(dst, safeURL...)
-	dst = append(dst, SafePageStubHTMLMid...)
 	dst = append(dst, safePageHydratorJS...)
 	dst = append(dst, SafePageStubHTMLTail...)
+	return dst
+}
+
+func AppendSafePageDecoyBody(dst []byte, decoyURL []byte) []byte {
+	dst = append(dst, SafePageDecoyHTMLHead...)
+	dst = append(dst, decoyURL...)
+	dst = append(dst, SafePageDecoyHTMLMid...)
 	return dst
 }
 
@@ -142,13 +148,13 @@ var (
 	SafePageStubHTTPMiddle = []byte("\r\n\r\n")
 )
 
-func SafePageStubWireLen(urlBytes []byte) int {
-	bodyLen := len(SafePageStubHTMLHead) + len(urlBytes) + len(SafePageStubHTMLMid) + len(safePageHydratorJS) + len(SafePageStubHTMLTail)
+func SafePageStubWireLen() int {
+	bodyLen := len(SafePageStubHTMLHead) + len(safePageHydratorJS) + len(SafePageStubHTMLTail)
 	return len(SafePageStubHTTPPrefix) + BodyLenDigits(bodyLen) + len(SafePageStubHTTPMiddle) + bodyLen
 }
 
-func BuildSafePageStubWire(dst []byte, urlBytes []byte) []byte {
-	body := AppendSafePageStubBody(nil, urlBytes)
+func BuildSafePageStubWire(dst []byte) []byte {
+	body := AppendSafePageStubBody(nil)
 	dst = append(dst, SafePageStubHTTPPrefix...)
 	dst = appendInt(dst, int64(len(body)))
 	dst = append(dst, SafePageStubHTTPMiddle...)

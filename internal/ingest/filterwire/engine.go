@@ -61,6 +61,7 @@ type (
 	SegmentFilter            = filter.SegmentFilter
 	DeviceFilter             = filter.DeviceFilter
 	BehaviorTelemetryFilter  = filter.BehaviorTelemetryFilter
+	AntifraudTelemetryFilter = filter.AntifraudTelemetryFilter
 	JSONSerializationFilter  = filterunified.JSONSerializationFilter
 	L7WireFilter             = filterunified.L7WireFilter
 	TCPMSSFilter             = filterunified.TCPMSSFilter
@@ -98,6 +99,7 @@ var (
 	NewSegmentFilter            = filter.NewSegmentFilter
 	NewDeviceFilter             = filter.NewDeviceFilter
 	NewBehaviorTelemetryFilter  = filter.NewBehaviorTelemetryFilter
+	NewAntifraudTelemetryFilter = filter.NewAntifraudTelemetryFilter
 	NewJSONSerializationFilter  = filterunified.NewJSONSerializationFilter
 	NewL7WireFilter             = filterunified.NewL7WireFilter
 	NewTCPMSSFilter             = filterunified.NewTCPMSSFilter

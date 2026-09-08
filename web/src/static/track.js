@@ -24,7 +24,7 @@ function appendQueryAttribution(body) {
   }
 }
 
-function appendTelemetry(body) {
+async function appendTelemetry(body, campaignId) {
   let events = [];
   const telemetrySnapshot = globalThis.trackTelemetrySnapshot;
   if (typeof telemetrySnapshot === 'function') {
@@ -43,9 +43,24 @@ function appendTelemetry(body) {
   if (events.length) {
     body.telemetry = { events };
   }
+  const arm = globalThis.trackAntifraudArm;
+  if (typeof arm === 'function' && campaignId) {
+    arm(campaignId);
+  }
+  const whenReady = globalThis.trackAntifraudWhenReady;
+  if (typeof whenReady === 'function') {
+    await whenReady();
+  }
+  const antifraudSnapshot = globalThis.trackAntifraudSnapshot;
+  if (typeof antifraudSnapshot === 'function') {
+    const snapshot = antifraudSnapshot();
+    if (snapshot) {
+      body.antifraud = snapshot;
+    }
+  }
 }
 
-export function trackEvent(opts) {
+export async function trackEvent(opts) {
   const body = {
     campaign_id: opts.campaignId,
     type: opts.type,
@@ -72,7 +87,7 @@ export function trackEvent(opts) {
     }
   }
   appendQueryAttribution(body);
-  appendTelemetry(body);
+  await appendTelemetry(body, opts.campaignId);
   return fetch(opts.endpoint, {
     method: 'POST',
     headers: { 'Content-Type': 'application/json' },

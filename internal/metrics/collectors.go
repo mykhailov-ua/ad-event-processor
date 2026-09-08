@@ -172,6 +172,46 @@ var (
 		Help: "L2 behavior_bezier_bot on native JSON /track telemetry.events",
 	})
 
+	AntifraudTelemetryMissingTotal = promauto.NewCounter(prometheus.CounterOpts{
+		Name: "ad_antifraud_telemetry_missing_total",
+		Help: "L2 antifraud_telemetry_missing on attested conversion without antifraud snapshot",
+	})
+
+	AntifraudAutomationLeakTotal = promauto.NewCounter(prometheus.CounterOpts{
+		Name: "ad_antifraud_automation_leak_total",
+		Help: "L1 antifraud_automation_leak on client automation markers",
+	})
+
+	AntifraudBehaviorTemplateTotal = promauto.NewCounter(prometheus.CounterOpts{
+		Name: "ad_antifraud_behavior_template_total",
+		Help: "L2 antifraud_behavior_template on low-variance kinematic crawl",
+	})
+
+	AntifraudNetworkJitterTotal = promauto.NewCounter(prometheus.CounterOpts{
+		Name: "ad_antifraud_network_jitter_total",
+		Help: "L2 antifraud_network_jitter on oscillating client RTT samples",
+	})
+
+	AntifraudUntrustedEventsTotal = promauto.NewCounter(prometheus.CounterOpts{
+		Name: "ad_antifraud_untrusted_events_total",
+		Help: "L2 antifraud_untrusted_events on low isTrusted ratio",
+	})
+
+	AntifraudFastProbeTotal = promauto.NewCounter(prometheus.CounterOpts{
+		Name: "ad_antifraud_fast_probe_total",
+		Help: "L2 antifraud_fast_probe on sub-second deep scroll probes",
+	})
+
+	AntifraudPowInvalidTotal = promauto.NewCounter(prometheus.CounterOpts{
+		Name: "ad_antifraud_pow_invalid_total",
+		Help: "L1 antifraud_pow_invalid on failed client PoW",
+	})
+
+	AntifraudSignatureInvalidTotal = promauto.NewCounter(prometheus.CounterOpts{
+		Name: "ad_antifraud_signature_invalid_total",
+		Help: "L1 antifraud_signature_invalid on missing or bad telemetry MAC",
+	})
+
 	DCASNCheckTotal = promauto.NewCounter(prometheus.CounterOpts{
 		Name: "ad_dc_asn_check_total",
 		Help: "Sampled hot-path DC ASN lookups",

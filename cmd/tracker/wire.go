@@ -333,6 +333,12 @@ func runTracker(cfg *config.Config) {
 	behaviorTelemetryFilter := ingestion.NewBehaviorTelemetryFilter(registry)
 	behaviorTelemetryFilter.SetEnabled(cfg.BehaviorTelemetryEnabled)
 	behaviorTelemetryFilter.SetClickEnabled(cfg.MobileBiometricsClickEnabled)
+	antifraudTelemetryFilter := ingestion.NewAntifraudTelemetryFilter(registry)
+	antifraudTelemetryFilter.SetEnabled(cfg.AntifraudTelemetryEnabled)
+	if cfg.AntifraudTelemetryEnabled && len(cfg.AttestationHMACSecret) > 0 {
+		antifraudTelemetryFilter.SetVerifyCrypto(true)
+		antifraudTelemetryFilter.SetChallengeSecret([]byte(cfg.AttestationHMACSecret))
+	}
 	var l7WireFilter ingestion.EventFilter
 	if cfg.SecFetchValidateEnabled || cfg.ClientHintsPlatformEnabled || cfg.TLSALPNMismatchEnabled ||
 		cfg.H2SettingsFingerprintEnabled || cfg.H2PseudoOrderEnabled || cfg.H2DowngradeArtifactEnabled ||
@@ -542,7 +548,7 @@ func runTracker(cfg *config.Config) {
 	//   - tryAcquireStreamAdmission (TryReserve on StreamProducer or BrokerProducer) runs before Check (fail-closed 503 overload).
 	//   - evt fields on ConnContext use unsafeString over copied offload buffer; AsyncWrite clones response bytes (no frame lifetime).
 	//   - LOCAL_QUOTA_MODE live: local quanta full-skip skips sync EVALSHA; LocalQuantaStreamPublisher async lane is separate from TryReserve.
-	filterEngine := ingestion.NewFilterEngine(time.Duration(cfg.FilterTimeoutMs)*time.Millisecond, licenseFilter, licenseRPSFilter, breakerFilter, geoFilter, scheduleFilter, vppFilter, fraudFilter, residentialProxyFilter, tcpMSSFilter, deviceFilter, l7WireFilter, jsonSerializationFilter, behaviorTelemetryFilter, consentFilter, segmentFilter, entitlementsFilter, unifiedFilter)
+	filterEngine := ingestion.NewFilterEngine(time.Duration(cfg.FilterTimeoutMs)*time.Millisecond, licenseFilter, licenseRPSFilter, breakerFilter, geoFilter, scheduleFilter, vppFilter, fraudFilter, residentialProxyFilter, tcpMSSFilter, deviceFilter, l7WireFilter, jsonSerializationFilter, behaviorTelemetryFilter, antifraudTelemetryFilter, consentFilter, segmentFilter, entitlementsFilter, unifiedFilter)
 	filterEngine.SetSettingsWatcher(settingsWatcher)
 
 	// Phase 6: optional RTB catalog (in-process auction; no full FilterEngine on /openrtb/bid).

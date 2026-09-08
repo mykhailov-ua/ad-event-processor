@@ -84,6 +84,12 @@ func registerHTTPTrackClientStatic(mux *http.ServeMux) {
 	mux.HandleFunc("GET "+track.TrackBiometricsPath, func(w http.ResponseWriter, _ *http.Request) {
 		track.ServeHTTPTrackClientJS(w, track.TrackBiometricsJS)
 	})
+	mux.HandleFunc("GET "+track.AntifraudTelemetryPath, func(w http.ResponseWriter, _ *http.Request) {
+		track.ServeHTTPTrackClientJS(w, track.AntifraudTelemetryJS)
+	})
+	mux.HandleFunc("GET "+track.TelemetryStealthPocPath, func(w http.ResponseWriter, _ *http.Request) {
+		track.ServeHTTPTrackClientJS(w, track.TelemetryStealthPocJS)
+	})
 }
 
 func isTrackPixelPath(path []byte) bool {
@@ -126,6 +132,8 @@ type trackIngestFields struct {
 	jsonSerializationFlags uint8
 	telemetrySet           uint8
 	telemetryEvents        []domain.BehaviorTelemetryEvent
+	antifraudSet           uint8
+	antifraudSnapshot      domain.AntifraudSnapshot
 }
 
 func (h *AdsPacketHandler) parseTrackIngest(
@@ -216,6 +224,10 @@ func (h *AdsPacketHandler) parseTrackIngest(
 	if len(trackReq.TelemetryEvents) > 0 {
 		fields.telemetryEvents = append(fields.telemetryEvents[:0], trackReq.TelemetryEvents...)
 	}
+	fields.antifraudSet = trackReq.AntifraudSet
+	if trackReq.AntifraudSet != 0 {
+		fields.antifraudSnapshot = trackReq.AntifraudSnapshot
+	}
 	trackReq.ortbSlot = nil
 	return fields, nil, 0, true
 }
@@ -246,6 +258,10 @@ func fillTrackEvent(evt *domain.Event, fields trackIngestFields, ip, ua string) 
 		if len(fields.telemetryEvents) > 0 {
 			evt.TelemetryEvents = append(evt.TelemetryEvents[:0], fields.telemetryEvents...)
 		}
+	}
+	if fields.antifraudSet != 0 {
+		evt.AntifraudSet = 1
+		evt.AntifraudSnapshot = fields.antifraudSnapshot
 	}
 }
 

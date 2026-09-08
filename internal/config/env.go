@@ -421,6 +421,7 @@ type Config struct {
 	AcceptLangGeoEnabled                bool
 	JSONSerializationFingerprintEnabled bool
 	BehaviorTelemetryEnabled            bool
+	AntifraudTelemetryEnabled           bool
 	MobileBiometricsEnabled             bool
 	MobileBiometricsClickEnabled        bool
 	ProxyVPNBlockEnabled                bool

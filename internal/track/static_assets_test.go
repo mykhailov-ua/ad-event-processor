@@ -16,5 +16,8 @@ func TestTrackPixelContract_holdout(t *testing.T) {
 	require.Contains(t, body, "ob_click_id")
 	require.Contains(t, body, "trackTelemetrySnapshot")
 	require.Contains(t, body, "trackBiometricsSnapshot")
+	require.Contains(t, body, "trackAntifraudWhenReady")
 	require.True(t, strings.Contains(body, "globalThis.trackEvent"), "script tag must expose global trackEvent")
+	require.NotEmpty(t, AntifraudTelemetryJS)
+	require.Contains(t, string(AntifraudTelemetryJS), "trackAntifraudArm")
 }

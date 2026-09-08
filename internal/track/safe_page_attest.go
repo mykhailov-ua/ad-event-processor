@@ -542,6 +542,7 @@ type SafePageVerifyRequest struct {
 	CampaignID  string                    `json:"campaign_id"`
 	Events      []SafePageVerifyEvent     `json:"events"`
 	Fingerprint SafePageVerifyFingerprint `json:"fingerprint"`
+	Antifraud   json.RawMessage           `json:"antifraud,omitempty"`
 }
 
 type SafePageVerifyResponse struct {

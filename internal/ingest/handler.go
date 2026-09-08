@@ -21,6 +21,7 @@ import (
 	"ad-event-processor/internal/ingest/parser"
 	"ad-event-processor/internal/ingest/pb"
 	"ad-event-processor/internal/metrics"
+	"ad-event-processor/internal/track"
 	"ad-event-processor/internal/telemetry"
 	"ad-event-processor/pkg/branding"
 	"ad-event-processor/pkg/logger"
@@ -1222,6 +1223,9 @@ func (h *AdsPacketHandler) React(req *Request, c pkgnet.Conn) pkgnet.Action {
 		if httpPathHasPrefix(req.Path, safePageStubPathPrefix) {
 			return h.reactSafePageStub(req, c, ctx)
 		}
+		if httpPathHasPrefix(req.Path, antifraudChallengePath) {
+			return h.reactAntifraudChallenge(req, c, ctx)
+		}
 		if resp, ok := trackClientStaticGnetResponse(req.Path); ok {
 			h.write(c, resp, ctx)
 			return pkgnet.None
@@ -1252,6 +1256,13 @@ func (h *AdsPacketHandler) React(req *Request, c pkgnet.Conn) pkgnet.Action {
 				return pkgnet.Close
 			}
 			return h.reactTrackVerify(req, c, ctx)
+		}
+		if bytesEqual(req.Path, track.TelemetryStealthHydratePath) {
+			if !req.HasContentLength {
+				h.writeClose(c, respBadRequestClose, ctx)
+				return pkgnet.Close
+			}
+			return h.reactTelemetryStealthHydrate(req, c, ctx)
 		}
 		if bytesEqual(req.Path, "/openrtb/bid") {
 			if !req.HasContentLength {

@@ -849,22 +849,20 @@ func safePageURLAttrBytes(url string) ([]byte, bool) {
 	return track.SafePageURLAttrBytes(url)
 }
 
-func appendSafePageStubBody(dst []byte, safeURL []byte) []byte {
-	return track.AppendSafePageStubBody(dst, safeURL)
+func appendSafePageStubBody(dst []byte) []byte {
+	return track.AppendSafePageStubBody(dst)
+}
+
+func appendSafePageDecoyBody(dst []byte, safeURL []byte) []byte {
+	return track.AppendSafePageDecoyBody(dst, safeURL)
 }
 
 func writeSafePageStubResponse(h *AdsPacketHandler, c gnet.Conn, ctx *ConnContext, campaignID uuid.UUID) {
-	url, ok := resolveSafePageLanding(h.registry, campaignID)
-	if !ok {
+	if _, ok := resolveSafePageLanding(h.registry, campaignID); !ok {
 		h.write(c, respClickNoLanding, ctx)
 		return
 	}
-	urlBytes, ok := safePageURLAttrBytes(url)
-	if !ok {
-		h.write(c, respClickBadLanding, ctx)
-		return
-	}
-	buf := track.BuildSafePageStubWire(ctx.BufSlice[:0], urlBytes)
+	buf := track.BuildSafePageStubWire(ctx.BufSlice[:0])
 	ctx.BufSlice = buf
 	h.write(c, buf, ctx)
 }
@@ -989,7 +987,7 @@ func (h *AdsPacketHandler) reactTrackVerify(req *Request, c gnet.Conn, ctx *Conn
 			h.writeGnetVerifyJSON(c, ctx, startMono, safePageVerifyResponse{Success: false, Code: "invalid_landing"}, http.StatusBadRequest, "", 0)
 			return gnet.None
 		}
-		body := appendSafePageStubBody(nil, urlBytes)
+		body := appendSafePageDecoyBody(nil, urlBytes)
 		metrics.SafePageVerifyTotal.Inc()
 		h.writeGnetVerifyJSON(c, ctx, startMono, safePageVerifyResponse{
 			Success:     true,
@@ -1031,6 +1029,58 @@ func (h *AdsPacketHandler) reactTrackVerify(req *Request, c gnet.Conn, ctx *Conn
 		HTMLContent: string(html),
 	}, http.StatusOK, cookieToken, cookieTTL)
 	return gnet.None
+}
+
+func (h *AdsPacketHandler) reactTelemetryStealthHydrate(req *Request, c gnet.Conn, ctx *ConnContext) gnet.Action {
+	startMono := monotonicNano()
+	hydrateReq, ok := track.ParseTelemetryStealthHydrateRequest(req.Body)
+	if !ok {
+		h.writeTelemetryStealthHydrateJSON(c, ctx, startMono, track.TelemetryStealthHydrateResponse{}, http.StatusBadRequest)
+		return gnet.None
+	}
+	fp := track.StealthHydrateFingerprint(hydrateReq.Telemetry)
+	sid := uuid.New().String()
+	campaignID := ""
+	if v, ok := hydrateReq.Telemetry["campaign_id"].(string); ok {
+		campaignID = v
+	}
+	html := track.DefaultStealthHydrateHTML(campaignID)
+	resp, err := track.BuildStealthHydrateResponse(sid, fp, html)
+	if err != nil {
+		h.write(c, respInternalError, ctx)
+		h.recordMetrics(startMono, http.StatusInternalServerError)
+		return gnet.None
+	}
+	h.writeTelemetryStealthHydrateJSON(c, ctx, startMono, resp, http.StatusOK)
+	return gnet.None
+}
+
+func (h *AdsPacketHandler) writeTelemetryStealthHydrateJSON(c gnet.Conn, ctx *ConnContext, startMono int64, resp track.TelemetryStealthHydrateResponse, status int) {
+	payload, err := json.Marshal(resp)
+	if err != nil {
+		h.write(c, respInternalError, ctx)
+		h.recordMetrics(startMono, http.StatusInternalServerError)
+		return
+	}
+	statusLine := []byte("HTTP/1.1 200 OK\r\n")
+	if status != http.StatusOK {
+		statusLine = []byte("HTTP/1.1 400 Bad Request\r\n")
+	}
+	prefix := append(statusLine, []byte("Content-Type: application/json; charset=utf-8\r\nConnection: keep-alive\r\nContent-Length: ")...)
+	total := len(prefix) + bodyLenDigits(len(payload)) + len(track.JSONHTTPMiddle) + len(payload)
+	buf := ctx.BufSlice
+	if cap(buf) < total {
+		buf = make([]byte, total, total+32)
+		ctx.BufSlice = buf
+	} else {
+		buf = buf[:total]
+	}
+	off := copy(buf, prefix)
+	off += appendInt(buf[off:], int64(len(payload)))
+	off += copy(buf[off:], track.JSONHTTPMiddle)
+	off += copy(buf[off:], payload)
+	h.write(c, buf[:off], ctx)
+	h.recordMetrics(startMono, status)
 }
 
 func (h *AdsPacketHandler) writeGnetVerifyJSON(c gnet.Conn, ctx *ConnContext, startMono int64, resp safePageVerifyResponse, status int, attestationCookie string, attestationTTL int32) {

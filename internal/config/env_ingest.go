@@ -222,6 +222,7 @@ func loadIngestModules(cfg *Config, appEnv string) error {
 	cfg.AcceptLangGeoEnabled = getEnvBool("ACCEPT_LANG_GEO_ENABLED", false)
 	cfg.JSONSerializationFingerprintEnabled = getEnvBool("JSON_SERIALIZATION_FINGERPRINT_ENABLED", false)
 	cfg.BehaviorTelemetryEnabled = getEnvBool("BEHAVIOR_TELEMETRY_ENABLED", false)
+	cfg.AntifraudTelemetryEnabled = getEnvBool("ANTIFRAUD_TELEMETRY_ENABLED", false)
 	cfg.MobileBiometricsEnabled = getEnvBool("MOBILE_BIOMETRICS_ENABLED", false)
 	cfg.MobileBiometricsClickEnabled = getEnvBool("MOBILE_BIOMETRICS_CLICK_ENABLED", false)
 

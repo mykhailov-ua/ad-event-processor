@@ -27,6 +27,8 @@ type TrackRequest struct {
 	JSONSerializationFlags uint8
 	TelemetrySet           uint8
 	TelemetryEvents        []domain.BehaviorTelemetryEvent
+	AntifraudSet           uint8
+	AntifraudSnapshot      domain.AntifraudSnapshot
 }
 
 func (v *TrackRequest) Reset() {
@@ -56,6 +58,8 @@ func (v *TrackRequest) resetForParse() {
 	v.JSONSerializationFlags = 0
 	v.TelemetrySet = 0
 	v.TelemetryEvents = v.TelemetryEvents[:0]
+	v.AntifraudSet = 0
+	v.AntifraudSnapshot = domain.AntifraudSnapshot{}
 }
 
 func (v *TrackRequest) UnmarshalJSON(data []byte) error {
@@ -186,6 +190,13 @@ func parseTrackRequestJSON(v *TrackRequest, data []byte) error {
 				}
 				v.TelemetryEvents = events
 				v.TelemetrySet = 1
+				i = end
+			} else if matchAntifraudKey(keyBytes) {
+				end, ok := parseAntifraudValue(data, i, n, &bud, &v.AntifraudSnapshot)
+				if !ok {
+					return parser.ErrMalformed
+				}
+				v.AntifraudSet = 1
 				i = end
 			} else {
 				valEnd, err := skipJSONValueBudget(data, i, &bud)

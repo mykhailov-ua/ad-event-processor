@@ -129,6 +129,14 @@ const (
 	FraudReasonCodeTCPSynOptMismatch        = "tcp_syn_opt_mismatch"
 	FraudReasonCodeBehaviorTelemetryMissing = "behavior_telemetry_missing"
 	FraudReasonCodeBehaviorBezierBot        = "behavior_bezier_bot"
+	FraudReasonCodeAntifraudTelemetryMissing = "antifraud_telemetry_missing"
+	FraudReasonCodeAntifraudAutomationLeak   = "antifraud_automation_leak"
+	FraudReasonCodeAntifraudBehaviorTemplate = "antifraud_behavior_template"
+	FraudReasonCodeAntifraudNetworkJitter    = "antifraud_network_jitter"
+	FraudReasonCodeAntifraudUntrustedEvents  = "antifraud_untrusted_events"
+	FraudReasonCodeAntifraudFastProbe        = "antifraud_fast_probe"
+	FraudReasonCodeAntifraudPowInvalid       = "antifraud_pow_invalid"
+	FraudReasonCodeAntifraudSignatureInvalid = "antifraud_signature_invalid"
 )
 
 const (
@@ -161,6 +169,14 @@ const (
 	FraudReasonTLSJA4Mismatch
 	FraudReasonBehaviorTelemetryMissing
 	FraudReasonBehaviorBezierBot
+	FraudReasonAntifraudTelemetryMissing
+	FraudReasonAntifraudAutomationLeak
+	FraudReasonAntifraudBehaviorTemplate
+	FraudReasonAntifraudNetworkJitter
+	FraudReasonAntifraudUntrustedEvents
+	FraudReasonAntifraudFastProbe
+	FraudReasonAntifraudPowInvalid
+	FraudReasonAntifraudSignatureInvalid
 	fraudReasonCount
 )
 
@@ -208,6 +224,14 @@ var fraudReasonRegistry = [fraudReasonCount]fraudReasonEntry{
 	FraudReasonTLSJA4Mismatch:           {code: FraudReasonCodeTLSJA4Mismatch, weight: 35, flags: FraudSignalL2Weak},
 	FraudReasonBehaviorTelemetryMissing: {code: FraudReasonCodeBehaviorTelemetryMissing, weight: 35, flags: FraudSignalL2Weak},
 	FraudReasonBehaviorBezierBot:        {code: FraudReasonCodeBehaviorBezierBot, weight: 35, flags: FraudSignalL2Weak},
+	FraudReasonAntifraudTelemetryMissing: {code: FraudReasonCodeAntifraudTelemetryMissing, weight: 35, flags: FraudSignalL2Weak},
+	FraudReasonAntifraudAutomationLeak:   {code: FraudReasonCodeAntifraudAutomationLeak, weight: 45, flags: FraudSignalL1High},
+	FraudReasonAntifraudBehaviorTemplate: {code: FraudReasonCodeAntifraudBehaviorTemplate, weight: 35, flags: FraudSignalL2Weak},
+	FraudReasonAntifraudNetworkJitter:    {code: FraudReasonCodeAntifraudNetworkJitter, weight: 35, flags: FraudSignalL2Weak},
+	FraudReasonAntifraudUntrustedEvents:  {code: FraudReasonCodeAntifraudUntrustedEvents, weight: 35, flags: FraudSignalL2Weak},
+	FraudReasonAntifraudFastProbe:        {code: FraudReasonCodeAntifraudFastProbe, weight: 35, flags: FraudSignalL2Weak},
+	FraudReasonAntifraudPowInvalid:       {code: FraudReasonCodeAntifraudPowInvalid, weight: 45, flags: FraudSignalL1High},
+	FraudReasonAntifraudSignatureInvalid: {code: FraudReasonCodeAntifraudSignatureInvalid, weight: 45, flags: FraudSignalL1High},
 }
 
 func FraudReasonCode(id FraudReasonID) string {

@@ -15,22 +15,34 @@ var TrackTelemetryJS []byte
 //go:embed track_biometrics.js
 var TrackBiometricsJS []byte
 
+//go:embed antifraud_telemetry.js
+var AntifraudTelemetryJS []byte
+
+//go:embed telemetry_stealth_poc.js
+var TelemetryStealthPocJS []byte
+
 const (
-	TrackPixelPath      = "/static/track.js"
-	TrackTelemetryPath  = "/static/track-telemetry.js"
-	TrackBiometricsPath = "/static/track-biometrics.js"
+	TrackPixelPath          = "/static/track.js"
+	TrackTelemetryPath      = "/static/track-telemetry.js"
+	TrackBiometricsPath     = "/static/track-biometrics.js"
+	AntifraudTelemetryPath  = "/static/antifraud-telemetry.js"
+	TelemetryStealthPocPath = "/static/telemetry-stealth-poc.js"
 )
 
 var (
-	TrackPixelGnetResponse      []byte
-	TrackTelemetryGnetResponse  []byte
-	TrackBiometricsGnetResponse []byte
+	TrackPixelGnetResponse          []byte
+	TrackTelemetryGnetResponse      []byte
+	TrackBiometricsGnetResponse     []byte
+	AntifraudTelemetryGnetResponse  []byte
+	TelemetryStealthPocGnetResponse []byte
 )
 
 func init() {
 	TrackPixelGnetResponse = buildTrackClientJSGnetResponse(TrackPixelJS)
 	TrackTelemetryGnetResponse = buildTrackClientJSGnetResponse(TrackTelemetryJS)
 	TrackBiometricsGnetResponse = buildTrackClientJSGnetResponse(TrackBiometricsJS)
+	AntifraudTelemetryGnetResponse = buildTrackClientJSGnetResponse(AntifraudTelemetryJS)
+	TelemetryStealthPocGnetResponse = buildTrackClientJSGnetResponse(TelemetryStealthPocJS)
 }
 
 func buildTrackClientJSGnetResponse(body []byte) []byte {
@@ -61,7 +73,9 @@ func ServeHTTPTrackClientJS(w http.ResponseWriter, body []byte) {
 func IsTrackClientStaticPath(path []byte) bool {
 	return bytesEqualASCII(path, TrackPixelPath) ||
 		bytesEqualASCII(path, TrackTelemetryPath) ||
-		bytesEqualASCII(path, TrackBiometricsPath)
+		bytesEqualASCII(path, TrackBiometricsPath) ||
+		bytesEqualASCII(path, AntifraudTelemetryPath) ||
+		bytesEqualASCII(path, TelemetryStealthPocPath)
 }
 
 func TrackClientStaticGnetResponse(path []byte) ([]byte, bool) {
@@ -72,6 +86,10 @@ func TrackClientStaticGnetResponse(path []byte) ([]byte, bool) {
 		return TrackTelemetryGnetResponse, true
 	case bytesEqualASCII(path, TrackBiometricsPath):
 		return TrackBiometricsGnetResponse, true
+	case bytesEqualASCII(path, AntifraudTelemetryPath):
+		return AntifraudTelemetryGnetResponse, true
+	case bytesEqualASCII(path, TelemetryStealthPocPath):
+		return TelemetryStealthPocGnetResponse, true
 	default:
 		return nil, false
 	}
