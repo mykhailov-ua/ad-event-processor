@@ -674,7 +674,12 @@ type AdsPacketHandler struct {
 	linkSignInnerScratch    [linkSignInnerScratchLen]byte
 	domainPoolTable         *domainhosts.Table
 	campaignFlowTable       *CampaignFlowTable
+	crowdWaveGate           crowdWaveGate
 	clickProxyClient        *http.Client
+}
+
+type crowdWaveGate interface {
+	PromotionBlocked(ctx context.Context, campaignID uuid.UUID) (bool, uint16)
 }
 
 func (h *AdsPacketHandler) ConfigureCIDR(table *CIDRTable) {
@@ -767,6 +772,13 @@ func (h *AdsPacketHandler) ConfigureCampaignFlow(table *CampaignFlowTable) {
 		return
 	}
 	h.campaignFlowTable = table
+}
+
+func (h *AdsPacketHandler) ConfigureCrowdWave(filter *CrowdWaveFilter) {
+	if h == nil || filter == nil {
+		return
+	}
+	h.crowdWaveGate = filter
 }
 
 func (h *AdsPacketHandler) SetPool(p Pinger) {
@@ -1226,6 +1238,9 @@ func (h *AdsPacketHandler) React(req *Request, c pkgnet.Conn) pkgnet.Action {
 		if httpPathHasPrefix(req.Path, antifraudChallengePath) {
 			return h.reactAntifraudChallenge(req, c, ctx)
 		}
+		if httpPathHasPrefix(req.Path, antifraudRTTPath) {
+			return h.reactAntifraudRTT(req, c, ctx)
+		}
 		if resp, ok := trackClientStaticGnetResponse(req.Path); ok {
 			h.write(c, resp, ctx)
 			return pkgnet.None
@@ -1355,6 +1370,10 @@ func (h *AdsPacketHandler) React(req *Request, c pkgnet.Conn) pkgnet.Action {
 	if req.TCPSigOptSet != 0 {
 		evt.TCPSigOptHash = req.TCPSigOptHash
 		evt.TCPSigOptSet = 1
+	}
+	if req.H2FrameTraceSet != 0 {
+		evt.H2FrameTraceHash = req.H2FrameTraceHash
+		evt.H2FrameTraceSet = 1
 	}
 	fillConnTimingFromRequest(evt, req)
 

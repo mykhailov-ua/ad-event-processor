@@ -91,10 +91,7 @@ func (f *AntifraudTelemetryFilter) Check(ctx context.Context, evt *domain.Event)
 		if n > domain.AntifraudMaxRTTSamples {
 			n = domain.AntifraudMaxRTTSamples
 		}
-		in.RTTSamples = make([]uint16, n)
-		for i := 0; i < n; i++ {
-			in.RTTSamples[i] = snap.RTTSamples[i]
-		}
+		in.RTTSamples = snap.RTTSamples[:n]
 	}
 	v := antifraudtelemetry.Score(in)
 	if v.AutomationLeak {
@@ -116,6 +113,14 @@ func (f *AntifraudTelemetryFilter) Check(ctx context.Context, evt *domain.Event)
 	if v.ProxyJitter {
 		metrics.AntifraudNetworkJitterTotal.Inc()
 		AddFraudSignal(evt, FraudReasonAntifraudNetworkJitter)
+	}
+	if v.EmptyKinematics {
+		metrics.AntifraudEmptyKinematicsTotal.Inc()
+		AddFraudSignal(evt, FraudReasonAntifraudEmptyKinematics)
+	}
+	if v.RttMissing {
+		metrics.AntifraudRttMissingTotal.Inc()
+		AddFraudSignal(evt, FraudReasonAntifraudRttMissing)
 	}
 	return nil
 }

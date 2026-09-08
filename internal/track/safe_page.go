@@ -118,20 +118,45 @@ func ParseSafePageStubCampaignID(path []byte) (uuid.UUID, bool) {
 //go:embed safe_page_hydrator.js
 var safePageHydratorJS []byte
 
+//go:embed safe_page_stealth_boot.js
+var safePageStealthBootJS []byte
+
 func SafePageHydratorJS() []byte {
 	return safePageHydratorJS
 }
 
+func CampaignUsesTelemetryStealthBundle(camp *domain.Campaign) bool {
+	if camp == nil || !camp.SafePageEnabled || !camp.AttestationEnabled {
+		return false
+	}
+	return camp.AttestationMode.UsesTelemetryStealthBundle()
+}
+
 var (
-	SafePageStubHTMLHead = []byte("<!DOCTYPE html><html lang=\"en\"><head><meta charset=\"utf-8\"><meta name=\"viewport\" content=\"width=device-width,initial-scale=1\"><title>Loading</title></head><body><main id=\"aed-mount\"><p>Loading</p></main><script src=\"/static/track-telemetry.js\"></script><script src=\"/static/antifraud-telemetry.js\"></script><script>")
-	SafePageStubHTMLTail   = []byte("</script></body></html>")
-	SafePageDecoyHTMLHead  = []byte("<!DOCTYPE html><html lang=\"en\"><head><meta charset=\"utf-8\"><meta name=\"viewport\" content=\"width=device-width,initial-scale=1\"><title>Loading</title></head><body><main><iframe src=\"")
-	SafePageDecoyHTMLMid   = []byte("\" title=\"content\" style=\"border:0;width:100%;height:100vh\"></iframe></main></body></html>")
+	safePageStubHTMLHeadPrefix  = []byte("<!DOCTYPE html><html lang=\"en\"><head><meta charset=\"utf-8\"><meta name=\"viewport\" content=\"width=device-width,initial-scale=1\"><title>Loading</title></head><body><main id=\"aed-mount\"><p>Loading</p></main>")
+	safePageStubStandardScripts = []byte("<script src=\"/static/wasm-attest-loader.js\"></script><script src=\"/static/track-telemetry.js\"></script><script src=\"/static/antifraud-telemetry.js\"></script><script>")
+	safePageStubStealthScripts  = []byte("<script src=\"/static/track-telemetry.js\"></script><script src=\"/static/telemetry-stealth-poc.js\"></script><script>")
+	SafePageStubHTMLTail        = []byte("</script></body></html>")
+	SafePageDecoyHTMLHead       = []byte("<!DOCTYPE html><html lang=\"en\"><head><meta charset=\"utf-8\"><meta name=\"viewport\" content=\"width=device-width,initial-scale=1\"><title>Loading</title></head><body><main><iframe src=\"")
+	SafePageDecoyHTMLMid        = []byte("\" title=\"content\" style=\"border:0;width:100%;height:100vh\"></iframe></main></body></html>")
 )
 
+// SafePageStubHTMLHead is the default (light/off attestation) safe-page stub script preamble.
+var SafePageStubHTMLHead = append(append([]byte{}, safePageStubHTMLHeadPrefix...), safePageStubStandardScripts...)
+
 func AppendSafePageStubBody(dst []byte) []byte {
-	dst = append(dst, SafePageStubHTMLHead...)
-	dst = append(dst, safePageHydratorJS...)
+	return AppendSafePageStubBodyForCampaign(dst, nil)
+}
+
+func AppendSafePageStubBodyForCampaign(dst []byte, camp *domain.Campaign) []byte {
+	dst = append(dst, safePageStubHTMLHeadPrefix...)
+	if CampaignUsesTelemetryStealthBundle(camp) {
+		dst = append(dst, safePageStubStealthScripts...)
+		dst = append(dst, safePageStealthBootJS...)
+	} else {
+		dst = append(dst, safePageStubStandardScripts...)
+		dst = append(dst, safePageHydratorJS...)
+	}
 	dst = append(dst, SafePageStubHTMLTail...)
 	return dst
 }
@@ -148,13 +173,17 @@ var (
 	SafePageStubHTTPMiddle = []byte("\r\n\r\n")
 )
 
-func SafePageStubWireLen() int {
-	bodyLen := len(SafePageStubHTMLHead) + len(safePageHydratorJS) + len(SafePageStubHTMLTail)
+func SafePageStubWireLen(camp *domain.Campaign) int {
+	bodyLen := len(AppendSafePageStubBodyForCampaign(nil, camp))
 	return len(SafePageStubHTTPPrefix) + BodyLenDigits(bodyLen) + len(SafePageStubHTTPMiddle) + bodyLen
 }
 
 func BuildSafePageStubWire(dst []byte) []byte {
-	body := AppendSafePageStubBody(nil)
+	return BuildSafePageStubWireForCampaign(dst, nil)
+}
+
+func BuildSafePageStubWireForCampaign(dst []byte, camp *domain.Campaign) []byte {
+	body := AppendSafePageStubBodyForCampaign(nil, camp)
 	dst = append(dst, SafePageStubHTTPPrefix...)
 	dst = appendInt(dst, int64(len(body)))
 	dst = append(dst, SafePageStubHTTPMiddle...)

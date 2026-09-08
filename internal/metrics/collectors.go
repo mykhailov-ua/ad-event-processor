@@ -122,6 +122,31 @@ var (
 		Help: "CGNAT mobile carrier bypass for IP velocity signals only (fixed label set)",
 	}, []string{"signal"})
 
+	CGNATCollateralSkipTotal = promauto.NewCounterVec(prometheus.CounterOpts{
+		Name: "ad_cgnat_collateral_skip_total",
+		Help: "Hard IP deny skipped on mobile carrier CGNAT policy (T24 collateral guard)",
+	}, []string{"reason"})
+
+	InAppWebViewClassifiedTotal = promauto.NewCounterVec(prometheus.CounterOpts{
+		Name: "ad_inapp_webview_classified_total",
+		Help: "In-app WebView sessions classified by platform label",
+	}, []string{"platform"})
+
+	AppleRelayExemptTotal = promauto.NewCounter(prometheus.CounterOpts{
+		Name: "ad_apple_relay_exempt_total",
+		Help: "DCASN datacenter check skipped for Apple Private Relay egress fingerprint",
+	})
+
+	AppleRelayRejectTotal = promauto.NewCounter(prometheus.CounterOpts{
+		Name: "ad_apple_relay_reject_total",
+		Help: "Apple relay ASN with non-Apple UA still flagged datacenter_ip",
+	})
+
+	ClickIngressLatencyBudgetExceededTotal = promauto.NewCounterVec(prometheus.CounterOpts{
+		Name: "ad_click_ingress_latency_budget_exceeded_total",
+		Help: "Click ingress stage exceeded configured latency budget (T27)",
+	}, []string{"stage"})
+
 	ConversionRejectStoreErrorsTotal = promauto.NewCounterVec(prometheus.CounterOpts{
 		Name: "ad_conversion_reject_store_errors_total",
 		Help: "Conversion smart reject store lookup failures (fail-open skips CH-dependent rules)",
@@ -182,6 +207,51 @@ var (
 		Help: "L2 behavior_bezier_bot on native JSON /track telemetry.events",
 	})
 
+	CrowdProbeSignalTotal = promauto.NewCounter(prometheus.CounterOpts{
+		Name: "ad_crowd_probe_signal_total",
+		Help: "L2 crowd_probe_behavior or crowd_probe_timing signals on attested sessions",
+	})
+
+	ProbeClusterRouteTotal = promauto.NewCounter(prometheus.CounterOpts{
+		Name: "ad_probe_cluster_route_total",
+		Help: "Ingress clicks routed to Public Safe Sandbox Zone by probe cluster cardinality",
+	})
+
+	CrowdProbeASNSignalTotal = promauto.NewCounter(prometheus.CounterOpts{
+		Name: "ad_crowd_probe_asn_signal_total",
+		Help: "L2 crowd_probe_asn on high mobile ASN tier with elevated probe behavior score",
+	})
+
+	HybridCrowdWaveTotal = promauto.NewCounterVec(prometheus.CounterOpts{
+		Name: "ad_hybrid_crowd_wave_total",
+		Help: "Active hybrid crowd probe waves detected per campaign",
+	}, []string{"campaign_id"})
+
+	MobileASNTierFeedRefreshTotal = promauto.NewCounter(prometheus.CounterOpts{
+		Name: "ad_mobile_asn_tier_feed_refresh_total",
+		Help: "Mobile ASN tier feed reload successes",
+	})
+
+	MobileASNTierFeedRefreshErrorsTotal = promauto.NewCounter(prometheus.CounterOpts{
+		Name: "ad_mobile_asn_tier_feed_refresh_errors_total",
+		Help: "Mobile ASN tier feed reload failures",
+	})
+
+	MobileASNTierEntries = promauto.NewGauge(prometheus.GaugeOpts{
+		Name: "ad_mobile_asn_tier_entries",
+		Help: "Mobile ASN tier table entry count",
+	})
+
+	LanderDomLintRejectTotal = promauto.NewCounterVec(prometheus.CounterOpts{
+		Name: "ad_lander_dom_lint_reject_total",
+		Help: "Hosted lander publish rejected by DOM integrity lint",
+	}, []string{"rule"})
+
+	MobileASNTierUninitialized = promauto.NewGauge(prometheus.GaugeOpts{
+		Name: "ad_mobile_asn_tier_uninitialized",
+		Help: "1 when mobile ASN tier table has no successful load yet",
+	})
+
 	AntifraudTelemetryMissingTotal = promauto.NewCounter(prometheus.CounterOpts{
 		Name: "ad_antifraud_telemetry_missing_total",
 		Help: "L2 antifraud_telemetry_missing on attested conversion without antifraud snapshot",
@@ -220,6 +290,16 @@ var (
 	AntifraudSignatureInvalidTotal = promauto.NewCounter(prometheus.CounterOpts{
 		Name: "ad_antifraud_signature_invalid_total",
 		Help: "L1 antifraud_signature_invalid on missing or bad telemetry MAC",
+	})
+
+	AntifraudEmptyKinematicsTotal = promauto.NewCounter(prometheus.CounterOpts{
+		Name: "ad_antifraud_empty_kinematics_total",
+		Help: "L2 antifraud_empty_kinematics on dwell without kinematic variance",
+	})
+
+	AntifraudRttMissingTotal = promauto.NewCounter(prometheus.CounterOpts{
+		Name: "ad_antifraud_rtt_missing_total",
+		Help: "L2 antifraud_rtt_missing when attested session lacks RTT probes",
 	})
 
 	DCASNCheckTotal = promauto.NewCounter(prometheus.CounterOpts{
@@ -425,6 +505,16 @@ var (
 	TCPSynOptSkippedTotal = promauto.NewCounterVec(prometheus.CounterOpts{
 		Name: "ad_tcp_syn_opt_skipped_total",
 		Help: "TCP SYN option-order checks skipped (labels: no_tcp_sig_opt)",
+	}, []string{"reason"})
+
+	H2FrameTraceMismatchTotal = promauto.NewCounter(prometheus.CounterOpts{
+		Name: "ad_h2_frame_trace_mismatch_total",
+		Help: "HTTP/2 frame trace corpus mismatches against UA family",
+	})
+
+	H2FrameTraceSkippedTotal = promauto.NewCounterVec(prometheus.CounterOpts{
+		Name: "ad_h2_frame_trace_skipped_total",
+		Help: "HTTP/2 frame trace checks skipped (labels: no_h2_frame_trace)",
 	}, []string{"reason"})
 	TLSJA4CorpusMismatchTotal = promauto.NewCounter(prometheus.CounterOpts{
 		Name: "ad_tls_ja4_corpus_mismatch_total",

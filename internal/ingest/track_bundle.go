@@ -90,6 +90,12 @@ func registerHTTPTrackClientStatic(mux *http.ServeMux) {
 	mux.HandleFunc("GET "+track.TelemetryStealthPocPath, func(w http.ResponseWriter, _ *http.Request) {
 		track.ServeHTTPTrackClientJS(w, track.TelemetryStealthPocJS)
 	})
+	mux.HandleFunc("GET "+track.WasmAttestLoaderPath, func(w http.ResponseWriter, _ *http.Request) {
+		track.ServeHTTPTrackClientJS(w, track.WasmAttestLoaderJS)
+	})
+	mux.HandleFunc("GET "+track.AttestWasmPath, func(w http.ResponseWriter, _ *http.Request) {
+		track.ServeHTTPAttestWasm(w)
+	})
 }
 
 func isTrackPixelPath(path []byte) bool {
@@ -733,6 +739,20 @@ func parseTrackTelemetryEventObject(data []byte, start, n int, bud *jsonScanBudg
 				}
 				evt.TS = int64(v)
 				i = end
+			} else if key[0] == 'f' {
+				v, end, ok := parseJSONFloatValue(data, i, n, bud)
+				if !ok {
+					return evt, start, false
+				}
+				switch key[1] {
+				case 'x':
+					evt.FX = v
+				case 'y':
+					evt.FY = v
+				default:
+					return evt, start, false
+				}
+				i = end
 			} else {
 				valEnd, err := skipJSONValueBudgetDepth(data, i, bud, MaxJSONDepth)
 				if err != nil {
@@ -747,6 +767,23 @@ func parseTrackTelemetryEventObject(data []byte, start, n int, bud *jsonScanBudg
 					return evt, start, false
 				}
 				evt.Force = v
+				i = end
+			} else {
+				valEnd, err := skipJSONValueBudgetDepth(data, i, bud, MaxJSONDepth)
+				if err != nil {
+					return evt, start, false
+				}
+				i = valEnd
+			}
+		case 7:
+			if key[0] == 't' && key[1] == 'r' && key[2] == 'u' && key[3] == 's' && key[4] == 't' && key[5] == 'e' && key[6] == 'd' {
+				v, end, ok := parseJSONIntValue(data, i, n, bud)
+				if !ok {
+					return evt, start, false
+				}
+				if v != 0 {
+					evt.Trusted = 1
+				}
 				i = end
 			} else {
 				valEnd, err := skipJSONValueBudgetDepth(data, i, bud, MaxJSONDepth)

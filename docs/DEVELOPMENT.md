@@ -498,6 +498,21 @@ bash scripts/ops/emergency_breaker.sh off "mitigation complete"
 
 Verify outbox drained (`ad_management_outbox_oldest_pending_seconds` < 30 s) and `emergency_breaker` in Redis matches intent before resuming traffic.
 
+### Click ingress latency budget
+
+Synchronous `/click` must not block on unbounded external verdict HTTP. Reference ceilings (`traffic.mdc`):
+
+| Stage | Env | Default | Notes |
+| :--- | :--- | :--- | :--- |
+| Filter chain + Redis | `FILTER_TIMEOUT_MS` | 5000 (dev), 100 (prod max) | 504 `filter_timeout`; metric `stage=filter` |
+| Upstream click proxy | `CLICK_PROXY_TIMEOUT_MS` | 300 | Fallback 302 when campaign `proxy_timeout_fallback`; metric `stage=click_proxy` |
+| Load-test SLA | `core.mdc` | click p95 < 50 ms | control cohort abort if p99 > 80 ms for 30 s |
+
+```bash
+bash scripts/ci/static/click_ingress_hotpath_gate.sh
+bash scripts/test/edge/content_diff_drill.sh --holdout
+```
+
 ### Do not
 
 - Raise `WORKER_POOL_QUEUE_DEPTH` or set `STREAM_PRODUCER_ADMISSION_PCT=0` to "fix" overload (disables `TryReserve`).
@@ -559,6 +574,8 @@ Verify: `go test ./internal/ingestion/ -run='DebitSubshard|HighVolumeDebit' -cou
 Env: `PROCESSOR_STREAM_LAG_MAX_SEC=120`, `CH_SPOOL_DIR=/var/spool/ad-event-processor/ch`, `CH_SPOOL_MAX_SEGMENTS=8`.
 
 Settlement truth stays in Postgres; CH lag is analytics-only.
+
+**Redis stream MAXLEN vs burst (P5-INGEST-SINK-BURST-RESILIENCE):** `STREAM_MAX_LEN` / `REDIS_STREAM_MAXLEN` (default 10000 per shard) uses approximate `XADD MAXLEN ~ N`. At high ingress RPS, processor lag causes trim drops before CH insert; watch `ad_events_dropped_total` and `ad_processor_stream_lag_seconds`. Do not disable MAXLEN without broker-primary (`CH_INGEST_SOURCE=broker`) and WAL disk headroom. Redis `maxmemory-policy` should stay `noeviction` on state shards; streams share RAM with dedup and local-quanta keys.
 
 ### Periodic fault drill
 
@@ -651,6 +668,12 @@ redis-cli ZADD edge:tcp_fp:recent $(date +%s) '203.0.113.50:deadbeef'
 ```
 
 Or use `edge.Record` with `TCPOptTrace` from a small Go snippet / integration test. Tracker checks corpus only when `TCP_SYN_OPT_CORPUS_ENABLED=1` (default off). See `edge.mdc` and `deploy/vendor/ANTIFRAUD.md`.
+
+**HTTP/2 frame trace (`X-H2-FRAME-TRACE`):** Edge capture is ops-seeded until ingress H2 tap ships. Seed `h2_frame_trace` beside `tcp_opt_trace` on `edge:tcp_fp:ip:{ip}`; nginx sync maps `f:{ip}` to `X-H2-FRAME-TRACE`. Tracker corpus: `H2_FRAME_TRACE_ENABLED=1` (default off).
+
+**Safe-page runtime deep probes:** Opt-in via lander meta `aed-runtime-probes=1`. Shader timing, IEEE754 float-noise hash, and `navigator` getter timing are evaluated only on `POST /track/verify` (not `/track`). Disclose collection in operator privacy copy for EU SKUs.
+
+**C WASM attest module (minimal bundle):** Shared `wasm/attest/*.c` builds to `var/wasm/attest.wasm` (~2.1 KiB). Server sandbox: `pkg/wasmattest` (wazero, zero imports). Client loader: `GET /static/wasm-attest-loader.js`. Build: `bash scripts/build/wasm_attest.sh` (or `WASM_ATTEST_FETCH_WASI_SDK=1` on first run). Gate: `bash scripts/ci/static/wasm_attest_gate.sh`. Not wired to `/track` hot path; integrate behind `attestation_mode=strict` in a follow-up.
 
 ---
 

@@ -2,6 +2,7 @@ package config
 
 import (
 	"fmt"
+	"net/url"
 	"os"
 	"runtime"
 	"strconv"
@@ -410,6 +411,7 @@ type Config struct {
 	TCPMSSTunnelThreshold               uint16
 	TCPSynSigEnabled                    bool
 	TCPSynOptCorpusEnabled              bool
+	H2FrameTraceCorpusEnabled           bool
 	SecFetchValidateEnabled             bool
 	ClientHintsPlatformEnabled          bool
 	TLSALPNMismatchEnabled              bool
@@ -422,6 +424,24 @@ type Config struct {
 	JSONSerializationFingerprintEnabled bool
 	BehaviorTelemetryEnabled            bool
 	AntifraudTelemetryEnabled           bool
+	CrowdProbeEnabled                   bool
+	MobileASNTierEnabled                bool
+	MobileASNTierFeedDir                string
+	MobileASNTierFeedRefresh            time.Duration
+	CrowdProbeASNMinTier                int
+	CrowdProbeASNMinScore               int
+	ProbeClusterEnabled                 bool
+	ProbeClusterMinSessions             int
+	ProbeClusterMinCampaigns            int
+	ProbeClusterScoreThreshold          uint8
+	ProbeClusterTTLDays                 int
+	ProbeClusterExportInterval          time.Duration
+	CrowdWaveEnabled                    bool
+	CrowdWaveWindowSec                  int
+	CrowdWaveMinUniqueClusters          int
+	CrowdWaveMinSimhashNeighbors        int
+	CrowdWaveSimhashMaxDist             int
+	CrowdWaveExportInterval             time.Duration
 	MobileBiometricsEnabled             bool
 	MobileBiometricsClickEnabled        bool
 	ProxyVPNBlockEnabled                bool
@@ -454,8 +474,10 @@ type Config struct {
 	LanderMaxZipBytes                   int64
 	FlowReloadChannel                   string
 	LanderPreviewSecret                 string
+	LanderCSPEnabled                    bool
 	ProxyAllowHTTPInsecure              bool
 	ClickProxyTimeoutMs                 int
+	ClickTimingPadMs                    int
 	SlotMigrationLagThreshold           int64
 	ElasticShardingEnabled              bool
 	ShardOrchestratorEnabled            bool
@@ -885,6 +907,7 @@ func Load() (*Config, error) {
 	}
 	loadEdgeModules(cfg)
 	loadLanderHostModules(cfg)
+	mergeTrackCORSOriginsWithLander(cfg)
 	loadDatabaseModules(cfg)
 	cfg.ManagementURL = os.Getenv("CONTROL_URL")
 	if cfg.ManagementURL == "" {
@@ -1201,4 +1224,40 @@ func loadLanderHostModules(cfg *Config) {
 		cfg.FlowReloadChannel = "flow:reload"
 	}
 	cfg.LanderPreviewSecret = strings.TrimSpace(os.Getenv("LANDER_PREVIEW_SECRET"))
+	cfg.LanderCSPEnabled = getEnvBool("LANDER_CSP_ENABLED", false)
+}
+
+func mergeTrackCORSOriginsWithLander(cfg *Config) {
+	if cfg == nil {
+		return
+	}
+	origin := publicOriginFromBase(cfg.LanderPublicBaseURL)
+	if origin == "" {
+		return
+	}
+	for _, existing := range cfg.TrackCORSOrigins {
+		if strings.EqualFold(strings.TrimSpace(existing), origin) {
+			return
+		}
+	}
+	cfg.TrackCORSOrigins = append(cfg.TrackCORSOrigins, origin)
+}
+
+func publicOriginFromBase(raw string) string {
+	raw = strings.TrimSpace(raw)
+	if raw == "" {
+		return ""
+	}
+	if !strings.Contains(raw, "://") {
+		raw = "https://" + raw
+	}
+	u, err := url.Parse(raw)
+	if err != nil || u.Host == "" {
+		return ""
+	}
+	scheme := u.Scheme
+	if scheme == "" {
+		scheme = "https"
+	}
+	return scheme + "://" + u.Host
 }

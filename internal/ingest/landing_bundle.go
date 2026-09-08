@@ -458,6 +458,7 @@ func expandRedirectMacros(dst, base []byte, clickID, userID string, subs SubIDSl
 }
 
 func (h *AdsPacketHandler) writeGnetClickRedirect(ctx *ConnContext, c gnet.Conn, startMono int64, location []byte) {
+	clickResponseTimingPad(startMono, h.clickTimingPadMs())
 	buf := track.BuildClickRedirectWire(ctx.BufSlice, location)
 	ctx.BufSlice = buf
 	h.write(c, buf, ctx)
@@ -552,6 +553,7 @@ func (h *AdsPacketHandler) reactClickRedirect(req *Request, c gnet.Conn, ctx *Co
 	evt.AcceptLang = unsafeString(req.AcceptLang)
 	fillIngressH2(evt, ctx.ProtoH2)
 	fillWireMetadataFromRequest(evt, req)
+	fillConnTimingFromRequest(evt, req)
 	attachFraudAccumulator(evt)
 	if parsed.AttestationLightMissing {
 		addFraudSignal(evt, FraudReasonAttestationMissing)
@@ -602,6 +604,18 @@ func (h *AdsPacketHandler) reactClickRedirect(req *Request, c gnet.Conn, ctx *Co
 			admissionHeld = true
 		}
 		outcome := processTrack(context.Background(), h.trackProc, evt, nil)
+		if evt.ProbeClusterRoute != 0 {
+			h.recordReviewTrafficClick(ctx, parsed.CampaignID, clickID, parsed.UserID, ip, ua)
+			h.writeGnetCampaignDecoySafeView(c, ctx, startMono, "probe_cluster", parsed.CampaignID)
+			releaseAdmission()
+			return gnet.None
+		}
+		if evt.CrowdWaveActive != 0 {
+			h.recordReviewTrafficClick(ctx, parsed.CampaignID, clickID, parsed.UserID, ip, ua)
+			h.writeGnetCampaignDecoySafeView(c, ctx, startMono, "crowd_wave", parsed.CampaignID)
+			releaseAdmission()
+			return gnet.None
+		}
 		desyncPolicy := evalCrossLayerDesyncClickPolicy(h.registry, evt)
 		if desyncPolicy.Fired {
 			evt.CrossLayerDesyncFired = 1
@@ -879,6 +893,7 @@ func buildCampaignDecoyBody(h *AdsPacketHandler, campaignID uuid.UUID, fallbackU
 }
 
 func (h *AdsPacketHandler) writeGnetCampaignDecoySafeView(c gnet.Conn, ctx *ConnContext, startMono int64, tag string, campaignID uuid.UUID) {
+	clickResponseTimingPad(startMono, h.clickTimingPadMs())
 	body := buildCampaignDecoyBody(h, campaignID, "")
 	head := []byte("HTTP/1.1 200 OK\r\nContent-Type: text/html; charset=utf-8\r\n")
 	head = append(head, branding.HTTPSafeViewHeader...)
@@ -906,7 +921,11 @@ func writeSafePageStubResponse(h *AdsPacketHandler, c gnet.Conn, ctx *ConnContex
 		h.write(c, respClickNoLanding, ctx)
 		return
 	}
-	buf := track.BuildSafePageStubWire(ctx.BufSlice[:0])
+	var stubCamp *domain.Campaign
+	if h.registry != nil {
+		stubCamp, _ = h.registry.GetCampaign(campaignID)
+	}
+	buf := track.BuildSafePageStubWireForCampaign(ctx.BufSlice[:0], stubCamp)
 	ctx.BufSlice = buf
 	h.write(c, buf, ctx)
 }
@@ -1040,6 +1059,25 @@ func (h *AdsPacketHandler) reactTrackVerify(req *Request, c gnet.Conn, ctx *Conn
 	if !safeEnabled {
 		h.writeGnetVerifyJSON(c, ctx, startMono, safePageVerifyResponse{Success: false, Code: "safe_page_disabled"}, http.StatusForbidden, "", 0)
 		return gnet.None
+	}
+
+	if h.crowdWaveGate != nil {
+		blocked, _ := h.crowdWaveGate.PromotionBlocked(context.Background(), campaignID)
+		if blocked {
+			landingURL, ok := resolveSafePageLanding(h.registry, campaignID)
+			if !ok {
+				h.writeGnetVerifyJSON(c, ctx, startMono, safePageVerifyResponse{Success: false, Code: "crowd_wave_active"}, http.StatusForbidden, "", 0)
+				return gnet.None
+			}
+			body := buildCampaignDecoyBody(h, campaignID, landingURL)
+			metrics.SafePageVerifyTotal.Inc()
+			h.writeGnetVerifyJSON(c, ctx, startMono, safePageVerifyResponse{
+				Success:     true,
+				HTMLContent: string(body),
+				Code:        "crowd_wave_active",
+			}, http.StatusOK, "", 0)
+			return gnet.None
+		}
 	}
 
 	evt := &ctx.Evt

@@ -75,6 +75,19 @@ func TestMergeDenyIPs_allSources(t *testing.T) {
 	}
 }
 
+func TestSyncBlocklistFromRedis_holdoutDenyKeyAllowlist(t *testing.T) {
+	keys := []string{redisKeyBlacklistManual, redisKeyBlacklistAuto, redisKeyBlacklistFraud}
+	for _, k := range keys {
+		require.Contains(t, []string{
+			redisKeyBlacklistManual,
+			redisKeyBlacklistAuto,
+			redisKeyBlacklistFraud,
+		}, k)
+	}
+	require.NotContains(t, keys, "residential:proxy:intel")
+	require.NotContains(t, keys, "netintel:mobile_tier")
+}
+
 func TestBlocklistApplyDiff_fraudRemoval(t *testing.T) {
 	maps := newTestBlocklistMapsV4Only(t)
 	store := NewBlocklistStore()

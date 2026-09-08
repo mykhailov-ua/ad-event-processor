@@ -1,14 +1,14 @@
 package antifraudtelemetry
 
 const (
-	AutomationLeakCDC          = 1 << 0
-	AutomationLeakPhantom      = 1 << 1
-	AutomationLeakPlaywright   = 1 << 2
-	AutomationLeakSelenium     = 1 << 3
-	AutomationLeakWebdriverAPI = 1 << 4
-	AutomationLeakNativeTamper = 1 << 5
+	AutomationLeakCDC           = 1 << 0
+	AutomationLeakPhantom       = 1 << 1
+	AutomationLeakPlaywright    = 1 << 2
+	AutomationLeakSelenium      = 1 << 3
+	AutomationLeakWebdriverAPI  = 1 << 4
+	AutomationLeakNativeTamper  = 1 << 5
 	AutomationLeakHeadlessShell = 1 << 6
-	AutomationLeakStackProbe   = 1 << 7
+	AutomationLeakStackProbe    = 1 << 7
 )
 
 // Input is the server-side scoring view after ingest normalizes client JSON.
@@ -39,6 +39,8 @@ type Verdict struct {
 	FastProbe        bool
 	UntrustedEvents  bool
 	ProxyJitter      bool
+	EmptyKinematics  bool
+	RttMissing       bool
 }
 
 func Score(in Input) Verdict {
@@ -60,7 +62,23 @@ func Score(in Input) Verdict {
 	v.TemplateBehavior = scoreTemplateBehavior(in)
 	v.FastProbe = scoreFastProbe(in)
 	v.ProxyJitter = scoreProxyJitter(in)
+	v.EmptyKinematics = scoreEmptyKinematics(in)
+	v.RttMissing = scoreRttMissing(in)
 	return v
+}
+
+func scoreEmptyKinematics(in Input) bool {
+	if in.DwellMs <= 500 {
+		return false
+	}
+	return in.PointerCVMilli == 0 &&
+		in.PointerDtCVMilli == 0 &&
+		in.ScrollCVMilli == 0 &&
+		in.TouchIntervalCVMilli == 0
+}
+
+func scoreRttMissing(in Input) bool {
+	return in.DwellMs > 2000 && len(in.RTTSamples) == 0
 }
 
 // scoreTemplateBehavior flags monotonic checker sessions: near-zero kinematic variance with scripted scroll.
@@ -168,7 +186,7 @@ func percentileUint16(samples []uint16, pct int) uint16 {
 		}
 		buf[j+1] = v
 	}
-	idx := (len(buf)-1) * pct / 100
+	idx := (len(buf) - 1) * pct / 100
 	return buf[idx]
 }
 

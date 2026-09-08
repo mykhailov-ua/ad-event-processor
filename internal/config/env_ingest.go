@@ -209,6 +209,7 @@ func loadIngestModules(cfg *Config, appEnv string) error {
 	cfg.TCPMSSTunnelThreshold = uint16(getEnvInt("TCP_MSS_TUNNEL_THRESHOLD", 1400))
 	cfg.TCPSynSigEnabled = getEnvBool("TCP_SYN_SIG_ENABLED", true)
 	cfg.TCPSynOptCorpusEnabled = getEnvBool("TCP_SYN_OPT_CORPUS_ENABLED", false)
+	cfg.H2FrameTraceCorpusEnabled = getEnvBool("H2_FRAME_TRACE_ENABLED", false)
 
 	cfg.SecFetchValidateEnabled = getEnvBool("SEC_FETCH_VALIDATE_ENABLED", true)
 	cfg.ClientHintsPlatformEnabled = getEnvBool("CLIENT_HINTS_PLATFORM_ENABLED", true)
@@ -223,6 +224,48 @@ func loadIngestModules(cfg *Config, appEnv string) error {
 	cfg.JSONSerializationFingerprintEnabled = getEnvBool("JSON_SERIALIZATION_FINGERPRINT_ENABLED", false)
 	cfg.BehaviorTelemetryEnabled = getEnvBool("BEHAVIOR_TELEMETRY_ENABLED", false)
 	cfg.AntifraudTelemetryEnabled = getEnvBool("ANTIFRAUD_TELEMETRY_ENABLED", false)
+	cfg.CrowdProbeEnabled = getEnvBool("CROWD_PROBE_ENABLED", false)
+	cfg.MobileASNTierEnabled = getEnvBool("MOBILE_ASN_TIER_ENABLED", cfg.CrowdProbeEnabled)
+	cfg.MobileASNTierFeedDir = strings.TrimSpace(os.Getenv("MOBILE_ASN_TIER_FEED_DIR"))
+	if cfg.MobileASNTierFeedDir == "" {
+		cfg.MobileASNTierFeedDir = "/var/lib/ad-event-processor/mobile-asn-tier"
+	}
+	cfg.MobileASNTierFeedRefresh = 60 * time.Second
+	if raw := os.Getenv("MOBILE_ASN_TIER_FEED_REFRESH_INTERVAL"); raw != "" {
+		if d, err := time.ParseDuration(raw); err == nil {
+			cfg.MobileASNTierFeedRefresh = d
+		} else if n, err := strconv.Atoi(raw); err == nil {
+			cfg.MobileASNTierFeedRefresh = time.Duration(n) * time.Second
+		}
+	}
+	cfg.CrowdProbeASNMinTier = getEnvInt("CROWD_PROBE_ASN_MIN_TIER", 3)
+	cfg.CrowdProbeASNMinScore = getEnvInt("CROWD_PROBE_ASN_MIN_SCORE", 65)
+	cfg.ProbeClusterEnabled = getEnvBool("PROBE_CLUSTER_ENABLED", false)
+	cfg.ProbeClusterMinSessions = getEnvInt("PROBE_CLUSTER_MIN_SESSIONS", 5)
+	cfg.ProbeClusterMinCampaigns = getEnvInt("PROBE_CLUSTER_MIN_CAMPAIGNS", 3)
+	cfg.ProbeClusterScoreThreshold = uint8(getEnvInt("PROBE_CLUSTER_SCORE_THRESHOLD", 65))
+	cfg.ProbeClusterTTLDays = getEnvInt("PROBE_CLUSTER_TTL_DAYS", 30)
+	cfg.ProbeClusterExportInterval = 5 * time.Minute
+	cfg.CrowdWaveEnabled = getEnvBool("CROWD_WAVE_ENABLED", false)
+	cfg.CrowdWaveWindowSec = getEnvInt("CROWD_WAVE_WINDOW_SEC", 3600)
+	cfg.CrowdWaveMinUniqueClusters = getEnvInt("CROWD_WAVE_MIN_UNIQUE_CLUSTERS", 10)
+	cfg.CrowdWaveMinSimhashNeighbors = getEnvInt("CROWD_WAVE_MIN_SIMHASH_NEIGHBORS", 8)
+	cfg.CrowdWaveSimhashMaxDist = getEnvInt("CROWD_WAVE_SIMHASH_MAX_DIST", 2)
+	cfg.CrowdWaveExportInterval = 5 * time.Minute
+	if raw := os.Getenv("CROWD_WAVE_EXPORT_INTERVAL"); raw != "" {
+		if d, err := time.ParseDuration(raw); err == nil {
+			cfg.CrowdWaveExportInterval = d
+		} else if n, err := strconv.Atoi(raw); err == nil && n > 0 {
+			cfg.CrowdWaveExportInterval = time.Duration(n) * time.Second
+		}
+	}
+	if raw := os.Getenv("PROBE_CLUSTER_EXPORT_INTERVAL"); raw != "" {
+		if d, err := time.ParseDuration(raw); err == nil {
+			cfg.ProbeClusterExportInterval = d
+		} else if n, err := strconv.Atoi(raw); err == nil {
+			cfg.ProbeClusterExportInterval = time.Duration(n) * time.Second
+		}
+	}
 	cfg.MobileBiometricsEnabled = getEnvBool("MOBILE_BIOMETRICS_ENABLED", false)
 	cfg.MobileBiometricsClickEnabled = getEnvBool("MOBILE_BIOMETRICS_CLICK_ENABLED", false)
 
@@ -310,6 +353,7 @@ func loadIngestModules(cfg *Config, appEnv string) error {
 
 	cfg.ProxyAllowHTTPInsecure = getEnvBool("PROXY_ALLOW_HTTP_INSECURE", false)
 	cfg.ClickProxyTimeoutMs = getEnvInt("CLICK_PROXY_TIMEOUT_MS", 300)
+	cfg.ClickTimingPadMs = getEnvInt("CLICK_TIMING_PAD_MS", 0)
 
 	cfg.SlotMapReloadTopic = os.Getenv("SLOT_MAP_RELOAD_TOPIC")
 	if cfg.SlotMapReloadTopic == "" {

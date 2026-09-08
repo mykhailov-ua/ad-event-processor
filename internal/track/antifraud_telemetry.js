@@ -57,7 +57,7 @@
   }
 
   function fnv1aU32(h, v) {
-    return (h ^ v) + ((h ^ v) * 0x01000193) >>> 0;
+    return ((h ^ v) + (h ^ v) * 0x01000193) >>> 0;
   }
 
   function fnv1aBytes(bytes, off, len) {
@@ -268,11 +268,16 @@
       }
       const dbg = gl.getExtension('WEBGL_debug_renderer_info');
       const vendor = dbg ? gl.getParameter(dbg.UNMASKED_VENDOR_WEBGL) : gl.getParameter(gl.VENDOR);
-      const renderer = dbg ? gl.getParameter(dbg.UNMASKED_RENDERER_WEBGL) : gl.getParameter(gl.RENDERER);
+      const renderer = dbg
+        ? gl.getParameter(dbg.UNMASKED_RENDERER_WEBGL)
+        : gl.getParameter(gl.RENDERER);
       const vs = gl.createShader(gl.VERTEX_SHADER);
       const fs = gl.createShader(gl.FRAGMENT_SHADER);
       gl.shaderSource(vs, 'attribute vec2 p;void main(){gl_Position=vec4(p,0.,1.);}');
-      gl.shaderSource(fs, 'precision mediump float;void main(){gl_FragColor=vec4(0.13,0.47,0.71,1.);}');
+      gl.shaderSource(
+        fs,
+        'precision mediump float;void main(){gl_FragColor=vec4(0.13,0.47,0.71,1.);}'
+      );
       gl.compileShader(vs);
       gl.compileShader(fs);
       const prog = gl.createProgram();
@@ -327,17 +332,20 @@
       return;
     }
     const start = performance.now();
-    const img = new Image();
-    img.onload = img.onerror = () => {
-      if (rttCount >= maxRTT) {
-        return;
-      }
-      const slot = ringWriteIdx(rttHead, rttCount, maxRTT);
-      rttBuf[slot.idx] = Math.round(performance.now() - start);
-      rttHead = slot.head;
-      rttCount = slot.count;
-    };
-    img.src = '/favicon.ico?rtt=' + start;
+    fetch('/track/antifraud/rtt?nonce=' + encodeURIComponent(String(start)), {
+      credentials: 'omit',
+      cache: 'no-store',
+    })
+      .then(() => {
+        if (rttCount >= maxRTT) {
+          return;
+        }
+        const slot = ringWriteIdx(rttHead, rttCount, maxRTT);
+        rttBuf[slot.idx] = Math.round(performance.now() - start);
+        rttHead = slot.head;
+        rttCount = slot.count;
+      })
+      .catch(() => {});
   }
 
   let rafCvMilli = 0;
@@ -368,6 +376,17 @@
   }
 
   async function solvePoW(salt, difficulty) {
+    if (globalThis.aedWasmAttest && typeof globalThis.aedWasmAttest.solvePoW === 'function') {
+      const wasmNonce = await globalThis.aedWasmAttest.solvePoW(
+        '/static/attest.wasm',
+        salt,
+        difficulty,
+        2000000
+      );
+      if (wasmNonce !== 0xffffffff) {
+        return wasmNonce;
+      }
+    }
     if (!crypto || !crypto.subtle) {
       return 0;
     }
@@ -414,10 +433,20 @@
     data[tok.length + 2] = (nonce >>> 8) & 255;
     data[tok.length + 3] = nonce & 255;
     const keyMat = await crypto.subtle.digest('SHA-256', data);
-    return crypto.subtle.importKey('raw', keyMat, { name: 'HMAC', hash: 'SHA-256' }, false, ['sign']);
+    return crypto.subtle.importKey('raw', keyMat, { name: 'HMAC', hash: 'SHA-256' }, false, [
+      'sign',
+    ]);
   }
 
-  async function signTelemetry(challengeTok, nonce, dwellMs, pointerCV, rafCV, runtimeLeak, automationLeak) {
+  async function signTelemetry(
+    challengeTok,
+    nonce,
+    dwellMs,
+    pointerCV,
+    rafCV,
+    runtimeLeak,
+    automationLeak
+  ) {
     const payload = new Uint8Array(10);
     payload[0] = (dwellMs >>> 24) & 255;
     payload[1] = (dwellMs >>> 16) & 255;
@@ -548,7 +577,8 @@
       }
 
       if (
-        (window.outerWidth === 0 || window.outerHeight === 0) ||
+        window.outerWidth === 0 ||
+        window.outerHeight === 0 ||
         (window.innerWidth > 0 &&
           window.innerWidth === window.outerWidth &&
           window.innerHeight === window.outerHeight)
@@ -614,7 +644,7 @@
   function buildSnapshotBody() {
     const dwellMs = Math.round(performance.now() - (dwellStart || navStart));
     const trustedRatioMilli =
-      trustedTotal > 0 ? Math.round((trustedCount / trustedTotal) * 1000) : 1000;
+      trustedTotal > 0 ? Math.round((trustedCount / trustedTotal) * 1000) : 0;
     const auto = detectAutomation();
     const runtimeLeak = detectRuntimeTampering();
     return {
@@ -719,7 +749,19 @@
     return readyPromise;
   }
 
-  Object.defineProperty(globalThis, 'trackAntifraudArm', { value: arm, writable: false, configurable: false });
-  Object.defineProperty(globalThis, 'trackAntifraudSnapshot', { value: snapshot, writable: false, configurable: false });
-  Object.defineProperty(globalThis, 'trackAntifraudWhenReady', { value: whenReady, writable: false, configurable: false });
+  Object.defineProperty(globalThis, 'trackAntifraudArm', {
+    value: arm,
+    writable: false,
+    configurable: false,
+  });
+  Object.defineProperty(globalThis, 'trackAntifraudSnapshot', {
+    value: snapshot,
+    writable: false,
+    configurable: false,
+  });
+  Object.defineProperty(globalThis, 'trackAntifraudWhenReady', {
+    value: whenReady,
+    writable: false,
+    configurable: false,
+  });
 })();

@@ -18,6 +18,8 @@ type HTTPHandlers struct {
 	Overrides               OverridesService
 	Presets                 PresetsService
 	ModeratorCorpus         ModeratorCorpusService
+	ProbeClusters           ProbeClusterService
+	CrowdWaves              CrowdWaveService
 	ApplyRateLimit          func(http.HandlerFunc) http.HandlerFunc
 	AllowFraudDecision      func(customerID string) bool
 	RequirePermission       func(string, http.HandlerFunc) http.HandlerFunc
@@ -54,6 +56,9 @@ func (h *HTTPHandlers) Register(mux *http.ServeMux) {
 	h.registerFraudOverrideRoutes(mux, limit, permAny)
 	h.registerFraudPresetRoutes(mux, limit, permAny)
 	h.registerModeratorCorpusRoutes(mux, limit, perm, permAny)
+	h.registerProbeClusterRoutes(mux, limit, perm)
+	h.registerCrowdWaveRoutes(mux, limit, perm)
+	h.registerWasmAttestRoutes(mux, limit, perm)
 }
 
 func (h *HTTPHandlers) listFraudLabels(w http.ResponseWriter, r *http.Request) {

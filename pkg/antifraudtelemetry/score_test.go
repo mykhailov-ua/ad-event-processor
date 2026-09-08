@@ -15,11 +15,11 @@ func TestScore_automationLeak_holdout(t *testing.T) {
 
 func TestScore_templateBehavior_holdout(t *testing.T) {
 	v := Score(Input{
-		DwellMs:        3000,
-		PointerCVMilli: 20,
-		ScrollCVMilli:  18,
+		DwellMs:         3000,
+		PointerCVMilli:  20,
+		ScrollCVMilli:   18,
 		ScrollJerkMilli: 12,
-		FooterReachMs:  2200,
+		FooterReachMs:   2200,
 	})
 	require.True(t, v.TemplateBehavior)
 }
@@ -46,6 +46,20 @@ func TestScore_residentialBaseline_pass(t *testing.T) {
 	require.False(t, v.TemplateBehavior)
 	require.False(t, v.ProxyJitter)
 	require.False(t, v.UntrustedEvents)
+}
+
+func TestScore_emptyKinematics_holdout(t *testing.T) {
+	v := Score(Input{DwellMs: 1200})
+	require.True(t, v.EmptyKinematics)
+	v = Score(Input{DwellMs: 1200, PointerCVMilli: 80})
+	require.False(t, v.EmptyKinematics)
+}
+
+func TestScore_rttMissing_holdout(t *testing.T) {
+	v := Score(Input{DwellMs: 3000})
+	require.True(t, v.RttMissing)
+	v = Score(Input{DwellMs: 3000, RTTSamples: []uint16{20, 22}})
+	require.False(t, v.RttMissing)
 }
 
 func TestScore_untrustedRequiresKinematics_holdout(t *testing.T) {

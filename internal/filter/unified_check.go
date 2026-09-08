@@ -362,6 +362,7 @@ type DeviceFilter struct {
 	ja4CorpusEnabled     atomic.Bool
 	tcpSynSigEnabled     atomic.Bool
 	tcpSynOptEnabled     atomic.Bool
+	h2FrameTraceEnabled  atomic.Bool
 }
 
 func NewDeviceFilter(settings *SettingsWatcher) *DeviceFilter {
@@ -390,6 +391,10 @@ func (f *DeviceFilter) SetTCPSynSigEnabled(enabled bool) {
 
 func (f *DeviceFilter) SetTCPSynOptCorpusEnabled(enabled bool) {
 	f.tcpSynOptEnabled.Store(enabled)
+}
+
+func (f *DeviceFilter) SetH2FrameTraceCorpusEnabled(enabled bool) {
+	f.h2FrameTraceEnabled.Store(enabled)
 }
 
 func (f *DeviceFilter) ReloadBlocklist() {
@@ -458,6 +463,14 @@ func (f *DeviceFilter) Check(ctx context.Context, evt *domain.Event) error {
 		} else if TCPSynOptCorpusMismatch(evt.UA, evt.TCPSigOptHash) {
 			metrics.TCPSynOptMismatchTotal.Inc()
 			AddFraudSignal(evt, FraudReasonTCPSynOptMismatch)
+		}
+	}
+	if f.h2FrameTraceEnabled.Load() && evt.UA != "" {
+		if evt.H2FrameTraceSet == 0 {
+			metrics.H2FrameTraceSkippedTotal.WithLabelValues("no_h2_frame_trace").Inc()
+		} else if H2FrameTraceCorpusMismatch(evt.UA, evt.H2FrameTraceHash) {
+			metrics.H2FrameTraceMismatchTotal.Inc()
+			AddFraudSignal(evt, FraudReasonH2FrameTraceMismatch)
 		}
 	}
 	return nil
@@ -584,13 +597,32 @@ func behaviorTelemetryToVerifyEvents(in []domain.BehaviorTelemetryEvent) []SafeP
 	if len(in) == 0 {
 		return nil
 	}
+	if len(in) <= 64 {
+		var stack [64]SafePageVerifyEvent
+		out := stack[:len(in)]
+		for i := range in {
+			out[i] = SafePageVerifyEvent{
+				T:       in[i].T,
+				TS:      in[i].TS,
+				X:       in[i].X,
+				Y:       in[i].Y,
+				FX:      float64(in[i].FX),
+				FY:      float64(in[i].FY),
+				Trusted: in[i].Trusted,
+			}
+		}
+		return out
+	}
 	out := make([]SafePageVerifyEvent, len(in))
 	for i := range in {
 		out[i] = SafePageVerifyEvent{
-			T:  in[i].T,
-			TS: in[i].TS,
-			X:  in[i].X,
-			Y:  in[i].Y,
+			T:       in[i].T,
+			TS:      in[i].TS,
+			X:       in[i].X,
+			Y:       in[i].Y,
+			FX:      float64(in[i].FX),
+			FY:      float64(in[i].FY),
+			Trusted: in[i].Trusted,
 		}
 	}
 	return out

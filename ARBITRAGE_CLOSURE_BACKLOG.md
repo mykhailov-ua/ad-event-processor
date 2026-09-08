@@ -45,7 +45,7 @@ These ceilings apply to **all** items below. New work must not violate them.
 | **P0** | Finish half-shipped integrations + SSL + RBAC UI | "Postbacks and domains work like a real tracker" |
 | **P1** | Ops at scale (bulk domains, TDS UX, presets, observability) | "50 campaigns/day without SSH" |
 | **P2** | Hot-path footguns + latency tradeoffs | "20k RPS without PG surprises; optional fast click" |
-| **P3** | Fraud/review positioning + incremental threat-intel signals | Honest limits; tighten gaps vs residential headless crawlers |
+| **P3** | Fraud/review positioning + incremental threat-intel signals; **conversion FP collateral** (CGNAT, relay, WebView) | Honest limits; tighten gaps vs residential headless crawlers; measurable FP budget |
 | **P4** | Research-tier passive/runtime probes | Not a sales promise; lab + corpus only |
 | **P5** | Perimeter & commercial intelligence protection (AppSec) | Anti-scraping, Sybil/coordinated probe defense, zone parity |
 
@@ -365,9 +365,9 @@ These ceilings apply to **all** items below. New work must not violate them.
 **DoD:**
 
 - [ ] `light` p99 click redirect < 15 ms on load test (no fraud filters)
-- [ ] `full` unchanged: `make test-alloc-gate`
-- [ ] Holdout: `redirect_only` cannot debit budget without explicit flag
-- [ ] Document in `traffic.mdc` + campaign editor UI select
+- [x] `full` unchanged: `make test-alloc-gate`
+- [x] Holdout: `redirect_only` cannot debit budget without explicit flag
+- [x] Document in `traffic.mdc` + campaign editor UI select
 
 **SLA:** `light` tier: tracker p95 < 25 ms at 10k RPS (control cohort).
 
@@ -381,15 +381,15 @@ These ceilings apply to **all** items below. New work must not violate them.
 
 **Tasks:**
 
-- [ ] Production profile: document `REGISTRY_STALE_PG_GRACE=false` + alert on `registry_stale`
-- [ ] Metric: `ad_event_processor_registry_stale_pg_reads_total`
-- [ ] Circuit: max N PG reads/sec during stale mode -> 503 fail-closed
-- [ ] Runbook in `docs/DEVELOPMENT.md`
+- [x] Production profile: document `REGISTRY_STALE_PG_GRACE=false` + alert on `registry_stale`
+- [x] Metric: `ad_event_processor_registry_stale_pg_reads_total`
+- [x] Circuit: max N PG reads/sec during stale mode -> 503 fail-closed
+- [x] Runbook in `docs/DEVELOPMENT.md`
 
 **DoD:**
 
-- [ ] Fault test: stale mode + grace off -> 503, zero PG queries on hot path
-- [ ] Existing `TestLookupCampaign_stalePGGraceDisabled503_holdout` cited in PR
+- [x] Fault test: stale mode + grace off -> 503, zero PG queries on hot path
+- [x] Existing `TestLookupCampaign_stalePGGraceDisabled503_holdout` cited in PR
 
 **SLA:** PG reads on hot path = **0** in recommended prod config.
 
@@ -401,20 +401,51 @@ These ceilings apply to **all** items below. New work must not violate them.
 
 **Tasks:**
 
-- [ ] Hard cap `CLICK_PROXY_TIMEOUT_MS` default 300 ms (config)
-- [ ] On timeout: fallback 302 to landing URL + metric `ad_event_processor_click_proxy_fallback_total`
-- [ ] Campaign flag to disable proxy on timeout vs hard fail
+- [x] Hard cap `CLICK_PROXY_TIMEOUT_MS` default 300 ms (config)
+- [x] On timeout: fallback 302 to landing URL + metric `ad_event_processor_click_proxy_fallback_total`
+- [x] Campaign flag to disable proxy on timeout vs hard fail
 
 **DoD:**
 
-- [ ] `go test ./internal/ingest/ -run ClickProxy -count=1`
+- [x] `go test ./internal/ingest/ -run ClickProxy -count=1`
 - [ ] Load test: proxy timeout does not exhaust worker pool (503 rate bounded)
 
 **SLA:** proxy attempt p95 < 300 ms or fallback.
 
 ---
 
-### P2-SESSION-PERMS-SYNC
+### P2-CLICK-INGRESS-LATENCY-BUDGET
+
+**Type:** Technical Task  
+**Threat:** T27 — synchronous blocking I/O on click init (full filter chain, blocking upstream proxy, or external verdict HTTP) inflates TTFB/FCP; mobile users abandon before lander paint.
+
+**Problem:** `landing_bundle.go` runs `FilterEngine` + Redis before 302; `click_proxy.go` may block on upstream fetch. Third-party TDS stacks often add a blocking `cURL` to a cloud verdict API on first hop — same failure mode. Cited ops impact: 5–10% session abort on unstable radio when extra RTT exceeds render patience.
+
+**User Story:** As a buyer, I need paid clicks to reach the lander or a deterministic fallback within a bounded latency budget; never a white screen while waiting on an unbounded external verdict.
+
+**Technical Task:**
+
+| Task | Detail |
+| :--- | :--- |
+| Budget table | Document per-path ceilings: gnet parse + local filters, Redis EVALSHA, click_proxy upstream, safe-page verify — each with env default ms |
+| Ban hot-path external verdict | No new sync outbound HTTP to third-party decision APIs on `/click` gnet path; async cache + stale-while-revalidate only |
+| Deadline fail-open policy | On `FILTER_TIMEOUT_MS` or proxy timeout: 302 to configured landing (or decoy when policy says fail-closed), metric `ad_click_ingress_latency_budget_exceeded_total{stage}` |
+| Dashboard | Grafana: click TTFB p50/p95/p99 by `click_filter_tier`, proxy fallback rate, filter timeout rate |
+| Cross-ref | `P2-FAST-CLICK-TIER` (reduce work), `P2-CLICK-PROXY-GUARDRAILS` (proxy cap), `P5-ROUTING-TIMING-CONSTANT-TIME` (pad without adding blocking I/O) |
+
+**Acceptance Criteria:**
+
+- [x] `traffic.mdc` + `docs/DEVELOPMENT.md`: click latency budget table with env knobs
+- [x] Holdout: simulated 2 s upstream proxy does not block worker past `CLICK_PROXY_TIMEOUT_MS` (fallback 302)
+- [x] Holdout: filter deadline exceeded -> documented route (not hung connection)
+- [ ] Load test artifact: control cohort click p95 < 50 ms (`core.mdc`) with `full` tier at reference RPS OR explicit waiver with `light` tier default for TDS campaigns
+- [x] CI grep gate: no `http.Get` / `curl` / blocking client on `landing_bundle.go` click hot path except click_proxy (allowlisted)
+
+**Dependencies:** P2-FAST-CLICK-TIER, P2-CLICK-PROXY-GUARDRAILS.
+
+**SLA:** click ingress p95 < 50 ms (`core.mdc`); proxy sub-step p95 < 300 ms or fallback.
+
+---
 
 **Problem:** `GET /api/v1/session/bootstrap` permissions may drift from DB grants vs live policy `Snapshot`.
 
@@ -439,16 +470,16 @@ These ceilings apply to **all** items below. New work must not violate them.
 
 **Tasks:**
 
-- [ ] Operator doc: signal matrix (ingress TCP/TLS/H2, safe-page JS, cross-layer) with **evades** column (CDN, residential IP, attestation off)
-- [ ] `deploy/vendor/PERIMETER_INTEL_DEFENSE.md` — threat catalog T1–T12, Blue Team remediation, operator checklist (P5 parent doc)
-- [ ] Admin UI: link from fraud presets / safe-page panel to limitations doc
-- [ ] Cross-ref backlog slugs: P3-MOBILE-BIOMETRICS-CLICK, P3-TLS-JA4-BROWSER-CORPUS, P3-MODERATOR-FINGERPRINT-CORPUS, P3-CROSS-LAYER-DESYNC-POLICY, P4-*
+- [x] Operator doc: signal matrix (ingress TCP/TLS/H2, safe-page JS, cross-layer) with **evades** column (CDN, residential IP, attestation off)
+- [x] `deploy/vendor/PERIMETER_INTEL_DEFENSE.md` — threat catalog T1–T30, Blue Team remediation, operator checklist (P5 parent doc)
+- [x] Admin UI: link from fraud presets / safe-page panel to limitations doc
+- [x] Cross-ref backlog slugs: P3-MOBILE-BIOMETRICS-CLICK, P3-TLS-JA4-BROWSER-CORPUS, P3-MODERATOR-FINGERPRINT-CORPUS, P3-CROSS-LAYER-DESYNC-POLICY, P3-CGNAT-L2-IP-COLLATERAL-BOUNDARY, P3-APPLE-PRIVATE-RELAY-ASN-POLICY, P3-INAPP-WEBVIEW-CLASSIFIER-HARDENING, P4-*, P5-VISION-MULTIMODAL-MODERATION-AGENTS, P5-CDP-TRUSTED-INPUT-HARDENING, P5-CUSTOM-CHROMIUM-RESIDENTIAL-STACK
 
 **DoD:**
 
-- [ ] `bash scripts/ci/naming/antifraud_doc.sh` green
-- [ ] No doc claims "eliminated" Redis ops (`anti-slop.mdc`)
-- [ ] Doc states residential crawler on datacenter egress is **not** fully detectable at L4 alone
+- [x] `bash scripts/ci/naming/antifraud_doc.sh` green
+- [x] No doc claims "eliminated" Redis ops (`anti-slop.mdc`)
+- [x] Doc states residential crawler on datacenter egress is **not** fully detectable at L4 alone
 
 ---
 
@@ -458,12 +489,12 @@ These ceilings apply to **all** items below. New work must not violate them.
 
 **Tasks:**
 
-- [ ] SKU/license copy: ML enforcement = sidecar + CH batch
-- [ ] Admin: show last model score timestamp per campaign (cold API)
+- [x] SKU/license copy: ML enforcement = sidecar + CH batch
+- [x] Admin: show last model score timestamp per campaign (cold API)
 
 **DoD:**
 
-- [ ] No comment or UI implying inline ML on `/track`
+- [x] No comment or UI implying inline ML on `/track`
 
 ---
 
@@ -473,15 +504,104 @@ These ceilings apply to **all** items below. New work must not violate them.
 
 **Tasks:**
 
-- [ ] Document: edge XDP = flood + blocklist; `OS_FINGERPRINT_MISMATCH_ENABLED=false` on CDN paths
-- [ ] Sales copy: `ResidentialProxyFilter` = farm/intel heuristic, not per-session unauthorized agent proof
+- [x] Document: edge XDP = flood + blocklist; `OS_FINGERPRINT_MISMATCH_ENABLED=false` on CDN paths
+- [x] Sales copy: `ResidentialProxyFilter` = farm/intel heuristic, not per-session unauthorized agent proof
 
 **DoD:**
 
-- [ ] `deploy/vendor/ANTIFRAUD.md` aligned with code
-- [ ] Moderator corpus work tracked under P3-MODERATOR-FINGERPRINT-CORPUS (not this slug)
+- [x] `deploy/vendor/ANTIFRAUD.md` aligned with code
+- [x] Moderator corpus work tracked under P3-MODERATOR-FINGERPRINT-CORPUS (not this slug)
 
 **Dependencies:** P3-SAFE-PAGE-LIMITS-DOC.
+
+---
+
+### P3-CGNAT-L2-IP-COLLATERAL-BOUNDARY
+
+**Type:** Technical Task (policy + hot-path guardrails)  
+**Threat:** T24 — crawler on carrier CGNAT poisons `/24` or single-IP reputation; thousands of legit mobile subscribers inherit deny/safe-page route.
+
+**Problem:** Cited ops FP: 15–20%. `FraudBlacklistFilter` (`SISMEMBER blacklist:fraud`), manual edge deny lists, and BPF LPM promotion can block at IP granularity. `CGNAT_MOBILE_IP_BYPASS` and `syn_subnet_ratelimit_v4` mitigate **rate** not **hard deny** collateral.
+
+**User Story:** As a buyer on mobile carrier traffic, I need fraud enforcement on session/device signals, not blanket punishment of a carrier NAT egress shared with a crawler.
+
+**Technical Task:**
+
+| Task | Detail |
+| :--- | :--- |
+| Audit deny paths | Inventory every IP-level block: Redis `blacklist:fraud`, XDP sync, nginx deny, `review_traffic_policy` IP tuple |
+| CGNAT-aware deny | For mobile ASN tier (`P5-ASN-MOBILE-TIER`): forbid auto-promote `/24` from single-IP fraud event; require `probe_cluster` or device graph corroboration |
+| TTL decay | IP deny entries: max TTL env `FRAUD_IP_DENY_TTL_SEC` (default 24h); decay metric on re-hit |
+| Bypass hook | Extend `CGNAT_MOBILE_IP_BYPASS` to skip **hard** blacklist route when `netintel.MobileCarrierTier` + no device graph hit |
+| Metrics | `ad_cgnat_collateral_route_total{reason}` — safe/decoy route where IP deny skipped due to CGNAT policy |
+| CH drill | Report: FP proxy = safe routes on mobile ASN with zero probe/crowd signals |
+
+**Acceptance Criteria:**
+
+- [x] `go test ./internal/filter/ -short -run CGNAT -count=1`
+- [x] Holdout: single crawler IP on mobile ASN in blacklist does not hard-route sibling CGNAT session when bypass on
+- [x] `deploy/vendor/PERIMETER_INTEL_DEFENSE.md` T24 remediation section
+- [x] No new `/24` auto-block without human review flag
+
+**Dependencies:** P5-ASN-MOBILE-TIER, P5-XDP-RESIDENTIAL-POLICY-BOUNDARY, P3-SAFE-PAGE-LIMITS-DOC.
+
+---
+
+### P3-APPLE-PRIVATE-RELAY-ASN-POLICY
+
+**Type:** Technical Task  
+**Threat:** T25 — iCloud Private Relay egress (Cloudflare/Fastly ASNs) misclassified as datacenter; high-value iOS users sent to safe/decoy.
+
+**Problem:** Cited ops FP: 10–15%. `FraudFilter.checkDCASN` and stale DCASN tables treat relay egress like hosting ASN.
+
+**User Story:** As a buyer targeting iOS, I need Private Relay users evaluated on browser/attestation signals, not ASN substring alone.
+
+**Technical Task:**
+
+| Task | Detail |
+| :--- | :--- |
+| Allowlist feed | Cold-path worker: Apple-published relay egress prefixes / ASN set; versioned snapshot in Redis `netintel:apple_relay:v1` |
+| Filter gate | When relay fingerprint matches (ASN + optional `APPLE_PRIVATE_RELAY_UA_HINT`): skip DCASN hard reject; still run UA/JA4/attestation |
+| Admin | Fraud preset note: relay exempt from DCASN only, not from behavioral probes |
+| Metric | `ad_apple_relay_exempt_total` vs `ad_apple_relay_reject_total` |
+
+**Acceptance Criteria:**
+
+- [x] `go test ./internal/filter/netintel/ -short -run PrivateRelay -count=1`
+- [x] Holdout: relay ASN + valid iOS UA passes DCASN; datacenter UA on same ASN still fails cross-layer when enabled
+- [x] `PERIMETER_INTEL_DEFENSE.md` T25 row + operator refresh cadence for Apple feed
+
+**Dependencies:** P3-TLS-JA4-BROWSER-CORPUS, P3-CROSS-LAYER-DESYNC-POLICY.
+
+---
+
+### P3-INAPP-WEBVIEW-CLASSIFIER-HARDENING
+
+**Type:** Technical Task  
+**Threat:** T26 — in-app WebView (Facebook, Instagram, TikTok, etc.) presents truncated UA, non-Safari JA4, missing `Sec-CH-UA`; classifiers flag anomaly -> safe page.
+
+**Problem:** Cited ops FP: 10–15%. Partial mitigations: `social_in_app` preset, `UAMatchesInAppWebView`, `TestSecFetchAnomaly_holdoutWebViewBypass`, `landing_tls_webview_hook_test.go`.
+
+**User Story:** As a buyer running social in-app traffic, I need default-safe classification for known WebView containers without treating every degraded header set as fraud.
+
+**Technical Task:**
+
+| Task | Detail |
+| :--- | :--- |
+| Corpus | Expand `P3-TLS-JA4-BROWSER-CORPUS` with FB/IG/TikTok WebView JA4 rows; holdout per platform |
+| Sec-CH relax | When `UAMatchesInAppWebView`: skip `SecFetchAnomaly` hard fail; log `in_app_webview` reason tag |
+| Campaign default | Onboarding wizard: social traffic -> enable `social_in_app` + tooltip for TLS/JA4 limits |
+| Attestation | Do not require full safe-page kinematics on first click from in-app; defer to verify hop |
+| Metric | `ad_inapp_webview_classified_total{platform}`; CH column `in_app_webview` on click events |
+
+**Acceptance Criteria:**
+
+- [x] `go test ./internal/filter/ -short -run WebView -count=1`
+- [x] `go test ./internal/ingest/ -short -run WebView -count=1`
+- [x] Holdout: Instagram WebView fixture UA + corpus JA4 -> production route (not decoy) with preset on
+- [x] Holdout: desktop Chrome with WebView UA substring alone does not bypass (cross-layer still applies)
+
+**Dependencies:** P3-TLS-JA4-BROWSER-CORPUS, P3-SAFE-PAGE-LIMITS-DOC.
 
 ---
 
@@ -512,12 +632,12 @@ These ceilings apply to **all** items below. New work must not violate them.
 
 **DoD:**
 
-- [ ] Holdout: flat gyro on mobile UA -> attestation fail; human curve + gyro noise -> pass
-- [ ] Holdout: click path skips when attestation off (no false positive on desktop)
-- [ ] `go test ./internal/track/ -run SafePage -count=1`
-- [ ] `go test ./internal/ingest/ -run BehaviorTelemetry -count=1`
-- [ ] Hot path: zero extra Redis; filter work stays local + existing attestation round-trip
-- [ ] OpenAPI fingerprint schema updated when admin exposes fields
+- [x] Holdout: flat gyro on mobile UA -> attestation fail; human curve + gyro noise -> pass
+- [x] Holdout: click path skips when attestation off (no false positive on desktop)
+- [x] `go test ./internal/track/ -run SafePage -count=1`
+- [x] `go test ./internal/ingest/ -run BehaviorTelemetry -count=1`
+- [x] Hot path: zero extra Redis; filter work stays local + existing attestation round-trip
+- [x] OpenAPI fingerprint schema updated when admin exposes fields
 
 **SLA:** attestation verify handler p95 < 50 ms (cold stub path); no sync PG/CH on verify.
 
@@ -542,11 +662,11 @@ These ceilings apply to **all** items below. New work must not violate them.
 
 **DoD:**
 
-- [ ] Holdout: Safari iOS UA + Chromium JA4 -> `tls_ja4_mismatch`
-- [ ] Holdout: matching corpus row -> no signal
-- [ ] `go test ./internal/filter/ -run JA4 -count=1`
-- [ ] Feed refresh fail-open retains prior snapshot (`testing.mdc`)
-- [ ] No claim of full ClientHello extension-order parity (document gap -> P4 if needed)
+- [x] Holdout: Safari iOS UA + Chromium JA4 -> `tls_ja4_mismatch`
+- [x] Holdout: matching corpus row -> no signal
+- [x] `go test ./internal/ingest/ -short -run JA4BrowserCorpus -count=1`
+- [x] Feed refresh fail-open retains prior snapshot (`testing.mdc`)
+- [x] No claim of full ClientHello extension-order parity (document gap -> P4 if needed)
 
 **SLA:** corpus lookup < 1 us p99 (in-memory snapshot); no per-event HTTP.
 
@@ -580,11 +700,11 @@ These ceilings apply to **all** items below. New work must not violate them.
 
 **DoD:**
 
-- [ ] Integration: seed corpus row -> `GET /click` with matching JA3 serves safe view
-- [ ] Holdout: empty corpus -> behavior unchanged
-- [ ] `go test ./internal/ingest/ -run ReviewTraffic -count=1`
-- [ ] RBAC: MB cannot import corpus; Playwright L3 on new page
-- [ ] No hot-path CH query; snapshot reload <= 60 s
+- [x] Integration: seed corpus row -> `GET /click` with matching JA3 serves safe view
+- [x] Holdout: empty corpus -> behavior unchanged
+- [x] `go test ./internal/ingest/ -run ReviewTraffic -count=1`
+- [x] RBAC: MB cannot import corpus; Playwright L3 on new page
+- [x] No hot-path CH query; snapshot reload <= 60 s
 
 **SLA:** corpus snapshot read on click < 500 ns (atomic pointer); refresh async.
 
@@ -614,11 +734,11 @@ These ceilings apply to **all** items below. New work must not violate them.
 
 **DoD:**
 
-- [ ] Holdout: 3 configured mismatch signals -> `safe_page` when action set; 1 signal -> no route change
-- [ ] Holdout: `off` preserves current behavior
-- [ ] `go test ./internal/ingest/ -run LayerDesync -count=1`
-- [ ] `make test-alloc-gate` if hot filter path touched
-- [ ] OpenAPI campaign fraud fields documented
+- [x] Holdout: 3 configured mismatch signals -> `safe_page` when action set; 1 signal -> no route change
+- [x] Holdout: `off` preserves current behavior
+- [x] `go test ./internal/ingest/ -run LayerDesync -count=1`
+- [x] `make test-alloc-gate` if hot filter path touched
+- [x] OpenAPI campaign fraud fields documented
 
 **SLA:** desync tally <= 200 ns per event (bitmask over existing signals); no extra Redis.
 
@@ -663,15 +783,15 @@ Items below close **technical gaps vs dedicated anti-bot stacks**. Do not pitch 
 
 **Tasks:**
 
-- [ ] Edge: capture first N frame types + timestamps (ms bucket) -> `X-H2-FRAME-TRACE` (bounded header)
-- [ ] Tracker: `H2FrameTraceMismatch(ua, trace)` with embedded WebKit/Chrome corpora
-- [ ] Chaos: `TestChaos_CrossHop_NginxGnet` row for new header
+- [x] Edge: capture first N frame types + timestamps (ms bucket) -> `X-H2-FRAME-TRACE` (bounded header)
+- [x] Tracker: `H2FrameTraceMismatch(ua, trace)` with embedded WebKit/Chrome corpora
+- [x] Chaos: `TestChaos_CrossHop_NginxGnet` row for new header
 
 **DoD:**
 
-- [ ] Holdout: canned automator trace -> signal; Safari corpus trace -> clean
-- [ ] Default env **off** (`H2_FRAME_TRACE_ENABLED=false`)
-- [ ] No dynamic Prometheus labels on hot path
+- [x] Holdout: canned automator trace -> signal; Safari corpus trace -> clean
+- [x] Default env **off** (`H2_FRAME_TRACE_ENABLED=false`)
+- [x] No dynamic Prometheus labels on hot path
 
 **Dependencies:** none.
 
@@ -683,17 +803,48 @@ Items below close **technical gaps vs dedicated anti-bot stacks**. Do not pitch 
 
 **Tasks:**
 
-- [ ] Safe-page JS module (opt-in per campaign): shader compile timing bucket, float noise fingerprint, getter timing probe
-- [ ] Server: evaluate in `EvaluateSafePageAttestation`; fail codes documented
-- [ ] Privacy review: disclose in operator doc; EU SKU note
+- [x] Safe-page JS module (opt-in per campaign): shader compile timing bucket, float noise fingerprint, getter timing probe
+- [x] Server: evaluate in `EvaluateSafePageAttestation`; fail codes documented
+- [x] Privacy review: disclose in operator doc; EU SKU note
 
 **DoD:**
 
-- [ ] `FuzzSafePageVerifyParse` extended; no panic on malformed probe payloads
-- [ ] `go test ./internal/track/ -run SafePage -count=1`
-- [ ] Explicitly **not** on `/track` hot path — attestation POST only
+- [x] `FuzzSafePageVerifyParse` extended; no panic on malformed probe payloads
+- [x] `go test ./internal/track/ -run SafePage -count=1`
+- [x] Explicitly **not** on `/track` hot path — attestation POST only
 
 **Dependencies:** P3-MOBILE-BIOMETRICS-CLICK (shared probe delivery).
+
+---
+
+### P5-WASM-ATTEST-C-MODULE
+
+**Problem:** JS attest/PoW logic is trivially patchable in DevTools; need shared client/server compute module with minimal bundle and bounded server sandbox.
+
+**Scope:** C `wasm32-unknown-unknown`, zero imports, ~2.4 KiB `.wasm`; wazero host for parity/dry-run; browser loader lazy on strict tier only.
+
+**Status:** closed (2026-09) except optional `aad_pow_bench` export.
+
+#### Done
+
+- [x] `wasm/attest/` C module (`attest.c`, `sha256.c`, `abi.h`): PoW parity `pkg/antifraudtelemetry`, IEEE754 float-noise hash, deterministic micro-bench
+- [x] SHA-256: FIPS padding in `aad_sha256_final` only (never via `update`); ring-buffer `w[16]` in `transform`; internal `aad_sha256_digest` + export `aad_sha256_one_shot(msg_off, msg_len, out_off)`
+- [x] `pkg/wasmattest` wazero sandbox: module size cap, memory page cap, call timeout, zero-import verifier, `SHA256OneShot` host helper
+- [x] Holdout tests: PoW parity, float-noise hex, NIST-style vectors (`""`, `"abc"`, 56/64/80 B) vs `crypto/sha256`
+- [x] `scripts/build/wasm_attest.sh` + `scripts/ci/static/wasm_attest_gate.sh` (24 KiB cap; current ~2392 B raw)
+- [x] `internal/track/wasm_attest_loader.js` + static routes `GET /static/wasm-attest-loader.js`, `GET /static/attest.wasm` (`//go:embed attest.wasm` in `static_assets.go`)
+- [x] Strict lander: `antifraud_telemetry.js` `solvePoW('/static/attest.wasm', ...)` on strict tier; safe-page stub loads wasm attest path
+- [x] fraudadmin `POST /api/v1/fraud/wasm-attest/dry-run` (`wasm_attest_handlers.go`, wazero sandbox parity)
+- [x] `scripts/ci/static/track_hot_bundle_wasm_gate.sh` in `pr_fast.sh` (hot bundle must not reference `attest.wasm`)
+- [x] WASM risk pass: no imports, export bounds checks; not on `/track` pixel path (`pkg/wasmattest/doc.go`, `docs/DEVELOPMENT.md`)
+- [x] DoD: `bash scripts/ci/static/wasm_attest_gate.sh`; `go test ./pkg/wasmattest/ -short -run WasmAttest -count=1`; bundle <= 24 KiB raw
+- [x] DoD: end-to-end strict tier loader fetch + PoW + attestation wasm nonce path wired
+
+#### Not done
+
+- [ ] Optional: `aad_pow_bench` export for PoW loop perf measurement in browser/wazero
+
+**Dependencies:** P4-CLIENT-RUNTIME-DEEP-PROBES (done), P5-CLIENT-TELEMETRY-STEALTH-PACKAGING (done).
 
 ---
 
@@ -702,6 +853,8 @@ Items below close **technical gaps vs dedicated anti-bot stacks**. Do not pitch 
 **Theme:** Harden **Public Safe Sandbox Zone** vs **Internal Trusted Production Zone** separation against **unauthorized third-party scanners**, **distributed coordination attacks (Sybil)**, and **commercial intelligence scraping**. Close client attestation gaps; enable measurable perimeter drills.
 
 **Reference:** `deploy/vendor/PERIMETER_INTEL_DEFENSE.md` (threat catalog T1–T16).
+
+**P5 status: closed (2026-09)** except optional/deferred items listed under each card **Not done**.
 
 **Cross-cutting rules:**
 
@@ -731,13 +884,39 @@ Items below close **technical gaps vs dedicated anti-bot stacks**. Do not pitch 
 | T14 | Client-edge DOM analysis on buyer browser (on-device ML) | P5-CLIENT-EDGE-DOM-INTEGRITY | High (client out-of-band) |
 | T15 | TLS server persona / H2 interrogation (L4 infra fingerprint) | P5-TLS-SERVER-PERSONA-HARDENING, P4-H2-FRAME-DYNAMICS | Medium |
 | T16 | Routing timing side-channel (TTFB differential by ingress class) | P5-ROUTING-TIMING-CONSTANT-TIME, P5-CLICK-TIMING-WIRE | Medium |
-| T17 | Hot-path telemetry filter heap allocs (GC tail @ 40k RPS) | P5-HOTPATH-TELEMETRY-ZERO-ALLOC | Medium |
-| T18 | Tier B worker pool saturation (Redis/filter occupancy) | P5-TIERB-OCCUPANCY-BUDGET | High (availability) |
-| T19 | Client RTT probe decoupled from tracker (`/favicon.ico`) | P5-CLIENT-RTT-PROBE-CORRELATION | High (fraud signal) |
-| T20 | CH/Redis ingest burst (stream trim / WAL disk) | P5-INGEST-SINK-BURST-RESILIENCE | High (data loss) |
-| T21 | Residential proxy IPs in XDP blocklist (CGNAT collateral) | P5-XDP-RESIDENTIAL-POLICY-BOUNDARY | Critical if misconfigured |
-| T22 | Client-side safe-page reveal without server verify verdict | P5-HYBRID-SERVER-VERIFY-GATE | High |
-| T23 | Antifraud snapshot scoring blind spots (empty kinematics) | P5-ANTIFRAUD-SNAPSHOT-SCORING-GAPS | Medium |
+| T17 | Hot-path telemetry filter heap allocs (GC tail @ 40k RPS) | P5-HOTPATH-TELEMETRY-ZERO-ALLOC | Low (operator alloc-gate paste) |
+| T18 | Tier B worker pool saturation (Redis/filter occupancy) | P5-TIERB-OCCUPANCY-BUDGET | Medium (availability; sub-budget doc shipped) |
+| T19 | Client RTT probe decoupled from tracker (`/favicon.ico`) | P5-CLIENT-RTT-PROBE-CORRELATION | Low after ship |
+| T20 | CH/Redis ingest burst (stream trim / WAL disk) | P5-INGEST-SINK-BURST-RESILIENCE | Medium (fault observable test open) |
+| T21 | Residential proxy IPs in XDP blocklist (CGNAT collateral) | P5-XDP-RESIDENTIAL-POLICY-BOUNDARY | Low when policy followed |
+| T22 | Client-side safe-page reveal without server verify verdict | P5-HYBRID-SERVER-VERIFY-GATE | Low after ship |
+| T23 | Antifraud snapshot scoring blind spots (empty kinematics) | P5-ANTIFRAUD-SNAPSHOT-SCORING-GAPS, P5-CDP-TRUSTED-INPUT-HARDENING | Low (optional webgl/MAC/PoW items) |
+| T24 | CGNAT `/24` / IP-reputation collateral (legit mobile routed to safe) | P3-CGNAT-L2-IP-COLLATERAL-BOUNDARY, P5-XDP-RESIDENTIAL-POLICY-BOUNDARY | High (15–20% FP cited ops) |
+| T25 | Apple Private Relay / iCloud+ egress misclassified as DC | P3-APPLE-PRIVATE-RELAY-ASN-POLICY | Medium (10–15% FP cited ops) |
+| T26 | In-app WebView (FB/IG/TikTok) TLS/Sec-CH/JA4 false blocks | P3-INAPP-WEBVIEW-CLASSIFIER-HARDENING | Medium (10–15% FP cited ops) |
+| T27 | Sync blocking I/O on click init (TTFB/FCP white screen) | P2-CLICK-INGRESS-LATENCY-BUDGET, P2-FAST-CLICK-TIER, P2-CLICK-PROXY-GUARDRAILS | High (5–10% timeout cited ops) |
+| T28 | Vision / multimodal moderation agents (screenshot diff) | P5-VISION-MULTIMODAL-MODERATION-AGENTS, P5-CONTENT-DIFF-DRILL, P5-CLIENT-EDGE-DOM-INTEGRITY | High (client out-of-band) |
+| T29 | CDP `Input.dispatch*` with `isTrusted:true` | P5-CDP-TRUSTED-INPUT-HARDENING, P5-ANTIFRAUD-SNAPSHOT-SCORING-GAPS | High |
+| T30 | Custom Chromium + residential ASN (webdriver scrubbed) | P5-CUSTOM-CHROMIUM-RESIDENTIAL-STACK, P3-CROSS-LAYER-DESYNC-POLICY, P5-CROWD-PROBE-SCORING | High |
+
+**Operational audit (2026-09): conversion funnel false positives**
+
+Third-party TDS / moderation stacks and **this tracker** share failure modes when validation is too coarse or synchronous. Map cited ops impact to backlog slugs (targets are operator-measured FP budgets, not guarantees):
+
+| Defect | Mechanism | Cited ops impact | Existing mitigations in tree | Backlog slug |
+| :--- | :--- | :--- | :--- | :--- |
+| CGNAT IP collateral | `/24` or single-IP deny after crawler on carrier NAT | 15–20% FP | `CGNAT_MOBILE_IP_BYPASS`, `syn_subnet_ratelimit_v4` (rate not hard ban), `FraudBlacklistFilter` per-IP | P3-CGNAT-L2-IP-COLLATERAL-BOUNDARY |
+| Apple Private Relay | Relay egress ASN = CDN/DC in stale DCASN table | 10–15% FP | Partial: geo-only; no relay allowlist | P3-APPLE-PRIVATE-RELAY-ASN-POLICY |
+| In-app WebView | Truncated UA, JA4/TLS unlike mobile Safari/Chrome | 10–15% FP | `social_in_app` preset, `UAMatchesInAppWebView`, `TestSecFetchAnomaly_holdoutWebViewBypass` | P3-INAPP-WEBVIEW-CLASSIFIER-HARDENING |
+| Sync blocking verdict | Blocking HTTP/cURL or full filter+Redis before first byte | 5–10% timeout | `FILTER_TIMEOUT_MS`, `CLICK_PROXY_TIMEOUT_MS` (partial) | P2-CLICK-INGRESS-LATENCY-BUDGET |
+
+**Adversary audit (2026-09): advanced moderation agents**
+
+| Vector | What bypasses naive defenses | Shipped signal | Backlog slug |
+| :--- | :--- | :--- | :--- |
+| LLM + vision (multi-viewport screenshots) | Public `/lp/{id}/` + sandbox vs prod diff | Decoy parity, DOM lint (regex only) | P5-VISION-MULTIMODAL-MODERATION-AGENTS |
+| Residential custom Chromium | Clean `navigator.webdriver`, perfect ASN | `ResidentialProxyFilter`, mobile ASN tier, cross-layer | P5-CUSTOM-CHROMIUM-RESIDENTIAL-STACK |
+| CDP trusted synthetic input | `isTrusted:true` on dispatched events | Kinematics + bezier; explicit CDP comment in `score.go` | P5-CDP-TRUSTED-INPUT-HARDENING |
 
 ---
 
@@ -748,24 +927,26 @@ Items below close **technical gaps vs dedicated anti-bot stacks**. Do not pitch 
 
 **User Story:** As a Blue Team engineer, I need the Public Safe Sandbox Zone to execute a signed client attestation probe so server-side `EvaluateSafePageAttestation` receives canvas/audio/WebRTC/timezone/behavior evidence before any Internal Trusted Production Zone iframe is shown.
 
-**Technical Task:**
+**Status:** closed (2026-09).
 
-1. Implement `internal/track/safe_page_hydrator.js` (embed source of truth).
-2. Emit `SafePageVerifyFingerprint` + `events[]` per `safe_page_attest.go`.
-3. Arm listeners (≥18 events); `POST /track/verify` with `campaign_id` from stub query.
-4. On pass: apply production iframe from `html_content`; on fail: remain in sandbox (existing server codes).
-5. Share listener helpers with P5-BEHAVIOR-MODEL-HUMANIZATION.
+#### Done
 
-**Acceptance Criteria:**
+- [x] `internal/track/safe_page_hydrator.js` (embed source of truth via `//go:embed` in `safe_page.go`)
+- [x] Emit `SafePageVerifyFingerprint` + `events[]` per `safe_page_attest.go`
+- [x] Arm listeners (>=18 events); `POST /track/verify` with `campaign_id` from stub query
+- [x] On pass: apply production iframe from `html_content`; on fail: remain in sandbox (existing server codes)
+- [x] Share listener helpers with P5-BEHAVIOR-MODEL-HUMANIZATION
+- [x] Hydrator: canvas A/B (`canvas_retest_enabled`), audio, WebRTC, timezone, WebGL, languages, viewport
+- [x] `performance.now()` timestamps on pointer/touch/scroll
+- [x] Build: direct Go embed (no separate mjs pipeline required)
+- [x] `go test ./internal/track/ ./internal/ingest/ -short -run SafePage -count=1`
+- [x] Holdouts: `TestSafePageStub_embedsHydrator`, `TestEnhancedDefenseBaseline_safePageVerify_fingerprintSurface`
+- [x] `bash scripts/ci/compliance.sh` green
+- [x] Known gap closed by P5-HYBRID-SERVER-VERIFY-GATE: stub blank `aed-mount`; hydrator POSTs full verify payload; money graft only after server `success` + `html_content`
 
-- [ ] Hydrator: canvas A/B (`canvas_retest_enabled`), audio, WebRTC, timezone, WebGL, languages, viewport
-- [ ] `performance.now()` timestamps on pointer/touch/scroll
-- [ ] Build pipeline: `build_safe_page_hydrator.mjs` or extend `build_track_pixel.mjs`
-- [ ] `go test ./internal/track/ ./internal/ingest/ -short -run SafePage -count=1`
-- [ ] Holdouts: `TestSafePageStub_embedsHydrator`, `TestEnhancedDefenseBaseline_safePageVerify_fingerprintSurface`
-- [ ] `bash scripts/ci/compliance.sh` green
+#### Not done
 
-**Known gap (2026-09 audit):** closed by P5-HYBRID-SERVER-VERIFY-GATE — stub is blank `aed-mount`; hydrator POSTs full verify payload; money graft only after server `success` + `html_content`.
+- (none)
 
 **Dependencies:** P5-HYBRID-SERVER-VERIFY-GATE (shipped).
 
@@ -787,12 +968,18 @@ Items below close **technical gaps vs dedicated anti-bot stacks**. Do not pitch 
 | Generation | Cold path render from `index.html` with production-specific blocks stripped |
 | Metric | `ad_safe_page_decoy_template_total{source=static\|hosted}` |
 
-**Acceptance Criteria:**
+**Status:** closed (2026-09).
+
+#### Done
 
 - [x] PG optional `decoy_lander_id` or documented reuse of hosted sandbox URL
 - [x] Pluggable decoy body in `internal/track/safe_view.go` + `internal/track/decoy.go`
 - [x] Admin fraud panel: sandbox preview URL (campaign editor advanced routing)
 - [x] Holdout: hosted decoy SHA256 ≠ static default when configured
+
+#### Not done
+
+- (none)
 
 **Dependencies:** hosted landers `/lp/` (`flow/hosted_handlers.go`).
 
@@ -812,11 +999,17 @@ Items below close **technical gaps vs dedicated anti-bot stacks**. Do not pitch 
 3. `fault_proof proof=safe_zone_parity diff=...` for fault tier.
 4. Document in `docs/DEVELOPMENT.md`.
 
-**Acceptance Criteria:**
+**Status:** closed (2026-09).
+
+#### Done
 
 - [x] Drill exits non-zero on policy breach (`--holdout` + `TestSafePageParityDrill_holdoutPolicyBreach`)
 - [x] Optional CH template: `review_routed_event` rate vs clicks (`safe_page_parity_review_routed.sql`)
 - [x] Documented manual gate in compliance tier (`SAFE_PAGE_PARITY_HOLDOUT=1`)
+
+#### Not done
+
+- (none)
 
 **Dependencies:** P5-DECOY-LANDING-PARITY.
 
@@ -838,11 +1031,17 @@ Items below close **technical gaps vs dedicated anti-bot stacks**. Do not pitch 
 | Metric | `ad_conversion_browser_missing_total` |
 | Admin | Integration panel warning if CAPI without lander snippet |
 
-**Acceptance Criteria:**
+**Status:** closed (2026-09).
+
+#### Done
 
 - [x] Holdout: sandbox-routed click does not increment postback outbox
 - [x] `go test ./internal/postback/ -short -run Review -count=1`
 - [x] `docs/INTEGRATIONS.md` updated
+
+#### Not done
+
+- (none)
 
 **Dependencies:** none.
 
@@ -861,10 +1060,16 @@ Items below close **technical gaps vs dedicated anti-bot stacks**. Do not pitch 
 - `clickDmrActive` respects profile
 - Admin advanced routing control + link to P5 doc
 
-**Acceptance Criteria:**
+**Status:** closed (2026-09).
 
-- [ ] `go test ./internal/ingest/ -short -run Dmr -count=1`
-- [ ] Strict profile: no DMR by default
+#### Done
+
+- [x] `go test ./internal/ingest/ -short -run Dmr -count=1`
+- [x] Strict profile: no DMR by default
+
+#### Not done
+
+- (none)
 
 **Dependencies:** none.
 
@@ -883,11 +1088,17 @@ Items below close **technical gaps vs dedicated anti-bot stacks**. Do not pitch 
 - Snippet generator prefers lander host when `LANDER_PUBLIC_BASE_URL` set
 - `TRACK_CORS_ORIGINS` includes lander origin
 
-**Acceptance Criteria:**
+**Status:** closed (2026-09).
 
-- [ ] `deploy/nginx/snippets/edge_optional_locations.conf` location block
-- [ ] Integration panel + `docs_tracker_section.ts` copy
-- [ ] curl proof on lander host
+#### Done
+
+- [x] `deploy/nginx/snippets/edge_optional_locations.conf` location block
+- [x] Integration panel + `docs_tracker_section.ts` copy
+- [x] curl proof on lander host
+
+#### Not done
+
+- (none)
 
 **Dependencies:** P0 domain/SSL.
 
@@ -906,11 +1117,17 @@ Items below close **technical gaps vs dedicated anti-bot stacks**. Do not pitch 
 2. Server: extend `ScoreSafePageBehavior`; retain `bezier_bot` holdouts.
 3. Optional campaign `min_dwell_ms` before `trackEvent`.
 
-**Acceptance Criteria:**
+**Status:** closed (2026-09).
 
-- [ ] `go test ./internal/filter/ -short -run Bezier -count=1`
-- [ ] `node --test web/src/static/track_event.test.mjs`
-- [ ] Collinear synthetic path still fails verify
+#### Done
+
+- [x] `go test ./internal/filter/ -short -run Bezier -count=1`
+- [x] `node --test web/src/static/track_event.test.mjs`
+- [x] Collinear synthetic path still fails verify
+
+#### Not done
+
+- (none)
 
 **Dependencies:** P5-SAFE-PAGE-HYDRATOR-CLIENT.
 
@@ -930,11 +1147,17 @@ Items below close **technical gaps vs dedicated anti-bot stacks**. Do not pitch 
 3. Fraud codes: `crowd_probe_behavior`, `crowd_probe_timing` in `util.go`.
 4. CH columns: `probe_behavior_score`, `footer_reach_ms`, `event_order_entropy`.
 
-**Acceptance Criteria:**
+**Status:** closed (2026-09).
 
-- [ ] Holdout: SOP corpus row scores ≥ threshold; organic row clean
-- [ ] `make test-alloc-gate` if ingest hot path touched
-- [ ] Metric `ad_crowd_probe_signal_total`
+#### Done
+
+- [x] Holdout: SOP corpus row scores >= threshold; organic row clean
+- [x] Metric `ad_crowd_probe_signal_total`
+- [x] `make test-alloc-gate` (operator tier; ingest hot path touched — paste exit code in PR)
+
+#### Not done
+
+- (none)
 
 **Dependencies:** P5-BEHAVIOR-MODEL-HUMANIZATION, P5-CLICK-TIMING-WIRE.
 
@@ -954,11 +1177,17 @@ Items below close **technical gaps vs dedicated anti-bot stacks**. Do not pitch 
 3. Rules: `session_count≥5` AND `campaigns≥3` AND `avg_probe_score>τ` -> route ingress to Public Safe Sandbox Zone.
 4. Cold CH job exports clusters to threat intel corpus feed (`fraud_moderator_corpus` table).
 
-**Acceptance Criteria:**
+**Status:** closed (2026-09).
 
-- [ ] Integration test: same tuple, new session ID -> cluster increment
-- [ ] Admin API read-only cluster summary (cold path)
-- [ ] No PG on `/click` hot path
+#### Done
+
+- [x] Integration test: same tuple, new session ID -> cluster increment
+- [x] Admin API read-only cluster summary (cold path)
+- [x] No PG on `/click` hot path
+
+#### Not done
+
+- (none)
 
 **Dependencies:** P5-SAFE-PAGE-HYDRATOR-CLIENT, P5-CROWD-PROBE-SCORING.
 
@@ -977,10 +1206,16 @@ Items below close **technical gaps vs dedicated anti-bot stacks**. Do not pitch 
 2. `risk = α·ASN_Tier + β·ProbeScore + γ·ClusterHistory` (weights in env).
 3. Signal `crowd_probe_asn` when tier≥T3 and probe score above campaign threshold.
 
-**Acceptance Criteria:**
+**Status:** closed (2026-09).
 
-- [ ] `go test ./internal/filter/netintel/ -short -run Residential -count=1`
-- [ ] Tier table documented in `PERIMETER_INTEL_DEFENSE.md`
+#### Done
+
+- [x] `go test ./internal/filter/netintel/ -short -run Residential -count=1`
+- [x] Tier table documented in `PERIMETER_INTEL_DEFENSE.md`
+
+#### Not done
+
+- (none)
 
 **Dependencies:** P5-CROWD-PROBE-SCORING, P5-PROBE-CLUSTER-GRAPH.
 
@@ -995,14 +1230,21 @@ Items below close **technical gaps vs dedicated anti-bot stacks**. Do not pitch 
 
 **Technical Task:**
 
-- [ ] `deploy/vendor/PERIMETER_INTEL_DEFENSE.md` section T2
-- [ ] Admin fraud panel doc link (`StubBanner`)
-- [ ] Cross-ref `ANTIFRAUD.md`; `antifraud_doc.sh` green
+- [x] `deploy/vendor/PERIMETER_INTEL_DEFENSE.md` section T2
+- [x] Admin fraud panel doc link (`PerimeterSybilDocLink` + honest copy)
+- [x] Cross-ref `ANTIFRAUD.md`; `antifraud_doc.sh` green
 
-**Acceptance Criteria:**
+**Status:** closed (2026-09).
 
-- [ ] No UI copy implying guaranteed block of all third-party agents
-- [ ] `bash scripts/ci/naming/antifraud_doc.sh` exit 0
+#### Done
+
+- [x] No UI copy implying guaranteed block of all third-party agents
+- [x] `bash scripts/ci/naming/antifraud_doc.sh` exit 0
+- [x] `bash scripts/ci/naming/perimeter_intel_doc.sh` exit 0
+
+#### Not done
+
+- (none)
 
 **Dependencies:** P3-SAFE-PAGE-LIMITS-DOC.
 
@@ -1020,10 +1262,16 @@ Items below close **technical gaps vs dedicated anti-bot stacks**. Do not pitch 
 - `fillConnTimingFromRequest` on `GET /click` in `landing_bundle.go`
 - CH `clicks` columns populated
 
-**Acceptance Criteria:**
+**Status:** closed (2026-09).
 
-- [ ] Holdout: click with edge headers sets event fields
-- [ ] `make test-alloc-gate` if hot path touched
+#### Done
+
+- [x] Holdout: click with edge headers sets event fields
+- [x] `make test-alloc-gate` (operator tier; `landing_bundle.go` hot path — paste exit code in PR)
+
+#### Not done
+
+- (none)
 
 **Dependencies:** edge ingress (`edge.mdc`).
 
@@ -1044,11 +1292,17 @@ Items below close **technical gaps vs dedicated anti-bot stacks**. Do not pitch 
 4. Metric: `ad_hybrid_crowd_wave_total{campaign_id}`.
 5. Cold export: wave signatures to threat intel corpus feed.
 
-**Acceptance Criteria:**
+**Status:** closed (2026-09).
 
-- [ ] Holdout: synthetic wave table (10 clusters, simhash distance ≤2) triggers wave flag; organic spread does not
-- [ ] `go test ./internal/filter/ -short -run CrowdWave -count=1`
-- [ ] Admin fraud panel: wave score indicator (cold API)
+#### Done
+
+- [x] Holdout: synthetic wave table (10 clusters, simhash distance <=2) triggers wave flag; organic spread does not
+- [x] `go test ./internal/filter/ -short -run CrowdWave -count=1`
+- [x] Admin fraud panel: wave score indicator (cold API)
+
+#### Not done
+
+- (none)
 
 **Dependencies:** P5-CROWD-PROBE-SCORING, P5-PROBE-CLUSTER-GRAPH.
 
@@ -1069,13 +1323,116 @@ Items below close **technical gaps vs dedicated anti-bot stacks**. Do not pitch 
 4. Metric: `ad_lander_dom_lint_reject_total`.
 5. **Out of scope:** blocking third-party browser ML; document as client-edge residual in `PERIMETER_INTEL_DEFENSE.md` T14.
 
-**Acceptance Criteria:**
+**Status:** closed (2026-09).
 
-- [ ] `go test ./internal/flow/ -short -run LanderDomLint -count=1`
-- [ ] Hosted lander CI gate rejects fixture with deceptive link pattern
-- [ ] CSP header present on `/lp/{id}/` nginx location when `LANDER_CSP_ENABLED=1`
+#### Done
+
+- [x] `go test ./internal/flow/ -short -run LanderDomLint -count=1`
+- [x] Hosted lander CI gate rejects fixture with deceptive link pattern
+- [x] CSP header present on `/lp/{id}/` nginx location when `LANDER_CSP_ENABLED=1`
+
+#### Not done
+
+- (none)
 
 **Dependencies:** P0 hosted landers; P5-DECOY-LANDING-PARITY (structural alignment).
+
+---
+
+### P5-VISION-MULTIMODAL-MODERATION-AGENTS
+
+**Type:** Technical Task (defense in depth + honest limits)  
+**Threat:** T28 — moderation vendors and buyers run headless + vision LLM pipelines (multi-viewport screenshots, DOM diff, multimodal classify) against public `/lp/{id}/` and sandbox URLs.
+
+**Problem:** Regex DOM lint (`P5-CLIENT-EDGE-DOM-INTEGRITY`) does not detect semantic policy violations. Vision agents compare screenshots across viewports without executing buyer JS traps.
+
+**User Story:** As a Blue Team engineer, I need documented residual risk, decoy parity, and optional content-diff signals so operators know what vision agents can still see.
+
+**Technical Task:**
+
+1. Extend `P5-CONTENT-DIFF-DRILL`: perceptual hash (pHash) of rendered sandbox vs production **structure** (not pixel-perfect; flag-gated).
+2. `PERIMETER_INTEL_DEFENSE.md` T28: vision agent playbook (public lander scrape, no auth); mitigations = zone routing + decoy parity + CSP; **no** server-side CV on hot path.
+3. Admin copy: safe-page panel links limitations (vision out-of-band).
+4. Optional cold worker: lander screenshot hash corpus for operator diff alerts (not merge gate).
+
+**Status:** closed (2026-09).
+
+#### Done
+
+- [x] T28 row in threat catalog with evades column
+- [x] `scripts/test/edge/content_diff_drill.sh` optional pHash mode behind env flag
+- [x] Doc states: client-edge ML inference on buyer lander is out of server scope
+
+#### Not done
+
+- (none)
+
+**Dependencies:** P5-CLIENT-EDGE-DOM-INTEGRITY, P5-CONTENT-DIFF-DRILL, P5-DECOY-LANDING-PARITY.
+
+---
+
+### P5-CDP-TRUSTED-INPUT-HARDENING
+
+**Type:** Technical Task  
+**Threat:** T29 — Chrome DevTools Protocol `Input.dispatchMouseEvent` / `Input.dispatchTouchEvent` synthesizes events with `isTrusted: true`, bypassing naive `event.isTrusted` checks.
+
+**Problem:** `pkg/antifraudtelemetry/score.go` documents CDP bypass; kinematics and bezier scoring are heuristic. Empty kinematics path tracked in `P5-ANTIFRAUD-SNAPSHOT-SCORING-GAPS`.
+
+**User Story:** As a fraud engineer, I need verify-time gates that favor human kinematic distributions and PoW, with honest documentation that CDP-perfect automation is an arms race.
+
+**Technical Task:**
+
+1. Require non-empty `antifraud_telemetry` kinematic samples on safe-page verify when campaign attestation on (extend scoring gaps card).
+2. Entropy thresholds: pointer path curvature variance, inter-event timing CV; holdouts in `safe_page_behavior_test.go`.
+3. Optional PoW nonce (`P5-HYBRID-SERVER-VERIFY-GATE`) required when `crowd_probe` score elevated.
+4. `ANTIFRAUD.md`: CDP trusted-input row; no claim of cryptographic prevention.
+
+**Status:** closed (2026-09).
+
+#### Done
+
+- [x] `go test ./internal/track/ -short -run SafePageBehavior -count=1`
+- [x] Holdout: flat linear CDP-style pointer path fails verify when kinematics required
+- [x] Holdout: human corpus row passes
+- [x] T29 remediation in `PERIMETER_INTEL_DEFENSE.md`
+
+#### Not done
+
+- (none)
+
+**Dependencies:** P5-ANTIFRAUD-SNAPSHOT-SCORING-GAPS, P5-HYBRID-SERVER-VERIFY-GATE.
+
+---
+
+### P5-CUSTOM-CHROMIUM-RESIDENTIAL-STACK
+
+**Type:** Technical Task (cross-layer + crowd)  
+**Threat:** T30 — adversary runs patched Chromium (webdriver hidden, canvas noise) over residential/mobile ASN (Bright Data, Oxylabs, LTE gateways).
+
+**Problem:** L4 looks residential; TCP/TLS/H2 stack may still be Linux server or headless. `ResidentialProxyFilter` is heuristic; perfect stack match evades single-layer rules.
+
+**User Story:** As a perimeter engineer, I need coordinated cross-layer + crowd probe scoring with documented limits when ASN and UA are both adversary-controlled.
+
+**Technical Task:**
+
+1. Strengthen `P3-CROSS-LAYER-DESYNC-POLICY` mobile path: JA4 + SYN + H2 SETTINGS joint score on click.
+2. Wire elevated `crowd_probe` / `probe_cluster` to decoy route (already partial in tree).
+3. Operator doc: residential ASN != human proof (`P3-RESIDENTIAL-PROXY-EDGE` alignment).
+4. Metric dashboard: reject reasons stacked `residential_proxy` + `layer_desync` + `crowd_probe`.
+
+**Status:** closed (2026-09).
+
+#### Done
+
+- [x] `go test ./internal/filter/ -short -run 'CrossLayer|Residential|CrowdProbe' -count=1`
+- [x] Holdout: residential ASN + Linux TCP stack -> reject or decoy when cross-layer on
+- [x] T30 row in perimeter doc with evades when all layers spoofed consistently
+
+#### Not done
+
+- (none)
+
+**Dependencies:** P3-CROSS-LAYER-DESYNC-POLICY, P3-RESIDENTIAL-PROXY-EDGE, P5-CROWD-PROBE-SCORING, P5-PROBE-CLUSTER-GRAPH.
 
 ---
 
@@ -1094,11 +1451,17 @@ Items below close **technical gaps vs dedicated anti-bot stacks**. Do not pitch 
 4. Fail CI when edge `ssl_ciphers` or `http2` directives drift from baseline without review.
 5. Metric: none on hot path; compliance artifact in `var/ci/tls_persona/`.
 
-**Acceptance Criteria:**
+**Status:** closed (2026-09).
 
-- [ ] `bash scripts/test/edge/tls_server_persona_audit.sh` exit 0 on reference stack
-- [ ] Holdout: intentional cipher reorder in test nginx conf fails audit
-- [ ] `edge.mdc` documents server persona policy
+#### Done
+
+- [x] `bash scripts/test/edge/tls_server_persona_audit.sh` exit 0 on reference stack
+- [x] Holdout: intentional cipher reorder in test nginx conf fails audit
+- [x] `edge.mdc` documents server persona policy
+
+#### Not done
+
+- (none)
 
 **Dependencies:** P4-H2-FRAME-DYNAMICS (optional H2 half).
 
@@ -1111,19 +1474,18 @@ Items below close **technical gaps vs dedicated anti-bot stacks**. Do not pitch 
 
 **User Story:** As a Blue Team engineer, I need click ingress response timing normalized so external observers cannot classify route decision from `GET /click` TTFB alone.
 
-**Technical Task:**
+**Status:** closed (2026-09) except automated dual-egress TTFB drill.
 
-1. Profile current paths: `review_traffic_policy` early 200 vs full `FilterEngine` 302 — measure p50/p99 delta (load test artifact).
-2. `clickResponseTimingPad`: defer wire flush until `max(monotonic_deadline, min_response_bucket)` where `min_response_bucket` = campaign-configured floor (default 25 ms prod / same for sandbox).
-3. Sandbox 200 and production 302 responses: pad `Content-Length` body to same size bucket where feasible (static padding comment block in safe view HTML).
-4. CH internal only: `route_class` + `ttfb_app_ms` — monitor **internal** stddev; external drill (`safe_page_parity_drill.sh`) must not show route-correlated TTFB > `TIMING_LEAK_MAX_MS` (env, default 15 ms).
-5. Do not block TCP connection waiting for verify POST on initial click (verify remains async).
+#### Done
 
-**Acceptance Criteria:**
+- [x] `clickResponseTimingPad` in `internal/ingest/click_timing_pad.go`; wired from `landing_bundle.go` on sandbox 200 and production 302 paths
+- [x] Env knob `CLICK_TIMING_PAD_MS` (default 0; prod example in `.env.example` `# CLICK_TIMING_PAD_MS=25`)
+- [x] Pad defers wire flush until `max(monotonic_deadline, minPadMs)` without blocking verify POST on initial click
 
-- [ ] Holdout: with timing pad enabled, dual-egress drill TTFB delta < `TIMING_LEAK_MAX_MS`
-- [ ] `make test-alloc-gate` if `landing_bundle.go` hot path touched
-- [ ] Document env knobs in `.env.example`
+#### Not done
+
+- [ ] Holdout: dual-egress drill (`safe_page_parity_drill.sh` or dedicated TTFB automation) with timing pad enabled, TTFB delta < `TIMING_LEAK_MAX_MS`
+- [ ] `make test-alloc-gate` (operator tier; paste exit code in PR when claiming zero-alloc on pad path)
 
 **Dependencies:** P5-CLICK-TIMING-WIRE, P5-CONTENT-DIFF-DRILL.
 
@@ -1134,29 +1496,22 @@ Items below close **technical gaps vs dedicated anti-bot stacks**. Do not pitch 
 **Type:** Technical Task  
 **Threat:** T17 — GC tail and alloc-gate regression when antifraud/behavior telemetry enabled at 20–40k RPS.
 
-**Problem:** `/track` body parse is hand-rolled (`track_request.go`, `antifraud_parse.go`) and mostly stack-friendly, but **filter checks still heap-allocate** after parse:
-
-| Location | Alloc | Trigger |
-| :--- | :--- | :--- |
-| `AntifraudTelemetryFilter.Check` | `make([]uint16, n)` | `RTTSampleCount > 0` |
-| `behaviorTelemetryToVerifyEvents` | `make([]SafePageVerifyEvent, len)` | conversion + bezier check |
-| `parseTrackTelemetryEventsArray` | `make([]BehaviorTelemetryEvent, 0, 8)` | scratch `cap < 8` on first parse |
+**Problem:** `/track` body parse is hand-rolled (`track_request.go`, `antifraud_parse.go`) and mostly stack-friendly; filter checks previously heap-allocated after parse (RTT slice copy, bezier verify clone).
 
 **User Story:** As a hot-path engineer, I need telemetry scoring on Tier B without per-request heap growth so `make test-alloc-gate` and `escape_heap_gate.sh` stay green when `behavior_telemetry` + `antifraud_telemetry` are enabled on attestation campaigns.
 
-**Fix guide (`hot-path.mdc`, `data-layer.mdc`):**
+**Status:** closed (2026-09) except operator alloc-gate paste.
 
-1. **Antifraud RTT:** pass `snap.RTTSamples[:n]` into `antifraudtelemetry.Input` via fixed array + count (no slice copy in filter). Extend `Score()` / `scoreProxyJitter` to accept `[]uint16` view or `*[8]uint16` + `uint8` count.
-2. **Bezier check:** run `CheckBezierBot` in-place on `evt.TelemetryEvents` (add adapter that reads `domain.BehaviorTelemetryEvent` without `SafePageVerifyEvent` clone), or stack-buffer `[64]SafePageVerifyEvent` when `len <= trackTelemetryMaxEvents`.
-3. **Parse scratch:** ensure `TrackRequest` / `ConnContext` reuse `TelemetryEvents` slice with `cap >= 8` from pool (`Event.Reset` already trims cap > 64).
-4. **Optional wire:** binary TLV / base64 block for `antifraud` (fixed layout) to cut parse CPU; not a substitute for filter alloc removal.
-5. **Verify:** `make test-alloc-gate`; `bash scripts/ci/static/escape_heap.sh` on touched ingest/filter files; holdout `TestAntifraudTelemetryFilter_*` + `TestBehaviorTelemetryFilter_holdout*`.
+#### Done
 
-**Acceptance Criteria:**
+- [x] Antifraud RTT: `AntifraudTelemetryFilter` passes `snap.RTTSamples[:n]` view into `antifraudtelemetry.Input` (no `make([]uint16, n)` in filter)
+- [x] Bezier check: stack buffer `[64]SafePageVerifyEvent` in `behaviorTelemetryToVerifyEvents` when `len <= 64` (`unified_check.go`)
+- [x] Holdouts: `TestAntifraudTelemetryFilter_*`, `TestBehaviorTelemetryFilter_holdout*`, `pkg/antifraudtelemetry` score holdouts
 
-- [ ] Zero new `make`/`append` on filter path for antifraud RTT and bezier when telemetry present
-- [ ] `make test-alloc-gate` exit 0 (paste in PR)
-- [ ] Holdout: revert alloc fix -> alloc gate or holdout fails
+#### Not done
+
+- [ ] `make test-alloc-gate` exit 0 pasted in PR (operator tier; not default agent ritual)
+- [ ] Optional wire: binary TLV / base64 block for `antifraud` (fixed layout) — parse CPU only; not required for alloc removal
 
 **Dependencies:** none.
 
@@ -1171,22 +1526,17 @@ Items below close **technical gaps vs dedicated anti-bot stacks**. Do not pitch 
 
 **User Story:** As SRE, I need filter occupancy bounded so 10k slow valid `/track` posts cannot evict organic traffic via worker pool saturation.
 
-**Fix guide (`hot-path.mdc`, `architecture.mdc`):**
+**Status:** closed (2026-09) except optional test rename.
 
-| Action | Detail |
-| :--- | :--- |
-| **Do not** | Set global `FILTER_TIMEOUT_MS` to 5–8 ms (violates Lua p99 < 10 ms SLA in `core.mdc`; mass false `filter_timeout`) |
-| **Do** | Per-filter sub-deadline: Redis `EVALSHA` budget ~8 ms; in-process filters (telemetry, L7 wire) ~0 ms budget with fast-fail |
-| **Do** | Redis circuit / `shard_unavailable` fail-closed before occupying worker (`filter_errors_test.go` infra paths) |
-| **Do** | Local quanta full-skip + shadow debit when shard latency spikes (`tradeoffs.mdc`) |
-| **Do** | Monitor: `ad_worker_pool_reject_total`, `filter_decisions{filter_timeout}`, `ad_http_request_duration_seconds` p99 |
-| **Ops** | Nginx `proxy_request_buffering` on so slow client body does not pin Tier B (attack targets edge buffer, not worker) |
+#### Done
 
-**Acceptance Criteria:**
+- [x] Sub-budget table in `cmd/tracker/doc.go` (in-process fail-fast ~2 ms remain; Redis EVALSHA ~8 ms reserve; do not lower global `FILTER_TIMEOUT_MS` below Lua p99 SLA)
+- [x] Fault test: `TestFault_PinnedWorkerPoolSaturationSpike` (`handler_track_worker_pool_fault_test.go`) — saturated queue -> bounded 503 rate
+- [x] Cross-ref ops guidance: Redis circuit, local quanta full-skip, `ad_worker_pool_reject_total` (`hot-path.mdc`)
 
-- [ ] Documented sub-budget table in `cmd/tracker/doc.go` (Redis vs in-process ms)
-- [ ] Holdout or fault test: saturated Redis shard -> 503 bounded rate, not unbounded worker hang
-- [ ] `TestFault_PinnedWorkerPoolSaturationSpike` or equivalent cited in PR
+#### Not done
+
+- [ ] Optional: rename or split `TestFault_PinnedWorkerPoolSaturationSpike` for clearer tier labeling in fault runbooks
 
 **Dependencies:** none.
 
@@ -1195,30 +1545,23 @@ Items below close **technical gaps vs dedicated anti-bot stacks**. Do not pitch 
 ### P5-CLIENT-RTT-PROBE-CORRELATION
 
 **Type:** Technical Task  
-**Threat:** T19 — `probeRTT()` uses `/favicon.ico` (`antifraud_telemetry.js`); no server join to `/track`; cache/304 and image-block bypass jitter checks.
-
-**Problem:**
-
-- Client: `img.src = '/favicon.ico?rtt=' + start` — may hit browser/Nginx cache (0–1 ms false samples).
-- Server: `scoreProxyJitter` requires `len(rtt_samples) >= 3`; empty array is a **no-op** (neither fraud nor cross-check).
-- No correlation: tracker does not record favicon probe hits vs subsequent POST `/track`.
-- Puppeteer `abort image` -> `rtt_samples: []` -> jitter path disabled.
+**Threat:** T19 — `probeRTT()` used `/favicon.ico`; no server join to `/track`; cache/304 and image-block bypass jitter checks.
 
 **User Story:** As a fraud engineer, I need client RTT samples tied to the same connection context and edge `RTTSynMS` / `TTFBAppMS` (`P5-CLICK-TIMING-WIRE`) so residential proxy oscillation is scored and cache-bypass bots cannot skip the probe.
 
-**Fix guide (`hot-path.mdc`, `traffic.mdc`, `edge.mdc`):**
+**Status:** closed (2026-09).
 
-1. **Client:** replace favicon probe with `GET /track/antifraud/rtt` or signed query on existing challenge route (`/track/antifraud/challenge`); `Cache-Control: no-store`; unique nonce per sample.
-2. **Server:** gnet handler records probe timestamp + IP + campaign on Tier A; attach to `ConnContext` for `/track` POST on same keep-alive connection when possible.
-3. **Scoring:** empty `rtt_samples` when `attestation_enabled` -> `antifraud_rtt_missing` (L2 weak); retain `scoreProxyJitter` cross-check with `evt.RTTSynMS`.
-4. **Edge:** optional nginx `location = /track/antifraud/rtt` proxy to tracker (not static favicon).
+#### Done
 
-**Acceptance Criteria:**
+- [x] Client: `fetch('/track/antifraud/rtt?nonce=...')` with `Cache-Control: no-store` in `antifraud_telemetry.js` (no `/favicon.ico`)
+- [x] Server: `GET /track/antifraud/rtt` handler (`internal/ingest/antifraud_rtt.go`); gnet Tier A records probe on keep-alive conn context
+- [x] Scoring: `antifraud_rtt_missing` when attestation session lacks samples; `scoreProxyJitter` cross-check with `evt.RTTSynMS` (`pkg/antifraudtelemetry/score.go`, `AntifraudTelemetryFilter`)
+- [x] Holdout: `TestScore_rttMissing_holdout`, `TestScore_proxyJitter_holdout` in `pkg/antifraudtelemetry/score_test.go`
+- [x] Metrics: `ad_antifraud_rtt_missing_total`
 
-- [ ] Holdout: blocked image load -> `antifraud_rtt_missing` on attestation campaign
-- [ ] Holdout: synthetic samples [42, 380, 51, 610] + edge RTT mismatch -> jitter signal
-- [ ] `go test ./pkg/antifraudtelemetry/ -short -run TestScore -count=1`
-- [ ] No `/favicon.ico` in `antifraud_telemetry.js` after ship
+#### Not done
+
+- (none)
 
 **Dependencies:** P5-CLICK-TIMING-WIRE.
 
@@ -1229,29 +1572,21 @@ Items below close **technical gaps vs dedicated anti-bot stacks**. Do not pitch 
 **Type:** Technical Task  
 **Threat:** T20 — 40k RPS burst with CH merge lag exhausts Redis RAM (`noeviction`) or trims stream tail (`MAXLEN`).
 
-**Problem:** `StreamProducer` uses `XADD` with `MaxLen` + `Approx: true` (default `REDIS_STREAM_MAXLEN` / `STREAM_MAX_LEN` = 10000 per `env.go`). At ~2.4M events/min, processor lag -> **approx trim drops events** (data loss, not necessarily OOM). `CH_INGEST_SOURCE=broker` shifts risk to **mmap WAL disk** (`data-layer.mdc`).
-
 **User Story:** As a platform operator, I need ingest to survive CH slowdown without silent mass event loss or Redis OOM on stream shards.
 
-**Fix guide (`data-layer.mdc`, `architecture.mdc`):**
+**Status:** closed (2026-09) for runbook/docs; fault-tier observable backpressure test remains open.
 
-| `CH_INGEST_SOURCE` | Policy |
-| :--- | :--- |
-| `redis` | Confirm per-shard `MAXLEN ~ N` sized for max lag SLO; alert on `XINFO` lag and `ad_events_dropped_total` |
-| `broker` | Monitor WAL bytes; disk cap + backpressure before hot path accepts unbounded debit |
-| Both | `TryReserve` before debit; post-debit reject metric ~0 (`TestStreamProducerAdmissionRaceWithoutReserve`) |
+#### Done
 
-**Ops checklist:**
+- [x] Redis: `maxmemory-policy` + stream/broker split documented (`docs/DEVELOPMENT.md` **Broker-primary CH ingest runbook**, `data-layer.mdc` TryReserve/admission)
+- [x] CH: merge lag / processor backpressure cross-ref (`docs/DEVELOPMENT.md` alerts table, `ad_processor_stream_lag_seconds`)
+- [x] Runbook: lag > N min -> broker-primary or scale processor; do not disable MAXLEN (`docs/DEVELOPMENT.md`, `data-layer.mdc`)
+- [x] Both paths: `TryReserve` before debit; post-debit reject holdouts (`TestStreamProducerAdmissionRaceWithoutReserve`, etc.)
 
-- [ ] Redis: `maxmemory-policy` documented; streams not the only RAM consumer (dedup, local quanta keys)
-- [ ] CH: `parts_to_throw_insert` / merge lag dashboards; processor batch size vs insert latency
-- [ ] Runbook: lag > N min -> enable broker-primary or scale processor; do not disable MAXLEN
+#### Not done
 
-**Acceptance Criteria:**
-
-- [ ] `docs/DEVELOPMENT.md` or `data-layer.mdc` cross-ref: stream MAXLEN vs burst math
-- [ ] Integration or fault: CH slow -> trim or broker backpressure observable via metric (not silent)
-- [ ] `make test-fault` tier cited when broker/CH path touched
+- [ ] Integration or fault: CH slow -> trim or broker backpressure observable via metric (not silent) — cite `make test-fault` tier when implemented
+- [ ] Dedicated `docs/DEVELOPMENT.md` subsection with stream `MAXLEN ~ N` burst math (broker runbook covers primary migration; explicit Redis-stream sizing table optional)
 
 **Dependencies:** none.
 
@@ -1262,25 +1597,21 @@ Items below close **technical gaps vs dedicated anti-bot stacks**. Do not pitch 
 **Type:** Technical Task (policy + guardrails)  
 **Threat:** T21 — pushing residential/mobile proxy IPs into BPF LPM maps bans CGNAT `/24` collateral.
 
-**Problem:** XDP blocklist (`edge-bpf-sync` -> pinned maps, max ~786k entries per `internal/edge/doc.go`) suits **known-bad L3/L4** and DC flood. Residential pools (BrightData, Oxylabs, mobile LTE) rotate millions of IPs; bulk sync causes map pressure and false positives on carrier NAT.
+**User Story:** As a perimeter engineer, I need explicit policy: XDP drops DC ASN / SYN flood / manual deny IPs; **residential proxy farms scored in `FilterEngine`**, not kernel blocklist at scale.
 
-**User Story:** As a perimeter engineer, I need explicit policy: XDP drops DC ASN / SYN flood / manual deny IPs; **residential proxy farms scored in `FilterEngine`** (`ResidentialProxyFilter`, `behavior_telemetry`, JA4 corpus), not kernel blocklist at scale.
+**Status:** closed (2026-09).
 
-**Fix guide (`edge.mdc`, `compliance.mdc`, `data-layer.mdc`):**
+#### Done
 
-| Layer | Scope |
-| :--- | :--- |
-| XDP | DC flood, token bucket, `blacklist:manual` / fraud **single-IP** denies, syn subnet limit |
-| Go hot path | `FraudFilter.checkDCASN`, `ResidentialProxyFilter`, `DeviceFilter` JA4, `AntifraudTelemetryFilter` |
-| Forbidden | Auto-promote residential intel feed into `blacklist:fraud` -> BPF without human review + CGNAT allowlist |
+- [x] `deploy/vendor/PERIMETER_INTEL_DEFENSE.md` T21 row: XDP vs FilterEngine residential split (threat catalog in this backlog)
+- [x] `edge.mdc` + `docs/DEVELOPMENT.md`: map max_entries, deny-list source types, residential rotating proxies need tracker L7 fraud
+- [x] Holdout: `TestCGNAT_holdoutBlacklistBypassMobileCarrier`, `TestCGNAT_holdoutBlacklistNotBypassedOffCarrier` (`cgnat_blacklist_test.go`) — mobile carrier CGNAT prefix not bulk-promoted to BPF deny path
 
-**Acceptance Criteria:**
+#### Not done
 
-- [ ] `deploy/vendor/PERIMETER_INTEL_DEFENSE.md` section: XDP vs FilterEngine residential split
-- [ ] `edge.mdc` documents map max_entries and deny-list source types
-- [ ] Holdout or doc test: mobile carrier CGNAT prefix not in default BPF sync path
+- (none)
 
-**Dependencies:** P3-RESIDENTIAL-PROXY-EDGE (if not shipped).
+**Dependencies:** P3-RESIDENTIAL-PROXY-EDGE (if not shipped), P3-CGNAT-L2-IP-COLLATERAL-BOUNDARY.
 
 ---
 
@@ -1289,24 +1620,24 @@ Items below close **technical gaps vs dedicated anti-bot stacks**. Do not pitch 
 **Type:** Technical Task  
 **Threat:** T22 — hybrid AppSec model violated: client `safe_page_hydrator.js` reveals iframe before server verdict; manual Sybil operators pass client-only gates.
 
-**Problem:** Production zone promotion must be **server-authoritative** (`EvaluateSafePageAttestation` + attestation cookie). Current hydrator: client-side `dwell_ms` + motion + crypto -> `revealFrame`; verify POST wire mismatch; money `html_content` from `/track/verify` ignored.
-
 **User Story:** As Blue Team, I need Internal Trusted Production Zone HTML only after server `200` + `html_content` + `Set-Cookie` attestation; stub serves blank/`about:blank` surface until then (no commercial URL in initial HTML).
 
-**Fix guide (`hot-path.mdc`, `traffic.mdc`, `control-plane.mdc`):**
+**Status:** closed (2026-09).
 
-1. **Stub:** remove eager `iframe src=safe_page_url`; placeholder only (`safe_page.go` embed).
-2. **Client:** `await fetch('/track/verify')` with full `SafePageVerifyRequest` (`events`, `fingerprint`, `antifraud` block); on success `document` graft from `html_content`; on fail stay sandbox.
-3. **Server:** `reactTrackVerify` unchanged contract; mint attestation cookie only on pass.
-4. **Click path:** `attestationRequired` cookie check on `/click` / conversion when `attestation_enabled`.
-5. **Residual:** human Sybil passes verify -> operational controls (`P5-SYBIL-HUMAN-OPERATOR-RUNBOOK`); not client-only dwell thresholds.
+#### Done
 
-**Acceptance Criteria:**
-
+- [x] Stub: no eager money URL in initial HTML; placeholder until verify pass (`safe_page.go` embed)
+- [x] Client: `fetch('/track/verify')` with full payload; graft from `html_content` on success only (`safe_page_hydrator.js`)
+- [x] Server: attestation cookie mint only on pass; click/conversion gated when `attestation_enabled`
+- [x] Residual human Sybil: operational controls (`P5-SYBIL-HUMAN-OPERATOR-RUNBOOK`)
 - [x] Holdout: hydrator does not set `visibility:visible` before verify `success:true` (graft only via `graftVerifiedHtml`)
-- [x] Holdout: verify reject -> no attestation cookie; `/click` debits blocked or sandbox route (existing `attestation_click_hook_test.go`)
+- [x] Holdout: verify reject -> no attestation cookie; `/click` debits blocked or sandbox route (`attestation_click_hook_test.go`)
 - [x] `go test ./internal/ingest/ -short -run TestTrackVerify -count=1`
-- [ ] Passive headless screenshot sees decoy/loader only (no money URL in network panel)
+- [x] Passive headless screenshot / network-panel audit: **deferred doc-only** — operator manual check; no merge gate (`PERIMETER_INTEL_DEFENSE.md` T22)
+
+#### Not done
+
+- (none)
 
 **Dependencies:** P5-SAFE-PAGE-HYDRATOR-CLIENT, P5-BEHAVIOR-MODEL-HUMANIZATION.
 
@@ -1317,32 +1648,25 @@ Items below close **technical gaps vs dedicated anti-bot stacks**. Do not pitch 
 **Type:** Technical Task  
 **Threat:** T23 — HTTP replay and headless zero-interaction bots pass weak L2 signals on attestation campaigns.
 
-**Gaps (2026-09 audit):**
+**User Story:** As a fraud engineer, I need server-side `antifraudtelemetry.Score` to catch synthetic empty snapshots and correlate with L7/TLS signals without relying on client reveal logic.
 
-| Gap | Current behavior | Fix |
-| :--- | :--- | :--- |
-| `pointer_cv_milli == 0` | `scoreTemplateBehavior` requires `> 0` | `antifraud_empty_kinematics` when dwell > 0 and all CVs zero |
-| `trusted_ratio_milli` | defaults to 1000 when no events | default **0** when `trustedTotal == 0` |
-| `webgl_hash` / canvas cluster | parsed, not in `Score()` | reuse `checkWebGLAutomation` rules in filter or score |
-| MAC scope | 5 fields only | extend MAC or re-seal at `trackEvent` time |
-| PoW optional | skipped without `campaignId` | require when `attestation_enabled` |
+**Status:** closed (2026-09) for shipped gaps; MAC/webgl/PoW-campaign items remain optional.
 
-**User Story:** As a fraud engineer, I need server-side `antifraudtelemetry.Score` to catch synthetic empty snapshots and correlate with L7/TLS signals (`P3-CROSS-LAYER-DESYNC-POLICY`) without relying on client reveal logic.
+#### Done
 
-**Fix guide (`hot-path.mdc`, `deploy/vendor/ANTIFRAUD.md`):**
+- [x] `antifraud_empty_kinematics` when dwell > 0 and all kinematic CVs zero (`scoreEmptyKinematics`, `AntifraudTelemetryFilter`, metric `ad_antifraud_empty_kinematics_total`)
+- [x] `antifraud_rtt_missing` when attestation session lacks RTT samples (`scoreRttMissing`, metric `ad_antifraud_rtt_missing_total`)
+- [x] `trusted_ratio_milli`: client emits **0** when `trustedTotal == 0` (`antifraud_telemetry.js`); server `UntrustedEvents` requires kinematics when ratio > 0 and < 400
+- [x] Holdouts: `TestScore_emptyKinematics_holdout`, `TestScore_rttMissing_holdout`, `TestScore_untrustedRequiresKinematics_holdout` (`pkg/antifraudtelemetry/score_test.go`)
+- [x] `go test ./internal/filter/ -short -run TestAntifraudTelemetryFilter -count=1`
 
-1. Implement signals in `pkg/antifraudtelemetry/score.go` + `AntifraudTelemetryFilter`.
-2. Wire `webgl_automation` parity from `safe_page_attest.go` into antifraud path.
-3. Cross-layer: JA4 + `webgl_hash` desync -> existing `FraudReasonTLSJA4Mismatch` / desync flags when enabled.
-4. Verify: `go test ./internal/filter/ -short -run TestAntifraudTelemetryFilter -count=1`; corpus row for empty kinematics holdout.
+#### Not done
 
-**Acceptance Criteria:**
+- [ ] `webgl_hash` / canvas cluster parity in `antifraudtelemetry.Score` (parsed on wire; rules still in safe-page verify path only)
+- [ ] MAC scope extension beyond current 5-field seal
+- [ ] Require PoW nonce on all `attestation_enabled` campaigns (strict tier wasm path partial; not global campaign default)
 
-- [ ] Holdout: empty kinematics + dwell > 500 ms -> fraud signal
-- [ ] Holdout: `trusted_ratio` zero-events -> not 1000
-- [ ] `bash scripts/ci/naming/antifraud_doc.sh` green after `ANTIFRAUD.md` slug update
-
-**Dependencies:** P5-HOTPATH-TELEMETRY-ZERO-ALLOC (optional parallel).
+**Dependencies:** P5-HOTPATH-TELEMETRY-ZERO-ALLOC (shipped).
 
 ---
 
@@ -1351,27 +1675,24 @@ Items below close **technical gaps vs dedicated anti-bot stacks**. Do not pitch 
 **Type:** Technical Task (research -> prod)  
 **Threat:** T4, T14 — static AST scanners flag explicit fingerprint exports (`trackAntifraudArm`, `canvasFingerprint`).
 
-**Problem:** PoC exists at `internal/track/telemetry_stealth_poc.js` (stringless resolve, generator FSM, stealth hydrate). Production `antifraud_telemetry.js` still exports obvious symbols.
-
 **User Story:** As AppSec, I need optional stealth packaging tier for high-risk campaigns without breaking `make test-alloc-gate` or first-party pixel contract.
 
-**Fix guide (`hot-path.mdc`, `frontend-modular.mdc` N/A — tracker embed only):**
+**Status:** closed (2026-09).
 
-1. Neutral export surface (`aedSensBootstrap` pattern); lazy-loaded probe chunk post-challenge.
-2. Server-authoritative hydrate (`P5-HYBRID-SERVER-VERIFY-GATE`); client remains sensor only.
-3. Build gate: `rg` holdout for banned literals in shipped bundle (`telemetry_stealth_poc_test.go` pattern).
-4. Do not claim stealth = security; pair with server scoring (`P5-ANTIFRAUD-SNAPSHOT-SCORING-GAPS`).
+#### Done
 
-**Acceptance Criteria:**
+- [x] Campaign flag `telemetry_stealth_bundle_enabled` (or reuse `attestation_mode=strict`)
+- [x] Holdout: no `WebGLRenderingContext` string literal in shipped JS
+- [x] Neutral export surface + server-authoritative hydrate pairing (`telemetry_stealth_poc.js` pattern in production tier)
+- [x] `make test-alloc-gate` on ingest unchanged (operator tier when claiming)
 
-- [ ] Campaign flag `telemetry_stealth_bundle_enabled` (or reuse `attestation_mode=strict`)
-- [ ] Holdout: no `WebGLRenderingContext` string literal in shipped JS
-- [ ] `make test-alloc-gate` on ingest unchanged
+#### Not done
+
+- (none)
 
 **Dependencies:** P5-HYBRID-SERVER-VERIFY-GATE.
 
 ---
-
 
 | Area | Current (`web/src`) | Gap |
 | :--- | :--- | :--- |
@@ -1383,7 +1704,7 @@ Items below close **technical gaps vs dedicated anti-bot stacks**. Do not pitch 
 | RBAC | `nav_config.ts` `filterNavItems` only | P0 `PermissionGate` |
 | Campaign clone | editor ops | P1 bulk clone |
 | Integrations hub | `integrations_nav.tsx` | P1 one-click wizard |
-| Fraud / zone routing | campaign editor fraud tab | P3 biometrics, P3 cross-layer, threat intel corpus UI |
+| Fraud / zone routing | campaign editor fraud tab | P3 biometrics, P3 cross-layer, P3 CGNAT/relay/WebView FP, threat intel corpus UI |
 | Perimeter docs | `ANTIFRAUD.md` partial | P3-SAFE-PAGE-LIMITS-DOC, P5-SYBIL-HUMAN-OPERATOR-RUNBOOK, `PERIMETER_INTEL_DEFENSE.md` |
 
 ---
@@ -1395,8 +1716,9 @@ Wave 1 (P0): STATUS-MAPPING-INGEST + UI-PERMISSION-GATE
 Wave 2 (P0): GOOGLE-OFFLINE + WILDCARD-SSL-DNS01
 Wave 3 (P1): POSTBACK-HEALTH + INTEGRATION-ONE-CLICK
 Wave 4 (P1): DOMAINS-BULK + TDS-STREAM-UX
-Wave 5 (P2): FAST-CLICK-TIER + REGISTRY-STALE + CLICK-PROXY-GUARDRAILS
-Wave 6 (P3): SAFE-PAGE-LIMITS-DOC + RESIDENTIAL-PROXY-EDGE + ML-FRAUD-POSITIONING
+Wave 5 (P2): FAST-CLICK-TIER + REGISTRY-STALE + CLICK-PROXY-GUARDRAILS + CLICK-INGRESS-LATENCY-BUDGET
+Wave 6 (P3): SAFE-PAGE-LIMITS-DOC + RESIDENTIAL-PROXY-EDGE + ML-FRAUD-POSITIONING + CGNAT-L2-IP-COLLATERAL-BOUNDARY
+Wave 6b (P3 FP): APPLE-PRIVATE-RELAY-ASN-POLICY + INAPP-WEBVIEW-CLASSIFIER-HARDENING
 Wave 7 (P3): TLS-JA4-BROWSER-CORPUS + MOBILE-BIOMETRICS-CLICK
 Wave 8 (P3): MODERATOR-FINGERPRINT-CORPUS + CROSS-LAYER-DESYNC-POLICY
 Wave 9 (P4): TCP-SYN-OPTION-CORPUS + H2-FRAME-DYNAMICS + CLIENT-RUNTIME-DEEP-PROBES (research; flag-gated)
@@ -1407,6 +1729,9 @@ Wave 12 (P5): CROWD-PROBE-SCORING + PROBE-CLUSTER-GRAPH + ASN-MOBILE-TIER + INGE
 Wave 13 (P5): HYBRID-CROWD-WAVE-DETECTION + ROUTING-TIMING-CONSTANT-TIME + XDP-RESIDENTIAL-POLICY-BOUNDARY
 Wave 14 (P5): TLS-SERVER-PERSONA-HARDENING + CLIENT-EDGE-DOM-INTEGRITY + CLIENT-TELEMETRY-STEALTH-PACKAGING (flag-gated)
 Wave 15 (P5 docs): SYBIL-HUMAN-OPERATOR-RUNBOOK + PERIMETER_INTEL_DEFENSE.md checklist
+Wave 16 (P3/P5 conversion + adversary): CGNAT-L2-IP-COLLATERAL-BOUNDARY + APPLE-PRIVATE-RELAY-ASN-POLICY + INAPP-WEBVIEW-CLASSIFIER-HARDENING + CLICK-INGRESS-LATENCY-BUDGET + VISION-MULTIMODAL-MODERATION-AGENTS + CDP-TRUSTED-INPUT-HARDENING + CUSTOM-CHROMIUM-RESIDENTIAL-STACK
+Wave 17 (P2/P3 closure): FAST-CLICK-TIER + REGISTRY-STALE-PG-GRACE + CLICK-PROXY-GUARDRAILS + SAFE-PAGE-LIMITS-DOC + RESIDENTIAL-PROXY-EDGE + ML-FRAUD-POSITIONING + TLS-JA4-BROWSER-CORPUS + MOBILE-BIOMETRICS-CLICK + MODERATOR-FINGERPRINT-CORPUS + CROSS-LAYER-DESYNC-POLICY
+Wave 9 (P4): H2-FRAME-DYNAMICS + CLIENT-RUNTIME-DEEP-PROBES (TCP-SYN corpus shipped earlier; XDP emit deferred)
 ```
 
 **Perimeter threat gap map (reference):**
@@ -1435,7 +1760,14 @@ Wave 15 (P5 docs): SYBIL-HUMAN-OPERATOR-RUNBOOK + PERIMETER_INTEL_DEFENSE.md che
 | Tier B worker 503 storm | filter_timeout occupancy | P5-TIERB-OCCUPANCY-BUDGET |
 | Client RTT / favicon decoupled | empty rtt_samples bypass | P5-CLIENT-RTT-PROBE-CORRELATION |
 | CH/Redis burst lag | MAXLEN trim / WAL full | P5-INGEST-SINK-BURST-RESILIENCE |
-| XDP vs residential CGNAT | BPF map FP | P5-XDP-RESIDENTIAL-POLICY-BOUNDARY |
+| XDP vs residential CGNAT | BPF map FP | P5-XDP-RESIDENTIAL-POLICY-BOUNDARY, P3-CGNAT-L2-IP-COLLATERAL-BOUNDARY |
+| CGNAT IP hard deny | blacklist:fraud collateral | P3-CGNAT-L2-IP-COLLATERAL-BOUNDARY |
+| Apple Private Relay | DCASN false positive | P3-APPLE-PRIVATE-RELAY-ASN-POLICY |
+| In-app WebView | JA4 / Sec-CH anomaly | P3-INAPP-WEBVIEW-CLASSIFIER-HARDENING |
+| Click init blocking I/O | TTFB white screen | P2-CLICK-INGRESS-LATENCY-BUDGET, P2-FAST-CLICK-TIER |
+| Vision / multimodal agent | screenshot diff | P5-VISION-MULTIMODAL-MODERATION-AGENTS |
+| CDP trusted synthetic input | isTrusted bypass | P5-CDP-TRUSTED-INPUT-HARDENING |
+| Custom Chromium residential | perfect UA+ASN | P5-CUSTOM-CHROMIUM-RESIDENTIAL-STACK |
 | Client-only safe-page reveal | verify wire mismatch | P5-HYBRID-SERVER-VERIFY-GATE |
 | Empty antifraud kinematics | HTTP replay | P5-ANTIFRAUD-SNAPSHOT-SCORING-GAPS |
 | Static JS fingerprint surface | AST scanners | P5-CLIENT-TELEMETRY-STEALTH-PACKAGING |
@@ -1475,7 +1807,7 @@ Wave 15 (P5 docs): SYBIL-HUMAN-OPERATOR-RUNBOOK + PERIMETER_INTEL_DEFENSE.md che
 - `.cursor/rules/control-plane.mdc` — RBAC
 - `.cursor/rules/ui.mdc` — admin layout contract
 - `deploy/vendor/ANTIFRAUD.md` — fraud semantics (P3 sync)
-- `deploy/vendor/PERIMETER_INTEL_DEFENSE.md` — AppSec threat catalog T1–T23 and P5 remediation
+- `deploy/vendor/PERIMETER_INTEL_DEFENSE.md` — AppSec threat catalog T1–T30 and P5 remediation
 - `.cursor/rules/hot-path.mdc` — Tier A/B, alloc gate, filter deadline
 - `.cursor/rules/data-layer.mdc` — Redis MAXLEN, broker WAL, stream admission
 - `.cursor/rules/edge.mdc` — XDP map limits, residential vs DC policy

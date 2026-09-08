@@ -101,34 +101,35 @@ type ASNLookup interface {
 type FraudReasonID uint8
 
 const (
-	FraudReasonCodeDatacenterIP             = "datacenter_ip"
-	FraudReasonCodeLowTTC                   = "low_ttc"
-	FraudReasonCodeMissingImpTS             = "missing_imp_ts"
-	FraudReasonCodeL3Blocklist              = "l3_blocklist"
-	FraudReasonCodeTLSBlocklist             = "tls_blocklist"
-	FraudReasonCodeDeviceMismatch           = "device_mismatch"
-	FraudReasonCodeTCPMSSAnomaly            = "tcp_mss_anomaly"
-	FraudReasonCodeTCPTunnelMSS             = "tcp_tunnel_mss"
-	FraudReasonCodeTCPSynOSMismatch         = "tcp_syn_os_mismatch"
-	FraudReasonCodeJSONSerializationBot     = "json_serialization_bot"
-	FraudReasonCodeOSFingerprint            = "os_fingerprint_mismatch"
-	FraudReasonCodeIPv4Rotation             = "ipv4_rotation"
-	FraudReasonCodeResidentialProxy         = "residential_proxy"
-	FraudReasonCodeAttestationMissing       = "attestation_missing"
-	FraudReasonCodeModeratorIP              = "moderator_ip"
-	FraudReasonCodeSecFetchAnomaly          = "sec_fetch_anomaly"
-	FraudReasonCodeClientHintsMismatch      = "client_hints_mismatch"
-	FraudReasonCodeTLSALPNMismatch          = "tls_alpn_mismatch"
-	FraudReasonCodeH2SettingsMismatch       = "h2_settings_mismatch"
-	FraudReasonCodeH2PseudoOrder            = "h2_pseudo_order_mismatch"
-	FraudReasonCodeH2DowngradeArtifact      = "h2_downgrade_artifact"
-	FraudReasonCodeHeaderOrderMismatch      = "header_order_mismatch"
-	FraudReasonCodeAcceptEncodingMismatch   = "accept_encoding_mismatch"
-	FraudReasonCodeAcceptLangGeoMismatch    = "accept_lang_geo_mismatch"
-	FraudReasonCodeTLSJA4Mismatch           = "tls_ja4_mismatch"
-	FraudReasonCodeTCPSynOptMismatch        = "tcp_syn_opt_mismatch"
-	FraudReasonCodeBehaviorTelemetryMissing = "behavior_telemetry_missing"
-	FraudReasonCodeBehaviorBezierBot        = "behavior_bezier_bot"
+	FraudReasonCodeDatacenterIP              = "datacenter_ip"
+	FraudReasonCodeLowTTC                    = "low_ttc"
+	FraudReasonCodeMissingImpTS              = "missing_imp_ts"
+	FraudReasonCodeL3Blocklist               = "l3_blocklist"
+	FraudReasonCodeTLSBlocklist              = "tls_blocklist"
+	FraudReasonCodeDeviceMismatch            = "device_mismatch"
+	FraudReasonCodeTCPMSSAnomaly             = "tcp_mss_anomaly"
+	FraudReasonCodeTCPTunnelMSS              = "tcp_tunnel_mss"
+	FraudReasonCodeTCPSynOSMismatch          = "tcp_syn_os_mismatch"
+	FraudReasonCodeJSONSerializationBot      = "json_serialization_bot"
+	FraudReasonCodeOSFingerprint             = "os_fingerprint_mismatch"
+	FraudReasonCodeIPv4Rotation              = "ipv4_rotation"
+	FraudReasonCodeResidentialProxy          = "residential_proxy"
+	FraudReasonCodeAttestationMissing        = "attestation_missing"
+	FraudReasonCodeModeratorIP               = "moderator_ip"
+	FraudReasonCodeSecFetchAnomaly           = "sec_fetch_anomaly"
+	FraudReasonCodeClientHintsMismatch       = "client_hints_mismatch"
+	FraudReasonCodeTLSALPNMismatch           = "tls_alpn_mismatch"
+	FraudReasonCodeH2SettingsMismatch        = "h2_settings_mismatch"
+	FraudReasonCodeH2PseudoOrder             = "h2_pseudo_order_mismatch"
+	FraudReasonCodeH2DowngradeArtifact       = "h2_downgrade_artifact"
+	FraudReasonCodeHeaderOrderMismatch       = "header_order_mismatch"
+	FraudReasonCodeAcceptEncodingMismatch    = "accept_encoding_mismatch"
+	FraudReasonCodeAcceptLangGeoMismatch     = "accept_lang_geo_mismatch"
+	FraudReasonCodeTLSJA4Mismatch            = "tls_ja4_mismatch"
+	FraudReasonCodeTCPSynOptMismatch         = "tcp_syn_opt_mismatch"
+	FraudReasonCodeH2FrameTraceMismatch      = "h2_frame_trace_mismatch"
+	FraudReasonCodeBehaviorTelemetryMissing  = "behavior_telemetry_missing"
+	FraudReasonCodeBehaviorBezierBot         = "behavior_bezier_bot"
 	FraudReasonCodeAntifraudTelemetryMissing = "antifraud_telemetry_missing"
 	FraudReasonCodeAntifraudAutomationLeak   = "antifraud_automation_leak"
 	FraudReasonCodeAntifraudBehaviorTemplate = "antifraud_behavior_template"
@@ -137,6 +138,11 @@ const (
 	FraudReasonCodeAntifraudFastProbe        = "antifraud_fast_probe"
 	FraudReasonCodeAntifraudPowInvalid       = "antifraud_pow_invalid"
 	FraudReasonCodeAntifraudSignatureInvalid = "antifraud_signature_invalid"
+	FraudReasonCodeAntifraudEmptyKinematics  = "antifraud_empty_kinematics"
+	FraudReasonCodeAntifraudRttMissing       = "antifraud_rtt_missing"
+	FraudReasonCodeCrowdProbeBehavior        = "crowd_probe_behavior"
+	FraudReasonCodeCrowdProbeTiming          = "crowd_probe_timing"
+	FraudReasonCodeCrowdProbeASN             = "crowd_probe_asn"
 )
 
 const (
@@ -177,6 +183,12 @@ const (
 	FraudReasonAntifraudFastProbe
 	FraudReasonAntifraudPowInvalid
 	FraudReasonAntifraudSignatureInvalid
+	FraudReasonAntifraudEmptyKinematics
+	FraudReasonAntifraudRttMissing
+	FraudReasonCrowdProbeBehavior
+	FraudReasonCrowdProbeTiming
+	FraudReasonCrowdProbeASN
+	FraudReasonH2FrameTraceMismatch
 	fraudReasonCount
 )
 
@@ -195,35 +207,35 @@ type fraudReasonEntry struct {
 }
 
 var fraudReasonRegistry = [fraudReasonCount]fraudReasonEntry{
-	FraudReasonNone:                     {},
-	FraudReasonDatacenterIP:             {code: FraudReasonCodeDatacenterIP, weight: 45, flags: FraudSignalL1High},
-	FraudReasonLowTTC:                   {code: FraudReasonCodeLowTTC, weight: 45, flags: FraudSignalL1High},
-	FraudReasonMissingImpTS:             {code: FraudReasonCodeMissingImpTS, weight: 35, flags: FraudSignalL2Weak},
-	FraudReasonL3Blocklist:              {code: FraudReasonCodeL3Blocklist, weight: 100, flags: FraudSignalL3},
-	FraudReasonTLSBlocklist:             {code: FraudReasonCodeTLSBlocklist, weight: 45, flags: FraudSignalL1High},
-	FraudReasonDeviceMismatch:           {code: FraudReasonCodeDeviceMismatch, weight: 35, flags: FraudSignalL2Weak},
-	FraudReasonTCPMSSAnomaly:            {code: FraudReasonCodeTCPMSSAnomaly, weight: 35, flags: FraudSignalL2Weak},
-	FraudReasonTCPTunnelMSS:             {code: FraudReasonCodeTCPTunnelMSS, weight: 35, flags: FraudSignalL2Weak},
-	FraudReasonTCPSynOSMismatch:         {code: FraudReasonCodeTCPSynOSMismatch, weight: 35, flags: FraudSignalL2Weak},
-	FraudReasonTCPSynOptMismatch:        {code: FraudReasonCodeTCPSynOptMismatch, weight: 35, flags: FraudSignalL2Weak},
-	FraudReasonJSONSerializationBot:     {code: FraudReasonCodeJSONSerializationBot, weight: 35, flags: FraudSignalL2Weak},
-	FraudReasonOSFingerprint:            {code: FraudReasonCodeOSFingerprint, weight: 35, flags: FraudSignalL2Weak},
-	FraudReasonIPv4Rotation:             {code: FraudReasonCodeIPv4Rotation, weight: 35, flags: FraudSignalL2Weak},
-	FraudReasonResidentialProxy:         {code: FraudReasonCodeResidentialProxy, weight: 35, flags: FraudSignalL2Weak},
-	FraudReasonAttestationMissing:       {code: FraudReasonCodeAttestationMissing, weight: 35, flags: FraudSignalL2Weak},
-	FraudReasonModeratorIP:              {code: FraudReasonCodeModeratorIP, weight: 45, flags: FraudSignalL1High},
-	FraudReasonSecFetchAnomaly:          {code: FraudReasonCodeSecFetchAnomaly, weight: 35, flags: FraudSignalL2Weak},
-	FraudReasonClientHintsMismatch:      {code: FraudReasonCodeClientHintsMismatch, weight: 35, flags: FraudSignalL2Weak},
-	FraudReasonTLSALPNMismatch:          {code: FraudReasonCodeTLSALPNMismatch, weight: 35, flags: FraudSignalL2Weak},
-	FraudReasonH2SettingsMismatch:       {code: FraudReasonCodeH2SettingsMismatch, weight: 35, flags: FraudSignalL2Weak},
-	FraudReasonH2PseudoOrder:            {code: FraudReasonCodeH2PseudoOrder, weight: 35, flags: FraudSignalL2Weak},
-	FraudReasonH2DowngradeArtifact:      {code: FraudReasonCodeH2DowngradeArtifact, weight: 35, flags: FraudSignalL2Weak},
-	FraudReasonHeaderOrderMismatch:      {code: FraudReasonCodeHeaderOrderMismatch, weight: 35, flags: FraudSignalL2Weak},
-	FraudReasonAcceptEncodingMismatch:   {code: FraudReasonCodeAcceptEncodingMismatch, weight: 35, flags: FraudSignalL2Weak},
-	FraudReasonAcceptLangGeoMismatch:    {code: FraudReasonCodeAcceptLangGeoMismatch, weight: 35, flags: FraudSignalL2Weak},
-	FraudReasonTLSJA4Mismatch:           {code: FraudReasonCodeTLSJA4Mismatch, weight: 35, flags: FraudSignalL2Weak},
-	FraudReasonBehaviorTelemetryMissing: {code: FraudReasonCodeBehaviorTelemetryMissing, weight: 35, flags: FraudSignalL2Weak},
-	FraudReasonBehaviorBezierBot:        {code: FraudReasonCodeBehaviorBezierBot, weight: 35, flags: FraudSignalL2Weak},
+	FraudReasonNone:                      {},
+	FraudReasonDatacenterIP:              {code: FraudReasonCodeDatacenterIP, weight: 45, flags: FraudSignalL1High},
+	FraudReasonLowTTC:                    {code: FraudReasonCodeLowTTC, weight: 45, flags: FraudSignalL1High},
+	FraudReasonMissingImpTS:              {code: FraudReasonCodeMissingImpTS, weight: 35, flags: FraudSignalL2Weak},
+	FraudReasonL3Blocklist:               {code: FraudReasonCodeL3Blocklist, weight: 100, flags: FraudSignalL3},
+	FraudReasonTLSBlocklist:              {code: FraudReasonCodeTLSBlocklist, weight: 45, flags: FraudSignalL1High},
+	FraudReasonDeviceMismatch:            {code: FraudReasonCodeDeviceMismatch, weight: 35, flags: FraudSignalL2Weak},
+	FraudReasonTCPMSSAnomaly:             {code: FraudReasonCodeTCPMSSAnomaly, weight: 35, flags: FraudSignalL2Weak},
+	FraudReasonTCPTunnelMSS:              {code: FraudReasonCodeTCPTunnelMSS, weight: 35, flags: FraudSignalL2Weak},
+	FraudReasonTCPSynOSMismatch:          {code: FraudReasonCodeTCPSynOSMismatch, weight: 35, flags: FraudSignalL2Weak},
+	FraudReasonTCPSynOptMismatch:         {code: FraudReasonCodeTCPSynOptMismatch, weight: 35, flags: FraudSignalL2Weak},
+	FraudReasonJSONSerializationBot:      {code: FraudReasonCodeJSONSerializationBot, weight: 35, flags: FraudSignalL2Weak},
+	FraudReasonOSFingerprint:             {code: FraudReasonCodeOSFingerprint, weight: 35, flags: FraudSignalL2Weak},
+	FraudReasonIPv4Rotation:              {code: FraudReasonCodeIPv4Rotation, weight: 35, flags: FraudSignalL2Weak},
+	FraudReasonResidentialProxy:          {code: FraudReasonCodeResidentialProxy, weight: 35, flags: FraudSignalL2Weak},
+	FraudReasonAttestationMissing:        {code: FraudReasonCodeAttestationMissing, weight: 35, flags: FraudSignalL2Weak},
+	FraudReasonModeratorIP:               {code: FraudReasonCodeModeratorIP, weight: 45, flags: FraudSignalL1High},
+	FraudReasonSecFetchAnomaly:           {code: FraudReasonCodeSecFetchAnomaly, weight: 35, flags: FraudSignalL2Weak},
+	FraudReasonClientHintsMismatch:       {code: FraudReasonCodeClientHintsMismatch, weight: 35, flags: FraudSignalL2Weak},
+	FraudReasonTLSALPNMismatch:           {code: FraudReasonCodeTLSALPNMismatch, weight: 35, flags: FraudSignalL2Weak},
+	FraudReasonH2SettingsMismatch:        {code: FraudReasonCodeH2SettingsMismatch, weight: 35, flags: FraudSignalL2Weak},
+	FraudReasonH2PseudoOrder:             {code: FraudReasonCodeH2PseudoOrder, weight: 35, flags: FraudSignalL2Weak},
+	FraudReasonH2DowngradeArtifact:       {code: FraudReasonCodeH2DowngradeArtifact, weight: 35, flags: FraudSignalL2Weak},
+	FraudReasonHeaderOrderMismatch:       {code: FraudReasonCodeHeaderOrderMismatch, weight: 35, flags: FraudSignalL2Weak},
+	FraudReasonAcceptEncodingMismatch:    {code: FraudReasonCodeAcceptEncodingMismatch, weight: 35, flags: FraudSignalL2Weak},
+	FraudReasonAcceptLangGeoMismatch:     {code: FraudReasonCodeAcceptLangGeoMismatch, weight: 35, flags: FraudSignalL2Weak},
+	FraudReasonTLSJA4Mismatch:            {code: FraudReasonCodeTLSJA4Mismatch, weight: 35, flags: FraudSignalL2Weak},
+	FraudReasonBehaviorTelemetryMissing:  {code: FraudReasonCodeBehaviorTelemetryMissing, weight: 35, flags: FraudSignalL2Weak},
+	FraudReasonBehaviorBezierBot:         {code: FraudReasonCodeBehaviorBezierBot, weight: 35, flags: FraudSignalL2Weak},
 	FraudReasonAntifraudTelemetryMissing: {code: FraudReasonCodeAntifraudTelemetryMissing, weight: 35, flags: FraudSignalL2Weak},
 	FraudReasonAntifraudAutomationLeak:   {code: FraudReasonCodeAntifraudAutomationLeak, weight: 45, flags: FraudSignalL1High},
 	FraudReasonAntifraudBehaviorTemplate: {code: FraudReasonCodeAntifraudBehaviorTemplate, weight: 35, flags: FraudSignalL2Weak},
@@ -232,6 +244,12 @@ var fraudReasonRegistry = [fraudReasonCount]fraudReasonEntry{
 	FraudReasonAntifraudFastProbe:        {code: FraudReasonCodeAntifraudFastProbe, weight: 35, flags: FraudSignalL2Weak},
 	FraudReasonAntifraudPowInvalid:       {code: FraudReasonCodeAntifraudPowInvalid, weight: 45, flags: FraudSignalL1High},
 	FraudReasonAntifraudSignatureInvalid: {code: FraudReasonCodeAntifraudSignatureInvalid, weight: 45, flags: FraudSignalL1High},
+	FraudReasonAntifraudEmptyKinematics:  {code: FraudReasonCodeAntifraudEmptyKinematics, weight: 35, flags: FraudSignalL2Weak},
+	FraudReasonAntifraudRttMissing:       {code: FraudReasonCodeAntifraudRttMissing, weight: 35, flags: FraudSignalL2Weak},
+	FraudReasonCrowdProbeBehavior:        {code: FraudReasonCodeCrowdProbeBehavior, weight: 35, flags: FraudSignalL2Weak},
+	FraudReasonCrowdProbeTiming:          {code: FraudReasonCodeCrowdProbeTiming, weight: 35, flags: FraudSignalL2Weak},
+	FraudReasonCrowdProbeASN:             {code: FraudReasonCodeCrowdProbeASN, weight: 35, flags: FraudSignalL2Weak},
+	FraudReasonH2FrameTraceMismatch:      {code: FraudReasonCodeH2FrameTraceMismatch, weight: 35, flags: FraudSignalL2Weak},
 }
 
 func FraudReasonCode(id FraudReasonID) string {

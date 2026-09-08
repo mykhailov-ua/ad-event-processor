@@ -47,6 +47,11 @@
 //   - ad_http_request_duration_seconds p95 < 50 ms; p99 target 80 ms; hard ceiling 100 ms.
 //   - FILTER_TIMEOUT_MS production <= 100 ms (dev default 5000 ms); monotonic deadline on pinned worker only.
 //
+// Filter sub-budget (pinned worker, FILTER_TIMEOUT_MS ceiling):
+//   - In-process filters (geo, L7 wire, telemetry parse): fail-fast when <2 ms remain on FilterDeadlineMono.
+//   - Redis unified-filter EVALSHA: reserve ~8 ms of remaining budget; fail-closed filter_timeout on overrun.
+//   - Do not lower FILTER_TIMEOUT_MS below Redis Lua p99 SLA (core.mdc).
+//
 // Invariants:
 //   - No synchronous Postgres or ClickHouse on gnet epoll or pinned worker request path.
 //   - No ML inference (internal/fraud scoring); fraud boost is atomic snapshot only.

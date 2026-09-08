@@ -21,12 +21,20 @@ var AntifraudTelemetryJS []byte
 //go:embed telemetry_stealth_poc.js
 var TelemetryStealthPocJS []byte
 
+//go:embed wasm_attest_loader.js
+var WasmAttestLoaderJS []byte
+
+//go:embed attest.wasm
+var AttestWasm []byte
+
 const (
 	TrackPixelPath          = "/static/track.js"
 	TrackTelemetryPath      = "/static/track-telemetry.js"
 	TrackBiometricsPath     = "/static/track-biometrics.js"
 	AntifraudTelemetryPath  = "/static/antifraud-telemetry.js"
 	TelemetryStealthPocPath = "/static/telemetry-stealth-poc.js"
+	WasmAttestLoaderPath    = "/static/wasm-attest-loader.js"
+	AttestWasmPath          = "/static/attest.wasm"
 )
 
 var (
@@ -35,6 +43,8 @@ var (
 	TrackBiometricsGnetResponse     []byte
 	AntifraudTelemetryGnetResponse  []byte
 	TelemetryStealthPocGnetResponse []byte
+	WasmAttestLoaderGnetResponse    []byte
+	AttestWasmGnetResponse          []byte
 )
 
 func init() {
@@ -43,6 +53,26 @@ func init() {
 	TrackBiometricsGnetResponse = buildTrackClientJSGnetResponse(TrackBiometricsJS)
 	AntifraudTelemetryGnetResponse = buildTrackClientJSGnetResponse(AntifraudTelemetryJS)
 	TelemetryStealthPocGnetResponse = buildTrackClientJSGnetResponse(TelemetryStealthPocJS)
+	WasmAttestLoaderGnetResponse = buildTrackClientJSGnetResponse(WasmAttestLoaderJS)
+	AttestWasmGnetResponse = buildTrackWasmGnetResponse(AttestWasm)
+}
+
+func buildTrackWasmGnetResponse(body []byte) []byte {
+	prefix := []byte("HTTP/1.1 200 OK\r\nContent-Type: application/wasm\r\nCache-Control: public, max-age=31536000, immutable\r\nAccess-Control-Allow-Origin: *\r\nContent-Length: ")
+	suffix := []byte("\r\nConnection: keep-alive\r\n\r\n")
+	out := make([]byte, 0, len(prefix)+16+len(suffix)+len(body))
+	out = append(out, prefix...)
+	out = strconv.AppendInt(out, int64(len(body)), 10)
+	out = append(out, suffix...)
+	out = append(out, body...)
+	return out
+}
+
+func ServeHTTPAttestWasm(w http.ResponseWriter) {
+	w.Header().Set("Content-Type", "application/wasm")
+	w.Header().Set("Cache-Control", "public, max-age=31536000, immutable")
+	w.Header().Set("Access-Control-Allow-Origin", "*")
+	_, _ = w.Write(AttestWasm)
 }
 
 func buildTrackClientJSGnetResponse(body []byte) []byte {
@@ -75,7 +105,9 @@ func IsTrackClientStaticPath(path []byte) bool {
 		bytesEqualASCII(path, TrackTelemetryPath) ||
 		bytesEqualASCII(path, TrackBiometricsPath) ||
 		bytesEqualASCII(path, AntifraudTelemetryPath) ||
-		bytesEqualASCII(path, TelemetryStealthPocPath)
+		bytesEqualASCII(path, TelemetryStealthPocPath) ||
+		bytesEqualASCII(path, WasmAttestLoaderPath) ||
+		bytesEqualASCII(path, AttestWasmPath)
 }
 
 func TrackClientStaticGnetResponse(path []byte) ([]byte, bool) {
@@ -90,6 +122,10 @@ func TrackClientStaticGnetResponse(path []byte) ([]byte, bool) {
 		return AntifraudTelemetryGnetResponse, true
 	case bytesEqualASCII(path, TelemetryStealthPocPath):
 		return TelemetryStealthPocGnetResponse, true
+	case bytesEqualASCII(path, WasmAttestLoaderPath):
+		return WasmAttestLoaderGnetResponse, true
+	case bytesEqualASCII(path, AttestWasmPath):
+		return AttestWasmGnetResponse, true
 	default:
 		return nil, false
 	}
