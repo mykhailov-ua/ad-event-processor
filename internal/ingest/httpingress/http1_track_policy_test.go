@@ -65,7 +65,7 @@ func FuzzParseHTTP1TrackWire(f *testing.F) {
 
 	f.Fuzz(func(t *testing.T, wire []byte) {
 		if len(wire) > 1<<16 {
-			t.Skip()
+			t.Skip("fuzz: wire exceeds 64KiB budget")
 		}
 		_, _, _ = ParseHTTP1(wire, 1<<20, nil)
 	})

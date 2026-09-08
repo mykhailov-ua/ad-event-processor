@@ -14,11 +14,11 @@ func TestValidateModelAndFixtures(t *testing.T) {
 	modelPath := filepath.Join(root, "var", "fraudscore", "artifacts", "model.txt")
 	fixturesDir := filepath.Join(root, "var", "fraudscore", "fixtures")
 	if _, err := os.Stat(fixturesDir); err != nil {
-		t.Skip("fixtures not found; run make fraudtrain-check locally")
+		t.Skip("integration: fixtures not found; run make fraudtrain-check locally")
 	}
 
 	if _, err := os.Stat(modelPath); err != nil {
-		t.Skip("fraud model not found; run make fraud-modeling-check locally")
+		t.Skip("integration: fraud model not found; run make fraud-modeling-check locally")
 	}
 
 	require.NoError(t, checkModel(modelPath))

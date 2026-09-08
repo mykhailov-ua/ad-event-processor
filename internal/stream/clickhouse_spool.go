@@ -448,7 +448,7 @@ func marshalCHSpoolPayload(dedupToken string, events []*domain.Event) ([]byte, e
 		n := pbEvt.SizeVT()
 		sizes[i] = n
 		total += 4 + n
-		DeepResetAdStreamEvent(pbEvt)
+		codec.DeepResetAdStreamEvent(pbEvt)
 		codec.StreamEventPool.Put(pbEvt)
 	}
 
@@ -465,13 +465,13 @@ func marshalCHSpoolPayload(dedupToken string, events []*domain.Event) ([]byte, e
 		pbEvt := eventToStreamPB(e)
 		n, err := pbEvt.MarshalToSizedBufferVT(buf[off+4 : off+4+sizes[i]])
 		if err != nil {
-			DeepResetAdStreamEvent(pbEvt)
+			codec.DeepResetAdStreamEvent(pbEvt)
 			codec.StreamEventPool.Put(pbEvt)
 			return nil, err
 		}
 		binary.BigEndian.PutUint32(buf[off:], uint32(n))
 		off += 4 + n
-		DeepResetAdStreamEvent(pbEvt)
+		codec.DeepResetAdStreamEvent(pbEvt)
 		codec.StreamEventPool.Put(pbEvt)
 	}
 	return buf, nil
@@ -479,7 +479,7 @@ func marshalCHSpoolPayload(dedupToken string, events []*domain.Event) ([]byte, e
 
 func eventToStreamPB(e *domain.Event) *pb.AdStreamEvent {
 	pbEvt := codec.StreamEventPool.Get().(*pb.AdStreamEvent)
-	DeepResetAdStreamEvent(pbEvt)
+	codec.DeepResetAdStreamEvent(pbEvt)
 	pbEvt.ClickId = append(pbEvt.ClickId[:0], e.ClickID...)
 	pbEvt.CampaignId = append(pbEvt.CampaignId[:0], e.CampaignID[:]...)
 	pbEvt.EventType = append(pbEvt.EventType[:0], e.Type...)
@@ -594,9 +594,9 @@ func unmarshalCHSpoolPayload(payload []byte) (string, []*domain.Event, error) {
 			return "", nil, errCHSpoolCorrupt
 		}
 		pbEvt := codec.StreamEventPool.Get().(*pb.AdStreamEvent)
-		DeepResetAdStreamEvent(pbEvt)
+		codec.DeepResetAdStreamEvent(pbEvt)
 		if err := pbEvt.UnmarshalVT(payload[off : off+n]); err != nil {
-			DeepResetAdStreamEvent(pbEvt)
+			codec.DeepResetAdStreamEvent(pbEvt)
 			codec.StreamEventPool.Put(pbEvt)
 			return "", nil, err
 		}
@@ -617,7 +617,7 @@ func unmarshalCHSpoolPayload(payload []byte) (string, []*domain.Event, error) {
 		if pbEvt.CreatedAtUnix > 0 {
 			evt.CreatedAt = time.Unix(pbEvt.CreatedAtUnix, 0).UTC()
 		}
-		DeepResetAdStreamEvent(pbEvt)
+		codec.DeepResetAdStreamEvent(pbEvt)
 		codec.StreamEventPool.Put(pbEvt)
 		events = append(events, evt)
 	}

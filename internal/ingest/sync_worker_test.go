@@ -47,10 +47,10 @@ func TestMultiShardBudgetSync(t *testing.T) {
 	rdb2 := redis.NewClient(&redis.Options{Addr: "localhost:6480"})
 
 	if err := rdb1.Ping(ctx).Err(); err != nil {
-		t.Skip("Redis shard 1 not available")
+		t.Skip("integration: Redis shard 1 not available at localhost:6479")
 	}
 	if err := rdb2.Ping(ctx).Err(); err != nil {
-		t.Skip("Redis shard 2 not available")
+		t.Skip("integration: Redis shard 2 not available at localhost:6480")
 	}
 
 	campaignID := uuid.New()

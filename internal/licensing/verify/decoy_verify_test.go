@@ -80,11 +80,11 @@ func TestDecoyCold_noSnapshotEffect(t *testing.T) {
 	path := filepath.Join(dir, "license.jwt")
 	require.NoError(t, os.WriteFile(path, []byte("token"), 0o600))
 
-	ResetFeatureSeedForTest()
-	t.Cleanup(ResetFeatureSeedForTest)
-	PublishFeatureSeed(0, false)
+	entitlements.ResetFeatureSeedForTest()
+	t.Cleanup(entitlements.ResetFeatureSeedForTest)
+	entitlements.PublishFeatureSeed(0, false)
 
 	require.NoError(t, DeploymentCredentialRefresh(path))
 	require.NotZero(t, RuntimeEntitlementSnapshot(path))
-	require.False(t, FeatureSeedValid())
+	require.False(t, entitlements.FeatureSeedValid())
 }

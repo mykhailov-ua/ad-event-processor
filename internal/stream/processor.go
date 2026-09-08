@@ -541,7 +541,7 @@ func (c *StreamConsumer) moveToDLQ(ctx context.Context, batch []*domain.Event, m
 	writtenMsgIDs := make([]string, 0, len(batch))
 	valuesPtrs := make([]*[]any, 0, len(batch))
 	bufPtrs := make([]*[]byte, 0, len(batch))
-	wrapPtrs := make([]*ByteSliceValue, 0, len(batch))
+	wrapPtrs := make([]*codec.ByteSliceValue, 0, len(batch))
 	defer func() {
 		for _, ptr := range valuesPtrs {
 			dlqValuesPool.Put(ptr)
@@ -562,7 +562,7 @@ func (c *StreamConsumer) moveToDLQ(ctx context.Context, batch []*domain.Event, m
 		if pbDLQ.OriginalEvent == nil {
 			pbDLQ.OriginalEvent = new(pb.AdStreamEvent)
 		} else {
-			DeepResetAdStreamEvent(pbDLQ.OriginalEvent)
+			codec.DeepResetAdStreamEvent(pbDLQ.OriginalEvent)
 		}
 		pbDLQ.Error = append(pbDLQ.Error[:0], errStr...)
 		pbDLQ.OriginalId = append(pbDLQ.OriginalId[:0], msgIDs[i]...)
@@ -590,7 +590,7 @@ func (c *StreamConsumer) moveToDLQ(ctx context.Context, batch []*domain.Event, m
 		n, marshalErr := pbDLQ.MarshalToSizedBufferVT(buf)
 		if marshalErr != nil {
 			slog.Error("failed to marshal DLQ event", "error", marshalErr)
-			DeepResetAdDLQEvent(pbDLQ)
+			codec.DeepResetAdDLQEvent(pbDLQ)
 			dlqEventPool.Put(pbDLQ)
 			*bufPtr = buf
 			codec.ByteBufPool.Put(bufPtr)
@@ -601,14 +601,14 @@ func (c *StreamConsumer) moveToDLQ(ctx context.Context, batch []*domain.Event, m
 		*bufPtr = buf
 		bufPtrs = append(bufPtrs, bufPtr)
 
-		DeepResetAdDLQEvent(pbDLQ)
+		codec.DeepResetAdDLQEvent(pbDLQ)
 		dlqEventPool.Put(pbDLQ)
 		writtenMsgIDs = append(writtenMsgIDs, msgIDs[i])
 
 		valuesPtr := dlqValuesPool.Get().(*[]any)
 		values := *valuesPtr
 
-		wrap := codec.ByteSliceValuePool.Get().(*ByteSliceValue)
+		wrap := codec.ByteSliceValuePool.Get().(*codec.ByteSliceValue)
 		wrap.B = data
 		values[1] = wrap
 		wrapPtrs = append(wrapPtrs, wrap)
@@ -698,7 +698,7 @@ func (c *StreamConsumer) parseMessage(id string, values map[string]interface{}) 
 
 	if raw, ok := streamFieldBytes(values, "d"); ok {
 		pbEvt := codec.StreamEventPool.Get().(*pb.AdStreamEvent)
-		DeepResetAdStreamEvent(pbEvt)
+		codec.DeepResetAdStreamEvent(pbEvt)
 
 		if len(raw) > 0 {
 			_ = raw[len(raw)-1]
@@ -713,22 +713,22 @@ func (c *StreamConsumer) parseMessage(id string, values map[string]interface{}) 
 			}
 
 			event.StringBuffer = append(event.StringBuffer, pbEvt.ClickId...)
-			event.ClickID = unsafeString(event.StringBuffer[len(event.StringBuffer)-len(pbEvt.ClickId):])
+			event.ClickID = codec.UnsafeString(event.StringBuffer[len(event.StringBuffer)-len(pbEvt.ClickId):])
 
 			event.StringBuffer = append(event.StringBuffer, pbEvt.EventType...)
-			event.Type = unsafeString(event.StringBuffer[len(event.StringBuffer)-len(pbEvt.EventType):])
+			event.Type = codec.UnsafeString(event.StringBuffer[len(event.StringBuffer)-len(pbEvt.EventType):])
 
 			event.StringBuffer = append(event.StringBuffer, pbEvt.Ip...)
-			event.IP = unsafeString(event.StringBuffer[len(event.StringBuffer)-len(pbEvt.Ip):])
+			event.IP = codec.UnsafeString(event.StringBuffer[len(event.StringBuffer)-len(pbEvt.Ip):])
 
 			event.StringBuffer = append(event.StringBuffer, pbEvt.Ua...)
-			event.UA = unsafeString(event.StringBuffer[len(event.StringBuffer)-len(pbEvt.Ua):])
+			event.UA = codec.UnsafeString(event.StringBuffer[len(event.StringBuffer)-len(pbEvt.Ua):])
 
 			_ = ParseUUID(pbEvt.CampaignId, &event.CampaignID)
 			event.Payload = append(event.Payload[:0], pbEvt.Payload...)
 			if len(pbEvt.FraudReason) > 0 {
 				event.StringBuffer = append(event.StringBuffer, pbEvt.FraudReason...)
-				event.FraudReason = unsafeString(event.StringBuffer[len(event.StringBuffer)-len(pbEvt.FraudReason):])
+				event.FraudReason = codec.UnsafeString(event.StringBuffer[len(event.StringBuffer)-len(pbEvt.FraudReason):])
 			}
 			event.FraudScore = pbEvt.FraudScore
 			event.LayerDesyncCount = uint8(pbEvt.LayerDesyncCount)
@@ -736,7 +736,7 @@ func (c *StreamConsumer) parseMessage(id string, values map[string]interface{}) 
 			event.ReviewRoutedEvent = pbEvt.ReviewRoutedEvent
 			if len(pbEvt.UserId) > 0 {
 				event.StringBuffer = append(event.StringBuffer, pbEvt.UserId...)
-				event.UserID = unsafeString(event.StringBuffer[len(event.StringBuffer)-len(pbEvt.UserId):])
+				event.UserID = codec.UnsafeString(event.StringBuffer[len(event.StringBuffer)-len(pbEvt.UserId):])
 			}
 			if pbEvt.CreatedAtUnix > 0 {
 				event.CreatedAt = time.Unix(pbEvt.CreatedAtUnix, 0)
@@ -747,7 +747,7 @@ func (c *StreamConsumer) parseMessage(id string, values map[string]interface{}) 
 		} else {
 			slog.Error("failed to unmarshal stream event protobuf", "error", err)
 		}
-		DeepResetAdStreamEvent(pbEvt)
+		codec.DeepResetAdStreamEvent(pbEvt)
 		codec.StreamEventPool.Put(pbEvt)
 	} else if v, ok := values["type"].(string); ok && v == fraudAggregateEventType {
 		event.Type = fraudAggregateEventType
@@ -878,7 +878,7 @@ func (c *StreamConsumer) flushBatch(ctx context.Context, batch []*domain.Event, 
 			}
 		}
 		for _, e := range batch {
-			WriteAuditLog(c.logger, &c.auditLogSeq, c.auditLogSampleMask, workerIdx, e)
+			auditlog.Write(c.logger, &c.auditLogSeq, c.auditLogSampleMask, workerIdx, e)
 		}
 	}
 

@@ -53,7 +53,7 @@ type localQuantaStreamSlot struct {
 	protoInline [localQuantaSlotProtoMax]byte
 
 	data   []byte
-	wrap   *ByteSliceValue
+	wrap   *codec.ByteSliceValue
 	bufPtr *[]byte
 }
 
@@ -197,7 +197,7 @@ func copyLocalQuantaField(dst []byte, s string) int {
 	return n
 }
 
-func marshalEventToProtoBuf(evt *domain.Event, inline []byte) ([]byte, *ByteSliceValue, *[]byte) {
+func marshalEventToProtoBuf(evt *domain.Event, inline []byte) ([]byte, *codec.ByteSliceValue, *[]byte) {
 	var pbEvt pb.AdStreamEvent
 	pbEvt.ClickId = UnsafeBytes(evt.ClickID)
 	pbEvt.CampaignId = evt.CampaignID[:]
@@ -241,7 +241,7 @@ func marshalEventToProtoBuf(evt *domain.Event, inline []byte) ([]byte, *ByteSlic
 	return data, nil, bufPtr
 }
 
-func fillLocalQuantaStreamSlot(slot *localQuantaStreamSlot, shard int, evt *domain.Event, camp *domain.Campaign, amountMicro int64, data []byte, wrap *ByteSliceValue, bufPtr *[]byte) {
+func fillLocalQuantaStreamSlot(slot *localQuantaStreamSlot, shard int, evt *domain.Event, camp *domain.Campaign, amountMicro int64, data []byte, wrap *codec.ByteSliceValue, bufPtr *[]byte) {
 	slot.ready.Store(0)
 	slot.shard = uint8(shard)
 	copy(slot.campaignID[:], evt.CampaignID[:])
@@ -423,7 +423,7 @@ func (p *LocalQuantaStreamPublisher) appendIdemKey(scratch []byte, clickLen int,
 	const prefix = "idempotency:click:"
 	n := copy(scratch, prefix)
 	n += copy(scratch[n:], slot.clickID[:clickLen])
-	return unsafeString(scratch[:n])
+	return codec.UnsafeString(scratch[:n])
 }
 
 func (p *LocalQuantaStreamPublisher) flushLaneBatch(shard int, batch []*localQuantaStreamSlot) {

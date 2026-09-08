@@ -8,6 +8,7 @@ import (
 	"testing"
 	"time"
 
+	entitlements "ad-event-processor/internal/licensing/entitlements"
 	"ad-event-processor/internal/licensing/verify"
 
 	"github.com/google/uuid"
@@ -16,7 +17,7 @@ import (
 )
 
 func TestVerifyDeploymentBind_hardMismatch(t *testing.T) {
-	claims := &verify.LicenseClaims{}
+	claims := &entitlements.LicenseClaims{}
 	claims.Bind.Mode = "hard"
 	claims.Bind.Fingerprint = "expected-fp"
 	err := verify.VerifyDeploymentBind(claims, "other-fp")
@@ -24,7 +25,7 @@ func TestVerifyDeploymentBind_hardMismatch(t *testing.T) {
 }
 
 func TestVerifyDeploymentBind_legacyFingerprintMatch(t *testing.T) {
-	claims := &verify.LicenseClaims{}
+	claims := &entitlements.LicenseClaims{}
 	claims.Bind.Mode = "hard"
 	claims.Bind.Fingerprint = "legacy-fp"
 	require.NoError(t, verify.VerifyDeploymentBind(claims, "legacy-fp"))
@@ -42,7 +43,7 @@ func TestVerifyDeploymentBind_hwidTakesPrecedenceOverFingerprint(t *testing.T) {
 	restore := verify.SetHWIDCollectForTest(func() verify.HWIDTelemetry { return tel })
 	defer restore()
 
-	claims := &verify.LicenseClaims{}
+	claims := &entitlements.LicenseClaims{}
 	claims.Bind.Mode = "hard"
 	claims.Bind.Fingerprint = "wrong-legacy-fp"
 	claims.HWIDHash = expected
@@ -50,7 +51,7 @@ func TestVerifyDeploymentBind_hwidTakesPrecedenceOverFingerprint(t *testing.T) {
 }
 
 func TestVerifyDeploymentBind_softAllowsMismatch(t *testing.T) {
-	claims := &verify.LicenseClaims{}
+	claims := &entitlements.LicenseClaims{}
 	claims.Bind.Mode = "soft"
 	claims.Bind.Fingerprint = "expected-fp"
 	require.NoError(t, verify.VerifyDeploymentBind(claims, "other-fp"))
@@ -60,7 +61,7 @@ func TestVerifyLicenseFile_validAndExpired(t *testing.T) {
 	pub, priv, err := ed25519.GenerateKey(rand.Reader)
 	require.NoError(t, err)
 
-	claims := verify.LicenseClaims{
+	claims := entitlements.LicenseClaims{
 		Issuer:       "ad-event-processor-license",
 		Subject:      uuid.NewString(),
 		DeploymentID: uuid.NewString(),
@@ -77,7 +78,7 @@ func TestVerifyLicenseFile_validAndExpired(t *testing.T) {
 
 	verified, err := verify.VerifyLicenseFile(path, pub, "", time.Now())
 	require.NoError(t, err)
-	assert.Equal(t, verify.StateExpired, verified.State)
+	assert.Equal(t, entitlements.StateExpired, verified.State)
 
 	claims.ValidUntil = time.Now().Add(24 * time.Hour)
 	token, err = verify.SignJWT(claims, priv, verify.DefaultLicenseKeyID)
@@ -86,5 +87,5 @@ func TestVerifyLicenseFile_validAndExpired(t *testing.T) {
 
 	verified, err = verify.VerifyLicenseFile(path, pub, "", time.Now())
 	require.NoError(t, err)
-	assert.Equal(t, verify.StateActive, verified.State)
+	assert.Equal(t, entitlements.StateActive, verified.State)
 }

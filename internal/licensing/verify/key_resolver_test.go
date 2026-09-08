@@ -8,6 +8,7 @@ import (
 	"testing"
 	"time"
 
+	entitlements "ad-event-processor/internal/licensing/entitlements"
 	"ad-event-processor/internal/licensing/verify"
 
 	"github.com/google/uuid"
@@ -30,7 +31,7 @@ func TestResolvePublicKeyForKID_cohortFile(t *testing.T) {
 	require.NoError(t, err)
 	require.Equal(t, ed25519.PublicKey(pub), resolved)
 
-	claims := verify.LicenseClaims{
+	claims := entitlements.LicenseClaims{
 		Issuer:       "ad-event-processor-license",
 		Subject:      uuid.NewString(),
 		DeploymentID: uuid.NewString(),

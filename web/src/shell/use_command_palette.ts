@@ -87,12 +87,11 @@ export function useCommandPalette({
       if (!open) {
         return skipLazyFetch();
       }
-      const [routes, recentsResponse] = await Promise.all([
-        fetchCommandPaletteRoutesCached(signal),
-        customerId
-          ? listCommandPaletteRecents(customerId, signal)
-          : Promise.resolve({ items: [], total: 0 }),
-      ]);
+      const routes = await fetchCommandPaletteRoutesCached(signal);
+      if (!customerId) {
+        return { routes, recents: [] };
+      }
+      const recentsResponse = await listCommandPaletteRecents(customerId, signal);
       return {
         routes,
         recents: recentsResponse.items ?? [],

@@ -10,6 +10,8 @@ import (
 	"ad-event-processor/internal/filter"
 	"ad-event-processor/internal/rtb"
 	"ad-event-processor/internal/stream"
+	streamauditlog "ad-event-processor/internal/stream/auditlog"
+	streamfraud "ad-event-processor/internal/stream/fraud"
 	"ad-event-processor/pkg/logger"
 
 	"github.com/google/uuid"
@@ -134,11 +136,11 @@ func WriteAuditLog(
 	shardID int,
 	evt *domain.Event,
 ) {
-	stream.WriteAuditLog(l, seq, sampleMask, shardID, evt)
+	streamauditlog.Write(l, seq, sampleMask, shardID, evt)
 }
 
-func EnqueueFraudReject(writer *stream.FraudStreamWriter, shard int, evt *domain.Event) {
-	stream.EnqueueFraudReject(writer, shard, evt)
+func EnqueueFraudReject(writer *streamfraud.FraudStreamWriter, shard int, evt *domain.Event) {
+	streamfraud.EnqueueFraudReject(writer, shard, evt)
 }
 
 const (

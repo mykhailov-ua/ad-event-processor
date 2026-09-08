@@ -276,7 +276,7 @@ func (p *StreamProducer) process(evt *domain.Event, reserved bool) error {
 
 	n, err := pbEvt.MarshalToSizedBufferVT(buf)
 	if err != nil {
-		ClearAdStreamEvent(pbEvt)
+		codec.ClearAdStreamEvent(pbEvt)
 		codec.StreamEventPool.Put(pbEvt)
 		*bufPtr = buf
 		codec.ByteBufPool.Put(bufPtr)
@@ -287,7 +287,7 @@ func (p *StreamProducer) process(evt *domain.Event, reserved bool) error {
 	data := buf[:n]
 	*bufPtr = data
 
-	ClearAdStreamEvent(pbEvt)
+	codec.ClearAdStreamEvent(pbEvt)
 	codec.StreamEventPool.Put(pbEvt)
 
 	select {
@@ -456,11 +456,11 @@ func (p *StreamProducer) flushBatch(batch []*[]byte) {
 		return
 	}
 
-	wrapSlots := make([]*ByteSliceValue, n)
+	wrapSlots := make([]*codec.ByteSliceValue, n)
 	valueSlots := make([]*[]any, n)
 	for i := range n {
 		bufPtr := batch[i]
-		wrap := codec.ByteSliceValuePool.Get().(*ByteSliceValue)
+		wrap := codec.ByteSliceValuePool.Get().(*codec.ByteSliceValue)
 		wrap.B = *bufPtr
 		wrapSlots[i] = wrap
 

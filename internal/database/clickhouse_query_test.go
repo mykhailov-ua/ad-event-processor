@@ -31,10 +31,3 @@ func TestCHQuery_NoConnection(t *testing.T) {
 		_ = rows.Close()
 	}
 }
-
-func TestCHQuery_HeavyGroupByKilled(t *testing.T) {
-	if testing.Short() {
-		t.Skip("integration: CHG-ERR requires ClickHouse (run make test-full)")
-	}
-	t.Skip("requires live ClickHouse with memory governor; run in integration CI")
-}

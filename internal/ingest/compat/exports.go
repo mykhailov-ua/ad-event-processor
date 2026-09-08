@@ -6,6 +6,9 @@ import (
 	"ad-event-processor/internal/domain"
 	"ad-event-processor/internal/filter"
 	"ad-event-processor/internal/stream"
+	streambreaker "ad-event-processor/internal/stream/breaker"
+	streambroker "ad-event-processor/internal/stream/broker"
+	streamfraud "ad-event-processor/internal/stream/fraud"
 	"ad-event-processor/internal/track"
 
 	"github.com/google/uuid"
@@ -41,9 +44,9 @@ const (
 	LocalQuantaOff    = stream.LocalQuantaOff
 	LocalQuantaShadow = stream.LocalQuantaShadow
 	LocalQuantaLive   = stream.LocalQuantaLive
-	CircuitClosed     = stream.CircuitClosed
-	CircuitOpen       = stream.CircuitOpen
-	CircuitHalfOpen   = stream.CircuitHalfOpen
+	CircuitClosed     = streambreaker.CircuitClosed
+	CircuitOpen       = streambreaker.CircuitOpen
+	CircuitHalfOpen   = streambreaker.CircuitHalfOpen
 )
 
 type (
@@ -63,8 +66,8 @@ type (
 	LocalQuotaCache                  = filter.LocalQuotaCache
 	Sharder                          = domain.Sharder
 	SubIDSlots                       = track.SubIDSlots
-	FraudStreamWriter                = stream.FraudStreamWriter
-	BrokerProducerSet                = stream.BrokerProducerSet
+	FraudStreamWriter                = streamfraud.FraudStreamWriter
+	BrokerProducerSet                = streambroker.BrokerProducerSet
 	StreamProducer                   = stream.StreamProducer
 	StreamConsumer                   = stream.StreamConsumer
 	ClickHouseStore                  = stream.ClickHouseStore
@@ -81,13 +84,13 @@ type (
 	LocalQuantaStreamPublisherConfig = stream.LocalQuantaStreamPublisherConfig
 	LocalQuantaFlusher               = stream.LocalQuantaFlusher
 	LocalClickIdemCache              = stream.LocalClickIdemCache
-	BrokerProducer                   = stream.BrokerProducer
-	BrokerProducerConfig             = stream.BrokerProducerConfig
-	BrokerConsumerConfig             = stream.BrokerConsumerConfig
-	FraudBrokerSink                  = stream.FraudBrokerSink
+	BrokerProducer                   = streambroker.BrokerProducer
+	BrokerProducerConfig             = streambroker.BrokerProducerConfig
+	BrokerConsumerConfig             = streambroker.BrokerConsumerConfig
+	FraudBrokerSink                  = streambroker.FraudBrokerSink
 	StreamProducerConfig             = stream.StreamProducerConfig
-	FraudBackpressureConfig          = stream.FraudBackpressureConfig
-	CircuitState                     = stream.CircuitState
+	FraudBackpressureConfig          = streamfraud.FraudBackpressureConfig
+	CircuitState                     = streambreaker.CircuitState
 	ResidentialProxyRing             = filter.ResidentialProxyRing
 	ResidentialProxyRow              = filter.ResidentialProxyRow
 	ResidentialIntelTable            = filter.ResidentialIntelTable
@@ -142,10 +145,10 @@ var (
 	NewStreamProducer                    = stream.NewStreamProducer
 	NewStreamProducerQueueForTest        = stream.NewStreamProducerQueueForTest
 	NewStreamConsumer                    = stream.NewStreamConsumer
-	NewFraudStreamWriter                 = stream.NewFraudStreamWriter
-	NewFraudStreamWriterNearFullForTest  = stream.NewFraudStreamWriterNearFullForTest
-	ReadFraudAggForce                    = stream.ReadFraudAggForce
-	FraudAggForceKey                     = stream.FraudAggForceKey
+	NewFraudStreamWriter                 = streamfraud.NewFraudStreamWriter
+	NewFraudStreamWriterNearFullForTest  = streamfraud.NewFraudStreamWriterNearFullForTest
+	ReadFraudAggForce                    = streamfraud.ReadFraudAggForce
+	FraudAggForceKey                     = streamfraud.FraudAggForceKey
 	NewLocalQuantaLedger                 = stream.NewLocalQuantaLedger
 	NewLocalQuantaStrict                 = stream.NewLocalQuantaStrict
 	NewQuotaRefillWorker                 = stream.NewQuotaRefillWorker
@@ -160,7 +163,7 @@ var (
 	NewProxyVPNTable                     = filter.NewProxyVPNTable
 	NewStaticSlotSharder                 = domain.NewStaticSlotSharder
 	NewLocalClickIdemCache               = stream.NewLocalClickIdemCache
-	NewBrokerProducerSet                 = stream.NewBrokerProducerSet
+	NewBrokerProducerSet                 = streambroker.NewBrokerProducerSet
 	NewJumpHashSharder                   = domain.NewJumpHashSharder
 	MigrationFenceKeyPrefix              = filter.MigrationFenceKeyPrefix
 	SetStoreRetryPolicy                  = stream.SetStoreRetryPolicy
@@ -190,12 +193,12 @@ var (
 	NewLicenseFilter                     = filter.NewLicenseFilter
 	NewVPPFilter                         = filter.NewVPPFilter
 	NewHybridBalancer                    = filter.NewHybridBalancer
-	DefaultBrokerProducerConfig          = stream.DefaultBrokerProducerConfig
-	NewBrokerProducer                    = stream.NewBrokerProducer
+	DefaultBrokerProducerConfig          = streambroker.DefaultBrokerProducerConfig
+	NewBrokerProducer                    = streambroker.NewBrokerProducer
 	AdaptiveChunkSize                    = stream.AdaptiveChunkSize
 	AdaptiveChunkSizeStrict              = stream.AdaptiveChunkSizeStrict
-	NewFraudBrokerSink                   = stream.NewFraudBrokerSink
-	StartFraudBackpressureWatcher        = stream.StartFraudBackpressureWatcher
+	NewFraudBrokerSink                   = streambroker.NewFraudBrokerSink
+	StartFraudBackpressureWatcher        = streamfraud.StartFraudBackpressureWatcher
 	NewCIDRFeedLoader                    = filter.NewCIDRFeedLoader
 	NewProxyVPNFeedLoader                = filter.NewProxyVPNFeedLoader
 	NewModeratorIPTable                  = filter.NewModeratorIPTable

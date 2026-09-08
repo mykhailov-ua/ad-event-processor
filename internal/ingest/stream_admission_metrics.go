@@ -1,6 +1,7 @@
 package ingest
 
 import (
+	"strconv"
 	"sync"
 
 	"ad-event-processor/internal/metrics"
@@ -52,6 +53,5 @@ func brokerAdmissionMetricsFor(idx int, multi bool) *streamAdmissionMetrics {
 }
 
 func shardLabelString(shard int) string {
-	var scratch [8]byte
-	return unsafeString(appendInt64(scratch[:0], int64(shard)))
+	return strconv.Itoa(shard)
 }

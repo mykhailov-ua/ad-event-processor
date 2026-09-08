@@ -8,6 +8,7 @@ import (
 	"testing"
 	"time"
 
+	entitlements "ad-event-processor/internal/licensing/entitlements"
 	"ad-event-processor/internal/licensing/verify"
 
 	"github.com/google/uuid"
@@ -19,7 +20,7 @@ func TestInstallToken_writesVerifiedJWT(t *testing.T) {
 	pub, priv, err := ed25519.GenerateKey(rand.Reader)
 	require.NoError(t, err)
 
-	claims := verify.LicenseClaims{
+	claims := entitlements.LicenseClaims{
 		Issuer:       "ad-event-processor-license",
 		Subject:      uuid.NewString(),
 		DeploymentID: uuid.NewString(),

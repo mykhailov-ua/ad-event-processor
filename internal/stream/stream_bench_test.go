@@ -66,11 +66,11 @@ func BenchmarkStreamWriteProto(b *testing.B) {
 
 		valuesPtr := codec.ProducerValuesPool.Get().(*[]any)
 		values := *valuesPtr
-		wrap := codec.ByteSliceValuePool.Get().(*ByteSliceValue)
+		wrap := codec.ByteSliceValuePool.Get().(*codec.ByteSliceValue)
 		wrap.B = data
 		values[1] = wrap
 
-		DeepResetAdStreamEvent(pbEvt)
+		codec.DeepResetAdStreamEvent(pbEvt)
 		codec.StreamEventPool.Put(pbEvt)
 		*bufPtr = buf
 		codec.ByteBufPool.Put(bufPtr)
@@ -166,21 +166,21 @@ func BenchmarkStreamReadProto(b *testing.B) {
 
 		if rawBytesStr, ok := values["d"].(string); ok {
 			pbEvt := codec.StreamEventPool.Get().(*pb.AdStreamEvent)
-			DeepResetAdStreamEvent(pbEvt)
+			codec.DeepResetAdStreamEvent(pbEvt)
 
 			buf := unsafe.Slice(unsafe.StringData(rawBytesStr), len(rawBytesStr))
 			if err := pbEvt.UnmarshalVT(buf); err == nil {
-				evt.ClickID = unsafeString(pbEvt.ClickId)
+				evt.ClickID = codec.UnsafeString(pbEvt.ClickId)
 				_ = ParseUUID(pbEvt.CampaignId, &evt.CampaignID)
-				evt.Type = unsafeString(pbEvt.EventType)
+				evt.Type = codec.UnsafeString(pbEvt.EventType)
 				evt.Payload = append(evt.Payload[:0], pbEvt.Payload...)
-				evt.IP = unsafeString(pbEvt.Ip)
-				evt.UA = unsafeString(pbEvt.Ua)
+				evt.IP = codec.UnsafeString(pbEvt.Ip)
+				evt.UA = codec.UnsafeString(pbEvt.Ua)
 				if pbEvt.CreatedAtUnix > 0 {
 					evt.CreatedAt = time.Unix(pbEvt.CreatedAtUnix, 0)
 				}
 			}
-			DeepResetAdStreamEvent(pbEvt)
+			codec.DeepResetAdStreamEvent(pbEvt)
 			codec.StreamEventPool.Put(pbEvt)
 		}
 
@@ -257,7 +257,7 @@ func BenchmarkDLQWriteProto(b *testing.B) {
 		if pbDLQ.OriginalEvent == nil {
 			pbDLQ.OriginalEvent = new(pb.AdStreamEvent)
 		} else {
-			DeepResetAdStreamEvent(pbDLQ.OriginalEvent)
+			codec.DeepResetAdStreamEvent(pbDLQ.OriginalEvent)
 		}
 		pbDLQ.Error = append(pbDLQ.Error[:0], errVal...)
 		pbDLQ.OriginalId = append(pbDLQ.OriginalId[:0], msgID...)
@@ -290,11 +290,11 @@ func BenchmarkDLQWriteProto(b *testing.B) {
 
 		valuesPtr := dlqValuesPool.Get().(*[]any)
 		values := *valuesPtr
-		wrap := codec.ByteSliceValuePool.Get().(*ByteSliceValue)
+		wrap := codec.ByteSliceValuePool.Get().(*codec.ByteSliceValue)
 		wrap.B = data
 		values[1] = wrap
 
-		DeepResetAdDLQEvent(pbDLQ)
+		codec.DeepResetAdDLQEvent(pbDLQ)
 		dlqEventPool.Put(pbDLQ)
 		*bufPtr = buf
 		codec.ByteBufPool.Put(bufPtr)

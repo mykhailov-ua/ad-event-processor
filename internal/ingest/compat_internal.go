@@ -8,6 +8,8 @@ import (
 	"ad-event-processor/internal/filter"
 	compat "ad-event-processor/internal/ingest/compat"
 	"ad-event-processor/internal/stream"
+	streamauditlog "ad-event-processor/internal/stream/auditlog"
+	streamfraud "ad-event-processor/internal/stream/fraud"
 	"ad-event-processor/pkg/logger"
 
 	"github.com/google/uuid"
@@ -43,7 +45,7 @@ var (
 	buildSlotTable                = domain.BuildSlotTable
 	asnLookupFromGeo              = filter.AsnLookupFromGeo
 	shouldSampleLuaMetrics        = filter.ShouldSampleLuaMetrics
-	auditLogSampleMaskFromConfig  = stream.AuditLogSampleMaskFromConfig
+	auditLogSampleMaskFromConfig  = streamauditlog.SampleMaskFromConfig
 	applyMobileBiometricSummary   = filter.ApplyMobileBiometricSummary
 	uaMatchesInAppWebView         = filter.UAMatchesInAppWebView
 	osFingerprintMismatch         = filter.OsFingerprintMismatch
@@ -55,7 +57,7 @@ var (
 	marshalCHSpoolPayload         = stream.MarshalCHSpoolPayload
 	crc32Castagnoli               = filter.CRC32Castagnoli
 	openRTBLicenseAllowed         = filter.OpenRTBLicenseAllowed
-	parseIPv6To128                = stream.ParseIPv6To128
+	parseIPv6To128                = streamfraud.ParseIPv6To128
 	appendCampaignHashTag         = filter.AppendCampaignHashTag
 	cachedUnixMilliLoad           = filter.CachedUnixMilliNow
 	cachedUnixMilliStore          = filter.CachedUnixMilliStore

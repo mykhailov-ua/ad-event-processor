@@ -13,7 +13,7 @@
 //
 // Topology:
 //   - licensingadmin Service.ApplyLicenseToken, cmd/license-issue, internal/licensing watcher reload.
-//   - entitlements_aliases.go re-exports entitlements helpers for property and red-team tests.
+//   - Property and red-team tests import internal/licensing/entitlements directly for state/limit helpers.
 //
 // Invariants:
 //   - Invalid signature or malformed JWT rejects apply (P-C2-01).

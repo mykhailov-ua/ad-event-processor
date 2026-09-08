@@ -14,7 +14,7 @@ func FuzzExtractClientIP_XFF(f *testing.F) {
 	f.Fuzz(func(t *testing.T, remoteAddr, xff, trustedCIDR string, useTrusted byte) {
 		req, err := http.NewRequest(http.MethodGet, "/", http.NoBody)
 		if err != nil {
-			t.Skip()
+			t.Skip("fuzz: invalid http.NewRequest input")
 		}
 		if remoteAddr != "" {
 			req.RemoteAddr = remoteAddr
@@ -49,7 +49,7 @@ func FuzzExtractClientIPGnet_XFF(f *testing.F) {
 		}
 		ip := net.ParseIP(host)
 		if ip == nil {
-			t.Skip()
+			t.Skip("fuzz: remote host is not a valid IP")
 		}
 		p, _ := net.LookupPort("tcp", port)
 		addr := &net.TCPAddr{IP: ip, Port: p}

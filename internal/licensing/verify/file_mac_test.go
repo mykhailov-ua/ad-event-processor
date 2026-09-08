@@ -10,6 +10,7 @@ import (
 	"time"
 
 	"ad-event-processor/internal/licensing"
+	entitlements "ad-event-processor/internal/licensing/entitlements"
 	"ad-event-processor/internal/licensing/verify"
 
 	"github.com/google/uuid"
@@ -21,7 +22,7 @@ func TestLicenseMAC_roundTrip(t *testing.T) {
 	pub, priv, err := ed25519.GenerateKey(rand.Reader)
 	require.NoError(t, err)
 
-	claims := verify.LicenseClaims{
+	claims := entitlements.LicenseClaims{
 		Issuer:       "ad-event-processor-license",
 		Subject:      uuid.NewString(),
 		DeploymentID: uuid.NewString(),
@@ -50,15 +51,15 @@ func TestLicenseMAC_roundTrip(t *testing.T) {
 }
 
 func TestFileMAC_recheckRejectsWrongSidecar(t *testing.T) {
-	verify.ResetFeatureSeedForTest()
-	t.Cleanup(verify.ResetFeatureSeedForTest)
+	entitlements.ResetFeatureSeedForTest()
+	t.Cleanup(entitlements.ResetFeatureSeedForTest)
 
 	pub, priv, err := ed25519.GenerateKey(rand.Reader)
 	require.NoError(t, err)
 
 	dir := t.TempDir()
 	path := filepath.Join(dir, "license.jwt")
-	claims := verify.LicenseClaims{
+	claims := entitlements.LicenseClaims{
 		Issuer:       "ad-event-processor-license",
 		Subject:      uuid.NewString(),
 		DeploymentID: uuid.NewString(),
@@ -78,20 +79,20 @@ func TestFileMAC_recheckRejectsWrongSidecar(t *testing.T) {
 		PubKey: pub,
 	})
 	require.ErrorIs(t, err, verify.ErrLicenseMACMismatch)
-	assert.Equal(t, verify.StateExpired, snap.State)
-	assert.False(t, verify.FeatureSeedValid())
+	assert.Equal(t, entitlements.StateExpired, snap.State)
+	assert.False(t, entitlements.FeatureSeedValid())
 }
 
 func TestFileMAC_recheckBootstrapsMissingSidecar(t *testing.T) {
-	verify.ResetFeatureSeedForTest()
-	t.Cleanup(verify.ResetFeatureSeedForTest)
+	entitlements.ResetFeatureSeedForTest()
+	t.Cleanup(entitlements.ResetFeatureSeedForTest)
 
 	pub, priv, err := ed25519.GenerateKey(rand.Reader)
 	require.NoError(t, err)
 
 	dir := t.TempDir()
 	path := filepath.Join(dir, "license.jwt")
-	claims := verify.LicenseClaims{
+	claims := entitlements.LicenseClaims{
 		Issuer:       "ad-event-processor-license",
 		Subject:      uuid.NewString(),
 		DeploymentID: uuid.NewString(),
@@ -110,8 +111,8 @@ func TestFileMAC_recheckBootstrapsMissingSidecar(t *testing.T) {
 		PubKey: pub,
 	})
 	require.NoError(t, err)
-	assert.Equal(t, verify.StateActive, snap.State)
-	assert.True(t, verify.FeatureSeedValid())
+	assert.Equal(t, entitlements.StateActive, snap.State)
+	assert.True(t, entitlements.FeatureSeedValid())
 
 	macBytes, err := os.ReadFile(verify.LicenseMACPath(path))
 	require.NoError(t, err)
@@ -122,7 +123,7 @@ func TestInstallToken_writesLicenseMACInEnterpriseMode(t *testing.T) {
 	pub, priv, err := ed25519.GenerateKey(rand.Reader)
 	require.NoError(t, err)
 
-	claims := verify.LicenseClaims{
+	claims := entitlements.LicenseClaims{
 		Issuer:       "ad-event-processor-license",
 		Subject:      uuid.NewString(),
 		DeploymentID: uuid.NewString(),

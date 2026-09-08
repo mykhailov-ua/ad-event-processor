@@ -6,6 +6,7 @@ import (
 	"path/filepath"
 	"testing"
 
+	entitlements "ad-event-processor/internal/licensing/entitlements"
 	"ad-event-processor/internal/licensing/verify"
 
 	"github.com/stretchr/testify/assert"
@@ -90,7 +91,7 @@ func TestHWID_GoldenVectors(t *testing.T) {
 }
 
 func TestVerifyDeploymentBind_hwidMismatch(t *testing.T) {
-	claims := &verify.LicenseClaims{}
+	claims := &entitlements.LicenseClaims{}
 	claims.Bind.Mode = "hard"
 	claims.HWIDHash = "deadbeef"
 	err := verify.VerifyDeploymentBind(claims, "")
@@ -110,7 +111,7 @@ func TestVerifyDeploymentBind_hwidMatch(t *testing.T) {
 	restore := setHWIDTelemetryForTest(tel)
 	defer restore()
 
-	claims := &verify.LicenseClaims{}
+	claims := &entitlements.LicenseClaims{}
 	claims.Bind.Mode = "hard"
 	claims.HWIDHash = expected
 	require.NoError(t, verify.VerifyDeploymentBind(claims, ""))

@@ -10,7 +10,7 @@ import (
 
 	"ad-event-processor/internal/domain"
 	"ad-event-processor/internal/metrics"
-	"ad-event-processor/internal/stream"
+	streambroker "ad-event-processor/internal/stream/broker"
 	"ad-event-processor/pkg/broker"
 	"ad-event-processor/pkg/broker/client"
 	"ad-event-processor/pkg/logger"
@@ -167,7 +167,7 @@ func (w *brokerWorker) run(ctx context.Context) {
 			if ctx.Err() != nil {
 				break
 			}
-			parseErr := stream.ParseBrokerPayloadStream(iter.Payload, func(evt *domain.Event) {
+			parseErr := streambroker.ParseBrokerPayloadStream(iter.Payload, func(evt *domain.Event) {
 				metrics.BrokerIngestMessagesTotal.WithLabelValues(w.parent.cfg.Topic, w.parent.cfg.Group, evt.Type).Inc()
 				if w.parent.cfg.OnMessageProcessed != nil {
 					// CH broker path: fraud microbatch hook runs before StoreBatch (same as Redis _ch consumer).

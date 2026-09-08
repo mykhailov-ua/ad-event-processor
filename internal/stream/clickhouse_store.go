@@ -17,6 +17,7 @@ import (
 	"ad-event-processor/internal/database"
 	"ad-event-processor/internal/domain"
 	"ad-event-processor/internal/metrics"
+	"ad-event-processor/internal/stream/codec"
 	"ad-event-processor/internal/track"
 	"ad-event-processor/pkg/piihash"
 
@@ -359,7 +360,7 @@ func (st *ClickHouseStore) insertTable(ctx context.Context, table string, evts [
 				piihash.FixedString16(pii.ipHash),
 				piihash.FixedString16(pii.uaHash),
 				pii.saltVersion,
-				unsafeString(e.Payload),
+				codec.UnsafeString(e.Payload),
 				e.FraudReason,
 				e.FraudScore,
 				fraudSilentRejectFlag(e),
@@ -383,7 +384,7 @@ func (st *ClickHouseStore) insertTable(ctx context.Context, table string, evts [
 				dims.DeviceType,
 				dims.Keyword,
 				reviewRoutedFlag(e),
-				unsafeString(payload),
+				codec.UnsafeString(payload),
 				e.RTTSynMS,
 				e.TTFBAppMS,
 				e.RTTSplitDeltaMS,
@@ -428,7 +429,7 @@ func (st *ClickHouseStore) insertTable(ctx context.Context, table string, evts [
 				motivated,
 				p.WidgetID,
 				p.BotID,
-				unsafeString(e.Payload),
+				codec.UnsafeString(e.Payload),
 				e.CreatedAt,
 				e.Type,
 			)
@@ -447,7 +448,7 @@ func (st *ClickHouseStore) insertTable(ctx context.Context, table string, evts [
 				track.AnalyticsCountryCode(dims.Country),
 				dims.DeviceType,
 				dims.Keyword,
-				unsafeString(payload),
+				codec.UnsafeString(payload),
 				e.RTTSynMS,
 				e.TTFBAppMS,
 				e.RTTSplitDeltaMS,
@@ -481,7 +482,7 @@ func (st *ClickHouseStore) insertTable(ctx context.Context, table string, evts [
 				track.AnalyticsCountryCode(dims.Country),
 				dims.DeviceType,
 				dims.Keyword,
-				unsafeString(payload),
+				codec.UnsafeString(payload),
 				e.RTTSynMS,
 				e.TTFBAppMS,
 				e.RTTSplitDeltaMS,

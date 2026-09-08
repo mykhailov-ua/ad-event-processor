@@ -15,7 +15,7 @@ func testModelPath(t *testing.T) string {
 		if _, err := os.Stat(path); err == nil {
 			return path
 		}
-		t.Skipf("FRAUD_TEST_MODEL not found: %s", path)
+		t.Skipf("integration: FRAUD_TEST_MODEL not found: %s", path)
 	}
 	candidates := []string{
 		filepath.Join("..", "..", "var", "fraudscore", "artifacts", "model.txt"),
@@ -25,7 +25,7 @@ func testModelPath(t *testing.T) string {
 			return path
 		}
 	}
-	t.Skip("fraud model not found; run make fraud-modeling-check locally")
+	t.Skip("integration: fraud model not found; run make fraud-modeling-check locally")
 	return ""
 }
 

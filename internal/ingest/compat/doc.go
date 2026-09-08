@@ -17,7 +17,7 @@
 //   - AssertBudgetInvariant and budget repo helpers re-export domain/budget without altering semantics.
 //
 // Contracts:
-//   - auditLogSampleMaskDefault = 127 when compat re-exports stream.AuditLogSampleMaskFromConfig path.
+//   - auditLogSampleMaskDefault = 127 when compat uses stream/auditlog.SampleMaskFromConfig.
 //   - luaMetricsSampleMask aliases filter.LuaMetricsSampleMask for unified-filter metric sampling.
 //   - RegistryFullSyncPayload and DefaultCampaignUpdateBrokerTopic match budget/shard broker wire topics.
 //

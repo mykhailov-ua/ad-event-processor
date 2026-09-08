@@ -22,7 +22,7 @@ import (
 func opensslHKDF(t *testing.T, ikm, salt, info []byte, length int) []byte {
 	t.Helper()
 	if _, err := exec.LookPath("openssl"); err != nil {
-		t.Skip("openssl not in PATH")
+		t.Skip("integration: openssl not in PATH")
 	}
 	args := []string{
 		"kdf", "-binary",

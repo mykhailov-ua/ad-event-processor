@@ -6,6 +6,7 @@ import (
 	"context"
 	"testing"
 
+	entitlements "ad-event-processor/internal/licensing/entitlements"
 	"ad-event-processor/internal/licensing/verify"
 
 	"github.com/stretchr/testify/require"
@@ -20,7 +21,7 @@ func TestGuard_TracerPid(t *testing.T) {
 	require.False(t, verify.GuardTripped())
 	require.True(t, verify.RunGuardProbeForTest())
 	require.True(t, verify.GuardTripped())
-	require.True(t, verify.LicenseEpochInvalid())
+	require.True(t, entitlements.LicenseEpochInvalid())
 }
 
 func TestGuard_SuspiciousMap(t *testing.T) {
@@ -44,7 +45,7 @@ func TestGuard_PtraceWatchdogHandshakeSkipFailsWhenRequired(t *testing.T) {
 	require.False(t, verify.GuardTripped())
 	verify.ProcessGuardWatchdogHandshakeForTest("skip\n", nil)
 	require.True(t, verify.GuardTripped())
-	require.True(t, verify.LicenseEpochInvalid())
+	require.True(t, entitlements.LicenseEpochInvalid())
 }
 
 func TestGuard_PtraceWatchdogHandshakeSkipIgnoredWhenOptional(t *testing.T) {
@@ -62,7 +63,7 @@ func TestGuard_PtraceWatchdogHandshakeBusy(t *testing.T) {
 	require.False(t, verify.GuardTripped())
 	verify.ProcessGuardWatchdogHandshakeForTest("busy\n", nil)
 	require.True(t, verify.GuardTripped())
-	require.True(t, verify.LicenseEpochInvalid())
+	require.True(t, entitlements.LicenseEpochInvalid())
 }
 
 func TestGuard_PtraceWatchdogHandshakeOK(t *testing.T) {
@@ -103,7 +104,7 @@ func TestGuard_TripWithoutVerifyCall(t *testing.T) {
 
 	require.True(t, verify.RunGuardProbeForTest())
 	require.True(t, verify.GuardTripped())
-	require.True(t, verify.LicenseEpochInvalid())
+	require.True(t, entitlements.LicenseEpochInvalid())
 }
 
 func TestGuard_TextTamper(t *testing.T) {

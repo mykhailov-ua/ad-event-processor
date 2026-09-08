@@ -6,7 +6,7 @@
 //   - ApplyRuntimeAutotune and DefaultMaxWorkers tune GOMAXPROCS (cpuset / TRACKER_CPUSET) and GOMEMLIMIT on cmd/tracker startup.
 //
 // Topology:
-//   - Subpackage of internal/stream; re-exported via internal/stream/subpkg_aliases.go and internal/ingest/cold_bridge.go.
+//   - Subpackage of internal/stream; ingest compat imports broker/fraud/breaker directly.
 //   - ReconciliationWorker.Start is background-only; not wired in cmd/* today (tests call Reconcile directly).
 //   - Snapshot replay and drift tests live in internal/ingest (aliases to this package).
 //   - Not internal/reconciliation (admin ReconService / global spend sync on control :8188).

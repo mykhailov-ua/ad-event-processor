@@ -17,11 +17,11 @@ func TestReplayFixturesCSV(t *testing.T) {
 	root := repoRoot(t)
 	modelPath := filepath.Join(root, "var", "fraudscore", "artifacts", "model.txt")
 	if _, err := os.Stat(modelPath); err != nil {
-		t.Skip("fraud model not found; run make fraudtrain-check locally")
+		t.Skip("integration: fraud model not found; run make fraudtrain-check locally")
 	}
 	fixturesDir := filepath.Join(root, "var", "fraudscore", "fixtures")
 	if _, err := os.Stat(fixturesDir); err != nil {
-		t.Skip("fixtures not found; run make fraudtrain-check locally")
+		t.Skip("integration: fixtures not found; run make fraudtrain-check locally")
 	}
 	opts := replayOptions{
 		modelPath:   modelPath,
@@ -53,11 +53,11 @@ func TestRunReplayFixtures(t *testing.T) {
 	root := repoRoot(t)
 	modelPath := filepath.Join(root, "var", "fraudscore", "artifacts", "model.txt")
 	if _, err := os.Stat(modelPath); err != nil {
-		t.Skip("fraud model not found; run make fraudtrain-check locally")
+		t.Skip("integration: fraud model not found; run make fraudtrain-check locally")
 	}
 	fixturesDir := filepath.Join(root, "var", "fraudscore", "fixtures")
 	if _, err := os.Stat(fixturesDir); err != nil {
-		t.Skip("fixtures not found; run make fraudtrain-check locally")
+		t.Skip("integration: fixtures not found; run make fraudtrain-check locally")
 	}
 	opts := replayOptions{
 		modelPath:   modelPath,

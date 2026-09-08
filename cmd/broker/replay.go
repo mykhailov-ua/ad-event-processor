@@ -13,6 +13,7 @@ import (
 	"ad-event-processor/internal/database"
 	"ad-event-processor/internal/domain"
 	"ad-event-processor/internal/stream"
+	streambroker "ad-event-processor/internal/stream/broker"
 )
 
 func exitWithCancel(cancel context.CancelFunc, code int) {
@@ -90,7 +91,7 @@ func runReplay(args []string) {
 		Target:        *target,
 		ClickHouseDSN: dsn,
 		BatchSize:     *batchSize,
-	}, store, stream.ParseBrokerPayloadStream)
+	}, store, streambroker.ParseBrokerPayloadStream)
 
 	slog.Info("starting broker replay",
 		"data_dir", *dataDir,
