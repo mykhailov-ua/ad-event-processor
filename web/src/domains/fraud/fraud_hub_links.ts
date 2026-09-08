@@ -62,7 +62,8 @@ export const FRAUD_HUB_REPORT_LINKS: FraudHubReportLink[] = [
     path: reportHubPath('postback-reconciliation'),
     title: 'Postback reconciliation',
     description: 'Postback vs ledger reconciliation.',
-    meta: 'Billing report',
+    meta: 'Typed report',
+    typed: true,
   },
   {
     path: reportHubPath('layer-desync-summary'),

@@ -160,6 +160,118 @@ type placementCampaignSpend struct {
 	RevenueMicro int64
 }
 
+type SourceQualityRowDTO struct {
+	PlacementID  string               `json:"placement_id,omitempty"`
+	CampaignID   string               `json:"campaign_id"`
+	Country      string               `json:"country,omitempty"`
+	City         string               `json:"city,omitempty"`
+	Device       string               `json:"device,omitempty"`
+	Sub1         string               `json:"sub1,omitempty"`
+	Impressions  int64                `json:"impressions"`
+	Clicks       int64                `json:"clicks"`
+	Conversions  int64                `json:"conversions"`
+	SpendMicro   int64                `json:"spend_micro"`
+	RevenueMicro int64                `json:"revenue_micro"`
+	ProfitMicro  int64                `json:"profit_micro,omitempty"`
+	ROIPct       float64              `json:"roi_pct"`
+	CPAMicro     int64                `json:"cpa_micro,omitempty"`
+	CTR          float64              `json:"ctr,omitempty"`
+	IVTRate      float64              `json:"ivt_rate,omitempty"`
+	Compare      *ReportCompareDeltas `json:"compare,omitempty"`
+}
+
+type SourceQualityReportResponse struct {
+	Rows       []SourceQualityRowDTO `json:"rows"`
+	Freshness  DataFreshnessDTO      `json:"freshness"`
+	NextCursor string                `json:"next_cursor,omitempty"`
+}
+
+func toSourceQualityRowFromMetrics(
+	row reportMetricsCHRow,
+	ivtRate float64,
+	placementID, campaignID, country, city, device, sub1 string,
+) SourceQualityRowDTO {
+	m := computeReportMetrics(row, ivtRate)
+	return SourceQualityRowDTO{
+		PlacementID:  placementID,
+		CampaignID:   campaignID,
+		Country:      country,
+		City:         city,
+		Device:       device,
+		Sub1:         sub1,
+		Impressions:  m.Impressions,
+		Clicks:       m.Clicks,
+		Conversions:  m.Conversions,
+		SpendMicro:   m.SpendMicro,
+		RevenueMicro: m.RevenueMicro,
+		ProfitMicro:  m.ProfitMicro,
+		ROIPct:       m.ROIPct,
+		CPAMicro:     m.CPAMicro,
+		CTR:          m.CTR,
+		IVTRate:      m.IVTRate,
+	}
+}
+
+func sourceQualityRowFromPlacement(dto PlacementReportRowDTO) SourceQualityRowDTO {
+	return SourceQualityRowDTO{
+		PlacementID:  dto.PlacementID,
+		CampaignID:   dto.CampaignID,
+		Impressions:  dto.Impressions,
+		Clicks:       dto.Clicks,
+		Conversions:  dto.Conversions,
+		SpendMicro:   dto.SpendMicro,
+		RevenueMicro: dto.RevenueMicro,
+		ProfitMicro:  dto.ProfitMicro,
+		ROIPct:       dto.ROIPct,
+		CPAMicro:     dto.CPAMicro,
+		CTR:          dto.CTR,
+		IVTRate:      dto.IVTRate,
+		Compare:      dto.Compare,
+	}
+}
+
+func reportMetricsFromSourceQualityDTO(row SourceQualityRowDTO) reportMetricsCHRow {
+	return reportMetricsCHRow{
+		Dimension:    row.PlacementID,
+		CampaignID:   row.CampaignID,
+		Impressions:  row.Impressions,
+		Clicks:       row.Clicks,
+		Conversions:  row.Conversions,
+		SpendMicro:   row.SpendMicro,
+		RevenueMicro: row.RevenueMicro,
+	}
+}
+
+func sourceQualityRowKey(row SourceQualityRowDTO) string {
+	parts := []string{
+		row.PlacementID,
+		row.CampaignID,
+		row.Country,
+		row.City,
+		row.Device,
+		row.Sub1,
+	}
+	return strings.Join(parts, "\x1f")
+}
+
+func attachSourceQualityCompareDeltas(rows, prev []SourceQualityRowDTO) {
+	prevByKey := make(map[string]SourceQualityRowDTO, len(prev))
+	for _, row := range prev {
+		prevByKey[sourceQualityRowKey(row)] = row
+	}
+	for i := range rows {
+		prevRow, ok := prevByKey[sourceQualityRowKey(rows[i])]
+		if !ok {
+			continue
+		}
+		delta := compareReportMetrics(
+			reportMetricsFromSourceQualityDTO(rows[i]),
+			reportMetricsFromSourceQualityDTO(prevRow),
+		)
+		rows[i].Compare = &delta
+	}
+}
+
 var sourceQualityGroupByAllowed = map[string]struct{}{
 	"placement": {},
 	"campaign":  {},
@@ -211,7 +323,7 @@ func querySourceQualityDetailRows(
 	campaignIDs []uuid.UUID,
 	from, to time.Time,
 	limit, offset int,
-) ([]map[string]any, int64, error) {
+) ([]SourceQualityRowDTO, int64, error) {
 	if clickhouseQuery == nil || len(campaignIDs) == 0 {
 		return nil, 0, nil
 	}
@@ -266,7 +378,7 @@ func querySourceQualityDetailRows(
 		return nil, 0, err
 	}
 
-	out := make([]map[string]any, 0, len(eventRows))
+	out := make([]SourceQualityRowDTO, 0, len(eventRows))
 	for _, row := range eventRows {
 		pcKey := ReportMetricsKey(row.PlacementID, row.CampaignID)
 		totals := spendByPlacementCampaign[pcKey]
@@ -277,31 +389,24 @@ func querySourceQualityDetailRows(
 			spendMicro = int64(float64(totals.SpendMicro) * share)
 			revenueMicro = int64(float64(totals.RevenueMicro) * share)
 		}
-		dto := computeReportMetrics(reportMetricsCHRow{
-			Dimension:    row.PlacementID,
-			CampaignID:   row.CampaignID,
-			Impressions:  row.Impressions,
-			Clicks:       row.Clicks,
-			Conversions:  row.Conversions,
-			SpendMicro:   spendMicro,
-			RevenueMicro: revenueMicro,
-		}, calcIVTRate(row.IVTEvents, row.Clicks))
-		out = append(out, map[string]any{
-			"placement_id":  row.PlacementID,
-			"campaign_id":   row.CampaignID,
-			"country":       row.Country,
-			"city":          row.City,
-			"device":        row.Device,
-			"sub1":          row.Sub1,
-			"impressions":   dto.Impressions,
-			"clicks":        dto.Clicks,
-			"conversions":   dto.Conversions,
-			"spend_micro":   dto.SpendMicro,
-			"revenue_micro": dto.RevenueMicro,
-			"roi_pct":       dto.ROIPct,
-			"ctr":           dto.CTR,
-			"ivt_rate":      dto.IVTRate,
-		})
+		out = append(out, toSourceQualityRowFromMetrics(
+			reportMetricsCHRow{
+				Dimension:    row.PlacementID,
+				CampaignID:   row.CampaignID,
+				Impressions:  row.Impressions,
+				Clicks:       row.Clicks,
+				Conversions:  row.Conversions,
+				SpendMicro:   spendMicro,
+				RevenueMicro: revenueMicro,
+			},
+			calcIVTRate(row.IVTEvents, row.Clicks),
+			row.PlacementID,
+			row.CampaignID,
+			row.Country,
+			row.City,
+			row.Device,
+			row.Sub1,
+		))
 	}
 
 	var total uint64
@@ -324,45 +429,4 @@ func allocatePlacementCampaignShare(rowClicks, totalClicks, rowImpressions int64
 		return 0
 	}
 	return 0
-}
-
-func attachSourceQualityDetailCompareDeltas(rows, prev []map[string]any) {
-	prevByKey := make(map[string]map[string]any, len(prev))
-	for _, row := range prev {
-		key := sourceQualityDetailRowKey(row)
-		prevByKey[key] = row
-	}
-	for i := range rows {
-		prevRow, ok := prevByKey[sourceQualityDetailRowKey(rows[i])]
-		if !ok {
-			continue
-		}
-		curMetrics := mapRowMetrics(rows[i])
-		prevMetrics := mapRowMetrics(prevRow)
-		delta := compareReportMetrics(curMetrics, prevMetrics)
-		rows[i]["compare"] = delta
-	}
-}
-
-func sourceQualityDetailRowKey(row map[string]any) string {
-	parts := []string{
-		sourceQualityMapString(row, "placement_id"),
-		sourceQualityMapString(row, "campaign_id"),
-		sourceQualityMapString(row, "country"),
-		sourceQualityMapString(row, "city"),
-		sourceQualityMapString(row, "device"),
-		sourceQualityMapString(row, "sub1"),
-	}
-	return strings.Join(parts, "\x1f")
-}
-
-func sourceQualityMapString(row map[string]any, key string) string {
-	if row == nil {
-		return ""
-	}
-	v, ok := row[key]
-	if !ok || v == nil {
-		return ""
-	}
-	return strings.TrimSpace(fmt.Sprint(v))
 }

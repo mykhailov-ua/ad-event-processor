@@ -141,6 +141,34 @@ export type FraudBreakdownReportResponse = components['schemas']['FraudBreakdown
 export type CustomerFraudByTypeRow = components['schemas']['CustomerFraudByTypeRow'];
 export type CustomerFraudByTypeReportResponse =
   components['schemas']['CustomerFraudByTypeReportResponse'];
+export type PostbackReconRow = components['schemas']['PostbackReconRow'];
+export type PostbackReconReportResponse = components['schemas']['PostbackReconReportResponse'];
+export type SourceQualityRow = components['schemas']['SourceQualityRow'];
+export type SourceQualityReportResponse = components['schemas']['SourceQualityReportResponse'];
+export type ReportCompareDeltas = components['schemas']['ReportCompareDeltas'];
+
+export type PostbackReconciliationQuery = Omit<
+  OperationQuery<'reportPostbackReconciliation'>,
+  'customer_id'
+> & {
+  customer_id?: string;
+};
+
+export type SourceQualityGroupBy =
+  | 'placement'
+  | 'campaign'
+  | 'country'
+  | 'city'
+  | 'device'
+  | 'sub_id';
+
+export type SourceQualityReportQuery = Omit<
+  OperationQuery<'reportSourceQuality'>,
+  'customer_id' | 'group_by'
+> & {
+  customer_id?: string;
+  group_by?: SourceQualityGroupBy[];
+};
 
 export type FraudReasonsReportKey = 'fraud-breakdown' | 'wire-signal-breakdown';
 

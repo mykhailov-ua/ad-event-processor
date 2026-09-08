@@ -71,6 +71,8 @@ import { ReportJobsPage } from '@/pages/report_jobs_page';
 import { ClickLogPage } from '@/pages/click_log_page';
 import { FraudReasonsPage } from '@/pages/fraud_reasons_page';
 import { CustomerFraudByTypePage } from '@/pages/customer_fraud_by_type_page';
+import { PostbackReconciliationPage } from '@/pages/postback_reconciliation_page';
+import { SourceQualityPage } from '@/pages/source_quality_page';
 import { FraudCatalogReportPage } from '@/pages/fraud_catalog_report_page';
 import { CampaignToggleCohortPage } from '@/pages/campaign_toggle_cohort_page';
 import { ReportRunnerPage } from '@/pages/report_runner_page';
@@ -191,6 +193,11 @@ export function AppRoutes() {
             path="reports/wire-signal-breakdown"
           />
           <Route element={<CustomerFraudByTypePage />} path="reports/customer-fraud-by-type" />
+          <Route
+            element={<PostbackReconciliationPage />}
+            path="reports/postback-reconciliation"
+          />
+          <Route element={<SourceQualityPage />} path="reports/source-quality" />
           <Route
             element={
               <FraudCatalogReportPage reportKey="silent-reject-impression-funnel" />

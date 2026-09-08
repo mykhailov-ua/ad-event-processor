@@ -30,6 +30,24 @@ func TestSourceQualityDetailEventQuery_usesDimensionExprs_holdout(t *testing.T) 
 	require.Contains(t, sourceQualityDetailEventQuery, clickhouseDimSub1Expr)
 }
 
+func TestAttachSourceQualityCompareDeltas_holdout(t *testing.T) {
+	cur := []SourceQualityRowDTO{{
+		PlacementID: "p1",
+		CampaignID:  "c1",
+		Country:     "US",
+		Clicks:      20,
+	}}
+	prev := []SourceQualityRowDTO{{
+		PlacementID: "p1",
+		CampaignID:  "c1",
+		Country:     "US",
+		Clicks:      10,
+	}}
+	attachSourceQualityCompareDeltas(cur, prev)
+	require.NotNil(t, cur[0].Compare)
+	require.Equal(t, int64(10), cur[0].Compare.ClicksDelta)
+}
+
 func TestAllocatePlacementCampaignShare_prefersClicks(t *testing.T) {
 	share := allocatePlacementCampaignShare(25, 100, 0)
 	require.InDelta(t, 0.25, share, 1e-9)

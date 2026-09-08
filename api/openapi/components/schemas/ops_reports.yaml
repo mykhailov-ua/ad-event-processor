@@ -1906,6 +1906,68 @@ PostbackReconReportResponse:
     next_cursor:
       type: string
 
+SourceQualityRow:
+  type: object
+  properties:
+    placement_id:
+      type: string
+    campaign_id:
+      type: string
+      format: uuid
+    country:
+      type: string
+    city:
+      type: string
+    device:
+      type: string
+    sub1:
+      type: string
+    impressions:
+      type: integer
+      format: int64
+    clicks:
+      type: integer
+      format: int64
+    conversions:
+      type: integer
+      format: int64
+    spend_micro:
+      type: integer
+      format: int64
+    revenue_micro:
+      type: integer
+      format: int64
+    profit_micro:
+      type: integer
+      format: int64
+    roi_pct:
+      type: number
+      format: double
+    cpa_micro:
+      type: integer
+      format: int64
+    ctr:
+      type: number
+      format: double
+    ivt_rate:
+      type: number
+      format: double
+    compare:
+      $ref: '#/ReportCompareDeltas'
+
+SourceQualityReportResponse:
+  type: object
+  required: [rows, freshness]
+  properties:
+    rows:
+      type: array
+      items:
+        $ref: '#/SourceQualityRow'
+    freshness:
+      $ref: '#/DataFreshness'
+    next_cursor:
+      type: string
+
 GeoROIRow:
   type: object
   properties:

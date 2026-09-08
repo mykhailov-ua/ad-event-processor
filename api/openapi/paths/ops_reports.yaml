@@ -2251,13 +2251,24 @@ paths:
       - *id006
       - *id007
       - *id008
+      - name: group_by
+        in: query
+        required: false
+        schema:
+          type: array
+          items:
+            type: string
+            enum: [placement, campaign, country, city, device, sub_id]
+        style: form
+        explode: true
+        description: When country, city, device, or sub_id is included, returns geo/device detail rows.
       responses:
         '200':
           content:
             application/json:
               schema:
-                $ref: ../components/schemas/ops_reports.yaml#/ReportMapEnvelope
-          description: Report rows
+                $ref: ../components/schemas/ops_reports.yaml#/SourceQualityReportResponse
+          description: Source quality rows
         default:
           $ref: ../openapi.yaml#/components/responses/Error
       summary: Sub-source quality scores

@@ -12,6 +12,8 @@ import type {
   ReportJobSpec,
   ReportJobStatus,
   ReportMapEnvelope,
+  PostbackReconReportResponse,
+  SourceQualityReportResponse,
   ReportRunQuery,
   TelegramReportExportRequest,
   TelegramReportExportResponse,
@@ -23,6 +25,8 @@ import type {
   FraudCatalogReportKey,
   FraudCatalogReportQuery,
   FraudCatalogReportResponse,
+  PostbackReconciliationQuery,
+  SourceQualityReportQuery,
 } from './types.js';
 
 export async function getReportCatalog(signal?: AbortSignal): Promise<ReportCatalogResponse> {
@@ -178,6 +182,59 @@ export async function getCustomerFraudByTypeReport(
 ): Promise<CustomerFraudByTypeReportResponse> {
   return apiJson<CustomerFraudByTypeReportResponse>(
     buildReportRunPath('customer-fraud-by-type', params),
+    { signal }
+  );
+}
+
+export function buildSourceQualityReportPath(params: SourceQualityReportQuery = {}): string {
+  const search = new URLSearchParams();
+  const basePath = reportKeyToApiPath('source-quality');
+
+  if (params.customer_id) {
+    search.set('customer_id', params.customer_id);
+  }
+  if (params.from) {
+    search.set('from', params.from);
+  }
+  if (params.to) {
+    search.set('to', params.to);
+  }
+  if (params.campaign_id) {
+    search.set('campaign_id', params.campaign_id);
+  }
+  if (params.limit != null) {
+    search.set('limit', String(params.limit));
+  }
+  if (params.offset != null) {
+    search.set('offset', String(params.offset));
+  }
+  if (params.cursor) {
+    search.set('cursor', params.cursor);
+  }
+  if (params.compare) {
+    search.set('compare', '1');
+  }
+  for (const dim of params.group_by ?? []) {
+    search.append('group_by', dim);
+  }
+
+  const query = search.toString();
+  return query ? `${basePath}?${query}` : basePath;
+}
+
+export async function getSourceQualityReport(
+  params: SourceQualityReportQuery = {},
+  signal?: AbortSignal
+): Promise<SourceQualityReportResponse> {
+  return apiJson<SourceQualityReportResponse>(buildSourceQualityReportPath(params), { signal });
+}
+
+export async function getPostbackReconciliationReport(
+  params: PostbackReconciliationQuery = {},
+  signal?: AbortSignal
+): Promise<PostbackReconReportResponse> {
+  return apiJson<PostbackReconReportResponse>(
+    buildReportRunPath('postback-reconciliation', params),
     { signal }
   );
 }

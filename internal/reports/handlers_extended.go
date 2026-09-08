@@ -83,7 +83,10 @@ func (h *ReportsHTTPHandlers) getSourceQualityReport(w http.ResponseWriter, r *h
 		return
 	}
 	if len(campaignIDs) == 0 {
-		httpresponse.JSON(w, http.StatusOK, NewReportRowsResponse(nil, h.reportFreshness(r.Context()), ""))
+		httpresponse.JSON(w, http.StatusOK, SourceQualityReportResponse{
+			Rows:      []SourceQualityRowDTO{},
+			Freshness: h.reportFreshness(r.Context()),
+		})
 		return
 	}
 	groupBy := parseSourceQualityGroupBy(r)
@@ -103,13 +106,17 @@ func (h *ReportsHTTPHandlers) getSourceQualityReport(w http.ResponseWriter, r *h
 				h.writeServiceError(w, perr)
 				return
 			}
-			attachSourceQualityDetailCompareDeltas(out, prevOut)
+			attachSourceQualityCompareDeltas(out, prevOut)
 		}
 		var nextCursor string
 		if int64(offset)+int64(len(out)) < total {
 			nextCursor = coldpath.EncodeCursor(offset + limit)
 		}
-		httpresponse.JSON(w, http.StatusOK, NewReportRowsResponse(out, h.reportFreshness(r.Context()), nextCursor))
+		httpresponse.JSON(w, http.StatusOK, SourceQualityReportResponse{
+			Rows:       out,
+			Freshness:  h.reportFreshness(r.Context()),
+			NextCursor: nextCursor,
+		})
 		return
 	}
 
@@ -123,22 +130,10 @@ func (h *ReportsHTTPHandlers) getSourceQualityReport(w http.ResponseWriter, r *h
 		h.writeServiceError(w, err)
 		return
 	}
-	out := make([]map[string]any, 0, len(clickhouseRows))
+	out := make([]SourceQualityRowDTO, 0, len(clickhouseRows))
 	for _, row := range clickhouseRows {
-		ivt := ivtRates[ReportMetricsKey(row.Dimension, row.CampaignID)]
-		dto := ToPlacementReportRowDTO(row, ivt)
-		out = append(out, map[string]any{
-			"placement_id":  dto.PlacementID,
-			"campaign_id":   dto.CampaignID,
-			"impressions":   dto.Impressions,
-			"clicks":        dto.Clicks,
-			"conversions":   dto.Conversions,
-			"spend_micro":   dto.SpendMicro,
-			"revenue_micro": dto.RevenueMicro,
-			"roi_pct":       dto.ROIPct,
-			"ctr":           dto.CTR,
-			"ivt_rate":      dto.IVTRate,
-		})
+		dto := ToPlacementReportRowDTO(row, ivtRates[ReportMetricsKey(row.Dimension, row.CampaignID)])
+		out = append(out, sourceQualityRowFromPlacement(dto))
 	}
 	if parseComparePrevious(r) {
 		prevFrom, prevTo := previousReportRange(from, to)
@@ -152,30 +147,22 @@ func (h *ReportsHTTPHandlers) getSourceQualityReport(w http.ResponseWriter, r *h
 			h.writeServiceError(w, perr)
 			return
 		}
-		prevOut := make([]map[string]any, 0, len(prevRows))
+		prevOut := make([]SourceQualityRowDTO, 0, len(prevRows))
 		for _, row := range prevRows {
-			ivt := prevIVT[ReportMetricsKey(row.Dimension, row.CampaignID)]
-			dto := ToPlacementReportRowDTO(row, ivt)
-			prevOut = append(prevOut, map[string]any{
-				"placement_id":  dto.PlacementID,
-				"campaign_id":   dto.CampaignID,
-				"impressions":   dto.Impressions,
-				"clicks":        dto.Clicks,
-				"conversions":   dto.Conversions,
-				"spend_micro":   dto.SpendMicro,
-				"revenue_micro": dto.RevenueMicro,
-				"roi_pct":       dto.ROIPct,
-				"ctr":           dto.CTR,
-				"ivt_rate":      dto.IVTRate,
-			})
+			dto := ToPlacementReportRowDTO(row, prevIVT[ReportMetricsKey(row.Dimension, row.CampaignID)])
+			prevOut = append(prevOut, sourceQualityRowFromPlacement(dto))
 		}
-		attachMapCompareDeltas(out, prevOut, "placement_id", "campaign_id")
+		attachSourceQualityCompareDeltas(out, prevOut)
 	}
 	var nextCursor string
 	if int64(offset)+int64(len(out)) < total {
 		nextCursor = coldpath.EncodeCursor(offset + limit)
 	}
-	httpresponse.JSON(w, http.StatusOK, NewReportRowsResponse(out, h.reportFreshness(r.Context()), nextCursor))
+	httpresponse.JSON(w, http.StatusOK, SourceQualityReportResponse{
+		Rows:       out,
+		Freshness:  h.reportFreshness(r.Context()),
+		NextCursor: nextCursor,
+	})
 }
 
 func (h *ReportsHTTPHandlers) getDiscrepancyBuySellReport(w http.ResponseWriter, r *http.Request) {

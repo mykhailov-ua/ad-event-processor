@@ -5731,6 +5731,11 @@ export interface components {
             /** Format: int32 */
             attestation_ttl_sec?: number;
             dmr_enabled?: boolean;
+            /**
+             * @description strict uses 302 only; legacy_dmr allows meta-refresh DMR when dmr_enabled or dmr=1 on /click.
+             * @enum {string}
+             */
+            redirect_compliance_mode?: "strict" | "legacy_dmr";
             cidr_block_enabled?: boolean;
             proxy_vpn_block_enabled?: boolean;
             /** @description Enable review traffic intelligence feed matching on /click. */
@@ -6493,6 +6498,11 @@ export interface components {
              */
             decoy_lander_id?: string;
             dmr_enabled?: boolean;
+            /**
+             * @description strict uses 302 only; legacy_dmr allows meta-refresh DMR when dmr_enabled or dmr=1 on /click.
+             * @enum {string}
+             */
+            redirect_compliance_mode?: "strict" | "legacy_dmr";
             cidr_block_enabled?: boolean;
             proxy_vpn_block_enabled?: boolean;
             /** @description Enable review traffic intelligence feed matching on /click. */
@@ -7413,6 +7423,14 @@ export interface components {
             rows: {
                 [key: string]: unknown;
             }[];
+            /** @description track.js script URL; uses /_aed/track.js on LANDER_PUBLIC_BASE_URL when configured. */
+            browser_pixel_script_url?: string;
+            /** @description POST /track endpoint for browser pixel snippet. */
+            browser_pixel_track_url?: string;
+            /** @description Copy-paste HTML with conversionEventId and trackEvent call. */
+            browser_pixel_snippet?: string;
+            /** @description True when script is served same-origin via lander /_aed/track.js proxy. */
+            browser_pixel_first_party?: boolean;
         };
         AssignCampaignOwnerRequest: {
             /** Format: uuid */
@@ -9127,6 +9145,41 @@ export interface components {
         };
         SilentRejectImpressionFunnelReportResponse: {
             rows: components["schemas"]["SilentRejectImpressionFunnelRow"][];
+            freshness: components["schemas"]["DataFreshness"];
+            next_cursor?: string;
+        };
+        SourceQualityRow: {
+            placement_id?: string;
+            /** Format: uuid */
+            campaign_id?: string;
+            country?: string;
+            city?: string;
+            device?: string;
+            sub1?: string;
+            /** Format: int64 */
+            impressions?: number;
+            /** Format: int64 */
+            clicks?: number;
+            /** Format: int64 */
+            conversions?: number;
+            /** Format: int64 */
+            spend_micro?: number;
+            /** Format: int64 */
+            revenue_micro?: number;
+            /** Format: int64 */
+            profit_micro?: number;
+            /** Format: double */
+            roi_pct?: number;
+            /** Format: int64 */
+            cpa_micro?: number;
+            /** Format: double */
+            ctr?: number;
+            /** Format: double */
+            ivt_rate?: number;
+            compare?: components["schemas"]["ReportCompareDeltas"];
+        };
+        SourceQualityReportResponse: {
+            rows: components["schemas"]["SourceQualityRow"][];
             freshness: components["schemas"]["DataFreshness"];
             next_cursor?: string;
         };
@@ -16912,6 +16965,8 @@ export interface operations {
                 limit?: components["parameters"]["LimitQuery"];
                 offset?: components["parameters"]["OffsetQuery"];
                 cursor?: components["parameters"]["CursorQuery"];
+                /** @description When country, city, device, or sub_id is included, returns geo/device detail rows. */
+                group_by?: ("placement" | "campaign" | "country" | "city" | "device" | "sub_id")[];
             };
             header?: never;
             path?: never;
@@ -16919,13 +16974,13 @@ export interface operations {
         };
         requestBody?: never;
         responses: {
-            /** @description Report rows */
+            /** @description Source quality rows */
             200: {
                 headers: {
                     [name: string]: unknown;
                 };
                 content: {
-                    "application/json": components["schemas"]["ReportMapEnvelope"];
+                    "application/json": components["schemas"]["SourceQualityReportResponse"];
                 };
             };
             default: components["responses"]["Error"];
