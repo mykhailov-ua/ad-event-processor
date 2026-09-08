@@ -2,15 +2,12 @@ package rtb
 
 import (
 	"sync/atomic"
-	_ "unsafe"
 
 	"ad-event-processor/internal/metrics"
+	"ad-event-processor/pkg/monotime"
 
 	"github.com/prometheus/client_golang/prometheus"
 )
-
-//go:linkname monotonicNano runtime.nanotime
-func monotonicNano() int64
 
 const (
 	nanosPerSecond                     = 1_000_000_000
@@ -108,7 +105,7 @@ func auctionStartMono() int64 {
 	if !metricsEnabled.Load() {
 		return 0
 	}
-	return monotonicNano()
+	return monotime.Nano()
 }
 
 func recordAuctionWin(scanned int) {
@@ -160,7 +157,7 @@ func observeAuctionDurationMono(start int64) {
 	if seq&rtbAuctionMetricsSampleMask != 0 {
 		return
 	}
-	elapsed := float64(monotonicNano()-start) / nanosPerSecond
+	elapsed := float64(monotime.Nano()-start) / nanosPerSecond
 	auctionMetrics.duration.Observe(elapsed)
 }
 

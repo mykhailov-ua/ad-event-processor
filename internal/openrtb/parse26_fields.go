@@ -3,6 +3,8 @@ package openrtb
 import (
 	"bytes"
 	"time"
+
+	"ad-event-processor/pkg/monotime"
 )
 
 func parseRegsFlagsFromScan(payload []byte, scan openrtb26Scan, hot *OpenRTB26Hot) {
@@ -415,7 +417,7 @@ func DeadlineMonoFromTmax(tmaxMs int32) int64 {
 	if tmaxMs <= 0 {
 		tmaxMs = 200
 	}
-	return monoNano() + int64(tmaxMs)*int64(time.Millisecond)
+	return monotime.Nano() + int64(tmaxMs)*int64(time.Millisecond)
 }
 
 func parseJSONIntField(payload []byte, start int) int64 {

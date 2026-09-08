@@ -32,7 +32,7 @@ func (f *VPPFilter) Check(ctx context.Context, evt *domain.Event) error {
 	if ratio >= 1.0 {
 		return nil
 	}
-	if !vppAllow(evt.CampaignID, ratio, monotonicNano()) {
+	if !vppAllow(evt.CampaignID, ratio, MonotonicNano()) {
 		return ErrPacingExhausted
 	}
 	return nil

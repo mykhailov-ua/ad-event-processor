@@ -1,5 +1,7 @@
 package rtb
 
+import "ad-event-processor/pkg/monotime"
+
 const (
 	// Amortize monotonic deadline checks: every 128 candidates, not every iteration.
 	rankDeadlineCheckMask = 127
@@ -127,7 +129,7 @@ func (r *Registry) rankCandidates(
 	}
 
 	for pos := range n {
-		if hasDeadline && scanned&rankDeadlineCheckMask == 0 && monotonicNano() > deadline {
+		if hasDeadline && scanned&rankDeadlineCheckMask == 0 && monotime.Nano() > deadline {
 			return -1, 0, -1, scanned, NoBidTimeout
 		}
 

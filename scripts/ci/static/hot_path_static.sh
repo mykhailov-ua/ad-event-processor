@@ -78,3 +78,7 @@ fi
 echo "hot-path-static: OK (${#HOT_FILES[@]} files)"
 
 bash "$SCRIPTS/ci/static/ingest_lifetime_gate.sh"
+bash "$SCRIPTS/ci/static/ingest_unsafe_string_gate.sh"
+bash "$SCRIPTS/ci/static/hot_path_race_holdout_gate.sh"
+bash "$SCRIPTS/ci/static/hot_path_monotime_gate.sh"
+bash "$SCRIPTS/ci/static/vtproto_hotpath_gate.sh"

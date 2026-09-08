@@ -305,9 +305,9 @@ func segmentMemberExists(ctx context.Context, redisShards []redis.UniversalClien
 	}
 	w := bufPool.Get().(*bufWrapper)
 	w.Buf = appendSegmentMemberKey(w.Buf[:0], segmentID, userHash)
-	key := UnsafeString(w.Buf)
-	err := redisClient.Get(ctx, key).Err()
+	key := string(w.Buf)
 	bufPool.Put(w)
+	err := redisClient.Get(ctx, key).Err()
 	if errors.Is(err, redis.Nil) {
 		return false, nil
 	}
@@ -327,9 +327,9 @@ func AddSegmentMember(ctx context.Context, redisShards []redis.UniversalClient, 
 	}
 	w := bufPool.Get().(*bufWrapper)
 	w.Buf = appendSegmentMemberKey(w.Buf[:0], segmentID, userHash)
-	key := UnsafeString(w.Buf)
-	err := redisClient.Set(ctx, key, "1", ttl).Err()
+	key := string(w.Buf)
 	bufPool.Put(w)
+	err := redisClient.Set(ctx, key, "1", ttl).Err()
 	return err
 }
 

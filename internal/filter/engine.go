@@ -432,10 +432,10 @@ func (f *DuplicateEventFilter) Check(ctx context.Context, evt *domain.Event) err
 	w.Buf = append(w.Buf, evt.Type...)
 	w.Buf = append(w.Buf, ':')
 	w.Buf = append(w.Buf, evt.ClickID...)
-	key := UnsafeString(w.Buf)
+	key := string(w.Buf)
+	bufPool.Put(w)
 
 	ok, err := f.redisClient.SetNX(ctx, key, "1", f.ttl).Result()
-	bufPool.Put(w)
 
 	if err != nil {
 		return err
@@ -601,10 +601,10 @@ func (f *PlacementBlacklistFilter) Check(ctx context.Context, evt *domain.Event)
 	w.Buf = appendCampaignHashTag(w.Buf[:0], evt.CampaignID)
 	w.Buf = append(w.Buf, "blacklist:placement:"...)
 	w.Buf = AppendUUID(w.Buf, evt.CampaignID)
-	redisKey := UnsafeString(w.Buf)
+	redisKey := string(w.Buf)
+	bufPool.Put(w)
 
 	isBlacklisted, err := redisClient.HExists(ctx, redisKey, evt.PlacementID).Result()
-	bufPool.Put(w)
 	if err != nil {
 		return err
 	}

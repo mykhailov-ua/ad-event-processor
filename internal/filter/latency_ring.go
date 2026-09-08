@@ -39,7 +39,7 @@ func (r *LatencyRing) RecordMono(startMono int64) {
 	if r == nil || startMono <= 0 {
 		return
 	}
-	elapsed := monotonicNano() - startMono
+	elapsed := MonotonicNano() - startMono
 	if elapsed < 0 {
 		return
 	}

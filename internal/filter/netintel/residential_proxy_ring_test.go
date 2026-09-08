@@ -4,6 +4,7 @@ import (
 	"testing"
 
 	"ad-event-processor/internal/domain"
+	"ad-event-processor/pkg/monotime"
 
 	"github.com/google/uuid"
 	"github.com/stretchr/testify/require"
@@ -13,7 +14,7 @@ func TestResidentialProxyRing_observeBuildsFarmPattern(t *testing.T) {
 	ring := NewResidentialProxyRing()
 	cid := uuid.New()
 	campaignHash := domain.CRC32Castagnoli(&cid)
-	now := monotonicNano()
+	now := monotime.Nano()
 
 	for i := range 271 {
 		ring.Observe(campaignHash, false,

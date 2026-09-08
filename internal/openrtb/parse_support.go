@@ -2,7 +2,6 @@ package openrtb
 
 import (
 	"unicode/utf8"
-	_ "unsafe"
 )
 
 const (
@@ -200,6 +199,3 @@ func hashUserIDBytes(userID []byte) uint64 {
 	}
 	return h
 }
-
-//go:linkname monoNano runtime.nanotime
-func monoNano() int64

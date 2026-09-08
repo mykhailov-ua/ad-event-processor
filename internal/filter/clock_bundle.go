@@ -4,7 +4,8 @@ import (
 	"os"
 	"sync/atomic"
 	"time"
-	_ "unsafe"
+
+	"ad-event-processor/pkg/monotime"
 
 	"github.com/google/uuid"
 	"github.com/prometheus/client_golang/prometheus"
@@ -103,7 +104,7 @@ func init() {
 			if clockRefreshPaused.Load() {
 				continue
 			}
-			if until := clockTickPausedUntil.Load(); until > 0 && monotonicNano() < until {
+			if until := clockTickPausedUntil.Load(); until > 0 && monotime.Nano() < until {
 				continue
 			}
 			ms := time.Now().UnixMilli()
@@ -174,7 +175,7 @@ func ApplyUDPCoarseTime(coarseTimeNs int64) {
 	targetMs := localMs + deltaMs
 	if targetMs < localMs {
 		behindMs := localMs - targetMs
-		clockTickPausedUntil.Store(monotonicNano() + behindMs*int64(time.Millisecond))
+		clockTickPausedUntil.Store(monotime.Nano() + behindMs*int64(time.Millisecond))
 		return
 	}
 	if targetMs > localMs {
@@ -186,17 +187,14 @@ func ApplyUDPCoarseTime(coarseTimeNs int64) {
 	}
 }
 
-//go:linkname monotonicNano runtime.nanotime
-func monotonicNano() int64
-
 func MonotonicNano() int64 {
-	return monotonicNano()
+	return monotime.Nano()
 }
 
 const nanosPerSecond = 1_000_000_000
 
 func MonoElapsedSeconds(start int64) float64 {
-	return float64(monotonicNano()-start) / nanosPerSecond
+	return float64(monotime.Nano()-start) / nanosPerSecond
 }
 
 const (

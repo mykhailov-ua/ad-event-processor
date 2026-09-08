@@ -10,11 +10,11 @@ import (
 	"strings"
 	"sync/atomic"
 	"time"
-	_ "unsafe"
 
 	"ad-event-processor/internal/config"
 	"ad-event-processor/internal/domain"
 	"ad-event-processor/internal/metrics"
+	"ad-event-processor/pkg/monotime"
 
 	"github.com/google/uuid"
 )
@@ -311,7 +311,7 @@ func (r *ResidentialProxyRing) SeedForTest(campaignID uuid.UUID, row Residential
 	idx := residentialProxySlotHash(campaignHash)
 	cell := &r.cells[idx]
 	cell.campaignHash.Store(campaignHash)
-	cell.windowStart.Store(monotonicNano())
+	cell.windowStart.Store(monotime.Nano())
 	cell.events.Store(uint32(row.Events))
 	cell.clicks.Store(uint32(row.Clicks))
 	for i := range residentialProxyDistinct {
@@ -607,6 +607,3 @@ func (r *ResidentialProxyRing) Peek(campaignHash uint32) (row ResidentialProxyRo
 	}
 	return ResidentialProxyRow{}, false
 }
-
-//go:linkname monotonicNano runtime.nanotime
-func monotonicNano() int64

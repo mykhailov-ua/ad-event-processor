@@ -7,6 +7,7 @@ import (
 	"unsafe"
 
 	"ad-event-processor/internal/domain"
+	"ad-event-processor/pkg/monotime"
 
 	"github.com/google/uuid"
 	"github.com/stretchr/testify/require"
@@ -30,7 +31,7 @@ func TestResidentialProxyRing_parallelObserveRace(t *testing.T) {
 			id := uuid.MustParse(fmt.Sprintf("00000000-0000-4000-8000-0000000000%02d", seed))
 			hash := domain.CRC32Castagnoli(&id)
 			for i := range 2000 {
-				_, _ = ring.Observe(hash, i&1 == 0, uint32(i+seed), uint32(i+seed+1), monotonicNano())
+				_, _ = ring.Observe(hash, i&1 == 0, uint32(i+seed), uint32(i+seed+1), monotime.Nano())
 			}
 		}(g)
 	}
@@ -41,7 +42,7 @@ func BenchmarkResidentialProxy_observe(b *testing.B) {
 	ring := NewResidentialProxyRing()
 	id := uuid.MustParse("00000000-0000-4000-8000-000000000001")
 	hash := domain.CRC32Castagnoli(&id)
-	now := monotonicNano()
+	now := monotime.Nano()
 
 	b.ReportAllocs()
 	var signal bool

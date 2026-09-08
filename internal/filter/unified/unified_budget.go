@@ -794,7 +794,7 @@ func (f *UnifiedFilter) recoverBudgetAfterMiss(
 	if attempt > 0 {
 		return false, filt.ErrBudgetExhausted
 	}
-	// Budget key miss recovery respects evt.FilterDeadlineMono; no PG warm past deadline.
+	// Budget key miss recovery respects evt.FilterDeadlineMono; no Postgres warm past deadline.
 	if filt.FilterDeadlineExceededEvt(evt, ctx) {
 		return false, filt.ErrFilterTimeout
 	}
