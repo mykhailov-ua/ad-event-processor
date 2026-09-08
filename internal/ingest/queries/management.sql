@@ -690,6 +690,7 @@ SET name = $2,
     moderator_intel_enabled = $25,
     review_traffic_action = $26,
     click_filter_tier = $27,
+    proxy_timeout_fallback_enabled = $28,
     updated_at = CURRENT_TIMESTAMP
 WHERE id = $1
 RETURNING *;

@@ -690,17 +690,29 @@ func (h *AdsPacketHandler) reactClickRedirect(req *Request, c gnet.Conn, ctx *Co
 	}
 
 	if camp, ok := h.registry.GetCampaign(evt.CampaignID); ok {
-		if proxyOn, upstream, rewrite := campaignClickProxyEnabled(camp); proxyOn && !h.clickDmrActive(evt.CampaignID, parsed.DMR) {
+		if proxyOn, upstream, rewrite, timeoutFallback := campaignClickProxyConfig(camp); proxyOn && !h.clickDmrActive(evt.CampaignID, parsed.DMR) {
 			pt := appendClickProxyPassthrough(ctx.ExtraBuf[:0], clickID, parsed.Subs, parsed.Passthrough, parsed.FBCLID, parsed.GCLID, parsed.TTCLID)
+			proxyLanding := landing
+			if len(proxyLanding) == 0 {
+				proxyLanding = ResolveLandingURLBytes(context.Background(), h.registry, h.creativeStore, evt)
+			}
+			var fallbackLoc []byte
+			if timeoutFallback && len(proxyLanding) > 0 {
+				if loc, locOK := buildRedirectLocation(ctx.WCamp.Buf[:0], proxyLanding, clickID, parsed.UserID, parsed.Subs, pt); locOK {
+					fallbackLoc = loc
+				}
+			}
 			h.trackMetrics.decisionAccepted.Inc()
 			writeAuditLog(h.logger, &h.auditLogSeq, h.auditLogSampleMask, ctx.ShardID, evt)
 			return h.clickProxyDeliver(c, ctx, clickProxyJob{
-				upstream:    upstream,
-				clientIP:    ip,
-				userAgent:   ua,
-				passthrough: pt,
-				rewrite:     rewrite,
-				startMono:   startMono,
+				upstream:         upstream,
+				clientIP:         ip,
+				userAgent:        ua,
+				passthrough:      pt,
+				rewrite:          rewrite,
+				fallbackLocation: fallbackLoc,
+				timeoutFallback:  timeoutFallback,
+				startMono:        startMono,
 			})
 		}
 	}

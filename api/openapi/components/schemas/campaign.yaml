@@ -120,6 +120,9 @@ Campaign:
       type: string
     proxy_rewrite_assets:
       type: boolean
+    proxy_timeout_fallback_enabled:
+      type: boolean
+      description: When true, upstream timeout on GET /click proxy falls back to 302 landing redirect.
     brand_id:
       type: string
       format: uuid
@@ -308,6 +311,9 @@ PatchCampaignRequest:
       type: string
     proxy_rewrite_assets:
       type: boolean
+    proxy_timeout_fallback_enabled:
+      type: boolean
+      description: When true, upstream timeout on GET /click proxy falls back to 302 landing redirect.
     start_at:
       type: string
       format: date-time

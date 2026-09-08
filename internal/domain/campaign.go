@@ -122,10 +122,11 @@ type Campaign struct {
 	LinkSigningEnabled bool
 	LinkSigningTTLSec  int32
 
-	ClickDelivery      string
-	ClickFilterTier    string
-	ProxyUpstreamURL   string
-	ProxyRewriteAssets bool
+	ClickDelivery               string
+	ClickFilterTier             string
+	ProxyUpstreamURL            string
+	ProxyRewriteAssets          bool
+	ProxyTimeoutFallbackEnabled bool
 
 	IngressCost IngressCostConfig
 }

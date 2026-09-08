@@ -18,11 +18,9 @@ import (
 )
 
 const (
-	clickProxyDialTimeout     = 10 * time.Second
-	clickProxyTotalTimeout    = 30 * time.Second
-	clickProxyHeaderTimeout   = 10 * time.Second
-	clickProxyStreamChunkSize = 32 * 1024
-	clickProxyMaxHeaderBytes  = 32 * 1024
+	clickProxyDefaultTimeoutMs = 300
+	clickProxyStreamChunkSize  = 32 * 1024
+	clickProxyMaxHeaderBytes   = 32 * 1024
 )
 
 var (
@@ -43,31 +41,41 @@ var clickProxyHopByHop = map[string]struct{}{
 }
 
 type clickProxyJob struct {
-	upstream    string
-	clientIP    string
-	userAgent   string
-	passthrough []byte
-	rewrite     bool
-	startMono   int64
+	upstream         string
+	clientIP         string
+	userAgent        string
+	passthrough      []byte
+	rewrite          bool
+	fallbackLocation []byte
+	timeoutFallback  bool
+	startMono        int64
+}
+
+func (h *AdsPacketHandler) clickProxyTimeout() time.Duration {
+	if h != nil && h.cfg != nil && h.cfg.ClickProxyTimeoutMs > 0 {
+		return time.Duration(h.cfg.ClickProxyTimeoutMs) * time.Millisecond
+	}
+	return time.Duration(clickProxyDefaultTimeoutMs) * time.Millisecond
 }
 
 func (h *AdsPacketHandler) initClickProxyClient() {
 	if h == nil || h.clickProxyClient != nil {
 		return
 	}
+	timeout := h.clickProxyTimeout()
 	tr := &http.Transport{
 		Proxy:                 http.ProxyFromEnvironment,
-		DialContext:           (&net.Dialer{Timeout: clickProxyDialTimeout, KeepAlive: 30 * time.Second}).DialContext,
+		DialContext:           (&net.Dialer{Timeout: timeout, KeepAlive: 30 * time.Second}).DialContext,
 		ForceAttemptHTTP2:     true,
 		MaxIdleConns:          64,
 		MaxIdleConnsPerHost:   32,
 		IdleConnTimeout:       90 * time.Second,
-		TLSHandshakeTimeout:   10 * time.Second,
-		ResponseHeaderTimeout: clickProxyHeaderTimeout,
+		TLSHandshakeTimeout:   timeout,
+		ResponseHeaderTimeout: timeout,
 	}
 	h.clickProxyClient = &http.Client{
 		Transport: tr,
-		Timeout:   clickProxyTotalTimeout,
+		Timeout:   timeout,
 	}
 }
 
@@ -86,7 +94,8 @@ func (h *AdsPacketHandler) clickProxyDeliver(c gnet.Conn, ctx *ConnContext, job 
 		return gnet.None
 	}
 
-	reqCtx, cancel := context.WithTimeout(context.Background(), clickProxyTotalTimeout)
+	timeout := h.clickProxyTimeout()
+	reqCtx, cancel := context.WithTimeout(context.Background(), timeout)
 	defer cancel()
 	req, err := http.NewRequestWithContext(reqCtx, http.MethodGet, finalURL, http.NoBody)
 	if err != nil {
@@ -106,7 +115,12 @@ func (h *AdsPacketHandler) clickProxyDeliver(c gnet.Conn, ctx *ConnContext, job 
 
 	resp, err := h.clickProxyClient.Do(req)
 	if err != nil {
-		if errors.Is(err, context.DeadlineExceeded) {
+		if isClickProxyTimeoutErr(err) && job.timeoutFallback && len(job.fallbackLocation) > 0 {
+			metrics.ClickProxyFallbackTotal.Inc()
+			h.writeGnetClickRedirect(ctx, c, job.startMono, job.fallbackLocation)
+			return gnet.None
+		}
+		if isClickProxyTimeoutErr(err) {
 			h.write(c, respProxyGatewayTimeout, ctx)
 			h.recordMetrics(job.startMono, http.StatusGatewayTimeout)
 		} else {
@@ -150,6 +164,17 @@ func (h *AdsPacketHandler) clickProxyDeliver(c gnet.Conn, ctx *ConnContext, job 
 	h.recordMetrics(job.startMono, resp.StatusCode)
 	h.proxyFinishConn(c, ctx)
 	return gnet.None
+}
+
+func isClickProxyTimeoutErr(err error) bool {
+	if err == nil {
+		return false
+	}
+	if errors.Is(err, context.DeadlineExceeded) {
+		return true
+	}
+	var ne net.Error
+	return errors.As(err, &ne) && ne.Timeout()
 }
 
 type proxyConnWriter struct {
@@ -221,18 +246,23 @@ func buildProxyResponseHeader(resp *http.Response, maxBytes int) ([]byte, bool) 
 	return []byte(b.String()), true
 }
 
-func campaignClickProxyEnabled(camp *domain.Campaign) (bool, string, bool) {
+func campaignClickProxyConfig(camp *domain.Campaign) (enabled bool, upstream string, rewrite bool, timeoutFallback bool) {
 	if camp == nil {
-		return false, "", false
+		return false, "", false, false
 	}
 	if camp.ClickDelivery != proxyupstream.ClickDeliveryProxy {
-		return false, "", false
+		return false, "", false, false
 	}
 	up := strings.TrimSpace(camp.ProxyUpstreamURL)
 	if up == "" {
-		return false, "", false
+		return false, "", false, false
 	}
-	return true, up, camp.ProxyRewriteAssets
+	return true, up, camp.ProxyRewriteAssets, camp.ProxyTimeoutFallbackEnabled
+}
+
+func campaignClickProxyEnabled(camp *domain.Campaign) (bool, string, bool) {
+	on, up, rewrite, _ := campaignClickProxyConfig(camp)
+	return on, up, rewrite
 }
 
 type proxyAssetRewriter struct {

@@ -67,20 +67,21 @@ type campaignReplicaDTO struct {
 	AttestationTTLSec        int32                 `json:"attestation_ttl_sec"`
 	DmrEnabled               bool                  `json:"dmr_enabled"`
 
-	CIDRBlockEnabled           bool   `json:"cidr_block_enabled"`
-	ProxyVPNBlockEnabled       bool   `json:"proxy_vpn_block_enabled"`
-	ModeratorIntelEnabled      bool   `json:"moderator_intel_enabled"`
-	ReviewTrafficAction        string `json:"review_traffic_action,omitempty"`
-	TLSFingerprintBlockEnabled bool   `json:"tls_fingerprint_block_enabled"`
-	SocialInAppEnabled         bool   `json:"social_in_app_enabled"`
-	ConnTypePolicy             string `json:"conn_type_policy,omitempty"`
-	LinkSigningEnabled         bool   `json:"link_signing_enabled"`
-	LinkSigningTTLSec          int32  `json:"link_signing_ttl_sec"`
-	ClickDelivery              string `json:"click_delivery,omitempty"`
-	ClickFilterTier            string `json:"click_filter_tier,omitempty"`
-	ProxyUpstreamURL           string `json:"proxy_upstream_url,omitempty"`
-	ProxyRewriteAssets         bool   `json:"proxy_rewrite_assets"`
-	RegistryStatus             string `json:"registry_status"`
+	CIDRBlockEnabled            bool   `json:"cidr_block_enabled"`
+	ProxyVPNBlockEnabled        bool   `json:"proxy_vpn_block_enabled"`
+	ModeratorIntelEnabled       bool   `json:"moderator_intel_enabled"`
+	ReviewTrafficAction         string `json:"review_traffic_action,omitempty"`
+	TLSFingerprintBlockEnabled  bool   `json:"tls_fingerprint_block_enabled"`
+	SocialInAppEnabled          bool   `json:"social_in_app_enabled"`
+	ConnTypePolicy              string `json:"conn_type_policy,omitempty"`
+	LinkSigningEnabled          bool   `json:"link_signing_enabled"`
+	LinkSigningTTLSec           int32  `json:"link_signing_ttl_sec"`
+	ClickDelivery               string `json:"click_delivery,omitempty"`
+	ClickFilterTier             string `json:"click_filter_tier,omitempty"`
+	ProxyUpstreamURL            string `json:"proxy_upstream_url,omitempty"`
+	ProxyRewriteAssets          bool   `json:"proxy_rewrite_assets"`
+	ProxyTimeoutFallbackEnabled bool   `json:"proxy_timeout_fallback_enabled"`
+	RegistryStatus              string `json:"registry_status"`
 }
 
 type entitlementsSnapshot struct {
@@ -422,45 +423,46 @@ func (r *Registry) saveReplica(m map[uuid.UUID]campaignInfo) error {
 		}
 
 		dtos = append(dtos, campaignReplicaDTO{
-			ID:                         info.campaign.ID,
-			CustomerID:                 info.campaign.CustomerID,
-			BrandID:                    info.campaign.BrandID,
-			BrandFcapKey:               info.campaign.BrandFcapKey,
-			Name:                       info.campaign.Name,
-			BudgetLimit:                info.campaign.BudgetLimit,
-			CurrentSpend:               info.campaign.CurrentSpend,
-			Status:                     info.campaign.Status,
-			PacingMode:                 info.campaign.PacingMode,
-			DailyBudget:                info.campaign.DailyBudget,
-			DailyBudgetMicro:           info.campaign.DailyBudgetMicro,
-			Timezone:                   info.campaign.Timezone,
-			FreqLimit:                  info.campaign.FreqLimit,
-			FreqWindow:                 info.campaign.FreqWindow,
-			TargetCountries:            targetCountries,
-			SafePageURL:                info.campaign.SafePageURL,
-			SafePageEnabled:            info.campaign.SafePageEnabled,
-			CanvasRetestEnabled:        info.campaign.CanvasRetestEnabled,
-			CgnatIPPolicyEnabled:       info.campaign.CgnatIPPolicyEnabled,
-			AcceptLangGeoEnabled:       info.campaign.AcceptLangGeoEnabled,
-			JSONSerializationEnabled:   info.campaign.JSONSerializationEnabled,
-			AttestationEnabled:         info.campaign.AttestationEnabled,
-			AttestationMode:            string(info.campaign.AttestationMode),
-			AttestationTTLSec:          info.campaign.AttestationTTLSec,
-			DmrEnabled:                 info.campaign.DmrEnabled,
-			CIDRBlockEnabled:           info.campaign.CIDRBlockEnabled,
-			ProxyVPNBlockEnabled:       info.campaign.ProxyVPNBlockEnabled,
-			ModeratorIntelEnabled:      info.campaign.ModeratorIntelEnabled,
-			ReviewTrafficAction:        string(info.campaign.ReviewTrafficAction),
-			TLSFingerprintBlockEnabled: info.campaign.TLSFingerprintBlockEnabled,
-			SocialInAppEnabled:         info.campaign.SocialInAppEnabled,
-			ConnTypePolicy:             string(info.campaign.ConnTypePolicy),
-			LinkSigningEnabled:         info.campaign.LinkSigningEnabled,
-			LinkSigningTTLSec:          info.campaign.LinkSigningTTLSec,
-			ClickDelivery:              info.campaign.ClickDelivery,
-			ClickFilterTier:            info.campaign.ClickFilterTier,
-			ProxyUpstreamURL:           info.campaign.ProxyUpstreamURL,
-			ProxyRewriteAssets:         info.campaign.ProxyRewriteAssets,
-			RegistryStatus:             string(info.status),
+			ID:                          info.campaign.ID,
+			CustomerID:                  info.campaign.CustomerID,
+			BrandID:                     info.campaign.BrandID,
+			BrandFcapKey:                info.campaign.BrandFcapKey,
+			Name:                        info.campaign.Name,
+			BudgetLimit:                 info.campaign.BudgetLimit,
+			CurrentSpend:                info.campaign.CurrentSpend,
+			Status:                      info.campaign.Status,
+			PacingMode:                  info.campaign.PacingMode,
+			DailyBudget:                 info.campaign.DailyBudget,
+			DailyBudgetMicro:            info.campaign.DailyBudgetMicro,
+			Timezone:                    info.campaign.Timezone,
+			FreqLimit:                   info.campaign.FreqLimit,
+			FreqWindow:                  info.campaign.FreqWindow,
+			TargetCountries:             targetCountries,
+			SafePageURL:                 info.campaign.SafePageURL,
+			SafePageEnabled:             info.campaign.SafePageEnabled,
+			CanvasRetestEnabled:         info.campaign.CanvasRetestEnabled,
+			CgnatIPPolicyEnabled:        info.campaign.CgnatIPPolicyEnabled,
+			AcceptLangGeoEnabled:        info.campaign.AcceptLangGeoEnabled,
+			JSONSerializationEnabled:    info.campaign.JSONSerializationEnabled,
+			AttestationEnabled:          info.campaign.AttestationEnabled,
+			AttestationMode:             string(info.campaign.AttestationMode),
+			AttestationTTLSec:           info.campaign.AttestationTTLSec,
+			DmrEnabled:                  info.campaign.DmrEnabled,
+			CIDRBlockEnabled:            info.campaign.CIDRBlockEnabled,
+			ProxyVPNBlockEnabled:        info.campaign.ProxyVPNBlockEnabled,
+			ModeratorIntelEnabled:       info.campaign.ModeratorIntelEnabled,
+			ReviewTrafficAction:         string(info.campaign.ReviewTrafficAction),
+			TLSFingerprintBlockEnabled:  info.campaign.TLSFingerprintBlockEnabled,
+			SocialInAppEnabled:          info.campaign.SocialInAppEnabled,
+			ConnTypePolicy:              string(info.campaign.ConnTypePolicy),
+			LinkSigningEnabled:          info.campaign.LinkSigningEnabled,
+			LinkSigningTTLSec:           info.campaign.LinkSigningTTLSec,
+			ClickDelivery:               info.campaign.ClickDelivery,
+			ClickFilterTier:             info.campaign.ClickFilterTier,
+			ProxyUpstreamURL:            info.campaign.ProxyUpstreamURL,
+			ProxyRewriteAssets:          info.campaign.ProxyRewriteAssets,
+			ProxyTimeoutFallbackEnabled: info.campaign.ProxyTimeoutFallbackEnabled,
+			RegistryStatus:              string(info.status),
 		})
 	}
 
@@ -537,57 +539,58 @@ func (r *Registry) loadReplica() (*campaignMapSnapshot, error) {
 
 		m[dto.ID] = campaignInfo{
 			campaign: &domain.Campaign{
-				ID:                         dto.ID,
-				IDStr:                      idStr,
-				IDStrAny:                   idStr,
-				CustomerID:                 dto.CustomerID,
-				CustomerIDStr:              customerIDStr,
-				CustomerIDStrAny:           customerIDStr,
-				BrandID:                    dto.BrandID,
-				BrandFcapKey:               dto.BrandFcapKey,
-				Name:                       dto.Name,
-				BudgetLimit:                dto.BudgetLimit,
-				CurrentSpend:               dto.CurrentSpend,
-				Status:                     dto.Status,
-				PacingMode:                 dto.PacingMode,
-				DailyBudget:                dto.DailyBudget,
-				DailyBudgetMicro:           dto.DailyBudgetMicro,
-				DailyBudgetMicroAny:        dto.DailyBudgetMicro,
-				Timezone:                   dto.Timezone,
-				Location:                   loc,
-				FreqLimit:                  dto.FreqLimit,
-				FreqLimitAny:               dto.FreqLimit,
-				FreqWindow:                 dto.FreqWindow,
-				FreqWindowAny:              dto.FreqWindow,
-				TargetCountries:            countries,
-				BudgetCampaignKey:          budgetCampaignKey(dto.ID),
-				CampaignSyncKey:            campaignSyncKey(dto.ID),
-				CustomerSyncKey:            customerSyncKey(dto.ID, dto.CustomerID),
-				FcapKeyPrefix:              fcapPrefix,
-				DailySpendKeyPrefix:        dailySpendKeyPrefix(dto.ID),
-				SafePageURL:                dto.SafePageURL,
-				SafePageEnabled:            dto.SafePageEnabled,
-				CanvasRetestEnabled:        dto.CanvasRetestEnabled,
-				CgnatIPPolicyEnabled:       dto.CgnatIPPolicyEnabled,
-				AcceptLangGeoEnabled:       dto.AcceptLangGeoEnabled,
-				JSONSerializationEnabled:   dto.JSONSerializationEnabled,
-				AttestationEnabled:         dto.AttestationEnabled,
-				AttestationMode:            domain.ResolveAttestationMode(domain.ParseAttestationMode(dto.AttestationMode), dto.AttestationEnabled),
-				AttestationTTLSec:          dto.AttestationTTLSec,
-				DmrEnabled:                 dto.DmrEnabled,
-				CIDRBlockEnabled:           dto.CIDRBlockEnabled,
-				ProxyVPNBlockEnabled:       dto.ProxyVPNBlockEnabled,
-				ModeratorIntelEnabled:      dto.ModeratorIntelEnabled,
-				ReviewTrafficAction:        domain.ParseReviewTrafficAction(dto.ReviewTrafficAction),
-				TLSFingerprintBlockEnabled: dto.TLSFingerprintBlockEnabled,
-				SocialInAppEnabled:         dto.SocialInAppEnabled,
-				ConnTypePolicy:             domain.ConnTypePolicyFromString(dto.ConnTypePolicy),
-				LinkSigningEnabled:         dto.LinkSigningEnabled,
-				LinkSigningTTLSec:          dto.LinkSigningTTLSec,
-				ClickDelivery:              dto.ClickDelivery,
-				ClickFilterTier:            dto.ClickFilterTier,
-				ProxyUpstreamURL:           dto.ProxyUpstreamURL,
-				ProxyRewriteAssets:         dto.ProxyRewriteAssets,
+				ID:                          dto.ID,
+				IDStr:                       idStr,
+				IDStrAny:                    idStr,
+				CustomerID:                  dto.CustomerID,
+				CustomerIDStr:               customerIDStr,
+				CustomerIDStrAny:            customerIDStr,
+				BrandID:                     dto.BrandID,
+				BrandFcapKey:                dto.BrandFcapKey,
+				Name:                        dto.Name,
+				BudgetLimit:                 dto.BudgetLimit,
+				CurrentSpend:                dto.CurrentSpend,
+				Status:                      dto.Status,
+				PacingMode:                  dto.PacingMode,
+				DailyBudget:                 dto.DailyBudget,
+				DailyBudgetMicro:            dto.DailyBudgetMicro,
+				DailyBudgetMicroAny:         dto.DailyBudgetMicro,
+				Timezone:                    dto.Timezone,
+				Location:                    loc,
+				FreqLimit:                   dto.FreqLimit,
+				FreqLimitAny:                dto.FreqLimit,
+				FreqWindow:                  dto.FreqWindow,
+				FreqWindowAny:               dto.FreqWindow,
+				TargetCountries:             countries,
+				BudgetCampaignKey:           budgetCampaignKey(dto.ID),
+				CampaignSyncKey:             campaignSyncKey(dto.ID),
+				CustomerSyncKey:             customerSyncKey(dto.ID, dto.CustomerID),
+				FcapKeyPrefix:               fcapPrefix,
+				DailySpendKeyPrefix:         dailySpendKeyPrefix(dto.ID),
+				SafePageURL:                 dto.SafePageURL,
+				SafePageEnabled:             dto.SafePageEnabled,
+				CanvasRetestEnabled:         dto.CanvasRetestEnabled,
+				CgnatIPPolicyEnabled:        dto.CgnatIPPolicyEnabled,
+				AcceptLangGeoEnabled:        dto.AcceptLangGeoEnabled,
+				JSONSerializationEnabled:    dto.JSONSerializationEnabled,
+				AttestationEnabled:          dto.AttestationEnabled,
+				AttestationMode:             domain.ResolveAttestationMode(domain.ParseAttestationMode(dto.AttestationMode), dto.AttestationEnabled),
+				AttestationTTLSec:           dto.AttestationTTLSec,
+				DmrEnabled:                  dto.DmrEnabled,
+				CIDRBlockEnabled:            dto.CIDRBlockEnabled,
+				ProxyVPNBlockEnabled:        dto.ProxyVPNBlockEnabled,
+				ModeratorIntelEnabled:       dto.ModeratorIntelEnabled,
+				ReviewTrafficAction:         domain.ParseReviewTrafficAction(dto.ReviewTrafficAction),
+				TLSFingerprintBlockEnabled:  dto.TLSFingerprintBlockEnabled,
+				SocialInAppEnabled:          dto.SocialInAppEnabled,
+				ConnTypePolicy:              domain.ConnTypePolicyFromString(dto.ConnTypePolicy),
+				LinkSigningEnabled:          dto.LinkSigningEnabled,
+				LinkSigningTTLSec:           dto.LinkSigningTTLSec,
+				ClickDelivery:               dto.ClickDelivery,
+				ClickFilterTier:             dto.ClickFilterTier,
+				ProxyUpstreamURL:            dto.ProxyUpstreamURL,
+				ProxyRewriteAssets:          dto.ProxyRewriteAssets,
+				ProxyTimeoutFallbackEnabled: dto.ProxyTimeoutFallbackEnabled,
 			},
 			status: db.CampaignStatusType(dto.RegistryStatus),
 		}

@@ -361,6 +361,10 @@ var (
 		Name: "ad_click_proxy_stream_bytes_total",
 		Help: "Bytes streamed from upstream to client on /click proxy path",
 	})
+	ClickProxyFallbackTotal = promauto.NewCounter(prometheus.CounterOpts{
+		Name: "ad_event_processor_click_proxy_fallback_total",
+		Help: "GET /click proxy upstream timeouts that fell back to 302 landing redirect",
+	})
 
 	DBWriteDuration = promauto.NewHistogramVec(prometheus.HistogramOpts{
 		Name:    "ad_db_write_duration_seconds",

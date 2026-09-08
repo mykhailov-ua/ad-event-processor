@@ -292,6 +292,7 @@ func loadIngestModules(cfg *Config, appEnv string) error {
 	}
 
 	cfg.ProxyAllowHTTPInsecure = getEnvBool("PROXY_ALLOW_HTTP_INSECURE", false)
+	cfg.ClickProxyTimeoutMs = getEnvInt("CLICK_PROXY_TIMEOUT_MS", 300)
 
 	cfg.SlotMapReloadTopic = os.Getenv("SLOT_MAP_RELOAD_TOPIC")
 	if cfg.SlotMapReloadTopic == "" {

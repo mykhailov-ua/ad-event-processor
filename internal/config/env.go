@@ -448,6 +448,7 @@ type Config struct {
 	FlowReloadChannel                   string
 	LanderPreviewSecret                 string
 	ProxyAllowHTTPInsecure              bool
+	ClickProxyTimeoutMs                 int
 	SlotMigrationLagThreshold           int64
 	ElasticShardingEnabled              bool
 	ShardOrchestratorEnabled            bool
