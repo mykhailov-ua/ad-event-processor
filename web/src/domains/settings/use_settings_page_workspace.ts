@@ -8,35 +8,62 @@ import {
   getPlatformSettings,
   patchPlatformSettings,
 } from '@/api/settings_api';
+import type { PlatformBootstrapRequest, PlatformSettingsPatch, PlatformSettingsView } from '@/api/types';
+import type { SettingsBootstrapDraft } from '@/domains/settings/settings_bootstrap_form';
 import { useCoalescedBumpRefresh, useRefreshToken } from '@/hooks/use_coalesced_refresh_token';
 import { useResource } from '@/api/use_resource';
 import { confirmDestructiveAction, mutationError } from '@/lib/mutation_audit';
 
-function readBootstrapComplete(payload: Record<string, unknown> | undefined): boolean {
-  const value = payload?.bootstrap_complete;
-  return value === true || value === 'true';
+function readBootstrapComplete(payload: PlatformSettingsView | undefined): boolean {
+  return payload?.bootstrap_complete === true;
 }
 
-function readRestartRequired(payload: Record<string, unknown> | undefined): boolean {
+function readRestartRequired(payload: PlatformSettingsView | undefined): boolean {
   if (!payload) {
     return false;
   }
   const value = payload.restart_required;
-  if (value === true || value === 'true') {
-    return true;
-  }
   if (Array.isArray(value)) {
     return value.length > 0;
   }
   return false;
 }
 
+function buildBootstrapBody(draft: SettingsBootstrapDraft): PlatformBootstrapRequest {
+  const body: PlatformBootstrapRequest = {
+    admin_email: draft.admin_email,
+    admin_password: draft.admin_password,
+    config: {
+      tracking_domain: draft.tracking_domain,
+      default_currency: draft.default_currency,
+      timezone: draft.timezone,
+      ingress_schema: draft.ingress_schema as PlatformBootstrapRequest['config']['ingress_schema'],
+      telemetry_enabled: draft.telemetry_enabled,
+      edge_xdp: draft.edge_xdp,
+      edge_expose_click: draft.edge_expose_click,
+      edge_expose_openrtb: draft.edge_expose_openrtb,
+      network_interface: draft.network_interface,
+    },
+  };
+  if (draft.license_key) {
+    body.license_key = draft.license_key;
+  }
+  if (draft.license_server) {
+    body.license_server = draft.license_server;
+  }
+  if (draft.deployment_id) {
+    body.deployment_id = draft.deployment_id;
+  }
+  if (draft.eula_version) {
+    body.eula_version = draft.eula_version;
+  }
+  return body;
+}
+
 export function useSettingsPageWorkspace() {
   const { refreshToken, bumpRefresh } = useRefreshToken();
-  const [draftPatchJson, setDraftPatchJson] = useState('');
   const [draftInstallRoot, setDraftInstallRoot] = useState('');
   const [draftInstallToken, setDraftInstallToken] = useState('');
-  const [draftBootstrapJson, setDraftBootstrapJson] = useState('');
   const [patching, setPatching] = useState(false);
   const [applying, setApplying] = useState(false);
   const [bootstrapping, setBootstrapping] = useState(false);
@@ -53,43 +80,13 @@ export function useSettingsPageWorkspace() {
     [refreshToken]
   );
 
-  const payload = data as Record<string, unknown> | undefined;
+  const payload = data as PlatformSettingsView | undefined;
 
   const settingsBusy = fetching || patching || applying || bootstrapping;
   const bumpRefreshCoalesced = useCoalescedBumpRefresh(bumpRefresh, settingsBusy);
 
-  const onApplyPatch = useCallback(async () => {
-    if (patching) {
-      return;
-    }
-    const trimmed = draftPatchJson.trim();
-    if (!trimmed) {
-      return;
-    }
-    setPatching(true);
-    setPatchError(undefined);
-    setPatchSuccess(false);
-    try {
-      const parsed: unknown = JSON.parse(trimmed);
-      if (parsed == null || typeof parsed !== 'object' || Array.isArray(parsed)) {
-        throw new Error('Patch must be a JSON object');
-      }
-      await patchPlatformSettings(parsed as Record<string, unknown>);
-      setPatchSuccess(true);
-      toast.success('Platform settings updated');
-      setDraftPatchJson('');
-      bumpRefreshCoalesced();
-    } catch (err: unknown) {
-      const nextError = err instanceof Error ? err : new Error(String(err));
-      setPatchError(nextError);
-      toast.error(nextError.message);
-    } finally {
-      setPatching(false);
-    }
-  }, [draftPatchJson, bumpRefreshCoalesced, patching]);
-
   const onPatchPlatform = useCallback(
-    async (patch: Record<string, unknown>) => {
+    async (patch: PlatformSettingsPatch) => {
       if (patching) {
         return;
       }
@@ -138,47 +135,42 @@ export function useSettingsPageWorkspace() {
     }
   }, [applying, draftInstallRoot]);
 
-  const onRunBootstrap = useCallback(async () => {
-    if (bootstrapping) {
-      return;
-    }
-    const token = draftInstallToken.trim();
-    const trimmed = draftBootstrapJson.trim();
-    if (!token || !trimmed) {
-      return;
-    }
-    if (!confirmDestructiveAction('Run initial platform bootstrap with the provided install token?')) {
-      return;
-    }
-    setBootstrapping(true);
-    setBootstrapError(undefined);
-    setBootstrapSuccess(false);
-    try {
-      const parsed: unknown = JSON.parse(trimmed);
-      if (parsed == null || typeof parsed !== 'object' || Array.isArray(parsed)) {
-        throw new Error('Bootstrap body must be a JSON object');
+  const onRunBootstrap = useCallback(
+    async (draft: SettingsBootstrapDraft) => {
+      if (bootstrapping) {
+        return;
       }
-      await bootstrapPlatformSettings(token, parsed as Record<string, unknown>);
-      setBootstrapSuccess(true);
-      toast.success('Initial setup complete');
-      setDraftInstallToken('');
-      setDraftBootstrapJson('');
-      bumpRefreshCoalesced();
-    } catch (err: unknown) {
-      const nextError = mutationError(err);
-      setBootstrapError(nextError);
-      toast.error(nextError.message);
-    } finally {
-      setBootstrapping(false);
-    }
-  }, [bootstrapping, draftInstallToken, draftBootstrapJson, bumpRefreshCoalesced]);
+      const token = draftInstallToken.trim();
+      if (!token) {
+        return;
+      }
+      if (!confirmDestructiveAction('Run initial platform bootstrap with the provided install token?')) {
+        return;
+      }
+      setBootstrapping(true);
+      setBootstrapError(undefined);
+      setBootstrapSuccess(false);
+      try {
+        await bootstrapPlatformSettings(token, buildBootstrapBody(draft));
+        setBootstrapSuccess(true);
+        toast.success('Initial setup complete');
+        setDraftInstallToken('');
+        bumpRefreshCoalesced();
+      } catch (err: unknown) {
+        const nextError = mutationError(err);
+        setBootstrapError(nextError);
+        toast.error(nextError.message);
+      } finally {
+        setBootstrapping(false);
+      }
+    },
+    [bootstrapping, bumpRefreshCoalesced, draftInstallToken]
+  );
 
   return {
     payload,
-    draftPatchJson,
     draftInstallRoot,
     draftInstallToken,
-    draftBootstrapJson,
     fetching,
     patching,
     applying,
@@ -194,11 +186,8 @@ export function useSettingsPageWorkspace() {
     hasSnapshot: data != null,
     restartRequired: readRestartRequired(payload),
     showBootstrap: !readBootstrapComplete(payload),
-    onDraftPatchJsonChange: setDraftPatchJson,
     onDraftInstallRootChange: setDraftInstallRoot,
     onDraftInstallTokenChange: setDraftInstallToken,
-    onDraftBootstrapJsonChange: setDraftBootstrapJson,
-    onApplyPatch,
     onPatchPlatform,
     onApplyToDisk,
     onRunBootstrap,

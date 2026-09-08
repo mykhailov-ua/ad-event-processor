@@ -82,6 +82,7 @@ type campaignReplicaDTO struct {
 	ProxyRewriteAssets           bool   `json:"proxy_rewrite_assets"`
 	ProxyTimeoutFallbackEnabled  bool   `json:"proxy_timeout_fallback_enabled"`
 	MobileBiometricsClickEnabled bool   `json:"mobile_biometrics_click_enabled"`
+	DecoyLanderID                string `json:"decoy_lander_id,omitempty"`
 	RegistryStatus               string `json:"registry_status"`
 }
 
@@ -464,6 +465,7 @@ func (r *Registry) saveReplica(m map[uuid.UUID]campaignInfo) error {
 			ProxyRewriteAssets:           info.campaign.ProxyRewriteAssets,
 			ProxyTimeoutFallbackEnabled:  info.campaign.ProxyTimeoutFallbackEnabled,
 			MobileBiometricsClickEnabled: info.campaign.MobileBiometricsClickEnabled,
+			DecoyLanderID:                decoyLanderIDString(info.campaign.DecoyLanderID),
 			RegistryStatus:               string(info.status),
 		})
 	}
@@ -594,6 +596,7 @@ func (r *Registry) loadReplica() (*campaignMapSnapshot, error) {
 				ProxyRewriteAssets:           dto.ProxyRewriteAssets,
 				ProxyTimeoutFallbackEnabled:  dto.ProxyTimeoutFallbackEnabled,
 				MobileBiometricsClickEnabled: dto.MobileBiometricsClickEnabled,
+				DecoyLanderID:                parseDecoyLanderID(dto.DecoyLanderID),
 			},
 			status: db.CampaignStatusType(dto.RegistryStatus),
 		}
@@ -800,4 +803,23 @@ func (r *Registry) GetLicenseState() (licensing.LicenseState, licensing.Entitlem
 		return licensing.StateExpired, licensing.Entitlements{}
 	}
 	return snap.licenseState, snap.license
+}
+
+func decoyLanderIDString(id uuid.UUID) string {
+	if id == uuid.Nil {
+		return ""
+	}
+	return id.String()
+}
+
+func parseDecoyLanderID(raw string) uuid.UUID {
+	raw = strings.TrimSpace(raw)
+	if raw == "" {
+		return uuid.Nil
+	}
+	id, err := uuid.Parse(raw)
+	if err != nil {
+		return uuid.Nil
+	}
+	return id
 }

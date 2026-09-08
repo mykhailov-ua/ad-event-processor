@@ -302,6 +302,7 @@ type CampaignExportCampaign struct {
 	TargetURL                    string                `json:"target_url,omitempty"`
 	SafePageURL                  string                `json:"safe_page_url,omitempty"`
 	SafePageEnabled              bool                  `json:"safe_page_enabled,omitempty"`
+	DecoyLanderID                string                `json:"decoy_lander_id,omitempty"`
 	AttestationEnabled           bool                  `json:"attestation_enabled,omitempty"`
 	AttestationMode              string                `json:"attestation_mode,omitempty"`
 	AttestationTTLSec            int32                 `json:"attestation_ttl_sec,omitempty"`

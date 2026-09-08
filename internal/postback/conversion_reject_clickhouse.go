@@ -12,10 +12,11 @@ import (
 const conversionRejectClickHouseTimeout = 15 * time.Second
 
 type clickSnapshot struct {
-	clickID    string
-	campaignID uuid.UUID
-	createdAt  time.Time
-	country    string
+	clickID      string
+	campaignID   uuid.UUID
+	createdAt    time.Time
+	country      string
+	reviewRouted bool
 }
 
 type conversionGoalKey struct {
@@ -48,7 +49,7 @@ func (s *clickhouseConversionClickStore) LoadClicks(ctx context.Context, clickID
 	defer cancel()
 
 	rows, err := s.clickhouseQuery.Query(clickhouseCtx, `
-SELECT click_id, campaign_id, created_at, country
+SELECT click_id, campaign_id, created_at, country, review_routed_event
 FROM clicks
 WHERE click_id IN (?)
 `, clickIDs)
@@ -61,10 +62,12 @@ WHERE click_id IN (?)
 	for rows.Next() {
 		var snap clickSnapshot
 		var country string
-		if err := rows.Scan(&snap.clickID, &snap.campaignID, &snap.createdAt, &country); err != nil {
+		var reviewRouted uint8
+		if err := rows.Scan(&snap.clickID, &snap.campaignID, &snap.createdAt, &country, &reviewRouted); err != nil {
 			return nil, err
 		}
 		snap.country = normalizeCountryCode(country)
+		snap.reviewRouted = reviewRouted != 0
 		out[snap.clickID] = snap
 	}
 	return out, rows.Err()

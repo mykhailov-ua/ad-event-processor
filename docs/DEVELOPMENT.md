@@ -326,6 +326,25 @@ Corrupt or unsigned refresh retains the last good snapshot (fail-open on first b
 
 Campaign `review_traffic_action` (`safe_page`, `block`, `passthrough`) applies when TLS/CIDR/proxy-VPN/moderator intel signals match on `/click`.
 
+### Safe-page dual-egress parity drill
+
+Detects sandbox vs production zone leaks by fetching the same `/click` URL from datacenter egress and residential proxy egress. Fails when status, final URL, body SHA256, script count, or redirect depth diverge beyond policy.
+
+```bash
+# Holdout (no live tracker): comparison logic + fault_proof line
+bash scripts/test/edge/safe_page_parity_drill.sh --holdout
+
+# Live drill (operator)
+export SAFE_PAGE_PARITY_URL='https://trk.example/click?campaign_id=<uuid>&type=click&gclid=drill1'
+export SAFE_PAGE_PARITY_RES_PROXY='http://user:pass@residential-proxy:port'   # optional
+export SAFE_PAGE_PARITY_MAX_DIFF=0
+bash scripts/test/edge/safe_page_parity_drill.sh
+```
+
+Artifacts: `var/ci/safe_page_parity/` (`summary.csv`, per-leg bodies, `fault_proof.txt`). Optional CH follow-up: `scripts/test/edge/safe_page_parity_review_routed.sql`.
+
+Compliance tier holdout: `SAFE_PAGE_PARITY_HOLDOUT=1 bash scripts/ci/compliance.sh`.
+
 ---
 
 ## Coding Standards & Layout Rules
@@ -386,6 +405,7 @@ These scripts can be executed on-demand to test integrations, performance bounda
 | `scripts/ops/admin_release_preflight_gate.sh` | Compiles the Admin UI, checks integration endpoints, and validates CAPI sync. |
 | `scripts/test/cpa_compliance_smoke.sh` | Verifies campaign spend auditing and accounting rules against the Playwright suite. |
 | `scripts/test/edge/reverse_proxy_close_smoke.sh` | Validates click routing, Safe Page redirection, and interactive attestation handshakes. |
+| `scripts/test/edge/safe_page_parity_drill.sh` | Dual-egress safe-page parity drill; `--holdout` for CI without residential proxy. |
 | `scripts/test/edge/lua_tests.sh unit` | Unit corpus: blacklist, circuit breaker, edge_config, slot_map, node_weights, tarpit, TLS. |
 | `scripts/test/edge/lua_tests.sh compliance` | Subset for CI compliance tier (includes sync-order tests). |
 | `scripts/test/edge/lua_tests.sh all` | Full unit corpus plus optional live tarpit smoke when edge reachable. |

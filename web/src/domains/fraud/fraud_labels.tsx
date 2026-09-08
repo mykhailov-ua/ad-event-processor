@@ -1,6 +1,6 @@
 import { Link } from 'react-router-dom';
 
-import { FilterApplyButton, PrimaryActionButton } from '@/shell/action_buttons';
+import { FilterApplyButton, PrimaryActionButton, SecondaryActionButton } from '@/shell/action_buttons';
 import { PageLayout } from '@/shell/page_layout';
 import { EmptyState } from '@/shell/empty_state';
 import { ErrorBlock } from '@/shell/error_block';
@@ -30,8 +30,8 @@ import {
   SelectTrigger,
   SelectValue,
 } from '@/components/ui/select';
-import { Textarea } from '@/components/ui/textarea';
 import type { MLManualLabel } from '@/api/types';
+import type { FraudLabelBulkDraftRow } from '@/domains/fraud/use_fraud_labels_page_workspace';
 import { displayTimestamp } from '@/lib/display';
 
 export type FraudLabelsProps = {
@@ -50,13 +50,19 @@ export type FraudLabelsProps = {
   error: Error | undefined;
   saveError: Error | undefined;
   saveSuccess: boolean;
-  draftBulkJson: string;
+  bulkRows: FraudLabelBulkDraftRow[];
   bulkSaving: boolean;
   bulkError: Error | undefined;
   bulkSuccess: boolean;
   bulkUpserted?: number;
+  bulkMaxRows: number;
   hasSnapshot: boolean;
-  onDraftBulkJsonChange: (value: string) => void;
+  onAddBulkRow: () => void;
+  onRemoveBulkRow: (rowId: string) => void;
+  onBulkRowChange: (
+    rowId: string,
+    patch: Partial<Pick<FraudLabelBulkDraftRow, 'ip_hash' | 'label' | 'reason'>>
+  ) => void;
   onBulkUpsert: () => void;
   onDraftCustomerIdChange: (value: string) => void;
   onDraftIpHashChange: (value: string) => void;
@@ -83,13 +89,16 @@ export function FraudLabels({
   error,
   saveError,
   saveSuccess,
-  draftBulkJson,
+  bulkRows,
   bulkSaving,
   bulkError,
   bulkSuccess,
   bulkUpserted,
+  bulkMaxRows,
   hasSnapshot,
-  onDraftBulkJsonChange,
+  onAddBulkRow,
+  onRemoveBulkRow,
+  onBulkRowChange,
   onBulkUpsert,
   onDraftCustomerIdChange,
   onDraftIpHashChange,
@@ -185,25 +194,83 @@ export function FraudLabels({
           {saveSuccess ? (
             <p className="text-sm text-muted-foreground">Label saved. List refreshed.</p>
           ) : null}
-          <FilterPanel className="w-full max-w-2xl gap-2">
+          <FilterPanel className="w-full gap-2">
             <p className="m-0 text-sm font-medium text-foreground">Bulk upsert</p>
             <p className="m-0 text-sm text-muted-foreground">
-              Paste JSON: {'{ "rows": [ { "ip_hash": "...", "label": 1, "reason": "..." } ] }'}
+              Add up to {bulkMaxRows} rows. Each IP hash must be 32 hex characters.
             </p>
-            <Textarea
-              id="labels-bulk-json"
-              rows={6}
-              value={draftBulkJson}
-              onChange={(event) => onDraftBulkJsonChange(event.target.value)}
-            />
-            <PrimaryActionButton
-              disabled={!customerId || !draftBulkJson.trim()}
-              loading={bulkSaving}
-              onClick={onBulkUpsert}
-              type="button"
-            >
-              Bulk upsert
-            </PrimaryActionButton>
+            <DirectoryTable horizontalScroll>
+              <TableHeader>
+                <TableRow>
+                  <DirectoryTableHead>IP hash</DirectoryTableHead>
+                  <DirectoryTableHead>Label</DirectoryTableHead>
+                  <DirectoryTableHead>Reason</DirectoryTableHead>
+                  <DirectoryTableHead className="w-24" />
+                </TableRow>
+              </TableHeader>
+              <TableBody>
+                {bulkRows.map((row) => (
+                  <TableRow key={row.id}>
+                    <TableCell>
+                      <Input
+                        className="font-mono text-xs"
+                        value={row.ip_hash}
+                        onChange={(event) =>
+                          onBulkRowChange(row.id, { ip_hash: event.target.value })
+                        }
+                      />
+                    </TableCell>
+                    <TableCell>
+                      <Select
+                        value={row.label}
+                        onValueChange={(value) => onBulkRowChange(row.id, { label: value })}
+                      >
+                        <SelectTrigger className="w-full">
+                          <SelectValue />
+                        </SelectTrigger>
+                        <SelectContent>
+                          <SelectItem value="0">0 (legitimate)</SelectItem>
+                          <SelectItem value="1">1 (fraud)</SelectItem>
+                        </SelectContent>
+                      </Select>
+                    </TableCell>
+                    <TableCell>
+                      <Input
+                        value={row.reason}
+                        onChange={(event) =>
+                          onBulkRowChange(row.id, { reason: event.target.value })
+                        }
+                      />
+                    </TableCell>
+                    <TableCell>
+                      <SecondaryActionButton
+                        onClick={() => onRemoveBulkRow(row.id)}
+                        type="button"
+                      >
+                        Remove
+                      </SecondaryActionButton>
+                    </TableCell>
+                  </TableRow>
+                ))}
+              </TableBody>
+            </DirectoryTable>
+            <div className="flex flex-wrap gap-2">
+              <SecondaryActionButton
+                disabled={bulkRows.length >= bulkMaxRows}
+                onClick={onAddBulkRow}
+                type="button"
+              >
+                Add row
+              </SecondaryActionButton>
+              <PrimaryActionButton
+                disabled={!customerId || bulkRows.every((row) => !row.ip_hash.trim())}
+                loading={bulkSaving}
+                onClick={onBulkUpsert}
+                type="button"
+              >
+                Bulk upsert
+              </PrimaryActionButton>
+            </div>
             {bulkError ? <ErrorBlock title="Bulk upsert failed" message={bulkError.message} /> : null}
             {bulkSuccess ? (
               <p className="m-0 text-sm text-muted-foreground" role="status">

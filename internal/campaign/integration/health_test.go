@@ -49,3 +49,43 @@ func TestBuildCampaignIntegrationHealth_missingJoinKeysFail(t *testing.T) {
 	})
 	assert.Equal(t, "fail", out.Summary)
 }
+
+func TestBuildCampaignIntegrationHealth_capiWithoutLanderSnippetWarns(t *testing.T) {
+	campaignID := uuid.New()
+	out := BuildCampaignIntegrationHealth(IntegrationHealthInput{
+		CampaignID:         campaignID,
+		TargetURL:          "https://external-offer.example/path",
+		PostbackConfigured: true,
+		PostbackProvider:   "facebook",
+	})
+	require.Equal(t, "warn", out.Summary)
+	var dedupRow *campaign.IntegrationHealthRow
+	for i := range out.Rows {
+		if out.Rows[i].Slug == "browser_pixel_capi_dedup" {
+			dedupRow = &out.Rows[i]
+			break
+		}
+	}
+	require.NotNil(t, dedupRow)
+	assert.Equal(t, "warn", dedupRow.Status)
+	assert.Contains(t, dedupRow.Message, "conversionEventId")
+}
+
+func TestBuildCampaignIntegrationHealth_capiHostedLanderOk(t *testing.T) {
+	campaignID := uuid.New()
+	out := BuildCampaignIntegrationHealth(IntegrationHealthInput{
+		CampaignID:         campaignID,
+		TargetURL:          "https://track.example/lp/550e8400-e29b-41d4-a716-446655440000/",
+		PostbackConfigured: true,
+		PostbackProvider:   "google",
+	})
+	var dedupRow *campaign.IntegrationHealthRow
+	for i := range out.Rows {
+		if out.Rows[i].Slug == "browser_pixel_capi_dedup" {
+			dedupRow = &out.Rows[i]
+			break
+		}
+	}
+	require.NotNil(t, dedupRow)
+	assert.Equal(t, "ok", dedupRow.Status)
+}

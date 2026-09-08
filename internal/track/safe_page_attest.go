@@ -33,7 +33,17 @@ const (
 	safePageAttestTouchPressureMissing = "touch_pressure_missing"
 )
 
-var safePageStubHTMLHead = []byte("<!DOCTYPE html><html lang=\"en\"><head><meta charset=\"utf-8\"><meta name=\"viewport\" content=\"width=device-width,initial-scale=1\"><title>Loading</title></head><body><main><iframe src=\"")
+func BuildSafePageMoneyHTML(landing []byte) ([]byte, bool) {
+	urlBytes, ok := safePageURLAttrBytes(filter.UnsafeString(landing))
+	if !ok {
+		return nil, false
+	}
+	body := make([]byte, 0, len(SafePageDecoyHTMLHead)+len(urlBytes)+len(SafePageDecoyHTMLMid))
+	body = append(body, SafePageDecoyHTMLHead...)
+	body = append(body, urlBytes...)
+	body = append(body, SafePageDecoyHTMLMid...)
+	return body, true
+}
 
 func EvaluateSafePageAttestation(in SafePageAttestationInput) (fail bool, code string) {
 	if code := checkWebRTCLeak(in.RemoteIP, in.Fingerprint); code != "" {
@@ -634,20 +644,6 @@ func ValidSafePageFingerprint(fp SafePageVerifyFingerprint) bool {
 	}
 	return true
 }
-
-func BuildSafePageMoneyHTML(landing []byte) ([]byte, bool) {
-	urlBytes, ok := safePageURLAttrBytes(filter.UnsafeString(landing))
-	if !ok {
-		return nil, false
-	}
-	body := make([]byte, 0, len(safePageStubHTMLHead)+len(urlBytes)+len(safePageMoneyHTMLSuffix))
-	body = append(body, safePageStubHTMLHead...)
-	body = append(body, urlBytes...)
-	body = append(body, safePageMoneyHTMLSuffix...)
-	return body, true
-}
-
-var safePageMoneyHTMLSuffix = []byte("\" title=\"content\" style=\"border:0;width:100%;height:100vh\"></iframe></main></body></html>")
 
 var (
 	JSONHTTPPrefix = []byte("HTTP/1.1 200 OK\r\nContent-Type: application/json; charset=utf-8\r\nConnection: keep-alive\r\nContent-Length: ")

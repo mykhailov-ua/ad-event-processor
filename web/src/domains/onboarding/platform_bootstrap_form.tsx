@@ -2,6 +2,7 @@ import { useCallback, useState } from 'react';
 import { toast } from 'sonner';
 
 import { bootstrapPlatformSettings } from '@/api/settings_api';
+import type { PlatformBootstrapRequest } from '@/api/types';
 import { PrimaryActionButton } from '@/shell/action_buttons';
 import { ErrorBlock } from '@/shell/error_block';
 import { Input } from '@/components/ui/input';
@@ -42,7 +43,7 @@ export function PlatformBootstrapForm({ onComplete }: PlatformBootstrapFormProps
       if (parsed == null || typeof parsed !== 'object' || Array.isArray(parsed)) {
         throw new Error('Setup configuration must be a JSON object');
       }
-      await bootstrapPlatformSettings(token, parsed as Record<string, unknown>);
+      await bootstrapPlatformSettings(token, parsed as PlatformBootstrapRequest);
       setSuccess(true);
       toast.success('Platform setup complete');
       setInstallToken('');

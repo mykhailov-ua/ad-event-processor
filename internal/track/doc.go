@@ -28,5 +28,6 @@
 //	go test ./internal/track/ -short -run TestTrackPixelContract -count=1
 //	node web/scripts/build_track_pixel.mjs --check
 //	go test ./internal/track/ -short -run TestEnrichAnalyticsPayload_holdout -count=1
+//	go test ./internal/track/ -short -run TestDecoyTemplate_holdout_hostedSHA256NotStatic -count=1
 //	go test ./internal/ingest/ -short -run TestProcessTrack_fraud -count=1
 package track

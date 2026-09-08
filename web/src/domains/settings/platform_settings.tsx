@@ -8,10 +8,10 @@ import { PageSectionStack } from '@/shell/page_layout';
 import { PageSkeleton } from '@/shell/page_skeleton';
 import { Badge } from '@/components/ui/badge';
 import { Input } from '@/components/ui/input';
-import { Textarea } from '@/components/ui/textarea';
-import { COLD_PATH_MAX_BODY_CHARS } from '@/lib/body_limits';
 import { settingsFieldLabel } from '@/lib/settings_labels';
 import { SettingsBentoGrid } from '@/domains/settings/settings_bento_grid';
+import { SettingsBootstrapForm, type SettingsBootstrapDraft } from '@/domains/settings/settings_bootstrap_form';
+import { SettingsPatchForm } from '@/domains/settings/settings_patch_form';
 import { SettingsCard } from '@/domains/settings/settings_card';
 import {
   formatJsonPayloadSize,
@@ -24,10 +24,8 @@ import { parsePlatformSettingsSnapshot } from '@/domains/settings/settings_snaps
 
 export type PlatformSettingsProps = {
   payload: Record<string, unknown> | undefined;
-  draftPatchJson: string;
   draftInstallRoot: string;
   draftInstallToken: string;
-  draftBootstrapJson: string;
   fetching: boolean;
   patching: boolean;
   applying: boolean;
@@ -43,22 +41,17 @@ export type PlatformSettingsProps = {
   hasSnapshot: boolean;
   restartRequired: boolean;
   showBootstrap: boolean;
-  onDraftPatchJsonChange: (value: string) => void;
   onDraftInstallRootChange: (value: string) => void;
   onDraftInstallTokenChange: (value: string) => void;
-  onDraftBootstrapJsonChange: (value: string) => void;
-  onApplyPatch: () => void;
   onPatchPlatform: (patch: Record<string, unknown>) => void;
   onApplyToDisk: () => void;
-  onRunBootstrap: () => void;
+  onRunBootstrap: (draft: SettingsBootstrapDraft) => void;
 };
 
 export function PlatformSettings({
   payload,
-  draftPatchJson,
   draftInstallRoot,
   draftInstallToken,
-  draftBootstrapJson,
   fetching,
   patching,
   applying,
@@ -74,11 +67,8 @@ export function PlatformSettings({
   hasSnapshot,
   restartRequired,
   showBootstrap,
-  onDraftPatchJsonChange,
   onDraftInstallRootChange,
   onDraftInstallTokenChange,
-  onDraftBootstrapJsonChange,
-  onApplyPatch,
   onPatchPlatform,
   onApplyToDisk,
   onRunBootstrap,
@@ -87,7 +77,6 @@ export function PlatformSettings({
     () => (payload ? parsePlatformSettingsSnapshot(payload) : undefined),
     [payload]
   );
-  const patchDraftReady = draftPatchJson.trim().length > 0;
 
   if (fetching && !hasSnapshot && !error) {
     return <PageSkeleton variant="directory" columns={4} />;
@@ -120,57 +109,14 @@ export function PlatformSettings({
       <PageSectionStack className="min-h-0 flex-1 auto-rows-max">
         {showBootstrap ? (
           <SettingsCard title="Initial setup">
-            <SettingsFormStack
-              onSubmit={(event) => {
-                event.preventDefault();
-                void onRunBootstrap();
-              }}
-            >
-              <p className={settingsHintClass}>
-                Create the platform configuration on first run using the setup token from your
-                deployment bundle.
-              </p>
-              <FilterField htmlFor="settings-install-token" label="Setup token">
-                <Input
-                  id="settings-install-token"
-                  type="password"
-                  autoComplete="off"
-                  value={draftInstallToken}
-                  onChange={(event) => onDraftInstallTokenChange(event.target.value)}
-                />
-              </FilterField>
-              <FilterField htmlFor="settings-bootstrap-json" label="Setup configuration">
-                <Textarea
-                  id="settings-bootstrap-json"
-                  className="min-h-[10rem] font-mono text-xs"
-                  value={draftBootstrapJson}
-                  maxLength={COLD_PATH_MAX_BODY_CHARS}
-                  onChange={(event) => onDraftBootstrapJsonChange(event.target.value)}
-                  placeholder={
-                    '{\n  "admin_email": "ops@example.com",\n  "admin_password": "change-me",\n  "config": {\n    "tracking_domain": "track.example.com"\n  }\n}'
-                  }
-                />
-              </FilterField>
-              <SettingsFormActions>
-                <PrimaryActionButton
-                  disabled={
-                    bootstrapping || !draftInstallToken.trim() || !draftBootstrapJson.trim()
-                  }
-                  loading={bootstrapping}
-                  type="submit"
-                >
-                  {bootstrapping ? 'Setting up...' : 'Complete setup'}
-                </PrimaryActionButton>
-                {bootstrapSuccess ? (
-                  <p className={settingsHintClass} role="status">
-                    Initial setup completed.
-                  </p>
-                ) : null}
-              </SettingsFormActions>
-              {bootstrapError ? (
-                <ErrorBlock title="Setup failed" message={bootstrapError.message} />
-              ) : null}
-            </SettingsFormStack>
+            <SettingsBootstrapForm
+              bootstrapping={bootstrapping}
+              bootstrapError={bootstrapError}
+              bootstrapSuccess={bootstrapSuccess}
+              draftInstallToken={draftInstallToken}
+              onDraftInstallTokenChange={onDraftInstallTokenChange}
+              onRunBootstrap={onRunBootstrap}
+            />
           </SettingsCard>
         ) : null}
 
@@ -217,53 +163,16 @@ export function PlatformSettings({
           </>
         ) : null}
 
-        <SettingsCollapsibleSection badge="Patch JSON" defaultOpen title="Update configuration">
-          <SettingsFormStack
-            onSubmit={(event) => {
-              event.preventDefault();
-              if (patchDraftReady && !patching) {
-                void onApplyPatch();
-              }
-            }}
-          >
-            <p className={settingsHintClass}>
-              Apply partial updates to the active platform configuration. Changes take effect in
-              memory; use save to disk when you need a persistent install bundle.
-            </p>
-            <FilterField htmlFor="settings-patch-json" label="Configuration changes">
-              <Textarea
-                id="settings-patch-json"
-                className="min-h-[8rem] font-mono text-xs"
-                value={draftPatchJson}
-                maxLength={COLD_PATH_MAX_BODY_CHARS}
-                onChange={(event) => onDraftPatchJsonChange(event.target.value)}
-                placeholder="{}"
-              />
-            </FilterField>
-            {!patchDraftReady ? (
-              <p className={settingsHintClass}>
-                Example:{' '}
-                <code className="font-mono text-foreground">{`{"tracking_domain":"track.example.com"}`}</code>
-              </p>
-            ) : null}
-            <SettingsFormActions>
-              <PrimaryActionButton
-                disabled={patching || !patchDraftReady}
-                loading={patching}
-                type="submit"
-              >
-                {patching ? 'Applying...' : 'Apply changes'}
-              </PrimaryActionButton>
-              {patchSuccess ? (
-                <p className={settingsHintClass} role="status">
-                  Configuration updated.
-                </p>
-              ) : null}
-            </SettingsFormActions>
-            {patchError ? (
-              <ErrorBlock title="Could not apply changes" message={patchError.message} />
-            ) : null}
-          </SettingsFormStack>
+        <SettingsCollapsibleSection badge="Form" defaultOpen title="Update configuration">
+          {snapshot ? (
+            <SettingsPatchForm
+              onPatchPlatform={onPatchPlatform}
+              patchError={patchError}
+              patchSuccess={patchSuccess}
+              patching={patching}
+              snapshot={snapshot}
+            />
+          ) : null}
         </SettingsCollapsibleSection>
 
         <SettingsCollapsibleSection badge="Disk" title="Save configuration to disk">

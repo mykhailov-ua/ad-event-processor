@@ -212,6 +212,16 @@ Tracker lander pixel (required for browser conversions) and ad-network browser t
 
 `event_id` is generated in the browser (`crypto.randomUUID()`). Outbound Meta/TikTok CAPI and Google offline conversions can reuse it for browser/server dedup when both paths fire; verify in Events Manager (Meta `test_event_code`) or Google/TikTok debug tools before relying on reporting.
 
+#### Shared `conversionEventId` contract
+
+| Surface | Field | Rule |
+| :--- | :--- | :--- |
+| Tracker lander snippet | `conversionEventId` (JS) | One UUID per conversion attempt; passed as `event_id` in `POST /track` JSON |
+| Optional browser tags (Meta/Google/TikTok) | same `conversionEventId` | `fbq` / `gtag` / `ttq` event id must match tracker `event_id` |
+| Server CAPI postback | `event_id` on conversion payload | Copied from browser `/track` body into CH conversion row; `ResolveEventID` prefers it over `tx_id` / `click_id` |
+| Dedup verification | Events Manager / debug UI | Browser + CAPI must show the same event id; `ad_conversion_browser_missing_total` increments when CAPI enqueues without browser `event_id` |
+| Sandbox / review traffic | `review_routed_event` on click | Conversion postback outbox skipped when ingress click was review-routed (Public Safe Sandbox only) |
+
 ### 2. Outbound CAPI (server)
 
 | Provider | Postback tab field | Required on conversion payload |

@@ -75,6 +75,8 @@ func TestEnhancedDefenseBaseline_safePageVerify_fingerprintSurface(t *testing.T)
 	hydrator := string(safePageHydratorJS)
 	assert.Contains(t, hydrator, "timezone")
 	assert.Contains(t, hydrator, "RTCPeerConnection")
+	assert.NotContains(t, hydrator, "revealFrame")
+	assert.Contains(t, hydrator, "graftVerifiedHtml")
 }
 
 func TestEnhancedDefenseBaseline_proxyVPNHarness_ready(t *testing.T) {

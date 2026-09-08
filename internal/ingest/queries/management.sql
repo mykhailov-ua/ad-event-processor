@@ -692,6 +692,8 @@ SET name = $2,
     click_filter_tier = $27,
     proxy_timeout_fallback_enabled = $28,
     mobile_biometrics_click_enabled = $29,
+    decoy_lander_id = $30,
+    redirect_compliance_mode = $31,
     updated_at = CURRENT_TIMESTAMP
 WHERE id = $1
 RETURNING *;

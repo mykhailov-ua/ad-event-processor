@@ -3848,7 +3848,7 @@ export interface paths {
         };
         /**
          * Unified filter reject counts
-         * @description Returns rows plus freshness metadata; stale=true when ClickHouse lag exceeds SLA.
+         * @description Returns rows plus freshness metadata; stale=true when ClickHouse lag exceeds SLA. Set slice=1 or group_by=placement_geo for placement and country breakdown.
          */
         get: operations["reportFilterRejects"];
         put?: never;
@@ -5721,6 +5721,11 @@ export interface components {
             safe_page_url?: string;
             /** @description Enable review-traffic alternate URL routing on /click. */
             safe_page_enabled?: boolean;
+            /**
+             * Format: uuid
+             * @description Optional hosted lander for sandbox decoy shell (/lp/{id}/). When unset, derive from safe_page_url when it points at /lp/.
+             */
+            decoy_lander_id?: string;
             attestation_enabled?: boolean;
             attestation_mode?: string;
             /** Format: int32 */
@@ -6482,6 +6487,11 @@ export interface components {
             safe_page_url?: string;
             /** @description Enable review-traffic alternate URL routing on /click. */
             safe_page_enabled?: boolean;
+            /**
+             * Format: uuid
+             * @description Optional hosted lander for sandbox decoy shell (/lp/{id}/). When unset, derive from safe_page_url when it points at /lp/.
+             */
+            decoy_lander_id?: string;
             dmr_enabled?: boolean;
             cidr_block_enabled?: boolean;
             proxy_vpn_block_enabled?: boolean;
@@ -8663,6 +8673,33 @@ export interface components {
         ReportMapRow: {
             [key: string]: unknown;
         };
+        CampaignToggleCohortKPIRow: {
+            /** @enum {string} */
+            window?: "before" | "after";
+            /** Format: int64 */
+            impressions?: number;
+            /** Format: int64 */
+            rejects?: number;
+            /** Format: int64 */
+            conversions?: number;
+            /** Format: double */
+            roi_pct?: number;
+            delta_label?: string;
+            delta_tone?: string;
+        };
+        CampaignToggleCohortReportResponse: {
+            /** Format: uuid */
+            campaign_id: string;
+            /** @enum {string} */
+            toggle_field: "silent_reject_enabled" | "accept_lang_geo_enabled" | "json_serialization_enabled";
+            /** Format: date-time */
+            toggle_at: string;
+            /** Format: int32 */
+            window_hours: number;
+            rows: components["schemas"]["CampaignToggleCohortKPIRow"][];
+            freshness: components["schemas"]["DataFreshness"];
+            insufficient_data?: boolean;
+        };
         ReportCatalogRow: {
             key?: string;
             title?: string;
@@ -8719,6 +8756,32 @@ export interface components {
         ConversionTypePayoutReportResponse: {
             rows: components["schemas"]["ConversionTypePayoutRow"][];
             freshness: components["schemas"]["DataFreshness"];
+            next_cursor?: string;
+        };
+        CustomerFraudByDimensionRow: {
+            dimension_value?: string;
+            /** Format: uuid */
+            campaign_id?: string;
+            /** Format: int64 */
+            impressions?: number;
+            /** Format: int64 */
+            clicks?: number;
+            /** Format: int64 */
+            ivt_events?: number;
+            /** Format: int64 */
+            blocked_events?: number;
+            /** Format: double */
+            ivt_rate?: number;
+            ivt_rate_label?: string;
+            top_fraud_category?: string;
+            top_fraud_category_label?: string;
+            delta_label?: string;
+            delta_tone?: string;
+        };
+        CustomerFraudByDimensionReportResponse: {
+            rows: components["schemas"]["CustomerFraudByDimensionRow"][];
+            freshness: components["schemas"]["DataFreshness"];
+            truncated?: boolean;
             next_cursor?: string;
         };
         CustomerFraudByTypeRow: {
@@ -8789,6 +8852,41 @@ export interface components {
             digest_sha256: string;
             signature: string;
         };
+        DataQualityRow: {
+            /** Format: uuid */
+            campaign_id?: string;
+            date?: string;
+            /** Format: int64 */
+            postgres_total?: number;
+            /** Format: int64 */
+            clickhouse_total?: number;
+            /** Format: double */
+            diff_pct?: number;
+            severity?: string;
+        };
+        DataQualityReportResponse: {
+            rows: components["schemas"]["DataQualityRow"][];
+            freshness: components["schemas"]["DataFreshness"];
+            next_cursor?: string;
+            /** Format: double */
+            telemetry_missing_rate?: number;
+            telemetry_missing_rate_display?: string;
+            ch_lag_seconds_by_report_key?: {
+                [key: string]: number;
+            };
+        };
+        FilterRejectRow: {
+            reject_kind: string;
+            /** Format: int64 */
+            reject_count: number;
+            country?: string;
+            placement_id?: string;
+        };
+        FilterRejectReportResponse: {
+            rows: components["schemas"]["FilterRejectRow"][];
+            freshness: components["schemas"]["DataFreshness"];
+            next_cursor?: string;
+        };
         FraudBreakdownRow: {
             /** Format: uuid */
             campaign_id?: string;
@@ -8808,6 +8906,230 @@ export interface components {
             freshness: components["schemas"]["DataFreshness"];
             next_cursor?: string;
         };
+        GeoROIRow: {
+            country?: string;
+            /** Format: int64 */
+            impressions?: number;
+            /** Format: int64 */
+            clicks?: number;
+            /** Format: int64 */
+            conversions?: number;
+            /** Format: int64 */
+            ivt_events?: number;
+            /** Format: double */
+            ivt_rate?: number;
+            /** Format: int64 */
+            spend_micro?: number;
+            /** Format: int64 */
+            revenue_micro?: number;
+            /** Format: int64 */
+            profit_micro?: number;
+            /** Format: double */
+            roi_pct?: number;
+            /** Format: double */
+            ctr?: number;
+            compare?: components["schemas"]["ReportCompareDeltas"];
+        };
+        GeoROIReportResponse: {
+            rows: components["schemas"]["GeoROIRow"][];
+            freshness: components["schemas"]["DataFreshness"];
+            next_cursor?: string;
+        };
+        IVTBySourceRow: {
+            /** Format: uuid */
+            campaign_id?: string;
+            sub1?: string;
+            sub2?: string;
+            country?: string;
+            /** Format: int64 */
+            impressions?: number;
+            /** Format: int64 */
+            clicks?: number;
+            /** Format: int64 */
+            ivt_events?: number;
+            /** Format: double */
+            ivt_rate?: number;
+        };
+        IVTBySourceReportResponse: {
+            rows: components["schemas"]["IVTBySourceRow"][];
+            freshness: components["schemas"]["DataFreshness"];
+            next_cursor?: string;
+        };
+        LayerDesyncDrilldownRow: {
+            fraud_reason?: string;
+            fraud_category?: string;
+            fraud_category_label?: string;
+            /** Format: int64 */
+            event_count?: number;
+            /** Format: int64 */
+            silent_reject_count?: number;
+            signals_degraded?: boolean;
+        };
+        LayerDesyncDrilldownSeriesPoint: {
+            label?: string;
+            /** Format: int64 */
+            event_count?: number;
+            /** Format: int64 */
+            silent_reject_count?: number;
+        };
+        LayerDesyncDrilldownReportResponse: {
+            rows: components["schemas"]["LayerDesyncDrilldownRow"][];
+            series?: components["schemas"]["LayerDesyncDrilldownSeriesPoint"][];
+            freshness: components["schemas"]["DataFreshness"];
+            next_cursor?: string;
+        };
+        LayerDesyncSummaryRow: {
+            /** Format: uuid */
+            campaign_id?: string;
+            /** Format: int32 */
+            layer_desync_count?: number;
+            /** Format: int64 */
+            event_count?: number;
+            /** Format: int64 */
+            silent_reject_count?: number;
+        };
+        LayerDesyncSummaryReportResponse: {
+            rows: components["schemas"]["LayerDesyncSummaryRow"][];
+            freshness: components["schemas"]["DataFreshness"];
+            next_cursor?: string;
+        };
+        PacingDriftRow: {
+            /** Format: uuid */
+            campaign_id?: string;
+            date?: string;
+            /** Format: int64 */
+            planned_spend_micro?: number;
+            /** Format: int64 */
+            actual_spend_micro?: number;
+            /** Format: double */
+            drift_pct?: number;
+            pacing_mode?: string;
+        };
+        PacingDriftReportResponse: {
+            rows: components["schemas"]["PacingDriftRow"][];
+            freshness: components["schemas"]["DataFreshness"];
+            next_cursor?: string;
+        };
+        PostbackReconRow: {
+            /** Format: uuid */
+            campaign_id?: string;
+            click_id?: string;
+            conversion_at?: string;
+            /** Format: int64 */
+            conversion_value_micro?: number;
+            /** Format: int64 */
+            ledger_day_fee_micro?: number;
+            postback_status?: string;
+            reconcile_status?: string;
+            error_message?: string;
+        };
+        PostbackReconReportResponse: {
+            rows: components["schemas"]["PostbackReconRow"][];
+            freshness: components["schemas"]["DataFreshness"];
+            next_cursor?: string;
+        };
+        RtbGeoDeviceRow: {
+            country?: string;
+            device_os?: string;
+            /** Format: int64 */
+            bids?: number;
+            /** Format: int64 */
+            wins?: number;
+            /** Format: double */
+            win_rate?: number;
+            /** Format: int64 */
+            spend_micro?: number;
+        };
+        RtbGeoDeviceReportResponse: {
+            rows: components["schemas"]["RtbGeoDeviceRow"][];
+            freshness: components["schemas"]["DataFreshness"];
+            next_cursor?: string;
+        };
+        RtbNoBidReasonRow: {
+            no_bid_reason?: string;
+            /** Format: int64 */
+            bid_count?: number;
+        };
+        RtbNoBidReasonsReportResponse: {
+            rows: components["schemas"]["RtbNoBidReasonRow"][];
+            freshness: components["schemas"]["DataFreshness"];
+            next_cursor?: string;
+        };
+        RtbOverviewRow: {
+            deal_id?: string;
+            /** Format: int64 */
+            bids?: number;
+            /** Format: int64 */
+            wins?: number;
+            /** Format: double */
+            win_rate?: number;
+            /** Format: int64 */
+            spend_micro?: number;
+        };
+        RtbOverviewReportResponse: {
+            rows: components["schemas"]["RtbOverviewRow"][];
+            freshness: components["schemas"]["DataFreshness"];
+            next_cursor?: string;
+        };
+        RTTSplitTunnelRow: {
+            /** Format: uuid */
+            campaign_id?: string;
+            country?: string;
+            /** Format: int64 */
+            event_count?: number;
+            /** Format: int64 */
+            split_tunnel_count?: number;
+            /** Format: double */
+            split_tunnel_share?: number;
+            share_label?: string;
+            /** Format: double */
+            coverage_pct?: number;
+            coverage_label?: string;
+        };
+        RTTSplitTunnelReportResponse: {
+            rows: components["schemas"]["RTTSplitTunnelRow"][];
+            freshness: components["schemas"]["DataFreshness"];
+            next_cursor?: string;
+        };
+        SignalEffectivenessRow: {
+            signal_code?: string;
+            fraud_category?: string;
+            fraud_category_label?: string;
+            /** Format: int64 */
+            event_volume?: number;
+            /** Format: double */
+            block_rate?: number;
+            block_rate_display?: string;
+            /** Format: double */
+            silent_reject_rate?: number;
+            silent_reject_rate_display?: string;
+            suggested_weight_tier?: string;
+        };
+        SignalEffectivenessReportResponse: {
+            rows: components["schemas"]["SignalEffectivenessRow"][];
+            freshness: components["schemas"]["DataFreshness"];
+            next_cursor?: string;
+        };
+        SilentRejectImpressionFunnelRow: {
+            /** Format: uuid */
+            campaign_id?: string;
+            placement_id?: string;
+            /** Format: int64 */
+            billable_impressions?: number;
+            /** Format: int64 */
+            silent_reject_impressions?: number;
+            /** Format: int64 */
+            ivt_impressions?: number;
+            /** Format: double */
+            silent_reject_rate?: number;
+            /** Format: double */
+            ivt_impression_rate?: number;
+        };
+        SilentRejectImpressionFunnelReportResponse: {
+            rows: components["schemas"]["SilentRejectImpressionFunnelRow"][];
+            freshness: components["schemas"]["DataFreshness"];
+            next_cursor?: string;
+        };
         TelegramReportExportRequest: {
             /** Format: date-time */
             from?: string;
@@ -8818,6 +9140,31 @@ export interface components {
             /** Format: uuid */
             campaign_id?: string;
             format?: string;
+        };
+        TrafficSourceRow: {
+            channel?: string;
+            /** Format: int64 */
+            impressions?: number;
+            /** Format: int64 */
+            clicks?: number;
+            /** Format: int64 */
+            conversions?: number;
+            /** Format: int64 */
+            spend_micro?: number;
+            /** Format: int64 */
+            revenue_micro?: number;
+            /** Format: int64 */
+            profit_micro?: number;
+            /** Format: double */
+            roi_pct?: number;
+            /** Format: double */
+            ctr?: number;
+            compare?: components["schemas"]["ReportCompareDeltas"];
+        };
+        TrafficSourcesReportResponse: {
+            rows: components["schemas"]["TrafficSourceRow"][];
+            freshness: components["schemas"]["DataFreshness"];
+            next_cursor?: string;
         };
         WireSignalBreakdownRow: {
             campaign_id?: string;
@@ -9042,13 +9389,57 @@ export interface components {
             eula_accepted?: boolean;
             eula_version?: string;
         };
-        /** @description platformconfig.PublicView (config, secrets metadata, restart_required, templates). */
-        PlatformSettingsView: {
-            [key: string]: unknown;
+        PlatformStripeConfig: {
+            enabled?: boolean;
+            checkout_success_url?: string;
+            checkout_cancel_url?: string;
         };
-        /** @description platformconfig.Patch merge document. */
+        PlatformConfig: {
+            tracking_domain?: string;
+            default_currency?: string;
+            timezone?: string;
+            /** @enum {string} */
+            ingress_schema?: "ad_event_processor_native" | "openrtb_3";
+            telemetry_enabled?: boolean;
+            profile?: string;
+            edge_xdp?: boolean;
+            edge_expose_click?: boolean;
+            edge_expose_openrtb?: boolean;
+            network_interface?: string;
+            stripe?: components["schemas"]["PlatformStripeConfig"];
+        };
+        PlatformMaskedSecrets: {
+            stripe_secret_key?: string;
+            stripe_webhook_secret?: string;
+        };
+        PlatformSettingsView: {
+            config: components["schemas"]["PlatformConfig"];
+            secrets: components["schemas"]["PlatformMaskedSecrets"];
+            restart_required?: string[];
+            click_url_template?: string;
+            openrtb_endpoint_template?: string;
+            bootstrap_complete: boolean;
+        };
+        PlatformStripePatch: {
+            enabled?: boolean;
+            secret_key?: string;
+            webhook_secret?: string;
+            checkout_success_url?: string;
+            checkout_cancel_url?: string;
+        };
         PlatformSettingsPatch: {
-            [key: string]: unknown;
+            tracking_domain?: string;
+            default_currency?: string;
+            timezone?: string;
+            /** @enum {string} */
+            ingress_schema?: "ad_event_processor_native" | "openrtb_3";
+            telemetry_enabled?: boolean;
+            profile?: string;
+            edge_xdp?: boolean;
+            edge_expose_click?: boolean;
+            edge_expose_openrtb?: boolean;
+            network_interface?: string;
+            stripe?: components["schemas"]["PlatformStripePatch"];
         };
         PlatformApplyRequest: {
             install_root?: string;
@@ -9056,9 +9447,16 @@ export interface components {
         PlatformApplyResponse: {
             written_path: string;
         };
-        /** @description platformconfig.BootstrapRequest for first-run install. */
         PlatformBootstrapRequest: {
-            [key: string]: unknown;
+            config: components["schemas"]["PlatformConfig"];
+            /** Format: email */
+            admin_email: string;
+            /** Format: password */
+            admin_password: string;
+            license_key?: string;
+            license_server?: string;
+            deployment_id?: string;
+            eula_version?: string;
         };
         SupportFeedbackRequest: {
             type: string;
@@ -15295,17 +15693,7 @@ export interface operations {
     reportCampaignToggleCohort: {
         parameters: {
             query: {
-                customer_id: components["parameters"]["CustomerIdQueryRequired"];
-                /** @description Range start (RFC3339). Default is now minus 7 days. */
-                from?: components["parameters"]["ReportFromQuery"];
-                /** @description Range end (RFC3339). Default is now UTC. */
-                to?: components["parameters"]["ReportToQuery"];
-                /** @description When set, attaches prior-period deltas on each row (compare_period=true alias). */
-                compare?: components["parameters"]["ReportCompareQuery"];
                 campaign_id: string;
-                limit?: components["parameters"]["LimitQuery"];
-                offset?: components["parameters"]["OffsetQuery"];
-                cursor?: components["parameters"]["CursorQuery"];
                 toggle_field: "silent_reject_enabled" | "accept_lang_geo_enabled" | "json_serialization_enabled";
                 toggle_at?: string;
                 window_hours?: number;
@@ -15316,13 +15704,13 @@ export interface operations {
         };
         requestBody?: never;
         responses: {
-            /** @description Report rows */
+            /** @description Before and after KPI windows */
             200: {
                 headers: {
                     [name: string]: unknown;
                 };
                 content: {
-                    "application/json": components["schemas"]["ReportMapEnvelope"];
+                    "application/json": components["schemas"]["CampaignToggleCohortReportResponse"];
                 };
             };
             default: components["responses"]["Error"];
@@ -15497,13 +15885,13 @@ export interface operations {
         };
         requestBody?: never;
         responses: {
-            /** @description Report rows */
+            /** @description Fraud by dimension rows */
             200: {
                 headers: {
                     [name: string]: unknown;
                 };
                 content: {
-                    "application/json": components["schemas"]["ReportMapEnvelope"];
+                    "application/json": components["schemas"]["CustomerFraudByDimensionReportResponse"];
                 };
             };
             default: components["responses"]["Error"];
@@ -15631,13 +16019,13 @@ export interface operations {
         };
         requestBody?: never;
         responses: {
-            /** @description Report rows */
+            /** @description Data quality rows */
             200: {
                 headers: {
                     [name: string]: unknown;
                 };
                 content: {
-                    "application/json": components["schemas"]["ReportMapEnvelope"];
+                    "application/json": components["schemas"]["DataQualityReportResponse"];
                 };
             };
             default: components["responses"]["Error"];
@@ -15744,18 +16132,18 @@ export interface operations {
     };
     reportFilterRejects: {
         parameters: {
-            query: {
-                customer_id: components["parameters"]["CustomerIdQueryRequired"];
+            query?: {
                 /** @description Range start (RFC3339). Default is now minus 7 days. */
                 from?: components["parameters"]["ReportFromQuery"];
                 /** @description Range end (RFC3339). Default is now UTC. */
                 to?: components["parameters"]["ReportToQuery"];
-                /** @description When set, attaches prior-period deltas on each row (compare_period=true alias). */
-                compare?: components["parameters"]["ReportCompareQuery"];
-                campaign_id?: components["parameters"]["CampaignIdQuery"];
                 limit?: components["parameters"]["LimitQuery"];
                 offset?: components["parameters"]["OffsetQuery"];
                 cursor?: components["parameters"]["CursorQuery"];
+                /** @description When 1, group rejects by placement and geo. */
+                slice?: "1";
+                /** @description Alias for slice=1. */
+                group_by?: "placement_geo";
             };
             header?: never;
             path?: never;
@@ -15763,13 +16151,13 @@ export interface operations {
         };
         requestBody?: never;
         responses: {
-            /** @description Report rows */
+            /** @description Filter reject rows */
             200: {
                 headers: {
                     [name: string]: unknown;
                 };
                 content: {
-                    "application/json": components["schemas"]["ReportMapEnvelope"];
+                    "application/json": components["schemas"]["FilterRejectReportResponse"];
                 };
             };
             default: components["responses"]["Error"];
@@ -15864,13 +16252,13 @@ export interface operations {
         };
         requestBody?: never;
         responses: {
-            /** @description Report rows */
+            /** @description Geo ROI rows */
             200: {
                 headers: {
                     [name: string]: unknown;
                 };
                 content: {
-                    "application/json": components["schemas"]["ReportMapEnvelope"];
+                    "application/json": components["schemas"]["GeoROIReportResponse"];
                 };
             };
             default: components["responses"]["Error"];
@@ -15897,13 +16285,13 @@ export interface operations {
         };
         requestBody?: never;
         responses: {
-            /** @description Report rows */
+            /** @description IVT by source rows */
             200: {
                 headers: {
                     [name: string]: unknown;
                 };
                 content: {
-                    "application/json": components["schemas"]["ReportMapEnvelope"];
+                    "application/json": components["schemas"]["IVTBySourceReportResponse"];
                 };
             };
             default: components["responses"]["Error"];
@@ -16060,6 +16448,8 @@ export interface operations {
                 limit?: components["parameters"]["LimitQuery"];
                 offset?: components["parameters"]["OffsetQuery"];
                 cursor?: components["parameters"]["CursorQuery"];
+                /** @description Minimum layer_desync_count filter. Default 2. */
+                layer_desync_count?: number;
             };
             header?: never;
             path?: never;
@@ -16067,13 +16457,13 @@ export interface operations {
         };
         requestBody?: never;
         responses: {
-            /** @description Report rows */
+            /** @description Layer desync drilldown rows and hourly series */
             200: {
                 headers: {
                     [name: string]: unknown;
                 };
                 content: {
-                    "application/json": components["schemas"]["ReportMapEnvelope"];
+                    "application/json": components["schemas"]["LayerDesyncDrilldownReportResponse"];
                 };
             };
             default: components["responses"]["Error"];
@@ -16100,13 +16490,13 @@ export interface operations {
         };
         requestBody?: never;
         responses: {
-            /** @description Report rows */
+            /** @description Layer desync summary rows */
             200: {
                 headers: {
                     [name: string]: unknown;
                 };
                 content: {
-                    "application/json": components["schemas"]["ReportMapEnvelope"];
+                    "application/json": components["schemas"]["LayerDesyncSummaryReportResponse"];
                 };
             };
             default: components["responses"]["Error"];
@@ -16232,13 +16622,13 @@ export interface operations {
         };
         requestBody?: never;
         responses: {
-            /** @description Report rows */
+            /** @description Pacing drift rows */
             200: {
                 headers: {
                     [name: string]: unknown;
                 };
                 content: {
-                    "application/json": components["schemas"]["ReportMapEnvelope"];
+                    "application/json": components["schemas"]["PacingDriftReportResponse"];
                 };
             };
             default: components["responses"]["Error"];
@@ -16298,13 +16688,13 @@ export interface operations {
         };
         requestBody?: never;
         responses: {
-            /** @description Report rows */
+            /** @description Postback reconciliation rows */
             200: {
                 headers: {
                     [name: string]: unknown;
                 };
                 content: {
-                    "application/json": components["schemas"]["ReportMapEnvelope"];
+                    "application/json": components["schemas"]["PostbackReconReportResponse"];
                 };
             };
             default: components["responses"]["Error"];
@@ -16331,13 +16721,13 @@ export interface operations {
         };
         requestBody?: never;
         responses: {
-            /** @description Report rows */
+            /** @description RTB geo and device rows */
             200: {
                 headers: {
                     [name: string]: unknown;
                 };
                 content: {
-                    "application/json": components["schemas"]["ReportMapEnvelope"];
+                    "application/json": components["schemas"]["RtbGeoDeviceReportResponse"];
                 };
             };
             default: components["responses"]["Error"];
@@ -16364,13 +16754,13 @@ export interface operations {
         };
         requestBody?: never;
         responses: {
-            /** @description Report rows */
+            /** @description RTB no-bid reason rows */
             200: {
                 headers: {
                     [name: string]: unknown;
                 };
                 content: {
-                    "application/json": components["schemas"]["ReportMapEnvelope"];
+                    "application/json": components["schemas"]["RtbNoBidReasonsReportResponse"];
                 };
             };
             default: components["responses"]["Error"];
@@ -16397,13 +16787,13 @@ export interface operations {
         };
         requestBody?: never;
         responses: {
-            /** @description Report rows */
+            /** @description RTB overview rows */
             200: {
                 headers: {
                     [name: string]: unknown;
                 };
                 content: {
-                    "application/json": components["schemas"]["ReportMapEnvelope"];
+                    "application/json": components["schemas"]["RtbOverviewReportResponse"];
                 };
             };
             default: components["responses"]["Error"];
@@ -16430,13 +16820,13 @@ export interface operations {
         };
         requestBody?: never;
         responses: {
-            /** @description Report rows */
+            /** @description RTT split-tunnel rows */
             200: {
                 headers: {
                     [name: string]: unknown;
                 };
                 content: {
-                    "application/json": components["schemas"]["ReportMapEnvelope"];
+                    "application/json": components["schemas"]["RTTSplitTunnelReportResponse"];
                 };
             };
             default: components["responses"]["Error"];
@@ -16463,13 +16853,13 @@ export interface operations {
         };
         requestBody?: never;
         responses: {
-            /** @description Report rows */
+            /** @description Signal effectiveness rows */
             200: {
                 headers: {
                     [name: string]: unknown;
                 };
                 content: {
-                    "application/json": components["schemas"]["ReportMapEnvelope"];
+                    "application/json": components["schemas"]["SignalEffectivenessReportResponse"];
                 };
             };
             default: components["responses"]["Error"];
@@ -16496,13 +16886,13 @@ export interface operations {
         };
         requestBody?: never;
         responses: {
-            /** @description Report rows */
+            /** @description Silent reject impression funnel rows */
             200: {
                 headers: {
                     [name: string]: unknown;
                 };
                 content: {
-                    "application/json": components["schemas"]["ReportMapEnvelope"];
+                    "application/json": components["schemas"]["SilentRejectImpressionFunnelReportResponse"];
                 };
             };
             default: components["responses"]["Error"];
@@ -16790,13 +17180,13 @@ export interface operations {
         };
         requestBody?: never;
         responses: {
-            /** @description Report rows */
+            /** @description Traffic source rows */
             200: {
                 headers: {
                     [name: string]: unknown;
                 };
                 content: {
-                    "application/json": components["schemas"]["ReportMapEnvelope"];
+                    "application/json": components["schemas"]["TrafficSourcesReportResponse"];
                 };
             };
             default: components["responses"]["Error"];

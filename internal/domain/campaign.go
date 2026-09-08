@@ -108,6 +108,8 @@ type Campaign struct {
 	AttestationTTLSec        int32
 	DmrEnabled               bool
 
+	RedirectComplianceMode RedirectComplianceMode
+
 	CIDRBlockEnabled bool
 
 	ProxyVPNBlockEnabled bool
@@ -131,6 +133,8 @@ type Campaign struct {
 	ProxyRewriteAssets           bool
 	ProxyTimeoutFallbackEnabled  bool
 	MobileBiometricsClickEnabled bool
+
+	DecoyLanderID uuid.UUID
 
 	IngressCost IngressCostConfig
 }

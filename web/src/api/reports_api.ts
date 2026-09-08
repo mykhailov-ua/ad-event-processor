@@ -17,6 +17,13 @@ import type {
   TelegramReportExportResponse,
   WireSignalBreakdownReportResponse,
 } from './types.js';
+import type {
+  CampaignToggleCohortQuery,
+  CampaignToggleCohortReportResponse,
+  FraudCatalogReportKey,
+  FraudCatalogReportQuery,
+  FraudCatalogReportResponse,
+} from './types.js';
 
 export async function getReportCatalog(signal?: AbortSignal): Promise<ReportCatalogResponse> {
   return apiJson<ReportCatalogResponse>('/api/v1/reports/catalog', { signal });
@@ -53,6 +60,80 @@ export function buildReportRunPath(key: string, params: ReportRunQuery = {}): st
 
   const query = search.toString();
   return query ? `${basePath}?${query}` : basePath;
+}
+
+export function buildFraudCatalogReportPath(
+  key: FraudCatalogReportKey,
+  params: FraudCatalogReportQuery = {}
+): string {
+  const search = new URLSearchParams();
+  const basePath = reportKeyToApiPath(key);
+
+  if (params.customer_id) {
+    search.set('customer_id', params.customer_id);
+  }
+  if (params.from) {
+    search.set('from', params.from);
+  }
+  if (params.to) {
+    search.set('to', params.to);
+  }
+  if (params.campaign_id) {
+    search.set('campaign_id', params.campaign_id);
+  }
+  if (params.limit != null) {
+    search.set('limit', String(params.limit));
+  }
+  if (params.offset != null) {
+    search.set('offset', String(params.offset));
+  }
+  if (params.dimension) {
+    search.set('dimension', params.dimension);
+  }
+  if (params.compare) {
+    search.set('compare', '1');
+  }
+  if (params.slice) {
+    search.set('slice', '1');
+  }
+  if (params.layer_desync_count != null) {
+    search.set('layer_desync_count', String(params.layer_desync_count));
+  }
+
+  const query = search.toString();
+  return query ? `${basePath}?${query}` : basePath;
+}
+
+export async function getFraudCatalogReport(
+  key: FraudCatalogReportKey,
+  params: FraudCatalogReportQuery = {},
+  signal?: AbortSignal
+): Promise<FraudCatalogReportResponse> {
+  return apiJson<FraudCatalogReportResponse>(buildFraudCatalogReportPath(key, params), { signal });
+}
+
+export function buildCampaignToggleCohortPath(
+  params: CampaignToggleCohortQuery
+): string {
+  const search = new URLSearchParams();
+  search.set('campaign_id', params.campaign_id);
+  search.set('toggle_field', params.toggle_field);
+  if (params.toggle_at) {
+    search.set('toggle_at', params.toggle_at);
+  }
+  if (params.window_hours != null) {
+    search.set('window_hours', String(params.window_hours));
+  }
+  return `/api/v1/reports/campaign-toggle-cohort?${search.toString()}`;
+}
+
+export async function getCampaignToggleCohortReport(
+  params: CampaignToggleCohortQuery,
+  signal?: AbortSignal
+): Promise<CampaignToggleCohortReportResponse> {
+  return apiJson<CampaignToggleCohortReportResponse>(buildCampaignToggleCohortPath(params), {
+    signal,
+  });
 }
 
 export async function runReport(

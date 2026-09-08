@@ -476,6 +476,7 @@ func scrubCampaignDTO(ctx context.Context, c db.Campaign) campaign.CampaignDTO {
 		TargetURL:                    c.TargetUrl,
 		SafePageURL:                  c.SafePageUrl,
 		SafePageEnabled:              c.SafePageEnabled,
+		DecoyLanderID:                formatCampaignOptionalUUID(c.DecoyLanderID),
 		AttestationEnabled:           c.AttestationEnabled,
 		AttestationMode:              c.AttestationMode,
 		AttestationTTLSec:            c.AttestationTtlSec,
@@ -691,7 +692,7 @@ func patchCampaign(ctx context.Context, pool *pgxpool.Pool, fx campaign.Effects,
 	adminPatch := req.Name != nil || req.DailyBudgetMicro != nil || req.Timezone != nil ||
 		req.FreqLimit != nil || req.FreqWindow != nil || req.TargetCountries != nil ||
 		req.TargetURL != nil || req.ReferrerFilter != nil ||
-		req.SafePageURL != nil || req.SafePageEnabled != nil || req.AttestationEnabled != nil || req.AttestationMode != nil || req.AttestationTTLSec != nil || req.DmrEnabled != nil ||
+		req.SafePageURL != nil || req.SafePageEnabled != nil || req.DecoyLanderID != nil || req.AttestationEnabled != nil || req.AttestationMode != nil || req.AttestationTTLSec != nil || req.DmrEnabled != nil ||
 		req.CIDRBlockEnabled != nil || req.ProxyVPNBlockEnabled != nil || req.ModeratorIntelEnabled != nil ||
 		req.ReviewTrafficAction != nil ||
 		req.TLSFingerprintBlockEnabled != nil || req.ConnTypePolicy != nil ||
@@ -795,6 +796,10 @@ func patchCampaign(ctx context.Context, pool *pgxpool.Pool, fx campaign.Effects,
 			safePageEnabled := locked.SafePageEnabled
 			if req.SafePageEnabled != nil {
 				safePageEnabled = *req.SafePageEnabled
+			}
+			decoyLanderID := locked.DecoyLanderID
+			if req.DecoyLanderID != nil {
+				decoyLanderID = domain.ToPgDecoyLanderID(*req.DecoyLanderID)
 			}
 			attestationEnabled := locked.AttestationEnabled
 			if req.AttestationEnabled != nil {
@@ -945,6 +950,7 @@ func patchCampaign(ctx context.Context, pool *pgxpool.Pool, fx campaign.Effects,
 				ClickFilterTier:              clickFilterTier,
 				ProxyTimeoutFallbackEnabled:  proxyTimeoutFallback,
 				MobileBiometricsClickEnabled: mobileBiometricsClick,
+				DecoyLanderID:                decoyLanderID,
 			})
 			if err != nil {
 				return err

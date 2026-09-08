@@ -13,6 +13,23 @@ import { parseListLimit, parseListOffset } from '@/lib/list_query';
 import { mutationError } from '@/lib/mutation_audit';
 
 const IP_HASH_PATTERN = /^[0-9a-fA-F]{32}$/;
+const FRAUD_LABELS_BULK_MAX_ROWS = 500;
+
+export type FraudLabelBulkDraftRow = {
+  id: string;
+  ip_hash: string;
+  label: string;
+  reason: string;
+};
+
+function createBulkDraftRow(): FraudLabelBulkDraftRow {
+  return {
+    id: crypto.randomUUID(),
+    ip_hash: '',
+    label: '1',
+    reason: '',
+  };
+}
 
 export function useFraudLabelsPageWorkspace() {
   const [searchParams, { isPending: listQueryPending, replaceSearchParams }] =
@@ -22,7 +39,7 @@ export function useFraudLabelsPageWorkspace() {
   const [saving, setSaving] = useState(false);
   const [saveError, setSaveError] = useState<Error | undefined>();
   const [saveSuccess, setSaveSuccess] = useState(false);
-  const [draftBulkJson, setDraftBulkJson] = useState('');
+  const [bulkRows, setBulkRows] = useState<FraudLabelBulkDraftRow[]>([createBulkDraftRow()]);
   const [bulkSaving, setBulkSaving] = useState(false);
   const [bulkError, setBulkError] = useState<Error | undefined>();
   const [bulkSuccess, setBulkSuccess] = useState(false);
@@ -135,6 +152,31 @@ export function useFraudLabelsPageWorkspace() {
     }
   }, [appliedCustomerId, draftIpHash, draftLabel, draftReason, bumpRefreshCoalesced, saving]);
 
+  const onAddBulkRow = useCallback(() => {
+    setBulkRows((rows) => {
+      if (rows.length >= FRAUD_LABELS_BULK_MAX_ROWS) {
+        return rows;
+      }
+      return [...rows, createBulkDraftRow()];
+    });
+  }, []);
+
+  const onRemoveBulkRow = useCallback((rowId: string) => {
+    setBulkRows((rows) => {
+      const next = rows.filter((row) => row.id !== rowId);
+      return next.length > 0 ? next : [createBulkDraftRow()];
+    });
+  }, []);
+
+  const onBulkRowChange = useCallback(
+    (rowId: string, patch: Partial<Pick<FraudLabelBulkDraftRow, 'ip_hash' | 'label' | 'reason'>>) => {
+      setBulkRows((rows) =>
+        rows.map((row) => (row.id === rowId ? { ...row, ...patch } : row))
+      );
+    },
+    []
+  );
+
   const onBulkUpsert = useCallback(async () => {
     if (bulkSaving) {
       return;
@@ -142,27 +184,41 @@ export function useFraudLabelsPageWorkspace() {
     if (!appliedCustomerId) {
       return;
     }
-    const trimmed = draftBulkJson.trim();
-    if (!trimmed) {
+    const rows = bulkRows
+      .map((row) => ({
+        ip_hash: row.ip_hash.trim(),
+        label: Number.parseInt(row.label, 10),
+        reason: row.reason.trim() || undefined,
+      }))
+      .filter((row) => row.ip_hash !== '');
+    if (rows.length === 0) {
+      setBulkError(new Error('Add at least one row with an IP hash'));
       return;
+    }
+    if (rows.length > FRAUD_LABELS_BULK_MAX_ROWS) {
+      setBulkError(new Error(`Bulk upsert supports at most ${FRAUD_LABELS_BULK_MAX_ROWS} rows`));
+      return;
+    }
+    for (const row of rows) {
+      if (!IP_HASH_PATTERN.test(row.ip_hash)) {
+        setBulkError(new Error('Each IP hash must be 32 hexadecimal characters'));
+        return;
+      }
+      if (row.label !== 0 && row.label !== 1) {
+        setBulkError(new Error('Each label must be 0 or 1'));
+        return;
+      }
     }
     setBulkSaving(true);
     setBulkError(undefined);
     setBulkSuccess(false);
     setBulkUpserted(undefined);
     try {
-      const parsed: unknown = JSON.parse(trimmed);
-      if (parsed == null || typeof parsed !== 'object' || Array.isArray(parsed)) {
-        throw new Error('Bulk body must be a JSON object with a rows array');
-      }
-      const body = parsed as FraudManualLabelBulkRequest;
-      if (!Array.isArray(body.rows) || body.rows.length === 0) {
-        throw new Error('rows must be a non-empty array');
-      }
+      const body: FraudManualLabelBulkRequest = { rows };
       const response = await bulkUpsertFraudLabels(appliedCustomerId, body);
       setBulkSuccess(true);
       setBulkUpserted(response.upserted);
-      setDraftBulkJson('');
+      setBulkRows([createBulkDraftRow()]);
       toast.success(`Bulk upserted ${response.upserted ?? 0} label(s)`);
       bumpRefreshCoalesced();
     } catch (err: unknown) {
@@ -172,7 +228,7 @@ export function useFraudLabelsPageWorkspace() {
     } finally {
       setBulkSaving(false);
     }
-  }, [appliedCustomerId, draftBulkJson, bumpRefreshCoalesced, bulkSaving]);
+  }, [appliedCustomerId, bulkRows, bumpRefreshCoalesced, bulkSaving]);
 
   return {
     items: data?.items,
@@ -190,13 +246,16 @@ export function useFraudLabelsPageWorkspace() {
     error,
     saveError,
     saveSuccess,
-    draftBulkJson,
+    bulkRows,
     bulkSaving,
     bulkError,
     bulkSuccess,
     bulkUpserted,
+    bulkMaxRows: FRAUD_LABELS_BULK_MAX_ROWS,
     hasSnapshot: !shouldFetch || data != null,
-    onDraftBulkJsonChange: setDraftBulkJson,
+    onAddBulkRow,
+    onRemoveBulkRow,
+    onBulkRowChange,
     onBulkUpsert,
     onDraftCustomerIdChange: setDraftCustomerId,
     onDraftIpHashChange: setDraftIpHash,

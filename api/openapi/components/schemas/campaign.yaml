@@ -82,6 +82,10 @@ Campaign:
     safe_page_enabled:
       type: boolean
       description: Enable review-traffic alternate URL routing on /click.
+    decoy_lander_id:
+      type: string
+      format: uuid
+      description: Optional hosted lander for sandbox decoy shell (/lp/{id}/). When unset, derive from safe_page_url when it points at /lp/.
     attestation_enabled:
       type: boolean
     attestation_mode:
@@ -274,6 +278,10 @@ PatchCampaignRequest:
     safe_page_enabled:
       type: boolean
       description: Enable review-traffic alternate URL routing on /click.
+    decoy_lander_id:
+      type: string
+      format: uuid
+      description: Optional hosted lander for sandbox decoy shell (/lp/{id}/). When unset, derive from safe_page_url when it points at /lp/.
     dmr_enabled:
       type: boolean
     cidr_block_enabled:

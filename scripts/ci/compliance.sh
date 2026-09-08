@@ -79,4 +79,8 @@ if command -v luajit > /dev/null 2>&1; then
   bash "$SCRIPTS/test/edge/lua_tests.sh" compliance
 fi
 
+if [[ "${SAFE_PAGE_PARITY_HOLDOUT:-0}" = "1" ]]; then
+  bash "$SCRIPTS/test/edge/safe_page_parity_drill.sh" --holdout
+fi
+
 echo "COMPLIANCE CHECK SUCCESSFUL: All defensive perimeter rules are met!"

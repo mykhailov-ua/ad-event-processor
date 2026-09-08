@@ -18,11 +18,23 @@ import {
   CAMPAIGN_CLICK_QUERY_PARAMS_TEXTAREA_MONO_CLASS,
   CAMPAIGN_EDITOR_MONO_EXTRALIGHT_CLASS,
 } from '@/domains/campaigns/editor/campaign_click_query_limits';
+import type { Campaign } from '@/api/types';
 import type { CampaignEditorFormState } from '@/domains/campaigns/editor/campaign_editor_types';
 import { FraudLimitsDocLink } from '@/domains/fraud/fraud_limits_doc_link';
 import { cn } from '@/lib/utils';
 
+function sandboxPreviewPath(decoyLanderId: string, safePageUrl: string | undefined): string | null {
+  const id = decoyLanderId.trim();
+  if (id) {
+    return `/lp/${id}/`;
+  }
+  const url = safePageUrl?.trim() ?? '';
+  const match = url.match(/\/lp\/([0-9a-f-]{36})/i);
+  return match ? `/lp/${match[1]}/` : null;
+}
+
 type CampaignEditorAdvancedRoutingSectionProps = {
+  campaign: Campaign | undefined;
   form: CampaignEditorFormState;
   saving: boolean;
   onFieldChange: <K extends keyof CampaignEditorFormState>(
@@ -32,10 +44,12 @@ type CampaignEditorAdvancedRoutingSectionProps = {
 };
 
 export function CampaignEditorAdvancedRoutingSection({
+  campaign,
   form,
   saving,
   onFieldChange,
 }: CampaignEditorAdvancedRoutingSectionProps) {
+  const sandboxPreview = sandboxPreviewPath(form.decoy_lander_id, campaign?.safe_page_url);
   const { data: flows } = useResource((signal) => listFlows(signal), []);
 
   return (
@@ -182,6 +196,33 @@ export function CampaignEditorAdvancedRoutingSection({
               </p>
               <FraudLimitsDocLink />
             </div>
+          </div>
+          <div className="grid gap-2 sm:grid-cols-2">
+            <div className="grid gap-2">
+              <Label htmlFor="campaign-decoy-lander-id">Decoy lander ID</Label>
+              <Input
+                className={CAMPAIGN_EDITOR_MONO_EXTRALIGHT_CLASS}
+                id="campaign-decoy-lander-id"
+                value={form.decoy_lander_id}
+                disabled={saving}
+                placeholder="Hosted lander UUID"
+                onChange={(event) => onFieldChange('decoy_lander_id', event.target.value)}
+              />
+              <p className="text-xs text-muted-foreground">
+                Sandbox decoy uses the hosted lander shell at /lp/&#123;id&#125;/ for structural parity
+                with production. When empty, the tracker derives from safe_page_url when it points at
+                /lp/.
+              </p>
+            </div>
+            {sandboxPreview ? (
+              <div className="grid gap-2">
+                <Label>Sandbox preview</Label>
+                <p className="font-mono text-xs text-foreground">{sandboxPreview}</p>
+                <p className="text-xs text-muted-foreground">
+                  Open on the tracker origin to inspect decoy asset graph parity.
+                </p>
+              </div>
+            ) : null}
           </div>
         </div>
       </section>

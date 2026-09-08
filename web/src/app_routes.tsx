@@ -71,6 +71,8 @@ import { ReportJobsPage } from '@/pages/report_jobs_page';
 import { ClickLogPage } from '@/pages/click_log_page';
 import { FraudReasonsPage } from '@/pages/fraud_reasons_page';
 import { CustomerFraudByTypePage } from '@/pages/customer_fraud_by_type_page';
+import { FraudCatalogReportPage } from '@/pages/fraud_catalog_report_page';
+import { CampaignToggleCohortPage } from '@/pages/campaign_toggle_cohort_page';
 import { ReportRunnerPage } from '@/pages/report_runner_page';
 import { ReportsPage } from '@/pages/reports_page';
 import { RtbPage } from '@/pages/rtb_page';
@@ -189,6 +191,44 @@ export function AppRoutes() {
             path="reports/wire-signal-breakdown"
           />
           <Route element={<CustomerFraudByTypePage />} path="reports/customer-fraud-by-type" />
+          <Route
+            element={
+              <FraudCatalogReportPage reportKey="silent-reject-impression-funnel" />
+            }
+            path="reports/silent-reject-impression-funnel"
+          />
+          <Route
+            element={<FraudCatalogReportPage reportKey="signal-effectiveness" />}
+            path="reports/signal-effectiveness"
+          />
+          <Route
+            element={<FraudCatalogReportPage reportKey="customer-fraud-by-dimension" />}
+            path="reports/customer-fraud-by-dimension"
+          />
+          <Route
+            element={<FraudCatalogReportPage reportKey="ivt-by-source" />}
+            path="reports/ivt-by-source"
+          />
+          <Route
+            element={<FraudCatalogReportPage reportKey="layer-desync-summary" />}
+            path="reports/layer-desync-summary"
+          />
+          <Route
+            element={<FraudCatalogReportPage reportKey="layer-desync-drilldown" />}
+            path="reports/layer-desync-drilldown"
+          />
+          <Route
+            element={<FraudCatalogReportPage reportKey="rtt-split-tunnel" />}
+            path="reports/rtt-split-tunnel"
+          />
+          <Route
+            element={<CampaignToggleCohortPage />}
+            path="reports/campaign-toggle-cohort"
+          />
+          <Route
+            element={<FraudCatalogReportPage reportKey="filter-rejects" />}
+            path="reports/filter-rejects"
+          />
           <Route element={<ReportRunnerPage reportKey="telegram" />} path="reports/telegram" />
           <Route element={<ReportRunnerPage />} path="reports/telegram/:segment" />
           <Route element={<ReportRunnerPage />} path="reports/:key" />

@@ -110,6 +110,8 @@ func CampaignFromDBRow(row db.Campaign) *Campaign {
 	applyCampaignAttestation(camp, row.AttestationMode, row.AttestationEnabled, row.AttestationTtlSec)
 	applyCampaignLandingProtectionFields(camp, row.TlsFingerprintBlockEnabled, row.ConnTypePolicy, row.LinkSigningEnabled, row.LinkSigningTtlSec)
 	applyCampaignSegmentFields(camp, row.RetargetSegmentID, row.SegmentInclude, row.SegmentExclude, row.SegmentTtlHours)
+	applyCampaignDecoyFields(camp, row.DecoyLanderID)
+	applyCampaignRedirectCompliance(camp, row.RedirectComplianceMode)
 	camp.IngressCost = ParseIngressCostConfigJSON(row.IngressCostConfig)
 	return camp
 }
@@ -197,6 +199,8 @@ func CampaignFromGetCampaignFullRow(row db.GetCampaignFullRow) *Campaign {
 	applyCampaignAttestation(camp, row.AttestationMode, row.AttestationEnabled, row.AttestationTtlSec)
 	applyCampaignLandingProtectionFields(camp, row.TlsFingerprintBlockEnabled, row.ConnTypePolicy, row.LinkSigningEnabled, row.LinkSigningTtlSec)
 	applyCampaignSegmentFields(camp, row.RetargetSegmentID, row.SegmentInclude, row.SegmentExclude, row.SegmentTtlHours)
+	applyCampaignDecoyFields(camp, row.DecoyLanderID)
+	applyCampaignRedirectCompliance(camp, row.RedirectComplianceMode)
 	camp.IngressCost = ParseIngressCostConfigJSON(row.IngressCostConfig)
 
 	if row.PrimaryAShard.Valid {
@@ -298,6 +302,8 @@ func CampaignFromListActiveCampaignsRow(row db.ListActiveCampaignsRow) *Campaign
 	applyCampaignAttestation(camp, row.AttestationMode, row.AttestationEnabled, row.AttestationTtlSec)
 	applyCampaignLandingProtectionFields(camp, row.TlsFingerprintBlockEnabled, row.ConnTypePolicy, row.LinkSigningEnabled, row.LinkSigningTtlSec)
 	applyCampaignSegmentFields(camp, row.RetargetSegmentID, row.SegmentInclude, row.SegmentExclude, row.SegmentTtlHours)
+	applyCampaignDecoyFields(camp, row.DecoyLanderID)
+	applyCampaignRedirectCompliance(camp, row.RedirectComplianceMode)
 	camp.IngressCost = ParseIngressCostConfigJSON(row.IngressCostConfig)
 
 	if row.PrimaryAShard.Valid {

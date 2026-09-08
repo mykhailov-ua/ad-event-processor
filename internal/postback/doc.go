@@ -16,7 +16,7 @@
 // Invariants:
 //   - Outbox claim uses FOR UPDATE SKIP LOCKED; duplicate customer|click|event_type hash rejected via postback_dispatches
 //     (ErrDuplicateEvent, ad_postback_dispatch_duplicates_total).
-//   - ConversionPostbackEnqueuer skips validation-pending, silent-reject, shadow, and fraud-tagged events.
+//   - ConversionPostbackEnqueuer skips validation-pending, silent-reject, shadow, fraud-tagged, and review-routed events.
 //   - Provider payloads built from typed structs, not map[string]any builders.
 //   - Macro expansion uses pre-parsed templates; TestMacroRender_ZeroAlloc and FuzzPostbackURLExpand guard alloc/panic bounds.
 //
@@ -31,5 +31,6 @@
 //	go test ./internal/postback/ -short -run TestMacroSubstitution -count=1
 //	go test ./internal/postback/ -short -run TestMacroRender_ZeroAlloc -count=1
 //	go test ./internal/postback/ -short -run TestConversionReject_rejectSkipsOutboxEnqueue -count=1
+//	go test ./internal/postback/ -short -run TestConversionPostbackEnqueuer_skipsReviewRouted -count=1
 //	go test ./internal/postback/ -short -run Google -count=1
 package postback

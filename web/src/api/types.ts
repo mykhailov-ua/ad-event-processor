@@ -168,6 +168,67 @@ export type ReportRunQuery = Omit<OperationQuery<'reportConversionTypePayout'>, 
   click_id?: string;
 };
 
+export type FraudCatalogReportKey =
+  | 'silent-reject-impression-funnel'
+  | 'signal-effectiveness'
+  | 'customer-fraud-by-dimension'
+  | 'ivt-by-source'
+  | 'layer-desync-summary'
+  | 'layer-desync-drilldown'
+  | 'rtt-split-tunnel'
+  | 'filter-rejects';
+
+export type SilentRejectImpressionFunnelRow =
+  components['schemas']['SilentRejectImpressionFunnelRow'];
+export type SilentRejectImpressionFunnelReportResponse =
+  components['schemas']['SilentRejectImpressionFunnelReportResponse'];
+export type SignalEffectivenessRow = components['schemas']['SignalEffectivenessRow'];
+export type SignalEffectivenessReportResponse =
+  components['schemas']['SignalEffectivenessReportResponse'];
+export type CustomerFraudByDimensionRow = components['schemas']['CustomerFraudByDimensionRow'];
+export type CustomerFraudByDimensionReportResponse =
+  components['schemas']['CustomerFraudByDimensionReportResponse'];
+export type IVTBySourceRow = components['schemas']['IVTBySourceRow'];
+export type IVTBySourceReportResponse = components['schemas']['IVTBySourceReportResponse'];
+export type LayerDesyncSummaryRow = components['schemas']['LayerDesyncSummaryRow'];
+export type LayerDesyncSummaryReportResponse =
+  components['schemas']['LayerDesyncSummaryReportResponse'];
+export type FilterRejectRow = components['schemas']['FilterRejectRow'];
+export type FilterRejectReportResponse = components['schemas']['FilterRejectReportResponse'];
+export type LayerDesyncDrilldownReportResponse =
+  components['schemas']['LayerDesyncDrilldownReportResponse'];
+export type RTTSplitTunnelReportResponse = components['schemas']['RTTSplitTunnelReportResponse'];
+export type CampaignToggleCohortReportResponse =
+  components['schemas']['CampaignToggleCohortReportResponse'];
+export type CampaignToggleCohortKPIRow = components['schemas']['CampaignToggleCohortKPIRow'];
+
+export type FraudCatalogReportRow = Record<string, unknown>;
+
+export type FraudCatalogReportResponse = {
+  rows: FraudCatalogReportRow[];
+  series?: FraudCatalogReportRow[];
+  freshness?: DataFreshness;
+  next_cursor?: string;
+  truncated?: boolean;
+};
+
+export type FraudCatalogDimension = 'placement' | 'sub1' | 'sub2' | 'country' | 'campaign';
+
+export type FraudCatalogReportQuery = {
+  customer_id?: string;
+  from?: string;
+  to?: string;
+  campaign_id?: string;
+  limit?: number;
+  offset?: number;
+  dimension?: FraudCatalogDimension;
+  compare?: boolean;
+  slice?: boolean;
+  layer_desync_count?: number;
+};
+
+export type CampaignToggleCohortQuery = OperationQuery<'reportCampaignToggleCohort'>;
+
 export type ClickLogReportQuery = OperationQuery<'reportClickLog'>;
 
 export type DlqInboxListQuery = OperationQuery<'opsListDlqInbox'> & {

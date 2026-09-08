@@ -21,8 +21,8 @@ import (
 	"ad-event-processor/internal/ingest/parser"
 	"ad-event-processor/internal/ingest/pb"
 	"ad-event-processor/internal/metrics"
-	"ad-event-processor/internal/track"
 	"ad-event-processor/internal/telemetry"
+	"ad-event-processor/internal/track"
 	"ad-event-processor/pkg/branding"
 	"ad-event-processor/pkg/logger"
 
@@ -1307,12 +1307,12 @@ func (h *AdsPacketHandler) React(req *Request, c pkgnet.Conn) pkgnet.Action {
 	}
 
 	if matched, kind := h.tlsFingerprintShouldSafeView(req.TLSJA3, req.TLSJA4, fields.campaignID, ua); matched {
-		h.writeGnetSafeViewTLS(c, ctx, startMono, kind)
+		h.writeGnetCampaignDecoySafeView(c, ctx, startMono, kind, fields.campaignID)
 		return pkgnet.None
 	}
 
-	if matched, connType := h.proxyVPNBlockShouldSafeView(ip, fields.campaignID); matched {
-		h.writeGnetSafeViewProxyVPN(c, ctx, startMono, connType)
+	if matched, _ := h.proxyVPNBlockShouldSafeView(ip, fields.campaignID); matched {
+		h.writeGnetCampaignDecoySafeView(c, ctx, startMono, "l15", fields.campaignID)
 		return pkgnet.None
 	}
 

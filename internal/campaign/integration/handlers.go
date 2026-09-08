@@ -322,6 +322,7 @@ type IntegrationHealthInput struct {
 	IngressCostConfigured     bool
 	IngressCostParam          string
 	PostbackConfigured        bool
+	PostbackProvider          string
 	CostSyncNetwork           string
 	CostSyncCredentialPresent bool
 }
@@ -432,6 +433,23 @@ func BuildCampaignIntegrationHealth(input IntegrationHealthInput) campaign.Integ
 		})
 	}
 
+	if capiPostbackProvider(input.PostbackProvider) {
+		if targetURLUsesHostedLander(input.TargetURL) {
+			rows = append(rows, campaign.IntegrationHealthRow{
+				Slug:    "browser_pixel_capi_dedup",
+				Status:  string(campaign.IntegrationHealthOK),
+				Message: "Hosted lander route detected; install tracker snippet with shared conversionEventId for CAPI dedup.",
+			})
+		} else {
+			rows = append(rows, campaign.IntegrationHealthRow{
+				Slug:     "browser_pixel_capi_dedup",
+				Status:   string(campaign.IntegrationHealthWarn),
+				Message:  "CAPI postback without hosted lander snippet; paste tracker pixel (conversionEventId) on the LP or use /lp/ hosting.",
+				FixRoute: trackingRoute,
+			})
+		}
+	}
+
 	if ingressMacroInPreset(input.ClickQueryParams) {
 		if input.IngressCostConfigured {
 			rows = append(rows, campaign.IntegrationHealthRow{
@@ -480,6 +498,19 @@ func ingressMacroInPreset(params map[string]string) bool {
 		}
 	}
 	return false
+}
+
+func capiPostbackProvider(provider string) bool {
+	switch strings.TrimSpace(strings.ToLower(provider)) {
+	case "facebook", "google", "tiktok", "microsoft_ads":
+		return true
+	default:
+		return false
+	}
+}
+
+func targetURLUsesHostedLander(target string) bool {
+	return strings.Contains(strings.ToLower(strings.TrimSpace(target)), "/lp/")
 }
 
 func summarizeIntegrationHealth(rows []campaign.IntegrationHealthRow) string {
@@ -573,6 +604,7 @@ func GetCampaignIntegrationHealth(ctx context.Context, pool *pgxpool.Pool, fx ca
 
 	q := db.New(pool)
 	if pb, err := q.GetPostbackConfig(ctx, domain.ToUUID(campaignID)); err == nil {
+		input.PostbackProvider = strings.TrimSpace(pb.Provider)
 		if strings.TrimSpace(pb.UrlTemplate) != "" {
 			input.PostbackConfigured = true
 		}

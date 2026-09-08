@@ -113,7 +113,7 @@ func (h *AdsPacketHandler) applyReviewTrafficPolicy(
 		return true
 	default:
 		h.recordReviewTrafficClick(ctx, parsed.CampaignID, clickID, parsed.UserID, ip, ua)
-		h.writeReviewTrafficSafeView(c, ctx, startMono, match)
+		h.writeReviewTrafficSafeView(c, ctx, startMono, parsed.CampaignID, match)
 		return true
 	}
 }
@@ -135,22 +135,34 @@ func reviewTrafficSignalLabel(signal reviewTrafficSignal) string {
 	}
 }
 
-func (h *AdsPacketHandler) writeReviewTrafficSafeView(c gnet.Conn, ctx *ConnContext, startMono int64, match reviewTrafficMatch) {
+func reviewTrafficSafeViewTag(match reviewTrafficMatch) string {
 	switch match.signal {
 	case reviewTrafficTLS:
-		h.writeGnetSafeViewTLS(c, ctx, startMono, match.tlsKind)
+		if match.tlsKind != "" {
+			return match.tlsKind
+		}
+		return "tls"
 	case reviewTrafficCIDR:
-		h.writeGnetSafeViewCIDR(c, ctx, startMono, match.feed)
+		return "l1"
 	case reviewTrafficProxyVPN:
-		h.writeGnetSafeViewProxyVPN(c, ctx, startMono, match.connType)
+		return "l15"
 	case reviewTrafficModerator:
-		h.writeGnetSafeViewModerator(c, ctx, startMono, match.network)
+		return "moderator"
 	case reviewTrafficModeratorCorpus:
-		h.writeGnetSafeViewModeratorCorpus(c, ctx, startMono)
+		return "moderator_corpus"
 	default:
+		return reviewTrafficSignalLabel(match.signal)
+	}
+}
+
+func (h *AdsPacketHandler) writeReviewTrafficSafeView(c gnet.Conn, ctx *ConnContext, startMono int64, campaignID uuid.UUID, match reviewTrafficMatch) {
+	tag := reviewTrafficSafeViewTag(match)
+	if tag == "unknown" {
 		h.write(c, respClickSafePage, ctx)
 		h.recordMetrics(startMono, http.StatusOK)
+		return
 	}
+	h.writeGnetCampaignDecoySafeView(c, ctx, startMono, tag, campaignID)
 }
 
 func (h *AdsPacketHandler) recordReviewTrafficClick(

@@ -765,9 +765,9 @@ Items below close **technical gaps vs dedicated anti-bot stacks**. Do not pitch 
 - [ ] Holdouts: `TestSafePageStub_embedsHydrator`, `TestEnhancedDefenseBaseline_safePageVerify_fingerprintSurface`
 - [ ] `bash scripts/ci/compliance.sh` green
 
-**Known gap (2026-09 audit):** hydrator currently calls `revealFrame` client-side before server OK and POSTs `{campaign_id, antifraud}` while `ParseSafePageVerifyRequest` requires `events[]` + `fingerprint`. Attestation cookie and `html_content` money graft are not applied. **Close via P5-HYBRID-SERVER-VERIFY-GATE** (do not mark this card done until server-authoritative unlock ships).
+**Known gap (2026-09 audit):** closed by P5-HYBRID-SERVER-VERIFY-GATE — stub is blank `aed-mount`; hydrator POSTs full verify payload; money graft only after server `success` + `html_content`.
 
-**Dependencies:** none (wire fix tracked in P5-HYBRID-SERVER-VERIFY-GATE).
+**Dependencies:** P5-HYBRID-SERVER-VERIFY-GATE (shipped).
 
 ---
 
@@ -789,10 +789,10 @@ Items below close **technical gaps vs dedicated anti-bot stacks**. Do not pitch 
 
 **Acceptance Criteria:**
 
-- [ ] PG optional `decoy_lander_id` or documented reuse of hosted sandbox URL
-- [ ] Pluggable decoy body in `internal/track/safe_view.go`
-- [ ] Admin fraud panel: sandbox preview URL
-- [ ] Holdout: hosted decoy SHA256 ≠ static default when configured
+- [x] PG optional `decoy_lander_id` or documented reuse of hosted sandbox URL
+- [x] Pluggable decoy body in `internal/track/safe_view.go` + `internal/track/decoy.go`
+- [x] Admin fraud panel: sandbox preview URL (campaign editor advanced routing)
+- [x] Holdout: hosted decoy SHA256 ≠ static default when configured
 
 **Dependencies:** hosted landers `/lp/` (`flow/hosted_handlers.go`).
 
@@ -814,9 +814,9 @@ Items below close **technical gaps vs dedicated anti-bot stacks**. Do not pitch 
 
 **Acceptance Criteria:**
 
-- [ ] Drill exits non-zero on policy breach
-- [ ] Optional CH template: `review_routed_event` rate vs clicks
-- [ ] Documented manual gate in compliance tier
+- [x] Drill exits non-zero on policy breach (`--holdout` + `TestSafePageParityDrill_holdoutPolicyBreach`)
+- [x] Optional CH template: `review_routed_event` rate vs clicks (`safe_page_parity_review_routed.sql`)
+- [x] Documented manual gate in compliance tier (`SAFE_PAGE_PARITY_HOLDOUT=1`)
 
 **Dependencies:** P5-DECOY-LANDING-PARITY.
 
@@ -840,9 +840,9 @@ Items below close **technical gaps vs dedicated anti-bot stacks**. Do not pitch 
 
 **Acceptance Criteria:**
 
-- [ ] Holdout: sandbox-routed click does not increment postback outbox
-- [ ] `go test ./internal/postback/ -short -run Review -count=1`
-- [ ] `docs/INTEGRATIONS.md` updated
+- [x] Holdout: sandbox-routed click does not increment postback outbox
+- [x] `go test ./internal/postback/ -short -run Review -count=1`
+- [x] `docs/INTEGRATIONS.md` updated
 
 **Dependencies:** none.
 
@@ -1303,9 +1303,9 @@ Items below close **technical gaps vs dedicated anti-bot stacks**. Do not pitch 
 
 **Acceptance Criteria:**
 
-- [ ] Holdout: hydrator does not set `visibility:visible` before verify `success:true`
-- [ ] Holdout: verify reject -> no attestation cookie; `/click` debits blocked or sandbox route
-- [ ] `go test ./internal/ingest/ -short -run TestTrackVerify -count=1`
+- [x] Holdout: hydrator does not set `visibility:visible` before verify `success:true` (graft only via `graftVerifiedHtml`)
+- [x] Holdout: verify reject -> no attestation cookie; `/click` debits blocked or sandbox route (existing `attestation_click_hook_test.go`)
+- [x] `go test ./internal/ingest/ -short -run TestTrackVerify -count=1`
 - [ ] Passive headless screenshot sees decoy/loader only (no money URL in network panel)
 
 **Dependencies:** P5-SAFE-PAGE-HYDRATOR-CLIENT, P5-BEHAVIOR-MODEL-HUMANIZATION.

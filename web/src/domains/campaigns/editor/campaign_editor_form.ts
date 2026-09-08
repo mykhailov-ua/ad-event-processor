@@ -140,6 +140,7 @@ export function campaignToFormState(campaign: Campaign): CampaignEditorFormState
     click_query_params_json: clickQueryParamsCanonicalJson(campaign.click_query_params),
     click_filter_tier: campaign.click_filter_tier ?? 'full',
     mobile_biometrics_click_enabled: campaign.mobile_biometrics_click_enabled ?? false,
+    decoy_lander_id: campaign.decoy_lander_id ?? '',
   };
 }
 
@@ -199,6 +200,14 @@ export function buildCampaignPatchBody(
 
   if (form.mobile_biometrics_click_enabled !== (original.mobile_biometrics_click_enabled ?? false)) {
     body.mobile_biometrics_click_enabled = form.mobile_biometrics_click_enabled;
+  }
+
+  const nextDecoyLanderID = resolveOptionalUuidPatchValue(
+    form.decoy_lander_id,
+    original.decoy_lander_id
+  );
+  if (nextDecoyLanderID !== undefined) {
+    body.decoy_lander_id = nextDecoyLanderID;
   }
 
   return { ok: true, body };

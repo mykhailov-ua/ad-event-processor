@@ -146,6 +146,7 @@ export function CampaignEditorAdvancedPanel({
       </p>
 
       <CampaignEditorAdvancedRoutingSection
+        campaign={campaign}
         form={form}
         saving={saving}
         onFieldChange={onFieldChange}

@@ -82,6 +82,11 @@ var (
 		Help: "POST /track/verify behavioral unlock to money landing HTML",
 	})
 
+	SafePageDecoyTemplateTotal = promauto.NewCounterVec(prometheus.CounterOpts{
+		Name: "ad_safe_page_decoy_template_total",
+		Help: "Sandbox decoy HTML template source (static, hosted /lp/, or safe_page_url iframe)",
+	}, []string{"source"})
+
 	CIDRLPMMatchTotal = promauto.NewCounterVec(prometheus.CounterOpts{
 		Name: "ad_cidr_lpm_match_total",
 		Help: "L1 CIDR/ASN pre-filter matches by feed (fixed label set: aws, gcp, azure, tor, other)",
@@ -135,6 +140,11 @@ var (
 	ConversionPostbackDeferredTotal = promauto.NewCounter(prometheus.CounterOpts{
 		Name: "ad_conversion_postback_deferred_total",
 		Help: "Outbound conversion postbacks held until validation completes",
+	})
+
+	ConversionBrowserMissingTotal = promauto.NewCounter(prometheus.CounterOpts{
+		Name: "ad_conversion_browser_missing_total",
+		Help: "CAPI postback enqueues without browser event_id correlate (dedup gap)",
 	})
 
 	OSFingerprintMismatchTotal = promauto.NewCounter(prometheus.CounterOpts{

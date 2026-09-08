@@ -23,7 +23,8 @@ type conversionPostbackStore interface {
 }
 
 type ConversionPostbackEnqueuer struct {
-	queries conversionPostbackStore
+	queries    conversionPostbackStore
+	clickStore ConversionClickStore
 }
 
 func NewConversionPostbackEnqueuer(queries conversionPostbackStore) *ConversionPostbackEnqueuer {
@@ -31,6 +32,12 @@ func NewConversionPostbackEnqueuer(queries conversionPostbackStore) *ConversionP
 		return nil
 	}
 	return &ConversionPostbackEnqueuer{queries: queries}
+}
+
+func (e *ConversionPostbackEnqueuer) SetClickStore(clicks ConversionClickStore) {
+	if e != nil {
+		e.clickStore = clicks
+	}
 }
 
 func (e *ConversionPostbackEnqueuer) SetStore(queries conversionPostbackStore) {
@@ -51,7 +58,7 @@ func (e *ConversionPostbackEnqueuer) OnBatchStored(ctx context.Context, events [
 	pending := make([]pendingConversionEvent, 0, len(events))
 	campaignSet := make(map[uuid.UUID]struct{})
 	for _, evt := range events {
-		if evt == nil || evt.SilentRejectEvent || evt.ShadowEvent || evt.FraudReason != "" {
+		if evt == nil || evt.SilentRejectEvent || evt.ShadowEvent || evt.FraudReason != "" || evt.ReviewRoutedEvent {
 			continue
 		}
 		if domain.ConversionValidationPending(evt.Payload) {
@@ -93,10 +100,15 @@ func (e *ConversionPostbackEnqueuer) OnBatchStored(ctx context.Context, events [
 		campaignByID[uuid.UUID(campaigns[i].ID.Bytes)] = campaigns[i]
 	}
 
+	reviewRoutedByClick := e.loadReviewRoutedClicks(ctx, pending)
+
 	eventTypes := make([]string, 0, len(pending))
 	payloads := make([][]byte, 0, len(pending))
 	for i := range pending {
 		item := &pending[i]
+		if reviewRoutedByClick[item.event.ClickID] {
+			continue
+		}
 		cfg, ok := configByCampaign[item.campaignID]
 		if !ok {
 			continue
@@ -118,6 +130,9 @@ func (e *ConversionPostbackEnqueuer) OnBatchStored(ctx context.Context, events [
 			continue
 		}
 		payload := buildPostbackPayloadFromEvent(item.event, customerID)
+		if capiPostbackProvider(cfg.Provider) && strings.TrimSpace(payload.EventID) == "" {
+			metrics.ConversionBrowserMissingTotal.Inc()
+		}
 		raw, err := json.Marshal(payload)
 		if err != nil {
 			slog.Warn("conversion postback enqueue failed",
@@ -139,6 +154,41 @@ func (e *ConversionPostbackEnqueuer) OnBatchStored(ctx context.Context, events [
 	}); err != nil {
 		slog.Warn("conversion postback batch insert failed", "count", len(eventTypes), "error", err)
 	}
+}
+
+func (e *ConversionPostbackEnqueuer) loadReviewRoutedClicks(ctx context.Context, pending []pendingConversionEvent) map[string]bool {
+	if e == nil || e.clickStore == nil || len(pending) == 0 {
+		return nil
+	}
+	clickIDs := make([]string, 0, len(pending))
+	seen := make(map[string]struct{}, len(pending))
+	for i := range pending {
+		id := strings.TrimSpace(pending[i].event.ClickID)
+		if id == "" {
+			continue
+		}
+		if _, ok := seen[id]; ok {
+			continue
+		}
+		seen[id] = struct{}{}
+		clickIDs = append(clickIDs, id)
+	}
+	if len(clickIDs) == 0 {
+		return nil
+	}
+	snaps, err := e.clickStore.LoadClicks(ctx, clickIDs)
+	if err != nil {
+		slog.Warn("conversion postback review-routed click lookup failed; fail-open enqueue",
+			"error", err, "click_ids", len(clickIDs))
+		return nil
+	}
+	out := make(map[string]bool, len(snaps))
+	for id, snap := range snaps {
+		if snap.reviewRouted {
+			out[id] = true
+		}
+	}
+	return out
 }
 
 func eventTypeMatches(got, want string) bool {

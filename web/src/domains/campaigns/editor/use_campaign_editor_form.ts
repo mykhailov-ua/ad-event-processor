@@ -22,6 +22,7 @@ export const CAMPAIGN_EDITOR_EMPTY_FORM: CampaignEditorFormState = {
   click_query_params_json: '{}',
   click_filter_tier: 'full',
   mobile_biometrics_click_enabled: false,
+  decoy_lander_id: '',
 };
 
 export function useCampaignEditorForm() {

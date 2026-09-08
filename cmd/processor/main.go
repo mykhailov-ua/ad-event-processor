@@ -322,6 +322,9 @@ func main() {
 	if clickhouseConn != nil {
 		clickhouseQuery = database.NewClickHouseQuery(clickhouseConn, database.ClickHouseQueryConfigFromApp(cfg))
 	}
+	if postbackEnqueuer != nil && clickhouseQuery != nil {
+		postbackEnqueuer.SetClickStore(postback.NewClickHouseConversionClickStore(clickhouseQuery))
+	}
 	if cfg.ConversionSmartRejectEnabled() && cfg.ConversionReject.RejectDatacenterIP {
 		geoProvider, geoErr := ingestion.NewMaxMindProvider(cfg.GeoIP.DBPath)
 		if geoErr != nil {

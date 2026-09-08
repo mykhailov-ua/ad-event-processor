@@ -134,6 +134,9 @@ func (a *ConversionRejectApplier) ApplyBatch(ctx context.Context, events []*doma
 		}
 
 		click, hasClick := clickByID[evt.ClickID]
+		if hasClick && click.reviewRouted {
+			evt.ReviewRoutedEvent = true
+		}
 
 		if cfg.RejectLowTTC && hasClick && minTTC > 0 {
 			convAt := evt.CreatedAt

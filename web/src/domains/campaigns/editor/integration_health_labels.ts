@@ -1,4 +1,5 @@
 const INTEGRATION_HEALTH_SLUG_LABELS: Record<string, string> = {
+  browser_pixel_capi_dedup: 'Browser pixel / CAPI dedup',
   click_join_keys: 'Click join keys',
   cost_sync_credential: 'Cost sync credential',
   ingress_cost_config: 'Ingress cost config',

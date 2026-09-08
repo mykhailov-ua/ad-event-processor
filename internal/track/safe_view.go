@@ -6,7 +6,7 @@ import (
 	"ad-event-processor/pkg/branding"
 )
 
-var SafeViewCIDRBody = []byte(`<!DOCTYPE html><html lang="en"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><title>Loading</title></head><body><main><p>Please wait&hellip;</p></main></body></html>`)
+var SafeViewCIDRBody = SafeDecoyStaticBody
 
 var (
 	RespClickSafeViewCIDR            = buildSafeViewResponse("l1")

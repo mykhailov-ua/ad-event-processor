@@ -447,18 +447,129 @@ UpdateReportScheduleRequest:
 
 PlatformSettingsView:
   type: object
-  additionalProperties: true
-  description: platformconfig.PublicView (config, secrets metadata, restart_required, templates).
+  required: [config, secrets, bootstrap_complete]
+  properties:
+    config:
+      $ref: '#/PlatformConfig'
+    secrets:
+      $ref: '#/PlatformMaskedSecrets'
+    restart_required:
+      type: array
+      items:
+        type: string
+    click_url_template:
+      type: string
+    openrtb_endpoint_template:
+      type: string
+    bootstrap_complete:
+      type: boolean
+
+PlatformStripeConfig:
+  type: object
+  properties:
+    enabled:
+      type: boolean
+    checkout_success_url:
+      type: string
+    checkout_cancel_url:
+      type: string
+
+PlatformConfig:
+  type: object
+  properties:
+    tracking_domain:
+      type: string
+    default_currency:
+      type: string
+    timezone:
+      type: string
+    ingress_schema:
+      type: string
+      enum: [ad_event_processor_native, openrtb_3]
+    telemetry_enabled:
+      type: boolean
+    profile:
+      type: string
+    edge_xdp:
+      type: boolean
+    edge_expose_click:
+      type: boolean
+    edge_expose_openrtb:
+      type: boolean
+    network_interface:
+      type: string
+    stripe:
+      $ref: '#/PlatformStripeConfig'
+
+PlatformStripePatch:
+  type: object
+  properties:
+    enabled:
+      type: boolean
+    secret_key:
+      type: string
+    webhook_secret:
+      type: string
+    checkout_success_url:
+      type: string
+    checkout_cancel_url:
+      type: string
 
 PlatformSettingsPatch:
   type: object
-  additionalProperties: true
-  description: platformconfig.Patch merge document.
+  properties:
+    tracking_domain:
+      type: string
+    default_currency:
+      type: string
+    timezone:
+      type: string
+    ingress_schema:
+      type: string
+      enum: [ad_event_processor_native, openrtb_3]
+    telemetry_enabled:
+      type: boolean
+    profile:
+      type: string
+    edge_xdp:
+      type: boolean
+    edge_expose_click:
+      type: boolean
+    edge_expose_openrtb:
+      type: boolean
+    network_interface:
+      type: string
+    stripe:
+      $ref: '#/PlatformStripePatch'
 
 PlatformBootstrapRequest:
   type: object
-  additionalProperties: true
-  description: platformconfig.BootstrapRequest for first-run install.
+  required: [config, admin_email, admin_password]
+  properties:
+    config:
+      $ref: '#/PlatformConfig'
+    admin_email:
+      type: string
+      format: email
+    admin_password:
+      type: string
+      format: password
+    license_key:
+      type: string
+    license_server:
+      type: string
+    deployment_id:
+      type: string
+    eula_version:
+      type: string
+
+PlatformMaskedSecrets:
+  type: object
+  properties:
+    stripe_secret_key:
+      type: string
+    stripe_webhook_secret:
+      type: string
 
 PlatformApplyRequest:
   type: object

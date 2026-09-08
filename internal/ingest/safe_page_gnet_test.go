@@ -121,12 +121,44 @@ func TestSafePageStub_embedsHydrator(t *testing.T) {
 
 	require.Equal(t, http.StatusOK, ParseGnetHTTPStatus(conn.Written()))
 	resp := string(conn.Written())
-	require.Contains(t, resp, "safe.example/embed")
+	require.NotContains(t, resp, "safe.example/embed")
+	require.Contains(t, resp, `id="aed-mount"`)
+	require.Contains(t, resp, "/static/track-telemetry.js")
+	require.Contains(t, resp, "/static/antifraud-telemetry.js")
 	require.Contains(t, resp, "/track/verify")
 	require.Contains(t, resp, string(safePageHydratorJS[:40]))
 }
 
-func TestTrackVerify_success(t *testing.T) {
+func TestTrackVerify_behaviorReject_noAttestationCookie(t *testing.T) {
+	cid := uuid.New()
+	lockStaticCampaign(func(c *domain.Campaign) {
+		c.ID = cid
+		c.SafePageEnabled = true
+		c.SafePageURL = "https://safe.example/"
+	})
+	cachedMockCamp.Store(nil)
+
+	body, err := json.Marshal(safePageVerifyRequest{
+		CampaignID:  cid.String(),
+		Events:      humanMouseEvents(3),
+		Fingerprint: validAdvancedFingerprint(),
+	})
+	require.NoError(t, err)
+
+	cfg := &config.Config{MaxRequestBodySize: 1 << 20}
+	h := NewAdsPacketHandler(cfg, &mockRegistry{}, nil, nil, nil, NewJumpHashSharder(1), "fraud-stream", nil)
+	wire := BuildGnetHTTP("POST", safePageVerifyPath, map[string]string{
+		"Content-Type": "application/json",
+		"Connection":   "keep-alive",
+	}, body)
+	_, conn := ServeGnetHarness(h, wire)
+	require.Equal(t, http.StatusForbidden, ParseGnetHTTPStatus(conn.Written()))
+	resp := string(conn.Written())
+	require.Contains(t, resp, `"success":false`)
+	require.NotContains(t, resp, "Attestation-Token=")
+}
+
+func TestTrackVerify_success_setsAttestationCookie(t *testing.T) {
 	cid := uuid.New()
 	brandID := uuid.New()
 	lockStaticCampaign(func(c *domain.Campaign) {
@@ -134,6 +166,8 @@ func TestTrackVerify_success(t *testing.T) {
 		c.BrandID = &brandID
 		c.SafePageEnabled = true
 		c.SafePageURL = "https://safe.example/"
+		c.AttestationEnabled = true
+		c.AttestationMode = domain.AttestationModeStrict
 	})
 	cachedMockCamp.Store(nil)
 
@@ -155,6 +189,7 @@ func TestTrackVerify_success(t *testing.T) {
 
 	cfg := &config.Config{MaxRequestBodySize: 1 << 20}
 	h := NewAdsPacketHandler(cfg, &mockRegistry{}, nil, nil, nil, NewJumpHashSharder(1), "fraud-stream", store)
+	h.ConfigureAttestation([][]byte{[]byte("0123456789abcdef0123456789abcdef")})
 	wire := BuildGnetHTTP("POST", safePageVerifyPath, map[string]string{
 		"Content-Type": "application/json",
 		"Connection":   "keep-alive",
@@ -164,4 +199,5 @@ func TestTrackVerify_success(t *testing.T) {
 	resp := string(conn.Written())
 	require.Contains(t, resp, `"success":true`)
 	require.Contains(t, resp, "money.example")
+	require.Contains(t, resp, "Attestation-Token=")
 }

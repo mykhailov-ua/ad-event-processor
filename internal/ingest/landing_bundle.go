@@ -12,6 +12,7 @@ import (
 	"ad-event-processor/internal/metrics"
 	"ad-event-processor/internal/telemetry"
 	"ad-event-processor/internal/track"
+	"ad-event-processor/pkg/branding"
 	"ad-event-processor/pkg/moderatorintel"
 
 	"github.com/google/uuid"
@@ -488,11 +489,11 @@ func (h *AdsPacketHandler) reactClickRedirect(req *Request, c gnet.Conn, ctx *Co
 	}
 
 	if h.l1IPv6RotationObserve(ip, parsed.CampaignID, parsed, startMono) {
-		h.writeGnetSafeViewIPv6Rotation(c, ctx, startMono)
+		h.writeGnetCampaignDecoySafeView(c, ctx, startMono, "l1v6", parsed.CampaignID)
 		return gnet.None
 	}
 	if h.l1IPv4RotationObserve(ip, parsed.UserID, parsed.CampaignID, parsed, startMono) {
-		h.writeGnetSafeViewIPv4Rotation(c, ctx, startMono)
+		h.writeGnetCampaignDecoySafeView(c, ctx, startMono, "l1v4", parsed.CampaignID)
 		return gnet.None
 	}
 
@@ -857,6 +858,49 @@ func appendSafePageDecoyBody(dst []byte, safeURL []byte) []byte {
 	return track.AppendSafePageDecoyBody(dst, safeURL)
 }
 
+func decoyTemplateInput(h *AdsPacketHandler, campaignID uuid.UUID, fallbackURL string) track.DecoyTemplateInput {
+	in := track.DecoyTemplateInput{SafePageURL: fallbackURL}
+	if campaignID == uuid.Nil || h == nil || h.registry == nil {
+		return in
+	}
+	camp, ok := h.registry.GetCampaign(campaignID)
+	if !ok || camp == nil {
+		return in
+	}
+	in.DecoyLanderID = camp.DecoyLanderID
+	if in.SafePageURL == "" {
+		in.SafePageURL = camp.SafePageURL
+	}
+	return in
+}
+
+func buildCampaignDecoyBody(h *AdsPacketHandler, campaignID uuid.UUID, fallbackURL string) []byte {
+	return track.BuildDecoyBody(decoyTemplateInput(h, campaignID, fallbackURL))
+}
+
+func (h *AdsPacketHandler) writeGnetCampaignDecoySafeView(c gnet.Conn, ctx *ConnContext, startMono int64, tag string, campaignID uuid.UUID) {
+	body := buildCampaignDecoyBody(h, campaignID, "")
+	head := []byte("HTTP/1.1 200 OK\r\nContent-Type: text/html; charset=utf-8\r\n")
+	head = append(head, branding.HTTPSafeViewHeader...)
+	head = append(head, []byte(": ")...)
+	head = append(head, tag...)
+	head = append(head, []byte("\r\nConnection: keep-alive\r\nContent-Length: ")...)
+	total := len(head) + bodyLenDigits(len(body)) + 4 + len(body)
+	buf := ctx.BufSlice
+	if cap(buf) < total {
+		buf = make([]byte, total, total+32)
+		ctx.BufSlice = buf
+	} else {
+		buf = buf[:total]
+	}
+	off := copy(buf, head)
+	off += appendInt(buf[off:], int64(len(body)))
+	off += copy(buf[off:], "\r\n\r\n")
+	off += copy(buf[off:], body)
+	h.write(c, buf[:off], ctx)
+	h.recordMetrics(startMono, http.StatusOK)
+}
+
 func writeSafePageStubResponse(h *AdsPacketHandler, c gnet.Conn, ctx *ConnContext, campaignID uuid.UUID) {
 	if _, ok := resolveSafePageLanding(h.registry, campaignID); !ok {
 		h.write(c, respClickNoLanding, ctx)
@@ -982,12 +1026,7 @@ func (h *AdsPacketHandler) reactTrackVerify(req *Request, c gnet.Conn, ctx *Conn
 			h.writeGnetVerifyJSON(c, ctx, startMono, safePageVerifyResponse{Success: false, Code: "safe_page_disabled"}, http.StatusForbidden, "", 0)
 			return gnet.None
 		}
-		urlBytes, ok := safePageURLAttrBytes(landingURL)
-		if !ok {
-			h.writeGnetVerifyJSON(c, ctx, startMono, safePageVerifyResponse{Success: false, Code: "invalid_landing"}, http.StatusBadRequest, "", 0)
-			return gnet.None
-		}
-		body := appendSafePageDecoyBody(nil, urlBytes)
+		body := buildCampaignDecoyBody(h, campaignID, landingURL)
 		metrics.SafePageVerifyTotal.Inc()
 		h.writeGnetVerifyJSON(c, ctx, startMono, safePageVerifyResponse{
 			Success:     true,
@@ -1113,14 +1152,6 @@ func (h *AdsPacketHandler) writeGnetVerifyJSON(c gnet.Conn, ctx *ConnContext, st
 		h.recordMetrics(startMono, http.StatusOK)
 		return
 	}
-	total := 64 + len(payload)
-	buf := ctx.BufSlice
-	if cap(buf) < total {
-		buf = make([]byte, total)
-		ctx.BufSlice = buf
-	} else {
-		buf = buf[:total]
-	}
 	prefix := []byte("HTTP/1.1 429 Too Many Requests\r\nContent-Type: application/json; charset=utf-8\r\nRetry-After: 60\r\nConnection: keep-alive\r\nContent-Length: ")
 	switch status {
 	case http.StatusBadRequest:
@@ -1129,6 +1160,14 @@ func (h *AdsPacketHandler) writeGnetVerifyJSON(c gnet.Conn, ctx *ConnContext, st
 		prefix = []byte("HTTP/1.1 403 Forbidden\r\nContent-Type: application/json; charset=utf-8\r\nConnection: keep-alive\r\nContent-Length: ")
 	case http.StatusNotFound:
 		prefix = []byte("HTTP/1.1 404 Not Found\r\nContent-Type: application/json; charset=utf-8\r\nConnection: keep-alive\r\nContent-Length: ")
+	}
+	total := len(prefix) + bodyLenDigits(len(payload)) + len(track.JSONHTTPMiddle) + len(payload)
+	buf := ctx.BufSlice
+	if cap(buf) < total {
+		buf = make([]byte, total, total+32)
+		ctx.BufSlice = buf
+	} else {
+		buf = buf[:total]
 	}
 	off := copy(buf, prefix)
 	off += appendInt(buf[off:], int64(len(payload)))

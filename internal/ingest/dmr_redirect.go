@@ -134,6 +134,9 @@ func (h *AdsPacketHandler) writeGnetClickDmrRedirect(ctx *ConnContext, c gnet.Co
 }
 
 func clickDmrEnabled(dmr bool, camp *domain.Campaign) bool {
+	if camp != nil && !camp.RedirectAllowsDMR() {
+		return false
+	}
 	if dmr {
 		return true
 	}
@@ -142,7 +145,14 @@ func clickDmrEnabled(dmr bool, camp *domain.Campaign) bool {
 
 func (h *AdsPacketHandler) clickDmrActive(campaignID uuid.UUID, dmr bool) bool {
 	if dmr {
-		return true
+		if h.registry == nil {
+			return false
+		}
+		camp, ok := h.registry.GetCampaign(campaignID)
+		if !ok || camp == nil {
+			return false
+		}
+		return camp.RedirectAllowsDMR()
 	}
 	if h.registry == nil {
 		return false
@@ -151,7 +161,7 @@ func (h *AdsPacketHandler) clickDmrActive(campaignID uuid.UUID, dmr bool) bool {
 	if !ok || camp == nil {
 		return false
 	}
-	return camp.DmrEnabled
+	return clickDmrEnabled(false, camp)
 }
 
 func (h *AdsPacketHandler) writeGnetClickLandingRedirect(ctx *ConnContext, c gnet.Conn, startMono int64, loc []byte, dmrActive bool) {
