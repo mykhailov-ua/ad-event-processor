@@ -99,7 +99,7 @@ func registerHTTPTrackClientStatic(mux *http.ServeMux) {
 }
 
 func isTrackPixelPath(path []byte) bool {
-	return track.IsTrackClientStaticPath(path) && bytesEqual(path, trackPixelPath)
+	return track.IsTrackClientStaticPath(path)
 }
 
 func trackClientStaticGnetResponse(path []byte) ([]byte, bool) {

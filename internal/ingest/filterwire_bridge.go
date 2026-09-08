@@ -54,6 +54,11 @@ type (
 	SegmentFilter            = fw.SegmentFilter
 	DeviceFilter             = fw.DeviceFilter
 	BehaviorTelemetryFilter  = fw.BehaviorTelemetryFilter
+	CrowdProbeFilter         = fw.CrowdProbeFilter
+	ProbeClusterFilter       = fw.ProbeClusterFilter
+	CrowdWaveFilter          = fw.CrowdWaveFilter
+	CrowdWaveStore           = fw.CrowdWaveStore
+	AntifraudTelemetryFilter = fw.AntifraudTelemetryFilter
 	JSONSerializationFilter  = fw.JSONSerializationFilter
 	L7WireFilter             = fw.L7WireFilter
 	TCPMSSFilter             = fw.TCPMSSFilter
@@ -94,6 +99,14 @@ var (
 	NewSegmentFilter            = fw.NewSegmentFilter
 	NewDeviceFilter             = fw.NewDeviceFilter
 	NewBehaviorTelemetryFilter  = fw.NewBehaviorTelemetryFilter
+	NewCrowdProbeFilter         = fw.NewCrowdProbeFilter
+	NewCrowdProbeRedisPrior     = fw.NewCrowdProbeRedisPrior
+	NewProbeClusterFilter       = fw.NewProbeClusterFilter
+	NewProbeClusterStore        = fw.NewProbeClusterStore
+	NewCrowdWaveFilter          = fw.NewCrowdWaveFilter
+	NewCrowdWaveStore           = fw.NewCrowdWaveStore
+	NewAntifraudTelemetryFilter = fw.NewAntifraudTelemetryFilter
+	AsnLookupFromGeo            = fw.AsnLookupFromGeo
 	NewJSONSerializationFilter  = fw.NewJSONSerializationFilter
 	NewL7WireFilter             = fw.NewL7WireFilter
 	NewTCPMSSFilter             = fw.NewTCPMSSFilter

@@ -45,6 +45,8 @@ func http1IngressPathValid(method, path []byte) bool {
 			httpingress.BytesEqual(path, "/readyz") ||
 			httpingress.BytesEqual(path, "/metrics") ||
 			isTrackPixelPath(path) ||
+			httpingress.PathHasPrefix(path, "/track/antifraud/rtt") ||
+			httpingress.PathHasPrefix(path, "/track/antifraud/challenge") ||
 			httpingress.PathHasPrefix(path, safePageStubPathPrefix) ||
 			httpingress.PathHasPrefix(path, "/click") ||
 			httpingress.PathHasPrefix(path, telegramPathClick) ||
