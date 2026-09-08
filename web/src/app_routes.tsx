@@ -72,6 +72,7 @@ import { ClickLogPage } from '@/pages/click_log_page';
 import { FraudReasonsPage } from '@/pages/fraud_reasons_page';
 import { CustomerFraudByTypePage } from '@/pages/customer_fraud_by_type_page';
 import { PostbackReconciliationPage } from '@/pages/postback_reconciliation_page';
+import { CustomerReportPage } from '@/pages/customer_report_page';
 import { SourceQualityPage } from '@/pages/source_quality_page';
 import { FraudCatalogReportPage } from '@/pages/fraud_catalog_report_page';
 import { CampaignToggleCohortPage } from '@/pages/campaign_toggle_cohort_page';
@@ -198,6 +199,25 @@ export function AppRoutes() {
             path="reports/postback-reconciliation"
           />
           <Route element={<SourceQualityPage />} path="reports/source-quality" />
+          <Route element={<CustomerReportPage reportKey="placements" />} path="reports/placements" />
+          <Route element={<CustomerReportPage reportKey="keywords" />} path="reports/keywords" />
+          <Route element={<CustomerReportPage reportKey="geo-roi" />} path="reports/geo-roi" />
+          <Route
+            element={<CustomerReportPage reportKey="traffic-sources" />}
+            path="reports/traffic-sources"
+          />
+          <Route
+            element={<CustomerReportPage reportKey="data-quality" />}
+            path="reports/data-quality"
+          />
+          <Route
+            element={<CustomerReportPage reportKey="pacing-drift" />}
+            path="reports/pacing-drift"
+          />
+          <Route
+            element={<CustomerReportPage reportKey="conversion-type-payout" />}
+            path="reports/conversion-type-payout"
+          />
           <Route
             element={
               <FraudCatalogReportPage reportKey="silent-reject-impression-funnel" />

@@ -13,6 +13,18 @@ import type {
   ReportJobStatus,
   ReportMapEnvelope,
   PostbackReconReportResponse,
+  PlacementReportResponse,
+  KeywordReportResponse,
+  GeoROIReportResponse,
+  TrafficSourcesReportResponse,
+  DataQualityReportResponse,
+  PacingDriftReportResponse,
+  ConversionTypePayoutReportResponse,
+  RtbOverviewReportResponse,
+  RtbNoBidReasonsReportResponse,
+  RtbGeoDeviceReportResponse,
+  RtbReportQuery,
+  CustomerScopedReportQuery,
   SourceQualityReportResponse,
   ReportRunQuery,
   TelegramReportExportRequest,
@@ -235,6 +247,116 @@ export async function getPostbackReconciliationReport(
 ): Promise<PostbackReconReportResponse> {
   return apiJson<PostbackReconReportResponse>(
     buildReportRunPath('postback-reconciliation', params),
+    { signal }
+  );
+}
+
+export function buildCustomerReportPath(key: string, params: CustomerScopedReportQuery = {}): string {
+  const path = buildReportRunPath(key, {
+    customer_id: params.customer_id,
+    from: params.from,
+    to: params.to,
+    campaign_id: params.campaign_id,
+    limit: params.limit,
+    offset: params.offset,
+    cursor: params.cursor,
+  });
+  if (!params.compare) {
+    return path;
+  }
+  const [base, query = ''] = path.split('?');
+  const search = new URLSearchParams(query);
+  search.set('compare', '1');
+  return `${base}?${search.toString()}`;
+}
+
+export async function getPlacementsReport(
+  params: CustomerScopedReportQuery = {},
+  signal?: AbortSignal
+): Promise<PlacementReportResponse> {
+  return apiJson<PlacementReportResponse>(buildCustomerReportPath('placements', params), { signal });
+}
+
+export async function getKeywordsReport(
+  params: CustomerScopedReportQuery = {},
+  signal?: AbortSignal
+): Promise<KeywordReportResponse> {
+  return apiJson<KeywordReportResponse>(buildCustomerReportPath('keywords', params), { signal });
+}
+
+export async function getGeoRoiReport(
+  params: CustomerScopedReportQuery = {},
+  signal?: AbortSignal
+): Promise<GeoROIReportResponse> {
+  return apiJson<GeoROIReportResponse>(buildCustomerReportPath('geo-roi', params), { signal });
+}
+
+export async function getTrafficSourcesReport(
+  params: CustomerScopedReportQuery = {},
+  signal?: AbortSignal
+): Promise<TrafficSourcesReportResponse> {
+  return apiJson<TrafficSourcesReportResponse>(
+    buildCustomerReportPath('traffic-sources', params),
+    { signal }
+  );
+}
+
+export async function getDataQualityReport(
+  params: CustomerScopedReportQuery = {},
+  signal?: AbortSignal
+): Promise<DataQualityReportResponse> {
+  return apiJson<DataQualityReportResponse>(
+    buildCustomerReportPath('data-quality', params),
+    { signal }
+  );
+}
+
+export async function getPacingDriftReport(
+  params: CustomerScopedReportQuery = {},
+  signal?: AbortSignal
+): Promise<PacingDriftReportResponse> {
+  return apiJson<PacingDriftReportResponse>(
+    buildCustomerReportPath('pacing-drift', params),
+    { signal }
+  );
+}
+
+export async function getConversionTypePayoutReport(
+  params: CustomerScopedReportQuery = {},
+  signal?: AbortSignal
+): Promise<ConversionTypePayoutReportResponse> {
+  return apiJson<ConversionTypePayoutReportResponse>(
+    buildCustomerReportPath('conversion-type-payout', params),
+    { signal }
+  );
+}
+
+export async function getRtbOverviewReport(
+  params: RtbReportQuery = {},
+  signal?: AbortSignal
+): Promise<RtbOverviewReportResponse> {
+  return apiJson<RtbOverviewReportResponse>(
+    buildReportRunPath('rtb-overview', params),
+    { signal }
+  );
+}
+
+export async function getRtbNoBidReasonsReport(
+  params: RtbReportQuery = {},
+  signal?: AbortSignal
+): Promise<RtbNoBidReasonsReportResponse> {
+  return apiJson<RtbNoBidReasonsReportResponse>(
+    buildReportRunPath('rtb-no-bid-reasons', params),
+    { signal }
+  );
+}
+
+export async function getRtbGeoDeviceReport(
+  params: RtbReportQuery = {},
+  signal?: AbortSignal
+): Promise<RtbGeoDeviceReportResponse> {
+  return apiJson<RtbGeoDeviceReportResponse>(
+    buildReportRunPath('rtb-geo-device', params),
     { signal }
   );
 }

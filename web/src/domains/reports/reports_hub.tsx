@@ -8,7 +8,7 @@ import { PageChrome } from '@/shell/page_chrome';
 import { MetaLinksBand } from '@/shell/ui_bands';
 import { PageSkeleton } from '@/shell/page_skeleton';
 import type { ReportCatalogRow } from '@/api/types';
-import { reportHubPath } from '@/lib/report_paths';
+import { isTypedCatalogReportKey, reportHubPath } from '@/lib/report_paths';
 
 export type ReportsHubProps = {
   rows: ReportCatalogRow[];
@@ -90,6 +90,7 @@ export function ReportsHub({ rows, fetching, error, hasSnapshot }: ReportsHubPro
                   const key = row.key ?? row.title ?? 'unknown';
                   const path = reportHubPath(key);
                   const meta = [
+                    isTypedCatalogReportKey(key) ? 'typed report' : null,
                     row.license_gated ? 'license' : null,
                     row.default_range ? `range: ${row.default_range}` : null,
                     row.export_formats?.length ? `export: ${row.export_formats.join(', ')}` : null,

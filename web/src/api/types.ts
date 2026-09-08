@@ -154,6 +154,47 @@ export type PostbackReconciliationQuery = Omit<
   customer_id?: string;
 };
 
+export type CustomerScopedReportQuery = {
+  customer_id?: string;
+  from?: string;
+  to?: string;
+  campaign_id?: string;
+  limit?: number;
+  offset?: number;
+  cursor?: string;
+  compare?: boolean;
+};
+
+export type PlacementReportRow = components['schemas']['PlacementReportRow'];
+export type PlacementReportResponse = components['schemas']['PlacementReportResponse'];
+export type KeywordReportRow = components['schemas']['KeywordReportRow'];
+export type KeywordReportResponse = components['schemas']['KeywordReportResponse'];
+export type GeoROIRow = components['schemas']['GeoROIRow'];
+export type GeoROIReportResponse = components['schemas']['GeoROIReportResponse'];
+export type TrafficSourceRow = components['schemas']['TrafficSourceRow'];
+export type TrafficSourcesReportResponse = components['schemas']['TrafficSourcesReportResponse'];
+export type DataQualityRow = components['schemas']['DataQualityRow'];
+export type DataQualityReportResponse = components['schemas']['DataQualityReportResponse'];
+export type PacingDriftRow = components['schemas']['PacingDriftRow'];
+export type PacingDriftReportResponse = components['schemas']['PacingDriftReportResponse'];
+export type ConversionTypePayoutRow = components['schemas']['ConversionTypePayoutRow'];
+export type ConversionTypePayoutReportResponse =
+  components['schemas']['ConversionTypePayoutReportResponse'];
+export type RtbOverviewRow = components['schemas']['RtbOverviewRow'];
+export type RtbOverviewReportResponse = components['schemas']['RtbOverviewReportResponse'];
+export type RtbNoBidReasonRow = components['schemas']['RtbNoBidReasonRow'];
+export type RtbNoBidReasonsReportResponse = components['schemas']['RtbNoBidReasonsReportResponse'];
+export type RtbGeoDeviceRow = components['schemas']['RtbGeoDeviceRow'];
+export type RtbGeoDeviceReportResponse = components['schemas']['RtbGeoDeviceReportResponse'];
+
+export type RtbReportQuery = {
+  from?: string;
+  to?: string;
+  limit?: number;
+  offset?: number;
+  cursor?: string;
+};
+
 export type SourceQualityGroupBy =
   | 'placement'
   | 'campaign'

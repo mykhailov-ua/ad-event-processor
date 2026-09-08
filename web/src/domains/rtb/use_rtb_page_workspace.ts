@@ -1,8 +1,12 @@
-// L3 RTB overview report: URL date range drives runReport(rtb-*); draft sync on navigation.
+// L3 RTB overview: typed rtb/* report APIs; URL date range drives refresh.
 import { useCallback, useEffect, useMemo, useState } from 'react';
 
 import { ApiError } from '@/api/client';
-import { runReport } from '@/api/reports_api';
+import {
+  getRtbGeoDeviceReport,
+  getRtbNoBidReasonsReport,
+  getRtbOverviewReport,
+} from '@/api/reports_api';
 import { useCoalescedBumpRefresh } from '@/hooks/use_coalesced_refresh_token';
 import { useResource } from '@/api/use_resource';
 import { useTransitionSearchParams } from '@/hooks/use_transition_search_params';
@@ -28,14 +32,16 @@ export function useRtbPageWorkspace() {
   const { data, error, fetching, revalidating: listRevalidating } = useResource(
     async (signal) => {
       const params = { from: appliedFrom, to: appliedTo, limit: 50, offset: 0 };
-      const [overview, noBid] = await Promise.all([
-        runReport('rtb-overview', params, signal),
-        runReport('rtb-no-bid-reasons', params, signal),
+      const [overview, noBid, geoDevice] = await Promise.all([
+        getRtbOverviewReport(params, signal),
+        getRtbNoBidReasonsReport(params, signal),
+        getRtbGeoDeviceReport(params, signal),
       ]);
       return {
         overviewRows: overview.rows ?? [],
         noBidRows: noBid.rows ?? [],
-        freshness: overview.freshness ?? noBid.freshness,
+        geoDeviceRows: geoDevice.rows ?? [],
+        freshness: overview.freshness ?? noBid.freshness ?? geoDevice.freshness,
       };
     },
     [appliedFrom, appliedTo]
@@ -55,6 +61,7 @@ export function useRtbPageWorkspace() {
   return {
     overviewRows: data?.overviewRows ?? [],
     noBidRows: data?.noBidRows ?? [],
+    geoDeviceRows: data?.geoDeviceRows ?? [],
     freshness: data?.freshness,
     draftFrom,
     draftTo,

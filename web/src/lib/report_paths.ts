@@ -42,6 +42,52 @@ export const EVIDENCE_PACK_REPORT_KEYS = new Set([
 
 export const EXPORT_ONLY_REPORT_KEYS = new Set(['fraud-evidence-pack-bulk']);
 
+/** Catalog keys with dedicated typed admin pages (registered before reports/:key). */
+export const TYPED_CUSTOMER_REPORT_KEYS = new Set([
+  'click-log',
+  'customer-fraud-by-type',
+  'postback-reconciliation',
+  'source-quality',
+  'placements',
+  'keywords',
+  'geo-roi',
+  'traffic-sources',
+  'data-quality',
+  'pacing-drift',
+  'fraud-breakdown',
+  'wire-signal-breakdown',
+  'silent-reject-impression-funnel',
+  'signal-effectiveness',
+  'customer-fraud-by-dimension',
+  'ivt-by-source',
+  'layer-desync-summary',
+  'layer-desync-drilldown',
+  'rtt-split-tunnel',
+  'campaign-toggle-cohort',
+  'filter-rejects',
+  'conversion-type-payout',
+]);
+
+export const TYPED_RTB_REPORT_KEYS = new Set([
+  'rtb-overview',
+  'rtb-no-bid-reasons',
+  'rtb-geo-device',
+]);
+
+export function typedReportRedirectPath(key: string): string | undefined {
+  if (TYPED_RTB_REPORT_KEYS.has(key)) {
+    return '/rtb';
+  }
+  if (TYPED_CUSTOMER_REPORT_KEYS.has(key)) {
+    return reportHubPath(key);
+  }
+  return undefined;
+}
+
+export function isTypedCatalogReportKey(key: string): boolean {
+  return TYPED_CUSTOMER_REPORT_KEYS.has(key) || TYPED_RTB_REPORT_KEYS.has(key);
+}
+
 export const CAMPAIGN_STATS_REPORT_KEYS = new Set(['campaign-stats']);
 
 export function resolveReportCatalogKey(key: string): string {
