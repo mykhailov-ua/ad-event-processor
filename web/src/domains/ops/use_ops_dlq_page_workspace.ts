@@ -1,11 +1,12 @@
 // L3 DLQ inbox: cursor_stack in URL encodes forward/back pagination; retry bumps refreshToken.
 import { useCallback, useMemo, useState } from 'react';
-import { useSearchParams } from 'react-router-dom';
 
 import { listDlqInbox, retryDlqInboxEntry } from '@/api/ops_api';
 import type { DLQInboxEntry } from '@/api/types';
+import { mutationError } from '@/lib/mutation_audit';
 import { useCoalescedBumpRefresh, useRefreshToken } from '@/hooks/use_coalesced_refresh_token';
 import { useResource } from '@/api/use_resource';
+import { useTransitionSearchParams } from '@/hooks/use_transition_search_params';
 import { parseListLimit } from '@/lib/list_query';
 
 const CURSOR_STACK_KEY = 'cursor_stack';
@@ -26,8 +27,10 @@ function parseCursorStack(raw: string | null): string[] {
 }
 
 export function useOpsDlqPageWorkspace() {
-  const [searchParams, setSearchParams] = useSearchParams();
+  const [searchParams, { isPending: listQueryPending, replaceSearchParams }] =
+    useTransitionSearchParams();
   const [retryingId, setRetryingId] = useState<string | undefined>();
+  const [retryError, setRetryError] = useState<Error | undefined>();
   const { refreshToken, bumpRefresh } = useRefreshToken();
 
   const limit = parseListLimit(searchParams.get('limit'), 200);
@@ -37,7 +40,7 @@ export function useOpsDlqPageWorkspace() {
     [searchParams]
   );
 
-  const { data, error, fetching } = useResource(
+  const { data, error, fetching, revalidating: listRevalidating } = useResource(
     (signal) => listDlqInbox({ limit, cursor }, signal),
     [limit, cursor, refreshToken]
   );
@@ -58,9 +61,9 @@ export function useOpsDlqPageWorkspace() {
       } else {
         next.delete(CURSOR_STACK_KEY);
       }
-      setSearchParams(next, { replace: true });
+      replaceSearchParams(next);
     },
-    [limit, searchParams, setSearchParams]
+    [limit, replaceSearchParams, searchParams]
   );
 
   const onNext = useCallback(() => {
@@ -87,9 +90,12 @@ export function useOpsDlqPageWorkspace() {
         return;
       }
       setRetryingId(entry.id);
+      setRetryError(undefined);
       try {
         await retryDlqInboxEntry(entry.id, entry.source);
         bumpRefreshCoalesced();
+      } catch (err: unknown) {
+        setRetryError(mutationError(err));
       } finally {
         setRetryingId(undefined);
       }
@@ -103,9 +109,11 @@ export function useOpsDlqPageWorkspace() {
     partial: data?.partial,
     limit,
     fetching,
+    listRevalidating: listRevalidating || listQueryPending,
     error,
     hasSnapshot: data != null,
     retryingId,
+    retryError,
     onPrev,
     onNext,
     canGoPrev: cursorStack.length > 0 || Boolean(cursor),

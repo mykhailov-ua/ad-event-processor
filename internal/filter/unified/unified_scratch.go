@@ -36,18 +36,17 @@ type UnifiedCheckScratch struct {
 	wDup, wIdem, wDate, wDS, wFcap, wImpTS, wQuota, wRefillLock, wFence, wFrozen filt.BufWrapper
 	wDeadlineMono, wNowMono                                                      filt.BufWrapper
 	deadlineMonoStr, nowMonoStr                                                  filt.StringVal
-	args                                                                         []any
+	args                                                                         [35]any
 	wrappers                                                                     UnifiedStringWrappers
 	keyVals                                                                      [unifiedFilterKeyCount]filt.StringVal
 	keyArgs                                                                      [unifiedFilterKeyCount]any
 }
 
-// UnifiedScratchPool one scratch per Check on PinnedWorkerPool Tier B; Release is no-op (returned via defer Put).
-var UnifiedScratchPool = sync.Pool{
-	New: func() any {
-		s := &UnifiedCheckScratch{
-			args: make([]any, 35),
-		}
+func initUnifiedCheckScratch(s *UnifiedCheckScratch) {
+	if s == nil {
+		return
+	}
+	if cap(s.wDup.Buf) < 128 {
 		s.wDup.Buf = make([]byte, 0, 128)
 		s.wIdem.Buf = make([]byte, 0, 128)
 		s.wDate.Buf = make([]byte, 0, 128)
@@ -60,9 +59,17 @@ var UnifiedScratchPool = sync.Pool{
 		s.wFrozen.Buf = make([]byte, 0, 128)
 		s.wDeadlineMono.Buf = make([]byte, 0, 24)
 		s.wNowMono.Buf = make([]byte, 0, 24)
-		for i := range s.keyVals {
-			s.keyArgs[i] = &s.keyVals[i]
-		}
+	}
+	for i := range s.keyVals {
+		s.keyArgs[i] = &s.keyVals[i]
+	}
+}
+
+// UnifiedScratchPool one scratch per Check on PinnedWorkerPool Tier B; Release is no-op (returned via defer Put).
+var UnifiedScratchPool = sync.Pool{
+	New: func() any {
+		s := &UnifiedCheckScratch{}
+		initUnifiedCheckScratch(s)
 		return s
 	},
 }

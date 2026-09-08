@@ -22,7 +22,7 @@ func TestRegistry_updateCampaigns_preservesLiveBudget(t *testing.T) {
 
 	req := stdReq(7, 50)
 	for i := range 9 {
-		_, reason := reg.RunAuction(req)
+		_, reason := reg.RunAuctionPtr(req)
 		require.True(t, reason.OK(), "auction %d", i)
 	}
 	assert.Equal(t, int64(550), store.GetBudget(cid), "after 9 second-price clears at MinBid")
@@ -107,7 +107,7 @@ func TestRegistry_saveSnapshot_consistentUnderConcurrentSpend(t *testing.T) {
 			case <-stop:
 				return
 			default:
-				_, _ = reg.RunAuction(stdReq(7, 50))
+				_, _ = reg.RunAuctionPtr(stdReq(7, 50))
 			}
 		}
 	}()
@@ -156,7 +156,7 @@ func TestRegistry_runAuction_staleCatalogWinnerBudgetNonNegative(t *testing.T) {
 			case <-stop:
 				return
 			default:
-				res, reason := reg.RunAuction(stdReq(7, 50))
+				res, reason := reg.RunAuctionPtr(stdReq(7, 50))
 				if !reason.OK() {
 					continue
 				}
@@ -196,7 +196,7 @@ func TestRegistry_runAuction_emptyCatalogNoSpend(t *testing.T) {
 	reg.UpdateCampaigns(singleCampaign(cid, 100, 1000))
 
 	reg.UpdateCampaigns(nil)
-	_, reason := reg.RunAuction(stdReq(7, 50))
+	_, reason := reg.RunAuctionPtr(stdReq(7, 50))
 	assert.False(t, reason.OK())
 	assert.Equal(t, int64(1000), store.GetBudget(cid))
 }
@@ -214,7 +214,7 @@ func TestRegistry_runAuction_concurrentSpendBoundedByCAS(t *testing.T) {
 		wg.Add(1)
 		go func() {
 			defer wg.Done()
-			if _, reason := reg.RunAuction(req); reason.OK() {
+			if _, reason := reg.RunAuctionPtr(req); reason.OK() {
 				wins.Add(1)
 			}
 		}()
@@ -265,7 +265,7 @@ func TestRegistry_runAuction_concurrentCatalogRebuild(t *testing.T) {
 					GeoHash:      uint32(rnd.Intn(geoShardCount)),
 					MinBid:       int64(100 + rnd.Intn(40)),
 				}
-				_, _ = reg.RunAuction(req)
+				_, _ = reg.RunAuctionPtr(req)
 			}
 		}(w)
 	}
@@ -303,7 +303,7 @@ func TestRegistry_runAuction_rejectsCorruptCount(t *testing.T) {
 	require.NotNil(t, sh)
 	sh.Count = 9999
 
-	_, reason := reg.RunAuction(stdReq(7, 50))
+	_, reason := reg.RunAuctionPtr(stdReq(7, 50))
 	assert.Equal(t, NoBidCorruptCatalog, reason)
 }
 
@@ -317,7 +317,7 @@ func TestRegistry_runAuction_rejectsBadBudgetIndex(t *testing.T) {
 	require.NotNil(t, sh)
 	sh.BudgetIndices[0] = 99999
 
-	_, reason := reg.RunAuction(stdReq(7, 50))
+	_, reason := reg.RunAuctionPtr(stdReq(7, 50))
 	assert.False(t, reason.OK())
 }
 

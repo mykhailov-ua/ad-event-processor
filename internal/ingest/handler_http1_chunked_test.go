@@ -91,8 +91,11 @@ func TestHTTP1ChunkedFragmentedZeroAlloc(t *testing.T) {
 	const maxBody = int64(1024 * 1024)
 	wire := fragmentedChunkedOpenRTBRequest()
 	var scratch []byte
+	var req Request
 	allocs := testing.AllocsPerRun(100, func() {
-		_, _, err := parseHTTP1(wire, maxBody, &scratch)
+		resetChunkScratch(&scratch)
+		resetHTTP1Request(&req)
+		_, err := parseHTTP1Into(wire, maxBody, &scratch, &req)
 		require.NoError(t, err)
 	})
 	assert.Equal(t, float64(0), allocs)
@@ -102,9 +105,12 @@ func BenchmarkHTTP1ChunkedFragmented(b *testing.B) {
 	const maxBody = int64(1024 * 1024)
 	wire := fragmentedChunkedOpenRTBRequest()
 	var scratch []byte
+	var req Request
 	b.ReportAllocs()
 	for b.Loop() {
-		_, _, err := parseHTTP1(wire, maxBody, &scratch)
+		resetChunkScratch(&scratch)
+		resetHTTP1Request(&req)
+		_, err := parseHTTP1Into(wire, maxBody, &scratch, &req)
 		if err != nil {
 			b.Fatal(err)
 		}

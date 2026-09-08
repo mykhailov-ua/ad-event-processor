@@ -1,6 +1,7 @@
 // L3 owner: customer detail tabs, draft tax/cost-center forms, tab-gated useResource lanes (RP-3).
 // Each tab uses a separate useResource; inactive tabs call skipCustomerDetailTabFetch().
 import { useCallback, useEffect, useState } from 'react';
+import { toast } from 'sonner';
 import { useParams } from 'react-router-dom';
 
 import {
@@ -14,7 +15,7 @@ import {
   listCustomerPayments,
   putCustomerTaxProfile,
 } from '@/api/billing_api';
-import { getCustomer, patchCustomerCostCenter } from '@/api/customers_api';
+import { getCustomer, patchCustomer } from '@/api/customers_api';
 import type { CustomerDetailTab } from '@/domains/customers/customer_detail_types';
 import {
   CUSTOMER_DETAIL_LEDGER_PAGE_LIMIT,
@@ -47,9 +48,10 @@ export function useCustomerDetailPageWorkspace() {
   const [saveError, setSaveError] = useState<Error | undefined>();
   const [saveSuccess, setSaveSuccess] = useState(false);
   const [draftCostCenter, setDraftCostCenter] = useState('');
-  const [savingCostCenter, setSavingCostCenter] = useState(false);
-  const [costCenterSaveError, setCostCenterSaveError] = useState<Error | undefined>();
-  const [costCenterSaveSuccess, setCostCenterSaveSuccess] = useState(false);
+  const [draftName, setDraftName] = useState('');
+  const [savingProfile, setSavingProfile] = useState(false);
+  const [profileSaveError, setProfileSaveError] = useState<Error | undefined>();
+  const [profileSaveSuccess, setProfileSaveSuccess] = useState(false);
   const [customerRefreshToken, setCustomerRefreshToken] = useState(0);
 
   useEffect(() => {
@@ -61,7 +63,7 @@ export function useCustomerDetailPageWorkspace() {
   const { meta } = useMeta();
   const paymentEnabled = meta?.payment_enabled === true;
   const canSaveTax = user?.permissions?.includes('customers:write') ?? false;
-  const canSaveCostCenter = canSaveTax;
+  const canSaveProfile = canSaveTax;
 
   const customerResource = useResource(
     (signal) => {
@@ -78,6 +80,7 @@ export function useCustomerDetailPageWorkspace() {
       return;
     }
     setDraftCostCenter(customerResource.data.cost_center ?? '');
+    setDraftName(customerResource.data.name ?? '');
   }, [customerResource.data]);
 
   const balanceResource = useResource(
@@ -192,8 +195,11 @@ export function useCustomerDetailPageWorkspace() {
     try {
       const result = await exportCustomerBalanceCsv(id);
       triggerBlobDownload(result.blob, `customer-${id}-ledger.csv`);
+      toast.success('Ledger CSV exported');
     } catch (err: unknown) {
-      setLedgerExportError(err instanceof Error ? err : new Error(String(err)));
+      const nextError = err instanceof Error ? err : new Error(String(err));
+      setLedgerExportError(nextError);
+      toast.error(nextError.message);
     } finally {
       setLedgerExporting(false);
     }
@@ -229,32 +235,47 @@ export function useCustomerDetailPageWorkspace() {
         tax_rate_bps: parsedRate,
       });
       setSaveSuccess(true);
+      toast.success('Tax profile saved');
       setTaxRefreshToken((value) => value + 1);
     } catch (err: unknown) {
-      setSaveError(err instanceof Error ? err : new Error(String(err)));
+      const nextError = err instanceof Error ? err : new Error(String(err));
+      setSaveError(nextError);
+      toast.error(nextError.message);
     } finally {
       setSavingTax(false);
     }
   }, [canSaveTax, draftCountryCode, draftTaxRateBps, draftTaxRegion, draftTaxScheme, id]);
 
-  const onSaveCostCenter = useCallback(async () => {
-    if (!id || !canSaveCostCenter) {
+  const onSaveProfile = useCallback(async () => {
+    if (!id || !canSaveProfile) {
+      return;
+    }
+    const name = draftName.trim();
+    if (!name) {
+      setProfileSaveError(new Error('Customer name is required'));
+      setProfileSaveSuccess(false);
       return;
     }
 
-    setSavingCostCenter(true);
-    setCostCenterSaveError(undefined);
-    setCostCenterSaveSuccess(false);
+    setSavingProfile(true);
+    setProfileSaveError(undefined);
+    setProfileSaveSuccess(false);
     try {
-      await patchCustomerCostCenter(id, { cost_center: draftCostCenter.trim() });
-      setCostCenterSaveSuccess(true);
+      await patchCustomer(id, {
+        name,
+        cost_center: draftCostCenter.trim(),
+      });
+      setProfileSaveSuccess(true);
+      toast.success('Customer profile saved');
       setCustomerRefreshToken((value) => value + 1);
     } catch (err: unknown) {
-      setCostCenterSaveError(err instanceof Error ? err : new Error(String(err)));
+      const nextError = err instanceof Error ? err : new Error(String(err));
+      setProfileSaveError(nextError);
+      toast.error(nextError.message);
     } finally {
-      setSavingCostCenter(false);
+      setSavingProfile(false);
     }
-  }, [canSaveCostCenter, draftCostCenter, id]);
+  }, [canSaveProfile, draftCostCenter, draftName, id]);
 
   useBreadcrumbSegmentLabel(id, customerResource.data?.name);
 
@@ -321,12 +342,14 @@ export function useCustomerDetailPageWorkspace() {
     saveSuccess,
     canSaveTax,
     onSaveTaxProfile,
+    draftName,
+    onDraftNameChange: setDraftName,
     draftCostCenter,
     onDraftCostCenterChange: setDraftCostCenter,
-    savingCostCenter,
-    costCenterSaveError,
-    costCenterSaveSuccess,
-    canSaveCostCenter,
-    onSaveCostCenter,
+    savingProfile,
+    profileSaveError,
+    profileSaveSuccess,
+    canSaveProfile,
+    onSaveProfile,
   };
 }

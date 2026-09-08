@@ -49,6 +49,9 @@ func (dh *DomainHealth) ListDomainHealth(ctx context.Context) ([]DomainHealthDTO
 		}
 		out = append(out, dto)
 	}
+	for i := range out {
+		dh.enrichDomainHealthDTO(ctx, &out[i])
+	}
 	return out, rows.Err()
 }
 
@@ -277,6 +280,7 @@ func (w *domainHealthWorker) tick(ctx context.Context) {
 			slog.Error("domain health: probe", "host", host, "err", err)
 		}
 	}
+	w.dh.renewWildcardCerts(ctx)
 }
 
 func (dh *DomainHealth) probeAndStore(ctx context.Context, target domainTarget) error {
@@ -389,13 +393,20 @@ func (dh *DomainHealth) IsTLSAllowed(ctx context.Context, hostname string) (bool
 	if host == "" {
 		return false, nil
 	}
+	banned, err := dh.poolDomainBanned(ctx, host)
+	if err != nil {
+		return false, err
+	}
+	if banned {
+		return false, nil
+	}
 	var one int
-	err := dh.host.Pool().QueryRow(ctx, `
+	err = dh.host.Pool().QueryRow(ctx, `
 		SELECT 1 FROM domain_health_status
 		WHERE hostname = $1 AND role IN ('custom', 'tracking')
 		LIMIT 1`, host).Scan(&one)
 	if errors.Is(err, pgx.ErrNoRows) {
-		return false, nil
+		return dh.tlsAllowedByWildcard(ctx, host)
 	}
 	if err != nil {
 		return false, err

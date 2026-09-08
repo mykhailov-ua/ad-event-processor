@@ -49,7 +49,7 @@ func TestAuction_targetingIndex_skipsDeviceMismatch(t *testing.T) {
 		{ID: 2, Bid: 100, DeviceMask: 2, CategoryMask: 1, GeoHashVal: 7, Budget: 5000},
 	})
 
-	res, reason := reg.RunAuction(&BidRequest{
+	res, reason := reg.RunAuctionPtr(&BidRequest{
 		GeoHash: 7, DeviceType: 2, CategoryMask: 1, MinBid: 50,
 	})
 	require.True(t, reason.OK())
@@ -64,7 +64,7 @@ func TestAuction_targetingIndex_disabledFallsBackToGeo(t *testing.T) {
 		{ID: 2, Bid: 100, DeviceMask: 2, CategoryMask: 1, GeoHashVal: 7, Budget: 5000},
 	})
 
-	res, reason := reg.RunAuction(&BidRequest{
+	res, reason := reg.RunAuctionPtr(&BidRequest{
 		GeoHash: 7, DeviceType: 2, CategoryMask: 1, MinBid: 50,
 	})
 	require.True(t, reason.OK())

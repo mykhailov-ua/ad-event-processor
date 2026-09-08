@@ -592,6 +592,122 @@ paths:
       - ops
       x-permissions:
       - shards:read
+  /api/v1/ops/domains/wildcard-ssl:
+    post:
+      operationId: opsDomainsWildcardSSL
+      summary: Issue wildcard TLS certificate via ACME DNS-01 (Cloudflare)
+      tags:
+      - ops
+      x-permissions:
+      - settings:write
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: ../components/schemas/campaign.yaml#/WildcardSSLRequest
+      responses:
+        '200':
+          description: Wildcard certificate issued
+          content:
+            application/json:
+              schema:
+                $ref: ../components/schemas/campaign.yaml#/WildcardSSLResponse
+        default:
+          $ref: ../openapi.yaml#/components/responses/Error
+  /api/v1/ops/domains/bulk:
+    post:
+      operationId: opsDomainsBulkParkProbe
+      summary: Bulk park domains and run health probes (async job)
+      tags:
+      - ops
+      x-permissions:
+      - settings:write
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: ../components/schemas/campaign.yaml#/DomainBulkRequest
+      responses:
+        '202':
+          description: Bulk job accepted
+          content:
+            application/json:
+              schema:
+                $ref: ../components/schemas/campaign.yaml#/DomainBulkJobStatus
+        default:
+          $ref: ../openapi.yaml#/components/responses/Error
+  /api/v1/ops/domains/bulk-ssl:
+    post:
+      operationId: opsDomainsBulkSSL
+      summary: Bulk domain SSL setup (async job)
+      tags:
+      - ops
+      x-permissions:
+      - settings:write
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: ../components/schemas/campaign.yaml#/DomainBulkRequest
+      responses:
+        '202':
+          description: Bulk SSL job accepted
+          content:
+            application/json:
+              schema:
+                $ref: ../components/schemas/campaign.yaml#/DomainBulkJobStatus
+        default:
+          $ref: ../openapi.yaml#/components/responses/Error
+  /api/v1/ops/domains/jobs/{job_id}:
+    get:
+      operationId: opsDomainsBulkJobStatus
+      summary: Poll async domain bulk job status
+      tags:
+      - ops
+      x-permissions:
+      - settings:read
+      parameters:
+      - in: path
+        name: job_id
+        required: true
+        schema:
+          type: string
+      responses:
+        '200':
+          description: Job status
+          content:
+            application/json:
+              schema:
+                $ref: ../components/schemas/campaign.yaml#/DomainBulkJobStatus
+        default:
+          $ref: ../openapi.yaml#/components/responses/Error
+  /api/v1/ops/domains/{hostname}/burn:
+    patch:
+      operationId: opsDomainsBurn
+      summary: Burn domain (ban pool entry, revoke TLS allow)
+      tags:
+      - ops
+      x-permissions:
+      - settings:write
+      parameters:
+      - $ref: ../openapi.yaml#/components/parameters/HostnamePath
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: ../components/schemas/campaign.yaml#/BurnDomainRequest
+      responses:
+        '200':
+          description: Domain burned
+          content:
+            application/json:
+              schema:
+                $ref: ../components/schemas/campaign.yaml#/BurnDomainResponse
+        default:
+          $ref: ../openapi.yaml#/components/responses/Error
   /api/v1/ops/domains/{hostname}/tls-allowed:
     get:
       operationId: opsTlsAllowedHost

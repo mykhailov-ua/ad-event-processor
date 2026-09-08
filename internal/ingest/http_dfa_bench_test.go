@@ -30,10 +30,11 @@ var http1WorstCorpus = nginxTrackCorpus
 
 func BenchmarkHTTP1DFA_Happy(b *testing.B) {
 	const maxBody = int64(1024 * 1024)
+	var req Request
 	b.SetBytes(int64(len(http1HappyCorpus)))
 	b.ReportAllocs()
 	for b.Loop() {
-		_, _, err := parseHTTP1(http1HappyCorpus, maxBody, nil)
+		_, err := parseHTTP1Into(http1HappyCorpus, maxBody, nil, &req)
 		if err != nil {
 			b.Fatal(err)
 		}
@@ -42,10 +43,11 @@ func BenchmarkHTTP1DFA_Happy(b *testing.B) {
 
 func BenchmarkHTTP1DFA_OpenRTBBid(b *testing.B) {
 	const maxBody = int64(1024 * 1024)
+	var req Request
 	b.SetBytes(int64(len(http1OpenRTBBidCorpus)))
 	b.ReportAllocs()
 	for b.Loop() {
-		_, _, err := parseHTTP1(http1OpenRTBBidCorpus, maxBody, nil)
+		_, err := parseHTTP1Into(http1OpenRTBBidCorpus, maxBody, nil, &req)
 		if err != nil {
 			b.Fatal(err)
 		}
@@ -54,10 +56,11 @@ func BenchmarkHTTP1DFA_OpenRTBBid(b *testing.B) {
 
 func BenchmarkHTTP1DFA_Worst(b *testing.B) {
 	const maxBody = int64(1024 * 1024)
+	var req Request
 	b.SetBytes(int64(len(http1WorstCorpus)))
 	b.ReportAllocs()
 	for b.Loop() {
-		_, _, err := parseHTTP1(http1WorstCorpus, maxBody, nil)
+		_, err := parseHTTP1Into(http1WorstCorpus, maxBody, nil, &req)
 		if err != nil {
 			b.Fatal(err)
 		}
@@ -78,13 +81,22 @@ func BenchmarkHTTP2DFA_Happy(b *testing.B) {
 
 func BenchmarkHTTP2DFA_Worst(b *testing.B) {
 	body := []byte(`{"campaign_id":"00000000-0000-0000-0000-000000000001","type":"click"}`)
-	wire := buildH2TrackRequest(body)
+	wireBootstrap := buildH2TrackRequest(body)
+	wire := buildH2TrackRequestOnStream(1, body, false)
 	b.SetBytes(int64(len(wire)))
-	b.ReportAllocs()
 	st := newH2ConnState()
+	var req Request
+	if _, _, _, err := parseH2IngressInto(wireBootstrap, &st, 1<<20, &req); err != nil {
+		b.Fatal(err)
+	}
+	st.ResetStream()
+	if _, _, _, err := parseH2IngressInto(wire, &st, 1<<20, &req); err != nil {
+		b.Fatal(err)
+	}
+	b.ReportAllocs()
 	for b.Loop() {
-		st.ResetConn()
-		_, _, _, _, err := parseH2Ingress(wire, &st, 1<<20)
+		st.ResetStream()
+		_, _, _, err := parseH2IngressInto(wire, &st, 1<<20, &req)
 		if err != nil {
 			b.Fatal(err)
 		}
@@ -114,7 +126,8 @@ func BenchmarkHTTP3DFA_Worst(b *testing.B) {
 	b.SetBytes(int64(len(wire)))
 	b.ReportAllocs()
 	for b.Loop() {
-		_, _, err := h3ParseRequestFrames(wire, 1<<20)
+		var req Request
+		_, err := h3ParseRequestFramesInto(wire, 1<<20, &req)
 		if err != nil {
 			b.Fatal(err)
 		}

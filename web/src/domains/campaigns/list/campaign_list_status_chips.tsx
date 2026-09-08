@@ -1,7 +1,8 @@
 import type { CampaignStatusFilter } from '@/domains/campaigns/list/campaigns_list_types';
-import { Button } from '@/components/ui/button';
+import { uiSurfaces } from '@/lib/ui_surfaces';
 import { adminKit } from '@/lib/admin_kit';
 import { cn } from '@/lib/utils';
+import { ChipRow } from '@/shell/ui_bands';
 
 export type CampaignListStatusChipOption = {
   value: CampaignStatusFilter;
@@ -22,27 +23,35 @@ const STATUS_CHIP_CLASS: Record<
   { idle: string; active: string; countIdle: string; countActive: string }
 > = {
   '': {
-    idle: 'border-border bg-background text-foreground',
-    active: 'border-foreground/40 bg-accent text-foreground',
-    countIdle: 'text-muted-foreground',
+    idle:
+      'border-border bg-card text-foreground hover:border-foreground/35 hover:bg-accent hover:text-foreground',
+    active:
+      'border-foreground/40 bg-accent text-foreground hover:border-foreground/55 hover:bg-accent/80',
+    countIdle: 'text-muted-foreground group-hover:text-foreground',
     countActive: 'text-muted-foreground',
   },
   ACTIVE: {
-    idle: 'border-border bg-background text-muted-foreground',
-    active: 'border-admin-status-active bg-admin-status-active/20 text-admin-status-active',
-    countIdle: 'text-muted-foreground',
+    idle:
+      'border-border bg-card text-muted-foreground hover:border-admin-status-active hover:bg-admin-status-active/15 hover:text-admin-status-active',
+    active:
+      'border-admin-status-active bg-admin-status-active/20 text-admin-status-active hover:border-admin-status-active hover:bg-admin-status-active/30',
+    countIdle: 'text-muted-foreground group-hover:text-admin-status-active',
     countActive: 'text-admin-status-active',
   },
   PAUSED: {
-    idle: 'border-border bg-background text-muted-foreground',
-    active: 'border-admin-status-paused bg-admin-status-paused/20 text-admin-status-paused',
-    countIdle: 'text-muted-foreground',
+    idle:
+      'border-border bg-card text-muted-foreground hover:border-admin-status-paused hover:bg-admin-status-paused/15 hover:text-admin-status-paused',
+    active:
+      'border-admin-status-paused bg-admin-status-paused/20 text-admin-status-paused hover:border-admin-status-paused hover:bg-admin-status-paused/30',
+    countIdle: 'text-muted-foreground group-hover:text-admin-status-paused',
     countActive: 'text-admin-status-paused',
   },
   ARCHIVED: {
-    idle: 'border-border bg-background text-muted-foreground',
-    active: 'border-border bg-muted text-foreground',
-    countIdle: 'text-muted-foreground',
+    idle:
+      'border-border bg-card text-muted-foreground hover:border-muted-foreground/50 hover:bg-muted hover:text-foreground',
+    active:
+      'border-border bg-muted text-foreground hover:border-muted-foreground/60 hover:bg-muted/80',
+    countIdle: 'text-muted-foreground group-hover:text-foreground',
     countActive: 'text-muted-foreground',
   },
 };
@@ -59,11 +68,7 @@ export function CampaignListStatusChips({
   className,
 }: CampaignListStatusChipsProps) {
   return (
-    <div
-      className={cn('flex flex-wrap gap-2', className)}
-      role="group"
-      aria-label="Campaign status"
-    >
+    <ChipRow aria-label="Campaign status" className={className} role="group">
       {options.map((option) => {
         const selected = value === option.value;
         const tone = chipTone(option.value);
@@ -75,31 +80,30 @@ export function CampaignListStatusChips({
               : '0';
 
         return (
-          <Button
+          <button
             key={option.value || 'all'}
             aria-pressed={selected}
             className={cn(
-              adminKit.buttonShell,
-              'max-w-full gap-1 whitespace-nowrap border px-2 font-semibold shadow-none',
+              'group',
+              uiSurfaces.chip,
               adminKit.controlRadius,
               selected ? tone.active : tone.idle
             )}
             type="button"
-            variant="outline"
             onClick={() => onChange(option.value)}
           >
             {option.label}
             <span
               className={cn(
-                'text-[11px] font-semibold tabular-nums',
+                uiSurfaces.chipCount,
                 selected ? tone.countActive : tone.countIdle
               )}
             >
               {countLabel}
             </span>
-          </Button>
+          </button>
         );
       })}
-    </div>
+    </ChipRow>
   );
 }

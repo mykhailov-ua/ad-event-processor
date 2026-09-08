@@ -19,28 +19,19 @@ func TestHTTP1Incomplete_SpinClosesAfterMax(t *testing.T) {
 	}
 	h := NewAdsPacketHandler(cfg, &mockRegistry{}, nil, nil, nil, NewJumpHashSharder(1), "fraud", nil)
 
-	hdr := []byte("POST /track HTTP/1.1\r\nContent-Type: application/json\r\nContent-Length: 1048576\r\n\r\n")
-	body := []byte(`{"type":"click","campaign_id":"550e8400-e29b-41d4-a716-446655440000","payload":{`)
-
 	conn := newFaultGnetConn()
-	conn.Append(hdr)
+	conn.Append([]byte("POST /track HTTP/1.1\r\n"))
 	require.Equal(t, gnet.None, h.OnTraffic(conn))
 
 	var act gnet.Action
-	for i := range len(body) + 2 {
-		end := i + 1
-		if end > len(body) {
-			end = len(body)
-		}
-		if i < len(body) {
-			conn.Append(body[i:end])
-		}
+	for range 4 {
+		conn.Append([]byte("X"))
 		act = h.OnTraffic(conn)
 		if act == gnet.Close {
 			break
 		}
 	}
-	require.Equal(t, gnet.Close, act, "slow drip must close after HTTP1_INCOMPLETE_MAX incomplete passes")
+	require.Equal(t, gnet.Close, act, "header drip with consumed=0 must close after HTTP1_INCOMPLETE_MAX")
 }
 
 func TestHTTP1Incomplete_IdleClosesAfterDeadline(t *testing.T) {
@@ -166,6 +157,29 @@ func TestHTTP1Incomplete_MaxConnLifetimeCloses(t *testing.T) {
 	time.Sleep(3 * time.Millisecond)
 	act := h.OnTraffic(conn)
 	require.Equal(t, gnet.Close, act)
+}
+
+func TestHTTP1Incomplete_HeaderDripClosesWithoutComplete(t *testing.T) {
+	cfg := &config.Config{
+		MaxRequestBodySize: 1 << 20,
+		HTTP1IncompleteMax: 100,
+		HTTP1BodyIdleMs:    100,
+	}
+	h := NewAdsPacketHandler(cfg, &mockRegistry{}, nil, nil, nil, NewJumpHashSharder(1), "fraud", nil)
+
+	conn := newFaultGnetConn()
+	conn.Append([]byte("POST /track HTTP/1.1\r\n"))
+	require.Equal(t, gnet.None, h.OnTraffic(conn))
+
+	deadline := time.Now().Add(10 * time.Second)
+	for time.Now().Before(deadline) {
+		time.Sleep(25 * time.Millisecond)
+		conn.Append([]byte("X"))
+		if act := h.OnTraffic(conn); act == gnet.Close {
+			return
+		}
+	}
+	t.Fatal("expected idle close while dripping header bytes without \\r\\n\\r\\n")
 }
 
 func TestHTTP1HeadersComplete(t *testing.T) {

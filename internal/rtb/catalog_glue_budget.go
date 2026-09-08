@@ -3,7 +3,6 @@ package rtb
 import (
 	"context"
 	"encoding/binary"
-	"hash/crc32"
 	"strings"
 	"sync"
 	"sync/atomic"
@@ -103,17 +102,11 @@ func CampaignIDFromUUID(id uuid.UUID) CampaignID {
 }
 
 func GeoHashFromCountry(country string) uint32 {
-	if country == "" {
-		return 0
-	}
-	return crc32.ChecksumIEEE([]byte(country))
+	return domain.GeoHashFromCountry(country)
 }
 
 func GeoHashFromCountryBytes(country []byte) uint32 {
-	if len(country) == 0 {
-		return 0
-	}
-	return crc32.ChecksumIEEE(country)
+	return domain.GeoHashFromCountryBytes(country)
 }
 
 func DeviceMaskFromType(deviceType []byte) uint8 {
@@ -149,7 +142,7 @@ func BidRequestFromEvent(evt *domain.Event, targeting RtbTargetingInput) BidRequ
 		DeviceType:     targeting.DeviceType,
 		DeadlineMono:   targeting.DeadlineMono,
 		DealBlock:      targeting.DealBlock,
-		NowUnix:        time.Now().UTC().Unix(),
+		NowUnix:        auctionNowUnix(),
 		FcapUserHash:   fcapUserHash,
 		BlockedCatMask: targeting.BlockedCatMask,
 	}

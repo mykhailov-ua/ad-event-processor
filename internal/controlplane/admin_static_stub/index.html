@@ -7,21 +7,21 @@
     <script>
       (function () {
         try {
-          if (localStorage.getItem('aed-admin-theme-light-default-v2') !== '1') {
-            localStorage.setItem('aed-admin-theme', 'light');
-            localStorage.setItem('aed-admin-theme-light-default-v2', '1');
+          if (localStorage.getItem('aed-admin-theme-dark-default-v3') !== '1') {
+            localStorage.setItem('aed-admin-theme', 'dark');
+            localStorage.setItem('aed-admin-theme-dark-default-v3', '1');
           }
           var theme = localStorage.getItem('aed-admin-theme');
-          document.documentElement.classList.add(theme === 'dark' ? 'dark' : 'light');
+          document.documentElement.classList.add(theme === 'light' ? 'light' : 'dark');
         } catch (e) {
-          document.documentElement.classList.add('light');
+          document.documentElement.classList.add('dark');
         }
       })();
     </script>
-      <link rel="stylesheet" href="/src/styles/app.css?v=1788777714394" />
+      <link rel="stylesheet" href="/src/styles/app.css?v=1788858993302" />
   </head>
   <body>
     <div id="root"></div>
-      <script type="module" src="/src/main.js?v=1788777714394"></script>
+      <script type="module" src="/src/main.js?v=1788858993302"></script>
   </body>
 </html>

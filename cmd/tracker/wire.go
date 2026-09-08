@@ -198,6 +198,7 @@ func runTracker(cfg *config.Config) {
 
 	registry.ConfigureStaleMode(time.Duration(cfg.RegistryStaleTTLSec) * time.Second)
 	registry.SetStalePGGrace(cfg.RegistryStalePGGrace)
+	registry.SetStalePGMaxRPS(cfg.RegistryStalePGMaxRPS)
 	registry.StartWatchShards(ctx, redisShards, channel)
 	registry.StartEpochPoll(ctx, redisShards, time.Duration(cfg.RegistryPollMs)*time.Millisecond)
 
@@ -486,14 +487,13 @@ func runTracker(cfg *config.Config) {
 				slog.Info("local quanta ledger recovered from broker", "campaigns", len(deltas))
 			}
 		}
-		unifiedFilter.SetLocalQuantaDeps(ingestion.LocalQuantaDeps{
-			Ledger:    localQuantaLedger,
-			Strict:    localQuantaStrict,
-			Refill:    quotaRefillWorker,
-			Publisher: budgetDeltaPublisher,
-			Stream:    localQuantaStream,
-			Idem:      localQuantaStream.IdemCache(),
-		})
+		unifiedFilter.SetLocalQuantaDeps(func() ingestion.LocalQuantaDeps {
+			deps := ingestion.LocalQuantaDepsWithStream(localQuantaLedger, localQuantaStream)
+			deps.Strict = localQuantaStrict
+			deps.Refill = quotaRefillWorker
+			deps.Publisher = budgetDeltaPublisher
+			return deps
+		}())
 		unifiedFilter.SetLocalQuantaMode(cfg.LocalQuotaMode)
 		slog.Info("local quanta enabled",
 			"mode", cfg.LocalQuotaMode,

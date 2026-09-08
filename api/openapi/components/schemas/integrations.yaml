@@ -18,6 +18,11 @@ PostbackConfig:
       enum: [webhook, facebook, google, tiktok, taboola, outbrain, microsoft_ads]
     url_template:
       type: string
+      description: >
+        Provider-specific template. Google: customer_id|conversion_action_id or
+        customers/{customer_id}/conversionActions/{id}; OAuth access token in api_token;
+        developer token in test_event_code or api_token JSON. Microsoft Ads:
+        account_id|customer_id|conversion_name. Webhook/CAPI: pixel ID or full HTTPS URL.
     target_event:
       type: string
     test_event_code:
@@ -34,6 +39,11 @@ UpdatePostbackConfigRequest:
       enum: [webhook, facebook, google, tiktok, taboola, outbrain, microsoft_ads]
     url_template:
       type: string
+      description: >
+        Provider-specific template. Google: customer_id|conversion_action_id or
+        customers/{customer_id}/conversionActions/{id}; OAuth access token in api_token;
+        developer token in test_event_code or api_token JSON. Microsoft Ads:
+        account_id|customer_id|conversion_name. Webhook/CAPI: pixel ID or full HTTPS URL.
     api_token:
       type: string
     target_event:
@@ -84,6 +94,46 @@ PostbackCampaignStatus:
     dlq_pending_count:
       type: integer
       format: int64
+
+PostbackHealthRow:
+  type: object
+  required: [campaign_id, provider, dlq_pending_count, health_status]
+  properties:
+    campaign_id:
+      type: string
+      format: uuid
+    provider:
+      type: string
+    success_rate_24h:
+      type: number
+      format: double
+      description: Percent of SENT dispatches in the last 24h; omitted when no terminal dispatches.
+    p95_latency_ms:
+      type: integer
+      format: int64
+    last_error:
+      type: string
+    dlq_pending_count:
+      type: integer
+      format: int64
+    health_status:
+      type: string
+      enum: [ok, warn, fail]
+
+PostbackHealthResponse:
+  type: object
+  required: [rows, alert_threshold_success_rate]
+  properties:
+    rows:
+      type: array
+      items:
+        $ref: '#/PostbackHealthRow'
+    alert_threshold_success_rate:
+      type: number
+      format: double
+      description: Alert when success_rate_24h drops below this value (default 95).
+    runbook_path:
+      type: string
 
 PostbacksSnapshot:
   type: object
@@ -189,8 +239,20 @@ ApplyIntegrationSchemaResponse:
       type: string
     kind:
       type: string
+    mappings_applied_count:
+      type: integer
+      format: int32
+      description: >
+        Number of campaign_conversion_mappings rows upserted when kind is status_mapping.
+        Unknown inbound status on conversion ingest is pass-through (no goal_name rewrite) unless
+        campaign conversion_reject_rules reject it downstream.
     url_template:
       type: string
+      description: >
+        Provider-specific template. Google: customer_id|conversion_action_id or
+        customers/{customer_id}/conversionActions/{id}; OAuth access token in api_token;
+        developer token in test_event_code or api_token JSON. Microsoft Ads:
+        account_id|customer_id|conversion_name. Webhook/CAPI: pixel ID or full HTTPS URL.
     panel_postback_url:
       type: string
     offer_url_suffix:
@@ -250,6 +312,22 @@ ApplyCampaignTemplatesResult:
       type: object
       additionalProperties:
         type: string
+
+DryRunCampaignTemplatesResult:
+  type: object
+  required: [campaign_id, postback_dry_run]
+  properties:
+    campaign_id:
+      type: string
+      format: uuid
+    target_url:
+      type: string
+    panel_postback_url:
+      type: string
+    postback_url_template:
+      type: string
+    postback_dry_run:
+      $ref: '#/PostbackDryRunResult'
 
 Seller:
   type: object

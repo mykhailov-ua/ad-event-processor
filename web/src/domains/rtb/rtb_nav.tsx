@@ -1,7 +1,7 @@
 import { ApiError } from '@/api/client';
-import { ErrorBlock } from '@/shell/error_block';
 import { SectionNav } from '@/shell/section_nav';
 import { StubBanner } from '@/shell/stub_banner';
+import { panelError } from '@/shell/panel_error';
 import type { SectionNavItem } from '@/lib/nav_config';
 
 export const RTB_NAV_ITEMS: SectionNavItem[] = [
@@ -34,8 +34,5 @@ export function rtbPanelError(error: Error, title: string) {
   if (error instanceof ApiError && error.status === 403) {
     return <RtbLicenseStub />;
   }
-  if (error instanceof ApiError && error.status === 501) {
-    return <StubBanner title={`${title} unavailable`} message={error.message} />;
-  }
-  return <ErrorBlock title={title} message={error.message} />;
+  return panelError(error, title, { unavailableTitle: `${title} unavailable` });
 }

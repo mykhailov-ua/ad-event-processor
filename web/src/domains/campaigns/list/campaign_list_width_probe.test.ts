@@ -3,7 +3,7 @@ import assert from 'node:assert/strict';
 
 import type { CampaignListQuery } from '@/api/types';
 
-import { seedDeterministicUuid } from '@/api/dev_mock/seed_uuid.ts';
+import { seedDeterministicUuid } from '@/lib/uuid.ts';
 
 import {
   buildCampaignListWidthProbeQuery,

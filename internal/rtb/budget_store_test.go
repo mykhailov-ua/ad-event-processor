@@ -65,11 +65,11 @@ func TestBudgetStore_setBudget_clampsNegative(t *testing.T) {
 	store.SetBudget(cid, -500)
 
 	assert.Equal(t, int64(0), store.GetBudget(cid))
-	_, reason := reg.RunAuction(stdReq(7, 50))
+	_, reason := reg.RunAuctionPtr(stdReq(7, 50))
 	assert.Equal(t, NoBidNoCandidates, reason)
 
 	store.SetBudget(cid, 100)
-	_, reason = reg.RunAuction(stdReq(7, 50))
+	_, reason = reg.RunAuctionPtr(stdReq(7, 50))
 	require.True(t, reason.OK())
 	assert.Equal(t, int64(50), store.GetBudget(cid))
 

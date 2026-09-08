@@ -40,9 +40,19 @@ type PatchCustomerCostCenterRequest struct {
 	CostCenter string `json:"cost_center"`
 }
 
+type PatchCustomerRequest struct {
+	Name       *string `json:"name"`
+	CostCenter *string `json:"cost_center"`
+}
+
+type CustomerPatcher interface {
+	PatchCustomer(ctx context.Context, customerID uuid.UUID, req PatchCustomerRequest) (CustomerDTO, error)
+}
+
 type CustomersHTTPHandlers struct {
 	Customers               CustomerReader
 	CostCenter              CustomerCostCenterUpdater
+	Patcher                 CustomerPatcher
 	ApplyRateLimit          func(http.HandlerFunc) http.HandlerFunc
 	RequirePermission       func(string, http.HandlerFunc) http.HandlerFunc
 	AuthorizeCustomerAccess func(*http.Request, string) error
@@ -63,6 +73,9 @@ func (h *CustomersHTTPHandlers) Register(mux *http.ServeMux) {
 	}
 	mux.HandleFunc("GET /api/v1/customers", limit(perm("customers:read", h.listCustomers)))
 	mux.HandleFunc("GET /api/v1/customers/{id}", limit(perm("customers:read", h.getCustomer)))
+	if h.Patcher != nil {
+		mux.HandleFunc("PATCH /api/v1/customers/{id}", limit(perm("customers:write", h.patchCustomer)))
+	}
 	if h.CostCenter != nil {
 		mux.HandleFunc("PATCH /api/v1/customers/{id}/cost-center", limit(perm("customers:write", h.patchCustomerCostCenter)))
 	}
@@ -154,6 +167,31 @@ func (h *CustomersHTTPHandlers) patchCustomerCostCenter(w http.ResponseWriter, r
 		return
 	}
 	cust, err := h.CostCenter.UpdateCustomerCostCenter(r.Context(), customerID, req.CostCenter)
+	if err != nil {
+		h.writeServiceError(w, err)
+		return
+	}
+	httpresponse.JSON(w, http.StatusOK, cust)
+}
+
+func (h *CustomersHTTPHandlers) patchCustomer(w http.ResponseWriter, r *http.Request) {
+	rawID := r.PathValue("id")
+	customerID, err := uuid.Parse(rawID)
+	if err != nil {
+		httpresponse.Error(w, http.StatusBadRequest, "BAD_REQUEST", "invalid customer_id")
+		return
+	}
+	if h.AuthorizeCustomerAccess != nil {
+		if err := h.AuthorizeCustomerAccess(r, customerID.String()); err != nil {
+			h.writeServiceError(w, err)
+			return
+		}
+	}
+	req, ok := coldpath.DecodeRequestOrBadRequest[PatchCustomerRequest](w, r, coldpath.DefaultMaxBody)
+	if !ok {
+		return
+	}
+	cust, err := h.Patcher.PatchCustomer(r.Context(), customerID, req)
 	if err != nil {
 		h.writeServiceError(w, err)
 		return

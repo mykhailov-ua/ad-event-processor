@@ -2,6 +2,7 @@ package ingest
 
 import (
 	"context"
+	"log/slog"
 	"net/http"
 
 	"ad-event-processor/internal/config"
@@ -57,18 +58,31 @@ func (d TrackPublishDeps) PublishAccepted(evt *domain.Event, lease *streamAdmiss
 	)
 }
 
-// PublishAcceptedOrRollback enqueues after filter accept. On failure rolls back Lua debit when FilterEngine is set.
+// PublishAcceptedOrRollback enqueues after filter accept. On failure rolls back debit when FilterEngine is set.
+// Local quanta full-skip defers async stream enqueue until after main publish succeeds (fail-closed 503 on publish fail).
 //
 // Verify:
 // go test ./internal/ingest/ -short -run TestPublishAcceptedOrRollback_holdout -count=1
+// go test ./internal/ingest/ -short -run TestLocalQuantaPendingDebit_publishFail_holdout -count=1
 func (d TrackPublishDeps) PublishAcceptedOrRollback(ctx context.Context, evt *domain.Event, lease *streamAdmissionLease) bool {
-	if d.PublishAccepted(evt, lease) {
-		return true
+	if !d.PublishAccepted(evt, lease) {
+		if d.FilterEngine != nil && evt != nil {
+			d.FilterEngine.RollbackDebit(ctx, evt, d.Registry)
+		}
+		return false
 	}
-	if d.FilterEngine != nil && evt != nil {
-		d.FilterEngine.RollbackDebit(ctx, evt, d.Registry)
+	if d.FilterEngine != nil && evt != nil && evt.LocalQuantaDebitMicro > 0 {
+		if err := d.FilterEngine.FinalizeLocalQuantaPublish(ctx, evt, d.Registry); err != nil {
+			slog.Warn("local quanta stream finalize failed after main publish",
+				"campaign_id", evt.CampaignID,
+				"click_id", evt.ClickID,
+				"error", err,
+			)
+			// Main CH/broker sink accepted; keep debit, alert via ad_local_quota_finalize_failed_total.
+			return true
+		}
 	}
-	return false
+	return true
 }
 
 func (h *AdsPacketHandler) publishAcceptedOrRollback(ctx context.Context, evt *domain.Event, lease *streamAdmissionLease) bool {

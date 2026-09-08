@@ -24,6 +24,7 @@ import {
   TableCell,
   TableHeader,
   TableRow,
+  directoryTableRevalidatingClass,
 } from '@/shell/directory_table';
 import type { SavedView } from '@/api/types';
 import { PortalsNav, portalsPanelError } from '@/domains/portals/portals_nav';
@@ -34,6 +35,7 @@ export type SavedViewsPanelProps = {
   appliedCustomerId: string;
   draftCustomerId: string;
   fetching: boolean;
+  listRevalidating?: boolean;
   error: Error | undefined;
   hasSnapshot: boolean;
   draftName: string;
@@ -59,6 +61,7 @@ export function SavedViewsPanel({
   appliedCustomerId,
   draftCustomerId,
   fetching,
+  listRevalidating = false,
   error,
   hasSnapshot,
   draftName,
@@ -89,14 +92,20 @@ export function SavedViewsPanel({
 
   if (!appliedCustomerId) {
     return (
-      <PageChrome title="Saved views">
-        <PortalsNav />
-        <CustomerScopeBar
-          appliedCustomerId={appliedCustomerId}
-          draftCustomerId={draftCustomerId}
-          onApply={onApplyCustomerScope}
-          onDraftCustomerIdChange={onDraftCustomerIdChange}
-        />
+      <PageChrome
+        title="Saved views"
+        controlPanel={
+          <div className="grid gap-3">
+            <PortalsNav />
+            <CustomerScopeBar
+              appliedCustomerId={appliedCustomerId}
+              draftCustomerId={draftCustomerId}
+              onApply={onApplyCustomerScope}
+              onDraftCustomerIdChange={onDraftCustomerIdChange}
+            />
+          </div>
+        }
+      >
         <EmptyState
           title="Customer required"
           description="Apply a customer ID to list saved report views."
@@ -109,20 +118,22 @@ export function SavedViewsPanel({
     <PageChrome
       title="Saved views"
       actions={
-        <Button className="text-sm" onClick={() => setCreateOpen(true)} type="button">
+        <Button onClick={() => setCreateOpen(true)} type="button">
           Create saved view
         </Button>
       }
+      controlPanel={
+        <div className="grid gap-3">
+          <PortalsNav />
+          <CustomerScopeBar
+            appliedCustomerId={appliedCustomerId}
+            draftCustomerId={draftCustomerId}
+            onApply={onApplyCustomerScope}
+            onDraftCustomerIdChange={onDraftCustomerIdChange}
+          />
+        </div>
+      }
     >
-      <PortalsNav />
-
-      <CustomerScopeBar
-        appliedCustomerId={appliedCustomerId}
-        draftCustomerId={draftCustomerId}
-        onApply={onApplyCustomerScope}
-        onDraftCustomerIdChange={onDraftCustomerIdChange}
-      />
-
       <Dialog onOpenChange={setCreateOpen} open={createOpen}>
         <DialogContent className="max-w-lg">
           <DialogHeader>
@@ -133,7 +144,6 @@ export function SavedViewsPanel({
               <Label htmlFor="view-name">Name</Label>
               <Input
                 id="view-name"
-                className="text-sm"
                 value={draftName}
                 onChange={(event) => onDraftNameChange(event.target.value)}
               />
@@ -142,7 +152,6 @@ export function SavedViewsPanel({
               <Label htmlFor="view-report-key">Report key</Label>
               <Input
                 id="view-report-key"
-                className="text-sm"
                 value={draftReportKey}
                 onChange={(event) => onDraftReportKeyChange(event.target.value)}
               />
@@ -151,7 +160,6 @@ export function SavedViewsPanel({
               <Label htmlFor="view-spec">Spec JSON (optional)</Label>
               <Input
                 id="view-spec"
-                className="text-sm"
                 placeholder="{}"
                 value={draftSpecJson}
                 onChange={(event) => onDraftSpecJsonChange(event.target.value)}
@@ -188,7 +196,6 @@ export function SavedViewsPanel({
               Cancel
             </SecondaryActionButton>
             <Button
-              className="text-sm"
               disabled={acting}
               loading={acting}
               onClick={() => {
@@ -222,7 +229,7 @@ export function SavedViewsPanel({
               onAction={() => setCreateOpen(true)}
             />
           ) : (
-            <DirectoryTable>
+            <DirectoryTable className={directoryTableRevalidatingClass(listRevalidating)}>
               <TableHeader>
                 <TableRow>
                   <DirectoryTableHead>Name</DirectoryTableHead>
@@ -244,7 +251,6 @@ export function SavedViewsPanel({
                       <TableCell>
                         {id ? (
                           <Input
-                            className="text-sm"
                             value={edit.name}
                             onChange={(event) => onEditRowChange(id, 'name', event.target.value)}
                           />

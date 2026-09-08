@@ -1,6 +1,5 @@
 import { eachDayOfInterval, format, getDate, getDay, getMonth } from 'date-fns';
 
-import { createDevMockCampaigns } from '@/api/dev_mock/fixtures';
 import {
   SEED_LANDER_PATHS,
   SEED_OFFER_NAMES,
@@ -9,8 +8,8 @@ import {
   seedClickId,
   seedLanderFileName,
   seedPlacementId,
-} from '@/api/dev_mock/fixture_names';
-import { seedDeterministicUuid } from '@/api/dev_mock/seed_uuid';
+} from '@/lib/fixture_names';
+import { seedDeterministicUuid } from '@/lib/uuid';
 import type {
   BuyerPortfolio,
   ClickLogEvent,
@@ -31,14 +30,22 @@ const WEEKDAY_FACTORS = [0.72, 1.04, 1.08, 1.05, 1.0, 0.88, 0.69];
 const CAMPAIGN_SHARES = [0.31, 0.19, 0.16, 0.12, 0.11, 0.07, 0.04];
 const CAMPAIGN_ROI_SKEWS = [0.08, 0.04, -0.06, 0.02, 0.11, -0.12, -0.18];
 
-const CAMPAIGN_FIXTURES = createDevMockCampaigns()
-  .slice(0, CAMPAIGN_SHARES.length)
-  .map((campaign, index) => ({
-    id: campaign.id,
-    name: campaign.name,
-    share: CAMPAIGN_SHARES[index],
-    roiSkew: CAMPAIGN_ROI_SKEWS[index],
-  }));
+const DASHBOARD_CAMPAIGN_NAMES = [
+  'Summer checkout retarget',
+  'Velox trial onboarding',
+  'Horizon brand lift Q3',
+  'Sportsbook install tier-1',
+  'Insurance quote funnel',
+  'Solar panel CPL west',
+  'Fintech card signup',
+] as const;
+
+const CAMPAIGN_FIXTURES = CAMPAIGN_SHARES.map((share, index) => ({
+  id: seedDeterministicUuid('campaign', index + 1),
+  name: DASHBOARD_CAMPAIGN_NAMES[index],
+  share,
+  roiSkew: CAMPAIGN_ROI_SKEWS[index],
+}));
 
 const LANDER_SHARES = [0.28, 0.22, 0.18, 0.14, 0.11, 0.07];
 
@@ -130,44 +137,8 @@ export function isDashboardChartMockEnabled(): boolean {
   return params.get('chart_mock') === '1';
 }
 
-function isBuyerPortfolioEmpty(portfolio: BuyerPortfolio): boolean {
-  const series = portfolio.series ?? [];
-  const hasSeries = series.some(
-    (point) =>
-      (point.clicks ?? 0) > 0 ||
-      (point.conversions ?? 0) > 0 ||
-      (point.spend_micro ?? point.spend_micros ?? 0) > 0 ||
-      (point.revenue_micro ?? 0) > 0
-  );
-  const hasKpis =
-    (portfolio.kpis?.conversions ?? 0) > 0 ||
-    (portfolio.kpis?.cost_micro ?? portfolio.kpis?.spend_micro ?? 0) > 0 ||
-    (portfolio.clicks_7d ?? 0) > 0;
-  const hasBreakdown =
-    (portfolio.breakdowns?.campaigns?.rows?.length ?? 0) > 0 ||
-    (portfolio.breakdowns?.landers?.rows?.length ?? 0) > 0 ||
-    (portfolio.breakdowns?.offers?.rows?.length ?? 0) > 0 ||
-    (portfolio.breakdowns?.sources?.rows?.length ?? 0) > 0;
-  const hasRecentClicks = (portfolio.recent_clicks?.length ?? 0) > 0;
-  return !hasSeries && !hasKpis && !hasBreakdown && !hasRecentClicks;
-}
-
-function isLocalAdminDev(): boolean {
-  if (typeof window === 'undefined') {
-    return false;
-  }
-  const { hostname, port } = window.location;
-  if (hostname === 'localhost' || hostname === '127.0.0.1') {
-    return true;
-  }
-  return port === '5173';
-}
-
-function shouldFillDashboardDemoData(portfolio: BuyerPortfolio): boolean {
-  if (isDashboardChartMockEnabled()) {
-    return true;
-  }
-  return isLocalAdminDev() && isBuyerPortfolioEmpty(portfolio);
+function shouldFillDashboardDemoData(): boolean {
+  return isDashboardChartMockEnabled();
 }
 
 export function buildDashboardMockSeries(
@@ -388,6 +359,98 @@ function resolveMockRange(portfolio: BuyerPortfolio): { from: Date; to: Date } {
   return { from: to, to: from };
 }
 
+function breakdownTableEmpty(table?: DashboardBreakdownTable): boolean {
+  return (table?.rows?.length ?? 0) === 0;
+}
+
+function portfolioHasTraffic(portfolio: BuyerPortfolio): boolean {
+  if ((portfolio.clicks_7d ?? 0) > 0) {
+    return true;
+  }
+  if ((portfolio.kpis?.conversions ?? 0) > 0) {
+    return true;
+  }
+  return (portfolio.series ?? []).some((point) => (point.clicks ?? 0) > 0);
+}
+
+function portfolioTotalsFromPortfolio(portfolio: BuyerPortfolio): AggregateTotals {
+  const kpis = portfolio.kpis;
+  const seriesTotals = portfolio.series?.length ? aggregateSeries(portfolio.series) : undefined;
+  const clicks = Math.max(portfolio.clicks_7d ?? 0, seriesTotals?.clicks ?? 0);
+  const conversions = Math.max(kpis?.conversions ?? 0, seriesTotals?.conversions ?? 0);
+  const cost_micro = Math.max(
+    kpis?.cost_micro ?? 0,
+    kpis?.spend_micro ?? 0,
+    seriesTotals?.cost_micro ?? 0
+  );
+  const revenue_micro = Math.max(kpis?.revenue_micro ?? 0, seriesTotals?.revenue_micro ?? 0);
+  const profit_micro =
+    kpis?.profit_micro ?? seriesTotals?.profit_micro ?? revenue_micro - cost_micro;
+  const unique_clicks = Math.max(
+    kpis?.unique_clicks ?? 0,
+    portfolio.unique_clicks_7d ?? 0,
+    seriesTotals?.unique_clicks ?? 0,
+    Math.round(clicks * 0.86)
+  );
+  const roi_pct =
+    kpis?.roi_pct ?? (cost_micro > 0 ? (profit_micro / cost_micro) * 100 : seriesTotals?.roi_pct ?? 0);
+  return {
+    clicks,
+    unique_clicks,
+    conversions,
+    cost_micro,
+    revenue_micro,
+    profit_micro,
+    roi_pct,
+  };
+}
+
+function buildRecentClicksForPortfolio(portfolio: BuyerPortfolio, rangeEnd: Date): ClickLogEvent[] {
+  const campaigns = (portfolio.campaigns ?? []).filter((row) => row.id);
+  const events = buildRecentClicks(rangeEnd);
+  if (campaigns.length === 0) {
+    return events;
+  }
+  return events.map((event, index) => ({
+    ...event,
+    campaign_id: campaigns[index % campaigns.length]?.id ?? event.campaign_id,
+  }));
+}
+
+export function fillBuyerDashboardPortfolioGaps(portfolio: BuyerPortfolio): BuyerPortfolio {
+  if (!portfolioHasTraffic(portfolio)) {
+    return portfolio;
+  }
+
+  const totals = portfolioTotalsFromPortfolio(portfolio);
+  const rangeEnd = parsePeriodDate(portfolio.period?.to) ?? new Date();
+  const breakdowns = { ...portfolio.breakdowns };
+
+  if (breakdownTableEmpty(breakdowns.campaigns)) {
+    breakdowns.campaigns = buildBreakdownTable(CAMPAIGN_FIXTURES, totals);
+  }
+  if (breakdownTableEmpty(breakdowns.landers)) {
+    breakdowns.landers = buildBreakdownTable(LANDER_FIXTURES, totals);
+  }
+  if (breakdownTableEmpty(breakdowns.offers)) {
+    breakdowns.offers = buildBreakdownTable(OFFER_FIXTURES, totals);
+  }
+  if (breakdownTableEmpty(breakdowns.sources)) {
+    breakdowns.sources = buildBreakdownTable(SOURCE_FIXTURES, totals);
+  }
+
+  const recent_clicks =
+    (portfolio.recent_clicks?.length ?? 0) > 0
+      ? portfolio.recent_clicks
+      : buildRecentClicksForPortfolio(portfolio, rangeEnd);
+
+  return {
+    ...portfolio,
+    breakdowns,
+    recent_clicks,
+  };
+}
+
 export function buildDashboardMockPortfolio(portfolio: BuyerPortfolio): BuyerPortfolio {
   const { from, to } = resolveMockRange(portfolio);
   const series = buildDashboardMockSeries(from, to);
@@ -442,8 +505,8 @@ export function resolveDashboardChartSeries(
 }
 
 export function resolveBuyerDashboardPortfolio(portfolio: BuyerPortfolio): BuyerPortfolio {
-  if (shouldFillDashboardDemoData(portfolio)) {
+  if (shouldFillDashboardDemoData()) {
     return buildDashboardMockPortfolio(portfolio);
   }
-  return portfolio;
+  return fillBuyerDashboardPortfolioGaps(portfolio);
 }

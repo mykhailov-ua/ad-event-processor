@@ -2,6 +2,7 @@ import { Link } from 'react-router-dom';
 
 import { FilterApplyButton } from '@/shell/action_buttons';
 import { DirectoryPaginationFooter } from '@/shell/directory_pagination_footer';
+import { DirectoryFilterForm, FilterPanel } from '@/shell/filter_panel';
 import {
   DirectoryTable,
   DirectoryTableHead,
@@ -9,6 +10,7 @@ import {
   TableCell,
   TableHeader,
   TableRow,
+  directoryTableRevalidatingClass,
 } from '@/shell/directory_table';
 import { MonthPicker } from '@/components/ui/datetime_picker';
 import { Label } from '@/components/ui/label';
@@ -23,6 +25,7 @@ import { EmptyState } from '@/shell/empty_state';
 import { ErrorBlock } from '@/shell/error_block';
 import { PageSkeleton } from '@/shell/page_skeleton';
 import type { Invoice } from '@/api/types';
+import { billingPanelError } from '@/domains/billing/billing_nav';
 import { displayMicro } from '@/lib/display';
 
 export type InvoiceStatusFilter = '' | 'draft' | 'finalized' | 'void';
@@ -35,6 +38,7 @@ export type BillingInvoicesProps = {
   draftMonth: string;
   draftStatus: InvoiceStatusFilter;
   fetching: boolean;
+  listRevalidating?: boolean;
   error: Error | undefined;
   hasSnapshot: boolean;
   onDraftMonthChange: (month: string) => void;
@@ -51,6 +55,7 @@ export function BillingInvoices({
   draftMonth,
   draftStatus,
   fetching,
+  listRevalidating = false,
   error,
   hasSnapshot,
   onDraftMonthChange,
@@ -63,7 +68,7 @@ export function BillingInvoices({
   }
 
   if (error && !hasSnapshot) {
-    return <ErrorBlock title="Could not load invoices" message={error.message} />;
+    return billingPanelError(error, 'Could not load invoices');
   }
 
   const canGoPrev = offset > 0;
@@ -73,53 +78,55 @@ export function BillingInvoices({
     <section className="grid gap-6">
       <h2 className="text-base font-semibold">Invoices</h2>
 
-      <form
-        className="grid grid-cols-[repeat(auto-fill,minmax(12rem,1fr))] items-end gap-4"
-        onSubmit={(event) => {
-          event.preventDefault();
-          onApplyFilters();
-        }}
-      >
-        <div className="grid gap-2">
-          <Label htmlFor="billing-month">Month</Label>
-          <MonthPicker id="billing-month" value={draftMonth} onChange={onDraftMonthChange} />
-        </div>
+      <FilterPanel>
+        <DirectoryFilterForm
+          layout="auto-fill"
+          onSubmit={(event) => {
+            event.preventDefault();
+            onApplyFilters();
+          }}
+        >
+          <div className="grid gap-2">
+            <Label htmlFor="billing-month">Month</Label>
+            <MonthPicker id="billing-month" value={draftMonth} onChange={onDraftMonthChange} />
+          </div>
 
-        <div className="grid gap-2">
-          <Label htmlFor="billing-status">Status</Label>
-          <Select
-            value={draftStatus || 'all'}
-            onValueChange={(value) =>
-              onDraftStatusChange(value === 'all' ? '' : (value as InvoiceStatusFilter))
-            }
-          >
-            <SelectTrigger id="billing-status" className="w-full text-sm">
-              <SelectValue />
-            </SelectTrigger>
-            <SelectContent>
-              <SelectItem value="all">All</SelectItem>
-              <SelectItem value="draft">Draft</SelectItem>
-              <SelectItem value="finalized">Finalized</SelectItem>
-              <SelectItem value="void">Void</SelectItem>
-            </SelectContent>
-          </Select>
-        </div>
+          <div className="grid gap-2">
+            <Label htmlFor="billing-status">Status</Label>
+            <Select
+              value={draftStatus || 'all'}
+              onValueChange={(value) =>
+                onDraftStatusChange(value === 'all' ? '' : (value as InvoiceStatusFilter))
+              }
+            >
+              <SelectTrigger id="billing-status" className="w-full">
+                <SelectValue />
+              </SelectTrigger>
+              <SelectContent>
+                <SelectItem value="all">All</SelectItem>
+                <SelectItem value="draft">Draft</SelectItem>
+                <SelectItem value="finalized">Finalized</SelectItem>
+                <SelectItem value="void">Void</SelectItem>
+              </SelectContent>
+            </Select>
+          </div>
 
-        <FilterApplyButton disabled={fetching}>Apply</FilterApplyButton>
+          <FilterApplyButton disabled={fetching}>Apply</FilterApplyButton>
+        </DirectoryFilterForm>
+      </FilterPanel>
 
-        <DirectoryPaginationFooter
-          canGoNext={canGoNext}
-          canGoPrev={canGoPrev}
-          disabled={fetching}
-          onNext={() => onPageChange(offset + limit)}
-          onPrev={() => onPageChange(Math.max(0, offset - limit))}
-        />
-      </form>
+      <DirectoryPaginationFooter
+        canGoNext={canGoNext}
+        canGoPrev={canGoPrev}
+        disabled={fetching}
+        onNext={() => onPageChange(offset + limit)}
+        onPrev={() => onPageChange(Math.max(0, offset - limit))}
+      />
 
       {(items ?? []).length === 0 ? (
         <EmptyState title="No invoices" description="No invoices match the current filters." />
       ) : (
-        <DirectoryTable>
+        <DirectoryTable className={directoryTableRevalidatingClass(listRevalidating)}>
           <TableHeader>
             <TableRow>
               <DirectoryTableHead>Invoice</DirectoryTableHead>

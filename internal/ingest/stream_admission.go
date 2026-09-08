@@ -1,8 +1,6 @@
 package ingest
 
 import (
-	"strconv"
-
 	"ad-event-processor/internal/config"
 	"ad-event-processor/internal/domain"
 	"ad-event-processor/internal/filter"
@@ -34,12 +32,13 @@ type streamAdmissionTarget interface {
 	tryReserve(admissionPct int) bool
 	releaseReserve()
 	queueDepthForMetric() int
-	shardLabel() string
+	recordQueueDepth()
+	recordRejected()
 }
 
 type streamProducerAdmissionTarget struct {
 	producer *StreamProducer
-	shard    string
+	metrics  *streamAdmissionMetrics
 }
 
 func (t streamProducerAdmissionTarget) tryReserve(admissionPct int) bool {
@@ -54,13 +53,21 @@ func (t streamProducerAdmissionTarget) queueDepthForMetric() int {
 	return t.producer.QueueDepth()
 }
 
-func (t streamProducerAdmissionTarget) shardLabel() string {
-	return t.shard
+func (t streamProducerAdmissionTarget) recordQueueDepth() {
+	if t.metrics != nil {
+		t.metrics.queueDepth.Set(float64(t.queueDepthForMetric()))
+	}
+}
+
+func (t streamProducerAdmissionTarget) recordRejected() {
+	if t.metrics != nil {
+		t.metrics.rejected.Inc()
+	}
 }
 
 type brokerAdmissionTarget struct {
-	broker *BrokerProducer
-	shard  string
+	broker  *BrokerProducer
+	metrics *streamAdmissionMetrics
 }
 
 func (t brokerAdmissionTarget) tryReserve(admissionPct int) bool {
@@ -75,11 +82,16 @@ func (t brokerAdmissionTarget) queueDepthForMetric() int {
 	return t.broker.PendingCount()
 }
 
-func (t brokerAdmissionTarget) shardLabel() string {
-	if t.shard == "" {
-		return "broker"
+func (t brokerAdmissionTarget) recordQueueDepth() {
+	if t.metrics != nil {
+		t.metrics.queueDepth.Set(float64(t.queueDepthForMetric()))
 	}
-	return t.shard
+}
+
+func (t brokerAdmissionTarget) recordRejected() {
+	if t.metrics != nil {
+		t.metrics.rejected.Inc()
+	}
 }
 
 func streamAdmissionTargetFor(
@@ -91,11 +103,10 @@ func streamAdmissionTargetFor(
 	if brokers != nil {
 		idx, bp := brokers.Pick(campaignID)
 		if bp != nil {
-			label := "broker"
-			if brokers.Len() > 1 {
-				label = "broker-" + strconv.Itoa(idx)
-			}
-			return brokerAdmissionTarget{broker: bp, shard: label}, true
+			return brokerAdmissionTarget{
+				broker:  bp,
+				metrics: brokerAdmissionMetricsFor(idx, brokers.Len() > 1),
+			}, true
 		}
 	}
 	if sharder == nil || len(producers) == 0 {
@@ -109,7 +120,7 @@ func streamAdmissionTargetFor(
 	if p == nil {
 		return nil, false
 	}
-	return streamProducerAdmissionTarget{producer: p, shard: strconv.Itoa(shard)}, true
+	return streamProducerAdmissionTarget{producer: p, metrics: streamAdmissionMetricsForShard(shard)}, true
 }
 
 // tryAcquireStreamAdmission reserves producer queue headroom before Lua debit.
@@ -136,9 +147,9 @@ func tryAcquireStreamAdmission(
 	if !ok {
 		return streamAdmissionLease{}, 0, true
 	}
-	metrics.StreamProducerQueueDepth.WithLabelValues(target.shardLabel()).Set(float64(target.queueDepthForMetric()))
+	target.recordQueueDepth()
 	if !target.tryReserve(cfg.StreamProducerAdmissionPct) {
-		metrics.StreamProducerAdmissionRejectedTotal.WithLabelValues(target.shardLabel()).Inc()
+		target.recordRejected()
 		telemetry.RecordRejected()
 		return streamAdmissionLease{}, filterRejectProducerOverload, false
 	}
@@ -180,7 +191,7 @@ func rejectIfStreamProducerOverloaded(
 	if !ok {
 		return 0, false
 	}
-	metrics.StreamProducerQueueDepth.WithLabelValues(target.shardLabel()).Set(float64(target.queueDepthForMetric()))
+	target.recordQueueDepth()
 	pressurePct := 0
 	switch t := target.(type) {
 	case streamProducerAdmissionTarget:
@@ -191,7 +202,7 @@ func rejectIfStreamProducerOverloaded(
 	if pressurePct < cfg.StreamProducerAdmissionPct {
 		return 0, false
 	}
-	metrics.StreamProducerAdmissionRejectedTotal.WithLabelValues(target.shardLabel()).Inc()
+	target.recordRejected()
 	telemetry.RecordRejected()
 	return filterRejectProducerOverload, true
 }

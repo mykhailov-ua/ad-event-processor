@@ -4,14 +4,14 @@ import { Settings2 } from 'lucide-react';
 import type { CustomerComboboxOption } from '@/shell/customer_combobox';
 import { Button } from '@/components/ui/button';
 import { ToolbarDateRangePicker } from '@/shell/toolbar_date_range_picker';
-import { AdminSelect } from '@/shell/admin_select';
+import { SearchableFilterSelect } from '@/shell/searchable_filter_select';
 import {
   dashboardFilterFieldClass,
   dashboardFilterLabelClass,
 } from '@/domains/dashboards/dashboard_classes';
 import { DashboardPreferencesDialog } from '@/domains/dashboards/dashboard_preferences_dialog';
 import type { BuyerDashboardPreferences } from '@/domains/dashboards/dashboard_preferences';
-import { DirectoryFilterForm, FilterField, FilterPanel } from '@/shell/filter_panel';
+import { DirectoryFilterForm, FilterField, FilterPanel, FILTER_PANEL_FLAT_CLASS } from '@/shell/filter_panel';
 
 const ALL_OPTION_VALUE = '__all__';
 
@@ -74,16 +74,17 @@ export function BuyerDashboardToolbar({
 
   return (
     <>
-      <FilterPanel aria-label="Dashboard filters" className="bg-transparent p-0" role="search">
+      <FilterPanel aria-label="Dashboard filters" className={FILTER_PANEL_FLAT_CLASS} role="search">
         <DirectoryFilterForm layout="campaigns">
           <FilterField
             className={dashboardFilterFieldClass}
             label="Customer"
             labelClassName={dashboardFilterLabelClass}
           >
-            <AdminSelect
+            <SearchableFilterSelect
               aria-label="Customer"
               options={customerSelectOptions}
+              searchPlaceholder="All customers"
               value={draftCustomerId || ALL_OPTION_VALUE}
               onValueChange={(value) =>
                 onDraftCustomerIdChange(value === ALL_OPTION_VALUE ? '' : value)
@@ -93,14 +94,19 @@ export function BuyerDashboardToolbar({
 
           <FilterField
             className={dashboardFilterFieldClass}
-            label="Campaign"
+            label="Scope"
             labelClassName={dashboardFilterLabelClass}
           >
-            <AdminSelect
-              aria-label="Campaign"
+            <SearchableFilterSelect
+              aria-label="Campaign scope"
               disabled={!customerSelected}
               options={campaignSelectOptions}
-              title={customerSelected ? 'Filter by campaign' : 'Select a customer first'}
+              searchPlaceholder="All campaigns"
+              title={
+                customerSelected
+                  ? 'Limit analytics to one campaign'
+                  : 'Select a customer first'
+              }
               value={draftCampaignId || ALL_OPTION_VALUE}
               onValueChange={(value) =>
                 onDraftCampaignIdChange(value === ALL_OPTION_VALUE ? '' : value)

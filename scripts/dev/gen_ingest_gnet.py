@@ -100,7 +100,7 @@ def xform(src: str) -> str:
     src = src.replace("isH2ClientPreface", "httpingress.IsH2ClientPreface")
     src = src.replace("h2WrapH1Response", "httpingress.H2WrapH1Response")
     src = src.replace("resetChunkScratch", "httpingress.ResetChunkScratch")
-    src = src.replace("pinParsedHTTPRequest", "PinParsedHTTPRequest")
+    src = src.replace("pinParsedHTTPRequest", "PinHTTP1RequestInPlace")
     src = src.replace("monotonicNano()", "filter.MonotonicNano()")
     src = src.replace("monoElapsedSeconds", "filter.MonoElapsedSeconds")
     return src

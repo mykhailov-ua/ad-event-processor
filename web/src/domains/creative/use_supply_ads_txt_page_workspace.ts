@@ -8,6 +8,7 @@ import {
   listSupplyAdsTxt,
   updateSupplyAdsTxt,
 } from '@/api/supply_api';
+import { confirmDestructiveAction, mutationError } from '@/lib/mutation_audit';
 import { useCoalescedBumpRefresh, useRefreshToken } from '@/hooks/use_coalesced_refresh_token';
 import { useResource } from '@/api/use_resource';
 
@@ -34,8 +35,6 @@ export function useSupplyAdsTxtPageWorkspace() {
     [refreshToken]
   );
 
-  const bumpRefreshCoalesced = useCoalescedBumpRefresh(bumpRefresh, fetching);
-
   const [draftDomain, setDraftDomain] = useState('');
   const [draftAccountId, setDraftAccountId] = useState('');
   const [draftRelationship, setDraftRelationship] = useState('');
@@ -44,6 +43,11 @@ export function useSupplyAdsTxtPageWorkspace() {
   const [acting, setActing] = useState(false);
   const [actionError, setActionError] = useState<Error | undefined>(undefined);
   const [createSuccess, setCreateSuccess] = useState(false);
+
+  const listBusy = fetching || acting;
+  const bumpRefreshCoalesced = useCoalescedBumpRefresh(bumpRefresh, listBusy);
+
+  const bumpReload = bumpRefreshCoalesced;
 
   useEffect(() => {
     if (!data?.length) {
@@ -60,8 +64,6 @@ export function useSupplyAdsTxtPageWorkspace() {
     }
     setEditRows(next);
   }, [data]);
-
-  const bumpReload = bumpRefreshCoalesced;
 
   const onCreateRow = useCallback(() => {
     if (!draftDomain.trim() || !draftAccountId.trim() || !draftRelationship.trim()) {
@@ -125,20 +127,31 @@ export function useSupplyAdsTxtPageWorkspace() {
 
   const onDeleteRow = useCallback(
     (id: number) => {
+      if (acting) {
+        return;
+      }
+      const row = data?.find((item) => item.id === id);
+      const label = editRows[id]?.domain?.trim() || row?.domain?.trim() || String(id);
+      if (!confirmDestructiveAction(`Delete ads.txt row for "${label}"?`)) {
+        return;
+      }
       setActing(true);
       setActionError(undefined);
       void deleteSupplyAdsTxt(id)
         .then(() => {
+          toast.success('Ads.txt row deleted');
           bumpReload();
         })
         .catch((err: unknown) => {
-          setActionError(err instanceof Error ? err : new Error(String(err)));
+          const nextError = mutationError(err);
+          setActionError(nextError);
+          toast.error(nextError.message);
         })
         .finally(() => {
           setActing(false);
         });
     },
-    [bumpReload]
+    [acting, bumpReload, data, editRows]
   );
 
   const onEditRowChange = useCallback((id: number, field: keyof AdsTxtEditRow, value: string) => {

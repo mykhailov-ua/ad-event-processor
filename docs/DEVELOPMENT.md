@@ -271,7 +271,7 @@ aed-admin web         # :5173, proxies /api to control
 
 Logs: `var/admin_web.log`; compose control: `docker logs ad-event-processor-control-1`. Without sourcing aliases: `bash scripts/dev/aed-admin up`.
 
-**Non-prod UI tiers:** `?admin_dev=1` enables in-browser mock API (`web/src/api/dev_mock/`); `?chart_mock=1` fills buyer dashboard charts with synthetic data (`dashboard_series_mock.ts`). Neither tier proves Go handler wiring. Use `admin_dev=0` with control `:8188` for contract verification. See `web/DESIGN.md` (**Non-prod verification tiers**).
+**Non-prod UI tiers:** `?chart_mock=1` fills buyer dashboard charts with synthetic data (`dashboard_series_mock.ts`) for chart component preview only. Live API verification requires control `:8188` healthy (`curl -sf :8188/health`). See `web/WEB.md` (**Non-prod verification tiers**).
 
 ### 2. Admin UI Bootstrap & Production Build
 To seed a local developer account and embed the UI assets directly into the Go `control` binary:
@@ -442,11 +442,193 @@ Manual root-attacker drills (pubkey injection, HWID sysfs spoof, binary patch): 
 
 ---
 
+## Emergency breaker runbook
+
+Global ingest kill switch: when `emergency_breaker=true`, tracker `EmergencyBreakerFilter` returns **503** before Redis debit (filter decision `emergency_breaker`). RTB live gate also reads the same flag.
+
+### When to use
+
+| Signal | Action |
+| :--- | :--- |
+| `RedisBreakerOpen`, sustained `WorkerPoolReject`, or `StreamProducerPostDebitRejected` | Shed load before metastable collapse; do not raise queue depth |
+| `TrackerLatencyP99Sustained` (p99 > 80 ms for 30 s) | Stop new spend while investigating Redis/worker saturation |
+| Operator-confirmed cascade (retry storm + cold-path lag) | Breaker first; scale capacity second |
+
+503 from the breaker is **expected fail-closed** behavior, not a tracker bug.
+
+### Check status
+
+| Surface | Command / metric |
+| :--- | :--- |
+| Ops API | `GET /api/v1/ops/shards` or `GET /api/v1/ops/health/snapshot` -- field `emergency_breaker` (`true` / `false`) |
+| Prometheus | `ad_filter_decisions_total{decision="emergency_breaker"}` and `ad_filter_blocked_total{reason="emergency_breaker"}` |
+| Redis (after outbox apply) | `HGET config:values emergency_breaker` on any connected shard |
+
+### Activate or clear
+
+Canonical path: Postgres `system_settings` plus `UPDATE_SETTINGS` outbox row (same TX as `settingsadmin.Store.ToggleEmergencyBreaker`). Outbox worker fan-outs to all Redis shards; trackers pick up via `config:version` / `SettingsWatcher`.
+
+On the control host (requires `DB_DSN` and `psql`):
+
+```bash
+bash scripts/ops/emergency_breaker.sh on "redis shard saturation"
+# ... mitigate ...
+bash scripts/ops/emergency_breaker.sh off "mitigation complete"
+```
+
+Verify outbox drained (`ad_management_outbox_oldest_pending_seconds` < 30 s) and `emergency_breaker` in Redis matches intent before resuming traffic.
+
+### Do not
+
+- Raise `WORKER_POOL_QUEUE_DEPTH` or set `STREAM_PRODUCER_ADMISSION_PCT=0` to "fix" overload (disables `TryReserve`).
+- Raise `FILTER_TIMEOUT_MS` above **100 ms** in production (`ENV=production` rejects at startup).
+- Toggle only Redis without PG/outbox (control recon and restart can revert break-glass edits).
+
+Production hot-path tuning checklist: `.env.prod.example` and `bash scripts/ops/verify_prod_tuning.sh .env.prod.example`.
+
+---
+
+## P1 capacity runbook
+
+Post-P0 knobs for growth and hot campaigns on a dedicated appliance. Verify:
+
+```bash
+bash scripts/ops/verify_prod_capacity.sh .env.prod.example
+```
+
+### Redis UDS + CPU isolation
+
+| Knob | Production value |
+| :--- | :--- |
+| `TRANSPORT_USE_UDS` | `1` (PG/Redis/CH unix sockets on co-located host) |
+| `REDIS_ADDRS` | Four unix paths under `/run/ad-event-processor/redis/` |
+| `CPU_ISOLATION_ENABLED` | `1` with compose `--profile cpu-isolation` |
+| `TRACKER_0_CPUSET`..`TRACKER_3_CPUSET` | Pin trackers (example 0-3 on 8-core) |
+| `REDIS_CPUSET` | `4,5` |
+| `EDGE_CPUSET` | `6` |
+| `COLD_CPUSET` | `7` |
+
+```bash
+CPU_ISOLATION_ENABLED=1 bash scripts/dev/stack/stack.sh single-vps --profile cpu-isolation
+bash scripts/ops/cpu_isolation.sh verify
+bash scripts/test/uds_transport_smoke.sh
+```
+
+### Hot campaign sub-shards (`BehaviorHighVolumeDebit`)
+
+Four debit sub-slots per campaign (`{campaign_id:slot_N}`) reduce Redis hot-key contention. **Requires `LOCAL_QUOTA_MODE=live` on trackers.**
+
+Flag value: `256` (`BehaviorHighVolumeDebit`).
+
+```bash
+bash scripts/ops/enable_high_volume_debit.sh <campaign-uuid> [more-ids...]
+```
+
+Or `PATCH /api/v1/campaigns/{id}/fraud` with `{"behavior_flags": <current|256>}`.
+
+Verify: `go test ./internal/ingestion/ -run='DebitSubshard|HighVolumeDebit' -count=1`
+
+### Processor lag and spool runbook
+
+| Alert | Metric | Action |
+| :--- | :--- | :--- |
+| `ProcessorStreamLagHigh` | `ad_processor_stream_lag_seconds` > 120 | Scale processor workers; fix CH ingest; check `/ready` |
+| `ClickHouseSpoolPressure` | `ad_ch_spool_segments` >= 6 | CH outage spill; verify `CH_SPOOL_DIR` disk and CH connectivity |
+| `ProcessorStreamBackpressureActive` | `ad_processor_stream_backpressure_active` == 1 | PEL paused during CH outage; do not force-clear stream |
+
+Env: `PROCESSOR_STREAM_LAG_MAX_SEC=120`, `CH_SPOOL_DIR=/var/spool/ad-event-processor/ch`, `CH_SPOOL_MAX_SEGMENTS=8`.
+
+Settlement truth stays in Postgres; CH lag is analytics-only.
+
+### Periodic fault drill
+
+Weekly or pre-release on a staging appliance (stack must be up):
+
+```bash
+# Fast subset (~spool + rollback proof)
+bash scripts/ops/fault_drill_scheduled.sh spool
+
+# Full matrix (CI main-resilience tier)
+bash scripts/fault/compose_fault_drill.sh all
+```
+
+Logs: `var/fault-drill/`. CI nightly: `.github/workflows/compose-fault-nightly.yaml`.
+
+---
+
+## P2 enterprise runbook
+
+Post-P1 perimeter for high-RPS appliances and enterprise SKU features. Verify:
+
+```bash
+bash scripts/ops/verify_prod_enterprise.sh .env.prod.example
+```
+
+### Multi-shard horizontal scale
+
+| Knob | Production value |
+| :--- | :--- |
+| `REDIS_SHARD_COUNT` | `4` (static slot topology; `ExpectedRedisShardCount`) |
+| `REDIS_ADDRS` | Four unix sockets `redis-0..3` |
+| `INGEST_TRACKER_COUNT` | `4` (nginx peers `tracker-0..3` unix sockets) |
+| Stack profile | `bash scripts/dev/stack/stack.sh single-vps` (includes nginx + tracker-1..3) |
+
+```bash
+bash scripts/ops/verify_redis_topology.sh .env
+bash scripts/test/uds_transport_smoke.sh
+```
+
+Campaigns stay on static slot shards; hot campaigns add `BehaviorHighVolumeDebit` (P1) without adding Redis masters beyond four.
+
+### Broker-primary CH ingest runbook
+
+Default appliance path: mmap WAL via `pkg/broker`, not Redis `_ch` stream RAM.
+
+| Phase | `CH_INGEST_SOURCE` | `BROKER_SHADOW_MODE` | Gate |
+| :--- | :--- | :--- | :--- |
+| Shadow | `broker` | `1` | `bash scripts/ops/broker_cutover_preflight.sh shadow` |
+| Drain | `broker` | `1` | Redis `_ch` PEL near zero |
+| Live | `broker` | `0` | `bash scripts/ops/broker_cutover_preflight.sh live` |
+
+Prometheus: `ad_broker_ingest_divergence_high` must stay **0** before and after cutover. Active = rollback signal.
+
+```bash
+# Staging compare (RAM / divergence proof)
+bash scripts/perf/redis_ram_cutover_compare.sh
+
+# Durability tier
+bash scripts/test/broker_fault_lab.sh
+go test ./internal/ingestion/ -short -run TestFault_BrokerShadowCutover_NoEventLoss -count=1
+```
+
+Production `.env.prod.example` sets `BROKER_SHADOW_MODE=0` (live). Use shadow only on staging during migration.
+
+### XDP edge perimeter (license `ebpf_xdp_edge`)
+
+Optional L4 drop for listed IPs and flood shaping before nginx/userspace.
+
+| Knob | Detail |
+| :--- | :--- |
+| `EDGE_XDP_ENABLED` | `1` to enforce preflight checks |
+| `EDGE_XDP_INGRESS_INTERFACE` | Production NIC (`eth0`), not `lo` |
+| `EDGE_BPF_PIN_DIR` | `/sys/fs/bpf/ad-event-processor` |
+| Compose | `--profile enterprise-xdp` (`edge-xdp`, `edge-bpf-sync`) |
+
+```bash
+bash scripts/ops/xdp_preflight.sh .env
+sudo bash scripts/test/edge/xdp_resilience_drill.sh   # optional drill
+```
+
+JWT must include `features.ebpf_xdp_edge`. XDP drops known L3/L4; residential rotating proxies still need tracker L7 fraud.
+
+---
+
 ## Shard 0 Outage Mitigation
 
 Redis Shard 0 functions as the configuration hub for campaign definitions and global state.
 - **Tracker resiliency:** If Shard 0 drops, trackers continue running campaigns using their local in-memory snapshot (`CAMPAIGN_REPLICA_PATH`). Campaigns homed on shard 0 return **503 `shard_unavailable`** while Redis-0 is down.
-- **Stale registry:** When pub/sub is quiet longer than `REGISTRY_STALE_TTL`, the registry enters stale mode. With **`REGISTRY_STALE_PG_GRACE=true`** (default), cache misses call Postgres once: active campaigns are warmed and ingest continues; IDs with no PG row return **404**; disable grace or PG unreachable returns **503 `registry_stale`**.
+- **Stale registry:** When pub/sub is quiet longer than `REGISTRY_STALE_TTL`, the registry enters stale mode (`ad_registry_stale_mode=1`). With **`REGISTRY_STALE_PG_GRACE=true`** (dev default), cache misses call Postgres once per second budget (`REGISTRY_STALE_PG_MAX_RPS`, default 100): active campaigns are warmed and ingest continues; IDs with no PG row return **404**; circuit open or PG unreachable returns **503 `registry_stale`** (`ad_event_processor_registry_stale_pg_reads_total`, `ad_event_processor_registry_stale_pg_circuit_open_total`).
+- **Production profile:** Set **`REGISTRY_STALE_PG_GRACE=false`** in `.env.prod.example` so the hot path performs **zero** Postgres reads on cache miss — unknown or evicted campaigns return **503 `registry_stale`** until pub/sub recovers. Alert when `ad_registry_stale_mode == 1` (see `deploy/monitoring/prometheus.rules.yaml`).
 - **Control API resiliency:** Outbox updates are distributed to surviving shards (Shards 1..N). When Shard 0 recovers, the `Shard0CatchupWorker` automatically catches up with the latest state changes.
 
 ---

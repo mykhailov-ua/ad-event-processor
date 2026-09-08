@@ -1,4 +1,5 @@
 import type { ReactNode } from 'react';
+import { useMemo } from 'react';
 
 import {
   dashboardCardTitleClass,
@@ -10,6 +11,11 @@ import { DashboardCard } from '@/domains/dashboards/dashboard_card';
 import { DashboardBreakdownListTable } from '@/domains/dashboards/dashboard_breakdown_list_table';
 import type { DashboardBreakdownColumnId } from '@/domains/dashboards/dashboard_preferences';
 import type { DashboardBreakdownScope } from '@/domains/dashboards/dashboard_table_column_prefs';
+import { DirectoryTablePagination } from '@/shell/directory_data_table/directory_table_pagination';
+import {
+  sliceDirectoryTableRows,
+  useDirectoryTablePagination,
+} from '@/shell/directory_data_table/use_directory_table_pagination';
 import { cn } from '@/lib/utils';
 
 export type DashboardBreakdownTableProps = {
@@ -21,6 +27,9 @@ export type DashboardBreakdownTableProps = {
   emptyDescription?: string;
   embedded?: boolean;
   sectionClassName?: string;
+  pageSize?: number;
+  meta?: ReactNode;
+  fillContainer?: boolean;
 };
 
 export function DashboardBreakdownTableSection({
@@ -32,8 +41,16 @@ export function DashboardBreakdownTableSection({
   emptyDescription,
   embedded = false,
   sectionClassName,
+  pageSize = 10,
+  meta,
+  fillContainer = true,
 }: DashboardBreakdownTableProps) {
   const rows = table?.rows ?? [];
+  const pagination = useDirectoryTablePagination(rows.length, pageSize);
+  const pageRows = useMemo(
+    () => sliceDirectoryTableRows(rows, pagination),
+    [pagination.end, pagination.start, rows]
+  );
 
   const content =
     rows.length === 0 ? (
@@ -46,15 +63,22 @@ export function DashboardBreakdownTableSection({
       <>
         <DashboardBreakdownListTable
           columns={columns}
+          fillContainer={fillContainer}
           nameLink={nameLink}
           scope={scope}
-          table={table}
+          table={{ ...table, rows: pageRows }}
+          widthProbeTable={table}
         />
-        {table?.truncated ? (
-          <p className="border-t border-border px-5 py-3 text-xs text-muted-foreground">
-            Showing top {rows.length} of {table.total ?? rows.length} rows.
-          </p>
-        ) : null}
+        <DirectoryTablePagination
+          end={pagination.end}
+          page={pagination.page}
+          pageCount={pagination.pageCount}
+          pageSize={pagination.pageSize}
+          start={pagination.start}
+          totalRows={rows.length}
+          truncatedTotal={table?.truncated ? table.total : undefined}
+          onPageChange={pagination.setPage}
+        />
       </>
     );
 
@@ -70,10 +94,10 @@ export function DashboardBreakdownTableSection({
   }
 
   return (
-    <DashboardCard bodyClassName="p-0" className="min-w-0" title={title}>
+    <DashboardCard bodyClassName="p-0" className="min-w-0" meta={meta} title={title}>
       {content}
     </DashboardCard>
   );
 }
 
-export { campaignBreakdownLink } from '@/domains/dashboards/dashboard_breakdown_list_table';
+export { campaignReportBreakdownLink, campaignBreakdownLink } from '@/domains/dashboards/dashboard_breakdown_links';

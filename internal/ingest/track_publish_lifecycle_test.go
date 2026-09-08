@@ -37,6 +37,10 @@ func (f *rollbackProbeFilter) RollbackDebit(ctx context.Context, evt *domain.Eve
 	f.rollbackCalls++
 }
 
+func (f *rollbackProbeFilter) FinalizeLocalQuantaPublish(ctx context.Context, evt *domain.Event, camp *domain.Campaign) error {
+	return nil
+}
+
 func (f *rollbackProbeFilter) SetSkipBudgetDebit(skip bool) {}
 
 func TestPublishAcceptedOrRollback_holdout(t *testing.T) {

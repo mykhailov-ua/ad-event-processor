@@ -26,6 +26,7 @@ export type CampaignEditorFormState = {
   ingress_policy: string;
   traffic_template_id: string;
   click_query_params_json: string;
+  click_filter_tier: string;
 };
 
 export type BuildCampaignPatchResult =

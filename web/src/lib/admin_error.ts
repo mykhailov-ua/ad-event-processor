@@ -1,8 +1,7 @@
 // Operator-facing error copy (frontend-slop.mdc EH-*).
-// userErrorMessage maps ApiError status/code to safe text; raw Error.message only when admin_dev=1.
-// formatAdminErrorDetails is for ErrorBlock dev overlay, not end-user toasts.
+// userErrorMessage maps ApiError status/code to safe operator text.
+// formatAdminErrorDetails is for ErrorBlock diagnostics, not end-user toasts.
 import { ApiError } from '../api/api_error.ts';
-import { isAdminDevMode } from './admin_dev_mode.ts';
 
 export type AdminErrorKind = 'load' | 'render' | 'route' | 'not-found' | 'forbidden';
 
@@ -31,7 +30,7 @@ export function adminErrorUserMessage(kind: AdminErrorKind): string {
 }
 
 export function shouldShowAdminErrorDetails(): boolean {
-  return isAdminDevMode();
+  return false;
 }
 
 function isRecord(value: unknown): value is Record<string, unknown> {

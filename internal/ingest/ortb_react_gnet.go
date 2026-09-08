@@ -49,7 +49,7 @@ func seatBlockedByBSeat(cold *OpenRTB26Cold, seat []byte) bool {
 	return openrtb.SeatBlockedByBSeat(cold, seat)
 }
 
-func (h *AdsPacketHandler) reactOpenRTBBid(req Request, c gnet.Conn, ctx *ConnContext) gnet.Action {
+func (h *AdsPacketHandler) reactOpenRTBBid(req *Request, c gnet.Conn, ctx *ConnContext) gnet.Action {
 	if h == nil {
 		return gnet.None
 	}
@@ -60,7 +60,7 @@ func (h *AdsPacketHandler) reactOpenRTBBid(req Request, c gnet.Conn, ctx *ConnCo
 	return action
 }
 
-func (h *AdsPacketHandler) reactOpenRTBBidCore(req Request, c gnet.Conn, ctx *ConnContext) gnet.Action {
+func (h *AdsPacketHandler) reactOpenRTBBidCore(req *Request, c gnet.Conn, ctx *ConnContext) gnet.Action {
 	if !openRTBLicenseAllowed(h.registry) {
 		metrics.RtbExchangeValidateErrors.Inc()
 		return h.writeOpenRTBNoBid(req, c, ctx, nil, rtb.NoBidInvalidRequest, 0)
@@ -104,7 +104,7 @@ func (h *AdsPacketHandler) reactOpenRTBBidCore(req Request, c gnet.Conn, ctx *Co
 	id := NewFastUUID()
 	bidID = appendUUID(bidID, id)
 	ctx.WReqID.Buf = bidID
-	clientIP := extractClientIPGnet(ctx, &req, c, h.cfg.TrustedProxies)
+	clientIP := extractClientIPGnet(ctx, req, c, h.cfg.TrustedProxies)
 	evt := &ctx.Evt
 	evt.Reset()
 	evt.IP = clientIP

@@ -152,6 +152,10 @@ func (s *Service) ApplyCampaignTemplates(ctx context.Context, campaignID uuid.UU
 	return s.TemplateCatalog(s.pool).ApplyCampaignTemplates(ctx, campaignID, req)
 }
 
+func (s *Service) DryRunCampaignTemplates(ctx context.Context, campaignID uuid.UUID, req campaign.ApplyCampaignTemplatesRequest) (campaign.DryRunCampaignTemplatesResult, error) {
+	return s.TemplateCatalog(s.pool).DryRunCampaignTemplates(ctx, campaignID, req)
+}
+
 func (s *Service) AutomationRules() *automation.RulesService {
 	if s == nil {
 		return nil

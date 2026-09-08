@@ -15,7 +15,8 @@
 //   - Custom domain delete limited to role=custom rows; built-in platform targets resync from platformconfig.
 //   - Reputation-unsafe pool domains move to banned status (TestDomainHealth_reputationUnsafeBansPool).
 //   - Cloudflare client nil when API token unset; park and ssl routes fail closed with service unavailable.
-//   - IsTLSAllowed checks domain_health_status and domain pool membership before edge cert issuance.
+//   - Bulk park/SSL jobs run in background goroutines (POST /api/v1/ops/domains/bulk, bulk-ssl); poll GET .../jobs/{job_id}.
+//   - PATCH .../burn bans pool domain and removes custom TLS allow row.
 //
 // Forbidden:
 //   - Hot-path tracker or ingest imports.
@@ -25,7 +26,8 @@
 //
 //	go list -e ./internal/platformadmin/domains/
 //	go test ./internal/platformadmin/domains/ -short -run 'TestCloudflare|TestApplyReputation|TestDomainHealthTLSAllowed_tokenRequired|TestCloudflareRecordType' -count=1
-//	go test ./internal/platformadmin/domains/ -short -run TestCloudflareClient_ListZones -count=1
+//	go test ./internal/platformadmin/domains/ -short -run 'TestHostname|TestCloudflare|TestSetupWildcard' -count=1
+//	DOMAIN_WILDCARD_SSL_STAGING=1 uses Let's Encrypt staging directory; renew tick in domain health worker increments ad_event_processor_domain_ssl_renew_total
 //	go test ./internal/platformadmin/domains/ -short -run TestApplyReputationToProbe -count=1
 //	go test ./internal/platformadmin/domains/ -run TestDomainHealth_markPoolDomainBanned -count=1
 package domains

@@ -1,14 +1,17 @@
 // L3 ops blacklist directory: paginated list + add/remove mutations; coalesced refresh while saving.
 import { useCallback, useState } from 'react';
-import { useSearchParams } from 'react-router-dom';
+import { toast } from 'sonner';
 
 import { addOpsBlacklistEntry, listOpsBlacklist, removeOpsBlacklistEntry } from '@/api/ops_api';
+import { confirmDestructiveAction, mutationError } from '@/lib/mutation_audit';
 import { useCoalescedBumpRefresh, useRefreshToken } from '@/hooks/use_coalesced_refresh_token';
 import { useResource } from '@/api/use_resource';
+import { useTransitionSearchParams } from '@/hooks/use_transition_search_params';
 import { parseListLimit, parseListOffset } from '@/lib/list_query';
 
 export function useOpsBlacklistPageWorkspace() {
-  const [searchParams, setSearchParams] = useSearchParams();
+  const [searchParams, { isPending: listQueryPending, replaceSearchParams }] =
+    useTransitionSearchParams();
   const { refreshToken, bumpRefresh } = useRefreshToken();
   const [saving, setSaving] = useState(false);
   const [actionError, setActionError] = useState<Error | undefined>();
@@ -19,7 +22,7 @@ export function useOpsBlacklistPageWorkspace() {
   const limit = parseListLimit(searchParams.get('limit'));
   const offset = parseListOffset(searchParams.get('offset'));
 
-  const { data, error, fetching } = useResource(
+  const { data, error, fetching, revalidating: listRevalidating } = useResource(
     (signal) => listOpsBlacklist({ limit, offset }, signal),
     [limit, offset, refreshToken]
   );
@@ -32,9 +35,9 @@ export function useOpsBlacklistPageWorkspace() {
       const next = new URLSearchParams(searchParams);
       next.set('limit', String(limit));
       next.set('offset', String(Math.max(0, nextOffset)));
-      setSearchParams(next, { replace: true });
+      replaceSearchParams(next);
     },
-    [limit, searchParams, setSearchParams]
+    [limit, replaceSearchParams, searchParams]
   );
 
   const onAdd = useCallback(async () => {
@@ -54,9 +57,12 @@ export function useOpsBlacklistPageWorkspace() {
       });
       setDraftIp('');
       setDraftReason('');
+      toast.success('Blacklist entry added');
       bumpRefreshCoalesced();
     } catch (err: unknown) {
-      setActionError(err instanceof Error ? err : new Error(String(err)));
+      const nextError = mutationError(err);
+      setActionError(nextError);
+      toast.error(nextError.message);
     } finally {
       setSaving(false);
     }
@@ -70,14 +76,20 @@ export function useOpsBlacklistPageWorkspace() {
     if (!ip) {
       return;
     }
+    if (!confirmDestructiveAction(`Remove ${ip} from the fraud blacklist?`)) {
+      return;
+    }
     setSaving(true);
     setActionError(undefined);
     try {
       await removeOpsBlacklistEntry({ ip });
       setDraftRemoveIp('');
+      toast.success('Blacklist entry removed');
       bumpRefreshCoalesced();
     } catch (err: unknown) {
-      setActionError(err instanceof Error ? err : new Error(String(err)));
+      const nextError = mutationError(err);
+      setActionError(nextError);
+      toast.error(nextError.message);
     } finally {
       setSaving(false);
     }
@@ -92,6 +104,7 @@ export function useOpsBlacklistPageWorkspace() {
     draftReason,
     draftRemoveIp,
     fetching,
+    listRevalidating: listRevalidating || listQueryPending,
     saving,
     error,
     actionError,

@@ -1,25 +1,25 @@
 export type Theme = 'light' | 'dark';
 
 export const THEME_STORAGE_KEY = 'aed-admin-theme';
-export const THEME_LIGHT_DEFAULT_MIGRATION_KEY = 'aed-admin-theme-light-default-v2';
+export const THEME_DARK_DEFAULT_MIGRATION_KEY = 'aed-admin-theme-dark-default-v3';
 
 export function readStoredTheme(): Theme {
   try {
-    migrateLightDefaultTheme();
+    migrateDarkDefaultTheme();
     const stored = window.localStorage.getItem(THEME_STORAGE_KEY);
-    return stored === 'dark' ? 'dark' : 'light';
+    return stored === 'light' ? 'light' : 'dark';
   } catch {
-    return 'light';
+    return 'dark';
   }
 }
 
-export function migrateLightDefaultTheme(): void {
+export function migrateDarkDefaultTheme(): void {
   try {
-    if (window.localStorage.getItem(THEME_LIGHT_DEFAULT_MIGRATION_KEY) === '1') {
+    if (window.localStorage.getItem(THEME_DARK_DEFAULT_MIGRATION_KEY) === '1') {
       return;
     }
-    window.localStorage.setItem(THEME_STORAGE_KEY, 'light');
-    window.localStorage.setItem(THEME_LIGHT_DEFAULT_MIGRATION_KEY, '1');
+    window.localStorage.setItem(THEME_STORAGE_KEY, 'dark');
+    window.localStorage.setItem(THEME_DARK_DEFAULT_MIGRATION_KEY, '1');
   } catch {
     // ignore storage errors
   }

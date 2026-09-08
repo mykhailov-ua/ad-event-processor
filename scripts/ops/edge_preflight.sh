@@ -38,7 +38,21 @@ if [[ -f "$ENV_FILE" ]]; then
   set +a
 fi
 
-run_check "prod FILTER_TIMEOUT_MS" bash "$SCRIPTS/ops/verify_prod_tuning.sh" "$ENV_FILE" || true
+run_check "production hot-path tuning" bash "$SCRIPTS/ops/verify_prod_tuning.sh" "$ENV_FILE" || true
+
+if [[ "${ENV:-}" == "production" ]]; then
+  run_check "production capacity (P1)" bash "$SCRIPTS/ops/verify_prod_capacity.sh" "$ENV_FILE" || true
+  run_check "production enterprise (P2)" bash "$SCRIPTS/ops/verify_prod_enterprise.sh" "$ENV_FILE" || true
+  run_check "broker cutover live" bash "$SCRIPTS/ops/broker_cutover_preflight.sh" live || true
+  if [[ -x "$SCRIPTS/ops/xdp_preflight.sh" ]]; then
+    run_check "xdp perimeter" bash "$SCRIPTS/ops/xdp_preflight.sh" "$ENV_FILE" || true
+  fi
+  if [[ -x "$SCRIPTS/ops/cpu_isolation.sh" ]]; then
+    run_check "cpu isolation" bash "$SCRIPTS/ops/cpu_isolation.sh" verify || {
+      [[ "$STRICT" == "1" ]] || warn "cpu isolation not verified (CPU_ISOLATION_ENABLED=1 and stack with --profile cpu-isolation)"
+    }
+  fi
+fi
 
 if [[ -x "$SCRIPTS/ops/sysctl.sh" ]]; then
   run_check "sysctl" bash "$SCRIPTS/ops/sysctl.sh" verify || {

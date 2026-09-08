@@ -34,7 +34,6 @@ export type DashboardChartRow = {
 };
 
 const axisLineStyle = { stroke: 'hsl(var(--border) / 0.55)' };
-const chartLineStroke = 'hsl(var(--foreground) / 0.36)';
 const chartAxisLabelColor = 'hsl(var(--muted-foreground))';
 
 const chartLineDash: Partial<Record<DashboardMetricId, string>> = {
@@ -49,7 +48,7 @@ function formatVolumeTooltip(value: number): string {
   return displayCount(value);
 }
 
-function formatChartDate(label: string): string {
+function formatChartTooltipDate(label: string): string {
   const trimmed = label.trim();
   if (!trimmed) {
     return '';
@@ -59,6 +58,18 @@ function formatChartDate(label: string): string {
     return trimmed;
   }
   return format(date, 'dd MMMM');
+}
+
+function formatChartAxisDate(label: string): string {
+  const trimmed = label.trim();
+  if (!trimmed) {
+    return '';
+  }
+  const date = parseISO(trimmed);
+  if (!isValid(date)) {
+    return trimmed;
+  }
+  return format(date, 'dd MMM');
 }
 
 function ChartTooltipContent({
@@ -90,13 +101,13 @@ function ChartTooltipContent({
     }
     return (
       <div className="grid gap-1">
-        <p className="font-numeric text-ui-mini tracking-wide text-muted-foreground">{title}</p>
+        <p className="text-ui-mini tracking-wide text-muted-foreground">{title}</p>
         {metrics.map((metric) => {
           const value = row[metric.seriesKey as keyof DashboardChartRow] as number;
           const formatted =
             metric.axis === 'money' ? formatUsdTooltip(value) : formatVolumeTooltip(value);
           return (
-            <div key={metric.id} className="flex items-center justify-between gap-4">
+            <div key={metric.id} className="grid grid-cols-[1fr_auto] items-center gap-4">
               <span className="flex items-center gap-2 text-muted-foreground">
                 <span
                   className="inline-block h-2 w-2 shrink-0 rounded-full"
@@ -104,7 +115,7 @@ function ChartTooltipContent({
                 />
                 {metric.label}
               </span>
-              <span className="font-numeric tabular-nums text-foreground">{formatted}</span>
+              <span className="font-numeric text-foreground">{formatted}</span>
             </div>
           );
         })}
@@ -114,7 +125,7 @@ function ChartTooltipContent({
 
   return (
     <div className={cn('ui-surface-raised grid min-w-[12rem] gap-2 px-3 py-2 text-xs shadow-sm')}>
-      <p className="font-medium text-foreground">{formatChartDate(label ?? row.label)}</p>
+      <p className="font-medium text-foreground">{formatChartTooltipDate(label ?? row.label)}</p>
       {renderSection('Volume', volumeEntries)}
       {renderSection('USD', moneyEntries)}
     </div>
@@ -194,34 +205,20 @@ export const DashboardMultiAxisChartCanvas = memo(function DashboardMultiAxisCha
         <ComposedChart
           data={chartRows}
           height={height}
-          margin={{ top: 32, right: 12, left: 4, bottom: 36 }}
+          margin={{ top: 8, right: 4, left: 0, bottom: 4 }}
           width={width}
         >
-          <CartesianGrid stroke="hsl(var(--border) / 0.28)" syncWithTicks />
+          <CartesianGrid stroke="hsl(var(--border) / 0.28)" vertical={false} />
           <XAxis
-            xAxisId="dateTop"
-            orientation="top"
             dataKey="label"
             ticks={dateAxisTicks}
-            tick={{ fill: 'hsl(var(--muted-foreground))', fontSize: 10 }}
+            tick={{ fill: 'hsl(var(--muted-foreground))', fontSize: 10, dy: 4 }}
             tickLine={false}
             axisLine={axisLineStyle}
-            tickFormatter={formatChartDate}
-            interval={0}
-            minTickGap={0}
-          />
-          <XAxis
-            xAxisId="dateBottom"
-            dataKey="label"
-            ticks={dateAxisTicks}
-            angle={-35}
-            tick={{ fill: 'hsl(var(--muted-foreground))', fontSize: 10, textAnchor: 'end' }}
-            tickLine={false}
-            axisLine={axisLineStyle}
-            tickFormatter={formatChartDate}
-            interval={0}
-            minTickGap={0}
-            height={48}
+            tickFormatter={formatChartAxisDate}
+            tickMargin={8}
+            height={32}
+            minTickGap={24}
           />
           {showVolumeAxis ? (
             <YAxis
@@ -233,18 +230,12 @@ export const DashboardMultiAxisChartCanvas = memo(function DashboardMultiAxisCha
                 fill: chartAxisLabelColor,
                 fontSize: 10,
                 fontFamily: 'var(--font-numeric)',
+                fontWeight: 200,
               }}
               tickLine={false}
               axisLine={{ stroke: 'hsl(var(--border) / 0.45)' }}
               tickFormatter={(value) => formatVolumeAxisTick(Number(value))}
-              width={58}
-              label={{
-                value: 'Volume',
-                angle: -90,
-                position: 'insideLeft',
-                offset: 12,
-                style: { fill: chartAxisLabelColor, fontSize: 10 },
-              }}
+              width={64}
             />
           ) : null}
           {showMoneyAxis ? (
@@ -258,18 +249,12 @@ export const DashboardMultiAxisChartCanvas = memo(function DashboardMultiAxisCha
                 fill: chartAxisLabelColor,
                 fontSize: 10,
                 fontFamily: 'var(--font-numeric)',
+                fontWeight: 200,
               }}
               tickLine={false}
               axisLine={{ stroke: 'hsl(var(--border) / 0.45)' }}
               tickFormatter={(value) => formatUsdAxisTick(Number(value))}
-              width={56}
-              label={{
-                value: 'USD',
-                angle: 90,
-                position: 'insideRight',
-                offset: 12,
-                style: { fill: chartAxisLabelColor, fontSize: 10 },
-              }}
+              width={64}
             />
           ) : null}
           <Tooltip
@@ -282,11 +267,10 @@ export const DashboardMultiAxisChartCanvas = memo(function DashboardMultiAxisCha
           {visibleMetrics.map((metric) => (
             <Line
               key={metric.id}
-              xAxisId="dateBottom"
               yAxisId={metric.axis === 'money' ? 'money' : 'volume'}
-              type="monotone"
+              type="linear"
               dataKey={metric.seriesKey}
-              stroke={chartLineStroke}
+              stroke={metric.stroke}
               strokeWidth={metric.axis === 'money' ? 1.75 : 2}
               strokeDasharray={chartLineDash[metric.id]}
               dot={false}
@@ -294,7 +278,7 @@ export const DashboardMultiAxisChartCanvas = memo(function DashboardMultiAxisCha
               activeDot={{
                 r: 3,
                 strokeWidth: 1.5,
-                stroke: chartLineStroke,
+                stroke: metric.stroke,
                 fill: 'hsl(var(--background))',
               }}
             />

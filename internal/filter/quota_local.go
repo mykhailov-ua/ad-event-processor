@@ -25,7 +25,7 @@ func packLocalBlock(campaignHash uint32, blockedMs uint32) uint64 {
 }
 
 func (c *LocalQuotaCache) IsBlocked(id uuid.UUID, nowNano int64) bool {
-	h := CRC32Castagnoli(&id)
+	h := CRC32UUID(id)
 	slotIdx := h % localBlockCacheSize
 
 	packed := c.slots[slotIdx].Load()
@@ -41,7 +41,7 @@ func (c *LocalQuotaCache) IsBlocked(id uuid.UUID, nowNano int64) bool {
 }
 
 func (c *LocalQuotaCache) Block(id uuid.UUID, nowNano int64) {
-	h := CRC32Castagnoli(&id)
+	h := CRC32UUID(id)
 	slotIdx := h % localBlockCacheSize
 	blockedMs := uint32(nowNano / int64(time.Millisecond))
 	c.slots[slotIdx].Store(packLocalBlock(h, blockedMs))

@@ -11,11 +11,17 @@ cd "$ROOT"
 
 SCRIPT="$SCRIPTS/test/capi/meta_staging.sh"
 TEST="$SCRIPTS/test/capi/meta_staging_test.sh"
+GOOGLE_SCRIPT="$SCRIPTS/test/capi/google_offline_staging.sh"
+GOOGLE_TEST="$SCRIPTS/test/capi/google_offline_staging_test.sh"
 
 [[ -x "$SCRIPT" ]] || chmod +x "$SCRIPT"
 [[ -x "$TEST" ]] || chmod +x "$TEST"
+[[ -x "$GOOGLE_SCRIPT" ]] || chmod +x "$GOOGLE_SCRIPT"
+[[ -x "$GOOGLE_TEST" ]] || chmod +x "$GOOGLE_TEST"
 
 CAPI_STAGING_DRY_RUN=1 bash "$SCRIPT"
 bash "$TEST"
+GOOGLE_OFFLINE_STAGING_DRY_RUN=1 bash "$GOOGLE_SCRIPT"
+bash "$GOOGLE_TEST"
 
 echo "capi_staging_gate: OK"

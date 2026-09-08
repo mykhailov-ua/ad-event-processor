@@ -316,6 +316,35 @@ paths:
         default:
           $ref: '../openapi.yaml#/components/responses/Error'
 
+  /api/v1/campaigns/bulk-clone:
+    post:
+      tags: [campaigns]
+      operationId: campaignsBulkClone
+      summary: Clone multiple campaigns with flow, postback, and conversion mappings
+      description: Requires Idempotency-Key header; per-source idempotency is bulk key plus source id.
+      x-permissions: [campaigns:write]
+      parameters:
+        - name: Idempotency-Key
+          in: header
+          required: true
+          schema:
+            type: string
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '../components/schemas/campaign.yaml#/BulkCloneCampaignsRequest'
+      responses:
+        '200':
+          description: Per-source clone results
+          content:
+            application/json:
+              schema:
+                $ref: '../components/schemas/campaign.yaml#/BulkCloneCampaignsResponse'
+        default:
+          $ref: '../openapi.yaml#/components/responses/Error'
+
   /api/v1/campaigns/export:
     get:
       tags: [campaigns]
@@ -1269,6 +1298,78 @@ paths:
                 $ref: '../components/schemas/campaign.yaml#/Flow'
         default:
           $ref: '../openapi.yaml#/components/responses/Error'
+    delete:
+      tags: [flows]
+      operationId: flowsDelete
+      summary: Delete flow
+      x-permissions: [campaigns:write]
+      parameters:
+        - $ref: '../openapi.yaml#/components/parameters/UuidPathId'
+      responses:
+        '204':
+          description: Flow deleted
+        default:
+          $ref: '../openapi.yaml#/components/responses/Error'
+
+  /api/v1/flows/validate:
+    post:
+      tags: [flows]
+      operationId: flowsValidatePaths
+      summary: Validate flow path weights and references
+      x-permissions: [campaigns:read]
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [paths]
+              properties:
+                paths:
+                  type: array
+                  items:
+                    $ref: '../components/schemas/campaign.yaml#/FlowPath'
+      responses:
+        '200':
+          description: Paths valid
+          content:
+            application/json:
+              schema:
+                $ref: '../components/schemas/campaign.yaml#/CampaignFlowValidateResponse'
+        '400':
+          description: Validation failed
+          content:
+            application/json:
+              schema:
+                $ref: '../components/schemas/campaign.yaml#/CampaignFlowValidateResponse'
+        default:
+          $ref: '../openapi.yaml#/components/responses/Error'
+
+  /api/v1/flows/{id}/clone:
+    post:
+      tags: [flows]
+      operationId: flowsClone
+      summary: Clone flow with a new name
+      x-permissions: [campaigns:write]
+      parameters:
+        - $ref: '../openapi.yaml#/components/parameters/UuidPathId'
+      requestBody:
+        content:
+          application/json:
+            schema:
+              type: object
+              properties:
+                name:
+                  type: string
+      responses:
+        '201':
+          description: Cloned flow
+          content:
+            application/json:
+              schema:
+                $ref: '../components/schemas/campaign.yaml#/Flow'
+        default:
+          $ref: '../openapi.yaml#/components/responses/Error'
 
   /api/v1/landers:
     get:
@@ -1305,6 +1406,58 @@ paths:
             application/json:
               schema:
                 $ref: '../components/schemas/campaign.yaml#/Lander'
+        default:
+          $ref: '../openapi.yaml#/components/responses/Error'
+
+  /api/v1/landers/{id}:
+    get:
+      tags: [landers]
+      operationId: landersGet
+      summary: Get lander by id
+      x-permissions: [campaigns:read]
+      parameters:
+        - $ref: '../openapi.yaml#/components/parameters/UuidPathId'
+      responses:
+        '200':
+          description: Lander
+          content:
+            application/json:
+              schema:
+                $ref: '../components/schemas/campaign.yaml#/Lander'
+        default:
+          $ref: '../openapi.yaml#/components/responses/Error'
+    patch:
+      tags: [landers]
+      operationId: landersUpdate
+      summary: Update lander metadata
+      x-permissions: [campaigns:write]
+      parameters:
+        - $ref: '../openapi.yaml#/components/parameters/UuidPathId'
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '../components/schemas/campaign.yaml#/UpdateLanderRequest'
+      responses:
+        '200':
+          description: Updated lander
+          content:
+            application/json:
+              schema:
+                $ref: '../components/schemas/campaign.yaml#/Lander'
+        default:
+          $ref: '../openapi.yaml#/components/responses/Error'
+    delete:
+      tags: [landers]
+      operationId: landersDelete
+      summary: Delete lander
+      x-permissions: [campaigns:write]
+      parameters:
+        - $ref: '../openapi.yaml#/components/parameters/UuidPathId'
+      responses:
+        '204':
+          description: Lander deleted
         default:
           $ref: '../openapi.yaml#/components/responses/Error'
 
@@ -1466,6 +1619,58 @@ paths:
         default:
           $ref: '../openapi.yaml#/components/responses/Error'
 
+  /api/v1/offers/{id}:
+    get:
+      tags: [flows]
+      operationId: offersGet
+      summary: Get offer by id
+      x-permissions: [campaigns:read]
+      parameters:
+        - $ref: '../openapi.yaml#/components/parameters/UuidPathId'
+      responses:
+        '200':
+          description: Offer
+          content:
+            application/json:
+              schema:
+                $ref: '../components/schemas/campaign.yaml#/Offer'
+        default:
+          $ref: '../openapi.yaml#/components/responses/Error'
+    patch:
+      tags: [flows]
+      operationId: offersUpdate
+      summary: Update offer metadata
+      x-permissions: [campaigns:write]
+      parameters:
+        - $ref: '../openapi.yaml#/components/parameters/UuidPathId'
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '../components/schemas/campaign.yaml#/UpdateOfferRequest'
+      responses:
+        '200':
+          description: Updated offer
+          content:
+            application/json:
+              schema:
+                $ref: '../components/schemas/campaign.yaml#/Offer'
+        default:
+          $ref: '../openapi.yaml#/components/responses/Error'
+    delete:
+      tags: [flows]
+      operationId: offersDelete
+      summary: Delete offer
+      x-permissions: [campaigns:write]
+      parameters:
+        - $ref: '../openapi.yaml#/components/parameters/UuidPathId'
+      responses:
+        '204':
+          description: Offer deleted
+        default:
+          $ref: '../openapi.yaml#/components/responses/Error'
+
   /api/v1/brands:
     get:
       tags: [brands]
@@ -1521,6 +1726,40 @@ paths:
             application/json:
               schema:
                 $ref: '../components/schemas/campaign.yaml#/Brand'
+        default:
+          $ref: '../openapi.yaml#/components/responses/Error'
+    patch:
+      tags: [brands]
+      operationId: brandsUpdate
+      summary: Update brand metadata
+      x-permissions: [campaigns:write]
+      parameters:
+        - $ref: '../openapi.yaml#/components/parameters/UuidPathId'
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '../components/schemas/campaign.yaml#/UpdateBrandRequest'
+      responses:
+        '200':
+          description: Updated brand
+          content:
+            application/json:
+              schema:
+                $ref: '../components/schemas/campaign.yaml#/Brand'
+        default:
+          $ref: '../openapi.yaml#/components/responses/Error'
+    delete:
+      tags: [brands]
+      operationId: brandsDelete
+      summary: Delete brand
+      x-permissions: [campaigns:write]
+      parameters:
+        - $ref: '../openapi.yaml#/components/parameters/UuidPathId'
+      responses:
+        '204':
+          description: Brand deleted
         default:
           $ref: '../openapi.yaml#/components/responses/Error'
 
@@ -1717,6 +1956,24 @@ paths:
             application/json:
               schema:
                 $ref: '../components/schemas/campaign.yaml#/DomainSSLSetupResult'
+        default:
+          $ref: '../openapi.yaml#/components/responses/Error'
+
+  /api/v1/domains/cloudflare/zones:
+    get:
+      tags: [domains]
+      operationId: domainsListCloudflareZones
+      summary: List Cloudflare zones for DNS-01 wildcard wizard
+      x-permissions: [settings:read]
+      responses:
+        '200':
+          description: Cloudflare zones
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: '../components/schemas/campaign.yaml#/CloudflareZone'
         default:
           $ref: '../openapi.yaml#/components/responses/Error'
 

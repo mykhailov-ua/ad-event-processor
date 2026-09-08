@@ -6,7 +6,7 @@ import (
 	"github.com/panjf2000/gnet/v2"
 )
 
-func (h *AdsPacketHandler) tryTrackingDomainRotation(req Request, ctx *ConnContext, c gnet.Conn, startMono int64, parsed *clickQueryParsed) bool {
+func (h *AdsPacketHandler) tryTrackingDomainRotation(req *Request, ctx *ConnContext, c gnet.Conn, startMono int64, parsed *clickQueryParsed) bool {
 	if h == nil || h.domainPoolTable == nil || len(req.Host) == 0 || parsed == nil {
 		return false
 	}

@@ -20,7 +20,7 @@ export function SecondaryActionButton({
     <Button
       shape={shape}
       variant={variant}
-      className={cn('px-4 text-sm leading-none', className)}
+      className={cn('px-4', className)}
       {...props}
     />
   );
@@ -38,7 +38,7 @@ export function FilterApplyButton({
       shape={shape}
       type={type}
       variant={variant}
-      className={cn('text-sm leading-none', className)}
+      className={cn(className)}
       {...props}
     />
   );
@@ -56,7 +56,7 @@ export function FilterResetButton({
       shape={shape}
       type={type}
       variant={variant}
-      className={cn('text-sm leading-none', className)}
+      className={cn(className)}
       {...props}
     />
   );

@@ -23,6 +23,7 @@ import type {
   PostbackConfig,
   PostbackDlqEntry,
   PostbackDryRunResult,
+  PostbackHealthResponse,
   PostbacksSnapshot,
   RunCostSyncAcceptedResponse,
   RunCostSyncRequest,
@@ -111,6 +112,10 @@ export async function deleteCostSyncCredential(
 
 export async function fetchPostbacksSnapshot(signal?: AbortSignal): Promise<PostbacksSnapshot> {
   return apiJson<PostbacksSnapshot>('/api/v1/postbacks/snapshot', { signal });
+}
+
+export async function fetchPostbackHealth(signal?: AbortSignal): Promise<PostbackHealthResponse> {
+  return apiJson<PostbackHealthResponse>('/api/v1/postbacks/health', { signal });
 }
 
 export async function fetchCostSyncSnapshot(
@@ -237,6 +242,19 @@ export async function listIntegrationTemplates(
   signal?: AbortSignal
 ): Promise<IntegrationTemplateCatalogEntry[]> {
   return apiJsonArray<IntegrationTemplateCatalogEntry>('/api/v1/integration/templates', { signal });
+}
+
+export async function applyAffiliateStatusPreset(
+  presetName: string,
+  campaignId: string,
+  signal?: AbortSignal
+): Promise<ApplyIntegrationSchemaResponse> {
+  const imported = await importIntegrationTemplates({ names: [presetName] }, signal);
+  const schema = imported.find((row) => row.name === presetName);
+  if (!schema?.id) {
+    throw new Error(`Preset ${presetName} is not available after import`);
+  }
+  return applyIntegrationSchema(schema.id, { campaign_id: campaignId }, signal);
 }
 
 export async function listAffiliateStatusPresets(

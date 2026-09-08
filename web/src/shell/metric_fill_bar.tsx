@@ -13,7 +13,7 @@ export function MetricFillBar({ label, value, percent, color, className }: Metri
 
   return (
     <div className={cn('flex flex-col gap-1', className)}>
-      <div className="flex items-center justify-between gap-3 text-xs">
+      <div className="grid grid-cols-[1fr_auto] items-center gap-3 text-xs">
         <span className="text-muted-foreground">{label}</span>
         <span className="tabular-nums text-foreground">{value}</span>
       </div>

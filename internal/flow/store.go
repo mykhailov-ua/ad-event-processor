@@ -60,9 +60,7 @@ func (st *Store) ListLanders(ctx context.Context) ([]LanderDTO, error) {
 	if st.poolOrNil() == nil {
 		return nil, fmt.Errorf("service unavailable")
 	}
-	rows, err := st.poolOrNil().Query(ctx, `
-		SELECT id, name, COALESCE(url, ''), hosted_asset_id, created_at
-		FROM landers ORDER BY created_at DESC`)
+	rows, err := st.poolOrNil().Query(ctx, landerSelectWithVersions+` ORDER BY l.created_at DESC`)
 	if err != nil {
 		return nil, err
 	}
@@ -70,12 +68,9 @@ func (st *Store) ListLanders(ctx context.Context) ([]LanderDTO, error) {
 	publicBase := st.host.LanderPublicBase(ctx)
 	var out []LanderDTO
 	for rows.Next() {
-		var dto LanderDTO
-		if err := rows.Scan(&dto.ID, &dto.Name, &dto.URL, &dto.HostedAssetID, &dto.CreatedAt); err != nil {
+		dto, err := st.scanLanderRow(rows, publicBase)
+		if err != nil {
 			return nil, err
-		}
-		if dto.HostedAssetID != nil {
-			dto.HostedURL = landerhost.PublicURL(publicBase, dto.ID)
 		}
 		out = append(out, dto)
 	}

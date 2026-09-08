@@ -122,5 +122,7 @@ func TestEdgeFilterRateLimitPerCPUHash_holdout(t *testing.T) {
 	assert.Contains(t, src, "xdp_filter_ipv6_tcp(ip6, tcph, data_end,")
 	assert.Contains(t, src, "ipv6_find_l4")
 	assert.Contains(t, src, "IPV4_FRAG_OFFSET_MASK")
+	assert.Contains(t, src, "is_tracker_psh_tinygram")
+	assert.Contains(t, src, "TRACKER_MIN_PSH_PAYLOAD")
 	assert.Contains(t, src, "syn_cookie_tail_call")
 }

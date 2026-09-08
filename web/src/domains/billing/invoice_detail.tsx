@@ -17,6 +17,7 @@ import {
 import type { BillingInvoiceLine, BillingLedgerLine, Invoice, InvoiceDelivery } from '@/api/types';
 import { CustomerDetailPanel } from '@/domains/customers/customer_detail_panel';
 import { CustomerDetailRow } from '@/domains/customers/customer_detail_row';
+import { BillingNav, billingPanelError } from '@/domains/billing/billing_nav';
 import { displayMicro, displayTimestamp } from '@/lib/display';
 
 export type InvoiceDetailProps = {
@@ -73,11 +74,21 @@ export function InvoiceDetail({
   }
 
   if (error && !hasSnapshot) {
-    return <ErrorBlock title="Could not load invoice" message={error.message} />;
+    return (
+      <PageChrome title="Invoice">
+        <BillingNav />
+        {billingPanelError(error, 'Could not load invoice')}
+      </PageChrome>
+    );
   }
 
   if (!invoice) {
-    return <ErrorBlock title="Invoice not found" message="No invoice data returned." />;
+    return (
+      <PageChrome title="Invoice">
+        <BillingNav />
+        {billingPanelError(new Error('No invoice data returned.'), 'Invoice not found')}
+      </PageChrome>
+    );
   }
 
   const lines = invoice.lines ?? [];

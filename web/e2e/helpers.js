@@ -65,8 +65,8 @@ export async function probeBaseUrl() {
 /**
  * @param {import('@playwright/test').Page} page
  */
-export async function assertLiveApiMode(page) {
-  await expect(page.getByText('Development mock API', { exact: false })).toHaveCount(0);
+export async function assertLiveApiMode(_page) {
+  // No-op: in-browser dev_mock tier removed; E2E defaults to live control (:8188).
 }
 
 /**
@@ -131,8 +131,7 @@ export async function expandDetailsSection(page, title) {
  */
 export async function gotoLive(page, path) {
   const normalized = path.startsWith('/') ? path : `/${path}`;
-  const joiner = normalized.includes('?') ? '&' : '?';
-  await page.goto(`${normalized}${joiner}admin_dev=0`);
+  await page.goto(normalized);
   await assertLiveApiMode(page);
 }
 
@@ -170,7 +169,7 @@ export function isApiPatch(pathPart, status = 200) {
 }
 
 /**
- * Navigate live (`admin_dev=0`) and wait for a GET API response.
+ * Navigate and wait for a GET API response.
  * @param {import('@playwright/test').Page} page
  * @param {string} path
  * @param {string} apiPathPart
@@ -389,7 +388,7 @@ export function isCampaignsListResponse(response) {
  * @param {import('@playwright/test').Page} page
  */
 export async function gotoCampaignsLive(page) {
-  await page.goto('/campaigns?admin_dev=0');
+  await page.goto('/campaigns');
   await mainHeading(page, 'Campaigns').waitFor({ timeout: 15_000 });
   await assertLiveApiMode(page);
 }

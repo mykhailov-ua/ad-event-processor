@@ -1,10 +1,11 @@
-import { apiJson, apiJsonArray } from './client.js';
+import { apiFetch, apiJson, apiJsonArray, parseApiError } from './client.js';
 import type {
   Brand,
   BrandCreative,
   BrandsListQuery,
   CreateBrandRequest,
   UpdateBrandCreativeRequest,
+  UpdateBrandRequest,
 } from './types.js';
 
 export async function listBrands(params: BrandsListQuery, signal?: AbortSignal): Promise<Brand[]> {
@@ -23,6 +24,28 @@ export async function createBrand(body: CreateBrandRequest, signal?: AbortSignal
     body: JSON.stringify(body),
     signal,
   });
+}
+
+export async function updateBrand(
+  brandId: string,
+  body: UpdateBrandRequest,
+  signal?: AbortSignal
+): Promise<Brand> {
+  return apiJson<Brand>(`/api/v1/brands/${encodeURIComponent(brandId)}`, {
+    method: 'PATCH',
+    body: JSON.stringify(body),
+    signal,
+  });
+}
+
+export async function deleteBrand(brandId: string, signal?: AbortSignal): Promise<void> {
+  const response = await apiFetch(`/api/v1/brands/${encodeURIComponent(brandId)}`, {
+    method: 'DELETE',
+    signal,
+  });
+  if (!response.ok) {
+    throw await parseApiError(response);
+  }
 }
 
 export async function listBrandCreatives(

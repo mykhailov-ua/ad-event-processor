@@ -27,8 +27,8 @@ var (
 			return new(ByteSliceValue)
 		},
 	}
-	ByteBufPool        = byteSlicePool{defaultCap: 512, maxCap: bufpool.DefaultMaxCap}
-	LogBufPool         = byteSlicePool{defaultCap: 512, maxCap: bufpool.DefaultMaxCap}
+	ByteBufPool        = byteSlicePool{defaultCap: 2048, maxCap: bufpool.DefaultMaxCap}
+	LogBufPool         = byteSlicePool{defaultCap: 2048, maxCap: bufpool.DefaultMaxCap}
 	ProducerValuesPool = sync.Pool{
 		New: func() any {
 			slice := make([]any, 2)

@@ -12,6 +12,7 @@ import {
   upsertPlatformCampaignLink,
 } from '@/api/integrations_api';
 import type { PlatformCampaignLink, PlatformCampaignMutation } from '@/api/types';
+import { confirmDestructiveAction, mutationError as toMutationError } from '@/lib/mutation_audit';
 import { useCoalescedBumpRefresh, useRefreshToken } from '@/hooks/use_coalesced_refresh_token';
 import { useCustomerScope } from '@/hooks/use_customer_scope';
 import { useResource } from '@/api/use_resource';
@@ -132,6 +133,9 @@ export function useIntegrationsPlatformCampaignsPage() {
     if (!campaignId || !network) {
       return;
     }
+    if (!confirmDestructiveAction(`Delete platform link ${campaignId} / ${network}?`)) {
+      return;
+    }
     setDeleting(true);
     clearActionFeedback();
     try {
@@ -139,7 +143,7 @@ export function useIntegrationsPlatformCampaignsPage() {
       setDeleteSuccess(true);
       bumpRefreshCoalesced();
     } catch (err: unknown) {
-      setDeleteError(err instanceof Error ? err : new Error(String(err)));
+      setDeleteError(toMutationError(err));
     } finally {
       setDeleting(false);
     }

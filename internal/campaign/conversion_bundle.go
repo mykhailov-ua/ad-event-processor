@@ -150,23 +150,13 @@ func ReplaceCampaignConversionMappings(ctx context.Context, pool *pgxpool.Pool, 
 		return nil, err
 	}
 	defer func() { _ = tx.Rollback(ctx) }()
-	q := db.New(tx)
-	if err := q.DeleteConversionMappingsByCampaign(ctx, domain.ToUUID(campaignID)); err != nil {
+	count, err := ReplaceCampaignConversionMappingsTx(ctx, db.New(tx), campaignID, normalized)
+	if err != nil {
 		return nil, err
-	}
-	for i := range normalized {
-		row := &normalized[i]
-		if err := q.InsertConversionMapping(ctx, db.InsertConversionMappingParams{
-			CampaignID:    domain.ToUUID(campaignID),
-			InboundStatus: row.InboundStatus,
-			GoalName:      row.GoalName,
-			PayoutMicro:   row.PayoutMicro,
-		}); err != nil {
-			return nil, fmt.Errorf("insert conversion mapping: %w", err)
-		}
 	}
 	if err := tx.Commit(ctx); err != nil {
 		return nil, err
 	}
+	_ = count
 	return normalized, nil
 }

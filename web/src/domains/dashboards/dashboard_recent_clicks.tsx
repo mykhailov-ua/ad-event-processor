@@ -1,31 +1,38 @@
 import { Link } from 'react-router-dom';
+import { useMemo } from 'react';
 
-import {
-  dashboardCardTitleClass,
-  dashboardTableSectionHeaderClass,
-} from '@/domains/dashboards/dashboard_classes';
 import { EmptyState } from '@/shell/empty_state';
 import type { ClickLogEvent } from '@/domains/dashboards/buyer_dashboard_types';
 import { DashboardCard } from '@/domains/dashboards/dashboard_card';
 import { DashboardRecentClicksListTable } from '@/domains/dashboards/dashboard_recent_clicks_list_table';
 import type { DashboardRecentClickColumnId } from '@/domains/dashboards/dashboard_preferences';
-import { cn } from '@/lib/utils';
+import { DirectoryTablePagination } from '@/shell/directory_data_table/directory_table_pagination';
+import {
+  sliceDirectoryTableRows,
+  useDirectoryTablePagination,
+} from '@/shell/directory_data_table/use_directory_table_pagination';
 
 export type DashboardRecentClicksProps = {
   events: ClickLogEvent[];
   columns: DashboardRecentClickColumnId[];
   viewAllHref?: string;
-  embedded?: boolean;
-  sectionClassName?: string;
+  pageSize?: number;
+  fillContainer?: boolean;
 };
 
 export function DashboardRecentClicks({
   events,
   columns,
   viewAllHref,
-  embedded = false,
-  sectionClassName,
+  pageSize = 10,
+  fillContainer = false,
 }: DashboardRecentClicksProps) {
+  const pagination = useDirectoryTablePagination(events.length, pageSize);
+  const pageEvents = useMemo(
+    () => sliceDirectoryTableRows(events, pagination),
+    [events, pagination.end, pagination.start]
+  );
+
   const content =
     events.length === 0 ? (
       <EmptyState
@@ -34,24 +41,23 @@ export function DashboardRecentClicks({
         variant="no-results"
       />
     ) : (
-      <DashboardRecentClicksListTable columns={columns} events={events} />
+      <>
+        <DashboardRecentClicksListTable
+          columns={columns}
+          events={pageEvents}
+          fillContainer={fillContainer}
+        />
+        <DirectoryTablePagination
+          end={pagination.end}
+          page={pagination.page}
+          pageCount={pagination.pageCount}
+          pageSize={pagination.pageSize}
+          start={pagination.start}
+          totalRows={events.length}
+          onPageChange={pagination.setPage}
+        />
+      </>
     );
-
-  if (embedded) {
-    return (
-      <section className={cn('min-w-0', sectionClassName)}>
-        <div className={dashboardTableSectionHeaderClass}>
-          <h2 className={dashboardCardTitleClass}>Recent clicks</h2>
-          {viewAllHref ? (
-            <Link className="text-sm text-primary hover:underline" to={viewAllHref}>
-              View all
-            </Link>
-          ) : null}
-        </div>
-        {content}
-      </section>
-    );
-  }
 
   return (
     <DashboardCard

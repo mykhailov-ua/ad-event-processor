@@ -24,6 +24,7 @@ import {
   TableCell,
   TableHeader,
   TableRow,
+  directoryTableRevalidatingClass,
 } from '@/shell/directory_table';
 import type { ReportSchedule } from '@/api/types';
 import { PortalsNav, portalsPanelError } from '@/domains/portals/portals_nav';
@@ -34,6 +35,7 @@ export type ReportSchedulesPanelProps = {
   appliedCustomerId: string;
   draftCustomerId: string;
   fetching: boolean;
+  listRevalidating?: boolean;
   error: Error | undefined;
   hasSnapshot: boolean;
   draftReportKey: string;
@@ -66,6 +68,7 @@ export function ReportSchedulesPanel({
   appliedCustomerId,
   draftCustomerId,
   fetching,
+  listRevalidating = false,
   error,
   hasSnapshot,
   draftReportKey,
@@ -96,14 +99,20 @@ export function ReportSchedulesPanel({
 
   if (!appliedCustomerId) {
     return (
-      <PageChrome title="Report schedules">
-        <PortalsNav />
-        <CustomerScopeBar
-          appliedCustomerId={appliedCustomerId}
-          draftCustomerId={draftCustomerId}
-          onApply={onApplyCustomerScope}
-          onDraftCustomerIdChange={onDraftCustomerIdChange}
-        />
+      <PageChrome
+        title="Report schedules"
+        controlPanel={
+          <div className="grid gap-3">
+            <PortalsNav />
+            <CustomerScopeBar
+              appliedCustomerId={appliedCustomerId}
+              draftCustomerId={draftCustomerId}
+              onApply={onApplyCustomerScope}
+              onDraftCustomerIdChange={onDraftCustomerIdChange}
+            />
+          </div>
+        }
+      >
         <EmptyState
           title="Customer required"
           description="Apply a customer ID to list and manage report schedules."
@@ -116,20 +125,22 @@ export function ReportSchedulesPanel({
     <PageChrome
       title="Report schedules"
       actions={
-        <Button className="text-sm" onClick={() => setCreateOpen(true)} type="button">
+        <Button onClick={() => setCreateOpen(true)} type="button">
           Create schedule
         </Button>
       }
+      controlPanel={
+        <div className="grid gap-3">
+          <PortalsNav />
+          <CustomerScopeBar
+            appliedCustomerId={appliedCustomerId}
+            draftCustomerId={draftCustomerId}
+            onApply={onApplyCustomerScope}
+            onDraftCustomerIdChange={onDraftCustomerIdChange}
+          />
+        </div>
+      }
     >
-      <PortalsNav />
-
-      <CustomerScopeBar
-        appliedCustomerId={appliedCustomerId}
-        draftCustomerId={draftCustomerId}
-        onApply={onApplyCustomerScope}
-        onDraftCustomerIdChange={onDraftCustomerIdChange}
-      />
-
       <Dialog onOpenChange={setCreateOpen} open={createOpen}>
         <DialogContent className="max-w-md">
           <DialogHeader>
@@ -140,7 +151,6 @@ export function ReportSchedulesPanel({
               <Label htmlFor="schedule-report-key">Report key</Label>
               <Input
                 id="schedule-report-key"
-                className="text-sm"
                 value={draftReportKey}
                 onChange={(event) => onDraftReportKeyChange(event.target.value)}
               />
@@ -149,7 +159,6 @@ export function ReportSchedulesPanel({
               <Label htmlFor="schedule-cron-expr">Cron expression</Label>
               <Input
                 id="schedule-cron-expr"
-                className="text-sm"
                 value={draftCronExpr}
                 onChange={(event) => onDraftCronExprChange(event.target.value)}
               />
@@ -158,7 +167,6 @@ export function ReportSchedulesPanel({
               <Label htmlFor="schedule-format">Format</Label>
               <Input
                 id="schedule-format"
-                className="text-sm"
                 value={draftFormat}
                 onChange={(event) => onDraftFormatChange(event.target.value)}
               />
@@ -194,7 +202,6 @@ export function ReportSchedulesPanel({
               Cancel
             </SecondaryActionButton>
             <Button
-              className="text-sm"
               disabled={acting}
               loading={acting}
               onClick={() => {
@@ -228,7 +235,7 @@ export function ReportSchedulesPanel({
               onAction={() => setCreateOpen(true)}
             />
           ) : (
-            <DirectoryTable>
+            <DirectoryTable className={directoryTableRevalidatingClass(listRevalidating)}>
               <TableHeader>
                 <TableRow>
                   <DirectoryTableHead>Report</DirectoryTableHead>
@@ -266,7 +273,6 @@ export function ReportSchedulesPanel({
                       <TableCell>
                         {id ? (
                           <Input
-                            className="text-sm"
                             value={edit.format}
                             onChange={(event) => onEditRowChange(id, 'format', event.target.value)}
                           />
@@ -290,7 +296,6 @@ export function ReportSchedulesPanel({
                       <TableCell>
                         {id ? (
                           <Input
-                            className="text-sm"
                             value={edit.enabled}
                             onChange={(event) => onEditRowChange(id, 'enabled', event.target.value)}
                           />

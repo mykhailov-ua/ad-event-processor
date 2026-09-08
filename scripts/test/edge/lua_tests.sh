@@ -150,6 +150,7 @@ case "$MODE" in
     run_lua_test safe_page_cid_test.lua
     run_lua_test ip_canonical_test.lua
     run_lua_test track_policy_failclosed_test.lua
+    EDGE_MIN_CHUNKED_DATA_BYTES=64 run_lua_test openrtb_chunk_floor_test.lua
     run_lua_test edge_rl_fallback_test.lua
     run_security_holdout_tests
     ;;
@@ -174,6 +175,13 @@ case "$MODE" in
         fi
       fi
     done
+    if ! EDGE_MIN_CHUNKED_DATA_BYTES=64 run_lua_test openrtb_chunk_floor_test.lua; then
+      rc=$?
+      if [[ "$rc" -ne 2 ]]; then
+        exit "$rc"
+      fi
+      skipped=$((skipped + 1))
+    fi
     if [[ "$skipped" -eq 3 ]]; then
       echo "nginx_lua_tests: skip (luajit not installed and ad-event-processor-nginx-1 not running)"
       exit 0
@@ -199,6 +207,7 @@ case "$MODE" in
     run_lua_test safe_page_cid_test.lua
     run_lua_test ip_canonical_test.lua
     run_lua_test track_policy_failclosed_test.lua
+    EDGE_MIN_CHUNKED_DATA_BYTES=64 run_lua_test openrtb_chunk_floor_test.lua
     run_lua_test edge_rl_fallback_test.lua
     run_tarpit_live_smoke
     ;;

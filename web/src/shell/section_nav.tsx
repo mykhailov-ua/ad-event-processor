@@ -31,7 +31,8 @@ export function SectionNav({ items, label, className, variant = 'pill' }: Sectio
               to={item.path}
               aria-current={active ? 'page' : undefined}
               className={cn(
-                'inline-flex h-7 items-center border border-border bg-background px-2.5 text-[13px] leading-none text-foreground',
+                'inline-flex min-h-7 items-center border border-border bg-background py-1 text-[13px] leading-[18px] text-foreground',
+                adminKit.controlPaddingX,
                 adminKit.controlRadius,
                 active && 'border-primary bg-primary text-primary-foreground'
               )}
@@ -44,12 +45,14 @@ export function SectionNav({ items, label, className, variant = 'pill' }: Sectio
           <Link
             key={item.path}
             to={item.path}
-            className={cn(
-              'rounded-sm px-3.5 py-1.5 text-sm transition-colors',
-              active
-                ? 'bg-secondary font-medium text-foreground'
-                : 'text-muted-foreground hover:bg-muted/50 hover:text-foreground'
-            )}
+              className={cn(
+                'inline-flex min-h-7 items-center border border-border bg-background py-1 text-[13px] leading-[18px] transition-colors',
+                adminKit.controlPaddingX,
+                adminKit.controlRadius,
+                active
+                  ? 'border-primary bg-primary font-medium text-primary-foreground'
+                  : 'text-muted-foreground hover:bg-muted/50 hover:text-foreground'
+              )}
           >
             {item.label}
           </Link>

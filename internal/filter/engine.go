@@ -2,6 +2,7 @@ package filter
 
 import (
 	"context"
+	"fmt"
 	"hash/fnv"
 	"sync"
 	"sync/atomic"
@@ -265,10 +266,28 @@ func (e *FilterEngine) RollbackDebit(ctx context.Context, evt *domain.Event, reg
 			if evt.Type == "impression" {
 				debitAmount = df.ImpressionAmountMicro()
 			}
-			isLocalQuanta := df.LocalQuantaFullSkipEligible(evt, campInfo)
+			isLocalQuanta := evt.LocalQuantaDebitMicro > 0
 			df.RollbackDebit(ctx, evt, campInfo, debitAmount, isLocalQuanta)
 		}
 	}
+}
+
+func (e *FilterEngine) FinalizeLocalQuantaPublish(ctx context.Context, evt *domain.Event, registry domain.CampaignRegistry) error {
+	if e == nil || evt == nil || evt.LocalQuantaDebitMicro <= 0 {
+		return nil
+	}
+	campInfo, ok := GetCampaignFromEvent(registry, evt)
+	if !ok {
+		return fmt.Errorf("finalize local quanta: campaign not found")
+	}
+	for _, f := range e.filters {
+		if df, ok := f.(DebitFilter); ok {
+			if err := df.FinalizeLocalQuantaPublish(ctx, evt, campInfo); err != nil {
+				return err
+			}
+		}
+	}
+	return nil
 }
 
 func (e *FilterEngine) Timeout() time.Duration {
@@ -304,8 +323,15 @@ func (e *FilterEngine) checkInner(ctx context.Context, evt *domain.Event) error 
 	}
 
 	var retErr error
+	tier := domain.ClickFilterTierFull
+	if evt != nil && evt.ClickFilterTier != "" {
+		tier = evt.ClickFilterTier
+	}
 	for _, f := range e.filters {
 		if f == nil {
+			continue
+		}
+		if !filterAllowedForClickTier(f, tier) {
 			continue
 		}
 		if filterDeadlineExceededEvt(evt, ctx) {

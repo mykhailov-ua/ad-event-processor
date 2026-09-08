@@ -1,40 +1,46 @@
 import { CAMPAIGN_LIST_COLUMN_MIN_WIDTH_PX } from '@/domains/campaigns/list/campaign_list_columns';
+import type { DashboardBreakdownRow } from '@/domains/dashboards/buyer_dashboard_types';
+import { formatDashboardBreakdownCellText } from '@/domains/dashboards/dashboard_breakdown_cell_text';
+import { BREAKDOWN_COLUMN_LABELS, RECENT_CLICK_COLUMN_LABELS } from '@/domains/dashboards/dashboard_preferences';
 import type { DashboardBreakdownColumnId } from '@/domains/dashboards/dashboard_preferences';
 import type { DashboardRecentClickColumnId } from '@/domains/dashboards/dashboard_preferences';
 
 export const DASHBOARD_BREAKDOWN_COLUMN_WIDTH_PX: Record<DashboardBreakdownColumnId, number> = {
   name: CAMPAIGN_LIST_COLUMN_MIN_WIDTH_PX.name,
   clicks: CAMPAIGN_LIST_COLUMN_MIN_WIDTH_PX.clicks,
-  unique_clicks: 176,
-  conversions: 96,
+  unique_clicks: 220,
+  conversions: 112,
   cost: CAMPAIGN_LIST_COLUMN_MIN_WIDTH_PX.cost,
   revenue: CAMPAIGN_LIST_COLUMN_MIN_WIDTH_PX.revenue,
-  profit: CAMPAIGN_LIST_COLUMN_MIN_WIDTH_PX.profit,
+  profit: 100,
   cpc: CAMPAIGN_LIST_COLUMN_MIN_WIDTH_PX.cpc,
   cpa: CAMPAIGN_LIST_COLUMN_MIN_WIDTH_PX.cpa,
   cr: CAMPAIGN_LIST_COLUMN_MIN_WIDTH_PX.cr,
   epc: CAMPAIGN_LIST_COLUMN_MIN_WIDTH_PX.epc,
-  roi: CAMPAIGN_LIST_COLUMN_MIN_WIDTH_PX.roi,
+  roi: 104,
 };
 
 const DASHBOARD_BREAKDOWN_COLUMN_MAX_WIDTH_PX: Partial<Record<DashboardBreakdownColumnId, number>> =
   {
-    name: 640,
-    unique_clicks: 320,
-    conversions: 160,
+    name: 360,
+    unique_clicks: 260,
+    conversions: 148,
   };
+
+/** Cap name probe so long labels do not dominate proportional stretch. */
+const DASHBOARD_BREAKDOWN_NAME_PROBE_MAX_WIDTH_PX = 280;
 
 const DASHBOARD_BREAKDOWN_COLUMN_USER_RESIZE_MAX_WIDTH_PX = 480;
 
 export const DASHBOARD_RECENT_CLICK_COLUMN_WIDTH_PX: Record<DashboardRecentClickColumnId, number> =
   {
     click_id: 220,
-    created_at: 168,
+    created_at: 176,
     campaign_id: 200,
-    country: 72,
-    sub1: 120,
-    placement_id: 120,
-    goal_name: 120,
+    country: 80,
+    sub1: 128,
+    placement_id: 128,
+    goal_name: 128,
     cost: CAMPAIGN_LIST_COLUMN_MIN_WIDTH_PX.cost,
     revenue: CAMPAIGN_LIST_COLUMN_MIN_WIDTH_PX.revenue,
   };
@@ -51,9 +57,6 @@ const DASHBOARD_RECENT_CLICK_COLUMN_MAX_WIDTH_PX: Partial<
 };
 
 const CELL_HORIZONTAL_PADDING_PX = 32;
-const BODY_TOOLS_GUTTER_PX = 28;
-const NAME_ROW_MENU_PX = 28;
-const NAME_ROW_MENU_GAP_PX = 16;
 
 function estimateTextWidthPx(text: string): number {
   return Math.ceil(text.length * 7);
@@ -69,19 +72,47 @@ export function probeDashboardNameColumnWidthPx(
       longest = label;
     }
   }
-  return Math.max(
-    minWidth,
-    estimateTextWidthPx(longest) +
-      CELL_HORIZONTAL_PADDING_PX +
-      NAME_ROW_MENU_PX +
-      NAME_ROW_MENU_GAP_PX
-  );
+  const probed = Math.max(minWidth, estimateTextWidthPx(longest) + CELL_HORIZONTAL_PADDING_PX);
+  return Math.min(probed, DASHBOARD_BREAKDOWN_NAME_PROBE_MAX_WIDTH_PX);
+}
+
+function probeDashboardBreakdownHeaderColumnWidthPx(columnId: DashboardBreakdownColumnId): number {
+  const minWidth = DASHBOARD_BREAKDOWN_COLUMN_WIDTH_PX[columnId];
+  const label = BREAKDOWN_COLUMN_LABELS[columnId];
+  return Math.max(minWidth, estimateTextWidthPx(label) + CELL_HORIZONTAL_PADDING_PX);
+}
+
+export function probeDashboardBreakdownDataColumnWidthPx(
+  columnId: DashboardBreakdownColumnId,
+  rows: readonly DashboardBreakdownRow[],
+  totals?: DashboardBreakdownRow
+): number {
+  if (columnId === 'name') {
+    return DASHBOARD_BREAKDOWN_COLUMN_WIDTH_PX.name;
+  }
+
+  const headerWidth = probeDashboardBreakdownHeaderColumnWidthPx(columnId);
+  let longest = BREAKDOWN_COLUMN_LABELS[columnId];
+  for (const row of rows) {
+    const sample = formatDashboardBreakdownCellText(columnId, row);
+    if (sample.length > longest.length) {
+      longest = sample;
+    }
+  }
+  if (totals) {
+    const sample = formatDashboardBreakdownCellText(columnId, totals, true);
+    if (sample.length > longest.length) {
+      longest = sample;
+    }
+  }
+  return Math.max(headerWidth, estimateTextWidthPx(longest) + CELL_HORIZONTAL_PADDING_PX);
 }
 
 export function resolveDashboardBreakdownColumnWidthPx(
   columnId: DashboardBreakdownColumnId,
   overrides: Readonly<Partial<Record<DashboardBreakdownColumnId, number>>>,
-  nameProbeWidthPx?: number
+  nameProbeWidthPx?: number,
+  dataProbeWidthPx?: number
 ): number {
   const override = overrides[columnId];
   if (override != null && Number.isFinite(override) && override > 0) {
@@ -90,7 +121,13 @@ export function resolveDashboardBreakdownColumnWidthPx(
   if (columnId === 'name' && nameProbeWidthPx != null) {
     return clampDashboardBreakdownColumnWidthPx(columnId, nameProbeWidthPx);
   }
-  return DASHBOARD_BREAKDOWN_COLUMN_WIDTH_PX[columnId];
+  if (dataProbeWidthPx != null) {
+    return clampDashboardBreakdownColumnWidthPx(columnId, dataProbeWidthPx);
+  }
+  return clampDashboardBreakdownColumnWidthPx(
+    columnId,
+    probeDashboardBreakdownHeaderColumnWidthPx(columnId)
+  );
 }
 
 export function clampDashboardBreakdownColumnWidthPx(
@@ -135,6 +172,14 @@ export function isDashboardBreakdownColumnResizable(
   return columns[columns.length - 1] !== columnId;
 }
 
+function probeDashboardRecentClickHeaderColumnWidthPx(
+  columnId: DashboardRecentClickColumnId
+): number {
+  const minWidth = DASHBOARD_RECENT_CLICK_COLUMN_WIDTH_PX[columnId];
+  const label = RECENT_CLICK_COLUMN_LABELS[columnId];
+  return Math.max(minWidth, estimateTextWidthPx(label) + CELL_HORIZONTAL_PADDING_PX);
+}
+
 export function resolveDashboardRecentClickColumnWidthPx(
   columnId: DashboardRecentClickColumnId,
   overrides: Readonly<Partial<Record<DashboardRecentClickColumnId, number>>>
@@ -143,7 +188,10 @@ export function resolveDashboardRecentClickColumnWidthPx(
   if (override != null && Number.isFinite(override) && override > 0) {
     return clampDashboardRecentClickColumnWidthPx(columnId, override);
   }
-  return DASHBOARD_RECENT_CLICK_COLUMN_WIDTH_PX[columnId];
+  return clampDashboardRecentClickColumnWidthPx(
+    columnId,
+    probeDashboardRecentClickHeaderColumnWidthPx(columnId)
+  );
 }
 
 export function clampDashboardRecentClickColumnWidthPx(

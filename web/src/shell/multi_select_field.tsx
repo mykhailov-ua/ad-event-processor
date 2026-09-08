@@ -3,6 +3,7 @@ import { ChevronDown } from 'lucide-react';
 
 import { Checkbox } from '@/components/ui/checkbox';
 import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover';
+import { adminChrome } from '@/lib/admin_chrome';
 import { adminKit } from '@/lib/admin_kit';
 import { cn } from '@/lib/utils';
 
@@ -63,7 +64,7 @@ export function MultiSelectField<T extends string>({
 
   return (
     <label
-      className={cn('flex flex-col gap-1 text-sm font-medium text-foreground', className)}
+      className={cn('flex flex-col', adminKit.fieldLabelGap, adminKit.fieldLabelClass, className)}
       htmlFor={id}
     >
       {label}
@@ -73,8 +74,8 @@ export function MultiSelectField<T extends string>({
             id={id}
             aria-expanded={open}
             className={cn(
-              'relative flex w-full items-center justify-between gap-2 rounded-md border border-border bg-background px-3 text-sm text-foreground',
-              adminKit.controlHeight
+              adminChrome.control,
+              'relative flex w-full items-center justify-between gap-2 text-left'
             )}
             type="button"
           >
@@ -90,12 +91,12 @@ export function MultiSelectField<T extends string>({
               const selected = value.includes(option.id);
               return (
                 <li key={option.id}>
-                  <label className="flex items-center gap-2 text-sm">
+                  <label className={cn('flex items-center gap-2', adminKit.controlText)}>
                     <Checkbox
                       checked={selected}
                       onCheckedChange={(next) => toggleOption(option.id, next === true)}
                     />
-                    <span className="text-xs font-medium text-muted-foreground">
+                    <span className="font-medium text-muted-foreground">
                       {option.label}
                     </span>
                   </label>

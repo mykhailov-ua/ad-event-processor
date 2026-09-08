@@ -12,24 +12,28 @@ import { displayTimestamp } from '@/lib/display';
 
 export type CustomerDetailProfileTabProps = {
   customer: Customer;
+  draftName: string;
+  onDraftNameChange: (value: string) => void;
   draftCostCenter: string;
   onDraftCostCenterChange: (value: string) => void;
-  savingCostCenter: boolean;
-  costCenterSaveError: Error | undefined;
-  costCenterSaveSuccess: boolean;
-  canSaveCostCenter: boolean;
-  onSaveCostCenter: () => void;
+  savingProfile: boolean;
+  profileSaveError: Error | undefined;
+  profileSaveSuccess: boolean;
+  canSaveProfile: boolean;
+  onSaveProfile: () => void;
 };
 
 export function CustomerDetailProfileTab({
   customer,
+  draftName,
+  onDraftNameChange,
   draftCostCenter,
   onDraftCostCenterChange,
-  savingCostCenter,
-  costCenterSaveError,
-  costCenterSaveSuccess,
-  canSaveCostCenter,
-  onSaveCostCenter,
+  savingProfile,
+  profileSaveError,
+  profileSaveSuccess,
+  canSaveProfile,
+  onSaveProfile,
 }: CustomerDetailProfileTabProps) {
   return (
     <Card>
@@ -39,7 +43,6 @@ export function CustomerDetailProfileTab({
       <CardContent className="grid gap-6">
         <CustomerDetailPanel>
           <CustomerDetailRow label="ID" value={customer.id} />
-          <CustomerDetailRow label="Name" value={customer.name} />
           <CustomerDetailRow label="Balance" value={customer.balance} />
           <CustomerDetailRow label="Currency" value={customer.currency} />
           <CustomerDetailRow label="Active campaigns" value={customer.active_campaigns} />
@@ -58,12 +61,23 @@ export function CustomerDetailProfileTab({
           className="grid gap-4"
           onSubmit={(event) => {
             event.preventDefault();
-            onSaveCostCenter();
+            onSaveProfile();
           }}
         >
           <CustomerDetailPanel>
+            <CustomerDetailFieldRow htmlFor="customer-name" label="Name">
+              {canSaveProfile ? (
+                <Input
+                  id="customer-name"
+                  value={draftName}
+                  onChange={(event) => onDraftNameChange(event.target.value)}
+                />
+              ) : (
+                <p className={customerDetailRowValueClass}>{customer.name}</p>
+              )}
+            </CustomerDetailFieldRow>
             <CustomerDetailFieldRow htmlFor="customer-cost-center" label="Cost center">
-              {canSaveCostCenter ? (
+              {canSaveProfile ? (
                 <Input
                   id="customer-cost-center"
                   value={draftCostCenter}
@@ -74,24 +88,20 @@ export function CustomerDetailProfileTab({
               )}
             </CustomerDetailFieldRow>
           </CustomerDetailPanel>
-          {canSaveCostCenter ? (
+          {canSaveProfile ? (
             <div className={COMPACT_TOOLBAR_ROW_CLASS}>
-              <PrimaryActionButton
-                disabled={!canSaveCostCenter}
-                loading={savingCostCenter}
-                type="submit"
-              >
-                Save
+              <PrimaryActionButton loading={savingProfile} type="submit">
+                Save profile
               </PrimaryActionButton>
             </div>
           ) : null}
         </form>
-        {costCenterSaveError ? (
-          <ErrorBlock title="Save failed" message={costCenterSaveError.message} />
+        {profileSaveError ? (
+          <ErrorBlock title="Save failed" message={profileSaveError.message} />
         ) : null}
-        {costCenterSaveSuccess ? (
+        {profileSaveSuccess ? (
           <p className="m-0 text-sm text-muted-foreground" role="status">
-            Cost center saved.
+            Profile saved.
           </p>
         ) : null}
       </CardContent>

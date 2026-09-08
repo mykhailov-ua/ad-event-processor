@@ -9,7 +9,7 @@ import { sha1 } from '@/lib/sha1';
  * - Runtime create: uuid.NewV7() / uuid.New() -- browser: newRandomUuid() (RFC 4122 v4)
  *
  * Verify:
- * node --import ./scripts/test_aliases.mjs --test --experimental-strip-types src/api/dev_mock/seed_uuid.test.ts
+ * node --import ./scripts/test_aliases.mjs --test --experimental-strip-types src/lib/uuid.test.ts
  * go test ./cmd/admin/ -short -run TestSeedCatalog_deterministicUUIDsAreRealistic -count=1
  */
 
@@ -80,7 +80,7 @@ export function isTrivialSequentialUuid(value: string | undefined | null): boole
   if (!trimmed) {
     return false;
   }
-  // Legacy dev_mock ids used non-hex type tags (cust/camp) -- not valid RFC UUIDs.
+  // Legacy non-hex type tags in old fixture ids (cust/camp) -- not valid RFC UUIDs.
   if (trimmed.startsWith('00000000-') && trimmed.includes('-4000-8000-')) {
     const tail = trimmed.slice(-12);
     if (/^0{9,}[0-9a-f]{0,3}$/.test(tail)) {

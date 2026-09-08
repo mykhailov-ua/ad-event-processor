@@ -1,6 +1,5 @@
 // L3 campaigns page owner: URL searchParams are applied filters; draft* until commit; delegates list fetch to useCampaignsPageList (RF-9).
 import { useCallback, useEffect, useMemo, useState } from 'react';
-import { useSearchParams } from 'react-router-dom';
 import { toast } from 'sonner';
 
 import {
@@ -29,6 +28,7 @@ import { isCampaignListAuxEndpointUnavailable } from '@/domains/campaigns/list/c
 import { campaignListSelectionScopeKey } from '@/domains/campaigns/list/campaign_list_selection_scope';
 import {
   campaignListSortNeedsMetricWindow,
+  campaignListSortStartsDesc,
   campaignListSortToApi,
 } from '@/domains/campaigns/list/campaign_list_sort';
 import type { CampaignsDirectoryProps } from '@/domains/campaigns/list/campaigns_directory_types';
@@ -41,13 +41,15 @@ import { useCampaignsPageList } from '@/domains/campaigns/list/use_campaigns_pag
 import { useCampaignsPageMutations } from '@/domains/campaigns/list/use_campaigns_page_mutations';
 import { useSession } from '@/hooks/use_session';
 import { useCoalescedBumpRefresh, useRefreshToken } from '@/hooks/use_coalesced_refresh_token';
+import { useTransitionSearchParams } from '@/hooks/use_transition_search_params';
 import { useTrackerHeaderSearchRegistration } from '@/lib/tracker_header_context';
 import { userErrorMessage } from '@/lib/admin_error';
 import { DEFAULT_LIST_LIMIT } from '@/lib/list_query';
 import { toDatetimeLocalValue } from '@/lib/datetime_range';
 
 export function useCampaignsPage(): CampaignsDirectoryProps {
-  const [searchParams, setSearchParams] = useSearchParams();
+  const [searchParams, { isPending: listQueryPending, replaceSearchParams }] =
+    useTransitionSearchParams();
   const { session } = useSession();
   const { refreshToken, bumpRefresh } = useRefreshToken();
   const [createSectionOpen, setCreateSectionOpen] = useState(false);
@@ -151,6 +153,7 @@ export function useCampaignsPage(): CampaignsDirectoryProps {
     data,
     error,
     fetching,
+    listRevalidating,
     columnWidthProbe,
     metricsById,
     marginsById,
@@ -172,6 +175,7 @@ export function useCampaignsPage(): CampaignsDirectoryProps {
     filterTotalsError,
     metricsError,
     metricsStale,
+    listLastUpdatedAt,
   } = useCampaignsPageList({
     query,
     statsQuery,
@@ -226,9 +230,9 @@ export function useCampaignsPage(): CampaignsDirectoryProps {
   const updateQuery = useCallback(
     (patch: CampaignListQueryPatch) => {
       const next = applyCampaignListQueryPatch(searchParams, query, patch);
-      setSearchParams(next, { replace: true });
+      replaceSearchParams(next);
     },
-    [query, searchParams, setSearchParams]
+    [query, replaceSearchParams, searchParams]
   );
 
   const onPageChange = useCallback(
@@ -352,7 +356,14 @@ export function useCampaignsPage(): CampaignsDirectoryProps {
 
   const onColumnSort = useCallback(
     (field: CampaignSortField) => {
-      const nextOrder = appliedSort === field && appliedOrder === 'asc' ? 'desc' : 'asc';
+      const nextOrder =
+        appliedSort === field
+          ? appliedOrder === 'asc'
+            ? 'desc'
+            : 'asc'
+          : campaignListSortStartsDesc(field)
+            ? 'desc'
+            : 'asc';
       const patch: CampaignListQueryPatch = {
         sort: field,
         order: nextOrder,
@@ -402,10 +413,12 @@ export function useCampaignsPage(): CampaignsDirectoryProps {
     filterTotalsCapped,
     filteredTotal: data?.total ?? 0,
     metricsStale,
+    listLastUpdatedAt,
     listScopeKey,
     statsQuery,
     exportFilterQuery,
     fetching,
+    listRevalidating: listRevalidating || listQueryPending,
     error,
     hasSnapshot: data != null,
     filtersActive,

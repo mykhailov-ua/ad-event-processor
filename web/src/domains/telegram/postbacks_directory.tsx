@@ -24,6 +24,7 @@ import {
   TableCell,
   TableHeader,
   TableRow,
+  directoryTableRevalidatingClass,
 } from '@/shell/directory_table';
 import type { TelegramPostback } from '@/api/types';
 import { TelegramNav, telegramPanelError } from '@/domains/telegram/telegram_nav';
@@ -34,6 +35,7 @@ export type TelegramPostbacksDirectoryProps = {
   appliedCampaignId: string;
   draftCampaignId: string;
   fetching: boolean;
+  listRevalidating?: boolean;
   error: Error | undefined;
   hasSnapshot: boolean;
   draftPostbackUrl: string;
@@ -57,6 +59,7 @@ export function TelegramPostbacksDirectory({
   appliedCampaignId,
   draftCampaignId,
   fetching,
+  listRevalidating = false,
   error,
   hasSnapshot,
   draftPostbackUrl,
@@ -80,14 +83,20 @@ export function TelegramPostbacksDirectory({
 
   if (!appliedCampaignId) {
     return (
-      <PageChrome title="Telegram postbacks">
-        <TelegramNav />
-        <CampaignScopeBar
-          appliedCampaignId={appliedCampaignId}
-          draftCampaignId={draftCampaignId}
-          onApply={onApplyCampaignScope}
-          onDraftCampaignIdChange={onDraftCampaignIdChange}
-        />
+      <PageChrome
+        title="Telegram postbacks"
+        controlPanel={
+          <div className="grid gap-3">
+            <TelegramNav />
+            <CampaignScopeBar
+              appliedCampaignId={appliedCampaignId}
+              draftCampaignId={draftCampaignId}
+              onApply={onApplyCampaignScope}
+              onDraftCampaignIdChange={onDraftCampaignIdChange}
+            />
+          </div>
+        }
+      >
         <EmptyState
           title="Campaign required"
           description="Apply a campaign ID to list and manage Telegram postbacks."
@@ -104,16 +113,18 @@ export function TelegramPostbacksDirectory({
           Create postback
         </PrimaryActionButton>
       }
+      controlPanel={
+        <div className="grid gap-3">
+          <TelegramNav />
+          <CampaignScopeBar
+            appliedCampaignId={appliedCampaignId}
+            draftCampaignId={draftCampaignId}
+            onApply={onApplyCampaignScope}
+            onDraftCampaignIdChange={onDraftCampaignIdChange}
+          />
+        </div>
+      }
     >
-      <TelegramNav />
-
-      <CampaignScopeBar
-        appliedCampaignId={appliedCampaignId}
-        draftCampaignId={draftCampaignId}
-        onApply={onApplyCampaignScope}
-        onDraftCampaignIdChange={onDraftCampaignIdChange}
-      />
-
       <Dialog onOpenChange={setCreateOpen} open={createOpen}>
         <DialogContent className="max-w-lg">
           <DialogHeader>
@@ -145,7 +156,7 @@ export function TelegramPostbacksDirectory({
           description="No Telegram postback URLs for this campaign."
         />
       ) : (
-        <DirectoryTable>
+        <DirectoryTable className={directoryTableRevalidatingClass(listRevalidating)}>
           <TableHeader>
             <TableRow>
               <DirectoryTableHead>URL</DirectoryTableHead>

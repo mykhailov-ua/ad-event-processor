@@ -1,4 +1,5 @@
 import { ErrorBlock } from '@/shell/error_block';
+import { DirectoryFilterForm, FilterPanel } from '@/shell/filter_panel';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
@@ -67,19 +68,19 @@ export function CostSyncCredentialForm({
   const canDelete = !disabled && draftNetwork.trim().length > 0;
 
   return (
-    <section className="ui-filter-panel">
+    <FilterPanel>
       <h2 className="text-base font-semibold">Upsert credentials</h2>
       <p className="text-sm text-muted-foreground">
         Secrets are encrypted at rest. Leave token fields empty to keep existing values on update.
         Click a credentials row below to prefill the network and account fields.
       </p>
 
-      <div className="grid grid-cols-[repeat(auto-fill,minmax(12rem,1fr))] items-end gap-4">
+      <DirectoryFilterForm layout="auto-fill" onSubmit={(event) => event.preventDefault()}>
         <div className="grid gap-2">
           <Label htmlFor="cost-sync-network">Network</Label>
           {networkOptions.length > 0 ? (
             <Select value={draftNetwork} onValueChange={onDraftNetworkChange} disabled={disabled}>
-              <SelectTrigger id="cost-sync-network" className="w-full text-sm">
+              <SelectTrigger id="cost-sync-network" className="w-full">
                 <SelectValue placeholder="Select network" />
               </SelectTrigger>
               <SelectContent>
@@ -115,7 +116,7 @@ export function CostSyncCredentialForm({
             onValueChange={onDraftSyncIntervalMinutesChange}
             disabled={disabled}
           >
-            <SelectTrigger id="cost-sync-sync-interval" className="w-full text-sm">
+            <SelectTrigger id="cost-sync-sync-interval" className="w-full">
               <SelectValue />
             </SelectTrigger>
             <SelectContent>
@@ -171,7 +172,7 @@ export function CostSyncCredentialForm({
         >
           {deleting ? 'Deleting...' : 'Delete credentials'}
         </Button>
-      </div>
+      </DirectoryFilterForm>
 
       {saveError ? <ErrorBlock title="Save failed" message={saveError.message} /> : null}
       {deleteError ? <ErrorBlock title="Delete failed" message={deleteError.message} /> : null}
@@ -181,6 +182,6 @@ export function CostSyncCredentialForm({
       {deleteSuccess ? (
         <p className="text-sm text-muted-foreground">Credentials deleted. List refreshed.</p>
       ) : null}
-    </section>
+    </FilterPanel>
   );
 }

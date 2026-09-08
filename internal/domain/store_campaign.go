@@ -76,6 +76,7 @@ func CampaignFromDBRow(row db.Campaign) *Campaign {
 		CampaignSyncKey:          shard.CampaignSyncKey(id),
 		CustomerSyncKey:          shard.CustomerSyncKey(id, customerID),
 		FcapKeyPrefix:            fcapPrefix,
+		FcapPrefixHash:           FNV64String(fcapPrefix),
 		DailySpendKeyPrefix:      shard.DailySpendKeyPrefix(id),
 		FraudThresholdPass:       uint8(row.FraudThresholdPass),
 		FraudThresholdSuspect:    uint8(row.FraudThresholdSuspect),
@@ -98,6 +99,7 @@ func CampaignFromDBRow(row db.Campaign) *Campaign {
 		ReviewTrafficAction:      ParseReviewTrafficAction(row.ReviewTrafficAction),
 		SocialInAppEnabled:       row.SocialInAppEnabled,
 		ClickDelivery:            row.ClickDelivery,
+		ClickFilterTier:          row.ClickFilterTier,
 		ProxyUpstreamURL:         row.ProxyUpstreamUrl,
 		ProxyRewriteAssets:       row.ProxyRewriteAssets,
 	}
@@ -157,6 +159,7 @@ func CampaignFromGetCampaignFullRow(row db.GetCampaignFullRow) *Campaign {
 		CampaignSyncKey:          shard.CampaignSyncKey(id),
 		CustomerSyncKey:          shard.CustomerSyncKey(id, customerID),
 		FcapKeyPrefix:            fcapPrefix,
+		FcapPrefixHash:           FNV64String(fcapPrefix),
 		DailySpendKeyPrefix:      shard.DailySpendKeyPrefix(id),
 		FraudThresholdPass:       uint8(row.FraudThresholdPass),
 		FraudThresholdSuspect:    uint8(row.FraudThresholdSuspect),
@@ -179,6 +182,7 @@ func CampaignFromGetCampaignFullRow(row db.GetCampaignFullRow) *Campaign {
 		ReviewTrafficAction:      ParseReviewTrafficAction(row.ReviewTrafficAction),
 		SocialInAppEnabled:       row.SocialInAppEnabled,
 		ClickDelivery:            row.ClickDelivery,
+		ClickFilterTier:          row.ClickFilterTier,
 		ProxyUpstreamURL:         row.ProxyUpstreamUrl,
 		ProxyRewriteAssets:       row.ProxyRewriteAssets,
 	}
@@ -252,6 +256,7 @@ func CampaignFromListActiveCampaignsRow(row db.ListActiveCampaignsRow) *Campaign
 		CampaignSyncKey:          shard.CampaignSyncKey(id),
 		CustomerSyncKey:          shard.CustomerSyncKey(id, customerID),
 		FcapKeyPrefix:            fcapPrefix,
+		FcapPrefixHash:           FNV64String(fcapPrefix),
 		DailySpendKeyPrefix:      shard.DailySpendKeyPrefix(id),
 		FraudThresholdPass:       uint8(row.FraudThresholdPass),
 		FraudThresholdSuspect:    uint8(row.FraudThresholdSuspect),
@@ -274,6 +279,7 @@ func CampaignFromListActiveCampaignsRow(row db.ListActiveCampaignsRow) *Campaign
 		ReviewTrafficAction:      ParseReviewTrafficAction(row.ReviewTrafficAction),
 		SocialInAppEnabled:       row.SocialInAppEnabled,
 		ClickDelivery:            row.ClickDelivery,
+		ClickFilterTier:          row.ClickFilterTier,
 		ProxyUpstreamURL:         row.ProxyUpstreamUrl,
 		ProxyRewriteAssets:       row.ProxyRewriteAssets,
 	}

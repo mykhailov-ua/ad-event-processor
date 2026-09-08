@@ -42,12 +42,17 @@ export function PublisherStatementsPanel({
   }
 
   return (
-    <PageChrome title="Publisher statements">
-      <PortalsNav />
-      <Link className="text-sm text-muted-foreground hover:underline" to="/publisher/dashboard">
-        Dashboard
-      </Link>
-
+    <PageChrome
+      title="Publisher statements"
+      controlPanel={
+        <div className="grid gap-3">
+          <PortalsNav />
+          <Link className="text-sm text-muted-foreground hover:underline" to="/publisher/dashboard">
+            Dashboard
+          </Link>
+        </div>
+      }
+    >
       {(statements ?? []).length === 0 ? (
         <EmptyState title="No statements" description="Publisher revenue statements are empty." />
       ) : (

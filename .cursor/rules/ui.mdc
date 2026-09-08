@@ -374,17 +374,24 @@ Forbidden: bespoke subgrid row factories; `display: table*` CSS pretending to be
 
 ### Campaigns column widths
 
-Legacy note: width probe and `table-layout: fixed` remain in code; **truncate/ellipsis on data cells and resize-via-React-state on every `pointermove` are banned** per `frontend-slop.mdc` until remediated.
-
 | Rule | Detail |
 | :--- | :--- |
 | Layout | `table-layout: fixed`; explicit `width` on `col` from `campaign_list_column_widths.ts` probe |
 | Table width | `width: auto` on table (sum of columns); horizontal scroll in wrap |
+| Long text clip | Only via `campaignListEllipsisTextClass` / `campaignListHeaderLabelClass` (`campaign_list_classes.ts`); same contract for landers fixed table |
 | User resize | Commit on `pointerup` only; live width via `col` ref during drag (`frontend-slop.mdc`) |
 | Reorder | `moveDataColumn`; `key={columnId}` on cells; no width recompute when only order changes |
 | Clamps | `clampCampaignListColumnWidthPx()` until content-based widths ship; do not add new arbitrary caps |
 | Persist | `localStorage` key `aed.campaigns.listColumns.v7`; defer write to end of drop if possible |
 | Gap bug | Unbounded saved `name` width + `width: 100%` on table causes empty column gap -- never remove content-based sizing |
+
+### Landers column widths
+
+| Rule | Detail |
+| :--- | :--- |
+| Layout | `table-layout: fixed`; percent widths on `colgroup` in `landers_list_table.tsx` |
+| Ellipsis | Same named classes as campaigns (`campaign_list_classes.ts`); no ad-hoc `text-ellipsis` in `domains/creative/` |
+| Numeric / dates | `campaignListCellContentClass` or badges -- no ellipsis on counts or relative timestamps |
 
 ### Ops tables
 
@@ -572,7 +579,7 @@ Formula and OKLCH ladder: `web/DESIGN.md` (**Surface hierarchy**).
 
 | Role | Token / pattern |
 | :--- | :--- |
-| Brand / primary CTA | `--admin-brand`, `--admin-brand-hover`; `.admin-btn--primary` |
+| Brand / primary CTA | `bg-primary`, `text-primary-foreground`; `Button` default variant |
 | Body text | `--admin-fg`, `--admin-fg-strong` |
 | Secondary / labels | `--admin-muted`, `--admin-fg-secondary` |
 | Positive money / OK status | `--admin-positive-fg`, `--admin-status-active-*` |
@@ -601,17 +608,17 @@ Use color **only** to encode data or state. Decorative gradients, glow, and per-
 
 ### Controls
 
-Tailwind utilities in TSX -- no shared `admin-*` classes in CSS files.
+Use `web/src/components/ui/*` primitives + `admin_kit.ts` / `admin_chrome.ts` tokens. **No** `.admin-btn` / `.admin-input` BEM classes in TSX or new CSS.
 
-| Control | Class | Notes |
+| Control | Owner | Notes |
 | :--- | :--- | :--- |
-| Button | `.admin-btn`, `.admin-btn--primary`, `.admin-btn--icon` | Height `--admin-control-height` (~32px); subtle radius |
-| Text field | `.admin-input`, `.admin-select`, `.admin-textarea` | L1/L2 background per parent surface |
-| Label | `.admin-label` | Above field in filter grids |
-| Muted hint | `.admin-muted` | Secondary copy, column headers |
-| Link | `.admin-text-link` | In-table links only; not for buttons |
+| Button | `components/ui/button.tsx` | `adminKit.controlHeight` (`min-h-7`); default variant only in domains |
+| Text field | `components/ui/input.tsx`, `select.tsx`, `textarea.tsx` | `adminKit.controlText`, `controlRadius` (`rounded-none`) |
+| Label | `components/ui/label.tsx` + `FilterField` | `adminKit.fieldLabelClass` |
+| Muted hint | `text-muted-foreground` | Secondary copy, column headers |
+| Link | `Button variant="link"` or `text-primary` | In-table links only; not for primary actions |
 
-Toolbar pattern (campaigns): `.admin-campaigns-toolbar` with `__actions`, `__filters` (full width), `__summary` rows.
+Toolbar pattern (campaigns): `campaigns_list_toolbar.tsx` -- filter row via `DirectoryFilterForm`, summary band, action row (`frontend-slop.mdc` layout contract).
 
 ### Tables (visual)
 
@@ -625,7 +632,7 @@ Toolbar pattern (campaigns): `.admin-campaigns-toolbar` with `__actions`, `__fil
 | Totals row | `--admin-table-totals-bg` in `tfoot` when present |
 | Alignment | Names start-aligned; metrics `.num` end-aligned with tabular figures |
 
-Campaigns: table `width: auto` (sum of columns); column widths from content probe in `campaign_list_column_widths.ts` -- see `frontend-slop.mdc` for performance and ellipsis ban.
+Campaigns: table `width: auto` (sum of columns); column widths from content probe in `campaign_list_column_widths.ts`. Landers: percent `colgroup` + shared ellipsis classes -- see **Landers column widths** and `frontend-slop.mdc` (**Fixed-layout directory tables**).
 
 ### Chips, badges, GEO
 
@@ -811,7 +818,7 @@ Shared: `campaign_metrics_shared.tsx`.
 
 ## Fixture and seed data (user-visible)
 
-**Scope:** fallbacks, dev mock (`web/src/api/dev_mock/`), seed catalog, e2e payloads. Production pages are API-only; this applies when stub/seed data is shown.
+**Scope:** fallbacks, seed catalog, e2e payloads, `?chart_mock=1` dashboard preview. Production pages are API-only.
 
 Canonical catalog: `cmd/admin/seed_catalog.go`. Extend arrays there; no parallel trash catalogs in `web/`.
 

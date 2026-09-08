@@ -12,6 +12,7 @@ import {
   TableCell,
   TableHeader,
   TableRow,
+  directoryTableRevalidatingClass,
 } from '@/shell/directory_table';
 import { EmptyState } from '@/shell/empty_state';
 import { ErrorBlock } from '@/shell/error_block';
@@ -29,6 +30,7 @@ export type CustomersDirectoryProps = {
   appliedSort: CustomerSortField;
   appliedOrder: SortOrder;
   fetching: boolean;
+  listRevalidating?: boolean;
   error: Error | undefined;
   hasSnapshot: boolean;
   freshnessLabel?: string;
@@ -45,6 +47,7 @@ export function CustomersDirectory({
   appliedSort,
   appliedOrder,
   fetching,
+  listRevalidating = false,
   error,
   hasSnapshot,
   freshnessLabel,
@@ -72,7 +75,7 @@ export function CustomersDirectory({
     <PageLayout
       badge={
         freshnessLabel ? (
-          <span className="inline-flex items-center rounded-md border border-border bg-muted px-2 py-0.5 text-xs text-muted-foreground">
+          <span className="inline-flex items-center rounded-none border border-border bg-muted px-2 py-0.5 text-xs text-muted-foreground">
             {freshnessLabel}
           </span>
         ) : null
@@ -101,7 +104,11 @@ export function CustomersDirectory({
           variant="blank-slate"
         />
       ) : (
-        <DirectoryTable fixedLayout horizontalScroll>
+        <DirectoryTable
+          className={directoryTableRevalidatingClass(listRevalidating)}
+          fixedLayout
+          horizontalScroll
+        >
           <TableHeader>
             <TableRow>
               <SortableTableHead

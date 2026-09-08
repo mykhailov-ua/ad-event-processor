@@ -15,7 +15,8 @@
 //
 // Invariants:
 //   - Schema documents validated with integrationschema.ParseDocument / ValidateName before INSERT.
-//   - applySchema kind switch updates campaigns, postback_configs, or status_integration_schema_id per kind.
+//   - applySchema kind switch updates campaigns, postback_configs, status_integration_schema_id,
+//     and campaign_conversion_mappings for status_mapping kind.
 //   - List/get schemas: campaigns:read; create/apply/import templates: campaigns:write.
 //   - applyCampaignTemplates delegates to campaign.TemplateCatalog (parent misc_helpers.go).
 //

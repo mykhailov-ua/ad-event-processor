@@ -11,6 +11,9 @@ import type {
   ReportRunQuery,
   TelegramReportExportRequest,
   TelegramReportExportResponse,
+  WireSignalBreakdownReportResponse,
+  FraudReasonRow,
+  FraudReasonsReportKey,
 } from './types.js';
 
 export async function getReportCatalog(signal?: AbortSignal): Promise<ReportCatalogResponse> {
@@ -56,6 +59,40 @@ export async function runReport(
   signal?: AbortSignal
 ): Promise<ReportMapEnvelope> {
   return apiJson<ReportMapEnvelope>(buildReportRunPath(key, params), { signal });
+}
+
+type FraudBreakdownReportResponse = {
+  rows: FraudReasonRow[];
+  freshness?: WireSignalBreakdownReportResponse['freshness'];
+  next_cursor?: string;
+};
+
+export type FraudReasonsReportResponse = {
+  rows: FraudReasonRow[];
+  freshness?: WireSignalBreakdownReportResponse['freshness'];
+  next_cursor?: string;
+};
+
+export async function getFraudReasonsReport(
+  reportKey: FraudReasonsReportKey,
+  params: ReportRunQuery = {},
+  signal?: AbortSignal
+): Promise<FraudReasonsReportResponse> {
+  const path = buildReportRunPath(reportKey, params);
+  if (reportKey === 'wire-signal-breakdown') {
+    const payload = await apiJson<WireSignalBreakdownReportResponse>(path, { signal });
+    return {
+      rows: payload.rows ?? [],
+      freshness: payload.freshness,
+      next_cursor: payload.next_cursor,
+    };
+  }
+  const payload = await apiJson<FraudBreakdownReportResponse>(path, { signal });
+  return {
+    rows: payload.rows ?? [],
+    freshness: payload.freshness,
+    next_cursor: payload.next_cursor,
+  };
 }
 
 export function buildClickLogReportPath(params: ClickLogReportQuery): string {

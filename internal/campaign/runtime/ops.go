@@ -381,6 +381,7 @@ func getCampaign(
 		return campaign.CampaignDTO{}, err
 	}
 	dto := scrubCampaignDTO(ctx, c)
+	campaign.AttachCampaignIntegrationSchemas(ctx, pool, c, &dto)
 	if effects != nil {
 		if flowID, flowErr := effects.CampaignFlowID(ctx, campaignID); flowErr == nil {
 			dto.FlowID = flowID
@@ -488,6 +489,7 @@ func scrubCampaignDTO(ctx context.Context, c db.Campaign) campaign.CampaignDTO {
 		LinkSigningEnabled:         c.LinkSigningEnabled,
 		LinkSigningTTLSec:          c.LinkSigningTtlSec,
 		ClickDelivery:              c.ClickDelivery,
+		ClickFilterTier:            c.ClickFilterTier,
 		ProxyUpstreamURL:           c.ProxyUpstreamUrl,
 		ProxyRewriteAssets:         c.ProxyRewriteAssets,
 		BrandID:                    formatCampaignOptionalUUID(c.BrandID),
@@ -692,7 +694,8 @@ func patchCampaign(ctx context.Context, pool *pgxpool.Pool, fx campaign.Effects,
 		req.ReviewTrafficAction != nil ||
 		req.TLSFingerprintBlockEnabled != nil || req.ConnTypePolicy != nil ||
 		req.LinkSigningEnabled != nil || req.LinkSigningTTLSec != nil ||
-		req.ClickDelivery != nil || req.ProxyUpstreamURL != nil || req.ProxyRewriteAssets != nil
+		req.ClickDelivery != nil || req.ProxyUpstreamURL != nil || req.ProxyRewriteAssets != nil ||
+		req.ClickFilterTier != nil
 	if !adminPatch && budgetMicro == nil && !statusSet && !schedulePatch && !clickPresetPatch {
 		return getCampaign(ctx, pool, fx, campaignID)
 	}
@@ -888,6 +891,17 @@ func patchCampaign(ctx context.Context, pool *pgxpool.Pool, fx campaign.Effects,
 			if err := proxyupstream.ValidateDeliveryPair(ctx, clickDelivery, proxyUpstream, allowHTTP); err != nil {
 				return err
 			}
+			clickFilterTier := locked.ClickFilterTier
+			if req.ClickFilterTier != nil {
+				clickFilterTier = strings.TrimSpace(*req.ClickFilterTier)
+			}
+			if clickFilterTier == "" {
+				clickFilterTier = string(domain.ClickFilterTierFull)
+			}
+			if err := domain.ValidateClickFilterTierForSave(clickFilterTier, fx.ClickFilterRedirectOnlyLicensed()); err != nil {
+				return err
+			}
+			clickFilterTier = string(domain.NormalizeClickFilterTier(clickFilterTier))
 
 			locked, err = q.UpdateCampaignAdmin(ctx, db.UpdateCampaignAdminParams{
 				ID:                         domain.ToUUID(campaignID),
@@ -916,6 +930,7 @@ func patchCampaign(ctx context.Context, pool *pgxpool.Pool, fx campaign.Effects,
 				ProxyVpnBlockEnabled:       proxyVPNBlock,
 				ModeratorIntelEnabled:      moderatorIntel,
 				ReviewTrafficAction:        reviewTrafficAction,
+				ClickFilterTier:            clickFilterTier,
 			})
 			if err != nil {
 				return err

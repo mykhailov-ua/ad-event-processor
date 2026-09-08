@@ -2,6 +2,7 @@ import { PrimaryActionButton, SecondaryActionButton } from '@/shell/action_butto
 import { ErrorBlock } from '@/shell/error_block';
 import {
   Dialog,
+  DialogBody,
   DialogContent,
   DialogDescription,
   DialogFooter,
@@ -29,6 +30,7 @@ import type { CustomerComboboxOption } from '@/shell/customer_combobox';
 import type { CampaignListMetrics } from '@/api/campaigns_api';
 import type { CampaignMargin, CampaignStatsQuery, SelfServeCampaignTemplate } from '@/api/types';
 import type { CampaignWithMoneyDisplay } from '@/domains/campaigns/list/campaign_metrics_shared';
+import { CampaignBulkCloneDialog } from '@/domains/campaigns/list/campaign_bulk_clone_dialog';
 import { CampaignCloneDialog } from '@/domains/campaigns/editor/campaign_clone_dialog';
 import { CampaignImportPanel } from '@/domains/campaigns/editor/campaign_import_panel';
 import { CampaignOverviewSheet } from '@/domains/campaigns/list/campaign_overview_sheet';
@@ -41,6 +43,7 @@ export type CampaignsDirectoryOverlaysProps = {
   actionError: Error | undefined;
   archiveOpen: boolean;
   bulkBusy: boolean;
+  bulkCloneOpen: boolean;
   cloneOpen: boolean;
   createDisabled: boolean;
   createCustomerId: string;
@@ -57,8 +60,11 @@ export type CampaignsDirectoryOverlaysProps = {
   importPanelWorkspace: CampaignImportPanelWorkspace;
   onArchiveConfirm: () => void;
   onArchiveOpenChange: (open: boolean) => void;
+  onBulkCloneOpenChange: (open: boolean) => void;
   onCloneOpenChange: (open: boolean) => void;
+  onBulkCloned: () => void;
   onCloned: () => void;
+  selectedCampaignIds: string[];
   onCreateCampaign: () => void;
   onCreateSectionOpenChange: (open: boolean) => void;
   onDraftBudgetLimitMicroChange: (value: string) => void;
@@ -92,6 +98,7 @@ export function CampaignsDirectoryOverlays({
   actionError,
   archiveOpen,
   bulkBusy,
+  bulkCloneOpen,
   cloneOpen,
   createDisabled,
   createCustomerId,
@@ -108,7 +115,9 @@ export function CampaignsDirectoryOverlays({
   importPanelWorkspace,
   onArchiveConfirm,
   onArchiveOpenChange,
+  onBulkCloneOpenChange,
   onCloneOpenChange,
+  onBulkCloned,
   onCloned,
   onCreateCampaign,
   onCreateSectionOpenChange,
@@ -129,6 +138,7 @@ export function CampaignsDirectoryOverlays({
   listScopeKey,
   resetWorkspaceOpen,
   selectedCampaignId,
+  selectedCampaignIds,
   selectedCampaignName,
   selectedCount,
   statsQuery,
@@ -280,6 +290,14 @@ export function CampaignsDirectoryOverlays({
         onOpenChange={onCloneOpenChange}
       />
 
+      <CampaignBulkCloneDialog
+        customerId={customerId}
+        open={bulkCloneOpen}
+        sourceCampaignIds={selectedCampaignIds}
+        onCloned={onBulkCloned}
+        onOpenChange={onBulkCloneOpenChange}
+      />
+
       <Dialog open={archiveOpen} onOpenChange={onArchiveOpenChange}>
         <DialogContent className="max-w-md">
           <DialogHeader>
@@ -333,19 +351,19 @@ export function CampaignsDirectoryOverlays({
         </SheetContent>
       </Sheet>
 
-      <Sheet onOpenChange={onWizardOpenChange} open={wizardOpen}>
-        <SheetContent className="gap-0 p-0 sm:max-w-2xl">
-          <SheetHeader>
-            <SheetTitle>Guided setup</SheetTitle>
-            <SheetDescription>
+      <Dialog onOpenChange={onWizardOpenChange} open={wizardOpen}>
+        <DialogContent className="max-w-2xl p-0">
+          <DialogHeader className="border-b border-border px-6 py-4 text-left">
+            <DialogTitle>Guided setup</DialogTitle>
+            <DialogDescription>
               Step-by-step campaign setup with traffic, flow, and budget.
-            </SheetDescription>
-          </SheetHeader>
-          <SheetBody>
+            </DialogDescription>
+          </DialogHeader>
+          <DialogBody className="grid gap-4 pb-8">
             <CampaignWizardPanel workspace={wizardPanelWorkspace} />
-          </SheetBody>
-        </SheetContent>
-      </Sheet>
+          </DialogBody>
+        </DialogContent>
+      </Dialog>
     </>
   );
 }

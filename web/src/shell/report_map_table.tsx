@@ -1,6 +1,7 @@
 import type { ReportMapRow } from '@/api/types';
 import { formatMapCell, reportMapRowKey } from '@/lib/report_table';
 import { cn } from '@/lib/utils';
+import { shellChrome } from '@/shell/shell_chrome';
 import {
   DirectoryTable,
   DirectoryTableHead,
@@ -8,6 +9,7 @@ import {
   TableCell,
   TableHeader,
   TableRow,
+  directoryTableRevalidatingClass,
 } from '@/shell/directory_table';
 
 export type ReportMapTableProps = {
@@ -16,6 +18,7 @@ export type ReportMapTableProps = {
   rows: readonly ReportMapRow[];
   rowKeyPrefix?: string;
   className?: string;
+  revalidating?: boolean;
   formatColumn?: (column: string) => string;
 };
 
@@ -26,11 +29,18 @@ export function ReportMapTable({
   rows,
   rowKeyPrefix,
   className,
+  revalidating = false,
   formatColumn,
 }: ReportMapTableProps) {
   const keyPrefix = rowKeyPrefix ?? caption;
   const table = (
-    <DirectoryTable className={cn(caption ? 'rounded-t-none' : undefined, className)}>
+    <DirectoryTable
+      className={cn(
+        caption ? 'rounded-t-none' : undefined,
+        directoryTableRevalidatingClass(revalidating),
+        className
+      )}
+    >
       <TableHeader>
         <TableRow>
           {columns.map((column) => (
@@ -58,7 +68,7 @@ export function ReportMapTable({
 
   return (
     <div className="grid gap-0">
-      <p className="rounded-t-md border border-b-0 border-border px-4 py-2 text-sm font-medium">
+      <p className={cn(shellChrome.tableCaptionBandClass, 'rounded-t-md')}>
         {caption}
       </p>
       {table}

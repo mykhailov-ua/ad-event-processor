@@ -16,6 +16,7 @@ import {
   automationRuleEditFromRow,
   automationRuleUpsertBody,
 } from '@/domains/automation/automation_rule_forms';
+import { confirmDestructiveAction, mutationError } from '@/lib/mutation_audit';
 import { useCoalescedBumpRefresh, useRefreshToken } from '@/hooks/use_coalesced_refresh_token';
 import { useCustomerScope } from '@/hooks/use_customer_scope';
 import { useResource } from '@/api/use_resource';
@@ -116,6 +117,7 @@ export function useAutomationRulesPageWorkspace() {
       bumpRefreshCoalesced();
     } catch (err: unknown) {
       setActionError(err instanceof Error ? err : new Error(String(err)));
+      toast.error(err instanceof Error ? err.message : String(err));
     } finally {
       setCreating(false);
     }
@@ -133,9 +135,12 @@ export function useAutomationRulesPageWorkspace() {
       setActionError(undefined);
       try {
         await updateAutomationRule(ruleId, automationRuleUpsertBody(customerId, row, draft));
+        toast.success('Rule saved');
         bumpRefreshCoalesced();
       } catch (err: unknown) {
-        setActionError(err instanceof Error ? err : new Error(String(err)));
+        const nextError = mutationError(err);
+        setActionError(nextError);
+        toast.error(nextError.message);
       } finally {
         setUpdatingRuleId(undefined);
       }
@@ -145,6 +150,11 @@ export function useAutomationRulesPageWorkspace() {
 
   const onDeleteRule = useCallback(
     async (ruleId: string) => {
+      const row = data?.find((item) => item.id === ruleId);
+      const label = row?.name?.trim() || ruleDrafts[ruleId]?.name?.trim() || ruleId;
+      if (!confirmDestructiveAction(`Delete rule "${label}"?`)) {
+        return;
+      }
       setDeletingRuleId(ruleId);
       setActionError(undefined);
       try {
@@ -154,14 +164,17 @@ export function useAutomationRulesPageWorkspace() {
           delete next[ruleId];
           return next;
         });
+        toast.success('Rule deleted');
         bumpRefreshCoalesced();
       } catch (err: unknown) {
-        setActionError(err instanceof Error ? err : new Error(String(err)));
+        const nextError = mutationError(err);
+        setActionError(nextError);
+        toast.error(nextError.message);
       } finally {
         setDeletingRuleId(undefined);
       }
     },
-    [bumpRefreshCoalesced]
+    [bumpRefreshCoalesced, data, ruleDrafts]
   );
 
   const onDryRun = useCallback(async (ruleId: string) => {
@@ -172,8 +185,11 @@ export function useAutomationRulesPageWorkspace() {
     try {
       const result = await dryRunAutomationRule(ruleId);
       setDryRunResult(result);
+      toast.success('Dry-run complete');
     } catch (err: unknown) {
-      setDryRunError(err instanceof Error ? err : new Error(String(err)));
+      const nextError = mutationError(err);
+      setDryRunError(nextError);
+      toast.error(nextError.message);
     } finally {
       setDryRunning(false);
     }

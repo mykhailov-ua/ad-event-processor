@@ -9,33 +9,30 @@ import (
 )
 
 func buildH2TrackRequest(body []byte) []byte {
+	return buildH2TrackRequestOnStream(1, body, true)
+}
+
+func buildH2TrackRequestOnStream(streamID uint32, body []byte, withBootstrap bool) []byte {
 	hdrBlock := []byte{0x83, 0x04, 0x06, '/', 't', 'r', 'a', 'c', 'k'}
 	if len(body) > 0 {
 		hdrBlock = append(hdrBlock, 0x9f)
 	}
 
-	var headersFrame []byte
-	hdr := make([]byte, 9)
-	encodeH2FrameHeader(hdr, uint32(len(hdrBlock)), h2FrameHeaders, h2FlagEndHeaders, 1)
-	headersFrame = append(headersFrame, hdr...)
-	headersFrame = append(headersFrame, hdrBlock...)
+	var out []byte
+	if withBootstrap {
+		out = append(out, h2ClientPreface...)
+		out = append(out, buildH2Frame(0, h2FrameSettings, 0, nil)...)
+	}
+	out = append(out, buildH2HeadersDataFrames(streamID, hdrBlock, body)...)
+	return out
+}
 
-	var dataFrame []byte
-	dh := make([]byte, 9)
-	encodeH2FrameHeader(dh, uint32(len(body)), h2FrameData, h2FlagEndStream, 1)
-	dataFrame = append(dataFrame, dh...)
-	dataFrame = append(dataFrame, body...)
-
-	var settings []byte
-	settings = append(settings, []byte{
-		0x00, 0x00, 0x00, h2FrameSettings, 0x00, 0x00, 0x00, 0x00, 0x00,
-	}...)
-
+func buildH2PipelinedTrackRequests(n int, body []byte) []byte {
 	var buf bytes.Buffer
-	buf.WriteString("PRI * HTTP/2.0\r\n\r\nSM\r\n\r\n")
-	buf.Write(settings)
-	buf.Write(headersFrame)
-	buf.Write(dataFrame)
+	for i := range n {
+		streamID := uint32(1 + i*2)
+		buf.Write(buildH2TrackRequestOnStream(streamID, body, i == 0))
+	}
 	return buf.Bytes()
 }
 

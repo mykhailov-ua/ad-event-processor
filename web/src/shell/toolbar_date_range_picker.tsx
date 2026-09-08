@@ -26,6 +26,7 @@ import {
   campaignDateRangeTriggerClass,
 } from '@/lib/campaign_picker_classes';
 import { resolvePopoverAlign } from '@/lib/popover_align';
+import { adminKit } from '@/lib/admin_kit';
 import { cn } from '@/lib/utils';
 
 export type ToolbarDateRangePickerProps = {
@@ -102,7 +103,7 @@ export function ToolbarDateRangePicker({
   }
 
   return (
-    <div className={cn('grid w-full min-w-0 gap-1.5', className)}>
+    <div className={cn('grid w-full min-w-0', adminKit.fieldLabelGap, className)}>
       <Label className={labelClassName} htmlFor={id}>
         {label}
       </Label>

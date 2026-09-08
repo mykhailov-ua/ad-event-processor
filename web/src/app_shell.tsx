@@ -1,15 +1,18 @@
-import { useMemo, useState } from 'react';
+import { useEffect, useMemo, useState } from 'react';
 import { Outlet } from 'react-router-dom';
 
 import { logout } from '@/api/auth_api';
+import { recordCommandPaletteOpen } from '@/api/command_palette_api';
 import {
   TrackerShellHeaderActions,
   TrackerShellHeaderSearch,
   TrackerShellSidebarToggle,
 } from '@/shell/tracker_shell_header';
+import { PageCanvasInset } from '@/shell/page_layout';
+import { shellChrome } from '@/shell/shell_chrome';
 import { AppMobileNavSheet, AppSidebar } from '@/shell/app_sidebar';
-import { AdminDevBanner } from '@/shell/admin_dev_banner';
 import { AppErrorBoundary } from '@/shell/app_error_boundary';
+import { RoutePermissionGuard } from '@/shell/permission_gate';
 import { BreadcrumbProvider } from '@/shell/breadcrumb_context';
 import { PageBreadcrumbs } from '@/shell/page_breadcrumbs';
 import { CommandPalette } from '@/shell/command_palette';
@@ -20,7 +23,8 @@ import { useSession } from '@/hooks/use_session';
 import { hasAnyPortalAccess } from '@/lib/portal_access';
 import { readSidebarCollapsed, persistSidebarCollapsed } from '@/lib/sidebar_transition';
 import { TrackerHeaderProvider } from '@/lib/tracker_header_context';
-import { listTrackerNavItems } from '@/lib/tracker_nav';
+import { listTrackerNavGroups } from '@/lib/tracker_nav';
+import { navigationExpanded } from '@/lib/navigation_toggle';
 
 export function AppShell() {
   const { session, user } = useSession();
@@ -28,13 +32,33 @@ export function AppShell() {
   const [sidebarCollapsed, setSidebarCollapsed] = useState(() => readSidebarCollapsed());
   const [mobileNavOpen, setMobileNavOpen] = useState(false);
   const [commandPaletteOpen, setCommandPaletteOpen] = useState(false);
+  const [viewportIsMdUp, setViewportIsMdUp] = useState(
+    () => typeof window !== 'undefined' && window.matchMedia('(min-width: 768px)').matches
+  );
 
-  const navItems = useMemo(() => {
-    const items = listTrackerNavItems(user?.permissions);
-    if (!hasAnyPortalAccess(user?.permissions)) {
-      return items.filter((item) => item.path !== '/portals');
+  useEffect(() => {
+    const media = window.matchMedia('(min-width: 768px)');
+    const onViewportChange = () => {
+      setViewportIsMdUp(media.matches);
+      if (media.matches) {
+        setMobileNavOpen(false);
+      }
+    };
+    media.addEventListener('change', onViewportChange);
+    return () => media.removeEventListener('change', onViewportChange);
+  }, []);
+
+  const navGroups = useMemo(() => {
+    const groups = listTrackerNavGroups(user?.permissions);
+    if (hasAnyPortalAccess(user?.permissions)) {
+      return groups;
     }
-    return items;
+    return groups
+      .map((group) => ({
+        ...group,
+        items: group.items.filter((item) => item.path !== '/portals'),
+      }))
+      .filter((group) => group.items.length > 0);
   }, [user?.permissions]);
 
   const handleSignOut = () => {
@@ -57,12 +81,18 @@ export function AppShell() {
   };
 
   const handleNavToggle = () => {
-    if (window.matchMedia('(min-width: 768px)').matches) {
+    if (viewportIsMdUp) {
       toggleSidebar();
       return;
     }
     setMobileNavOpen((open) => !open);
   };
+
+  const navigationExpandedState = navigationExpanded(
+    viewportIsMdUp,
+    sidebarCollapsed,
+    mobileNavOpen
+  );
 
   return (
     <EulaGate>
@@ -73,18 +103,17 @@ export function AppShell() {
           Skip to content
         </a>
         <div className="flex h-dvh flex-col overflow-hidden">
-          <AdminDevBanner />
           <div className="flex min-h-0 flex-1 overflow-hidden">
             {session ? (
               <>
                 <AppSidebar
                   collapsed={sidebarCollapsed}
-                  items={navItems}
+                  groups={navGroups}
                   signingOut={signingOut}
                   onSignOut={handleSignOut}
                 />
                 <AppMobileNavSheet
-                  items={navItems}
+                  groups={navGroups}
                   open={mobileNavOpen}
                   signingOut={signingOut}
                   onOpenChange={setMobileNavOpen}
@@ -96,18 +125,20 @@ export function AppShell() {
             <div className="flex min-h-0 min-w-0 flex-1 flex-col overflow-hidden bg-background">
               <TrackerHeaderProvider>
                 <BreadcrumbProvider>
-                  <header className="grid h-11 shrink-0 grid-cols-[minmax(0,1fr)_minmax(12rem,28rem)_minmax(0,1fr)] items-center gap-3 border-b border-border bg-card px-5 text-card-foreground">
+                  <header className={shellChrome.trackerHeaderClass}>
                     <div className="flex min-w-0 items-center gap-2">
                       <TrackerShellSidebarToggle
-                        collapsed={sidebarCollapsed}
-                        mobileNavOpen={mobileNavOpen}
+                        expanded={navigationExpandedState}
                         onToggle={handleNavToggle}
                       />
-                      <PageBreadcrumbs className="min-w-0 overflow-hidden" />
+                      <PageBreadcrumbs className="min-w-0 overflow-x-auto" />
                     </div>
                     <div className="flex w-full max-w-md min-w-0 justify-center justify-self-center">
                       <TrackerShellHeaderSearch
-                        onOpenCommandPalette={() => setCommandPaletteOpen(true)}
+                        onOpenCommandPalette={() => {
+                          void recordCommandPaletteOpen({ source: 'ui' }).catch(() => undefined);
+                          setCommandPaletteOpen(true);
+                        }}
                       />
                     </div>
                     <div className="flex min-w-0 items-center justify-end justify-self-end gap-2">
@@ -122,11 +153,13 @@ export function AppShell() {
                     <div
                       className="ui-scrollbar min-h-0 min-w-0 flex-1 overflow-x-hidden overflow-y-auto"
                     >
-                      <div className="flex min-w-0 flex-col p-4">
+                      <PageCanvasInset>
                         <AppErrorBoundary layout="embedded">
-                          <Outlet />
+                          <RoutePermissionGuard>
+                            <Outlet />
+                          </RoutePermissionGuard>
                         </AppErrorBoundary>
-                      </div>
+                      </PageCanvasInset>
                     </div>
                   </main>
                 </BreadcrumbProvider>

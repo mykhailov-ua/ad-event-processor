@@ -435,6 +435,7 @@ func BuildIngressQuotaMap(epoch int64, limits *UDPControlLimits, numWorkers int)
 func FraudReasonCode(id FraudReasonID) string   { return cp.FraudReasonCode(id) }
 func CachedTimeIn(loc *time.Location) time.Time { return cp.CachedTimeIn(loc) }
 func CachedTimeUTC() time.Time                  { return cp.CachedTimeUTC() }
+func CachedHourUTC() int                        { return cp.CachedHourUTC() }
 func IngressDayKey(buf []byte, regionCode uint8, customerID uuid.UUID, dateStr string) []byte {
 	return cp.IngressDayKey(buf, regionCode, customerID, dateStr)
 }

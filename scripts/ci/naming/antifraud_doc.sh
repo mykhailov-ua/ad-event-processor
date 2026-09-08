@@ -43,4 +43,16 @@ if rg -q 'local atomic.*ingress|ingress.*local atomic' "$DOC"; then
   fi
 fi
 
+for heading in '## Ingest sink integrity' 'Accept response vs reserve + publish' 'Local quanta full-skip'; do
+  if ! rg -Fq "$heading" "$DOC"; then
+    echo "antifraud_doc_gate: ANTIFRAUD.md missing required section: $heading" >&2
+    exit 1
+  fi
+done
+
+if ! rg -q 'budget_rollback_gate.sh' "$DOC"; then
+  echo "antifraud_doc_gate: ANTIFRAUD.md must cite budget_rollback_gate.sh for sink integrity verify" >&2
+  exit 1
+fi
+
 echo "antifraud_doc_gate: ok"

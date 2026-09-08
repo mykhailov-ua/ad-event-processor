@@ -62,7 +62,7 @@ func (h *AdsPacketHandler) detectReviewTrafficMatch(ip string, campaignID uuid.U
 }
 
 func (h *AdsPacketHandler) applyReviewTrafficPolicy(
-	req Request,
+	req *Request,
 	c gnet.Conn,
 	ctx *ConnContext,
 	parsed *clickQueryParsed,

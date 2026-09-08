@@ -17,7 +17,7 @@ func TestAuction_bcatBlocksCategory(t *testing.T) {
 	req := &BidRequest{
 		GeoHash: geo, DeviceType: 1, CategoryMask: 1, MinBid: 50, BlockedCatMask: 4,
 	}
-	res, reason := reg.RunAuction(req)
+	res, reason := reg.RunAuctionPtr(req)
 	assert.False(t, reason.OK())
 	assert.Equal(t, NoBidNoCandidates, reason)
 	assert.Equal(t, CampaignID(0), res.CampaignID)
@@ -33,6 +33,6 @@ func TestAuction_bcatAllowsOtherCategories(t *testing.T) {
 	req := &BidRequest{
 		GeoHash: geo, DeviceType: 1, CategoryMask: 1, MinBid: 50, BlockedCatMask: 4,
 	}
-	_, reason := reg.RunAuction(req)
+	_, reason := reg.RunAuctionPtr(req)
 	require.True(t, reason.OK())
 }

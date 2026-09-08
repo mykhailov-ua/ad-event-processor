@@ -64,6 +64,29 @@ if ! grep -q 'QUOTA_MODE: live' "$ROOT/deploy/compose/docker-compose.load-test.y
   exit 1
 fi
 
+echo "compose production overlay (tracker hot-path prod tuning)"
+docker compose -f "$ROOT/deploy/compose/docker-compose.yaml" \
+  -f "$ROOT/deploy/compose/production.yaml" \
+  "${ENV_FILE[@]}" config > /dev/null
+for key in FILTER_TIMEOUT_MS=100 STREAM_PRODUCER_ADMISSION_PCT=85 LOCAL_QUOTA_MODE=live QUOTA_MODE=live TRACKER_PG_FALLBACK=0 TRANSPORT_USE_UDS=1; do
+  if ! grep -q "$key" "$ROOT/deploy/compose/production.yaml"; then
+    echo "production overlay must set tracker $key" >&2
+    exit 1
+  fi
+done
+if ! grep -q 'tracker-3:' "$ROOT/deploy/compose/production.yaml"; then
+  echo "production overlay must patch tracker-3 hot-path env" >&2
+  exit 1
+fi
+if ! grep -q 'CH_INGEST_SOURCE=broker' "$ROOT/deploy/compose/production.yaml"; then
+  echo "production overlay must set processor CH_INGEST_SOURCE=broker" >&2
+  exit 1
+fi
+if ! grep -q 'CH_INGEST_SOURCE=broker' "$ROOT/.env.prod.example"; then
+  echo ".env.prod.example must document CH_INGEST_SOURCE=broker for P2" >&2
+  exit 1
+fi
+
 echo "compose cpu-isolation overlay + profile"
 docker compose -f "$ROOT/deploy/compose/docker-compose.yaml" \
   -f "$ROOT/deploy/compose/docker-compose.cpu-isolation.yaml" \

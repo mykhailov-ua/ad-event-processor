@@ -9,12 +9,13 @@ import {
   TableFooter,
   TableHeader,
 } from '@/shell/directory_table';
+import { shellChrome } from '@/shell/shell_chrome';
 
 /** Ops matrix chrome: sticky headers, zebra rows, numeric column alignment. */
 export const OPS_DIRECTORY_TABLE_CLASS = cn(
-  'w-full border-collapse text-ui-dense',
-  '[&_th]:sticky [&_th]:top-0 [&_th]:z-[2] [&_th]:bg-card [&_th]:px-3 [&_th]:py-1.5 [&_th]:text-xs [&_th]:font-semibold [&_th]:text-muted-foreground [&_th]:shadow-sm',
-  '[&_td]:px-3 [&_td]:py-1.5',
+  'w-full border-collapse text-[13px] leading-[18px]',
+  '[&_th]:sticky [&_th]:top-0 [&_th]:z-[2] [&_th]:h-[34px] [&_th]:max-h-[34px] [&_th]:bg-card [&_th]:px-4 [&_th]:py-0 [&_th]:text-[11px] [&_th]:font-semibold [&_th]:uppercase [&_th]:leading-[14px] [&_th]:tracking-normal [&_th]:text-muted-foreground [&_th]:shadow-sm',
+  '[&_td]:h-[34px] [&_td]:max-h-[34px] [&_td]:px-4 [&_td]:py-0',
   '[&_tbody_tr:nth-child(even)_td]:bg-muted/30',
   '[&_tbody_tr:last-child_td]:border-b-0'
 );
@@ -88,11 +89,9 @@ export function OpsBlock({
   }
 
   return (
-    <section
-      className={cn('ops-section-card rounded-md border border-border bg-card p-3', className)}
-    >
-      <header className="flex items-center justify-between gap-2">
-        {title ? <h2 className="text-sm font-semibold">{title}</h2> : null}
+    <section className={cn(shellChrome.sectionPanelClass, className)}>
+      <header className="grid grid-cols-[1fr_auto] items-center gap-2">
+        {title ? <h2 className="text-[13px] font-semibold leading-[18px]">{title}</h2> : null}
         {meta}
       </header>
       <div className={SECTION_TABLE_HOST_CLASS}>{children}</div>

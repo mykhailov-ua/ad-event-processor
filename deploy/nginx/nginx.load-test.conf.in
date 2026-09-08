@@ -28,6 +28,8 @@ events {
 http {
     sendfile on;
     tcp_nopush on;
+    client_header_timeout 5s;
+    client_body_timeout 5s;
 
     lua_shared_dict circuit_breaker 8m;
     lua_shared_dict blacklist_cache 8m;
@@ -45,6 +47,7 @@ http {
     init_worker_by_lua_file /etc/nginx/lua/init-worker.lua;
 
     limit_req_zone ${DOLLAR}binary_remote_addr zone=track_ip:10m rate=3000r/s;
+    limit_conn_zone ${DOLLAR}binary_remote_addr zone=track_conn:10m;
     limit_req_zone ${DOLLAR}binary_remote_addr zone=admin_login_ip:10m rate=10r/m;
     limit_req_zone ${DOLLAR}binary_remote_addr zone=admin_auth_ip:10m rate=60r/m;
 
@@ -111,6 +114,7 @@ http {
 
         location /track {
             limit_req zone=track_ip burst=600 nodelay;
+            limit_conn track_conn 4096;
 
             access_by_lua_file /etc/nginx/lua/access-check.lua;
 
@@ -124,6 +128,7 @@ http {
             proxy_next_upstream error timeout invalid_header http_500 http_502 http_503 http_504;
             proxy_connect_timeout 1s;
             proxy_read_timeout 5s;
+            proxy_send_timeout 5s;
 
             log_by_lua_file /etc/nginx/lua/edge-circuit-log.lua;
         }
@@ -153,6 +158,7 @@ http {
 
         location /track {
             limit_req zone=track_ip burst=600 nodelay;
+            limit_conn track_conn 4096;
 
             access_by_lua_file /etc/nginx/lua/access-check.lua;
 
@@ -166,6 +172,7 @@ http {
             proxy_next_upstream error timeout invalid_header http_500 http_502 http_503 http_504;
             proxy_connect_timeout 1s;
             proxy_read_timeout 5s;
+            proxy_send_timeout 5s;
 
             log_by_lua_file /etc/nginx/lua/edge-circuit-log.lua;
         }

@@ -131,7 +131,7 @@ func runOpenRTBExchangeParsed(proc trackProcessor, hot *OpenRTB26Hot, cold *Open
 		if targeting.Test && proc.rtbMode == rtbModeLive {
 			res, reason = proc.rtbCatalog.EvaluateAuction(evt, targeting.Input)
 		} else {
-			res, reason = proc.rtbCatalog.RunAuction(evt, targeting.Input)
+			res, reason = proc.rtbCatalog.RunAuction(evt, &targeting.Input)
 		}
 		recordRtbDealOutcomeBytes(targeting.Input.DealIDBuf[:], targeting.Input.DealIDLen, targeting.Input.PublisherFloorMicro, res, reason)
 
@@ -343,7 +343,7 @@ func exchangeConfigFrom(cfg *config.Config) openrtb.ExchangeConfig {
 	return out
 }
 
-func openRTBHTTPWriteOpts(cfg *config.Config, req Request) openrtb.HTTPWriteOpts {
+func openRTBHTTPWriteOpts(cfg *config.Config, req *Request) openrtb.HTTPWriteOpts {
 	opts := openrtb.HTTPWriteOpts{}
 	if cfg != nil && cfg.RtbExchangeGzip && gzipAccepted(req) {
 		opts.Gzip = true
@@ -351,7 +351,7 @@ func openRTBHTTPWriteOpts(cfg *config.Config, req Request) openrtb.HTTPWriteOpts
 	return opts
 }
 
-func (h *AdsPacketHandler) writeOpenRTBNoBid(req Request, c gnet.Conn, ctx *ConnContext, requestID []byte, reason rtb.NoBidReason, prebuiltNBR int) gnet.Action {
+func (h *AdsPacketHandler) writeOpenRTBNoBid(req *Request, c gnet.Conn, ctx *ConnContext, requestID []byte, reason rtb.NoBidReason, prebuiltNBR int) gnet.Action {
 	exCfg := exchangeConfigFrom(h.cfg)
 	httpOpts := openRTBHTTPWriteOpts(h.cfg, req)
 	buf := ctx.BufSlice[:cap(ctx.BufSlice)]
@@ -372,7 +372,7 @@ func (h *AdsPacketHandler) writeOpenRTBNoBid(req Request, c gnet.Conn, ctx *Conn
 	return gnet.None
 }
 
-func gzipAccepted(req Request) bool {
+func gzipAccepted(req *Request) bool {
 	enc := req.AcceptEncoding
 	if len(enc) == 0 {
 		enc = req.Accept

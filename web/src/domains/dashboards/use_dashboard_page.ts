@@ -1,7 +1,7 @@
 // L3 dashboard page: URL searchParams are applied filters; draft* mirrors controls until commitFilters.
 // GET /dashboards/{role} requires customer_id; 403 clears error when licenseGated (StubBanner path).
-import { useCallback, useEffect, useMemo, useState } from 'react';
-import { useNavigate, useParams, useSearchParams } from 'react-router-dom';
+import { useCallback, useEffect, useMemo, useState, useTransition } from 'react';
+import { useNavigate, useParams } from 'react-router-dom';
 
 import { listCampaigns } from '@/api/campaigns_api';
 import { fetchCustomersComboboxCached } from '@/lib/customers_combobox_cache';
@@ -13,6 +13,7 @@ import type { DashboardRangePreset } from '@/domains/dashboards/buyer_dashboard_
 import { useCoalescedBumpRefresh, useRefreshToken } from '@/hooks/use_coalesced_refresh_token';
 import { useResource } from '@/api/use_resource';
 import { useSession } from '@/hooks/use_session';
+import { useTransitionSearchParams } from '@/hooks/use_transition_search_params';
 import { dashboardPresetRange } from '@/lib/dashboard_range';
 import { defaultReportRange } from '@/lib/report_paths';
 import { fromDatetimeLocalValue, toDatetimeLocalValue } from '@/lib/datetime_range';
@@ -31,7 +32,9 @@ function resolveDefaultRole(
 export function useDashboardPage() {
   const { role: roleParam } = useParams<{ role: string }>();
   const navigate = useNavigate();
-  const [searchParams, setSearchParams] = useSearchParams();
+  const [searchParams, { isPending: filterQueryPending, replaceSearchParams }] =
+    useTransitionSearchParams();
+  const [, startFilterTransition] = useTransition();
   const { session } = useSession();
   const { refreshToken, bumpRefresh } = useRefreshToken();
 
@@ -92,7 +95,7 @@ export function useDashboardPage() {
   const shouldFetch = Boolean(appliedCustomerId.trim());
   const customerRequired = !shouldFetch;
 
-  const { data, error, fetching } = useResource(
+  const { data, error, fetching, revalidating: dashboardRevalidating } = useResource(
     (signal) => {
       if (!shouldFetch) {
         return Promise.resolve(undefined);
@@ -121,24 +124,26 @@ export function useDashboardPage() {
       to: string;
       nextRole?: DashboardRole;
     }) => {
-      const nextRole = next.nextRole ?? draftRole;
-      if (nextRole !== roleParam) {
-        navigate(`/dashboards/${nextRole}`, { replace: true });
-      }
-      const params = new URLSearchParams();
-      const customerId = next.customerId.trim();
-      if (customerId) {
-        params.set('customer_id', customerId);
-      }
-      const campaignId = next.campaignId.trim();
-      if (campaignId) {
-        params.set('campaign_id', campaignId);
-      }
-      params.set('from', next.from);
-      params.set('to', next.to);
-      setSearchParams(params, { replace: true });
+      startFilterTransition(() => {
+        const nextRole = next.nextRole ?? draftRole;
+        if (nextRole !== roleParam) {
+          navigate(`/dashboards/${nextRole}`, { replace: true });
+        }
+        const params = new URLSearchParams();
+        const customerId = next.customerId.trim();
+        if (customerId) {
+          params.set('customer_id', customerId);
+        }
+        const campaignId = next.campaignId.trim();
+        if (campaignId) {
+          params.set('campaign_id', campaignId);
+        }
+        params.set('from', next.from);
+        params.set('to', next.to);
+        replaceSearchParams(params);
+      });
     },
-    [draftRole, navigate, roleParam, setSearchParams]
+    [draftRole, navigate, replaceSearchParams, roleParam, startFilterTransition]
   );
 
   const onRefresh = useCoalescedBumpRefresh(bumpRefresh, fetching);
@@ -313,6 +318,10 @@ export function useDashboardPage() {
     draftRole,
     draftCustomerId,
     draftCampaignId,
+    appliedCustomerId,
+    appliedCampaignId,
+    appliedFrom,
+    appliedTo,
     draftFrom,
     draftTo,
     rangePreset,
@@ -320,6 +329,7 @@ export function useDashboardPage() {
     campaignOptions,
     payload: data as Record<string, unknown> | undefined,
     fetching,
+    dashboardRevalidating: dashboardRevalidating || filterQueryPending,
     error: licenseGated ? undefined : error,
     hasSnapshot: !shouldFetch || data != null || licenseGated,
     customerRequired,

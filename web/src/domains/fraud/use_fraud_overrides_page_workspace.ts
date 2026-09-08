@@ -1,9 +1,11 @@
 // L3 per-IP fraud override form: customer scope from useCustomerScope; POST on submit only.
 import { useCallback, useState } from 'react';
+import { toast } from 'sonner';
 
 import { createFraudOverride } from '@/api/fraud_api';
 import { useCoalescedCallback } from '@/hooks/use_coalesced_callback';
 import { useCustomerScope } from '@/hooks/use_customer_scope';
+import { mutationError } from '@/lib/mutation_audit';
 
 export function useFraudOverridesPageWorkspace() {
   const {
@@ -48,8 +50,11 @@ export function useFraudOverridesPageWorkspace() {
         ...(ip ? { ip } : {}),
       });
       setSaveSuccess(true);
+      toast.success('Fraud override created');
     } catch (err: unknown) {
-      setSaveError(err instanceof Error ? err : new Error(String(err)));
+      const nextError = mutationError(err);
+      setSaveError(nextError);
+      toast.error(nextError.message);
     } finally {
       setSaving(false);
     }

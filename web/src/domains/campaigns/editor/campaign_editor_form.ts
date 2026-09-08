@@ -138,6 +138,7 @@ export function campaignToFormState(campaign: Campaign): CampaignEditorFormState
     ingress_policy: ingress?.policy ?? '',
     traffic_template_id: campaign.traffic_template_id ?? '',
     click_query_params_json: clickQueryParamsCanonicalJson(campaign.click_query_params),
+    click_filter_tier: campaign.click_filter_tier ?? 'full',
   };
 }
 
@@ -188,6 +189,11 @@ export function buildCampaignPatchBody(
   }
   if (!clickQueryParamsEqual(original.click_query_params, parsedClickQuery.value)) {
     body.click_query_params = parsedClickQuery.value;
+  }
+
+  const originalTier = original.click_filter_tier ?? 'full';
+  if (form.click_filter_tier !== originalTier) {
+    body.click_filter_tier = form.click_filter_tier;
   }
 
   return { ok: true, body };

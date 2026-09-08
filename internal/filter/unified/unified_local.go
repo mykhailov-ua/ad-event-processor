@@ -169,11 +169,16 @@ var (
 
 type IPRateLimiter struct {
 	redisClient   redis.UniversalClient
+	fastEval      filterEvalFastClient
 	limit         int
 	scriptHashAny any
 	scriptAny     any
 	windowMsAny   any
 	wire          [5]any
+	redisCmd      redis.Cmd
+	keyBuf        [64]byte
+	keyVal        filt.StringVal
+	lastIP        string
 }
 
 func NewIPRateLimiter(redisClient redis.UniversalClient, limit int, window time.Duration) *IPRateLimiter {
@@ -185,8 +190,13 @@ func NewIPRateLimiter(redisClient redis.UniversalClient, limit int, window time.
 		scriptAny:     ipRateLimitLuaAny,
 		windowMsAny:   ms,
 	}
+	if fc, ok := redisClient.(filterEvalFastClient); ok {
+		l.fastEval = fc
+	}
 	l.wire[0] = evalShaCmdAny
+	l.wire[1] = l.scriptHashAny
 	l.wire[2] = numKeys1Any
+	l.wire[4] = l.windowMsAny
 	return l
 }
 
@@ -195,14 +205,20 @@ func (l *IPRateLimiter) Check(ctx context.Context, evt *domain.Event) error {
 		return nil
 	}
 
-	w := filt.AcquireBufWrapper()
-	w.Buf = w.Buf[:0]
-	w.Buf = append(w.Buf, "ratelimit:ip:"...)
-	w.Buf = append(w.Buf, evt.IP...)
-	key := filt.UnsafeString(w.Buf)
+	if evt.IP != l.lastIP {
+		const prefix = "ratelimit:ip:"
+		n := len(prefix)
+		if n+len(evt.IP) > len(l.keyBuf) {
+			return filt.ErrRateLimitExceeded
+		}
+		copy(l.keyBuf[:n], prefix)
+		copy(l.keyBuf[n:], evt.IP)
+		l.keyVal.S = filt.UnsafeString(l.keyBuf[:n+len(evt.IP)])
+		l.wire[3] = l.keyVal.S
+		l.lastIP = evt.IP
+	}
 
-	count, err := l.evalRateLimit(ctx, key)
-	filt.ReleaseBufWrapper(w)
+	count, err := l.evalRateLimit(ctx)
 	if err != nil {
 		return err
 	}
@@ -212,22 +228,19 @@ func (l *IPRateLimiter) Check(ctx context.Context, evt *domain.Event) error {
 	return nil
 }
 
-func (l *IPRateLimiter) evalRateLimit(ctx context.Context, key string) (int64, error) {
-	l.wire[1] = l.scriptHashAny
-	l.wire[3] = key
-	l.wire[4] = l.windowMsAny
-
-	cmd := evalCmdPool.Get().(*redis.Cmd)
-	resetPooledRedisCmd(cmd, ctx, l.wire[:], 3)
-	err := l.redisClient.Process(ctx, cmd)
-	val, intErr := cmd.Int64()
+func (l *IPRateLimiter) evalRateLimit(ctx context.Context) (int64, error) {
+	resetPooledRedisCmd(&l.redisCmd, ctx, l.wire[:], 3)
+	if l.fastEval != nil {
+		return l.fastEval.FilterEvalFast(&l.redisCmd)
+	}
+	err := l.redisClient.Process(ctx, &l.redisCmd)
+	val, intErr := l.redisCmd.Int64()
 	if intErr != nil && err == nil {
 		err = intErr
 	}
-	evalCmdPool.Put(cmd)
 	if err != nil && isNoScriptErr(err) {
 		// NOSCRIPT after deploy: fall back to EVAL once; PreloadScripts repopulates SHA on background goroutine.
-		return l.evalRateLimitScript(ctx, key)
+		return l.evalRateLimitScript(ctx)
 	}
 	if err != nil {
 		return 0, err
@@ -235,20 +248,19 @@ func (l *IPRateLimiter) evalRateLimit(ctx context.Context, key string) (int64, e
 	return val, nil
 }
 
-func (l *IPRateLimiter) evalRateLimitScript(ctx context.Context, key string) (int64, error) {
+func (l *IPRateLimiter) evalRateLimitScript(ctx context.Context) (int64, error) {
 	l.wire[0] = evalCmdAny
 	l.wire[1] = l.scriptAny
-	l.wire[3] = key
-	l.wire[4] = l.windowMsAny
 
-	cmd := evalCmdPool.Get().(*redis.Cmd)
-	resetPooledRedisCmd(cmd, ctx, l.wire[:], 3)
-	err := l.redisClient.Process(ctx, cmd)
-	val, intErr := cmd.Int64()
+	resetPooledRedisCmd(&l.redisCmd, ctx, l.wire[:], 3)
+	if l.fastEval != nil {
+		return l.fastEval.FilterEvalFast(&l.redisCmd)
+	}
+	err := l.redisClient.Process(ctx, &l.redisCmd)
+	val, intErr := l.redisCmd.Int64()
 	if intErr != nil && err == nil {
 		err = intErr
 	}
-	evalCmdPool.Put(cmd)
 	l.wire[0] = evalShaCmdAny
 	l.wire[1] = l.scriptHashAny
 	if err != nil {
@@ -570,7 +582,7 @@ func (f *UnifiedFilter) resolveDebitShard(campaignID uuid.UUID, userID, clickID 
 		shard = spreadHighVolumeShard(len(f.redisShards), campaignID, subSlot)
 	} else if campInfo != nil && campInfo.HasTriplet {
 		// Triplet A/B/reserve split by composite hash; used when sub-shard count is zero.
-		hash := ComputeCompositeHashUUID(campaignID, []byte(userID))
+		hash := ComputeCompositeHashUUID(campaignID, filt.UnsafeBytes(userID))
 		pct := hash % 100
 		switch {
 		case pct < 40:

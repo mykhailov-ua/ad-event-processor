@@ -1,4 +1,5 @@
 import { useMemo } from 'react';
+import { Link } from 'react-router-dom';
 
 import { DashboardKpiStrip } from '@/domains/dashboards/dashboard_kpi_strip';
 import { DashboardMultiAxisChart } from '@/domains/dashboards/dashboard_multi_axis_chart';
@@ -19,6 +20,7 @@ import {
   type CampaignDashboardKpis,
 } from '@/domains/campaigns/report/campaign_dashboard_metrics';
 import type { DashboardBreakdownScope } from '@/domains/dashboards/dashboard_table_column_prefs';
+import { buildCampaignsDirectoryHref, campaignEditPath } from '@/lib/campaign_nav';
 
 function campaignDashboardBreakdownScope(
   dimension: CampaignReportDimension
@@ -68,8 +70,16 @@ export function CampaignDashboardView({
     () => buildCampaignDashboardKpiTiles(kpis, DEFAULT_CAMPAIGN_DASHBOARD_KPI_METRICS),
     [kpis]
   );
-  const title = campaignName ?? 'Campaign dashboard';
-  const description = campaignName ? campaignId : undefined;
+  const title = campaignName ? `${campaignName} report` : 'Campaign report';
+  const description = campaignName ? campaignId : 'Read-only campaign analytics';
+  const campaignsHref = useMemo(
+    () =>
+      buildCampaignsDirectoryHref({
+        from: period?.from,
+        to: period?.to,
+      }),
+    [period?.from, period?.to]
+  );
 
   if (fetching && !hasSnapshot && !error) {
     return <PageSkeleton />;
@@ -96,6 +106,17 @@ export function CampaignDashboardView({
 
   return (
     <PageLayout
+      description={description}
+      headerActions={
+        <div className="flex flex-wrap items-center gap-2">
+          <Button asChild type="button" variant="secondary">
+            <Link to={campaignsHref}>All campaigns</Link>
+          </Button>
+          <Button asChild type="button" variant="default">
+            <Link to={campaignEditPath(campaignId)}>Edit campaign</Link>
+          </Button>
+        </div>
+      }
       controlPanel={
         <div className="grid gap-3">
           <div
@@ -133,7 +154,6 @@ export function CampaignDashboardView({
           </div>
         </div>
       }
-      description={description}
       title={title}
     >
       <div className="grid min-w-0 gap-4">

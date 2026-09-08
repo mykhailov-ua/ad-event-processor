@@ -19,10 +19,23 @@ func TestPrometheusRulesRedisHotPathAlerts(t *testing.T) {
 		"alert: TrackerLatencyP99Sustained",
 		"alert: ReportQueryLatencyHigh",
 		"alert: StreamProducerPostDebitRejected",
+		"alert: WorkerPoolReject",
+		"alert: ProcessorStreamLagHigh",
+		"alert: ClickHouseSpoolPressure",
+		"alert: BrokerIngestDivergenceHigh",
+		"alert: BrokerConsumerLagHigh",
+		"alert: ProcessorStreamBackpressureActive",
+		"ad_broker_ingest_divergence_high",
+		"ad_processor_stream_lag_seconds",
+		"ad_ch_spool_segments",
+		"ad_processor_stream_backpressure_active",
 		"ad_redis_lua_duration_seconds_bucket",
 		"ad_http_request_duration_seconds_bucket",
 		"ad_report_query_duration_seconds_bucket",
 		"ad_stream_producer_post_debit_rejected_total",
+		"ad_local_quota_rollback_total",
+		"ad_local_quota_stream_drop_total",
+		"ad_local_quota_finalize_failed_total",
 	} {
 		if !strings.Contains(content, want) {
 			t.Fatalf("prometheus.rules.yaml missing %q", want)

@@ -29,7 +29,11 @@ Keitaro/Voluum: Campaign URL (click) != Postback URL (`/track`). Admin Integrati
 | Rule | Detail |
 | :--- | :--- |
 | Response | **302** redirect with macros; required `campaign_id` (UUID) |
-| Filters | Full FilterEngine; debits click budget |
+| Filters | Campaign `click_filter_tier` or env `CLICK_FILTER_TIER_DEFAULT` (default `full`) |
+| Tier `full` | Full FilterEngine; debits click budget (<= 1 EVALSHA) |
+| Tier `light` | license, license RPS, emergency breaker, geo, schedule only; **no** stream publish or unified Lua debit |
+| Tier `redirect_only` | License gates only; parse + macro redirect; **no** Redis; requires `CLICK_FILTER_REDIRECT_ONLY_LICENSED=1` on tracker |
+| Fail-closed | `light` / `redirect_only` escalate to `full` when campaign has fraud enforcement flags (silent reject, segments, behavior flags, etc.) |
 | Edge gate | `EDGE_EXPOSE_CLICK=true` (404 on :8180 when off). Tracker :8181-8184 always serves click |
 | DMR referer | `dmr=1` or campaign `dmr_enabled`: **200** meta refresh + `location.replace` instead of 302; `Referrer-Policy: no-referrer` on plain 302 |
 

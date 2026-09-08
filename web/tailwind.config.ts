@@ -7,9 +7,9 @@ const config: Config = {
   theme: {
     extend: {
       fontFamily: {
-        sans: ['"Inter Variable"', 'Inter', 'system-ui', 'sans-serif'],
+        sans: ['"Inter Variable"', '"Inter"', 'sans-serif'],
         mono: ['"IBM Plex Mono"', 'ui-monospace', 'monospace'],
-        numeric: ['"Inter Variable"', 'Inter', 'system-ui', 'sans-serif'],
+        numeric: ['"JetBrains Mono"', 'ui-monospace', 'monospace'],
       },
       colors: {
         border: 'hsl(var(--border))',
@@ -72,12 +72,19 @@ const config: Config = {
             draft: 'hsl(var(--admin-status-draft))',
             scheduled: 'hsl(var(--admin-status-scheduled))',
           },
+          table: {
+            header: 'hsl(var(--admin-table-header-bg))',
+            pin: 'hsl(var(--admin-table-pin-bg))',
+            hover: 'hsl(var(--admin-table-row-hover))',
+            totals: 'hsl(var(--admin-table-totals-bg))',
+          },
+          filters: 'hsl(var(--admin-filters-bg))',
         },
       },
       borderRadius: {
-        lg: 'var(--radius)',
-        md: 'calc(var(--radius) - 2px)',
-        sm: 'calc(var(--radius) - 4px)',
+        lg: '0',
+        md: '0',
+        sm: '0',
       },
       fontSize: {
         'ui-dense': ['0.8125rem', { lineHeight: '1.125rem' }],

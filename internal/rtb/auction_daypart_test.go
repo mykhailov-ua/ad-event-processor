@@ -98,7 +98,7 @@ func TestAuction_daypartRejectBeforeScan(t *testing.T) {
 		Weight: 1, Budget: 5000, DaypartMask: closedMask,
 	}})
 
-	_, reason := reg.RunAuction(&BidRequest{
+	_, reason := reg.RunAuctionPtr(&BidRequest{
 		DeviceType: 1, CategoryMask: 1, GeoHash: 7, MinBid: 50,
 		NowUnix: time.Now().UTC().Unix(),
 	})
@@ -116,7 +116,7 @@ func TestAuction_daypartInWindowClears(t *testing.T) {
 		Weight: 1, Budget: 5000, DaypartMask: 1 << uint(hour),
 	}})
 
-	res, reason := reg.RunAuction(&BidRequest{
+	res, reason := reg.RunAuctionPtr(&BidRequest{
 		DeviceType: 1, CategoryMask: 1, GeoHash: 7, MinBid: 50,
 		NowUnix: time.Now().UTC().Unix(),
 	})

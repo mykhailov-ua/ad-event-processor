@@ -235,6 +235,33 @@ func (h *PostbackHTTPHandlers) listScopedPostbackCampaignStatus(ctx context.Cont
 	return ListPostbackCampaignStatusForCampaigns(ctx, h.Pool, ids)
 }
 
+func (h *PostbackHTTPHandlers) listScopedPostbackHealth(ctx context.Context) ([]PostbackHealthRowDTO, error) {
+	allCampaigns, ids, err := h.postbackCampaignScope(ctx)
+	if err != nil {
+		return nil, err
+	}
+	if allCampaigns {
+		return ListPostbackHealthRows(ctx, h.Pool)
+	}
+	return ListPostbackHealthRowsForCampaigns(ctx, h.Pool, ids)
+}
+
+func (h *PostbackHTTPHandlers) getPostbackHealth(w http.ResponseWriter, r *http.Request) {
+	rows, err := h.listScopedPostbackHealth(r.Context())
+	if err != nil {
+		httpresponse.Error(w, http.StatusInternalServerError, "INTERNAL_ERROR", err.Error())
+		return
+	}
+	if rows == nil {
+		rows = []PostbackHealthRowDTO{}
+	}
+	httpresponse.JSON(w, http.StatusOK, PostbackHealthResponseDTO{
+		Rows:                      rows,
+		AlertThresholdSuccessRate: postbackHealthAlertSuccessRate,
+		RunbookPath:               "/docs/INTEGRATIONS.md#postback-health",
+	})
+}
+
 func (h *PostbackHTTPHandlers) getPostbacksSnapshot(w http.ResponseWriter, r *http.Request) {
 	ctx := r.Context()
 	var snap PostbacksSnapshotDTO

@@ -1,5 +1,6 @@
 import { PageChrome } from '@/shell/page_chrome';
 import { CustomerScopeBar } from '@/shell/customer_scope_bar';
+import { DirectoryPaginationFooter } from '@/shell/directory_pagination_footer';
 import { EmptyState } from '@/shell/empty_state';
 import { ErrorBlock } from '@/shell/error_block';
 import { PageSkeleton } from '@/shell/page_skeleton';
@@ -10,30 +11,41 @@ import {
   TableCell,
   TableHeader,
   TableRow,
+  directoryTableRevalidatingClass,
 } from '@/shell/directory_table';
 import type { DisputeRow } from '@/api/types';
 import { displayMicro, displayTimestamp } from '@/lib/display';
 
 export type DisputesDirectoryProps = {
   disputes: DisputeRow[];
+  total: number;
+  limit: number;
+  offset: number;
   appliedCustomerId: string;
   draftCustomerId: string;
   fetching: boolean;
+  listRevalidating?: boolean;
   error: Error | undefined;
   hasSnapshot: boolean;
   onDraftCustomerIdChange: (value: string) => void;
   onApplyCustomerScope: () => void;
+  onPageChange: (nextOffset: number) => void;
 };
 
 export function DisputesDirectory({
   disputes,
+  total,
+  limit,
+  offset,
   appliedCustomerId,
   draftCustomerId,
   fetching,
+  listRevalidating = false,
   error,
   hasSnapshot,
   onDraftCustomerIdChange,
   onApplyCustomerScope,
+  onPageChange,
 }: DisputesDirectoryProps) {
   if (fetching && !hasSnapshot && !error) {
     return <PageSkeleton />;
@@ -47,6 +59,9 @@ export function DisputesDirectory({
     );
   }
 
+  const canGoPrev = offset > 0;
+  const canGoNext = offset + limit < total;
+
   return (
     <PageChrome title="Payment disputes">
       <CustomerScopeBar
@@ -59,7 +74,7 @@ export function DisputesDirectory({
       {disputes.length === 0 ? (
         <EmptyState title="No disputes" description="No payment disputes for the selected scope." />
       ) : (
-        <DirectoryTable>
+        <DirectoryTable className={directoryTableRevalidatingClass(listRevalidating)}>
           <TableHeader>
             <TableRow>
               <DirectoryTableHead>Intent</DirectoryTableHead>
@@ -82,6 +97,17 @@ export function DisputesDirectory({
           </TableBody>
         </DirectoryTable>
       )}
+
+      {total > 0 ? (
+        <DirectoryPaginationFooter
+          canGoNext={canGoNext}
+          canGoPrev={canGoPrev}
+          disabled={fetching || listRevalidating}
+          onNext={() => onPageChange(offset + limit)}
+          onPrev={() => onPageChange(Math.max(0, offset - limit))}
+          rangeLabel={`${offset + 1}-${Math.min(offset + disputes.length, total)} of ${total}`}
+        />
+      ) : null}
 
       {error && hasSnapshot ? <ErrorBlock title="Refresh failed" message={error.message} /> : null}
     </PageChrome>

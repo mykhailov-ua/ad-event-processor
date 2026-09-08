@@ -47,7 +47,6 @@ One agent task = **one layer owner**. Crossing layers without explicit `Depends 
 | :--- | :--- | :--- | :--- |
 | L0 Contract | `api/openapi/`, Go `*_handlers.go` | Query params, DTO, **S1-S7 validation before persist**, SQL/CH | `web/src` pages (unless PR closes both) |
 | L1 Transport | `web/src/api/*_api.ts` | HTTP, abort, parse JSON to typed snapshot | `useMemo` filter/sort over full `items[]`; owning UI prefs state |
-| L1b Dev mock | `web/src/api/dev_mock/` | T0 intercept; wire + **server-parity UUIDs** (`seed_uuid.ts`); `handler.test.ts` **M1/M2** | Incremental ids, slug `user_id`, fixtures in `domains/`; FM* fake tests |
 | L2 Composition | `web/src/pages/*` | Section compose, URL → fetch params, route entry; pass props to `domains/<domain>/` | Tailwind layout on pages, business rules, invented API fields |
 | L3 Domain UI | `web/src/domains/<domain>/` | Macro Grid / micro Flex; semantic `<table>`; **one primary path per intent** | Cross-page Context, server logic, hand-rolled overlays, duplicate mutation entry points |
 | L4 Shared chrome | `web/src/shell/`, `web/src/components/ui/` | Nav, login, PageChrome; UI primitives | Domain-specific API shapes |
@@ -66,18 +65,17 @@ One agent task = **one layer owner**. Crossing layers without explicit `Depends 
 
 Forbidden: React Context for list filter state; root `FilterProvider`; client KPI math; hand-written TS types diverging from OpenAPI.
 
-### Dev mock entity ID parity (T0 only)
+### Entity ID parity (seeds, E2E, fixtures)
 
-`web/src/api/dev_mock/` is not exempt from server identity rules (`frontend-slop.mdc` **Entity IDs**).
+Browser code has **no** mock API intercept. Entity id rules still apply to Playwright fixtures, seed display strings, and any hardcoded rows:
 
 | Need | Use | Never |
 | :--- | :--- | :--- |
-| Catalog row `n` in fixtures | `seedDeterministicUuid('<kind>', n)` | `devUuid()`, `00000000-...-000N`, `padStart(12,'0')` |
-| POST / wizard / commit | `newRandomUuid()` | Static reused id per request |
-| `user_id`, `customer_id`, `campaign_id` FK | Id from `DEV_MOCK_*` or store | `"buyer-1"`, `"user-1"`, integer strings |
-| Display label in table | `display_id` or name from fixture | Raw uuid in customer column |
+| Catalog row `n` in fixtures | `seedDeterministicUuid('<kind>', n)` aligned with Go seed | `devUuid()`, `00000000-...-000N`, `padStart(12,'0')` |
+| Runtime create in tests | `newRandomUuid()` | Static reused id per request |
+| `user_id`, `customer_id`, `campaign_id` FK | UUID from seed helpers | `"buyer-1"`, `"user-1"`, integer strings |
 
-Parity test: `web/src/api/dev_mock/seed_uuid.test.ts` vectors must match `go test ./cmd/admin/ -run TestSeedCatalog_deterministicUUIDsAreRealistic`.
+Parity: `go test ./cmd/admin/ -run TestSeedCatalog_deterministicUUIDsAreRealistic` vs TS seed helpers when both exist.
 
 ### Styling ownership (BEM banned; Tailwind only)
 

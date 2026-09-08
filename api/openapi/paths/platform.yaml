@@ -139,6 +139,58 @@ paths:
                 $ref: '../components/schemas/platform.yaml#/Customer'
         default:
           $ref: '../openapi.yaml#/components/responses/Error'
+    patch:
+      tags: [customers]
+      operationId: customersPatch
+      summary: Update customer profile fields
+      x-permissions: [customers:write]
+      parameters:
+        - $ref: '../openapi.yaml#/components/parameters/UuidPathId'
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '../components/schemas/platform.yaml#/PatchCustomerRequest'
+      responses:
+        '200':
+          description: Updated customer
+          content:
+            application/json:
+              schema:
+                $ref: '../components/schemas/platform.yaml#/Customer'
+        default:
+          $ref: '../openapi.yaml#/components/responses/Error'
+
+  /api/v1/customers/{id}/cost-center:
+    patch:
+      tags: [customers]
+      operationId: customersPatchCostCenter
+      summary: Update customer cost center (legacy alias)
+      description: Prefer PATCH /api/v1/customers/{id} with cost_center. Kept for one-release backward compatibility.
+      deprecated: true
+      x-permissions: [customers:write]
+      parameters:
+        - $ref: '../openapi.yaml#/components/parameters/UuidPathId'
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [cost_center]
+              properties:
+                cost_center:
+                  type: string
+      responses:
+        '200':
+          description: Updated customer
+          content:
+            application/json:
+              schema:
+                $ref: '../components/schemas/platform.yaml#/Customer'
+        default:
+          $ref: '../openapi.yaml#/components/responses/Error'
 
   /api/v1/disputes:
     get:

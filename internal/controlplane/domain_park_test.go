@@ -31,6 +31,14 @@ func (m *mockCloudflareAPI) ZoneSSLStatus(ctx context.Context, zoneID string) (s
 	return m.sslStatus, nil
 }
 
+func (m *mockCloudflareAPI) UpsertTXTRecord(ctx context.Context, zoneID, name, content string) (string, error) {
+	return "txt-rec", nil
+}
+
+func (m *mockCloudflareAPI) DeleteDNSRecord(ctx context.Context, zoneID, recordID string) error {
+	return nil
+}
+
 func TestDomainPark_createsPoolDomainAndHealthRow(t *testing.T) {
 	if testing.Short() {
 		t.Skip("integration: postgres testcontainers required")

@@ -77,6 +77,7 @@ type campaignReplicaDTO struct {
 	LinkSigningEnabled         bool   `json:"link_signing_enabled"`
 	LinkSigningTTLSec          int32  `json:"link_signing_ttl_sec"`
 	ClickDelivery              string `json:"click_delivery,omitempty"`
+	ClickFilterTier            string `json:"click_filter_tier,omitempty"`
 	ProxyUpstreamURL           string `json:"proxy_upstream_url,omitempty"`
 	ProxyRewriteAssets         bool   `json:"proxy_rewrite_assets"`
 	RegistryStatus             string `json:"registry_status"`
@@ -104,6 +105,7 @@ type Registry struct {
 	staleTTLNano     int64
 	staleMode        int32
 	stalePGGrace     atomic.Bool
+	stalePGGate      stalePGReadGate
 
 	snapGen      atomic.Uint64
 	workerCache  [registryWorkerCacheMax]registryWorkerCacheSlot
@@ -455,6 +457,7 @@ func (r *Registry) saveReplica(m map[uuid.UUID]campaignInfo) error {
 			LinkSigningEnabled:         info.campaign.LinkSigningEnabled,
 			LinkSigningTTLSec:          info.campaign.LinkSigningTTLSec,
 			ClickDelivery:              info.campaign.ClickDelivery,
+			ClickFilterTier:            info.campaign.ClickFilterTier,
 			ProxyUpstreamURL:           info.campaign.ProxyUpstreamURL,
 			ProxyRewriteAssets:         info.campaign.ProxyRewriteAssets,
 			RegistryStatus:             string(info.status),
@@ -582,6 +585,7 @@ func (r *Registry) loadReplica() (*campaignMapSnapshot, error) {
 				LinkSigningEnabled:         dto.LinkSigningEnabled,
 				LinkSigningTTLSec:          dto.LinkSigningTTLSec,
 				ClickDelivery:              dto.ClickDelivery,
+				ClickFilterTier:            dto.ClickFilterTier,
 				ProxyUpstreamURL:           dto.ProxyUpstreamURL,
 				ProxyRewriteAssets:         dto.ProxyRewriteAssets,
 			},

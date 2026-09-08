@@ -1,6 +1,26 @@
-export const CAMPAIGN_LIST_COLUMNS_STORAGE_KEY = 'aed.campaigns.listColumns.v8';
+export const CAMPAIGN_LIST_COLUMNS_STORAGE_KEY = 'aed.campaigns.listColumns.v9';
 
 export const COLUMN_DRAG_MIME = 'application/x-aed-campaign-column';
+
+/** Pinned after select + id; name stays fixed, other data columns follow dataColumnOrder. */
+export const CAMPAIGN_LIST_PINNED_DATA_COLUMNS: CampaignListReorderableColumnId[] = ['name'];
+
+/** Default middle-column order after pinned name: status then finance and core KPIs. */
+export const CAMPAIGN_LIST_PRIORITY_METRICS: CampaignListMiddleColumnId[] = [
+  'roi',
+  'profit',
+  'revenue',
+  'cost',
+  'clicks',
+  'ctr',
+  'cr',
+  'approved',
+  'approve_rate',
+  'leads',
+  'budget_pct',
+  'epc',
+  'cpc',
+];
 
 export type CampaignListMiddleColumnId =
   | 'status'
@@ -41,40 +61,32 @@ export type LegacyCampaignListMiddleColumnId = CampaignListMiddleColumnId | 'h_l
 
 export type CampaignListColumnId = 'select' | 'id' | 'name' | CampaignListMiddleColumnId;
 
+export function isCampaignListPinnedColumn(columnId: CampaignListColumnId): boolean {
+  return columnId === 'select' || columnId === 'id' || columnId === 'name';
+}
+
 export type CampaignListDataColumnId = Exclude<CampaignListColumnId, 'select'>;
 
 export type CampaignListReorderableColumnId = 'name' | CampaignListMiddleColumnId;
 
 export const CAMPAIGN_LIST_MIDDLE_COLUMNS: CampaignListMiddleColumnId[] = [
   'status',
-  'clicks',
+  ...CAMPAIGN_LIST_PRIORITY_METRICS,
+  'cpa',
+  'ecpa',
+  'cpm',
   'impressions',
-  'ctr',
   'unique_clicks',
   'lp_clicks',
   'lp_views',
-  'group',
   'lp_ctr',
-  'leads',
-  'approved',
   'hold_leads',
   'rejected_leads',
-  'approve_rate',
-  'cr',
   'blocks',
   'block_pct',
   'bots',
   'bot_pct',
-  'epc',
-  'cpc',
-  'cpa',
-  'ecpa',
-  'cpm',
-  'revenue',
-  'cost',
-  'profit',
-  'roi',
-  'budget_pct',
+  'group',
   'flow',
   'owner',
   'countries',
@@ -175,7 +187,7 @@ export const CAMPAIGN_LIST_COLUMN_MIN_WIDTH_PX: Record<CampaignListColumnId, num
   budget_pct: 72,
   flow: 88,
   owner: 120,
-  countries: 72,
+  countries: 104,
 };
 
 const CAMPAIGN_LIST_COLUMN_MAX_WIDTH_PX: Partial<Record<CampaignListColumnId, number>> = {
@@ -428,13 +440,24 @@ export function normalizeColumnWidthPx(
 
 export function visibleCampaignListColumns(prefs: CampaignListColumnPrefs): CampaignListColumnId[] {
   const hidden = new Set(prefs.hidden);
-  const tail = normalizeDataColumnOrder(prefs.dataColumnOrder).filter((columnId) => {
+  const ordered = normalizeDataColumnOrder(prefs.dataColumnOrder);
+  const pinned: CampaignListColumnId[] = ['select', 'id'];
+  for (const columnId of CAMPAIGN_LIST_PINNED_DATA_COLUMNS) {
     if (columnId === 'name') {
-      return true;
+      pinned.push('name');
+      continue;
+    }
+    if (!hidden.has(columnId)) {
+      pinned.push(columnId);
+    }
+  }
+  const rest = ordered.filter((columnId) => {
+    if (columnId === 'name') {
+      return false;
     }
     return !hidden.has(columnId);
   });
-  return ['select', 'id', ...tail];
+  return [...pinned, ...rest];
 }
 
 export function visibleMiddleColumnCount(prefs: CampaignListColumnPrefs): number {
@@ -452,6 +475,10 @@ export function campaignListTableMinWidthPx(columns: ReadonlyArray<CampaignListC
   return columns.reduce((sum, id) => sum + CAMPAIGN_LIST_COLUMN_MIN_WIDTH_PX[id], 0);
 }
 
+const CAMPAIGN_LIST_COLUMN_FALLBACK_WIDTH_PX: Partial<Record<CampaignListColumnId, number>> = {
+  countries: 129,
+};
+
 export function mergeCampaignListColumnWidths(
   computed: Readonly<Record<CampaignListColumnId, number>>,
   overrides: Readonly<Partial<Record<CampaignListColumnId, number>>>,
@@ -461,7 +488,11 @@ export function mergeCampaignListColumnWidths(
   for (const columnId of columns) {
     const resizable = isCampaignListColumnResizable(columnId, columns);
     const overrideWidth = resizable ? overrides[columnId] : undefined;
-    const width = overrideWidth ?? merged[columnId] ?? CAMPAIGN_LIST_COLUMN_MIN_WIDTH_PX[columnId];
+    const width =
+      overrideWidth ??
+      merged[columnId] ??
+      CAMPAIGN_LIST_COLUMN_FALLBACK_WIDTH_PX[columnId] ??
+      CAMPAIGN_LIST_COLUMN_MIN_WIDTH_PX[columnId];
     merged[columnId] =
       overrideWidth != null
         ? clampUserResizedCampaignListColumnWidthPx(columnId, width)
@@ -587,9 +618,21 @@ export function loadCampaignListColumnPrefs(): CampaignListColumnPrefs {
   if (typeof window === 'undefined') {
     return defaultCampaignListColumnPrefs();
   }
-  return parseCampaignListColumnPrefs(
-    window.localStorage.getItem(CAMPAIGN_LIST_COLUMNS_STORAGE_KEY)
-  );
+  const stored = window.localStorage.getItem(CAMPAIGN_LIST_COLUMNS_STORAGE_KEY);
+  if (stored) {
+    return parseCampaignListColumnPrefs(stored);
+  }
+  const legacy = window.localStorage.getItem('aed.campaigns.listColumns.v8');
+  if (legacy) {
+    const parsed = parseCampaignListColumnPrefs(legacy);
+    const migrated: CampaignListColumnPrefs = {
+      ...parsed,
+      dataColumnOrder: defaultCampaignListColumnPrefs().dataColumnOrder,
+    };
+    saveCampaignListColumnPrefs(migrated);
+    return migrated;
+  }
+  return defaultCampaignListColumnPrefs();
 }
 
 export function saveCampaignListColumnPrefs(prefs: CampaignListColumnPrefs): void {

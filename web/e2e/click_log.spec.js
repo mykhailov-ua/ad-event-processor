@@ -8,7 +8,7 @@ test.beforeEach(async ({}, testInfo) => {
 
 test('click log page loads from GET /api/v1/reports/click-log', async ({ page }) => {
   await loginAsAdmin(page);
-  await page.goto('/reports/click-log?admin_dev=0');
+  await page.goto('/reports/click-log');
   await expect(page.getByRole('heading', { name: /click log/i })).toBeVisible();
 
   const clickLogGet = page.waitForResponse(isApiGet('/api/v1/reports/click-log'), {

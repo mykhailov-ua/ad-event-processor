@@ -12,6 +12,6 @@ export function usePublisherStatementsPageWorkspace() {
     statements: data?.items,
     fetching,
     error,
-    hasSnapshot: data != null || Boolean(error),
+    hasSnapshot: data != null,
   };
 }

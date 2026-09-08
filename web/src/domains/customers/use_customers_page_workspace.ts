@@ -1,11 +1,11 @@
 // L3 customers directory: sort/limit/offset in URL; server listCustomers only (Cold pagination).
 import { useCallback, useMemo } from 'react';
-import { useSearchParams } from 'react-router-dom';
 
 import { listCustomers } from '@/api/customers_api';
 import type { CustomerListQuery } from '@/api/types';
 import type { CustomerSortField, SortOrder } from '@/domains/customers/customers_directory';
 import { useResource } from '@/api/use_resource';
+import { useTransitionSearchParams } from '@/hooks/use_transition_search_params';
 import {
   clampListLimit,
   DEFAULT_LIST_LIMIT,
@@ -43,13 +43,14 @@ function buildListQuery(params: URLSearchParams): CustomerListQuery {
 }
 
 export function useCustomersPageWorkspace() {
-  const [searchParams, setSearchParams] = useSearchParams();
+  const [searchParams, { isPending: listQueryPending, replaceSearchParams }] =
+    useTransitionSearchParams();
 
   const query = useMemo(() => buildListQuery(searchParams), [searchParams]);
   const appliedSort = parseSort(searchParams.get('sort'));
   const appliedOrder = parseOrder(searchParams.get('order'));
 
-  const { data, error, fetching } = useResource(
+  const { data, error, fetching, revalidating: listRevalidating } = useResource(
     (signal) => listCustomers(query, signal),
     [query.limit, query.offset, query.sort, query.order]
   );
@@ -69,9 +70,9 @@ export function useCustomersPageWorkspace() {
       next.set('sort', merged.sort ?? 'name');
       next.set('order', merged.order ?? 'asc');
 
-      setSearchParams(next, { replace: true });
+      replaceSearchParams(next);
     },
-    [query, searchParams, setSearchParams]
+    [query, replaceSearchParams, searchParams]
   );
 
   const onPageChange = useCallback(
@@ -108,6 +109,7 @@ export function useCustomersPageWorkspace() {
     appliedSort,
     appliedOrder,
     fetching,
+    listRevalidating: listRevalidating || listQueryPending,
     error,
     hasSnapshot: data != null,
     freshnessLabel: data?.freshness_label,

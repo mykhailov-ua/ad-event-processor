@@ -122,7 +122,7 @@ func TestSafePageVerify_WebRTCLeak_SafeView(t *testing.T) {
 	require.NoError(t, err)
 	conn := NewGnetBenchConn(inbound)
 	conn.SetRemoteAddr(&net.TCPAddr{IP: net.ParseIP("8.8.8.8"), Port: 1234})
-	h.React(req, conn)
+	h.React(&req, conn)
 
 	require.Equal(t, http.StatusOK, ParseGnetHTTPStatus(conn.Written()))
 	resp := string(conn.Written())
@@ -152,7 +152,7 @@ func TestSafePageVerify_TimezoneMismatch_SafeView(t *testing.T) {
 	_, req, err := parseHTTP1(inbound, 1<<20, nil)
 	require.NoError(t, err)
 	conn := NewGnetBenchConn(inbound)
-	h.React(req, conn)
+	h.React(&req, conn)
 
 	require.Equal(t, http.StatusOK, ParseGnetHTTPStatus(conn.Written()))
 	resp := string(conn.Written())
@@ -178,7 +178,7 @@ func TestSafePageVerify_attestedAlternateURL(t *testing.T) {
 	_, req, err := parseHTTP1(inbound, 1<<20, nil)
 	require.NoError(t, err)
 	conn := NewGnetBenchConn(inbound)
-	h.React(req, conn)
+	h.React(&req, conn)
 
 	require.Equal(t, http.StatusOK, ParseGnetHTTPStatus(conn.Written()))
 	resp := string(conn.Written())

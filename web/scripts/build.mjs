@@ -120,12 +120,24 @@ function loadFontCss(packageName, fontsOutDir) {
   return css;
 }
 
+function loadVendorCss(packageEntry) {
+  const cssPath = require.resolve(packageEntry);
+  return readFileSync(cssPath, 'utf8');
+}
+
 async function buildAppCss() {
   const inputPath = join(SRC, 'styles', 'app.css');
   const outDir = join(DIST, 'src', 'styles');
-  let input = readFileSync(inputPath, 'utf8');
+  const sonnerCss = loadVendorCss('sonner/dist/styles.css');
+  let input = `${sonnerCss}\n${readFileSync(inputPath, 'utf8')}`;
   const FONT_IMPORTS = [
     '@fontsource-variable/inter',
+    '@fontsource/inter/400.css',
+    '@fontsource/inter/500.css',
+    '@fontsource/inter/600.css',
+    '@fontsource/inter/700.css',
+    '@fontsource/jetbrains-mono/200.css',
+    '@fontsource/jetbrains-mono/400.css',
     '@fontsource/ibm-plex-mono/200.css',
     '@fontsource/ibm-plex-mono/400.css',
   ];

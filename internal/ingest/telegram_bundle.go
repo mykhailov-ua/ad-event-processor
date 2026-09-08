@@ -39,25 +39,31 @@ func validateBridgeToken(b []byte) bool {
 	return track.ValidateBridgeToken(b)
 }
 
-func fillTelegramEventFromParsed(evt *domain.Event, eventType string, parsed *telegramQueryParsed, req Request) {
-	track.FillTelegramEventFromParsed(evt, eventType, parsed, track.WireIngress{
-		ClientIP:   req.ClientIP,
-		UserAgent:  req.UserAgent,
-		TLSHash:    req.TLSHash,
-		TLSJA3:     req.TLSJA3,
-		TLSJA4:     req.TLSJA4,
-		SecCHUA:    req.SecCHUA,
-		AcceptLang: req.AcceptLang,
-		FillIngress: func(e *domain.Event, protoH2 bool) {
-			fillIngressH2(e, protoH2)
-		},
-		WireMeta: func(e *domain.Event) {
-			fillWireMetadataFromRequest(e, &req)
-		},
-	})
+func fillTelegramEventFromParsed(evt *domain.Event, eventType string, parsed *telegramQueryParsed, req *Request) {
+	evt.Reset()
+	evt.ClickID = parsed.ClickIDStr
+	evt.CampaignID = parsed.CampaignID
+	evt.Type = eventType
+	evt.PlacementID = parsed.PlacementID
+	if len(req.ClientIP) > 0 {
+		evt.IP = unsafeString(req.ClientIP)
+	}
+	if len(req.UserAgent) > 0 {
+		evt.UA = unsafeString(req.UserAgent)
+	}
+	evt.TLSHash = unsafeString(req.TLSHash)
+	evt.TLSJA3 = unsafeString(req.TLSJA3)
+	evt.TLSJA4 = unsafeString(req.TLSJA4)
+	evt.SecCHUA = unsafeString(req.SecCHUA)
+	evt.AcceptLang = unsafeString(req.AcceptLang)
+	fillIngressH2(evt, false)
+	fillWireMetadataFromRequest(evt, req)
+	buf := track.MarshalTelegramBridgePayload(evt.StringBuffer[:0], parsed.BridgeToken)
+	evt.StringBuffer = buf
+	evt.Payload = buf
 }
 
-func (h *AdsPacketHandler) reactTelegramBid(req Request, c gnet.Conn, ctx *ConnContext) gnet.Action {
+func (h *AdsPacketHandler) reactTelegramBid(req *Request, c gnet.Conn, ctx *ConnContext) gnet.Action {
 	startMono := monotonicNano()
 	telemetry.RecordTrack()
 
@@ -85,7 +91,7 @@ func (h *AdsPacketHandler) reactTelegramBid(req Request, c gnet.Conn, ctx *ConnC
 		GeoHash:             evt.GeoHash,
 	}
 
-	res, reason := h.trackProc.rtbCatalog.RunAuction(evt, targeting)
+	res, reason := h.trackProc.rtbCatalog.RunAuction(evt, &targeting)
 	if !reason.OK() {
 		h.write(c, respTelegram204, ctx)
 		h.recordMetrics(startMono, http.StatusNoContent)
@@ -162,7 +168,7 @@ func (h *AdsPacketHandler) resolveTelegramLanding(evt *domain.Event, filtered []
 	return ResolveLandingURLBytes(context.Background(), h.registry, h.creativeStore, evt)
 }
 
-func (h *AdsPacketHandler) reactTelegramClick(req Request, c gnet.Conn, ctx *ConnContext) gnet.Action {
+func (h *AdsPacketHandler) reactTelegramClick(req *Request, c gnet.Conn, ctx *ConnContext) gnet.Action {
 	startMono := monotonicNano()
 	telemetry.RecordTrack()
 
@@ -223,13 +229,13 @@ func (h *AdsPacketHandler) reactTelegramClick(req Request, c gnet.Conn, ctx *Con
 		return gnet.None
 	}
 
-	loc, ok := buildTelegramRedirectLocation(ctx.BufSlice[:0], landing, parsed.ClickIDStr, parsed.BridgeToken, parsed.Subs, parsed.Passthrough)
+	loc, ok := buildTelegramRedirectLocation(ctx.ExtraBuf[:0], landing, parsed.ClickIDStr, parsed.BridgeToken, parsed.Subs, parsed.Passthrough)
 	if !ok {
 		h.write(c, respTelegram400, ctx)
 		h.recordMetrics(startMono, http.StatusBadRequest)
 		return gnet.None
 	}
-	ctx.BufSlice = loc
+	ctx.ExtraBuf = loc
 
 	h.trackMetrics.decisionAccepted.Inc()
 	writeAuditLog(h.logger, &h.auditLogSeq, h.auditLogSampleMask, ctx.ShardID, evt)
@@ -237,7 +243,7 @@ func (h *AdsPacketHandler) reactTelegramClick(req Request, c gnet.Conn, ctx *Con
 	return gnet.None
 }
 
-func (h *AdsPacketHandler) reactTelegramImpression(req Request, c gnet.Conn, ctx *ConnContext) gnet.Action {
+func (h *AdsPacketHandler) reactTelegramImpression(req *Request, c gnet.Conn, ctx *ConnContext) gnet.Action {
 	startMono := monotonicNano()
 	telemetry.RecordTrack()
 

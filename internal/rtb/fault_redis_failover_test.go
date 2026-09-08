@@ -65,7 +65,7 @@ func TestFault_rtb_redis_failover(t *testing.T) {
 		go func() {
 			defer wg.Done()
 			for range 50 {
-				_, reason := reg.RunAuction(req)
+				_, reason := reg.RunAuctionPtr(req)
 				if reason.OK() {
 					wins.Add(1)
 				} else {
@@ -92,7 +92,7 @@ func TestFault_rtb_redis_failover(t *testing.T) {
 		go func() {
 			defer wg.Done()
 			for range 100 {
-				_, reason := reg.RunAuction(req)
+				_, reason := reg.RunAuctionPtr(req)
 				if reason.OK() {
 					winsDuringFailover.Add(1)
 				} else {

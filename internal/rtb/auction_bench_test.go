@@ -34,7 +34,7 @@ func BenchmarkAuction(b *testing.B) {
 		MinBid:       150,
 	}
 	for b.Loop() {
-		_, _ = reg.RunAuction(req)
+		_, _ = reg.RunAuctionPtr(req)
 	}
 }
 
@@ -65,7 +65,7 @@ func BenchmarkAuction_highDensity(b *testing.B) {
 		MinBid:       50,
 	}
 	for b.Loop() {
-		_, _ = reg.RunAuction(req)
+		_, _ = reg.RunAuctionPtr(req)
 	}
 }
 
@@ -115,7 +115,7 @@ func BenchmarkRunAuction_MultiCreative(b *testing.B) {
 
 	b.ReportAllocs()
 	for b.Loop() {
-		_, _ = reg.RunAuction(req)
+		_, _ = reg.RunAuctionPtr(req)
 	}
 }
 

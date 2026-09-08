@@ -6,7 +6,7 @@ import {
   type CampaignListDataColumnId,
 } from '@/domains/campaigns/list/campaign_list_columns';
 import {
-  buildCampaignRowVm,
+  buildCampaignRowVmCache,
   campaignListMiddleCellDisplayText,
   type CampaignRowVm,
 } from '@/domains/campaigns/list/campaign_list_row_vm';
@@ -51,16 +51,16 @@ export function buildCampaignListExportRows(
   if (columns.length === 0) {
     return [];
   }
+  const rowVmCache = buildCampaignRowVmCache(
+    campaigns,
+    metricsById,
+    marginsById,
+    customerNameById,
+    ownerEmailById
+  );
   return campaigns.map((campaign) => ({
     campaign,
-    vm: buildCampaignRowVm(
-      campaign,
-      metricsById[campaign.id],
-      marginsById[campaign.id],
-      customerNameById,
-      ownerEmailById,
-      false
-    ),
+    vm: rowVmCache.get(campaign.id)!,
   }));
 }
 

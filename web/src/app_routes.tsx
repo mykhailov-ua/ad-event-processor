@@ -68,6 +68,7 @@ import { OpsRumPage } from '@/pages/ops_rum_page';
 import { OpsShardsPage } from '@/pages/ops_shards_page';
 import { ReportJobsPage } from '@/pages/report_jobs_page';
 import { ClickLogPage } from '@/pages/click_log_page';
+import { FraudReasonsPage } from '@/pages/fraud_reasons_page';
 import { ReportRunnerPage } from '@/pages/report_runner_page';
 import { ReportsPage } from '@/pages/reports_page';
 import { RtbPage } from '@/pages/rtb_page';
@@ -177,6 +178,16 @@ export function AppRoutes() {
           <Route element={<ReportsPage />} path="reports" />
           <Route element={<ReportJobsPage />} path="reports/jobs" />
           <Route element={<ClickLogPage />} path="reports/click-log" />
+          <Route
+            element={<FraudReasonsPage reportKey="fraud-breakdown" />}
+            path="reports/fraud-breakdown"
+          />
+          <Route
+            element={<FraudReasonsPage reportKey="wire-signal-breakdown" />}
+            path="reports/wire-signal-breakdown"
+          />
+          <Route element={<ReportRunnerPage reportKey="telegram" />} path="reports/telegram" />
+          <Route element={<ReportRunnerPage />} path="reports/telegram/:segment" />
           <Route element={<ReportRunnerPage />} path="reports/:key" />
           <Route element={<RtbPage />} path="rtb" />
           <Route element={<RtbDealsPage />} path="rtb/deals" />

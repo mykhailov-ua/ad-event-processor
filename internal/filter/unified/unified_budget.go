@@ -1,6 +1,7 @@
 package unified
 
 import (
+	"bytes"
 	"context"
 	_ "embed"
 	"errors"
@@ -18,6 +19,7 @@ import (
 	"ad-event-processor/internal/metrics"
 	"ad-event-processor/internal/telemetry"
 
+	"github.com/google/uuid"
 	"github.com/prometheus/client_golang/prometheus"
 	"github.com/redis/go-redis/v9"
 )
@@ -44,6 +46,22 @@ func resetPooledRedisCmd(cmd *redis.Cmd, ctx context.Context, args []any, firstK
 	h.val = nil
 }
 
+func assignBufKey(dst *filt.StringVal, buf []byte) {
+	if dst == nil {
+		return
+	}
+	if len(buf) == 0 {
+		dst.S = ""
+		return
+	}
+	if len(dst.S) == len(buf) {
+		if bytes.Equal(filt.UnsafeBytes(dst.S), buf) {
+			return
+		}
+	}
+	dst.S = filt.UnsafeString(buf)
+}
+
 func fillEvalShaWire(dst []any, sha1 any, keyArgs [unifiedFilterKeyCount]any, scriptArgs []any) []any {
 	need := 3 + unifiedFilterKeyCount + len(scriptArgs)
 	if cap(dst) < need {
@@ -65,20 +83,20 @@ func fillEvalShaWire(dst []any, sha1 any, keyArgs [unifiedFilterKeyCount]any, sc
 	return dst
 }
 
-func (f *UnifiedFilter) evalShaPooled(ctx context.Context, c redis.UniversalClient, shard int, evt *domain.Event, sha1 any, keyArgs [unifiedFilterKeyCount]any, scriptArgs []any) (int64, error) {
-	wirePtr := evalWirePool.Get().(*[]any)
-	wire := fillEvalShaWire(*wirePtr, sha1, keyArgs, scriptArgs)
-	*wirePtr = wire
+const evalShaWireCap = 3 + unifiedFilterKeyCount + 35
 
-	cmd := evalCmdPool.Get().(*redis.Cmd)
-	resetPooledRedisCmd(cmd, ctx, wire, 3)
-	err := f.processFilterEval(ctx, c, shard, evt, cmd)
-	val, intErr := cmd.Int64()
+func (f *UnifiedFilter) evalShaPooled(ctx context.Context, c redis.UniversalClient, shard int, evt *domain.Event, sha1 any, keyArgs [unifiedFilterKeyCount]any, scriptArgs []any) (int64, error) {
+	wire := fillEvalShaWire(f.evalFullWire[:], sha1, keyArgs, scriptArgs)
+
+	resetPooledRedisCmd(&f.evalRedisCmd, ctx, wire, 3)
+	if fc, ok := c.(filterEvalFastClient); ok {
+		return fc.FilterEvalFast(&f.evalRedisCmd)
+	}
+	err := f.processFilterEval(ctx, c, shard, evt, &f.evalRedisCmd)
+	val, intErr := f.evalRedisCmd.Int64()
 	if intErr != nil && err == nil {
 		err = intErr
 	}
-	evalCmdPool.Put(cmd)
-	evalWirePool.Put(wirePtr)
 	if err != nil {
 		return 0, err
 	}
@@ -90,19 +108,17 @@ func (f *UnifiedFilter) evalPooled(ctx context.Context, c redis.UniversalClient,
 }
 
 func (f *UnifiedFilter) evalShaPooledN(ctx context.Context, c redis.UniversalClient, shard int, evt *domain.Event, sha1 any, keyArgs []any, scriptArgs []any, numKeys int) (int64, error) {
-	wirePtr := evalWirePool.Get().(*[]any)
-	wire := fillEvalShaWireN(*wirePtr, sha1, keyArgs, scriptArgs, numKeys)
-	*wirePtr = wire
+	wire := fillEvalShaWireN(f.evalFastWire[:], sha1, keyArgs, scriptArgs, numKeys)
 
-	cmd := evalCmdPool.Get().(*redis.Cmd)
-	resetPooledRedisCmd(cmd, ctx, wire, 3)
-	err := f.processFilterEval(ctx, c, shard, evt, cmd)
-	val, intErr := cmd.Int64()
+	resetPooledRedisCmd(&f.evalRedisCmd, ctx, wire, 3)
+	if fc, ok := c.(filterEvalFastClient); ok {
+		return fc.FilterEvalFast(&f.evalRedisCmd)
+	}
+	err := f.processFilterEval(ctx, c, shard, evt, &f.evalRedisCmd)
+	val, intErr := f.evalRedisCmd.Int64()
 	if intErr != nil && err == nil {
 		err = intErr
 	}
-	evalCmdPool.Put(cmd)
-	evalWirePool.Put(wirePtr)
 	if err != nil {
 		return 0, err
 	}
@@ -110,19 +126,17 @@ func (f *UnifiedFilter) evalShaPooledN(ctx context.Context, c redis.UniversalCli
 }
 
 func (f *UnifiedFilter) evalPooledN(ctx context.Context, c redis.UniversalClient, shard int, evt *domain.Event, script any, keyArgs []any, scriptArgs []any, numKeys int) (int64, error) {
-	wirePtr := evalWirePool.Get().(*[]any)
-	wire := fillEvalWireN(*wirePtr, script, keyArgs, scriptArgs, numKeys)
-	*wirePtr = wire
+	wire := fillEvalWireN(f.evalFullWire[:], script, keyArgs, scriptArgs, numKeys)
 
-	cmd := evalCmdPool.Get().(*redis.Cmd)
-	resetPooledRedisCmd(cmd, ctx, wire, 3)
-	err := f.processFilterEval(ctx, c, shard, evt, cmd)
-	val, intErr := cmd.Int64()
+	resetPooledRedisCmd(&f.evalRedisCmd, ctx, wire, 3)
+	if fc, ok := c.(filterEvalFastClient); ok {
+		return fc.FilterEvalFast(&f.evalRedisCmd)
+	}
+	err := f.processFilterEval(ctx, c, shard, evt, &f.evalRedisCmd)
+	val, intErr := f.evalRedisCmd.Int64()
 	if intErr != nil && err == nil {
 		err = intErr
 	}
-	evalCmdPool.Put(cmd)
-	evalWirePool.Put(wirePtr)
 	if err != nil {
 		return 0, err
 	}
@@ -482,27 +496,57 @@ const (
 )
 
 type budgetFastScratch struct {
-	wIdem, wQuota, wFence, wFrozen filt.BufWrapper
-	args                           []any
-	wrappers                       UnifiedStringWrappers
-	keyVals                        [budgetFastKeyCount]filt.StringVal
-	keyArgs                        [budgetFastKeyCount]any
+	wIdem, wQuota, wFence, wFrozen, wFcapBump filt.BufWrapper
+	args                                      [budgetFastArgCount]any
+	wrappers                                  UnifiedStringWrappers
+	keyVals                                   [budgetFastKeyCount]filt.StringVal
+	keyArgs                                   [budgetFastKeyCount]any
 }
 
-var budgetFastScratchPool = sync.Pool{
-	New: func() any {
-		s := &budgetFastScratch{
-			args: make([]any, budgetFastArgCount),
-		}
+func initBudgetFastScratch(s *budgetFastScratch) {
+	if s == nil {
+		return
+	}
+	if cap(s.wIdem.Buf) < 128 {
 		s.wIdem.Buf = make([]byte, 0, 128)
 		s.wQuota.Buf = make([]byte, 0, 128)
 		s.wFence.Buf = make([]byte, 0, 128)
 		s.wFrozen.Buf = make([]byte, 0, 128)
-		for i := range s.keyVals {
-			s.keyArgs[i] = &s.keyVals[i]
-		}
+		s.wFcapBump.Buf = make([]byte, 0, 128)
+	}
+	for i := range s.keyVals {
+		s.keyArgs[i] = &s.keyVals[i]
+	}
+}
+
+var budgetFastScratchPool = sync.Pool{
+	New: func() any {
+		s := &budgetFastScratch{}
+		initBudgetFastScratch(s)
 		return s
 	},
+}
+
+type rollbackKeyScratch struct {
+	wQuota    filt.BufWrapper
+	wIdem     filt.BufWrapper
+	wRollback filt.BufWrapper
+}
+
+var rollbackKeyScratchPool = sync.Pool{
+	New: func() any {
+		s := &rollbackKeyScratch{}
+		s.wQuota.Buf = make([]byte, 0, 128)
+		s.wIdem.Buf = make([]byte, 0, 128)
+		s.wRollback.Buf = make([]byte, 0, 128)
+		return s
+	},
+}
+
+func appendClickRollbackGuardKey(dst []byte, campaignID uuid.UUID, clickID string) []byte {
+	dst = filt.AppendCampaignHashTag(dst, campaignID)
+	dst = append(dst, "rollback:click:"...)
+	return append(dst, clickID...)
 }
 
 func (f *UnifiedFilter) runBudgetFastLua(
@@ -516,7 +560,7 @@ func (f *UnifiedFilter) runBudgetFastLua(
 ) error {
 	wIdem := &scratch.wIdem
 	wQuota := &scratch.wQuota
-	args := scratch.args
+	args := scratch.args[:]
 	wrappers := &scratch.wrappers
 
 	if campInfo == nil {
@@ -524,29 +568,33 @@ func (f *UnifiedFilter) runBudgetFastLua(
 	}
 	budgetSourceKey := campInfo.BudgetCampaignKey
 	subSlot := debitSubSlot(campInfo, evt.UserID, evt.ClickID)
+	kv := scratch.keyVals[:]
 	if f.quotaEnabledAny == oneAny {
 		wQuota.Buf = appendBudgetQuotaKey(wQuota.Buf[:0], evt.CampaignID, subSlot)
-		budgetSourceKey = filt.UnsafeString(wQuota.Buf)
+		assignBufKey(&kv[0], wQuota.Buf)
+		budgetSourceKey = kv[0].S
 	}
 
 	wIdem.Buf = wIdem.Buf[:0]
 	wIdem.Buf = append(wIdem.Buf, "idempotency:click:"...)
 	wIdem.Buf = append(wIdem.Buf, evt.ClickID...)
-	idempotencyKey := filt.UnsafeString(wIdem.Buf)
+	assignBufKey(&kv[1], wIdem.Buf)
+	idempotencyKey := kv[1].S
 
 	wFence := &scratch.wFence
 	wFence.Buf = wFence.Buf[:0]
 	wFence.Buf = append(wFence.Buf, filt.MigrationFenceKeyPrefix...)
 	wFence.Buf = filt.AppendUUID(wFence.Buf, evt.CampaignID)
-	migrationFenceKey := filt.UnsafeString(wFence.Buf)
+	assignBufKey(&kv[7], wFence.Buf)
+	migrationFenceKey := kv[7].S
 
 	wFrozen := &scratch.wFrozen
 	wFrozen.Buf = wFrozen.Buf[:0]
 	wFrozen.Buf = append(wFrozen.Buf, filt.BudgetFrozenKeyPrefix...)
 	wFrozen.Buf = filt.AppendUUID(wFrozen.Buf, evt.CampaignID)
-	budgetFrozenKey := filt.UnsafeString(wFrozen.Buf)
+	assignBufKey(&kv[8], wFrozen.Buf)
+	budgetFrozenKey := kv[8].S
 
-	kv := scratch.keyVals[:]
 	kv[0].S = budgetSourceKey
 	kv[1].S = idempotencyKey
 	kv[2].S = campInfo.CampaignSyncKey
@@ -621,6 +669,20 @@ func (f *UnifiedFilter) runBudgetFastLua(
 	return nil
 }
 
+func (f *UnifiedFilter) incLuaBranch(res int64) {
+	if f == nil {
+		return
+	}
+	switch res {
+	case 0:
+		f.filterLuaBranchOK.Inc()
+	case 2:
+		f.filterLuaBranchDuplicate.Inc()
+	default:
+		metrics.FilterLuaBranchTotal.WithLabelValues(luaBranchLabel(res)).Inc()
+	}
+}
+
 func (f *UnifiedFilter) handleLuaResult(
 	ctx context.Context,
 	evt *domain.Event,
@@ -636,7 +698,7 @@ func (f *UnifiedFilter) handleLuaResult(
 		return false, nil
 	}
 
-	metrics.FilterLuaBranchTotal.WithLabelValues(luaBranchLabel(res)).Inc()
+	f.incLuaBranch(res)
 
 	switch res {
 	case 1:
@@ -819,18 +881,23 @@ func (f *UnifiedFilter) RollbackRedisDebit(
 		return fmt.Errorf("rollback: redis client is nil for shard %d", shard)
 	}
 
+	scratch := rollbackKeyScratchPool.Get().(*rollbackKeyScratch)
+	defer rollbackKeyScratchPool.Put(scratch)
+
 	budgetSourceKey := campInfo.BudgetCampaignKey
 	if f.quotaEnabledAny == oneAny {
 		subSlot := debitSubSlot(campInfo, evt.UserID, evt.ClickID)
-		var buf []byte
-		buf = appendBudgetQuotaKey(buf, evt.CampaignID, subSlot)
-		budgetSourceKey = filt.UnsafeString(buf)
+		scratch.wQuota.Buf = appendBudgetQuotaKey(scratch.wQuota.Buf[:0], evt.CampaignID, subSlot)
+		budgetSourceKey = filt.UnsafeString(scratch.wQuota.Buf)
 	}
 
-	var idemBuf []byte
-	idemBuf = append(idemBuf, "idempotency:click:"...)
-	idemBuf = append(idemBuf, evt.ClickID...)
-	idempotencyKey := filt.UnsafeString(idemBuf)
+	scratch.wIdem.Buf = scratch.wIdem.Buf[:0]
+	scratch.wIdem.Buf = append(scratch.wIdem.Buf, "idempotency:click:"...)
+	scratch.wIdem.Buf = append(scratch.wIdem.Buf, evt.ClickID...)
+	idempotencyKey := filt.UnsafeString(scratch.wIdem.Buf)
+
+	scratch.wRollback.Buf = appendClickRollbackGuardKey(scratch.wRollback.Buf[:0], evt.CampaignID, evt.ClickID)
+	rollbackGuardKey := filt.UnsafeString(scratch.wRollback.Buf)
 
 	keys := []string{
 		budgetSourceKey,
@@ -839,17 +906,20 @@ func (f *UnifiedFilter) RollbackRedisDebit(
 		campInfo.CustomerSyncKey,
 		dirtyCampaignsKeyVal.S,
 		dirtyCustomersKeyVal.S,
+		rollbackGuardKey,
 	}
 
 	args := []any{
 		amount,
 		campInfo.ID.String(),
 		campInfo.CustomerID.String(),
+		f.idempotencyTTLAny,
 	}
 
-	err = redisClient.EvalSha(ctx, f.rollbackScriptHash, keys, args...).Err()
+	var code int64
+	code, err = redisClient.EvalSha(ctx, f.rollbackScriptHash, keys, args...).Int64()
 	if err != nil && isNoScriptErr(err) {
-		err = redisClient.Eval(ctx, budgetRollbackLua, keys, args...).Err()
+		code, err = redisClient.Eval(ctx, budgetRollbackLua, keys, args...).Int64()
 	}
 
 	if err != nil {
@@ -862,16 +932,30 @@ func (f *UnifiedFilter) RollbackRedisDebit(
 		return err
 	}
 
-	slog.Info("successfully rolled back redis debit",
-		"campaign_id", evt.CampaignID,
-		"click_id", evt.ClickID,
-		"amount", amount,
-	)
-	return nil
+	switch code {
+	case 1:
+		slog.Info("successfully rolled back redis debit",
+			"campaign_id", evt.CampaignID,
+			"click_id", evt.ClickID,
+			"amount", amount,
+		)
+		return nil
+	case 2:
+		slog.Debug("rollback redis debit skipped: already applied",
+			"campaign_id", evt.CampaignID,
+			"click_id", evt.ClickID,
+			"amount", amount,
+		)
+		return nil
+	case 0:
+		return fmt.Errorf("rollback: invalid amount %d", amount)
+	default:
+		return fmt.Errorf("rollback: unexpected lua code %d", code)
+	}
 }
 
-// RollbackDebit dispatches by debit source: local quanta ledger refund or RollbackRedisDebit.
-// Called from ingest when TryReserve succeeded, Lua or local debit ran, then publish failed.
+// RollbackDebit dispatches by debit source: local quanta ledger refund when evt.LocalQuantaDebitMicro
+// is pending, otherwise RollbackRedisDebit. isLocalQuanta is set by FilterEngine from pending debit only.
 func (f *UnifiedFilter) RollbackDebit(
 	ctx context.Context,
 	evt *domain.Event,
@@ -882,15 +966,27 @@ func (f *UnifiedFilter) RollbackDebit(
 	if f == nil || evt == nil || campInfo == nil {
 		return
 	}
-	if isLocalQuanta {
-		subSlot := debitSubSlot(campInfo, evt.UserID, evt.ClickID)
-		f.rollbackLocalQuantaSpend(evt.CampaignID, subSlot, amount)
-		if f.localClickIdem != nil {
-			f.localClickIdem.Release(evt.ClickID)
+	_ = isLocalQuanta
+	if evt.LocalQuantaDebitMicro > 0 {
+		amountMicro := evt.LocalQuantaDebitMicro
+		evt.LocalQuantaDebitMicro = 0
+		if f.localRollbackGuard != nil && !f.localRollbackGuard.TryClaim(evt.ClickID) {
+			slog.Debug("rollback local quanta skipped: already applied",
+				"campaign_id", evt.CampaignID,
+				"click_id", evt.ClickID,
+				"amount", amountMicro,
+			)
+			return
 		}
-	} else {
-		_ = f.RollbackRedisDebit(ctx, evt, campInfo, amount)
+		subSlot := debitSubSlot(campInfo, evt.UserID, evt.ClickID)
+		f.rollbackLocalQuantaSpend(evt.CampaignID, subSlot, amountMicro)
+		f.releaseLocalQuantaClickIdem(evt.ClickID)
+		f.rollbackLocalFcapForEvent(evt)
+		metrics.LocalQuotaRollbackTotal.Inc()
+		return
 	}
+	f.rollbackLocalFcapForEvent(evt)
+	_ = f.RollbackRedisDebit(ctx, evt, campInfo, amount)
 }
 
 func observeRedisLua(observers []prometheus.Observer, shard int, seconds float64) {

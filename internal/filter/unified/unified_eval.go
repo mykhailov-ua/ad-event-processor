@@ -15,6 +15,7 @@ import (
 	filt "ad-event-processor/internal/filter"
 	"ad-event-processor/internal/licensing"
 	"ad-event-processor/internal/metrics"
+	"ad-event-processor/internal/stream"
 	"ad-event-processor/internal/telemetry"
 
 	"github.com/google/uuid"
@@ -263,6 +264,12 @@ type LocalQuantaDeps struct {
 	Publisher QuantaDeltaPublisher
 	Stream    QuantaStreamPublisher
 	Idem      QuantaClickIdem
+	StreamHot *stream.LocalQuantaStreamPublisher
+	IdemHot   *stream.LocalClickIdemCache
+	// Optional Tier B fast path: concrete method values avoid per-call interface boxing.
+	ClickTryClaim func(string) bool
+	ClickRelease  func(string)
+	StreamEnqueue func(int, *domain.Event, *domain.Campaign, int64) bool
 }
 
 func (f *UnifiedFilter) SetLocalQuantaDeps(deps LocalQuantaDeps) {
@@ -271,7 +278,15 @@ func (f *UnifiedFilter) SetLocalQuantaDeps(deps LocalQuantaDeps) {
 	f.localQuantaRefill = deps.Refill
 	f.localQuantaPublisher = deps.Publisher
 	f.localQuantaStream = deps.Stream
+	f.localQuantaStreamHot = deps.StreamHot
 	f.localClickIdem = deps.Idem
+	f.localClickIdemHot = deps.IdemHot
+	if deps.Ledger != nil && f.localRollbackGuard == nil {
+		f.localRollbackGuard = stream.NewLocalClickIdemCache(f.idempotencyTTL)
+	}
+	f.clickTryClaimFast = deps.ClickTryClaim
+	f.clickReleaseFast = deps.ClickRelease
+	f.streamEnqueueFast = deps.StreamEnqueue
 }
 
 func (f *UnifiedFilter) SetLocalQuantaMode(mode string) {
@@ -320,6 +335,59 @@ func (f *UnifiedFilter) localQuantaFullSkipEligible(evt *domain.Event, campInfo 
 	return true
 }
 
+func (f *UnifiedFilter) tryLocalQuantaFullSkipCheck(
+	ctx context.Context,
+	evt *domain.Event,
+	campInfo *domain.Campaign,
+	amountMicro int64,
+) (handled bool, err error) {
+	if !f.localQuantaFullSkipEligible(evt, campInfo) {
+		return false, nil
+	}
+	if f.localTTC != nil && ttcEnabled(f.ttcMinMsAny) {
+		f.applyGoTTC(evt)
+	}
+	amount := amountMicro
+	if amount <= 0 {
+		if evt.Type == "impression" {
+			amount = f.impressionAmountMicro
+		} else {
+			amount = f.clickAmountMicro
+		}
+	}
+	_, fcapErr := f.tryAcquireLocalFcap(evt, campInfo)
+	if fcapErr != nil {
+		return true, fcapErr
+	}
+	subSlot := debitSubSlot(campInfo, evt.UserID, evt.ClickID)
+	claimed := false
+	if f.localClickIdemHot != nil || f.localClickIdem != nil {
+		if !f.claimLocalQuantaClickIdem(evt.ClickID) {
+			f.rollbackLocalFcapForEvent(evt)
+			return true, filt.ErrDuplicateEvent
+		}
+		claimed = true
+	}
+	if !f.localQuantaLedger.TrySpendDebit(evt.CampaignID, subSlot, amount) {
+		f.rollbackLocalFcapForEvent(evt)
+		if claimed {
+			f.releaseLocalQuantaClickIdem(evt.ClickID)
+		}
+		if f.localQuantaRefill != nil {
+			f.localQuantaRefill.Signal(evt.CampaignID)
+		}
+		return false, nil
+	}
+	f.metricLocalQuotaSpend.Inc()
+	if f.localQuantaPublisher != nil {
+		f.publishLocalDelta(evt.CampaignID, amount)
+	}
+	f.metricLocalQuotaFullSkipEligible.Inc()
+	evt.LocalQuantaDebitMicro = amount
+	f.metricRedisLuaSkipped.Inc()
+	return true, nil
+}
+
 func (f *UnifiedFilter) checkLocalQuanta(
 	ctx context.Context,
 	evt *domain.Event,
@@ -349,36 +417,28 @@ func (f *UnifiedFilter) checkLocalQuanta(
 		return false, nil
 	}
 
-	if campInfo.FreqLimit > 0 && evt.UserID != "" {
-		exceeded, err := f.checkFreqLimitGo(evt, campInfo)
-		if err != nil {
-			return true, err
-		}
-		if exceeded {
-			return true, filt.ErrFreqLimitExceeded
-		}
+	_, fcapErr := f.tryAcquireLocalFcap(evt, campInfo)
+	if fcapErr != nil {
+		return true, fcapErr
 	}
 
 	subSlot := debitSubSlot(campInfo, evt.UserID, evt.ClickID)
 	if !f.localQuantaLedger.TrySpendDebit(evt.CampaignID, subSlot, amount) {
+		f.rollbackLocalFcapForEvent(evt)
 		if f.localQuantaRefill != nil {
 			f.localQuantaRefill.Signal(evt.CampaignID)
 		}
 		return false, nil
 	}
 
-	metrics.LocalQuotaSpendTotal.Inc()
-	f.publishLocalDelta(evt.CampaignID, amount)
-
-	// Full-skip: local debit already taken; skip budget-fast.lua entirely.
-	if f.localQuantaFullSkipEligible(evt, campInfo) {
-		metrics.LocalQuotaFullSkipEligibleTotal.Inc()
-		err := f.acceptLocalQuantaFullSkip(ctx, evt, campInfo, amount, subSlot)
-		return true, err
+	f.metricLocalQuotaSpend.Inc()
+	if f.localQuantaPublisher != nil {
+		f.publishLocalDelta(evt.CampaignID, amount)
 	}
 
 	shard, _, err := f.resolveDebitShard(evt.CampaignID, evt.UserID, evt.ClickID, campInfo)
 	if err != nil {
+		f.rollbackLocalFcapForEvent(evt)
 		f.rollbackLocalQuantaSpend(evt.CampaignID, subSlot, amount)
 		return true, err
 	}
@@ -391,16 +451,89 @@ func (f *UnifiedFilter) checkLocalQuanta(
 
 	prevSkip := f.skipBudgetDebitAny
 	f.skipBudgetDebitAny = oneAny
-	fastScratch := budgetFastScratchPool.Get().(*budgetFastScratch)
+	fastScratch := &f.budgetScratch
 	err = f.runBudgetFastLua(ctx, evt, campInfo, debitAny, redisClient, shard, fastScratch)
 	f.skipBudgetDebitAny = prevSkip
-	budgetFastScratchPool.Put(fastScratch)
 
 	if err != nil {
+		f.rollbackLocalFcapForEvent(evt)
 		f.rollbackLocalQuantaSpend(evt.CampaignID, subSlot, amount)
 		return true, err
 	}
+	if evt.LocalFcapLookup != 0 {
+		f.scheduleFcapBumpForEvent(redisClient, evt, campInfo, fastScratch)
+	}
 	return true, nil
+}
+
+func (f *UnifiedFilter) claimLocalQuantaClickIdem(clickID string) bool {
+	if f.localClickIdemHot != nil {
+		return f.localClickIdemHot.TryClaim(clickID)
+	}
+	if f.localClickIdem != nil {
+		return f.localClickIdem.TryClaim(clickID)
+	}
+	return false
+}
+
+func (f *UnifiedFilter) releaseLocalQuantaClickIdem(clickID string) {
+	if f.localClickIdemHot != nil {
+		f.localClickIdemHot.Release(clickID)
+		return
+	}
+	if f.localClickIdem != nil {
+		f.localClickIdem.Release(clickID)
+	}
+}
+
+// FinalizeLocalQuantaPublish enqueues the async local-quanta stream lane after ingest
+// publishAcceptedOrRollback succeeds. Debit runs in tryLocalQuantaFullSkipCheck; stream XADD is deferred
+// so post-debit publish failure can RollbackDebit without orphan async writes.
+func (f *UnifiedFilter) FinalizeLocalQuantaPublish(
+	ctx context.Context,
+	evt *domain.Event,
+	campInfo *domain.Campaign,
+) error {
+	if f == nil || evt == nil || campInfo == nil || evt.LocalQuantaDebitMicro <= 0 {
+		return nil
+	}
+	amount := evt.LocalQuantaDebitMicro
+	shard, _, err := f.resolveDebitShard(evt.CampaignID, evt.UserID, evt.ClickID, campInfo)
+	if err != nil {
+		return err
+	}
+	if err := f.enqueueLocalQuantaFullSkip(shard, evt, campInfo, amount); err != nil {
+		metrics.LocalQuotaFinalizeFailedTotal.Inc()
+		return err
+	}
+	evt.LocalQuantaDebitMicro = 0
+	return nil
+}
+
+func (f *UnifiedFilter) enqueueLocalQuantaFullSkip(shard int, evt *domain.Event, camp *domain.Campaign, amountMicro int64) error {
+	if f.localQuantaStreamHot != nil {
+		if !f.localQuantaStreamHot.Enqueue(shard, evt, camp, amountMicro) {
+			return filt.ErrShardUnavailable
+		}
+	} else if f.localQuantaStream != nil {
+		if !f.localQuantaStream.Enqueue(shard, evt, camp, amountMicro) {
+			return filt.ErrShardUnavailable
+		}
+	} else {
+		return filt.ErrShardUnavailable
+	}
+	f.metricLocalQuotaFullSkip.Inc()
+	f.metricEventsProcessed.Inc()
+	telemetry.RecordAccepted()
+	return nil
+}
+
+func (f *UnifiedFilter) publishLocalQuantaFullSkipHot(shard int, evt *domain.Event, camp *domain.Campaign, amountMicro int64) error {
+	if !f.localClickIdemHot.TryClaim(evt.ClickID) {
+		f.filterLuaBranchDuplicate.Inc()
+		return filt.ErrDuplicateEvent
+	}
+	return f.enqueueLocalQuantaFullSkip(shard, evt, camp, amountMicro)
 }
 
 func (f *UnifiedFilter) rollbackLocalQuantaSpend(campaignID uuid.UUID, subSlot int, amountMicro int64) {
@@ -413,29 +546,33 @@ func (f *UnifiedFilter) rollbackLocalQuantaSpend(campaignID uuid.UUID, subSlot i
 }
 
 func (f *UnifiedFilter) AcceptLocalQuantaFullSkip(ctx context.Context, evt *domain.Event, campInfo *domain.Campaign, amountMicro int64, subSlot int) error {
-	return f.acceptLocalQuantaFullSkip(ctx, evt, campInfo, amountMicro, subSlot)
+	if f.localQuantaStreamHot != nil && f.localClickIdemHot != nil {
+		shard, _, err := f.resolveDebitShard(evt.CampaignID, evt.UserID, evt.ClickID, campInfo)
+		if err != nil {
+			return err
+		}
+		return f.publishLocalQuantaFullSkipHot(shard, evt, campInfo, amountMicro)
+	}
+	shard, _, err := f.resolveDebitShard(evt.CampaignID, evt.UserID, evt.ClickID, campInfo)
+	if err != nil {
+		f.rollbackLocalQuantaSpend(evt.CampaignID, subSlot, amountMicro)
+		return err
+	}
+	return f.acceptLocalQuantaFullSkipIface(ctx, evt, campInfo, amountMicro, subSlot, shard)
 }
 
-// acceptLocalQuantaFullSkip publishes via localQuantaStream after local TrySpendDebit.
-// Enqueue failure or duplicate click_id refunds ledger and releases idem (ingest RollbackDebit path).
-func (f *UnifiedFilter) acceptLocalQuantaFullSkip(ctx context.Context, evt *domain.Event, campInfo *domain.Campaign, amountMicro int64, subSlot int) error {
+func (f *UnifiedFilter) acceptLocalQuantaFullSkipIface(ctx context.Context, evt *domain.Event, campInfo *domain.Campaign, amountMicro int64, subSlot int, shard int) error {
 	if f.localClickIdem != nil && !f.localClickIdem.TryClaim(evt.ClickID) {
-		metrics.FilterLuaBranchTotal.WithLabelValues("duplicate").Inc()
+		f.filterLuaBranchDuplicate.Inc()
 		f.rollbackLocalQuantaSpend(evt.CampaignID, subSlot, amountMicro)
 		return filt.ErrDuplicateEvent
 	}
 
-	shard, _, err := f.resolveDebitShard(evt.CampaignID, evt.UserID, evt.ClickID, campInfo)
-	if err != nil {
-		if f.localClickIdem != nil {
-			f.localClickIdem.Release(evt.ClickID)
-		}
-		f.rollbackLocalQuantaSpend(evt.CampaignID, subSlot, amountMicro)
-		return err
+	enqueued := false
+	if f.localQuantaStream != nil {
+		enqueued = f.localQuantaStream.Enqueue(shard, evt, campInfo, amountMicro)
 	}
-
-	// Post-debit enqueue failure: refund local quanta before returning to ingest (503 / retry).
-	if !f.localQuantaStream.Enqueue(shard, evt, campInfo, amountMicro) {
+	if !enqueued {
 		if f.localClickIdem != nil {
 			f.localClickIdem.Release(evt.ClickID)
 		}
@@ -443,9 +580,9 @@ func (f *UnifiedFilter) acceptLocalQuantaFullSkip(ctx context.Context, evt *doma
 		return filt.ErrShardUnavailable
 	}
 
-	metrics.LocalQuotaFullSkipTotal.Inc()
-	metrics.RedisLuaSkippedTotal.Inc()
-	metrics.EventsProcessed.Inc()
+	f.metricLocalQuotaFullSkip.Inc()
+	f.metricRedisLuaSkipped.Inc()
+	f.metricEventsProcessed.Inc()
 	telemetry.RecordAccepted()
 	return nil
 }
@@ -717,11 +854,6 @@ func (f *UnifiedFilter) needsFullLuaPath(evt *domain.Event, campInfo *domain.Cam
 	if !f.fastPathEnabled.Load() {
 		return true
 	}
-	if campInfo.FreqLimit > 0 && evt.UserID != "" {
-		if f.settingsWatcher == nil {
-			return true
-		}
-	}
 	if campInfo.PacingMode == domain.PacingModeEven {
 		if f.roughPacing == nil || !campInfo.RoughPacingEnabled() {
 			return true
@@ -897,7 +1029,18 @@ func processRedisCmd(ctx context.Context, c redis.UniversalClient, pin *redis.Co
 	if pin != nil {
 		return pin.Process(ctx, cmd)
 	}
+	if fast, ok := c.(filterEvalFastClient); ok {
+		if rc, ok := cmd.(*redis.Cmd); ok {
+			_, err := fast.FilterEvalFast(rc)
+			return err
+		}
+	}
 	return c.Process(ctx, cmd)
+}
+
+// filterEvalFastClient is implemented by mock Redis stubs in tests only.
+type filterEvalFastClient interface {
+	FilterEvalFast(cmd *redis.Cmd) (int64, error)
 }
 
 const unifiedFilterKeyCount = 19

@@ -98,6 +98,11 @@ type Event struct {
 	MobileGyroFlat         uint8
 	MobileBiometricSet     uint8
 	MobileBiometricMobile  uint8
+	ClickFilterTier        ClickFilterTier
+	// LocalQuantaDebitMicro: pending local-quanta debit before FinalizeLocalQuantaPublish (full-skip path).
+	LocalQuantaDebitMicro int64
+	// LocalFcapLookup: non-zero when local fcap TryAcquire succeeded; cleared on RollbackDebit.
+	LocalFcapLookup uint64
 }
 
 func (e *Event) Reset() {
@@ -181,6 +186,8 @@ func (e *Event) Reset() {
 	e.MobileGyroFlat = 0
 	e.MobileBiometricSet = 0
 	e.MobileBiometricMobile = 0
+	e.LocalQuantaDebitMicro = 0
+	e.LocalFcapLookup = 0
 	if cap(e.StringBuffer) > 2048 {
 		e.StringBuffer = make([]byte, 0, 256)
 	} else {

@@ -86,12 +86,20 @@ export async function postConsent(
   signature: string,
   signal?: AbortSignal
 ): Promise<void> {
+  await postConsentBody(JSON.stringify(body), signature, signal);
+}
+
+export async function postConsentBody(
+  bodyJson: string,
+  signature: string,
+  signal?: AbortSignal
+): Promise<void> {
   const response = await apiFetch('/api/v1/consent', {
     method: 'POST',
     headers: {
       'X-Consent-Signature': signature,
     },
-    body: JSON.stringify(body),
+    body: bodyJson,
     signal,
   });
 

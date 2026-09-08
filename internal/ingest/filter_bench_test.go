@@ -166,14 +166,27 @@ func BenchmarkKeyFormatting_DuplicateEventFilter(b *testing.B) {
 }
 
 func BenchmarkUnifiedFilter_Check_mock(b *testing.B) {
+	resetStaticCampaignBaseline()
+	campID := uuid.MustParse("550e8400-e29b-41d4-a716-446655440000")
+	configureMockRegistryCampaign(func(c *domain.Campaign) {
+		c.ID = campID
+		c.CustomerID = uuid.Nil
+		c.PacingMode = domain.PacingModeAsap
+		c.Location = time.UTC
+	})
+	reg := &mockRegistry{}
+	camp, ok := reg.GetCampaign(campID)
+	if !ok || camp == nil {
+		b.Fatal("mock campaign setup failed")
+	}
+
 	redisClient := &mockRedisClient{}
 	sharder := NewJumpHashSharder(1)
-	registry := &mockRegistry{}
 
 	f := NewUnifiedFilter(
 		[]redis.UniversalClient{redisClient},
 		sharder,
-		registry,
+		reg,
 		nil,
 		100,
 		time.Minute,
@@ -184,16 +197,23 @@ func BenchmarkUnifiedFilter_Check_mock(b *testing.B) {
 		"events",
 		10000,
 	)
+	f.SetLuaFastPathEnabled(true)
 
 	evt := &domain.Event{
-		Type:       "click",
-		IP:         "1.1.1.1",
-		UserID:     "user123",
-		CampaignID: uuid.New(),
-		ClickID:    "click123",
+		Type:               "click",
+		IP:                 "1.1.1.1",
+		UserID:             "user123",
+		CampaignID:         campID,
+		ClickID:            "click123",
+		FilterCamp:         camp,
+		FilterCampResolved: true,
 	}
 	setFilterDeadlineOnEvent(evt, time.Second)
 	ctx := context.Background()
+
+	for range 32 {
+		_ = f.Check(ctx, evt)
+	}
 
 	b.ReportAllocs()
 	for b.Loop() {

@@ -2,6 +2,7 @@ import { useState } from 'react';
 import { Link } from 'react-router-dom';
 
 import { PrimaryActionButton } from '@/shell/action_buttons';
+import { DirectoryFilterForm, FilterField } from '@/shell/filter_panel';
 import { PageChrome } from '@/shell/page_chrome';
 import { EmptyState } from '@/shell/empty_state';
 import { PageSkeleton } from '@/shell/page_skeleton';
@@ -13,7 +14,6 @@ import {
   DialogTitle,
 } from '@/components/ui/dialog';
 import { Input } from '@/components/ui/input';
-import { Label } from '@/components/ui/label';
 import {
   DirectoryTable,
   DirectoryTableHead,
@@ -21,6 +21,7 @@ import {
   TableCell,
   TableHeader,
   TableRow,
+  directoryTableRevalidatingClass,
 } from '@/shell/directory_table';
 import type { RtbDeal } from '@/api/types';
 import { RtbNav, RtbLicenseStub, rtbPanelError } from '@/domains/rtb/rtb_nav';
@@ -29,6 +30,7 @@ import { displayMicro, displayTimestamp } from '@/lib/display';
 export type RtbDealsDirectoryProps = {
   items?: RtbDeal[];
   fetching: boolean;
+  listRevalidating?: boolean;
   error: Error | undefined;
   hasSnapshot: boolean;
   licenseGated: boolean;
@@ -46,6 +48,7 @@ export type RtbDealsDirectoryProps = {
 export function RtbDealsDirectory({
   items,
   fetching,
+  listRevalidating = false,
   error,
   hasSnapshot,
   licenseGated,
@@ -91,40 +94,36 @@ export function RtbDealsDirectory({
           Create deal
         </PrimaryActionButton>
       }
+      controlPanel={<RtbNav />}
     >
-      <RtbNav />
-
       <Dialog onOpenChange={setCreateOpen} open={createOpen}>
         <DialogContent className="max-w-lg">
           <DialogHeader>
             <DialogTitle>Create deal</DialogTitle>
           </DialogHeader>
-          <div className="grid grid-cols-[repeat(auto-fill,minmax(12rem,1fr))] gap-4">
-            <div className="grid gap-2">
-              <Label htmlFor="rtb-create-deal-id">Deal ID</Label>
+          <DirectoryFilterForm layout="auto-fill" onSubmit={(event) => event.preventDefault()}>
+            <FilterField htmlFor="rtb-create-deal-id" label="Deal ID">
               <Input
                 id="rtb-create-deal-id"
                 value={draftDealId}
                 onChange={(event) => onDraftDealIdChange(event.target.value)}
               />
-            </div>
-            <div className="grid gap-2">
-              <Label htmlFor="rtb-create-customer-id">Customer ID</Label>
+            </FilterField>
+            <FilterField htmlFor="rtb-create-customer-id" label="Customer ID">
               <Input
                 id="rtb-create-customer-id"
                 value={draftCustomerId}
                 onChange={(event) => onDraftCustomerIdChange(event.target.value)}
               />
-            </div>
-            <div className="grid gap-2">
-              <Label htmlFor="rtb-create-floor-micro">Floor (micro)</Label>
+            </FilterField>
+            <FilterField htmlFor="rtb-create-floor-micro" label="Floor (micro)">
               <Input
                 id="rtb-create-floor-micro"
                 value={draftFloorMicro}
                 onChange={(event) => onDraftFloorMicroChange(event.target.value)}
               />
-            </div>
-          </div>
+            </FilterField>
+          </DirectoryFilterForm>
           {createError ? rtbPanelError(createError, 'Create failed') : null}
           <DialogFooter>
             <PrimaryActionButton loading={creating} onClick={onCreateDeal} type="button">
@@ -137,7 +136,7 @@ export function RtbDealsDirectory({
       {(items ?? []).length === 0 ? (
         <EmptyState title="No deals" description="RTB deal catalog returned no entries." />
       ) : (
-        <DirectoryTable>
+        <DirectoryTable className={directoryTableRevalidatingClass(listRevalidating)}>
           <TableHeader>
             <TableRow>
               <DirectoryTableHead>Deal ID</DirectoryTableHead>

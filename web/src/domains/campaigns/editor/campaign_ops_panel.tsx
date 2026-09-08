@@ -1,12 +1,12 @@
 import { campaignPanelError } from '@/domains/campaigns/editor/campaign_editor_shared';
 import {
+  DirectoryFilterForm,
   FilterField,
-  FILTER_PANEL_SUMMARY_CLASS,
   INLINE_FILTER_ACTION_GRID_CLASS,
+  FilterPanel,
 } from '@/shell/filter_panel';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
-import { Label } from '@/components/ui/label';
 import {
   DirectoryTable,
   DirectoryTableHead,
@@ -50,6 +50,11 @@ export function CampaignOpsPanel({ workspace }: CampaignOpsPanelProps) {
     onValidateFlow,
     onSaveMappings,
     onBlockPlacement,
+    onSyncFromPreset,
+    statusIntegrationSchemaName,
+    statusIntegrationSchemaId,
+    syncingPreset,
+    syncPresetMessage,
   } = workspace;
 
   return (
@@ -78,10 +83,25 @@ export function CampaignOpsPanel({ workspace }: CampaignOpsPanelProps) {
         </Button>
       </div>
 
+      {statusIntegrationSchemaName ? (
+        <FilterPanel className="w-full max-w-2xl gap-2 text-[13px] leading-[18px]">
+          <h3 className="font-semibold">Status integration preset</h3>
+          <p>{statusIntegrationSchemaName}</p>
+          {statusIntegrationSchemaId ? (
+            <Button disabled={busy} onClick={onSyncFromPreset} type="button" variant="secondary">
+              {syncingPreset ? 'Syncing...' : 'Sync from preset'}
+            </Button>
+          ) : null}
+          {syncPresetMessage ? (
+            <p className="text-sm text-muted-foreground" role="status">{syncPresetMessage}</p>
+          ) : null}
+        </FilterPanel>
+      ) : null}
+
       {stats ? (
-        <section className="ui-filter-panel gap-2 text-sm">
+        <FilterPanel className="w-full max-w-2xl gap-2 text-[13px] leading-[18px]">
           <h3 className="font-semibold">Campaign stats</h3>
-          <div className="grid grid-cols-[repeat(auto-fill,minmax(10rem,1fr))] gap-2">
+          <div className="grid grid-cols-2 gap-2 sm:grid-cols-4">
             <div>
               <span className="text-muted-foreground">Current spend</span>
               <p className="tabular-nums">{stats.current_spend ?? ''}</p>
@@ -99,11 +119,11 @@ export function CampaignOpsPanel({ workspace }: CampaignOpsPanelProps) {
               <p className="tabular-nums">{stats.metrics?.impressions ?? 0}</p>
             </div>
           </div>
-        </section>
+        </FilterPanel>
       ) : null}
 
       {margin ? (
-        <section className={FILTER_PANEL_SUMMARY_CLASS}>
+        <FilterPanel className="w-full max-w-2xl gap-2 text-[13px] leading-[18px]">
           <h3 className="font-semibold">Margin</h3>
           <p>
             Operator margin (micro): <strong>{margin.operator_margin_micro ?? ''}</strong>
@@ -114,7 +134,7 @@ export function CampaignOpsPanel({ workspace }: CampaignOpsPanelProps) {
           <p>
             Margin breach: <strong>{margin.margin_breach ? 'yes' : 'no'}</strong>
           </p>
-        </section>
+        </FilterPanel>
       ) : null}
 
       {events && (events.items?.length ?? 0) > 0 ? (
@@ -139,15 +159,15 @@ export function CampaignOpsPanel({ workspace }: CampaignOpsPanelProps) {
       ) : null}
 
       {mappings ? (
-        <section className="ui-filter-panel gap-3">
+        <FilterPanel className="w-full max-w-2xl gap-3">
           <h3 className="font-semibold">Conversion mappings</h3>
           {mappingDrafts.map((draft, index) => (
-            <div
+            <DirectoryFilterForm
               key={`mapping-${index}`}
-              className="grid grid-cols-[repeat(auto-fill,minmax(10rem,1fr))] items-end gap-3"
+              layout="auto-fill"
+              onSubmit={(event) => event.preventDefault()}
             >
-              <div className="grid gap-2">
-                <Label htmlFor={`mapping-status-${index}`}>Inbound status</Label>
+              <FilterField htmlFor={`mapping-status-${index}`} label="Inbound status">
                 <Input
                   id={`mapping-status-${index}`}
                   value={draft.inbound_status}
@@ -157,9 +177,8 @@ export function CampaignOpsPanel({ workspace }: CampaignOpsPanelProps) {
                     setMappingDrafts(next);
                   }}
                 />
-              </div>
-              <div className="grid gap-2">
-                <Label htmlFor={`mapping-goal-${index}`}>Goal name</Label>
+              </FilterField>
+              <FilterField htmlFor={`mapping-goal-${index}`} label="Goal name">
                 <Input
                   id={`mapping-goal-${index}`}
                   value={draft.goal_name}
@@ -169,9 +188,8 @@ export function CampaignOpsPanel({ workspace }: CampaignOpsPanelProps) {
                     setMappingDrafts(next);
                   }}
                 />
-              </div>
-              <div className="grid gap-2">
-                <Label htmlFor={`mapping-payout-${index}`}>Payout micro</Label>
+              </FilterField>
+              <FilterField htmlFor={`mapping-payout-${index}`} label="Payout micro">
                 <Input
                   id={`mapping-payout-${index}`}
                   inputMode="numeric"
@@ -182,8 +200,8 @@ export function CampaignOpsPanel({ workspace }: CampaignOpsPanelProps) {
                     setMappingDrafts(next);
                   }}
                 />
-              </div>
-            </div>
+              </FilterField>
+            </DirectoryFilterForm>
           ))}
           <div className="flex flex-wrap gap-2">
             <Button
@@ -208,7 +226,7 @@ export function CampaignOpsPanel({ workspace }: CampaignOpsPanelProps) {
               Conversion mappings saved.
             </p>
           ) : null}
-        </section>
+        </FilterPanel>
       ) : null}
 
       {suggestions.length > 0 ? (

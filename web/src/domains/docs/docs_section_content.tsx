@@ -62,7 +62,7 @@ function DocsGuideBlockView({ block }: { block: DocsGuideBlock }) {
       );
     case 'note':
       return (
-        <p className="rounded-md border border-border bg-muted/30 px-3 py-2 text-sm leading-relaxed text-muted-foreground">
+        <p className="border border-border bg-muted/30 px-3 py-2 text-sm leading-relaxed text-muted-foreground">
           {block.text}
         </p>
       );

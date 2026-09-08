@@ -1,13 +1,16 @@
-/** Inter + tnum for numeric columns, KPIs, and campaign name cells. */
-export const ADMIN_TABULAR_CLASS = 'tabular-nums';
+/** JetBrains Mono 200 for numeric columns, KPIs, and metrics. */
+export const ADMIN_TABULAR_CLASS = 'font-numeric';
 
 /** Alias used in dashboard components. */
-export const ADMIN_NUMERIC_CLASS = 'tabular-nums';
+export const ADMIN_NUMERIC_CLASS = 'font-numeric';
 
 /** IBM Plex Mono for UUIDs, hashes, URLs, JSON, secrets. */
 export const ADMIN_MONO_CLASS = 'font-mono tabular-nums';
 
-export type AdminTypographyRole = 'prose' | 'tabular' | 'mono';
+/** JetBrains Mono for slug identifiers (integration_schema, template keys, traffic family). */
+export const ADMIN_SLUG_CLASS = 'font-numeric text-xs';
+
+export type AdminTypographyRole = 'prose' | 'tabular' | 'mono' | 'slug';
 
 export const ADMIN_TABULAR_DATA_KINDS = [
   'money',
@@ -22,6 +25,8 @@ export const ADMIN_TABULAR_DATA_KINDS = [
   'chart_axis_tick',
   'kpi_value',
   'status_total_count',
+  'integration_schema_ref',
+  'traffic_template_id',
 ] as const;
 
 export type AdminTabularDataKind = (typeof ADMIN_TABULAR_DATA_KINDS)[number];

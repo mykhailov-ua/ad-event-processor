@@ -1,23 +1,27 @@
 import { Link } from 'react-router-dom';
 
-import { Button } from '@/components/ui/button';
 import { Checkbox } from '@/components/ui/checkbox';
-import {
-  Dialog,
-  DialogContent,
-  DialogDescription,
-  DialogFooter,
-  DialogHeader,
-  DialogTitle,
-} from '@/components/ui/dialog';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
+import {
+  Sheet,
+  SheetBody,
+  SheetContent,
+  SheetDescription,
+  SheetHeader,
+  SheetTitle,
+} from '@/components/ui/sheet';
 import { DEFAULT_CLONE_OPTIONS } from '@/domains/campaigns/editor/campaign_clone_request';
 import {
+  campaignEditorActionsRowClass,
+  campaignEditorSectionClass,
   campaignPanelError,
   CLONE_OPTION_FIELDS,
 } from '@/domains/campaigns/editor/campaign_editor_shared';
 import { useCampaignCloneDialogWorkspace } from '@/domains/campaigns/editor/use_campaign_clone_dialog_workspace';
+import { PrimaryActionButton, SecondaryActionButton } from '@/shell/action_buttons';
+import { adminKit } from '@/lib/admin_kit';
+import { cn } from '@/lib/utils';
 
 export type CampaignCloneDialogProps = {
   campaignId: string | undefined;
@@ -50,11 +54,11 @@ export function CampaignCloneDialog({
   } = useCampaignCloneDialogWorkspace({ campaignId, open, onCloned });
 
   return (
-    <Dialog open={open} onOpenChange={onOpenChange}>
-      <DialogContent className="max-w-lg">
-        <DialogHeader>
-          <DialogTitle>Clone campaign</DialogTitle>
-          <DialogDescription>
+    <Sheet open={open} onOpenChange={onOpenChange}>
+      <SheetContent className="gap-0 p-0 sm:max-w-2xl">
+        <SheetHeader className="border-b border-border py-4 text-left">
+          <SheetTitle>Clone campaign</SheetTitle>
+          <SheetDescription>
             {campaignName ? (
               <>
                 Source: <strong>{campaignName}</strong>
@@ -62,66 +66,89 @@ export function CampaignCloneDialog({
             ) : (
               'Clone the selected campaign.'
             )}
-          </DialogDescription>
-        </DialogHeader>
+          </SheetDescription>
+        </SheetHeader>
 
-        <div className="grid gap-4">
-          <div className="grid gap-1">
-            <Label htmlFor="clone-name-suffix">Name suffix</Label>
-            <Input
-              id="clone-name-suffix"
-              value={nameSuffix}
-              onChange={(event) => setNameSuffix(event.target.value)}
-            />
-          </div>
+        <SheetBody className="grid gap-4 pb-8">
+          <section className={cn(campaignEditorSectionClass, 'gap-3')}>
+            <div className={cn('grid', adminKit.fieldLabelGap)}>
+              <Label htmlFor="clone-name-suffix">Name suffix</Label>
+              <Input
+                id="clone-name-suffix"
+                disabled={cloning || Boolean(clonedId)}
+                value={nameSuffix}
+                onChange={(event) => setNameSuffix(event.target.value)}
+              />
+              <p className="text-xs text-muted-foreground">
+                Appended to the source name. Leave empty for the default &quot; (copy)&quot;.
+              </p>
+            </div>
+          </section>
 
-          <div className="grid gap-3">
-            {CLONE_OPTION_FIELDS.map(({ field, label }) => (
-              <label key={field} className="flex items-center gap-2">
-                <Checkbox
-                  checked={cloneOptions[field] ?? DEFAULT_CLONE_OPTIONS[field]}
-                  onCheckedChange={(checked) => onCloneOptionChange(field, checked === true)}
-                />
-                <span>{label}</span>
-              </label>
-            ))}
-          </div>
+          <section className={cn(campaignEditorSectionClass, 'gap-3')}>
+            <p className="m-0 text-sm font-medium">Clone options</p>
+            <div className="grid gap-3">
+              {CLONE_OPTION_FIELDS.map(({ field, label, description }) => {
+                const inputId = `clone-option-${field}`;
+                const checked = cloneOptions[field] ?? DEFAULT_CLONE_OPTIONS[field];
+
+                return (
+                  <div key={field} className="grid gap-1">
+                    <div className="flex items-center gap-2">
+                      <Checkbox
+                        checked={checked}
+                        disabled={cloning || Boolean(clonedId)}
+                        id={inputId}
+                        onCheckedChange={(value) => onCloneOptionChange(field, value === true)}
+                      />
+                      <Label htmlFor={inputId}>{label}</Label>
+                    </div>
+                    <p className="text-xs text-muted-foreground">{description}</p>
+                  </div>
+                );
+              })}
+            </div>
+          </section>
 
           {preview ? (
-            <p className="text-sm text-muted-foreground">
-              Preview name: <strong>{preview.name}</strong>
-            </p>
+            <section className={cn(campaignEditorSectionClass, 'gap-2')}>
+              <p className="m-0 text-sm text-muted-foreground">
+                Preview name: <strong className="text-foreground">{preview.name}</strong>
+              </p>
+            </section>
           ) : null}
+
           {previewError ? campaignPanelError(previewError, 'Preview failed') : null}
           {cloneError ? campaignPanelError(cloneError, 'Clone failed') : null}
+
           {clonedId ? (
-            <p>
+            <p className="text-sm text-muted-foreground">
               Created{' '}
-              <Button asChild type="button" variant="link">
-                <Link to={`/campaigns/${clonedId}/edit`}>{clonedId}</Link>
-              </Button>
+              <Link className="text-primary hover:underline" to={`/campaigns/${clonedId}/edit`}>
+                open cloned campaign
+              </Link>
             </p>
           ) : null}
-        </div>
 
-        <DialogFooter className="gap-2">
-          <Button
-            disabled={!campaignId || previewing}
-            type="button"
-            variant="outline"
-            onClick={onPreview}
-          >
-            {previewing ? 'Previewing...' : 'Preview'}
-          </Button>
-          <Button
-            disabled={!campaignId || cloning || Boolean(clonedId)}
-            type="button"
-            onClick={onClone}
-          >
-            {cloning ? 'Cloning...' : 'Clone'}
-          </Button>
-        </DialogFooter>
-      </DialogContent>
-    </Dialog>
+          <div className={campaignEditorActionsRowClass}>
+            <SecondaryActionButton
+              disabled={!campaignId || previewing || cloning || Boolean(clonedId)}
+              type="button"
+              onClick={onPreview}
+            >
+              {previewing ? 'Previewing...' : 'Preview'}
+            </SecondaryActionButton>
+            <PrimaryActionButton
+              disabled={!campaignId || Boolean(clonedId)}
+              loading={cloning}
+              type="button"
+              onClick={onClone}
+            >
+              {cloning ? 'Cloning...' : 'Clone'}
+            </PrimaryActionButton>
+          </div>
+        </SheetBody>
+      </SheetContent>
+    </Sheet>
   );
 }

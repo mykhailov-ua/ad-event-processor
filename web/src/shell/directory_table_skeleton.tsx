@@ -16,21 +16,21 @@ export function DirectoryTableSkeleton({
       aria-busy="true"
       aria-label="Loading table"
       className={cn(
-        'motion-safe:animate-pulse overflow-hidden rounded-md border border-border bg-card',
+        'motion-safe:animate-pulse overflow-hidden border border-border bg-card',
         className
       )}
     >
-      <div className="flex h-10 border-b border-border/40">
+      <div className="flex h-[34px] border-b border-border/40">
         {Array.from({ length: columns }, (_, index) => (
-          <div key={`head-${index}`} className="flex flex-1 items-center px-2">
+          <div key={`head-${index}`} className="flex flex-1 items-center px-4">
             <div className="h-3 w-20 rounded bg-muted" />
           </div>
         ))}
       </div>
       {Array.from({ length: rows }, (_, rowIndex) => (
-        <div key={`row-${rowIndex}`} className="flex border-b border-border/40 last:border-0">
+        <div key={`row-${rowIndex}`} className="flex h-[34px] border-b border-border/40 last:border-0">
           {Array.from({ length: columns }, (_, colIndex) => (
-            <div key={`cell-${rowIndex}-${colIndex}`} className="flex flex-1 items-center p-2">
+            <div key={`cell-${rowIndex}-${colIndex}`} className="flex flex-1 items-center px-4">
               <div
                 className={cn(
                   'h-3 rounded bg-muted',

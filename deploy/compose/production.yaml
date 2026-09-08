@@ -7,12 +7,16 @@
 # - Does not set COMPOSE_MEMORY_PROFILE; pair memory-dev overlay on laptops only.
 #
 # Topology:
-# - Patches: db (PG TLS certs), redis-0 (TLS command), control, processor env.
+# - Patches: db (PG TLS certs), redis-0 (TLS command), tracker-0..3, control, processor env.
 #
 # Invariants:
 # - AD_EVENT_PROCESSOR_PROFILE=production on control.
+# - Tracker hot path: ENV=production, FILTER_TIMEOUT_MS=100, STREAM_PRODUCER_ADMISSION_PCT=85,
+#   LOCAL_QUOTA_MODE=live, QUOTA_MODE=live, TRACKER_PG_FALLBACK=0 (see .env.prod.example).
+# - Processor: CH_INGEST_SOURCE=broker, BROKER_SHADOW_MODE=0 after cutover (P2).
 # - Redis appendonly yes; Postgres max_connections=600, shared_buffers=1GB.
 # - EVENTS_RETENTION_DAYS default 90; EVENTS_HASH_IP_AT_INSERT default 0 on processor.
+# - DB_DSN sslmode=verify-full when pairing TLS Postgres (see .env.prod.example).
 #
 # Env knobs:
 # - PG_TLS_CERT_DIR (default ./deploy/tls/postgres).
@@ -82,3 +86,48 @@ services:
   processor:
     environment:
       - EVENTS_HASH_IP_AT_INSERT=${EVENTS_HASH_IP_AT_INSERT:-0}
+      - PROCESSOR_STREAM_LAG_MAX_SEC=${PROCESSOR_STREAM_LAG_MAX_SEC:-120}
+      - CH_SPOOL_DIR=/var/spool/ad-event-processor/ch
+      - CH_INGEST_SOURCE=broker
+      - BROKER_URL=${BROKER_URL:-/run/ad-event-processor/broker/gnet.sock}
+      - BROKER_SHADOW_MODE=${BROKER_SHADOW_MODE:-0}
+
+  tracker-0:
+    environment:
+      - ENV=production
+      - FILTER_TIMEOUT_MS=100
+      - STREAM_PRODUCER_ADMISSION_PCT=85
+      - LOCAL_QUOTA_MODE=live
+      - QUOTA_MODE=live
+      - TRACKER_PG_FALLBACK=0
+      - TRANSPORT_USE_UDS=1
+
+  tracker-1:
+    environment:
+      - ENV=production
+      - FILTER_TIMEOUT_MS=100
+      - STREAM_PRODUCER_ADMISSION_PCT=85
+      - LOCAL_QUOTA_MODE=live
+      - QUOTA_MODE=live
+      - TRACKER_PG_FALLBACK=0
+      - TRANSPORT_USE_UDS=1
+
+  tracker-2:
+    environment:
+      - ENV=production
+      - FILTER_TIMEOUT_MS=100
+      - STREAM_PRODUCER_ADMISSION_PCT=85
+      - LOCAL_QUOTA_MODE=live
+      - QUOTA_MODE=live
+      - TRACKER_PG_FALLBACK=0
+      - TRANSPORT_USE_UDS=1
+
+  tracker-3:
+    environment:
+      - ENV=production
+      - FILTER_TIMEOUT_MS=100
+      - STREAM_PRODUCER_ADMISSION_PCT=85
+      - LOCAL_QUOTA_MODE=live
+      - QUOTA_MODE=live
+      - TRACKER_PG_FALLBACK=0
+      - TRANSPORT_USE_UDS=1

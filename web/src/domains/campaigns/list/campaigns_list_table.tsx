@@ -1,4 +1,4 @@
-import { useCallback, useRef, useState, type DragEvent } from 'react';
+import { useCallback, useMemo, useRef, useState, type DragEvent } from 'react';
 
 import { Checkbox } from '@/components/ui/checkbox';
 import type { CampaignListMetrics } from '@/api/campaigns_api';
@@ -13,6 +13,7 @@ import {
   isCampaignListColumnDraggable,
   isCampaignListColumnResizable,
   isCampaignListNumericColumn,
+  isCampaignListPinnedColumn,
   moveDataColumn,
   resolveCampaignListColumnWidthPx,
   type CampaignListColumnId,
@@ -20,6 +21,11 @@ import {
   type CampaignListReorderableColumnId,
   visibleCampaignListColumns,
 } from '@/domains/campaigns/list/campaign_list_columns';
+import {
+  campaignListPinnedCellClassName,
+  campaignListPinnedColumnStyle,
+} from '@/domains/campaigns/list/campaign_list_pinned_columns';
+import { buildCampaignRowVmCache } from '@/domains/campaigns/list/campaign_list_row_vm';
 import { CampaignListTableBodyRow } from '@/domains/campaigns/list/campaign_list_table_body_row';
 import {
   CampaignListColumnResizeHandle,
@@ -30,19 +36,15 @@ import type { CampaignSortField, SortOrder } from '@/domains/campaigns/list/camp
 import type { CampaignWithMoneyDisplay } from '@/domains/campaigns/list/campaign_metrics_shared';
 import { useCampaignListColumnResize } from '@/domains/campaigns/list/use_campaign_list_column_resize';
 import {
-  campaignListBodyToolsGutterClass,
   campaignListCellContentClass,
-  campaignListCellToolsClass,
-  campaignListHeaderCellClass,
-  campaignListNumClass,
-  campaignListSelectCellClass,
+  campaignListCellContentNumClass,
+  campaignListSelectHeaderShellClass,
   campaignListTableClass,
-  campaignListTableSurfaceClass,
   campaignListTdClass,
   campaignListTfootTdClass,
   campaignListThClass,
 } from '@/domains/campaigns/list/campaign_list_classes';
-import { DirectoryTable, TableBody, TableFooter, TableHeader } from '@/shell/directory_table';
+import { DirectoryTable, TableBody, TableFooter, TableHeader, directoryTableRevalidatingClass } from '@/shell/directory_table';
 import { cn } from '@/lib/utils';
 
 export type CampaignsListTableProps = {
@@ -61,6 +63,7 @@ export type CampaignsListTableProps = {
   onColumnSort: (field: CampaignSortField) => void;
   onColumnWidthCommit: (columnId: CampaignListColumnId, widthPx: number) => void;
   fetching?: boolean;
+  listRevalidating?: boolean;
   emptyMessage?: string;
   onCampaignOverview?: (campaign: Campaign) => void;
   filterTotals?: CampaignListFilterTotalsView;
@@ -84,6 +87,7 @@ export function CampaignsListTable({
   onColumnSort,
   onColumnWidthCommit,
   fetching = false,
+  listRevalidating = false,
   emptyMessage = 'No campaigns match the current filters.',
   onCampaignOverview,
   filterTotals,
@@ -91,6 +95,17 @@ export function CampaignsListTable({
   statsQuery,
 }: CampaignsListTableProps) {
   const columns = visibleCampaignListColumns(columnPrefs);
+  const rowVmCache = useMemo(
+    () =>
+      buildCampaignRowVmCache(
+        items ?? [],
+        metricsById,
+        marginsById,
+        customerNameById,
+        ownerEmailById
+      ),
+    [customerNameById, items, marginsById, metricsById, ownerEmailById]
+  );
   const tableRef = useRef<HTMLTableElement>(null);
   const colgroupRef = useRef<HTMLTableColElement>(null);
   const { startResize } = useCampaignListColumnResize({
@@ -160,7 +175,7 @@ export function CampaignsListTable({
 
   if ((items ?? []).length === 0) {
     return (
-      <div className={cn(campaignListTableSurfaceClass, 'p-4')}>
+      <div className="p-4">
         <p className="text-muted-foreground">{emptyMessage}</p>
       </div>
     );
@@ -168,9 +183,13 @@ export function CampaignsListTable({
 
   return (
     <DirectoryTable
-      className={cn(campaignListTableSurfaceClass, 'rounded-none border-0 shadow-none')}
+      className={cn(
+        'rounded-none border-0 shadow-none',
+        directoryTableRevalidatingClass(listRevalidating)
+      )}
       fixedLayout
       horizontalScroll
+      nested
       tableClassName={campaignListTableClass}
       tableRef={tableRef}
       tableStyle={{
@@ -198,18 +217,16 @@ export function CampaignsListTable({
                 key={columnId}
                 className={cn(
                   campaignListThClass,
-                  isSelect ? 'px-4 text-center' : undefined,
-                  columnId === 'name'
-                    ? campaignListCellToolsClass
-                    : !isSelect
-                      ? campaignListCellToolsClass
-                      : undefined,
-                  draggingColumnId === columnId && 'opacity-60',
-                  resizable && 'relative'
+                  isSelect ? 'text-center' : undefined,
+                  isCampaignListPinnedColumn(columnId) &&
+                    campaignListPinnedCellClassName(columnId, columns, 'header'),
+                  draggingColumnId === columnId && 'opacity-60'
                 )}
+                data-col-pin={isCampaignListPinnedColumn(columnId) ? columnId : undefined}
+                style={campaignListPinnedColumnStyle(columnId, columns, columnWidths)}
               >
                 {isSelect ? (
-                  <div className={campaignListSelectCellClass}>
+                  <div className={campaignListSelectHeaderShellClass}>
                     <Checkbox
                       aria-label="Select all campaigns"
                       checked={allSelected}
@@ -256,6 +273,7 @@ export function CampaignsListTable({
           <CampaignListTableBodyRow
             key={campaign.id}
             campaign={campaign}
+            columnWidths={columnWidths}
             columns={columns}
             customerNameById={customerNameById}
             fetching={fetching}
@@ -265,6 +283,7 @@ export function CampaignsListTable({
             selected={selectedIds.has(campaign.id)}
             onCampaignOverview={onCampaignOverview}
             onToggleSelected={toggleOne}
+            rowVmCache={rowVmCache}
             statsCacheRevision={statsCacheRevision}
             statsQuery={statsQuery}
           />
@@ -280,26 +299,25 @@ export function CampaignsListTable({
                 className={cn(
                   campaignListTdClass,
                   campaignListTfootTdClass,
-                  columnId === 'select'
-                    ? 'px-4 text-center'
-                    : columnId === 'name'
-                      ? campaignListCellToolsClass
-                      : cn(campaignListCellToolsClass, isNum && campaignListNumClass)
+                  columnId === 'select' ? 'p-0' : undefined,
+                  isCampaignListPinnedColumn(columnId) &&
+                    campaignListPinnedCellClassName(columnId, columns, 'footer')
                 )}
+                data-col-pin={isCampaignListPinnedColumn(columnId) ? columnId : undefined}
+                style={campaignListPinnedColumnStyle(columnId, columns, columnWidths)}
               >
-                <div className={campaignListHeaderCellClass}>
-                  <div className={campaignListCellContentClass}>
-                    <CampaignListTableTotalsCell
-                      columnId={columnId}
-                      funnelTotals={funnelTotals}
-                      pageCount={(items ?? []).length}
-                      totals={totals}
-                      totalsLabel={filterTotals ? 'Filtered total' : 'Total'}
-                    />
-                  </div>
-                  {columnId !== 'select' && columnId !== 'name' ? (
-                    <div aria-hidden className={campaignListBodyToolsGutterClass} />
-                  ) : null}
+                <div
+                  className={
+                    isNum ? campaignListCellContentNumClass : campaignListCellContentClass
+                  }
+                >
+                  <CampaignListTableTotalsCell
+                    columnId={columnId}
+                    funnelTotals={funnelTotals}
+                    pageCount={(items ?? []).length}
+                    totals={totals}
+                    totalsLabel={filterTotals ? 'Filtered total' : 'Total'}
+                  />
                 </div>
               </td>
             );

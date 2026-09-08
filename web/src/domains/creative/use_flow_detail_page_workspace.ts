@@ -1,20 +1,25 @@
-// L3 flow editor: GET snapshot keyed by refreshToken; local draft until PATCH save.
+// L3 flow editor: GET snapshot keyed by refreshToken; visual path draft until PUT save.
 import { useCallback, useEffect, useState } from 'react';
-import { useParams } from 'react-router-dom';
+import { useNavigate, useParams } from 'react-router-dom';
 import { toast } from 'sonner';
 
-import { getFlow, updateFlow } from '@/api/flows_api';
+import { listLanders } from '@/api/landers_api';
+import { listOffers } from '@/api/offers_api';
+import { cloneFlow, deleteFlow, getFlow, updateFlow } from '@/api/flows_api';
 import {
-  buildFlowUpdateBody,
-  DEFAULT_FLOW_PATHS_JSON,
-  flowDraftFromSnapshot,
+  buildFlowBodyFromVisual,
+  flowVisualRowsFromSnapshot,
 } from '@/domains/creative/flow_editor_form';
+import type { FlowPathVisualRow } from '@/domains/creative/flow_path_model';
+import { newFlowPathRow } from '@/domains/creative/flow_path_model';
 import { useCoalescedBumpRefresh, useRefreshToken } from '@/hooks/use_coalesced_refresh_token';
+import { confirmDestructiveAction, mutationError } from '@/lib/mutation_audit';
 import { useBreadcrumbSegmentLabel } from '@/shell/breadcrumb_context';
 import { useResource } from '@/api/use_resource';
 
 export function useFlowDetailPageWorkspace() {
   const { id } = useParams();
+  const navigate = useNavigate();
   const flowId = id ?? '';
   const { refreshToken, bumpRefresh } = useRefreshToken();
   const snapshotKey = `${flowId}:${refreshToken}`;
@@ -29,17 +34,24 @@ export function useFlowDetailPageWorkspace() {
     [flowId, refreshToken]
   );
 
+  const { data: landers } = useResource((signal) => listLanders(signal), [refreshToken]);
+  const { data: offers } = useResource((signal) => listOffers(signal), [refreshToken]);
+
   const bumpRefreshCoalesced = useCoalescedBumpRefresh(bumpRefresh, fetching);
 
   const [draftName, setDraftName] = useState('');
-  const [draftPathsJson, setDraftPathsJson] = useState(DEFAULT_FLOW_PATHS_JSON);
+  const [draftRows, setDraftRows] = useState<FlowPathVisualRow[]>([newFlowPathRow()]);
+  const [showAdvancedJson, setShowAdvancedJson] = useState(false);
   const [appliedSnapshotKey, setAppliedSnapshotKey] = useState('');
   const [saving, setSaving] = useState(false);
   const [saveError, setSaveError] = useState<Error | undefined>();
+  const [deleting, setDeleting] = useState(false);
+  const [deleteError, setDeleteError] = useState<Error | undefined>();
+  const [cloning, setCloning] = useState(false);
 
   useEffect(() => {
     setDraftName('');
-    setDraftPathsJson(DEFAULT_FLOW_PATHS_JSON);
+    setDraftRows([newFlowPathRow()]);
     setAppliedSnapshotKey('');
   }, [flowId]);
 
@@ -47,9 +59,8 @@ export function useFlowDetailPageWorkspace() {
     if (!data || appliedSnapshotKey === snapshotKey) {
       return;
     }
-    const draft = flowDraftFromSnapshot(data);
-    setDraftName(draft.name);
-    setDraftPathsJson(draft.pathsJson);
+    setDraftName(data.name ?? '');
+    setDraftRows(flowVisualRowsFromSnapshot(data.paths));
     setAppliedSnapshotKey(snapshotKey);
   }, [appliedSnapshotKey, data, snapshotKey]);
 
@@ -57,7 +68,7 @@ export function useFlowDetailPageWorkspace() {
     if (!flowId) {
       return;
     }
-    const update = buildFlowUpdateBody(draftName, draftPathsJson);
+    const update = buildFlowBodyFromVisual(draftName, draftRows);
     if (!update.ok) {
       setSaveError(new Error(update.error));
       return;
@@ -73,7 +84,48 @@ export function useFlowDetailPageWorkspace() {
     } finally {
       setSaving(false);
     }
-  }, [bumpRefreshCoalesced, draftName, draftPathsJson, flowId]);
+  }, [bumpRefreshCoalesced, draftName, draftRows, flowId]);
+
+  const onCloneFlow = useCallback(async () => {
+    if (!flowId || cloning) {
+      return;
+    }
+    setCloning(true);
+    setSaveError(undefined);
+    try {
+      const cloned = await cloneFlow(flowId, { name: `${draftName.trim() || 'Flow'} (copy)` });
+      toast.success('Flow cloned');
+      navigate(`/flows/${cloned.id}`);
+    } catch (err: unknown) {
+      setSaveError(err instanceof Error ? err : new Error(String(err)));
+    } finally {
+      setCloning(false);
+    }
+  }, [cloning, draftName, flowId, navigate]);
+
+  const onDeleteFlow = useCallback(async () => {
+    if (!flowId || deleting) {
+      return;
+    }
+    const flowName = data?.name ?? flowId;
+    const confirmed = confirmDestructiveAction(`Delete flow "${flowName}"?`);
+    if (!confirmed) {
+      return;
+    }
+    setDeleting(true);
+    setDeleteError(undefined);
+    try {
+      await deleteFlow(flowId);
+      toast.success('Flow deleted');
+      navigate('/flows');
+    } catch (err: unknown) {
+      const nextError = mutationError(err);
+      setDeleteError(nextError);
+      toast.error(nextError.message);
+    } finally {
+      setDeleting(false);
+    }
+  }, [data?.name, deleting, flowId, navigate]);
 
   useBreadcrumbSegmentLabel(flowId || undefined, data?.name);
 
@@ -82,14 +134,27 @@ export function useFlowDetailPageWorkspace() {
     fetching,
     error,
     hasSnapshot: data != null,
+    landers: landers ?? [],
+    offers: offers ?? [],
     draftName,
-    draftPathsJson,
+    draftRows,
+    showAdvancedJson,
     saving,
     saveError,
+    deleting,
+    deleteError,
+    cloning,
     onDraftNameChange: setDraftName,
-    onDraftPathsJsonChange: setDraftPathsJson,
+    onDraftRowsChange: setDraftRows,
+    onShowAdvancedJsonChange: setShowAdvancedJson,
     onSaveFlow: () => {
       void onSaveFlow();
+    },
+    onCloneFlow: () => {
+      void onCloneFlow();
+    },
+    onDeleteFlow: () => {
+      void onDeleteFlow();
     },
   };
 }

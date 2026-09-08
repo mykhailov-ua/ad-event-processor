@@ -17,17 +17,19 @@ import type {
   PostbackConfig,
   PostbackDlqEntry,
   PostbackDryRunResult,
+  PostbackHealthRow,
 } from '@/api/types';
 import { IntegrationsNav, integrationsPanelError } from '@/domains/integrations/integrations_nav';
 import { PostbackConfigForm } from '@/domains/integrations/postback_config_form';
 import { displayTimestamp } from '@/lib/display';
 
-export type IntegrationsPostbacksTab = 'configs' | 'dlq' | 'status';
+export type IntegrationsPostbacksTab = 'configs' | 'dlq' | 'status' | 'health';
 
 const POSTBACKS_TABS: { id: IntegrationsPostbacksTab; label: string }[] = [
   { id: 'configs', label: 'Configs' },
   { id: 'dlq', label: 'DLQ' },
   { id: 'status', label: 'Campaign status' },
+  { id: 'health', label: 'Health' },
 ];
 
 export type IntegrationsPostbacksProps = {
@@ -36,6 +38,12 @@ export type IntegrationsPostbacksProps = {
   configs: PostbackConfig[];
   dlq: PostbackDlqEntry[];
   campaignStatus: PostbackCampaignStatus[];
+  healthRows: PostbackHealthRow[];
+  healthAlertThreshold: number;
+  healthRunbookPath?: string;
+  healthFetching: boolean;
+  healthError: Error | undefined;
+  hasHealthSnapshot: boolean;
   fetching: boolean;
   error: Error | undefined;
   hasSnapshot: boolean;
@@ -75,6 +83,12 @@ export function IntegrationsPostbacks({
   configs,
   dlq,
   campaignStatus,
+  healthRows,
+  healthAlertThreshold,
+  healthRunbookPath,
+  healthFetching,
+  healthError,
+  hasHealthSnapshot,
   fetching,
   error,
   hasSnapshot,
@@ -259,6 +273,87 @@ export function IntegrationsPostbacks({
               </TableBody>
             </DirectoryTable>
           )}
+        </section>
+      ) : null}
+
+      {tab === 'health' ? (
+        <section className="grid gap-2">
+          <div className="flex flex-wrap items-center gap-2">
+            <h2 className="text-base font-semibold">Delivery health (24h)</h2>
+            <span className="text-sm text-muted-foreground">
+              Alert when success rate drops below {healthAlertThreshold}%
+            </span>
+            {healthRunbookPath ? (
+              <a className="text-sm text-primary underline-offset-4 hover:underline" href={healthRunbookPath}>
+                Runbook
+              </a>
+            ) : null}
+          </div>
+          {healthFetching && !hasHealthSnapshot ? (
+            <p className="text-sm text-muted-foreground">Loading health metrics...</p>
+          ) : null}
+          {healthError ? (
+            <ErrorBlock title="Health load failed" message={healthError.message} />
+          ) : null}
+          {healthRows.length === 0 && hasHealthSnapshot ? (
+            <EmptyState title="No health rows" description="No postback configs to aggregate." />
+          ) : null}
+          {healthRows.length > 0 ? (
+            <DirectoryTable horizontalScroll>
+              <TableHeader>
+                <TableRow>
+                  <DirectoryTableHead>Campaign</DirectoryTableHead>
+                  <DirectoryTableHead>Provider</DirectoryTableHead>
+                  <DirectoryTableHead>Success 24h</DirectoryTableHead>
+                  <DirectoryTableHead>p95 latency</DirectoryTableHead>
+                  <DirectoryTableHead>Status</DirectoryTableHead>
+                  <DirectoryTableHead>Last error</DirectoryTableHead>
+                  <DirectoryTableHead className="w-28">DLQ</DirectoryTableHead>
+                </TableRow>
+              </TableHeader>
+              <TableBody>
+                {healthRows.map((row) => (
+                  <TableRow key={`${row.campaign_id}-${row.provider}`}>
+                    <TableCell className="font-mono text-xs">{row.campaign_id}</TableCell>
+                    <TableCell>{row.provider}</TableCell>
+                    <TableCell>
+                      {row.success_rate_24h != null ? `${row.success_rate_24h}%` : 'n/a'}
+                    </TableCell>
+                    <TableCell>
+                      {row.p95_latency_ms != null ? `${row.p95_latency_ms} ms` : 'n/a'}
+                    </TableCell>
+                    <TableCell>
+                      <Badge
+                        variant={
+                          row.health_status === 'fail'
+                            ? 'destructive'
+                            : row.health_status === 'warn'
+                              ? 'secondary'
+                              : 'outline'
+                        }
+                      >
+                        {row.health_status}
+                      </Badge>
+                    </TableCell>
+                    <TableCell className="whitespace-nowrap">{row.last_error ?? ''}</TableCell>
+                    <TableCell>
+                      {row.dlq_pending_count > 0 ? (
+                        <Button
+                          onClick={() => onTabChange('dlq')}
+                          type="button"
+                          variant="outline"
+                        >
+                          {row.dlq_pending_count} pending
+                        </Button>
+                      ) : (
+                        '0'
+                      )}
+                    </TableCell>
+                  </TableRow>
+                ))}
+              </TableBody>
+            </DirectoryTable>
+          ) : null}
         </section>
       ) : null}
 

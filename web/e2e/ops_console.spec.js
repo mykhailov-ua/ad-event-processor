@@ -41,7 +41,7 @@ test('ops section links resolve without 404 and load read endpoints', async ({ p
 
   for (const { path, api } of OPS_SECTION_READS) {
     const sectionGet = page.waitForResponse(isApiGet(api), { timeout: 20_000 });
-    await page.goto(`${path}?admin_dev=0`);
+    await page.goto(`${path}`);
     await expect(page.getByRole('navigation', { name: 'Ops sections' })).toBeVisible();
     await expect(page.getByText('404')).toHaveCount(0);
     await expect(page.getByText('Page not found')).toHaveCount(0);

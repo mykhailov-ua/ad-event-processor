@@ -7,7 +7,7 @@ const DefaultMaxCap = 64 * 1024
 
 var bytesPool = sync.Pool{
 	New: func() any {
-		b := make([]byte, 0, 512)
+		b := make([]byte, 0, 2048)
 		return &b
 	},
 }

@@ -1,8 +1,11 @@
 package gnet
 
-// PinParsedHTTPRequest copies header/body slices into ConnContext.OffloadHTTPPin so Tier B
-// can run after gnet discards the peek frame. Slices in the returned Request alias the pin buffer.
-func PinParsedHTTPRequest(ctx *ConnContext, req Request) Request {
+// PinHTTP1RequestInPlace copies header/body slices into ConnContext.OffloadHTTPPin so Tier B
+// can run after gnet discards the peek frame. Slices in req alias the pin buffer on return.
+func PinHTTP1RequestInPlace(ctx *ConnContext, req *Request) {
+	if ctx == nil || req == nil {
+		return
+	}
 	ctx.OffloadHTTPPin = ctx.OffloadHTTPPin[:0]
 	pin := func(b []byte) []byte {
 		if len(b) == 0 {
@@ -12,53 +15,27 @@ func PinParsedHTTPRequest(ctx *ConnContext, req Request) Request {
 		ctx.OffloadHTTPPin = append(ctx.OffloadHTTPPin, b...)
 		return ctx.OffloadHTTPPin[off : off+len(b)]
 	}
-	return Request{
-		Method:                pin(req.Method),
-		Path:                  pin(req.Path),
-		ContentType:           pin(req.ContentType),
-		ClientIP:              pin(req.ClientIP),
-		RealIP:                pin(req.RealIP),
-		UserAgent:             pin(req.UserAgent),
-		Accept:                pin(req.Accept),
-		AcceptEncoding:        pin(req.AcceptEncoding),
-		TLSHash:               pin(req.TLSHash),
-		TLSJA3:                pin(req.TLSJA3),
-		TLSJA4:                pin(req.TLSJA4),
-		SecCHUA:               pin(req.SecCHUA),
-		SecCHUAPlatform:       pin(req.SecCHUAPlatform),
-		SecCHUAMobile:         pin(req.SecCHUAMobile),
-		SecFetchSite:          pin(req.SecFetchSite),
-		SecFetchMode:          pin(req.SecFetchMode),
-		SecFetchDest:          pin(req.SecFetchDest),
-		TLSALPN:               pin(req.TLSALPN),
-		SecFetchPresent:       req.SecFetchPresent,
-		H2WireFlags:           req.H2WireFlags,
-		H2SettingsCRC:         req.H2SettingsCRC,
-		H2EnablePush:          req.H2EnablePush,
-		H2InitialWindow:       req.H2InitialWindow,
-		H2WindowUpdateInc:     req.H2WindowUpdateInc,
-		H2PseudoOrder:         req.H2PseudoOrder,
-		H2PseudoOrderCount:    req.H2PseudoOrderCount,
-		HTTP1HeaderOrder:      req.HTTP1HeaderOrder,
-		HTTP1HeaderOrderCount: req.HTTP1HeaderOrderCount,
-		AcceptLang:            pin(req.AcceptLang),
-		Body:                  pin(req.Body),
-		Origin:                pin(req.Origin),
-		Host:                  pin(req.Host),
-		Cookie:                pin(req.Cookie),
-		ContentLength:         req.ContentLength,
-		HasContentLength:      req.HasContentLength,
-		ForceSafe:             req.ForceSafe,
-		TCPMSS:                req.TCPMSS,
-		TCPMSSSet:             req.TCPMSSSet,
-		TCPTTL:                req.TCPTTL,
-		TCPTTLSet:             req.TCPTTLSet,
-		TCPWindow:             req.TCPWindow,
-		TCPWindowSet:          req.TCPWindowSet,
-		TCPSig:                req.TCPSig,
-		TCPSigSet:             req.TCPSigSet,
-		RTTSynMS:              req.RTTSynMS,
-		TTFBAppMS:             req.TTFBAppMS,
-		ConnTimingSet:         req.ConnTimingSet,
-	}
+	req.Method = pin(req.Method)
+	req.Path = pin(req.Path)
+	req.ContentType = pin(req.ContentType)
+	req.ClientIP = pin(req.ClientIP)
+	req.RealIP = pin(req.RealIP)
+	req.UserAgent = pin(req.UserAgent)
+	req.Accept = pin(req.Accept)
+	req.AcceptEncoding = pin(req.AcceptEncoding)
+	req.TLSHash = pin(req.TLSHash)
+	req.TLSJA3 = pin(req.TLSJA3)
+	req.TLSJA4 = pin(req.TLSJA4)
+	req.SecCHUA = pin(req.SecCHUA)
+	req.SecCHUAPlatform = pin(req.SecCHUAPlatform)
+	req.SecCHUAMobile = pin(req.SecCHUAMobile)
+	req.SecFetchSite = pin(req.SecFetchSite)
+	req.SecFetchMode = pin(req.SecFetchMode)
+	req.SecFetchDest = pin(req.SecFetchDest)
+	req.TLSALPN = pin(req.TLSALPN)
+	req.AcceptLang = pin(req.AcceptLang)
+	req.Body = pin(req.Body)
+	req.Origin = pin(req.Origin)
+	req.Host = pin(req.Host)
+	req.Cookie = pin(req.Cookie)
 }

@@ -6,6 +6,8 @@ export type UseResourceState<T> = {
   data: T | undefined;
   error: Error | undefined;
   fetching: boolean;
+  /** True while refetching after the first snapshot (sort/filter/page). */
+  revalidating: boolean;
 };
 
 /**
@@ -23,15 +25,20 @@ export function useResource<T>(
   const [data, setData] = useState<T | undefined>(undefined);
   const [error, setError] = useState<Error | undefined>(undefined);
   const [fetching, setFetching] = useState(true);
+  const [revalidating, setRevalidating] = useState(false);
   const generationRef = useRef(0);
   const snapshotRef = useRef(false);
 
   useEffect(() => {
     const ctrl = new AbortController();
     const generation = ++generationRef.current;
+    const hadSnapshot = snapshotRef.current;
 
-    if (!snapshotRef.current) {
+    if (!hadSnapshot) {
       setFetching(true);
+      setRevalidating(false);
+    } else {
+      setRevalidating(true);
     }
 
     void fetcher(ctrl.signal)
@@ -58,6 +65,7 @@ export function useResource<T>(
           return;
         }
         setFetching(false);
+        setRevalidating(false);
       });
 
     return () => {
@@ -65,5 +73,5 @@ export function useResource<T>(
     };
   }, deps);
 
-  return { data, error, fetching };
+  return { data, error, fetching, revalidating };
 }

@@ -13,6 +13,7 @@ import (
 	"ad-event-processor/pkg/money"
 
 	"github.com/google/uuid"
+	"github.com/jackc/pgx/v5"
 	"github.com/jackc/pgx/v5/pgtype"
 )
 
@@ -188,6 +189,50 @@ func (c *Customers) UpdateCustomerCostCenter(ctx context.Context, customerID uui
 		CostCenter: normalized,
 	}); err != nil {
 		return CustomerDTO{}, err
+	}
+	return c.GetCustomerDTO(ctx, customerID)
+}
+
+func (c *Customers) PatchCustomer(ctx context.Context, customerID uuid.UUID, req PatchCustomerRequest) (CustomerDTO, error) {
+	if c == nil || c.host == nil || c.host.Pool() == nil {
+		return CustomerDTO{}, errPlatformServiceUnavailable()
+	}
+	if req.Name == nil && req.CostCenter == nil {
+		return CustomerDTO{}, fmt.Errorf("at least one field is required")
+	}
+	var nameArg interface{}
+	if req.Name != nil {
+		name := strings.TrimSpace(*req.Name)
+		if name == "" {
+			return CustomerDTO{}, fmt.Errorf("name is required")
+		}
+		nameArg = name
+	}
+	var costCenterArg interface{}
+	if req.CostCenter != nil {
+		normalized, err := billingadmin.NormalizeCostCenter(*req.CostCenter)
+		if err != nil {
+			return CustomerDTO{}, err
+		}
+		costCenterArg = normalized
+	}
+	q := db.New(c.host.Pool())
+	if _, err := q.GetCustomerByID(ctx, domain.ToUUID(customerID)); err != nil {
+		return CustomerDTO{}, c.host.MapCustomerNotFound(err)
+	}
+	tag, err := c.host.Pool().Exec(ctx, `
+		UPDATE customers
+		SET
+			name = COALESCE($2::text, name),
+			cost_center = COALESCE($3::text, cost_center),
+			updated_at = CURRENT_TIMESTAMP
+		WHERE id = $1`,
+		customerID, nameArg, costCenterArg)
+	if err != nil {
+		return CustomerDTO{}, err
+	}
+	if tag.RowsAffected() == 0 {
+		return CustomerDTO{}, c.host.MapCustomerNotFound(pgx.ErrNoRows)
 	}
 	return c.GetCustomerDTO(ctx, customerID)
 }

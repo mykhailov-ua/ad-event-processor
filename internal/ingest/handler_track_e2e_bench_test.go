@@ -2,7 +2,6 @@ package ingest
 
 import (
 	"context"
-	"strconv"
 	"testing"
 	"time"
 
@@ -87,20 +86,13 @@ func BenchmarkTrackE2E_accept(b *testing.B) {
 		HasContentLength: true,
 	}
 	conn := &mockGnetConn{written: make([]byte, 0, 512)}
+	ctx := handler.AllocConnContext(conn)
+	conn.SetContext(ctx)
 
 	b.ReportAllocs()
 	b.SetBytes(int64(len(body)))
-	benchN := 0
 	for b.Loop() {
-		pbPayload.Metadata.UserId = []byte("bench-" + strconv.Itoa(benchN))
-		body, err := pbPayload.MarshalVT()
-		if err != nil {
-			b.Fatal(err)
-		}
-		req.Body = body
-		req.ContentLength = len(body)
-		handler.React(req, conn)
-		benchN++
+		handler.React(&req, conn)
 	}
 }
 

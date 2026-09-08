@@ -3,6 +3,7 @@ import { useCallback, useEffect, useMemo, useState } from 'react';
 
 import {
   blockCampaignPlacement,
+  getCampaign,
   getCampaignMargin,
   getCampaignStats,
   getPlacementBlockSuggestions,
@@ -13,6 +14,7 @@ import {
   validateCampaignFlow,
   type CampaignListMetrics,
 } from '@/api/campaigns_api';
+import { applyIntegrationSchema } from '@/api/integrations_api';
 import type {
   CampaignEventListResponse,
   CampaignMargin,
@@ -22,6 +24,7 @@ import type {
   ConversionMappingListResponse,
   PlacementBlockSuggestion,
 } from '@/api/types';
+import { useResource } from '@/api/use_resource';
 import {
   buildCampaignStatsCacheKey,
   campaignStatsFromListMetrics,
@@ -89,6 +92,10 @@ export function useCampaignOpsPanelWorkspace({
   const [actionError, setActionError] = useState<Error | undefined>();
   const [savingMappings, setSavingMappings] = useState(false);
   const [mappingSaveSuccess, setMappingSaveSuccess] = useState(false);
+  const [syncingPreset, setSyncingPreset] = useState(false);
+  const [syncPresetMessage, setSyncPresetMessage] = useState<string | undefined>();
+
+  const { data: campaignMeta } = useResource((signal) => getCampaign(campaignId, signal), [campaignId]);
 
   const resolvedStatsQuery = useMemo(
     () => statsQuery ?? {},
@@ -107,6 +114,7 @@ export function useCampaignOpsPanelWorkspace({
     setFlowMessage(undefined);
     setActionError(undefined);
     setMappingSaveSuccess(false);
+    setSyncPresetMessage(undefined);
   }, [campaignId]);
 
   useEffect(() => {
@@ -239,7 +247,30 @@ export function useCampaignOpsPanelWorkspace({
     }
   }, [campaignId, draftPlacementId]);
 
-  const busy = loadingKey != null || blocking || savingMappings;
+  const onSyncFromPreset = useCallback(async () => {
+    const schemaId = campaignMeta?.status_integration_schema_id?.trim();
+    if (!schemaId) {
+      setActionError(new Error('No status integration preset is linked to this campaign.'));
+      return;
+    }
+    setSyncingPreset(true);
+    setActionError(undefined);
+    setSyncPresetMessage(undefined);
+    try {
+      const result = await applyIntegrationSchema(schemaId, { campaign_id: campaignId });
+      const count = result.mappings_applied_count;
+      setSyncPresetMessage(
+        count != null ? `Synced ${count} mapping(s) from preset.` : 'Preset mappings synced.'
+      );
+      setMappings(await listCampaignConversionMappings(campaignId));
+    } catch (err: unknown) {
+      setActionError(err instanceof Error ? err : new Error(String(err)));
+    } finally {
+      setSyncingPreset(false);
+    }
+  }, [campaignId, campaignMeta?.status_integration_schema_id]);
+
+  const busy = loadingKey != null || blocking || savingMappings || syncingPreset;
 
   return {
     draftPlacementId,
@@ -257,6 +288,10 @@ export function useCampaignOpsPanelWorkspace({
     actionError,
     savingMappings,
     mappingSaveSuccess,
+    statusIntegrationSchemaName: campaignMeta?.status_integration_schema_name,
+    statusIntegrationSchemaId: campaignMeta?.status_integration_schema_id,
+    syncingPreset,
+    syncPresetMessage,
     blocking,
     busy,
     onLoadStats,
@@ -268,6 +303,7 @@ export function useCampaignOpsPanelWorkspace({
     onValidateFlow,
     onSaveMappings,
     onBlockPlacement,
+    onSyncFromPreset,
   };
 }
 

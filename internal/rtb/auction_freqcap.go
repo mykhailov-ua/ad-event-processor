@@ -2,6 +2,8 @@ package rtb
 
 import (
 	"sync/atomic"
+
+	"ad-event-processor/internal/domain"
 )
 
 type FcapSnapshot struct {
@@ -74,16 +76,11 @@ func FreqCapExceeded(limit, count uint32) bool {
 }
 
 func HashBytes64(b []byte) uint64 {
-	const (
-		offset64 = 14695981039346656037
-		prime64  = 1099511628211
-	)
-	h := uint64(offset64)
-	for i := range b {
-		h ^= uint64(b[i])
-		h *= prime64
-	}
-	return h
+	return domain.FNV64Bytes(b)
+}
+
+func HashString64(s string) uint64 {
+	return domain.FNV64String(s)
 }
 
 type fcapSnap struct {

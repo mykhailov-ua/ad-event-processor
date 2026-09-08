@@ -184,15 +184,15 @@ type rtbShadowDiffBucket struct {
 
 var rtbShadowDiffRing [rtbShadowDiffBuckets]rtbShadowDiffBucket
 
-func rtbShadowDiffBucketIdx(now time.Time) int {
-	return now.UTC().Hour() % rtbShadowDiffBuckets
+func rtbShadowDiffBucketIdx(hour int) int {
+	return hour % rtbShadowDiffBuckets
 }
 
-func recordRtbShadowDiff(catalog *RtbCatalog, evt *domain.Event, res AuctionResult, reason NoBidReason) {
+func recordRtbShadowDiffAtHour(catalog *RtbCatalog, evt *domain.Event, res AuctionResult, reason NoBidReason, hour int) {
 	if catalog == nil || evt == nil || evt.CampaignID == uuid.Nil {
 		return
 	}
-	b := &rtbShadowDiffRing[rtbShadowDiffBucketIdx(time.Now())]
+	b := &rtbShadowDiffRing[rtbShadowDiffBucketIdx(hour)]
 	b.shadowEvals.Add(1)
 
 	if !reason.OK() {
@@ -294,12 +294,13 @@ func init() {
 	bindRtbShadowMetrics()
 }
 
-func RecordRtbShadowAuction(
+func RecordRtbShadowAuctionAt(
 	catalog *RtbCatalog,
 	evt *domain.Event,
 	res AuctionResult,
 	reason NoBidReason,
 	payloadBidMicro int64,
+	hourUTC int,
 ) {
 	if catalog == nil || evt == nil {
 		return
@@ -317,7 +318,7 @@ func RecordRtbShadowAuction(
 			rtbShadowMetrics.winnerMismatch.Inc()
 		}
 	}
-	recordRtbShadowDiff(catalog, evt, res, reason)
+	recordRtbShadowDiffAtHour(catalog, evt, res, reason, hourUTC)
 	if payloadBidMicro <= 0 {
 		return
 	}
@@ -330,6 +331,16 @@ func RecordRtbShadowAuction(
 		delta = -delta
 	}
 	rtbShadowMetrics.priceDelta.Observe(float64(delta))
+}
+
+func RecordRtbShadowAuction(
+	catalog *RtbCatalog,
+	evt *domain.Event,
+	res AuctionResult,
+	reason NoBidReason,
+	payloadBidMicro int64,
+) {
+	RecordRtbShadowAuctionAt(catalog, evt, res, reason, payloadBidMicro, time.Now().UTC().Hour())
 }
 
 const (

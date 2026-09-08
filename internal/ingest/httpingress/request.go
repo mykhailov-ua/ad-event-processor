@@ -52,6 +52,14 @@ type Request struct {
 	ConnTimingSet         uint8
 }
 
+// ResetHTTP1Request clears req before ParseHTTP1LimitsInto reuse on a pooled or stack slot.
+func ResetHTTP1Request(req *Request) {
+	if req == nil {
+		return
+	}
+	*req = Request{}
+}
+
 type H2ConnState struct {
 	Established            bool
 	SettingsSent           bool

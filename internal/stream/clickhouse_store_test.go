@@ -123,19 +123,28 @@ func TestClickHouseStore_StoreBatch_DeterministicTokenGeneration(t *testing.T) {
 	assert.NoError(t, err)
 
 	assert.Len(t, preparedQueries, 2)
-	q1 := preparedQueries[0]
-	q2 := preparedQueries[1]
-
-	assert.Contains(t, q1, "SETTINGS insert_deduplicate=1")
-	assert.Contains(t, q2, "SETTINGS insert_deduplicate=1")
+	impQ1 := chQueryForTable(preparedQueries, "impressions")
+	clickQ1 := chQueryForTable(preparedQueries, "clicks")
+	require.NotEmpty(t, impQ1)
+	require.NotEmpty(t, clickQ1)
 
 	preparedQueries = nil
 	err = store.StoreBatch(context.Background(), []*domain.Event{evt1, evt2})
 	assert.NoError(t, err)
 
 	assert.Len(t, preparedQueries, 2)
-	assert.Equal(t, q1, preparedQueries[0], "Generated query for impressions must be identical")
-	assert.Equal(t, q2, preparedQueries[1], "Generated query for clicks must be identical")
+	assert.Equal(t, impQ1, chQueryForTable(preparedQueries, "impressions"), "Generated query for impressions must be identical")
+	assert.Equal(t, clickQ1, chQueryForTable(preparedQueries, "clicks"), "Generated query for clicks must be identical")
+}
+
+func chQueryForTable(queries []string, table string) string {
+	needle := "INSERT INTO " + table + " "
+	for _, q := range queries {
+		if strings.HasPrefix(q, needle) {
+			return q
+		}
+	}
+	return ""
 }
 
 func TestClickHouseStore_StoreBatch_PartialFailureRetry(t *testing.T) {

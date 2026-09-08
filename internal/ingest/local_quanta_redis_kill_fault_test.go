@@ -82,7 +82,7 @@ func TestFault_LocalQuantaRedisSIGKILL_BudgetInvariant(t *testing.T) {
 	f.SetQuotaConfig("live", testQuotaChunkMicro, testQuotaRefillThreshold)
 	f.SetLuaFastPathEnabled(true)
 	f.SetTTCMin(0)
-	f.SetLocalQuantaDeps(LocalQuantaDeps{Ledger: ledger, Stream: stream, Idem: stream.IdemCache()})
+	f.SetLocalQuantaDeps(LocalQuantaDepsWithStream(ledger, stream))
 	f.SetLocalQuantaMode("live")
 	require.NoError(t, f.PreloadScripts(ctx))
 

@@ -411,7 +411,10 @@ func TestFault_HTTP1_IncrementalConcurrentWrite(t *testing.T) {
 }
 
 func TestFault_HTTP1_PipelinedMalformedMix(t *testing.T) {
-	cfg := &config.Config{MaxRequestBodySize: 1024 * 1024}
+	cfg := &config.Config{
+		MaxRequestBodySize:    1024 * 1024,
+		HTTP1MaxPipelineDepth: 8,
+	}
 	h := NewAdsPacketHandler(cfg, &mockRegistry{}, nil, nil, nil, NewJumpHashSharder(1), "fraud", nil)
 
 	valid := BuildGnetPostTrackJSON([]byte(`{"campaign_id":"` + uuid.NewString() + `","type":"click","click_id":"p1"}`))
@@ -458,7 +461,7 @@ func TestFault_HTTP1_PipelinedKeepAliveBudget(t *testing.T) {
 	stack := startAdsIngestStack(t, infra, "ads-fault-http1-pipeline")
 	defer stack.Close(t)
 
-	const n = 10
+	const n = 4
 	var pipelined []byte
 	for i := range n {
 		body := fmt.Sprintf(

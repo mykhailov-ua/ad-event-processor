@@ -18,14 +18,23 @@
 // ParseHTTP1(data, maxBody, scratchPtr):
 //   - maxBody from MAX_REQUEST_BODY_SIZE (bytes, default 1048576); ErrPayloadTooLarge when CL or
 //     chunked aggregate exceeds maxBody.
-//   - Returns ErrIncomplete when headers or body not fully present in data.
+//   - Returns ErrIncomplete when headers or body not fully present in data (including mid-header-line splits).
+//     After headers complete, partial body/chunked returns consumed=header offset so Tier A arms idle without spin.
 //   - POST /track with missing CL or chunked TE: ErrInvalid before body read.
+//
+// ParseHTTP1LimitsInto(data, maxBody, scratchPtr, limits, req):
+//   - In-place parse into caller-owned req; ResetHTTP1Request runs at entry. Hot path uses this API to
+//     avoid return-by-value Request escape (~640 B). Legacy ParseHTTP1 copies out on return.
+//
+// CountCompleteHTTP1Messages / CountCompleteH2Messages:
+//   - Count fully parsed requests in a peek buffer; used by gnet pipeline backpressure (HTTP1_MAX_PIPELINE_*).
 //
 // Defaults and limits:
 //   - MaxBufferedOverhead = 8192 bytes (inbound buffer headroom above maxBody).
 //   - HTTP1HeaderOrder array size HeaderOrderMax = 16.
 //   - Fast path: 22-byte compare for canonical POST /track request line (http1_fsm.go).
-//   - Chunked parser rejects chunk extensions on /track paths; OpenRTB chunked uses scratchPtr pool.
+//   - Chunked parser rejects chunk extensions and caps trailer header lines (maxHTTP1ChunkTrailerLines).
+//   - ParseLimits.MinChunkedDataBytes rejects OpenRTB micro-chunks when >1 (production default 64 via tracker cfg).
 //
 // Tradeoffs:
 //   - Hand-rolled HTTP/1 DFA vs net/http per request:
@@ -33,7 +42,7 @@
 //     on tracker ingest (hot-path.mdc): incompatible with gnet epoll and alloc gate.
 //   - Body aliases wire buffer vs always copying body:
 //     Content-Length bodies reference data[i:i+clValue] for zero-copy parse on Tier A. Pin/copy
-//     happens in gnet PinParsedHTTPRequest before Tier B handler; peek frame discarded after offload.
+//     happens in gnet PinHTTP1RequestInPlace before Tier B handler; peek frame discarded after offload.
 //   - Chunked TE on /openrtb/bid only vs allowing on /track:
 //     /track rejects chunked to block TE.TE obfuscation and slow-body attacks aligned with nginx edge.
 //     OpenRTB bid accepts chunked for exchange wire compatibility.

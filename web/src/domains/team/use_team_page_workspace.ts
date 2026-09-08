@@ -1,6 +1,5 @@
 // L3 team admin: roster tab + budget approvals; separate refresh tokens per lane.
 import { useCallback, useEffect, useState } from 'react';
-import { useSearchParams } from 'react-router-dom';
 import { toast } from 'sonner';
 
 import {
@@ -13,12 +12,15 @@ import {
   updateTeamMember,
 } from '@/api/team_api';
 import type { TeamMemberEditDraft, TeamRosterTab } from '@/domains/team/team_overview';
+import { confirmDestructiveAction, mutationError } from '@/lib/mutation_audit';
 import { useResource } from '@/api/use_resource';
 import { useSession } from '@/hooks/use_session';
+import { useTransitionSearchParams } from '@/hooks/use_transition_search_params';
 import { parseListLimit, parseListOffset } from '@/lib/list_query';
 
 export function useTeamPageWorkspace() {
-  const [searchParams, setSearchParams] = useSearchParams();
+  const [searchParams, { isPending: listQueryPending, replaceSearchParams }] =
+    useTransitionSearchParams();
   const { session } = useSession();
   const [rosterTab, setRosterTab] = useState<TeamRosterTab>('members');
   const [overviewRefreshToken, setOverviewRefreshToken] = useState(0);
@@ -55,6 +57,7 @@ export function useTeamPageWorkspace() {
     data: membersData,
     error: membersError,
     fetching: membersFetching,
+    revalidating: membersRevalidating,
   } = useResource(
     (signal) => {
       if (!shouldFetchMembers) {
@@ -106,6 +109,7 @@ export function useTeamPageWorkspace() {
     data: approvalsData,
     error: approvalsError,
     fetching: approvalsFetching,
+    revalidating: approvalsRevalidating,
   } = useResource(
     (signal) => {
       if (!shouldFetchApprovals) {
@@ -154,7 +158,7 @@ export function useTeamPageWorkspace() {
       next.set('member_offset', String(Math.max(0, memberOffset)));
       next.set('approval_limit', String(approvalLimit));
       next.set('approval_offset', String(Math.max(0, approvalOffset)));
-      setSearchParams(next, { replace: true });
+      replaceSearchParams(next);
     },
     [
       appliedApprovalsLimit,
@@ -162,8 +166,8 @@ export function useTeamPageWorkspace() {
       appliedCustomerId,
       appliedMembersLimit,
       appliedMembersOffset,
+      replaceSearchParams,
       searchParams,
-      setSearchParams,
     ]
   );
 
@@ -226,9 +230,12 @@ export function useTeamPageWorkspace() {
           is_blocked: draft.is_blocked,
           spend_cap_micro: spendCapMicro,
         });
+        toast.success('Member updated');
         setRosterRefreshToken((value) => value + 1);
       } catch (err: unknown) {
-        setActionError(err instanceof Error ? err : new Error(String(err)));
+        const nextError = mutationError(err);
+        setActionError(nextError);
+        toast.error(nextError.message);
       } finally {
         setMemberUpdatingId(undefined);
       }
@@ -256,24 +263,33 @@ export function useTeamPageWorkspace() {
       toast.success('Invite sent');
       setRosterRefreshToken((value) => value + 1);
     } catch (err: unknown) {
-      setActionError(err instanceof Error ? err : new Error(String(err)));
+      const nextError = mutationError(err);
+      setActionError(nextError);
+      toast.error(nextError.message);
     } finally {
       setInviting(false);
     }
   }, [appliedCustomerId, draftInviteEmail, draftInviteRole, inviting]);
 
   const runApprovalAction = useCallback(async (id: string, action: 'approve' | 'deny') => {
+    if (action === 'deny' && !confirmDestructiveAction('Deny this budget approval request?')) {
+      return;
+    }
     setActingId(id);
     setActionError(undefined);
     try {
       if (action === 'approve') {
         await approveTeamBudgetApproval(id);
+        toast.success('Budget approval granted');
       } else {
         await denyTeamBudgetApproval(id);
+        toast.success('Budget approval denied');
       }
       setRosterRefreshToken((value) => value + 1);
     } catch (err: unknown) {
-      setActionError(err instanceof Error ? err : new Error(String(err)));
+      const nextError = mutationError(err);
+      setActionError(nextError);
+      toast.error(nextError.message);
     } finally {
       setActingId(undefined);
     }
@@ -299,7 +315,9 @@ export function useTeamPageWorkspace() {
     memberDrafts,
     fetching,
     membersFetching,
+    membersListRevalidating: membersRevalidating || listQueryPending,
     approvalsFetching,
+    approvalsListRevalidating: approvalsRevalidating || listQueryPending,
     inviting,
     error,
     membersError,

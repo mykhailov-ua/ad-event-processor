@@ -10,6 +10,7 @@ import {
 } from '@/api/settings_api';
 import { useCoalescedBumpRefresh, useRefreshToken } from '@/hooks/use_coalesced_refresh_token';
 import { useResource } from '@/api/use_resource';
+import { confirmDestructiveAction, mutationError } from '@/lib/mutation_audit';
 
 function readBootstrapComplete(payload: Record<string, unknown> | undefined): boolean {
   const value = payload?.bootstrap_complete;
@@ -79,7 +80,9 @@ export function useSettingsPageWorkspace() {
       setDraftPatchJson('');
       bumpRefreshCoalesced();
     } catch (err: unknown) {
-      setPatchError(err instanceof Error ? err : new Error(String(err)));
+      const nextError = err instanceof Error ? err : new Error(String(err));
+      setPatchError(nextError);
+      toast.error(nextError.message);
     } finally {
       setPatching(false);
     }
@@ -113,6 +116,9 @@ export function useSettingsPageWorkspace() {
     if (applying) {
       return;
     }
+    if (!confirmDestructiveAction('Write platform configuration to disk on the server?')) {
+      return;
+    }
     setApplying(true);
     setApplyError(undefined);
     setApplySuccess(false);
@@ -124,7 +130,9 @@ export function useSettingsPageWorkspace() {
       toast.success('Configuration saved to disk');
       setApplyWrittenPath(response.written_path);
     } catch (err: unknown) {
-      setApplyError(err instanceof Error ? err : new Error(String(err)));
+      const nextError = mutationError(err);
+      setApplyError(nextError);
+      toast.error(nextError.message);
     } finally {
       setApplying(false);
     }
@@ -137,6 +145,9 @@ export function useSettingsPageWorkspace() {
     const token = draftInstallToken.trim();
     const trimmed = draftBootstrapJson.trim();
     if (!token || !trimmed) {
+      return;
+    }
+    if (!confirmDestructiveAction('Run initial platform bootstrap with the provided install token?')) {
       return;
     }
     setBootstrapping(true);
@@ -154,7 +165,9 @@ export function useSettingsPageWorkspace() {
       setDraftBootstrapJson('');
       bumpRefreshCoalesced();
     } catch (err: unknown) {
-      setBootstrapError(err instanceof Error ? err : new Error(String(err)));
+      const nextError = mutationError(err);
+      setBootstrapError(nextError);
+      toast.error(nextError.message);
     } finally {
       setBootstrapping(false);
     }

@@ -6,22 +6,26 @@ import { ErrorBlock } from '@/shell/error_block';
 import { StubBanner } from '@/shell/stub_banner';
 import type { CloneCampaignOptions } from '@/api/campaigns_api';
 import { adminKit } from '@/lib/admin_kit';
-import { pageSectionStackClass } from '@/shell/page_layout';
 import { cn } from '@/lib/utils';
 
 /** Bordered editor/wizard section card. */
 export const campaignEditorSectionClass = cn(
-  'grid gap-4 border border-border bg-card p-3',
+  'grid gap-4 border border-border bg-card p-4',
   adminKit.panelRadius
 );
 
 /** Muted inset panel inside an editor section. */
 export const campaignEditorInsetPanelClass = cn(
-  'grid gap-2 border border-border bg-muted p-3 text-sm',
+  'grid gap-2 border border-border bg-muted p-4 text-sm',
   adminKit.panelRadius
 );
 
-export const campaignEditorWizardRootClass = pageSectionStackClass;
+/** Wizard/import panel stack inside sheet body. */
+export const campaignEditorWizardRootClass = 'grid gap-4';
+
+/** Two-column form row with explicit horizontal gap between fields. */
+export const campaignEditorFormColumnsClass =
+  'grid w-full min-w-0 grid-cols-1 gap-x-4 gap-y-4 sm:grid-cols-2';
 
 export const campaignEditorActionsRowClass = 'flex flex-wrap justify-end gap-2';
 
@@ -61,7 +65,7 @@ export function FieldErrorsPanel({
           </li>
         ))}
       </ul>
-      <pre className="overflow-x-auto rounded-md bg-muted p-2 text-xs">
+      <pre className="overflow-x-auto bg-muted p-2 text-xs">
         {JSON.stringify(fieldErrors, null, 2)}
       </pre>
     </div>

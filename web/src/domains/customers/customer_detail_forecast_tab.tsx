@@ -34,7 +34,7 @@ export function CustomerDetailForecastTab({
 
   return (
     <Card>
-      <CardHeader className="flex flex-row flex-wrap items-center justify-between gap-2">
+      <CardHeader className="grid grid-cols-[1fr_auto] items-center gap-2">
         <CardTitle className="text-base">Billing forecast</CardTitle>
         <div className="flex flex-wrap gap-2">
           {forecast.low_confidence ? <Badge variant="secondary">Low confidence</Badge> : null}

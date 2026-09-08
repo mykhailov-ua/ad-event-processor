@@ -7,25 +7,21 @@ import { ThemeToggle } from '@/shell/theme_toggle';
 import { useTrackerHeaderSearch } from '@/lib/tracker_header_context';
 
 export type TrackerShellSidebarToggleProps = {
-  collapsed: boolean;
-  mobileNavOpen?: boolean;
+  expanded: boolean;
   onToggle: () => void;
 };
 
 export function TrackerShellSidebarToggle({
-  collapsed,
-  mobileNavOpen = false,
+  expanded,
   onToggle,
 }: TrackerShellSidebarToggleProps) {
-  const navOpen = mobileNavOpen || !collapsed;
-
   return (
     <Button
-      aria-expanded={navOpen}
-      aria-label={navOpen ? 'Hide navigation menu' : 'Show navigation menu'}
-      className="inline-flex size-7 items-center justify-center rounded-md p-0 hover:bg-accent hover:text-accent-foreground"
+      aria-expanded={expanded}
+      aria-label={expanded ? 'Hide navigation menu' : 'Show navigation menu'}
+      className="inline-flex size-7 items-center justify-center rounded-none p-0"
       type="button"
-      variant="secondary"
+      variant="outline"
       onClick={onToggle}
     >
       <PanelLeft aria-hidden className="h-4 w-4" />
@@ -65,7 +61,7 @@ export function TrackerShellHeaderSearch({ onOpenCommandPalette }: TrackerShellH
   return (
     <div className="w-full max-w-md">
       <Button
-        className="w-full justify-between gap-2 px-3 font-normal text-muted-foreground"
+        className="grid w-full grid-cols-[1fr_auto] gap-2 px-3 font-normal text-muted-foreground"
         type="button"
         variant="outline"
         onClick={onOpenCommandPalette}

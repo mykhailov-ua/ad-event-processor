@@ -93,7 +93,7 @@ func trackClientStaticGnetResponse(path []byte) ([]byte, bool) {
 	return track.TrackClientStaticGnetResponse(path)
 }
 
-func (h *AdsPacketHandler) reactTrackOPTIONS(req Request, c gnet.Conn, ctx *ConnContext) gnet.Action {
+func (h *AdsPacketHandler) reactTrackOPTIONS(req *Request, c gnet.Conn, ctx *ConnContext) gnet.Action {
 	resp := buildTrackCORSPreflight(unsafeString(req.Origin), h.trackCORS)
 	if resp == nil {
 		h.write(c, respMethodNotAllowed, ctx)
@@ -129,7 +129,7 @@ type trackIngestFields struct {
 
 func (h *AdsPacketHandler) parseTrackIngest(
 	ctx *ConnContext,
-	req Request,
+	req *Request,
 ) (fields trackIngestFields, badResp []byte, httpStatus int, ok bool) {
 	contentType := unsafeString(req.ContentType)
 	adEventProcessorNative := h.cfg == nil || h.cfg.IsAdEventProcessorNativeIngress()

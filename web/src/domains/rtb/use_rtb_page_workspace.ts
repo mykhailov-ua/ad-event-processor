@@ -1,16 +1,17 @@
 // L3 RTB overview report: URL date range drives runReport(rtb-*); draft sync on navigation.
 import { useCallback, useEffect, useMemo, useState } from 'react';
-import { useSearchParams } from 'react-router-dom';
 
 import { ApiError } from '@/api/client';
 import { runReport } from '@/api/reports_api';
 import { useCoalescedBumpRefresh } from '@/hooks/use_coalesced_refresh_token';
 import { useResource } from '@/api/use_resource';
+import { useTransitionSearchParams } from '@/hooks/use_transition_search_params';
 import { defaultReportRange } from '@/lib/report_paths';
 import { fromDatetimeLocalValue, toDatetimeLocalValue } from '@/lib/datetime_range';
 
 export function useRtbPageWorkspace() {
-  const [searchParams, setSearchParams] = useSearchParams();
+  const [searchParams, { isPending: listQueryPending, replaceSearchParams }] =
+    useTransitionSearchParams();
   const defaultRange = useMemo(() => defaultReportRange('7d'), []);
 
   const appliedFrom = searchParams.get('from') ?? defaultRange.from;
@@ -24,7 +25,7 @@ export function useRtbPageWorkspace() {
     setDraftTo(toDatetimeLocalValue(appliedTo));
   }, [appliedFrom, appliedTo]);
 
-  const { data, error, fetching } = useResource(
+  const { data, error, fetching, revalidating: listRevalidating } = useResource(
     async (signal) => {
       const params = { from: appliedFrom, to: appliedTo, limit: 50, offset: 0 };
       const [overview, noBid] = await Promise.all([
@@ -46,8 +47,8 @@ export function useRtbPageWorkspace() {
     const next = new URLSearchParams(searchParams);
     next.set('from', fromDatetimeLocalValue(draftFrom) ?? defaultRange.from);
     next.set('to', fromDatetimeLocalValue(draftTo) ?? defaultRange.to);
-    setSearchParams(next, { replace: true });
-  }, [defaultRange.from, defaultRange.to, draftFrom, draftTo, searchParams, setSearchParams]);
+    replaceSearchParams(next);
+  }, [defaultRange.from, defaultRange.to, draftFrom, draftTo, replaceSearchParams, searchParams]);
 
   const onApply = useCoalescedBumpRefresh(applyRtbRange, fetching);
 
@@ -58,6 +59,7 @@ export function useRtbPageWorkspace() {
     draftFrom,
     draftTo,
     fetching,
+    listRevalidating: listRevalidating || listQueryPending,
     error: licenseGated ? undefined : error,
     hasSnapshot: data != null || licenseGated,
     licenseGated,

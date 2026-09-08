@@ -47,7 +47,7 @@ export function EulaGate({ children }: EulaGateProps) {
           </DialogHeader>
 
           <DialogBody>
-            <div className="rounded-md border border-border whitespace-pre-wrap text-sm">
+            <div className="border border-border whitespace-pre-wrap text-sm">
               {eulaText?.trim() ? eulaText : 'EULA text unavailable from server.'}
             </div>
 

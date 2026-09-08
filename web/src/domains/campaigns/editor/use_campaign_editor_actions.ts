@@ -34,6 +34,7 @@ import {
   type CampaignEditorFormState,
   type MacroPreviewFormState,
 } from '@/domains/campaigns/editor/campaign_editor';
+import { newRandomUuid } from '@/lib/uuid';
 
 export type UseCampaignEditorActionsArgs = {
   id: string | undefined;
@@ -302,7 +303,7 @@ export function useCampaignEditorActions({
     setClonedCampaignId(undefined);
 
     void cloneCampaign(id, buildCloneRequestBody(cloneNameSuffix, cloneOptions), {
-      idempotencyKey: crypto.randomUUID(),
+      idempotencyKey: newRandomUuid(),
     })
       .then((result) => {
         setCloneSuccess(true);

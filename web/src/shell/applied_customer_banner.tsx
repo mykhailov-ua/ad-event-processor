@@ -18,7 +18,7 @@ export function AppliedCustomerBanner({
   return (
     <div
       className={cn(
-        'grid grid-cols-[1fr_auto] items-center gap-2 bg-muted/30 px-4 py-2.5 text-sm',
+        'grid grid-cols-[1fr_auto] items-center gap-2 bg-muted/30 p-2.5 text-sm',
         adminKit.panelRadius
       )}
     >

@@ -1,5 +1,6 @@
 // L3 support feedback form: GET meta + POST create; no list fetch.
 import { useCallback, useState } from 'react';
+import { toast } from 'sonner';
 
 import { createSupportFeedback, getSupportFeedbackMeta } from '@/api/platform_api';
 import { useResource } from '@/api/use_resource';
@@ -37,9 +38,12 @@ export function useSupportFeedbackPageWorkspace() {
       .then((response) => {
         setSubmittedId(response.id);
         setDraftMessage('');
+        toast.success('Feedback submitted');
       })
       .catch((err: unknown) => {
-        setSubmitError(err instanceof Error ? err : new Error(String(err)));
+        const nextError = err instanceof Error ? err : new Error(String(err));
+        setSubmitError(nextError);
+        toast.error(nextError.message);
       })
       .finally(() => {
         setSubmitting(false);

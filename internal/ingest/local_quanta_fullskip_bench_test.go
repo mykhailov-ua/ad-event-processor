@@ -42,7 +42,7 @@ func BenchmarkAcceptLocalQuantaFullSkip(b *testing.B) {
 	)
 	f.SetQuotaConfig("live", testQuotaChunkMicro, testQuotaRefillThreshold)
 	f.SetLuaFastPathEnabled(true)
-	f.SetLocalQuantaDeps(LocalQuantaDeps{Ledger: ledger, Stream: stream, Idem: stream.IdemCache()})
+	f.SetLocalQuantaDeps(LocalQuantaDepsWithStream(ledger, stream))
 	f.SetLocalQuantaMode("live")
 
 	camp := &domain.Campaign{
@@ -58,17 +58,27 @@ func BenchmarkAcceptLocalQuantaFullSkip(b *testing.B) {
 		UserID:     "bench-accept",
 		IP:         "203.0.113.89",
 	}
-	clickScratch := evt.ClickIDBuf[:0]
 	const amount = int64(10_000)
 
-	b.ReportAllocs()
-	benchN := 0
-	for b.Loop() {
-		buf := strconv.AppendInt(clickScratch[:0], int64(benchN), 10)
-		copy(evt.ClickIDBuf[:], buf)
-		evt.ClickID = unsafeString(evt.ClickIDBuf[:len(buf)])
-		_ = f.AcceptLocalQuantaFullSkip(context.Background(), evt, camp, amount, 0)
+	var benchN int
+	for range 200 {
 		benchN++
+		evt.ClickIDBuf[0] = byte('a' + benchN%26)
+		evt.ClickIDBuf[1] = byte('0' + benchN%10)
+		evt.ClickID = unsafeString(evt.ClickIDBuf[:2])
+		_ = f.AcceptLocalQuantaFullSkip(context.Background(), evt, camp, amount, 0)
+		stream.DrainBench()
+	}
+	benchN = 0
+	ctx := context.Background()
+	b.ReportAllocs()
+	for b.Loop() {
+		benchN++
+		evt.ClickIDBuf[0] = byte('a' + benchN%26)
+		evt.ClickIDBuf[1] = byte('0' + benchN%10)
+		evt.ClickID = unsafeString(evt.ClickIDBuf[:2])
+		_ = f.AcceptLocalQuantaFullSkip(ctx, evt, camp, amount, 0)
+		stream.DrainBench()
 	}
 }
 
@@ -105,7 +115,7 @@ func BenchmarkLocalQuanta_FullSkip(b *testing.B) {
 	f.SetQuotaConfig("live", testQuotaChunkMicro, testQuotaRefillThreshold)
 	f.SetLuaFastPathEnabled(true)
 	f.SetTTCMin(0)
-	f.SetLocalQuantaDeps(LocalQuantaDeps{Ledger: ledger, Stream: stream, Idem: stream.IdemCache()})
+	f.SetLocalQuantaDeps(LocalQuantaDepsWithStream(ledger, stream))
 	f.SetLocalQuantaMode("live")
 
 	const amount = int64(10_000)
@@ -178,7 +188,7 @@ func TestUnifiedFilter_Check_zeroAlloc_localQuantaFullSkip(t *testing.T) {
 	)
 	f.SetQuotaConfig("live", testQuotaChunkMicro, testQuotaRefillThreshold)
 	f.SetLuaFastPathEnabled(true)
-	f.SetLocalQuantaDeps(LocalQuantaDeps{Ledger: ledger, Stream: stream, Idem: stream.IdemCache()})
+	f.SetLocalQuantaDeps(LocalQuantaDepsWithStream(ledger, stream))
 	f.SetLocalQuantaMode("live")
 
 	evt := &domain.Event{
@@ -193,13 +203,28 @@ func TestUnifiedFilter_Check_zeroAlloc_localQuantaFullSkip(t *testing.T) {
 
 	ctx := context.Background()
 	const amount = int64(10_000)
-	for range 100 {
-		ledger.Credit(campID, amount, testQuotaChunkMicro)
+	evt.FilterCamp = camp
+	evt.FilterCampResolved = true
+	var benchN int
+	ledger.Credit(campID, 200*amount, testQuotaChunkMicro)
+	evt.FilterCamp = camp
+	evt.FilterCampResolved = true
+	for range 200 {
+		benchN++
+		evt.ClickIDBuf[0] = byte('a' + benchN%26)
+		evt.ClickIDBuf[1] = byte('0' + benchN%10)
+		evt.ClickID = unsafeString(evt.ClickIDBuf[:2])
 		_ = f.Check(ctx, evt)
+		stream.DrainBench()
 	}
+	benchN = 0
 	allocs := testing.AllocsPerRun(100, func() {
-		ledger.Credit(campID, amount, testQuotaChunkMicro)
+		benchN++
+		evt.ClickIDBuf[0] = byte('a' + benchN%26)
+		evt.ClickIDBuf[1] = byte('0' + benchN%10)
+		evt.ClickID = unsafeString(evt.ClickIDBuf[:2])
 		_ = f.Check(ctx, evt)
+		stream.DrainBench()
 	})
 	if allocs != 0 {
 		t.Fatalf("Check local-quanta full-skip allocs = %v, want 0", allocs)

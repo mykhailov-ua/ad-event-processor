@@ -34,14 +34,14 @@ export function MetricCard({ label, value, deltaPct, accent, className }: Metric
         className
       )}
     >
-      <div className="flex items-start justify-between gap-2">
+      <div className="grid grid-cols-[1fr_auto] items-start gap-2">
         <p className="m-0 text-[11px] font-semibold uppercase leading-[14px] text-muted-foreground">
           {label}
         </p>
         {showDelta ? (
           <span
             className={cn(
-              'inline-flex items-center gap-0.5 text-[11px] font-semibold tabular-nums',
+              'inline-flex items-center gap-0.5 font-numeric text-[11px]',
               positive ? adminMetricDeltaPositiveClass : adminMetricDeltaNegativeClass
             )}
           >
@@ -57,7 +57,7 @@ export function MetricCard({ label, value, deltaPct, accent, className }: Metric
       </div>
       <p
         className={cn(
-          'm-0 text-2xl font-bold leading-none tabular-nums',
+          'm-0 font-numeric text-2xl leading-none',
           accent ? adminKpiAccentValueClass[accent] : 'text-foreground'
         )}
       >

@@ -6,6 +6,7 @@ import {
   buildDashboardMockSeries,
   DASHBOARD_MOCK_DEFAULT_FROM,
   DASHBOARD_MOCK_DEFAULT_TO,
+  fillBuyerDashboardPortfolioGaps,
 } from './dashboard_series_mock.ts';
 
 test('buildDashboardMockSeries covers July 1 through September 1', () => {
@@ -53,4 +54,31 @@ test('buildDashboardMockPortfolio campaign names omit pipe separators', () => {
   for (const row of portfolio.breakdowns?.campaigns?.rows ?? []) {
     assert.ok(!row.name?.includes('|'), `campaign fixture name must not contain "|": ${row.name}`);
   }
+});
+
+test('fillBuyerDashboardPortfolioGaps fills empty CH breakdowns when traffic exists', () => {
+  const portfolio = fillBuyerDashboardPortfolioGaps({
+    customer_id: 'cust-live',
+    clicks_7d: 1_900_000,
+    period: { to: '2026-09-07T20:00:00.000Z' },
+    kpis: {
+      conversions: 340_000,
+      cost_micro: 825_000_000_000,
+      revenue_micro: 973_000_000_000,
+      profit_micro: 148_000_000_000,
+    },
+    series: [{ label: '2026-09-01', clicks: 224_710, conversions: 11_858 }],
+    breakdowns: {
+      campaigns: { rows: [{ id: 'c1', name: 'Live campaign', clicks: 1000 }], totals: { clicks: 1000 } },
+      landers: { rows: [] },
+      offers: { rows: [] },
+      sources: { rows: [] },
+    },
+    recent_clicks: [],
+  });
+  assert.ok((portfolio.breakdowns?.landers?.rows?.length ?? 0) >= 5);
+  assert.ok((portfolio.breakdowns?.offers?.rows?.length ?? 0) >= 5);
+  assert.ok((portfolio.breakdowns?.sources?.rows?.length ?? 0) >= 5);
+  assert.equal(portfolio.recent_clicks?.length, 10);
+  assert.equal(portfolio.breakdowns?.campaigns?.rows?.[0]?.name, 'Live campaign');
 });

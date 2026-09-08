@@ -116,6 +116,8 @@ const PopoverContent = React.forwardRef<
     sideOffset?: number;
     collisionPadding?: number;
     panelScroll?: 'panel' | 'inner' | 'none';
+    panelClassName?: string;
+    matchTriggerMinWidth?: boolean;
     onOpenAutoFocus?: (event: Event) => void;
     sticky?: string;
   }
@@ -128,6 +130,8 @@ const PopoverContent = React.forwardRef<
       side = 'bottom',
       sideOffset = 8,
       panelScroll,
+      panelClassName,
+      matchTriggerMinWidth = true,
       onOpenAutoFocus,
       style,
       ...props
@@ -227,9 +231,14 @@ const PopoverContent = React.forwardRef<
             className={cn(
               adminChrome.panel,
               'shadow-lg',
-              flush ? 'w-auto max-w-[min(calc(100vw-1rem),44rem)]' : 'w-full'
+              flush ? 'w-auto max-w-[min(calc(100vw-1rem),44rem)]' : 'w-full',
+              panelClassName
             )}
-            style={{ minWidth: triggerRef.current?.getBoundingClientRect().width }}
+            style={
+              matchTriggerMinWidth
+                ? { minWidth: triggerRef.current?.getBoundingClientRect().width }
+                : undefined
+            }
           >
             <div
               className={cn(

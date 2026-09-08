@@ -4,6 +4,7 @@ import (
 	"context"
 	"encoding/json"
 	"net/http"
+	"strings"
 
 	"ad-event-processor/pkg/coldpath"
 	"ad-event-processor/pkg/httpresponse"
@@ -15,6 +16,8 @@ type AdminService interface {
 	ListBrandsByCustomer(ctx context.Context, customerID uuid.UUID) ([]DTO, error)
 	GetBrand(ctx context.Context, brandID uuid.UUID) (DTO, error)
 	CreateBrand(ctx context.Context, customerID uuid.UUID, name string) (uuid.UUID, error)
+	UpdateBrand(ctx context.Context, brandID uuid.UUID, req UpdateRequest) (DTO, error)
+	DeleteBrand(ctx context.Context, brandID uuid.UUID) error
 	ListBrandCreatives(ctx context.Context, brandID uuid.UUID) ([]CreativeDTO, error)
 	UpsertBrandCreative(ctx context.Context, brandID uuid.UUID, name, landingURL string, weight int32, status string) (uuid.UUID, error)
 	UpdateBrandCreative(ctx context.Context, creativeID uuid.UUID, name, landingURL string, weight int32, status string) error
@@ -45,6 +48,8 @@ func (h *HTTPHandlers) Register(mux *http.ServeMux) {
 	mux.HandleFunc("GET /api/v1/brands", limit(perm("campaigns:read", h.listBrands)))
 	mux.HandleFunc("GET /api/v1/brands/{id}", limit(perm("campaigns:read", h.getBrand)))
 	mux.HandleFunc("POST /api/v1/brands", limit(perm("campaigns:write", h.createBrand)))
+	mux.HandleFunc("PATCH /api/v1/brands/{id}", limit(perm("campaigns:write", h.updateBrand)))
+	mux.HandleFunc("DELETE /api/v1/brands/{id}", limit(perm("campaigns:write", h.deleteBrand)))
 	mux.HandleFunc("GET /api/v1/brands/{id}/creatives", limit(perm("campaigns:read", h.listBrandCreatives)))
 	mux.HandleFunc("POST /api/v1/brands/{id}/creatives", limit(perm("campaigns:write", h.createBrandCreative)))
 	mux.HandleFunc("PATCH /api/v1/brand-creatives/{id}", limit(perm("campaigns:write", h.updateBrandCreative)))
@@ -123,6 +128,62 @@ func (h *HTTPHandlers) createBrand(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 	httpresponse.JSON(w, http.StatusCreated, createdIDResponse{ID: id.String()})
+}
+
+func (h *HTTPHandlers) updateBrand(w http.ResponseWriter, r *http.Request) {
+	brandID, err := coldpath.ParsePathUUID(r, "id")
+	if err != nil {
+		httpresponse.Error(w, http.StatusBadRequest, "BAD_REQUEST", "invalid brand id")
+		return
+	}
+	req, ok := coldpath.DecodeRequestOrBadRequest[UpdateRequest](w, r, coldpath.DefaultMaxBody)
+	if !ok {
+		return
+	}
+	row, err := h.Admin.UpdateBrand(r.Context(), brandID, req)
+	if err != nil {
+		h.writeBrandMutationError(w, err)
+		return
+	}
+	if h.AuthorizeCustomerAccess != nil {
+		if err := h.AuthorizeCustomerAccess(r, row.CustomerID); err != nil {
+			h.writeServiceError(w, err)
+			return
+		}
+	}
+	httpresponse.JSON(w, http.StatusOK, row)
+}
+
+func (h *HTTPHandlers) deleteBrand(w http.ResponseWriter, r *http.Request) {
+	brandID, err := coldpath.ParsePathUUID(r, "id")
+	if err != nil {
+		httpresponse.Error(w, http.StatusBadRequest, "BAD_REQUEST", "invalid brand id")
+		return
+	}
+	if h.AuthorizeCustomerAccess != nil {
+		row, err := h.Admin.GetBrand(r.Context(), brandID)
+		if err != nil {
+			h.writeServiceError(w, err)
+			return
+		}
+		if err := h.AuthorizeCustomerAccess(r, row.CustomerID); err != nil {
+			h.writeServiceError(w, err)
+			return
+		}
+	}
+	if err := h.Admin.DeleteBrand(r.Context(), brandID); err != nil {
+		h.writeBrandMutationError(w, err)
+		return
+	}
+	w.WriteHeader(http.StatusNoContent)
+}
+
+func (h *HTTPHandlers) writeBrandMutationError(w http.ResponseWriter, err error) {
+	if strings.Contains(err.Error(), "referenced") {
+		httpresponse.Error(w, http.StatusConflict, "CONFLICT", err.Error())
+		return
+	}
+	h.writeServiceError(w, err)
 }
 
 func (h *HTTPHandlers) listBrandCreatives(w http.ResponseWriter, r *http.Request) {

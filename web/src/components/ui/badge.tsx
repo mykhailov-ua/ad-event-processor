@@ -1,6 +1,7 @@
 import * as React from 'react';
 
 import { badgeVariantClass, type BadgeVariant } from '@/lib/admin_chrome';
+import { adminKit } from '@/lib/admin_kit';
 import { cn } from '@/lib/utils';
 
 export type BadgeProps = React.HTMLAttributes<HTMLDivElement> & {
@@ -11,7 +12,8 @@ function Badge({ className, variant = 'default', ...props }: BadgeProps) {
   return (
     <div
       className={cn(
-        'inline-flex items-center rounded-full border px-2 py-0.5 text-xs font-normal leading-4',
+        adminKit.controlRadius,
+        'inline-flex items-center border px-2.5 py-0.5 text-xs font-normal leading-4',
         badgeVariantClass[variant],
         className
       )}

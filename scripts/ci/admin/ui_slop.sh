@@ -193,16 +193,6 @@ for dir in web/src/domains web/src/shell web/src/pages; do
   fi
 done
 
-if rg -n '00000000-\$\{|padStart\(12,\s*['\''"]0['\''"]\)|function devUuid|4000-8000-0000000000' web/src/api/dev_mock --glob '*.ts' --glob '!*.test.ts' 2> /dev/null; then
-  echo "Error: UI slop - trivial sequential UUID generator in dev_mock; use seedDeterministicUuid / newRandomUuid (web/src/api/dev_mock/seed_uuid.ts)"
-  failed=1
-fi
-
-if rg -n "user_id:\s*['\"]user-[0-9]|user_id:\s*['\"]buyer-[0-9]|owner_user_id:\s*['\"]buyer-" web/src/api/dev_mock --glob '*.ts' --glob '!*.test.ts' 2> /dev/null; then
-  echo "Error: UI slop - slug user_id in dev_mock; use seedDeterministicUuid('user', n) from fixtures"
-  failed=1
-fi
-
 if rg -n 'className="[^"]*admin-[^"]*![-a-z]' web/src/domains web/src/shell web/src/pages --glob '*.tsx' 2> /dev/null; then
   echo "Error: UI slop - Tailwind important utility on same className as admin-* BEM; see frontend-slop.mdc Tailwind vs global CSS collision"
   failed=1
@@ -228,6 +218,36 @@ for dir in web/src/domains web/src/shell web/src/pages; do
     failed=1
   fi
 done
+
+if [ "$failed" -ne 0 ]; then
+  echo "Remediation: .cursor/rules/ui.mdc; mocks/tables/styling: .cursor/rules/frontend-slop.mdc (Tailwind vs global CSS collision); control height: web/src/lib/admin_kit.ts"
+  exit 1
+fi
+
+# Class A mobile nav: Sheet dock with dedicated nav scroll (frontend-slop.mdc overlays).
+echo "ui slop: mobile nav sheet contract"
+if ! rg -n 'AppMobileNavSheet' web/src/app_shell.tsx 2> /dev/null; then
+  echo "Error: UI slop - app_shell must render AppMobileNavSheet for mobile navigation (VL-13c)"
+  failed=1
+fi
+if ! rg -n 'overflow-hidden' web/src/shell/app_sidebar.tsx 2> /dev/null; then
+  echo "Error: UI slop - AppMobileNavSheet SheetContent must use overflow-hidden dock layout"
+  failed=1
+fi
+if rg -n 'DropdownMenu' web/src/app_shell.tsx web/src/shell/tracker_shell_header.tsx 2> /dev/null; then
+  echo "Error: UI slop - shell nav must not use DropdownMenu; use AppSidebar / AppMobileNavSheet (VL-13c)"
+  failed=1
+fi
+
+echo "ui slop: DropdownMenu default list cap"
+if ! rg -n 'max-h-60' web/src/components/ui/dropdown_menu_scroll.ts 2> /dev/null; then
+  echo "Error: UI slop - DropdownMenuContent scroll wrapper must cap height with max-h-60 (VL-13b)"
+  failed=1
+fi
+if ! rg -n 'stopPropagation' web/src/components/ui/dropdown-menu.tsx 2> /dev/null; then
+  echo "Error: UI slop - DropdownMenu scroll body must stop wheel propagation (VL-13b)"
+  failed=1
+fi
 
 if [ "$failed" -ne 0 ]; then
   echo "Remediation: .cursor/rules/ui.mdc; mocks/tables/styling: .cursor/rules/frontend-slop.mdc (Tailwind vs global CSS collision); control height: web/src/lib/admin_kit.ts"

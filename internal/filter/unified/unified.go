@@ -19,7 +19,7 @@ import (
 	filt "ad-event-processor/internal/filter"
 	"ad-event-processor/internal/licensing"
 	"ad-event-processor/internal/metrics"
-	"ad-event-processor/internal/rtb"
+	"ad-event-processor/internal/stream"
 
 	"github.com/google/uuid"
 	"github.com/prometheus/client_golang/prometheus"
@@ -82,7 +82,11 @@ type UnifiedFilter struct {
 	localQuantaRefill            QuantaRefillSignaler
 	localQuantaPublisher         QuantaDeltaPublisher
 	localQuantaStream            QuantaStreamPublisher
+	localQuantaStreamHot         *stream.LocalQuantaStreamPublisher
+	localFcapLedger              *stream.LocalFcapLedger
 	localClickIdem               QuantaClickIdem
+	localClickIdemHot            *stream.LocalClickIdemCache
+	localRollbackGuard           *stream.LocalClickIdemCache
 	localTTC                     *LocalTTCCache
 	roughPacing                  *RoughPacingGate
 	settingsWatcher              *filt.SettingsWatcher
@@ -113,6 +117,35 @@ type UnifiedFilter struct {
 	cgnatGlobalBypass           bool
 	mobileCarrierASN            *filt.MobileCarrierASNTable
 	asnLookup                   filt.ASNLookup
+	filterLuaBranchDuplicate    prometheus.Counter
+	filterLuaBranchOK           prometheus.Counter
+
+	clickTryClaimFast func(string) bool
+	clickReleaseFast  func(string)
+	streamEnqueueFast func(int, *domain.Event, *domain.Campaign, int64) bool
+
+	metricLocalQuotaFullSkip         prometheus.Counter
+	metricRedisLuaSkipped            prometheus.Counter
+	metricEventsProcessed            prometheus.Counter
+	metricLocalQuotaSpend            prometheus.Counter
+	metricLocalQuotaFullSkipEligible prometheus.Counter
+
+	budgetScratch budgetFastScratch
+	fullScratch   UnifiedCheckScratch
+
+	fcapOnce   sync.Once
+	fcapQueue  chan fcapBumpJob
+	fcapKeyVal filt.StringVal
+
+	evalFastWire [budgetFastKeyCount + budgetFastArgCount + 3]any
+	evalFullWire [evalShaWireCap]any
+	evalRedisCmd redis.Cmd
+}
+
+type fcapBumpJob struct {
+	client redis.UniversalClient
+	key    string
+	secs   int32
 }
 
 func (f *UnifiedFilter) SetPlacementBlacklistFilter(p *filt.PlacementBlacklistFilter) {
@@ -269,53 +302,63 @@ func NewUnifiedFilter(
 	rollbackScript := redis.NewScript(budgetRollbackLua)
 	emptyGeoFloors := make(map[string]int64)
 	f := &UnifiedFilter{
-		redisShards:                  redisShards,
-		sharder:                      sharder,
-		script:                       script,
-		scriptHash:                   script.Hash(),
-		scriptHashAny:                script.Hash(),
-		fastScript:                   fastScript,
-		fastScriptHashAny:            fastScript.Hash(),
-		rollbackScript:               rollbackScript,
-		rollbackScriptHash:           rollbackScript.Hash(),
-		registry:                     registry,
-		repo:                         repo,
-		rateLimit:                    rateLimit,
-		rateLimitWindow:              rateLimitWindow,
-		dupTTL:                       dupTTL,
-		idempotencyTTL:               idempotencyTTL,
-		clickAmountMicro:             clickAmount,
-		impressionAmountMicro:        impressionAmount,
-		streamName:                   streamName,
-		streamKeyVal:                 filt.StringVal{S: streamName},
-		maxStreamLen:                 maxStreamLen,
-		rateLimitWindowAny:           int(rateLimitWindow.Seconds()),
-		rateLimitAny:                 rateLimit,
-		dupTTLAny:                    int(dupTTL.Seconds()),
-		idempotencyTTLAny:            int(idempotencyTTL.Seconds()),
-		maxStreamLenAny:              maxStreamLen,
-		clickAmountMicroAny:          clickAmount,
-		impressionAmountMicroAny:     impressionAmount,
-		clickAmountMicroHalfAny:      clickAmount / 2,
-		impressionAmountMicroHalfAny: impressionAmount / 2,
-		ttcFailClosedAny:             zeroAny,
-		skipBudgetDebitAny:           zeroAny,
-		quotaEnabledAny:              zeroAny,
-		quotaChunkSizeAny:            zeroAny,
-		quotaRefillThresholdPctAny:   20,
-		quotaMode:                    "off",
-		localQuotaCache:              filt.NewLocalQuotaCache(),
-		luaDurationObservers:         newRedisLuaObservers(len(redisShards)),
-		luaFastDurationObservers:     newRedisLuaTierObservers(len(redisShards)),
-		luaFastPathCounters:          newRedisLuaPathCounters(len(redisShards), true),
-		luaFullPathCounters:          newRedisLuaPathCounters(len(redisShards), false),
-		luaNoScriptCounters:          newRedisLuaNoScriptCounters(len(redisShards)),
-		redisObservability:           filt.NewRedisShardObservability(len(redisShards), filt.LuaMetricsSampleMask),
-		dbLookupTimeout:              2 * time.Second,
-		postgresFallbackAllowed:      true,
-		evalFallbackGate:             make(chan struct{}, 32),
+		redisShards:                      redisShards,
+		sharder:                          sharder,
+		script:                           script,
+		scriptHash:                       script.Hash(),
+		scriptHashAny:                    script.Hash(),
+		fastScript:                       fastScript,
+		fastScriptHashAny:                fastScript.Hash(),
+		rollbackScript:                   rollbackScript,
+		rollbackScriptHash:               rollbackScript.Hash(),
+		registry:                         registry,
+		repo:                             repo,
+		rateLimit:                        rateLimit,
+		rateLimitWindow:                  rateLimitWindow,
+		dupTTL:                           dupTTL,
+		idempotencyTTL:                   idempotencyTTL,
+		clickAmountMicro:                 clickAmount,
+		impressionAmountMicro:            impressionAmount,
+		streamName:                       streamName,
+		streamKeyVal:                     filt.StringVal{S: streamName},
+		maxStreamLen:                     maxStreamLen,
+		rateLimitWindowAny:               int(rateLimitWindow.Seconds()),
+		rateLimitAny:                     rateLimit,
+		dupTTLAny:                        int(dupTTL.Seconds()),
+		idempotencyTTLAny:                int(idempotencyTTL.Seconds()),
+		maxStreamLenAny:                  maxStreamLen,
+		clickAmountMicroAny:              clickAmount,
+		impressionAmountMicroAny:         impressionAmount,
+		clickAmountMicroHalfAny:          clickAmount / 2,
+		impressionAmountMicroHalfAny:     impressionAmount / 2,
+		ttcFailClosedAny:                 zeroAny,
+		skipBudgetDebitAny:               zeroAny,
+		quotaEnabledAny:                  zeroAny,
+		quotaChunkSizeAny:                zeroAny,
+		quotaRefillThresholdPctAny:       20,
+		quotaMode:                        "off",
+		localQuotaCache:                  filt.NewLocalQuotaCache(),
+		localFcapLedger:                  stream.NewLocalFcapLedger(),
+		luaDurationObservers:             newRedisLuaObservers(len(redisShards)),
+		luaFastDurationObservers:         newRedisLuaTierObservers(len(redisShards)),
+		luaFastPathCounters:              newRedisLuaPathCounters(len(redisShards), true),
+		luaFullPathCounters:              newRedisLuaPathCounters(len(redisShards), false),
+		luaNoScriptCounters:              newRedisLuaNoScriptCounters(len(redisShards)),
+		redisObservability:               filt.NewRedisShardObservability(len(redisShards), filt.LuaMetricsSampleMask),
+		dbLookupTimeout:                  2 * time.Second,
+		postgresFallbackAllowed:          true,
+		evalFallbackGate:                 make(chan struct{}, 32),
+		filterLuaBranchDuplicate:         metrics.FilterLuaBranchTotal.WithLabelValues("duplicate"),
+		filterLuaBranchOK:                metrics.FilterLuaBranchTotal.WithLabelValues("ok"),
+		metricLocalQuotaFullSkip:         metrics.LocalQuotaFullSkipTotal,
+		metricRedisLuaSkipped:            metrics.RedisLuaSkippedTotal,
+		metricEventsProcessed:            metrics.EventsProcessed,
+		metricLocalQuotaSpend:            metrics.LocalQuotaSpendTotal,
+		metricLocalQuotaFullSkipEligible: metrics.LocalQuotaFullSkipEligibleTotal,
 	}
 	f.geoFloors.Store(&emptyGeoFloors)
+	initBudgetFastScratch(&f.budgetScratch)
+	initUnifiedCheckScratch(&f.fullScratch)
 	return f
 }
 
@@ -528,17 +571,15 @@ func (f *UnifiedFilter) checkFreqLimitGo(evt *domain.Event, campInfo *domain.Cam
 	if campInfo == nil || campInfo.FreqLimit <= 0 || evt.UserID == "" {
 		return false, nil
 	}
-	if f.settingsWatcher == nil {
+	if f.localFcapLedger == nil {
 		return false, nil
 	}
-	snap := f.settingsWatcher.GetFcapRtbSnapshot()
-	if snap == nil {
+	lookup := fcapLookupKey(evt, campInfo)
+	if lookup == 0 {
 		return false, nil
 	}
-	prefixHash := rtb.HashBytes64([]byte(campInfo.FcapKeyPrefix))
-	userHash := rtb.HashBytes64([]byte(evt.UserID))
-	count, ok := snap.FcapCount(prefixHash, userHash)
-	if ok && count >= uint32(campInfo.FreqLimit) {
+	nowSec := uint32(filt.CachedUnixSec())
+	if f.localFcapLedger.WouldExceed(lookup, uint32(campInfo.FreqLimit), campInfo.FreqWindow, nowSec) {
 		return true, filt.ErrFreqLimitExceeded
 	}
 	return false, nil
@@ -555,6 +596,16 @@ func (f *UnifiedFilter) getCampaign(evt *domain.Event) (*domain.Campaign, bool) 
 		return nil, false
 	}
 	return filt.GetCampaignFromEvent(f.registry, evt)
+}
+
+func (f *UnifiedFilter) campaignForCheck(ctx context.Context, evt *domain.Event) (*domain.Campaign, error) {
+	if evt != nil && evt.FilterCampResolved {
+		if evt.FilterCamp == nil {
+			return nil, filt.ErrCampaignNotFound
+		}
+		return evt.FilterCamp, nil
+	}
+	return filt.LookupCampaign(ctx, f.registry, evt)
 }
 
 func (f *UnifiedFilter) Check(ctx context.Context, evt *domain.Event) error {
@@ -581,9 +632,16 @@ func (f *UnifiedFilter) checkPass(ctx context.Context, evt *domain.Event) error 
 		return filt.ErrBudgetExhausted
 	}
 
-	campInfo, err := filt.LookupCampaign(ctx, f.registry, evt)
+	campInfo, err := f.campaignForCheck(ctx, evt)
 	if err != nil {
 		return err
+	}
+
+	if handled, err := f.tryLocalQuantaFullSkipCheck(ctx, evt, campInfo, 0); handled {
+		if err != nil {
+			return err
+		}
+		return nil
 	}
 
 	if evt.ClickID == "" {
@@ -592,7 +650,9 @@ func (f *UnifiedFilter) checkPass(ctx context.Context, evt *domain.Event) error 
 		evt.ClickID = filt.UnsafeString(evt.ClickIDBuf[:])
 	}
 
-	f.applyGoTTC(evt)
+	if f.localTTC != nil && ttcEnabled(f.ttcMinMsAny) {
+		f.applyGoTTC(evt)
+	}
 
 	if f.placementBL != nil {
 		if err := f.placementBL.Check(ctx, evt); err != nil {
@@ -636,16 +696,25 @@ func (f *UnifiedFilter) checkPass(ctx context.Context, evt *domain.Event) error 
 		amountMicro /= 2
 	}
 
-	if err := f.checkGoRoughPacing(evt, campInfo, amountMicro); err != nil {
-		return err
+	if campInfo.PacingMode == domain.PacingModeEven && f.roughPacing != nil && campInfo.RoughPacingEnabled() {
+		if err := f.checkGoRoughPacing(evt, campInfo, amountMicro); err != nil {
+			return err
+		}
 	}
 
 	// Local-quanta live full-skip: Go TrySpendDebit plus async stream enqueue, zero sync EVALSHA.
 	// Partial local-quanta live still runs budget-fast.lua with skipBudgetDebit for dedup/sync only.
 	if handled, err := f.checkLocalQuanta(ctx, evt, campInfo, amountMicro); handled {
-		return err
+		if err != nil {
+			return err
+		}
+		return nil
 	}
 
+	return f.checkPassRedisLua(ctx, evt, campInfo, amount, amountMicro)
+}
+
+func (f *UnifiedFilter) checkPassRedisLua(ctx context.Context, evt *domain.Event, campInfo *domain.Campaign, amount any, amountMicro int64) error {
 	shard, _, err := f.resolveDebitShard(evt.CampaignID, evt.UserID, evt.ClickID, campInfo)
 	if err != nil {
 		return err
@@ -663,39 +732,24 @@ func (f *UnifiedFilter) checkPass(ctx context.Context, evt *domain.Event) error 
 	}
 
 	if f.fastPathEnabled.Load() && !f.needsFullLuaPath(evt, campInfo) {
-		if campInfo.FreqLimit > 0 && evt.UserID != "" {
-			exceeded, err := f.checkFreqLimitGo(evt, campInfo)
-			if err != nil {
-				return err
-			}
-			if exceeded {
-				return filt.ErrFreqLimitExceeded
-			}
+		_, fcapErr := f.tryAcquireLocalFcap(evt, campInfo)
+		if fcapErr != nil {
+			return fcapErr
 		}
-		fastScratch := budgetFastScratchPool.Get().(*budgetFastScratch)
+		fastScratch := &f.budgetScratch
 		err := f.runBudgetFastLua(ctx, evt, campInfo, amount, redisClient, shard, fastScratch)
-		budgetFastScratchPool.Put(fastScratch)
-		if err == nil {
-			if campInfo.FreqLimit > 0 && evt.UserID != "" {
-				fcapKey := campInfo.FcapKeyPrefix + evt.UserID
-				go func(parent context.Context, key string, window int32) {
-					fcapCtx, cancel := context.WithTimeout(parent, 20*time.Millisecond)
-					defer cancel()
-					pipe := redisClient.Pipeline()
-					pipe.Incr(fcapCtx, key)
-					pipe.Expire(fcapCtx, key, time.Duration(window)*time.Second)
-					_, _ = pipe.Exec(fcapCtx)
-				}(ctx, fcapKey, campInfo.FreqWindow)
-			}
+		if err != nil {
+			f.rollbackLocalFcapForEvent(evt)
+			return err
 		}
-		return err
+		if evt.LocalFcapLookup != 0 {
+			f.scheduleFcapBumpForEvent(redisClient, evt, campInfo, fastScratch)
+		}
+		return nil
 	}
 
-	scratch := UnifiedScratchPool.Get().(*UnifiedCheckScratch)
-	scratch.Acquire()
+	scratch := &f.fullScratch
 	err = f.runUnifiedLua(ctx, evt, campInfo, amount, redisClient, shard, scratch)
-	scratch.Release()
-	UnifiedScratchPool.Put(scratch)
 	return err
 }
 
@@ -720,7 +774,7 @@ func (f *UnifiedFilter) runUnifiedLua(
 	wImpTS := &scratch.wImpTS
 	wQuota := &scratch.wQuota
 	wRefillLock := &scratch.wRefillLock
-	args := scratch.args
+	args := scratch.args[:]
 	wrappers := &scratch.wrappers
 
 	wDup.Buf = wDup.Buf[:0]

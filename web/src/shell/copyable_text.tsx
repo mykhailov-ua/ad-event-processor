@@ -16,7 +16,7 @@ export function CopyableText({ className, label, mono = false, title, value }: C
   }
 
   return (
-    <span className={cn('inline-flex min-w-0 max-w-full items-center gap-0.5', className)}>
+    <span className={cn('inline-flex min-w-0 max-w-full items-center gap-1.5', className)}>
       <span
         className={cn(
           'min-w-0 select-text whitespace-nowrap',

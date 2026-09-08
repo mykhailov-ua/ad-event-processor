@@ -6,6 +6,7 @@ import { listMarginGuardActivity, removeMarginGuardOverride } from '@/api/margin
 import { useCoalescedBumpRefresh, useRefreshToken } from '@/hooks/use_coalesced_refresh_token';
 import { useCampaignScope } from '@/hooks/use_campaign_scope';
 import { useResource } from '@/api/use_resource';
+import { confirmDestructiveAction, mutationError } from '@/lib/mutation_audit';
 
 export function useMarginGuardActivityPageWorkspace() {
   const { appliedCampaignId, draftCampaignId, setDraftCampaignId, applyCampaignScope } =
@@ -37,6 +38,9 @@ export function useMarginGuardActivityPageWorkspace() {
     if (!campaignId || !placementId) {
       return;
     }
+    if (!confirmDestructiveAction(`Clear margin guard override for placement ${placementId}?`)) {
+      return;
+    }
     setRemoving(true);
     setActionError(undefined);
     setRemoveSuccess(false);
@@ -47,7 +51,9 @@ export function useMarginGuardActivityPageWorkspace() {
       toast.success('Placement override cleared');
       bumpRefreshCoalesced();
     } catch (err: unknown) {
-      setActionError(err instanceof Error ? err : new Error(String(err)));
+      const nextError = mutationError(err);
+      setActionError(nextError);
+      toast.error(nextError.message);
     } finally {
       setRemoving(false);
     }

@@ -8,6 +8,7 @@ import {
   listReportSchedules,
   updateReportSchedule,
 } from '@/api/report_schedules_api';
+import { confirmDestructiveAction, mutationError } from '@/lib/mutation_audit';
 import { useCustomerScope } from '@/hooks/use_customer_scope';
 import { useCoalescedBumpRefresh, useRefreshToken } from '@/hooks/use_coalesced_refresh_token';
 import { useResource } from '@/api/use_resource';
@@ -31,13 +32,13 @@ function parseEnabled(value: string): boolean | undefined {
 }
 
 export function useReportSchedulesPageWorkspace() {
-  const { appliedCustomerId, draftCustomerId, setDraftCustomerId, applyCustomerScope } =
+  const { appliedCustomerId, draftCustomerId, setDraftCustomerId, applyCustomerScope, listQueryPending } =
     useCustomerScope();
 
   const { refreshToken, bumpRefresh } = useRefreshToken();
   const shouldFetch = Boolean(appliedCustomerId);
 
-  const { data, error, fetching } = useResource(
+  const { data, error, fetching, revalidating: listRevalidating } = useResource(
     (signal) => {
       if (!shouldFetch) {
         return Promise.resolve(undefined);
@@ -47,15 +48,13 @@ export function useReportSchedulesPageWorkspace() {
     [appliedCustomerId, shouldFetch, refreshToken]
   );
 
-  const bumpRefreshCoalesced = useCoalescedBumpRefresh(bumpRefresh, fetching);
-
-  const [draftReportKey, setDraftReportKey] = useState('');
-  const [draftCronExpr, setDraftCronExpr] = useState('');
-  const [draftFormat, setDraftFormat] = useState('csv');
   const [editRows, setEditRows] = useState<Record<string, ScheduleEditRow>>({});
   const [acting, setActing] = useState(false);
   const [actionError, setActionError] = useState<Error | undefined>(undefined);
   const [createSuccess, setCreateSuccess] = useState(false);
+
+  const listBusy = fetching || acting;
+  const bumpRefreshCoalesced = useCoalescedBumpRefresh(bumpRefresh, listBusy);
 
   useEffect(() => {
     if (!data?.length) {
@@ -74,6 +73,10 @@ export function useReportSchedulesPageWorkspace() {
     }
     setEditRows(next);
   }, [data]);
+
+  const [draftReportKey, setDraftReportKey] = useState('');
+  const [draftCronExpr, setDraftCronExpr] = useState('');
+  const [draftFormat, setDraftFormat] = useState('csv');
 
   const bumpReload = bumpRefreshCoalesced;
 
@@ -139,20 +142,30 @@ export function useReportSchedulesPageWorkspace() {
 
   const onDeleteSchedule = useCallback(
     (scheduleId: string) => {
+      if (acting) {
+        return;
+      }
+      const label = editRows[scheduleId]?.report_key?.trim() || scheduleId;
+      if (!confirmDestructiveAction(`Delete report schedule "${label}"?`)) {
+        return;
+      }
       setActing(true);
       setActionError(undefined);
       void deleteReportSchedule(scheduleId)
         .then(() => {
+          toast.success('Report schedule deleted');
           bumpReload();
         })
         .catch((err: unknown) => {
-          setActionError(err instanceof Error ? err : new Error(String(err)));
+          const nextError = mutationError(err);
+          setActionError(nextError);
+          toast.error(nextError.message);
         })
         .finally(() => {
           setActing(false);
         });
     },
-    [bumpReload]
+    [acting, bumpReload, editRows]
   );
 
   const onEditRowChange = useCallback((id: string, field: keyof ScheduleEditRow, value: string) => {
@@ -170,6 +183,7 @@ export function useReportSchedulesPageWorkspace() {
     appliedCustomerId,
     draftCustomerId,
     fetching,
+    listRevalidating: listRevalidating || listQueryPending,
     error,
     hasSnapshot: data != null,
     draftReportKey,

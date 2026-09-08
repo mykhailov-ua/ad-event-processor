@@ -100,11 +100,13 @@ export type CustomerDetailProps = {
   saveSuccess: boolean;
   canSaveTax: boolean;
   onSaveTaxProfile: () => void;
+  draftName: string;
+  onDraftNameChange: (value: string) => void;
   draftCostCenter: string;
   onDraftCostCenterChange: (value: string) => void;
-  savingCostCenter: boolean;
-  costCenterSaveError: Error | undefined;
-  costCenterSaveSuccess: boolean;
-  canSaveCostCenter: boolean;
-  onSaveCostCenter: () => void;
+  savingProfile: boolean;
+  profileSaveError: Error | undefined;
+  profileSaveSuccess: boolean;
+  canSaveProfile: boolean;
+  onSaveProfile: () => void;
 };

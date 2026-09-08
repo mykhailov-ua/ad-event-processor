@@ -3,9 +3,11 @@ import assert from 'node:assert/strict';
 
 import {
   campaignListSortNeedsMetricWindow,
+  campaignListSortStartsDesc,
+  campaignListSortShowsAscIcon,
   campaignListSortToApi,
   sortFieldForCampaignColumn,
-} from './campaign_list_sort.ts';
+} from '@/domains/campaigns/list/campaign_list_sort';
 
 test('campaignListSortToApi maps UI id column to id', () => {
   assert.equal(campaignListSortToApi('id'), 'id');
@@ -27,4 +29,17 @@ test('campaignListSortNeedsMetricWindow matches backend metric window sorts', ()
 
 test('sortFieldForCampaignColumn maps cost to cost not spend', () => {
   assert.equal(sortFieldForCampaignColumn('cost'), 'cost');
+});
+
+test('campaignListSortStartsDesc defaults metrics to highest-first', () => {
+  assert.equal(campaignListSortStartsDesc('roi'), true);
+  assert.equal(campaignListSortStartsDesc('name'), false);
+  assert.equal(campaignListSortStartsDesc('status'), false);
+});
+
+test('campaignListSortShowsAscIcon points up for top metric values', () => {
+  assert.equal(campaignListSortShowsAscIcon('desc', true), true);
+  assert.equal(campaignListSortShowsAscIcon('asc', true), false);
+  assert.equal(campaignListSortShowsAscIcon('asc', false), true);
+  assert.equal(campaignListSortShowsAscIcon('desc', false), false);
 });

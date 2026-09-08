@@ -7,7 +7,7 @@ import { CampaignsListTable } from '@/domains/campaigns/list/campaigns_list_tabl
 import { CampaignsListToolbar } from '@/domains/campaigns/list/campaigns_list_toolbar';
 import { CampaignsDirectoryOverlays } from '@/domains/campaigns/list/campaigns_directory_overlays';
 import type { CampaignsDirectoryProps } from '@/domains/campaigns/list/campaigns_directory_types';
-import { campaignListTableCardClass } from '@/domains/campaigns/list/campaign_list_classes';
+import { TableHost } from '@/shell/ui_bands';
 import { useCampaignsDirectoryWorkspace } from '@/domains/campaigns/list/use_campaigns_directory_workspace';
 import { ErrorBlock } from '@/shell/error_block';
 import { PageSkeleton } from '@/shell/page_skeleton';
@@ -65,10 +65,12 @@ export function CampaignsDirectory({
   filterTotalsCapped = false,
   filteredTotal = 0,
   metricsStale = false,
+  listLastUpdatedAt = null,
   listScopeKey,
   statsQuery,
   exportFilterQuery,
   fetching,
+  listRevalidating = false,
   error,
   hasSnapshot,
   filtersActive,
@@ -162,6 +164,8 @@ export function CampaignsDirectory({
   return (
     <>
       <PageLayout
+        description="Create, edit, pause, and bulk-manage campaigns. Open Report for read-only analytics."
+        title="Campaigns"
         controlPanel={
           <div className="grid gap-3">
             {listFacetsDegraded ? (
@@ -189,6 +193,8 @@ export function CampaignsDirectory({
               listFacetsFetching={listFacetsFetching}
               listFacetsDegraded={listFacetsDegraded}
               metricsStale={metricsStale}
+              listLastUpdatedAt={listLastUpdatedAt}
+              listRevalidating={listRevalidating}
               ownerOptions={ownerOptions}
               statusTotals={statusTotals}
               statusTotalsLoading={statusTotalsLoading}
@@ -203,11 +209,15 @@ export function CampaignsDirectory({
               }}
               onBudgetFiltersApply={onBudgetFiltersApply}
               onCloneClick={() => {
-                if (workspace.selectedIds.size !== 1) {
-                  toast.error('Select exactly one campaign to clone');
+                if (workspace.selectedIds.size === 0) {
+                  toast.error('Select at least one campaign');
                   return;
                 }
-                workspace.setCloneOpen(true);
+                if (workspace.selectedIds.size === 1) {
+                  workspace.setCloneOpen(true);
+                  return;
+                }
+                workspace.setBulkCloneOpen(true);
               }}
               onCreateClick={handleCreateClick}
               onStatsRangeChange={onStatsRangeChange}
@@ -241,12 +251,14 @@ export function CampaignsDirectory({
               paginationDisabled={fetching}
               onPageNext={() => onPageChange(offset + limit)}
               onPagePrev={() => onPageChange(Math.max(0, offset - limit))}
-            />
-            <CampaignListTableCardTools
-              columnPrefs={workspace.columnPrefs}
-              disabled={fetching}
-              onColumnPrefsChange={workspace.handleColumnPrefsApply}
-              onResetWorkspaceClick={() => workspace.setResetWorkspaceOpen(true)}
+              tableViewTools={
+                <CampaignListTableCardTools
+                  columnPrefs={workspace.columnPrefs}
+                  disabled={fetching}
+                  onColumnPrefsChange={workspace.handleColumnPrefsApply}
+                  onResetWorkspaceClick={() => workspace.setResetWorkspaceOpen(true)}
+                />
+              }
             />
           </div>
         }
@@ -291,8 +303,8 @@ export function CampaignsDirectory({
           </div>
         }
       >
-        <div className="flex min-h-0 min-w-0 flex-1 flex-col overflow-hidden">
-          <div className={campaignListTableCardClass}>
+        <div className="min-w-0 w-full">
+          <TableHost className="w-full">
             <CampaignsListTable
               appliedOrder={appliedOrder}
               appliedSort={appliedSort}
@@ -306,6 +318,7 @@ export function CampaignsDirectory({
                   : 'No campaigns yet. Create one to start tracking spend and delivery.'
               }
               fetching={fetching}
+              listRevalidating={listRevalidating}
               filterTotals={filterTotals}
               items={items}
               marginsById={marginsById}
@@ -321,7 +334,7 @@ export function CampaignsDirectory({
               statsCacheRevision={listScopeKey}
               statsQuery={statsQuery}
             />
-          </div>
+          </TableHost>
         </div>
       </PageLayout>
 
@@ -329,6 +342,7 @@ export function CampaignsDirectory({
         actionError={actionError}
         archiveOpen={workspace.archiveOpen}
         bulkBusy={workspace.bulkBusy}
+        bulkCloneOpen={workspace.bulkCloneOpen}
         cloneOpen={workspace.cloneOpen}
         createDisabled={createDisabled}
         createSectionOpen={createSectionOpen}
@@ -345,7 +359,13 @@ export function CampaignsDirectory({
         importPanelWorkspace={workspace.importPanelWorkspace}
         onArchiveConfirm={workspace.onArchiveSelected}
         onArchiveOpenChange={workspace.setArchiveOpen}
+        onBulkCloneOpenChange={workspace.setBulkCloneOpen}
         onCloneOpenChange={workspace.setCloneOpen}
+        onBulkCloned={() => {
+          workspace.setBulkCloneOpen(false);
+          workspace.setSelectedIds(new Set());
+          onRefreshList();
+        }}
         onCloned={() => {
           workspace.setCloneOpen(false);
           onRefreshList();
@@ -373,6 +393,7 @@ export function CampaignsDirectory({
         listScopeKey={listScopeKey}
         resetWorkspaceOpen={workspace.resetWorkspaceOpen}
         selectedCampaignId={workspace.selectedCampaignId}
+        selectedCampaignIds={workspace.selectedIdsList}
         selectedCampaignName={workspace.selectedCampaign?.name}
         selectedCount={workspace.selectedIds.size}
         statsQuery={statsQuery}

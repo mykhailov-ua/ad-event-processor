@@ -35,6 +35,11 @@ type Config struct {
 	HTTP1IncompleteMax                  int
 	HTTP1BodyIdleMs                     int
 	HTTP1MaxConnLifetimeMs              int
+	HTTP1MaxPipelineDepth               int
+	HTTP1MaxPipelineBusyBytes           int64
+	HTTP1TCPUserTimeoutMs               int
+	HTTP1TCPLingerSec                   int
+	HTTP1MinChunkedDataBytes            int
 	OrtbScanMaxBytes                    int
 	OrtbMaxQuoteChecks                  int
 	ProtoMaxFields                      int
@@ -103,8 +108,11 @@ type Config struct {
 	ProcessorStreamLagMaxSec            int
 	TrackerPGFallback                   bool
 	RegistryStalePGGrace                bool
+	RegistryStalePGMaxRPS               int
 	WriteTimeoutMs                      int
 	FilterTimeoutMs                     int
+	ClickFilterTierDefault              string
+	ClickFilterRedirectOnlyLicensed     bool
 	FilterSlowMs                        int
 	MetricsHistogramSampleMask          int
 	AuditLogSampleMask                  int
@@ -206,6 +214,8 @@ type Config struct {
 		DomainSSLSetupEnabled                      bool
 		DomainSSLSetupScript                       string
 		DomainSSLAcmeEmail                         string
+		DomainWildcardSSLStaging                   bool
+		ACMEDirectoryURL                           string
 		CaddyTLSAskToken                           Secret
 		CaddyTLSAskAllowLocal                      bool
 		CloudflareAPIToken                         Secret
@@ -671,7 +681,12 @@ func Load() (*Config, error) {
 		H2IncompleteMax:                        getEnvInt("H2_INCOMPLETE_MAX", 3),
 		HTTP1IncompleteMax:                     getEnvInt("HTTP1_INCOMPLETE_MAX", 3),
 		HTTP1BodyIdleMs:                        getEnvIntDefaultHTTP1BodyIdle(appEnv),
-		HTTP1MaxConnLifetimeMs:                 getEnvInt("HTTP1_MAX_CONN_LIFETIME_MS", 0),
+		HTTP1MaxConnLifetimeMs:                 getEnvIntDefaultHTTP1MaxConnLifetime(appEnv),
+		HTTP1MaxPipelineDepth:                  getEnvIntDefaultHTTP1MaxPipelineDepth(appEnv),
+		HTTP1MaxPipelineBusyBytes:              getEnvInt64DefaultHTTP1MaxPipelineBusyBytes(appEnv),
+		HTTP1TCPUserTimeoutMs:                  getEnvIntDefaultHTTP1TCPUserTimeoutMs(appEnv),
+		HTTP1TCPLingerSec:                      getEnvIntDefaultHTTP1TCPLingerSec(appEnv),
+		HTTP1MinChunkedDataBytes:               getEnvIntDefaultHTTP1MinChunkedDataBytes(appEnv),
 		OrtbScanMaxBytes:                       getEnvInt("ORTB_SCAN_MAX_BYTES", 262144),
 		OrtbMaxQuoteChecks:                     getEnvInt("ORTB_MAX_QUOTE_CHECKS", 65536),
 		ProtoMaxFields:                         getEnvInt("PROTO_MAX_FIELDS", 256),
@@ -737,8 +752,11 @@ func Load() (*Config, error) {
 		ProcessorStreamLagMaxSec:               getEnvInt("PROCESSOR_STREAM_LAG_MAX_SEC", 120),
 		TrackerPGFallback:                      getEnvBool("TRACKER_PG_FALLBACK", appEnv != "production"),
 		RegistryStalePGGrace:                   getEnvBool("REGISTRY_STALE_PG_GRACE", true),
+		RegistryStalePGMaxRPS:                  getEnvInt("REGISTRY_STALE_PG_MAX_RPS", 100),
 		WriteTimeoutMs:                         getEnvInt("WRITE_TIMEOUT_MS", 5000),
 		FilterTimeoutMs:                        getEnvInt("FILTER_TIMEOUT_MS", 0),
+		ClickFilterTierDefault:                 envOrDefault("CLICK_FILTER_TIER_DEFAULT", "full"),
+		ClickFilterRedirectOnlyLicensed:        getEnvBool("CLICK_FILTER_REDIRECT_ONLY_LICENSED", false),
 		FilterSlowMs:                           getEnvInt("FILTER_SLOW_MS", 5),
 		MetricsHistogramSampleMask:             getEnvInt("METRICS_HISTOGRAM_SAMPLE_MASK", 127),
 		AuditLogSampleMask:                     getEnvInt("AUDIT_LOG_SAMPLE_RATE", 127),
@@ -1083,6 +1101,78 @@ func getEnvIntDefaultHTTP1BodyIdle(appEnv string) int {
 		return 5000
 	}
 	return 500
+}
+
+func getEnvIntDefaultHTTP1MaxConnLifetime(appEnv string) int {
+	if v := strings.TrimSpace(os.Getenv("HTTP1_MAX_CONN_LIFETIME_MS")); v != "" {
+		if n, err := strconv.Atoi(v); err == nil && n >= 0 {
+			return n
+		}
+	}
+	if appEnv == "production" {
+		return 120_000
+	}
+	return 0
+}
+
+func getEnvIntDefaultHTTP1MaxPipelineDepth(appEnv string) int {
+	if v := strings.TrimSpace(os.Getenv("HTTP1_MAX_PIPELINE_DEPTH")); v != "" {
+		if n, err := strconv.Atoi(v); err == nil && n > 0 {
+			return n
+		}
+	}
+	if appEnv == "production" {
+		return 4
+	}
+	return 16
+}
+
+func getEnvInt64DefaultHTTP1MaxPipelineBusyBytes(appEnv string) int64 {
+	if v := strings.TrimSpace(os.Getenv("HTTP1_MAX_PIPELINE_BUSY_BYTES")); v != "" {
+		if n, err := strconv.ParseInt(v, 10, 64); err == nil && n > 0 {
+			return n
+		}
+	}
+	if appEnv == "production" {
+		return 256 << 10
+	}
+	return 1 << 20
+}
+
+func getEnvIntDefaultHTTP1TCPUserTimeoutMs(appEnv string) int {
+	if v := strings.TrimSpace(os.Getenv("HTTP1_TCP_USER_TIMEOUT_MS")); v != "" {
+		if n, err := strconv.Atoi(v); err == nil && n >= 0 {
+			return n
+		}
+	}
+	if appEnv == "production" {
+		return 15_000
+	}
+	return 0
+}
+
+func getEnvIntDefaultHTTP1TCPLingerSec(appEnv string) int {
+	if v := strings.TrimSpace(os.Getenv("HTTP1_TCP_LINGER_SEC")); v != "" {
+		if n, err := strconv.Atoi(v); err == nil {
+			return n
+		}
+	}
+	if appEnv == "production" {
+		return 0
+	}
+	return -1
+}
+
+func getEnvIntDefaultHTTP1MinChunkedDataBytes(appEnv string) int {
+	if v := strings.TrimSpace(os.Getenv("HTTP1_MIN_CHUNKED_DATA_BYTES")); v != "" {
+		if n, err := strconv.Atoi(v); err == nil && n >= 0 {
+			return n
+		}
+	}
+	if appEnv == "production" {
+		return 64
+	}
+	return 1
 }
 
 func loadLanderHostModules(cfg *Config) {

@@ -54,6 +54,10 @@ func (s *Service) ProxyAllowHTTPInsecure() bool {
 	return s.cfg != nil && s.cfg.ProxyAllowHTTPInsecure
 }
 
+func (s *Service) ClickFilterRedirectOnlyLicensed() bool {
+	return s.cfg != nil && s.cfg.ClickFilterRedirectOnlyLicensed
+}
+
 func (s *Service) PublishCampaignUpdate(ctx context.Context, campaignID string) {
 	_ = s.publishCampaignUpdate(ctx, campaignID)
 }
@@ -118,6 +122,19 @@ func formatOptionalText(t pgtype.Text) string {
 
 func (s *Service) ListCampaigns(ctx context.Context, customerID uuid.UUID, status string, limit, offset int32) ([]campaign.CampaignDTO, int64, error) {
 	return s.CampaignRuntime().ListCampaigns(ctx, customerID, status, limit, offset)
+}
+
+func (s *Service) ListCampaignsFiltered(ctx context.Context, filter campaign.ListCampaignsFilter) ([]campaign.CampaignDTO, int64, error) {
+	return s.CampaignRuntime().ListCampaignsFiltered(ctx, filter)
+}
+
+func (s *Service) CountCampaignStatusTotals(
+	ctx context.Context,
+	filter campaign.ListCampaignsFilter,
+	searchQuery string,
+	pacingMode string,
+) (campaign.CampaignStatusTotalsDTO, error) {
+	return s.CampaignRuntime().CountCampaignStatusTotals(ctx, filter, searchQuery, pacingMode)
 }
 
 func (s *Service) GetCampaign(ctx context.Context, id uuid.UUID) (campaign.CampaignDTO, error) {
@@ -200,3 +217,5 @@ func (s *Service) RunCampaignSmoke(ctx context.Context, campaignID uuid.UUID) (c
 func (s *Service) SmokeServiceAvailable() bool {
 	return s != nil && s.pool != nil
 }
+
+var _ campaign.CampaignReader = (*Service)(nil)

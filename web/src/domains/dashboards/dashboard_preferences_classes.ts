@@ -1,15 +1,15 @@
 import { adminKit } from '@/lib/admin_kit';
+import { shellChrome } from '@/shell/shell_chrome';
 import { cn } from '@/lib/utils';
 
-export const dashboardPrefsDialogHeaderClass =
-  'shrink-0 border-b border-border px-5 py-4 text-left';
+export const dashboardPrefsDialogHeaderClass = shellChrome.sectionHeaderBandLgClass;
 
 export const dashboardPrefsDialogTitleClass = 'm-0 text-base font-semibold leading-6 text-primary';
 
 export const dashboardPrefsDialogSectionClass = 'grid gap-3';
 
 export const dashboardPrefsDialogSectionTitleClass =
-  'm-0 text-sm font-semibold leading-5 text-foreground';
+  'm-0 text-[13px] font-semibold leading-[18px] text-foreground';
 
 export const dashboardPrefsDialogSectionBodyClass = 'grid gap-4';
 
@@ -19,7 +19,7 @@ export const dashboardPrefsFieldLabelClass =
   'm-0 text-[13px] font-medium leading-[18px] text-muted-foreground';
 
 export const dashboardPrefsChipBoxClass = cn(
-  'flex min-h-10 flex-wrap items-center gap-1.5 border border-border bg-background px-2.5 py-2',
+  'flex min-h-7 flex-wrap items-center gap-1.5 border border-border bg-background px-2.5 py-1',
   adminKit.panelRadius
 );
 
@@ -54,8 +54,7 @@ export const dashboardPrefsCheckboxRowClass = cn(
 
 export const dashboardPrefsCheckboxLabelClass = 'text-[13px] leading-[18px] text-foreground';
 
-export const dashboardPrefsDialogFooterClass =
-  'shrink-0 flex-row items-center justify-between gap-3 border-t border-border bg-muted/20 px-5 py-4 sm:justify-between';
+export const dashboardPrefsDialogFooterClass = shellChrome.sectionFooterBandLgClass;
 
 export const dashboardPrefsRestoreClass =
   'text-[13px] font-medium leading-[18px] text-admin-positive transition-colors hover:text-admin-brand';

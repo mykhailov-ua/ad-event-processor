@@ -58,7 +58,7 @@ func TestAuction_freqCapReject(t *testing.T) {
 		Weight: 1, Budget: 5000, FreqLimit: 3, FcapPrefixHash: prefixHash,
 	}})
 
-	_, reason := reg.RunAuction(&BidRequest{
+	_, reason := reg.RunAuctionPtr(&BidRequest{
 		DeviceType: 1, CategoryMask: 1, GeoHash: 7, MinBid: 50,
 		FcapUserHash: userHash,
 	})
@@ -83,7 +83,7 @@ func TestAuction_freqCapOK(t *testing.T) {
 		Weight: 1, Budget: 5000, FreqLimit: 3, FcapPrefixHash: prefixHash,
 	}})
 
-	res, reason := reg.RunAuction(&BidRequest{
+	res, reason := reg.RunAuctionPtr(&BidRequest{
 		DeviceType: 1, CategoryMask: 1, GeoHash: 7, MinBid: 50,
 		FcapUserHash: userHash,
 	})
@@ -104,7 +104,7 @@ func TestAuction_freqCapMissingSnapshotFailOpen(t *testing.T) {
 		Weight: 1, Budget: 5000, FreqLimit: 1, FcapPrefixHash: prefixHash,
 	}})
 
-	res, reason := reg.RunAuction(&BidRequest{
+	res, reason := reg.RunAuctionPtr(&BidRequest{
 		DeviceType: 1, CategoryMask: 1, GeoHash: 7, MinBid: 50,
 		FcapUserHash: userHash,
 	})

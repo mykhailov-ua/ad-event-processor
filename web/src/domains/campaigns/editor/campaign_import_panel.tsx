@@ -67,7 +67,7 @@ export function CampaignImportPanel({ workspace }: { workspace: CampaignImportPa
   return (
     <div className="grid gap-4">
       <section className={cn(campaignEditorSectionClass, 'gap-3')}>
-        <header className="flex flex-wrap items-center justify-between gap-2">
+        <header className="grid gap-1">
           <h2 className="m-0 text-sm font-semibold">Import validate</h2>
           <p className="text-muted-foreground text-sm">
             Validate external tracker payloads before migration import.
@@ -208,7 +208,7 @@ export function CampaignImportPanel({ workspace }: { workspace: CampaignImportPa
       </section>
 
       <section className={cn(campaignEditorSectionClass, 'gap-3')}>
-        <header className="flex flex-wrap items-center justify-between gap-2">
+        <header className="grid gap-1">
           <h2 className="m-0 text-sm font-semibold">Migrate pull</h2>
           <p className="text-muted-foreground text-sm">
             Pull campaigns from Keitaro or Binom admin APIs.

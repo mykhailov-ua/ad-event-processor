@@ -109,6 +109,7 @@ const (
 var (
 	recordRtbDealOutcomeBytes = rtb.RecordRtbDealOutcomeBytes
 	recordRtbShadowAuction    = rtb.RecordRtbShadowAuction
+	recordRtbShadowAuctionAt  = rtb.RecordRtbShadowAuctionAt
 	recordRtbExchangeLog      = rtb.RecordRtbExchangeLog
 )
 
@@ -217,7 +218,7 @@ func RunRtbBidShadeSim(ctx context.Context, pool *pgxpool.Pool, cfg *config.Conf
 		targeting.CategoryMask = 1
 	}
 	bidReq := BidRequestFromEvent(nil, targeting)
-	res, reason := catalog.Registry().RunAuctionEval(&bidReq)
+	res, reason := catalog.Registry().RunAuctionEval(bidReq)
 	if !reason.OK() {
 		out.NoBidReason = reason.String()
 		return out, nil
@@ -295,12 +296,18 @@ func (h *AdsPacketHandler) ConfigureIngestGeo(geo GeoProvider) {
 }
 
 func buildRtbTargeting(evt *domain.Event, deviceType []byte, floorMicro int64, catalog *RtbCatalog) RtbTargetingInput {
+	var out RtbTargetingInput
+	buildRtbTargetingInto(&out, evt, deviceType, floorMicro, catalog)
+	return out
+}
+
+func buildRtbTargetingInto(out *RtbTargetingInput, evt *domain.Event, deviceType []byte, floorMicro int64, catalog *RtbCatalog) {
 	geoHash := uint32(0)
 	if evt != nil && evt.IngestGeoResolved {
 		geoHash = evt.GeoHash
 	}
 
-	out := RtbTargetingInput{GeoHash: geoHash}
+	*out = RtbTargetingInput{GeoHash: geoHash}
 
 	if evt != nil && len(evt.Payload) > 0 {
 		var parsed OpenRTB3Parsed
@@ -325,7 +332,7 @@ func buildRtbTargeting(evt *domain.Event, deviceType []byte, floorMicro int64, c
 			out.DeviceType = parsed.DeviceType
 			out.CategoryMask = parsed.CategoryMask
 			out.PublisherFloorMicro = floorMicro
-			return out
+			return
 		}
 	}
 
@@ -350,7 +357,6 @@ func buildRtbTargeting(evt *domain.Event, deviceType []byte, floorMicro int64, c
 	out.DeviceType = DeviceMaskFromType(deviceType)
 	out.CategoryMask = categoryMask
 	out.PublisherFloorMicro = floorMicro
-	return out
 }
 
 func catalogDealFloors(catalog *RtbCatalog) *DealFloorCache {
@@ -368,17 +374,46 @@ func applyRtbAuction(proc trackProcessor, evt *domain.Event, deviceType []byte) 
 		return trackOutcome{}, false
 	}
 
-	targeting := buildRtbTargeting(evt, deviceType, 0, proc.rtbCatalog)
-	payloadBidMicro := targeting.PublisherFloorMicro
-	res, reason := proc.rtbCatalog.RunAuction(evt, targeting)
+	rtb.SnapshotWallClockUnix(int64(filter.CachedUnixSec()))
+
+	var res rtb.AuctionResult
+	var reason rtb.NoBidReason
+	var payloadBidMicro int64
+	var dealIDLen uint8
+	var dealIDBuf []byte
+
+	if evt != nil && len(evt.Payload) == 0 {
+		geoHash := uint32(0)
+		if evt.IngestGeoResolved {
+			geoHash = evt.GeoHash
+		}
+		req := rtb.BidRequest{
+			GeoHash:      geoHash,
+			DeviceType:   DeviceMaskFromType(deviceType),
+			CategoryMask: 1,
+			NowUnix:      int64(filter.CachedUnixSec()),
+		}
+		if proc.rtbMode == rtbModeLive {
+			res, reason = proc.rtbCatalog.RunAuctionSpendDirect(req)
+		} else {
+			res, reason = proc.rtbCatalog.RunAuctionEvalDirect(req)
+		}
+	} else {
+		var targeting RtbTargetingInput
+		buildRtbTargetingInto(&targeting, evt, deviceType, 0, proc.rtbCatalog)
+		payloadBidMicro = targeting.PublisherFloorMicro
+		dealIDLen = targeting.DealIDLen
+		dealIDBuf = targeting.DealIDBuf[:]
+		res, reason = proc.rtbCatalog.RunAuction(evt, &targeting)
+	}
 
 	if proc.rtbMode == rtbModeShadow {
-		recordRtbShadowAuction(proc.rtbCatalog, evt, res, reason, payloadBidMicro)
-		recordRtbDealOutcomeBytes(targeting.DealIDBuf[:], targeting.DealIDLen, payloadBidMicro, res, reason)
+		recordRtbShadowAuctionAt(proc.rtbCatalog, evt, res, reason, payloadBidMicro, CachedHourUTC())
+		recordRtbDealOutcomeBytes(dealIDBuf, dealIDLen, payloadBidMicro, res, reason)
 		return trackOutcome{}, false
 	}
 
-	recordRtbDealOutcomeBytes(targeting.DealIDBuf[:], targeting.DealIDLen, payloadBidMicro, res, reason)
+	recordRtbDealOutcomeBytes(dealIDBuf, dealIDLen, payloadBidMicro, res, reason)
 
 	if !reason.OK() {
 		return trackOutcome{Status: trackStatusRejected, RejectKind: noBidToRejectKind(reason)}, true

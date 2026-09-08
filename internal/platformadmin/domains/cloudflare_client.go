@@ -8,6 +8,7 @@ import (
 	"fmt"
 	"io"
 	"net/http"
+	"net/url"
 	"strings"
 	"time"
 
@@ -28,6 +29,8 @@ type CloudflareZone struct {
 type CloudflareAPI interface {
 	ListZones(ctx context.Context) ([]CloudflareZone, error)
 	CreateDNSRecord(ctx context.Context, zoneID, name, recordType, content string, proxied bool) (recordID string, err error)
+	UpsertTXTRecord(ctx context.Context, zoneID, name, content string) (recordID string, err error)
+	DeleteDNSRecord(ctx context.Context, zoneID, recordID string) error
 	ZoneSSLStatus(ctx context.Context, zoneID string) (status string, err error)
 }
 
@@ -113,6 +116,65 @@ func (c *cloudflareClient) CreateDNSRecord(ctx context.Context, zoneID, name, re
 		return "", errors.New("cloudflare create dns: empty record id")
 	}
 	return rec.ID, nil
+}
+
+func (c *cloudflareClient) UpsertTXTRecord(ctx context.Context, zoneID, name, content string) (string, error) {
+	if c == nil {
+		return "", errors.New("cloudflare client unavailable")
+	}
+	zoneID = strings.TrimSpace(zoneID)
+	name = strings.TrimSpace(name)
+	content = strings.TrimSpace(content)
+	if zoneID == "" || name == "" || content == "" {
+		return "", errors.New("cloudflare txt: zone_id, name, and content required")
+	}
+
+	listBody, err := c.do(ctx, http.MethodGet, "/zones/"+zoneID+"/dns_records?type=TXT&name="+url.QueryEscape(name), nil)
+	if err != nil {
+		return "", err
+	}
+	var existing []struct {
+		ID      string `json:"id"`
+		Content string `json:"content"`
+	}
+	if err := json.Unmarshal(listBody, &existing); err != nil {
+		return "", fmt.Errorf("cloudflare list txt decode: %w", err)
+	}
+	for _, rec := range existing {
+		if strings.TrimSpace(rec.Content) == content && rec.ID != "" {
+			return rec.ID, nil
+		}
+	}
+	if len(existing) > 0 && existing[0].ID != "" {
+		payload, err := json.Marshal(map[string]any{
+			"type":    "TXT",
+			"name":    name,
+			"content": content,
+			"proxied": false,
+		})
+		if err != nil {
+			return "", err
+		}
+		_, err = c.do(ctx, http.MethodPut, "/zones/"+zoneID+"/dns_records/"+existing[0].ID, payload)
+		if err != nil {
+			return "", err
+		}
+		return existing[0].ID, nil
+	}
+	return c.CreateDNSRecord(ctx, zoneID, name, "TXT", content, false)
+}
+
+func (c *cloudflareClient) DeleteDNSRecord(ctx context.Context, zoneID, recordID string) error {
+	if c == nil {
+		return errors.New("cloudflare client unavailable")
+	}
+	zoneID = strings.TrimSpace(zoneID)
+	recordID = strings.TrimSpace(recordID)
+	if zoneID == "" || recordID == "" {
+		return errors.New("cloudflare delete dns: zone_id and record_id required")
+	}
+	_, err := c.do(ctx, http.MethodDelete, "/zones/"+zoneID+"/dns_records/"+recordID, nil)
+	return err
 }
 
 func (c *cloudflareClient) ZoneSSLStatus(ctx context.Context, zoneID string) (string, error) {

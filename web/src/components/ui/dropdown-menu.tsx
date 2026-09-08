@@ -11,6 +11,8 @@ import { OverlayRoot } from '@/lib/overlay_root';
 import { useOverlayDismiss } from '@/lib/use_overlay_dismiss';
 import { cn } from '@/lib/utils';
 
+import { DROPDOWN_MENU_SCROLL_BODY_CLASS } from '@/components/ui/dropdown_menu_scroll';
+
 type MenuContextValue = {
   open: boolean;
   setOpen: (open: boolean) => void;
@@ -18,6 +20,10 @@ type MenuContextValue = {
 };
 
 const MenuContext = React.createContext<MenuContextValue | null>(null);
+
+function stopMenuWheel(event: React.WheelEvent<HTMLDivElement>) {
+  event.stopPropagation();
+}
 
 function useMenuContext() {
   const ctx = React.useContext(MenuContext);
@@ -184,7 +190,7 @@ const DropdownMenuContent = React.forwardRef<
           {...props}
         >
           {scrollable ? (
-            <div className={cn(adminChrome.menuList, 'ui-scrollbar max-h-60 overflow-y-auto')}>
+            <div className={DROPDOWN_MENU_SCROLL_BODY_CLASS} onWheel={stopMenuWheel}>
               {children}
             </div>
           ) : (
@@ -289,8 +295,10 @@ function DropdownMenuSubContent({
   ...props
 }: React.HTMLAttributes<HTMLDivElement>) {
   return (
-    <div className={cn(adminChrome.floating, adminChrome.menuList, className)} {...props}>
-      {children}
+    <div className={cn(adminChrome.floating, 'min-w-[8rem] overflow-hidden p-0', className)} {...props}>
+      <div className={DROPDOWN_MENU_SCROLL_BODY_CLASS} onWheel={stopMenuWheel}>
+        {children}
+      </div>
     </div>
   );
 }

@@ -17,6 +17,7 @@ type DebitFilter interface {
 	ClickAmountMicro() int64
 	ImpressionAmountMicro() int64
 	LocalQuantaFullSkipEligible(evt *domain.Event, camp *domain.Campaign) bool
+	FinalizeLocalQuantaPublish(ctx context.Context, evt *domain.Event, camp *domain.Campaign) error
 	RollbackDebit(ctx context.Context, evt *domain.Event, camp *domain.Campaign, debitAmount int64, isLocalQuanta bool)
 	SetSkipBudgetDebit(skip bool)
 }

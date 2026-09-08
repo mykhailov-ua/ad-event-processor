@@ -6,14 +6,11 @@
 // - Caller AbortSignal and timeout are linked; abort from caller is not rewritten to TIMEOUT.
 // - Mutating methods attach X-CSRF-Token from csrfToken cookie when present.
 // - credentials: include for session cookie on same-origin control plane.
-// - isAdminDevMode() short-circuits to dev_mock before fetch (T0 only; not production security).
 //
 // Verify:
 // cd web && npm run typecheck
 // bash scripts/ci/admin/web.sh
-import { devMockResponse } from '@/api/dev_mock/index';
 import { ApiError } from '@/api/api_error';
-import { isAdminDevMode } from '@/lib/admin_dev_mode';
 
 export { ApiError } from '@/api/api_error';
 
@@ -97,13 +94,6 @@ export function isAbortError(err: unknown): boolean {
 }
 
 export async function apiFetch(path: string, init: ApiRequestInit = {}): Promise<Response> {
-  if (isAdminDevMode()) {
-    const mocked = devMockResponse(path, init);
-    if (mocked) {
-      return mocked;
-    }
-  }
-
   const timeoutCtrl = new AbortController();
   const timeoutId = setTimeout(() => {
     timeoutCtrl.abort();

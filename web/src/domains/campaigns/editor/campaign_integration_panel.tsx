@@ -3,7 +3,6 @@ import type { IntegrationHealthRow } from '@/api/types';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
-import { Label } from '@/components/ui/label';
 import {
   DirectoryTable,
   DirectoryTableHead,
@@ -14,11 +13,13 @@ import {
 } from '@/shell/directory_table';
 import { adminChrome } from '@/lib/admin_chrome';
 import { cn } from '@/lib/utils';
-import { campaignPanelError } from '@/domains/campaigns/editor/campaign_editor_shared';
+import { CopyButton } from '@/shell/copy_button';
+import { DirectoryFilterForm, FilterField, FilterFormActions } from '@/shell/filter_panel';
 import {
   formatIntegrationHealthSlug,
   formatIntegrationHealthStatus,
 } from '@/domains/campaigns/editor/integration_health_labels';
+import { campaignPanelError } from '@/domains/campaigns/editor/campaign_editor_shared';
 import type { CampaignIntegrationPanelWorkspace } from '@/domains/campaigns/editor/use_campaign_integration_panel_workspace';
 
 export type CampaignIntegrationPanelProps = {
@@ -42,17 +43,29 @@ export function CampaignIntegrationPanel({
     draftTrackingDomain,
     setDraftTrackingDomain,
     applying,
+    dryRunning,
     applyResult,
+    dryRunResult,
     applyError,
+    dryRunError,
     health,
     healthError,
     healthLoading,
+    clickCopyURL,
+    postbackCopyURL,
+    statusIntegrationSchemaName,
     onLoadHealth,
     onApplyTemplates,
+    onDryRunTemplates,
   } = workspace;
 
   return (
     <div className="grid gap-4">
+      {statusIntegrationSchemaName ? (
+        <p className="text-sm text-muted-foreground">
+          Linked status preset: <strong>{statusIntegrationSchemaName}</strong>
+        </p>
+      ) : null}
       {panelFetching && !panel ? (
         <p className="text-sm text-muted-foreground">Loading panel...</p>
       ) : null}
@@ -87,44 +100,84 @@ export function CampaignIntegrationPanel({
         </div>
       ) : null}
 
-      <div className="grid grid-cols-[repeat(auto-fill,minmax(12rem,1fr))] items-end gap-4">
-        <div className="grid gap-2">
-          <Label htmlFor="apply-traffic-source">Apply template: traffic source</Label>
+      <DirectoryFilterForm layout="auto-fill" onSubmit={(event) => event.preventDefault()}>
+        <FilterField htmlFor="apply-traffic-source" label="Apply template: traffic source">
           <Input
             id="apply-traffic-source"
             value={draftTrafficSource}
             onChange={(event) => setDraftTrafficSource(event.target.value)}
           />
-        </div>
-        <div className="grid gap-2">
-          <Label htmlFor="apply-affiliate-network">Affiliate network</Label>
+        </FilterField>
+        <FilterField htmlFor="apply-affiliate-network" label="Affiliate network">
           <Input
             id="apply-affiliate-network"
             value={draftAffiliateNetwork}
             onChange={(event) => setDraftAffiliateNetwork(event.target.value)}
           />
-        </div>
-        <div className="grid gap-2">
-          <Label htmlFor="apply-tracking-domain">Tracking domain</Label>
+        </FilterField>
+        <FilterField htmlFor="apply-tracking-domain" label="Tracking domain">
           <Input
             id="apply-tracking-domain"
             value={draftTrackingDomain}
             onChange={(event) => setDraftTrackingDomain(event.target.value)}
           />
+        </FilterField>
+        <FilterFormActions>
+          <Button disabled={applying} onClick={onApplyTemplates} type="button">
+            {applying ? 'Applying...' : 'Apply templates'}
+          </Button>
+          <Button
+            disabled={dryRunning}
+            onClick={onDryRunTemplates}
+            type="button"
+            variant="outline"
+          >
+            {dryRunning ? 'Dry-running...' : 'Dry-run postback'}
+          </Button>
+          <Button disabled={healthLoading} onClick={onLoadHealth} type="button" variant="outline">
+            {healthLoading ? 'Loading...' : 'Load health'}
+          </Button>
+        </FilterFormActions>
+      </DirectoryFilterForm>
+
+      {(clickCopyURL || postbackCopyURL) ? (
+        <div className={cn(adminChrome.panel, 'grid gap-3 p-4 text-sm')}>
+          {clickCopyURL ? (
+            <div className="flex items-center gap-2">
+              <span className="font-medium">Click URL</span>
+              <code className="min-w-0 flex-1 truncate font-mono text-xs">{clickCopyURL}</code>
+              <CopyButton label="Click URL" value={clickCopyURL} />
+            </div>
+          ) : null}
+          {postbackCopyURL ? (
+            <div className="flex items-center gap-2">
+              <span className="font-medium">Postback URL</span>
+              <code className="min-w-0 flex-1 truncate font-mono text-xs">{postbackCopyURL}</code>
+              <CopyButton label="Postback URL" value={postbackCopyURL} />
+            </div>
+          ) : null}
         </div>
-        <Button disabled={applying} onClick={onApplyTemplates} type="button">
-          {applying ? 'Applying...' : 'Apply templates'}
-        </Button>
-        <Button disabled={healthLoading} onClick={onLoadHealth} type="button" variant="outline">
-          {healthLoading ? 'Loading...' : 'Load health'}
-        </Button>
-      </div>
+      ) : null}
 
       {applyError ? campaignPanelError(applyError, 'Apply templates failed') : null}
+      {dryRunError ? campaignPanelError(dryRunError, 'Dry-run failed') : null}
       {healthError ? campaignPanelError(healthError, 'Could not load integration health') : null}
       {applyResult ? (
         <p className="text-sm text-muted-foreground" role="status">
           Templates applied for campaign {applyResult.campaign_id}.
+          {applyResult.affiliate_status?.mappings_applied_count != null
+            ? ` Status mappings: ${applyResult.affiliate_status.mappings_applied_count}.`
+            : null}
+        </p>
+      ) : null}
+      {dryRunResult?.postback_dry_run ? (
+        <p className="text-sm text-muted-foreground" role="status">
+          Dry-run {dryRunResult.postback_dry_run.ok ? 'succeeded' : 'failed'}
+          {dryRunResult.postback_dry_run.rendered_url
+            ? `: ${dryRunResult.postback_dry_run.rendered_url}`
+            : dryRunResult.postback_dry_run.error
+              ? `: ${dryRunResult.postback_dry_run.error}`
+              : ''}
         </p>
       ) : null}
       {health ? (

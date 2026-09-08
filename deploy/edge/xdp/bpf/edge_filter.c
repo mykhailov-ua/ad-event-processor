@@ -201,6 +201,10 @@ static long (*const bpf_tcp_gen_syncookie_ipv4)(void *iph, __u16 iph_len, void *
 #define TRACKER_INGRESS_PORT 8180
 #endif
 
+#ifndef TRACKER_MIN_PSH_PAYLOAD
+#define TRACKER_MIN_PSH_PAYLOAD 8
+#endif
+
 #define SYN_WINDOW_NS 1000000000ULL
 #define NS_PER_SEC 1000000000ULL
 
@@ -1047,6 +1051,29 @@ static __always_inline int is_invalid_tcp(struct tcphdr *tcph)
 	return 0;
 }
 
+static __always_inline __u32 tcp_payload_len(struct tcphdr *tcph, void *data_end)
+{
+	__u32 tcp_hdr_len = tcph->doff * 4;
+
+	if (tcp_hdr_len < sizeof(*tcph))
+		return 0;
+	__u8 *payload = (__u8 *)tcph + tcp_hdr_len;
+	if (payload > (__u8 *)data_end)
+		return 0;
+	return (__u32)((__u8 *)data_end - payload);
+}
+
+static __always_inline int is_tracker_psh_tinygram(__u8 tcp_fl, __u32 payload_len)
+{
+	if (TRACKER_MIN_PSH_PAYLOAD <= 1)
+		return 0;
+	if ((tcp_fl & TCP_FLAG_PSH) == 0)
+		return 0;
+	if (payload_len == 0)
+		return 0;
+	return payload_len < TRACKER_MIN_PSH_PAYLOAD;
+}
+
 static __always_inline int drop_non_tcp_tracker(__u8 proto, void *l4, void *data_end, __u8 ipv6)
 {
 	if (proto == IPPROTO_UDP) {
@@ -1214,6 +1241,11 @@ static __always_inline int xdp_filter_ipv6_tcp(struct ipv6hdr *ip6, struct tcphd
 
 	if (is_invalid_tcp(tcph)) {
 		stat_inc(XDP_STAT_DROP_INVALID);
+		return XDP_DROP;
+	}
+
+	if (is_tracker_psh_tinygram(tcp_fl, tcp_payload_len(tcph, data_end))) {
+		stat_inc(XDP_STAT_DROP_ANOMALY);
 		return XDP_DROP;
 	}
 
@@ -1385,6 +1417,12 @@ int xdp_edge_filter(struct xdp_md *ctx)
 	if (is_invalid_tcp(tcph)) {
 		action = XDP_DROP;
 		stat_idx = XDP_STAT_DROP_INVALID;
+		goto out;
+	}
+
+	if (is_tracker_psh_tinygram(tcp_fl, tcp_payload_len(tcph, data_end))) {
+		action = XDP_DROP;
+		stat_idx = XDP_STAT_DROP_ANOMALY;
 		goto out;
 	}
 

@@ -23,6 +23,10 @@ func CachedTimeUTC() time.Time {
 	return filter.CachedTimeUTC()
 }
 
+func CachedHourUTC() int {
+	return filter.CachedHourUTC()
+}
+
 func IngressDayKey(buf []byte, regionCode uint8, customerID uuid.UUID, dateStr string) []byte {
 	return filter.IngressDayKey(buf, regionCode, customerID, dateStr)
 }

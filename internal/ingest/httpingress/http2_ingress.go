@@ -5,16 +5,27 @@ import (
 	"unsafe"
 )
 
-func ParseH2Ingress(buf []byte, st *H2ConnState, maxBody int64) (consumed int, req Request, streamID uint32, settingsOut []byte, err error) {
+func ParseH2Ingress(buf []byte, st *H2ConnState, maxBody int64) (int, Request, uint32, []byte, error) {
+	var req Request
+	n, streamID, settings, err := ParseH2IngressInto(buf, st, maxBody, &req)
+	return n, req, streamID, settings, err
+}
+
+func ParseH2IngressInto(buf []byte, st *H2ConnState, maxBody int64, req *Request) (int, uint32, []byte, error) {
+	if req == nil {
+		return 0, 0, nil, ErrInvalid
+	}
+	ResetHTTP1Request(req)
 	off := 0
 	n := len(buf)
+	var settingsOut []byte
 
 	if !st.Established {
 		if n < h2ClientPrefaceLen {
-			return 0, req, 0, nil, ErrIncomplete
+			return 0, 0, nil, ErrIncomplete
 		}
 		if !IsH2ClientPreface(buf) {
-			return 0, req, 0, nil, ErrInvalid
+			return 0, 0, nil, ErrInvalid
 		}
 		off = h2ClientPrefaceLen
 		st.Established = true
@@ -29,9 +40,9 @@ func ParseH2Ingress(buf []byte, st *H2ConnState, maxBody int64) (consumed int, r
 		fr, frameLen, ferr := decodeH2FrameHeader(buf[off:])
 		if ferr != nil {
 			if st.SettingsSent && off == h2ClientPrefaceLen && errors.Is(ferr, ErrIncomplete) {
-				return off, req, 0, settingsOut, ErrIncomplete
+				return off, 0, settingsOut, ErrIncomplete
 			}
-			return off, req, 0, settingsOut, ferr
+			return off, 0, settingsOut, ferr
 		}
 
 		switch fr.Type {
@@ -44,42 +55,42 @@ func ParseH2Ingress(buf []byte, st *H2ConnState, maxBody int64) (consumed int, r
 			}
 		case h2FrameHeaders:
 			if fr.StreamID == 0 {
-				return off + frameLen, req, 0, settingsOut, ErrInvalid
+				return off + frameLen, 0, settingsOut, ErrInvalid
 			}
 			if len(st.HeaderBlock) > 0 && fr.StreamID != st.HeaderStreamID {
-				return off + frameLen, req, 0, settingsOut, ErrInvalid
+				return off + frameLen, 0, settingsOut, ErrInvalid
 			}
 			st.HeaderStreamID = fr.StreamID
 			if err := st.appendHeaderBlock(fr.Payload); err != nil {
-				return off + frameLen, req, 0, settingsOut, err
+				return off + frameLen, 0, settingsOut, err
 			}
 			if fr.Flags&h2FlagEndHeaders != 0 {
-				if err := h2DecodeHeadersBlock(st.HeaderBlock, &req); err != nil {
-					return off + frameLen, req, 0, settingsOut, err
+				if err := h2DecodeHeadersBlock(st.HeaderBlock, req); err != nil {
+					return off + frameLen, 0, settingsOut, err
 				}
-				st.fp.CopyTo(&req)
+				st.fp.CopyTo(req)
 				st.HeaderBlock = st.HeaderBlock[:0]
 				if fr.Flags&h2FlagEndStream != 0 {
-					return off + frameLen, req, fr.StreamID, settingsOut, nil
+					return off + frameLen, fr.StreamID, settingsOut, nil
 				}
 				st.ExpectData = true
 				st.DataStreamID = fr.StreamID
 			}
 		case h2FrameContinuation:
 			if fr.StreamID != st.HeaderStreamID {
-				return off + frameLen, req, 0, settingsOut, ErrInvalid
+				return off + frameLen, 0, settingsOut, ErrInvalid
 			}
 			if err := st.appendHeaderBlock(fr.Payload); err != nil {
-				return off + frameLen, req, 0, settingsOut, err
+				return off + frameLen, 0, settingsOut, err
 			}
 			if fr.Flags&h2FlagEndHeaders != 0 {
-				if err := h2DecodeHeadersBlock(st.HeaderBlock, &req); err != nil {
-					return off + frameLen, req, 0, settingsOut, err
+				if err := h2DecodeHeadersBlock(st.HeaderBlock, req); err != nil {
+					return off + frameLen, 0, settingsOut, err
 				}
-				st.fp.CopyTo(&req)
+				st.fp.CopyTo(req)
 				st.HeaderBlock = st.HeaderBlock[:0]
 				if fr.Flags&h2FlagEndStream != 0 {
-					return off + frameLen, req, fr.StreamID, settingsOut, nil
+					return off + frameLen, fr.StreamID, settingsOut, nil
 				}
 				st.ExpectData = true
 				st.DataStreamID = fr.StreamID
@@ -90,25 +101,25 @@ func ParseH2Ingress(buf []byte, st *H2ConnState, maxBody int64) (consumed int, r
 				continue
 			}
 			if int64(len(fr.Payload)) > maxBody {
-				return off + frameLen, req, 0, settingsOut, ErrPayloadTooLarge
+				return off + frameLen, 0, settingsOut, ErrPayloadTooLarge
 			}
 			req.Body = fr.Payload
 			req.ContentLength = len(fr.Payload)
 			req.HasContentLength = true
 			st.ResetStream()
-			return off + frameLen, req, fr.StreamID, settingsOut, nil
+			return off + frameLen, fr.StreamID, settingsOut, nil
 		case h2FramePing, h2FrameWindowUpdate:
 			if fr.Type == h2FrameWindowUpdate {
 				st.fp.CaptureWindowUpdate(fr.StreamID, fr.Payload)
 			}
 		case h2FramePriority, h2FrameRSTStream, h2FrameGoAway, h2FramePushPromise:
-			return off + frameLen, req, 0, settingsOut, ErrInvalid
+			return off + frameLen, 0, settingsOut, ErrInvalid
 		default:
-			return off + frameLen, req, 0, settingsOut, ErrInvalid
+			return off + frameLen, 0, settingsOut, ErrInvalid
 		}
 		off += frameLen
 	}
-	return off, req, 0, settingsOut, ErrIncomplete
+	return off, 0, settingsOut, ErrIncomplete
 }
 
 const (

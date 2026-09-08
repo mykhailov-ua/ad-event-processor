@@ -1,4 +1,10 @@
 @import '@fontsource-variable/inter';
+@import '@fontsource/inter/400.css';
+@import '@fontsource/inter/500.css';
+@import '@fontsource/inter/600.css';
+@import '@fontsource/inter/700.css';
+@import '@fontsource/jetbrains-mono/200.css';
+@import '@fontsource/jetbrains-mono/400.css';
 @import '@fontsource/ibm-plex-mono/200.css';
 @import '@fontsource/ibm-plex-mono/400.css';
 
@@ -8,133 +14,150 @@
 
 @layer base {
   :root {
-    --background: 0 0% 97%;
-    --foreground: 0 0% 2%;
-    --card: 0 0% 99%;
-    --card-foreground: 0 0% 2%;
-    --popover: 0 0% 99%;
-    --popover-foreground: 0 0% 2%;
-    --primary: 227 56% 50%;
+    --background: 30 8% 86%;
+    --foreground: 30 10% 11%;
+    --card: 30 6% 97%;
+    --card-foreground: 30 10% 11%;
+    --popover: 30 5% 99%;
+    --popover-foreground: 30 10% 11%;
+    --primary: 158 64% 38%;
     --primary-foreground: 0 0% 100%;
-    --secondary: 0 0% 95%;
-    --secondary-foreground: 0 0% 2%;
-    --muted: 0 0% 95%;
-    --muted-foreground: 0 0% 39%;
-    --accent: 227 45% 94%;
-    --accent-foreground: 227 56% 32%;
+    --secondary: 30 6% 94%;
+    --secondary-foreground: 30 10% 14%;
+    --muted: 30 5% 92%;
+    --muted-foreground: 30 6% 40%;
+    --accent: 30 8% 90%;
+    --accent-foreground: 158 50% 24%;
     --destructive: 355 63% 44%;
     --destructive-foreground: 0 0% 99%;
-    --border: 0 0% 90%;
-    --input: 0 0% 87%;
-    --ring: 227 56% 50%;
-    --radius: 0.5rem;
-    --font-sans: 'Inter Variable', 'Inter', system-ui, sans-serif;
+    --border: 30 8% 80%;
+    --input: 30 6% 93%;
+    --ring: 158 64% 38%;
+    --radius: 0;
+    --font-sans: 'Inter Variable', 'Inter', sans-serif;
     --font-mono: 'IBM Plex Mono', ui-monospace, monospace;
-    --font-numeric: 'Inter Variable', 'Inter', system-ui, sans-serif;
-    --scrollbar-thumb: 0 0% 78%;
-    --scrollbar-track: 0 0% 95%;
+    --font-numeric: 'JetBrains Mono', ui-monospace, monospace;
+    --scrollbar-thumb: 30 6% 74%;
+    --scrollbar-track: 30 8% 88%;
 
-    --chart-1: 227 56% 50%;
-    --chart-2: 136 100% 29%;
-    --chart-3: 22 100% 52%;
+    --chart-1: 158 64% 38%;
+    --chart-2: 142 55% 36%;
+    --chart-3: 22 90% 48%;
     --chart-4: 245 47% 51%;
-    --chart-5: 180 67% 47%;
+    --chart-5: 180 55% 40%;
 
-    --admin-brand: 227 56% 50%;
-    --admin-brand-hover: 227 56% 42%;
+    --admin-brand: 158 64% 38%;
+    --admin-brand-hover: 158 64% 32%;
     --admin-brand-fg: 0 0% 100%;
-    --admin-fg: 0 0% 2%;
-    --admin-fg-strong: 0 0% 2%;
-    --admin-fg-secondary: 0 0% 39%;
-    --admin-muted: 0 0% 52%;
-    --admin-positive-fg: 136 100% 29%;
+    --admin-fg: 30 10% 11%;
+    --admin-fg-strong: 30 10% 7%;
+    --admin-fg-secondary: 30 6% 36%;
+    --admin-muted: 30 5% 46%;
+    --admin-positive-fg: 142 55% 36%;
     --admin-negative-fg: 355 63% 44%;
-    --admin-metric-zero-fg: 0 0% 52%;
-    --admin-metric-conversion-fg: 227 56% 50%;
-    --admin-status-active: 136 100% 29%;
-    --admin-status-paused: 48 100% 48%;
-    --admin-status-draft: 227 56% 50%;
-    --admin-status-scheduled: 22 100% 52%;
-    --admin-warn-fg: 46 100% 37%;
-    --admin-warn-bg: 48 90% 95%;
-    --admin-warn-border: 48 95% 77%;
-    --admin-filters-bg: 0 0% 95%;
-    --admin-table-header-bg: 0 0% 95%;
-    --admin-table-row-hover: 0 0% 91%;
-    --admin-table-totals-bg: 0 0% 95%;
+    --admin-metric-zero-fg: 30 5% 48%;
+    --admin-metric-conversion-fg: 158 64% 38%;
+    --admin-status-active: 142 55% 36%;
+    --admin-status-paused: 38 92% 45%;
+    --admin-status-draft: 200 28% 44%;
+    --admin-status-scheduled: 22 90% 48%;
+    --admin-warn-fg: 38 92% 38%;
+    --admin-warn-bg: 45 90% 95%;
+    --admin-warn-border: 45 85% 78%;
+    --admin-filters-bg: 30 6% 93%;
+    --admin-table-header-bg: 30 7% 91%;
+    --admin-table-pin-bg: 30 6% 95%;
+    --admin-table-row-hover: 30 8% 89%;
+    --admin-table-totals-bg: 30 7% 91%;
+
+    /* Page shell: tracker h-11 + PageCanvasInset p-4 top and bottom. */
+    --page-canvas-padding-block: 2rem;
+    --tracker-header-height: 2.75rem;
+    --page-fill-min-height: calc(
+      100dvh - var(--tracker-header-height) - var(--page-canvas-padding-block)
+    );
   }
 
   .dark {
-    --background: 228 6% 13%;
-    --foreground: 0 0% 99%;
-    --card: 228 5% 16%;
-    --card-foreground: 0 0% 99%;
-    --popover: 228 5% 17%;
-    --popover-foreground: 0 0% 99%;
-    --primary: 227 72% 65%;
-    --primary-foreground: 228 6% 13%;
-    --secondary: 228 4% 18%;
-    --secondary-foreground: 0 0% 99%;
-    --muted: 228 4% 18%;
-    --muted-foreground: 0 0% 52%;
-    --accent: 227 35% 22%;
-    --accent-foreground: 227 72% 75%;
-    --destructive: 356 58% 56%;
-    --destructive-foreground: 0 0% 99%;
-    --border: 228 4% 22%;
-    --input: 228 4% 22%;
-    --ring: 227 72% 65%;
-    --scrollbar-thumb: 228 3% 35%;
-    --scrollbar-track: 228 5% 15%;
+    --background: 0 0% 7%;
+    --foreground: 40 6% 93%;
+    --card: 28 7% 10%;
+    --card-foreground: 40 6% 93%;
+    --popover: 28 6% 12%;
+    --popover-foreground: 40 6% 93%;
+    --primary: 158 55% 46%;
+    --primary-foreground: 0 0% 100%;
+    --secondary: 28 6% 14%;
+    --secondary-foreground: 40 6% 90%;
+    --muted: 0 0% 14%;
+    --muted-foreground: 30 4% 58%;
+    --accent: 28 8% 18%;
+    --accent-foreground: 152 40% 78%;
+    --destructive: 0 62% 50%;
+    --destructive-foreground: 0 0% 100%;
+    --border: 0 0% 18%;
+    --input: 0 0% 16%;
+    --ring: 158 55% 46%;
+    --scrollbar-thumb: 0 0% 28%;
+    --scrollbar-track: 0 0% 9%;
 
-    --chart-1: 227 72% 65%;
-    --chart-2: 127 60% 55%;
+    --chart-1: 158 55% 46%;
+    --chart-2: 142 60% 45%;
     --chart-3: 22 85% 49%;
-    --chart-4: 245 60% 65%;
-    --chart-5: 180 54% 41%;
+    --chart-4: 245 55% 62%;
+    --chart-5: 180 50% 42%;
 
-    --admin-brand: 227 72% 65%;
-    --admin-brand-hover: 227 72% 72%;
-    --admin-brand-fg: 228 6% 13%;
-    --admin-fg: 0 0% 99%;
-    --admin-fg-strong: 0 0% 99%;
-    --admin-fg-secondary: 0 0% 70%;
-    --admin-muted: 0 0% 52%;
-    --admin-positive-fg: 127 60% 55%;
-    --admin-negative-fg: 356 58% 56%;
-    --admin-metric-zero-fg: 0 0% 52%;
-    --admin-metric-conversion-fg: 227 72% 65%;
-    --admin-status-active: 127 60% 55%;
-    --admin-status-paused: 48 98% 62%;
-    --admin-status-draft: 227 72% 65%;
+    --admin-brand: 158 55% 46%;
+    --admin-brand-hover: 158 55% 40%;
+    --admin-brand-fg: 0 0% 100%;
+    --admin-fg: 40 6% 93%;
+    --admin-fg-strong: 40 8% 97%;
+    --admin-fg-secondary: 30 5% 72%;
+    --admin-muted: 30 4% 58%;
+    --admin-positive-fg: 142 60% 45%;
+    --admin-negative-fg: 0 62% 50%;
+    --admin-metric-zero-fg: 30 4% 58%;
+    --admin-metric-conversion-fg: 158 55% 52%;
+    --admin-status-active: 142 60% 45%;
+    --admin-status-paused: 43 90% 55%;
+    --admin-status-draft: 200 28% 58%;
     --admin-status-scheduled: 22 85% 49%;
-    --admin-warn-fg: 48 98% 62%;
-    --admin-warn-bg: 22 65% 19%;
-    --admin-warn-border: 22 62% 13%;
-    --admin-filters-bg: 228 4% 18%;
-    --admin-table-header-bg: 228 4% 18%;
-    --admin-table-row-hover: 228 4% 20%;
-    --admin-table-totals-bg: 228 5% 15%;
+    --admin-warn-fg: 43 90% 55%;
+    --admin-warn-bg: 28 20% 14%;
+    --admin-warn-border: 28 18% 22%;
+    --admin-filters-bg: 28 6% 9%;
+    --admin-table-header-bg: 0 0% 13%;
+    --admin-table-pin-bg: 28 7% 11%;
+    --admin-table-row-hover: 28 6% 16%;
+    --admin-table-totals-bg: 0 0% 12%;
   }
 
   html {
     @apply antialiased;
+    font-family: var(--font-sans);
+    font-synthesis: none;
   }
 
   body {
-    @apply min-h-screen bg-background font-sans text-sm font-normal text-foreground;
+    @apply min-h-screen bg-background font-sans text-sm font-medium text-foreground;
+    font-synthesis: none;
+  }
+
+  #root {
+    font-family: var(--font-sans);
+    font-synthesis: none;
   }
 
   h1 {
-    @apply m-0 text-xl font-semibold tracking-tight text-foreground;
+    @apply m-0 text-xl font-bold tracking-tight text-foreground;
   }
 
   h2 {
-    @apply m-0 mb-2 text-base font-semibold tracking-tight text-foreground;
+    @apply m-0 mb-2 text-base font-bold tracking-tight text-foreground;
   }
 
   h3 {
-    @apply m-0 mb-2 text-base font-medium tracking-tight text-foreground;
+    @apply m-0 mb-2 text-base font-semibold tracking-tight text-foreground;
   }
 
   a {
@@ -148,7 +171,7 @@
 
 @layer components {
   .ui-shell {
-    @apply rounded-md border border-border bg-card text-card-foreground;
+    @apply border border-border bg-card text-card-foreground;
   }
 
   .ui-shell-panel {
@@ -160,7 +183,7 @@
   }
 
   .ui-shell-panel-lg {
-    @apply rounded-md border border-border bg-card p-6 text-card-foreground;
+    @apply border border-border bg-card p-6 text-card-foreground;
   }
 
   .ui-scrollbar {
@@ -174,7 +197,7 @@
   }
 
   .ui-scrollbar::-webkit-scrollbar-thumb {
-    border-radius: 9999px;
+    border-radius: 0;
     background-color: hsl(var(--scrollbar-thumb));
   }
 
@@ -183,11 +206,106 @@
   }
 
   .ui-filter-panel {
-    @apply grid gap-4 rounded-md border border-primary/15 bg-primary/5 p-3 text-muted-foreground;
+    @apply grid gap-4 border border-border bg-card p-4 text-muted-foreground;
+  }
+
+  .ui-message-surface {
+    @apply grid gap-2 border p-4 text-[13px] leading-[18px] shadow-none backdrop-blur-none;
+  }
+
+  .ui-message-surface--error {
+    @apply border-destructive/40 bg-destructive/10 text-destructive;
+  }
+
+  .ui-message-surface--muted {
+    @apply border-border/40 bg-muted/30 text-muted-foreground;
+  }
+
+  .ui-message-surface--success {
+    @apply border-admin-status-active/25 bg-admin-status-active/10 text-admin-positive;
+  }
+
+  .ui-message-surface--warning {
+    @apply border-admin-warn-border bg-admin-warn-bg text-admin-warn;
+  }
+
+  .ui-panel-surface {
+    @apply grid gap-3 border border-border bg-card p-4 text-card-foreground shadow-none;
+  }
+
+  .ui-control-surface {
+    @apply inline-flex min-h-7 shrink-0 items-center justify-center gap-2 border border-border px-3 py-1 text-[13px] leading-[18px] [&_svg]:block [&_svg]:shrink-0;
+  }
+
+  .ui-toolbar-band {
+    @apply flex min-w-0 flex-wrap items-center gap-2;
+  }
+
+  .ui-toolbar-band--split {
+    @apply w-full gap-2;
+  }
+
+  .ui-toolbar-band__actions {
+    @apply flex min-w-0 flex-1 flex-wrap items-center gap-2;
+  }
+
+  .ui-status-metrics-band {
+    @apply flex flex-wrap items-center gap-4;
+  }
+
+  .ui-chip-row {
+    @apply flex flex-wrap gap-2;
+  }
+
+  .ui-chip-surface {
+    @apply inline-flex min-h-7 max-w-full shrink-0 items-center justify-center gap-1.5 whitespace-nowrap border border-border px-3 py-1 text-xs font-semibold leading-[18px] shadow-none transition-colors;
+  }
+
+  .ui-chip-count {
+    @apply text-[11px] font-semibold tabular-nums;
+  }
+
+  .ui-summary-band {
+    @apply inline-flex h-7 max-w-full flex-nowrap items-center gap-2.5 overflow-x-auto border border-primary/20 bg-primary/5 px-3 text-card-foreground;
+  }
+
+  .ui-summary-band__divider {
+    @apply mx-1 h-3 w-px shrink-0 bg-border;
+  }
+
+  .ui-directory-stack {
+    @apply flex w-full flex-col gap-3;
+  }
+
+  .ui-meta-links-band {
+    @apply flex flex-wrap items-center gap-3 text-sm text-muted-foreground;
+  }
+
+  .ui-meta-links-band a {
+    @apply hover:text-foreground hover:underline;
+  }
+
+  .ui-action-links-band {
+    @apply flex flex-wrap gap-2;
+  }
+
+  .ui-table-host {
+    @apply w-full min-w-0 border border-border bg-card;
+  }
+
+  .ui-table-host--fill {
+    @apply flex min-h-0 min-w-0 flex-1 flex-col overflow-hidden;
+  }
+
+  .ui-table-host__scroll {
+    @apply ui-scrollbar min-w-0 overflow-x-auto bg-card;
+  }
+
+  .ui-table-host--fill .ui-table-host__scroll {
+    @apply min-h-0 flex-1 overflow-y-auto;
   }
 
   .ui-section-table-host [data-directory-table],
-  .ops-section-card [data-directory-table],
   .ui-filter-panel [data-directory-table],
   .ui-surface [data-directory-table],
   .ui-surface-raised [data-directory-table],
@@ -198,40 +316,116 @@
   }
 
   .ui-surface {
-    @apply rounded-md border border-border bg-card text-card-foreground;
+    @apply border border-border bg-card text-card-foreground;
   }
 
   .ui-surface-raised {
-    @apply rounded-md border border-border/40 bg-card text-card-foreground;
+    @apply border border-border bg-card text-card-foreground;
   }
 
   .ui-code-block {
-    @apply ui-scrollbar rounded-md border border-border bg-muted p-4 font-mono text-xs leading-relaxed text-foreground;
+    @apply ui-scrollbar border border-border bg-muted p-4 font-mono text-xs leading-relaxed text-foreground;
   }
 
-  /* Sonner: bottom-right stack; close control on the right, always visible. */
+  /* Sonner: bottom-right stack only; never top banners. Requires sonner/dist/styles.css in build. */
+  [data-sonner-toaster] {
+    font-family: var(--font-sans) !important;
+  }
+
   .toaster[data-sonner-toaster] {
+    position: fixed;
+    width: var(--width, 356px);
+    max-width: min(420px, calc(100vw - 2rem));
+    font-family: var(--font-sans) !important;
     --toast-close-button-start: unset;
     --toast-close-button-end: 0.75rem;
     --toast-close-button-transform: translate(0, 0.75rem);
     pointer-events: none;
   }
 
+  .toaster[data-sonner-toaster][data-y-position='bottom'] {
+    bottom: var(--offset-bottom, 1rem);
+    top: auto;
+  }
+
+  .toaster[data-sonner-toaster][data-x-position='right'] {
+    right: var(--offset-right, 1rem);
+    left: auto;
+  }
+
   .toaster[data-sonner-toaster] [data-sonner-toast] {
     pointer-events: auto;
+    backdrop-filter: none;
   }
 
   .toaster[data-sonner-toaster] [data-sonner-toast] [data-close-button] {
     opacity: 1;
+    border-radius: 0;
+  }
+
+  /* Sticky campaign pins: opaque backgrounds + z-index above scrolling body cells. */
+  [data-directory-table] thead th[data-col-pin] {
+    z-index: 10;
+  }
+
+  [data-directory-table] tbody td[data-col-pin] {
+    z-index: 5;
+    background-color: hsl(var(--admin-table-pin-bg));
+  }
+
+  [data-directory-table] tbody tr[data-row-selected] > td[data-col-pin] {
+    z-index: 6;
+    background-color: color-mix(in srgb, hsl(var(--primary)) 22%, hsl(var(--admin-table-pin-bg))) !important;
+  }
+
+  .dark [data-directory-table] tbody tr[data-row-selected] > td[data-col-pin] {
+    background-color: color-mix(in srgb, hsl(var(--primary)) 30%, hsl(var(--admin-table-pin-bg))) !important;
+  }
+
+  [data-directory-table] tbody tr[data-row-accent='muted'] > td[data-col-pin] {
+    background-color: color-mix(in srgb, hsl(var(--muted)) 38%, hsl(var(--admin-table-pin-bg))) !important;
+  }
+
+  [data-directory-table] tbody tr[data-row-accent='warning'] > td[data-col-pin] {
+    background-color: hsl(var(--admin-warn-bg)) !important;
+  }
+
+  [data-directory-table] tbody tr[data-row-accent='critical'] > td[data-col-pin] {
+    background-color: color-mix(in srgb, hsl(var(--destructive)) 18%, hsl(var(--admin-table-pin-bg))) !important;
   }
 }
 
 @layer utilities {
+  .font-numeric {
+    font-family: var(--font-numeric);
+    font-weight: 500;
+    font-synthesis: none;
+    font-variant-numeric: tabular-nums;
+  }
+
+  [data-directory-table] .font-numeric {
+    font-family: var(--font-numeric);
+    font-weight: 500;
+    font-synthesis: none;
+    font-variant-numeric: tabular-nums;
+  }
+
   .ui-editor-mono-extralight,
   input.ui-editor-mono-extralight,
   textarea.ui-editor-mono-extralight {
     font-family: var(--font-mono);
     font-weight: 200;
     font-synthesis: none;
+  }
+
+  .rounded-sm,
+  .rounded-md,
+  .rounded-lg,
+  .rounded-xl,
+  .rounded-2xl,
+  .rounded-full,
+  .rounded-t-md,
+  .rounded-\[5px\] {
+    border-radius: 0;
   }
 }

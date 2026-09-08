@@ -73,6 +73,24 @@ func (m *mockPipeliner) XAdd(ctx context.Context, args *redis.XAddArgs) *redis.S
 	return cmd
 }
 
+func (m *mockPipeliner) SAdd(ctx context.Context, key string, members ...interface{}) *redis.IntCmd {
+	cmd := redis.NewIntCmd(ctx)
+	cmd.SetVal(int64(len(members)))
+	return cmd
+}
+
+func (m *mockPipeliner) IncrBy(ctx context.Context, key string, value int64) *redis.IntCmd {
+	cmd := redis.NewIntCmd(ctx)
+	cmd.SetVal(value)
+	return cmd
+}
+
+func (m *mockPipeliner) SetNX(ctx context.Context, key string, value any, expiration time.Duration) *redis.BoolCmd {
+	cmd := redis.NewBoolCmd(ctx)
+	cmd.SetVal(true)
+	return cmd
+}
+
 func (m *mockPipeliner) Exec(ctx context.Context) ([]redis.Cmder, error) {
 	for _, cmd := range m.xaddCmds {
 		if err := cmd.Err(); err != nil {
@@ -115,6 +133,10 @@ func (m *mockRedisClient) Process(ctx context.Context, cmd redis.Cmder) error {
 		c.SetVal(int64(0))
 	}
 	return nil
+}
+
+func (m *mockRedisClient) FilterEvalFast(cmd *redis.Cmd) (int64, error) {
+	return 0, nil
 }
 
 func setProcessLuaInt64(cmd redis.Cmder, v int64) {

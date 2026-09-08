@@ -42,7 +42,7 @@ func TestAuction_geoIndex_skipsOtherGeoInShard(t *testing.T) {
 		{ID: 2, Bid: 100, DeviceMask: 1, CategoryMask: 1, GeoHashVal: 71, Budget: 5000},
 	})
 
-	res, reason := reg.RunAuction(stdReq(7, 50))
+	res, reason := reg.RunAuctionPtr(stdReq(7, 50))
 	require.True(t, reason.OK())
 	assert.Equal(t, CampaignID(1), res.CampaignID)
 }

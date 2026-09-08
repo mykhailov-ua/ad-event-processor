@@ -1,4 +1,10 @@
 import type { FlowPath } from '@/api/types';
+import {
+  flowPathsToVisualRows,
+  validateVisualPathWeights,
+  visualRowsToFlowPaths,
+  type FlowPathVisualRow,
+} from '@/domains/creative/flow_path_model';
 
 export const DEFAULT_FLOW_PATHS_JSON = '[{"weight":100,"landers":[],"offers":[]}]';
 
@@ -7,6 +13,30 @@ export function flowPathsToJson(paths: unknown): string {
     return JSON.stringify(paths, null, 2);
   }
   return DEFAULT_FLOW_PATHS_JSON;
+}
+
+export function flowVisualRowsFromSnapshot(paths: unknown): FlowPathVisualRow[] {
+  if (Array.isArray(paths)) {
+    return flowPathsToVisualRows(paths as FlowPath[]);
+  }
+  return flowPathsToVisualRows([]);
+}
+
+export function buildFlowBodyFromVisual(
+  draftName: string,
+  rows: FlowPathVisualRow[]
+):
+  | { ok: true; body: { name: string; paths: FlowPath[] } }
+  | { ok: false; error: string } {
+  const name = draftName.trim();
+  if (!name) {
+    return { ok: false, error: 'Flow name is required.' };
+  }
+  const validationError = validateVisualPathWeights(rows);
+  if (validationError) {
+    return { ok: false, error: validationError };
+  }
+  return { ok: true, body: { name, paths: visualRowsToFlowPaths(rows) } };
 }
 
 export function parseFlowPathsJson(

@@ -689,6 +689,7 @@ SET name = $2,
     proxy_vpn_block_enabled = $24,
     moderator_intel_enabled = $25,
     review_traffic_action = $26,
+    click_filter_tier = $27,
     updated_at = CURRENT_TIMESTAMP
 WHERE id = $1
 RETURNING *;

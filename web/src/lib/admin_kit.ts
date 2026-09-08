@@ -2,21 +2,39 @@
  * Admin Control Panel UI kit tokens. Primitives import from here or admin_chrome;
  * domains use components/ui and shell, not these strings directly.
  */
-/** Radius scale: rounded-sm/md from --radius (4px / 6px). See ui.mdc Corners. */
+/** Radius scale: preview flat corners (--radius 0). */
 export const adminKit = {
-  controlRadius: 'rounded-sm',
-  panelRadius: 'rounded-md',
-  pillRadius: 'rounded-full',
+  controlRadius: 'rounded-none',
+  panelRadius: 'rounded-none',
+  pillRadius: 'rounded-none',
+  /** Horizontal inset for controls; square corners need more than pill-era px-2. */
+  controlPaddingX: 'px-3',
+  /** Label-to-control gap in filter fields and date pickers. */
+  fieldLabelGap: 'gap-2',
+  /** Toggle/status chip horizontal padding. */
+  chipPaddingX: 'px-3',
+  chipInnerGap: 'gap-1.5',
+  /** Compact summary / metric band inset. */
+  compactInsetX: 'px-3',
   focusRing:
     'focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 focus-visible:ring-offset-background',
   controlHeight: 'min-h-7',
+  controlBorder: 'border border-border',
   controlText: 'text-[13px] leading-[18px]',
-  buttonShell:
-    'inline-flex h-7 shrink-0 items-center justify-center gap-2 py-0 text-[13px] leading-none [&_svg]:block [&_svg]:shrink-0',
+  /** Form field labels (campaign filter rows, editor fields). */
+  fieldLabelClass: 'text-[13px] font-medium leading-[18px] text-foreground',
+  /** Directory table header cell inner shell (campaign list parity). */
+  directoryTableHeadInnerClass:
+    'flex w-full items-center gap-1.5 px-4 text-[11px] font-semibold uppercase leading-[14px] tracking-normal text-muted-foreground',
+  buttonShell: 'ui-control-surface',
   labelCaps:
     'text-[11px] font-semibold uppercase leading-[14px] tracking-normal text-muted-foreground',
   tableHeader: 'text-[11px] font-semibold uppercase leading-[14px] text-muted-foreground',
   tableRowHeight: 'h-[34px]',
+  /** Error surfaces: flat alpha tint; no backdrop-filter (avoids scroll jank). */
+  errorSurface: 'ui-message-surface ui-message-surface--error',
+  toastSurface:
+    'border-border/60 bg-card/90 text-card-foreground shadow-md shadow-black/10 backdrop-blur-none',
 } as const;
 
 export type AdminStatusTone =
@@ -39,14 +57,14 @@ export const adminStatusBadgeClass: Record<AdminStatusTone, string> = {
 };
 
 export const adminStatusBadgeBase =
-  'inline-flex max-w-full shrink-0 items-center whitespace-nowrap rounded-full border px-2 py-0.5 text-xs font-normal leading-4';
+  'inline-flex max-w-full shrink-0 items-center whitespace-nowrap rounded-none border border-border px-2.5 py-0.5 text-xs font-normal leading-4';
 
 export type AdminAlertTone = 'success' | 'error' | 'warning';
 
 export const adminAlertClass: Record<AdminAlertTone, string> = {
-  success: 'border-admin-status-active/25 bg-admin-status-active/10 text-admin-positive',
-  error: 'border-destructive/20 bg-destructive/10 text-destructive',
-  warning: 'border-admin-warn-border bg-admin-warn-bg text-admin-warn',
+  success: 'ui-message-surface--success',
+  error: 'ui-message-surface--error',
+  warning: 'ui-message-surface--warning',
 };
 
 export function campaignStatusToAdminTone(

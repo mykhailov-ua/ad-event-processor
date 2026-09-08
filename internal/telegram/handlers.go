@@ -131,13 +131,13 @@ func (h *HTTPHandlers) Register(mux *http.ServeMux) {
 		observe = func(_ string, next http.HandlerFunc) http.HandlerFunc { return next }
 	}
 
-	mux.HandleFunc("GET /api/v1/reports/telegram", limit(perm([]string{"reports:read"}, observe("telegram", h.getTelegramReport))))
-	mux.HandleFunc("GET /api/v1/reports/telegram/summary", limit(perm([]string{"reports:read"}, observe("telegram", h.getTelegramSummaryReport))))
-	mux.HandleFunc("GET /api/v1/reports/telegram/funnel", limit(perm([]string{"reports:read"}, observe("telegram", h.getTelegramFunnelReport))))
-	mux.HandleFunc("GET /api/v1/reports/telegram/bots", limit(perm([]string{"reports:read"}, observe("telegram", h.getTelegramBotsReport))))
-	mux.HandleFunc("GET /api/v1/reports/telegram/premium", limit(perm([]string{"reports:read"}, observe("telegram", h.getTelegramPremiumReport))))
-	mux.HandleFunc("GET /api/v1/reports/telegram/fraud", limit(perm([]string{"reports:read"}, observe("telegram", h.getTelegramFraudReport))))
-	mux.HandleFunc("POST /api/v1/reports/telegram/export", limit(perm([]string{"reports:read"}, h.exportTelegramReport)))
+	mux.HandleFunc("GET /api/v1/reports/telegram", limit(perm([]string{"campaigns:read", "campaigns:read:masked"}, observe("telegram", h.getTelegramReport))))
+	mux.HandleFunc("GET /api/v1/reports/telegram/summary", limit(perm([]string{"campaigns:read", "campaigns:read:masked"}, observe("telegram", h.getTelegramSummaryReport))))
+	mux.HandleFunc("GET /api/v1/reports/telegram/funnel", limit(perm([]string{"campaigns:read", "campaigns:read:masked"}, observe("telegram", h.getTelegramFunnelReport))))
+	mux.HandleFunc("GET /api/v1/reports/telegram/bots", limit(perm([]string{"campaigns:read", "campaigns:read:masked"}, observe("telegram", h.getTelegramBotsReport))))
+	mux.HandleFunc("GET /api/v1/reports/telegram/premium", limit(perm([]string{"campaigns:read", "campaigns:read:masked"}, observe("telegram", h.getTelegramPremiumReport))))
+	mux.HandleFunc("GET /api/v1/reports/telegram/fraud", limit(perm([]string{"campaigns:read", "campaigns:read:masked"}, observe("telegram", h.getTelegramFraudReport))))
+	mux.HandleFunc("POST /api/v1/reports/telegram/export", limit(perm([]string{"campaigns:read", "campaigns:read:masked"}, h.exportTelegramReport)))
 }
 
 type validateReq struct {

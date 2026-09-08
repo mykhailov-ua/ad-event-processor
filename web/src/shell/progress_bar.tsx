@@ -12,7 +12,7 @@ export function ProgressBar({ label, valuePct, className, showValue = true }: Pr
 
   return (
     <div className={cn('flex flex-col gap-1.5', className)}>
-      <div className="flex items-center justify-between gap-2 text-[13px] leading-[18px]">
+      <div className="grid grid-cols-[1fr_auto] items-center gap-2 text-[13px] leading-[18px]">
         <span className="font-medium text-foreground">{label}</span>
         {showValue ? (
           <span className="font-semibold text-foreground tabular-nums">{clamped.toFixed(0)}%</span>

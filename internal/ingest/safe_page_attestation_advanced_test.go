@@ -220,7 +220,7 @@ func TestSafePageVerify_linearBezier_SafeView(t *testing.T) {
 	require.NoError(t, err)
 	conn := NewGnetBenchConn(inbound)
 	conn.SetRemoteAddr(&net.TCPAddr{IP: net.ParseIP("8.8.8.8"), Port: 1234})
-	h.React(req, conn)
+	h.React(&req, conn)
 
 	require.Equal(t, http.StatusOK, ParseGnetHTTPStatus(conn.Written()))
 	resp := string(conn.Written())

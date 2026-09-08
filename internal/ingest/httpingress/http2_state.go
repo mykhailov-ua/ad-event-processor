@@ -2,7 +2,7 @@ package httpingress
 
 func NewH2ConnState() H2ConnState {
 	return H2ConnState{
-		HeaderBlock: make([]byte, 0, 256),
+		HeaderBlock: make([]byte, 0, 1024),
 	}
 }
 
@@ -32,8 +32,21 @@ func (s *H2ConnState) appendSettingsOut(extra []byte) []byte {
 const h2MaxHeaderBlock = 16 << 10
 
 func (s *H2ConnState) appendHeaderBlock(p []byte) error {
-	if len(s.HeaderBlock)+len(p) > h2MaxHeaderBlock {
+	need := len(s.HeaderBlock) + len(p)
+	if need > h2MaxHeaderBlock {
 		return ErrInvalid
+	}
+	if cap(s.HeaderBlock) < need {
+		grow := need
+		if grow < 256 {
+			grow = 256
+		}
+		if grow > h2MaxHeaderBlock {
+			grow = h2MaxHeaderBlock
+		}
+		next := make([]byte, len(s.HeaderBlock), grow)
+		copy(next, s.HeaderBlock)
+		s.HeaderBlock = next
 	}
 	s.HeaderBlock = append(s.HeaderBlock, p...)
 	return nil

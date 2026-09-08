@@ -101,14 +101,15 @@ func TestGnetHandler_infraFilterErr_503WithRetryAfter(t *testing.T) {
 
 	body := []byte(`{"campaign_id":"` + uuid.NewString() + `","type":"click","click_id":"c1"}`)
 	conn := &mockGnetConn{written: make([]byte, 0, 512)}
-	h.React(parsedHTTPRequest{
+	req := parsedHTTPRequest{
 		Method:           []byte("POST"),
 		Path:             []byte("/track"),
 		ContentType:      []byte("application/json"),
 		Body:             body,
 		ContentLength:    len(body),
 		HasContentLength: true,
-	}, conn)
+	}
+	h.React(&req, conn)
 
 	written := waitMockGnetWritten(conn, 2*time.Second)
 	assert.True(t, bytes.HasPrefix(written, []byte("HTTP/1.1 503")))
@@ -123,14 +124,15 @@ func TestGnetHandler_filterEngineFailure_500AndCounter(t *testing.T) {
 
 	body := []byte(`{"campaign_id":"` + uuid.NewString() + `","type":"click","click_id":"c1"}`)
 	conn := &mockGnetConn{written: make([]byte, 0, 512)}
-	h.React(parsedHTTPRequest{
+	req := parsedHTTPRequest{
 		Method:           []byte("POST"),
 		Path:             []byte("/track"),
 		ContentType:      []byte("application/json"),
 		Body:             body,
 		ContentLength:    len(body),
 		HasContentLength: true,
-	}, conn)
+	}
+	h.React(&req, conn)
 
 	written := waitMockGnetWritten(conn, 2*time.Second)
 	assert.True(t, bytes.HasPrefix(written, []byte("HTTP/1.1 500")))
@@ -149,14 +151,15 @@ func TestGnetHandler_fraudStreamWriteError_incrementsCounter(t *testing.T) {
 
 	body := []byte(`{"campaign_id":"` + uuid.NewString() + `","type":"click","click_id":"c1"}`)
 	conn := &mockGnetConn{written: make([]byte, 0, 512)}
-	h.React(parsedHTTPRequest{
+	req := parsedHTTPRequest{
 		Method:           []byte("POST"),
 		Path:             []byte("/track"),
 		ContentType:      []byte("application/json"),
 		Body:             body,
 		ContentLength:    len(body),
 		HasContentLength: true,
-	}, conn)
+	}
+	h.React(&req, conn)
 
 	written := waitMockGnetWritten(conn, 2*time.Second)
 	assert.True(t, bytes.HasPrefix(written, []byte("HTTP/1.1 202")))

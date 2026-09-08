@@ -9,6 +9,7 @@ import {
 } from '@/api/integrations_api';
 import type { CostSyncCredential } from '@/api/types';
 import { type IntegrationsCostSyncPanel } from '@/domains/integrations/integrations_cost_sync';
+import { confirmDestructiveAction, mutationError as toMutationError } from '@/lib/mutation_audit';
 import { useCustomerScope } from '@/hooks/use_customer_scope';
 import { useCoalescedBumpRefresh, useRefreshToken } from '@/hooks/use_coalesced_refresh_token';
 import { useResource } from '@/api/use_resource';
@@ -121,6 +122,9 @@ export function useIntegrationsCostSyncPageWorkspace() {
     if (!network || !appliedCustomerId) {
       return;
     }
+    if (!confirmDestructiveAction(`Delete credential for network "${network}"?`)) {
+      return;
+    }
     setDeleting(true);
     setDeleteError(undefined);
     setDeleteSuccess(false);
@@ -129,11 +133,11 @@ export function useIntegrationsCostSyncPageWorkspace() {
       setDeleteSuccess(true);
       bumpRefreshCoalesced();
     } catch (err: unknown) {
-      setDeleteError(err instanceof Error ? err : new Error(String(err)));
+      setDeleteError(toMutationError(err));
     } finally {
       setDeleting(false);
     }
-  }, [appliedCustomerId, draftNetwork, bumpRefreshCoalesced]);
+  }, [appliedCustomerId, deleting, draftNetwork, bumpRefreshCoalesced]);
 
   const onRunSync = useCallback(async () => {
     if (running) {

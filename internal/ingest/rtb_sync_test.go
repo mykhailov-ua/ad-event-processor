@@ -60,9 +60,10 @@ func TestSyncRtbCatalog_hybridOverridesBid(t *testing.T) {
 	SyncRtbCatalog(context.Background(), registry, catalog, cfg, hybrid, RtbBudgetSync{}, nil)
 
 	geo := GeoHashFromCountry("US")
-	res, reason := catalog.RunAuction(&domain.Event{}, RtbTargetingInput{
+	targeting := RtbTargetingInput{
 		GeoHash: geo, DeviceType: 1, CategoryMask: 1, PublisherFloorMicro: 50,
-	})
+	}
+	res, reason := catalog.RunAuction(&domain.Event{}, &targeting)
 	require.True(t, reason.OK())
 	assert.Equal(t, CampaignIDFromUUID(id), res.CampaignID)
 }

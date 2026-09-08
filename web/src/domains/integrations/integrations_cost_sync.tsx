@@ -13,6 +13,7 @@ import {
   TableRow,
 } from '@/shell/directory_table';
 import { ErrorBlock } from '@/shell/error_block';
+import { DirectoryFilterForm, FilterPanel } from '@/shell/filter_panel';
 import { DatePicker } from '@/components/ui/datetime_picker';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
@@ -132,13 +133,13 @@ export function IntegrationsCostSync({
         onDraftCustomerIdChange={onDraftCustomerIdChange}
       />
 
-      <section className="ui-filter-panel">
+      <FilterPanel>
         <h2 className="text-base font-semibold">Run cost sync</h2>
         <p className="text-sm text-muted-foreground">
           Enqueue a manual sync for the applied customer. Network and date range are optional; dates
           default to yesterday UTC on the server.
         </p>
-        <div className="grid grid-cols-[repeat(auto-fill,minmax(12rem,1fr))] items-end gap-4">
+        <DirectoryFilterForm layout="auto-fill" onSubmit={(event) => event.preventDefault()}>
           <div className="grid gap-2">
             <Label htmlFor="cost-sync-run-network">Network (optional)</Label>
             <Select
@@ -148,7 +149,7 @@ export function IntegrationsCostSync({
               }
               disabled={!appliedCustomerId || runSyncForm.running}
             >
-              <SelectTrigger id="cost-sync-run-network" className="w-full text-sm">
+              <SelectTrigger id="cost-sync-run-network" className="w-full">
                 <SelectValue placeholder="All networks" />
               </SelectTrigger>
               <SelectContent>
@@ -186,7 +187,7 @@ export function IntegrationsCostSync({
           >
             {runSyncForm.running ? 'Running...' : 'Run sync'}
           </Button>
-        </div>
+        </DirectoryFilterForm>
         {runSyncForm.runError ? (
           <ErrorBlock title="Cost sync run failed" message={runSyncForm.runError.message} />
         ) : null}
@@ -195,7 +196,7 @@ export function IntegrationsCostSync({
             Sync accepted. Refresh history for results.
           </p>
         ) : null}
-      </section>
+      </FilterPanel>
 
       <div className="flex flex-wrap gap-2">
         {COST_SYNC_PANELS.map((item) => (

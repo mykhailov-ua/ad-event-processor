@@ -9,9 +9,15 @@ import {
   TableCell,
   TableHeader,
   TableRow,
+  directoryTableRevalidatingClass,
 } from '@/shell/directory_table';
-import { DirectoryFilterForm, FilterField, FilterPanel } from '@/shell/filter_panel';
-import { PageChrome } from '@/shell/page_chrome';
+import {
+  DirectoryFilterForm,
+  FilterField,
+  FilterPanel,
+  SECTION_SURFACE_RAISED_CLASS,
+} from '@/shell/filter_panel';
+import { PageLayout } from '@/shell/page_layout';
 import { EmptyState } from '@/shell/empty_state';
 import { ErrorBlock } from '@/shell/error_block';
 import { PageSkeleton } from '@/shell/page_skeleton';
@@ -19,7 +25,6 @@ import { DirectoryPaginationFooter } from '@/shell/directory_pagination_footer';
 import { Badge } from '@/components/ui/badge';
 import { DatetimePicker } from '@/components/ui/datetime_picker';
 import { Input } from '@/components/ui/input';
-import { Label } from '@/components/ui/label';
 import type { ClickLogEvent, ClickLogPostback, DataFreshness } from '@/api/types';
 import { displayMicro, displayTimestamp } from '@/lib/display';
 
@@ -46,6 +51,7 @@ export type ClickLogDirectoryProps = {
   draftClickId: string;
   cursor?: string;
   fetching: boolean;
+  listRevalidating?: boolean;
   error: Error | undefined;
   hasSnapshot: boolean;
   onDraftCustomerIdChange: (value: string) => void;
@@ -72,6 +78,7 @@ export function ClickLogDirectory({
   draftCampaignId,
   draftClickId,
   fetching,
+  listRevalidating = false,
   error,
   hasSnapshot,
   onDraftCustomerIdChange,
@@ -95,8 +102,7 @@ export function ClickLogDirectory({
   const canGoNext = Boolean(nextCursor) && !timelineMode;
 
   return (
-    <PageChrome
-      title="Click log"
+    <PageLayout
       badge={
         freshness?.stale ? (
           <Badge variant="secondary">stale CH lag {freshness.ch_lag_seconds ?? '?'}s</Badge>
@@ -104,48 +110,60 @@ export function ClickLogDirectory({
           <Badge variant="outline">{freshness.consistency ?? 'fresh'}</Badge>
         ) : undefined
       }
-    >
-      <FilterPanel>
-        <DirectoryFilterForm onSubmit={onApplyFilters}>
-          <FilterField htmlFor="click-log-customer" label="Customer">
-            <CustomerCombobox
-              id="click-log-customer"
-              disabled={fetching}
-              options={customerOptions}
-              value={draftCustomerId}
-              onValueChange={onDraftCustomerIdChange}
+      controlPanel={
+        <FilterPanel>
+          <DirectoryFilterForm onSubmit={onApplyFilters}>
+            <FilterField htmlFor="click-log-customer" label="Customer">
+              <CustomerCombobox
+                id="click-log-customer"
+                disabled={fetching}
+                options={customerOptions}
+                value={draftCustomerId}
+                onValueChange={onDraftCustomerIdChange}
+              />
+            </FilterField>
+            <DatetimePicker
+              id="click-log-from"
+              label="From"
+              value={draftFrom}
+              onChange={onDraftFromChange}
             />
-          </FilterField>
-          <DatetimePicker
-            id="click-log-from"
-            label="From"
-            value={draftFrom}
-            onChange={onDraftFromChange}
+            <DatetimePicker id="click-log-to" label="To" value={draftTo} onChange={onDraftToChange} />
+            <FilterField htmlFor="click-log-campaign" label="Campaign ID">
+              <Input
+                id="click-log-campaign"
+                placeholder="Optional"
+                value={draftCampaignId}
+                onChange={(event) => onDraftCampaignIdChange(event.target.value)}
+              />
+            </FilterField>
+            <FilterField htmlFor="click-log-click-id" label="Click ID">
+              <Input
+                id="click-log-click-id"
+                placeholder="Timeline mode"
+                value={draftClickId}
+                onChange={(event) => onDraftClickIdChange(event.target.value)}
+              />
+            </FilterField>
+            <FilterApplyButton disabled={fetching || !draftCustomerId.trim()} type="submit">
+              Apply
+            </FilterApplyButton>
+          </DirectoryFilterForm>
+        </FilterPanel>
+      }
+      footer={
+        !timelineMode ? (
+          <DirectoryPaginationFooter
+            canGoNext={canGoNext}
+            canGoPrev={canGoPrev}
+            variant="outline"
+            onNext={onNextPage}
+            onPrev={onPrevPage}
           />
-          <DatetimePicker id="click-log-to" label="To" value={draftTo} onChange={onDraftToChange} />
-          <div className="grid gap-2">
-            <Label htmlFor="click-log-campaign">Campaign ID</Label>
-            <Input
-              id="click-log-campaign"
-              placeholder="Optional"
-              value={draftCampaignId}
-              onChange={(event) => onDraftCampaignIdChange(event.target.value)}
-            />
-          </div>
-          <div className="grid gap-2">
-            <Label htmlFor="click-log-click-id">Click ID</Label>
-            <Input
-              id="click-log-click-id"
-              placeholder="Timeline mode"
-              value={draftClickId}
-              onChange={(event) => onDraftClickIdChange(event.target.value)}
-            />
-          </div>
-          <FilterApplyButton disabled={fetching || !draftCustomerId.trim()} type="submit">
-            Apply
-          </FilterApplyButton>
-        </DirectoryFilterForm>
-      </FilterPanel>
+        ) : null
+      }
+      title="Click log"
+    >
 
       {timelineMode ? (
         <p className="text-sm text-muted-foreground">
@@ -160,7 +178,11 @@ export function ClickLogDirectory({
           description="Adjust filters or pick a different date range."
         />
       ) : (
-        <DirectoryTable horizontalScroll scrollable>
+        <DirectoryTable
+          className={directoryTableRevalidatingClass(listRevalidating)}
+          horizontalScroll
+          scrollable
+        >
           <TableHeader>
             <TableRow>
               <DirectoryTableHead className="w-[10%]">Type</DirectoryTableHead>
@@ -224,18 +246,8 @@ export function ClickLogDirectory({
         </DirectoryTable>
       )}
 
-      {!timelineMode ? (
-        <DirectoryPaginationFooter
-          canGoNext={canGoNext}
-          canGoPrev={canGoPrev}
-          variant="outline"
-          onNext={onNextPage}
-          onPrev={onPrevPage}
-        />
-      ) : null}
-
       {timelineMode && postbacks.length > 0 ? (
-        <section className="ui-surface-raised grid gap-3 p-5">
+        <section className={SECTION_SURFACE_RAISED_CLASS}>
           <h3 className="text-base font-medium tracking-tight">Postbacks</h3>
           <DirectoryTable horizontalScroll nested>
             <TableHeader>
@@ -263,6 +275,6 @@ export function ClickLogDirectory({
       ) : null}
 
       {error && hasSnapshot ? <ErrorBlock title="Refresh failed" message={error.message} /> : null}
-    </PageChrome>
+    </PageLayout>
   );
 }

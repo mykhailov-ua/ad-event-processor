@@ -5,8 +5,8 @@ import { PageChrome } from '@/shell/page_chrome';
 import { PageSkeleton } from '@/shell/page_skeleton';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
-import { Label } from '@/components/ui/label';
 import { Textarea } from '@/components/ui/textarea';
+import { FilterField, FILTER_PANEL_NARROW_CLASS } from '@/shell/filter_panel';
 import {
   DirectoryTable,
   DirectoryTableHead,
@@ -16,8 +16,9 @@ import {
   TableRow,
 } from '@/shell/directory_table';
 import type { HostedEditorState } from '@/api/types';
-import { CreativeNav, creativePanelError } from '@/domains/creative/creative_nav';
-import { FILTER_PANEL_NARROW_CLASS } from '@/shell/filter_panel';
+import { CreativeDirectoryStack } from '@/domains/creative/creative_directory_stack';
+import { creativePanelError } from '@/domains/creative/creative_nav';
+import { ActionLinksBand, MetaLinksBand, TableHost } from '@/shell/ui_bands';
 import { adminKit } from '@/lib/admin_kit';
 import { cn } from '@/lib/utils';
 
@@ -69,8 +70,9 @@ export function LanderHostedEditor({
   if (error && !hasSnapshot) {
     return (
       <PageChrome title="Hosted lander editor">
-        <CreativeNav />
-        {creativePanelError(error, 'Could not load hosted editor')}
+        <CreativeDirectoryStack>
+          {creativePanelError(error, 'Could not load hosted editor')}
+        </CreativeDirectoryStack>
       </PageChrome>
     );
   }
@@ -78,8 +80,9 @@ export function LanderHostedEditor({
   if (!state) {
     return (
       <PageChrome title="Hosted lander editor">
-        <CreativeNav />
-        {creativePanelError(new Error('Editor state missing'), 'Could not load hosted editor')}
+        <CreativeDirectoryStack>
+          {creativePanelError(new Error('Editor state missing'), 'Could not load hosted editor')}
+        </CreativeDirectoryStack>
       </PageChrome>
     );
   }
@@ -88,28 +91,27 @@ export function LanderHostedEditor({
 
   return (
     <PageChrome title={`Hosted editor: ${state.name}`}>
-      <CreativeNav />
-      <Link className="text-sm text-muted-foreground hover:underline" to="/landers">
-        Back to landers
-      </Link>
+      <CreativeDirectoryStack>
+      <MetaLinksBand>
+        <Link to="/landers">Back to landers</Link>
+      </MetaLinksBand>
 
       <section className="grid gap-2">
         <h2 className="text-base font-semibold">Draft status</h2>
-        <div className="flex flex-wrap gap-2 text-sm">
+        <ActionLinksBand className="text-sm">
           <Badge variant="outline">Draft v{state.draft_version}</Badge>
           <Badge variant="outline">Published v{state.published_version}</Badge>
           {state.has_unpublished_draft ? (
             <Badge variant="secondary">Unpublished draft</Badge>
           ) : null}
-        </div>
+        </ActionLinksBand>
       </section>
 
       {onUploadZip || onPublish ? (
         <section className={FILTER_PANEL_NARROW_CLASS}>
           <h2 className="text-base font-semibold">Hosted actions</h2>
           {onUploadZip ? (
-            <div className="grid gap-2">
-              <Label htmlFor="lander-upload-zip">Upload ZIP</Label>
+            <FilterField htmlFor="lander-upload-zip" label="Upload ZIP">
               <input
                 id="lander-upload-zip"
                 type="file"
@@ -122,7 +124,7 @@ export function LanderHostedEditor({
                   }
                 }}
               />
-            </div>
+            </FilterField>
           ) : null}
           {onPublish ? (
             <Button disabled={acting} onClick={onPublish} type="button">
@@ -164,7 +166,8 @@ export function LanderHostedEditor({
 
       <section className="grid gap-2">
         <h2 className="text-base font-semibold">Files</h2>
-        <DirectoryTable>
+        <TableHost>
+          <DirectoryTable nested>
           <TableHeader>
             <TableRow>
               <DirectoryTableHead>Path</DirectoryTableHead>
@@ -200,6 +203,7 @@ export function LanderHostedEditor({
             })}
           </TableBody>
         </DirectoryTable>
+        </TableHost>
       </section>
 
       {selectedFilePath && onSaveFile ? (
@@ -210,15 +214,14 @@ export function LanderHostedEditor({
             <p className="text-sm text-muted-foreground">Loading file...</p>
           ) : (
             <>
-              <div className="grid gap-2">
-                <Label htmlFor="lander-file-content">Content</Label>
+              <FilterField htmlFor="lander-file-content" label="Content">
                 <Textarea
                   id="lander-file-content"
                   className="min-h-64 font-mono text-sm"
                   value={fileContent}
                   onChange={(event) => onFileContentChange?.(event.target.value)}
                 />
-              </div>
+              </FilterField>
               {fileError ? creativePanelError(fileError, 'Could not save file') : null}
               <div>
                 <PrimaryActionButton
@@ -236,6 +239,7 @@ export function LanderHostedEditor({
       ) : null}
 
       {error && hasSnapshot ? creativePanelError(error, 'Refresh failed') : null}
+      </CreativeDirectoryStack>
     </PageChrome>
   );
 }

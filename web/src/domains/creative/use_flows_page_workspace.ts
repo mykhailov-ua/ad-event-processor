@@ -1,22 +1,25 @@
-// L3 flows directory: list + create with paths JSON parsed client-side before POST.
+// L3 flows directory: list + visual create; paths validated client-side before POST.
 import { useCallback, useState } from 'react';
 import { toast } from 'sonner';
 
+import { listLanders } from '@/api/landers_api';
+import { listOffers } from '@/api/offers_api';
 import { createFlow, listFlows } from '@/api/flows_api';
-import type { FlowPath } from '@/api/types';
+import { buildFlowBodyFromVisual } from '@/domains/creative/flow_editor_form';
+import { newFlowPathRow, type FlowPathVisualRow } from '@/domains/creative/flow_path_model';
 import { useCoalescedBumpRefresh, useRefreshToken } from '@/hooks/use_coalesced_refresh_token';
 import { useResource } from '@/api/use_resource';
 
 export function useFlowsPageWorkspace() {
   const { refreshToken, bumpRefresh } = useRefreshToken();
   const { data, error, fetching } = useResource((signal) => listFlows(signal), [refreshToken]);
+  const { data: landers } = useResource((signal) => listLanders(signal), [refreshToken]);
+  const { data: offers } = useResource((signal) => listOffers(signal), [refreshToken]);
 
   const bumpRefreshCoalesced = useCoalescedBumpRefresh(bumpRefresh, fetching);
 
   const [draftName, setDraftName] = useState('');
-  const [draftPathsJson, setDraftPathsJson] = useState(
-    '[{"weight":100,"lander_id":"","offer_id":""}]'
-  );
+  const [draftRows, setDraftRows] = useState<FlowPathVisualRow[]>([newFlowPathRow()]);
   const [creating, setCreating] = useState(false);
   const [createError, setCreateError] = useState<Error | undefined>();
   const [createSuccess, setCreateSuccess] = useState(false);
@@ -25,22 +28,18 @@ export function useFlowsPageWorkspace() {
     if (creating) {
       return;
     }
-    const name = draftName.trim();
-    if (!name) {
-      setCreateError(new Error('Flow name is required.'));
-      return;
-    }
     setCreating(true);
     setCreateError(undefined);
     setCreateSuccess(false);
     try {
-      const parsed: unknown = JSON.parse(draftPathsJson);
-      if (!Array.isArray(parsed)) {
-        throw new Error('Paths must be a JSON array.');
+      const body = buildFlowBodyFromVisual(draftName, draftRows);
+      if (!body.ok) {
+        throw new Error(body.error);
       }
-      await createFlow({ name, paths: parsed as FlowPath[] });
+      await createFlow(body.body);
       setCreateSuccess(true);
       setDraftName('');
+      setDraftRows([newFlowPathRow()]);
       toast.success('Flow created');
       bumpRefreshCoalesced();
     } catch (err: unknown) {
@@ -48,20 +47,22 @@ export function useFlowsPageWorkspace() {
     } finally {
       setCreating(false);
     }
-  }, [bumpRefreshCoalesced, creating, draftName, draftPathsJson]);
+  }, [bumpRefreshCoalesced, creating, draftName, draftRows]);
 
   return {
     items: data,
     fetching,
     error,
     hasSnapshot: data != null,
+    landers: landers ?? [],
+    offers: offers ?? [],
     draftName,
-    draftPathsJson,
+    draftRows,
     creating,
     createError,
     createSuccess,
     onDraftNameChange: setDraftName,
-    onDraftPathsJsonChange: setDraftPathsJson,
+    onDraftRowsChange: setDraftRows,
     onCreateFlow: () => {
       void onCreateFlow();
     },

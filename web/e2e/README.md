@@ -14,8 +14,10 @@ Playwright specs under this directory are classified below. Do not cite smoke or
 
 | Tier | When | Falsify |
 | :--- | :--- | :--- |
-| **T0** | `admin_dev=1` mock intercept | `admin_dev=0` on `:8188` |
-| **T1** | Live `/api/v1` on `:8188`, mock banner absent | `assertLiveApiMode(page)` after `?admin_dev=0` |
+| **T1** | Live `/api/v1` on `:8188` (`ADMIN_E2E_BASE_URL` default) | `curl -sf :8188/health`; `skipUnlessIntegrationReady` |
+| **T2** | Embedded `web/dist` from control binary | Same-origin live API |
+
+There is no in-browser mock API tier. Chart preview (`?chart_mock=1`) is dashboard-only and does not prove list/report handlers.
 
 ## Shared helpers
 
@@ -112,7 +114,7 @@ ADMIN_WEB_E2E_SMOKE=1 bash scripts/ci/admin/web.sh
 ADMIN_WEB_E2E_NIGHTLY=1 bash scripts/ci/admin/web_e2e_nightly.sh
 
 # L2 mutation subset (@write tag)
-cd web && ADMIN_DEV_AUTO_MOCK=0 npx playwright test --grep @write
+cd web && npx playwright test --grep @write
 
 # L1 read subset (examples)
 cd web/e2e && npx playwright test \

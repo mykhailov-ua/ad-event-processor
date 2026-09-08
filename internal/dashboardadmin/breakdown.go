@@ -11,7 +11,7 @@ import (
 	"github.com/jackc/pgx/v5/pgxpool"
 )
 
-const buyerBreakdownTopN = 6
+const buyerBreakdownTopN = 25
 
 type campaignBreakdownInput struct {
 	id           string
@@ -49,7 +49,9 @@ func buildCampaignBreakdownTable(inputs []campaignBreakdownInput) reports.Dashbo
 		}
 		return rows[i].Clicks > rows[j].Clicks
 	})
-	return reports.CapBreakdownTable(rows, buyerBreakdownTopN)
+	table := reports.CapBreakdownTable(rows, buyerBreakdownTopN)
+	reports.ApplyBreakdownTableEconomicsGaps(&table)
+	return table
 }
 
 func attachFlowEntityNames(

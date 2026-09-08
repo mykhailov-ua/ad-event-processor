@@ -119,6 +119,37 @@ func buildPSHACKPacket(t *testing.T, src, dst net.IP, dport uint16) []byte {
 	return pkt
 }
 
+func buildPSHACKPacketWithPayload(t *testing.T, src, dst net.IP, dport uint16, payload []byte) []byte {
+	t.Helper()
+	require.NotEmpty(t, payload)
+	const (
+		ethLen = 14
+		ipLen  = 20
+		tcpLen = 20
+	)
+	pkt := make([]byte, ethLen+ipLen+tcpLen+len(payload))
+	src4 := src.To4()
+	dst4 := dst.To4()
+	require.NotNil(t, src4)
+	require.NotNil(t, dst4)
+
+	binary.BigEndian.PutUint16(pkt[12:14], 0x0800)
+	ip := pkt[ethLen:]
+	ip[0] = 0x45
+	binary.BigEndian.PutUint16(ip[2:4], uint16(ipLen+tcpLen+len(payload)))
+	ip[9] = 6
+	copy(ip[12:16], src4)
+	copy(ip[16:20], dst4)
+
+	tcp := pkt[ethLen+ipLen:]
+	tcp[12] = 0x50
+	binary.BigEndian.PutUint16(tcp[0:2], 12345)
+	binary.BigEndian.PutUint16(tcp[2:4], dport)
+	tcp[13] = 0x18
+	copy(pkt[ethLen+ipLen+tcpLen:], payload)
+	return pkt
+}
+
 func buildRSTPacket(t *testing.T, src, dst net.IP, dport uint16) []byte {
 	t.Helper()
 	pkt := buildACKPacket(t, src, dst, dport)
@@ -321,6 +352,17 @@ func TestXDP_passACKTraffic(t *testing.T) {
 	for range 200 {
 		assert.Equal(t, uint32(2), runXDP(t, objs.XdpEdgeFilter, pkt))
 	}
+}
+
+func TestXDP_dropPSHTinygram(t *testing.T) {
+	objs := loadTestObjects(t)
+	src := net.IPv4(198, 18, 6, 1)
+	tiny := buildPSHACKPacketWithPayload(t, src, net.IPv4(10, 0, 0, 1), trackerPort, []byte{0x41})
+	assert.Equal(t, uint32(1), runXDP(t, objs.XdpEdgeFilter, tiny))
+
+	largePayload := []byte{0x41, 0x42, 0x43, 0x44, 0x45, 0x46, 0x47, 0x48}
+	large := buildPSHACKPacketWithPayload(t, src, net.IPv4(10, 0, 0, 1), trackerPort, largePayload)
+	assert.Equal(t, uint32(2), runXDP(t, objs.XdpEdgeFilter, large))
 }
 
 func TestXDP_dropPPSFlood(t *testing.T) {

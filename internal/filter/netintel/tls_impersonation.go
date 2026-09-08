@@ -2,7 +2,6 @@ package netintel
 
 import (
 	"hash/crc32"
-	"strings"
 )
 
 const tlsFingerprintMaxLen = 512
@@ -21,8 +20,38 @@ func UAClaimsChromeNotChromium(ua string) bool {
 	if ua == "" {
 		return false
 	}
-	uaLower := strings.ToLower(ua)
-	return strings.Contains(uaLower, "chrome") && !strings.Contains(uaLower, "chromium")
+	return asciiContainsFold(ua, "chrome") && !asciiContainsFold(ua, "chromium")
+}
+
+func asciiContainsFold(haystack, needle string) bool {
+	if len(needle) == 0 || len(haystack) < len(needle) {
+		return false
+	}
+	for i := 0; i+len(needle) <= len(haystack); i++ {
+		if asciiEqualFold(haystack[i:i+len(needle)], needle) {
+			return true
+		}
+	}
+	return false
+}
+
+func asciiEqualFold(a, b string) bool {
+	if len(a) != len(b) {
+		return false
+	}
+	for i := 0; i < len(a); i++ {
+		ca, cb := a[i], b[i]
+		if ca >= 'A' && ca <= 'Z' {
+			ca += 'a' - 'A'
+		}
+		if cb >= 'A' && cb <= 'Z' {
+			cb += 'a' - 'A'
+		}
+		if ca != cb {
+			return false
+		}
+	}
+	return true
 }
 
 func TLSFingerprintImpersonating(ua string, ja3, ja4, tlsHash []byte) bool {

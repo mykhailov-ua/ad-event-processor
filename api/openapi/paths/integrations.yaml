@@ -138,6 +138,38 @@ paths:
         default:
           $ref: '../openapi.yaml#/components/responses/Error'
 
+  /api/v1/postbacks/health:
+    get:
+      tags: [postbacks]
+      operationId: postbacksHealth
+      summary: Postback delivery health aggregates (24h)
+      x-permissions: [campaigns:read]
+      responses:
+        '200':
+          description: Per-campaign postback health rows
+          content:
+            application/json:
+              schema:
+                $ref: '../components/schemas/integrations.yaml#/PostbackHealthResponse'
+        default:
+          $ref: '../openapi.yaml#/components/responses/Error'
+
+  /api/v1/integrations/postbacks/health:
+    get:
+      tags: [postbacks]
+      operationId: integrationsPostbacksHealth
+      summary: Postback delivery health aggregates (alias)
+      x-permissions: [campaigns:read]
+      responses:
+        '200':
+          description: Per-campaign postback health rows
+          content:
+            application/json:
+              schema:
+                $ref: '../components/schemas/integrations.yaml#/PostbackHealthResponse'
+        default:
+          $ref: '../openapi.yaml#/components/responses/Error'
+
   /api/v1/integration/schemas:
     get:
       tags: [integration]
@@ -301,6 +333,34 @@ paths:
             application/json:
               schema:
                 $ref: '../components/schemas/integrations.yaml#/ApplyCampaignTemplatesResult'
+        default:
+          $ref: '../openapi.yaml#/components/responses/Error'
+
+  /api/v1/campaigns/{id}/apply-templates/dry-run:
+    post:
+      tags: [integration]
+      operationId: integrationDryRunCampaignTemplates
+      summary: Preview template URLs and sample postback payload without persisting
+      x-permissions: [campaigns:read]
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: string
+            format: uuid
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: '../components/schemas/integrations.yaml#/ApplyCampaignTemplatesRequest'
+      responses:
+        '200':
+          description: Dry-run preview
+          content:
+            application/json:
+              schema:
+                $ref: '../components/schemas/integrations.yaml#/DryRunCampaignTemplatesResult'
         default:
           $ref: '../openapi.yaml#/components/responses/Error'
 

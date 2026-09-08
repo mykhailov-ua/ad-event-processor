@@ -20,7 +20,7 @@ export function useRtbDealsPageWorkspace() {
   const [createError, setCreateError] = useState<Error | undefined>(undefined);
   const { refreshToken, bumpRefresh } = useRefreshToken();
 
-  const { data, error, fetching } = useResource((signal) => listRtbDeals(signal), [refreshToken]);
+  const { data, error, fetching, revalidating: listRevalidating } = useResource((signal) => listRtbDeals(signal), [refreshToken]);
 
   const licenseGated = rtbLicenseGated(error);
   const bumpRefreshCoalesced = useCoalescedBumpRefresh(bumpRefresh, fetching || creating);
@@ -57,6 +57,7 @@ export function useRtbDealsPageWorkspace() {
   return {
     items: data,
     fetching,
+    listRevalidating,
     error: licenseGated ? undefined : error,
     hasSnapshot: data != null || licenseGated,
     licenseGated,

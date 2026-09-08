@@ -118,7 +118,7 @@ func BenchmarkHotPath_AdsPacketHandlerProto_reject404(b *testing.B) {
 
 	b.ReportAllocs()
 	for b.Loop() {
-		handler.React(req, conn)
+		handler.React(&req, conn)
 	}
 }
 
@@ -139,6 +139,6 @@ func BenchmarkHotPath_AdsPacketHandlerProto_infra503(b *testing.B) {
 
 	b.ReportAllocs()
 	for b.Loop() {
-		handler.React(req, conn)
+		handler.React(&req, conn)
 	}
 }

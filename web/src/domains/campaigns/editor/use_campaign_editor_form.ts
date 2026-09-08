@@ -20,6 +20,7 @@ export const CAMPAIGN_EDITOR_EMPTY_FORM: CampaignEditorFormState = {
   ingress_policy: '',
   traffic_template_id: '',
   click_query_params_json: '{}',
+  click_filter_tier: 'full',
 };
 
 export function useCampaignEditorForm() {

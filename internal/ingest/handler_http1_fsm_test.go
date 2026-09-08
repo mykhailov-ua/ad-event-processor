@@ -219,7 +219,10 @@ func TestHTTP1Parse(t *testing.T) {
 }
 
 func TestHTTP1Pipelining(t *testing.T) {
-	cfg := &config.Config{MaxRequestBodySize: 1024 * 1024}
+	cfg := &config.Config{
+		MaxRequestBodySize:    1024 * 1024,
+		HTTP1MaxPipelineDepth: 12,
+	}
 	h := NewAdsPacketHandler(cfg, &mockRegistry{}, nil, nil, nil, NewJumpHashSharder(1), "fraud", nil)
 
 	body := []byte(`{"campaign_id":"` + uuid.NewString() + `","type":"click","click_id":"c1"}`)
@@ -251,23 +254,25 @@ func TestHTTP1Pipelining(t *testing.T) {
 
 func TestHTTP1Parse_ZeroAlloc(t *testing.T) {
 	const maxBody = int64(1024 * 1024)
+	var req Request
 	allocs := testing.AllocsPerRun(100, func() {
-		_, _, err := parseHTTP1(nginxTrackCorpus, maxBody, nil)
+		_, err := parseHTTP1Into(nginxTrackCorpus, maxBody, nil, &req)
 		if err != nil {
 			t.Fatal(err)
 		}
 	})
-	if allocs > 1 {
-		t.Fatalf("parseHTTP1 allocs/op = %v, want <=1 (Request.RealIP fallback header)", allocs)
+	if allocs != 0 {
+		t.Fatalf("parseHTTP1Into allocs/op = %v, want 0", allocs)
 	}
 }
 
 func BenchmarkHTTP1Parse(b *testing.B) {
 	const maxBody = int64(1024 * 1024)
+	var req Request
 	b.SetBytes(int64(len(nginxTrackCorpus)))
 	b.ReportAllocs()
 	for b.Loop() {
-		_, _, err := parseHTTP1(nginxTrackCorpus, maxBody, nil)
+		_, err := parseHTTP1Into(nginxTrackCorpus, maxBody, nil, &req)
 		if err != nil {
 			b.Fatal(err)
 		}

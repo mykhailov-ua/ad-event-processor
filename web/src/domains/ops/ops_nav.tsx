@@ -1,7 +1,5 @@
-import { ApiError } from '@/api/client';
-import { ErrorBlock } from '@/shell/error_block';
 import { SectionNav } from '@/shell/section_nav';
-import { StubBanner } from '@/shell/stub_banner';
+import { panelError } from '@/shell/panel_error';
 import type { SectionNavItem } from '@/lib/nav_config';
 
 export const OPS_NAV_ITEMS: SectionNavItem[] = [
@@ -24,8 +22,5 @@ export function OpsNav({ variant = 'admin' }: { variant?: 'pill' | 'admin' }) {
 }
 
 export function opsPanelError(error: Error, title: string) {
-  if (error instanceof ApiError && error.status === 501) {
-    return <StubBanner title={`${title} unavailable`} message={error.message} />;
-  }
-  return <ErrorBlock error={error} title={title} />;
+  return panelError(error, title);
 }

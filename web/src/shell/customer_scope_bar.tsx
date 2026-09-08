@@ -31,7 +31,6 @@ export function CustomerScopeBar({
       >
         <FilterField htmlFor="customer-scope-id" label="Customer ID">
           <Input
-            className="text-sm"
             id="customer-scope-id"
             placeholder="Customer UUID..."
             value={draftCustomerId}

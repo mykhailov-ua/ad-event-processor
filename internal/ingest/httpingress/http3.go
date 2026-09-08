@@ -83,37 +83,46 @@ func h3DecodeQPACKBlock(block []byte, req *Request) error {
 }
 
 func H3ParseRequestFrames(buf []byte, maxBody int64) (consumed int, req Request, err error) {
+	var scratch Request
+	consumed, err = H3ParseRequestFramesInto(buf, maxBody, &scratch)
+	return consumed, scratch, err
+}
+
+func H3ParseRequestFramesInto(buf []byte, maxBody int64, req *Request) (consumed int, err error) {
+	if req == nil {
+		return 0, ErrInvalid
+	}
 	off := 0
 	gotHeaders := false
 	for off < len(buf) {
 		fr, n, ferr := h3DecodeFrame(buf[off:])
 		if ferr != nil {
-			return off, req, ferr
+			return off, ferr
 		}
 		off += n
 		switch fr.Type {
 		case h3FrameHeaders:
-			if err := h3DecodeQPACKBlock(fr.Payload, &req); err != nil {
-				return off, req, err
+			if err := h3DecodeQPACKBlock(fr.Payload, req); err != nil {
+				return off, err
 			}
 			gotHeaders = true
 		case h3FrameData:
 			if !gotHeaders {
-				return off, req, ErrInvalid
+				return off, ErrInvalid
 			}
 			if int64(len(fr.Payload)) > maxBody {
-				return off, req, ErrPayloadTooLarge
+				return off, ErrPayloadTooLarge
 			}
 			req.Body = fr.Payload
 			req.ContentLength = len(fr.Payload)
 			req.HasContentLength = true
-			return off, req, nil
+			return off, nil
 		default:
 			continue
 		}
 	}
 	if gotHeaders && len(req.Body) == 0 && !req.HasContentLength {
-		return off, req, nil
+		return off, nil
 	}
-	return off, req, ErrIncomplete
+	return off, ErrIncomplete
 }

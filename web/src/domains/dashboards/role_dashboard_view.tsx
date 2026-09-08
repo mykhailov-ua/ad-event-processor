@@ -12,7 +12,7 @@ import { PageSkeleton } from '@/shell/page_skeleton';
 import { StubBanner } from '@/shell/stub_banner';
 import { DASHBOARD_ROLES, formatDashboardRoleLabel } from '@/api/dashboards_api';
 import type { DashboardRole } from '@/api/types';
-import { CampaignsListFilterSelect } from '@/domains/campaigns/list/campaigns_list_filter_select';
+import { CampaignsListFilterSelect, CampaignsListSearchableFilterSelect } from '@/domains/campaigns/list/campaigns_list_filter_select';
 import {
   BuyerDashboardToolbar,
   type BuyerDashboardCampaignOption,
@@ -27,9 +27,10 @@ import {
   parseBuyerPortfolio,
   type DashboardRangePreset,
 } from '@/domains/dashboards/buyer_dashboard_types';
+import { DASHBOARD_BUYER_PAGE_DESCRIPTION } from '@/domains/dashboards/dashboard_preferences';
 import { opsStatusTone } from '@/domains/ops/ops_status';
 import { useBuyerDashboardPreferences } from '@/hooks/use_buyer_dashboard_preferences';
-import { DirectoryFilterForm, FilterField, FilterPanel } from '@/shell/filter_panel';
+import { DirectoryFilterForm, FilterField, FilterPanel, FILTER_PANEL_FLAT_CLASS } from '@/shell/filter_panel';
 import { cn } from '@/lib/utils';
 
 // L3 dashboard shell: loading/error/stale-while-revalidate (EH-SI2).
@@ -50,6 +51,10 @@ export type RoleDashboardViewProps = {
   draftRole: DashboardRole;
   draftCustomerId: string;
   draftCampaignId: string;
+  appliedCustomerId: string;
+  appliedCampaignId: string;
+  appliedFrom: string;
+  appliedTo: string;
   draftFrom: string;
   draftTo: string;
   rangePreset: DashboardRangePreset;
@@ -135,7 +140,7 @@ function RoleDashboardFilters({
 
   return (
     <div className="grid gap-2">
-      <FilterPanel aria-label="Dashboard filters" className="bg-transparent p-0" role="search">
+      <FilterPanel aria-label="Dashboard filters" className={FILTER_PANEL_FLAT_CLASS} role="search">
         <DirectoryFilterForm layout="campaigns">
           <FilterField
             className={dashboardFilterFieldClass}
@@ -155,9 +160,10 @@ function RoleDashboardFilters({
             label="Customer"
             labelClassName={dashboardFilterLabelClass}
           >
-            <CampaignsListFilterSelect
+            <CampaignsListSearchableFilterSelect
               aria-label="Customer"
               options={customerSelectOptions}
+              searchPlaceholder="All customers"
               value={draftCustomerId || ALL_OPTION_VALUE}
               onValueChange={(value) =>
                 onDraftCustomerIdChange(value === ALL_OPTION_VALUE ? '' : value)
@@ -240,6 +246,10 @@ export function RoleDashboardView({
   draftRole,
   draftCustomerId,
   draftCampaignId,
+  appliedCustomerId,
+  appliedCampaignId,
+  appliedFrom,
+  appliedTo,
   draftFrom,
   draftTo,
   rangePreset,
@@ -269,7 +279,7 @@ export function RoleDashboardView({
 
   if (licenseGated) {
     return (
-      <PageLayout title="Dashboards" workspaceClassName={dashboardPageWorkspaceClass}>
+      <PageLayout fillViewport title="Dashboards" workspaceClassName={dashboardPageWorkspaceClass}>
         <StubBanner
           message="This dashboard is not available on the current license tier."
           title="License required"
@@ -290,10 +300,13 @@ export function RoleDashboardView({
   const buyerPortfolio =
     role === 'buyer' && !customerRequired ? parseBuyerPortfolio(payload) : undefined;
   const pageTitle = role === 'buyer' ? 'Dashboard' : `${formatDashboardRoleLabel(role)} dashboard`;
+  const pageDescription = role === 'buyer' ? DASHBOARD_BUYER_PAGE_DESCRIPTION : undefined;
 
   return (
     <PageLayout
       badge={freshnessBadge(payload)}
+      description={pageDescription}
+      fillViewport
       controlPanel={
         role === 'buyer' ? (
           <BuyerDashboardToolbar
@@ -355,8 +368,12 @@ export function RoleDashboardView({
         {buyerPortfolio ? (
           <BuyerDashboardView
             clickLogHref={clickLogHref}
+            customerId={appliedCustomerId}
+            periodFrom={appliedFrom}
+            periodTo={appliedTo}
             portfolio={buyerPortfolio}
             preferences={preferences}
+            scopedCampaignId={appliedCampaignId || undefined}
           />
         ) : null}
 

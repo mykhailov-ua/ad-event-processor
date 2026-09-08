@@ -7,10 +7,8 @@ import (
 	"testing"
 	"time"
 
-	"ad-event-processor/internal/config"
 	"ad-event-processor/internal/domain"
 	"ad-event-processor/internal/metrics"
-	"ad-event-processor/internal/rtb"
 
 	"github.com/alicebob/miniredis/v2"
 	"github.com/google/uuid"
@@ -44,12 +42,22 @@ func newLocalQuantaUnifiedFilter(t testing.TB, redisClient redis.UniversalClient
 		IdempotencyTTL: time.Hour,
 		IdemCache:      idem,
 	})
-	f.SetLocalQuantaDeps(LocalQuantaDeps{Ledger: ledger, Stream: stream, Idem: stream.IdemCache()})
+	f.SetLocalQuantaDeps(LocalQuantaDepsWithStream(ledger, stream))
 	f.SetLocalQuantaMode("live")
 	f.SetPlacementBlacklistFilter(NewPlacementBlacklistFilter([]redis.UniversalClient{redisClient}))
 	f.SetFraudBlacklistFilter(NewFraudBlacklistFilter([]redis.UniversalClient{redisClient}))
 	t.Cleanup(stream.Close)
 	return f, ledger, stream
+}
+
+func finalizeLocalQuantaAfterCheck(t testing.TB, f *UnifiedFilter, evt *domain.Event) {
+	t.Helper()
+	if evt == nil || evt.LocalQuantaDebitMicro <= 0 {
+		return
+	}
+	camp := evt.FilterCamp
+	require.NotNil(t, camp, "FilterCamp must be set after Check for finalize")
+	require.NoError(t, f.FinalizeLocalQuantaPublish(context.Background(), evt, camp))
 }
 
 func TestUnifiedFilter_localQuantaEligible_click(t *testing.T) {
@@ -157,19 +165,12 @@ func TestUnifiedFilter_localQuanta_clickFastPathMatchesImpression(t *testing.T) 
 	require.Equal(t, expected, remaining)
 }
 
-func TestUnifiedFilter_localQuantaEligible_fcap_settingsWatcher(t *testing.T) {
-	sw := NewSettingsWatcher(nil, &config.Config{
-		RateLimitPerMin:   100,
-		RateLimitWindowMs: 1000,
-		ClickAmount:       100,
-		ImpressionAmount:  10,
-	})
+func TestUnifiedFilter_localQuantaEligible_fcap_localLedger(t *testing.T) {
 	f := NewUnifiedFilter(nil, nil, &mockRegistry{}, nil, 0, time.Minute, time.Hour, time.Hour, 100, 10, "events", 1000)
 	f.SetQuotaConfig("live", testQuotaChunkMicro, testQuotaRefillThreshold)
 	f.SetLocalQuantaDeps(LocalQuantaDeps{Ledger: NewLocalQuantaLedger()})
 	f.SetLocalQuantaMode("live")
 	f.SetLuaFastPathEnabled(true)
-	f.SetSettingsWatcher(sw)
 
 	camp := &domain.Campaign{
 		PacingMode:    domain.PacingModeAsap,
@@ -179,19 +180,5 @@ func TestUnifiedFilter_localQuantaEligible_fcap_settingsWatcher(t *testing.T) {
 	click := &domain.Event{Type: "click", CampaignID: uuid.New(), UserID: "u1"}
 
 	require.True(t, f.LocalQuantaEligible(click, camp))
-
-	exceeded, err := f.CheckFreqLimitGo(click, camp)
-	require.NoError(t, err)
-	require.False(t, exceeded)
-
-	prefixHash := rtb.HashBytes64([]byte(camp.FcapKeyPrefix))
-	userHash := rtb.HashBytes64([]byte(click.UserID))
-	lookup := rtb.FcapLookupKey(prefixHash, userHash)
-	sw.StoreFcapSnapshotForTest(rtb.NewFcapSnapshot(map[uint64]uint32{
-		lookup: 2,
-	}))
-
-	exceeded, err = f.CheckFreqLimitGo(click, camp)
-	require.ErrorIs(t, err, ErrFreqLimitExceeded)
-	require.True(t, exceeded)
+	require.False(t, f.NeedsFullLuaPath(click, camp))
 }

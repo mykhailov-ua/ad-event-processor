@@ -1,7 +1,7 @@
 import { SecondaryActionButton } from '@/shell/action_buttons';
 import { DirectoryListMeta } from '@/shell/directory_list_meta';
 import { DirectoryFilterForm, FilterPanel } from '@/shell/filter_panel';
-import { PageChrome } from '@/shell/page_chrome';
+import { PageLayout } from '@/shell/page_layout';
 import { EmptyState } from '@/shell/empty_state';
 import { ErrorBlock } from '@/shell/error_block';
 import { PageSkeleton } from '@/shell/page_skeleton';
@@ -13,6 +13,7 @@ import {
   TableCell,
   TableHeader,
   TableRow,
+  directoryTableRevalidatingClass,
 } from '@/shell/directory_table';
 import { Badge } from '@/components/ui/badge';
 import { Checkbox } from '@/components/ui/checkbox';
@@ -26,6 +27,7 @@ export type AuditDirectoryProps = {
   limit: number;
   offset: number;
   fetching: boolean;
+  listRevalidating?: boolean;
   error: Error | undefined;
   hasSnapshot: boolean;
   draftRedactPii: boolean;
@@ -44,6 +46,7 @@ export function AuditDirectory({
   limit,
   offset,
   fetching,
+  listRevalidating = false,
   error,
   hasSnapshot,
   draftRedactPii,
@@ -56,7 +59,7 @@ export function AuditDirectory({
   onPageChange,
 }: AuditDirectoryProps) {
   if (fetching && !hasSnapshot && !error) {
-    return <PageSkeleton />;
+    return <PageSkeleton variant="directory" columns={6} />;
   }
 
   if (error && !hasSnapshot) {
@@ -67,40 +70,45 @@ export function AuditDirectory({
   const canGoNext = offset + limit < total;
 
   return (
-    <PageChrome title="Audit">
-      <FilterPanel>
-        <DirectoryFilterForm onSubmit={(event) => event.preventDefault()}>
-          <div className="flex items-center gap-2">
-            <Checkbox
-              checked={draftRedactPii}
-              id="audit-redact-pii"
-              onCheckedChange={(checked) => onDraftRedactPiiChange(checked === true)}
-            />
-            <Label htmlFor="audit-redact-pii">Redact PII in export</Label>
-          </div>
-          <SecondaryActionButton
-            disabled={exporting}
-            loading={exporting}
-            onClick={onExportCsv}
-            type="button"
-          >
-            Export CSV
-          </SecondaryActionButton>
-          <DirectoryPaginationFooter
-            canGoNext={canGoNext}
-            canGoPrev={canGoPrev}
-            disabled={fetching}
-            onNext={() => onPageChange(offset + limit)}
-            onPrev={() => onPageChange(Math.max(0, offset - limit))}
-          />
-        </DirectoryFilterForm>
-        <DirectoryListMeta>
-          {total > 0
-            ? `Showing ${offset + 1}-${Math.min(offset + (items ?? []).length, total)} of ${total}`
-            : 'No audit entries'}
-        </DirectoryListMeta>
-      </FilterPanel>
-
+    <PageLayout
+      controlPanel={
+        <FilterPanel>
+          <DirectoryFilterForm onSubmit={(event) => event.preventDefault()}>
+            <div className="flex items-center gap-2">
+              <Checkbox
+                checked={draftRedactPii}
+                id="audit-redact-pii"
+                onCheckedChange={(checked) => onDraftRedactPiiChange(checked === true)}
+              />
+              <Label htmlFor="audit-redact-pii">Redact PII in export</Label>
+            </div>
+            <SecondaryActionButton
+              disabled={exporting}
+              loading={exporting}
+              onClick={onExportCsv}
+              type="button"
+            >
+              Export CSV
+            </SecondaryActionButton>
+          </DirectoryFilterForm>
+          <DirectoryListMeta>
+            {total > 0
+              ? `Showing ${offset + 1}-${Math.min(offset + (items ?? []).length, total)} of ${total}`
+              : 'No audit entries'}
+          </DirectoryListMeta>
+        </FilterPanel>
+      }
+      footer={
+        <DirectoryPaginationFooter
+          canGoNext={canGoNext}
+          canGoPrev={canGoPrev}
+          disabled={fetching}
+          onNext={() => onPageChange(offset + limit)}
+          onPrev={() => onPageChange(Math.max(0, offset - limit))}
+        />
+      }
+      title="Audit"
+    >
       {exportError ? <ErrorBlock title="Export failed" message={exportError.message} /> : null}
       {exportTruncated ? (
         <p className="text-sm text-muted-foreground" role="status">
@@ -114,7 +122,7 @@ export function AuditDirectory({
           description="Admin actions will appear here when recorded."
         />
       ) : (
-        <DirectoryTable>
+        <DirectoryTable className={directoryTableRevalidatingClass(listRevalidating)}>
           <TableHeader>
             <TableRow>
               <DirectoryTableHead>Time</DirectoryTableHead>
@@ -142,7 +150,7 @@ export function AuditDirectory({
         </DirectoryTable>
       )}
 
-      {error && hasSnapshot && <ErrorBlock title="Refresh failed" message={error.message} />}
-    </PageChrome>
+      {error && hasSnapshot ? <ErrorBlock title="Refresh failed" message={error.message} /> : null}
+    </PageLayout>
   );
 }

@@ -2,6 +2,7 @@ package gnet
 
 import (
 	"errors"
+	"net/http"
 
 	"ad-event-processor/internal/filter"
 	"ad-event-processor/internal/ingest/httpingress"
@@ -33,28 +34,40 @@ func (s *Server) onTrafficH2(c pkgnet.Conn, buf []byte) pkgnet.Action {
 		}
 	}
 
-	ctx, ok := c.Context().(*ConnContext)
-	if !ok || ctx == nil {
-		ctx = s.allocConnContext(c)
-		c.SetContext(ctx)
-	}
+	ctx := s.http1EnsureConnContext(c)
 	ctx.ProtoH2 = true
 
 	if act := s.h2CheckConnDeadlines(c, ctx); act != pkgnet.None {
 		return act
 	}
+	if act := s.h2CheckPipelineBackpressure(ctx, buf); act != pkgnet.None {
+		return act
+	}
+	// Tier A invariant: one in-flight offload per H2 conn; epoll stops parsing until Tier B clears busy.
+	if ctx.HTTP1OffloadBusy.Load() {
+		return pkgnet.None
+	}
 
-	consumed, req, streamID, settings, err := httpingress.ParseH2Ingress(buf, &ctx.H2, maxBody)
+	var parseReq *Request
+	var offloadCtx *ConnContext
+	if s.workerPool != nil {
+		offloadCtx = s.contextPool.Get().(*ConnContext)
+		parseReq = &offloadCtx.OffloadReq
+	} else {
+		parseReq = &ctx.OffloadReq
+	}
+
+	consumed, streamID, settings, err := httpingress.ParseH2IngressInto(buf, &ctx.H2, maxBody, parseReq)
 	if len(settings) > 0 {
 		_, _ = c.Write(settings)
 	}
-	if consumed > 0 {
-		ctx.H2.IncompleteSpin = 0
-		if _, derr := c.Discard(consumed); derr != nil {
-			return pkgnet.Close
-		}
-	}
 	if err != nil {
+		if consumed > 0 {
+			ctx.H2.IncompleteSpin = 0
+			if _, derr := c.Discard(consumed); derr != nil {
+				return pkgnet.Close
+			}
+		}
 		if errors.Is(err, httpingress.ErrIncomplete) {
 			s.h2ArmIncompleteIdle(c, &ctx.H2)
 			if consumed == 0 {
@@ -78,11 +91,69 @@ func (s *Server) onTrafficH2(c pkgnet.Conn, buf []byte) pkgnet.Action {
 	}
 	ctx.H2.IncompleteSpin = 0
 	s.h2ResetIncompleteIdle(&ctx.H2, c)
-	if len(req.Method) == 0 {
+	if len(parseReq.Method) == 0 {
+		if consumed > 0 {
+			if _, derr := c.Discard(consumed); derr != nil {
+				return pkgnet.Close
+			}
+		}
 		return pkgnet.None
 	}
+
+	if s.workerPool != nil {
+		offloadCtx.OffloadAsyncWrite.Store(false)
+		offloadCtx.OffloadCloseAfterWrite.Store(false)
+		offloadCtx.OffloadRetired.Store(false)
+		if ctx.WorkerID < 0 {
+			ctx.WorkerID = int(s.connWorkerAssign.Add(1) % uint64(len(s.workerPool.workers)))
+		}
+		if s.logger != nil {
+			offloadCtx.ShardID = int(s.loggerShardCounter.Add(1) % uint64(len(s.logger.Shards())))
+		}
+		offloadCtx.OffloadConn = c
+		offloadCtx.HTTP1ConnCtx = ctx
+		offloadCtx.ProtoH2 = true
+		offloadCtx.H2StreamID = streamID
+		offloadCtx.OffloadReqBuf = nil
+		offloadCtx.OffloadReqSlice = nil
+		offloadCtx.OffloadRelease = nil
+		offloadCtx.OffloadOnEnter = nil
+		offloadCtx.OffloadBlock = nil
+		offloadCtx.OffloadWG = nil
+
+		PinHTTP1RequestInPlace(offloadCtx, &offloadCtx.OffloadReq)
+		offloadCtx.OffloadReqPin = true
+
+		ctx.HTTP1OffloadBusy.Store(true)
+		submitted := s.workerPool.SubmitOffloadToWorker(ctx.WorkerID, offloadCtx, nil)
+		if consumed > 0 {
+			if _, derr := c.Discard(consumed); derr != nil {
+				if !submitted {
+					ctx.HTTP1OffloadBusy.Store(false)
+					s.retireOffloadContext(offloadCtx)
+				}
+				return pkgnet.Close
+			}
+		}
+		if !submitted {
+			ctx.HTTP1OffloadBusy.Store(false)
+			s.retireOffloadContext(offloadCtx)
+			metrics.WorkerPoolRejectTotal.Inc()
+			ctx.H2StreamID = streamID
+			s.write(c, respWorkerPoolOverload, ctx)
+			ctx.H2StreamID = 0
+			s.recordTrackStatus(http.StatusServiceUnavailable)
+		}
+		return pkgnet.None
+	}
+
+	if consumed > 0 {
+		if _, derr := c.Discard(consumed); derr != nil {
+			return pkgnet.Close
+		}
+	}
 	ctx.H2StreamID = streamID
-	act := s.React(req, c)
+	act := s.React(parseReq, c)
 	ctx.H2StreamID = 0
 	return act
 }
@@ -134,9 +205,13 @@ func (s *Server) resetConnContextForReuse(ctx *ConnContext) {
 		ctx.TrackReq.Payload = make([]byte, 0, 512)
 	}
 	domainPayload := ctx.Evt.Payload[:0]
-	ctx.Evt = domain.Event{Payload: domainPayload}
+	stringBuf := ctx.Evt.StringBuffer[:0]
+	ctx.Evt = domain.Event{Payload: domainPayload, StringBuffer: stringBuf}
 	if cap(ctx.Evt.Payload) < 1024 {
 		ctx.Evt.Payload = make([]byte, 0, 1024)
+	}
+	if cap(ctx.Evt.StringBuffer) < 128 {
+		ctx.Evt.StringBuffer = make([]byte, 0, 128)
 	}
 	ctx.Resp = pb.TrackResponse{}
 	if cap(ctx.BufSlice) > connContextBufSliceCapLimit {
@@ -169,7 +244,7 @@ func (s *Server) resetConnContextForReuse(ctx *ConnContext) {
 	ctx.H2StreamID = 0
 	ctx.H2.ResetConn()
 	if cap(ctx.H2.HeaderBlock) == 0 {
-		ctx.H2.HeaderBlock = make([]byte, 0, 256)
+		ctx.H2.HeaderBlock = make([]byte, 0, 1024)
 	}
 	ctx.HTTP1IncompleteSpin = 0
 	ctx.HTTP1BodyIdleArmed = false

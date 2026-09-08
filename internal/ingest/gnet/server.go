@@ -60,7 +60,7 @@ func newConnContext() *ConnContext {
 	return &ConnContext{
 		PBReq:          pb.AdEvent{Metadata: &pb.EventMetadata{}},
 		TrackReq:       track.Request{Payload: make([]byte, 0, 512)},
-		Evt:            domain.Event{Payload: make([]byte, 0, 1024)},
+		Evt:            domain.Event{Payload: make([]byte, 0, 1024), StringBuffer: make([]byte, 0, 128)},
 		ValSlice:       make([]any, 18),
 		BufSlice:       make([]byte, 4096),
 		ExtraBuf:       make([]byte, 0, 4096),
@@ -68,7 +68,7 @@ func newConnContext() *ConnContext {
 		ChunkScratch:   make([]byte, 0, 4096),
 		H2:             httpingress.NewH2ConnState(),
 		WReqID:         filter.BufWrapper{Buf: make([]byte, 0, 128)},
-		WCamp:          filter.BufWrapper{Buf: make([]byte, 0, 128)},
+		WCamp:          filter.BufWrapper{Buf: make([]byte, 0, 2048)},
 		WTime:          filter.BufWrapper{Buf: make([]byte, 0, 128)},
 		WorkerID:       -1,
 	}
@@ -83,7 +83,7 @@ func (s *Server) SetWorkerPool(wp *PinnedWorkerPool) {
 	}
 }
 
-func (s *Server) React(req Request, c pkgnet.Conn) pkgnet.Action {
+func (s *Server) React(req *Request, c pkgnet.Conn) pkgnet.Action {
 	if s.reactor == nil {
 		return pkgnet.None
 	}
@@ -199,6 +199,7 @@ func (s *Server) OnBoot(eng pkgnet.Engine) (action pkgnet.Action) {
 
 func (s *Server) OnOpen(c pkgnet.Conn) (out []byte, action pkgnet.Action) {
 	metrics.GnetActiveConnections.Inc()
+	applyInboundTCPHardening(c, s.cfg)
 	return nil, pkgnet.None
 }
 
@@ -240,17 +241,27 @@ func (s *Server) OnTraffic(c pkgnet.Conn) (action pkgnet.Action) {
 			if act := s.onTrafficH2(c, buf); act != pkgnet.None {
 				return act
 			}
+			if connCtx := s.http1EnsureConnContext(c); connCtx.HTTP1OffloadBusy.Load() {
+				break
+			}
 			continue
 		}
-		if ctx, ok := c.Context().(*ConnContext); ok && ctx != nil && ctx.ProtoH2 {
+		if connCtx := s.http1EnsureConnContext(c); connCtx.ProtoH2 {
 			if act := s.onTrafficH2(c, buf); act != pkgnet.None {
 				return act
+			}
+			if connCtx.HTTP1OffloadBusy.Load() {
+				break
 			}
 			continue
 		}
 
 		var scratchPtr *[]byte
 		connCtx := s.http1EnsureConnContext(c)
+		scratchPtr = &connCtx.ChunkScratch
+		if act := s.http1CheckPipelineBackpressure(buf, scratchPtr); act != pkgnet.None {
+			return act
+		}
 		// Tier A invariant: one in-flight offload per HTTP/1 conn; epoll stops parsing until Tier B clears busy.
 		if connCtx.HTTP1OffloadBusy.Load() {
 			break
@@ -258,9 +269,75 @@ func (s *Server) OnTraffic(c pkgnet.Conn) (action pkgnet.Action) {
 		if act := s.http1CheckBodyIdle(c, connCtx); act != pkgnet.None {
 			return act
 		}
-		scratchPtr = &connCtx.ChunkScratch
 
-		reqLen, req, err := s.parseHTTP(buf, scratchPtr)
+		if s.workerPool != nil {
+			offloadCtx := s.contextPool.Get().(*ConnContext)
+			offloadCtx.OffloadAsyncWrite.Store(false)
+			offloadCtx.OffloadCloseAfterWrite.Store(false)
+			offloadCtx.OffloadRetired.Store(false)
+			if connCtx.WorkerID < 0 {
+				connCtx.WorkerID = int(s.connWorkerAssign.Add(1) % uint64(len(s.workerPool.workers)))
+			}
+			if s.logger != nil {
+				offloadCtx.ShardID = int(s.loggerShardCounter.Add(1) % uint64(len(s.logger.Shards())))
+			}
+			offloadCtx.OffloadConn = c
+			offloadCtx.HTTP1ConnCtx = connCtx
+			offloadCtx.OffloadReqBuf = nil
+			offloadCtx.OffloadReqSlice = nil
+			offloadCtx.OffloadRelease = nil
+			offloadCtx.OffloadOnEnter = nil
+			offloadCtx.OffloadBlock = nil
+			offloadCtx.OffloadWG = nil
+
+			reqLen, err := s.parseHTTPInto(buf, scratchPtr, &offloadCtx.OffloadReq)
+			if err != nil {
+				s.retireOffloadContext(offloadCtx)
+				if errors.Is(err, httpingress.ErrIncomplete) {
+					if act := s.http1HandleIncomplete(c, connCtx, buf, reqLen); act != pkgnet.None {
+						return act
+					}
+					break
+				}
+				if errors.Is(err, httpingress.ErrPayloadTooLarge) {
+					metrics.HTTPParseErrors.WithLabelValues("payload_too_large").Inc()
+					_, _ = c.Write(respPayloadTooLarge)
+					s.recordTrackStatus(http.StatusRequestEntityTooLarge)
+					return pkgnet.Close
+				}
+				metrics.HTTPParseErrors.WithLabelValues("invalid").Inc()
+				_, _ = c.Write(respBadRequestClose)
+				return pkgnet.Close
+			}
+
+			s.http1ResetIncompleteState(connCtx, c)
+
+			offloadCtx.OffloadReqLen = reqLen
+			PinHTTP1RequestInPlace(offloadCtx, &offloadCtx.OffloadReq)
+			offloadCtx.OffloadReqPin = true
+
+			// Tier A -> B: enqueue pinned ConnContext, then Discard peek frame on epoll thread only.
+			connCtx.HTTP1OffloadBusy.Store(true)
+			submitted := s.workerPool.SubmitOffloadToWorker(connCtx.WorkerID, offloadCtx, buf[:reqLen])
+			if _, err := c.Discard(reqLen); err != nil {
+				if !submitted {
+					connCtx.HTTP1OffloadBusy.Store(false)
+					s.retireOffloadContext(offloadCtx)
+				}
+				return pkgnet.Close
+			}
+			if !submitted {
+				connCtx.HTTP1OffloadBusy.Store(false)
+				s.retireOffloadContext(offloadCtx)
+				metrics.WorkerPoolRejectTotal.Inc()
+				s.write(c, respWorkerPoolOverload, nil)
+				s.recordTrackStatus(http.StatusServiceUnavailable)
+			}
+			break
+		}
+
+		var req Request
+		reqLen, err := s.parseHTTPInto(buf, scratchPtr, &req)
 		if err != nil {
 			if errors.Is(err, httpingress.ErrIncomplete) {
 				if act := s.http1HandleIncomplete(c, connCtx, buf, reqLen); act != pkgnet.None {
@@ -281,56 +358,13 @@ func (s *Server) OnTraffic(c pkgnet.Conn) (action pkgnet.Action) {
 
 		s.http1ResetIncompleteState(connCtx, c)
 
-		if s.workerPool != nil {
-			offloadCtx := s.contextPool.Get().(*ConnContext)
-			offloadCtx.OffloadAsyncWrite.Store(false)
-			offloadCtx.OffloadCloseAfterWrite.Store(false)
-			offloadCtx.OffloadRetired.Store(false)
-			if connCtx.WorkerID < 0 {
-				connCtx.WorkerID = int(s.connWorkerAssign.Add(1) % uint64(len(s.workerPool.workers)))
-			}
-			if s.logger != nil {
-				offloadCtx.ShardID = int(s.loggerShardCounter.Add(1) % uint64(len(s.logger.Shards())))
-			}
-			offloadCtx.OffloadConn = c
-			offloadCtx.HTTP1ConnCtx = connCtx
-			offloadCtx.OffloadReqBuf = nil
-			offloadCtx.OffloadReqSlice = nil
-			offloadCtx.OffloadRelease = nil
-			offloadCtx.OffloadReqLen = reqLen
-			offloadCtx.OffloadReq = PinParsedHTTPRequest(offloadCtx, req)
-			offloadCtx.OffloadReqPin = true
-			offloadCtx.OffloadOnEnter = nil
-			offloadCtx.OffloadBlock = nil
-			offloadCtx.OffloadWG = nil
+		act := s.React(&req, c)
+		if _, err := c.Discard(reqLen); err != nil {
+			return pkgnet.Close
+		}
 
-			// Tier A -> B: enqueue pinned ConnContext, then Discard peek frame on epoll thread only.
-			connCtx.HTTP1OffloadBusy.Store(true)
-			submitted := s.workerPool.SubmitOffloadToWorker(connCtx.WorkerID, offloadCtx, buf[:reqLen])
-			if _, err := c.Discard(reqLen); err != nil {
-				if !submitted {
-					connCtx.HTTP1OffloadBusy.Store(false)
-					s.retireOffloadContext(offloadCtx)
-				}
-				return pkgnet.Close
-			}
-			if !submitted {
-				connCtx.HTTP1OffloadBusy.Store(false)
-				s.retireOffloadContext(offloadCtx)
-				metrics.WorkerPoolRejectTotal.Inc()
-				s.write(c, respWorkerPoolOverload, nil)
-				s.recordTrackStatus(http.StatusServiceUnavailable)
-			}
-			break
-		} else {
-			act := s.React(req, c)
-			if _, err := c.Discard(reqLen); err != nil {
-				return pkgnet.Close
-			}
-
-			if act != pkgnet.None {
-				return act
-			}
+		if act != pkgnet.None {
+			return act
 		}
 	}
 	return pkgnet.None
@@ -361,25 +395,37 @@ func (s *Server) runOffloadedRequest(workerID int, ctx *ConnContext) {
 		return
 	}
 	c.SetContext(ctx)
-	var reqParsed Request
 	if ctx.OffloadReqPin {
-		reqParsed = ctx.OffloadReq
+		act := s.React(&ctx.OffloadReq, c)
 		ctx.OffloadReqPin = false
-	} else {
-		var reqBytes []byte
-		if len(ctx.OffloadReqSlice) > 0 {
-			reqBytes = ctx.OffloadReqSlice[:ctx.OffloadReqLen:ctx.OffloadReqLen]
-		} else {
-			reqBytes = (*ctx.OffloadReqBuf)[:ctx.OffloadReqLen:ctx.OffloadReqLen]
+		if ctx.ProtoH2 {
+			ctx.H2StreamID = 0
 		}
-		var err error
-		_, reqParsed, err = s.parseHTTP(reqBytes, &ctx.ChunkScratch)
-		if err != nil {
-			s.writeClose(c, respBadRequestClose, ctx)
-			return
+		if act == pkgnet.Close && !ctx.OffloadCloseAfterWrite.Load() {
+			ctx.OffloadCloseAfterWrite.Store(true)
+			if !ctx.OffloadAsyncWrite.Load() {
+				_ = c.Close()
+			}
 		}
+		return
 	}
-	act := s.React(reqParsed, c)
+	var reqParsed Request
+	var reqBytes []byte
+	if len(ctx.OffloadReqSlice) > 0 {
+		reqBytes = ctx.OffloadReqSlice[:ctx.OffloadReqLen:ctx.OffloadReqLen]
+	} else {
+		reqBytes = (*ctx.OffloadReqBuf)[:ctx.OffloadReqLen:ctx.OffloadReqLen]
+	}
+	httpingress.ResetHTTP1Request(&reqParsed)
+	_, err := s.parseHTTPInto(reqBytes, &ctx.ChunkScratch, &reqParsed)
+	if err != nil {
+		s.writeClose(c, respBadRequestClose, ctx)
+		return
+	}
+	act := s.React(&reqParsed, c)
+	if ctx.ProtoH2 {
+		ctx.H2StreamID = 0
+	}
 	if act == pkgnet.Close && !ctx.OffloadCloseAfterWrite.Load() {
 		ctx.OffloadCloseAfterWrite.Store(true)
 		if !ctx.OffloadAsyncWrite.Load() {
@@ -393,9 +439,17 @@ func (s *Server) ParseHTTP(data []byte, scratchPtr *[]byte) (int, Request, error
 }
 
 func (s *Server) parseHTTP(data []byte, scratchPtr *[]byte) (int, Request, error) {
+	var req Request
+	n, err := s.parseHTTPInto(data, scratchPtr, &req)
+	return n, req, err
+}
+
+func (s *Server) parseHTTPInto(data []byte, scratchPtr *[]byte, req *Request) (int, error) {
 	maxBody := int64(1 << 20)
+	limits := httpingress.ParseLimits{}
 	if s != nil && s.cfg != nil {
 		maxBody = s.cfg.MaxRequestBodySize
+		limits.MinChunkedDataBytes = s.cfg.HTTP1MinChunkedDataBytes
 	}
-	return httpingress.ParseHTTP1(data, maxBody, scratchPtr)
+	return httpingress.ParseHTTP1LimitsInto(data, maxBody, scratchPtr, limits, req)
 }

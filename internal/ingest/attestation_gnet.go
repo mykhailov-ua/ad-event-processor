@@ -11,12 +11,6 @@ import (
 
 const attestationPayloadLen = 49
 
-type attestationHMACKey struct {
-	secret []byte
-	ipad   [linkHMACBlockSize]byte
-	opad   [linkHMACBlockSize]byte
-}
-
 func MintAttestationToken(secret []byte, campaignID uuid.UUID, clientIP string, ttlSec int32, nowUnix int64) (string, error) {
 	return parser.MintAttestationToken(secret, campaignID, clientIP, ttlSec, nowUnix)
 }
@@ -25,13 +19,7 @@ func (h *AdsPacketHandler) verifyAttestationCookie(cookieHeader []byte, campaign
 	if h == nil || len(h.attestationKeys) == 0 {
 		return false
 	}
-	keys := make([]parser.AttestationHMACKey, len(h.attestationKeys))
-	for i := range h.attestationKeys {
-		keys[i].Secret = h.attestationKeys[i].secret
-		keys[i].Ipad = h.attestationKeys[i].ipad
-		keys[i].Opad = h.attestationKeys[i].opad
-	}
-	return parser.VerifyAttestationToken(keys, h.attestationInnerScratch[:], cookieHeader, campaignID, clientIP, nowUnix)
+	return parser.VerifyAttestationToken(h.attestationKeys, h.attestationInnerScratch[:], cookieHeader, campaignID, clientIP, nowUnix)
 }
 
 func (h *AdsPacketHandler) ConfigureAttestation(secrets [][]byte) {
@@ -43,9 +31,9 @@ func (h *AdsPacketHandler) ConfigureAttestation(secrets [][]byte) {
 		if len(secret) == 0 {
 			continue
 		}
-		var key attestationHMACKey
-		key.secret = append([]byte(nil), secret...)
-		linkInitHMACPads(key.secret, &key.ipad, &key.opad)
+		var key parser.AttestationHMACKey
+		key.Secret = append(key.Secret[:0], secret...)
+		parser.InitAttestationHMACPads(key.Secret, &key.Ipad, &key.Opad)
 		h.attestationKeys = append(h.attestationKeys, key)
 	}
 }
@@ -93,7 +81,7 @@ func (h *AdsPacketHandler) mintAttestationCookie(campaignID uuid.UUID, clientIP 
 	}
 	camp, _ := h.registry.GetCampaign(campaignID)
 	ttl := campaignAttestationTTL(camp)
-	token, err := MintAttestationToken(h.attestationKeys[0].secret, campaignID, clientIP, ttl, time.Now().Unix())
+	token, err := MintAttestationToken(h.attestationKeys[0].Secret, campaignID, clientIP, ttl, time.Now().Unix())
 	if err != nil {
 		return "", 0
 	}

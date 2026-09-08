@@ -11,8 +11,12 @@ import { JsonPayloadView } from '@/shell/json_payload_view';
 import { formatCampaignJsonKey } from '@/domains/campaigns/editor/campaign_json_labels';
 import {
   CLONE_OPTION_FIELDS,
+  campaignEditorActionsRowClass,
+  campaignEditorSectionClass,
   editorApiErrorBlock,
 } from '@/domains/campaigns/editor/campaign_editor_shared';
+import { adminKit } from '@/lib/admin_kit';
+import { cn } from '@/lib/utils';
 
 type CampaignEditorAdvancedCloneSheetProps = {
   campaign: Campaign;
@@ -56,12 +60,12 @@ export function CampaignEditorAdvancedCloneSheet({
   return (
     <Sheet onOpenChange={onCloneOpenChange} open={cloneOpen}>
       <SheetContent className="gap-0 p-0 sm:max-w-2xl">
-        <SheetHeader>
+        <SheetHeader className="border-b border-border py-4 text-left">
           <SheetTitle>Clone campaign</SheetTitle>
         </SheetHeader>
-        <SheetBody>
-          <div className="grid gap-4">
-            <div className="grid gap-2">
+        <SheetBody className="grid gap-4 pb-8">
+          <section className={cn(campaignEditorSectionClass, 'gap-3')}>
+            <div className={cn('grid', adminKit.fieldLabelGap)}>
               <Label htmlFor="campaign-clone-name-suffix">Clone name suffix</Label>
               <Input
                 id="campaign-clone-name-suffix"
@@ -75,9 +79,11 @@ export function CampaignEditorAdvancedCloneSheet({
                 as &quot; - v2&quot; to append to the source name.
               </p>
             </div>
+          </section>
 
+          <section className={cn(campaignEditorSectionClass, 'gap-3')}>
+            <p className="m-0 text-sm font-medium">Clone options</p>
             <div className="grid gap-3">
-              <p className="text-sm font-medium">Clone options</p>
               {CLONE_OPTION_FIELDS.map(({ field, label, description }) => {
                 const inputId = `campaign-clone-option-${field}`;
                 const defaultChecked = field === 'reset_spend' ? false : true;
@@ -99,57 +105,57 @@ export function CampaignEditorAdvancedCloneSheet({
                 );
               })}
             </div>
+          </section>
 
-            <div className="flex flex-wrap justify-end gap-2">
-              <Button
-                type="button"
-                variant="secondary"
-                disabled={clonePreviewing || cloning || fetching}
-                onClick={onClonePreview}
-              >
-                {clonePreviewing ? 'Previewing...' : 'Preview clone'}
-              </Button>
-              <Button
-                type="button"
-                disabled={clonePreviewing || cloning || fetching}
-                onClick={onCloneExecute}
-              >
-                {cloning ? 'Creating clone...' : 'Create clone'}
-              </Button>
-            </div>
-
-            {cloneError
-              ? editorApiErrorBlock(cloneError, 'Clone unavailable', 'Could not create clone')
-              : null}
-
-            {cloneSuccess && clonedCampaignId ? (
-              <p className="text-sm text-muted-foreground">
-                Clone created.{' '}
-                <Link
-                  className="text-primary hover:underline"
-                  to={`/campaigns/${clonedCampaignId}/edit`}
-                >
-                  Open cloned campaign
-                </Link>
-              </p>
-            ) : null}
-
-            {clonePreviewError
-              ? editorApiErrorBlock(
-                  clonePreviewError,
-                  'Clone preview unavailable',
-                  'Could not preview clone'
-                )
-              : null}
-
-            {clonePreview ? (
-              <JsonPayloadView
-                formatColumn={formatCampaignJsonKey}
-                formatKey={formatCampaignJsonKey}
-                payload={clonePreview}
-              />
-            ) : null}
+          <div className={campaignEditorActionsRowClass}>
+            <Button
+              type="button"
+              variant="secondary"
+              disabled={clonePreviewing || cloning || fetching}
+              onClick={onClonePreview}
+            >
+              {clonePreviewing ? 'Previewing...' : 'Preview clone'}
+            </Button>
+            <Button
+              type="button"
+              disabled={clonePreviewing || cloning || fetching}
+              onClick={onCloneExecute}
+            >
+              {cloning ? 'Creating clone...' : 'Create clone'}
+            </Button>
           </div>
+
+          {cloneError
+            ? editorApiErrorBlock(cloneError, 'Clone unavailable', 'Could not create clone')
+            : null}
+
+          {cloneSuccess && clonedCampaignId ? (
+            <p className="text-sm text-muted-foreground">
+              Clone created.{' '}
+              <Link
+                className="text-primary hover:underline"
+                to={`/campaigns/${clonedCampaignId}/edit`}
+              >
+                Open cloned campaign
+              </Link>
+            </p>
+          ) : null}
+
+          {clonePreviewError
+            ? editorApiErrorBlock(
+                clonePreviewError,
+                'Clone preview unavailable',
+                'Could not preview clone'
+              )
+            : null}
+
+          {clonePreview ? (
+            <JsonPayloadView
+              formatColumn={formatCampaignJsonKey}
+              formatKey={formatCampaignJsonKey}
+              payload={clonePreview}
+            />
+          ) : null}
         </SheetBody>
       </SheetContent>
     </Sheet>

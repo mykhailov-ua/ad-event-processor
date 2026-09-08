@@ -56,6 +56,14 @@ Customer:
     updated_at_display:
       type: string
 
+PatchCustomerRequest:
+  type: object
+  properties:
+    name:
+      type: string
+    cost_center:
+      type: string
+
 CustomerListResponse:
   type: object
   required: [items, total, limit, offset]

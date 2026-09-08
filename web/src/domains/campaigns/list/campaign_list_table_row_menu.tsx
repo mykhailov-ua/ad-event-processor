@@ -44,7 +44,7 @@ export function CampaignListTableRowMenu({
           Edit
         </DropdownMenuItem>
         <DropdownMenuItem onSelect={() => navigate(`/dashboards/campaign/${campaign.id}`)}>
-          Report
+          View report
         </DropdownMenuItem>
       </DropdownMenuContent>
     </DropdownMenu>

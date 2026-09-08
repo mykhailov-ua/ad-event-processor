@@ -129,3 +129,90 @@ func TestPostbacksAdminAPIIntegration(t *testing.T) {
 	require.Len(t, outboxEvents, 1)
 	require.Equal(t, "SEND_POSTBACK", outboxEvents[0].EventType)
 }
+
+func TestPostbacksHealthEndpointIntegration(t *testing.T) {
+	if testing.Short() {
+		t.Skip("integration: run make test-integration (Docker testcontainers)")
+	}
+
+	ctx := context.Background()
+	cfgPostgres := testutil.DefaultPostgresConfig()
+	cfgPostgres.MigrationDirs = []string{testutil.AdsMigrationsDir(), testutil.BillingMigrationsDir()}
+	dbPool, cleanupDB := testutil.SetupPostgres(t, cfgPostgres)
+	defer cleanupDB()
+
+	customerID := uuid.New()
+	_, err := dbPool.Exec(ctx, "INSERT INTO customers (id, name, balance, currency) VALUES ($1, $2, 0, 'USD')", customerID, "Customer")
+	require.NoError(t, err)
+
+	campaignID := uuid.New()
+	_, err = dbPool.Exec(ctx, `
+		INSERT INTO campaigns (id, name, status, customer_id)
+		VALUES ($1, 'Campaign', 'ACTIVE', $2)`,
+		campaignID,
+		customerID,
+	)
+	require.NoError(t, err)
+
+	key := []byte("postback-encryption-secret-key32")
+	handler := &campaign.PostbackHTTPHandlers{
+		Pool:          dbPool,
+		EncryptionKey: key,
+	}
+	mux := http.NewServeMux()
+	handler.Register(mux)
+
+	configReq := campaign.UpdatePostbackConfigRequest{
+		Provider:    "webhook",
+		URLTemplate: "https://example.com/pb?click={click_id}",
+		APIToken:    "token123",
+		TargetEvent: "conversion",
+	}
+	bodyBytes, err := json.Marshal(configReq)
+	require.NoError(t, err)
+
+	req := httptest.NewRequest("PUT", "/api/v1/postbacks/config/"+campaignID.String(), bytes.NewReader(bodyBytes))
+	rec := httptest.NewRecorder()
+	mux.ServeHTTP(rec, req)
+	require.Equal(t, http.StatusOK, rec.Code)
+
+	for i, spec := range []struct {
+		hash    string
+		status  string
+		latency int
+		errMsg  string
+	}{
+		{hash: "health-sent-1", status: "SENT", latency: 120},
+		{hash: "health-sent-2", status: "SENT", latency: 80},
+		{hash: "health-fail-1", status: "FAILED", latency: 200, errMsg: "timeout"},
+	} {
+		_, err = dbPool.Exec(ctx, `
+			INSERT INTO postback_dispatches (idempotency_hash, campaign_id, click_id, event_type, status, error_message, latency_ms, created_at)
+			VALUES ($1, $2, $3, 'conversion', $4, $5, $6, NOW() - INTERVAL '1 hour' * $7)`,
+			spec.hash,
+			campaignID,
+			"click-"+strconv.Itoa(i),
+			spec.status,
+			spec.errMsg,
+			spec.latency,
+			i,
+		)
+		require.NoError(t, err)
+	}
+
+	req = httptest.NewRequest("GET", "/api/v1/postbacks/health", http.NoBody)
+	rec = httptest.NewRecorder()
+	mux.ServeHTTP(rec, req)
+	require.Equal(t, http.StatusOK, rec.Code)
+
+	var health campaign.PostbackHealthResponseDTO
+	err = json.NewDecoder(rec.Body).Decode(&health)
+	require.NoError(t, err)
+	require.Equal(t, 95.0, health.AlertThresholdSuccessRate)
+	require.Len(t, health.Rows, 1)
+	require.Equal(t, campaignID.String(), health.Rows[0].CampaignID)
+	require.NotNil(t, health.Rows[0].SuccessRate24h)
+	require.InDelta(t, 66.67, *health.Rows[0].SuccessRate24h, 0.1)
+	require.Equal(t, "fail", health.Rows[0].HealthStatus)
+	require.Equal(t, "timeout", health.Rows[0].LastError)
+}

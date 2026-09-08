@@ -10,7 +10,9 @@ import type { CampaignFunnelCounts } from '@/domains/campaigns/list/campaign_lis
 import { resolveCampaignListRowMetrics } from '@/domains/campaigns/list/campaign_list_row_metrics';
 import {
   campaignListRowClass,
-  campaignStatusBadgeClass,
+  campaignStatusCellClass,
+  resolveCampaignListRowAccent,
+  type CampaignListRowAccent,
 } from '@/domains/campaigns/list/campaign_list_row_tone';
 import {
   profitToneClassFromMicro,
@@ -32,8 +34,9 @@ export type CampaignRowVm = {
   rawName: string;
 
   statusLabel: string;
-  statusBadgeClass: string;
+  statusCellClass: string;
 
+  rowAccent: CampaignListRowAccent;
   rowClass: string;
 
   funnel: CampaignFunnelCounts;
@@ -103,6 +106,30 @@ function optionalRateLabel(pct?: number | null): string | null {
   return formatDashboardCrPct(pct);
 }
 
+export function buildCampaignRowVmCache(
+  items: readonly Campaign[],
+  metricsById: Readonly<Record<string, CampaignListMetrics>>,
+  marginsById: Readonly<Record<string, CampaignMargin>>,
+  customerNameById: Record<string, string>,
+  ownerEmailById: Record<string, string> = {}
+): Map<string, CampaignRowVm> {
+  const cache = new Map<string, CampaignRowVm>();
+  for (const campaign of items) {
+    cache.set(
+      campaign.id,
+      buildCampaignRowVm(
+        campaign,
+        metricsById[campaign.id],
+        marginsById[campaign.id],
+        customerNameById,
+        ownerEmailById,
+        false
+      )
+    );
+  }
+  return cache;
+}
+
 export function buildCampaignRowVm(
   campaign: Campaign,
   metrics: CampaignListMetrics | undefined,
@@ -118,8 +145,12 @@ export function buildCampaignRowVm(
   const displayId = campaignDisplayId(campaign);
 
   const statusLabel = formatCampaignStatusLabel(campaign.status, row.status_label);
-  const statusBadgeClass = campaignStatusBadgeClass(campaign.status, row.status_tone);
-  const rowClass = campaignListRowClass(selected);
+  const statusCellClass = campaignStatusCellClass(campaign.status, row.status_tone);
+  const rowAccent = resolveCampaignListRowAccent(campaign.status, row.status_tone, {
+    budgetUsedPct: campaign.budget_used_pct,
+    marginBreach: margin?.margin_breach === true || campaign.margin_breach === true,
+  });
+  const rowClass = campaignListRowClass(selected, rowAccent);
 
   const ctr = vmOptionalRate(metrics?.ctr_pct);
   const lpCtr = vmOptionalRate(metrics?.lp_ctr_pct);
@@ -149,8 +180,9 @@ export function buildCampaignRowVm(
     rawName: campaign.name,
 
     statusLabel,
-    statusBadgeClass,
+    statusCellClass,
 
+    rowAccent,
     rowClass,
 
     funnel,

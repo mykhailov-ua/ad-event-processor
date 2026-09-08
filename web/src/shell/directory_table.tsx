@@ -9,10 +9,16 @@ import {
   TableHeader,
   TableRow,
 } from '@/components/ui/table';
+import { adminKit } from '@/lib/admin_kit';
 import { cn } from '@/lib/utils';
 
 const SORT_ICON_CLASS = 'h-3.5 w-3.5 shrink-0';
 const DIRECTORY_TABLE_HEAD_ROW_CLASS = 'h-[34px]';
+
+/** Subtle opacity while a directory list refetches (sort/pagination URL update). */
+export function directoryTableRevalidatingClass(revalidating?: boolean): string {
+  return cn('transition-opacity duration-150', revalidating && 'opacity-80');
+}
 
 /** Wrap section body when it may contain a DirectoryTable inside bordered chrome. */
 export const SECTION_TABLE_HOST_CLASS = 'ui-section-table-host mt-2 min-w-0';
@@ -30,6 +36,25 @@ export type DirectoryTableProps = {
   tableRef?: Ref<HTMLTableElement>;
 };
 
+/** Pixel-width tables (campaign column probe) hug content; fluid tables fill the host. */
+function directoryTableUsesContentWidth(tableStyle?: CSSProperties): boolean {
+  const width = tableStyle?.width;
+  if (width == null) {
+    return false;
+  }
+  if (typeof width === 'number') {
+    return width > 0;
+  }
+  if (typeof width === 'string') {
+    const trimmed = width.trim();
+    if (trimmed === '' || trimmed.endsWith('%')) {
+      return false;
+    }
+    return /^\d+(\.\d+)?px$/.test(trimmed);
+  }
+  return false;
+}
+
 export function DirectoryTable({
   children,
   className,
@@ -41,11 +66,13 @@ export function DirectoryTable({
   tableStyle,
   tableRef,
 }: DirectoryTableProps) {
+  const contentWidth = directoryTableUsesContentWidth(tableStyle);
+
   return (
     <div
       data-directory-table=""
       className={cn(
-        'ui-scrollbar min-w-0 rounded-md border border-border',
+        'ui-scrollbar min-w-0 border border-border',
         nested && 'border-0 shadow-none',
         scrollable && 'max-h-[min(70vh,48rem)] overflow-y-auto',
         horizontalScroll && 'overflow-x-auto',
@@ -56,11 +83,11 @@ export function DirectoryTable({
         bare
         ref={tableRef}
         className={cn(
-          'border-collapse text-sm',
+          'border-collapse text-[13px] leading-[18px]',
           '[&_thead_th]:border-b [&_thead_th]:border-border',
           '[&_tbody_td]:border-b [&_tbody_td]:border-border',
           '[&_tbody_tr:last-child_td]:border-b-0',
-          horizontalScroll ? 'w-max min-w-full' : 'w-full',
+          contentWidth ? 'w-max' : 'w-full',
           fixedLayout && '[&_td]:whitespace-nowrap [&_th]:whitespace-nowrap',
           tableClassName
         )}
@@ -79,7 +106,7 @@ type HeadAlign = 'start' | 'end';
 function DirectoryTableHeadShell({ className, ...props }: ComponentProps<typeof TableHead>) {
   return (
     <TableHead
-      className={cn(DIRECTORY_TABLE_HEAD_ROW_CLASS, 'bg-card/90 p-0 backdrop-blur-sm', className)}
+      className={cn(DIRECTORY_TABLE_HEAD_ROW_CLASS, 'bg-admin-table-header p-0 backdrop-blur-sm', className)}
       {...props}
     />
   );
@@ -98,7 +125,7 @@ function DirectoryTableHeadContent({
     <div
       className={cn(
         DIRECTORY_TABLE_HEAD_ROW_CLASS,
-        'flex w-full items-center gap-1.5 px-2 text-xs font-semibold text-muted-foreground',
+        adminKit.directoryTableHeadInnerClass,
         align === 'end' ? 'justify-end text-right' : 'justify-start text-left'
       )}
     >
@@ -153,7 +180,8 @@ export function SortableTableHead({
         aria-sort={active ? (activeOrder === 'asc' ? 'ascending' : 'descending') : 'none'}
         className={cn(
           DIRECTORY_TABLE_HEAD_ROW_CLASS,
-          'flex w-full items-center gap-1.5 px-2 text-xs font-semibold text-muted-foreground transition-colors hover:text-foreground',
+          adminKit.directoryTableHeadInnerClass,
+          'transition-colors hover:text-foreground',
           align === 'end' ? 'justify-end text-right' : 'justify-start text-left',
           active && 'text-foreground'
         )}

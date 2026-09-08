@@ -85,7 +85,7 @@ Configs: `.golangci-hot.yaml`, `.golangci-cold.yaml`, `.luacheckrc`, `.luarc.jso
 | :--- | :--- |
 | `license/` | `verify_tier.sh`, red-team gates, fuzz nightly |
 | `admin/` | `web.sh`, `openapi.sh`, `ui_surface.sh` |
-| `static/` | `hot_path_static.sh`, `escape_heap.sh`, `anti_slop.sh`, `cold_path_static.sh` |
+| `static/` | `hot_path_static.sh`, `escape_heap.sh`, `anti_slop.sh`, `cold_path_static.sh`, `budget_rollback_gate.sh` |
 | `naming/` | `legacy_naming.sh`, `antifraud_doc.sh` |
 | `bpf/` | `resource.sh` |
 | `lint/` | golangci wrapper |

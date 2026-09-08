@@ -14,6 +14,7 @@ import type { BrandCreative } from '@/api/types';
 import { useBreadcrumbSegmentLabel } from '@/shell/breadcrumb_context';
 import { buildBrandCreativeBody } from '@/domains/creative/brand_creative_form';
 import type { BrandCreativesNavState } from '@/domains/creative/brand_creatives_nav';
+import { confirmDestructiveAction, mutationError } from '@/lib/mutation_audit';
 import { useCoalescedBumpRefresh, useRefreshToken } from '@/hooks/use_coalesced_refresh_token';
 import { useResource } from '@/api/use_resource';
 
@@ -47,8 +48,6 @@ export function useBrandCreativesPageWorkspace() {
     [brandId, refreshToken]
   );
 
-  const bumpRefreshCoalesced = useCoalescedBumpRefresh(bumpRefresh, fetching);
-
   const [draftName, setDraftName] = useState('');
   const [draftUrl, setDraftUrl] = useState('');
   const [draftWeight, setDraftWeight] = useState('100');
@@ -56,6 +55,9 @@ export function useBrandCreativesPageWorkspace() {
   const [acting, setActing] = useState(false);
   const [actionError, setActionError] = useState<Error | undefined>();
   const [actionSuccess, setActionSuccess] = useState(false);
+
+  const listBusy = fetching || acting;
+  const bumpRefreshCoalesced = useCoalescedBumpRefresh(bumpRefresh, listBusy);
 
   const [editingCreative, setEditingCreative] = useState<BrandCreative | undefined>();
   const [editName, setEditName] = useState('');
@@ -138,6 +140,11 @@ export function useBrandCreativesPageWorkspace() {
       if (acting) {
         return;
       }
+      const row = data?.find((item) => item.id === creativeId);
+      const label = row?.name?.trim() || creativeId;
+      if (!confirmDestructiveAction(`Delete creative "${label}"?`)) {
+        return;
+      }
       setActing(true);
       setActionError(undefined);
       try {
@@ -145,12 +152,14 @@ export function useBrandCreativesPageWorkspace() {
         toast.success('Creative deleted');
         bumpRefreshCoalesced();
       } catch (err: unknown) {
-        setActionError(err instanceof Error ? err : new Error(String(err)));
+        const nextError = mutationError(err);
+        setActionError(nextError);
+        toast.error(nextError.message);
       } finally {
         setActing(false);
       }
     },
-    [acting, bumpRefreshCoalesced]
+    [acting, bumpRefreshCoalesced, data]
   );
 
   return {

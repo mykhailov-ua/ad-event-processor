@@ -1,11 +1,15 @@
 package controlplane
 
 import (
+	"bytes"
 	"context"
 	"encoding/json"
+	"net/http"
+	"net/http/httptest"
 	"testing"
 
 	"ad-event-processor/internal/campaign"
+	"ad-event-processor/internal/campaign/editor"
 	"ad-event-processor/internal/database"
 	"ad-event-processor/internal/domain"
 
@@ -59,6 +63,11 @@ func TestCloneCampaign_holdout(t *testing.T) {
 		VALUES ($1, 'custom', 'https://aff.example/pb?cid={click_id}', '\x00', 'conversion')`, srcID)
 	require.NoError(t, err)
 
+	_, err = pool.Exec(ctx, `
+		INSERT INTO campaign_conversion_mappings (campaign_id, inbound_status, goal_name, payout_micro)
+		VALUES ($1, 'approved', 'sale', 1000000)`, srcID)
+	require.NoError(t, err)
+
 	srcBefore, err := svc.GetCampaignRow(ctx, srcID)
 	require.NoError(t, err)
 	require.Equal(t, int64(0), srcBefore.CurrentSpend)
@@ -93,6 +102,11 @@ func TestCloneCampaign_holdout(t *testing.T) {
 	require.NoError(t, err)
 	assert.Contains(t, postbackURL, "{click_id}")
 
+	var mappingCount int
+	err = pool.QueryRow(ctx, `SELECT COUNT(*) FROM campaign_conversion_mappings WHERE campaign_id = $1`, cloneID).Scan(&mappingCount)
+	require.NoError(t, err)
+	require.Equal(t, 1, mappingCount)
+
 	cloneDTO, err := svc.GetCampaign(ctx, cloneID)
 	require.NoError(t, err)
 	assert.Equal(t, "meta-facebook", cloneDTO.TrafficTemplateID)
@@ -110,6 +124,85 @@ func TestCloneCampaign_holdout(t *testing.T) {
 	})
 	require.NoError(t, err)
 	assert.Equal(t, result.ID, dup.ID)
+}
+
+func TestBulkCloneCampaignsHTTP_holdout(t *testing.T) {
+	if testing.Short() {
+		t.Skip("integration: bulk clone HTTP copies mappings and enforces customer scope")
+	}
+	pool, cleanupDB := database.SetupTestDB(t)
+	defer cleanupDB()
+	redisClient, cleanupRedis := database.SetupTestRedis(t)
+	defer cleanupRedis()
+
+	svc := NewService(context.Background(), pool, []redis.UniversalClient{redisClient}, nil, nil)
+	defer svc.Close()
+
+	ctx := context.Background()
+	custID := uuid.New()
+	require.NoError(t, svc.CreateCustomer(ctx, custID, "Bulk Clone Customer", 500_000_000, "USD"))
+
+	srcIDs := make([]uuid.UUID, 2)
+	for i := range srcIDs {
+		srcID, err := svc.CreateCampaign(ctx, testCampaignSpec(custID, "Bulk Source", 20_000_000, "bulk-src-"+uuid.NewString()))
+		require.NoError(t, err)
+		srcIDs[i] = srcID
+		_, err = pool.Exec(ctx, `UPDATE campaigns SET current_spend = 5000 WHERE id = $1`, srcID)
+		require.NoError(t, err)
+		_, err = pool.Exec(ctx, `
+			INSERT INTO campaign_conversion_mappings (campaign_id, inbound_status, goal_name, payout_micro)
+			VALUES ($1, 'hold', 'lead', 0)`, srcID)
+		require.NoError(t, err)
+	}
+
+	otherCust := uuid.New()
+	require.NoError(t, svc.CreateCustomer(ctx, otherCust, "Other", 100_000_000, "USD"))
+	foreignID, err := svc.CreateCampaign(ctx, testCampaignSpec(otherCust, "Foreign", 10_000_000, "bulk-foreign"))
+	require.NoError(t, err)
+
+	h := &campaign.CampaignsHTTPHandlers{Campaigns: svc}
+	mux := http.NewServeMux()
+	limit := func(next http.HandlerFunc) http.HandlerFunc { return next }
+	perm := func(_ []string, next http.HandlerFunc) http.HandlerFunc { return next }
+	editor.RegisterRoutes(h, mux, limit, perm)
+
+	payload, err := json.Marshal(map[string]any{
+		"source_campaign_ids": []string{srcIDs[0].String(), srcIDs[1].String(), foreignID.String()},
+		"customer_id":         custID.String(),
+		"name_suffix":         " (bulk)",
+	})
+	require.NoError(t, err)
+	req := httptest.NewRequest(http.MethodPost, "/api/v1/campaigns/bulk-clone", bytes.NewReader(payload))
+	req.Header.Set("Idempotency-Key", "bulk-http-holdout")
+	rec := httptest.NewRecorder()
+	mux.ServeHTTP(rec, req)
+	require.Equal(t, http.StatusOK, rec.Code, rec.Body.String())
+
+	var resp campaign.BulkCloneCampaignsResult
+	require.NoError(t, json.Unmarshal(rec.Body.Bytes(), &resp))
+	require.Len(t, resp.Results, 3)
+
+	okCount := 0
+	for _, row := range resp.Results {
+		if row.SourceID == foreignID.String() {
+			assert.Equal(t, "customer_mismatch", row.ErrorCode)
+			continue
+		}
+		require.True(t, row.OK, row.ErrorCode)
+		okCount++
+		cloneID, err := uuid.Parse(row.ID)
+		require.NoError(t, err)
+		cloneRow, err := svc.GetCampaignRow(ctx, cloneID)
+		require.NoError(t, err)
+		assert.Equal(t, int64(0), cloneRow.CurrentSpend)
+		assert.Contains(t, row.Name, "(bulk)")
+
+		var mappingCount int
+		err = pool.QueryRow(ctx, `SELECT COUNT(*) FROM campaign_conversion_mappings WHERE campaign_id = $1`, cloneID).Scan(&mappingCount)
+		require.NoError(t, err)
+		assert.Equal(t, 1, mappingCount)
+	}
+	assert.Equal(t, 2, okCount)
 }
 
 func TestCloneCampaign_excludeFraud_holdout(t *testing.T) {

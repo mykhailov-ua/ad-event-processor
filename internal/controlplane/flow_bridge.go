@@ -166,12 +166,36 @@ func (s *Service) ListLanders(ctx context.Context) ([]flow.LanderDTO, error) {
 	return s.FlowStore().ListLanders(ctx)
 }
 
+func (s *Service) GetLander(ctx context.Context, landerID uuid.UUID) (flow.LanderDTO, error) {
+	return s.FlowStore().GetLander(ctx, landerID)
+}
+
+func (s *Service) UpdateLander(ctx context.Context, landerID uuid.UUID, req flow.UpdateLanderRequest) (flow.LanderDTO, error) {
+	return s.FlowStore().UpdateLander(ctx, landerID, req)
+}
+
+func (s *Service) DeleteLander(ctx context.Context, landerID uuid.UUID) error {
+	return s.FlowStore().DeleteLander(ctx, landerID)
+}
+
 func (s *Service) CreateOffer(ctx context.Context, req flow.CreateOfferRequest) (flow.OfferDTO, error) {
 	return s.FlowStore().CreateOffer(ctx, req)
 }
 
 func (s *Service) ListOffers(ctx context.Context) ([]flow.OfferDTO, error) {
 	return s.FlowStore().ListOffers(ctx)
+}
+
+func (s *Service) GetOffer(ctx context.Context, offerID uuid.UUID) (flow.OfferDTO, error) {
+	return s.FlowStore().GetOffer(ctx, offerID)
+}
+
+func (s *Service) UpdateOffer(ctx context.Context, offerID uuid.UUID, req flow.UpdateOfferRequest) (flow.OfferDTO, error) {
+	return s.FlowStore().UpdateOffer(ctx, offerID, req)
+}
+
+func (s *Service) DeleteOffer(ctx context.Context, offerID uuid.UUID) error {
+	return s.FlowStore().DeleteOffer(ctx, offerID)
 }
 
 func (s *Service) CreateFlow(ctx context.Context, req flow.CreateFlowRequest) (flow.DTO, error) {
@@ -188,4 +212,16 @@ func (s *Service) GetFlow(ctx context.Context, flowID uuid.UUID) (flow.DTO, erro
 
 func (s *Service) UpdateFlow(ctx context.Context, flowID uuid.UUID, req flow.UpdateFlowRequest) (flow.DTO, error) {
 	return s.FlowStore().UpdateFlow(ctx, flowID, req)
+}
+
+func (s *Service) DeleteFlow(ctx context.Context, flowID uuid.UUID) error {
+	return s.FlowStore().DeleteFlow(ctx, flowID)
+}
+
+func (s *Service) CloneFlow(ctx context.Context, flowID uuid.UUID, req flow.CloneFlowRequest) (flow.DTO, error) {
+	return s.FlowStore().CloneFlow(ctx, flowID, req)
+}
+
+func (s *Service) InspectFlowPaths(ctx context.Context, paths []flow.PathDTO) (flow.ValidateResponseDTO, error) {
+	return s.FlowStore().ValidateFlowPaths(ctx, paths)
 }

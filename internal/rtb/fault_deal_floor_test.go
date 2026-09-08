@@ -26,12 +26,12 @@ func TestFault_rtb_deal_floor(t *testing.T) {
 	}})
 
 	reqLow := &BidRequest{GeoHash: geo, DeviceType: 1, CategoryMask: 1, MinBid: 100}
-	res, reason := reg.RunAuctionEval(reqLow)
+	res, reason := reg.RunAuctionEval(*reqLow)
 	require.True(t, reason.OK())
 	assert.Equal(t, CampaignID(1), res.CampaignID)
 
 	reqHigh := &BidRequest{GeoHash: geo, DeviceType: 1, CategoryMask: 1, MinBid: 500}
-	_, reasonHigh := reg.RunAuctionEval(reqHigh)
+	_, reasonHigh := reg.RunAuctionEval(*reqHigh)
 	require.False(t, reasonHigh.OK())
 
 	const workers = 24
@@ -45,7 +45,7 @@ func TestFault_rtb_deal_floor(t *testing.T) {
 			if n%2 == 0 {
 				req = reqHigh
 			}
-			_, r := reg.RunAuctionEval(req)
+			_, r := reg.RunAuctionEval(*req)
 			if r.OK() {
 				wins.Add(1)
 			} else {

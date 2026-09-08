@@ -36,7 +36,7 @@ const (
 type RtbShadowDiffBucket = rtbShadowDiffBucket
 
 func RtbShadowDiffBucketNow() *RtbShadowDiffBucket {
-	return &rtbShadowDiffRing[rtbShadowDiffBucketIdx(time.Now())]
+	return &rtbShadowDiffRing[rtbShadowDiffBucketIdx(time.Now().UTC().Hour())]
 }
 
 func ResetGlobalRtbOutcomeWriterForTest() {

@@ -17,11 +17,14 @@
 //   - Hosted ZIP uploads respect landerhost.DefaultMaxZipBytes + 1 MiB headroom at handler boundary.
 //
 // Forbidden:
+//
 //   - Postgres or bandit math on tracker /track hot path.
+//
 //   - Import internal/controlplane admin handlers from this package.
 //
+//   - POST /api/v1/flows/{id}/clone duplicates stored paths; POST /api/v1/flows/validate checks weight sum.
+//
 // Verify:
-// go test ./internal/flow/ -short -count=1
-// go test ./internal/flow/ -short -run TestValidatePathShape -count=1
+// go test ./internal/flow/ -short -run Validate -count=1
 // go test ./internal/flow/ -short -run TestBandit_WorkerUpdatesWeights -count=1
 package flow

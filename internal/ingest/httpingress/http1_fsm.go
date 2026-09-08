@@ -13,66 +13,79 @@ const (
 )
 
 func ParseHTTP1(data []byte, maxBody int64, scratchPtr *[]byte) (int, Request, error) {
+	return ParseHTTP1Limits(data, maxBody, scratchPtr, ParseLimits{})
+}
+
+func ParseHTTP1Into(data []byte, maxBody int64, scratchPtr *[]byte, req *Request) (int, error) {
+	return ParseHTTP1LimitsInto(data, maxBody, scratchPtr, ParseLimits{}, req)
+}
+
+func ParseHTTP1Limits(data []byte, maxBody int64, scratchPtr *[]byte, limits ParseLimits) (int, Request, error) {
 	var req Request
+	n, err := ParseHTTP1LimitsInto(data, maxBody, scratchPtr, limits, &req)
+	return n, req, err
+}
+
+func ParseHTTP1LimitsInto(data []byte, maxBody int64, scratchPtr *[]byte, limits ParseLimits, req *Request) (int, error) {
+	if req == nil {
+		return 0, ErrInvalid
+	}
+	ResetHTTP1Request(req)
 	n := len(data)
 	if n == 0 {
-		return 0, req, ErrIncomplete
+		return 0, ErrIncomplete
 	}
 	_ = data[n-1]
 
-	i, err := parseHTTP1RequestLine(data, n, &req)
+	i, err := parseHTTP1RequestLine(data, n, req)
 	if err != nil {
-		return 0, req, err
+		return 0, err
 	}
 
 	var hFlags uint8
 	var clValue int
-	i, hFlags, clValue, err = parseHTTP1Headers(data, i, n, &req, &hFlags, &clValue)
+	i, hFlags, clValue, err = parseHTTP1Headers(data, i, n, req, &hFlags, &clValue)
 	if err != nil {
-		return 0, req, err
+		return 0, err
 	}
 
-	// Track policy runs on headers only; chunked /track is rejected before any body bytes are consumed.
-	if err := http1TrackEdgePolicy(&req, hFlags); err != nil {
-		return 0, req, err
+	if err := http1TrackEdgePolicy(req, hFlags); err != nil {
+		return 0, err
 	}
 
 	if hFlags&http1flChunkedTE != 0 {
-		// RFC 7230: chunked and Content-Length together are invalid on any route.
 		if hFlags&http1flCLSet != 0 {
-			return 0, req, ErrInvalid
+			return 0, ErrInvalid
 		}
-		consumed, body, contentLen, err := ParseHTTP1ChunkedBody(data, i, maxBody, scratchPtr)
+		consumed, body, contentLen, err := ParseHTTP1ChunkedBody(data, i, maxBody, limits.MinChunkedDataBytes, scratchPtr)
 		if err != nil {
-			return 0, req, err
+			return consumed, err
 		}
 		req.Body = body
 		req.ContentLength = contentLen
 		req.HasContentLength = true
-		return i + consumed, req, nil
+		return consumed, nil
 	}
 
 	if hFlags&http1flCLSet != 0 {
 		if int64(clValue) > maxBody {
-			return 0, req, ErrPayloadTooLarge
+			return 0, ErrPayloadTooLarge
 		}
 		if i+clValue > n {
-			return 0, req, ErrIncomplete
+			return i, ErrIncomplete
 		}
-		// Body aliases peek buffer until gnet PinParsedHTTPRequest copies on Tier B offload.
 		if clValue > 0 {
 			req.Body = data[i : i+clValue]
 		}
 		req.ContentLength = clValue
 		req.HasContentLength = true
-		return i + clValue, req, nil
+		return i + clValue, nil
 	}
 
-	// POST /track without Content-Length or chunked TE: ErrInvalid (implicit empty body not allowed).
-	if isPOSTTrack(&req) {
-		return 0, req, ErrInvalid
+	if isPOSTTrack(req) {
+		return 0, ErrInvalid
 	}
-	return i, req, nil
+	return i, nil
 }
 
 func parseHTTP1RequestLine(data []byte, n int, req *Request) (int, error) {
@@ -154,6 +167,9 @@ func parseHTTP1Headers(data []byte, i, n int, req *Request, hFlags *uint8, clVal
 			i++
 		}
 		if colon < 0 {
+			if i >= n {
+				return 0, flags, cl, ErrIncomplete
+			}
 			return 0, flags, cl, ErrInvalid
 		}
 		if i+1 >= n {

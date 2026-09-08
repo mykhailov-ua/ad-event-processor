@@ -1,58 +1,69 @@
 import { Link } from 'react-router-dom';
 
-import { PrimaryActionButton } from '@/shell/action_buttons';
+import { PrimaryActionButton, SecondaryActionButton } from '@/shell/action_buttons';
 import { PageChrome } from '@/shell/page_chrome';
 import { PageSkeleton } from '@/shell/page_skeleton';
 import { Input } from '@/components/ui/input';
-import { Label } from '@/components/ui/label';
 import { Textarea } from '@/components/ui/textarea';
-import {
-  DirectoryTable,
-  DirectoryTableHead,
-  TableBody,
-  TableCell,
-  TableHeader,
-  TableRow,
-} from '@/shell/directory_table';
-import type { Flow, FlowPath } from '@/api/types';
-import { CreativeNav, creativePanelError } from '@/domains/creative/creative_nav';
+import { FilterField } from '@/shell/filter_panel';
+import { Checkbox } from '@/components/ui/checkbox';
+import { Label } from '@/components/ui/label';
+import type { Flow, Lander, Offer } from '@/api/types';
+import { CreativeDirectoryStack } from '@/domains/creative/creative_directory_stack';
+import { creativePanelError } from '@/domains/creative/creative_nav';
+import { FlowEditorVisual } from '@/domains/creative/flow_editor_visual';
+import { buildFlowClickPreviewUrl, validateVisualPathWeights, visualRowsToFlowPaths, type FlowPathVisualRow } from '@/domains/creative/flow_path_model';
+import { flowPathsToJson } from '@/domains/creative/flow_editor_form';
 import { displayTimestamp } from '@/lib/display';
 import { adminKit } from '@/lib/admin_kit';
 import { cn } from '@/lib/utils';
+import { ActionLinksBand, MetaLinksBand } from '@/shell/ui_bands';
+import { ErrorBlock } from '@/shell/error_block';
 
 export type FlowDetailProps = {
   flow: Flow | undefined;
   fetching: boolean;
   error: Error | undefined;
   hasSnapshot: boolean;
+  landers: Lander[];
+  offers: Offer[];
   draftName?: string;
-  draftPathsJson?: string;
+  draftRows?: FlowPathVisualRow[];
+  showAdvancedJson?: boolean;
   saving?: boolean;
   saveError?: Error;
+  deleting?: boolean;
+  deleteError?: Error;
+  cloning?: boolean;
   onDraftNameChange?: (value: string) => void;
-  onDraftPathsJsonChange?: (value: string) => void;
+  onDraftRowsChange?: (rows: FlowPathVisualRow[]) => void;
+  onShowAdvancedJsonChange?: (value: boolean) => void;
   onSaveFlow?: () => void;
+  onCloneFlow?: () => void;
+  onDeleteFlow?: () => void;
 };
-
-function normalizePaths(paths: Flow['paths']): FlowPath[] {
-  if (Array.isArray(paths)) {
-    return paths;
-  }
-  return [];
-}
 
 export function FlowDetail({
   flow,
   fetching,
   error,
   hasSnapshot,
+  landers,
+  offers,
   draftName = '',
-  draftPathsJson = '[{"weight":100,"landers":[],"offers":[]}]',
+  draftRows = [],
+  showAdvancedJson = false,
   saving = false,
   saveError,
+  deleting = false,
+  deleteError,
+  cloning = false,
   onDraftNameChange,
-  onDraftPathsJsonChange,
+  onDraftRowsChange,
+  onShowAdvancedJsonChange,
   onSaveFlow,
+  onCloneFlow,
+  onDeleteFlow,
 }: FlowDetailProps) {
   if (fetching && !hasSnapshot && !error) {
     return <PageSkeleton />;
@@ -61,8 +72,9 @@ export function FlowDetail({
   if (error && !hasSnapshot) {
     return (
       <PageChrome title="Flow">
-        <CreativeNav />
-        {creativePanelError(error, 'Could not load flow')}
+        <CreativeDirectoryStack>
+          {creativePanelError(error, 'Could not load flow')}
+        </CreativeDirectoryStack>
       </PageChrome>
     );
   }
@@ -70,49 +82,89 @@ export function FlowDetail({
   if (!flow) {
     return (
       <PageChrome title="Flow">
-        <CreativeNav />
-        {creativePanelError(new Error('Flow not found'), 'Could not load flow')}
+        <CreativeDirectoryStack>
+          {creativePanelError(new Error('Flow not found'), 'Could not load flow')}
+        </CreativeDirectoryStack>
       </PageChrome>
     );
   }
 
-  const paths = normalizePaths(flow.paths);
+  const validationError = validateVisualPathWeights(draftRows);
+  const previewUrl = buildFlowClickPreviewUrl(undefined, flow.id);
 
   return (
     <PageChrome title={flow.name}>
-      <CreativeNav />
-      <Link className="text-sm text-muted-foreground hover:underline" to="/flows">
-        Back to flows
-      </Link>
+      <CreativeDirectoryStack>
+      <MetaLinksBand>
+        <Link to="/flows">Back to flows</Link>
+      </MetaLinksBand>
 
       {onSaveFlow ? (
         <section className="grid gap-4">
-          <h2 className="text-base font-semibold">Edit flow</h2>
-          <div className="grid gap-2">
-            <Label htmlFor="flow-edit-name">Name</Label>
+          <h2 className="text-base font-semibold">Stream editor</h2>
+          <FilterField htmlFor="flow-edit-name" label="Name">
             <Input
               id="flow-edit-name"
               placeholder="Flow name..."
               value={draftName}
               onChange={(event) => onDraftNameChange?.(event.target.value)}
             />
+          </FilterField>
+
+          <FlowEditorVisual
+            disabled={saving}
+            landers={landers}
+            offers={offers}
+            rows={draftRows}
+            validationError={validationError ?? undefined}
+            onRowsChange={(rows) => onDraftRowsChange?.(rows)}
+          />
+
+          <div className="grid gap-2 rounded-md border border-border p-3">
+            <p className="text-sm font-medium">Click URL preview</p>
+            <p className="font-mono text-xs break-all text-muted-foreground">{previewUrl}</p>
+            <p className="text-xs text-muted-foreground">
+              Attach this flow to a campaign (flow_id) before sending live traffic. The tracker
+              resolves landers from the campaign flow snapshot on /click.
+            </p>
           </div>
-          <div className="grid gap-2">
-            <Label htmlFor="flow-edit-paths">Paths JSON</Label>
-            <Textarea
-              id="flow-edit-paths"
-              className="min-h-32 font-mono text-sm"
-              placeholder='[{"weight":100,"landers":[],"offers":[]}]'
-              value={draftPathsJson}
-              onChange={(event) => onDraftPathsJsonChange?.(event.target.value)}
+
+          <div className="flex items-center gap-2">
+            <Checkbox
+              checked={showAdvancedJson}
+              id="flow-advanced-json"
+              onCheckedChange={(checked) => onShowAdvancedJsonChange?.(checked === true)}
             />
+            <Label className="font-normal" htmlFor="flow-advanced-json">
+              Show advanced JSON
+            </Label>
           </div>
-          {saveError ? creativePanelError(saveError, 'Could not save flow') : null}
-          <div>
+
+          {showAdvancedJson ? (
+            <Textarea
+              readOnly
+              className="min-h-32 font-mono text-sm"
+              value={flowPathsToJson(visualRowsToFlowPaths(draftRows))}
+            />
+          ) : null}
+
+          {saveError ? <ErrorBlock message={saveError.message} title="Could not save flow" /> : null}
+          <ActionLinksBand>
             <PrimaryActionButton loading={saving} onClick={onSaveFlow} type="button">
               Save flow
             </PrimaryActionButton>
-          </div>
+            {onCloneFlow ? (
+              <SecondaryActionButton loading={cloning} onClick={onCloneFlow} type="button">
+                Clone flow
+              </SecondaryActionButton>
+            ) : null}
+            {onDeleteFlow ? (
+              <SecondaryActionButton loading={deleting} onClick={onDeleteFlow} type="button">
+                Delete flow
+              </SecondaryActionButton>
+            ) : null}
+          </ActionLinksBand>
+          {deleteError ? creativePanelError(deleteError, 'Could not delete flow') : null}
         </section>
       ) : null}
 
@@ -130,30 +182,6 @@ export function FlowDetail({
         </dl>
       </section>
 
-      {paths.length > 0 ? (
-        <section className="grid gap-2">
-          <h2 className="text-base font-semibold">Paths</h2>
-          <DirectoryTable>
-            <TableHeader>
-              <TableRow>
-                <DirectoryTableHead>Weight</DirectoryTableHead>
-                <DirectoryTableHead>Landers</DirectoryTableHead>
-                <DirectoryTableHead>Offers</DirectoryTableHead>
-              </TableRow>
-            </TableHeader>
-            <TableBody>
-              {paths.map((path, index) => (
-                <TableRow key={`${path.weight}-${index}`}>
-                  <TableCell>{path.weight}</TableCell>
-                  <TableCell>{path.landers?.length ?? 0}</TableCell>
-                  <TableCell>{path.offers?.length ?? 0}</TableCell>
-                </TableRow>
-              ))}
-            </TableBody>
-          </DirectoryTable>
-        </section>
-      ) : null}
-
       <details className="grid gap-2">
         <summary className="cursor-pointer text-base font-semibold">Raw</summary>
         <pre className={cn('ui-code-block overflow-x-auto', adminKit.panelRadius)}>
@@ -162,6 +190,7 @@ export function FlowDetail({
       </details>
 
       {error && hasSnapshot ? creativePanelError(error, 'Refresh failed') : null}
+      </CreativeDirectoryStack>
     </PageChrome>
   );
 }

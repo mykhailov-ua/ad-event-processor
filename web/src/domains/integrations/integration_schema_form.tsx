@@ -1,6 +1,7 @@
 import { useEffect, useState } from 'react';
 
 import { ErrorBlock } from '@/shell/error_block';
+import { DirectoryFilterForm, FilterField, FilterPanel } from '@/shell/filter_panel';
 import { Button } from '@/components/ui/button';
 import {
   Dialog,
@@ -143,19 +144,18 @@ export function IntegrationSchemaApplyForm({
   const canApply = draftSchemaId.trim().length > 0 && draftCampaignId.trim().length > 0;
 
   return (
-    <section className="ui-filter-panel">
+    <FilterPanel>
       <h2 className="text-base font-semibold">Apply schema</h2>
       <p className="text-sm text-muted-foreground">
         Apply a registered schema to a campaign. Click a schema row below to prefill the schema
         field.
       </p>
 
-      <div className="grid grid-cols-[repeat(auto-fill,minmax(12rem,1fr))] items-end gap-4">
-        <div className="grid gap-2 md:col-span-2">
-          <Label htmlFor="integration-apply-schema">Schema</Label>
+      <DirectoryFilterForm layout="auto-fill" onSubmit={(event) => event.preventDefault()}>
+        <FilterField className="md:col-span-2" htmlFor="integration-apply-schema" label="Schema">
           {schemas.length > 0 ? (
             <Select value={draftSchemaId} onValueChange={onDraftSchemaIdChange}>
-              <SelectTrigger id="integration-apply-schema" className="w-full text-sm">
+              <SelectTrigger id="integration-apply-schema" className="w-full">
                 <SelectValue placeholder="Select schema" />
               </SelectTrigger>
               <SelectContent>
@@ -174,19 +174,18 @@ export function IntegrationSchemaApplyForm({
               placeholder="Schema UUID"
             />
           )}
-        </div>
-        <div className="grid gap-2 md:col-span-2">
-          <Label htmlFor="integration-apply-campaign-id">Campaign ID</Label>
+        </FilterField>
+        <FilterField className="md:col-span-2" htmlFor="integration-apply-campaign-id" label="Campaign ID">
           <Input
             id="integration-apply-campaign-id"
             value={draftCampaignId}
             onChange={(event) => onDraftCampaignIdChange(event.target.value)}
           />
-        </div>
+        </FilterField>
         <Button disabled={applying || !canApply} onClick={onApply} type="button">
           {applying ? 'Applying...' : 'Apply schema'}
         </Button>
-      </div>
+      </DirectoryFilterForm>
 
       {applyError ? <ErrorBlock title="Apply failed" message={applyError.message} /> : null}
       {applySuccess ? (
@@ -208,9 +207,14 @@ export function IntegrationSchemaApplyForm({
           {applyResult.target_url ? (
             <p className="break-all font-mono text-xs">Target: {applyResult.target_url}</p>
           ) : null}
+          {applyResult.mappings_applied_count != null ? (
+            <p className="text-sm text-muted-foreground">
+              Mappings applied: {applyResult.mappings_applied_count}
+            </p>
+          ) : null}
         </div>
       ) : null}
-    </section>
+    </FilterPanel>
   );
 }
 
@@ -234,27 +238,30 @@ export function IntegrationTemplateImportForm({
   onImport,
 }: IntegrationTemplateImportFormProps) {
   return (
-    <section className="ui-filter-panel">
+    <FilterPanel>
       <h2 className="text-base font-semibold">Import templates</h2>
       <p className="text-sm text-muted-foreground">
         Import integration templates from the catalog into registered schemas. Leave names empty to
         import all templates. Use comma-separated names to import a subset.
       </p>
 
-      <div className="grid grid-cols-[repeat(auto-fill,minmax(12rem,1fr))] items-end gap-4">
-        <div className="grid gap-2 md:col-span-2">
-          <Label htmlFor="integration-import-names">Template names (optional)</Label>
+      <DirectoryFilterForm layout="auto-fill" onSubmit={(event) => event.preventDefault()}>
+        <FilterField
+          className="md:col-span-2"
+          htmlFor="integration-import-names"
+          label="Template names (optional)"
+        >
           <Input
             id="integration-import-names"
             value={draftTemplateNames}
             onChange={(event) => onDraftTemplateNamesChange(event.target.value)}
             placeholder="e.g. facebook_capi, tiktok_events"
           />
-        </div>
+        </FilterField>
         <Button disabled={importing} onClick={onImport} type="button">
           {importing ? 'Importing...' : 'Import templates'}
         </Button>
-      </div>
+      </DirectoryFilterForm>
 
       {importError ? <ErrorBlock title="Import failed" message={importError.message} /> : null}
       {importSuccess ? (
@@ -266,6 +273,6 @@ export function IntegrationTemplateImportForm({
           . List refreshed.
         </p>
       ) : null}
-    </section>
+    </FilterPanel>
   );
 }

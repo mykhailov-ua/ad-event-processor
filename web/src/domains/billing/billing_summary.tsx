@@ -2,6 +2,7 @@ import { ErrorBlock } from '@/shell/error_block';
 import { MetricCard } from '@/shell/metric_card';
 import { PageSkeleton } from '@/shell/page_skeleton';
 import type { BillingSummary } from '@/api/types';
+import { billingPanelError } from '@/domains/billing/billing_nav';
 import { displayCount, displayMicro } from '@/lib/display';
 
 export type BillingSummaryProps = {
@@ -22,7 +23,7 @@ export function BillingSummarySection({
   }
 
   if (error && !hasSnapshot) {
-    return <ErrorBlock title="Could not load billing summary" message={error.message} />;
+    return billingPanelError(error, 'Could not load billing summary');
   }
 
   return (

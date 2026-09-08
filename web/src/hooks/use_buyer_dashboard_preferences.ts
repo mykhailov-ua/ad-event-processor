@@ -1,4 +1,4 @@
-import { useCallback, useState } from 'react';
+import { useCallback, useState, useTransition } from 'react';
 
 import {
   type BuyerDashboardPreferences,
@@ -10,11 +10,14 @@ export function useBuyerDashboardPreferences() {
   const [preferences, setPreferences] = useState<BuyerDashboardPreferences>(() =>
     loadBuyerDashboardPreferences()
   );
+  const [, startPreferenceTransition] = useTransition();
 
   const applyPreferences = useCallback((next: BuyerDashboardPreferences) => {
-    setPreferences(next);
-    saveBuyerDashboardPreferences(next);
-  }, []);
+    startPreferenceTransition(() => {
+      setPreferences(next);
+      saveBuyerDashboardPreferences(next);
+    });
+  }, [startPreferenceTransition]);
 
   return { preferences, applyPreferences };
 }

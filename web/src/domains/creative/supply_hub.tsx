@@ -4,6 +4,7 @@ import { SUPPLY_PREVIEW_ADS_TXT_PATH, SUPPLY_PREVIEW_SELLERS_JSON_PATH } from '@
 import { PageChrome } from '@/shell/page_chrome';
 import { EmptyState } from '@/shell/empty_state';
 import { PageSkeleton } from '@/shell/page_skeleton';
+import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
 import {
   DirectoryTable,
@@ -14,7 +15,9 @@ import {
   TableRow,
 } from '@/shell/directory_table';
 import type { AdsTxtEntry, Seller, SupplyExportPath, SupplyValidation } from '@/api/types';
-import { CreativeNav, creativePanelError } from '@/domains/creative/creative_nav';
+import { CreativeDirectoryStack } from '@/domains/creative/creative_directory_stack';
+import { creativePanelError } from '@/domains/creative/creative_nav';
+import { ActionLinksBand, MetaLinksBand, TableHost } from '@/shell/ui_bands';
 
 export type SupplyHubProps = {
   sellers: Seller[];
@@ -24,6 +27,14 @@ export type SupplyHubProps = {
   fetching: boolean;
   error: Error | undefined;
   hasSnapshot: boolean;
+  previewSellersJson?: string;
+  previewAdsTxt?: string;
+  previewSellersError?: Error;
+  previewAdsTxtError?: Error;
+  loadingSellersPreview?: boolean;
+  loadingAdsTxtPreview?: boolean;
+  onLoadSellersPreview?: () => void;
+  onLoadAdsTxtPreview?: () => void;
 };
 
 export function SupplyHub({
@@ -34,6 +45,14 @@ export function SupplyHub({
   fetching,
   error,
   hasSnapshot,
+  previewSellersJson,
+  previewAdsTxt,
+  previewSellersError,
+  previewAdsTxtError,
+  loadingSellersPreview = false,
+  loadingAdsTxtPreview = false,
+  onLoadSellersPreview,
+  onLoadAdsTxtPreview,
 }: SupplyHubProps) {
   if (fetching && !hasSnapshot && !error) {
     return <PageSkeleton />;
@@ -42,16 +61,16 @@ export function SupplyHub({
   if (error && !hasSnapshot) {
     return (
       <PageChrome title="Supply">
-        <CreativeNav />
-        {creativePanelError(error, 'Could not load supply data')}
+        <CreativeDirectoryStack>
+          {creativePanelError(error, 'Could not load supply data')}
+        </CreativeDirectoryStack>
       </PageChrome>
     );
   }
 
   return (
     <PageChrome title="Supply">
-      <CreativeNav />
-
+      <CreativeDirectoryStack>
       <section className="grid gap-2">
         <h2 className="text-base font-semibold">Server previews</h2>
         <ul className="list-inside list-disc text-sm">
@@ -76,6 +95,44 @@ export function SupplyHub({
             </a>
           </li>
         </ul>
+        <ActionLinksBand>
+          {onLoadSellersPreview ? (
+            <Button
+              disabled={loadingSellersPreview}
+              onClick={onLoadSellersPreview}
+              type="button"
+              variant="outline"
+            >
+              {loadingSellersPreview ? 'Loading sellers.json...' : 'Load sellers.json inline'}
+            </Button>
+          ) : null}
+          {onLoadAdsTxtPreview ? (
+            <Button
+              disabled={loadingAdsTxtPreview}
+              onClick={onLoadAdsTxtPreview}
+              type="button"
+              variant="outline"
+            >
+              {loadingAdsTxtPreview ? 'Loading ads.txt...' : 'Load ads.txt inline'}
+            </Button>
+          ) : null}
+        </ActionLinksBand>
+        {previewSellersError
+          ? creativePanelError(previewSellersError, 'Could not load sellers.json preview')
+          : null}
+        {previewAdsTxtError
+          ? creativePanelError(previewAdsTxtError, 'Could not load ads.txt preview')
+          : null}
+        {previewSellersJson ? (
+          <pre className="max-h-64 overflow-auto border bg-muted/40 p-3 font-mono text-xs whitespace-pre-wrap">
+            {previewSellersJson}
+          </pre>
+        ) : null}
+        {previewAdsTxt ? (
+          <pre className="max-h-64 overflow-auto border bg-muted/40 p-3 font-mono text-xs whitespace-pre-wrap">
+            {previewAdsTxt}
+          </pre>
+        ) : null}
         {exportPath?.path ? (
           <p className="text-sm text-muted-foreground">
             Nginx export path:{' '}
@@ -87,7 +144,7 @@ export function SupplyHub({
       {validation ? (
         <section className="grid gap-2">
           <h2 className="text-base font-semibold">Validation</h2>
-          <div className="flex flex-wrap gap-2 text-sm">
+          <ActionLinksBand className="text-sm">
             <Badge variant={validation.sellers_json_valid ? 'default' : 'destructive'}>
               sellers.json {validation.sellers_json_valid ? 'valid' : 'invalid'}
             </Badge>
@@ -96,7 +153,7 @@ export function SupplyHub({
             </Badge>
             <Badge variant="outline">{validation.sellers_count} sellers</Badge>
             <Badge variant="outline">{validation.ads_txt_line_count} ads.txt lines</Badge>
-          </div>
+          </ActionLinksBand>
           {(validation.issues ?? []).length > 0 ? (
             <ul className="list-inside list-disc text-sm text-muted-foreground">
               {(validation.issues ?? []).map((issue) => (
@@ -112,7 +169,8 @@ export function SupplyHub({
         {sellers.length === 0 ? (
           <EmptyState title="No sellers" description="Supply sellers table is empty." />
         ) : (
-          <DirectoryTable>
+          <TableHost>
+            <DirectoryTable nested>
             <TableHeader>
               <TableRow>
                 <DirectoryTableHead>Seller ID</DirectoryTableHead>
@@ -132,6 +190,7 @@ export function SupplyHub({
               ))}
             </TableBody>
           </DirectoryTable>
+          </TableHost>
         )}
       </section>
 
@@ -140,7 +199,8 @@ export function SupplyHub({
         {adsTxt.length === 0 ? (
           <EmptyState title="No ads.txt rows" description="Supply ads.txt table is empty." />
         ) : (
-          <DirectoryTable>
+          <TableHost>
+            <DirectoryTable nested>
             <TableHeader>
               <TableRow>
                 <DirectoryTableHead>Domain</DirectoryTableHead>
@@ -160,20 +220,18 @@ export function SupplyHub({
               ))}
             </TableBody>
           </DirectoryTable>
+          </TableHost>
         )}
       </section>
 
-      <p className="text-sm">
-        <Link className="text-muted-foreground hover:underline" to="/supply/sellers">
-          Sellers sub-route
-        </Link>
-        {' * '}
-        <Link className="text-muted-foreground hover:underline" to="/supply/ads-txt">
-          ads.txt sub-route
-        </Link>
-      </p>
+      <MetaLinksBand>
+        <Link to="/supply/sellers">Sellers sub-route</Link>
+        <span aria-hidden>*</span>
+        <Link to="/supply/ads-txt">ads.txt sub-route</Link>
+      </MetaLinksBand>
 
       {error && hasSnapshot ? creativePanelError(error, 'Refresh failed') : null}
+      </CreativeDirectoryStack>
     </PageChrome>
   );
 }

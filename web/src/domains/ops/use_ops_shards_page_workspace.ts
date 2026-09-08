@@ -1,7 +1,9 @@
 // L3 shard admin: list snapshot + shard-0 catchup mutation; refresh coalesced while catchup in flight.
 import { useCallback, useState } from 'react';
+import { toast } from 'sonner';
 
 import { listOpsShards, triggerOpsShard0Catchup } from '@/api/ops_api';
+import { confirmDestructiveAction, mutationError } from '@/lib/mutation_audit';
 import { useCoalescedCallback } from '@/hooks/use_coalesced_callback';
 import { useCoalescedBumpRefresh, useRefreshToken } from '@/hooks/use_coalesced_refresh_token';
 import { useResource } from '@/api/use_resource';
@@ -17,14 +19,18 @@ export function useOpsShardsPageWorkspace() {
   const bumpRefreshCoalesced = useCoalescedBumpRefresh(bumpRefresh, fetching || catchingUp);
 
   const runCatchup = useCallback(async () => {
+    if (!confirmDestructiveAction('Run shard-0 config catch-up now?')) {
+      return;
+    }
     setCatchingUp(true);
     setCatchupError(undefined);
     try {
       const result = await triggerOpsShard0Catchup();
       setCatchupStatus(result.status ?? 'accepted');
+      toast.success('Shard-0 catch-up accepted');
       bumpRefreshCoalesced();
     } catch (err: unknown) {
-      setCatchupError(err instanceof Error ? err : new Error(String(err)));
+      setCatchupError(mutationError(err));
     } finally {
       setCatchingUp(false);
     }

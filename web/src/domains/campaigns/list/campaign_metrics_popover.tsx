@@ -14,7 +14,7 @@ import {
   MetricsSection,
   type CampaignWithMoneyDisplay,
 } from '@/domains/campaigns/list/campaign_metrics_shared';
-import { campaignMetricsPopoverClass } from '@/domains/campaigns/list/campaign_list_classes';
+import { campaignMetricsPopoverPanelClass } from '@/domains/campaigns/list/campaign_list_classes';
 import { useCampaignMetricsPopoverLoad } from '@/domains/campaigns/list/use_campaign_metrics_popover_load';
 import { displayCount, displayMoneyDecimal } from '@/lib/display';
 
@@ -182,7 +182,7 @@ export function CampaignMetricsPopover({
       <PopoverTrigger asChild>
         <Button
           aria-label={`View metrics for ${campaign.name}`}
-          className="block h-auto w-full min-w-0 justify-start rounded-md border-0 bg-transparent p-0 text-left font-normal shadow-none hover:bg-muted/50"
+          className="block h-auto w-full min-w-0 justify-start border-0 bg-transparent p-0 text-left font-normal shadow-none hover:bg-muted/50"
           type="button"
           variant="ghost"
         >
@@ -191,9 +191,9 @@ export function CampaignMetricsPopover({
       </PopoverTrigger>
       <PopoverContent
         align="start"
-        className={campaignMetricsPopoverClass}
         collisionPadding={16}
         onOpenAutoFocus={(event) => event.preventDefault()}
+        panelClassName={campaignMetricsPopoverPanelClass}
         side="bottom"
         sideOffset={8}
         sticky="partial"

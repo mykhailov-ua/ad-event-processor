@@ -62,7 +62,7 @@ func TestFault_LocalQuantaFullSkip_BudgetInvariant(t *testing.T) {
 	f.SetQuotaConfig("live", testQuotaChunkMicro, testQuotaRefillThreshold)
 	f.SetLuaFastPathEnabled(true)
 	f.SetTTCMin(0)
-	f.SetLocalQuantaDeps(LocalQuantaDeps{Ledger: ledger, Stream: stream, Idem: stream.IdemCache()})
+	f.SetLocalQuantaDeps(LocalQuantaDepsWithStream(ledger, stream))
 	f.SetLocalQuantaMode("live")
 	require.NoError(t, f.PreloadScripts(ctx))
 	counter.evals.Store(0)
@@ -86,6 +86,9 @@ func TestFault_LocalQuantaFullSkip_BudgetInvariant(t *testing.T) {
 		}
 		checkCtx := attachFilterDeadline(ctx, 2*time.Second)
 		require.NoError(t, f.Check(checkCtx, evt))
+		if evt.FilterCamp != nil {
+			require.NoError(t, f.FinalizeLocalQuantaPublish(checkCtx, evt, evt.FilterCamp))
+		}
 	}
 
 	require.Equal(t, int64(0), counter.evals.Load(), "full-skip burst must not call Redis EVAL")
@@ -133,7 +136,7 @@ func TestFault_LocalQuantaFullSkip_BudgetInvariant(t *testing.T) {
 func TestAcceptLocalQuantaFullSkip_ZeroAlloc(t *testing.T) {
 	ledger := NewLocalQuantaLedger()
 	idem := NewLocalClickIdemCache(time.Hour)
-	shards := []redis.UniversalClient{redis.NewClient(&redis.Options{Addr: "127.0.0.1:1"})}
+	shards := []redis.UniversalClient{&benchNoopRedis{}}
 	stream := NewLocalQuantaStreamPublisherForTest(shards, "events", 1000, idem, time.Millisecond)
 
 	campID := uuid.New()
@@ -156,7 +159,7 @@ func TestAcceptLocalQuantaFullSkip_ZeroAlloc(t *testing.T) {
 	)
 	f.SetQuotaConfig("live", testQuotaChunkMicro, testQuotaRefillThreshold)
 	f.SetLuaFastPathEnabled(true)
-	f.SetLocalQuantaDeps(LocalQuantaDeps{Ledger: ledger, Stream: stream, Idem: stream.IdemCache()})
+	f.SetLocalQuantaDeps(LocalQuantaDepsWithStream(ledger, stream))
 	f.SetLocalQuantaMode("live")
 
 	camp := &domain.Campaign{
@@ -172,13 +175,35 @@ func TestAcceptLocalQuantaFullSkip_ZeroAlloc(t *testing.T) {
 		UserID:     "zero-alloc",
 		IP:         "203.0.113.88",
 	}
-	evt.ClickIDBuf[0] = 'c'
-	evt.ClickID = unsafeString(evt.ClickIDBuf[:1])
-
 	const amount = int64(10_000)
-	allocs := testing.AllocsPerRun(100, func() {
-		ledger.Credit(campID, amount, testQuotaChunkMicro)
+	var measureN int
+	for range 10 {
+		measureN++
+		evt.ClickIDBuf[0] = byte('a' + measureN%26)
+		evt.ClickIDBuf[1] = byte('0' + measureN%10)
+		evt.ClickID = unsafeString(evt.ClickIDBuf[:2])
 		_ = f.AcceptLocalQuantaFullSkip(context.Background(), evt, camp, amount, 0)
+	}
+	ledger.Credit(campID, 200*amount, testQuotaChunkMicro)
+	stream.DrainBench()
+	measureN = 0
+	for range 200 {
+		measureN++
+		evt.ClickIDBuf[0] = byte('a' + measureN%26)
+		evt.ClickIDBuf[1] = byte('0' + measureN%10)
+		evt.ClickID = unsafeString(evt.ClickIDBuf[:2])
+		_ = f.AcceptLocalQuantaFullSkip(context.Background(), evt, camp, amount, 0)
+		stream.DrainBench()
+	}
+	measureN = 0
+	ctx := context.Background()
+	allocs := testing.AllocsPerRun(100, func() {
+		measureN++
+		evt.ClickIDBuf[0] = byte('a' + measureN%26)
+		evt.ClickIDBuf[1] = byte('0' + measureN%10)
+		evt.ClickID = unsafeString(evt.ClickIDBuf[:2])
+		_ = f.AcceptLocalQuantaFullSkip(ctx, evt, camp, amount, 0)
+		stream.DrainBench()
 	})
 	if allocs != 0 {
 		t.Fatalf("acceptLocalQuantaFullSkip allocs = %v, want 0", allocs)

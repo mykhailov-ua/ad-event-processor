@@ -52,6 +52,7 @@ type Campaign struct {
 	CampaignSyncKey     string
 	CustomerSyncKey     string
 	FcapKeyPrefix       string
+	FcapPrefixHash      uint64
 	DailySpendKeyPrefix string
 
 	MigrationGen  int64
@@ -122,6 +123,7 @@ type Campaign struct {
 	LinkSigningTTLSec  int32
 
 	ClickDelivery      string
+	ClickFilterTier    string
 	ProxyUpstreamURL   string
 	ProxyRewriteAssets bool
 

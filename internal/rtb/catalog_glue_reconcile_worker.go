@@ -418,15 +418,30 @@ func (c *RtbCatalog) EvaluateAuction(evt *domain.Event, targeting RtbTargetingIn
 		c.registry.SetFcapSnapshot(c.settingsWatcher.GetFcapRtbSnapshot())
 	}
 	req := BidRequestFromEvent(evt, targeting)
-	return c.registry.RunAuctionEval(&req)
+	return c.registry.RunAuctionEval(req)
 }
 
-func (c *RtbCatalog) RunAuction(evt *domain.Event, targeting RtbTargetingInput) (AuctionResult, NoBidReason) {
+func (c *RtbCatalog) RunAuctionEvalDirect(req BidRequest) (AuctionResult, NoBidReason) {
 	if c == nil || c.registry == nil {
 		return AuctionResult{}, NoBidInvalidRequest
 	}
+	return c.registry.RunAuctionEval(req)
+}
+
+func (c *RtbCatalog) RunAuctionSpendDirect(req BidRequest) (AuctionResult, NoBidReason) {
+	if c == nil || c.registry == nil {
+		return AuctionResult{}, NoBidInvalidRequest
+	}
+	return c.registry.RunAuction(req)
+}
+
+func (c *RtbCatalog) RunAuction(evt *domain.Event, targeting *RtbTargetingInput) (AuctionResult, NoBidReason) {
+	if c == nil || c.registry == nil || targeting == nil {
+		return AuctionResult{}, NoBidInvalidRequest
+	}
+	t := *targeting
 	if c.authority != BudgetAuthorityShadow {
-		if reason := rtbPrefilterReject(c.settingsWatcher, c, targeting); reason != NoBidNone {
+		if reason := rtbPrefilterReject(c.settingsWatcher, c, t); reason != NoBidNone {
 			return AuctionResult{}, reason
 		}
 		if c.prebidIVT.Load() {
@@ -434,22 +449,22 @@ func (c *RtbCatalog) RunAuction(evt *domain.Event, targeting RtbTargetingInput) 
 				return AuctionResult{}, reason
 			}
 		}
-		if targeting.SchainCount > 0 {
+		if t.SchainCount > 0 {
 			allow := c.schainAllow.Load()
-			if allow != nil && !ValidateSchainNodes(targeting.Schain, allow) {
+			if allow != nil && !ValidateSchainNodes(t.Schain, allow) {
 				return AuctionResult{}, NoBidSchainInvalid
 			}
 		}
 	}
-	targeting = c.enrichTargetingDeal(targeting)
+	t = c.enrichTargetingDeal(t)
 	if c.settingsWatcher != nil {
 		c.registry.SetFcapSnapshot(c.settingsWatcher.GetFcapRtbSnapshot())
 	}
-	req := BidRequestFromEvent(evt, targeting)
+	req := BidRequestFromEvent(evt, t)
 	if c.authority == BudgetAuthorityShadow {
-		return c.registry.RunAuctionEval(&req)
+		return c.registry.RunAuctionEval(req)
 	}
-	res, reason := c.registry.RunAuction(&req)
+	res, reason := c.registry.RunAuction(req)
 	if reason.OK() && evt != nil {
 		evt.ClearingPriceMicro = res.Price
 	}

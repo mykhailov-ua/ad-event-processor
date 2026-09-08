@@ -1,28 +1,32 @@
 import { AdminErrorDetails } from '@/shell/admin_error_details';
-import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
+import { uiSurfaces } from '@/lib/ui_surfaces';
 import { formatAdminErrorDetails, userErrorMessage } from '@/lib/admin_error';
+import { cn } from '@/lib/utils';
 
 type ErrorBlockProps = {
   title?: string;
   message?: string;
   error?: unknown;
   componentStack?: string;
+  className?: string;
 };
 
-export function ErrorBlock({ title = 'Error', message, error, componentStack }: ErrorBlockProps) {
+export function ErrorBlock({
+  title = 'Error',
+  message,
+  error,
+  componentStack,
+  className,
+}: ErrorBlockProps) {
   const resolvedMessage = message ?? userErrorMessage(error, 'Request failed.');
   const details =
     error != null || componentStack ? formatAdminErrorDetails(error, componentStack) : '';
 
   return (
-    <Card className="border-destructive/50 bg-destructive/5">
-      <CardHeader>
-        <CardTitle className="text-base text-destructive">{title}</CardTitle>
-      </CardHeader>
-      <CardContent>
-        <p className="text-sm text-muted-foreground">{resolvedMessage}</p>
-        <AdminErrorDetails details={details} />
-      </CardContent>
-    </Card>
+    <div className={cn(uiSurfaces.messageError, className)} role="alert">
+      <p className="m-0 text-base font-semibold">{title}</p>
+      <p className="m-0 text-sm text-muted-foreground">{resolvedMessage}</p>
+      <AdminErrorDetails details={details} />
+    </div>
   );
 }

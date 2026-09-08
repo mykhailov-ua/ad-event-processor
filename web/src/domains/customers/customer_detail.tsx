@@ -81,13 +81,15 @@ export function CustomerDetail({
   saveSuccess,
   canSaveTax,
   onSaveTaxProfile,
+  draftName,
+  onDraftNameChange,
   draftCostCenter,
   onDraftCostCenterChange,
-  savingCostCenter,
-  costCenterSaveError,
-  costCenterSaveSuccess,
-  canSaveCostCenter,
-  onSaveCostCenter,
+  savingProfile,
+  profileSaveError,
+  profileSaveSuccess,
+  canSaveProfile,
+  onSaveProfile,
 }: CustomerDetailProps) {
   if (customerFetching && !hasCustomerSnapshot && !customerError) {
     return <PageSkeleton />;
@@ -103,7 +105,7 @@ export function CustomerDetail({
 
   return (
     <section className="grid gap-4">
-      <header className="flex flex-wrap items-center justify-between gap-3">
+      <header className="grid gap-1">
         <div>
           <p className="text-sm text-muted-foreground">
             <Link className="text-primary hover:underline" to="/customers">
@@ -119,14 +121,16 @@ export function CustomerDetail({
 
       {tab === 'profile' ? (
         <CustomerDetailProfileTab
-          canSaveCostCenter={canSaveCostCenter}
-          costCenterSaveError={costCenterSaveError}
-          costCenterSaveSuccess={costCenterSaveSuccess}
+          canSaveProfile={canSaveProfile}
           customer={customer}
           draftCostCenter={draftCostCenter}
-          savingCostCenter={savingCostCenter}
+          draftName={draftName}
+          profileSaveError={profileSaveError}
+          profileSaveSuccess={profileSaveSuccess}
+          savingProfile={savingProfile}
           onDraftCostCenterChange={onDraftCostCenterChange}
-          onSaveCostCenter={onSaveCostCenter}
+          onDraftNameChange={onDraftNameChange}
+          onSaveProfile={onSaveProfile}
         />
       ) : null}
       {tab === 'balance' ? (

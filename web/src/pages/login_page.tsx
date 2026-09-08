@@ -4,7 +4,6 @@ import { Link, Navigate } from 'react-router-dom';
 import { login } from '@/api/auth_api';
 import { ApiError } from '@/api/client';
 import { PrimaryActionButton } from '@/shell/action_buttons';
-import { AdminDevModeEntry } from '@/shell/admin_dev_mode_entry';
 import { ErrorBlock } from '@/shell/error_block';
 import { PageSkeleton } from '@/shell/page_skeleton';
 import { Card, CardContent, CardDescription, CardHeader } from '@/components/ui/card';
@@ -84,7 +83,6 @@ export function LoginPage() {
               Sign in
             </PrimaryActionButton>
           </form>
-          <AdminDevModeEntry />
           <p className="text-center text-sm text-muted-foreground">
             First install?{' '}
             <Link className="text-foreground underline" to="/activate">

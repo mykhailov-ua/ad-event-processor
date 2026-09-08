@@ -64,7 +64,7 @@ func TestRunAuction_multiCreativeWinner(t *testing.T) {
 	})
 	reg.UpdateCampaigns(campaigns)
 
-	res, reason := reg.RunAuction(&BidRequest{
+	res, reason := reg.RunAuctionPtr(&BidRequest{
 		DeviceType:    1,
 		CategoryMask:  1,
 		GeoHash:       7,
@@ -99,7 +99,7 @@ func TestRunAuction_videoDurationFilter(t *testing.T) {
 	})
 	reg.UpdateCampaigns(campaigns)
 
-	res, reason := reg.RunAuction(&BidRequest{
+	res, reason := reg.RunAuctionPtr(&BidRequest{
 		DeviceType:     1,
 		CategoryMask:   1,
 		GeoHash:        7,

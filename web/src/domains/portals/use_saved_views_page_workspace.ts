@@ -9,6 +9,7 @@ import {
   updateSavedView,
 } from '@/api/saved_views_api';
 import type { SavedView } from '@/api/types';
+import { confirmDestructiveAction, mutationError } from '@/lib/mutation_audit';
 import { useCustomerScope } from '@/hooks/use_customer_scope';
 import { useCoalescedBumpRefresh, useRefreshToken } from '@/hooks/use_coalesced_refresh_token';
 import { useResource } from '@/api/use_resource';
@@ -28,13 +29,13 @@ function editRowFromView(row: SavedView): EditRow {
 }
 
 export function useSavedViewsPageWorkspace() {
-  const { appliedCustomerId, draftCustomerId, setDraftCustomerId, applyCustomerScope } =
+  const { appliedCustomerId, draftCustomerId, setDraftCustomerId, applyCustomerScope, listQueryPending } =
     useCustomerScope();
 
   const { refreshToken, bumpRefresh } = useRefreshToken();
   const shouldFetch = Boolean(appliedCustomerId);
 
-  const { data, error, fetching } = useResource(
+  const { data, error, fetching, revalidating: listRevalidating } = useResource(
     (signal) => {
       if (!shouldFetch) {
         return Promise.resolve(undefined);
@@ -175,6 +176,11 @@ export function useSavedViewsPageWorkspace() {
       if (acting) {
         return;
       }
+      const row = data?.find((item) => item.id === rowId);
+      const label = editRows[rowId]?.name?.trim() || row?.name?.trim() || rowId;
+      if (!confirmDestructiveAction(`Delete saved view "${label}"?`)) {
+        return;
+      }
       setActing(true);
       setActionError(undefined);
       try {
@@ -184,14 +190,17 @@ export function useSavedViewsPageWorkspace() {
           delete next[rowId];
           return next;
         });
+        toast.success('Saved view deleted');
         bumpRefreshCoalesced();
       } catch (err: unknown) {
-        setActionError(err instanceof Error ? err : new Error(String(err)));
+        const nextError = mutationError(err);
+        setActionError(nextError);
+        toast.error(nextError.message);
       } finally {
         setActing(false);
       }
     },
-    [acting, bumpRefreshCoalesced]
+    [acting, bumpRefreshCoalesced, data, editRows]
   );
 
   return {
@@ -199,6 +208,7 @@ export function useSavedViewsPageWorkspace() {
     appliedCustomerId,
     draftCustomerId,
     fetching,
+    listRevalidating: listRevalidating || listQueryPending,
     error,
     hasSnapshot: data != null,
     draftName,

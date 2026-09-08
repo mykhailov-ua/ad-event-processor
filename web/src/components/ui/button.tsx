@@ -15,16 +15,16 @@ export type ButtonProps = React.ButtonHTMLAttributes<HTMLButtonElement> & {
 };
 
 const sizeClass: Record<NonNullable<ButtonProps['size']>, string> = {
-  default: 'h-7 leading-none',
-  sm: 'h-7 px-2 text-xs leading-none',
-  lg: 'h-7 px-5 leading-none',
-  icon: 'h-7 w-7 min-h-7 min-w-7 p-0 leading-none',
+  default: '',
+  sm: 'text-xs',
+  lg: 'px-5',
+  icon: 'h-7 w-7 min-h-7 min-w-7 p-0',
 };
 
 const shapeClass: Record<NonNullable<ButtonProps['shape']>, string> = {
   default: '',
-  pill: 'rounded-full',
-  square: 'rounded-sm',
+  pill: 'rounded-none',
+  square: 'rounded-none',
 };
 
 const Button = React.forwardRef<HTMLButtonElement, ButtonProps>(
@@ -46,7 +46,7 @@ const Button = React.forwardRef<HTMLButtonElement, ButtonProps>(
     const classes = cn(
       adminKit.buttonShell,
       adminKit.controlRadius,
-      'border px-2.5 font-normal transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 focus-visible:ring-offset-background active:scale-[0.98] disabled:pointer-events-none disabled:opacity-50',
+      'font-normal transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 focus-visible:ring-offset-background disabled:pointer-events-none disabled:opacity-50',
       buttonVariantClass[variant],
       sizeClass[size],
       shapeClass[shape],
@@ -96,7 +96,7 @@ export function buttonVariants({
   return cn(
     adminKit.buttonShell,
     adminKit.controlRadius,
-    'border px-2.5 font-normal transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 focus-visible:ring-offset-background active:scale-[0.98] disabled:pointer-events-none disabled:opacity-50',
+    'font-normal transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 focus-visible:ring-offset-background disabled:pointer-events-none disabled:opacity-50',
     buttonVariantClass[variant],
     sizeClass[size],
     shapeClass[shape]

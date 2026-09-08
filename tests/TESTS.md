@@ -80,6 +80,10 @@ bash scripts/test/admin_stack_e2e.sh
 | Admission without reserve | `TestStreamProducerAdmissionRaceWithoutReserve` |
 | Dual XADD | `TestUnifiedFilter_SetDeferStreamToProducer_DualStreamWriteFix` |
 | Post-debit rollback | `TestUnifiedFilter_RollbackDebit_LocalQuanta` |
+| Idempotent Redis rollback | `TestBudgetRollback_idempotent_holdout`, `TestBudgetRollback_concurrent_holdout` |
+| Idempotent local-quanta rollback | `TestUnifiedFilter_RollbackDebit_LocalQuanta_idempotent_holdout` |
+| Local quanta publish fail 503 | `TestLocalQuantaPendingDebit_publishFail_holdout` |
+| Accept before 202/302/204 (normal path) | `TestPublishAcceptedOrRollback_holdout`; `budget_rollback_gate.sh` |
 | Broker shadow cutover | `TestFault_BrokerShadowCutover_NoEventLoss` |
 | Parser edge parity | `TestChaos_CrossHop_NginxGnet` (`differential_count=0`) |
 

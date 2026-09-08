@@ -212,13 +212,6 @@ func (h *IntegrationSchemaHTTPHandlers) applySchema(w http.ResponseWriter, r *ht
 	applyCtx := r.Context()
 	defer func() { _ = tx.Rollback(applyCtx) }()
 
-	if _, err := tx.Exec(r.Context(), `
-		UPDATE campaigns SET integration_schema_id = $2, updated_at = NOW() WHERE id = $1`,
-		campaignID, schemaID); err != nil {
-		httpresponse.Error(w, http.StatusInternalServerError, "INTERNAL_ERROR", err.Error())
-		return
-	}
-
 	applied := map[string]string{"status": "ok", "kind": kind}
 	switch integrationschema.Kind(kind) {
 	case integrationschema.KindOutboundPostback:
@@ -285,12 +278,12 @@ func (h *IntegrationSchemaHTTPHandlers) applySchema(w http.ResponseWriter, r *ht
 		}
 		applied["target_url"] = trackingURL
 	case integrationschema.KindStatusMapping:
-		if _, err := tx.Exec(r.Context(), `
-			UPDATE campaigns SET status_integration_schema_id = $2, updated_at = NOW() WHERE id = $1`,
-			campaignID, schemaID); err != nil {
-			httpresponse.Error(w, http.StatusInternalServerError, "INTERNAL_ERROR", err.Error())
+		count, err := campaign.ApplyStatusIntegrationSchemaTx(r.Context(), tx, campaignID, schemaID, schemaBody)
+		if err != nil {
+			httpresponse.Error(w, http.StatusBadRequest, "BAD_REQUEST", err.Error())
 			return
 		}
+		applied["mappings_applied_count"] = fmt.Sprintf("%d", count)
 	default:
 		httpresponse.Error(w, http.StatusBadRequest, "BAD_REQUEST", "unsupported schema kind")
 		return
@@ -656,6 +649,7 @@ type TemplateCatalogService interface {
 	ListBundledTemplates(ctx context.Context) []integrationschema.TemplateCatalogEntry
 	ImportBundledTemplates(ctx context.Context, names []string) ([]IntegrationSchemaDTO, error)
 	ApplyCampaignTemplates(ctx context.Context, campaignID uuid.UUID, req campaign.ApplyCampaignTemplatesRequest) (campaign.ApplyCampaignTemplatesResult, error)
+	DryRunCampaignTemplates(ctx context.Context, campaignID uuid.UUID, req campaign.ApplyCampaignTemplatesRequest) (campaign.DryRunCampaignTemplatesResult, error)
 }
 
 type ImportTemplatesRequest struct {
@@ -685,6 +679,7 @@ func (h *IntegrationSchemaHTTPHandlers) RegisterTemplateRoutes(mux *http.ServeMu
 	mux.HandleFunc("GET /api/v1/integration/templates", limit(perm("campaigns:read", h.listBundledTemplates)))
 	mux.HandleFunc("POST /api/v1/integration/templates/import", limit(perm("campaigns:write", h.importBundledTemplates)))
 	mux.HandleFunc("POST /api/v1/campaigns/{id}/apply-templates", limit(perm("campaigns:write", h.applyCampaignTemplates)))
+	mux.HandleFunc("POST /api/v1/campaigns/{id}/apply-templates/dry-run", limit(perm("campaigns:read", h.dryRunCampaignTemplates)))
 }
 
 func (h *IntegrationSchemaHTTPHandlers) listBundledTemplates(w http.ResponseWriter, r *http.Request) {
@@ -733,6 +728,29 @@ func (h *IntegrationSchemaHTTPHandlers) applyCampaignTemplates(w http.ResponseWr
 		return
 	}
 	result, err := svc.ApplyCampaignTemplates(r.Context(), campaignID, req)
+	if err != nil {
+		httpresponse.Error(w, http.StatusBadRequest, "BAD_REQUEST", err.Error())
+		return
+	}
+	httpresponse.JSON(w, http.StatusOK, result)
+}
+
+func (h *IntegrationSchemaHTTPHandlers) dryRunCampaignTemplates(w http.ResponseWriter, r *http.Request) {
+	svc, ok := h.TemplateCatalog.(TemplateCatalogService)
+	if !ok || svc == nil {
+		httpresponse.Error(w, http.StatusServiceUnavailable, "UNAVAILABLE", "template catalog unavailable")
+		return
+	}
+	campaignID, err := uuid.Parse(r.PathValue("id"))
+	if err != nil {
+		httpresponse.Error(w, http.StatusBadRequest, "BAD_REQUEST", "invalid campaign id")
+		return
+	}
+	req, ok := coldpath.DecodeRequestOrBadRequest[ApplyCampaignTemplatesRequest](w, r, coldpath.DefaultMaxBody)
+	if !ok {
+		return
+	}
+	result, err := svc.DryRunCampaignTemplates(r.Context(), campaignID, req)
 	if err != nil {
 		httpresponse.Error(w, http.StatusBadRequest, "BAD_REQUEST", err.Error())
 		return

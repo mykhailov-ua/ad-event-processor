@@ -12,62 +12,6 @@ import (
 	"github.com/google/uuid"
 )
 
-func TestResolveGoogleConversionAction(t *testing.T) {
-	if got := resolveGoogleConversionAction("customers/1/conversionActions/9", "conversion"); got != "customers/1/conversionActions/9" {
-		t.Fatalf("got %q", got)
-	}
-	if got := resolveGoogleConversionAction("https://example.com/upload", "lead"); got != "lead" {
-		t.Fatalf("got %q", got)
-	}
-}
-
-func TestGoogleAdapter_UsesConversionActionFromTemplate(t *testing.T) {
-	var body GoogleCAPIPayload
-	srv := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
-		defer r.Body.Close()
-		raw, _ := io.ReadAll(r.Body)
-		_ = json.Unmarshal(raw, &body)
-		w.WriteHeader(http.StatusOK)
-	}))
-	defer srv.Close()
-
-	a := &GoogleAdapter{}
-	err := a.Send(context.Background(), srv.Client(), &PostbackPayload{
-		GCLID:       "gclid-1",
-		PayoutMicro: 5_000_000,
-	}, srv.URL, "token")
-	if err != nil {
-		t.Fatalf("Send: %v", err)
-	}
-	if len(body.Conversions) != 1 {
-		t.Fatalf("conversions: %+v", body.Conversions)
-	}
-}
-
-func TestGoogleAdapter_SendsTransactionID(t *testing.T) {
-	var body GoogleCAPIPayload
-	srv := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
-		defer r.Body.Close()
-		raw, _ := io.ReadAll(r.Body)
-		_ = json.Unmarshal(raw, &body)
-		w.WriteHeader(http.StatusOK)
-	}))
-	defer srv.Close()
-
-	a := &GoogleAdapter{}
-	err := a.Send(context.Background(), srv.Client(), &PostbackPayload{
-		GCLID:     "gclid-9",
-		EventID:   "evt-google-1",
-		EventType: "conversion",
-	}, srv.URL, "tok")
-	if err != nil {
-		t.Fatalf("Send: %v", err)
-	}
-	if len(body.Conversions) != 1 || body.Conversions[0].TransactionID != "evt-google-1" {
-		t.Fatalf("transaction_id=%q", body.Conversions[0].TransactionID)
-	}
-}
-
 func TestTikTokAdapter_PostsToCustomEndpoint(t *testing.T) {
 	var body TikTokCAPIPayload
 	srv := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {

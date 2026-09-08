@@ -17,14 +17,15 @@
 // Thread model (see hot-path.mdc Tracker thread model):
 //
 //	Tier A - gnet epoll (OnTraffic):
-//	  - Peek/parse HTTP frame, PinParsedHTTPRequest + copy raw bytes to worker arena, SubmitOffloadToWorker, Discard frame.
+//	  - Peek/parse HTTP/1 or H2 frame, PinHTTP1RequestInPlace + copy raw bytes to worker arena (H1 only), SubmitOffloadToWorker, Discard frame.
+//	  - HTTP1_MAX_PIPELINE_DEPTH / HTTP1_MAX_PIPELINE_BUSY_BYTES also cap H2 multiplex buffering before parse.
 //	  - Returns to epoll immediately; must not call FilterEngine.Check or synchronous Redis EVALSHA.
 //
 //	Tier B - PinnedWorkerPool worker (runOffloadedRequest -> React):
 //	  - parseTrackIngest, tryAcquireStreamAdmission, processTrack -> FilterEngine.Check (incl. sync EVALSHA),
-//	    publishAcceptedTrack, serialize response.
+//	    publishAcceptedTrack, serialize response (H2WrapH1Response when ProtoH2 set on offload ctx).
 //	  - Synchronous end-to-end on the same LockOSThread worker; no go func() around FilterEngine.Check.
-//	  - Per-worker MPSC queue depth 8192 (MAX_WORKERS queues); HTTP1OffloadBusy = one in-flight offload per HTTP/1 conn.
+//	  - Per-worker MPSC queue depth 8192 (MAX_WORKERS queues); HTTP1OffloadBusy = one in-flight offload per HTTP/1 or H2 conn.
 //	  - Queue full -> WorkerPoolRejectTotal, 503 worker-pool overload (TestFault_PinnedWorkerPoolSaturationSpike).
 //
 // wire.go init order (runTracker):
@@ -70,7 +71,7 @@
 //	  - PinnedWorkerPool routes conn WorkerID to same core; arena reuses offload request buffers.
 //
 //	Buffer lifetime (internal/ingest/gnet):
-//	  - PinParsedHTTPRequest copies header/body slices into ConnContext.OffloadHTTPPin.
+//	  - PinHTTP1RequestInPlace copies header/body slices into ConnContext.OffloadHTTPPin after ParseHTTP1LimitsInto on Tier A.
 //	  - SubmitOffload copies raw frame into worker arena when possible.
 //	  - evt string fields may reference OffloadHTTPPin/arena until pinned worker handler returns.
 //	  - Accept/Origin copied via string() before response path; response via cloneAsyncWriteBytes then releaseOffloadBuffers.

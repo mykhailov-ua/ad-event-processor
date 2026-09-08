@@ -1,11 +1,12 @@
-import { Link } from 'react-router-dom';
-
 import type { BillingInvariant, BillingSummary, Invoice, InvoicePreview } from '@/api/types';
 import { BillingInvoices } from '@/domains/billing/billing_invoices';
 import type { InvoiceStatusFilter } from '@/domains/billing/billing_invoices';
 import { BillingSummarySection } from '@/domains/billing/billing_summary';
 import { BillingInvariantPanel, BillingPreviewPanel } from '@/domains/billing/billing_tools';
+import { BillingNav, billingPanelError } from '@/domains/billing/billing_nav';
 import { PageChrome } from '@/shell/page_chrome';
+import { PageSkeleton } from '@/shell/page_skeleton';
+import { isPanelStubError } from '@/shell/panel_error';
 
 export type BillingOverviewProps = {
   summary: BillingSummary | undefined;
@@ -17,6 +18,7 @@ export type BillingOverviewProps = {
   invoicesLimit: number;
   invoicesOffset: number;
   invoicesFetching: boolean;
+  invoicesListRevalidating?: boolean;
   invoicesError: Error | undefined;
   hasInvoicesSnapshot: boolean;
   draftMonth: string;
@@ -51,6 +53,7 @@ export function BillingOverview({
   invoicesLimit,
   invoicesOffset,
   invoicesFetching,
+  invoicesListRevalidating = false,
   invoicesError,
   hasInvoicesSnapshot,
   draftMonth,
@@ -74,16 +77,23 @@ export function BillingOverview({
   onCheckInvariant,
   onPreviewInvoice,
 }: BillingOverviewProps) {
+  if (summaryFetching && !hasSummarySnapshot && !summaryError) {
+    return <PageSkeleton />;
+  }
+
+  if (summaryError && !hasSummarySnapshot && isPanelStubError(summaryError)) {
+    return (
+      <PageChrome title="Billing">
+        <BillingNav />
+        {billingPanelError(summaryError, 'Billing')}
+      </PageChrome>
+    );
+  }
+
   return (
     <PageChrome
       title="Billing"
-      controlPanel={
-        <div className="flex flex-wrap gap-4 text-sm">
-          <Link className="text-sm font-medium text-primary hover:underline" to="/billing/exports">
-            Ledger exports
-          </Link>
-        </div>
-      }
+      controlPanel={<BillingNav />}
     >
       <BillingSummarySection
         summary={summary}
@@ -122,6 +132,7 @@ export function BillingOverview({
         draftMonth={draftMonth}
         draftStatus={draftStatus}
         fetching={invoicesFetching}
+        listRevalidating={invoicesListRevalidating}
         error={invoicesError}
         hasSnapshot={hasInvoicesSnapshot}
         onDraftMonthChange={onDraftMonthChange}

@@ -1,5 +1,7 @@
 import { apiFetch, apiJson, apiJsonArray, apiJsonValidated, parseApiError } from './client.js';
 import {
+  type BulkCloneCampaignsRequest,
+  type BulkCloneCampaignsResponse,
   type CampaignExportBatchResponse,
   type CampaignListFacetsResponse,
   type CampaignListMetrics,
@@ -19,6 +21,7 @@ import { isUuidLike } from '@/lib/customer_label';
 import type {
   ApplyCampaignTemplatesRequest,
   ApplyCampaignTemplatesResult,
+  DryRunCampaignTemplatesResult,
   BlockCampaignPlacementRequest,
   Campaign,
   CampaignEventListQuery,
@@ -94,12 +97,15 @@ export type {
   CloneCampaignPreview,
   CloneCampaignRequest,
   CloneCampaignResult,
+  BulkCloneCampaignsRequest,
+  BulkCloneCampaignsResponse,
   MacroPreviewRequest,
   MacroPreviewResponse,
   PublishCampaignResult,
 } from './campaigns_types.js';
 
 export { CAMPAIGN_BULK_ACTION_MAX_IDS, summarizeCampaignBulkResults } from './campaigns_types.js';
+export type { BulkCloneCampaignResultRow } from './campaigns_types.js';
 
 export function buildCampaignsListPath(params: CampaignListQuery = {}): string {
   const search = new URLSearchParams();
@@ -296,6 +302,18 @@ export async function cloneCampaign(
   options: { idempotencyKey: string; signal?: AbortSignal }
 ): Promise<CloneCampaignResult> {
   return apiJson<CloneCampaignResult>(`/api/v1/campaigns/${encodeURIComponent(id)}/clone`, {
+    method: 'POST',
+    headers: { 'Idempotency-Key': options.idempotencyKey },
+    body: JSON.stringify(body),
+    signal: options.signal,
+  });
+}
+
+export async function bulkCloneCampaigns(
+  body: BulkCloneCampaignsRequest,
+  options: { idempotencyKey: string; signal?: AbortSignal }
+): Promise<BulkCloneCampaignsResponse> {
+  return apiJson<BulkCloneCampaignsResponse>('/api/v1/campaigns/bulk-clone', {
     method: 'POST',
     headers: { 'Idempotency-Key': options.idempotencyKey },
     body: JSON.stringify(body),
@@ -520,6 +538,21 @@ export async function applyCampaignTemplates(
 ): Promise<ApplyCampaignTemplatesResult> {
   return apiJson<ApplyCampaignTemplatesResult>(
     `/api/v1/campaigns/${encodeURIComponent(campaignId)}/apply-templates`,
+    {
+      method: 'POST',
+      body: JSON.stringify(body),
+      signal,
+    }
+  );
+}
+
+export async function dryRunCampaignTemplates(
+  campaignId: string,
+  body: ApplyCampaignTemplatesRequest,
+  signal?: AbortSignal
+): Promise<DryRunCampaignTemplatesResult> {
+  return apiJson<DryRunCampaignTemplatesResult>(
+    `/api/v1/campaigns/${encodeURIComponent(campaignId)}/apply-templates/dry-run`,
     {
       method: 'POST',
       body: JSON.stringify(body),

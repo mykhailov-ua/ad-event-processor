@@ -1,11 +1,13 @@
 // L3 fraud policy presets: list snapshot + per-preset edit drafts; PATCH after client threshold parse (0..255).
 import { useCallback, useEffect, useState } from 'react';
+import { toast } from 'sonner';
 
 import { listFraudPresets, patchFraudPreset } from '@/api/fraud_api';
 import type { PatchFraudPolicyPresetRequest } from '@/api/types';
 import { type FraudPresetEditDraft } from '@/domains/fraud/fraud_presets';
 import { useCoalescedBumpRefresh, useRefreshToken } from '@/hooks/use_coalesced_refresh_token';
 import { useResource } from '@/api/use_resource';
+import { mutationError } from '@/lib/mutation_audit';
 
 function parseThresholdField(
   label: string,
@@ -132,6 +134,7 @@ export function useFraudPresetsPageWorkspace() {
       try {
         await patchFraudPreset(name, body);
         setSaveSuccess(true);
+        toast.success('Preset saved');
         setPresetDrafts((prev) => {
           const next = { ...prev };
           delete next[name];
@@ -139,7 +142,9 @@ export function useFraudPresetsPageWorkspace() {
         });
         bumpRefreshCoalesced();
       } catch (err: unknown) {
-        setSaveError(err instanceof Error ? err : new Error(String(err)));
+        const nextError = mutationError(err);
+        setSaveError(nextError);
+        toast.error(nextError.message);
       } finally {
         setSavingPresetName(undefined);
       }

@@ -74,6 +74,27 @@ func ValidatePathShape(paths []PathDTO) error {
 	return nil
 }
 
+func ValidatePathWeightSum(paths []PathDTO) error {
+	if len(paths) == 0 {
+		return nil
+	}
+	var weightSum float64
+	for _, path := range paths {
+		weightSum += float64(path.Weight)
+	}
+	if math.Abs(weightSum-weightSumTarget) > weightSumTolerance {
+		return fmt.Errorf("path weights must sum to 100, got %.2f", weightSum)
+	}
+	return nil
+}
+
+func ValidatePaths(paths []PathDTO) error {
+	if err := ValidatePathShape(paths); err != nil {
+		return err
+	}
+	return ValidatePathWeightSum(paths)
+}
+
 func validatePathFilters(pathIndex int, filters *PathFiltersDTO) error {
 	if filters == nil {
 		return nil

@@ -463,7 +463,7 @@ func (h *AdsPacketHandler) writeGnetClickRedirect(ctx *ConnContext, c gnet.Conn,
 	h.recordMetrics(startMono, http.StatusFound)
 }
 
-func (h *AdsPacketHandler) reactClickRedirect(req Request, c gnet.Conn, ctx *ConnContext) gnet.Action {
+func (h *AdsPacketHandler) reactClickRedirect(req *Request, c gnet.Conn, ctx *ConnContext) gnet.Action {
 	startMono := monotonicNano()
 	telemetry.RecordTrack()
 
@@ -480,7 +480,7 @@ func (h *AdsPacketHandler) reactClickRedirect(req Request, c gnet.Conn, ctx *Con
 		return gnet.None
 	}
 
-	ip := extractClientIPGnet(ctx, &req, c, h.cfg.TrustedProxies)
+	ip := extractClientIPGnet(ctx, req, c, h.cfg.TrustedProxies)
 	ua := unsafeString(req.UserAgent)
 
 	if h.applyReviewTrafficPolicy(req, c, ctx, parsed, ip, ua, startMono) {
@@ -550,7 +550,7 @@ func (h *AdsPacketHandler) reactClickRedirect(req Request, c gnet.Conn, ctx *Con
 	evt.SecCHUA = unsafeString(req.SecCHUA)
 	evt.AcceptLang = unsafeString(req.AcceptLang)
 	fillIngressH2(evt, ctx.ProtoH2)
-	fillWireMetadataFromRequest(evt, &req)
+	fillWireMetadataFromRequest(evt, req)
 	attachFraudAccumulator(evt)
 	if parsed.AttestationLightMissing {
 		addFraudSignal(evt, FraudReasonAttestationMissing)
@@ -573,6 +573,10 @@ func (h *AdsPacketHandler) reactClickRedirect(req Request, c gnet.Conn, ctx *Con
 		}
 	}
 
+	clickTier := h.resolveClickFilterTier(parsed.CampaignID)
+	evt.ClickFilterTier = clickTier
+	skipStreamPublish := domain.ClickFilterTierSkipsStreamPublish(clickTier)
+
 	var landing []byte
 	var admissionLease streamAdmissionLease
 	admissionHeld := false
@@ -585,15 +589,17 @@ func (h *AdsPacketHandler) reactClickRedirect(req Request, c gnet.Conn, ctx *Con
 	if h.filterEngine != nil {
 		var kind filterRejectKind
 		var acquired bool
-		admissionLease, kind, acquired = h.tryAcquireStreamAdmission(evt.CampaignID)
-		if !acquired {
-			spec := filterRejectSpecs[kind]
-			h.writeFilterReject(c, spec.gnetResp, ctx)
-			h.recordMetrics(startMono, spec.status)
-			h.recordTrackReject(ctx, evt, kind)
-			return gnet.None
+		if !skipStreamPublish {
+			admissionLease, kind, acquired = h.tryAcquireStreamAdmission(evt.CampaignID)
+			if !acquired {
+				spec := filterRejectSpecs[kind]
+				h.writeFilterReject(c, spec.gnetResp, ctx)
+				h.recordMetrics(startMono, spec.status)
+				h.recordTrackReject(ctx, evt, kind)
+				return gnet.None
+			}
+			admissionHeld = true
 		}
-		admissionHeld = true
 		outcome := processTrack(context.Background(), h.trackProc, evt, nil)
 		forceSafe := req.ForceSafe || parsed.AttestationLightMissing
 		if mode.RequiresProbe() && clickHasTTCFraudSignal(evt) {
@@ -641,6 +647,12 @@ func (h *AdsPacketHandler) reactClickRedirect(req Request, c gnet.Conn, ctx *Con
 					}
 					break
 				}
+				if skipStreamPublish {
+					if outcome.LandingURL != "" {
+						landing = UnsafeBytes(outcome.LandingURL)
+					}
+					break
+				}
 				if !h.publishAcceptedOrRollback(context.Background(), evt, &admissionLease) {
 					spec := filterRejectSpecs[filterRejectProducerOverload]
 					h.recordTrackReject(ctx, evt, filterRejectProducerOverload)
@@ -670,9 +682,11 @@ func (h *AdsPacketHandler) reactClickRedirect(req Request, c gnet.Conn, ctx *Con
 		flowSel = sel
 	}
 
-	evt.Payload = appendAttributionPayload(evt.Payload[:0], nil, parsed.Subs, parsed.FBCLID, parsed.GCLID, parsed.TTCLID, "", "", "", "", "")
-	if flowSel.LanderID != uuid.Nil || flowSel.OfferID != uuid.Nil {
-		evt.Payload = appendFlowAttribution(evt.Payload, flowSel.LanderID, flowSel.OfferID)
+	if h.logger != nil || h.filterEngine != nil {
+		evt.Payload = appendAttributionPayload(evt.Payload[:0], nil, parsed.Subs, parsed.FBCLID, parsed.GCLID, parsed.TTCLID, "", "", "", "", "")
+		if flowSel.LanderID != uuid.Nil || flowSel.OfferID != uuid.Nil {
+			evt.Payload = appendFlowAttribution(evt.Payload, flowSel.LanderID, flowSel.OfferID)
+		}
 	}
 
 	if camp, ok := h.registry.GetCampaign(evt.CampaignID); ok {
@@ -829,7 +843,7 @@ func writeSafePageStubResponse(h *AdsPacketHandler, c gnet.Conn, ctx *ConnContex
 	h.write(c, buf, ctx)
 }
 
-func (h *AdsPacketHandler) reactSafePageStub(req Request, c gnet.Conn, ctx *ConnContext) gnet.Action {
+func (h *AdsPacketHandler) reactSafePageStub(req *Request, c gnet.Conn, ctx *ConnContext) gnet.Action {
 	startMono := monotonicNano()
 	campaignID, ok := parseSafePageStubCampaignID(req.Path)
 	if !ok {
@@ -887,10 +901,10 @@ func buildSafePageMoneyHTML(landing []byte) ([]byte, bool) {
 
 var safePageVerifyLimiter = track.SafePageVerifyLimiter
 
-func (h *AdsPacketHandler) reactTrackVerify(req Request, c gnet.Conn, ctx *ConnContext) gnet.Action {
+func (h *AdsPacketHandler) reactTrackVerify(req *Request, c gnet.Conn, ctx *ConnContext) gnet.Action {
 	startMono := monotonicNano()
 
-	ip := extractClientIPGnet(ctx, &req, c, h.cfg.TrustedProxies)
+	ip := extractClientIPGnet(ctx, req, c, h.cfg.TrustedProxies)
 	if !safePageVerifyLimiter.Allow(ip) {
 		h.writeGnetVerifyJSON(c, ctx, startMono, safePageVerifyResponse{Success: false, Code: "rate_limit"}, http.StatusTooManyRequests, "", 0)
 		return gnet.None
@@ -1082,4 +1096,31 @@ func (h *AdsPacketHandler) writeGnetSafeViewModerator(c gnet.Conn, ctx *ConnCont
 	h.moderatorMetrics.recordMatch(network)
 	h.write(c, respClickSafeViewModerator, ctx)
 	h.recordMetrics(startMono, http.StatusOK)
+}
+
+func (h *AdsPacketHandler) resolveClickFilterTier(campaignID uuid.UUID) domain.ClickFilterTier {
+	var camp *domain.Campaign
+	if h.registry != nil {
+		if c, ok := h.registry.GetCampaign(campaignID); ok {
+			camp = c
+		}
+	}
+	requested := domain.ClickFilterTierFull
+	if camp != nil && camp.ClickFilterTier != "" {
+		requested = domain.NormalizeClickFilterTier(camp.ClickFilterTier)
+	}
+	redirectOnlyLicensed := false
+	if h.cfg != nil {
+		redirectOnlyLicensed = h.cfg.ClickFilterRedirectOnlyLicensed
+	}
+	envDefault := "full"
+	if h.cfg != nil && h.cfg.ClickFilterTierDefault != "" {
+		envDefault = h.cfg.ClickFilterTierDefault
+	}
+	resolved := domain.ResolveClickFilterTier(camp, envDefault, redirectOnlyLicensed)
+	if resolved != requested {
+		metrics.ClickFilterTierEscalatedTotal.WithLabelValues(string(requested)).Inc()
+	}
+	metrics.ClickFilterTierTotal.WithLabelValues(string(resolved)).Inc()
+	return resolved
 }

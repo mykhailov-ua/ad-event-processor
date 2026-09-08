@@ -1,14 +1,18 @@
 import { Link } from 'react-router-dom';
 
 import { SecondaryActionButton } from '@/shell/action_buttons';
-import { FilterField, INLINE_FILTER_ACTION_GRID_CLASS } from '@/shell/filter_panel';
+import {
+  DirectoryFilterForm,
+  FilterField,
+  FilterPanel,
+  INLINE_FILTER_ACTION_GRID_CLASS,
+} from '@/shell/filter_panel';
 import { PageChrome } from '@/shell/page_chrome';
 import { EmptyState } from '@/shell/empty_state';
 import { ErrorBlock } from '@/shell/error_block';
 import { PageSkeleton } from '@/shell/page_skeleton';
 import { Badge } from '@/components/ui/badge';
 import { Input } from '@/components/ui/input';
-import { Label } from '@/components/ui/label';
 import {
   DirectoryTable,
   DirectoryTableHead,
@@ -16,15 +20,18 @@ import {
   TableCell,
   TableHeader,
   TableRow,
+  directoryTableRevalidatingClass,
 } from '@/shell/directory_table';
 import type { FraudIntegration } from '@/api/types';
 import { displayTimestamp } from '@/lib/display';
+import { TableHost } from '@/shell/ui_bands';
 
 export type FraudIntegrationsProps = {
   items?: FraudIntegration[];
   customerId: string;
   draftCustomerId: string;
   fetching: boolean;
+  listRevalidating?: boolean;
   error: Error | undefined;
   hasSnapshot: boolean;
   onDraftCustomerIdChange: (value: string) => void;
@@ -52,6 +59,7 @@ export function FraudIntegrations({
   customerId,
   draftCustomerId,
   fetching,
+  listRevalidating = false,
   error,
   hasSnapshot,
   onDraftCustomerIdChange,
@@ -66,27 +74,36 @@ export function FraudIntegrations({
   }
 
   return (
-    <PageChrome title="Fraud integrations">
-      <Link className="text-sm text-muted-foreground hover:underline" to="/fraud">
-        Back to fraud hub
-      </Link>
-      <div className={INLINE_FILTER_ACTION_GRID_CLASS}>
-        <FilterField htmlFor="fraud-customer-id" label="Customer ID">
-          <Input
-            id="fraud-customer-id"
-            value={draftCustomerId}
-            onChange={(event) => onDraftCustomerIdChange(event.target.value)}
-          />
-        </FilterField>
-        <SecondaryActionButton
-          disabled={fetching || !draftCustomerId.trim()}
-          onClick={onApplyCustomer}
-          type="button"
-        >
-          Load
-        </SecondaryActionButton>
-      </div>
-
+    <PageChrome
+      controlPanel={
+        <div className="grid gap-3">
+          <Link className="text-sm text-muted-foreground hover:underline" to="/fraud">
+            Back to fraud hub
+          </Link>
+          <FilterPanel>
+            <DirectoryFilterForm
+              className={INLINE_FILTER_ACTION_GRID_CLASS}
+              onSubmit={(event) => {
+                event.preventDefault();
+                onApplyCustomer();
+              }}
+            >
+              <FilterField htmlFor="fraud-customer-id" label="Customer ID">
+                <Input
+                  id="fraud-customer-id"
+                  value={draftCustomerId}
+                  onChange={(event) => onDraftCustomerIdChange(event.target.value)}
+                />
+              </FilterField>
+              <SecondaryActionButton disabled={fetching || !draftCustomerId.trim()} type="submit">
+                Load
+              </SecondaryActionButton>
+            </DirectoryFilterForm>
+          </FilterPanel>
+        </div>
+      }
+      title="Fraud integrations"
+    >
       {!customerId ? (
         <EmptyState
           title="Customer required"
@@ -98,7 +115,12 @@ export function FraudIntegrations({
           description="No fraud integrations are configured for this customer."
         />
       ) : (
-        <DirectoryTable horizontalScroll>
+        <TableHost className="w-full">
+          <DirectoryTable
+            className={directoryTableRevalidatingClass(listRevalidating)}
+            horizontalScroll
+            nested
+          >
           <TableHeader>
             <TableRow>
               <DirectoryTableHead>Campaign</DirectoryTableHead>
@@ -136,6 +158,7 @@ export function FraudIntegrations({
             ))}
           </TableBody>
         </DirectoryTable>
+        </TableHost>
       )}
 
       {error && hasSnapshot ? <ErrorBlock title="Refresh failed" message={error.message} /> : null}

@@ -49,3 +49,16 @@ func TestFilterReportCatalog_operatorSeesEvidencePack(t *testing.T) {
 	}
 	assert.True(t, found)
 }
+
+func TestReportCatalog_uniqueKeys_holdout(t *testing.T) {
+	t.Parallel()
+	seen := make(map[string]struct{}, len(ReportCatalogEntries))
+	for _, row := range ReportCatalogEntries {
+		_, dup := seen[row.Key]
+		assert.False(t, dup, "duplicate catalog key %q", row.Key)
+		seen[row.Key] = struct{}{}
+		assert.NotEmpty(t, row.Title)
+		assert.NotEmpty(t, row.Category)
+	}
+	assert.Len(t, seen, len(ReportCatalogEntries))
+}

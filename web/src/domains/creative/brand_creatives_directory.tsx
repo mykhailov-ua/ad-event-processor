@@ -3,6 +3,7 @@ import { useRunWhenTrue } from '@/hooks/use_run_when_true';
 import { Link } from 'react-router-dom';
 
 import { PrimaryActionButton } from '@/shell/action_buttons';
+import { DirectoryFilterForm, FilterField } from '@/shell/filter_panel';
 import { PageChrome } from '@/shell/page_chrome';
 import { RowActionsMenu } from '@/shell/row_actions_menu';
 import { EmptyState } from '@/shell/empty_state';
@@ -137,40 +138,36 @@ export function BrandCreativesDirectory({
           <DialogHeader>
             <DialogTitle>Create creative</DialogTitle>
           </DialogHeader>
-          <div className="grid grid-cols-[repeat(auto-fill,minmax(12rem,1fr))] gap-4">
-            <div className="grid gap-2">
-              <Label htmlFor="creative-name">Name</Label>
+          <DirectoryFilterForm layout="auto-fill" onSubmit={(event) => event.preventDefault()}>
+            <FilterField htmlFor="creative-name" label="Name">
               <Input
                 id="creative-name"
                 value={draftName}
                 onChange={(e) => onDraftNameChange(e.target.value)}
               />
-            </div>
-            <div className="grid gap-2 md:col-span-2">
-              <Label htmlFor="creative-url">Landing URL</Label>
+            </FilterField>
+            <FilterField className="md:col-span-2" htmlFor="creative-url" label="Landing URL">
               <Input
                 id="creative-url"
                 value={draftUrl}
                 onChange={(e) => onDraftUrlChange(e.target.value)}
               />
-            </div>
-            <div className="grid gap-2">
-              <Label htmlFor="creative-weight">Weight</Label>
+            </FilterField>
+            <FilterField htmlFor="creative-weight" label="Weight">
               <Input
                 id="creative-weight"
                 value={draftWeight}
                 onChange={(e) => onDraftWeightChange(e.target.value)}
               />
-            </div>
-            <div className="grid gap-2">
-              <Label htmlFor="creative-status">Status</Label>
+            </FilterField>
+            <FilterField htmlFor="creative-status" label="Status">
               <Input
                 id="creative-status"
                 value={draftStatus}
                 onChange={(e) => onDraftStatusChange(e.target.value)}
               />
-            </div>
-          </div>
+            </FilterField>
+          </DirectoryFilterForm>
           {actionError && createOpen
             ? creativePanelError(actionError, 'Creative action failed')
             : null}
@@ -194,40 +191,36 @@ export function BrandCreativesDirectory({
           <DialogHeader>
             <DialogTitle>Edit creative</DialogTitle>
           </DialogHeader>
-          <div className="grid grid-cols-[repeat(auto-fill,minmax(12rem,1fr))] gap-4">
-            <div className="grid gap-2">
-              <Label htmlFor="creative-edit-name">Name</Label>
+          <DirectoryFilterForm layout="auto-fill" onSubmit={(event) => event.preventDefault()}>
+            <FilterField htmlFor="creative-edit-name" label="Name">
               <Input
                 id="creative-edit-name"
                 value={editName}
                 onChange={(e) => onEditNameChange(e.target.value)}
               />
-            </div>
-            <div className="grid gap-2 md:col-span-2">
-              <Label htmlFor="creative-edit-url">Landing URL</Label>
+            </FilterField>
+            <FilterField className="md:col-span-2" htmlFor="creative-edit-url" label="Landing URL">
               <Input
                 id="creative-edit-url"
                 value={editUrl}
                 onChange={(e) => onEditUrlChange(e.target.value)}
               />
-            </div>
-            <div className="grid gap-2">
-              <Label htmlFor="creative-edit-weight">Weight</Label>
+            </FilterField>
+            <FilterField htmlFor="creative-edit-weight" label="Weight">
               <Input
                 id="creative-edit-weight"
                 value={editWeight}
                 onChange={(e) => onEditWeightChange(e.target.value)}
               />
-            </div>
-            <div className="grid gap-2">
-              <Label htmlFor="creative-edit-status">Status</Label>
+            </FilterField>
+            <FilterField htmlFor="creative-edit-status" label="Status">
               <Input
                 id="creative-edit-status"
                 value={editStatus}
                 onChange={(e) => onEditStatusChange(e.target.value)}
               />
-            </div>
-          </div>
+            </FilterField>
+          </DirectoryFilterForm>
           {actionError && editingCreative
             ? creativePanelError(actionError, 'Could not save creative')
             : null}

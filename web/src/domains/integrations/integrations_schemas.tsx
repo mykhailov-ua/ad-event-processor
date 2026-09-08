@@ -204,7 +204,7 @@ export function IntegrationsSchemas({
           ) : null}
           {viewSchema.schema ? (
             <section className="grid gap-4">
-              <div className="flex flex-wrap items-center justify-between gap-2">
+              <div className="grid grid-cols-[1fr_auto] items-center gap-2">
                 <h2 className="text-base font-semibold">
                   {viewSchema.schema.name ?? viewSchema.schema.id}
                 </h2>

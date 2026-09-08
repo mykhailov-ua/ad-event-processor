@@ -24,6 +24,7 @@ export type OpsDlqInboxProps = {
   error: Error | undefined;
   hasSnapshot: boolean;
   retryingId?: string;
+  retryError?: Error;
   onPrev: () => void;
   onNext: () => void;
   canGoPrev: boolean;
@@ -38,6 +39,7 @@ export function OpsDlqInbox({
   error,
   hasSnapshot,
   retryingId,
+  retryError,
   onPrev,
   onNext,
   canGoPrev,
@@ -127,6 +129,7 @@ export function OpsDlqInbox({
         </OpsTable>
       )}
 
+      {retryError ? opsPanelError(retryError, 'Retry failed') : null}
       {error && hasSnapshot ? opsPanelError(error, 'Refresh failed') : null}
     </OpsPageShell>
   );

@@ -9,5 +9,5 @@ export function DirectoryListMeta({
   children: ReactNode;
   className?: string;
 }) {
-  return <p className={cn('text-sm text-muted-foreground', className)}>{children}</p>;
+  return <p className={cn('text-[13px] leading-[18px] text-muted-foreground', className)}>{children}</p>;
 }

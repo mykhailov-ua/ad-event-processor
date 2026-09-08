@@ -17,6 +17,7 @@ import { resolveCampaignStatusKey } from '@/domains/campaigns/list/campaign_list
 import { adminKpiAccentValueClass, adminStaleHintClass } from '@/lib/admin_metric_tone';
 import {
   campaignOverviewDialogClass,
+  campaignOverviewDialogPanelClass,
   campaignOverviewEmptyBannerClass,
   campaignOverviewFooterClass,
   campaignOverviewHeaderClass,
@@ -84,7 +85,7 @@ function OverviewSection({
 }) {
   return (
     <section className={cn(campaignOverviewSectionClass, className)}>
-      <div className="flex items-center justify-between gap-2">
+      <div className="grid grid-cols-[1fr_auto] items-center gap-2">
         <h3 className={campaignOverviewSectionTitleClass}>{title}</h3>
         {meta}
       </div>
@@ -132,7 +133,7 @@ function DeliveryMetricCard({
 function DeliveryRateRow({ label, percent }: { label: string; percent: number }) {
   return (
     <div className={campaignOverviewRateRowClass}>
-      <div className="flex items-center justify-between gap-2 text-[11px] font-semibold uppercase leading-[14px] text-muted-foreground">
+      <div className="grid grid-cols-[1fr_auto] items-center gap-2 text-[11px] font-semibold uppercase leading-[14px] text-muted-foreground">
         <span>{label}</span>
         <span className="tabular-nums">{percent}%</span>
       </div>
@@ -229,7 +230,10 @@ export function CampaignOverviewSheet({
 
   return (
     <Dialog onOpenChange={handleOpenChange} open={open}>
-      <DialogContent className={campaignOverviewDialogClass}>
+      <DialogContent
+        className={campaignOverviewDialogClass}
+        panelClassName={campaignOverviewDialogPanelClass}
+      >
         <div className={campaignOverviewScrollClass}>
           <header className={campaignOverviewHeaderClass}>
             <div className="flex flex-wrap items-center gap-x-3 gap-y-1">
@@ -373,7 +377,7 @@ export function CampaignOverviewSheet({
             <Link to={campaignFraudHref(campaign.id, campaign.customer_id)}>Fraud explain</Link>
           </Button>
           <Button asChild className={campaignOverviewPrimaryButtonClass}>
-            <Link to={`/dashboards/campaign/${campaign.id}`}>Report</Link>
+            <Link to={`/dashboards/campaign/${campaign.id}`}>View report</Link>
           </Button>
           <Button asChild className={campaignOverviewOutlineButtonClass} variant="outline">
             <Link to={`/campaigns/${campaign.id}/edit`}>Edit</Link>

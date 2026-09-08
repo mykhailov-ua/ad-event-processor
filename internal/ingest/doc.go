@@ -8,7 +8,7 @@
 // Thread model (canonical: hot-path.mdc Tracker thread model, cmd/tracker/doc.go):
 //
 //	Tier A - gnet epoll (OnTraffic, WithLockOSThread(false)):
-//	  - Peek/parse HTTP, PinParsedHTTPRequest, copy bytes to worker arena, SubmitOffloadToWorker, Discard frame.
+//	  - Peek/parse HTTP, ParseHTTP1LimitsInto, PinHTTP1RequestInPlace, copy bytes to worker arena, SubmitOffloadToWorker, Discard frame.
 //	  - Returns to epoll after enqueue; must not call FilterEngine.Check or synchronous Redis EVALSHA.
 //
 //	Tier B - PinnedWorkerPool worker (Worker.start, LockOSThread):
@@ -55,6 +55,7 @@
 //   - Worker MPSC queue: power-of-two depth; invalid config rounds to 4096 (gnet/worker.go).
 //   - Worker arena: 4 slots x 1 MiB per worker; request pool cap 64 KiB before heap fallback.
 //   - HTTP1 offload: one in-flight request per HTTP/1 connection (HTTP1OffloadBusy).
+//   - HTTP1_MAX_PIPELINE_DEPTH / HTTP1_MAX_PIPELINE_BUSY_BYTES: shared conn caps for HTTP/1 pipelining and H2 multiplex buffering.
 //   - Filter chain order (tracker wire): license, license_rps, emergency, geo, schedule, vpp, fraud,
 //     residential, tcp_mss, device, l7_wire, json_serialization, behavior_telemetry, consent, segment,
 //     entitlements, unified (TestFilterEngine_TrackerSegmentAfterLocalFilters).
@@ -65,7 +66,7 @@
 //     jitter, and complicates zero-alloc verification. Tier B runs Check synchronously on LockOSThread
 //     worker with monotonic FILTER_TIMEOUT_MS deadline inside the same goroutine.
 //   - Pin/arena copy vs holding full gnet peek frame through filter:
-//     Tier A Discard frame immediately after enqueue; Tier B uses PinParsedHTTPRequest into OffloadHTTPPin
+//     Tier A Discard frame immediately after enqueue; Tier B uses PinHTTP1RequestInPlace into OffloadHTTPPin
 //     plus optional worker-arena wire copy. Rejected passing unsafe.String over the discarded peek buffer:
 //     filter may read evt fields after frame release. Response path always cloneAsyncWriteBytes before
 //     releaseOffloadBuffers.

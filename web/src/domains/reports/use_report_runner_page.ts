@@ -1,12 +1,17 @@
 // L3 report runner: catalog cached; applied filters from URL; draft* until commit; shouldFetch gates evidence vs table vs export-only modes.
 import { useCallback, useEffect, useMemo, useState } from 'react';
-import { useParams, useSearchParams } from 'react-router-dom';
+import { useParams } from 'react-router-dom';
+import { toast } from 'sonner';
 
+import { ApiError } from '@/api/client';
 import { runEvidencePackReport, runReport, exportTelegramReport } from '@/api/reports_api';
-import type { DataFreshness, FraudEvidencePack, ReportMapRow } from '@/api/types';
+import { getCampaignStats } from '@/api/campaigns_api';
+import type { CampaignStats, DataFreshness, FraudEvidencePack, ReportMapRow } from '@/api/types';
 import { useResource } from '@/api/use_resource';
 import { useSession } from '@/hooks/use_session';
+import { useTransitionSearchParams } from '@/hooks/use_transition_search_params';
 import {
+  CAMPAIGN_STATS_REPORT_KEYS,
   EVIDENCE_PACK_REPORT_KEYS,
   EXPORT_ONLY_REPORT_KEYS,
   defaultReportRange,
@@ -15,6 +20,7 @@ import { parseListLimit, parseListOffset } from '@/lib/list_query';
 import { deriveColumns } from '@/lib/report_table';
 import { fromDatetimeLocalValue, toDatetimeLocalValue } from '@/lib/datetime_range';
 import { fetchReportCatalogCached } from '@/lib/report_catalog_cache';
+import { mutationError } from '@/lib/mutation_audit';
 import type { ReportRunnerProps } from '@/domains/reports/report_runner';
 
 type ReportRunnerSnapshot = {
@@ -23,12 +29,14 @@ type ReportRunnerSnapshot = {
   freshness?: DataFreshness;
   nextCursor?: string;
   evidencePack?: FraudEvidencePack;
+  campaignStats?: CampaignStats;
 };
 
-export function useReportRunnerPage() {
+export function useReportRunnerPage(reportKeyOverride?: string) {
   const { key: reportKeyParam } = useParams<{ key: string }>();
-  const reportKey = reportKeyParam ?? '';
-  const [searchParams, setSearchParams] = useSearchParams();
+  const reportKey = reportKeyOverride ?? reportKeyParam ?? '';
+  const [searchParams, { isPending: listQueryPending, replaceSearchParams }] =
+    useTransitionSearchParams();
   const { session } = useSession();
 
   const { data: catalog } = useResource((signal) => fetchReportCatalogCached(signal), []);
@@ -52,11 +60,13 @@ export function useReportRunnerPage() {
 
   const mode: ReportRunnerProps['mode'] = EXPORT_ONLY_REPORT_KEYS.has(reportKey)
     ? 'export-only'
-    : EVIDENCE_PACK_REPORT_KEYS.has(reportKey)
-      ? 'evidence'
-      : reportKey
-        ? 'table'
-        : 'unsupported';
+    : CAMPAIGN_STATS_REPORT_KEYS.has(reportKey)
+      ? 'campaign-stats'
+      : EVIDENCE_PACK_REPORT_KEYS.has(reportKey)
+        ? 'evidence'
+        : reportKey
+          ? 'table'
+          : 'unsupported';
 
   const [draftCustomerId, setDraftCustomerId] = useState(appliedCustomerId);
   const [draftFrom, setDraftFrom] = useState(toDatetimeLocalValue(appliedFrom));
@@ -73,15 +83,18 @@ export function useReportRunnerPage() {
   }, [appliedCampaignId, appliedClickId, appliedCustomerId, appliedFrom, appliedTo]);
 
   const [exportingTelegram, setExportingTelegram] = useState(false);
+  const [telegramExportError, setTelegramExportError] = useState<Error | undefined>();
   const [telegramExportMessage, setTelegramExportMessage] = useState<string | undefined>();
 
-  const showTelegramExport = reportKey.includes('telegram');
+  const showTelegramExport = reportKey === 'telegram';
   const shouldFetch =
     Boolean(reportKey) &&
     mode !== 'export-only' &&
     mode !== 'unsupported' &&
-    Boolean(appliedCustomerId || mode === 'evidence') &&
-    (mode !== 'evidence' || Boolean(appliedClickId));
+    (mode === 'campaign-stats'
+      ? Boolean(appliedCampaignId)
+      : Boolean(appliedCustomerId || mode === 'evidence') &&
+        (mode !== 'evidence' || Boolean(appliedClickId)));
 
   const queryKey = [
     reportKey,
@@ -95,7 +108,7 @@ export function useReportRunnerPage() {
     mode,
   ];
 
-  const { data, error, fetching } = useResource(async (signal) => {
+  const { data, error, fetching, revalidating: listRevalidating } = useResource(async (signal) => {
     if (!shouldFetch) {
       return undefined;
     }
@@ -119,6 +132,22 @@ export function useReportRunnerPage() {
       } satisfies ReportRunnerSnapshot;
     }
 
+    if (mode === 'campaign-stats') {
+      const campaignStats = await getCampaignStats(
+        appliedCampaignId,
+        {
+          from: appliedFrom,
+          to: appliedTo,
+        },
+        signal
+      );
+      return {
+        rows: [],
+        columns: [],
+        campaignStats,
+      } satisfies ReportRunnerSnapshot;
+    }
+
     const envelope = await runReport(reportKey, params, signal);
     const rows = envelope.rows ?? [];
     return {
@@ -128,6 +157,9 @@ export function useReportRunnerPage() {
       nextCursor: envelope.next_cursor,
     } satisfies ReportRunnerSnapshot;
   }, queryKey);
+
+  const licenseGated =
+    Boolean(catalogRow?.license_gated) && error instanceof ApiError && error.status === 403;
 
   const updateQuery = useCallback(
     (patch: {
@@ -169,7 +201,7 @@ export function useReportRunnerPage() {
       next.set('limit', String(limit));
       next.set('offset', String(Math.max(0, offset)));
 
-      setSearchParams(next, { replace: true });
+      replaceSearchParams(next);
     },
     [
       appliedCampaignId,
@@ -179,8 +211,8 @@ export function useReportRunnerPage() {
       appliedLimit,
       appliedOffset,
       appliedTo,
+      replaceSearchParams,
       searchParams,
-      setSearchParams,
     ]
   );
 
@@ -220,6 +252,7 @@ export function useReportRunnerPage() {
       return;
     }
     setExportingTelegram(true);
+    setTelegramExportError(undefined);
     setTelegramExportMessage(undefined);
     void exportTelegramReport({
       customer_id: customerId,
@@ -233,9 +266,12 @@ export function useReportRunnerPage() {
         setTelegramExportMessage(
           downloadUrl ? `Export ready: ${downloadUrl}` : 'Telegram export completed.'
         );
+        toast.success('Telegram export completed');
       })
       .catch((err: unknown) => {
-        setTelegramExportMessage(err instanceof Error ? err.message : 'Telegram export failed.');
+        const nextError = mutationError(err);
+        setTelegramExportError(nextError);
+        toast.error(nextError.message);
       })
       .finally(() => {
         setExportingTelegram(false);
@@ -261,6 +297,7 @@ export function useReportRunnerPage() {
     freshness: data?.freshness,
     nextCursor: data?.nextCursor,
     evidencePack: data?.evidencePack,
+    campaignStats: data?.campaignStats,
     draftCustomerId,
     draftFrom,
     draftTo,
@@ -269,8 +306,11 @@ export function useReportRunnerPage() {
     limit: appliedLimit,
     offset: appliedOffset,
     fetching,
-    error,
-    hasSnapshot: data != null || !shouldFetch,
+    listRevalidating: listRevalidating || listQueryPending,
+    error: licenseGated ? undefined : error,
+    hasSnapshot: data != null || !shouldFetch || licenseGated,
+    licenseGated,
+    licenseFeatureKey: catalogRow?.feature_key,
     onDraftCustomerIdChange: setDraftCustomerId,
     onDraftFromChange: setDraftFrom,
     onDraftToChange: setDraftTo,
@@ -280,6 +320,7 @@ export function useReportRunnerPage() {
     onPageChange,
     showTelegramExport,
     exportingTelegram,
+    telegramExportError,
     telegramExportMessage,
     onExportTelegram,
   };

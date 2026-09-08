@@ -158,6 +158,9 @@ func CloneCampaign(ctx context.Context, fx Effects, pool *pgxpool.Pool, spec Clo
 				return fmt.Errorf("clone postback config: %w", err)
 			}
 		}
+		if err := cloneConversionMappings(ctx, tx, newCampaignID, spec.SourceID); err != nil {
+			return fmt.Errorf("clone conversion mappings: %w", err)
+		}
 
 		_, err = q.CreateLedgerEntry(ctx, db.CreateLedgerEntryParams{
 			CustomerID:      src.CustomerID,
@@ -203,6 +206,15 @@ func CloneCampaign(ctx context.Context, fx Effects, pool *pgxpool.Pool, spec Clo
 		SourceID: spec.SourceID.String(),
 		Name:     clonedName,
 	}, nil
+}
+
+func cloneConversionMappings(ctx context.Context, tx pgx.Tx, destID, sourceID uuid.UUID) error {
+	_, err := tx.Exec(ctx, `
+INSERT INTO campaign_conversion_mappings (campaign_id, inbound_status, goal_name, payout_micro)
+SELECT $1, inbound_status, goal_name, payout_micro
+FROM campaign_conversion_mappings
+WHERE campaign_id = $2`, destID, sourceID)
+	return err
 }
 
 const defaultCloneNameSuffix = " (copy)"

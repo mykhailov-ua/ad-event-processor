@@ -2,6 +2,7 @@ import { useState } from 'react';
 import { useRunWhenTrue } from '@/hooks/use_run_when_true';
 
 import { PrimaryActionButton, SecondaryActionButton } from '@/shell/action_buttons';
+import { DirectoryFilterForm, FilterField } from '@/shell/filter_panel';
 import { PageChrome } from '@/shell/page_chrome';
 import { RowActionsMenu } from '@/shell/row_actions_menu';
 import { EmptyState } from '@/shell/empty_state';
@@ -15,8 +16,16 @@ import {
   DialogTitle,
 } from '@/components/ui/dialog';
 import { DropdownMenuItem } from '@/components/ui/dropdown-menu';
-import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
+import { Checkbox } from '@/components/ui/checkbox';
+import { Input } from '@/components/ui/input';
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from '@/components/ui/select';
 import {
   DirectoryTable,
   DirectoryTableHead,
@@ -25,9 +34,19 @@ import {
   TableHeader,
   TableRow,
 } from '@/shell/directory_table';
-import type { DomainHealth, DomainSSLSetupResult } from '@/api/types';
-import { CreativeNav, creativePanelError } from '@/domains/creative/creative_nav';
+import { ErrorBlock } from '@/shell/error_block';
+import type {
+  CloudflareZone,
+  DomainBulkJobStatus,
+  DomainHealth,
+  DomainSSLSetupResult,
+  WildcardSSLResponse,
+} from '@/api/types';
+import type { DomainHealthFilter } from '@/domains/creative/use_domains_page_workspace';
+import { CreativeDirectoryStack } from '@/domains/creative/creative_directory_stack';
+import { creativePanelError } from '@/domains/creative/creative_nav';
 import { JsonPayloadView } from '@/shell/json_payload_view';
+import { TableHost } from '@/shell/ui_bands';
 import { displayTimestamp } from '@/lib/display';
 
 export type DomainsDirectoryProps = {
@@ -43,6 +62,7 @@ export type DomainsDirectoryProps = {
   onDraftHostnameChange: (value: string) => void;
   onAddDomain: () => void;
   onDeleteDomain: (hostname: string) => void;
+  onBurnDomain: (hostname: string) => void;
   onProbeDomain: (hostname: string) => void;
   onSetupSsl: (hostname: string) => void;
   draftParkDomain: string;
@@ -51,6 +71,32 @@ export type DomainsDirectoryProps = {
   onDraftParkZoneIdChange: (value: string) => void;
   onParkDomain: () => void;
   parkMessage: string | undefined;
+  healthFilter: DomainHealthFilter;
+  onHealthFilterChange: (value: DomainHealthFilter) => void;
+  bulkOpen: boolean;
+  onBulkOpenChange: (open: boolean) => void;
+  onOpenBulkDialog: () => void;
+  draftBulkText: string;
+  onDraftBulkTextChange: (value: string) => void;
+  draftBulkZoneId: string;
+  onDraftBulkZoneIdChange: (value: string) => void;
+  onStartBulkPark: () => void;
+  onStartBulkSSL: () => void;
+  bulkJob: DomainBulkJobStatus | undefined;
+  bulkJobError: Error | undefined;
+  wildcardOpen: boolean;
+  onWildcardOpenChange: (open: boolean) => void;
+  onOpenWildcardWizard: () => void;
+  cloudflareZones: CloudflareZone[];
+  zonesError: Error | undefined;
+  draftWildcardZoneId: string;
+  draftWildcardZoneName: string;
+  draftWildcardIncludeApex: boolean;
+  onDraftWildcardZoneIdChange: (value: string) => void;
+  onDraftWildcardZoneNameChange: (value: string) => void;
+  onDraftWildcardIncludeApexChange: (value: boolean) => void;
+  onSetupWildcardSSL: () => void;
+  wildcardResult: WildcardSSLResponse | undefined;
 };
 
 function healthBadgeVariant(
@@ -81,6 +127,7 @@ export function DomainsDirectory({
   onDraftHostnameChange,
   onAddDomain,
   onDeleteDomain,
+  onBurnDomain,
   onProbeDomain,
   onSetupSsl,
   draftParkDomain,
@@ -89,6 +136,32 @@ export function DomainsDirectory({
   onDraftParkZoneIdChange,
   onParkDomain,
   parkMessage,
+  healthFilter,
+  onHealthFilterChange,
+  bulkOpen,
+  onBulkOpenChange,
+  onOpenBulkDialog,
+  draftBulkText,
+  onDraftBulkTextChange,
+  draftBulkZoneId,
+  onDraftBulkZoneIdChange,
+  onStartBulkPark,
+  onStartBulkSSL,
+  bulkJob,
+  bulkJobError,
+  wildcardOpen,
+  onWildcardOpenChange,
+  onOpenWildcardWizard,
+  cloudflareZones,
+  zonesError,
+  draftWildcardZoneId,
+  draftWildcardZoneName,
+  draftWildcardIncludeApex,
+  onDraftWildcardZoneIdChange,
+  onDraftWildcardZoneNameChange,
+  onDraftWildcardIncludeApexChange,
+  onSetupWildcardSSL,
+  wildcardResult,
 }: DomainsDirectoryProps) {
   const [registerOpen, setRegisterOpen] = useState(false);
   const [parkOpen, setParkOpen] = useState(false);
@@ -103,8 +176,9 @@ export function DomainsDirectory({
   if (error && !hasSnapshot) {
     return (
       <PageChrome title="Domains">
-        <CreativeNav />
-        {creativePanelError(error, 'Could not load domains')}
+        <CreativeDirectoryStack>
+          {creativePanelError(error, 'Could not load domains')}
+        </CreativeDirectoryStack>
       </PageChrome>
     );
   }
@@ -117,27 +191,101 @@ export function DomainsDirectory({
           <PrimaryActionButton onClick={() => setRegisterOpen(true)} type="button">
             Register domain
           </PrimaryActionButton>
+          <SecondaryActionButton onClick={onOpenBulkDialog} type="button">
+            Bulk import
+          </SecondaryActionButton>
           <SecondaryActionButton onClick={() => setParkOpen(true)} type="button">
             Park domain
+          </SecondaryActionButton>
+          <SecondaryActionButton onClick={onOpenWildcardWizard} type="button">
+            Wildcard SSL
           </SecondaryActionButton>
         </>
       }
     >
-      <CreativeNav />
+      <CreativeDirectoryStack>
+      <DirectoryFilterForm layout="auto-fill" onSubmit={(event) => event.preventDefault()}>
+        <FilterField htmlFor="domain-health-filter" label="Health filter">
+          <Select
+            value={healthFilter}
+            onValueChange={(value) => onHealthFilterChange(value as DomainHealthFilter)}
+          >
+            <SelectTrigger id="domain-health-filter" className="w-full max-w-xs">
+              <SelectValue />
+            </SelectTrigger>
+            <SelectContent>
+              <SelectItem value="all">All</SelectItem>
+              <SelectItem value="healthy">Healthy</SelectItem>
+              <SelectItem value="degraded">Degraded</SelectItem>
+              <SelectItem value="burned">Burned</SelectItem>
+            </SelectContent>
+          </Select>
+        </FilterField>
+      </DirectoryFilterForm>
+
+      <Dialog onOpenChange={onBulkOpenChange} open={bulkOpen}>
+        <DialogContent className="max-w-lg">
+          <DialogHeader>
+            <DialogTitle>Bulk domain import</DialogTitle>
+          </DialogHeader>
+          {zonesError ? <ErrorBlock title="Could not load zones" message={zonesError.message} /> : null}
+          <DirectoryFilterForm layout="auto-fill" onSubmit={(event) => event.preventDefault()}>
+            <FilterField htmlFor="bulk-zone-picker" label="Cloudflare zone (park)">
+              <Select
+                value={draftBulkZoneId}
+                onValueChange={onDraftBulkZoneIdChange}
+              >
+                <SelectTrigger id="bulk-zone-picker" className="w-full">
+                  <SelectValue placeholder="Select zone for park" />
+                </SelectTrigger>
+                <SelectContent>
+                  {cloudflareZones.map((zone) => (
+                    <SelectItem key={zone.id} value={zone.id}>
+                      {zone.name}
+                    </SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
+            </FilterField>
+            <FilterField htmlFor="bulk-hostnames" label="Hostnames (one per line)">
+              <textarea
+                className="min-h-32 w-full rounded-md border border-input bg-background px-3 py-2 text-sm"
+                id="bulk-hostnames"
+                onChange={(event) => onDraftBulkTextChange(event.target.value)}
+                value={draftBulkText}
+              />
+            </FilterField>
+          </DirectoryFilterForm>
+          {bulkJob ? (
+            <p className="text-sm text-muted-foreground">
+              Job {bulkJob.job_id}: {bulkJob.status} ({bulkJob.completed}/{bulkJob.total}
+              {bulkJob.failed > 0 ? `, ${bulkJob.failed} failed` : ''})
+            </p>
+          ) : null}
+          {bulkJobError ? <ErrorBlock title="Job poll failed" message={bulkJobError.message} /> : null}
+          <DialogFooter>
+            <SecondaryActionButton loading={acting} onClick={onStartBulkSSL} type="button">
+              Bulk SSL only
+            </SecondaryActionButton>
+            <PrimaryActionButton loading={acting} onClick={onStartBulkPark} type="button">
+              Park + probe
+            </PrimaryActionButton>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
 
       <Dialog onOpenChange={setRegisterOpen} open={registerOpen}>
         <DialogContent className="max-w-md">
           <DialogHeader>
             <DialogTitle>Register domain</DialogTitle>
           </DialogHeader>
-          <div className="grid gap-2">
-            <Label htmlFor="domain-hostname">Hostname</Label>
+          <FilterField htmlFor="domain-hostname" label="Hostname">
             <Input
               id="domain-hostname"
               value={draftHostname}
               onChange={(event) => onDraftHostnameChange(event.target.value)}
             />
-          </div>
+          </FilterField>
           <DialogFooter>
             <PrimaryActionButton loading={acting} onClick={onAddDomain} type="button">
               Add domain
@@ -151,24 +299,22 @@ export function DomainsDirectory({
           <DialogHeader>
             <DialogTitle>Park domain</DialogTitle>
           </DialogHeader>
-          <div className="grid grid-cols-[repeat(auto-fill,minmax(12rem,1fr))] gap-4">
-            <div className="grid gap-2">
-              <Label htmlFor="park-domain">Domain</Label>
+          <DirectoryFilterForm layout="auto-fill" onSubmit={(event) => event.preventDefault()}>
+            <FilterField htmlFor="park-domain" label="Domain">
               <Input
                 id="park-domain"
                 value={draftParkDomain}
                 onChange={(event) => onDraftParkDomainChange(event.target.value)}
               />
-            </div>
-            <div className="grid gap-2">
-              <Label htmlFor="park-zone-id">Cloudflare zone ID</Label>
+            </FilterField>
+            <FilterField htmlFor="park-zone-id" label="Cloudflare zone ID">
               <Input
                 id="park-zone-id"
                 value={draftParkZoneId}
                 onChange={(event) => onDraftParkZoneIdChange(event.target.value)}
               />
-            </div>
-          </div>
+            </FilterField>
+          </DirectoryFilterForm>
           <DialogFooter>
             <SecondaryActionButton
               loading={acting}
@@ -182,16 +328,76 @@ export function DomainsDirectory({
         </DialogContent>
       </Dialog>
 
+      <Dialog onOpenChange={onWildcardOpenChange} open={wildcardOpen}>
+        <DialogContent className="max-w-lg">
+          <DialogHeader>
+            <DialogTitle>Wildcard SSL (DNS-01)</DialogTitle>
+          </DialogHeader>
+          {zonesError ? <ErrorBlock title="Could not load zones" message={zonesError.message} /> : null}
+          <DirectoryFilterForm layout="auto-fill" onSubmit={(event) => event.preventDefault()}>
+            <FilterField htmlFor="wildcard-zone-picker" label="Cloudflare zone">
+              <Select
+                value={draftWildcardZoneId}
+                onValueChange={(zoneId) => {
+                  onDraftWildcardZoneIdChange(zoneId);
+                  const zone = cloudflareZones.find((row) => row.id === zoneId);
+                  if (zone?.name) {
+                    onDraftWildcardZoneNameChange(zone.name);
+                  }
+                }}
+              >
+                <SelectTrigger id="wildcard-zone-picker" className="w-full">
+                  <SelectValue placeholder="Select zone" />
+                </SelectTrigger>
+                <SelectContent>
+                  {cloudflareZones.map((zone) => (
+                    <SelectItem key={zone.id} value={zone.id}>
+                      {zone.name}
+                    </SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
+            </FilterField>
+            <FilterField htmlFor="wildcard-zone-name" label="Zone name">
+              <Input
+                id="wildcard-zone-name"
+                value={draftWildcardZoneName}
+                onChange={(event) => onDraftWildcardZoneNameChange(event.target.value)}
+                placeholder="trk.example.com"
+              />
+            </FilterField>
+            <div className="flex items-center gap-2">
+              <Checkbox
+                checked={draftWildcardIncludeApex}
+                id="wildcard-include-apex"
+                onCheckedChange={(checked) => onDraftWildcardIncludeApexChange(checked === true)}
+              />
+              <Label htmlFor="wildcard-include-apex">Include apex in certificate</Label>
+            </div>
+          </DirectoryFilterForm>
+          <DialogFooter>
+            <PrimaryActionButton loading={acting} onClick={onSetupWildcardSSL} type="button">
+              Issue wildcard cert
+            </PrimaryActionButton>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
+
       {(items ?? []).length === 0 ? (
         <EmptyState title="No domains" description="Domain health list returned no entries." />
       ) : (
-        <DirectoryTable>
+          <TableHost>
+            <DirectoryTable nested>
           <TableHeader>
             <TableRow>
               <DirectoryTableHead>Hostname</DirectoryTableHead>
               <DirectoryTableHead>Role</DirectoryTableHead>
               <DirectoryTableHead>Health</DirectoryTableHead>
               <DirectoryTableHead>SSL</DirectoryTableHead>
+              <DirectoryTableHead>SSL expiry</DirectoryTableHead>
+              <DirectoryTableHead>ACME</DirectoryTableHead>
+              <DirectoryTableHead>CF proxied</DirectoryTableHead>
+              <DirectoryTableHead>Pool</DirectoryTableHead>
               <DirectoryTableHead>Last probe</DirectoryTableHead>
               <DirectoryTableHead />
             </TableRow>
@@ -205,6 +411,10 @@ export function DomainsDirectory({
                   <Badge variant={healthBadgeVariant(row.health_status)}>{row.health_status}</Badge>
                 </TableCell>
                 <TableCell>{row.ssl_status}</TableCell>
+                <TableCell>{displayTimestamp(row.ssl_not_after)}</TableCell>
+                <TableCell>{row.acme_state ?? '-'}</TableCell>
+                <TableCell>{row.cloudflare_proxied ? 'yes' : 'no'}</TableCell>
+                <TableCell>{row.pool_status ?? '-'}</TableCell>
                 <TableCell>{displayTimestamp(row.last_probe_at)}</TableCell>
                 <TableCell>
                   <RowActionsMenu ariaLabel="Domain actions" disabled={acting}>
@@ -214,6 +424,15 @@ export function DomainsDirectory({
                     <DropdownMenuItem disabled={acting} onClick={() => onSetupSsl(row.hostname)}>
                       SSL setup
                     </DropdownMenuItem>
+                    {row.pool_status !== 'banned' ? (
+                      <DropdownMenuItem
+                        className="text-destructive focus:text-destructive"
+                        disabled={acting}
+                        onClick={() => onBurnDomain(row.hostname)}
+                      >
+                        Burn
+                      </DropdownMenuItem>
+                    ) : null}
                     <DropdownMenuItem
                       className="text-destructive focus:text-destructive"
                       disabled={acting}
@@ -227,12 +446,15 @@ export function DomainsDirectory({
             ))}
           </TableBody>
         </DirectoryTable>
+        </TableHost>
       )}
 
       {actionMessage ? <p className="text-sm text-muted-foreground">{actionMessage}</p> : null}
       {sslResult ? <JsonPayloadView payload={sslResult} /> : null}
+      {wildcardResult ? <JsonPayloadView payload={wildcardResult} /> : null}
       {actionError ? creativePanelError(actionError, 'Domain action failed') : null}
       {error && hasSnapshot ? creativePanelError(error, 'Refresh failed') : null}
+      </CreativeDirectoryStack>
     </PageChrome>
   );
 }

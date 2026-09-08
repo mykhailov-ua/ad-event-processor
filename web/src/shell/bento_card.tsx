@@ -98,7 +98,7 @@ export function BentoCard({
         className
       )}
     >
-      <div className="flex items-start justify-between gap-3">
+      <div className="grid grid-cols-[1fr_auto] items-start gap-3">
         {Icon ? <BentoIconBadge icon={Icon} tone={tone} /> : <span className="size-8 shrink-0" />}
         {action}
       </div>

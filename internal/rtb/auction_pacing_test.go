@@ -15,7 +15,7 @@ func TestAuction_pacingClosed(t *testing.T) {
 		DeviceMask: 1, CategoryMask: 1, GeoHashVal: 7, Budget: 5000,
 	}})
 
-	_, reason := reg.RunAuction(stdReq(7, 50))
+	_, reason := reg.RunAuctionPtr(stdReq(7, 50))
 	assert.Equal(t, NoBidPacingClosed, reason)
 }
 
@@ -30,7 +30,7 @@ func TestAuction_dailyCap_blocksBeforeSpend(t *testing.T) {
 	idx := reg.LoadShard(7).BudgetIndices[0]
 	store.addDailySpendLocked(idx, 50)
 
-	_, reason := reg.RunAuction(stdReq(7, 50))
+	_, reason := reg.RunAuctionPtr(stdReq(7, 50))
 	assert.Equal(t, NoBidDailyCapExceeded, reason)
 }
 
@@ -42,7 +42,7 @@ func TestAuction_dailyCap_spendTracks(t *testing.T) {
 		DeviceMask: 1, CategoryMask: 1, GeoHashVal: 7, Budget: 5000,
 	}})
 
-	_, reason := reg.RunAuction(stdReq(7, 50))
+	_, reason := reg.RunAuctionPtr(stdReq(7, 50))
 	require.True(t, reason.OK())
 
 	idx := reg.LoadShard(7).BudgetIndices[0]
@@ -64,7 +64,7 @@ func TestAuction_customerBudget_sharedPool(t *testing.T) {
 		},
 	})
 
-	_, reason := reg.RunAuction(stdReq(7, 50))
+	_, reason := reg.RunAuctionPtr(stdReq(7, 50))
 	require.True(t, reason.OK())
 	assert.Equal(t, int64(30), store.LoadCustomerBudget(reg.LoadShard(7).CustomerBudgetIndices[0]))
 }

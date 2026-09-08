@@ -324,10 +324,12 @@ func (w *PostbackWorker) ProcessEvent(ctx context.Context, ev db.OutboxEvent, pr
 		}); markErr != nil {
 			slog.Warn("Failed to mark dispatch failed", "error", markErr)
 		}
+		setDispatchLatencyMs(ctx, w.pool, idempotencyHash, time.Duration(elapsed*float64(time.Second)))
 		return fmt.Errorf("dispatch failed (moved to DLQ): %w", err)
 	}
 
 	recordDispatch(provider, "success", elapsed)
+	setDispatchLatencyMs(ctx, w.pool, idempotencyHash, time.Duration(elapsed*float64(time.Second)))
 
 	if err := w.finalizeDispatchSent(ctx, q, idempotencyHash); err != nil {
 		return ErrDispatchFinalizePending

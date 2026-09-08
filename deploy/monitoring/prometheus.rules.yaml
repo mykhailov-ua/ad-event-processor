@@ -21,6 +21,7 @@ groups:
         annotations:
           summary: 'Redis shard circuit breaker is OPEN'
           description: 'Shard {{ $labels.shard }} Redis circuit breaker has been open for 30s. Hot-path filter calls are fast-failing with 503.'
+          runbook_url: 'https://github.com/mykhailov-ua/ad-event-processor/blob/main/docs/DEVELOPMENT.md#emergency-breaker-runbook'
 
       - alert: Shard0ClientNil
         expr: ad_shard0_client_nil == 1
@@ -102,6 +103,7 @@ groups:
         annotations:
           summary: 'Stream producer post-debit enqueue failures'
           description: 'Budget debited but async enqueue failed (rollback path). ad_stream_producer_post_debit_rejected_total should stay ~0 - tune STREAM_PRODUCER_ADMISSION_PCT or queue capacity.'
+          runbook_url: 'https://github.com/mykhailov-ua/ad-event-processor/blob/main/docs/DEVELOPMENT.md#emergency-breaker-runbook'
 
       - alert: HighRequestLatency
         expr: histogram_quantile(0.95, sum(rate(ad_http_request_duration_seconds_bucket[5m])) by (le)) > 0.5
@@ -243,6 +245,42 @@ groups:
           description: 'Eligible impressions/clicks are falling back to sync Redis Lua instead of full-skip. Check strict-mode hysteresis, placement_id or max-RPD traffic, stream producer defer (fcap:ignored), and refill worker health. Runbook: docs/DEVELOPMENT.md section Local Quanta Full-Skip.'
           runbook_url: 'https://github.com/mykhailov-ua/ad-event-processor/blob/main/docs/DEVELOPMENT.md#local-quanta-full-skip'
 
+      - alert: LocalQuotaStreamDrop
+        expr: rate(ad_local_quota_stream_drop_total[2m]) > 0
+        for: 2m
+        labels:
+          severity: critical
+        annotations:
+          summary: 'Local quanta async stream ring full'
+          description: 'LocalQuantaStreamPublisher dropped events. Fail-closed 503 rolls back pending debits; tune ring capacity or sink lag.'
+
+      - alert: LocalQuotaStreamWriteError
+        expr: rate(ad_local_quota_stream_write_error_total[2m]) > 0
+        for: 2m
+        labels:
+          severity: warning
+        annotations:
+          summary: 'Local quanta stream marshal or Redis write errors'
+          description: 'Async local-quanta lane flush failed. Monitor ad_local_quota_finalize_failed_total and reconciliation drift.'
+
+      - alert: LocalQuotaRollbackSpike
+        expr: rate(ad_local_quota_rollback_total[2m]) > 0
+        for: 2m
+        labels:
+          severity: critical
+        annotations:
+          summary: 'Local quanta rollback after post-debit publish failure'
+          description: 'Full-skip refunded ledger after main publish failed (503). Do not weaken rollback for 202.'
+
+      - alert: LocalQuotaFinalizeFailed
+        expr: rate(ad_local_quota_finalize_failed_total[2m]) > 0
+        for: 2m
+        labels:
+          severity: warning
+        annotations:
+          summary: 'Local quanta finalize failed after main publish'
+          description: 'CH/broker accepted but async local-quanta stream enqueue failed. Debit kept; audit budget sync.'
+
       - alert: HandlerLogDrop
         expr: rate(ad_handler_log_drop_total[5m]) > 0
         for: 1m
@@ -260,6 +298,7 @@ groups:
         annotations:
           summary: 'Pinned worker pool rejecting requests'
           description: 'Requests rejected because the pinned worker pool queue is full. Hot-path backpressure is active; scale workers or reduce ingress.'
+          runbook_url: 'https://github.com/mykhailov-ua/ad-event-processor/blob/main/docs/DEVELOPMENT.md#emergency-breaker-runbook'
 
       - alert: FraudStreamAggTablePressure
         expr: ad_fraud_stream_agg_table_fill_ratio > 0.9
@@ -386,6 +425,36 @@ groups:
           summary: 'Slot migration dual-write lag on slot {{ $labels.slot }} (version {{ $labels.version }})'
           description: 'Replication lag {{ $value }} messages for 30s during active migration. Cutover blocked until catch-up completes or fence fallback triggers.'
 
+      - alert: ProcessorStreamLagHigh
+        expr: max(ad_processor_stream_lag_seconds) > 120
+        for: 2m
+        labels:
+          severity: warning
+        annotations:
+          summary: 'Processor Redis stream lag above SLA'
+          description: 'PEL lag exceeds PROCESSOR_STREAM_LAG_MAX_SEC default (120s). Processor /ready may fail and nginx should shed traffic.'
+          runbook_url: 'https://github.com/mykhailov-ua/ad-event-processor/blob/main/docs/DEVELOPMENT.md#processor-lag-and-spool-runbook'
+
+      - alert: ClickHouseSpoolPressure
+        expr: ad_ch_spool_segments >= 6
+        for: 2m
+        labels:
+          severity: warning
+        annotations:
+          summary: 'ClickHouse spool segment pressure'
+          description: 'ad_ch_spool_segments >= 75% of CH_SPOOL_MAX_SEGMENTS default (8). CH ingest may be down; verify CH connectivity and spool disk.'
+          runbook_url: 'https://github.com/mykhailov-ua/ad-event-processor/blob/main/docs/DEVELOPMENT.md#processor-lag-and-spool-runbook'
+
+      - alert: ProcessorStreamBackpressureActive
+        expr: ad_processor_stream_backpressure_active == 1
+        for: 5m
+        labels:
+          severity: warning
+        annotations:
+          summary: 'Processor stream backpressure active'
+          description: 'Consumer paused PEL growth during ClickHouse outage. Events remain in Redis stream; monitor lag and spool segments.'
+          runbook_url: 'https://github.com/mykhailov-ua/ad-event-processor/blob/main/docs/DEVELOPMENT.md#processor-lag-and-spool-runbook'
+
   - name: broker-alerts
     rules:
       - alert: BrokerSplitBrain
@@ -450,6 +519,7 @@ groups:
         annotations:
           summary: 'Broker consumer lag high for {{ $labels.topic }}/{{ $labels.group }}'
           description: 'Committed offset is far behind broker log high watermark.'
+          runbook_url: 'https://github.com/mykhailov-ua/ad-event-processor/blob/main/docs/DEVELOPMENT.md#broker-primary-ingest-runbook'
 
       - alert: BrokerIngestDivergenceHigh
         expr: ad_broker_ingest_divergence_high == 1
@@ -459,6 +529,7 @@ groups:
         annotations:
           summary: 'Broker vs Redis ingest divergence on {{ $labels.topic }}'
           description: 'Shadow validation detected Redis stream depth diverging from broker committed offset.'
+          runbook_url: 'https://github.com/mykhailov-ua/ad-event-processor/blob/main/docs/DEVELOPMENT.md#broker-primary-ingest-runbook'
 
       - alert: RtbAuctionLatencyHigh
         expr: histogram_quantile(0.99, sum(rate(ad_rtb_auction_duration_seconds_bucket[5m])) by (le)) > 0.000015

@@ -47,7 +47,7 @@ func TestAdsPacketHandler_preboundMetricsOnProtoAccept(t *testing.T) {
 		HasContentLength: true,
 	}
 	conn := &mockGnetConn{written: make([]byte, 0, 512)}
-	h.React(req, conn)
+	h.React(&req, conn)
 
 	require.True(t, bytes.HasPrefix(conn.written, []byte("HTTP/1.1 202")))
 
@@ -80,7 +80,7 @@ func TestAdsPacketHandler_preboundMetricsOnReject(t *testing.T) {
 		HasContentLength: true,
 	}
 	conn := &mockGnetConn{written: make([]byte, 0, 512)}
-	h.React(req, conn)
+	h.React(&req, conn)
 	require.NotNil(t, waitMockGnetWritten(conn, 2*time.Second))
 
 	afterBlocked := testutil.ToFloat64(h.trackMetrics.blockedCampaignNotFound)

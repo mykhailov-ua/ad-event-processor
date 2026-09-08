@@ -27,6 +27,7 @@ import {
   defaultCampaignListPreferencesPrefs,
   type CampaignListColumnPresetId,
 } from '@/domains/campaigns/list/campaign_list_preferences';
+import { adminKit } from '@/lib/admin_kit';
 import { cn } from '@/lib/utils';
 
 export type CampaignListColumnsMenuProps = {
@@ -85,7 +86,7 @@ export function CampaignListColumnsMenu({
     <DropdownMenu>
       <DropdownMenuTrigger asChild>
         <Button
-          className="shrink-0 gap-1.5 whitespace-nowrap px-2 font-medium"
+          className="shrink-0 gap-1.5 whitespace-nowrap font-medium"
           disabled={disabled}
           type="button"
           variant="outline"
@@ -108,7 +109,9 @@ export function CampaignListColumnsMenu({
               <Button
                 key={presetId}
                 className={cn(
-                  'h-auto min-h-6 px-0 text-[13px] leading-none shadow-none',
+                  'h-auto min-h-7 shadow-none',
+                  adminKit.controlPaddingX,
+                  'text-[13px]',
                   activePreset === presetId
                     ? 'font-semibold text-foreground hover:bg-transparent'
                     : 'font-normal text-muted-foreground hover:bg-transparent hover:text-foreground'
@@ -134,7 +137,12 @@ export function CampaignListColumnsMenu({
                   const checked = !hidden.has(columnId);
                   return (
                     <li key={columnId}>
-                      <label className="flex min-h-6 cursor-pointer items-center gap-1.5 py-px">
+                      <label
+                        className={cn(
+                          'flex cursor-pointer items-center gap-1.5 py-px',
+                          adminKit.controlHeight
+                        )}
+                      >
                         <Checkbox
                           checked={checked}
                           className={campaignListColumnsMenuCheckboxClass}
@@ -154,7 +162,11 @@ export function CampaignListColumnsMenu({
 
         <div className="border-t border-border px-2 py-1.5 text-center">
           <Button
-            className="h-auto min-h-6 px-0 text-[13px] font-medium leading-none text-primary underline-offset-2 shadow-none hover:bg-transparent hover:underline"
+            className={cn(
+              'h-auto min-h-7 font-medium text-primary underline-offset-2 shadow-none hover:bg-transparent hover:underline',
+              adminKit.controlPaddingX,
+              'text-[13px]'
+            )}
             type="button"
             variant="link"
             onClick={restoreDefault}

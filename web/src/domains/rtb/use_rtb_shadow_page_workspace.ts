@@ -1,13 +1,14 @@
 // L3 RTB shadow reconcile: parallel GET shadow diff + reconcile export; window/request_id in URL.
 import { useCallback, useEffect, useState } from 'react';
-import { useSearchParams } from 'react-router-dom';
 
 import { getRtbReconcileExport, getRtbShadowDiff } from '@/api/rtb_api';
 import { rtbLicenseGated } from '@/domains/rtb/rtb_nav';
 import { useResource } from '@/api/use_resource';
+import { useTransitionSearchParams } from '@/hooks/use_transition_search_params';
 
 export function useRtbShadowPageWorkspace() {
-  const [searchParams, setSearchParams] = useSearchParams();
+  const [searchParams, { isPending: listQueryPending, replaceSearchParams }] =
+    useTransitionSearchParams();
   const appliedWindow = searchParams.get('window') ?? '1h';
   const appliedRequestId = searchParams.get('request_id') ?? '';
 
@@ -19,7 +20,7 @@ export function useRtbShadowPageWorkspace() {
     setDraftRequestId(appliedRequestId);
   }, [appliedRequestId, appliedWindow]);
 
-  const { data, error, fetching } = useResource(
+  const { data, error, fetching, revalidating: listRevalidating } = useResource(
     async (signal) => {
       const [shadow, reconcile] = await Promise.all([
         getRtbShadowDiff(appliedWindow, signal),
@@ -48,8 +49,8 @@ export function useRtbShadowPageWorkspace() {
     } else {
       next.delete('request_id');
     }
-    setSearchParams(next, { replace: true });
-  }, [draftRequestId, draftWindow, searchParams, setSearchParams]);
+    replaceSearchParams(next);
+  }, [draftRequestId, draftWindow, replaceSearchParams, searchParams]);
 
   return {
     shadow: data?.shadow,
@@ -57,6 +58,7 @@ export function useRtbShadowPageWorkspace() {
     draftWindow,
     draftRequestId,
     fetching,
+    listRevalidating: listRevalidating || listQueryPending,
     error: licenseGated ? undefined : error,
     hasSnapshot: data != null || licenseGated,
     licenseGated,

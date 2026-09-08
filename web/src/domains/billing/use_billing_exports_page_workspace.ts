@@ -1,6 +1,5 @@
 // L3 billing export jobs: URL range + async job create/poll/download loop.
 import { useCallback, useEffect, useMemo, useState } from 'react';
-import { useSearchParams } from 'react-router-dom';
 
 import {
   createBillingExportJob,
@@ -9,6 +8,7 @@ import {
 } from '@/api/billing_api';
 import { useResource } from '@/api/use_resource';
 import { useSession } from '@/hooks/use_session';
+import { useTransitionSearchParams } from '@/hooks/use_transition_search_params';
 import { fromDatetimeLocalValue, toDatetimeLocalValue } from '@/lib/datetime_range';
 import { triggerBlobDownload } from '@/lib/trigger_blob_download';
 
@@ -20,7 +20,7 @@ function defaultRange(): { from: string; to: string } {
 }
 
 export function useBillingExportsPageWorkspace() {
-  const [searchParams, setSearchParams] = useSearchParams();
+  const [searchParams, { replaceSearchParams }] = useTransitionSearchParams();
   const { session } = useSession();
   const range = useMemo(() => defaultRange(), []);
 
@@ -74,7 +74,7 @@ export function useBillingExportsPageWorkspace() {
       const next = new URLSearchParams(searchParams);
       next.set('job_id', nextId);
       next.set('customer_id', customerId);
-      setSearchParams(next, { replace: true });
+      replaceSearchParams(next);
       setPollToken((value) => value + 1);
     } catch (err: unknown) {
       setActionError(err instanceof Error ? err : new Error(String(err)));
@@ -88,8 +88,8 @@ export function useBillingExportsPageWorkspace() {
     draftTo,
     range.from,
     range.to,
+    replaceSearchParams,
     searchParams,
-    setSearchParams,
   ]);
 
   const onPollJob = useCallback(() => {
@@ -100,11 +100,11 @@ export function useBillingExportsPageWorkspace() {
     } else {
       next.delete('job_id');
     }
-    setSearchParams(next, { replace: true });
+    replaceSearchParams(next);
     setPolling(true);
     setPollToken((value) => value + 1);
     setPolling(false);
-  }, [draftJobId, searchParams, setSearchParams]);
+  }, [draftJobId, replaceSearchParams, searchParams]);
 
   const onDownloadJob = useCallback(async () => {
     if (!draftJobId.trim()) {

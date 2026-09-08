@@ -108,11 +108,17 @@ export const KPI_METRIC_LABELS: Record<DashboardMetricId, string> = {
 };
 
 export const BREAKDOWN_ENTITY_LABELS: Record<DashboardBreakdownEntityId, string> = {
-  campaigns: 'Campaigns',
+  campaigns: 'Top campaigns',
   landers: 'Landing pages',
   offers: 'Offers',
   sources: 'Sources',
 };
+
+export const DASHBOARD_TOP_CAMPAIGNS_EMPTY_DESCRIPTION =
+  'No campaign traffic in this period. Create or activate campaigns in Campaigns.';
+
+export const DASHBOARD_BUYER_PAGE_DESCRIPTION =
+  'Read-only portfolio analytics. Create, edit, and bulk actions live in Campaigns.';
 
 export const BREAKDOWN_COLUMN_LABELS: Record<DashboardBreakdownColumnId, string> = {
   name: 'Name',

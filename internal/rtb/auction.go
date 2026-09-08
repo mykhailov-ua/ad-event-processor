@@ -2,20 +2,28 @@ package rtb
 
 // RunAuction ranks the SoA catalog, clears price, and debits BudgetStore via
 // CheckAndSpendAll (CAS). Used when RTB_MODE=live and RTB_BUDGET_AUTHORITY=rtb.
-func (r *Registry) RunAuction(req *BidRequest) (AuctionResult, NoBidReason) {
+func (r *Registry) RunAuction(req BidRequest) (AuctionResult, NoBidReason) {
 	return r.runAuction(req, true)
+}
+
+// RunAuctionPtr supports legacy call sites that hold a *BidRequest.
+func (r *Registry) RunAuctionPtr(req *BidRequest) (AuctionResult, NoBidReason) {
+	if req == nil {
+		return r.runAuction(BidRequest{MinBid: -1}, true)
+	}
+	return r.runAuction(*req, true)
 }
 
 // RunAuctionEval runs the same rank and clearing path without spend. Shadow mode
 // and admin validate-bid-request use this to diff winners without mutating budgets.
-func (r *Registry) RunAuctionEval(req *BidRequest) (AuctionResult, NoBidReason) {
+func (r *Registry) RunAuctionEval(req BidRequest) (AuctionResult, NoBidReason) {
 	return r.runAuction(req, false)
 }
 
-func (r *Registry) runAuction(req *BidRequest, spend bool) (AuctionResult, NoBidReason) {
+func (r *Registry) runAuction(req BidRequest, spend bool) (AuctionResult, NoBidReason) {
 	start := auctionStartMono()
 
-	if req == nil || req.MinBid < 0 {
+	if req.MinBid < 0 {
 		recordAuctionOutcome(start, NoBidInvalidRequest, 0)
 		return AuctionResult{}, NoBidInvalidRequest
 	}

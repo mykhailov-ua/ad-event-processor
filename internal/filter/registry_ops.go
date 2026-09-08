@@ -309,6 +309,11 @@ func (r *Registry) resolveStaleCampaignMiss(ctx context.Context, id uuid.UUID) e
 	if r.repo == nil {
 		return ErrRegistryStale
 	}
+	if !r.tryAcquireStalePGRead(time.Now()) {
+		metrics.RegistryStalePGCircuitOpenTotal.Inc()
+		return ErrRegistryStale
+	}
+	metrics.RegistryStalePGReadsTotal.Inc()
 	if err := r.UpdateAndWarmCampaign(ctx, id); err != nil {
 		if errors.Is(err, pgx.ErrNoRows) {
 			return ErrCampaignNotFound
@@ -559,6 +564,9 @@ func enrichMockCampaign(cp *domain.Campaign) {
 		} else {
 			cp.FcapKeyPrefix = "fcap:c:" + cp.IDStr + ":u:"
 		}
+	}
+	if cp.FcapPrefixHash == 0 && cp.FcapKeyPrefix != "" {
+		cp.FcapPrefixHash = domain.FNV64String(cp.FcapKeyPrefix)
 	}
 	if cp.DailySpendKeyPrefix == "" {
 		cp.DailySpendKeyPrefix = "budget:daily_spent:campaign:" + cp.IDStr + ":"

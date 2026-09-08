@@ -133,6 +133,23 @@ export type ClickLogPostback = components['schemas']['ClickLogPostback'];
 export type ClickLogReportResponse = components['schemas']['ClickLogReportResponse'];
 export type DataFreshness = components['schemas']['DataFreshness'];
 export type FraudEvidencePack = components['schemas']['FraudEvidencePack'];
+export type WireSignalBreakdownRow = components['schemas']['WireSignalBreakdownRow'];
+export type WireSignalBreakdownReportResponse =
+  components['schemas']['WireSignalBreakdownReportResponse'];
+
+export type FraudReasonsReportKey = 'fraud-breakdown' | 'wire-signal-breakdown';
+
+export type FraudReasonRow = {
+  campaign_id?: string;
+  placement_id?: string;
+  fraud_reason?: string;
+  fraud_category?: string;
+  fraud_category_label?: string;
+  event_count?: number;
+  silent_reject_count?: number;
+  silent_reject_ratio?: number;
+  signals_degraded?: boolean;
+};
 export type ReportJobSpec = components['schemas']['ReportJobSpec'];
 export type TelegramReportExportRequest = components['schemas']['TelegramReportExportRequest'];
 export type ReportJobStatus = components['schemas']['ReportJobStatus'];
@@ -250,6 +267,13 @@ export type IntegrationHealthRow = components['schemas']['IntegrationHealthRow']
 export type CampaignIntegrationHealth = components['schemas']['CampaignIntegrationHealth'];
 export type ApplyCampaignTemplatesRequest = components['schemas']['ApplyCampaignTemplatesRequest'];
 export type ApplyCampaignTemplatesResult = components['schemas']['ApplyCampaignTemplatesResult'];
+export type DryRunCampaignTemplatesResult = {
+  campaign_id: string;
+  target_url?: string;
+  panel_postback_url?: string;
+  postback_url_template?: string;
+  postback_dry_run: PostbackDryRunResult;
+};
 
 export type CampaignFlowPathError = components['schemas']['CampaignFlowPathError'];
 export type CampaignFlowValidateRequest = components['schemas']['CampaignFlowValidateRequest'];
@@ -335,24 +359,102 @@ export type PlatformCampaignSyncRunRequest =
 export type AffiliateStatusPreset = components['schemas']['AffiliateStatusPreset'];
 
 export type Flow = components['schemas']['Flow'];
-export type FlowPath = components['schemas']['FlowPath'];
+export type FlowPath = components['schemas']['FlowPath'] & {
+  filters?: {
+    countries?: string[];
+    devices?: string[];
+    os?: string[];
+    languages?: string[];
+  };
+};
+
+export type FlowValidateResponse = {
+  valid: boolean;
+  path_errors?: CampaignFlowPathError[];
+  suggested_fix_action?: string;
+};
 export type CreateFlowRequest = components['schemas']['CreateFlowRequest'];
 export type UpdateFlowRequest = components['schemas']['UpdateFlowRequest'];
 export type Lander = components['schemas']['Lander'];
 export type CreateLanderRequest = components['schemas']['CreateLanderRequest'];
+export type UpdateLanderRequest = components['schemas']['UpdateLanderRequest'];
 export type HostedEditorState = components['schemas']['HostedEditorState'];
 export type HostedEditorFile = components['schemas']['HostedEditorFile'];
+export type HostedEditorFileBody = components['schemas']['HostedEditorFileBody'];
 export type Offer = components['schemas']['Offer'];
 export type CreateOfferRequest = components['schemas']['CreateOfferRequest'];
+export type UpdateOfferRequest = components['schemas']['UpdateOfferRequest'];
 export type Brand = components['schemas']['Brand'];
 export type CreateBrandRequest = components['schemas']['CreateBrandRequest'];
+export type UpdateBrandRequest = components['schemas']['UpdateBrandRequest'];
 export type BrandCreative = components['schemas']['BrandCreative'];
 export type UpdateBrandCreativeRequest = components['schemas']['UpdateBrandCreativeRequest'];
 export type BrandsListQuery = OperationQuery<'brandsList'>;
-export type DomainHealth = components['schemas']['DomainHealth'];
+export type DomainHealth = components['schemas']['DomainHealth'] & {
+  acme_state?: string;
+  cloudflare_proxied?: boolean;
+  wildcard_zone?: string;
+  pool_id?: string;
+  pool_status?: string;
+};
+
+export type DomainBulkRequest = {
+  hostnames?: string[];
+  csv?: string;
+  cloudflare_zone_id?: string;
+  pool_id?: string;
+};
+
+export type DomainBulkJobRow = {
+  hostname: string;
+  ok: boolean;
+  error?: string;
+};
+
+export type DomainBulkJobStatus = {
+  job_id: string;
+  kind: 'park_probe' | 'ssl';
+  status: 'pending' | 'running' | 'completed' | 'failed';
+  total: number;
+  completed: number;
+  failed: number;
+  results?: DomainBulkJobRow[];
+  error?: string;
+  created_at: string;
+  updated_at: string;
+};
+
+export type BurnDomainRequest = {
+  delete_cloudflare?: boolean;
+};
+
+export type BurnDomainResponse = {
+  hostname: string;
+  pool_status?: string;
+  cloudflare_deleted?: boolean;
+};
 export type AddDomainRequest = components['schemas']['AddDomainRequest'];
 export type ParkDomainRequest = components['schemas']['ParkDomainRequest'];
 export type ParkDomainResponse = components['schemas']['ParkDomainResponse'];
+export type WildcardSSLRequest = {
+  cloudflare_zone_id: string;
+  zone_name: string;
+  pool_id?: string;
+  include_apex?: boolean;
+};
+export type WildcardSSLResponse = {
+  id: string;
+  pool_id: string;
+  wildcard_hostname: string;
+  acme_state: string;
+  ssl_not_after?: string;
+  cloudflare_proxied: boolean;
+  message?: string;
+};
+export type CloudflareZone = {
+  id: string;
+  name: string;
+};
 export type DomainSSLSetupResult = components['schemas']['DomainSSLSetupResult'];
 export type Seller = components['schemas']['Seller'];
 export type SellerWriteRequest = components['schemas']['SellerWriteRequest'];
@@ -469,6 +571,22 @@ export type PostbacksSnapshot = {
   configs: PostbackConfig[];
   dlq: PostbackDlqEntry[];
   campaignStatus: PostbackCampaignStatus[];
+};
+
+export type PostbackHealthRow = {
+  campaign_id: string;
+  provider: string;
+  success_rate_24h?: number;
+  p95_latency_ms?: number;
+  last_error?: string;
+  dlq_pending_count: number;
+  health_status: 'ok' | 'warn' | 'fail';
+};
+
+export type PostbackHealthResponse = {
+  rows: PostbackHealthRow[];
+  alert_threshold_success_rate: number;
+  runbook_path?: string;
 };
 
 export type CostSyncSnapshot = {

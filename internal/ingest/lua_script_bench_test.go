@@ -153,15 +153,18 @@ func BenchmarkLuaScript_Worst(b *testing.B) {
 		Payload:    payload,
 	}
 	setFilterDeadlineOnEvent(evt, 2*time.Second)
+	evt.ClickID = "bench-worst"
 
 	b.SetBytes(int64(len(payload)))
-	b.ReportAllocs()
-	benchN := 0
-	for b.Loop() {
-		evt.ClickID = unsafeString(strconv.AppendInt(evt.ClickIDBuf[:0], int64(benchN), 10))
+	for i := 0; i < 16; i++ {
 		if err := f.Check(ctx, evt); err != nil {
 			b.Fatal(err)
 		}
-		benchN++
+	}
+	b.ReportAllocs()
+	for b.Loop() {
+		if err := f.Check(ctx, evt); err != nil {
+			b.Fatal(err)
+		}
 	}
 }

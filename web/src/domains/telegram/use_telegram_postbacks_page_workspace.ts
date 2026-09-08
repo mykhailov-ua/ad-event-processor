@@ -10,17 +10,18 @@ import {
   updateTelegramPostback,
 } from '@/api/telegram_api';
 import { useCampaignScope } from '@/hooks/use_campaign_scope';
+import { confirmDestructiveAction, mutationError } from '@/lib/mutation_audit';
 import { useCoalescedBumpRefresh, useRefreshToken } from '@/hooks/use_coalesced_refresh_token';
 import { useResource } from '@/api/use_resource';
 
 export function useTelegramPostbacksPageWorkspace() {
-  const { appliedCampaignId, draftCampaignId, setDraftCampaignId, applyCampaignScope } =
+  const { appliedCampaignId, draftCampaignId, setDraftCampaignId, applyCampaignScope, listQueryPending } =
     useCampaignScope();
 
   const { refreshToken, bumpRefresh } = useRefreshToken();
   const shouldFetch = Boolean(appliedCampaignId);
 
-  const { data, error, fetching } = useResource(
+  const { data, error, fetching, revalidating: listRevalidating } = useResource(
     (signal) => {
       if (!shouldFetch) {
         return Promise.resolve(undefined);
@@ -30,14 +31,15 @@ export function useTelegramPostbacksPageWorkspace() {
     [appliedCampaignId, shouldFetch, refreshToken]
   );
 
-  const bumpRefreshCoalesced = useCoalescedBumpRefresh(bumpRefresh, fetching);
-
   const [draftPostbackUrl, setDraftPostbackUrl] = useState('');
   const [editUrls, setEditUrls] = useState<Record<string, string>>({});
   const [acting, setActing] = useState(false);
   const [actionError, setActionError] = useState<Error | undefined>(undefined);
   const [actionMessage, setActionMessage] = useState<string | undefined>(undefined);
   const [createSuccess, setCreateSuccess] = useState(false);
+
+  const listBusy = fetching || acting;
+  const bumpRefreshCoalesced = useCoalescedBumpRefresh(bumpRefresh, listBusy);
 
   useEffect(() => {
     if (!data?.length) {
@@ -110,22 +112,32 @@ export function useTelegramPostbacksPageWorkspace() {
 
   const onDeletePostback = useCallback(
     (id: string) => {
+      if (acting) {
+        return;
+      }
+      const label = (editUrls[id] ?? '').trim() || id;
+      if (!confirmDestructiveAction(`Delete postback "${label}"?`)) {
+        return;
+      }
       setActing(true);
       setActionError(undefined);
       setActionMessage(undefined);
       void deleteTelegramPostback(id)
         .then(() => {
           setActionMessage('Postback deleted');
+          toast.success('Postback deleted');
           bumpReload();
         })
         .catch((err: unknown) => {
-          setActionError(err instanceof Error ? err : new Error(String(err)));
+          const nextError = mutationError(err);
+          setActionError(nextError);
+          toast.error(nextError.message);
         })
         .finally(() => {
           setActing(false);
         });
     },
-    [bumpReload]
+    [acting, bumpReload, editUrls]
   );
 
   const onTestPostback = useCallback((id: string) => {
@@ -153,6 +165,7 @@ export function useTelegramPostbacksPageWorkspace() {
     appliedCampaignId,
     draftCampaignId,
     fetching,
+    listRevalidating: listRevalidating || listQueryPending,
     error,
     hasSnapshot: data != null,
     draftPostbackUrl,

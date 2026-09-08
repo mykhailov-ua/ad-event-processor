@@ -1,4 +1,4 @@
-import { FILTER_PANEL_NARROW_CLASS } from '@/shell/filter_panel';
+import { FilterPanel } from '@/shell/filter_panel';
 import { CustomerScopeBar } from '@/shell/customer_scope_bar';
 import { PageChrome } from '@/shell/page_chrome';
 import { PageSkeleton } from '@/shell/page_skeleton';
@@ -51,17 +51,18 @@ export function CampaignForecastPanel({
     Boolean(draftBudgetLimitMicro.trim());
 
   return (
-    <PageChrome title="Campaign forecast">
-      <PortalsNav />
-
-      <CustomerScopeBar
-        appliedCustomerId={appliedCustomerId}
-        draftCustomerId={draftCustomerId}
-        onApply={onApplyCustomerScope}
-        onDraftCustomerIdChange={onDraftCustomerIdChange}
-      />
-
-      <section className={FILTER_PANEL_NARROW_CLASS}>
+    <PageChrome
+      title="Campaign forecast"
+      controlPanel={
+        <div className="grid gap-3">
+          <PortalsNav />
+          <CustomerScopeBar
+            appliedCustomerId={appliedCustomerId}
+            draftCustomerId={draftCustomerId}
+            onApply={onApplyCustomerScope}
+            onDraftCustomerIdChange={onDraftCustomerIdChange}
+          />
+          <FilterPanel className="w-full max-w-xl gap-4">
         <div className="grid gap-2">
           <Label htmlFor="forecast-budget-micro">Budget limit (micro)</Label>
           <Input
@@ -89,8 +90,10 @@ export function CampaignForecastPanel({
         <Button disabled={fetching || !canRun} onClick={onRunForecast} type="button">
           Run forecast
         </Button>
-      </section>
-
+          </FilterPanel>
+        </div>
+      }
+    >
       {fetching && !hasSnapshot && !error ? (
         <PageSkeleton />
       ) : error && !hasSnapshot ? (

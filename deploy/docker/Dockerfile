@@ -33,6 +33,8 @@ RUN CGO_ENABLED=0 GOOS=linux go build -tags timetzdata -ldflags="-s -w" -o /bin/
 RUN CGO_ENABLED=0 GOOS=linux go build -tags timetzdata -ldflags="-s -w" -o /bin/alertmanager-telegram ./cmd/alertmanager-telegram
 
 FROM gcr.io/distroless/static-debian12
+ENV AD_EVENT_PROCESSOR_INSTALL_ROOT=/
+COPY --from=builder /src/deploy/schemas /deploy/schemas
 COPY --from=builder /bin/tracker /tracker
 COPY --from=builder /bin/processor /processor
 COPY --from=builder /bin/ivt-detector /ivt-detector

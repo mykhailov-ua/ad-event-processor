@@ -117,6 +117,37 @@ func attachCampaignPresentation(ctx context.Context, dto *CampaignDTO) {
 	}
 }
 
+func AttachCampaignIntegrationSchemas(ctx context.Context, pool *pgxpool.Pool, row db.Campaign, dto *CampaignDTO) {
+	if dto == nil || pool == nil {
+		return
+	}
+	if row.IntegrationSchemaID.Valid {
+		id := uuid.UUID(row.IntegrationSchemaID.Bytes)
+		dto.IntegrationSchemaID = id.String()
+		dto.IntegrationSchemaName, _ = integrationSchemaNameByID(ctx, pool, id)
+	}
+	if row.StatusIntegrationSchemaID.Valid {
+		id := uuid.UUID(row.StatusIntegrationSchemaID.Bytes)
+		dto.StatusIntegrationSchemaID = id.String()
+		dto.StatusIntegrationSchemaName, _ = integrationSchemaNameByID(ctx, pool, id)
+	}
+}
+
+func integrationSchemaNameByID(ctx context.Context, pool *pgxpool.Pool, schemaID uuid.UUID) (string, error) {
+	if pool == nil || schemaID == uuid.Nil {
+		return "", nil
+	}
+	var name string
+	err := pool.QueryRow(ctx, `SELECT name FROM integration_schemas WHERE id = $1`, schemaID).Scan(&name)
+	if err != nil {
+		if errors.Is(err, pgx.ErrNoRows) {
+			return "", nil
+		}
+		return "", err
+	}
+	return name, nil
+}
+
 func MaskLevelFromContext(ctx context.Context) authz.MaskLevel {
 	return maskLevelFromContext(ctx)
 }
@@ -763,12 +794,33 @@ func (tc *TemplateCatalog) ApplyCampaignTemplates(ctx context.Context, campaignI
 		trackingDomain = tc.host.TrackingDomain(ctx, "")
 	}
 
+	q := db.New(tc.pool)
+	if _, err := q.GetCampaign(ctx, pgtype.UUID{Bytes: campaignID, Valid: true}); err != nil {
+		if errors.Is(err, pgx.ErrNoRows) {
+			return result, fmt.Errorf("campaign not found")
+		}
+		return result, err
+	}
+
+	tx, err := tc.pool.Begin(ctx)
+	if err != nil {
+		return result, err
+	}
+	defer func() { _ = tx.Rollback(ctx) }()
+
+	key := []byte("postback-encryption-secret-key32")
+	if tc.host != nil {
+		if k := tc.host.PostbackEncryptionKey(); len(k) > 0 {
+			key = k
+		}
+	}
+
 	if src := strings.TrimSpace(req.TrafficSource); src != "" {
 		schemaID, err := tc.resolveSchemaIDByName(ctx, src)
 		if err != nil {
 			return result, err
 		}
-		applied, err := tc.applyIntegrationSchema(ctx, campaignID, schemaID, trackingDomain)
+		applied, err := tc.applyIntegrationSchemaInTx(ctx, tx, campaignID, schemaID, trackingDomain, key)
 		if err != nil {
 			return result, err
 		}
@@ -780,7 +832,7 @@ func (tc *TemplateCatalog) ApplyCampaignTemplates(ctx context.Context, campaignI
 		if err != nil {
 			return result, err
 		}
-		applied, err := tc.applyIntegrationSchema(ctx, campaignID, outID, trackingDomain)
+		applied, err := tc.applyIntegrationSchemaInTx(ctx, tx, campaignID, outID, trackingDomain, key)
 		if err != nil {
 			return result, err
 		}
@@ -790,7 +842,7 @@ func (tc *TemplateCatalog) ApplyCampaignTemplates(ctx context.Context, campaignI
 			if err != nil {
 				return result, err
 			}
-			statusApplied, err := tc.applyIntegrationSchema(ctx, campaignID, statusID, trackingDomain)
+			statusApplied, err := tc.applyIntegrationSchemaInTx(ctx, tx, campaignID, statusID, trackingDomain, key)
 			if err != nil {
 				return result, err
 			}
@@ -798,22 +850,101 @@ func (tc *TemplateCatalog) ApplyCampaignTemplates(ctx context.Context, campaignI
 		}
 	}
 
+	if err := tx.Commit(ctx); err != nil {
+		return result, err
+	}
+	if tc.host != nil {
+		tc.host.PublishCampaignUpdate(ctx, campaignID.String())
+	}
 	return result, nil
 }
 
-func (tc *TemplateCatalog) applyIntegrationSchema(ctx context.Context, campaignID, schemaID uuid.UUID, trackingDomain string) (map[string]string, error) {
+func (tc *TemplateCatalog) DryRunCampaignTemplates(ctx context.Context, campaignID uuid.UUID, req ApplyCampaignTemplatesRequest) (DryRunCampaignTemplatesResult, error) {
+	if tc == nil || tc.pool == nil {
+		return DryRunCampaignTemplatesResult{}, fmt.Errorf("service unavailable")
+	}
+	if campaignID == uuid.Nil {
+		return DryRunCampaignTemplatesResult{}, fmt.Errorf("campaign id required")
+	}
+	result := DryRunCampaignTemplatesResult{CampaignID: campaignID.String()}
+
+	trackingDomain := strings.TrimSpace(req.TrackingDomain)
+	if trackingDomain == "" && tc.host != nil {
+		trackingDomain = tc.host.TrackingDomain(ctx, "")
+	}
+
+	if src := strings.TrimSpace(req.TrafficSource); src != "" {
+		schemaID, err := tc.resolveSchemaIDByName(ctx, src)
+		if err != nil {
+			return result, err
+		}
+		kind, schemaBody, err := tc.loadIntegrationSchema(ctx, schemaID)
+		if err != nil {
+			return result, err
+		}
+		if integrationschema.Kind(kind) == integrationschema.KindInboundTokens {
+			parsedKind, parsed, err := integrationschema.ParseDocument(schemaBody)
+			if err != nil || parsedKind != integrationschema.KindInboundTokens {
+				return result, fmt.Errorf("invalid inbound schema")
+			}
+			inbound := parsed.(*integrationschema.InboundTokensSchema)
+			result.TargetURL = integrationschema.BuildInboundTrackingURL(trackingDomain, inbound)
+		}
+	}
+
+	postbackTemplate := ""
+	if net := strings.TrimSpace(req.AffiliateNetwork); net != "" {
+		outID, err := tc.resolveSchemaIDByName(ctx, net)
+		if err != nil {
+			return result, err
+		}
+		kind, schemaBody, err := tc.loadIntegrationSchema(ctx, outID)
+		if err != nil {
+			return result, err
+		}
+		switch integrationschema.Kind(kind) {
+		case integrationschema.KindOutboundPostback:
+			tpl, err := integrationschema.OutboundURLTemplateFromBody(schemaBody)
+			if err != nil {
+				return result, err
+			}
+			postbackTemplate = tpl
+			result.PostbackURLTemplate = tpl
+		case integrationschema.KindAffiliateReceivePostback:
+			parsedKind, parsed, err := integrationschema.ParseDocument(schemaBody)
+			if err != nil || parsedKind != integrationschema.KindAffiliateReceivePostback {
+				return result, fmt.Errorf("invalid affiliate receive schema")
+			}
+			recv := parsed.(*integrationschema.AffiliateReceivePostbackSchema)
+			result.PanelPostbackURL = integrationschema.BuildAffiliateReceivePanelURL(trackingDomain, recv)
+		default:
+			return result, fmt.Errorf("affiliate network schema kind %q is not outbound postback", kind)
+		}
+	}
+
+	if postbackTemplate != "" {
+		dryCtx, cancel := context.WithTimeout(ctx, 10*time.Second)
+		defer cancel()
+		result.PostbackDryRun = postback.DryRunConfig(dryCtx, "webhook", postbackTemplate, "integration-schema", "conversion", "", campaignID)
+	}
+	return result, nil
+}
+
+func (tc *TemplateCatalog) loadIntegrationSchema(ctx context.Context, schemaID uuid.UUID) (string, []byte, error) {
 	var kind string
 	var schemaBody []byte
 	err := tc.pool.QueryRow(ctx, `SELECT kind, body FROM integration_schemas WHERE id = $1`, schemaID).Scan(&kind, &schemaBody)
 	if err != nil {
 		if errors.Is(err, pgx.ErrNoRows) {
-			return nil, fmt.Errorf("schema not found")
+			return "", nil, fmt.Errorf("schema not found")
 		}
-		return nil, err
+		return "", nil, err
 	}
+	return kind, schemaBody, nil
+}
 
-	q := db.New(tc.pool)
-	if _, err := q.GetCampaign(ctx, pgtype.UUID{Bytes: campaignID, Valid: true}); err != nil {
+func (tc *TemplateCatalog) applyIntegrationSchema(ctx context.Context, campaignID, schemaID uuid.UUID, trackingDomain string) (map[string]string, error) {
+	if _, err := db.New(tc.pool).GetCampaign(ctx, pgtype.UUID{Bytes: campaignID, Valid: true}); err != nil {
 		if errors.Is(err, pgx.ErrNoRows) {
 			return nil, fmt.Errorf("campaign not found")
 		}
@@ -826,13 +957,32 @@ func (tc *TemplateCatalog) applyIntegrationSchema(ctx context.Context, campaignI
 	}
 	defer func() { _ = tx.Rollback(ctx) }()
 
-	applied := map[string]string{"schema_id": schemaID.String(), "kind": kind}
 	key := []byte("postback-encryption-secret-key32")
 	if tc.host != nil {
 		if k := tc.host.PostbackEncryptionKey(); len(k) > 0 {
 			key = k
 		}
 	}
+	applied, err := tc.applyIntegrationSchemaInTx(ctx, tx, campaignID, schemaID, trackingDomain, key)
+	if err != nil {
+		return nil, err
+	}
+	if err := tx.Commit(ctx); err != nil {
+		return nil, err
+	}
+	if tc.host != nil {
+		tc.host.PublishCampaignUpdate(ctx, campaignID.String())
+	}
+	return applied, nil
+}
+
+func (tc *TemplateCatalog) applyIntegrationSchemaInTx(ctx context.Context, tx pgx.Tx, campaignID, schemaID uuid.UUID, trackingDomain string, key []byte) (map[string]string, error) {
+	kind, schemaBody, err := tc.loadIntegrationSchema(ctx, schemaID)
+	if err != nil {
+		return nil, err
+	}
+
+	applied := map[string]string{"schema_id": schemaID.String(), "kind": kind}
 	switch integrationschema.Kind(kind) {
 	case integrationschema.KindInboundTokens:
 		parsedKind, parsed, err := integrationschema.ParseDocument(schemaBody)
@@ -880,20 +1030,13 @@ func (tc *TemplateCatalog) applyIntegrationSchema(ctx context.Context, campaignI
 			applied["offer_url_suffix"] = suffix
 		}
 	case integrationschema.KindStatusMapping:
-		if _, err := tx.Exec(ctx, `
-			UPDATE campaigns SET status_integration_schema_id = $2, updated_at = NOW() WHERE id = $1`,
-			campaignID, schemaID); err != nil {
+		count, err := ApplyStatusIntegrationSchemaTx(ctx, tx, campaignID, schemaID, schemaBody)
+		if err != nil {
 			return nil, err
 		}
+		applied["mappings_applied_count"] = fmt.Sprintf("%d", count)
 	default:
 		return nil, fmt.Errorf("unsupported schema kind %q", kind)
-	}
-
-	if err := tx.Commit(ctx); err != nil {
-		return nil, err
-	}
-	if tc.host != nil {
-		tc.host.PublishCampaignUpdate(ctx, campaignID.String())
 	}
 	return applied, nil
 }
@@ -1115,14 +1258,9 @@ func validateOnboardingWizardStored(stored CampaignWizardStored) error {
 
 func loadOnboardingCatalog() ([]onboardingTemplateDef, error) {
 	onboardingCatalogOnce.Do(func() {
-		path, err := resolveOnboardingCatalogPath()
+		raw, err := readOnboardingCatalogYAML()
 		if err != nil {
 			onboardingCatalogErr = err
-			return
-		}
-		raw, err := os.ReadFile(path)
-		if err != nil {
-			onboardingCatalogErr = fmt.Errorf("read onboarding catalog: %w", err)
 			return
 		}
 		var parsed onboardingCatalogYAML
@@ -1169,19 +1307,38 @@ func loadOnboardingCatalog() ([]onboardingTemplateDef, error) {
 	return onboardingCatalog, onboardingCatalogErr
 }
 
+func readOnboardingCatalogYAML() ([]byte, error) {
+	path, err := resolveOnboardingCatalogPath()
+	if err == nil {
+		raw, readErr := os.ReadFile(path)
+		if readErr == nil {
+			return raw, nil
+		}
+		err = fmt.Errorf("read onboarding catalog: %w", readErr)
+	}
+	if len(embeddedOnboardingCatalogYAML) == 0 {
+		if err != nil {
+			return nil, err
+		}
+		return nil, fmt.Errorf("onboarding catalog not found")
+	}
+	return embeddedOnboardingCatalogYAML, nil
+}
+
 func resolveOnboardingCatalogPath() (string, error) {
 	name := filepath.Join("onboarding", "catalog.v1.yaml")
-	if root := strings.TrimSpace(os.Getenv("REPO_ROOT")); root != "" {
-		candidate := filepath.Join(root, "deploy", "schemas", name)
+	candidate := filepath.Join(integrationschema.SchemaRootDir(), name)
+	if _, err := os.Stat(candidate); err == nil {
+		return candidate, nil
+	}
+	if root := strings.TrimSpace(os.Getenv("AD_EVENT_PROCESSOR_REPO_ROOT")); root != "" {
+		candidate = filepath.Join(root, "deploy", "schemas", name)
 		if _, err := os.Stat(candidate); err == nil {
 			return candidate, nil
 		}
 	}
-	candidates := []string{
-		filepath.Join("deploy", "schemas", name),
-		filepath.Join("..", "..", "deploy", "schemas", name),
-	}
-	for _, candidate := range candidates {
+	if root := strings.TrimSpace(os.Getenv("REPO_ROOT")); root != "" {
+		candidate = filepath.Join(root, "deploy", "schemas", name)
 		if _, err := os.Stat(candidate); err == nil {
 			return candidate, nil
 		}
@@ -1311,6 +1468,8 @@ func (h *PostbackHTTPHandlers) Register(mux *http.ServeMux) {
 	mux.HandleFunc("POST /api/v1/postbacks/dlq/{id}/retry", limit(perm("campaigns:write", h.retryDLQ)))
 	mux.HandleFunc("GET /api/v1/postbacks/campaign-status", limit(perm("campaigns:read", h.getCampaignStatus)))
 	mux.HandleFunc("GET /api/v1/postbacks/snapshot", limit(perm("campaigns:read", h.getPostbacksSnapshot)))
+	mux.HandleFunc("GET /api/v1/postbacks/health", limit(perm("campaigns:read", h.getPostbackHealth)))
+	mux.HandleFunc("GET /api/v1/integrations/postbacks/health", limit(perm("campaigns:read", h.getPostbackHealth)))
 	mux.HandleFunc("POST /api/v1/postbacks/config/{campaign_id}/test", limit(perm("campaigns:write", h.testPostbackConfig)))
 }
 
@@ -1378,6 +1537,12 @@ func (h *PostbackHTTPHandlers) updatePostbackConfig(w http.ResponseWriter, r *ht
 	if strings.TrimSpace(req.URLTemplate) == "" {
 		httpresponse.Error(w, http.StatusBadRequest, "BAD_REQUEST", "url_template is required")
 		return
+	}
+	if provider == "google" {
+		if err := postback.ValidateGooglePostbackConfig(req.URLTemplate); err != nil {
+			httpresponse.Error(w, http.StatusBadRequest, "BAD_REQUEST", err.Error())
+			return
+		}
 	}
 
 	q := db.New(h.Pool)
@@ -2347,65 +2512,70 @@ func ForecastRetryAfterSec() int {
 }
 
 type CampaignDTO struct {
-	ID                         string                `json:"id"`
-	DisplayID                  string                `json:"display_id,omitempty"`
-	Name                       string                `json:"name"`
-	Status                     string                `json:"status"`
-	BudgetLimit                string                `json:"budget_limit"`
-	BudgetLimitDisplay         string                `json:"budget_limit_display,omitempty"`
-	CurrentSpend               string                `json:"current_spend"`
-	CurrentSpendDisplay        string                `json:"current_spend_display,omitempty"`
-	CustomerID                 string                `json:"customer_id"`
-	PacingMode                 string                `json:"pacing_mode"`
-	DailyBudget                string                `json:"daily_budget"`
-	DailyBudgetDisplay         string                `json:"daily_budget_display,omitempty"`
-	Timezone                   string                `json:"timezone"`
-	FreqLimit                  int32                 `json:"freq_limit"`
-	FreqWindow                 int32                 `json:"freq_window"`
-	TargetCountries            []string              `json:"target_countries"`
-	TargetURL                  string                `json:"target_url,omitempty"`
-	SafePageURL                string                `json:"safe_page_url,omitempty"`
-	SafePageEnabled            bool                  `json:"safe_page_enabled"`
-	AttestationEnabled         bool                  `json:"attestation_enabled"`
-	AttestationMode            string                `json:"attestation_mode,omitempty"`
-	AttestationTTLSec          int32                 `json:"attestation_ttl_sec"`
-	DmrEnabled                 bool                  `json:"dmr_enabled"`
-	CIDRBlockEnabled           bool                  `json:"cidr_block_enabled"`
-	ProxyVPNBlockEnabled       bool                  `json:"proxy_vpn_block_enabled"`
-	ModeratorIntelEnabled      bool                  `json:"moderator_intel_enabled"`
-	ReviewTrafficAction        string                `json:"review_traffic_action,omitempty"`
-	TLSFingerprintBlockEnabled bool                  `json:"tls_fingerprint_block_enabled"`
-	ConnTypePolicy             string                `json:"conn_type_policy,omitempty"`
-	LinkSigningEnabled         bool                  `json:"link_signing_enabled"`
-	LinkSigningTTLSec          int32                 `json:"link_signing_ttl_sec"`
-	ClickDelivery              string                `json:"click_delivery,omitempty"`
-	ProxyUpstreamURL           string                `json:"proxy_upstream_url,omitempty"`
-	ProxyRewriteAssets         bool                  `json:"proxy_rewrite_assets"`
-	BrandID                    string                `json:"brand_id,omitempty"`
-	CreativePayload            json.RawMessage       `json:"creative_payload,omitempty"`
-	ReferrerFilter             string                `json:"referrer_filter,omitempty"`
-	StartAt                    string                `json:"start_at,omitempty"`
-	EndAt                      string                `json:"end_at,omitempty"`
-	DaypartHours               []int16               `json:"daypart_hours"`
-	FlowID                     string                `json:"flow_id,omitempty"`
-	OwnerUserID                string                `json:"owner_user_id,omitempty"`
-	IngressCostConfig          *IngressCostConfigDTO `json:"ingress_cost_config,omitempty"`
-	TrafficTemplateID          string                `json:"traffic_template_id,omitempty"`
-	ClickQueryParams           map[string]string     `json:"click_query_params,omitempty"`
-	CreatedAt                  string                `json:"created_at"`
-	CreatedAtDisplay           string                `json:"created_at_display,omitempty"`
-	UpdatedAt                  string                `json:"updated_at"`
-	UpdatedAtDisplay           string                `json:"updated_at_display,omitempty"`
-	Revision                   string                `json:"revision,omitempty"`
-	MarginBreach               bool                  `json:"margin_breach,omitempty"`
-	BudgetUsedPct              *float64              `json:"budget_used_pct,omitempty"`
-	StatusLabel                string                `json:"status_label,omitempty"`
-	StatusTone                 string                `json:"status_tone,omitempty"`
-	AllowedActions             []string              `json:"allowed_actions,omitempty"`
-	DeniedReasons              map[string]string     `json:"denied_reasons,omitempty"`
-	FieldsRedacted             []string              `json:"fields_redacted,omitempty"`
-	EffectiveBudgetMicros      *int64                `json:"effective_budget_micros,omitempty"`
-	PendingBudgetMicros        *int64                `json:"pending_budget_micros,omitempty"`
+	ID                          string                `json:"id"`
+	DisplayID                   string                `json:"display_id,omitempty"`
+	Name                        string                `json:"name"`
+	Status                      string                `json:"status"`
+	BudgetLimit                 string                `json:"budget_limit"`
+	BudgetLimitDisplay          string                `json:"budget_limit_display,omitempty"`
+	CurrentSpend                string                `json:"current_spend"`
+	CurrentSpendDisplay         string                `json:"current_spend_display,omitempty"`
+	CustomerID                  string                `json:"customer_id"`
+	PacingMode                  string                `json:"pacing_mode"`
+	DailyBudget                 string                `json:"daily_budget"`
+	DailyBudgetDisplay          string                `json:"daily_budget_display,omitempty"`
+	Timezone                    string                `json:"timezone"`
+	FreqLimit                   int32                 `json:"freq_limit"`
+	FreqWindow                  int32                 `json:"freq_window"`
+	TargetCountries             []string              `json:"target_countries"`
+	TargetURL                   string                `json:"target_url,omitempty"`
+	SafePageURL                 string                `json:"safe_page_url,omitempty"`
+	SafePageEnabled             bool                  `json:"safe_page_enabled"`
+	AttestationEnabled          bool                  `json:"attestation_enabled"`
+	AttestationMode             string                `json:"attestation_mode,omitempty"`
+	AttestationTTLSec           int32                 `json:"attestation_ttl_sec"`
+	DmrEnabled                  bool                  `json:"dmr_enabled"`
+	CIDRBlockEnabled            bool                  `json:"cidr_block_enabled"`
+	ProxyVPNBlockEnabled        bool                  `json:"proxy_vpn_block_enabled"`
+	ModeratorIntelEnabled       bool                  `json:"moderator_intel_enabled"`
+	ReviewTrafficAction         string                `json:"review_traffic_action,omitempty"`
+	TLSFingerprintBlockEnabled  bool                  `json:"tls_fingerprint_block_enabled"`
+	ConnTypePolicy              string                `json:"conn_type_policy,omitempty"`
+	LinkSigningEnabled          bool                  `json:"link_signing_enabled"`
+	LinkSigningTTLSec           int32                 `json:"link_signing_ttl_sec"`
+	ClickDelivery               string                `json:"click_delivery,omitempty"`
+	ClickFilterTier             string                `json:"click_filter_tier,omitempty"`
+	ProxyUpstreamURL            string                `json:"proxy_upstream_url,omitempty"`
+	ProxyRewriteAssets          bool                  `json:"proxy_rewrite_assets"`
+	BrandID                     string                `json:"brand_id,omitempty"`
+	CreativePayload             json.RawMessage       `json:"creative_payload,omitempty"`
+	ReferrerFilter              string                `json:"referrer_filter,omitempty"`
+	StartAt                     string                `json:"start_at,omitempty"`
+	EndAt                       string                `json:"end_at,omitempty"`
+	DaypartHours                []int16               `json:"daypart_hours"`
+	FlowID                      string                `json:"flow_id,omitempty"`
+	OwnerUserID                 string                `json:"owner_user_id,omitempty"`
+	IngressCostConfig           *IngressCostConfigDTO `json:"ingress_cost_config,omitempty"`
+	TrafficTemplateID           string                `json:"traffic_template_id,omitempty"`
+	ClickQueryParams            map[string]string     `json:"click_query_params,omitempty"`
+	CreatedAt                   string                `json:"created_at"`
+	CreatedAtDisplay            string                `json:"created_at_display,omitempty"`
+	UpdatedAt                   string                `json:"updated_at"`
+	UpdatedAtDisplay            string                `json:"updated_at_display,omitempty"`
+	Revision                    string                `json:"revision,omitempty"`
+	IntegrationSchemaID         string                `json:"integration_schema_id,omitempty"`
+	IntegrationSchemaName       string                `json:"integration_schema_name,omitempty"`
+	StatusIntegrationSchemaID   string                `json:"status_integration_schema_id,omitempty"`
+	StatusIntegrationSchemaName string                `json:"status_integration_schema_name,omitempty"`
+	MarginBreach                bool                  `json:"margin_breach,omitempty"`
+	BudgetUsedPct               *float64              `json:"budget_used_pct,omitempty"`
+	StatusLabel                 string                `json:"status_label,omitempty"`
+	StatusTone                  string                `json:"status_tone,omitempty"`
+	AllowedActions              []string              `json:"allowed_actions,omitempty"`
+	DeniedReasons               map[string]string     `json:"denied_reasons,omitempty"`
+	FieldsRedacted              []string              `json:"fields_redacted,omitempty"`
+	EffectiveBudgetMicros       *int64                `json:"effective_budget_micros,omitempty"`
+	PendingBudgetMicros         *int64                `json:"pending_budget_micros,omitempty"`
 }
 
 type BlacklistDTO struct {
@@ -2570,6 +2740,7 @@ type PatchCampaignRequest struct {
 	AttestationTTLSec          *int32                `json:"attestation_ttl_sec,omitempty"`
 	ReferrerFilter             *string               `json:"referrer_filter,omitempty"`
 	ClickDelivery              *string               `json:"click_delivery,omitempty"`
+	ClickFilterTier            *string               `json:"click_filter_tier,omitempty"`
 	ProxyUpstreamURL           *string               `json:"proxy_upstream_url,omitempty"`
 	ProxyRewriteAssets         *bool                 `json:"proxy_rewrite_assets,omitempty"`
 	StartAt                    *time.Time            `json:"start_at,omitempty"`

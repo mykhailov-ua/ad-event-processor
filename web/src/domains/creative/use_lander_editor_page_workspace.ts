@@ -13,6 +13,7 @@ import {
 import { useCoalescedBumpRefresh, useRefreshToken } from '@/hooks/use_coalesced_refresh_token';
 import { useBreadcrumbSegmentLabel } from '@/shell/breadcrumb_context';
 import { useResource } from '@/api/use_resource';
+import { confirmDestructiveAction, mutationError } from '@/lib/mutation_audit';
 
 export function useLanderEditorPageWorkspace() {
   const { id } = useParams();
@@ -55,7 +56,9 @@ export function useLanderEditorPageWorkspace() {
           bumpRefreshCoalesced();
         })
         .catch((err: unknown) => {
-          setActionError(err instanceof Error ? err : new Error(String(err)));
+          const nextError = mutationError(err);
+          setActionError(nextError);
+          toast.error(nextError.message);
         })
         .finally(() => {
           setActing(false);
@@ -68,6 +71,9 @@ export function useLanderEditorPageWorkspace() {
     if (!landerId) {
       return;
     }
+    if (!confirmDestructiveAction('Publish hosted lander to production?')) {
+      return;
+    }
     setActing(true);
     setActionError(undefined);
     setActionMessage(undefined);
@@ -78,7 +84,9 @@ export function useLanderEditorPageWorkspace() {
         bumpRefreshCoalesced();
       })
       .catch((err: unknown) => {
-        setActionError(err instanceof Error ? err : new Error(String(err)));
+        const nextError = mutationError(err);
+        setActionError(nextError);
+        toast.error(nextError.message);
       })
       .finally(() => {
         setActing(false);
@@ -99,7 +107,8 @@ export function useLanderEditorPageWorkspace() {
           setFileContent(content);
         })
         .catch((err: unknown) => {
-          setFileError(err instanceof Error ? err : new Error(String(err)));
+          const nextError = mutationError(err);
+          setFileError(nextError);
         })
         .finally(() => {
           setFileLoading(false);
@@ -121,7 +130,9 @@ export function useLanderEditorPageWorkspace() {
         bumpRefreshCoalesced();
       })
       .catch((err: unknown) => {
-        setFileError(err instanceof Error ? err : new Error(String(err)));
+        const nextError = mutationError(err);
+        setFileError(nextError);
+        toast.error(nextError.message);
       })
       .finally(() => {
         setFileSaving(false);

@@ -12,6 +12,7 @@ import {
   buildCloneRequestBody,
   DEFAULT_CLONE_OPTIONS,
 } from '@/domains/campaigns/editor/campaign_clone_request';
+import { newRandomUuid } from '@/lib/uuid';
 
 type UseCampaignCloneDialogWorkspaceArgs = {
   campaignId: string | undefined;
@@ -67,7 +68,7 @@ export function useCampaignCloneDialogWorkspace({
     setCloning(true);
     setCloneError(undefined);
     void cloneCampaign(campaignId, buildCloneRequestBody(nameSuffix, cloneOptions), {
-      idempotencyKey: crypto.randomUUID(),
+      idempotencyKey: newRandomUuid(),
     })
       .then((result) => {
         setClonedId(result.id);

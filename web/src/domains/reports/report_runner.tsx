@@ -11,27 +11,36 @@ import { EmptyState } from '@/shell/empty_state';
 import { ErrorBlock } from '@/shell/error_block';
 import { PageSkeleton } from '@/shell/page_skeleton';
 import { DirectoryPaginationFooter } from '@/shell/directory_pagination_footer';
-import { FILTER_PANEL_SUMMARY_CLASS } from '@/shell/filter_panel';
+import {
+  DirectoryFilterForm,
+  FilterField,
+  FilterPanel,
+  FILTER_PANEL_SUMMARY_CLASS,
+} from '@/shell/filter_panel';
 import { ReportMapTable } from '@/shell/report_map_table';
 import { StubBanner } from '@/shell/stub_banner';
+import { JsonPayloadView } from '@/shell/json_payload_view';
 import { Badge } from '@/components/ui/badge';
 import { DatetimePicker } from '@/components/ui/datetime_picker';
 import { Input } from '@/components/ui/input';
-import { Label } from '@/components/ui/label';
-import type { DataFreshness, FraudEvidencePack, ReportMapRow } from '@/api/types';
+import type { CampaignStats, DataFreshness, FraudEvidencePack, ReportMapRow } from '@/api/types';
+import { buildReportJobsHref } from '@/lib/report_paths';
+import { reportsLicenseStub, reportsPanelError } from '@/domains/reports/reports_panel_error';
 import { deriveColumns } from '@/lib/report_table';
 import { displayTimestamp } from '@/lib/display';
+import { DirectoryStack, MetaLinksBand } from '@/shell/ui_bands';
 
 export type ReportRunnerProps = {
   reportKey: string;
   title: string;
   description?: string;
-  mode: 'table' | 'evidence' | 'export-only' | 'unsupported';
+  mode: 'table' | 'evidence' | 'export-only' | 'campaign-stats' | 'unsupported';
   rows: ReportMapRow[];
   columns: string[];
   freshness?: DataFreshness;
   nextCursor?: string;
   evidencePack?: FraudEvidencePack;
+  campaignStats?: CampaignStats;
   draftCustomerId: string;
   draftFrom: string;
   draftTo: string;
@@ -40,8 +49,11 @@ export type ReportRunnerProps = {
   limit: number;
   offset: number;
   fetching: boolean;
+  listRevalidating?: boolean;
   error: Error | undefined;
   hasSnapshot: boolean;
+  licenseGated?: boolean;
+  licenseFeatureKey?: string;
   onDraftCustomerIdChange: (value: string) => void;
   onDraftFromChange: (value: string) => void;
   onDraftToChange: (value: string) => void;
@@ -51,6 +63,7 @@ export type ReportRunnerProps = {
   onPageChange: (nextOffset: number) => void;
   showTelegramExport?: boolean;
   exportingTelegram?: boolean;
+  telegramExportError?: Error;
   telegramExportMessage?: string;
   onExportTelegram?: () => void;
 };
@@ -65,6 +78,7 @@ export function ReportRunner({
   freshness,
   nextCursor,
   evidencePack,
+  campaignStats,
   draftCustomerId,
   draftFrom,
   draftTo,
@@ -73,8 +87,11 @@ export function ReportRunner({
   limit,
   offset,
   fetching,
+  listRevalidating = false,
   error,
   hasSnapshot,
+  licenseGated = false,
+  licenseFeatureKey,
   onDraftCustomerIdChange,
   onDraftFromChange,
   onDraftToChange,
@@ -84,6 +101,7 @@ export function ReportRunner({
   onPageChange,
   showTelegramExport = false,
   exportingTelegram = false,
+  telegramExportError,
   telegramExportMessage,
   onExportTelegram,
 }: ReportRunnerProps) {
@@ -96,12 +114,29 @@ export function ReportRunner({
     [evidencePack?.fraud_events]
   );
 
+  if (licenseGated) {
+    return (
+      <PageChrome title={title}>
+        <div className="grid gap-3">
+          <Link className="text-sm text-muted-foreground hover:underline" to="/reports">
+            Back to catalog
+          </Link>
+          {reportsLicenseStub(licenseFeatureKey)}
+        </div>
+      </PageChrome>
+    );
+  }
+
   if (fetching && !hasSnapshot && !error) {
     return <PageSkeleton />;
   }
 
   if (error && !hasSnapshot) {
-    return <ErrorBlock title={`Could not load report ${reportKey}`} message={error.message} />;
+    return (
+      <PageChrome title={title}>
+        {reportsPanelError(error, `Could not load report ${reportKey}`)}
+      </PageChrome>
+    );
   }
 
   const canGoPrev = offset > 0;
@@ -117,70 +152,71 @@ export function ReportRunner({
           <Badge variant="outline">{freshness.consistency ?? 'fresh'}</Badge>
         ) : undefined
       }
-    >
-      <div className="flex flex-wrap items-center gap-3 text-sm text-muted-foreground">
-        <Link className="hover:underline" to="/reports">
-          Back to catalog
-        </Link>
-        {description ? <span>{description}</span> : null}
-        {freshness?.as_of ? (
-          <span>As of {displayTimestamp(freshness.as_of, freshness.as_of_display)}</span>
-        ) : null}
-      </div>
-
-      <form
-        className="grid grid-cols-[repeat(auto-fill,minmax(12rem,1fr))] items-end gap-4"
-        onSubmit={(event) => {
-          event.preventDefault();
-          onApplyFilters();
-        }}
-      >
-        <div className="grid gap-2">
-          <Label htmlFor="report-customer-id">Customer ID</Label>
-          <Input
-            id="report-customer-id"
-            value={draftCustomerId}
-            onChange={(event) => onDraftCustomerIdChange(event.target.value)}
-          />
-        </div>
-        <DatetimePicker
-          id="report-from"
-          label="From"
-          value={draftFrom}
-          onChange={onDraftFromChange}
-        />
-        <DatetimePicker id="report-to" label="To" value={draftTo} onChange={onDraftToChange} />
-        <div className="grid gap-2">
-          <Label htmlFor="report-campaign-id">Campaign ID</Label>
-          <Input
-            id="report-campaign-id"
-            value={draftCampaignId}
-            onChange={(event) => onDraftCampaignIdChange(event.target.value)}
-          />
-        </div>
-        {mode === 'evidence' ? (
-          <div className="grid gap-2">
-            <Label htmlFor="report-click-id">Click ID</Label>
-            <Input
-              id="report-click-id"
-              value={draftClickId}
-              onChange={(event) => onDraftClickIdChange(event.target.value)}
-            />
-          </div>
-        ) : null}
-        <FilterApplyButton disabled={fetching}>Run report</FilterApplyButton>
-        {showTelegramExport && onExportTelegram ? (
-          <SecondaryActionButton
-            disabled={exportingTelegram}
-            loading={exportingTelegram}
-            onClick={onExportTelegram}
-            type="button"
-            variant="secondary"
-          >
-            Export Telegram bundle
-          </SecondaryActionButton>
-        ) : null}
-        {mode === 'table' ? (
+      controlPanel={
+        <DirectoryStack>
+          <MetaLinksBand>
+            <Link to="/reports">Back to catalog</Link>
+            {description ? <span>{description}</span> : null}
+            {freshness?.as_of ? (
+              <span>As of {displayTimestamp(freshness.as_of, freshness.as_of_display)}</span>
+            ) : null}
+          </MetaLinksBand>
+          <FilterPanel>
+            <DirectoryFilterForm
+              layout="auto-fill"
+              onSubmit={(event) => {
+                event.preventDefault();
+                onApplyFilters();
+              }}
+            >
+              <FilterField htmlFor="report-customer-id" label="Customer ID">
+                <Input
+                  id="report-customer-id"
+                  value={draftCustomerId}
+                  onChange={(event) => onDraftCustomerIdChange(event.target.value)}
+                />
+              </FilterField>
+              <DatetimePicker
+                id="report-from"
+                label="From"
+                value={draftFrom}
+                onChange={onDraftFromChange}
+              />
+              <DatetimePicker id="report-to" label="To" value={draftTo} onChange={onDraftToChange} />
+              <FilterField htmlFor="report-campaign-id" label="Campaign ID">
+                <Input
+                  id="report-campaign-id"
+                  value={draftCampaignId}
+                  onChange={(event) => onDraftCampaignIdChange(event.target.value)}
+                />
+              </FilterField>
+              {mode === 'evidence' ? (
+                <FilterField htmlFor="report-click-id" label="Click ID">
+                  <Input
+                    id="report-click-id"
+                    value={draftClickId}
+                    onChange={(event) => onDraftClickIdChange(event.target.value)}
+                  />
+                </FilterField>
+              ) : null}
+              <FilterApplyButton disabled={fetching}>Run report</FilterApplyButton>
+              {showTelegramExport && onExportTelegram ? (
+                <SecondaryActionButton
+                  disabled={exportingTelegram}
+                  loading={exportingTelegram}
+                  onClick={onExportTelegram}
+                  type="button"
+                  variant="secondary"
+                >
+                  Export Telegram bundle
+                </SecondaryActionButton>
+              ) : null}
+            </DirectoryFilterForm>
+          </FilterPanel>
+        </DirectoryStack>
+      }
+      footer={
+        mode === 'table' ? (
           <DirectoryPaginationFooter
             canGoNext={canGoNext}
             canGoPrev={canGoPrev}
@@ -189,26 +225,56 @@ export function ReportRunner({
             onNext={() => onPageChange(offset + limit)}
             onPrev={() => onPageChange(Math.max(0, offset - limit))}
           />
-        ) : null}
-      </form>
-
+        ) : undefined
+      }
+    >
       {telegramExportMessage ? (
         <p className="text-sm text-muted-foreground" role="status">
           {telegramExportMessage}
         </p>
       ) : null}
+      {telegramExportError ? (
+        <ErrorBlock title="Telegram export failed" message={telegramExportError.message} />
+      ) : null}
 
       {mode === 'export-only' ? (
         <StubBanner
           title="Export-only report"
-          message="This report is available through async export jobs. Use the Reports jobs API or operator CLI for bulk ZIP delivery."
+          message="Bulk delivery runs through async export jobs. Open the jobs page with this report key pre-filled."
         />
+      ) : null}
+
+      {mode === 'export-only' ? (
+        <p className="m-0 text-sm">
+          <Link
+            className="text-primary hover:underline"
+            to={buildReportJobsHref({
+              reportKey,
+              customerId: draftCustomerId,
+              from: draftFrom,
+              to: draftTo,
+            })}
+          >
+            Open export jobs
+          </Link>
+        </p>
       ) : null}
 
       {mode === 'unsupported' ? (
         <StubBanner
           title="Unsupported report key"
           message={`No runner mapping for report key "${reportKey}".`}
+        />
+      ) : null}
+
+      {mode === 'campaign-stats' && campaignStats ? (
+        <JsonPayloadView payload={campaignStats} />
+      ) : null}
+
+      {mode === 'campaign-stats' && !campaignStats && !fetching && !error ? (
+        <EmptyState
+          title="Campaign ID required"
+          description="Enter a campaign ID and run the report."
         />
       ) : null}
 
@@ -236,11 +302,16 @@ export function ReportRunner({
         rows.length === 0 ? (
           <EmptyState title="No rows" description="Adjust filters and run the report again." />
         ) : (
-          <ReportMapTable columns={columns} rowKeyPrefix={reportKey} rows={rows} />
+          <ReportMapTable
+            columns={columns}
+            revalidating={listRevalidating}
+            rowKeyPrefix={reportKey}
+            rows={rows}
+          />
         )
       ) : null}
 
-      {error && hasSnapshot ? <ErrorBlock title="Refresh failed" message={error.message} /> : null}
+      {error && hasSnapshot ? reportsPanelError(error, 'Refresh failed') : null}
     </PageChrome>
   );
 }

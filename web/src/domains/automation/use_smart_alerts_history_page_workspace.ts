@@ -1,7 +1,9 @@
 // L3 smart alert history: customer-scoped list + per-event ack mutation.
 import { useCallback, useState } from 'react';
+import { toast } from 'sonner';
 
 import { ackSmartAlertEvent, listSmartAlertHistory } from '@/api/smart_alerts_api';
+import { mutationError } from '@/lib/mutation_audit';
 import { useCoalescedBumpRefresh, useRefreshToken } from '@/hooks/use_coalesced_refresh_token';
 import { useCustomerScope } from '@/hooks/use_customer_scope';
 import { useResource } from '@/api/use_resource';
@@ -36,9 +38,12 @@ export function useSmartAlertsHistoryPageWorkspace() {
       setAckError(undefined);
       try {
         await ackSmartAlertEvent(eventId);
+        toast.success('Alert acknowledged');
         bumpRefreshCoalesced();
       } catch (err: unknown) {
-        setAckError(err instanceof Error ? err : new Error(String(err)));
+        const nextError = mutationError(err);
+        setAckError(nextError);
+        toast.error(nextError.message);
       } finally {
         setAckingEventId(undefined);
       }

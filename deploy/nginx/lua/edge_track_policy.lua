@@ -26,6 +26,7 @@
 -- - EDGE_MAX_BODY_BYTES default MAX_SCAN_BYTES 8192 (env EDGE_MAX_BODY_BYTES or /etc/nginx/lua/.edge_max_body_bytes).
 -- - INGRESS_SCHEMA TRACKER_INGRESS_SCHEMA default openrtb_3 (env or .edge_ingress_schema file).
 -- - EDGE_BODY_MODE default full (env or .edge_body_mode at module load): full|stream|peek.
+-- - EDGE_MIN_CHUNKED_DATA_BYTES: OpenRTB chunked data floor (parity HTTP1_MIN_CHUNKED_DATA_BYTES); default 1 disables.
 -- - edge-parse-dfa MAX_BODY_BYTES 1048576 for CL oversize; MAX_SCAN_BYTES 8192 for scan/peek.
 -- - get_uri_args limit 100 on /click; peek socket timeout 500 ms.
 --
@@ -77,6 +78,7 @@ end
 local EDGE_MAX_BODY = tonumber(config_string("max_body_bytes", "EDGE_MAX_BODY_BYTES", tostring(MAX_SCAN_BYTES)))
 local INGRESS_SCHEMA = config_string("ingress_schema", "TRACKER_INGRESS_SCHEMA", "openrtb_3")
 local BODY_MODE = config_string("body_mode", "EDGE_BODY_MODE", "full")
+local MIN_CHUNKED_DATA_BYTES = tonumber(config_string("min_chunked_data_bytes", "EDGE_MIN_CHUNKED_DATA_BYTES", "1")) or 1
 
 local request_headers
 
@@ -156,6 +158,45 @@ local function reject_invalid_content_length()
     ngx.status = ngx.HTTP_BAD_REQUEST
     ngx.say "invalid content-length"
     ngx.exit(ngx.HTTP_BAD_REQUEST)
+end
+
+local function reject_cl_te_conflict()
+    edge_metrics.record_chunked_reject()
+    ngx.status = ngx.HTTP_BAD_REQUEST
+    ngx.say "conflicting content-length and transfer-encoding"
+    ngx.exit(ngx.HTTP_BAD_REQUEST)
+end
+
+local function reject_micro_chunk()
+    edge_metrics.record_chunked_reject()
+    ngx.status = ngx.HTTP_BAD_REQUEST
+    ngx.say "chunked body too small"
+    ngx.exit(ngx.HTTP_BAD_REQUEST)
+end
+
+-- Parity with tracker ParseHTTP1ChunkedBody MinChunkedDataBytes (HTTP1_MIN_CHUNKED_DATA_BYTES / EDGE_MIN_CHUNKED_DATA_BYTES).
+local function enforce_openrtb_chunk_floor(sock)
+    local floor = MIN_CHUNKED_DATA_BYTES
+    if not floor or floor <= 1 then
+        return
+    end
+    sock:settimeout(500)
+    local line, err = sock:receive("*l")
+    if not line then
+        ngx.log(ngx.ERR, "edge openrtb chunk size: ", err or "unknown")
+        reject_body_unavailable()
+    end
+    if string.find(line, ";", 1, true) then
+        reject_parse_malformed()
+    end
+    line = string.gsub(line, "[%s\t]", "")
+    local size = tonumber(line, 16)
+    if not size then
+        reject_parse_malformed()
+    end
+    if size > 0 and size < floor then
+        reject_micro_chunk()
+    end
 end
 
 local function check_edge_limits(cl)
@@ -369,13 +410,14 @@ function _M.run_openrtb()
     if transfer_encoding_chunked() then
         local cl = content_length()
         if cl then
-            check_edge_limits(cl)
+            reject_cl_te_conflict()
         end
         local sock, sock_err = ngx.req.socket()
         if not sock then
             ngx.log(ngx.ERR, "edge openrtb peek: socket unavailable: ", sock_err)
             reject_body_unavailable()
         end
+        enforce_openrtb_chunk_floor(sock)
         sock:settimeout(500)
         local chunk = sock:receive(MAX_SCAN_BYTES)
         edge_metrics.record_body_peek()

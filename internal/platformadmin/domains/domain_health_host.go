@@ -2,6 +2,7 @@ package domains
 
 import (
 	"context"
+	"sync"
 
 	"ad-event-processor/internal/config"
 	"ad-event-processor/pkg/domainhealth"
@@ -12,6 +13,8 @@ import (
 
 type DomainCloudflareClient interface {
 	CreateDNSRecord(ctx context.Context, zoneID, name, recordType, content string, proxied bool) (string, error)
+	UpsertTXTRecord(ctx context.Context, zoneID, name, content string) (string, error)
+	DeleteDNSRecord(ctx context.Context, zoneID, recordID string) error
 	ZoneSSLStatus(ctx context.Context, zoneID string) (string, error)
 }
 
@@ -26,6 +29,9 @@ type DomainHealthHost interface {
 
 type DomainHealth struct {
 	host DomainHealthHost
+
+	bulkMu   sync.RWMutex
+	bulkJobs map[string]*domainBulkJobRecord
 }
 
 func NewDomainHealth(host DomainHealthHost) *DomainHealth {

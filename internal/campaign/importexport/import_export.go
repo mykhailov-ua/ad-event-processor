@@ -275,6 +275,7 @@ func ImportCampaign(ctx context.Context, host campaign.ImportExportHost, spec ca
 			ProxyVpnBlockEnabled:       camp.ProxyVPNBlockEnabled,
 			ModeratorIntelEnabled:      camp.ModeratorIntelEnabled,
 			ReviewTrafficAction:        camp.ReviewTrafficAction,
+			ClickFilterTier:            string(domain.ClickFilterTierFull),
 		}); err != nil {
 			return err
 		}

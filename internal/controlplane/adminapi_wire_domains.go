@@ -317,9 +317,9 @@ func (h *Handler) wireAdminDomainRoutes(reg *RouteRegistry, e adminWireEnv) {
 			return stats.Bids, stats.Wins, stats.SpendMicro, true
 		},
 	}
-	// CampaignsHTTP: PG mutations via CampaignRuntime; ClickHouseQuery read-only for event stats.
+	// CampaignsHTTP: PG mutations and onboarding wizard via Service; CH read-only via ClickHouseQuery.
 	reg.CampaignsHTTP = &campaign.CampaignsHTTPHandlers{
-		Campaigns:                  svc.CampaignRuntime(),
+		Campaigns:                  svc,
 		CampaignFraud:              fraudadmin.CampaignFraudAPI{Host: svc, MapErr: mapFraudadminErr},
 		ConversionMappings:         svc,
 		GetCampaignFlow:            svc.GetFlow,
@@ -355,6 +355,7 @@ func (h *Handler) wireAdminDomainRoutes(reg *RouteRegistry, e adminWireEnv) {
 	reg.CustomersHTTP = &platformadmin.CustomersHTTPHandlers{
 		Customers:               svc,
 		CostCenter:              svc,
+		Patcher:                 svc,
 		ApplyRateLimit:          limit,
 		RequirePermission:       perm,
 		AuthorizeCustomerAccess: authCustomer,

@@ -36,6 +36,16 @@ if ! rg -q 'path="reports/click-log"' "$APP_ROUTES"; then
   exit 1
 fi
 
+if ! rg -q 'path="reports/telegram"' "$APP_ROUTES"; then
+  echo "Error: $APP_ROUTES missing dedicated telegram report route"
+  exit 1
+fi
+
+if ! rg -q 'path="reports/telegram/:segment"' "$APP_ROUTES"; then
+  echo "Error: $APP_ROUTES missing nested telegram report route"
+  exit 1
+fi
+
 if ! rg -q 'path="reports/jobs"' "$APP_ROUTES"; then
   echo "Error: $APP_ROUTES missing reports/jobs route"
   exit 1
@@ -46,7 +56,7 @@ if ! command -v python3 > /dev/null 2>&1; then
   exit 1
 fi
 
-python3 - "$CATALOG_GO" "$REPORT_PATHS_TS" "$REPORTS_TREE" << 'PY'
+python3 - "$CATALOG_GO" "$REPORT_PATHS_TS" "$REPORTS_TREE" "internal/telegram/handlers.go" << 'PY'
 import re
 import sys
 from pathlib import Path
@@ -54,9 +64,10 @@ from pathlib import Path
 catalog_path = Path(sys.argv[1])
 report_paths_ts = Path(sys.argv[2])
 reports_tree = Path(sys.argv[3])
+telegram_handlers = Path(sys.argv[4])
 
 catalog_src = catalog_path.read_text(encoding="utf-8")
-keys = re.findall(r'Key:\s*"([^"]+)"', catalog_src)
+keys = re.findall(r'\{Key:\s*"([^"]+)"', catalog_src)
 if not keys:
     print(f"Error: no ReportCatalogEntries keys in {catalog_path}", file=sys.stderr)
     sys.exit(1)
@@ -83,6 +94,7 @@ for path in reports_tree.rglob("*.go"):
         continue
     handler_sources.append(path.read_text(encoding="utf-8", errors="replace"))
 handler_blob = "\n".join(handler_sources)
+telegram_blob = telegram_handlers.read_text(encoding="utf-8", errors="replace")
 
 missing_handler: list[str] = []
 for key in keys:
@@ -99,6 +111,8 @@ for key in keys:
         continue
     if f"WrapReport({quoted_key}" in handler_blob:
         continue
+    if api_path in telegram_blob:
+        continue
     missing_handler.append(f"{key} (expected {api_path})")
 
 if missing_handler:
@@ -109,3 +123,5 @@ if missing_handler:
 
 print(f"Report live routes gate: OK ({len(keys)} catalog keys, SPA reports/:key)")
 PY
+
+bash "$SCRIPTS/ci/admin/report_catalog_openapi_parity.sh"

@@ -131,6 +131,21 @@ func ClampAttestationTTL(ttl int32) int32 {
 	return ttl
 }
 
+func InitAttestationHMACPads(secret []byte, ipad, opad *[HMACBlockSize]byte) {
+	if len(secret) > HMACBlockSize {
+		secret = secret[:HMACBlockSize]
+	}
+	for i := range HMACBlockSize {
+		if i < len(secret) {
+			ipad[i] = secret[i] ^ 0x36
+			opad[i] = secret[i] ^ 0x5c
+		} else {
+			ipad[i] = 0x36
+			opad[i] = 0x5c
+		}
+	}
+}
+
 func AttestationMACIntoPads(ipad, opad *[HMACBlockSize]byte, scratch []byte, payload []byte, out *[attestationMACLen]byte) bool {
 	need := HMACBlockSize + len(payload)
 	if need > len(scratch) || out == nil {
@@ -205,19 +220,66 @@ func attestationIPPrefixMatch(stored []byte, ip string) bool {
 	if len(stored) < 16 {
 		return false
 	}
+	var v4 [4]byte
+	if parseIPv4Dotted(ip, &v4) {
+		var want [16]byte
+		want[10] = 0xff
+		want[11] = 0xff
+		copy(want[12:], v4[:])
+		return subtle.ConstantTimeCompare(stored[:16], want[:]) == 1
+	}
 	parsed := net.ParseIP(strings.TrimSpace(ip))
 	if parsed == nil {
 		return false
 	}
-	if v4 := parsed.To4(); v4 != nil {
-		var want [16]byte
-		if !encodeAttestationIPPrefix(v4.String(), want[:]) {
-			return false
-		}
-		return subtle.ConstantTimeCompare(stored[:16], want[:]) == 1
-	}
 	v6 := parsed.To16()
 	return subtle.ConstantTimeCompare(stored[:8], v6[:8]) == 1
+}
+
+func parseIPv4Dotted(ip string, out *[4]byte) bool {
+	start := 0
+	end := len(ip)
+	for i := 0; i < len(ip); i++ {
+		if ip[i] == ' ' && start == 0 {
+			start = i + 1
+			continue
+		}
+		if ip[i] == ' ' {
+			end = i
+			break
+		}
+	}
+	ip = ip[start:end]
+	if ip == "" {
+		return false
+	}
+	var part int
+	var val uint32
+	for i := 0; i <= len(ip); i++ {
+		if i < len(ip) && ip[i] >= '0' && ip[i] <= '9' {
+			val = val*10 + uint32(ip[i]-'0')
+			if val > 255 {
+				return false
+			}
+			continue
+		}
+		if i == len(ip) || ip[i] == '.' {
+			if part > 3 {
+				return false
+			}
+			out[part] = byte(val)
+			part++
+			val = 0
+			if i < len(ip) && ip[i] == '.' {
+				continue
+			}
+			if i == len(ip) {
+				break
+			}
+		}
+		return false
+	}
+	return part == 4
 }
 
 func decodeAttestationTokenBase64URL(src []byte, dst []byte) (int, bool) {

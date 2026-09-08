@@ -8,6 +8,7 @@ import type { PolicyCreateDraft } from '@/domains/automation/margin_guard_polici
 import { useCoalescedBumpRefresh, useRefreshToken } from '@/hooks/use_coalesced_refresh_token';
 import { useCampaignScope } from '@/hooks/use_campaign_scope';
 import { useResource } from '@/api/use_resource';
+import { mutationError } from '@/lib/mutation_audit';
 
 const EMPTY_CREATE_DRAFT: PolicyCreateDraft = {
   name: '',
@@ -86,7 +87,9 @@ export function useMarginGuardPoliciesPageWorkspace() {
       toast.success('Margin guard policy created');
       bumpRefreshCoalesced();
     } catch (err: unknown) {
-      setActionError(err instanceof Error ? err : new Error(String(err)));
+      const nextError = mutationError(err);
+      setActionError(nextError);
+      toast.error(nextError.message);
     } finally {
       setCreating(false);
     }

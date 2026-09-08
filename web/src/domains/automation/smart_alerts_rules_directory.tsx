@@ -2,6 +2,7 @@ import { useState } from 'react';
 import { useRunWhenTrue } from '@/hooks/use_run_when_true';
 
 import { PrimaryActionButton } from '@/shell/action_buttons';
+import { DirectoryFilterForm, FilterField } from '@/shell/filter_panel';
 import { PageChrome } from '@/shell/page_chrome';
 import { RowActionsMenu } from '@/shell/row_actions_menu';
 import { CustomerScopeBar } from '@/shell/customer_scope_bar';
@@ -143,58 +144,52 @@ export function SmartAlertsRulesDirectory({
           <DialogHeader>
             <DialogTitle>Create rule</DialogTitle>
           </DialogHeader>
-          <div className="grid gap-4 md:grid-cols-[repeat(auto-fill,minmax(12rem,1fr))]">
-            <div className="grid gap-2">
-              <Label htmlFor="smart-alert-create-name">Name</Label>
+          <DirectoryFilterForm layout="auto-fill" onSubmit={(event) => event.preventDefault()}>
+            <FilterField htmlFor="smart-alert-create-name" label="Name">
               <Input
                 id="smart-alert-create-name"
                 value={createDraft.name}
                 onChange={(event) => onCreateDraftChange({ name: event.target.value })}
               />
-            </div>
-            <div className="grid gap-2">
-              <Label htmlFor="smart-alert-create-metric">Metric</Label>
+            </FilterField>
+            <FilterField htmlFor="smart-alert-create-metric" label="Metric">
               <Input
                 id="smart-alert-create-metric"
                 value={createDraft.metric}
                 onChange={(event) => onCreateDraftChange({ metric: event.target.value })}
               />
-            </div>
-            <div className="grid gap-2">
-              <Label htmlFor="smart-alert-create-operator">Operator</Label>
+            </FilterField>
+            <FilterField htmlFor="smart-alert-create-operator" label="Operator">
               <Input
                 id="smart-alert-create-operator"
                 value={createDraft.operator}
                 onChange={(event) => onCreateDraftChange({ operator: event.target.value })}
               />
-            </div>
-            <div className="grid gap-2">
-              <Label htmlFor="smart-alert-create-threshold">Threshold</Label>
+            </FilterField>
+            <FilterField htmlFor="smart-alert-create-threshold" label="Threshold">
               <Input
                 id="smart-alert-create-threshold"
                 inputMode="decimal"
                 value={createDraft.threshold}
                 onChange={(event) => onCreateDraftChange({ threshold: event.target.value })}
               />
-            </div>
-            <div className="grid gap-2">
-              <Label htmlFor="smart-alert-create-window">Window (min)</Label>
+            </FilterField>
+            <FilterField htmlFor="smart-alert-create-window" label="Window (min)">
               <Input
                 id="smart-alert-create-window"
                 inputMode="numeric"
                 value={createDraft.window_minutes}
                 onChange={(event) => onCreateDraftChange({ window_minutes: event.target.value })}
               />
-            </div>
-            <div className="grid gap-2 md:col-span-2">
-              <Label htmlFor="smart-alert-create-webhook">Webhook URL</Label>
+            </FilterField>
+            <FilterField className="md:col-span-2" htmlFor="smart-alert-create-webhook" label="Webhook URL">
               <Input
                 id="smart-alert-create-webhook"
                 value={createDraft.webhook_url}
                 onChange={(event) => onCreateDraftChange({ webhook_url: event.target.value })}
               />
-            </div>
-            <div className="flex items-center gap-2 md:col-span-2">
+            </FilterField>
+            <div className="flex items-center gap-2 self-end md:col-span-2">
               <Checkbox
                 checked={createDraft.enabled}
                 id="smart-alert-create-enabled"
@@ -202,7 +197,7 @@ export function SmartAlertsRulesDirectory({
               />
               <Label htmlFor="smart-alert-create-enabled">Enabled</Label>
             </div>
-          </div>
+          </DirectoryFilterForm>
           <DialogFooter>
             <PrimaryActionButton
               disabled={!createDraft.name.trim()}

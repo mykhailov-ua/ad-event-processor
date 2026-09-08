@@ -1,9 +1,8 @@
 import { Link } from 'react-router-dom';
 
-import { FILTER_PANEL_NARROW_CLASS } from '@/shell/filter_panel';
+import { FilterPanel } from '@/shell/filter_panel';
 import { PageChrome } from '@/shell/page_chrome';
 import { EmptyState } from '@/shell/empty_state';
-import { cn } from '@/lib/utils';
 import { PageSkeleton } from '@/shell/page_skeleton';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
@@ -15,6 +14,7 @@ import {
   TableCell,
   TableHeader,
   TableRow,
+  directoryTableRevalidatingClass,
 } from '@/shell/directory_table';
 import type { TelegramBot } from '@/api/types';
 import { TelegramNav, telegramPanelError } from '@/domains/telegram/telegram_nav';
@@ -23,6 +23,7 @@ import { displayTimestamp } from '@/lib/display';
 export type TelegramBotsDirectoryProps = {
   bots?: TelegramBot[];
   fetching: boolean;
+  listRevalidating?: boolean;
   error: Error | undefined;
   hasSnapshot: boolean;
   draftCampaignId: string;
@@ -35,6 +36,7 @@ export type TelegramBotsDirectoryProps = {
 export function TelegramBotsDirectory({
   bots,
   fetching,
+  listRevalidating = false,
   error,
   hasSnapshot,
   draftCampaignId,
@@ -49,39 +51,43 @@ export function TelegramBotsDirectory({
 
   if (error && !hasSnapshot) {
     return (
-      <PageChrome title="Telegram bots">
-        <TelegramNav />
+      <PageChrome title="Telegram bots" controlPanel={<TelegramNav />}>
         {telegramPanelError(error, 'Could not load Telegram bots')}
       </PageChrome>
     );
   }
 
   return (
-    <PageChrome title="Telegram bots">
-      <TelegramNav />
-
-      <section className={cn(FILTER_PANEL_NARROW_CLASS, 'gap-6')}>
-        <h2 className="text-base font-semibold">Configure bot</h2>
-        <div className="grid gap-4">
-          <div className="grid gap-2">
-            <Label htmlFor="telegram-campaign-id">Campaign ID</Label>
-            <Input
-              id="telegram-campaign-id"
-              placeholder="UUID"
-              value={draftCampaignId}
-              onChange={(event) => onDraftCampaignIdChange(event.target.value)}
-            />
-          </div>
-          <Button disabled={acting} onClick={onOpenEditor} type="button">
-            Open editor
-          </Button>
+    <PageChrome
+      controlPanel={
+        <div className="grid gap-3">
+          <TelegramNav />
+          <FilterPanel className="w-full max-w-xl gap-4">
+            <h2 className="text-base font-semibold">Configure bot</h2>
+            <div className="grid gap-2">
+              <Label htmlFor="telegram-campaign-id">Campaign ID</Label>
+              <Input
+                id="telegram-campaign-id"
+                placeholder="UUID"
+                value={draftCampaignId}
+                onChange={(event) => onDraftCampaignIdChange(event.target.value)}
+              />
+            </div>
+            <Button disabled={acting} onClick={onOpenEditor} type="button">
+              Open editor
+            </Button>
+          </FilterPanel>
         </div>
-      </section>
-
+      }
+      title="Telegram bots"
+    >
       {(bots ?? []).length === 0 ? (
         <EmptyState title="No bots" description="No Telegram Mini App bots are configured." />
       ) : (
-        <DirectoryTable horizontalScroll>
+        <DirectoryTable
+          className={directoryTableRevalidatingClass(listRevalidating)}
+          horizontalScroll
+        >
           <TableHeader>
             <TableRow>
               <DirectoryTableHead>Bot ID</DirectoryTableHead>

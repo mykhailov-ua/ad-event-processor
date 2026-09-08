@@ -12,7 +12,7 @@ type PathRefChecker interface {
 }
 
 func ValidatePathRefs(ctx context.Context, checker PathRefChecker, paths []PathDTO) error {
-	if err := ValidatePathShape(paths); err != nil {
+	if err := ValidatePaths(paths); err != nil {
 		return err
 	}
 	if checker == nil {

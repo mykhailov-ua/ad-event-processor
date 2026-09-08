@@ -32,6 +32,7 @@ bash "$SCRIPTS/ci/static/escape_heap.sh"
 make test-alloc-gate
 make test-fast
 bash "$SCRIPTS/ci/static/state_shard_nil.sh"
+bash "$SCRIPTS/ci/static/budget_rollback_gate.sh"
 bash "$SCRIPTS/ci/static/cold_path_json.sh"
 bash "$SCRIPTS/ci/static/capi_staging.sh"
 bash "$SCRIPTS/ci/static/migration_maps.sh"

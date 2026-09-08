@@ -7,7 +7,6 @@ import { spawn } from 'node:child_process';
 import { fileURLToPath } from 'node:url';
 
 import { adminApiTarget, prepareDevBuildEnv } from './admin_dev_env.mjs';
-import { respondDevMockApi } from './dev_mock_proxy.mjs';
 
 const ROOT = resolve(dirname(fileURLToPath(import.meta.url)), '..');
 const DIST = join(ROOT, 'dist');
@@ -90,10 +89,6 @@ function proxyApi(req, res, bodyText) {
 
 async function handleApi(req, res) {
   const bodyText = await readRequestBody(req);
-  if (req.headers['x-admin-dev-mock'] === '1') {
-    await respondDevMockApi(req, res, bodyText);
-    return;
-  }
   proxyApi(req, res, bodyText);
 }
 

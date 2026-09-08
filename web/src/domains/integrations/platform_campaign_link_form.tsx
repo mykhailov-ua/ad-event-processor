@@ -1,4 +1,5 @@
 import { ErrorBlock } from '@/shell/error_block';
+import { DirectoryFilterForm, FilterPanel } from '@/shell/filter_panel';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
@@ -92,7 +93,7 @@ export function PlatformCampaignLinkForm({
   const canSyncRun = !disabled && draftCampaignId.trim().length > 0;
 
   return (
-    <section className="ui-filter-panel">
+    <FilterPanel>
       <h2 className="text-base font-semibold">Manage platform campaign links</h2>
       <p className="text-sm text-muted-foreground">
         Upsert, refresh, or remove external platform links for the applied customer. Pause, resume,
@@ -100,7 +101,7 @@ export function PlatformCampaignLinkForm({
         prefill campaign and network fields.
       </p>
 
-      <div className="grid grid-cols-[repeat(auto-fill,minmax(12rem,1fr))] items-end gap-4">
+      <DirectoryFilterForm layout="auto-fill" onSubmit={(event) => event.preventDefault()}>
         <div className="grid gap-2 md:col-span-2">
           <Label htmlFor="platform-campaign-id">Campaign ID</Label>
           <Input
@@ -194,7 +195,7 @@ export function PlatformCampaignLinkForm({
         >
           {settingBudget ? 'Setting...' : 'Set budget'}
         </Button>
-      </div>
+      </DirectoryFilterForm>
 
       {saveError ? <ErrorBlock title="Upsert failed" message={saveError.message} /> : null}
       {deleteError ? <ErrorBlock title="Delete failed" message={deleteError.message} /> : null}
@@ -225,6 +226,6 @@ export function PlatformCampaignLinkForm({
           ) : null}
         </div>
       ) : null}
-    </section>
+    </FilterPanel>
   );
 }

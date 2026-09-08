@@ -15,9 +15,7 @@ alwaysApply: false
 
 Agents ship plausible admin UI that **looks wired** while no Go handler ran, styles drift from the single control template, tables truncate instead of sizing columns, errors vanish, or Playwright greens on stubs. This file is the **frontend honesty** catalog. Layout contracts: `ui.mdc` (where not superseded below). General CI lies: `anti-slop.mdc`. Layer map: `frontend-modular.mdc`.
 
-**Operator mandate (2026-09):** no custom one-off styles; one button height; body copy may wrap; headings and numbers must not wrap; table columns width-to-content without ellipsis; no fake `Promise.resolve` stubs; every fetch path surfaces errors; mocks only on dev tier; **mock entity ids must use server-parity UUID algorithms** (`seed_uuid.ts`), never incremental fake ids.
-
-Canonical mock implementation: `web/src/api/dev_mock/` behind `isAdminDevMode()` in `web/src/api/client.ts`. Synthetic chart fill: `web/src/domains/dashboards/dashboard_series_mock.ts`.
+**Operator mandate (2026-09):** no custom one-off styles; one button height; body copy may wrap; headings and numbers must not wrap; table columns width-to-content without ellipsis; no fake `Promise.resolve` stubs; every fetch path surfaces errors. Optional chart preview only: `web/src/domains/dashboards/dashboard_series_mock.ts` when `?chart_mock=1`.
 
 **Binding:** every agent turn that touches `web/**`, admin CI scripts, or OpenAPI cited by admin UI **must** follow **Agent execution protocol** below before claiming done. Subjective praise, abstract "best practices", and unread-file inference are lie modes (`anti-slop.mdc`).
 
@@ -31,7 +29,7 @@ Agents audit and remediate admin frontend **only** through named catalog IDs in 
 | :--- | :--- | :--- |
 | Quality adjectives | "clean", "nice", "elegant", "modern", "polished", "well-structured" | Catalog ID + file:line + falsify command |
 | Vague practice | "best practices", "industry standard", "should feel smooth", "good UX" | Contract row: R*, EC*, layout rule, overlay class A/B/C |
-| Unfalsified completion | "looks good", "seems wired", "errors handled", "should work" | Tier T0-T2 + proof level M*/L* + pasted command |
+| Unfalsified completion | "looks good", "seems wired", "errors handled", "should work" | Tier T1-T2 + proof level L* + pasted command |
 | Drive-by praise | "the codebase is in good shape" | Omit or list open catalog hits still in tree |
 | Gate fiction | "CI will catch it" without gate name | `bash scripts/ci/admin/ui_slop.sh` or **not run** |
 
@@ -52,7 +50,7 @@ Execute in order; skip a step only when the operator scoped a single file and pr
 ### Required analysis report (before "done")
 
 ```text
-Tier: T0 | T1 | T1+ | T2
+Tier: T1 | T1+ | T2
 Scope: <paths>
 Grep: <command> -> exit <code>; <N> hits (or zero)
 Findings:
@@ -84,7 +82,7 @@ Use `rg -n` from repo root. Prefer scoped path (`web/src/domains/campaigns/`). G
 | `truncate` on heading/number cells | Visual contract | **Typography and wrapping** |
 | `style=\{` in domains/shell/pages | Custom styles ban | |
 | `\bfetch\(` in `web/src/domains` | `ui_slop.sh` raw fetch | Use `web/src/api/*` |
-| `00000000-.*padStart\|devUuid\|buyer-[0-9]` in `dev_mock` | FM6, entity IDs | `seed_uuid.ts` |
+| `00000000-.*padStart\|devUuid\|buyer-[0-9]` in fixtures / e2e | entity IDs | Go `seed_catalog.go` / `customer_label.ts` |
 | `setState` / `useState` inside `onDragOver` / `pointermove` | Directory tables perf | Header-local only |
 | `size="sm"` on `Button` | `ui_slop.sh` | Default control height |
 | `_ = json.Unmarshal` in `*_handlers.go` | EH-SI4, SV2 | Server cold path |
@@ -108,9 +106,9 @@ Extend scan when task touches mutations (grep `writeServiceError`, `parseApiErro
 
 | Prefix | Section | Use when |
 | :--- | :--- | :--- |
-| **T0-T2** | Verification tiers | Every PR/runtime claim |
-| **M1-M3**, **FM1-FM8** | Test honesty / mock unit | `handler.test.ts` claims |
+| **T1-T2** | Verification tiers | Every PR/runtime claim |
 | **L0-L3**, **FE1-FE12** | Test honesty / Playwright | E2E claims |
+| **domains/**/*.test.ts** | Pure unit tests | Formatting, column math -- not API wiring |
 | **EH-F/ST/SI/TH/EN*** | Explicit error handling vs slop | Fetch/mutation/error UI |
 | **ES1-ES7**, **EC1-EC9** | Explicit error handling (required) | Required shape on touch |
 | **SV1-SV6**, **CV1-CV7**, **CV-FM1-CV-FM5** | Mutation validation / form patch mapping | POST/PATCH paths; `build*PatchBody` |
@@ -143,27 +141,24 @@ Answer from `Read`/`rg` evidence. Still no subjective quality judgments. Cite fi
 
 ## Verification tiers (name the tier in every PR claim)
 
-| Tier | How it runs | API source | Mocks / synthetic UI |
+| Tier | How it runs | API source | Synthetic UI |
 | :--- | :--- | :--- | :--- |
-| **T0 dev Vite** | `npm run dev` in `web/` (`:5173`) | Proxy to `:8188` when healthy; else auto `admin_dev` mock | `admin_dev` / `dev_mock` when `isAdminDevMode()`; `?chart_mock=1` for dashboard series only |
-| **T1 ingest-only** | `bash scripts/dev/aed-admin up` (db, redis, control `:8188`, web `:5173`) | **Live** `/api/v1` on control | **Forbidden:** `devMockResponse`, page fixtures, silent chart backfill, fake promises |
+| **T1 ingest-only** | `bash scripts/dev/aed-admin up` (db, redis, control `:8188`, web `:5173`) | **Live** `/api/v1` on control | **Forbidden:** page fixtures, silent chart backfill, fake promises |
 | **T1+ data plane** | T1 + ClickHouse / full `stack.sh full` on operator machine | Live API + seeded PG/CH | Same as T1; seeds via `seed_*.sh`, not browser fixtures |
 | **T2 embedded** | `web/dist` served from control binary | Live API same origin | **Forbidden:** any client-side mock intercept |
+| **Chart preview** | `?chart_mock=1` on buyer dashboard only | Live API for shell; synthetic series in `dashboard_series_mock.ts` | Labeled in UI; not list/report proof |
 
-**Rule:** Claiming handler wiring, OpenAPI parity, or ingest-only readiness from **T0 with `admin_dev` active** is a lie. Falsify on **T1+** with `?admin_dev=0` or `ADMIN_DEV_AUTO_MOCK=0`, `curl -sf :8188/health`, no `AdminDevBanner`, and the same UI path against live API.
-
-`AdminDevBanner` (`web/src/shell/admin_dev_banner.tsx`) must stay visible whenever `isAdminDevMode()` is on.
+**Rule:** Claiming handler wiring or OpenAPI parity requires **T1+** with `curl -sf :8188/health` and live `/api/v1` responses. `npm run dev` on `:5173` proxies to control -- it is not a separate mock tier.
 
 ### T1 sign-off checklist (before claiming ingest-only / handler wired)
 
-Run on operator machine with control `:8188` healthy and mocks off (`?admin_dev=0` or `ADMIN_DEV_AUTO_MOCK=0`):
+Run on operator machine with control `:8188` healthy:
 
-- [ ] `?admin_dev=0` (or env off) -- no `AdminDevBanner`
 - [ ] `curl -sf http://127.0.0.1:8188/health` -- exit 0
-- [ ] Navigate to the route under test (not T0-only deep link with mock intercept)
+- [ ] Navigate to the route under test on live API (not `chart_mock=1` unless chart-only claim)
 - [ ] Wait for table / primary data surface (not heading-only paint)
-- [ ] Compare row ids to `dev_mock` fixture ids -- **different** means live T1 data
-- [ ] Network tab: no `Promise.resolve([])` stub responses; requests hit `/api/v1/...`
+- [ ] Row ids match Go seed / server create -- not trivial sequential placeholders
+- [ ] Network tab: requests hit `/api/v1/...` (502 from dev proxy means control down)
 - [ ] Force or simulate 5xx -- `ErrorBlock` / `role=alert` visible (not silent empty table)
 
 ## Visual and control contract (mandatory remediation)
@@ -181,7 +176,7 @@ Precedence: this section overrides legacy `ui.mdc` rows that allow `truncate`, f
 | BEM class hooks (`admin-*__*`, `campaign-*__*`, `block--modifier`) in TSX or new `app.css` blocks | None -- migrate legacy on touch |
 | Arbitrary Tailwind `h-7` / `h-8` / `h-9` / `h-10` on controls in pages/domains/shell | `ui_slop.sh` already fails these |
 
-**Audit (2026-09):** inline `style={{` still in `campaigns_list_table.tsx`, `dashboard_multi_axis_chart.tsx`, `settings_bento_grid.tsx`, `metric_fill_bar.tsx`, `campaign_spend_cell.tsx`, `progress_bar.tsx`, and related -- remove or replace with shared tokens. Legacy BEM + Tailwind collisions: see **Styling stack** below.
+**Audit (2026-09):** BEM `__` hooks and component blocks are **removed** from `domains/`, `shell/`, and `app.css` (see **Style inventory status**). Inline `style={{` remains only on allowed paths: campaign column probe widths (`campaigns_list_table.tsx` `<col>`), chart/bar data axes (`metric_fill_bar.tsx`, `dashboard_multi_axis_chart.tsx`), and similar **data-driven** layout -- not chrome. Remaining style work: inline audit on touch, not new global CSS blocks.
 
 ### Styling stack (Tailwind only; BEM banned)
 
@@ -193,8 +188,10 @@ Precedence: this section overrides legacy `ui.mdc` rows that allow `truncate`, f
 | :--- | :--- |
 | Tailwind entry | `@tailwind base/components/utilities`, `@layer base` minimal reset |
 | Scrollbar pseudo-elements | `.ui-scrollbar` (`::-webkit-scrollbar*`) |
+| Layout surface tokens (not BEM) | `.ui-filter-panel`, `.ui-surface`, `.ui-surface-raised`, `.ui-code-block`, `.ui-bento-card`, `.ui-shell*` |
+| Data-table pin/selection chrome | `[data-directory-table]` sticky pin z-index and opaque row backgrounds |
 | Print / font face | Rare; prefer `@fontsource` imports in TSX entry |
-| **Forbidden** | Component BEM blocks; descendant selectors targeting `domains/` markup; `@apply` overrides of `components/ui` sizing |
+| **Forbidden** | Component BEM blocks (`block__element`, `block--modifier`); descendant selectors targeting `domains/` markup; `@apply` overrides of `components/ui` sizing |
 
 Cross-ref: `ui.mdc` **Styling stack** (no `globals.css`; no new `*.module.css`).
 
@@ -214,8 +211,8 @@ Cross-ref: `ui.mdc` **Styling stack** (no `globals.css`; no new `*.module.css`).
 Example (filter row matrices in `web/src/shell/filter_panel.tsx`):
 
 ```ts
-const CAMPAIGNS_FILTER_ROW =
-  'grid w-full grid-cols-[repeat(auto-fill,minmax(12rem,1fr))] items-end gap-4';
+// Prefer DirectoryFilterForm layout="auto-fill" | "campaigns" -- do not copy-paste grid strings in domains/.
+const AUTO_FILL_FILTER_GRID = 'grid grid-cols-[repeat(auto-fill,12rem)] items-end gap-x-4 gap-y-4';
 ```
 
 Consumers use the shell API (`DirectoryFilterForm layout="campaigns"`) -- they do **not** copy-paste the string.
@@ -297,40 +294,45 @@ Verify: `rg -n "grid-cols-\\[repeat\\(auto-fill" web/src/domains` should hit imp
 <col style={{ width: `${widthPx}px` }} />
 ```
 
-#### Anti-patterns (still in tree; remove on touch)
+#### Historical anti-patterns (do not reintroduce)
+
+Removed from tree during 2026-09 style remediation (P1-P5). Keep as regression guard -- **never** add these patterns back.
 
 ```tsx
-// A + B: BEM + utilities + primitive fight (campaigns_list_toolbar.tsx, columns_menu.tsx)
+// A + B: BEM + utilities + primitive fight (was campaigns_list_toolbar.tsx)
 <Button className="admin-campaigns-toolbar__outline-btn shrink-0 whitespace-nowrap px-2" />
 
-// C: important override on BEM shell (campaigns_list_toolbar.tsx)
+// C: important override on BEM shell
 <FilterPanel className="admin-campaigns-toolbar__filters !bg-transparent !p-0" />
 
-// C: strip chrome via ! on surface (campaigns_list_table.tsx)
+// C: strip chrome via ! on surface
 <DirectoryTable className="admin-campaigns-table-surface !rounded-none !border-0 !shadow-none" />
 
-// D: Input carries BEM field class; global CSS adds !pl-8 (search_input.tsx + app.css)
+// D: Input carries BEM field class; global CSS adds !pl-8
 <Input className="admin-search-input__field" />
 
-// E: raw button with stacked heights (date_range_picker.tsx admin variant footer)
+// E: stacked heights on raw footer buttons (date range before Button primitive)
 className="inline-flex h-8 ... h-auto min-h-8 ..."
 
-// Legacy BEM-only subtree -- migrate to Tailwind-only; do not extend
+// Legacy BEM-only subtree
 <DialogContent className="campaign-overview-dialog w-[calc(100%-2rem)] max-w-md p-0" />
 ```
 
-#### Legacy `app.css` BEM inventory (remove on touch; do not extend)
+#### Style inventory status (2026-09 remediation P5)
 
-| Block prefix | Example file | Collision risk |
+| Area | Status | Canonical |
 | :--- | :--- | :--- |
-| `admin-campaigns-toolbar__*` | `campaigns_list_toolbar.tsx` | **High** -- paired with `Button` + `!` utilities |
-| `admin-campaigns-filter-*` | `campaigns_list_toolbar.tsx` | **High** -- descendant `input/button` overrides |
-| `admin-campaigns-table-*` | `campaigns_list_table.tsx`, `campaign_list_table_*` | **High** -- mixed with `p-4`, `!border-0` |
-| `campaign-overview-dialog__*` | `campaign_overview_sheet.tsx` | Medium -- mostly BEM-only; dialog adds `p-0` |
-| `campaign-country-select__*` | `campaign_list_country_select.tsx` | **High** -- trigger is raw `<button>` + BEM `!h-auto` |
-| `campaign-date-range-picker__*` | `date_range_picker.tsx` | **High** -- campaigns footer BEM vs admin raw Tailwind buttons |
-| `admin-progress__*` | `progress_bar.tsx` | Medium -- prefer Tailwind shell + inline width only |
-| `admin-metric-card__*`, `admin-empty-state__*` | `metric_card.tsx`, `empty_state.tsx` | Low -- mostly BEM-only until migration |
+| BEM `__` / `--` in TSX | **Removed** | `ui_slop.sh` bans `admin-*`, `__`, `--` in `domains/` / `shell/` / `pages/` |
+| BEM blocks in `app.css` | **Removed** | `ui-*` layout tokens + `[data-directory-table]` pin rules only |
+| `control_size.ts` | **Deleted** | `admin_kit.controlHeight` -> `min-h-7` on primitives |
+| Filter grid copy-paste | **P1 done** | `DirectoryFilterForm` `layout="auto-fill"` / `"campaigns"` |
+| Summary band `truncate` | **P2 done** | `whitespace-nowrap`; `overflow-x-auto` on bands (VL-18) |
+| Band `justify-between` | **P3 done** | `grid-cols-[1fr_auto]` on section headers (VL-08) |
+| Mobile nav sheet | **P4 done** | `AppMobileNavSheet` (`app_sidebar.tsx`); `navigation_toggle.ts`; `ui_slop.sh` VL-13c |
+| `DropdownMenu` list cap | **P4 done** | `dropdown_menu_scroll.ts` `max-h-60`; wheel `stopPropagation` (VL-13b) |
+| Domain `truncate` on headings/KPI | **Mostly done** | Combobox/select option labels only; `ui_slop.sh` heading guard |
+
+**On touch:** do not reintroduce BEM hooks to "match old docs". Use Tailwind on the styled node or a named `*_classes.ts` const.
 
 #### Remediation (when touching a file)
 
@@ -361,7 +363,7 @@ className="inline-flex h-8 ... h-auto min-h-8 ..."
 
 Banned on headings and numeric cells: `truncate`, `line-clamp-*`, `text-overflow: ellipsis`, `max-w-*` used only to force clipping.
 
-**Audit (2026-09):** `truncate` / `line-clamp` in 40+ files under `pages/`, `domains/`, `shell/` including `customers_directory.tsx`, `dashboard_kpi_strip.tsx`, `page_breadcrumbs.tsx`, `copyable_text.tsx`, `customer_combobox.tsx`, `json_dashboard_view.tsx` -- remove; widen columns or horizontal scroll instead.
+**Audit (2026-09):** P2 removed `truncate` from summary/refresh bands and most directory headings. Remaining allowlist: combobox/select option labels (`searchable_filter_select.tsx`, `select.tsx`, `datetime_picker.tsx`). **Fixed-layout directory tables** (campaigns width-probe, landers percent `col` widths) may use `text-ellipsis` only via `campaignListEllipsisTextClass` / `campaignListHeaderLabelClass` in `campaign_list_classes.ts` -- not ad-hoc in domain TSX; never on numeric/KPI cells. `ui_slop.sh` fails `truncate` on `h1`-`h6`.
 
 ### Table columns (width = content)
 
@@ -370,7 +372,17 @@ Banned on headings and numeric cells: `truncate`, `line-clamp-*`, `text-overflow
 | Default | `table-layout: auto`; column widths from content; horizontal scroll in directory wrap when needed |
 | Forbidden | `max-w-0` + `truncate` on `TableCell`; `max-w-md` + `truncate` on data cells; dead gap from stretching one column |
 | Campaigns | Width probe + explicit `col` widths allowed; widths must reflect measured content, not arbitrary caps |
-| Header cells | `whitespace-nowrap`; full label visible |
+| Header cells | `whitespace-nowrap`; full label visible in auto-layout tables |
+| Fixed-layout ellipsis | `table-layout: fixed` + explicit `col` widths only: import `campaignListEllipsisTextClass` / `campaignListHeaderLabelClass` from `campaign_list_classes.ts` (campaigns list, landers list). **Banned:** inline `text-ellipsis` in `domains/**`; ellipsis on money/count/metric cells |
+
+### Fixed-layout directory tables (ellipsis)
+
+| Table | Width source | Ellipsis classes |
+| :--- | :--- | :--- |
+| Campaigns list | `campaign_list_column_widths.ts` probe | `campaignListEllipsisTextClass`, `campaignListHeaderLabelClass` |
+| Landers list | Percent `colgroup` (`landers_list_table.tsx`) | Same named imports -- no duplicate strings in creative domain |
+
+Numeric body cells: `campaignListCellContentNumClass` (`whitespace-nowrap`, no ellipsis). Long URLs/names: ellipsis + `title` for full value on hover/focus.
 
 ## Overlays, scroll surfaces, and control height
 
@@ -382,7 +394,7 @@ Layout chain for page scroll: `ui.mdc` (**Scroll and overflow**). Implementation
 
 | Class | Examples | DOM / position | Scroll owner | Trigger relationship |
 | :--- | :--- | :--- | :--- | :--- |
-| **A. Shell dock** | `AppSidebar`, future mobile nav `Sheet` | In app grid (`app_shell.tsx`); **no** `OverlayRoot` portal | Own `ui-scrollbar overflow-y-auto` region (`app_sidebar.tsx` nav) | Header toggle shows/hides shell; **not** positioned under the toggle like a menu |
+| **A. Shell dock** | `AppSidebar`, `AppMobileNavSheet` | In app grid (`app_shell.tsx`); **no** `OverlayRoot` portal | Own `ui-scrollbar overflow-y-auto` region (`app_sidebar.tsx` nav) | Header toggle shows/hides shell; **not** positioned under the toggle like a menu |
 | **B. Anchor float** | `Select`, `DropdownMenu`, `Popover`, `CustomerCombobox`, country picker, date range | `OverlayRoot` -> `document.body`; `position: fixed` coords from **trigger** `getBoundingClientRect()` | **Inner** `max-h-*` + `ui-scrollbar overflow-y-auto` on list body; wheel must not scroll page behind (`CommandList` `stopPropagation`) | Opens at trigger; **repositions** on ancestor scroll/resize via `subscribeFloatingPosition` |
 | **C. Modal / sheet** | `Dialog`, `CommandDialog`, import `Sheet` | Portal + backdrop; centered or edge sheet | One `flex-1 overflow-y-auto` body; bottom padding so last field is not clipped | Blocks page interaction; not anchored to a field trigger |
 
@@ -396,12 +408,12 @@ Layout chain for page scroll: `ui.mdc` (**Scroll and overflow**). Implementation
 | Trigger ref | `PopoverTrigger` / `DropdownMenuTrigger` / `SelectTrigger` must own `triggerRef` via `Slot` + `mergeRefs`; domain code may add a ref for `resolvePopoverAlign` only -- must not replace context ref |
 | Reposition | `subscribeFloatingPosition(trigger, updatePosition)` on every open float; recomputes `getBoundingClientRect()` on scroll (capture) + `resize` |
 | Detach symptom | Menu stays at fixed viewport Y while trigger scrolls off-screen = **bug** (missing scroll container, broken `triggerRef`, or bypassing primitives) |
-| List scroll | Long lists: `ui-scrollbar max-h-60` (Select inner div), `CommandList`, or domain wrapper (`campaign-columns-menu` grid `max-h-80`) |
+| List scroll | Long lists: `ui-scrollbar max-h-60` (`select.tsx`, `dropdown_menu_scroll.ts`), `CommandList`, or domain wrapper (`campaign_list_columns_menu.tsx` `max-h-72` grid) |
 | Panel scroll | `PopoverContent` `panelScroll`: default `panel`; `p-0` comboboxes -> `inner` (child owns scroll); `none` only when content fits viewport (e.g. compact calendar) |
 | z-index | Float `z-index` 60; shell header/control panel `z-[5]` must stay below floats |
 | Dismiss | `useOverlayDismiss` (Escape, outside click) |
 
-Canonical flows: `select.tsx` (inner scroll div), `popover.tsx` + `command.tsx` (`CommandList`), `campaign_list_country_select.tsx` (custom list + `campaign-country-select__list`).
+Canonical flows: `select.tsx` (inner scroll div), `popover.tsx` + `command.tsx` (`CommandList`), `dropdown-menu.tsx` + `dropdown_menu_scroll.ts`, `campaign_list_country_select.tsx` (`campaign_list_classes.ts` list const).
 
 ### Shell dock (class A) -- required behavior
 
@@ -409,7 +421,7 @@ Canonical flows: `select.tsx` (inner scroll div), `popover.tsx` + `command.tsx` 
 | :--- | :--- |
 | Layout slot | Sidebar is a column in `app_shell.tsx`, not a portal under the header button |
 | Independent scroll | Nav list scrolls inside aside; `main` / `PageLayout` `.admin-page-main` scrolls page content separately |
-| Collapse | `collapsed && hidden` on aside today; mobile overlay nav must use `Sheet` (class C edge) with **own** nav scroll -- not a class-B popover |
+| Collapse | Desktop: `hidden md:flex` aside when expanded; `collapsed` hides aside. Mobile: aside always hidden; `AppMobileNavSheet` (class C left edge) with dock nav scroll -- not a class-B popover |
 | Banned | Portal + `position: fixed` for full page nav; duplicating nav in a `DropdownMenu` attached to sidebar toggle without sheet semantics |
 
 ### Modal / sheet (class C)
@@ -428,7 +440,7 @@ Canonical flows: `select.tsx` (inner scroll div), `popover.tsx` + `command.tsx` 
 | One row | Every interactive control in the same filter row / toolbar / footer: **same** height token -- no mixing `min-h-7` trigger with `h-8` search or `h-10` table header chrome in the same row |
 | Primitives | `Button` default size only in `domains/` / `shell/`; `Input` / `SelectTrigger` without manual `h-*` overrides |
 | Icon-only | Square icon actions in a data row may use `h-7 w-7` when isolated from text controls -- not beside `min-h-7` selects in one filter group |
-| Stale doc | `web/src/lib/control_size.ts` (`h-8`) contradicts `admin_kit` -- do not cite `control_size.ts` until aligned |
+| Banned cite | `control_size.ts` -- **deleted**; never reference dual `h-8` contract |
 
 ### Overlay and height slop (never)
 
@@ -443,26 +455,25 @@ Canonical flows: `select.tsx` (inner scroll div), `popover.tsx` + `command.tsx` 
 | **Hand-rolled position** | `absolute`/`fixed` menu div in `domains/` without `floating_overlay_position` | Class B primitives only |
 | **Radix fiction** | Docs say Radix portal | First-party `OverlayRoot` + `components/ui/*` |
 
-### Repository audit (overlay + height, 2026-09)
+### Repository audit (overlay + height, 2026-09; refreshed P5)
 
 | Area | Path | Verdict |
 | :--- | :--- | :--- |
 | Float reposition wired | `popover.tsx`, `select.tsx`, `dropdown-menu.tsx`, `floating_overlay_position.ts` | **Good** -- `subscribeFloatingPosition` on open |
 | Select list scroll | `select.tsx` inner `max-h-60 ui-scrollbar` | **Good** |
-| Command combobox scroll | `command.tsx` `CommandList` | **Good** |
-| Country picker scroll | `campaign_list_country_select.tsx` + `app.css` `__list` | **Good** |
-| Columns menu scroll | `campaign_list_columns_menu.tsx` `max-h-80` grid | **Good** |
-| DropdownMenu default scroll | `dropdown-menu.tsx` | **Gap** -- no default `max-h`; OK for short action menus; **violates** class B if menu can exceed ~8 items without domain wrapper |
-| Campaigns date range `panelScroll="none"` | `date_range_picker.tsx` | **OK** -- calendar fits; document only |
-| Shell nav scroll | `app_sidebar.tsx` | **Good** (class A) |
-| Mobile nav sheet | `app_shell.tsx` | **Gap** -- sidebar `hidden` when collapsed; no `Sheet` overlay nav |
-| Height token split | `admin_kit.ts` `min-h-7` vs `control_size.ts` `h-8` | **Violation** -- dual contract |
-| Campaigns filter row | `campaigns_list_toolbar.tsx` + `tracker_shell_header.tsx` `h-8` search | **Violation** -- mixed heights in shell chrome vs filters |
-| Multi-select trigger | `multi_select_field.tsx` `h-8` | **Violation** if placed beside `min-h-7` selects |
-| Country option rows | `app.css` `__option` `min-h-9` | **Minor** -- list row taller than trigger (acceptable inside panel) |
-| Raw date footer buttons | `date_range_picker.tsx` `h-8` / `min-h-8` | **Violation** -- raw `<button>` + mixed height vs `Button` default |
+| Command combobox scroll | `command.tsx` `CommandList` + wheel stop | **Good** |
+| DropdownMenu default scroll | `dropdown_menu_scroll.ts`, `dropdown-menu.tsx` | **Good** -- `max-h-60`, `scrollable` default; `ui_slop.sh` gate |
+| DropdownMenuSubContent | `dropdown-menu.tsx` | **Good** -- same scroll body |
+| Country picker scroll | `campaign_list_country_select.tsx` + `campaign_list_classes.ts` | **Good** |
+| Columns menu scroll | `campaign_list_columns_menu.tsx` `max-h-72` grid, `scrollable={false}` | **Good** |
+| Campaigns date range `panelScroll="none"` | `date_range_picker.tsx` | **OK** -- calendar fits; `Button` footer |
+| Shell nav scroll | `app_sidebar.tsx` `AppSidebarNav` | **Good** (class A) |
+| Mobile nav sheet | `app_shell.tsx` + `AppMobileNavSheet` | **Good** -- `overflow-hidden` sheet + nav scroll; `navigation_toggle.ts` |
+| Control height contract | `admin_kit.ts` | **Good** -- single `min-h-7`; `control_size.ts` removed |
+| Shell header search | `tracker_shell_header.tsx` | **Good** -- `min-h-7` Input / outline Button |
+| Multi-select trigger | `multi_select_field.tsx` | **Good** -- default primitive height |
 | Row actions icon | `campaign_list_table_row_menu.tsx` `h-7 w-7` | **OK** in table row context |
-| Stale Radix in rules | `ui.mdc` dialog/popover rows | **Doc drift** -- update to first-party primitives |
+| Stale Radix in rules | `ui.mdc` dialog/popover rows | **Doc drift** -- update to first-party primitives when touching `ui.mdc` |
 
 ## Layout contract (Flex, Grid, semantic tables)
 
@@ -625,30 +636,30 @@ DevTools (operator or agent with screenshot): compare **computed** `display`, `h
 
 | Operator symptom (RU/EN) | VL-ID(s) | First check |
 | :--- | :--- | :--- |
-| Кнопки/поля в фильтре на разной высоте | **VL-11**, **VL-12**, **D** | `rg 'h-[789]|min-h-|admin-campaigns-filter'` in toolbar |
+| Кнопки/поля в фильтре на разной высоте | **VL-11**, **VL-12** | `rg 'h-[789]|min-h-'` in toolbar; default primitives only |
 | Apply / Prev-Next не в той ячейке / уехали вправо | **VL-09**, **VL-14** | `filter_panel.tsx` DOM; `ml-auto`, wrapped Apply |
 | Тулбар при сужении окна "ломается" / непредсказуемый перенос | **VL-08**, **VL-07** | `justify-between` with 3+ clusters; large `gap` on mixed parent |
 | Дропдаун остался на экране, триггер уехал | **VL-13** | `triggerRef`, `subscribeFloatingPosition` |
-| Список скроллится под открытым меню | **VL-13b** | `CommandList` `onWheel`, inner `max-h-*` |
+| Список скроллится под открытым меню | **VL-13b** | `dropdown_menu_scroll.ts`, `CommandList` `onWheel`, inner `max-h-*` |
 | Низ таблицы / формы обрезан | **VL-10** | `min-h-0` chain from `app_shell.tsx` to scroll region |
 | Колонки таблицы скачут при resize/drag | **VL-17**, **VL-19** | `setState` on `dragover`; `width: 100%` on table + probe |
 | Пустой зазор между колонками campaigns | **VL-19** | `campaign_list_column_widths.ts`, saved widths |
 | Двойная рамка / лишний отступ | **VL-15** | nested `border`/`p-*` on `PageLayout` + inner card |
 | Заголовок/число обрезано многоточием, соседние колонки смещены | **VL-18** | `truncate` on `th`/`td`/metrics |
 | Элементы прыгают при загрузке | **VL-16** | `badge={loading ? null` banned; `LoadingCountBadge` |
-| Стили "то работают, то нет" после правки TSX | **VL-01**..**VL-06** | BEM + Tailwind on same node; `app.css` `@apply !` |
+| Стили "то работают, то нет" после правки TSX | **VL-01**..**VL-06** | Reintroduced BEM + Tailwind on same node; `app.css` `@apply !` |
 
 ### Root cause catalog (**VL-***)
 
 #### A. Style stack fights (extends collision **A-J**)
 
-| ID | Mechanism | Symptom | Example in tree | Fix |
+| ID | Mechanism | Symptom | Example (historical) | Fix |
 | :--- | :--- | :--- | :--- | :--- |
-| **VL-01** | Same-node BEM + Tailwind layout (**A**) | `gap`/`flex` order depends on CSS load order | `admin-campaigns-list-footer flex flex-wrap gap-2` | Utilities-only wrapper or migrate BEM |
-| **VL-02** | `Button` + BEM + `@apply !h-auto` (**B**) | Toolbar buttons taller/shorter than `Select` | `admin-campaigns-toolbar__outline-btn` on `Button` | Drop BEM; default `Button` |
+| **VL-01** | Same-node BEM + Tailwind layout (**A**) | `gap`/`flex` order depends on CSS load order | `admin-campaigns-list-footer flex flex-wrap gap-2` | Utilities-only wrapper; **no BEM** |
+| **VL-02** | `Button` + BEM + `@apply !h-auto` (**B**) | Toolbar buttons taller/shorter than `Select` | `admin-campaigns-toolbar__outline-btn` on `Button` | Default `Button` only |
 | **VL-03** | `!bg-transparent !p-0` on BEM shell (**C**) | Filter panel padding disappears; fields misalign | `FilterPanel className="admin-campaigns-toolbar__filters !p-0"` | Fix `FilterPanel` defaults |
 | **VL-04** | Global descendant `input/button` restyle (**D**) | All fields in row forced height; combobox drift | `app.css` `.admin-campaigns-filter-field :is(input, button)` | Style primitives via `className` |
-| **VL-05** | Stacked `h-8` + `h-auto min-h-8` (**E**) | Footer buttons inconsistent height | `date_range_picker.tsx` raw `<button>` | One `admin_kit.controlHeight` |
+| **VL-05** | Stacked `h-8` + `h-auto min-h-8` (**E**) | Footer buttons inconsistent height | Raw `<button>` height stacks | One `admin_kit.controlHeight` on `Button` |
 | **VL-06** | `flex` + `grid` on one node (**F**) | Random used `display`; children reorder | Was `metric_fill_bar.tsx` (fixed) | Single display owner |
 
 #### B. Spacing and placement (macro layout)
@@ -665,16 +676,16 @@ DevTools (operator or agent with screenshot): compare **computed** `display`, `h
 | ID | Mechanism | Symptom | Example | Fix |
 | :--- | :--- | :--- | :--- | :--- |
 | **VL-10** | Missing `min-h-0` / `minmax(0,1fr)` above scroll | Content clipped; footer overlaps table | `overflow-hidden` parent without `min-h-0` child | Chain: `app_shell` -> `PageLayout` -> `main.ui-scrollbar` |
-| **VL-12** | Dual height contracts | Search `h-8` beside filter `min-h-7` | `tracker_shell_header` vs `admin_kit.ts` vs `control_size.ts` | Single `admin_kit.controlHeight`; align `control_size.ts` |
-| **VL-11** | Mixed primitive heights in one row | Baseline jump between Select/Input/Button | `multi_select_field` `h-8` beside `min-h-7` selects | Default primitives only in filter row |
+| **VL-12** | Dual height contracts | Search `h-8` beside filter `min-h-7` | Manual `h-*` on primitives in one row | Single `admin_kit.controlHeight`; default primitives |
+| **VL-11** | Mixed primitive heights in one row | Baseline jump between Select/Input/Button | Manual `h-8` beside default `Button` | Default primitives only in filter row |
 
 #### D. Overlays and floating UI
 
 | ID | Mechanism | Symptom | Example | Fix |
 | :--- | :--- | :--- | :--- | :--- |
 | **VL-13** | Class **B** float without reposition | Menu fixed while trigger scrolls away | Broken `triggerRef` / no `subscribeFloatingPosition` | `popover.tsx` / `select.tsx` pattern |
-| **VL-13b** | Wheel propagates to page scroll | Background moves under open list | Missing `CommandList` wheel stop | Inner `overflow-y-auto` + `max-h-*` |
-| **VL-13c** | Class **A** nav in class **B** `DropdownMenu` | Nav position wrong vs shell | Full nav in header dropdown | `AppSidebar` or mobile `Sheet` |
+| **VL-13b** | Wheel propagates to page scroll | Background moves under open list | Missing wheel stop on menu list | `dropdown_menu_scroll.ts` + `CommandList`; inner `max-h-*` |
+| **VL-13c** | Class **A** nav in class **B** `DropdownMenu` | Nav position wrong vs shell | Full nav in header dropdown | `AppSidebar` + `AppMobileNavSheet` (`ui_slop.sh`) |
 
 #### E. Tables and data directories
 
@@ -730,15 +741,15 @@ Assign **ownership A-J** for state; **VL-*** for pure CSS/DOM.
 | `setState` / `useState` in `onDragOver` / `onPointerMove` | **VL-17** |
 | `style=\{\{` static layout (non-width%) in domains | **VL-01** + custom styles ban |
 
-### Repository audit pointers (2026-09)
+### Repository audit pointers (2026-09; refreshed P5)
 
 | Hotspot | Path | Typical VL-IDs |
 | :--- | :--- | :--- |
-| Campaigns toolbar BEM | `campaigns_list_toolbar.tsx`, `app.css` `admin-campaigns-toolbar__*` | **VL-01**, **VL-02**, **VL-03**, **VL-04** |
-| Shell search vs filters | `tracker_shell_header.tsx`, `search_input.tsx` | **VL-11**, **VL-12** |
-| Filter matrix reference | `filter_panel.tsx`, `team_overview.tsx` | OK pattern for **VL-14** |
+| Campaigns toolbar / filters | `campaigns_list_toolbar.tsx`, `filter_panel.tsx` | **VL-08**, **VL-09**, **VL-11** (BEM removed) |
+| Shell header chrome | `tracker_shell_header.tsx`, `app_shell.tsx` | **VL-10**, **VL-13c** |
+| Filter matrix reference | `filter_panel.tsx`, `DirectoryFilterForm layout="auto-fill"` | OK pattern for **VL-14** |
 | Page scroll chain | `app_shell.tsx`, `page_layout.tsx` | **VL-10** reference |
-| Float primitives | `popover.tsx`, `floating_overlay_position.ts` | **VL-13** reference |
+| Float primitives | `popover.tsx`, `dropdown_menu_scroll.ts`, `floating_overlay_position.ts` | **VL-13**, **VL-13b** reference |
 
 ## State ownership (single writer; semantic race)
 
@@ -1313,7 +1324,7 @@ Pure `build*PatchBody` / `*ToFormState` mappers in `web/src/domains/**` (no Reac
 
 **Repository audit (2026-09):** `campaign_editor_form.ts` -- fixed **CV-FM1**-**CV-FM4**; `traffic_template_id` empty string remains valid server clear (not UUID).
 
-**T0 `dev_mock`:** same status + envelope as Go on bad input -- see **Explicit error handling vs error slop** (T0 mock parity, EH-F2).
+Bad-input parity: Go handler `httptest` negative rows + live `curl` on T1 -- see **Explicit error handling vs error slop** (**EH-F2**).
 
 ### Validation ownership (no duplicate fiction)
 
@@ -1342,7 +1353,7 @@ Combine **UX scenario** script table with validation columns:
 | :--- | :--- |
 | "Validated before DB" | Trace handler: no SQL before `Validate*` / business checks; holdout test fails if check removed |
 | "Errors surfaced in UI" | DevTools: force `400` -> `ErrorBlock` or modal error; no empty table |
-| "Mock parity" | `handler.test.ts` negative row matches Go status for same bad payload |
+| "OpenAPI parity shipped" | Live `curl` / Playwright **L1** `waitForResponse` on `/api/v1/...` |
 | "E2E error path" | **Test honesty** L3 -- not `or(unavailable)` |
 
 Reference: `campaign_wizard_panel.tsx` (client `setActionError` + `ErrorBlock`), `use_campaigns_page.ts` (`createDisabled` + `setActionError`), `mapServiceError` / `writeServiceError`, `pkg/coldpath/http.go`.
@@ -1359,7 +1370,7 @@ This section is the **error honesty** catalog. Validation before DB: **Mutation 
 | :--- | :--- |
 | **Explicit (server)** | Non-2xx uses `httpresponse.Error`; status matches `mapServiceError`; 5xx logged with `slog.Error`; every handler path writes a response |
 | **Explicit (client)** | `apiFetch` failure becomes `ApiError` -> `ErrorBlock` / `StubBanner` / modal `actionError`; no fake empty data |
-| **Stub (allowed)** | `StubBanner` / `AdminDevBanner` / `chart_mock=1` -- **labeled** degraded mode; operator knows data is not live |
+| **Stub (allowed)** | `StubBanner` / `chart_mock=1` -- **labeled** degraded mode; operator knows data is not live |
 | **Stub (slop)** | Empty table, `Promise.resolve([])`, or `genericOk()` **without** banner -- looks like real API success |
 | **Fake status** | HTTP 2xx while operation failed, validation rejected, or route unimplemented |
 | **Silent swallow** | `catch {}`, `_ = err`, `data ?? []` masking `error` |
@@ -1399,7 +1410,7 @@ w.WriteHeader(http.StatusOK)
 | **EC4** | Mutation: `catch` -> `setActionError` / `ErrorBlock`; **modal stays open** on 4xx | `campaigns_directory_overlays.tsx` |
 | **EC5** | Success toast / close / navigate **only after** `await` 2xx | **User action coalescing** CV1 |
 | **EC6** | `501` / license / forbidden: `StubBanner` with **server `message`** -- explicit stub | `campaign_wizard_panel.tsx` `panelError` |
-| **EC7** | `userErrorMessage(err)` surfaces `ApiError.message`; technical details via `shouldShowAdminErrorDetails()` only in T0 dev | `admin_error.ts` |
+| **EC7** | `userErrorMessage(err)` surfaces `ApiError.message`; technical details via `shouldShowAdminErrorDetails()` in local dev only | `admin_error.ts` |
 | **EC8** | `isAbortError` -> no error UI (cancelled fetch is not a failure) | `client.ts` |
 | **EC9** | Missing prerequisite (no `customer_id`): disable or scope prompt -- not fake `[]` fetch | **Fake promises** |
 
@@ -1429,7 +1440,7 @@ toast.success('Campaign created');
 | ID | Pattern | Why slop | Explicit alternative |
 | :--- | :--- | :--- | :--- |
 | **EH-F1** | `200 OK` on validation failure | Client assumes success | `400 BAD_REQUEST` + envelope |
-| **EH-F2** | `genericOk()` / `{ status: 'ok' }` on unimplemented mutation | Fake save (`dev_mock/handler.ts`) | `404`/`501` or real handler + M2 round-trip |
+| **EH-F2** | `genericOk()` / `{ status: 'ok' }` on unimplemented mutation | Fake save in client or handler | `404`/`501` or real handler + live round-trip |
 | **EH-F3** | `200` + empty list to avoid error UI | Hides `500` | Truthful status + `ErrorBlock` |
 | **EH-F4** | `500` for known validation (`validationError`) | Wrong semantics | `400` via `mapServiceError` |
 | **EH-F5** | `2xx` after TX rollback / partial write | Data lie | Rollback + `409`/`500` |
@@ -1440,7 +1451,7 @@ toast.success('Campaign created');
 | :--- | :--- | :--- | :--- |
 | **EH-ST1** | `Promise.resolve([])` / `{ items: [], total: 0 }` on guard fail | Fake empty API | `undefined` + scope UI / `EmptyState` |
 | **EH-ST2** | `data ?? []` when fetch errored or shape wrong | Masks `TypeError` / error | `Array.isArray` in `*_api.ts`; show `ErrorBlock` |
-| **EH-ST3** | T0 chart/dashboard fill on T1 without `chart_mock` / banner | Silent KPI fiction | Empty charts or labeled mock |
+| **EH-ST3** | Chart/dashboard synthetic fill on T1 without `chart_mock=1` | Silent KPI fiction | Empty charts or labeled `chart_mock` preview |
 | **EH-ST4** | `501` route renders blank main | Operator thinks "no data" | `StubBanner` with server message |
 | **EH-ST5** | `EmptyState` when `error && !hasSnapshot` | Confuses error with zero rows | `ErrorBlock` |
 
@@ -1463,7 +1474,7 @@ toast.success('Campaign created');
 | **EH-TH2** | Playwright `table.or(empty).or(stub)` | Greens on failure | **Test honesty** L3 |
 | **EH-TH3** | `AppErrorBoundary` as only fetch error path | Render throw != API fail | EC2 on every route |
 | **EH-TH4** | Button click shows "Saved" with no network | UX theater | `waitForResponse` L2 |
-| **EH-TH5** | `handler.test.ts` asserts `200` only on error paths | Fake mock proof | **M3** negative + body |
+| **EH-TH5** | Unit test asserts `200` only on error paths | Status-only theater | Negative row + `error.code` body |
 
 #### Wrong envelope (**EH-EN**)
 
@@ -1482,18 +1493,18 @@ toast.success('Campaign created');
 | Feature not in license | `403`/`501` + `StubBanner` | Demo rows without banner |
 | Network / timeout | `ApiError` / `TIMEOUT` + `ErrorBlock` | Stuck loading or fake `[]` |
 | Stale list + refresh fails | Rows remain + error toast/banner | Clear table |
-| T0 dev mock active | `AdminDevBanner` visible | Mock data presented as production |
+| Chart preview active | `?chart_mock=1` without labeled preview | Synthetic KPIs presented as live API |
 | User aborts fetch | No error UI (`isAbortError`) | Red error for cancel |
 
-### T0 `dev_mock` error parity
+### Error parity (live API and chart preview)
 
-Mock is **not** exempt from error honesty:
+There is no in-browser mock intercept. Bad-input parity is proven on **Go handlers** (`go test ./internal/controlplane/...`) and **L3** Playwright where applicable.
 
 | Explicit | Slop |
 | :--- | :--- |
-| `json(400, { error: { code: 'BAD_REQUEST', message: '...' } })` matching Go | `genericOk()` on PATCH/POST |
-| `handler.test.ts` **M3** negative row | Happy-path-only mock tests |
-| Unknown route -> `undefined` (no intercept) | Catch-all `200` for every POST |
+| `404`/`400` + `{ error: { code, message } }` from live API | `genericOk()` on PATCH/POST in domain code |
+| Unknown route -> real 404 from control | Catch-all fake `200` in client |
+| `chart_mock=1` labeled in dashboard copy | Silent synthetic KPIs on T1 without query flag |
 
 ### Agent PR phrases (error lie modes)
 
@@ -1502,7 +1513,7 @@ Mock is **not** exempt from error honesty:
 | "Errors handled" | Grep `catch` in touched files -- every path reaches EC2/EC4/EC6 |
 | "Graceful degradation" | Often **EH-ST1** -- require `StubBanner` or `ErrorBlock` |
 | "Fails closed" | Force 4xx/5xx in Network -- operator must see message, not empty grid |
-| "Mock wired" | POST bad payload -> non-2xx in mock **and** Go |
+| "Mock wired" | Force 4xx/5xx on live API -- operator must see message |
 | "E2E covers errors" | **L3** spec with `role=alert` / `ErrorBlock`, not `or(stub)` |
 
 ### Verification
@@ -1511,7 +1522,6 @@ Mock is **not** exempt from error honesty:
 | :--- | :--- |
 | Server | `go test ./internal/controlplane/ -short -run TestMapServiceError`; handler tests with 4xx rows |
 | Client | DevTools: throttle + 500 -> `ErrorBlock`; mutation 400 -> modal error text |
-| Mock | `handler.test.ts` M3 negative; no new `genericOk()` on mutations without waiver |
 | Static | `bash scripts/ci/static/anti_slop.sh` (`_ = json.Unmarshal` in handlers) |
 
 ## Directory tables (markup, lifecycle, performance)
@@ -1522,7 +1532,7 @@ Applies to all admin lists: `DirectoryTable` / `OpsTable`, campaigns directory, 
 
 | Layer | Markup | Role |
 | :--- | :--- | :--- |
-| Scroll shell | `.admin-campaigns-table-surface` or `DirectoryTable` wrap | `overflow-x-auto`; sticky `thead` only in **scrollable** campaigns-style wrap |
+| Scroll shell | `DirectoryTable` wrap or campaigns table surface const | `overflow-x-auto`; sticky `thead` in scrollable campaigns wrap |
 | Column widths | `<colgroup><col /></colgroup>` | One `col` per logical column; width from probe or user commit |
 | Header | `<thead><tr><th>` per column | Sort, drag grip, resize separator -- **header-only** interaction state |
 | Body | `<tbody>` + one `<tr>` per server row | `columns.map(columnId => <td key={columnId}>)` -- cell order follows prefs, not row data |
@@ -1537,7 +1547,7 @@ Applies to all admin lists: `DirectoryTable` / `OpsTable`, campaigns directory, 
 | Variant | Wrap | Table width | Header |
 | :--- | :--- | :--- | :--- |
 | **Dense directory** (campaigns, wide metrics) | Scrollable; `flex: 1; min-height: 0` | `width: auto` (sum of columns) | Sticky inside wrap |
-| **Ops / small directory** | `admin-table-wrap--static`; clip radius | `width: 100%` | Not sticky |
+| **Ops / small directory** | Static wrap; clip radius | `width: 100%` | Not sticky |
 
 ### Good patterns (required for new / touched tables)
 
@@ -1613,7 +1623,6 @@ Targets for campaigns-style directory tables (~35 columns, ~100 rows). Falsify i
 | Column drag highlight | < 20 ms per `dragover` event | Performance panel (main thread) |
 | Column resize move | < 16 ms per `pointermove` (60 fps) | Same |
 | Table first paint (100 rows) | < 50 ms | Lighthouse or Performance trace |
-| T0 `dev_mock` handler init | < 500 ms (before `AdminDevBanner` fade) | `performance.now()` in dev |
 
 Violations usually mean full-table React reconcile or `table-layout: fixed` reflow on every move -- see anti-patterns above.
 
@@ -1635,7 +1644,7 @@ Reference files: `campaign_list_columns.ts` (`moveDataColumn`, `visibleCampaignL
 | :--- | :--- | :--- |
 | `if (!customerId) return Promise.resolve([])` | **Lie** -- UI shows empty table as if API returned `[]` | `return Promise.resolve(undefined)`; `hasSnapshot={data != null}`; show scope prompt / `EmptyState` |
 | `return Promise.resolve({ items: [], total: 0 })` when guard fails | **Lie** | `undefined` + no snapshot |
-| `return Promise.resolve(SEED_ROWS)` with non-empty array | **Lie** | Real `*_api.ts` or T0 `dev_mock` only |
+| `return Promise.resolve(SEED_ROWS)` with non-empty array | **Lie** | Real `*_api.ts` against live control |
 | `data ?? []` when `data` can be wrong-shaped object | **Lie** | Normalize in `*_api.ts` or fix mock; `Array.isArray` guard |
 
 `Promise.resolve(undefined)` when a prerequisite is missing (no id, fetch disabled) is **OK**.
@@ -1663,34 +1672,30 @@ Banned: silent `catch` to empty; rendering children without checking `error` whe
 | :--- | :--- | :--- | :--- |
 | **Fixture page** | "List loads from API" | `domains/` / `pages/` renders hardcoded rows without `*_api.ts` | Grep data source |
 | **Resolved fake fetch** | "Hook fetches backend" | `Promise.resolve([])` or seed array on guard failure | See fake promises table |
-| **Envelope vs array** | "Mock matches API" | `{ items: [] }` vs bare `[]` | OpenAPI + `handler.test.ts` |
+| **Envelope vs array** | "API matches OpenAPI" | `{ items: [] }` vs bare `[]` | OpenAPI + live `curl` / L1 Playwright |
 | **Catch-all 200** | "Empty state works" | Wrong envelope; `.map` crash | `emptyArray()` vs `emptyList()` |
 | **Fake status** | "Save works" | `genericOk()` on mutations | Status + round-trip |
-| **Mutation theater** | "Created in mock" | POST 200 but GET unchanged | POST then GET in `handler.test.ts` |
-| **T0 proof for T1** | "Ingest-only verified" | `npm run dev` + mock banner only | T1+, `admin_dev=0`, `curl :8188/health` |
-| **Silent chart KPIs** | "Dashboard shows API metrics" | `isLocalAdminDev()` fills charts without `chart_mock=1` | T1 empty API -> empty charts |
-| **Demo rows as prod** | "Table populated" | Round KPIs without `StubBanner` / dev banner | Server seed only on T1+ |
-| **Incremental mock ID** | `00000000-cust-...-000001`, `user_id: "buyer-1"` in `dev_mock` | Looks like API; fails T1 parity and operator trust | `seedDeterministicUuid` / `newRandomUuid`; `frontend-slop.mdc` **Entity IDs** |
+| **Mutation theater** | "Created" | POST 2xx but GET unchanged | POST then GET on live API |
+| **Vite-only proof for T1** | "Ingest-only verified" | `npm run dev` without `:8188` healthy | T1+, `curl :8188/health` |
+| **Silent chart KPIs** | "Dashboard shows API metrics" | Synthetic series without `chart_mock=1` | T1 empty API -> empty charts or labeled preview |
+| **Demo rows as prod** | "Table populated" | Round KPIs without `StubBanner` | Server seed only on T1+ |
+| **Incremental fixture ID** | `00000000-cust-...-000001`, `user_id: "buyer-1"` in e2e/fixtures | Fails seed parity | `seedDeterministicUuid` / `newRandomUuid`; **Entity IDs** |
 | **Unrun UI gate** | "admin_web green" | No output | Paste command + exit code |
 
-### Entity IDs (UUID contract; mocks included)
+### Entity IDs (UUID contract)
 
-**Operator mandate (2026-09):** even T0 `dev_mock` must use the **same id algorithms as the server**. Incremental counters (`000...001`, `buyer-1`, `padStart(12,'0')`) are slop in fixtures, handlers, and tests -- not "OK because dev only".
-
-Wire `id` / `*_id` fields are **RFC 4122 UUID strings** (v4 runtime, v5 deterministic seed). A number padded into UUID shape is **not** a UUID. `display_id` is a separate eight-digit hash label -- never substitute for `id`.
+**Operator mandate (2026-09):** wire `id` / `*_id` fields use **RFC 4122 UUID strings** (v4 runtime, v5 deterministic seed). Incremental counters (`000...001`, `buyer-1`, `padStart(12,'0')`) are slop in fixtures, handlers, and tests.
 
 | Surface | Algorithm | Canonical implementation |
 | :--- | :--- | :--- |
 | Production create | UUID v7 (preferred) or v4 | Go `uuid.NewV7()` / `uuid.New()` |
 | DB seed row `n` (deterministic) | UUID v5 SHA-1 over namespace + `"kind:n"` | Go `seedDeterministicUUID` in `cmd/admin/seed_catalog.go` |
-| T0 fixture row `n` | **Same** v5 as DB seed | TS `seedDeterministicUuid(kind, n)` in `web/src/api/dev_mock/seed_uuid.ts` |
-| T0 mock runtime create (wizard, POST) | UUID v4 random | TS `newRandomUuid()` (`crypto.randomUUID`) |
-| Campaign `display_id` | Polynomial hash of UUID string | Go `CampaignDisplayID`; TS `devDisplayId` in `fixtures.ts` |
+| E2E / fixture row `n` | Same v5 as DB seed when applicable | TS helpers aligned with Go seed tests |
+| Runtime create in UI | UUID from server response | Client `newRandomUuid()` only for optimistic ids before 2xx if ever needed |
+| Campaign `display_id` | Polynomial hash of UUID string | Go `CampaignDisplayID` |
 | Ops / template slugs | Short string ids (`postgres`, `tpl-search`) | **Only** non-entity config keys -- never `customer_id` / `campaign_id` / `user_id` |
 
-**Entity kind strings** (must match Go seed): `customer`, `brand`, `creative`, `campaign`, `user` (mock-only users), `deployment`, `license`. Do not invent parallel kind tokens (`cust`, `camp`) in uuid builders.
-
-**Banned everywhere** (production, seed SQL, `dev_mock`, Playwright fixtures):
+**Detection:** `isTrivialSequentialUuid` / `isPlaceholderSeedUuid` (`customer_label.ts`); Go `TestSeedCatalog_deterministicUUIDsAreRealistic`.
 
 | Pattern | Example | Why |
 | :--- | :--- | :--- |
@@ -1699,36 +1704,26 @@ Wire `id` / `*_id` fields are **RFC 4122 UUID strings** (v4 runtime, v5 determin
 | `padStart` / `LPAD` uuid builder | `suffix.padStart(12, '0')` | Trivial increment |
 | Slug as wire user id | `user_id: "buyer-1"`, `"user-1"` | OpenAPI UUID field |
 | Integer as id | `id: 1`, `campaign_id: "42"` | Schema mismatch |
-| Reused static id per POST | wizard `devUuid('camp')` every commit | Must be `newRandomUuid()` |
+| Reused static id per POST | Same id on every wizard commit | Must use server response `id` after 2xx |
 
-**Required when adding mock entities:**
+**Required when adding fixtures or seeds:**
 
-1. Stable catalog rows: `seedDeterministicUuid('<kind>', seq)` -- add `seed_uuid.test.ts` vector if new kind.
-2. Handler mutations: `newRandomUuid()`; persist in mock store; subsequent GET returns same id.
-3. Foreign keys: reference ids from `DEV_MOCK_*` fixtures -- not ad-hoc strings.
-4. `handler.test.ts`: assert real fixture ids, not `buyer-1`.
+1. Stable catalog rows: align with Go `seedDeterministicUUID` in `cmd/admin/seed_catalog.go`.
+2. E2E creates: use server response UUID after POST -- not ad-hoc slug ids.
+3. Foreign keys in fixtures: reference seeded rows -- not `buyer-1` style slugs.
 
-**Detection:** `isTrivialSequentialUuid` / `isPlaceholderSeedUuid` (`customer_label.ts`); `bash scripts/ci/admin/ui_slop.sh` (dev_mock generators); Go `TestSeedCatalog_deterministicUUIDsAreRealistic`.
+## Test honesty taxonomy (Playwright E2E + domain unit)
 
-**Audit (2026-09):** Go seed on SHA-1 v5. `dev_mock` migrated off `devUuid()`. `handler.test.ts` owner/consent use `DEV_MOCK_USERS` ids.
+**Runtime lies** (fake fetch, wrong wire shape) live in **Mock and API lie modes** above. This section defines **test lies**: green tests that do not prove what agents claim in PRs.
 
-### Session evidence (2026-09-04)
-
-`TypeError: e.map is not a function` on `/landers`, `/offers` in T0: `emptyList()` returned envelope; pages used `data ?? []`. Fix wire shape in `dev_mock`, not per-page `.map` guards.
-
-## Test honesty taxonomy (mock unit + Playwright E2E)
-
-**Runtime lies** (fake fetch, wrong mock wire) live in **Mock and API lie modes** above. This section defines **test lies**: green tests that do not prove what agents claim in PRs.
-
-**Rule:** name **test type**, **tier** (T0-T2 from **Verification tiers**), and **proof level** (`M*`, `L*`) in every PR test claim. Citing a green test without level is a lie.
+**Rule:** name **test type**, **tier** (T1-T2 from **Verification tiers**), and **proof level** (`L*`) in every PR test claim. Citing a green test without level is a lie.
 
 ### What each test type can prove
 
 | Test type | Tier | Proves | Never proves |
 | :--- | :--- | :--- | :--- |
-| `handler.test.ts` (`resolveDevMockRequest`) | **T0** | `dev_mock` URL -> status + JSON shape; in-memory POST -> GET | Go handler, SQL, Redis, OpenAPI on server |
-| `domains/**/*.test.ts` (pure) | T0 | Formatting, column math, query string parse | API wiring, mock wire |
-| `npm run dev` + `admin_dev` manual | T0 | UX with fixture data | T1 ingest-only |
+| `domains/**/*.test.ts` (pure) | -- | Formatting, column math, query string parse | API wiring, Go handler |
+| `npm run dev` manual smoke | T1 | UX against live proxy to `:8188` | Handler unit coverage |
 | Playwright @ `:8188` **L0-L1s** | T1/T2 stack | Route shell, login, heading, soft table/empty | Handler correctness, mutation persistence |
 | Playwright **L1+** (`waitForResponse`) | T1/T2 | Live `/api/v1` read contract | Go unit coverage, CH rows |
 | Playwright **L2+** | T1/T2 | Mutation HTTP round-trip visible in UI | Idempotency under retry, outbox |
@@ -1738,59 +1733,17 @@ Wire `id` / `*_id` fields are **RFC 4122 UUID strings** (v4 runtime, v5 determin
 
 | Claim | Invalid sole evidence |
 | :--- | :--- |
-| "Go handler wired" | `handler.test.ts`, Playwright smoke, `smoke_matrix.spec.js` |
-| "OpenAPI parity shipped" | `handler.test.ts` only (mock side only) |
-| "E2E verified ingest-only" | Playwright without `admin_dev=0` / no `AdminDevBanner` check |
+| "Go handler wired" | Playwright smoke, `smoke_matrix.spec.js`, pure domain unit tests |
+| "OpenAPI parity shipped" | Client-only tests without live `/api/v1` |
+| "E2E verified ingest-only" | Playwright without `curl :8188/health` and **L1+** network assert |
 | "Mutation works" | `*_write.spec.js` that only opens a form |
 | "List loads from API" | `table.or(empty).or(stub)` |
 
 ---
 
-### Mock unit tests (`web/src/api/dev_mock/handler.test.ts`)
-
-**Scope:** T0 mock transport only. Entry: `resolveDevMockRequest(path, method?, body?)` + `resetDevMockStore()` when tests mutate store.
-
-#### Real mock test (minimum bar)
-
-| Level | Required | Purpose |
-| :--- | :--- | :--- |
-| **M1 read** | `resetDevMockStore()` if needed; assert `status`; assert **typed body fields** (counts, keys, envelope vs bare array) | Wire shape per OpenAPI |
-| **M2 mutation** | POST/PATCH/DELETE then GET (or list contains row); **same id** after create; store persists | Not `genericOk()` theater |
-| **M3 negative** | Unknown path -> 404; bad input -> 400; holdout row that fails if envelope reverted | Agent-resistant |
-
-**Good examples in tree:** `dev mock wizard session create and commit`, `dev mock clone-preview and owner assignment`, `dev mock bare-array list endpoints return JSON arrays`, `dev mock lists campaigns with filters` (filters_applied + status_totals).
-
-```ts
-// M2 -- POST then GET same id
-resetDevMockStore();
-const created = resolveDevMockRequest('/api/v1/campaigns', 'POST', body);
-const id = (created?.body as { id: string }).id;
-const got = resolveDevMockRequest(`/api/v1/campaigns/${id}`);
-assert.equal((got?.body as { id: string }).id, id);
-```
-
-#### Fake mock tests (never cite as API / handler proof)
-
-| ID | Pattern | Why fake | Example |
-| :--- | :--- | :--- | :--- |
-| **FM1** | Import / re-export smoke | No request exercised | `assert(typeof resolveDevMockRequest)` |
-| **FM2** | Status-only | 200 with any body passes | `assert.equal(r?.status, 200)` only |
-| **FM3** | Tautology | Asserts fixture constant copied into expected | `expect(row.name).toBe(FIXTURE.name)` with no handler |
-| **FM4** | Wrong envelope | List route asserted as bare array (or reverse) | `emptyList()` path tested with `Array.isArray` only on wrong route |
-| **FM5** | Mutation without round-trip | POST 204/200 but store not read back | Save test without GET |
-| **FM6** | Slug / sequential ids | Not server parity | `user_id: 'buyer-1'` in expected body |
-| **FM7** | Domain bypass | `domains/**` builds fake API response inline | Skips `dev_mock` + `handler.test.ts` |
-| **FM8** | Tier confusion | PR says "handler wired" citing `handler.test.ts` | Mock != Go |
-
-**Allowed:** `handler.test.ts` + `seed_uuid.test.ts` vectors for T0 mock parity with `cmd/admin/seed_catalog.go`.
-
-**Gate:** `node --import ./web/scripts/test_aliases.mjs --test --experimental-strip-types web/src/api/dev_mock/handler.test.ts`
-
----
-
 ### Playwright E2E (`web/e2e/`)
 
-**Defaults:** `baseURL` = `http://localhost:8188` (`helpers.js`) -- live control when stack is up. **Not T0** (`:5173` + `dev_mock`).
+**Defaults:** `baseURL` = `http://localhost:8188` (`helpers.js`) -- live control when stack is up. Vite `:5173` proxies to control; no in-browser API intercept.
 
 **Suite audit (honest, 2026-09):**
 
@@ -1826,7 +1779,7 @@ assert.equal((got?.body as { id: string }).id, id);
 | **FE6** | Health-only setup | `skipUnlessIntegrationReady` only | Most specs' `beforeEach` |
 | **FE7** | Tautology | Always-true assert | `ui_buttons_audit.spec.js` `toBeGreaterThanOrEqual(0)` |
 | **FE8** | Stub-as-success | Assert absence of `"404"` text | `ops_console.spec.js` |
-| **FE9** | Tier undeclared | No `AdminDevBanner` absent / `admin_dev=0` | Any `:8188` run while UI could be mock |
+| **FE9** | Tier undeclared | No `curl :8188/health` / **L1+** cited in PR | Playwright green without live API proof |
 | **FE10** | Toast-only mutation | Click Save; no `waitForResponse` | Patch/write specs without network |
 | **FE11** | DOM chrome audit only | Buttons exist; no API | `ui_buttons_audit.spec.js` (valid **L0** chrome only -- not data) |
 | **FE12** | Smoke / nightly = CI gate | `ADMIN_WEB_E2E_SMOKE=1` cited as `pr_fast` | Optional tier; not default merge proof |
@@ -1879,8 +1832,9 @@ await expect(page.getByText(uniqueEmail)).toBeVisible();
 **T1 ingest-only preamble** (required when claiming live API):
 
 ```javascript
-await page.goto('/campaigns?admin_dev=0');
-await expect(page.getByText('Development mock API', { exact: false })).toHaveCount(0);
+// helpers.js default baseURL is :8188; confirm control healthy before L1+ asserts
+await page.goto('/campaigns');
+await page.waitForResponse((r) => r.url().includes('/api/v1/campaigns') && r.status() === 200);
 ```
 
 #### Required when claiming E2E proof
@@ -1889,7 +1843,7 @@ await expect(page.getByText('Development mock API', { exact: false })).toHaveCou
 | :--- | :--- |
 | Handler wired (UI) | **L1** `waitForResponse` on `/api/v1/...` + JSON shape + DOM bound to payload |
 | Mutation wired | **L2** POST/PATCH response + GET or visible row change |
-| T1 ingest-only | `:8188`, `admin_dev=0`, no dev banner, **L1+** |
+| T1 ingest-only | `:8188` healthy, **L1+** `waitForResponse` on `/api/v1/...` |
 | Error path | **L3** `ErrorBlock` / `role=alert` -- not `or(unavailable)` |
 | Empty state | Dedicated empty copy when `items.length === 0` -- not OR with stub |
 
@@ -1897,7 +1851,7 @@ await expect(page.getByText('Development mock API', { exact: false })).toHaveCou
 
 | Gate | Command | Proof ceiling |
 | :--- | :--- | :--- |
-| Default `pr_fast` | No Playwright | Static + `handler.test.ts` (T0 mock) |
+| Default `pr_fast` | No Playwright | Static gates + domain unit tests |
 | Smoke (optional) | `ADMIN_WEB_E2E_SMOKE=1 bash scripts/ci/admin/web_e2e_smoke.sh` | **L0-L1s** shell |
 | Nightly (optional) | `ADMIN_WEB_E2E_NIGHTLY=1 bash scripts/ci/admin/web_e2e_nightly.sh` | Same levels until specs upgraded |
 
@@ -1923,7 +1877,7 @@ Do not cite smoke green as handler or ingest-only proof.
 | **RB-C5** | `user.role === 'MB'` (or any role string) as **sole** page gate | Future anti-pattern | Server `403` on every API for that page |
 | **RB-C6** | `Promise.resolve([])` / empty table when fetch returns `403` | **EH-ST1** + RBAC leak fiction | **RB-C3** |
 | **RB-C7** | `catch` on 403 -> navigate home silently | Operator blind | Show forbidden copy (`admin_error.ts`) |
-| **RB-C8** | `dev_mock` returns `200` on operator route for all roles | T0 lie | Mock must `403` when session role lacks `x-permissions` (or document T0 admin-only) |
+| **RB-C8** | Client renders operator rows after `403` on primary GET | RBAC leak fiction | **RB-C3** `ErrorBlock`; empty table banned |
 | **RB-C9** | E2E soft OR passes on `forbidden` text | `portals_smoke.spec.js` **FE2** | **L3** with `waitForResponse` 403 + alert |
 
 ### Client RBAC lie modes (agent PR prose)
@@ -1962,30 +1916,11 @@ Server proof: `control-plane.mdc` **Verification** commands. UI claim without **
 
 When touching admin pages or handlers, add checklist row: denied role integration test or document **Open in tree** gap per `control-plane.mdc` **Known gaps**.
 
-## Allowed mock surfaces (whitelist)
+## Allowed synthetic surfaces (whitelist)
 
 | Surface | Gate | Must |
 | :--- | :--- | :--- |
-| `web/src/api/dev_mock/**` | `isAdminDevMode()` in `client.ts` only | OpenAPI wire shape; server-parity UUIDs (`seed_uuid.ts`); `handler.test.ts` |
-| `web/scripts/dev_mock_proxy.mjs` | Vite dev server only | Never imported from `pages/` / `domains/` |
-| `dashboard_series_mock.ts` | `?chart_mock=1` or explicit T0 empty preview | Off on T1+ when control is healthy |
-| `AdminDevBanner` | T0 UX | States mock API |
-
-## `dev_mock` wire contract
-
-1. Read OpenAPI `operationId` and response schema.
-2. Read Go handler JSON encode for the same path.
-3. Match top-level shape and status code.
-4. Entity ids: `seedDeterministicUuid` / `newRandomUuid` per **Entity IDs** above -- same algorithms as `cmd/admin/seed_catalog.go` and runtime handlers.
-5. Add `handler.test.ts` row.
-
-| Response style | Examples | Mock helper |
-| :--- | :--- | :--- |
-| Bare array | `GET /api/v1/landers`, `/offers`, `/flows` | `emptyArray()` |
-| List envelope | `GET /api/v1/campaigns`, `/customers` | `emptyList()` or domain builder |
-| Object snapshot | `GET /api/v1/cost-sync/snapshot` | `{ networks: [], credentials: [], history: [] }` |
-| Empty success | consent, logout | `204` |
-| Error | missing id | `404` + `{ error: { code, message } }` |
+| `dashboard_series_mock.ts` | `?chart_mock=1` on buyer dashboard only | Labeled preview; off when claiming live metrics on T1+ |
 
 ## Wire safety (cross-ref; server-owned)
 
@@ -2004,39 +1939,37 @@ JSON depth/size limits are enforced on the **Go handler**, not in browser mock c
 | Step | Action |
 | :--- | :--- |
 | 0 | **Agent execution protocol:** P0-P4 complete; report format with catalog IDs; no subjective slop |
-| 1 | State tier (T0 / T1 / T1+ / T2) |
+| 1 | State tier (T1 / T1+ / T2) |
 | 2 | No new `truncate` / inline `style` on touched tables/headings/numbers |
 | 3 | No `Promise.resolve([])` stubs; use `undefined` + empty/scope UI |
 | 4 | `error` wired to `ErrorBlock` / directory on every new fetch |
-| 5 | Mock changes: OpenAPI shape + `handler.test.ts` |
-| 6 | T1+ claim: `admin_dev=0`, no mock banner, control healthy |
+| 5 | OpenAPI / handler DTO read when changing wire-facing UI |
+| 6 | T1+ claim: `curl -sf :8188/health` exit 0 |
 | 7 | E2E claim: name spec file + **proof level L1+** (`waitForResponse`) -- not smoke/L1s |
-| 7b | Mock claim: name `handler.test.ts` row + **M1/M2** -- never cite as Go handler proof |
 | 8 | Table drag/resize: header-local interaction state; no tbody re-render on `dragover`/`pointermove` |
 | 9 | Overlay: class A/B/C correct; anchor floats reposition + inner scroll; no height drift in one filter row |
-| 10 | Mock entity ids: `seedDeterministicUuid` / `newRandomUuid` only; no incremental uuid or slug `user_id` |
-| 11 | BEM banned: no new `__` hooks; migrate legacy BEM on touch; no `!` utility overrides on `admin-*` shells |
+| 10 | Fixture entity ids: Go seed parity; no incremental uuid or slug `user_id` |
+| 11 | BEM banned: no new `__` / `--` hooks; tree is Tailwind-only -- do not reintroduce BEM on touch |
 | 12 | Table perf claim: cite performance budget or falsify with DevTools |
 | 13 | T1 claim: complete **T1 sign-off checklist** |
 | 14 | Layout: `gap` only inside one group; inter-group space via grid tracks; data directories use semantic table |
 | 15 | State: one owner per logical resource; leaves call callbacks only -- no duplicate `save*` / `useState` |
 | 16 | Coalescing: R1 refresh 500 ms leading + in-flight; R2 mutations `loading` until settled |
 | 17 | UX: one primary path per intent; class-C dismiss vectors; mutation script table in PR if new flow |
-| 18 | Mutations: server S1-S7 + client C1-C5; `handler.test.ts` M3 negative; UI shows `ApiError` |
+| 18 | Mutations: server S1-S7 + client C1-C5; UI shows `ApiError` on 4xx |
 | 19 | Composition: **RP-1**-**RP-6** on touched shell/overlay fetch components |
 | 20 | Fan-out: **RF-*** -- one intent must not start avoidable parallel lanes; paste Network count |
 | 19 | Errors: ES*/EC* on touched paths; no EH-F/EH-ST/EH-SI; `StubBanner` when 501 -- not blank |
 | 20 | RBAC: server `RequirePermission` + `403` envelope; client RB-C* only UX; falsify **RB-L*** for access claims |
 | 21 | Layout drift: map symptom to **VL-***; **VL-D3** grep on band; no `!` / wrapper fixes (**VL-L3**, **VL-L4**) |
-| 22 | Paste `ui_slop.sh` / `handler.test.ts` when claiming fix |
+| 22 | Paste `ui_slop.sh` when claiming style/layout fix |
 
 ## CI gates
 
 | Gate | Command |
 | :--- | :--- |
-| UI copy/layout slop | `bash scripts/ci/admin/ui_slop.sh` |
+| UI copy/layout slop | `bash scripts/ci/admin/ui_slop.sh` (includes BEM ban, overlay VL-13b/13c, `max-h-60` on `dropdown_menu_scroll.ts`) |
 | Admin orchestrator | `bash scripts/ci/admin/web.sh` |
-| Dev mock regression | `node --import ./web/scripts/test_aliases.mjs --test --experimental-strip-types web/src/api/dev_mock/handler.test.ts` |
 | E2E smoke (optional) | `ADMIN_WEB_E2E_SMOKE=1 bash scripts/ci/admin/web_e2e_smoke.sh` |
 
 ## Related rules

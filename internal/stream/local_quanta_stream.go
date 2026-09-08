@@ -7,6 +7,7 @@ import (
 	"time"
 
 	"ad-event-processor/internal/domain"
+	"ad-event-processor/internal/filter"
 	"ad-event-processor/internal/ingest/pb"
 	"ad-event-processor/internal/metrics"
 	"ad-event-processor/internal/stream/codec"
@@ -24,6 +25,7 @@ const (
 
 	localQuantaSlotClickMax = 128
 	localQuantaSlotUserMax  = 128
+	localQuantaSlotProtoMax = 512
 )
 
 const LocalQuantaStreamUsable = localQuantaStreamUsable
@@ -47,6 +49,8 @@ type localQuantaStreamSlot struct {
 
 	clickID  [localQuantaSlotClickMax]byte
 	clickLen uint16
+
+	protoInline [localQuantaSlotProtoMax]byte
 
 	data   []byte
 	wrap   *ByteSliceValue
@@ -145,14 +149,23 @@ func NewLocalQuantaStreamPublisherForTest(
 	idem *LocalClickIdemCache,
 	writeTimeout time.Duration,
 ) *LocalQuantaStreamPublisher {
-	return NewLocalQuantaStreamPublisher(LocalQuantaStreamPublisherConfig{
-		StreamName:     streamName,
-		MaxLen:         maxLen,
-		RedisShards:    shards,
-		IdempotencyTTL: time.Hour,
-		IdemCache:      idem,
-		WriteTimeout:   writeTimeout,
-	})
+	if len(shards) == 0 || streamName == "" {
+		return nil
+	}
+	if writeTimeout <= 0 {
+		writeTimeout = time.Millisecond
+	}
+	p := &LocalQuantaStreamPublisher{
+		stream:       streamName,
+		maxLen:       int64(maxLen),
+		redisShards:  shards,
+		idemTTL:      time.Hour,
+		idem:         idem,
+		writeTimeout: writeTimeout,
+		stopCh:       make(chan struct{}),
+	}
+	p.ensureLanes()
+	return p
 }
 
 func (p *LocalQuantaStreamPublisher) IdemCache() *LocalClickIdemCache {
@@ -185,8 +198,11 @@ func copyLocalQuantaField(dst []byte, s string) int {
 }
 
 func marshalEventToProto(evt *domain.Event) ([]byte, *ByteSliceValue, *[]byte) {
-	pbEvt := codec.StreamEventPool.Get().(*pb.AdStreamEvent)
-	DeepResetAdStreamEvent(pbEvt)
+	return marshalEventToProtoBuf(evt, nil)
+}
+
+func marshalEventToProtoBuf(evt *domain.Event, inline []byte) ([]byte, *ByteSliceValue, *[]byte) {
+	var pbEvt pb.AdStreamEvent
 	pbEvt.ClickId = UnsafeBytes(evt.ClickID)
 	pbEvt.CampaignId = evt.CampaignID[:]
 	pbEvt.EventType = UnsafeBytes(evt.Type)
@@ -199,10 +215,18 @@ func marshalEventToProto(evt *domain.Event) ([]byte, *ByteSliceValue, *[]byte) {
 	if !evt.CreatedAt.IsZero() {
 		pbEvt.CreatedAtUnix = evt.CreatedAt.Unix()
 	} else {
-		pbEvt.CreatedAtUnix = time.Now().Unix()
+		pbEvt.CreatedAtUnix = int64(filter.CachedUnixSec())
 	}
 
 	size := pbEvt.SizeVT()
+	if size > 0 && size <= len(inline) {
+		buf := inline[:size]
+		n, err := pbEvt.MarshalToSizedBufferVT(buf)
+		if err == nil && n > 0 {
+			return inline[:n], nil, nil
+		}
+	}
+
 	bufPtr := codec.ByteBufPool.Get().(*[]byte)
 	buf := *bufPtr
 	if cap(buf) < size {
@@ -211,18 +235,14 @@ func marshalEventToProto(evt *domain.Event) ([]byte, *ByteSliceValue, *[]byte) {
 		buf = buf[:size]
 	}
 	n, err := pbEvt.MarshalToSizedBufferVT(buf)
-	ClearAdStreamEvent(pbEvt)
-	codec.StreamEventPool.Put(pbEvt)
 	if err != nil || n <= 0 {
 		*bufPtr = buf
 		codec.ByteBufPool.Put(bufPtr)
 		return nil, nil, nil
 	}
 	data := buf[:n]
-	wrap := codec.ByteSliceValuePool.Get().(*ByteSliceValue)
-	wrap.B = data
 	*bufPtr = buf
-	return data, wrap, bufPtr
+	return data, nil, bufPtr
 }
 
 func fillLocalQuantaStreamSlot(slot *localQuantaStreamSlot, shard int, evt *domain.Event, camp *domain.Campaign, amountMicro int64, data []byte, wrap *ByteSliceValue, bufPtr *[]byte) {
@@ -264,24 +284,12 @@ func (p *LocalQuantaStreamPublisher) Enqueue(shard int, evt *domain.Event, camp 
 		shard = 0
 	}
 
-	data, wrap, bufPtr := marshalEventToProto(evt)
-	if data == nil {
-		metrics.LocalQuotaStreamWriteErrorTotal.Inc()
-		return false
-	}
-
 	lane := &p.lanes[shard]
 	for {
 		alloc := atomic.LoadUint64(&lane.allocCursor)
 		read := atomic.LoadUint64(&lane.readCursor)
 		if alloc-read >= localQuantaStreamUsable {
 			metrics.LocalQuotaStreamDropTotal.Inc()
-			if wrap != nil {
-				codec.ByteSliceValuePool.Put(wrap)
-			}
-			if bufPtr != nil {
-				codec.ByteBufPool.Put(bufPtr)
-			}
 			return false
 		}
 		if !atomic.CompareAndSwapUint64(&lane.allocCursor, alloc, alloc+1) {
@@ -290,13 +298,14 @@ func (p *LocalQuantaStreamPublisher) Enqueue(shard int, evt *domain.Event, camp 
 		idx := alloc & localQuantaStreamMask
 		slot := &lane.slots[idx]
 		if slot.ready.Load() != 0 {
+			atomic.AddUint64(&lane.allocCursor, ^uint64(0))
 			metrics.LocalQuotaStreamDropTotal.Inc()
-			if wrap != nil {
-				codec.ByteSliceValuePool.Put(wrap)
-			}
-			if bufPtr != nil {
-				codec.ByteBufPool.Put(bufPtr)
-			}
+			continue
+		}
+		data, wrap, bufPtr := marshalEventToProtoBuf(evt, slot.protoInline[:])
+		if data == nil {
+			atomic.AddUint64(&lane.allocCursor, ^uint64(0))
+			metrics.LocalQuotaStreamWriteErrorTotal.Inc()
 			return false
 		}
 		fillLocalQuantaStreamSlot(slot, shard, evt, camp, amountMicro, data, wrap, bufPtr)
@@ -318,14 +327,11 @@ func (p *LocalQuantaStreamPublisher) DrainBench() {
 			idx := j & localQuantaStreamMask
 			slot := &lane.slots[idx]
 			if slot.ready.Load() == 1 {
-				if slot.wrap != nil {
-					codec.ByteSliceValuePool.Put(slot.wrap)
-					slot.wrap = nil
-				}
 				if slot.bufPtr != nil {
 					codec.ByteBufPool.Put(slot.bufPtr)
 					slot.bufPtr = nil
 				}
+				slot.wrap = nil
 				slot.data = nil
 				slot.ready.Store(0)
 			}
@@ -442,7 +448,7 @@ func (p *LocalQuantaStreamPublisher) flushLaneBatch(shard int, batch []*localQua
 
 type streamPipelineItem struct {
 	slot     *localQuantaStreamSlot
-	wrap     *ByteSliceValue
+	data     []byte
 	bufPtr   *[]byte
 	idemKey  string
 	hasClick bool
@@ -463,9 +469,6 @@ func (p *LocalQuantaStreamPublisher) flushShardPipeline(ctx context.Context, sha
 	items := make([]streamPipelineItem, 0, len(slots))
 	defer func() {
 		for i := range items {
-			if items[i].wrap != nil {
-				codec.ByteSliceValuePool.Put(items[i].wrap)
-			}
 			if items[i].bufPtr != nil {
 				codec.ByteBufPool.Put(items[i].bufPtr)
 			}
@@ -473,11 +476,11 @@ func (p *LocalQuantaStreamPublisher) flushShardPipeline(ctx context.Context, sha
 	}()
 
 	for _, slot := range slots {
-		if slot.wrap == nil {
+		if len(slot.data) == 0 {
 			metrics.LocalQuotaStreamWriteErrorTotal.Inc()
 			continue
 		}
-		item := streamPipelineItem{slot: slot, wrap: slot.wrap, bufPtr: slot.bufPtr}
+		item := streamPipelineItem{slot: slot, data: slot.data, bufPtr: slot.bufPtr}
 		if slot.clickLen > 0 {
 			var scratch [localQuantaSlotClickMax + 20]byte
 			item.idemKey = p.appendIdemKey(scratch[:], int(slot.clickLen), slot)
@@ -541,7 +544,7 @@ func (p *LocalQuantaStreamPublisher) flushShardPipeline(ctx context.Context, sha
 				Stream: p.stream,
 				MaxLen: p.maxLen,
 				Approx: true,
-				Values: []any{"d", item.wrap},
+				Values: []any{"d", item.data},
 			})
 		}
 		if _, err := xaddPipe.Exec(ctx); err != nil {

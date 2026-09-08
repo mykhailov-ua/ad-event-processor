@@ -8,12 +8,15 @@ import (
 )
 
 type LanderDTO struct {
-	ID            uuid.UUID  `json:"id"`
-	Name          string     `json:"name"`
-	URL           string     `json:"url,omitempty"`
-	HostedAssetID *uuid.UUID `json:"hosted_asset_id,omitempty"`
-	HostedURL     string     `json:"hosted_url,omitempty"`
-	CreatedAt     time.Time  `json:"created_at"`
+	ID                  uuid.UUID  `json:"id"`
+	Name                string     `json:"name"`
+	URL                 string     `json:"url,omitempty"`
+	HostedAssetID       *uuid.UUID `json:"hosted_asset_id,omitempty"`
+	HostedURL           string     `json:"hosted_url,omitempty"`
+	DraftVersion        int        `json:"draft_version,omitempty"`
+	PublishedVersion    int        `json:"published_version,omitempty"`
+	HasUnpublishedDraft bool       `json:"has_unpublished_draft,omitempty"`
+	CreatedAt           time.Time  `json:"created_at"`
 }
 
 type OfferDTO struct {

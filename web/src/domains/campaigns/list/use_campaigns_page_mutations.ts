@@ -97,6 +97,7 @@ export function useCampaignsPageMutations({
       refreshList();
     } catch (err: unknown) {
       setActionError(err instanceof Error ? err : new Error(String(err)));
+      toast.error(err instanceof Error ? err.message : String(err));
     } finally {
       setCreating(false);
     }

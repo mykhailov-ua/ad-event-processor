@@ -17,7 +17,7 @@ export function DocsNav() {
             to={path}
             aria-current={active ? 'page' : undefined}
             className={cn(
-              'block min-w-0 rounded-md px-3 py-2 text-sm leading-snug transition-colors',
+              'block min-w-0 px-3 py-2 text-sm leading-snug transition-colors',
               active
                 ? 'bg-primary font-medium text-primary-foreground'
                 : 'text-muted-foreground hover:bg-muted/70 hover:text-foreground'

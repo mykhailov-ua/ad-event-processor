@@ -1,12 +1,12 @@
-import { Link } from 'react-router-dom';
-
 import {
+  DirectoryFilterForm,
   FilterField,
+  FilterPanel,
   FILTER_PANEL_SUMMARY_CLASS,
   INLINE_FILTER_ACTION_GRID_TWO_ACTIONS_CLASS,
 } from '@/shell/filter_panel';
+import { BillingNav, billingPanelError } from '@/domains/billing/billing_nav';
 import { PageChrome } from '@/shell/page_chrome';
-import { ErrorBlock } from '@/shell/error_block';
 import { Button } from '@/components/ui/button';
 import { DatetimePicker } from '@/components/ui/datetime_picker';
 import { Input } from '@/components/ui/input';
@@ -65,68 +65,83 @@ export function BillingExports({
   const canDownload = status === 'COMPLETED';
 
   return (
-    <PageChrome title="Billing ledger exports">
-      <Link className="text-sm text-muted-foreground hover:underline" to="/billing">
-        Back to billing
-      </Link>
-
-      <div className="ui-filter-panel grid items-end gap-4 md:grid-cols-[repeat(auto-fill,minmax(12rem,1fr))]">
-        <div className="grid gap-2 md:col-span-2">
-          <Label htmlFor="export-customer-id">Customer ID</Label>
-          <Input
-            id="export-customer-id"
-            value={draftCustomerId}
-            onChange={(event) => onDraftCustomerIdChange(event.target.value)}
-          />
+    <PageChrome
+      title="Billing ledger exports"
+      controlPanel={
+        <div className="grid gap-3">
+          <BillingNav />
+          <FilterPanel>
+            <DirectoryFilterForm
+              layout="auto-fill"
+              onSubmit={(event) => event.preventDefault()}
+            >
+              <div className="grid gap-2 md:col-span-2">
+                <Label htmlFor="export-customer-id">Customer ID</Label>
+                <Input
+                  id="export-customer-id"
+                  value={draftCustomerId}
+                  onChange={(event) => onDraftCustomerIdChange(event.target.value)}
+                />
+              </div>
+              <DatetimePicker
+                id="export-from"
+                label="From"
+                value={draftFrom}
+                onChange={onDraftFromChange}
+              />
+              <DatetimePicker id="export-to" label="To" value={draftTo} onChange={onDraftToChange} />
+              <div className="grid gap-2">
+                <Label htmlFor="export-format">Format</Label>
+                <Select
+                  value={draftFormat}
+                  onValueChange={(value) => onDraftFormatChange(value as 'csv' | 'ndjson')}
+                >
+                  <SelectTrigger id="export-format" className="w-full">
+                    <SelectValue />
+                  </SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="csv">CSV</SelectItem>
+                    <SelectItem value="ndjson">NDJSON</SelectItem>
+                  </SelectContent>
+                </Select>
+              </div>
+              <Button
+                disabled={creating || !draftCustomerId.trim()}
+                onClick={onCreateJob}
+                type="button"
+              >
+                {creating ? 'Enqueueing...' : 'Start export'}
+              </Button>
+            </DirectoryFilterForm>
+          </FilterPanel>
+          <FilterPanel>
+            <DirectoryFilterForm
+              className={INLINE_FILTER_ACTION_GRID_TWO_ACTIONS_CLASS}
+              onSubmit={(event) => event.preventDefault()}
+            >
+              <FilterField htmlFor="export-job-id" label="Job ID">
+                <Input
+                  id="export-job-id"
+                  value={draftJobId}
+                  onChange={(event) => onDraftJobIdChange(event.target.value)}
+                />
+              </FilterField>
+              <Button
+                disabled={polling || !draftJobId.trim()}
+                onClick={onPollJob}
+                type="button"
+                variant="outline"
+              >
+                Poll
+              </Button>
+              <Button disabled={!canDownload} onClick={onDownloadJob} type="button" variant="secondary">
+                Download
+              </Button>
+            </DirectoryFilterForm>
+          </FilterPanel>
         </div>
-        <DatetimePicker
-          id="export-from"
-          label="From"
-          value={draftFrom}
-          onChange={onDraftFromChange}
-        />
-        <DatetimePicker id="export-to" label="To" value={draftTo} onChange={onDraftToChange} />
-        <div className="grid gap-2">
-          <Label htmlFor="export-format">Format</Label>
-          <Select
-            value={draftFormat}
-            onValueChange={(value) => onDraftFormatChange(value as 'csv' | 'ndjson')}
-          >
-            <SelectTrigger id="export-format" className="w-full text-sm">
-              <SelectValue />
-            </SelectTrigger>
-            <SelectContent>
-              <SelectItem value="csv">CSV</SelectItem>
-              <SelectItem value="ndjson">NDJSON</SelectItem>
-            </SelectContent>
-          </Select>
-        </div>
-        <Button disabled={creating || !draftCustomerId.trim()} onClick={onCreateJob} type="button">
-          {creating ? 'Enqueueing...' : 'Start export'}
-        </Button>
-      </div>
-
-      <div className={INLINE_FILTER_ACTION_GRID_TWO_ACTIONS_CLASS}>
-        <FilterField htmlFor="export-job-id" label="Job ID">
-          <Input
-            id="export-job-id"
-            value={draftJobId}
-            onChange={(event) => onDraftJobIdChange(event.target.value)}
-          />
-        </FilterField>
-        <Button
-          disabled={polling || !draftJobId.trim()}
-          onClick={onPollJob}
-          type="button"
-          variant="outline"
-        >
-          Poll
-        </Button>
-        <Button disabled={!canDownload} onClick={onDownloadJob} type="button" variant="secondary">
-          Download
-        </Button>
-      </div>
-
+      }
+    >
       {job ? (
         <div className={FILTER_PANEL_SUMMARY_CLASS}>
           <p>
@@ -137,10 +152,8 @@ export function BillingExports({
         </div>
       ) : null}
 
-      {actionError ? (
-        <ErrorBlock title="Export action failed" message={actionError.message} />
-      ) : null}
-      {error ? <ErrorBlock title="Could not load job" message={error.message} /> : null}
+      {actionError ? billingPanelError(actionError, 'Export action failed') : null}
+      {error ? billingPanelError(error, 'Could not load job') : null}
     </PageChrome>
   );
 }

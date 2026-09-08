@@ -24,7 +24,7 @@ func contentSecurityPolicy(path string) string {
 		return "default-src 'none'; " + frame
 	}
 	if path == "/login" || path == "/bootstrap" || path == "/install/done" || strings.HasPrefix(path, "/assets/") || IsAdminSPAPath(path) {
-		return "default-src 'none'; script-src 'self'; style-src 'self'; connect-src 'self'; img-src 'self' data:; base-uri 'self'; form-action 'self'; " + frame
+		return "default-src 'none'; script-src 'self'; style-src 'self'; font-src 'self'; connect-src 'self'; img-src 'self' data:; base-uri 'self'; form-action 'self'; " + frame
 	}
 	return "default-src 'none'; " + frame
 }

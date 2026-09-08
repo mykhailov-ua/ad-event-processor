@@ -11,6 +11,7 @@ import {
 } from '@/api/integrations_api';
 import type { ApplyIntegrationSchemaResponse, IntegrationSchema } from '@/api/types';
 import { type IntegrationsSchemasTab } from '@/domains/integrations/integrations_schemas';
+import { confirmDestructiveAction, mutationError } from '@/lib/mutation_audit';
 import { useCoalescedBumpRefresh, useRefreshToken } from '@/hooks/use_coalesced_refresh_token';
 import { useResource } from '@/api/use_resource';
 
@@ -122,6 +123,13 @@ export function useIntegrationsSchemasPageWorkspace() {
     if (!schemaId || !campaignId) {
       return;
     }
+    if (
+      !confirmDestructiveAction(
+        `Apply integration schema ${schemaId} to campaign ${campaignId}?`
+      )
+    ) {
+      return;
+    }
     setApplying(true);
     setApplyError(undefined);
     setApplySuccess(false);
@@ -130,8 +138,9 @@ export function useIntegrationsSchemasPageWorkspace() {
       const result = await applyIntegrationSchema(schemaId, { campaign_id: campaignId });
       setApplyResult(result);
       setApplySuccess(true);
+      toast.success('Integration schema applied');
     } catch (err: unknown) {
-      setApplyError(err instanceof Error ? err : new Error(String(err)));
+      setApplyError(mutationError(err));
     } finally {
       setApplying(false);
     }

@@ -36,12 +36,29 @@ export type PatchCustomerCostCenterRequest = {
   cost_center: string;
 };
 
+export type PatchCustomerRequest = {
+  name?: string;
+  cost_center?: string;
+};
+
 export async function patchCustomerCostCenter(
   id: string,
   body: PatchCustomerCostCenterRequest,
   signal?: AbortSignal
 ): Promise<Customer> {
   return apiJson<Customer>(`/api/v1/customers/${encodeURIComponent(id)}/cost-center`, {
+    method: 'PATCH',
+    body: JSON.stringify(body),
+    signal,
+  });
+}
+
+export async function patchCustomer(
+  id: string,
+  body: PatchCustomerRequest,
+  signal?: AbortSignal
+): Promise<Customer> {
+  return apiJson<Customer>(`/api/v1/customers/${encodeURIComponent(id)}`, {
     method: 'PATCH',
     body: JSON.stringify(body),
     signal,

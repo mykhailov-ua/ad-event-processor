@@ -18,6 +18,7 @@ import (
 	"ad-event-processor/internal/domain"
 	"ad-event-processor/internal/ingest/domainhosts"
 	"ad-event-processor/internal/ingest/gnet"
+	"ad-event-processor/internal/ingest/parser"
 	"ad-event-processor/internal/ingest/pb"
 	"ad-event-processor/internal/metrics"
 	"ad-event-processor/internal/telemetry"
@@ -663,7 +664,7 @@ type AdsPacketHandler struct {
 	proxyVPNBlockMetrics    proxyVPNBlockMetrics
 	moderatorIPTable        *ModeratorIPTable
 	moderatorMetrics        moderatorIntelMetrics
-	attestationKeys         []attestationHMACKey
+	attestationKeys         []parser.AttestationHMACKey
 	attestationInnerScratch [linkHMACBlockSize + attestationPayloadLen]byte
 	linkSigningSecret       []byte
 	linkHMACIpad            [linkHMACBlockSize]byte
@@ -1167,7 +1168,10 @@ func (h *AdsPacketHandler) StartHealthProbe(ctx context.Context) {
 	}()
 }
 
-func (h *AdsPacketHandler) React(req Request, c pkgnet.Conn) pkgnet.Action {
+func (h *AdsPacketHandler) React(req *Request, c pkgnet.Conn) pkgnet.Action {
+	if req == nil {
+		return pkgnet.None
+	}
 	ctx, ok := c.Context().(*ConnContext)
 	if !ok {
 		ctx = h.AllocConnContext(c)
@@ -1261,7 +1265,7 @@ func (h *AdsPacketHandler) React(req Request, c pkgnet.Conn) pkgnet.Action {
 	startMono := monotonicNano()
 	telemetry.RecordTrack()
 
-	ip := extractClientIPGnet(ctx, &req, c, h.cfg.TrustedProxies)
+	ip := extractClientIPGnet(ctx, req, c, h.cfg.TrustedProxies)
 	ua := unsafeString(req.UserAgent)
 
 	id := NewFastUUID()
@@ -1306,7 +1310,7 @@ func (h *AdsPacketHandler) React(req Request, c pkgnet.Conn) pkgnet.Action {
 	evt.SecCHUA = unsafeString(req.SecCHUA)
 	evt.AcceptLang = unsafeString(req.AcceptLang)
 	fillIngressH2(evt, ctx != nil && ctx.ProtoH2)
-	fillWireMetadataFromRequest(evt, &req)
+	fillWireMetadataFromRequest(evt, req)
 	if req.TCPMSSSet != 0 {
 		evt.TCPMSS = req.TCPMSS
 		evt.TCPMSSSet = 1
@@ -1323,7 +1327,7 @@ func (h *AdsPacketHandler) React(req Request, c pkgnet.Conn) pkgnet.Action {
 		evt.TCPSig = req.TCPSig
 		evt.TCPSigSet = 1
 	}
-	fillConnTimingFromRequest(evt, &req)
+	fillConnTimingFromRequest(evt, req)
 
 	if h.udpControl != nil {
 		shard := h.sharder.GetShard(evt.CampaignID)

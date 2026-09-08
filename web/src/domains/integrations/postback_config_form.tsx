@@ -1,4 +1,5 @@
 import { ErrorBlock } from '@/shell/error_block';
+import { DirectoryFilterForm, FilterPanel } from '@/shell/filter_panel';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
@@ -72,15 +73,22 @@ export function PostbackConfigForm({
     draftUrlTemplate.trim().length > 0;
   const canTest = draftCampaignId.trim().length > 0;
 
+  const urlTemplateHint =
+    draftProvider === 'google'
+      ? 'Google: customer_id|conversion_action_id (e.g. 1234567890|987654321) or customers/123/conversionActions/456. Developer token goes in Test event code.'
+      : draftProvider === 'microsoft_ads'
+        ? 'Microsoft Ads: account_id|customer_id|conversion_name. Developer token in Test event code.'
+        : null;
+
   return (
-    <section className="ui-filter-panel">
+    <FilterPanel>
       <h2 className="text-base font-semibold">Upsert postback config</h2>
       <p className="text-sm text-muted-foreground">
         API token is encrypted at rest. Leave token empty on update to keep the existing value.
         Click a config row below to prefill this form.
       </p>
 
-      <div className="grid grid-cols-[repeat(auto-fill,minmax(12rem,1fr))] items-end gap-4">
+      <DirectoryFilterForm layout="auto-fill" onSubmit={(event) => event.preventDefault()}>
         <div className="grid gap-2 md:col-span-2">
           <Label htmlFor="postback-campaign-id">Campaign ID</Label>
           <Input
@@ -92,7 +100,7 @@ export function PostbackConfigForm({
         <div className="grid gap-2">
           <Label htmlFor="postback-provider">Provider</Label>
           <Select value={draftProvider} onValueChange={onDraftProviderChange}>
-            <SelectTrigger id="postback-provider" className="w-full text-sm">
+            <SelectTrigger id="postback-provider" className="w-full">
               <SelectValue placeholder="Select provider" />
             </SelectTrigger>
             <SelectContent>
@@ -118,7 +126,17 @@ export function PostbackConfigForm({
             id="postback-url-template"
             value={draftUrlTemplate}
             onChange={(event) => onDraftUrlTemplateChange(event.target.value)}
+            placeholder={
+              draftProvider === 'google'
+                ? '1234567890|987654321'
+                : draftProvider === 'microsoft_ads'
+                  ? 'account_id|customer_id|conversion_name'
+                  : undefined
+            }
           />
+          {urlTemplateHint ? (
+            <p className="text-xs text-muted-foreground">{urlTemplateHint}</p>
+          ) : null}
         </div>
         <div className="grid gap-2 md:col-span-2">
           <Label htmlFor="postback-api-token">API token</Label>
@@ -144,7 +162,7 @@ export function PostbackConfigForm({
         <Button disabled={testing || !canTest} onClick={onTest} type="button" variant="outline">
           {testing ? 'Testing...' : 'Dry-run test'}
         </Button>
-      </div>
+      </DirectoryFilterForm>
 
       {saveError ? <ErrorBlock title="Save failed" message={saveError.message} /> : null}
       {testError ? <ErrorBlock title="Dry-run failed" message={testError.message} /> : null}
@@ -163,6 +181,6 @@ export function PostbackConfigForm({
           ) : null}
         </div>
       ) : null}
-    </section>
+    </FilterPanel>
   );
 }

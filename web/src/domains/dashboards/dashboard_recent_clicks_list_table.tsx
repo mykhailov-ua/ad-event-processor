@@ -1,20 +1,20 @@
 import { useRef } from 'react';
 
 import {
-  campaignListBodyToolsGutterClass,
   campaignListCellContentClass,
   campaignListCellContentNumClass,
-  campaignListCellToolsClass,
-  campaignListHeaderCellClass,
-  campaignListHeaderLabelClass,
-  campaignListHeaderLabelNumClass,
-  campaignListHeaderToolsClass,
-  campaignListNumClass,
+  campaignListCopyRowClass,
+  campaignListCopyToolsSlotClass,
+  campaignListDashboardHeaderLabelClass,
+  campaignListEllipsisTextClass,
+  campaignListHeaderShellClass,
   campaignListTableClass,
-  campaignListTableSurfaceClass,
-  campaignListTdClass,
-  campaignListThClass,
 } from '@/domains/campaigns/list/campaign_list_classes';
+import {
+  dashboardTableSurfaceClass,
+  dashboardTableTdClass,
+  dashboardTableThClass,
+} from '@/domains/dashboards/dashboard_classes';
 import { CampaignListColumnResizeHandle } from '@/domains/campaigns/list/campaign_list_table_header_cell';
 import type { ClickLogEvent } from '@/domains/dashboards/buyer_dashboard_types';
 import { formatDashboardUsdFromMicro } from '@/domains/dashboards/dashboard_format';
@@ -22,7 +22,6 @@ import type { DashboardRecentClickColumnId } from '@/domains/dashboards/dashboar
 import { RECENT_CLICK_COLUMN_LABELS } from '@/domains/dashboards/dashboard_preferences';
 import {
   clampUserResizedDashboardRecentClickColumnWidthPx,
-  dashboardRecentClickTableWidthPx,
   DASHBOARD_RECENT_CLICK_COLUMN_WIDTH_PX,
   isDashboardRecentClickColumnResizable,
   isDashboardRecentClickCopyColumn,
@@ -30,7 +29,8 @@ import {
 } from '@/domains/dashboards/dashboard_table_column_widths';
 import { useDashboardRecentClickColumnWidths } from '@/domains/dashboards/use_dashboard_table_column_widths';
 import { CopyButton } from '@/shell/copy_button';
-import { DirectoryTable, TableBody, TableHeader } from '@/shell/directory_table';
+import { DirectoryDataTableEngine } from '@/shell/directory_data_table/directory_data_table_engine';
+import { resolveDashboardRecentClickLayoutMaxWidths } from '@/shell/directory_data_table/layout';
 import { useDirectoryColumnResize } from '@/shell/directory_column_resize';
 import { displayTimestamp } from '@/lib/display';
 import { cn } from '@/lib/utils';
@@ -38,6 +38,7 @@ import { cn } from '@/lib/utils';
 export type DashboardRecentClicksListTableProps = {
   events: ClickLogEvent[];
   columns: DashboardRecentClickColumnId[];
+  fillContainer?: boolean;
 };
 
 function renderRecentClickCell(columnId: DashboardRecentClickColumnId, event: ClickLogEvent) {
@@ -68,6 +69,7 @@ function renderRecentClickCell(columnId: DashboardRecentClickColumnId, event: Cl
 export function DashboardRecentClicksListTable({
   events,
   columns,
+  fillContainer = false,
 }: DashboardRecentClicksListTableProps) {
   const visibleColumns =
     columns.length > 0
@@ -86,177 +88,107 @@ export function DashboardRecentClicksListTable({
     colgroupRef,
     tableRef,
   });
-  const tableWidthPx = dashboardRecentClickTableWidthPx(visibleColumns, columnWidths);
 
   return (
-    <DirectoryTable
-      className={cn(campaignListTableSurfaceClass, 'rounded-none border-0 shadow-none')}
-      fixedLayout
-      horizontalScroll
+    <DirectoryDataTableEngine
+      bodyCellClassName={dashboardTableTdClass}
+      colgroupRef={colgroupRef}
+      columnWidths={columnWidths}
+      columns={visibleColumns}
+      fillContainer={fillContainer}
+      headerCellClassName={dashboardTableThClass}
+      isResizableColumn={(columnId) =>
+        isDashboardRecentClickColumnResizable(columnId, visibleColumns)
+      }
+      renderBodyCell={(columnId, event) => {
+        if (columnId === 'click_id' && event.click_id) {
+          return (
+            <div className={campaignListCopyRowClass}>
+              <span
+                className={cn(
+                  campaignListEllipsisTextClass,
+                  'min-w-0 flex-1 font-numeric text-xs text-muted-foreground'
+                )}
+                title={event.click_id}
+              >
+                {event.click_id}
+              </span>
+              <div className={campaignListCopyToolsSlotClass}>
+                <CopyButton
+                  flashOnCopy
+                  label="Event id"
+                  showToast={false}
+                  value={event.click_id}
+                />
+              </div>
+            </div>
+          );
+        }
+        if (columnId === 'campaign_id' && event.campaign_id) {
+          return (
+            <div className={campaignListCopyRowClass}>
+              <span
+                className={cn(
+                  campaignListEllipsisTextClass,
+                  'min-w-0 flex-1 font-numeric text-xs text-muted-foreground'
+                )}
+                title={event.campaign_id}
+              >
+                {event.campaign_id}
+              </span>
+              <div className={campaignListCopyToolsSlotClass}>
+                <CopyButton
+                  flashOnCopy
+                  label="Campaign ID"
+                  showToast={false}
+                  value={event.campaign_id}
+                />
+              </div>
+            </div>
+          );
+        }
+        if (isDashboardRecentClickCopyColumn(columnId)) {
+          return <div className={campaignListCellContentNumClass}>-</div>;
+        }
+        const numeric = isDashboardRecentClickNumericColumn(columnId);
+        return (
+          <div className={numeric ? campaignListCellContentNumClass : campaignListCellContentClass}>
+            <span
+              className="block whitespace-nowrap"
+              title={columnId === 'sub1' ? event.sub1 : undefined}
+            >
+              {renderRecentClickCell(columnId, event)}
+            </span>
+          </div>
+        );
+      }}
+      renderHeaderLabel={(columnId) => {
+        const label = RECENT_CLICK_COLUMN_LABELS[columnId];
+        return (
+          <div className={campaignListHeaderShellClass}>
+            <div className={campaignListDashboardHeaderLabelClass}>
+              <span className="whitespace-nowrap" title={label}>
+                {label}
+              </span>
+            </div>
+          </div>
+        );
+      }}
+      renderResizeHandle={(columnId) => {
+        const label = RECENT_CLICK_COLUMN_LABELS[columnId];
+        return (
+          <CampaignListColumnResizeHandle
+            label={`Resize ${label} column`}
+            onPointerDown={(event) => startResize(columnId, event)}
+          />
+        );
+      }}
+      resolveColumnMaxWidths={resolveDashboardRecentClickLayoutMaxWidths}
+      rowKey={(event) => `${event.click_id}-${event.created_at}`}
+      rows={events}
+      surfaceClassName={dashboardTableSurfaceClass}
       tableClassName={campaignListTableClass}
       tableRef={tableRef}
-      tableStyle={{
-        width: `${tableWidthPx}px`,
-        minWidth: `${tableWidthPx}px`,
-        tableLayout: 'fixed',
-      }}
-    >
-      <colgroup ref={colgroupRef}>
-        {visibleColumns.map((columnId) => (
-          <col key={columnId} style={{ width: `${columnWidths[columnId]}px` }} />
-        ))}
-      </colgroup>
-      <TableHeader>
-        <tr>
-          {visibleColumns.map((columnId) => {
-            const numeric = isDashboardRecentClickNumericColumn(columnId);
-            const resizable = isDashboardRecentClickColumnResizable(columnId, visibleColumns);
-            const label = RECENT_CLICK_COLUMN_LABELS[columnId];
-            return (
-              <th
-                key={columnId}
-                className={cn(
-                  campaignListThClass,
-                  campaignListCellToolsClass,
-                  resizable && 'relative'
-                )}
-              >
-                <div className={campaignListHeaderCellClass}>
-                  <div
-                    className={
-                      numeric ? campaignListHeaderLabelNumClass : campaignListHeaderLabelClass
-                    }
-                  >
-                    <span className="whitespace-nowrap" title={label}>
-                      {label}
-                    </span>
-                  </div>
-                  <div className={campaignListHeaderToolsClass} />
-                </div>
-                {resizable ? (
-                  <CampaignListColumnResizeHandle
-                    label={`Resize ${label} column`}
-                    onPointerDown={(event) => startResize(columnId, event)}
-                  />
-                ) : null}
-              </th>
-            );
-          })}
-        </tr>
-      </TableHeader>
-      <TableBody>
-        {events.map((event) => (
-          <tr key={`${event.click_id}-${event.created_at}`}>
-            {visibleColumns.map((columnId) => {
-              if (columnId === 'click_id' && event.click_id) {
-                return (
-                  <td
-                    key={columnId}
-                    className={cn(
-                      campaignListTdClass,
-                      campaignListCellToolsClass,
-                      campaignListNumClass,
-                      'text-muted-foreground'
-                    )}
-                  >
-                    <div className={campaignListHeaderCellClass}>
-                      <div className={campaignListCellContentClass}>
-                        <span
-                          className="select-text whitespace-nowrap font-mono text-xs tabular-nums"
-                          title={event.click_id}
-                        >
-                          {event.click_id}
-                        </span>
-                      </div>
-                      <CopyButton
-                        flashOnCopy
-                        label="Event id"
-                        showToast={false}
-                        value={event.click_id}
-                      />
-                    </div>
-                  </td>
-                );
-              }
-              if (columnId === 'campaign_id' && event.campaign_id) {
-                return (
-                  <td
-                    key={columnId}
-                    className={cn(
-                      campaignListTdClass,
-                      campaignListCellToolsClass,
-                      campaignListNumClass,
-                      'text-muted-foreground'
-                    )}
-                  >
-                    <div className={campaignListHeaderCellClass}>
-                      <div className={campaignListCellContentClass}>
-                        <span
-                          className="select-text whitespace-nowrap font-mono text-xs tabular-nums"
-                          title={event.campaign_id}
-                        >
-                          {event.campaign_id}
-                        </span>
-                      </div>
-                      <CopyButton
-                        flashOnCopy
-                        label="Campaign ID"
-                        showToast={false}
-                        value={event.campaign_id}
-                      />
-                    </div>
-                  </td>
-                );
-              }
-              if (isDashboardRecentClickCopyColumn(columnId)) {
-                return (
-                  <td
-                    key={columnId}
-                    className={cn(
-                      campaignListTdClass,
-                      campaignListCellToolsClass,
-                      campaignListNumClass,
-                      'text-muted-foreground'
-                    )}
-                  >
-                    <div className={campaignListHeaderCellClass}>
-                      <div className={campaignListCellContentNumClass}>-</div>
-                      <div aria-hidden className={campaignListBodyToolsGutterClass} />
-                    </div>
-                  </td>
-                );
-              }
-              const numeric = isDashboardRecentClickNumericColumn(columnId);
-              return (
-                <td
-                  key={columnId}
-                  className={cn(
-                    campaignListTdClass,
-                    campaignListCellToolsClass,
-                    numeric && campaignListNumClass
-                  )}
-                >
-                  <div className={campaignListHeaderCellClass}>
-                    <div
-                      className={
-                        numeric ? campaignListCellContentNumClass : campaignListCellContentClass
-                      }
-                    >
-                      <span
-                        className="block whitespace-nowrap"
-                        title={columnId === 'sub1' ? event.sub1 : undefined}
-                      >
-                        {renderRecentClickCell(columnId, event)}
-                      </span>
-                    </div>
-                    <div aria-hidden className={campaignListBodyToolsGutterClass} />
-                  </div>
-                </td>
-              );
-            })}
-          </tr>
-        ))}
-      </TableBody>
-    </DirectoryTable>
+    />
   );
 }

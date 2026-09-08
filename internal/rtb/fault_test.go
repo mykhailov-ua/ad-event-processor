@@ -29,7 +29,7 @@ func faultRunAuction(reg *Registry, req *BidRequest) (res AuctionResult, reason 
 			panicked = true
 		}
 	}()
-	res, reason = reg.RunAuction(req)
+	res, reason = reg.RunAuctionPtr(req)
 	return res, reason, false
 }
 
@@ -364,7 +364,7 @@ func TestFault_SetBudgetZeroRace(t *testing.T) {
 	}()
 
 	for range 200 {
-		reg.RunAuction(stdReq(7, 50))
+		reg.RunAuctionPtr(stdReq(7, 50))
 	}
 	close(stop)
 	wg.Wait()
@@ -538,7 +538,7 @@ func TestFault_CatalogClearDuringAuction(t *testing.T) {
 							panicked.Store(true)
 						}
 					}()
-					reg.RunAuction(stdReq(7, 50))
+					reg.RunAuctionPtr(stdReq(7, 50))
 				}()
 			}
 		}
@@ -571,7 +571,7 @@ func TestFault_ParallelDrainNonNegative(t *testing.T) {
 		go func() {
 			defer wg.Done()
 			for range 50 {
-				reg.RunAuction(stdReq(7, 50))
+				reg.RunAuctionPtr(stdReq(7, 50))
 			}
 		}()
 	}

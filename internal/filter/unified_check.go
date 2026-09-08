@@ -416,7 +416,7 @@ func (f *DeviceFilter) Check(ctx context.Context, evt *domain.Event) error {
 	}
 
 	if evt.TLSHash != "" && len(blocked) > 0 {
-		h := crc32.ChecksumIEEE([]byte(evt.TLSHash))
+		h := crc32.ChecksumIEEE(UnsafeBytes(evt.TLSHash))
 		if _, onList := blocked[h]; onList {
 			AddFraudSignal(evt, FraudReasonTLSBlocklist)
 		}
@@ -424,10 +424,10 @@ func (f *DeviceFilter) Check(ctx context.Context, evt *domain.Event) error {
 	if deviceHintsMismatch(evt.SecCHUA, evt.UA) {
 		AddFraudSignal(evt, FraudReasonDeviceMismatch)
 	}
-	if TLSFingerprintImpersonating(evt.UA, []byte(evt.TLSJA3), []byte(evt.TLSJA4), []byte(evt.TLSHash)) {
+	if TLSFingerprintImpersonating(evt.UA, UnsafeBytes(evt.TLSJA3), UnsafeBytes(evt.TLSJA4), UnsafeBytes(evt.TLSHash)) {
 		AddFraudSignal(evt, FraudReasonDeviceMismatch)
 	}
-	if f.ja4CorpusEnabled.Load() && ja4BrowserCorpusMismatch(evt.UA, []byte(evt.TLSJA4)) {
+	if f.ja4CorpusEnabled.Load() && ja4BrowserCorpusMismatch(evt.UA, UnsafeBytes(evt.TLSJA4)) {
 		AddFraudSignal(evt, FraudReasonTLSJA4Mismatch)
 	}
 	if f.osFingerprintEnabled.Load() && evt.UA != "" {

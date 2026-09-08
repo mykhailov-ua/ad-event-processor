@@ -673,11 +673,7 @@ const (
 )
 
 func GeoHashFromCountry(country string) uint32 {
-	if len(country) < 2 {
-		return 0
-	}
-	c0, c1 := country[0]|0x20, country[1]|0x20
-	return uint32(c0)<<8 | uint32(c1)
+	return domain.GeoHashFromCountry(country)
 }
 
 func EnsureIngestGeo(geo GeoProvider, evt *domain.Event) {

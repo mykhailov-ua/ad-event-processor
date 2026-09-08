@@ -1,6 +1,9 @@
 package httpingress
 
-import "fmt"
+import (
+	"errors"
+	"fmt"
+)
 
 func teValueOnlyChunked(val []byte) bool {
 	for i := range val {
@@ -46,9 +49,10 @@ func teValueOnlyChunked(val []byte) bool {
 }
 
 const (
-	chunkScratchInitCap   = 4096
-	ChunkScratchRetainCap = 64 << 10
-	chunkScratchRetainCap = ChunkScratchRetainCap
+	chunkScratchInitCap       = 4096
+	ChunkScratchRetainCap     = 64 << 10
+	chunkScratchRetainCap     = ChunkScratchRetainCap
+	maxHTTP1ChunkTrailerLines = 32
 )
 
 func GrowChunkScratch(scratchPtr *[]byte, totalLen int) []byte {
@@ -65,6 +69,7 @@ func growChunkScratch(scratchPtr *[]byte, totalLen int) []byte {
 		*scratchPtr = buf
 	} else {
 		buf = buf[:totalLen]
+		*scratchPtr = buf
 	}
 	return buf
 }
@@ -80,7 +85,7 @@ func ResetChunkScratch(scratchPtr *[]byte) {
 	*scratchPtr = (*scratchPtr)[:0]
 }
 
-func ParseHTTP1ChunkedBody(data []byte, off int, maxBody int64, scratchPtr *[]byte) (consumed int, body []byte, contentLen int, err error) {
+func ParseHTTP1ChunkedBody(data []byte, off int, maxBody int64, minChunkDataBytes int, scratchPtr *[]byte) (consumed int, body []byte, contentLen int, err error) {
 	n := len(data)
 	pos := off
 	totalLen := 0
@@ -91,10 +96,13 @@ func ParseHTTP1ChunkedBody(data []byte, off int, maxBody int64, scratchPtr *[]by
 
 	for {
 		if pos >= n {
-			return 0, nil, 0, ErrIncomplete
+			return off, nil, 0, ErrIncomplete
 		}
 		size, lineEnd, perr := ParseChunkSizeLine(data, pos, n)
 		if perr != nil {
+			if errors.Is(perr, ErrIncomplete) {
+				return off, nil, 0, ErrIncomplete
+			}
 			return 0, nil, 0, perr
 		}
 		pos = lineEnd
@@ -102,6 +110,9 @@ func ParseHTTP1ChunkedBody(data []byte, off int, maxBody int64, scratchPtr *[]by
 		if size == 0 {
 			pos, perr = skipHTTP1ChunkTrailers(data, pos, n)
 			if perr != nil {
+				if errors.Is(perr, ErrIncomplete) {
+					return off, nil, 0, ErrIncomplete
+				}
 				return 0, nil, 0, perr
 			}
 			if totalLen == 0 {
@@ -114,11 +125,14 @@ func ParseHTTP1ChunkedBody(data []byte, off int, maxBody int64, scratchPtr *[]by
 			return pos, scratch[:scratchLen], totalLen, nil
 		}
 
+		if minChunkDataBytes > 1 && size > 0 && size < minChunkDataBytes {
+			return 0, nil, 0, ErrInvalid
+		}
 		if int64(totalLen+size) > maxBody {
 			return 0, nil, 0, ErrPayloadTooLarge
 		}
 		if pos+size+2 > n {
-			return 0, nil, 0, ErrIncomplete
+			return off, nil, 0, ErrIncomplete
 		}
 		if data[pos+size] != '\r' || data[pos+size+1] != '\n' {
 			return 0, nil, 0, ErrInvalid
@@ -225,6 +239,7 @@ func ParseChunkSizeLine(data []byte, pos, n int) (size int, next int, err error)
 }
 
 func skipHTTP1ChunkTrailers(data []byte, pos, n int) (int, error) {
+	trailerLines := 0
 	for {
 		if pos >= n {
 			return 0, ErrIncomplete
@@ -237,6 +252,10 @@ func skipHTTP1ChunkTrailers(data []byte, pos, n int) (int, error) {
 				return 0, ErrInvalid
 			}
 			return pos + 2, nil
+		}
+		trailerLines++
+		if trailerLines > maxHTTP1ChunkTrailerLines {
+			return 0, ErrInvalid
 		}
 		for pos < n && data[pos] != '\r' {
 			if data[pos] == 0 {

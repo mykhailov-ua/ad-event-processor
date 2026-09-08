@@ -11,12 +11,12 @@ import {
 } from './campaign_list_column_widths.ts';
 import { CAMPAIGN_LIST_STATUS_COLUMN_WIDTH_PX } from './campaign_list_columns.ts';
 
-test('defaultCampaignListColumnWidths fits header labels with tools gutter', () => {
+test('defaultCampaignListColumnWidths fits header labels with drag grip', () => {
   const widths = defaultCampaignListColumnWidths(['select', 'unique_clicks', 'lp_views']);
 
   assert.equal(widths.select, 48);
-  assert.ok(widths.unique_clicks >= 150, `unique_clicks too narrow: ${widths.unique_clicks}`);
-  assert.ok(widths.lp_views >= 120, `lp_views too narrow: ${widths.lp_views}`);
+  assert.ok(widths.unique_clicks >= 140, `unique_clicks too narrow: ${widths.unique_clicks}`);
+  assert.ok(widths.lp_views >= 110, `lp_views too narrow: ${widths.lp_views}`);
 });
 
 test('computeCampaignListColumnWidths uses dataset max not current page only', () => {
@@ -83,7 +83,7 @@ test('computeCampaignListColumnWidths sizes countries column for three flags and
     customerNameById: {},
   });
 
-  assert.ok(widths.countries >= 98, `countries column too narrow: ${widths.countries}`);
+  assert.ok(widths.countries >= 116, `countries column too narrow: ${widths.countries}`);
 });
 
 test('computeCampaignListColumnWidths keeps status column fixed for Exhausted badge', () => {

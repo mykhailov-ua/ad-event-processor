@@ -13,6 +13,7 @@ import {
 import { Label } from '@/components/ui/label';
 import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover';
 import { adminChrome } from '@/lib/admin_chrome';
+import { adminKit } from '@/lib/admin_kit';
 import {
   endOfDayLocalValue,
   parseDatetimeLocalValue,
@@ -145,7 +146,7 @@ export function DateRangePicker({
 
   if (isAdmin) {
     return (
-      <label className={cn('text-sm font-medium text-foreground', className)}>
+      <label className={cn(adminKit.fieldLabelClass, className)}>
         <span className={labelClassName}>{label}</span>
         {trigger}
       </label>
@@ -153,7 +154,7 @@ export function DateRangePicker({
   }
 
   return (
-    <div className={cn('grid w-full min-w-0 gap-1.5', className)}>
+    <div className={cn('grid w-full min-w-0', adminKit.fieldLabelGap, className)}>
       <Label className={labelClassName} htmlFor={id}>
         {label}
       </Label>

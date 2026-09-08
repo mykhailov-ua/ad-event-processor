@@ -2,6 +2,7 @@ import { useState } from 'react';
 import { useRunWhenTrue } from '@/hooks/use_run_when_true';
 
 import { PrimaryActionButton } from '@/shell/action_buttons';
+import { DirectoryFilterForm, FilterField } from '@/shell/filter_panel';
 import { PageChrome } from '@/shell/page_chrome';
 import { CampaignScopeBar } from '@/shell/campaign_scope_bar';
 import { EmptyState } from '@/shell/empty_state';
@@ -135,44 +136,39 @@ export function MarginGuardPoliciesDirectory({
           <DialogHeader>
             <DialogTitle>Create policy</DialogTitle>
           </DialogHeader>
-          <div className="grid gap-4 md:grid-cols-[repeat(auto-fill,minmax(12rem,1fr))]">
-            <div className="grid gap-2">
-              <Label htmlFor="margin-guard-create-name">Name</Label>
+          <DirectoryFilterForm layout="auto-fill" onSubmit={(event) => event.preventDefault()}>
+            <FilterField htmlFor="margin-guard-create-name" label="Name">
               <Input
                 id="margin-guard-create-name"
                 value={createDraft.name}
                 onChange={(event) => onCreateDraftChange({ name: event.target.value })}
               />
-            </div>
-            <div className="grid gap-2">
-              <Label htmlFor="margin-guard-create-roi">ROI floor %</Label>
+            </FilterField>
+            <FilterField htmlFor="margin-guard-create-roi" label="ROI floor %">
               <Input
                 id="margin-guard-create-roi"
                 inputMode="decimal"
                 value={createDraft.roi_floor_pct}
                 onChange={(event) => onCreateDraftChange({ roi_floor_pct: event.target.value })}
               />
-            </div>
-            <div className="grid gap-2">
-              <Label htmlFor="margin-guard-create-min-clicks">Min clicks</Label>
+            </FilterField>
+            <FilterField htmlFor="margin-guard-create-min-clicks" label="Min clicks">
               <Input
                 id="margin-guard-create-min-clicks"
                 inputMode="numeric"
                 value={createDraft.min_clicks}
                 onChange={(event) => onCreateDraftChange({ min_clicks: event.target.value })}
               />
-            </div>
-            <div className="grid gap-2">
-              <Label htmlFor="margin-guard-create-zero-streak">Zero conv streak</Label>
+            </FilterField>
+            <FilterField htmlFor="margin-guard-create-zero-streak" label="Zero conv streak">
               <Input
                 id="margin-guard-create-zero-streak"
                 inputMode="numeric"
                 value={createDraft.zero_conv_streak}
                 onChange={(event) => onCreateDraftChange({ zero_conv_streak: event.target.value })}
               />
-            </div>
-            <div className="grid gap-2">
-              <Label htmlFor="margin-guard-create-cost-bps">Cost/revenue bps</Label>
+            </FilterField>
+            <FilterField htmlFor="margin-guard-create-cost-bps" label="Cost/revenue bps">
               <Input
                 id="margin-guard-create-cost-bps"
                 inputMode="numeric"
@@ -181,8 +177,8 @@ export function MarginGuardPoliciesDirectory({
                   onCreateDraftChange({ cost_over_revenue_threshold_bps: event.target.value })
                 }
               />
-            </div>
-            <div className="flex items-center gap-2 md:col-span-2">
+            </FilterField>
+            <div className="flex items-center gap-2 self-end md:col-span-2">
               <Checkbox
                 checked={createDraft.is_active}
                 id="margin-guard-create-active"
@@ -190,7 +186,7 @@ export function MarginGuardPoliciesDirectory({
               />
               <Label htmlFor="margin-guard-create-active">Active</Label>
             </div>
-          </div>
+          </DirectoryFilterForm>
           <DialogFooter>
             <PrimaryActionButton
               disabled={!createDraft.name.trim()}

@@ -77,16 +77,32 @@ func parseHTTP1(data []byte, maxBody int64, scratchPtr *[]byte) (int, Request, e
 	return httpingress.ParseHTTP1(data, maxBody, scratchPtr)
 }
 
+func parseHTTP1Into(data []byte, maxBody int64, scratchPtr *[]byte, req *httpingress.Request) (int, error) {
+	return httpingress.ParseHTTP1Into(data, maxBody, scratchPtr, req)
+}
+
+func resetHTTP1Request(req *httpingress.Request) {
+	httpingress.ResetHTTP1Request(req)
+}
+
 func parseHTTP1ChunkedBody(data []byte, off int, maxBody int64, scratchPtr *[]byte) (int, []byte, int, error) {
-	return httpingress.ParseHTTP1ChunkedBody(data, off, maxBody, scratchPtr)
+	return httpingress.ParseHTTP1ChunkedBody(data, off, maxBody, 0, scratchPtr)
 }
 
 func parseH2Ingress(buf []byte, st *h2ConnState, maxBody int64) (int, Request, uint32, []byte, error) {
 	return httpingress.ParseH2Ingress(buf, st, maxBody)
 }
 
+func parseH2IngressInto(buf []byte, st *h2ConnState, maxBody int64, req *Request) (int, uint32, []byte, error) {
+	return httpingress.ParseH2IngressInto(buf, st, maxBody, req)
+}
+
 func h3ParseRequestFrames(buf []byte, maxBody int64) (int, Request, error) {
 	return httpingress.H3ParseRequestFrames(buf, maxBody)
+}
+
+func h3ParseRequestFramesInto(buf []byte, maxBody int64, req *Request) (int, error) {
+	return httpingress.H3ParseRequestFramesInto(buf, maxBody, req)
 }
 
 func resetChunkScratch(scratchPtr *[]byte) {

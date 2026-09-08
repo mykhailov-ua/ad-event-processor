@@ -28,19 +28,19 @@ bash scripts/dev/aed-admin up
 
 Credentials from `seed_admin.sh` (override in `.env`: `ADMIN_BOOTSTRAP_EMAIL`, `ADMIN_BOOTSTRAP_PASSWORD`).
 
-**Mock API (UI without control):** if `:8188` is down, boot probes `/api/v1/meta` and enables mock automatically. Force mock: [http://localhost:5173/?admin_dev=1](http://localhost:5173/?admin_dev=1). Live API: [http://localhost:5173/?admin_dev=0](http://localhost:5173/?admin_dev=0). Mock responses are real HTTP on `:5173` (`X-Admin-Dev-Mock: 1`); unimplemented mock routes return **501** (`X-API-Stub: true`), not fake 200 empty lists. Dev server proxies `/health`, `/healthz`, `/readyz`, `/metrics` to `:8188` (never SPA `index.html`). Banner: *Dev mode - mock API responses*.
+**API:** `npm run dev` proxies `/api/*`, `/health`, `/healthz`, `/readyz`, and `/metrics` to control `:8188`. There is **no** in-browser mock intercept. If control is down, the dev proxy returns **502** -- start the stack first.
 
 ### Non-prod verification tiers (admin SPA)
 
-Do not treat these modes as production wiring proof (`anti-slop.mdc` tier honesty).
+Do not treat chart preview as production wiring proof (`anti-slop.mdc` tier honesty).
 
 | Tier | Trigger | What runs | Proves |
 | :--- | :--- | :--- | :--- |
-| **Live API** | `admin_dev=0` or control `:8188` healthy | Real `/api/v1/*` handlers | Operator UX against Go/OpenAPI contract |
-| **Dev mock** | `?admin_dev=1`, localStorage, or meta probe when control is down | `web/src/api/dev_mock/*` intercept in `api/client.ts` | UI layout and fetch lifecycle only; partial API parity |
-| **Chart mock** | `?chart_mock=1` on dashboard | `dashboard_series_mock.ts` synthetic series/KPIs | Chart component preview only; not `GET /api/v1/dashboards/*` data |
+| **T1 live API** | Control `:8188` healthy; web `:5173` or embed | Real `/api/v1/*` handlers | Operator UX against Go/OpenAPI contract |
+| **Chart preview** | `?chart_mock=1` on buyer dashboard | `dashboard_series_mock.ts` synthetic series/KPIs | Chart component preview only; not `GET /api/v1/dashboards/*` |
+| **T2 embedded** | `web/dist` served from control binary | Live API same origin | Production embed path |
 
-CI/e2e and merge claims must use **live API** against control (or documented integration tier). Green UI under dev mock or chart mock does not prove handler wiring.
+CI/e2e and merge claims must use **live API** against control (`curl -sf :8188/health`). Green UI under `chart_mock=1` does not prove handler wiring.
 
 ```bash
 bash scripts/dev/aed-admin status
@@ -55,7 +55,7 @@ Full stack: `docs/DEVELOPMENT.md`.
 
 | Path | Role |
 | :--- | :--- |
-| `web/src/api/` | HTTP client, resource hooks, dev mock (`?admin_dev=1`) |
+| `web/src/api/` | HTTP client, resource hooks (`client.ts` proxies to control in dev) |
 | `web/src/domains/` | Route-owned screens (`campaigns/list`, `ops`, …) |
 | `web/src/shell/` | Page chrome, directory frames, empty/error states |
 | `web/src/components/ui/` | First-party primitives (`Button`, `Table`, `Dialog`, …) |

@@ -65,10 +65,12 @@ export type CampaignsDirectoryProps = {
   filterTotalsCapped?: boolean;
   filteredTotal?: number;
   metricsStale?: boolean;
+  listLastUpdatedAt?: string | null;
   listScopeKey: string;
   statsQuery: CampaignStatsQuery;
   exportFilterQuery: CampaignListFilterQuery;
   fetching: boolean;
+  listRevalidating?: boolean;
   error: Error | undefined;
   hasSnapshot: boolean;
   filtersActive: boolean;

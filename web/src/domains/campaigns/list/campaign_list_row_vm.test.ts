@@ -3,7 +3,7 @@ import test from 'node:test';
 
 import type { CampaignListMetrics } from '@/api/campaigns_api';
 import type { Campaign, CampaignMargin } from '@/api/types';
-import { seedDeterministicUuid } from '@/api/dev_mock/seed_uuid.ts';
+import { seedDeterministicUuid } from '@/lib/uuid.ts';
 import { buildCampaignRowVm } from '@/domains/campaigns/list/campaign_list_row_vm.ts';
 
 const baseCampaign = {

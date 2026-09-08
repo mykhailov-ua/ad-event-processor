@@ -12,9 +12,16 @@ type (
 	DomainTLSAllowedResponse = domains.DomainTLSAllowedResponse
 	ParkDomainRequest        = domains.ParkDomainRequest
 	ParkDomainResponse       = domains.ParkDomainResponse
+	WildcardSSLRequest       = domains.WildcardSSLRequest
+	WildcardSSLResponse      = domains.WildcardSSLResponse
 	DomainHealthHTTPHandlers = domains.DomainHealthHTTPHandlers
 	CloudflareZone           = domains.CloudflareZone
 	CloudflareAPI            = domains.CloudflareAPI
+	DomainBulkRequest        = domains.DomainBulkRequest
+	DomainBulkJobStatus      = domains.DomainBulkJobStatus
+	DomainBulkJobRow         = domains.DomainBulkJobRow
+	BurnDomainRequest        = domains.BurnDomainRequest
+	BurnDomainResponse       = domains.BurnDomainResponse
 )
 
 var (

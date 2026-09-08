@@ -81,6 +81,10 @@ func CachedUnixSec() uint64 {
 	return uint64(cachedUnixMilli.Load() / 1000)
 }
 
+func CachedHourUTC() int {
+	return int((CachedUnixSec() % 86400) / 3600)
+}
+
 func init() {
 	hostname, _ := os.Hostname()
 	h := uint32(os.Getpid())

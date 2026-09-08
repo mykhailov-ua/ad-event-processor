@@ -13,7 +13,7 @@ export const adminChrome = {
   controlGhost: cn(
     adminKit.buttonShell,
     adminKit.controlRadius,
-    'border border-transparent bg-transparent px-2 text-foreground transition-colors hover:bg-accent hover:text-accent-foreground'
+    `border border-transparent bg-transparent ${adminKit.controlPaddingX} text-foreground transition-colors hover:border-border hover:bg-accent hover:text-accent-foreground`
   ),
   panel: cn(adminKit.panelRadius, 'border border-border bg-card text-card-foreground'),
   panelMuted: cn(adminKit.panelRadius, 'bg-muted text-muted-foreground'),
@@ -24,14 +24,14 @@ export const adminChrome = {
   ),
   menuList: 'flex flex-col gap-1',
   menuItem: cn(
-    'relative flex w-full cursor-pointer select-none items-center whitespace-nowrap px-2 py-1.5 text-[13px] text-foreground outline-none hover:bg-accent hover:text-accent-foreground disabled:pointer-events-none disabled:opacity-50',
+    `relative flex w-full cursor-pointer select-none items-center whitespace-nowrap ${adminKit.controlPaddingX} py-1.5 text-[13px] text-foreground outline-none hover:bg-accent hover:text-accent-foreground disabled:pointer-events-none disabled:opacity-50`,
     adminKit.controlRadius
   ),
   tableHead:
     'h-[34px] bg-muted/50 px-4 text-left align-middle text-[11px] font-normal uppercase leading-[14px] text-muted-foreground',
   tableCell: 'px-4 py-0 align-middle text-[13px] leading-[18px] text-foreground',
   muted: 'text-muted-foreground',
-  pageTitle: 'text-lg font-normal tracking-tight text-foreground',
+  pageTitle: 'text-lg font-bold tracking-tight text-foreground',
 } as const;
 
 function cnControl(): string {
@@ -39,7 +39,7 @@ function cnControl(): string {
     adminKit.controlHeight,
     adminKit.controlRadius,
     adminKit.controlText,
-    'border border-input bg-background px-2 py-1 text-foreground transition-colors',
+    `${adminKit.controlBorder} border-input bg-card ${adminKit.controlPaddingX} py-1 text-foreground transition-colors`,
     'placeholder:text-muted-foreground',
     adminKit.focusRing,
     'disabled:cursor-not-allowed disabled:opacity-50',
@@ -58,18 +58,20 @@ export type ButtonVariant =
   | 'link';
 
 export const buttonVariantClass: Record<ButtonVariant, string> = {
-  default: 'border-primary bg-primary text-primary-foreground hover:bg-primary/90',
+  default:
+    'border-primary bg-primary text-primary-foreground hover:border-primary hover:bg-primary/90',
   brand:
     'border-admin-brand bg-admin-brand text-admin-brand-foreground hover:border-admin-brand-hover hover:bg-admin-brand-hover',
   accent:
-    'border-chart-1/40 bg-chart-1/12 text-chart-1 hover:border-chart-1/60 hover:bg-chart-1/20',
-  secondary: 'border-border bg-secondary text-secondary-foreground hover:bg-secondary/80',
+    'border-chart-1/70 bg-chart-1/12 text-chart-1 hover:border-chart-1 hover:bg-chart-1/20',
+  secondary:
+    'border-border bg-muted/50 text-foreground hover:border-border hover:bg-muted',
   outline:
-    'border-primary/25 bg-background text-foreground hover:border-primary/40 hover:bg-primary/5 hover:text-primary',
+    'border-border bg-card text-foreground hover:border-primary hover:bg-primary/10 hover:text-primary',
   ghost:
-    'border-transparent bg-transparent text-muted-foreground hover:bg-primary/10 hover:text-primary',
+    'border-transparent bg-transparent text-muted-foreground hover:border-border hover:bg-primary/10 hover:text-primary',
   destructive:
-    'border-destructive bg-destructive text-destructive-foreground hover:bg-destructive/90',
+    'border-destructive bg-destructive text-destructive-foreground hover:border-destructive hover:bg-destructive/90',
   link: 'border-0 bg-transparent text-primary underline-offset-4 hover:underline',
 };
 

@@ -29,7 +29,7 @@ export function campaignFraudHref(campaignId: string, customerId: string): strin
 
 export function MetricRow({ label, value }: { label: string; value: string }) {
   return (
-    <div className="flex items-center justify-between gap-4 text-sm">
+    <div className="grid grid-cols-[1fr_auto] items-center gap-4 text-sm">
       <span className="text-muted-foreground">{label}</span>
       <span className="tabular-nums text-foreground">{value}</span>
     </div>
@@ -56,7 +56,7 @@ export function MetricsSection({
 }) {
   return (
     <section className="grid gap-3">
-      <div className="flex items-center justify-between gap-2">
+      <div className="grid grid-cols-[1fr_auto] items-center gap-2">
         <h3 className="text-ui-caption font-medium tracking-wide text-muted-foreground">{title}</h3>
         {meta}
       </div>
@@ -194,7 +194,7 @@ export function HourlyTrendChart({
 
   return (
     <div className="grid gap-2">
-      <div className="flex items-center justify-between gap-2 text-ui-caption text-muted-foreground">
+      <div className="grid grid-cols-[1fr_auto] items-center gap-2 text-ui-caption text-muted-foreground">
         <span>Last 24 hours</span>
         <div className="flex items-center gap-3">
           <span className="inline-flex items-center gap-1">
@@ -275,7 +275,7 @@ export function HourlyTrendChart({
         ) : null}
 
         {firstLabel || lastLabel ? (
-          <div className="flex items-center justify-between px-1 text-ui-mini tabular-nums text-muted-foreground">
+          <div className="grid grid-cols-[1fr_auto] items-center px-1 text-ui-mini tabular-nums text-muted-foreground">
             <span>{firstLabel ?? ''}</span>
             <span>{lastLabel ?? ''}</span>
           </div>

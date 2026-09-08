@@ -89,6 +89,7 @@ var (
 	BuildSlotTable                      = shard.BuildSlotTable
 	BumpMigrationFences                 = shard.BumpMigrationFences
 	CRC32Castagnoli                     = shard.CRC32Castagnoli
+	CRC32UUID                           = shard.CRC32UUID
 	CampaignEpochKey                    = shard.CampaignEpochKey
 	CampaignHashTag                     = shard.CampaignHashTag
 	CampaignSlotIndex                   = shard.CampaignSlotIndex

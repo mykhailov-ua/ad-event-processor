@@ -11,7 +11,7 @@ export const customerDetailPanelClass = cn(
 );
 
 export const customerDetailRowClass =
-  'grid gap-1 px-3 py-2.5 sm:grid-cols-[10rem_minmax(0,1fr)] sm:items-center sm:gap-4';
+  'grid min-h-[34px] gap-1 px-3 py-2 sm:grid-cols-[10rem_minmax(0,1fr)] sm:items-center sm:gap-4';
 
 export const customerDetailRowLabelClass = 'text-[13px] leading-[18px] text-muted-foreground';
 

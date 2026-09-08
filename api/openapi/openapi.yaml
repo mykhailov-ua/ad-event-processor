@@ -96,6 +96,8 @@ paths:
     $ref: paths/campaigns.yaml#/paths/~1api~1v1~1campaigns~1{id}~1owner
   /api/v1/campaigns/{id}/clone:
     $ref: paths/campaigns.yaml#/paths/~1api~1v1~1campaigns~1{id}~1clone
+  /api/v1/campaigns/bulk-clone:
+    $ref: paths/campaigns.yaml#/paths/~1api~1v1~1campaigns~1bulk-clone
   /api/v1/campaigns/export:
     $ref: paths/campaigns.yaml#/paths/~1api~1v1~1campaigns~1export
   /api/v1/campaigns/{id}/export:
@@ -168,10 +170,16 @@ paths:
     $ref: paths/campaigns.yaml#/paths/~1api~1v1~1forecast~1campaign
   /api/v1/flows:
     $ref: paths/campaigns.yaml#/paths/~1api~1v1~1flows
+  /api/v1/flows/validate:
+    $ref: paths/campaigns.yaml#/paths/~1api~1v1~1flows~1validate
   /api/v1/flows/{id}:
     $ref: paths/campaigns.yaml#/paths/~1api~1v1~1flows~1{id}
+  /api/v1/flows/{id}/clone:
+    $ref: paths/campaigns.yaml#/paths/~1api~1v1~1flows~1{id}~1clone
   /api/v1/landers:
     $ref: paths/campaigns.yaml#/paths/~1api~1v1~1landers
+  /api/v1/landers/{id}:
+    $ref: paths/campaigns.yaml#/paths/~1api~1v1~1landers~1{id}
   /api/v1/landers/{id}/hosted-upload:
     $ref: paths/campaigns.yaml#/paths/~1api~1v1~1landers~1{id}~1hosted-upload
   /api/v1/landers/{id}/hosted-editor:
@@ -182,8 +190,12 @@ paths:
     $ref: paths/campaigns.yaml#/paths/~1api~1v1~1landers~1{id}~1hosted-publish
   /api/v1/offers:
     $ref: paths/campaigns.yaml#/paths/~1api~1v1~1offers
+  /api/v1/offers/{id}:
+    $ref: paths/campaigns.yaml#/paths/~1api~1v1~1offers~1{id}
   /api/v1/brands:
     $ref: paths/campaigns.yaml#/paths/~1api~1v1~1brands
+  /api/v1/brands/{id}:
+    $ref: paths/campaigns.yaml#/paths/~1api~1v1~1brands~1{id}
   /api/v1/brands/{id}/creatives:
     $ref: paths/campaigns.yaml#/paths/~1api~1v1~1brands~1{id}~1creatives
   /api/v1/brand-creatives/{id}:
@@ -198,6 +210,8 @@ paths:
     $ref: paths/campaigns.yaml#/paths/~1api~1v1~1domains~1{hostname}~1probe
   /api/v1/domains/{hostname}/ssl/setup:
     $ref: paths/campaigns.yaml#/paths/~1api~1v1~1domains~1{hostname}~1ssl~1setup
+  /api/v1/domains/cloudflare/zones:
+    $ref: paths/campaigns.yaml#/paths/~1api~1v1~1domains~1cloudflare~1zones
   /api/v1/cost-sync/networks:
     $ref: paths/cost_sync.yaml#/paths/~1api~1v1~1cost-sync~1networks
   /api/v1/cost-sync/credentials:
@@ -224,6 +238,10 @@ paths:
     $ref: paths/integrations.yaml#/paths/~1api~1v1~1postbacks~1campaign-status
   /api/v1/postbacks/snapshot:
     $ref: paths/integrations.yaml#/paths/~1api~1v1~1postbacks~1snapshot
+  /api/v1/postbacks/health:
+    $ref: paths/integrations.yaml#/paths/~1api~1v1~1postbacks~1health
+  /api/v1/integrations/postbacks/health:
+    $ref: paths/integrations.yaml#/paths/~1api~1v1~1integrations~1postbacks~1health
   /api/v1/integration/schemas:
     $ref: paths/integrations.yaml#/paths/~1api~1v1~1integration~1schemas
   /api/v1/integration/schemas/{id}:
@@ -238,6 +256,8 @@ paths:
     $ref: paths/integrations.yaml#/paths/~1api~1v1~1integration~1templates~1import
   /api/v1/campaigns/{id}/apply-templates:
     $ref: paths/integrations.yaml#/paths/~1api~1v1~1campaigns~1{id}~1apply-templates
+  /api/v1/campaigns/{id}/apply-templates/dry-run:
+    $ref: paths/integrations.yaml#/paths/~1api~1v1~1campaigns~1{id}~1apply-templates~1dry-run
   /api/v1/supply/sellers:
     $ref: paths/integrations.yaml#/paths/~1api~1v1~1supply~1sellers
   /api/v1/supply/sellers/{id}:
@@ -352,6 +372,8 @@ paths:
     $ref: paths/platform.yaml#/paths/~1api~1v1~1customers
   /api/v1/customers/{id}:
     $ref: paths/platform.yaml#/paths/~1api~1v1~1customers~1{id}
+  /api/v1/customers/{id}/cost-center:
+    $ref: paths/platform.yaml#/paths/~1api~1v1~1customers~1{id}~1cost-center
   /api/v1/selfserve/templates:
     $ref: paths/billing.yaml#/paths/~1api~1v1~1selfserve~1templates
   /api/v1/selfserve/campaigns:
@@ -420,6 +442,16 @@ paths:
     $ref: paths/ops_reports.yaml#/paths/~1api~1v1~1ops~1domains~1rotation
   /api/v1/ops/domains/tls-allowed:
     $ref: paths/ops_reports.yaml#/paths/~1api~1v1~1ops~1domains~1tls-allowed
+  /api/v1/ops/domains/wildcard-ssl:
+    $ref: paths/ops_reports.yaml#/paths/~1api~1v1~1ops~1domains~1wildcard-ssl
+  /api/v1/ops/domains/bulk:
+    $ref: paths/ops_reports.yaml#/paths/~1api~1v1~1ops~1domains~1bulk
+  /api/v1/ops/domains/bulk-ssl:
+    $ref: paths/ops_reports.yaml#/paths/~1api~1v1~1ops~1domains~1bulk-ssl
+  /api/v1/ops/domains/jobs/{job_id}:
+    $ref: paths/ops_reports.yaml#/paths/~1api~1v1~1ops~1domains~1jobs~1{job_id}
+  /api/v1/ops/domains/{hostname}/burn:
+    $ref: paths/ops_reports.yaml#/paths/~1api~1v1~1ops~1domains~1{hostname}~1burn
   /api/v1/ops/domains/{hostname}/tls-allowed:
     $ref: paths/ops_reports.yaml#/paths/~1api~1v1~1ops~1domains~1{hostname}~1tls-allowed
   /api/v1/ops/fraud/presets/{name}:
@@ -708,6 +740,10 @@ components:
       $ref: components/schemas/integrations.yaml#/ApplyCampaignTemplatesRequest
     ApplyCampaignTemplatesResult:
       $ref: components/schemas/integrations.yaml#/ApplyCampaignTemplatesResult
+    DryRunCampaignTemplatesResult:
+      $ref: components/schemas/integrations.yaml#/DryRunCampaignTemplatesResult
+    PostbackHealthResponse:
+      $ref: components/schemas/integrations.yaml#/PostbackHealthResponse
     Seller:
       $ref: components/schemas/integrations.yaml#/Seller
     SellerWriteRequest:
@@ -760,6 +796,12 @@ components:
       $ref: components/schemas/campaign.yaml#/CloneCampaignPreview
     CloneCampaignResult:
       $ref: components/schemas/campaign.yaml#/CloneCampaignResult
+    BulkCloneCampaignsRequest:
+      $ref: components/schemas/campaign.yaml#/BulkCloneCampaignsRequest
+    BulkCloneCampaignsResponse:
+      $ref: components/schemas/campaign.yaml#/BulkCloneCampaignsResponse
+    BulkCloneCampaignResultRow:
+      $ref: components/schemas/campaign.yaml#/BulkCloneCampaignResultRow
     MacroPreviewRequest:
       $ref: components/schemas/campaign.yaml#/MacroPreviewRequest
     MacroPreviewResponse:

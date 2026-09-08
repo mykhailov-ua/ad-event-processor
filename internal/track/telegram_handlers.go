@@ -48,7 +48,9 @@ func FillTelegramEventFromParsed(
 	if req.WireMeta != nil {
 		req.WireMeta(evt)
 	}
-	evt.Payload = MarshalTelegramBridgePayload(evt.Payload, parsed.BridgeToken)
+	buf := MarshalTelegramBridgePayload(evt.StringBuffer[:0], parsed.BridgeToken)
+	evt.StringBuffer = buf
+	evt.Payload = buf
 }
 
 type TelegramBidSeat struct {

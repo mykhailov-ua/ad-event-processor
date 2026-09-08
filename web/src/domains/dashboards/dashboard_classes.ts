@@ -1,18 +1,32 @@
 import { adminKit } from '@/lib/admin_kit';
-import { pageWorkspaceFlatClass } from '@/shell/page_layout';
+import { pageWorkspaceFillClass } from '@/shell/page_layout';
+import { shellChrome } from '@/shell/shell_chrome';
 import { cn } from '@/lib/utils';
 
-export const dashboardPageWorkspaceClass = pageWorkspaceFlatClass;
+export const dashboardPageWorkspaceClass = pageWorkspaceFillClass;
 
 export const dashboardCardClass = cn(
-  'min-w-0 overflow-hidden border border-border bg-card',
+  'min-w-0 border border-border bg-card',
   adminKit.panelRadius
 );
 
-export const dashboardCardHeaderClass =
-  'flex flex-wrap items-center justify-between gap-2 border-b border-border px-5 py-3';
+/** Dashboard table host: horizontal scroll only; footer row stays above the scrollbar. */
+export const dashboardTableSurfaceClass =
+  'ui-scrollbar min-w-0 overflow-x-auto bg-card pr-3';
 
-export const dashboardCardTitleClass = 'm-0 text-sm font-semibold text-foreground';
+export const dashboardTableThClass =
+  'relative h-[34px] max-h-[34px] overflow-visible whitespace-nowrap border-b border-r border-border bg-admin-table-header p-0 align-middle text-[11px] font-bold uppercase leading-[14px] tracking-normal text-muted-foreground last:border-r-0';
+
+export const dashboardTableTdClass =
+  'h-[34px] max-h-[34px] overflow-visible whitespace-nowrap border-b border-border px-4 py-0 align-middle text-[13px] text-foreground';
+
+export const dashboardTableTfootTdClass =
+  'border-t border-border bg-admin-table-totals font-normal text-foreground';
+
+export const dashboardCardHeaderClass = shellChrome.sectionHeaderBandClass;
+
+export const dashboardCardTitleClass =
+  'm-0 text-[13px] font-bold leading-[18px] text-foreground';
 
 export const dashboardCardBodyClass = 'px-5 py-4';
 
@@ -27,7 +41,10 @@ export const dashboardFilterFieldClass = 'campaigns-filter-field min-w-0';
 
 export const dashboardFilterLabelClass = adminKit.labelCaps;
 
-export const dashboardTableSectionHeaderClass =
-  'flex flex-wrap items-center justify-between gap-2 border-b border-border px-5 py-3';
+export const dashboardTableSectionHeaderClass = shellChrome.sectionHeaderBandClass;
 
 export const dashboardTableSectionSplitClass = 'border-t border-border';
+
+export const dashboardTablesStackClass = 'grid min-w-0 gap-3';
+
+export const dashboardTablesPairRowClass = 'grid min-w-0 gap-3 lg:grid-cols-2';

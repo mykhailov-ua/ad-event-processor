@@ -1,7 +1,7 @@
 // L3 workspace owner: campaigns directory toolbar, selection, column prefs, export, bulk actions.
 // Fetch fan-out lives in use_campaigns_page_list.ts (RF-9); this hook consumes list snapshots only.
 // listScopeKey change clears row selection and popover stats cache (statsRevision in parent).
-import { useCallback, useEffect, useMemo, useState } from 'react';
+import { useCallback, useDeferredValue, useEffect, useMemo, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { toast } from 'sonner';
 
@@ -88,6 +88,7 @@ export function useCampaignsDirectoryWorkspace({
     onCampaignCreated: onRefreshList,
   });
   const [cloneOpen, setCloneOpen] = useState(false);
+  const [bulkCloneOpen, setBulkCloneOpen] = useState(false);
   const [archiveOpen, setArchiveOpen] = useState(false);
   const [resetWorkspaceOpen, setResetWorkspaceOpen] = useState(false);
   const [bulkBusy, setBulkBusy] = useState(false);
@@ -116,14 +117,19 @@ export function useCampaignsDirectoryWorkspace({
   }, []);
 
   const visibleColumns = useMemo(() => visibleCampaignListColumns(columnPrefs), [columnPrefs]);
+  const deferredColumnPrefs = useDeferredValue(columnPrefs);
+  const deferredVisibleColumns = useMemo(
+    () => visibleCampaignListColumns(deferredColumnPrefs),
+    [deferredColumnPrefs]
+  );
 
   const computedColumnWidths = useMemo((): Record<CampaignListColumnId, number> => {
     const widthItems = columnWidthProbe?.items?.length ? columnWidthProbe.items : (items ?? []);
     if (!widthItems.length) {
-      return defaultCampaignListColumnWidths(visibleColumns);
+      return defaultCampaignListColumnWidths(deferredVisibleColumns);
     }
     return computeCampaignListColumnWidths({
-      columns: visibleColumns,
+      columns: deferredVisibleColumns,
       items: widthItems,
       metricsById: columnWidthProbe?.metricsById ?? metricsById,
       marginsById: columnWidthProbe?.marginsById ?? marginsById,
@@ -134,12 +140,12 @@ export function useCampaignsDirectoryWorkspace({
   }, [
     columnWidthProbe,
     customerNameById,
+    deferredVisibleColumns,
     filterTotals,
     items,
     marginsById,
     metricsById,
     ownerEmailById,
-    visibleColumns,
   ]);
 
   const columnWidths = useMemo(
@@ -318,6 +324,7 @@ export function useCampaignsDirectoryWorkspace({
   return {
     archiveOpen,
     bulkBusy,
+    bulkCloneOpen,
     cloneOpen,
     columnPrefs,
     columnWidths,
@@ -339,6 +346,7 @@ export function useCampaignsDirectoryWorkspace({
     selectedCampaignId,
     selectedIds,
     setArchiveOpen,
+    setBulkCloneOpen,
     setCloneOpen,
     setImportOpen,
     setOverviewCampaign,

@@ -444,23 +444,7 @@ paths:
     /api/v1/brands:
         $ref: paths/campaigns.yaml#/paths/~1api~1v1~1brands
     /api/v1/brands/{id}:
-        get:
-            description: Route stub; schema not yet documented
-            operationId: getBrandsById
-            parameters:
-                - in: path
-                  name: id
-                  required: true
-                  schema:
-                    type: string
-            responses:
-                "200":
-                    description: OK
-                default:
-                    $ref: openapi.yaml#/components/responses/Error
-            summary: Route stub; schema not yet documented
-            tags:
-                - brands
+        $ref: paths/campaigns.yaml#/paths/~1api~1v1~1brands~1{id}
     /api/v1/brands/{id}/creatives:
         $ref: paths/campaigns.yaml#/paths/~1api~1v1~1brands~1{id}~1creatives
     /api/v1/campaigns:
@@ -529,32 +513,8 @@ paths:
         $ref: paths/campaigns.yaml#/paths/~1api~1v1~1campaigns~1import~1validate~1jobs
     /api/v1/campaigns/import/validate/jobs/{id}:
         $ref: paths/campaigns.yaml#/paths/~1api~1v1~1campaigns~1import~1validate~1jobs~1{id}
-    /api/v1/campaigns/list-facets:
-        get:
-            description: Route stub; schema not yet documented
-            operationId: getCampaignsListFacets
-            responses:
-                "200":
-                    description: OK
-                default:
-                    $ref: openapi.yaml#/components/responses/Error
-            summary: Route stub; schema not yet documented
-            tags:
-                - campaigns
     /api/v1/campaigns/metrics:
         $ref: paths/campaigns.yaml#/paths/~1api~1v1~1campaigns~1metrics
-    /api/v1/campaigns/metrics-totals:
-        get:
-            description: Route stub; schema not yet documented
-            operationId: getCampaignsMetricsTotals
-            responses:
-                "200":
-                    description: OK
-                default:
-                    $ref: openapi.yaml#/components/responses/Error
-            summary: Route stub; schema not yet documented
-            tags:
-                - campaigns
     /api/v1/campaigns/migrate/import:
         $ref: paths/campaigns.yaml#/paths/~1api~1v1~1campaigns~1migrate~1import
     /api/v1/campaigns/migrate/preview:
@@ -567,18 +527,6 @@ paths:
         $ref: paths/campaigns.yaml#/paths/~1api~1v1~1campaigns~1migrate~1sources
     /api/v1/campaigns/onboarding-templates:
         $ref: paths/campaigns.yaml#/paths/~1api~1v1~1campaigns~1onboarding-templates
-    /api/v1/campaigns/target-countries:
-        get:
-            description: Route stub; schema not yet documented
-            operationId: getCampaignsTargetCountries
-            responses:
-                "200":
-                    description: OK
-                default:
-                    $ref: openapi.yaml#/components/responses/Error
-            summary: Route stub; schema not yet documented
-            tags:
-                - campaigns
     /api/v1/campaigns/wizard/session:
         $ref: paths/campaigns.yaml#/paths/~1api~1v1~1campaigns~1wizard~1session
     /api/v1/command-palette/open:
@@ -615,6 +563,8 @@ paths:
         $ref: paths/billing.yaml#/paths/~1api~1v1~1customers~1{id}~1billing~1forecast
     /api/v1/customers/{id}/billing/statement:
         $ref: paths/billing.yaml#/paths/~1api~1v1~1customers~1{id}~1billing~1statement
+    /api/v1/customers/{id}/cost-center:
+        $ref: paths/platform.yaml#/paths/~1api~1v1~1customers~1{id}~1cost-center
     /api/v1/customers/{id}/ledger:
         $ref: paths/billing.yaml#/paths/~1api~1v1~1customers~1{id}~1ledger
     /api/v1/customers/{id}/payments:
@@ -687,6 +637,8 @@ paths:
         $ref: paths/integrations.yaml#/paths/~1api~1v1~1integration~1templates~1import
     /api/v1/landers:
         $ref: paths/campaigns.yaml#/paths/~1api~1v1~1landers
+    /api/v1/landers/{id}:
+        $ref: paths/campaigns.yaml#/paths/~1api~1v1~1landers~1{id}
     /api/v1/landers/{id}/hosted-editor:
         $ref: paths/campaigns.yaml#/paths/~1api~1v1~1landers~1{id}~1hosted-editor
     /api/v1/landers/{id}/hosted-files/{path...}:
@@ -709,6 +661,8 @@ paths:
         $ref: paths/platform.yaml#/paths/~1api~1v1~1meta
     /api/v1/offers:
         $ref: paths/campaigns.yaml#/paths/~1api~1v1~1offers
+    /api/v1/offers/{id}:
+        $ref: paths/campaigns.yaml#/paths/~1api~1v1~1offers~1{id}
     /api/v1/ops/blacklist:
         $ref: paths/ops_reports.yaml#/paths/~1api~1v1~1ops~1blacklist
     /api/v1/ops/consent/proofs:

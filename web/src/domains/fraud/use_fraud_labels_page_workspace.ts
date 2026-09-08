@@ -1,19 +1,22 @@
 // L3 fraud labels directory: server pagination via URL limit/offset; single-row and bulk JSON upsert.
 // IP hash validated client-side for UX; server remains authoritative (SV-*).
 import { useCallback, useEffect, useState } from 'react';
-import { useSearchParams } from 'react-router-dom';
+import { toast } from 'sonner';
 
 import { bulkUpsertFraudLabels, listFraudLabels, upsertFraudLabel } from '@/api/fraud_api';
 import type { FraudManualLabelBulkRequest } from '@/api/types';
 import { useCoalescedBumpRefresh, useRefreshToken } from '@/hooks/use_coalesced_refresh_token';
 import { useResource } from '@/api/use_resource';
 import { useSession } from '@/hooks/use_session';
+import { useTransitionSearchParams } from '@/hooks/use_transition_search_params';
 import { parseListLimit, parseListOffset } from '@/lib/list_query';
+import { mutationError } from '@/lib/mutation_audit';
 
 const IP_HASH_PATTERN = /^[0-9a-fA-F]{32}$/;
 
 export function useFraudLabelsPageWorkspace() {
-  const [searchParams, setSearchParams] = useSearchParams();
+  const [searchParams, { isPending: listQueryPending, replaceSearchParams }] =
+    useTransitionSearchParams();
   const { session } = useSession();
   const { refreshToken, bumpRefresh } = useRefreshToken();
   const [saving, setSaving] = useState(false);
@@ -40,7 +43,7 @@ export function useFraudLabelsPageWorkspace() {
 
   const shouldFetch = Boolean(appliedCustomerId);
 
-  const { data, error, fetching } = useResource(
+  const { data, error, fetching, revalidating: listRevalidating } = useResource(
     (signal) => {
       if (!shouldFetch) {
         return Promise.resolve(undefined);
@@ -74,9 +77,9 @@ export function useFraudLabelsPageWorkspace() {
       }
       next.set('limit', String(limit));
       next.set('offset', String(Math.max(0, offset)));
-      setSearchParams(next, { replace: true });
+      replaceSearchParams(next);
     },
-    [appliedCustomerId, appliedLimit, appliedOffset, searchParams, setSearchParams]
+    [appliedCustomerId, appliedLimit, appliedOffset, replaceSearchParams, searchParams]
   );
 
   const onApplyCustomer = useCallback(() => {
@@ -121,9 +124,12 @@ export function useFraudLabelsPageWorkspace() {
       setSaveSuccess(true);
       setDraftIpHash('');
       setDraftReason('');
+      toast.success('Label saved');
       bumpRefreshCoalesced();
     } catch (err: unknown) {
-      setSaveError(err instanceof Error ? err : new Error(String(err)));
+      const nextError = mutationError(err);
+      setSaveError(nextError);
+      toast.error(nextError.message);
     } finally {
       setSaving(false);
     }
@@ -157,9 +163,12 @@ export function useFraudLabelsPageWorkspace() {
       setBulkSuccess(true);
       setBulkUpserted(response.upserted);
       setDraftBulkJson('');
+      toast.success(`Bulk upserted ${response.upserted ?? 0} label(s)`);
       bumpRefreshCoalesced();
     } catch (err: unknown) {
-      setBulkError(err instanceof Error ? err : new Error(String(err)));
+      const nextError = mutationError(err);
+      setBulkError(nextError);
+      toast.error(nextError.message);
     } finally {
       setBulkSaving(false);
     }
@@ -176,6 +185,7 @@ export function useFraudLabelsPageWorkspace() {
     draftLabel,
     draftReason,
     fetching,
+    listRevalidating: listRevalidating || listQueryPending,
     saving,
     error,
     saveError,

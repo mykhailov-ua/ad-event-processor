@@ -14,6 +14,7 @@ import (
 type ReadHost interface {
 	GetCampaignRow(ctx context.Context, campaignID uuid.UUID) (db.Campaign, error)
 	ProxyAllowHTTPInsecure() bool
+	ClickFilterRedirectOnlyLicensed() bool
 }
 
 type IntegrationHost interface {

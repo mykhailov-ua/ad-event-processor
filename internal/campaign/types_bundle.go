@@ -9,6 +9,7 @@ import (
 	db "ad-event-processor/internal/domain/db"
 	"ad-event-processor/internal/flow"
 	"ad-event-processor/internal/migrationsource"
+	"ad-event-processor/internal/postback"
 
 	"github.com/google/uuid"
 )
@@ -574,6 +575,14 @@ type ApplyCampaignTemplatesResult struct {
 	TrafficSource     map[string]string `json:"traffic_source,omitempty"`
 	AffiliatePostback map[string]string `json:"affiliate_postback,omitempty"`
 	AffiliateStatus   map[string]string `json:"affiliate_status,omitempty"`
+}
+
+type DryRunCampaignTemplatesResult struct {
+	CampaignID          string                `json:"campaign_id"`
+	TargetURL           string                `json:"target_url,omitempty"`
+	PanelPostbackURL    string                `json:"panel_postback_url,omitempty"`
+	PostbackURLTemplate string                `json:"postback_url_template,omitempty"`
+	PostbackDryRun      postback.DryRunResult `json:"postback_dry_run"`
 }
 
 type CampaignFlowPathValidator func(ctx context.Context, paths []flow.PathDTO) error

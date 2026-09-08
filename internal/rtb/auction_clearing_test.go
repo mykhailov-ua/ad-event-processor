@@ -15,7 +15,7 @@ func TestAuction_eCTR_ranking(t *testing.T) {
 		{ID: 2, Bid: 150, CTRPPM: CTRPPMUnit, DeviceMask: 1, CategoryMask: 1, GeoHashVal: 7, Budget: 5000},
 	})
 
-	res, reason := reg.RunAuction(stdReq(7, 50))
+	res, reason := reg.RunAuctionPtr(stdReq(7, 50))
 	require.True(t, reason.OK())
 	assert.Equal(t, CampaignID(2), res.CampaignID)
 }
@@ -27,7 +27,7 @@ func TestAuction_reserve_floor(t *testing.T) {
 		{ID: 1, Bid: 200, Reserve: 120, DeviceMask: 1, CategoryMask: 1, GeoHashVal: 7, Budget: 5000},
 	})
 
-	res, reason := reg.RunAuction(stdReq(7, 50))
+	res, reason := reg.RunAuctionPtr(stdReq(7, 50))
 	require.True(t, reason.OK())
 	assert.Equal(t, int64(120), res.Price)
 }
@@ -41,7 +41,7 @@ func TestAuction_firstPrice(t *testing.T) {
 		{ID: 2, Bid: 150, DeviceMask: 1, CategoryMask: 1, GeoHashVal: 7, Budget: 5000},
 	})
 
-	res, reason := reg.RunAuction(stdReq(7, 50))
+	res, reason := reg.RunAuctionPtr(stdReq(7, 50))
 	require.True(t, reason.OK())
 	assert.Equal(t, CampaignID(1), res.CampaignID)
 	assert.Equal(t, int64(200), res.Price)

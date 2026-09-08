@@ -2,6 +2,7 @@ import { X } from 'lucide-react';
 import type { ReactNode } from 'react';
 
 import { adminAlertClass, adminKit, type AdminAlertTone } from '@/lib/admin_kit';
+import { uiSurfaces } from '@/lib/ui_surfaces';
 import { cn } from '@/lib/utils';
 
 export type AdminAlertProps = {
@@ -16,9 +17,10 @@ export function AdminAlert({ tone, title, description, className, onDismiss }: A
   return (
     <div
       className={cn(
-        'flex items-start justify-between gap-3 border px-4 py-3 text-[13px] leading-[18px]',
-        adminKit.controlRadius,
+        uiSurfaces.message,
         adminAlertClass[tone],
+        'grid-cols-[1fr_auto] items-start',
+        adminKit.controlRadius,
         className
       )}
       role="alert"

@@ -3,7 +3,6 @@ import { Link } from 'react-router-dom';
 import type { CampaignListMetrics } from '@/api/campaigns_api';
 import type { Campaign, CampaignStatsQuery } from '@/api/types';
 import { CampaignCountryBadges } from '@/domains/campaigns/list/campaign_country_badges';
-import { CampaignMarginBreachBadge } from '@/domains/campaigns/list/campaign_margin_badge';
 import { CampaignMetricsPopover } from '@/domains/campaigns/list/campaign_metrics_popover';
 import type { CampaignListMiddleColumnId } from '@/domains/campaigns/list/campaign_list_columns';
 import { rateBenchmarkToneClass } from '@/domains/campaigns/list/campaign_list_rate_tone';
@@ -39,15 +38,6 @@ export function CampaignListTableMiddleCell({
   const row = campaign as CampaignWithMoneyDisplay;
 
   switch (columnId) {
-    case 'status':
-      return (
-        <span className="inline-flex max-w-full flex-nowrap items-center gap-1 overflow-hidden">
-          <span className={cn(vm.statusBadgeClass, 'whitespace-nowrap')} title={vm.statusLabel}>
-            {vm.statusLabel}
-          </span>
-          {marginBreach ? <CampaignMarginBreachBadge /> : null}
-        </span>
-      );
     case 'clicks':
       return <span className={tableCellClass(vm.clicks.isZero)}>{vm.clicks.text}</span>;
     case 'impressions':
@@ -212,7 +202,7 @@ export function CampaignListTableMiddleCell({
         return <span className={tableCellClass(true)}>-</span>;
       }
       return (
-        <span className="block max-w-full overflow-hidden">
+        <span className="block max-w-full">
           <CampaignCountryBadges
             className="max-w-full"
             compact

@@ -41,16 +41,21 @@ func benchTelegramClickHandler(b testing.TB) (*AdsPacketHandler, parsedHTTPReque
 		b.Fatal(err)
 	}
 	conn := NewGnetBenchConn(inbound)
-	h.React(req, conn)
+	h.React(&req, conn)
 	return h, req, conn
 }
 
 func TestTelegramClickRedirectGnet_ZeroAlloc(t *testing.T) {
 	h, req, conn := benchTelegramClickHandler(t)
+	for range 50 {
+		conn.ClearWritten()
+		conn.ClearResponses()
+		h.React(&req, conn)
+	}
 	allocs := testing.AllocsPerRun(100, func() {
 		conn.ClearWritten()
 		conn.ClearResponses()
-		h.React(req, conn)
+		h.React(&req, conn)
 	})
 	if allocs != 0.0 {
 		t.Fatalf("expected 0 allocs/op, got %v", allocs)
@@ -93,7 +98,7 @@ func BenchmarkTelegramClickRedirectGnet_E2E(b *testing.B) {
 	for b.Loop() {
 		conn.ClearWritten()
 		conn.ClearResponses()
-		h.React(req, conn)
+		h.React(&req, conn)
 	}
 }
 

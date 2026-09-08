@@ -115,7 +115,7 @@ func normalizeInboundStatus(raw string) string {
 
 func extractInboundStatus(payload []byte) string {
 	fields := track.ParsePayloadStringFields(payload)
-	for _, key := range []string{"status", "affiliate_status", "conversion_status"} {
+	for _, key := range []string{"status", "affiliate_status", "conversion_status", "lead_status"} {
 		if v := normalizeInboundStatus(fields[key]); v != "" {
 			return v
 		}

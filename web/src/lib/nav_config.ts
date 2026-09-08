@@ -15,11 +15,15 @@ export type NavGroup = {
 
 const CORE_NAV: NavItem[] = [
   { path: '/customers', label: 'Customers', permission: 'customers:read' },
-  { path: '/campaigns', label: 'Campaigns', permission: 'campaigns:read' },
+  {
+    path: '/campaigns',
+    label: 'Campaigns',
+    permissionAny: ['campaigns:read', 'campaigns:read:masked'],
+  },
   { path: '/billing', label: 'Billing', permission: 'customers:read' },
   {
     path: '/dashboards/buyer',
-    label: 'Dashboards',
+    label: 'Dashboard',
     permissionAny: ['campaigns:read', 'campaigns:read:masked'],
   },
   { path: '/team', label: 'Team', permission: 'campaigns:read' },

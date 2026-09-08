@@ -3,7 +3,8 @@
 // Role:
 //   - Single EVALSHA (unified-filter.lua) per accept when not local-quanta full-skip eligible.
 //   - Go-local prechecks (schedule, geo floor, ingress RPD, TTC when ttc_in_go) before Lua when configured.
-//   - budget-fast.lua for debit-only fast path; budget-rollback.lua on post-debit enqueue failure.
+//   - LocalFcapLedger (stream.LocalFcapLedger): in-memory freq-cap TryAcquire before budget-fast.lua;
+//     async Redis INCR via scheduleFcapBump; Rollback on Lua failure.
 //   - SetDeferStreamToProducer(true) sets stream key fcap:ignored; Go StreamProducer/BrokerProducer is sole writer.
 //
 // Topology:
@@ -24,7 +25,8 @@
 //   - Debit: INCRBY spend_key -amount; campaign/customer sync counters on first spend in window.
 //   - Dedup SET NX on KEYS[2] after budget gates, before side effects; duplicate returns 2 without debit.
 //   - XADD in Lua only when KEYS[9] is set and not fcap:ignored; deferred producer mode uses fcap:ignored.
-//   - Post-debit enqueue failure triggers RollbackDebit (budget-rollback.lua or local quanta refund).
+//   - Post-debit enqueue failure triggers RollbackDebit (budget-rollback.lua SET NX guard or localRollbackGuard on full-skip path).
+//   - Local quanta full-skip: debit in tryLocalQuantaFullSkipCheck (evt.LocalQuantaDebitMicro); async stream after publishAcceptedOrRollback via FinalizeLocalQuantaPublish.
 //   - Local-quanta full-skip (LOCAL_QUOTA_MODE live): zero sync EVALSHA when eligible; async publish only.
 //   - FILTER_TIMEOUT_MS enforced via monotonic deadline (ARGV[29..31]) inside Check, same worker goroutine.
 //   - skip_budget (ARGV[24]) and migration/routing epoch barrier (return 11) must not debit past fence.
@@ -34,7 +36,10 @@
 //   - Postgres writes on synchronous Check path (budget miss may read registry snapshot only).
 //
 // Verify:
-// go test ./internal/filter/... -short -count=1
+// go test ./internal/filter/unified/ -short -run TestCheckMockAllocProbe -count=1
+// go test ./internal/filter/unified/ -short -run TestUnifiedFilter_checkFreqLimitGo_localLedger -count=1
+// bash scripts/ci/static/budget_rollback_gate.sh
+// go test ./internal/filter/unified/ -race -short -run TestBudgetRollback_ -count=1
 // go test ./internal/ingest/ -short -run TestUnifiedFilter_RollbackDebit -count=1
 // go test ./internal/ingest/ -short -run TestUnifiedFilter_SetDeferStreamToProducer -count=1
 // go test ./internal/ingest/ -short -run TestStreamProducerAdmissionRaceWithoutReserve -count=1
@@ -68,9 +73,10 @@
 //     TestTryAcquireStreamAdmission_holdoutDeferredNoPublisher).
 //   - Rollback path: TryReserve on stream/broker before Lua debit; post-debit enqueue failure calls
 //     RollbackDebit -> budget-rollback.lua on Redis path or local quanta ledger refund on full-skip path
-//     (~200 ms rollback timeout). Rejected: accept without rollback on producer overload (orphan debit);
-//     rejected debit-after-enqueue ordering (admission race holdouts). Monitor
-//     ad_stream_producer_post_debit_rejected_total ~0.
+//     (~200 ms rollback timeout). budget-rollback.lua SET NX on {campaign_id}rollback:click:{click_id}
+//     (KEYS[7]) before refund; return 2 on duplicate EVALSHA (idempotent no-op). Rejected: accept without
+//     rollback on producer overload (orphan debit); rejected debit-after-enqueue ordering (admission race
+//     holdouts). Monitor ad_stream_producer_post_debit_rejected_total ~0.
 //   - Go-local prechecks (schedule, geo floor, ingress RPD, ttc_in_go) before EVALSHA when configured:
 //     trims Redis work for known rejects; rejected moving all gates into Lua only (larger script, no mmap
 //     geo); rejected removing prechecks entirely (higher Redis CPU per reject).

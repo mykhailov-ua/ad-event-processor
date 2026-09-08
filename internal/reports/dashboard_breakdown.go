@@ -295,6 +295,30 @@ GROUP BY day
 ORDER BY day
 LIMIT ?`
 
+const customerDailySpendFromClicksQuery = `
+SELECT
+ toDate(created_at) AS day,
+ sum(attributed_cost_micro) AS spend_micro
+FROM clicks
+WHERE campaign_id IN (?)
+ AND created_at >= ?
+ AND created_at < ?
+GROUP BY day
+ORDER BY day
+LIMIT ?`
+
+const customerDailyRevenueFromConversionsQuery = `
+SELECT
+ toDate(created_at) AS day,
+ sum(toInt64OrZero(JSONExtractString(payload, 'revenue_micro'))) AS revenue_micro
+FROM conversions
+WHERE campaign_id IN (?)
+ AND created_at >= ?
+ AND created_at < ?
+GROUP BY day
+ORDER BY day
+LIMIT ?`
+
 func QueryCustomerDailyEconomicsCH(
 	ctx context.Context,
 	clickhouseQuery *database.ClickHouseQuery,
@@ -329,5 +353,117 @@ func QueryCustomerDailyEconomicsCH(
 			RevenueMicro int64
 		}{SpendMicro: spendMicro, RevenueMicro: revenueMicro}
 	}
-	return out, rows.Err()
+	if err := rows.Err(); err != nil {
+		return nil, err
+	}
+	if customerDailyEconomicsTotal(out) == 0 {
+		mergeCustomerDailyEconomics(out, queryCustomerDailySpendFromClicksCH(ctx, clickhouseQuery, campaignIDs, from, to))
+		mergeCustomerDailyEconomics(out, queryCustomerDailyRevenueFromConversionsCH(ctx, clickhouseQuery, campaignIDs, from, to))
+	}
+	return out, nil
+}
+
+func customerDailyEconomicsTotal(m map[string]struct {
+	SpendMicro   int64
+	RevenueMicro int64
+}) int64 {
+	var total int64
+	for _, row := range m {
+		total += row.SpendMicro + row.RevenueMicro
+	}
+	return total
+}
+
+func mergeCustomerDailyEconomics(
+	target map[string]struct {
+		SpendMicro   int64
+		RevenueMicro int64
+	},
+	source map[string]struct {
+		SpendMicro   int64
+		RevenueMicro int64
+	},
+) {
+	for label, row := range source {
+		existing := target[label]
+		if row.SpendMicro > 0 {
+			existing.SpendMicro = row.SpendMicro
+		}
+		if row.RevenueMicro > 0 {
+			existing.RevenueMicro = row.RevenueMicro
+		}
+		target[label] = existing
+	}
+}
+
+func queryCustomerDailySpendFromClicksCH(
+	ctx context.Context,
+	clickhouseQuery *database.ClickHouseQuery,
+	campaignIDs []uuid.UUID,
+	from, to time.Time,
+) map[string]struct {
+	SpendMicro   int64
+	RevenueMicro int64
+} {
+	out := make(map[string]struct {
+		SpendMicro   int64
+		RevenueMicro int64
+	})
+	if clickhouseQuery == nil || len(campaignIDs) == 0 {
+		return out
+	}
+	rows, err := clickhouseQuery.Query(ctx, customerDailySpendFromClicksQuery, campaignIDs, from, to, maxChartSeriesPoints)
+	if err != nil {
+		return out
+	}
+	defer func() { _ = rows.Close() }()
+	for rows.Next() {
+		var day time.Time
+		var spendMicro int64
+		if err := rows.Scan(&day, &spendMicro); err != nil {
+			return out
+		}
+		label := day.UTC().Format("2006-01-02")
+		out[label] = struct {
+			SpendMicro   int64
+			RevenueMicro int64
+		}{SpendMicro: spendMicro}
+	}
+	return out
+}
+
+func queryCustomerDailyRevenueFromConversionsCH(
+	ctx context.Context,
+	clickhouseQuery *database.ClickHouseQuery,
+	campaignIDs []uuid.UUID,
+	from, to time.Time,
+) map[string]struct {
+	SpendMicro   int64
+	RevenueMicro int64
+} {
+	out := make(map[string]struct {
+		SpendMicro   int64
+		RevenueMicro int64
+	})
+	if clickhouseQuery == nil || len(campaignIDs) == 0 {
+		return out
+	}
+	rows, err := clickhouseQuery.Query(ctx, customerDailyRevenueFromConversionsQuery, campaignIDs, from, to, maxChartSeriesPoints)
+	if err != nil {
+		return out
+	}
+	defer func() { _ = rows.Close() }()
+	for rows.Next() {
+		var day time.Time
+		var revenueMicro int64
+		if err := rows.Scan(&day, &revenueMicro); err != nil {
+			return out
+		}
+		label := day.UTC().Format("2006-01-02")
+		out[label] = struct {
+			SpendMicro   int64
+			RevenueMicro int64
+		}{RevenueMicro: revenueMicro}
+	}
+	return out
 }

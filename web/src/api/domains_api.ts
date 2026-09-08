@@ -1,10 +1,17 @@
 import { apiFetch, apiJson, apiJsonArray, parseApiError } from './client.js';
 import type {
   AddDomainRequest,
+  BurnDomainRequest,
+  BurnDomainResponse,
+  CloudflareZone,
+  DomainBulkJobStatus,
+  DomainBulkRequest,
   DomainHealth,
   DomainSSLSetupResult,
   ParkDomainRequest,
   ParkDomainResponse,
+  WildcardSSLRequest,
+  WildcardSSLResponse,
 } from './types.js';
 
 export async function listDomains(signal?: AbortSignal): Promise<DomainHealth[]> {
@@ -55,6 +62,64 @@ export async function parkDomain(
 ): Promise<ParkDomainResponse> {
   return apiJson<ParkDomainResponse>('/api/v1/domains/park', {
     method: 'POST',
+    body: JSON.stringify(body),
+    signal,
+  });
+}
+
+export async function listCloudflareZones(signal?: AbortSignal): Promise<CloudflareZone[]> {
+  return apiJsonArray<CloudflareZone>('/api/v1/domains/cloudflare/zones', { signal });
+}
+
+export async function setupWildcardSSL(
+  body: WildcardSSLRequest,
+  signal?: AbortSignal
+): Promise<WildcardSSLResponse> {
+  return apiJson<WildcardSSLResponse>('/api/v1/ops/domains/wildcard-ssl', {
+    method: 'POST',
+    body: JSON.stringify(body),
+    signal,
+  });
+}
+
+export async function startBulkDomainPark(
+  body: DomainBulkRequest,
+  signal?: AbortSignal
+): Promise<DomainBulkJobStatus> {
+  return apiJson<DomainBulkJobStatus>('/api/v1/ops/domains/bulk', {
+    method: 'POST',
+    body: JSON.stringify(body),
+    signal,
+  });
+}
+
+export async function startBulkDomainSSL(
+  body: DomainBulkRequest,
+  signal?: AbortSignal
+): Promise<DomainBulkJobStatus> {
+  return apiJson<DomainBulkJobStatus>('/api/v1/ops/domains/bulk-ssl', {
+    method: 'POST',
+    body: JSON.stringify(body),
+    signal,
+  });
+}
+
+export async function getDomainBulkJob(
+  jobId: string,
+  signal?: AbortSignal
+): Promise<DomainBulkJobStatus> {
+  return apiJson<DomainBulkJobStatus>(`/api/v1/ops/domains/jobs/${encodeURIComponent(jobId)}`, {
+    signal,
+  });
+}
+
+export async function burnDomain(
+  hostname: string,
+  body: BurnDomainRequest,
+  signal?: AbortSignal
+): Promise<BurnDomainResponse> {
+  return apiJson<BurnDomainResponse>(`/api/v1/ops/domains/${encodeURIComponent(hostname)}/burn`, {
+    method: 'PATCH',
     body: JSON.stringify(body),
     signal,
   });

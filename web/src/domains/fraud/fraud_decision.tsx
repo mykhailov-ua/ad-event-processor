@@ -1,12 +1,12 @@
 import { Link } from 'react-router-dom';
 
 import { PageChrome } from '@/shell/page_chrome';
+import { DirectoryFilterForm, FilterField } from '@/shell/filter_panel';
 import { ErrorBlock } from '@/shell/error_block';
 import { PageSkeleton } from '@/shell/page_skeleton';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
-import { Label } from '@/components/ui/label';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import type { FraudDecision } from '@/api/types';
 import { displayTimestamp } from '@/lib/display';
@@ -58,40 +58,36 @@ export function FraudDecisionView({
         Back to fraud hub
       </Link>
 
-      <div className="grid grid-cols-[repeat(auto-fill,minmax(12rem,1fr))] items-end gap-4">
-        <div className="grid gap-2 md:col-span-2">
-          <Label htmlFor="decision-customer-id">Customer ID</Label>
+      <DirectoryFilterForm layout="auto-fill" onSubmit={(event) => event.preventDefault()}>
+        <FilterField className="md:col-span-2" htmlFor="decision-customer-id" label="Customer ID">
           <Input
             id="decision-customer-id"
             value={draftCustomerId}
             onChange={(event) => onDraftCustomerIdChange(event.target.value)}
           />
-        </div>
-        <div className="grid gap-2 md:col-span-2">
-          <Label htmlFor="decision-ip-hash">IP hash</Label>
+        </FilterField>
+        <FilterField className="md:col-span-2" htmlFor="decision-ip-hash" label="IP hash">
           <Input
             id="decision-ip-hash"
             value={draftIpHash}
             onChange={(event) => onDraftIpHashChange(event.target.value)}
           />
-        </div>
-        <div className="grid gap-2">
-          <Label htmlFor="decision-campaign-id">Campaign ID</Label>
+        </FilterField>
+        <FilterField htmlFor="decision-campaign-id" label="Campaign ID">
           <Input
             id="decision-campaign-id"
             value={draftCampaignId}
             onChange={(event) => onDraftCampaignIdChange(event.target.value)}
           />
-        </div>
-        <div className="grid gap-2">
-          <Label htmlFor="decision-hours">Hours</Label>
+        </FilterField>
+        <FilterField htmlFor="decision-hours" label="Hours">
           <Input
             id="decision-hours"
             inputMode="numeric"
             value={draftHours}
             onChange={(event) => onDraftHoursChange(event.target.value)}
           />
-        </div>
+        </FilterField>
         <Button
           disabled={fetching || !draftCustomerId.trim() || !draftIpHash.trim()}
           onClick={onExplain}
@@ -99,7 +95,7 @@ export function FraudDecisionView({
         >
           Explain
         </Button>
-      </div>
+      </DirectoryFilterForm>
 
       {decision ? (
         <div className="grid gap-4">
@@ -137,7 +133,7 @@ export function FraudDecisionView({
               </CardHeader>
               <CardContent className="grid gap-1 text-sm">
                 {features.map(([key, value]) => (
-                  <div className="flex justify-between gap-4" key={key}>
+                  <div className="grid grid-cols-[1fr_auto] gap-4" key={key}>
                     <span className="text-muted-foreground">{key}</span>
                     <span>{value}</span>
                   </div>

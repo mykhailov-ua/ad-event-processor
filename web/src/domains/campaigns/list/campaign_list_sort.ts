@@ -1,5 +1,5 @@
 import type { CampaignListMiddleColumnId } from '@/domains/campaigns/list/campaign_list_columns';
-import type { CampaignSortField } from '@/domains/campaigns/list/campaigns_list_types';
+import type { CampaignSortField, SortOrder } from '@/domains/campaigns/list/campaigns_list_types';
 
 export const CAMPAIGN_LIST_API_SORT_FIELDS = [
   'name',
@@ -43,6 +43,30 @@ export const CAMPAIGN_LIST_API_SORT_FIELDS = [
 ] as const;
 
 export type CampaignListApiSortField = (typeof CAMPAIGN_LIST_API_SORT_FIELDS)[number];
+
+const CAMPAIGN_LIST_TEXT_SORT_FIELDS = new Set<CampaignSortField>([
+  'name',
+  'id',
+  'updated_at',
+  'status',
+  'group',
+  'flow',
+  'owner',
+  'countries',
+]);
+
+/** First click on a metric column: highest values first (desc). Text columns stay asc. */
+export function campaignListSortStartsDesc(field: CampaignSortField): boolean {
+  return !CAMPAIGN_LIST_TEXT_SORT_FIELDS.has(field);
+}
+
+/** Numeric headers: up arrow = best/highest at top (desc); down = lowest at top (asc). */
+export function campaignListSortShowsAscIcon(order: SortOrder, numeric: boolean): boolean {
+  if (numeric) {
+    return order === 'desc';
+  }
+  return order === 'asc';
+}
 
 const CAMPAIGN_LIST_STATS_SORT_FIELDS = new Set<CampaignListApiSortField>([
   'clicks',

@@ -1,19 +1,17 @@
-import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
+import { uiSurfaces } from '@/lib/ui_surfaces';
+import { cn } from '@/lib/utils';
 
 type StubBannerProps = {
   title?: string;
   message: string;
+  className?: string;
 };
 
-export function StubBanner({ title = 'Not available', message }: StubBannerProps) {
+export function StubBanner({ title = 'Not available', message, className }: StubBannerProps) {
   return (
-    <Card className="border-border/40 bg-muted/30">
-      <CardHeader>
-        <CardTitle className="text-base text-muted-foreground">{title}</CardTitle>
-      </CardHeader>
-      <CardContent>
-        <p className="text-sm text-muted-foreground">{message}</p>
-      </CardContent>
-    </Card>
+    <div className={cn(uiSurfaces.messageMuted, className)} role="status">
+      <p className="m-0 text-base font-semibold">{title}</p>
+      <p className="m-0 text-sm">{message}</p>
+    </div>
   );
 }

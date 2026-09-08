@@ -615,7 +615,7 @@ var (
 	})
 	H2HostileDisconnectTotal = promauto.NewCounter(prometheus.CounterOpts{
 		Name: "ad_h2_hostile_disconnect_total",
-		Help: "HTTP/2 connections closed after H2_INCOMPLETE_MAX zero-progress spins or incomplete read idle / max lifetime",
+		Help: "HTTP/2 connections closed after pipeline depth/buffer cap, H2_INCOMPLETE_MAX zero-progress spins, incomplete read idle, or max lifetime",
 	})
 	HTTP1IncompleteCloseTotal = promauto.NewCounterVec(prometheus.CounterOpts{
 		Name: "ad_http1_incomplete_close_total",
@@ -655,6 +655,14 @@ var (
 		Name: "filter_tier_degraded_total",
 		Help: "Filter checks that skipped non-critical Lua gates near the monotonic deadline",
 	})
+	ClickFilterTierTotal = promauto.NewCounterVec(prometheus.CounterOpts{
+		Name: "ad_event_processor_click_filter_tier_total",
+		Help: "GET /click requests by resolved click_filter_tier",
+	}, []string{"tier"})
+	ClickFilterTierEscalatedTotal = promauto.NewCounterVec(prometheus.CounterOpts{
+		Name: "ad_event_processor_click_filter_tier_escalated_total",
+		Help: "Click filter tier escalations to full (license or fraud-feature fail-closed)",
+	}, []string{"requested_tier"})
 
 	RedisLuaDuration = promauto.NewHistogramVec(prometheus.HistogramOpts{
 		Name:    "ad_redis_lua_duration_seconds",
@@ -729,6 +737,14 @@ var (
 	RegistryStaleMode = promauto.NewGauge(prometheus.GaugeOpts{
 		Name: "ad_registry_stale_mode",
 		Help: "1 when tracker registry is in stale-serve mode (shard-0 pub/sub quiet > REGISTRY_STALE_TTL), else 0",
+	})
+	RegistryStalePGReadsTotal = promauto.NewCounter(prometheus.CounterOpts{
+		Name: "ad_event_processor_registry_stale_pg_reads_total",
+		Help: "Postgres GetCampaignFull calls during registry stale PG grace warm path",
+	})
+	RegistryStalePGCircuitOpenTotal = promauto.NewCounter(prometheus.CounterOpts{
+		Name: "ad_event_processor_registry_stale_pg_circuit_open_total",
+		Help: "Stale PG grace warm attempts rejected by REGISTRY_STALE_PG_MAX_RPS circuit",
 	})
 	Shard0PubSubUnreachable = promauto.NewGauge(prometheus.GaugeOpts{
 		Name: "ad_shard0_pubsub_unreachable",
@@ -1177,6 +1193,14 @@ var (
 	LocalQuotaStreamWriteErrorTotal = promauto.NewCounter(prometheus.CounterOpts{
 		Name: "ad_local_quota_stream_write_error_total",
 		Help: "Async local quanta stream marshal/write failures",
+	})
+	LocalQuotaRollbackTotal = promauto.NewCounter(prometheus.CounterOpts{
+		Name: "ad_local_quota_rollback_total",
+		Help: "Local quanta ledger refunds after post-debit publish failure (full-skip path)",
+	})
+	LocalQuotaFinalizeFailedTotal = promauto.NewCounter(prometheus.CounterOpts{
+		Name: "ad_local_quota_finalize_failed_total",
+		Help: "Local quanta async stream enqueue failed after main publish succeeded",
 	})
 	FilterLuaBranchTotal = promauto.NewCounterVec(prometheus.CounterOpts{
 		Name: "filter_lua_branch_total",

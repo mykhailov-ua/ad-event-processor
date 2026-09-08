@@ -1,4 +1,4 @@
-.PHONY: fmt fmt-check gen lint test test-fast test-unit test-integration test-fault test-int test-alloc-gate management-domain-coverage test-full test-resilience test-broker-fault-lab test-sentinel-resilience build build-bin release-build release-garble release-installer proto proto-grpc check-local pr-fast tier-a fraudtrain-check check-vuln bpf-dev bpf-session-start bpf-session-stop load-test-config load-test-bpf bpf-resource-gate bpf-nightly-gate cache-miss-gate escape-heap-gate cold-path-gates check-scripts-layout dev-preflight-smoke perf-gate-smoke edge-preflight openrtb-fuzz-smoke license-red-team license-pentest license-verify license-alloc-gate license-differential-gate license-red-team-garbled license-garbled-alloc-gate license-red-team-extended license-fuzz-nightly-gate release-qa-smoke license-gdb-guard-smoke release-strings-gate license-guard-test license-guard-off-smoke license-guard-fault-gate public-key-strings-gate asset-seal-salt-smoke hwid-strings-gate garble-literals-policy-gate garble-literals-p99-smoke bpf-edge-prereq-gate sealed-bpf-xdp-smoke clean-gitignored openapi-export openapi-types
+.PHONY: fmt fmt-check gen lint test test-fast test-unit test-integration test-fault test-int test-alloc-gate budget-rollback-gate management-domain-coverage test-full test-resilience test-broker-fault-lab test-sentinel-resilience build build-bin release-build release-garble release-installer proto proto-grpc check-local pr-fast tier-a fraudtrain-check check-vuln bpf-dev bpf-session-start bpf-session-stop load-test-config load-test-bpf bpf-resource-gate bpf-nightly-gate cache-miss-gate escape-heap-gate cold-path-gates check-scripts-layout dev-preflight-smoke perf-gate-smoke edge-preflight openrtb-fuzz-smoke license-red-team license-pentest license-verify license-alloc-gate license-differential-gate license-red-team-garbled license-garbled-alloc-gate license-red-team-extended license-fuzz-nightly-gate release-qa-smoke license-gdb-guard-smoke release-strings-gate license-guard-test license-guard-off-smoke license-guard-fault-gate public-key-strings-gate asset-seal-salt-smoke hwid-strings-gate garble-literals-policy-gate garble-literals-p99-smoke bpf-edge-prereq-gate sealed-bpf-xdp-smoke clean-gitignored openapi-export openapi-types
 
 BIN_DIR := bin
 BIN_TAGS := timetzdata
@@ -43,6 +43,9 @@ test-query-budget: gen
 
 test-fault: gen fmt
 	go test -count=1 -timeout 30m -run 'Fault' ./...
+
+budget-rollback-gate:
+	bash scripts/ci/static/budget_rollback_gate.sh
 
 test-alloc-gate: gen fmt
 	go test -short -count=1 -run 'ZeroAlloc|zeroAlloc_fraudScoring|FraudScoring_LatencySLA|BrokerProducer|ApplyRtbAuction_shadow_zeroAlloc|RecordRtbShadow|HTTP1Parse|OpenRTB26_Exchange|Check_zeroAlloc_localQuantaFullSkip' ./internal/ingest/... ./internal/filter/... ./internal/stream/... ./internal/track/...

@@ -2,6 +2,9 @@ import { useState } from 'react';
 
 import { Button } from '@/components/ui/button';
 import { shouldShowAdminErrorDetails } from '@/lib/admin_error';
+import { uiSurfaces } from '@/lib/ui_surfaces';
+import { shellChrome } from '@/shell/shell_chrome';
+import { cn } from '@/lib/utils';
 
 type AdminErrorDetailsProps = {
   details: string;
@@ -25,8 +28,8 @@ export function AdminErrorDetails({ details }: AdminErrorDetailsProps) {
   }
 
   return (
-    <div className="rounded-md border border-border bg-card">
-      <div className="flex items-center justify-between gap-2 border-b border-border px-3 py-2">
+    <div className={cn(uiSurfaces.panel, 'gap-0 p-0')}>
+      <div className={cn(shellChrome.sectionHeaderBandClass, 'p-2')}>
         <p className="m-0 text-xs font-semibold text-muted-foreground">Developer details</p>
         <Button type="button" variant="outline" onClick={() => void copyDetails()}>
           {copied ? 'Copied' : 'Copy'}

@@ -122,8 +122,9 @@ const DialogContent = React.forwardRef<
   React.HTMLAttributes<HTMLDivElement> & {
     onEscapeKeyDown?: (event: KeyboardEvent) => void;
     onInteractOutside?: (event: Event) => void;
+    panelClassName?: string;
   }
->(({ className, children, onEscapeKeyDown, onInteractOutside, ...props }, ref) => {
+>(({ className, children, onEscapeKeyDown, onInteractOutside, panelClassName, ...props }, ref) => {
   const { open, setOpen } = useDialogContext();
   const flush = /\bp-0\b/.test(className ?? '');
   const scrollBody = React.Children.toArray(children).some(
@@ -131,6 +132,7 @@ const DialogContent = React.forwardRef<
       React.isValidElement(child) &&
       (child.type as { displayName?: string }).displayName === 'DialogBody'
   );
+  const useCompactShell = !scrollBody && !flush;
 
   if (!open) {
     return null;
@@ -176,14 +178,19 @@ const DialogContent = React.forwardRef<
             className={cn(
               adminChrome.panel,
               'relative w-full shadow-lg',
+              panelClassName,
               scrollBody
                 ? 'flex max-h-[min(90vh,48rem)] flex-col gap-0 overflow-hidden'
-                : flush
+                : flush || useCompactShell
                   ? 'overflow-hidden'
-                  : 'ui-scrollbar max-h-[min(90vh,48rem)] gap-4 overflow-y-auto p-6'
+                  : 'ui-scrollbar flex max-h-[min(90vh,48rem)] flex-col gap-4 overflow-y-auto p-6'
             )}
           >
-            {children}
+            {useCompactShell ? (
+              <div className="grid w-full gap-4 p-6">{children}</div>
+            ) : (
+              children
+            )}
             <button
               type="button"
               className="absolute right-4 top-4 z-10 rounded-sm p-1 text-muted-foreground hover:text-foreground"
@@ -206,7 +213,7 @@ const DialogHeader = ({ className, ...props }: React.HTMLAttributes<HTMLDivEleme
   return (
     <div
       className={cn(
-        'flex shrink-0 flex-col gap-1.5 text-center sm:text-left',
+        'flex w-full shrink-0 flex-col items-start gap-1.5 text-left',
         scrollBody && 'px-6 pt-6',
         className
       )}
@@ -240,7 +247,7 @@ const DialogFooter = ({ className, ...props }: React.HTMLAttributes<HTMLDivEleme
   return (
     <div
       className={cn(
-        'flex shrink-0 flex-col-reverse gap-2 sm:flex-row sm:justify-end',
+        'flex w-full shrink-0 flex-col-reverse items-stretch gap-2 sm:flex-row sm:justify-end',
         scrollBody && 'px-6 pb-6',
         className
       )}

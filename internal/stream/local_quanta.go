@@ -61,7 +61,7 @@ func (l *LocalQuantaLedger) Mode() uint32 {
 }
 
 func ledgerCellHash(id uuid.UUID, subSlot int) uint32 {
-	h := domain.CRC32Castagnoli(&id)
+	h := domain.CRC32UUID(id)
 	if subSlot > 0 {
 		h ^= uint32(subSlot) * 0x85ebca6b
 	}
@@ -75,10 +75,10 @@ func (l *LocalQuantaLedger) cellFor(id uuid.UUID) (*LocalQuantaCell, uint32) {
 // cellForDebit maps campaign_id (+ optional subSlot 0..3 for high-volume debit spread) to a ledger cell.
 // Index = (CRC32C(id) + subSlot*1024) & mask; campaignHash detects stale occupants after eviction.
 func (l *LocalQuantaLedger) cellForDebit(id uuid.UUID, subSlot int) (*LocalQuantaCell, uint32) {
-	base := domain.CRC32Castagnoli(&id)
+	base := domain.CRC32UUID(id)
 	sub := subSlot & 3
 	idx := (base + uint32(sub)*1024) & localQuantaSlotMask
-	return &l.cells[idx], ledgerCellHash(id, sub)
+	return &l.cells[idx], ledgerCellHash(id, subSlot)
 }
 
 func (l *LocalQuantaLedger) HasCredit(id uuid.UUID) bool {

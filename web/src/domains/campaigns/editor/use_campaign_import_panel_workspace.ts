@@ -1,6 +1,7 @@
 // L3 import/migration panel: validate job, direct import, and pull/preview migration lanes (enabled when overlay open).
 import { useCallback, useEffect, useMemo, useState } from 'react';
 import { useSearchParams } from 'react-router-dom';
+import { toast } from 'sonner';
 
 import {
   createCampaignImportValidateJob,
@@ -28,6 +29,7 @@ import {
 } from '@/domains/campaigns/editor/campaign_import_panel_shared';
 import { useCampaignImportPanelLoad } from '@/domains/campaigns/editor/use_campaign_import_panel_load';
 import { useSession } from '@/hooks/use_session';
+import { mutationError } from '@/lib/mutation_audit';
 
 export function useCampaignImportPanelWorkspace(enabled: boolean) {
   const load = useCampaignImportPanelLoad(enabled);
@@ -117,7 +119,9 @@ export function useCampaignImportPanelWorkspace(enabled: boolean) {
       const result = await validateCampaignImport(buildSyncRequest());
       setValidateResult(result);
     } catch (err: unknown) {
-      setActionError(err instanceof Error ? err : new Error(String(err)));
+      const nextError = mutationError(err);
+      setActionError(nextError);
+      toast.error(nextError.message);
     } finally {
       setValidating(false);
     }
@@ -132,7 +136,9 @@ export function useCampaignImportPanelWorkspace(enabled: boolean) {
       const result = await previewCampaignMigration(buildSyncRequest());
       setValidateResult(result);
     } catch (err: unknown) {
-      setActionError(err instanceof Error ? err : new Error(String(err)));
+      const nextError = mutationError(err);
+      setActionError(nextError);
+      toast.error(nextError.message);
     } finally {
       setValidating(false);
     }
@@ -158,8 +164,11 @@ export function useCampaignImportPanelWorkspace(enabled: boolean) {
         crypto.randomUUID()
       );
       setImportResult(result);
+      toast.success('Migration import accepted');
     } catch (err: unknown) {
-      setActionError(err instanceof Error ? err : new Error(String(err)));
+      const nextError = mutationError(err);
+      setActionError(nextError);
+      toast.error(nextError.message);
     } finally {
       setMigrating(false);
     }
@@ -185,8 +194,11 @@ export function useCampaignImportPanelWorkspace(enabled: boolean) {
       };
       const result = await importCampaign(body, crypto.randomUUID());
       setImportResult(result);
+      toast.success('Campaign import accepted');
     } catch (err: unknown) {
-      setActionError(err instanceof Error ? err : new Error(String(err)));
+      const nextError = mutationError(err);
+      setActionError(nextError);
+      toast.error(nextError.message);
     } finally {
       setImporting(false);
     }
@@ -201,7 +213,9 @@ export function useCampaignImportPanelWorkspace(enabled: boolean) {
       const result = await previewCampaignMigrationPull(buildPullRequest());
       setPullPreview(result);
     } catch (err: unknown) {
-      setActionError(err instanceof Error ? err : new Error(String(err)));
+      const nextError = mutationError(err);
+      setActionError(nextError);
+      toast.error(nextError.message);
     } finally {
       setPullPreviewing(false);
     }
@@ -214,8 +228,11 @@ export function useCampaignImportPanelWorkspace(enabled: boolean) {
     try {
       const result = await importCampaignMigrationPull(buildPullRequest(), crypto.randomUUID());
       setImportResult(result);
+      toast.success('Pull import accepted');
     } catch (err: unknown) {
-      setActionError(err instanceof Error ? err : new Error(String(err)));
+      const nextError = mutationError(err);
+      setActionError(nextError);
+      toast.error(nextError.message);
     } finally {
       setPullImporting(false);
     }
@@ -233,7 +250,9 @@ export function useCampaignImportPanelWorkspace(enabled: boolean) {
       }
       onJobEnqueued(nextId);
     } catch (err: unknown) {
-      setActionError(err instanceof Error ? err : new Error(String(err)));
+      const nextError = mutationError(err);
+      setActionError(nextError);
+      toast.error(nextError.message);
     } finally {
       setEnqueueing(false);
     }

@@ -8,8 +8,9 @@ import { ErrorBlock } from '@/shell/error_block';
 import { PageSkeleton } from '@/shell/page_skeleton';
 import { DirectoryPaginationFooter } from '@/shell/directory_pagination_footer';
 import {
-  COMPACT_TOOLBAR_ROW_CLASS,
+  DirectoryFilterForm,
   FilterField,
+  FilterPanel,
   FILTER_PANEL_SUMMARY_CLASS,
   INLINE_FILTER_ACTION_GRID_CLASS,
 } from '@/shell/filter_panel';
@@ -20,6 +21,7 @@ import {
   TableCell,
   TableHeader,
   TableRow,
+  directoryTableRevalidatingClass,
 } from '@/shell/directory_table';
 import { RowActionsMenu } from '@/shell/row_actions_menu';
 import { Badge } from '@/components/ui/badge';
@@ -72,7 +74,9 @@ export type TeamOverviewViewProps = {
   memberDrafts: Record<string, TeamMemberEditDraft>;
   fetching: boolean;
   membersFetching: boolean;
+  membersListRevalidating?: boolean;
   approvalsFetching: boolean;
+  approvalsListRevalidating?: boolean;
   inviting: boolean;
   error: Error | undefined;
   membersError: Error | undefined;
@@ -125,7 +129,9 @@ export function TeamOverviewView({
   memberDrafts,
   fetching,
   membersFetching,
+  membersListRevalidating = false,
   approvalsFetching,
+  approvalsListRevalidating = false,
   inviting,
   error,
   membersError,
@@ -162,6 +168,10 @@ export function TeamOverviewView({
   }
 
   const membersList = members;
+  const membersFooterVisible =
+    rosterTab === 'members' && Boolean(membersCustomerId) && membersList.length > 0;
+  const approvalsFooterVisible =
+    rosterTab === 'approvals' && Boolean(approvalsCustomerId) && approvals.length > 0;
 
   return (
     <PageChrome
@@ -175,25 +185,46 @@ export function TeamOverviewView({
           Invite member
         </PrimaryActionButton>
       }
-    >
-      <form
-        className={INLINE_FILTER_ACTION_GRID_CLASS}
-        onSubmit={(event) => {
-          event.preventDefault();
-          onApplyCustomer();
-        }}
-      >
-        <FilterField htmlFor="team-customer-id" label="Customer ID">
-          <Input
-            id="team-customer-id"
-            className="text-sm"
-            value={draftCustomerId}
-            onChange={(event) => onDraftCustomerIdChange(event.target.value)}
+      controlPanel={
+        <FilterPanel>
+          <DirectoryFilterForm
+            className={INLINE_FILTER_ACTION_GRID_CLASS}
+            onSubmit={(event) => {
+              event.preventDefault();
+              onApplyCustomer();
+            }}
+          >
+            <FilterField htmlFor="team-customer-id" label="Customer ID">
+              <Input
+                id="team-customer-id"
+                value={draftCustomerId}
+                onChange={(event) => onDraftCustomerIdChange(event.target.value)}
+              />
+            </FilterField>
+            <SecondaryActionButton type="submit">Load</SecondaryActionButton>
+          </DirectoryFilterForm>
+        </FilterPanel>
+      }
+      footer={
+        membersFooterVisible ? (
+          <DirectoryPaginationFooter
+            canGoNext={membersOffset + membersList.length < membersTotal}
+            canGoPrev={membersOffset > 0}
+            disabled={membersFetching}
+            onNext={() => onMembersPageChange(membersOffset + membersLimit)}
+            onPrev={() => onMembersPageChange(Math.max(0, membersOffset - membersLimit))}
           />
-        </FilterField>
-        <SecondaryActionButton type="submit">Load</SecondaryActionButton>
-      </form>
-
+        ) : approvalsFooterVisible ? (
+          <DirectoryPaginationFooter
+            canGoNext={approvalsOffset + approvals.length < approvalsTotal}
+            canGoPrev={approvalsOffset > 0}
+            disabled={approvalsFetching}
+            onNext={() => onApprovalsPageChange(approvalsOffset + approvalsLimit)}
+            onPrev={() => onApprovalsPageChange(Math.max(0, approvalsOffset - approvalsLimit))}
+          />
+        ) : undefined
+      }
+    >
       {overview ? (
         <div className={FILTER_PANEL_SUMMARY_CLASS}>
           <div className="flex flex-wrap gap-4">
@@ -221,25 +252,23 @@ export function TeamOverviewView({
           <DialogHeader>
             <DialogTitle>Invite member</DialogTitle>
           </DialogHeader>
-          <div className="grid gap-4 md:grid-cols-[repeat(auto-fill,minmax(12rem,1fr))]">
-            <div className="grid gap-2 md:col-span-2">
-              <Label htmlFor="team-invite-email">Email</Label>
+          <DirectoryFilterForm layout="auto-fill" onSubmit={(event) => event.preventDefault()}>
+            <FilterField className="md:col-span-2" htmlFor="team-invite-email" label="Email">
               <Input
                 id="team-invite-email"
                 type="email"
                 value={draftInviteEmail}
                 onChange={(event) => onDraftInviteEmailChange(event.target.value)}
               />
-            </div>
-            <div className="grid gap-2">
-              <Label htmlFor="team-invite-role">Role</Label>
+            </FilterField>
+            <FilterField htmlFor="team-invite-role" label="Role">
               <Input
                 id="team-invite-role"
                 value={draftInviteRole}
                 onChange={(event) => onDraftInviteRoleChange(event.target.value)}
               />
-            </div>
-          </div>
+            </FilterField>
+          </DirectoryFilterForm>
           <DialogFooter>
             <PrimaryActionButton
               disabled={
@@ -276,20 +305,7 @@ export function TeamOverviewView({
           ) : membersList.length === 0 ? (
             <EmptyState title="No members" description="Team roster is empty for this customer." />
           ) : (
-            <>
-              <form
-                className={COMPACT_TOOLBAR_ROW_CLASS}
-                onSubmit={(event) => event.preventDefault()}
-              >
-                <DirectoryPaginationFooter
-                  canGoNext={membersOffset + membersList.length < membersTotal}
-                  canGoPrev={membersOffset > 0}
-                  disabled={membersFetching}
-                  onNext={() => onMembersPageChange(membersOffset + membersLimit)}
-                  onPrev={() => onMembersPageChange(Math.max(0, membersOffset - membersLimit))}
-                />
-              </form>
-              <DirectoryTable>
+            <DirectoryTable className={directoryTableRevalidatingClass(membersListRevalidating)}>
                 <TableHeader>
                   <TableRow>
                     <DirectoryTableHead>Email</DirectoryTableHead>
@@ -360,7 +376,6 @@ export function TeamOverviewView({
                   })}
                 </TableBody>
               </DirectoryTable>
-            </>
           )}
 
           {membersError ? (
@@ -383,22 +398,7 @@ export function TeamOverviewView({
               description="Budget approval queue is empty."
             />
           ) : (
-            <>
-              <form
-                className={COMPACT_TOOLBAR_ROW_CLASS}
-                onSubmit={(event) => event.preventDefault()}
-              >
-                <DirectoryPaginationFooter
-                  canGoNext={approvalsOffset + approvals.length < approvalsTotal}
-                  canGoPrev={approvalsOffset > 0}
-                  disabled={approvalsFetching}
-                  onNext={() => onApprovalsPageChange(approvalsOffset + approvalsLimit)}
-                  onPrev={() =>
-                    onApprovalsPageChange(Math.max(0, approvalsOffset - approvalsLimit))
-                  }
-                />
-              </form>
-              <DirectoryTable>
+            <DirectoryTable className={directoryTableRevalidatingClass(approvalsListRevalidating)}>
                 <TableHeader>
                   <TableRow>
                     <DirectoryTableHead>Status</DirectoryTableHead>
@@ -452,7 +452,6 @@ export function TeamOverviewView({
                   })}
                 </TableBody>
               </DirectoryTable>
-            </>
           )}
 
           {approvalsError ? (

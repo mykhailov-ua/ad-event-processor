@@ -53,7 +53,7 @@ const TabsList = React.forwardRef<
     ref={ref}
     role="tablist"
     className={cn(
-      variant === 'segmented' && 'inline-flex h-7 items-center bg-muted p-1 text-muted-foreground',
+      variant === 'segmented' && 'inline-flex min-h-7 items-center bg-muted p-1 text-muted-foreground',
       adminKit.controlRadius,
       variant === 'pill' && 'inline-flex flex-wrap items-center gap-2',
       variant === 'underline' && 'inline-flex items-center gap-4 border-b border-border',
@@ -81,9 +81,9 @@ const TabsTrigger = React.forwardRef<
       role="tab"
       aria-selected={selected}
       className={cn(
-        'inline-flex items-center justify-center whitespace-nowrap font-medium leading-none transition-colors disabled:pointer-events-none disabled:opacity-50',
+        'inline-flex items-center justify-center whitespace-nowrap font-medium transition-colors disabled:pointer-events-none disabled:opacity-50',
         adminKit.controlText,
-        variant === 'segmented' && cn(adminKit.controlRadius, 'px-3 py-1'),
+        variant === 'segmented' && cn(adminKit.controlRadius, 'px-3 py-0.5'),
         variant === 'segmented' &&
           (selected
             ? 'bg-background text-foreground shadow-sm'

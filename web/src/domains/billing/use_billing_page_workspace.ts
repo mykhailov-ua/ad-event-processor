@@ -1,6 +1,5 @@
 // L3 billing hub: URL month/status pagination + summary/invariant/preview lanes (multi useResource).
 import { useCallback, useEffect, useMemo, useState } from 'react';
-import { useSearchParams } from 'react-router-dom';
 
 import {
   getBillingInvariant,
@@ -12,6 +11,7 @@ import type { BillingInvariantQuery, InvoiceListQuery, PreviewInvoiceRequest } f
 import type { InvoiceStatusFilter } from '@/domains/billing/billing_invoices';
 import { useResource } from '@/api/use_resource';
 import { useSession } from '@/hooks/use_session';
+import { useTransitionSearchParams } from '@/hooks/use_transition_search_params';
 import { DEFAULT_LIST_LIMIT, parseListLimit, parseListOffset } from '@/lib/list_query';
 
 function parseMonth(raw: string | null): string {
@@ -38,7 +38,8 @@ function buildInvoiceQuery(params: URLSearchParams): InvoiceListQuery {
 }
 
 export function useBillingPageWorkspace() {
-  const [searchParams, setSearchParams] = useSearchParams();
+  const [searchParams, { isPending: listQueryPending, replaceSearchParams }] =
+    useTransitionSearchParams();
   const { session } = useSession();
 
   const invoiceQuery = useMemo(() => buildInvoiceQuery(searchParams), [searchParams]);
@@ -70,6 +71,7 @@ export function useBillingPageWorkspace() {
     (signal) => listInvoices(invoiceQuery, signal),
     [invoiceQuery.limit, invoiceQuery.offset, invoiceQuery.month, invoiceQuery.status]
   );
+  const invoicesRevalidating = invoicesResource.revalidating;
 
   const invariantResource = useResource(
     (signal) => {
@@ -109,9 +111,9 @@ export function useBillingPageWorkspace() {
       next.set('limit', String(merged.limit ?? DEFAULT_LIST_LIMIT));
       next.set('offset', String(merged.offset ?? 0));
 
-      setSearchParams(next, { replace: true });
+      replaceSearchParams(next);
     },
-    [invoiceQuery, searchParams, setSearchParams]
+    [invoiceQuery, replaceSearchParams, searchParams]
   );
 
   const onPageChange = useCallback(
@@ -155,6 +157,7 @@ export function useBillingPageWorkspace() {
     invoicesLimit: invoicesResource.data?.limit ?? invoiceQuery.limit ?? DEFAULT_LIST_LIMIT,
     invoicesOffset: invoicesResource.data?.offset ?? invoiceQuery.offset ?? 0,
     invoicesFetching: invoicesResource.fetching,
+    invoicesListRevalidating: invoicesRevalidating || listQueryPending,
     invoicesError: invoicesResource.error,
     hasInvoicesSnapshot: invoicesResource.data != null,
     draftMonth,

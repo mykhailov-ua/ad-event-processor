@@ -185,7 +185,7 @@ const SheetHeader = ({ className, ...props }: React.HTMLAttributes<HTMLDivElemen
   return (
     <div
       className={cn(
-        'flex shrink-0 flex-col gap-2 text-center sm:text-left',
+        'flex w-full shrink-0 flex-col items-start gap-2 text-left',
         scrollBody && 'px-6 pt-6',
         className
       )}
@@ -219,7 +219,7 @@ const SheetFooter = ({ className, ...props }: React.HTMLAttributes<HTMLDivElemen
   return (
     <div
       className={cn(
-        'flex shrink-0 flex-col-reverse gap-2 sm:flex-row sm:justify-end',
+        'flex w-full shrink-0 flex-col-reverse items-stretch gap-2 sm:flex-row sm:justify-end',
         scrollBody && 'px-6 pb-6',
         className
       )}

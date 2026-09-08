@@ -1,6 +1,7 @@
 import { adminKit } from '@/lib/admin_kit';
 import { ADMIN_TABULAR_CLASS } from '@/lib/admin_typography';
 import { pageWorkspaceFlatClass } from '@/shell/page_layout';
+import { shellChrome } from '@/shell/shell_chrome';
 import { cn } from '@/lib/utils';
 
 export const settingsPageWorkspaceClass = pageWorkspaceFlatClass;
@@ -10,10 +11,9 @@ export const settingsCardClass = cn(
   adminKit.panelRadius
 );
 
-export const settingsCardHeaderClass =
-  'flex flex-wrap items-center justify-between gap-2 border-b border-border px-5 py-3';
+export const settingsCardHeaderClass = shellChrome.sectionHeaderBandClass;
 
-export const settingsCardTitleClass = 'm-0 text-sm font-semibold text-foreground';
+export const settingsCardTitleClass = 'm-0 text-[13px] font-semibold leading-[18px] text-foreground';
 
 export const settingsCardBodyClass = 'px-5 py-4';
 
@@ -26,7 +26,7 @@ export const settingsBentoTypeClass = cn(
 );
 
 export const settingsRowClass =
-  'flex min-h-[34px] items-center justify-between gap-4 border-b border-border px-3 py-2 text-[13px] leading-[18px] last:border-b-0';
+  'grid min-h-[34px] grid-cols-[1fr_auto] items-center gap-4 border-b border-border px-3 py-2 text-[13px] leading-[18px] last:border-b-0';
 
 export const settingsGridCellInnerClass =
   'grid min-h-[34px] grid-cols-[minmax(7.5rem,46%)_minmax(0,1fr)] items-center gap-3';
@@ -61,7 +61,7 @@ export const settingsColumnPanelClass = cn(
 );
 
 export const settingsCollapsibleSummaryClass =
-  'flex cursor-pointer list-none items-center justify-between gap-2 px-5 py-3 marker:content-none [&::-webkit-details-marker]:hidden';
+  `grid cursor-pointer list-none grid-cols-[1fr_auto] items-center gap-2 ${shellChrome.compactHeaderBandClass} marker:content-none [&::-webkit-details-marker]:hidden`;
 
 export const settingsCollapsibleBodyClass = 'border-t border-border px-5 py-4';
 

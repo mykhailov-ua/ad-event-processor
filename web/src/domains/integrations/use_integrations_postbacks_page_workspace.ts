@@ -1,7 +1,9 @@
 // L3 postbacks hub: configs/DLQ/test tabs over fetchPostbacksSnapshot; per-tab draft forms.
 import { useCallback, useMemo, useState } from 'react';
+import { toast } from 'sonner';
 
 import {
+  fetchPostbackHealth,
   fetchPostbacksSnapshot,
   retryPostbackDlq,
   testPostbackConfig,
@@ -10,9 +12,11 @@ import {
 import type {
   PostbackConfig,
   PostbackDryRunResult,
+  PostbackHealthRow,
   UpdatePostbackConfigRequest,
 } from '@/api/types';
 import { type IntegrationsPostbacksTab } from '@/domains/integrations/integrations_postbacks';
+import { mutationError } from '@/lib/mutation_audit';
 import { useCoalescedBumpRefresh, useRefreshToken } from '@/hooks/use_coalesced_refresh_token';
 import { useResource } from '@/api/use_resource';
 
@@ -23,6 +27,15 @@ export function useIntegrationsPostbacksPageWorkspace() {
   const { data, error, fetching } = useResource(
     (signal) => fetchPostbacksSnapshot(signal),
     [refreshToken]
+  );
+
+  const {
+    data: healthData,
+    error: healthError,
+    fetching: healthFetching,
+  } = useResource(
+    (signal) => (tab === 'health' ? fetchPostbackHealth(signal) : Promise.resolve(undefined)),
+    [refreshToken, tab]
   );
 
   const [draftCampaignId, setDraftCampaignId] = useState('');
@@ -43,8 +56,10 @@ export function useIntegrationsPostbacksPageWorkspace() {
   const configs = useMemo(() => data?.configs ?? [], [data?.configs]);
   const dlq = useMemo(() => data?.dlq ?? [], [data?.dlq]);
   const campaignStatus = useMemo(() => data?.campaignStatus ?? [], [data?.campaignStatus]);
+  const healthRows = useMemo(() => healthData?.rows ?? [], [healthData?.rows]);
+  const healthAlertThreshold = healthData?.alert_threshold_success_rate ?? 95;
 
-  const listBusy = fetching || saving || testing || retryingId != null;
+  const listBusy = fetching || healthFetching || saving || testing || retryingId != null;
   const bumpRefreshCoalesced = useCoalescedBumpRefresh(bumpRefresh, listBusy);
 
   const onPrefillFromConfig = useCallback((row: PostbackConfig) => {
@@ -80,9 +95,10 @@ export function useIntegrationsPostbacksPageWorkspace() {
         test_event_code: draftTestEventCode.trim() || undefined,
       });
       setSaveSuccess(true);
+      toast.success('Postback config saved');
       bumpRefreshCoalesced();
     } catch (err: unknown) {
-      setSaveError(err instanceof Error ? err : new Error(String(err)));
+      setSaveError(mutationError(err));
     } finally {
       setSaving(false);
     }
@@ -126,9 +142,12 @@ export function useIntegrationsPostbacksPageWorkspace() {
       setRetryError(undefined);
       try {
         await retryPostbackDlq(id);
+        toast.success('DLQ entry retried');
         bumpRefreshCoalesced();
       } catch (err: unknown) {
-        setRetryError(err instanceof Error ? err : new Error(String(err)));
+        const nextError = mutationError(err);
+        setRetryError(nextError);
+        toast.error(nextError.message);
       } finally {
         setRetryingId(undefined);
       }
@@ -142,6 +161,12 @@ export function useIntegrationsPostbacksPageWorkspace() {
     configs,
     dlq,
     campaignStatus,
+    healthRows,
+    healthAlertThreshold,
+    healthRunbookPath: healthData?.runbook_path,
+    healthFetching,
+    healthError,
+    hasHealthSnapshot: healthData != null,
     fetching,
     error,
     hasSnapshot: data != null,

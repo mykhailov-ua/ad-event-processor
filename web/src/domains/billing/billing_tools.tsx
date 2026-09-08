@@ -4,11 +4,12 @@ import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { MonthPicker } from '@/components/ui/datetime_picker';
 import {
+  DirectoryFilterForm,
   FilterField,
-  FILTER_PANEL_NARROW_CLASS,
+  FilterPanel,
   INLINE_FILTER_ACTION_GRID_CLASS,
 } from '@/shell/filter_panel';
-import { ErrorBlock } from '@/shell/error_block';
+import { billingPanelError } from '@/domains/billing/billing_nav';
 import {
   DirectoryTable,
   DirectoryTableHead,
@@ -40,9 +41,12 @@ export function BillingInvariantPanel({
   onCheck,
 }: BillingInvariantPanelProps) {
   return (
-    <section className={FILTER_PANEL_NARROW_CLASS}>
+    <FilterPanel className="w-full max-w-xl">
       <h2 className="text-base font-semibold">Ledger invariant</h2>
-      <div className={INLINE_FILTER_ACTION_GRID_CLASS}>
+      <DirectoryFilterForm
+        className={INLINE_FILTER_ACTION_GRID_CLASS}
+        onSubmit={(event) => event.preventDefault()}
+      >
         <FilterField htmlFor="invariant-customer-id" label="Customer ID (optional)">
           <Input
             id="invariant-customer-id"
@@ -53,10 +57,8 @@ export function BillingInvariantPanel({
         <Button disabled={fetching} onClick={onCheck} type="button" variant="outline">
           {fetching ? 'Checking...' : 'Check'}
         </Button>
-      </div>
-      {error && !hasSnapshot ? (
-        <ErrorBlock title="Invariant check failed" message={error.message} />
-      ) : null}
+      </DirectoryFilterForm>
+      {error && !hasSnapshot ? billingPanelError(error, 'Invariant check failed') : null}
       {invariant ? (
         <div className="flex flex-wrap items-center gap-2 text-sm">
           <Badge variant={invariant.ok ? 'default' : 'destructive'}>
@@ -70,7 +72,7 @@ export function BillingInvariantPanel({
           ) : null}
         </div>
       ) : null}
-    </section>
+    </FilterPanel>
   );
 }
 
@@ -100,9 +102,9 @@ export function BillingPreviewPanel({
   const lines = preview?.lines ?? [];
 
   return (
-    <section className="ui-filter-panel">
+    <FilterPanel>
       <h2 className="text-base font-semibold">Invoice preview</h2>
-      <div className="grid grid-cols-[repeat(auto-fill,minmax(12rem,1fr))] items-end gap-4">
+      <DirectoryFilterForm layout="auto-fill" onSubmit={(event) => event.preventDefault()}>
         <div className="grid gap-2">
           <Label htmlFor="preview-customer-id">Customer ID</Label>
           <Input
@@ -122,9 +124,9 @@ export function BillingPreviewPanel({
         >
           {fetching ? 'Previewing...' : 'Preview'}
         </Button>
-      </div>
+      </DirectoryFilterForm>
 
-      {error && !hasSnapshot ? <ErrorBlock title="Preview failed" message={error.message} /> : null}
+      {error && !hasSnapshot ? billingPanelError(error, 'Preview failed') : null}
 
       {preview ? (
         <div className="grid gap-4">
@@ -161,6 +163,6 @@ export function BillingPreviewPanel({
           ) : null}
         </div>
       ) : null}
-    </section>
+    </FilterPanel>
   );
 }

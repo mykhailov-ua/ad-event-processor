@@ -1,6 +1,7 @@
 import * as React from 'react';
 
 import { adminKit } from '@/lib/admin_kit';
+import { uiSurfaces } from '@/lib/ui_surfaces';
 import { cn } from '@/lib/utils';
 
 const Card = React.forwardRef<HTMLDivElement, React.HTMLAttributes<HTMLDivElement>>(
@@ -8,13 +9,7 @@ const Card = React.forwardRef<HTMLDivElement, React.HTMLAttributes<HTMLDivElemen
     <div
       ref={ref}
       data-ui-card=""
-      className={cn(
-        cn(
-          'grid gap-2 border border-border bg-card p-3 text-card-foreground',
-          adminKit.panelRadius
-        ),
-        className
-      )}
+      className={cn(uiSurfaces.panel, 'gap-2', adminKit.panelRadius, className)}
       {...props}
     />
   )

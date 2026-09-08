@@ -21,7 +21,7 @@ test('resolveCustomerLabel rejects uuid-shaped map values', () => {
   assert.equal(label, undefined);
 });
 
-test('isPlaceholderSeedUuid detects load-test and legacy dev_mock ids', () => {
+test('isPlaceholderSeedUuid detects load-test and legacy fixture ids', () => {
   assert.equal(isPlaceholderSeedUuid('00000000-0000-0000-0000-000000000041'), true);
   assert.equal(isPlaceholderSeedUuid('00000000-cust-4000-8000-000000000001'), true);
   assert.equal(isPlaceholderSeedUuid('cbef2aa7-73b6-5572-8007-16be19302faf'), false);

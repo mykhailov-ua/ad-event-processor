@@ -1,5 +1,6 @@
-import { BarChart3, MoreHorizontal, Plus } from 'lucide-react';
+import type { ReactNode } from 'react';
 import { useMemo } from 'react';
+import { BarChart3, MoreHorizontal, Plus } from 'lucide-react';
 import { toast } from 'sonner';
 
 import type { CampaignStatusTotals } from '@/api/campaigns_api';
@@ -15,7 +16,8 @@ import { ToolbarDateRangePicker } from '@/shell/toolbar_date_range_picker';
 import { Input } from '@/components/ui/input';
 import { CampaignListCountrySelect } from '@/domains/campaigns/list/campaign_list_country_select';
 import type { CampaignsListFilterOption } from '@/domains/campaigns/list/campaigns_list_filter_select';
-import { CampaignsListFilterSelect } from '@/domains/campaigns/list/campaigns_list_filter_select';
+import { CampaignsListFilterSelect, CampaignsListSearchableFilterSelect } from '@/domains/campaigns/list/campaigns_list_filter_select';
+import { CampaignListRefreshBand } from '@/domains/campaigns/list/campaign_list_refresh_band';
 import type { CampaignListSummary } from '@/domains/campaigns/list/campaign_list_summary';
 import { CampaignListSummaryBox } from '@/domains/campaigns/list/campaign_list_summary_box';
 import { CampaignListStatusChips } from '@/domains/campaigns/list/campaign_list_status_chips';
@@ -28,8 +30,9 @@ import type {
   CampaignPacingFilter,
   CampaignStatusFilter,
 } from '@/domains/campaigns/list/campaigns_list_types';
-import { DirectoryFilterForm, FilterField, FilterPanel } from '@/shell/filter_panel';
+import { DirectoryFilterForm, FilterField, FilterPanel, FILTER_PANEL_FLAT_CLASS } from '@/shell/filter_panel';
 import { PaginationPrevNext } from '@/shell/pagination_prev_next';
+import { StatusMetricsBand, ToolbarBand, ToolbarBandActions, DirectoryStack } from '@/shell/ui_bands';
 import { cn } from '@/lib/utils';
 
 const ALL_OPTION_VALUE = '__all__';
@@ -58,6 +61,8 @@ export type CampaignsListToolbarProps = {
   filterTotalsCapped?: boolean;
   filteredTotal?: number;
   metricsStale?: boolean;
+  listLastUpdatedAt?: string | null;
+  listRevalidating?: boolean;
   summary: CampaignListSummary;
   statusTotals?: CampaignStatusTotals;
   statusTotalsLoading?: boolean;
@@ -87,6 +92,7 @@ export type CampaignsListToolbarProps = {
   paginationDisabled?: boolean;
   onPagePrev?: () => void;
   onPageNext?: () => void;
+  tableViewTools?: ReactNode;
 };
 
 export function CampaignsListToolbar({
@@ -107,6 +113,8 @@ export function CampaignsListToolbar({
   filterTotalsCapped = false,
   filteredTotal = 0,
   metricsStale = false,
+  listLastUpdatedAt = null,
+  listRevalidating = false,
   summary,
   statusTotals,
   statusTotalsLoading = false,
@@ -136,6 +144,7 @@ export function CampaignsListToolbar({
   paginationDisabled = false,
   onPagePrev,
   onPageNext,
+  tableViewTools,
 }: CampaignsListToolbarProps) {
   const bulkActionBusy = bulkBusy;
   const hasSelection = selectedCount > 0;
@@ -181,14 +190,9 @@ export function CampaignsListToolbar({
   );
 
   return (
-    <div className="flex w-full flex-col gap-3">
-      <div className="flex flex-wrap items-center gap-4">
-        <h1 className="m-0 shrink-0 text-lg font-normal text-foreground">Campaigns</h1>
-        <div
-          aria-label="Campaign actions"
-          className="flex flex-wrap items-center gap-2"
-          role="toolbar"
-        >
+    <DirectoryStack>
+      <ToolbarBand split>
+        <ToolbarBandActions aria-label="Campaign actions">
           <Button type="button" variant="brand" onClick={onCreateClick}>
             <Plus className="h-3.5 w-3.5" aria-hidden />
             Quick create
@@ -261,23 +265,17 @@ export function CampaignsListToolbar({
               {showImportAction ? (
                 <DropdownMenuItem onSelect={onImportClick}>Import</DropdownMenuItem>
               ) : null}
-              <DropdownMenuItem
-                onSelect={() => {
-                  if (fetching) {
-                    toast.message('Refresh already in progress');
-                    return;
-                  }
-                  onRefresh();
-                }}
-              >
-                Refresh
-              </DropdownMenuItem>
             </DropdownMenuContent>
           </DropdownMenu>
-        </div>
-      </div>
+        </ToolbarBandActions>
+        <CampaignListRefreshBand
+          lastUpdatedAt={listLastUpdatedAt}
+          loading={fetching || listRevalidating}
+          onRefresh={onRefresh}
+        />
+      </ToolbarBand>
 
-      <div aria-label="Status and page summary" className="flex flex-wrap items-center gap-4">
+      <StatusMetricsBand aria-label="Status and page summary">
         {statusTotals || statusTotalsLoading ? (
           <CampaignListStatusChips
             className="shrink-0"
@@ -293,9 +291,13 @@ export function CampaignsListToolbar({
           metricsStale={metricsStale}
           summary={summary}
         />
-      </div>
+      </StatusMetricsBand>
 
-      <FilterPanel aria-label="List filters" className="bg-transparent p-0 pt-0" role="search">
+      <FilterPanel
+        aria-label="List filters"
+        className={FILTER_PANEL_FLAT_CLASS}
+        role="search"
+      >
         <DirectoryFilterForm
           layout="campaigns"
           onKeyDown={(event) => {
@@ -318,9 +320,10 @@ export function CampaignsListToolbar({
             label="Customer group"
             labelClassName={campaignListFilterLabelClass}
           >
-            <CampaignsListFilterSelect
+            <CampaignsListSearchableFilterSelect
               aria-label="Customer group"
               options={groupOptions}
+              searchPlaceholder="All groups"
               value={draftCustomerId || ALL_OPTION_VALUE}
               onValueChange={(value) =>
                 onDraftCustomerIdChange(value === ALL_OPTION_VALUE ? '' : value)
@@ -350,10 +353,11 @@ export function CampaignsListToolbar({
             label="Owner"
             labelClassName={campaignListFilterLabelClass}
           >
-            <CampaignsListFilterSelect
+            <CampaignsListSearchableFilterSelect
               aria-label="Owner"
               disabled={fetching || listFacetsFetching || listFacetsDegraded}
               options={ownerOptions}
+              searchPlaceholder="All owners"
               title={
                 listFacetsDegraded
                   ? 'Owner filter requires list-facets API'
@@ -436,7 +440,7 @@ export function CampaignsListToolbar({
 
           {onPagePrev && onPageNext ? (
             <FilterField
-              className="min-w-[10rem]"
+              className="min-w-0"
               label="Page"
               labelClassName={campaignListFilterLabelClass}
             >
@@ -454,8 +458,18 @@ export function CampaignsListToolbar({
               />
             </FilterField>
           ) : null}
+          {tableViewTools ? (
+            <div
+              className={cn(
+                'flex min-w-0 items-end justify-end gap-2 self-end pb-0.5',
+                onPagePrev && onPageNext ? 'xl:col-span-6' : 'xl:col-span-7'
+              )}
+            >
+              {tableViewTools}
+            </div>
+          ) : null}
         </DirectoryFilterForm>
       </FilterPanel>
-    </div>
+    </DirectoryStack>
   );
 }

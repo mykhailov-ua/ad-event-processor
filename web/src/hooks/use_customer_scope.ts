@@ -1,10 +1,11 @@
 import { useCallback, useEffect, useState } from 'react';
-import { useSearchParams } from 'react-router-dom';
 
 import { useSession } from '@/hooks/use_session';
+import { useTransitionSearchParams } from '@/hooks/use_transition_search_params';
 
 export function useCustomerScope() {
-  const [searchParams, setSearchParams] = useSearchParams();
+  const [searchParams, { isPending: listQueryPending, replaceSearchParams }] =
+    useTransitionSearchParams();
   const { session } = useSession();
 
   const appliedCustomerId = searchParams.get('customer_id') ?? session?.default_customer_id ?? '';
@@ -22,13 +23,14 @@ export function useCustomerScope() {
     } else {
       next.delete('customer_id');
     }
-    setSearchParams(next, { replace: true });
-  }, [draftCustomerId, searchParams, setSearchParams]);
+    replaceSearchParams(next);
+  }, [draftCustomerId, replaceSearchParams, searchParams]);
 
   return {
     appliedCustomerId,
     draftCustomerId,
     setDraftCustomerId,
     applyCustomerScope,
+    listQueryPending,
   };
 }

@@ -9,6 +9,7 @@ import {
   adminKpiAccentValueClass,
 } from '@/lib/admin_metric_tone';
 import { cn } from '@/lib/utils';
+import { SummaryBand, SummaryBandDivider } from '@/shell/ui_bands';
 
 export type CampaignListSummaryBoxProps = {
   className?: string;
@@ -17,10 +18,6 @@ export type CampaignListSummaryBoxProps = {
   metricsStale?: boolean;
   summary: CampaignListSummary;
 };
-
-function SummaryDivider() {
-  return <span aria-hidden className="h-3 w-px shrink-0 bg-border" />;
-}
 
 export function CampaignListSummaryBox({
   className,
@@ -41,13 +38,8 @@ export function CampaignListSummaryBox({
   const profit = formatTableMoneyFromMicro(summary.profitMicro).text;
 
   return (
-    <div
-      className={cn(
-        'inline-flex max-w-full flex-wrap items-center gap-2 rounded-md border border-primary/20 bg-primary/5 px-2.5 py-1 text-card-foreground',
-        className
-      )}
-    >
-      <p className="m-0 whitespace-nowrap text-xs leading-[16px] text-muted-foreground">
+    <SummaryBand className={className}>
+      <p className="m-0 shrink-0 whitespace-nowrap text-xs leading-none text-muted-foreground">
         <span>{scopeLabel}: </span>
         <span className={cn('font-bold', adminKpiAccentValueClass[1])}>{clicks}</span>
         <span> clicks, </span>
@@ -58,7 +50,7 @@ export function CampaignListSummaryBox({
       </p>
       {summary.marginBreachCount > 0 ? (
         <>
-          <SummaryDivider />
+          <SummaryBandDivider />
           <span className="shrink-0 text-xs font-semibold text-destructive">
             Margin breach: {summary.marginBreachCount}
           </span>
@@ -66,8 +58,8 @@ export function CampaignListSummaryBox({
       ) : null}
       {summary.staleCount > 0 ? (
         <>
-          <SummaryDivider />
-          <span className="shrink-0 text-[11px] text-muted-foreground">
+          <SummaryBandDivider />
+          <span className="shrink-0 whitespace-nowrap text-[11px] leading-none text-muted-foreground">
             {summary.scope === 'filter'
               ? 'Filtered totals may be stale'
               : `Stale stats: ${summary.staleCount}`}
@@ -76,8 +68,8 @@ export function CampaignListSummaryBox({
       ) : null}
       {filterTotalsCapped ? (
         <>
-          <SummaryDivider />
-          <span className="shrink-0 text-[11px] text-muted-foreground">
+          <SummaryBandDivider />
+          <span className="shrink-0 whitespace-nowrap text-[11px] leading-none text-muted-foreground">
             Filter totals unavailable above {CAMPAIGN_LIST_FILTER_TOTALS_MAX.toLocaleString()}{' '}
             campaigns ({filteredTotal.toLocaleString()} matched)
           </span>
@@ -85,12 +77,12 @@ export function CampaignListSummaryBox({
       ) : null}
       {metricsStale && !filterTotalsCapped && summary.staleCount === 0 ? (
         <>
-          <SummaryDivider />
+          <SummaryBandDivider />
           <span className="shrink-0 text-[11px] italic text-muted-foreground">
             Page metrics may be stale
           </span>
         </>
       ) : null}
-    </div>
+    </SummaryBand>
   );
 }

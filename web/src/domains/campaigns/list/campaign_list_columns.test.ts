@@ -36,6 +36,25 @@ test('visibleCampaignListColumns hides legacy placeholder columns by default', (
   assert.equal(visible.includes('ctr'), true);
 });
 
+test('visibleCampaignListColumns pins select id name then reorderable metrics', () => {
+  const visible = visibleCampaignListColumns(defaultCampaignListColumnPrefs());
+  assert.deepEqual(visible.slice(0, 3), ['select', 'id', 'name']);
+  assert.equal(visible[3], 'status');
+  assert.equal(visible[4], 'roi');
+  assert.equal(visible[5], 'profit');
+  assert.ok(visible.indexOf('roi') < visible.indexOf('countries'));
+});
+
+test('moveDataColumn reorders status among metrics', () => {
+  const order = defaultCampaignListColumnPrefs().dataColumnOrder;
+  const moved = moveDataColumn(order, 'status', 'roi');
+  const visible = visibleCampaignListColumns({
+    ...defaultCampaignListColumnPrefs(),
+    dataColumnOrder: moved,
+  });
+  assert.ok(visible.indexOf('roi') < visible.indexOf('status'));
+});
+
 test('parseCampaignListColumnPrefs migrates h_leads to hold_leads', () => {
   const prefs = parseCampaignListColumnPrefs(
     JSON.stringify({
@@ -73,19 +92,19 @@ test('moveMiddleColumn reorders middle metrics', () => {
 
 test('moveDataColumn reorders draggable columns', () => {
   const order = defaultCampaignListColumnPrefs().dataColumnOrder;
-  const clicksIndex = order.indexOf('clicks');
+  const countriesIndex = order.indexOf('countries');
   const roiIndex = order.indexOf('roi');
-  assert.ok(clicksIndex >= 0);
+  assert.ok(countriesIndex >= 0);
   assert.ok(roiIndex >= 0);
-  assert.notEqual(clicksIndex, roiIndex);
+  assert.ok(countriesIndex > roiIndex);
 
-  const moved = moveDataColumn(order, 'roi', 'clicks');
+  const moved = moveDataColumn(order, 'countries', 'roi');
+  const nextCountriesIndex = moved.indexOf('countries');
   const nextRoiIndex = moved.indexOf('roi');
-  const nextClicksIndex = moved.indexOf('clicks');
 
+  assert.ok(nextCountriesIndex >= 0);
   assert.ok(nextRoiIndex >= 0);
-  assert.ok(nextClicksIndex >= 0);
-  assert.equal(nextRoiIndex, nextClicksIndex - 1);
+  assert.equal(nextCountriesIndex, nextRoiIndex - 1);
 });
 
 test('setMiddleColumnVisible toggles hidden set', () => {

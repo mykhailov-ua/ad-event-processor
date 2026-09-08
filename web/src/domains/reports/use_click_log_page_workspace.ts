@@ -1,17 +1,18 @@
 // L3 click log report: URL filters + cursor pagination stack; server GET only when customer applied.
 import { useCallback, useEffect, useMemo, useState } from 'react';
-import { useSearchParams } from 'react-router-dom';
 
 import { fetchCustomersComboboxCached } from '@/lib/customers_combobox_cache';
 import { getClickLogReport } from '@/api/reports_api';
 import type { CustomerComboboxOption } from '@/shell/customer_combobox';
 import { useResource } from '@/api/use_resource';
 import { useSession } from '@/hooks/use_session';
+import { useTransitionSearchParams } from '@/hooks/use_transition_search_params';
 import { fromDatetimeLocalValue, toDatetimeLocalValue } from '@/lib/datetime_range';
 import { defaultReportRange } from '@/lib/report_paths';
 
 export function useClickLogPageWorkspace() {
-  const [searchParams, setSearchParams] = useSearchParams();
+  const [searchParams, { isPending: listQueryPending, replaceSearchParams }] =
+    useTransitionSearchParams();
   const { session } = useSession();
 
   const defaultRange = useMemo(() => defaultReportRange('7d'), []);
@@ -55,7 +56,7 @@ export function useClickLogPageWorkspace() {
 
   const shouldFetch = Boolean(appliedCustomerId.trim());
 
-  const { data, error, fetching } = useResource(
+  const { data, error, fetching, revalidating: listRevalidating } = useResource(
     (signal) => {
       if (!shouldFetch) {
         return Promise.resolve(undefined);
@@ -115,7 +116,7 @@ export function useClickLogPageWorkspace() {
       if (cursor) {
         next.set('cursor', cursor);
       }
-      setSearchParams(next, { replace: true });
+      replaceSearchParams(next);
     },
     [
       appliedCampaignId,
@@ -124,7 +125,7 @@ export function useClickLogPageWorkspace() {
       appliedCustomerId,
       appliedFrom,
       appliedTo,
-      setSearchParams,
+      replaceSearchParams,
     ]
   );
 
@@ -189,6 +190,7 @@ export function useClickLogPageWorkspace() {
     draftClickId,
     cursor: appliedCursor,
     fetching,
+    listRevalidating: listRevalidating || listQueryPending,
     error,
     hasSnapshot: !shouldFetch || data != null,
     onDraftCustomerIdChange: setDraftCustomerId,

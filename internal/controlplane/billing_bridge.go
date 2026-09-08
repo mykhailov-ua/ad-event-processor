@@ -104,6 +104,10 @@ func (s *Service) UpdateCustomerCostCenter(ctx context.Context, customerID uuid.
 	return s.customersAdmin().UpdateCustomerCostCenter(ctx, customerID, costCenter)
 }
 
+func (s *Service) PatchCustomer(ctx context.Context, customerID uuid.UUID, req platformadmin.PatchCustomerRequest) (platformadmin.CustomerDTO, error) {
+	return s.customersAdmin().PatchCustomer(ctx, customerID, req)
+}
+
 func (s *Service) ListCustomerLedger(ctx context.Context, customerID uuid.UUID, limit, offset int32) ([]platformadmin.BalanceLedgerDTO, int64, error) {
 	return s.customerLedger().ListCustomerLedger(ctx, customerID, limit, offset)
 }
@@ -183,6 +187,30 @@ func (s *Service) IsTLSAllowed(ctx context.Context, hostname string) (bool, erro
 
 func (s *Service) ParkDomain(ctx context.Context, req platformadmin.ParkDomainRequest) (platformadmin.ParkDomainResponse, error) {
 	return s.domainHealthAdmin().ParkDomain(ctx, req)
+}
+
+func (s *Service) SetupWildcardSSL(ctx context.Context, req platformadmin.WildcardSSLRequest) (platformadmin.WildcardSSLResponse, error) {
+	return s.domainHealthAdmin().SetupWildcardSSL(ctx, req)
+}
+
+func (s *Service) ListCloudflareZones(ctx context.Context) ([]platformadmin.CloudflareZone, error) {
+	return s.domainHealthAdmin().ListCloudflareZones(ctx)
+}
+
+func (s *Service) StartBulkParkProbe(ctx context.Context, req platformadmin.DomainBulkRequest) (platformadmin.DomainBulkJobStatus, error) {
+	return s.domainHealthAdmin().StartBulkParkProbe(ctx, req)
+}
+
+func (s *Service) StartBulkSSL(ctx context.Context, req platformadmin.DomainBulkRequest) (platformadmin.DomainBulkJobStatus, error) {
+	return s.domainHealthAdmin().StartBulkSSL(ctx, req)
+}
+
+func (s *Service) GetBulkJob(ctx context.Context, jobID string) (platformadmin.DomainBulkJobStatus, error) {
+	return s.domainHealthAdmin().GetBulkJob(ctx, jobID)
+}
+
+func (s *Service) BurnDomain(ctx context.Context, hostname string, req platformadmin.BurnDomainRequest) (platformadmin.BurnDomainResponse, error) {
+	return s.domainHealthAdmin().BurnDomain(ctx, hostname, req)
 }
 
 func (s *Service) StartDomainHealthWorker(ctx context.Context, interval time.Duration) {

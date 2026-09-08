@@ -43,7 +43,7 @@ func bidsAt(reg *CampaignAuctionRegistry, idx int) int64 {
 // Buckets are presorted by effective score so rankCandidates can early-break below floor.
 func (r *Registry) candidateRange(
 	reg *CampaignAuctionRegistry,
-	req *BidRequest,
+	req BidRequest,
 ) (soa *candidateBucketSoA, start int, end int, ok bool) {
 	if r.targetingIndexEnabled.Load() {
 		if start, end, ok = reg.targetingRange(req.GeoHash, req.DeviceType, req.CategoryMask); ok {
@@ -58,7 +58,7 @@ func (r *Registry) candidateRange(
 // Budget checks use LoadBudget / loadDailyHeadroom (atomic load); CAS spend is in RunAuction.
 func (r *Registry) rankCandidates(
 	reg *CampaignAuctionRegistry,
-	req *BidRequest,
+	req BidRequest,
 	soa *candidateBucketSoA,
 	bucketStart int,
 	bucketEnd int,

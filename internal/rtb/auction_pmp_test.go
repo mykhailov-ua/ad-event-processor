@@ -18,7 +18,7 @@ func TestDealBlock_shortCircuitsBeforeScan(t *testing.T) {
 	req := &BidRequest{
 		MinBid: 1, DeviceType: 1, CategoryMask: 1, GeoHash: geo, DealBlock: NoBidDealMismatch,
 	}
-	_, reason := reg.RunAuction(req)
+	_, reason := reg.RunAuctionPtr(req)
 	require.Equal(t, NoBidDealMismatch, reason)
 }
 
@@ -44,7 +44,7 @@ func TestRunAuction_dealMismatchNoBid(t *testing.T) {
 		GeoHash:      geo,
 		DealBlock:    NoBidDealMismatch,
 	}
-	_, reason := reg.RunAuction(req)
+	_, reason := reg.RunAuctionPtr(req)
 	require.Equal(t, NoBidDealMismatch, reason)
 }
 
@@ -75,6 +75,6 @@ func TestRankCandidates_tmaxTimeout(t *testing.T) {
 		GeoHash:      geo,
 		DeadlineMono: 1,
 	}
-	_, reason := reg.RunAuction(req)
+	_, reason := reg.RunAuctionPtr(req)
 	assert.Equal(t, NoBidTimeout, reason)
 }

@@ -100,6 +100,26 @@ export type CampaignExportBatchResponse = {
 
 export const CAMPAIGN_BULK_ACTION_MAX_IDS = 50;
 
+export type BulkCloneCampaignsRequest = {
+  source_campaign_ids: string[];
+  customer_id?: string;
+  name_prefix?: string;
+  name_suffix?: string;
+  options?: CloneCampaignOptions;
+};
+
+export type BulkCloneCampaignResultRow = {
+  source_id: string;
+  id?: string;
+  name?: string;
+  ok: boolean;
+  error_code?: string;
+};
+
+export type BulkCloneCampaignsResponse = {
+  results: BulkCloneCampaignResultRow[];
+};
+
 export function summarizeCampaignBulkResults(results: CampaignBulkActionResultRow[]): {
   succeeded: CampaignBulkActionResultRow[];
   failed: CampaignBulkActionResultRow[];

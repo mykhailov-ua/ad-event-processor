@@ -50,6 +50,7 @@ func TestUnifiedFilter_localQuanta_fullSkipNoRedisEval(t *testing.T) {
 	}
 	checkCtx := attachFilterDeadline(ctx, time.Second)
 	require.NoError(t, f.Check(checkCtx, evt))
+	finalizeLocalQuantaAfterCheck(t, f, evt)
 	require.Equal(t, int64(0), counter.evals.Load(), "full-skip must not call Redis EVAL")
 
 	afterQuota, err := mr.Get(ctx, quotaKey(campID)).Int64()
@@ -97,6 +98,7 @@ func TestUnifiedFilter_localQuanta_fullSkipDuplicate(t *testing.T) {
 	}
 	checkCtx := attachFilterDeadline(ctx, time.Second)
 	require.NoError(t, f.Check(checkCtx, evt))
+	finalizeLocalQuantaAfterCheck(t, f, evt)
 	require.ErrorIs(t, f.Check(checkCtx, evt), ErrDuplicateEvent)
 }
 
@@ -241,7 +243,9 @@ func TestLocalQuantaFullSkipEligible_strictModeExcluded_holdout(t *testing.T) {
 	strict := NewLocalQuantaStrict(5_000_000, 8_000_000)
 	f := NewUnifiedFilter(nil, nil, &mockRegistry{}, nil, 0, time.Minute, time.Hour, time.Hour, 100, 10, "events", 1000)
 	f.SetQuotaConfig("live", testQuotaChunkMicro, testQuotaRefillThreshold)
-	f.SetLocalQuantaDeps(LocalQuantaDeps{Ledger: ledger, Strict: strict, Stream: stream, Idem: stream.IdemCache()})
+	deps := LocalQuantaDepsWithStream(ledger, stream)
+	deps.Strict = strict
+	f.SetLocalQuantaDeps(deps)
 	f.SetLocalQuantaMode("live")
 	f.SetLuaFastPathEnabled(true)
 

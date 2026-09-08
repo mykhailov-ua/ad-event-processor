@@ -191,6 +191,11 @@ LIMIT ?`, campaignIDs, from, to, maxChartSeriesPoints)
 			}
 		}
 	}
+	for label, point := range byDay {
+		pointCopy := point
+		FillDashboardSeriesPointEconomicsGaps(&pointCopy)
+		byDay[label] = pointCopy
+	}
 	return finalizeDashboardSeriesPoints(byDay, maxChartSeriesPoints), nil
 }
 
@@ -284,6 +289,11 @@ LIMIT ?`, ids, from, to, maxChartSeriesHourlyPoints)
 			point.Blocks = blocks
 			byHour[label] = point
 		}
+	}
+	for label, point := range byHour {
+		pointCopy := point
+		FillDashboardSeriesPointEconomicsGaps(&pointCopy)
+		byHour[label] = pointCopy
 	}
 	return finalizeDashboardSeriesPoints(byHour, maxChartSeriesHourlyPoints), nil
 }

@@ -119,7 +119,21 @@ func (s *Server) http1OffloadAsyncWriteDone(c pkgnet.Conn, offloadCtx, connCtx *
 	if connCtx != nil && connCtx.HTTP1PendingOffloadWrites.Add(-1) != 0 {
 		return
 	}
-	s.http1OffloadWriteDone(c, offloadCtx)
+	if connCtx == nil {
+		connCtx = http1ConnContext(c)
+	}
+	if connCtx != nil {
+		c.SetContext(connCtx)
+		connCtx.HTTP1OffloadBusy.Store(false)
+	}
+	if offloadCtx != nil && offloadCtx.OffloadCloseAfterWrite.Load() {
+		s.http1ResetIncompleteState(connCtx, c)
+		_ = c.Close()
+		return
+	}
+	if c.InboundBuffered() > 0 {
+		_ = c.Wake(nil)
+	}
 }
 
 func (s *Server) http1EnsureConnContext(c pkgnet.Conn) *ConnContext {
@@ -179,13 +193,14 @@ func (s *Server) http1CheckBodyIdle(c pkgnet.Conn, ctx *ConnContext) pkgnet.Acti
 	return pkgnet.Close
 }
 
-func (s *Server) http1OffloadWriteDone(c pkgnet.Conn, offloadCtx *ConnContext) {
+func (s *Server) http1OffloadWriteDone(c pkgnet.Conn, ctx *ConnContext) {
 	if s == nil || s.workerPool == nil || c == nil {
 		return
 	}
-	var connCtx *ConnContext
-	if offloadCtx != nil {
-		connCtx = offloadCtx.HTTP1ConnCtx
+	offloadCtx := ctx
+	connCtx := ctx
+	if ctx != nil && ctx.HTTP1ConnCtx != nil {
+		connCtx = ctx.HTTP1ConnCtx
 	}
 	if connCtx == nil {
 		connCtx = http1ConnContext(c)
@@ -207,6 +222,9 @@ func (s *Server) http1OffloadWriteDone(c pkgnet.Conn, offloadCtx *ConnContext) {
 func (s *Server) http1HandleIncomplete(c pkgnet.Conn, ctx *ConnContext, buf []byte, consumed int) pkgnet.Action {
 	metrics.HTTPParseErrors.WithLabelValues("incomplete").Inc()
 
+	// Arm once for header or body stall; monotonic deadline is not reset on drip bytes (H2 parity).
+	s.http1ArmBodyIdle(c, ctx)
+
 	if consumed > 0 {
 		return pkgnet.None
 	}
@@ -215,10 +233,6 @@ func (s *Server) http1HandleIncomplete(c pkgnet.Conn, ctx *ConnContext, buf []by
 		metrics.HTTP1IncompleteCloseTotal.WithLabelValues("buffer").Inc()
 		s.http1ResetIncompleteState(ctx, c)
 		return pkgnet.Close
-	}
-
-	if http1HeadersComplete(buf) {
-		s.http1ArmBodyIdle(c, ctx)
 	}
 
 	ctx.HTTP1IncompleteSpin++

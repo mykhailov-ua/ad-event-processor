@@ -12,6 +12,15 @@ test.beforeEach(async ({}, testInfo) => {
   await skipUnlessIntegrationReady(testInfo);
 });
 
+test('flows visual create dialog exposes stream editor', async ({ page }) => {
+  await loginAsAdmin(page);
+  await gotoLive(page, '/flows');
+  await page.getByRole('button', { name: 'Create flow' }).click();
+  await expect(page.getByRole('heading', { name: 'Create flow' })).toBeVisible();
+  await expect(page.getByRole('button', { name: '50 / 50 split' })).toBeVisible();
+  await expect(page.getByLabel('Weight %')).toBeVisible();
+});
+
 test('flows list loads from GET /api/v1/flows', async ({ page }) => {
   await loginAsAdmin(page);
   const listResponse = page.waitForResponse(isApiGet('/api/v1/flows'), { timeout: 20_000 });

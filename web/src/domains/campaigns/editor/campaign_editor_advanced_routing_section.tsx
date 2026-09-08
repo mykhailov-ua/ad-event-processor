@@ -2,6 +2,15 @@ import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Textarea } from '@/components/ui/textarea';
 import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from '@/components/ui/select';
+import { listFlows } from '@/api/flows_api';
+import { useResource } from '@/api/use_resource';
+import {
   CAMPAIGN_CLICK_QUERY_PARAMS_FIELD_HINT,
   CAMPAIGN_CLICK_QUERY_PARAMS_JSON_MAX_CHARS,
   CAMPAIGN_CLICK_QUERY_PARAMS_TEXTAREA_MAX_HEIGHT_CLASS,
@@ -25,6 +34,8 @@ export function CampaignEditorAdvancedRoutingSection({
   saving,
   onFieldChange,
 }: CampaignEditorAdvancedRoutingSectionProps) {
+  const { data: flows } = useResource((signal) => listFlows(signal), []);
+
   return (
     <>
       <section className="flex flex-col gap-4">
@@ -32,14 +43,26 @@ export function CampaignEditorAdvancedRoutingSection({
         <div className="grid gap-4">
           <div className="grid gap-2 sm:grid-cols-2">
             <div className="grid gap-2">
-              <Label htmlFor="campaign-flow-id">Flow ID</Label>
-              <Input
-                className={CAMPAIGN_EDITOR_MONO_EXTRALIGHT_CLASS}
-                id="campaign-flow-id"
-                value={form.flow_id}
+              <Label htmlFor="campaign-flow-id">Flow</Label>
+              <Select
                 disabled={saving}
-                onChange={(event) => onFieldChange('flow_id', event.target.value)}
-              />
+                value={form.flow_id || undefined}
+                onValueChange={(value) => onFieldChange('flow_id', value)}
+              >
+                <SelectTrigger id="campaign-flow-id">
+                  <SelectValue placeholder="Select flow" />
+                </SelectTrigger>
+                <SelectContent>
+                  {(flows ?? []).map((flow) => (
+                    <SelectItem key={flow.id} value={flow.id}>
+                      {flow.name}
+                    </SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
+              {form.flow_id ? (
+                <p className="text-xs text-muted-foreground font-mono">{form.flow_id}</p>
+              ) : null}
             </div>
             <div className="grid gap-2">
               <Label htmlFor="campaign-brand-id">Brand ID</Label>
@@ -50,6 +73,37 @@ export function CampaignEditorAdvancedRoutingSection({
                 disabled={saving}
                 onChange={(event) => onFieldChange('brand_id', event.target.value)}
               />
+            </div>
+          </div>
+
+          <div className="grid gap-2 sm:grid-cols-2">
+            <div className="grid gap-2">
+              <Label htmlFor="campaign-click-filter-tier">Click filter tier</Label>
+              <Select
+                disabled={saving}
+                value={form.click_filter_tier || 'full'}
+                onValueChange={(value) => onFieldChange('click_filter_tier', value)}
+              >
+                <SelectTrigger id="campaign-click-filter-tier">
+                  <SelectValue />
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="full">Full (fraud + budget)</SelectItem>
+                  <SelectItem value="light">Light (geo + license)</SelectItem>
+                  <SelectItem value="redirect_only">Redirect only (fast TDS)</SelectItem>
+                </SelectContent>
+              </Select>
+              {form.click_filter_tier !== 'full' ? (
+                <p className="text-xs text-amber-700 dark:text-amber-400">
+                  Non-full tiers skip fraud filters and click budget debit. Tracker escalates to full
+                  when fraud enforcement flags are enabled. redirect_only requires operator license
+                  on the tracker (`CLICK_FILTER_REDIRECT_ONLY_LICENSED`).
+                </p>
+              ) : (
+                <p className="text-xs text-muted-foreground">
+                  Default production path: full FilterEngine and unified budget debit on /click.
+                </p>
+              )}
             </div>
           </div>
 

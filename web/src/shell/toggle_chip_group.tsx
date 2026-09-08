@@ -1,5 +1,6 @@
-import { Button } from '@/components/ui/button';
+import { uiSurfaces } from '@/lib/ui_surfaces';
 import { cn } from '@/lib/utils';
+import { ChipRow } from '@/shell/ui_bands';
 
 export type ToggleChipOption<T extends string> = {
   value: T;
@@ -23,7 +24,7 @@ export function ToggleChipGroup<T extends string>({
   className,
 }: ToggleChipGroupProps<T>) {
   return (
-    <div className={cn('flex flex-wrap gap-2', className)}>
+    <ChipRow className={className}>
       {options.map((option) => {
         const selected = value === option.value;
         const countLabel =
@@ -34,18 +35,23 @@ export function ToggleChipGroup<T extends string>({
               : '0';
 
         return (
-          <Button
+          <button
             key={option.value || 'all'}
             aria-pressed={selected}
-            className="gap-1.5 px-3 text-xs"
+            className={cn(
+              uiSurfaces.chip,
+              selected
+                ? 'border-primary bg-primary text-primary-foreground hover:bg-primary/90'
+                : 'border-border bg-secondary text-secondary-foreground hover:bg-secondary/80'
+            )}
             onClick={() => onChange(option.value)}
             type="button"
-            variant={selected ? 'default' : 'secondary'}
           >
             {option.label}
             <span
               className={cn(
-                'inline-flex h-5 min-w-5 items-center justify-center rounded-sm px-1.5 text-ui-caption font-medium tabular-nums',
+                uiSurfaces.chipCount,
+                'inline-flex h-5 min-w-5 items-center justify-center rounded-sm px-1.5',
                 selected
                   ? 'bg-primary-foreground/20 text-primary-foreground'
                   : 'bg-muted text-muted-foreground'
@@ -53,9 +59,9 @@ export function ToggleChipGroup<T extends string>({
             >
               {countLabel}
             </span>
-          </Button>
+          </button>
         );
       })}
-    </div>
+    </ChipRow>
   );
 }

@@ -16,7 +16,7 @@ export function CampaignListTableCardTools({
   onResetWorkspaceClick,
 }: CampaignListTableCardToolsProps) {
   return (
-    <div aria-label="Table view" className="flex shrink-0 flex-nowrap items-center gap-4">
+    <div aria-label="Table view" className="flex shrink-0 flex-nowrap items-center gap-2">
       <CampaignListColumnsMenu
         columnPrefs={columnPrefs}
         disabled={disabled}

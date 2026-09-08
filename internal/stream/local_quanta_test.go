@@ -122,3 +122,23 @@ func TestQuotaRefillWorker_recoverFromDeltas(t *testing.T) {
 	w.RecoverFromDeltas(map[uuid.UUID]int64{id: 2_000_000})
 	require.Equal(t, int64(2_000_000), ledger.Remaining(id))
 }
+
+func TestLocalQuantaLedger_TrySpendDebit_ZeroAlloc(t *testing.T) {
+	ledger := NewLocalQuantaLedger()
+	id := uuid.New()
+	ledger.Credit(id, 50_000_000, 5_000_000)
+	var n int
+	for range 200 {
+		n++
+		_ = ledger.TrySpendDebit(id, 0, 10_000)
+	}
+	ledger.Credit(id, 200*10_000, 5_000_000)
+	n = 0
+	allocs := testing.AllocsPerRun(100, func() {
+		n++
+		_ = ledger.TrySpendDebit(id, 0, 10_000)
+	})
+	if allocs != 0 {
+		t.Fatalf("TrySpendDebit allocs = %v, want 0", allocs)
+	}
+}

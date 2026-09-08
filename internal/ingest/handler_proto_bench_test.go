@@ -21,10 +21,12 @@ func benchProtoHandler(b *testing.B, pbPayload *pb.AdEvent) {
 		Body: body, ContentLength: len(body), HasContentLength: true,
 	}
 	conn := &mockGnetConn{written: make([]byte, 0, 512)}
+	ctx := handler.AllocConnContext(conn)
+	conn.SetContext(ctx)
 	b.ReportAllocs()
 	b.SetBytes(int64(len(body)))
 	for b.Loop() {
-		handler.React(req, conn)
+		handler.React(&req, conn)
 	}
 }
 

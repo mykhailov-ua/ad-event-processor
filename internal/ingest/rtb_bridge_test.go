@@ -58,12 +58,13 @@ func TestRtbCatalog_shadowDoesNotSpend(t *testing.T) {
 	catalog.SyncActiveCampaigns([]*domain.Campaign{camp}, inputs)
 
 	evt := &domain.Event{}
-	res, reason := catalog.RunAuction(evt, RtbTargetingInput{
+	targeting := RtbTargetingInput{
 		GeoHash:             7,
 		DeviceType:          1,
 		CategoryMask:        1,
 		PublisherFloorMicro: 50,
-	})
+	}
+	res, reason := catalog.RunAuction(evt, &targeting)
 	require.True(t, reason.OK())
 	assert.Equal(t, CampaignIDFromUUID(id), res.CampaignID)
 	assert.Equal(t, int64(1000), store.GetBudget(CampaignIDFromUUID(id)))
@@ -81,12 +82,13 @@ func TestRtbCatalog_liveSpend(t *testing.T) {
 	catalog.SyncActiveCampaigns([]*domain.Campaign{camp}, inputs)
 
 	evt := &domain.Event{}
-	_, reason := catalog.RunAuction(evt, RtbTargetingInput{
+	targeting := RtbTargetingInput{
 		GeoHash:             7,
 		DeviceType:          1,
 		CategoryMask:        1,
 		PublisherFloorMicro: 50,
-	})
+	}
+	_, reason := catalog.RunAuction(evt, &targeting)
 	require.True(t, reason.OK())
 	assert.Equal(t, int64(950), store.GetBudget(CampaignIDFromUUID(id)))
 }

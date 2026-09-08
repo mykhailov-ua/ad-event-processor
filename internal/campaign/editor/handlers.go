@@ -829,6 +829,129 @@ func postCampaignBulk(h *campaign.CampaignsHTTPHandlers, w http.ResponseWriter, 
 	httpresponse.JSON(w, http.StatusOK, BulkCampaignResponseDTO{Results: results})
 }
 
+type BulkCloneCampaignsHTTPRequest struct {
+	SourceCampaignIDs []string `json:"source_campaign_ids"`
+	CustomerID        string   `json:"customer_id,omitempty"`
+	NamePrefix        string   `json:"name_prefix,omitempty"`
+	NameSuffix        string   `json:"name_suffix,omitempty"`
+	Options           campaign.CloneCampaignOptions `json:"options,omitempty"`
+}
+
+type BulkCloneCampaignsResponseDTO struct {
+	Results []campaign.BulkCloneCampaignResultRow `json:"results"`
+}
+
+func postCampaignBulkClone(h *campaign.CampaignsHTTPHandlers, w http.ResponseWriter, r *http.Request) {
+	req, ok := coldpath.DecodeRequestOrBadRequest[BulkCloneCampaignsHTTPRequest](w, r, coldpath.DefaultMaxBody)
+	if !ok {
+		return
+	}
+	bulkKey := strings.TrimSpace(r.Header.Get("Idempotency-Key"))
+	if bulkKey == "" {
+		httpresponse.Error(w, http.StatusBadRequest, "BAD_REQUEST", "Idempotency-Key header is required")
+		return
+	}
+	if len(req.SourceCampaignIDs) == 0 {
+		httpresponse.Error(w, http.StatusBadRequest, "BAD_REQUEST", "source_campaign_ids required")
+		return
+	}
+	if len(req.SourceCampaignIDs) > campaign.BulkCloneCampaignMaxSync {
+		httpresponse.Error(w, http.StatusBadRequest, "BAD_REQUEST", "too many source_campaign_ids")
+		return
+	}
+
+	var scopeCustomerID uuid.UUID
+	if rawCustomer := strings.TrimSpace(req.CustomerID); rawCustomer != "" {
+		parsedCustomerID, err := uuid.Parse(rawCustomer)
+		if err != nil {
+			httpresponse.Error(w, http.StatusBadRequest, "BAD_REQUEST", "invalid customer_id")
+			return
+		}
+		scopeCustomerID = parsedCustomerID
+	}
+
+	results := make([]campaign.BulkCloneCampaignResultRow, 0, len(req.SourceCampaignIDs))
+	parsedIDs := make([]uuid.UUID, 0, len(req.SourceCampaignIDs))
+	idByRaw := make(map[uuid.UUID]string, len(req.SourceCampaignIDs))
+	for _, rawID := range req.SourceCampaignIDs {
+		row := campaign.BulkCloneCampaignResultRow{SourceID: rawID}
+		sourceID, err := uuid.Parse(strings.TrimSpace(rawID))
+		if err != nil {
+			row.ErrorCode = "invalid_id"
+			results = append(results, row)
+			continue
+		}
+		parsedIDs = append(parsedIDs, sourceID)
+		idByRaw[sourceID] = rawID
+	}
+
+	authErrors := h.AuthorizeCampaignIDs(r, parsedIDs)
+	for _, sourceID := range parsedIDs {
+		if _, denied := authErrors[sourceID]; denied {
+			results = append(results, campaign.BulkCloneCampaignResultRow{
+				SourceID:  idByRaw[sourceID],
+				ErrorCode: "forbidden",
+			})
+			delete(idByRaw, sourceID)
+		}
+	}
+
+	ctx := r.Context()
+	for _, sourceID := range parsedIDs {
+		rawID := idByRaw[sourceID]
+		if rawID == "" {
+			continue
+		}
+		if scopeCustomerID != uuid.Nil {
+			camp, err := h.Campaigns.GetCampaign(ctx, sourceID)
+			if err != nil {
+				results = append(results, campaign.BulkCloneCampaignResultRow{
+					SourceID:  rawID,
+					ErrorCode: bulkCloneCampaignErrorCode(err),
+				})
+				continue
+			}
+			if camp.CustomerID != scopeCustomerID.String() {
+				results = append(results, campaign.BulkCloneCampaignResultRow{
+					SourceID:  rawID,
+					ErrorCode: "customer_mismatch",
+				})
+				continue
+			}
+		}
+		cloneResult, err := h.Campaigns.CloneCampaign(ctx, campaign.CloneCampaignSpec{
+			SourceID:       sourceID,
+			NamePrefix:     req.NamePrefix,
+			NameSuffix:     req.NameSuffix,
+			IdempotencyKey: campaign.BulkCloneIdempotencyKey(bulkKey, sourceID),
+			Options:        req.Options,
+		})
+		if err != nil {
+			results = append(results, campaign.BulkCloneCampaignResultRow{
+				SourceID:  rawID,
+				ErrorCode: bulkCloneCampaignErrorCode(err),
+			})
+			continue
+		}
+		results = append(results, campaign.BulkCloneCampaignResultRow{
+			SourceID: rawID,
+			ID:       cloneResult.ID,
+			Name:     cloneResult.Name,
+			OK:       true,
+		})
+	}
+
+	httpresponse.JSON(w, http.StatusOK, BulkCloneCampaignsResponseDTO{Results: results})
+}
+
+func bulkCloneCampaignErrorCode(err error) string {
+	code := campaign.BulkCloneCampaignErrorCode(err)
+	if code != "error" {
+		return code
+	}
+	return bulkCampaignErrorCode(err)
+}
+
 func bulkCampaignErrorCode(err error) string {
 	switch {
 	case errors.Is(err, campaign.ErrCampaignNotFound):

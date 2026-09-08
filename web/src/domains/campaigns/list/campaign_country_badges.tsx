@@ -2,7 +2,7 @@ import { MoreHorizontal } from 'lucide-react';
 
 import { Button } from '@/components/ui/button';
 import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover';
-import { campaignCountriesOverflowPopoverClass } from '@/domains/campaigns/list/campaign_list_classes';
+import { campaignCountriesOverflowPopoverPanelClass } from '@/domains/campaigns/list/campaign_list_classes';
 import { CountryFlagIcon } from '@/domains/campaigns/list/country_flag_icon';
 import { cn } from '@/lib/utils';
 
@@ -47,19 +47,16 @@ function normalizeCountryCode(raw: string): string | null {
 function countryBadgeTone(code: string): string {
   const tone = COUNTRY_TONE_BY_CODE[code] ?? 'neutral';
   const tones: Record<string, string> = {
-    violet:
-      'border-violet-200 bg-violet-50 text-violet-800 dark:border-violet-900/50 dark:bg-violet-950/40 dark:text-violet-300',
-    amber:
-      'border-amber-200 bg-amber-50 text-amber-800 dark:border-amber-900/50 dark:bg-amber-950/40 dark:text-amber-300',
-    rose: 'border-rose-200 bg-rose-50 text-rose-800 dark:border-rose-900/50 dark:bg-rose-950/40 dark:text-rose-300',
-    sky: 'border-sky-200 bg-sky-50 text-sky-800 dark:border-sky-900/50 dark:bg-sky-950/40 dark:text-sky-300',
+    violet: 'border-border bg-primary/10 text-primary',
+    amber: 'border-admin-warn-border/60 bg-admin-warn-bg/50 text-admin-warn',
+    rose: 'border-destructive/30 bg-destructive/10 text-destructive',
+    sky: 'border-border bg-muted text-foreground',
     emerald:
-      'border-emerald-200 bg-emerald-50 text-emerald-800 dark:border-emerald-900/50 dark:bg-emerald-950/40 dark:text-emerald-300',
-    indigo:
-      'border-indigo-200 bg-indigo-50 text-indigo-800 dark:border-indigo-900/50 dark:bg-indigo-950/40 dark:text-indigo-300',
-    cyan: 'border-cyan-200 bg-cyan-50 text-cyan-800 dark:border-cyan-900/50 dark:bg-cyan-950/40 dark:text-cyan-300',
+      'border-admin-status-active/30 bg-admin-status-active/15 text-admin-status-active',
+    indigo: 'border-primary/25 bg-primary/10 text-primary',
+    cyan: 'border-border bg-muted/80 text-muted-foreground',
     orange:
-      'border-orange-200 bg-orange-50 text-orange-800 dark:border-orange-900/50 dark:bg-orange-950/40 dark:text-orange-300',
+      'border-admin-status-scheduled/30 bg-admin-status-scheduled/15 text-admin-status-scheduled',
     neutral: 'border-border bg-muted/50 text-muted-foreground',
   };
   return tones[tone] ?? tones.neutral;
@@ -151,7 +148,9 @@ export function CampaignCountryBadges({
             </PopoverTrigger>
             <PopoverContent
               align="start"
-              className={cn(campaignCountriesOverflowPopoverClass, 'p-0')}
+              className="p-0"
+              matchTriggerMinWidth={false}
+              panelClassName={campaignCountriesOverflowPopoverPanelClass}
               panelScroll="none"
               side="bottom"
               onClick={(event) => event.stopPropagation()}

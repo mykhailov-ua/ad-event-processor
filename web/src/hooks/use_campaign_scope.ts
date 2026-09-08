@@ -1,8 +1,10 @@
 import { useCallback, useEffect, useState } from 'react';
-import { useSearchParams } from 'react-router-dom';
+
+import { useTransitionSearchParams } from '@/hooks/use_transition_search_params';
 
 export function useCampaignScope() {
-  const [searchParams, setSearchParams] = useSearchParams();
+  const [searchParams, { isPending: listQueryPending, replaceSearchParams }] =
+    useTransitionSearchParams();
 
   const appliedCampaignId = searchParams.get('campaign_id') ?? '';
   const [draftCampaignId, setDraftCampaignId] = useState(appliedCampaignId);
@@ -19,13 +21,14 @@ export function useCampaignScope() {
     } else {
       next.delete('campaign_id');
     }
-    setSearchParams(next, { replace: true });
-  }, [draftCampaignId, searchParams, setSearchParams]);
+    replaceSearchParams(next);
+  }, [draftCampaignId, replaceSearchParams, searchParams]);
 
   return {
     appliedCampaignId,
     draftCampaignId,
     setDraftCampaignId,
     applyCampaignScope,
+    listQueryPending,
   };
 }

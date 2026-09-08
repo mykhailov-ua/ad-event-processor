@@ -8,10 +8,10 @@ export function tableCellClass(
   emphasis?: 'primary' | 'secondary' | 'conversion' | 'approved'
 ): string {
   return cn(
-    'tabular-nums num',
-    isZero && 'tabular-nums text-muted-foreground/60',
-    emphasis === 'primary' && !isZero && 'tabular-nums font-semibold text-foreground',
-    emphasis === 'secondary' && !isZero && 'tabular-nums text-muted-foreground',
+    'font-numeric num',
+    isZero && 'text-muted-foreground/60',
+    emphasis === 'primary' && !isZero && 'font-semibold text-foreground',
+    emphasis === 'secondary' && !isZero && 'text-muted-foreground',
     emphasis === 'conversion' && !isZero && adminMetricConversionClass,
     emphasis === 'approved' && !isZero && adminMetricApprovedClass,
     extra

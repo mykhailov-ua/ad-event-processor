@@ -1,9 +1,9 @@
 // L3 outbox inspector: cursor_stack URL pagination (same pattern as DLQ inbox).
 import { useCallback, useMemo } from 'react';
-import { useSearchParams } from 'react-router-dom';
 
 import { listOpsOutbox } from '@/api/ops_api';
 import { useResource } from '@/api/use_resource';
+import { useTransitionSearchParams } from '@/hooks/use_transition_search_params';
 import { parseListLimit } from '@/lib/list_query';
 
 const CURSOR_STACK_KEY = 'cursor_stack';
@@ -24,7 +24,8 @@ function parseCursorStack(raw: string | null): string[] {
 }
 
 export function useOpsOutboxPageWorkspace() {
-  const [searchParams, setSearchParams] = useSearchParams();
+  const [searchParams, { isPending: listQueryPending, replaceSearchParams }] =
+    useTransitionSearchParams();
 
   const limit = parseListLimit(searchParams.get('limit'), 100);
   const cursor = searchParams.get('cursor') ?? undefined;
@@ -33,7 +34,7 @@ export function useOpsOutboxPageWorkspace() {
     [searchParams]
   );
 
-  const { data, error, fetching } = useResource(
+  const { data, error, fetching, revalidating: listRevalidating } = useResource(
     (signal) => listOpsOutbox({ limit, cursor }, signal),
     [limit, cursor]
   );
@@ -52,9 +53,9 @@ export function useOpsOutboxPageWorkspace() {
       } else {
         next.delete(CURSOR_STACK_KEY);
       }
-      setSearchParams(next, { replace: true });
+      replaceSearchParams(next);
     },
-    [limit, searchParams, setSearchParams]
+    [limit, replaceSearchParams, searchParams]
   );
 
   const onNext = useCallback(() => {
@@ -81,6 +82,7 @@ export function useOpsOutboxPageWorkspace() {
     total: data?.total,
     limit,
     fetching,
+    listRevalidating: listRevalidating || listQueryPending,
     error,
     hasSnapshot: data != null,
     canGoPrev: cursorStack.length > 0 || Boolean(cursor),

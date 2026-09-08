@@ -1,18 +1,6 @@
-import { useRef, useState } from 'react';
-import { Check, ChevronsUpDown } from 'lucide-react';
+import { useMemo } from 'react';
 
-import { Button } from '@/components/ui/button';
-import {
-  Command,
-  CommandEmpty,
-  CommandGroup,
-  CommandInput,
-  CommandItem,
-  CommandList,
-} from '@/components/ui/command';
-import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover';
-import { resolvePopoverAlign } from '@/lib/popover_align';
-import { cn } from '@/lib/utils';
+import { SearchableFilterSelect } from '@/shell/searchable_filter_select';
 
 export type CustomerComboboxOption = {
   id: string;
@@ -36,79 +24,40 @@ export function CustomerCombobox({
   disabled = false,
   onValueChange,
 }: CustomerComboboxProps) {
-  const triggerRef = useRef<HTMLButtonElement>(null);
-  const [open, setOpen] = useState(false);
-  const [align, setAlign] = useState<'start' | 'end'>('start');
-  const selected = options.find((option) => option.id === value);
+  const selectOptions = useMemo(
+    () => [
+      { value: '', label: 'All customers' },
+      ...options.map((customer) => ({
+        value: customer.id,
+        label: customer.name,
+      })),
+    ],
+    [options]
+  );
 
-  const triggerLabel = loading
-    ? 'Loading customers...'
-    : selected
-      ? selected.name
-      : value
-        ? value
-        : 'All customers';
+  const resolvedValue = value || '';
+  const selected =
+    selectOptions.find((option) => option.value === resolvedValue) ??
+    (resolvedValue
+      ? { value: resolvedValue, label: resolvedValue }
+      : selectOptions[0]);
+
+  const displayOptions = useMemo(() => {
+    if (!resolvedValue || selectOptions.some((option) => option.value === resolvedValue)) {
+      return selectOptions;
+    }
+    return [...selectOptions, selected];
+  }, [resolvedValue, selectOptions, selected]);
 
   return (
-    <Popover
-      open={open}
-      onOpenChange={(nextOpen) => {
-        if (nextOpen) {
-          setAlign(resolvePopoverAlign(triggerRef.current));
-        }
-        setOpen(nextOpen);
-      }}
-    >
-      <PopoverTrigger asChild>
-        <Button
-          ref={triggerRef}
-          id={id}
-          type="button"
-          variant="outline"
-          role="combobox"
-          aria-expanded={open}
-          className="w-full min-w-0 justify-between gap-2 text-sm font-normal"
-          disabled={disabled || loading}
-        >
-          <span className="min-w-0 flex-1 whitespace-nowrap text-left">{triggerLabel}</span>
-          <ChevronsUpDown className="h-4 w-4 shrink-0 opacity-50" aria-hidden />
-        </Button>
-      </PopoverTrigger>
-      <PopoverContent className="p-0" align={align}>
-        <Command>
-          <CommandInput placeholder="Search customer..." />
-          <CommandList className="overflow-x-auto">
-            <CommandEmpty>No customer found.</CommandEmpty>
-            <CommandGroup>
-              <CommandItem
-                value="all customers"
-                onSelect={() => {
-                  onValueChange('');
-                  setOpen(false);
-                }}
-              >
-                <Check className={cn('h-4 w-4', value === '' ? 'opacity-100' : 'opacity-0')} />
-                All customers
-              </CommandItem>
-              {options.map((customer) => (
-                <CommandItem
-                  key={customer.id}
-                  value={`${customer.name} ${customer.id}`}
-                  onSelect={() => {
-                    onValueChange(customer.id);
-                    setOpen(false);
-                  }}
-                >
-                  <Check
-                    className={cn('h-4 w-4', value === customer.id ? 'opacity-100' : 'opacity-0')}
-                  />
-                  <span className="whitespace-nowrap">{customer.name}</span>
-                </CommandItem>
-              ))}
-            </CommandGroup>
-          </CommandList>
-        </Command>
-      </PopoverContent>
-    </Popover>
+    <SearchableFilterSelect
+      aria-label="Customer"
+      disabled={disabled || loading}
+      options={displayOptions}
+      searchPlaceholder={loading ? 'Loading customers...' : 'All customers'}
+      triggerId={id}
+      value={resolvedValue}
+      onValueChange={onValueChange}
+    />
   );
 }

@@ -13,11 +13,14 @@ import {
   campaignListColDragGripClass,
   campaignListColResizeHandleClass,
   campaignListHeaderCellClass,
+  campaignListHeaderCellNumClass,
   campaignListHeaderLabelClass,
   campaignListHeaderLabelNumClass,
-  campaignListHeaderToolsClass,
 } from '@/domains/campaigns/list/campaign_list_classes';
-import { sortFieldForCampaignColumn } from '@/domains/campaigns/list/campaign_list_sort';
+import {
+  campaignListSortShowsAscIcon,
+  sortFieldForCampaignColumn,
+} from '@/domains/campaigns/list/campaign_list_sort';
 import type { CampaignSortField, SortOrder } from '@/domains/campaigns/list/campaigns_list_types';
 import { cn } from '@/lib/utils';
 
@@ -68,7 +71,8 @@ export function CampaignListTableHeaderCell({
     labelNode = (
       <Button
         className={cn(
-          'inline-flex h-auto max-w-full items-center justify-start gap-0.5 border-0 bg-transparent p-0 font-normal shadow-none hover:bg-transparent',
+          'inline-flex h-auto max-w-full items-center gap-0.5 border-0 bg-transparent p-0 font-normal shadow-none hover:bg-transparent',
+          isNum ? 'justify-end' : 'justify-start',
           active && 'text-foreground'
         )}
         disabled={disabled}
@@ -79,7 +83,7 @@ export function CampaignListTableHeaderCell({
       >
         {label}
         {active ? (
-          appliedOrder === 'asc' ? (
+          campaignListSortShowsAscIcon(appliedOrder, isNum) ? (
             <ArrowUp aria-hidden className="h-3 w-3 shrink-0" />
           ) : (
             <ArrowDown aria-hidden className="h-3 w-3 shrink-0" />
@@ -100,7 +104,7 @@ export function CampaignListTableHeaderCell({
   return (
     <div
       ref={rootRef}
-      className={campaignListHeaderCellClass}
+      className={isNum ? campaignListHeaderCellNumClass : campaignListHeaderCellClass}
       onDragEnd={() => {
         setDragOverHighlight(false);
         onDragEnd();
@@ -134,27 +138,24 @@ export function CampaignListTableHeaderCell({
         onDrop(event);
       }}
     >
-      <div className={cn(isNum ? campaignListHeaderLabelNumClass : campaignListHeaderLabelClass)}>
+      <div className={isNum ? campaignListHeaderLabelNumClass : campaignListHeaderLabelClass}>
         {labelNode}
       </div>
-      {showTools ? (
-        <div className={campaignListHeaderToolsClass}>
-          {draggable ? (
-            <span
-              aria-label={`Reorder ${label} column`}
-              className={campaignListColDragGripClass}
-              data-col-grip=""
-              draggable
-              onDragStart={(event) => {
-                event.dataTransfer.setData(COLUMN_DRAG_MIME, columnId);
-                event.dataTransfer.effectAllowed = 'move';
-                onDragStart();
-              }}
-            >
-              <GripVertical aria-hidden className="h-3 w-3" />
-            </span>
-          ) : null}
-        </div>
+      {showTools && draggable ? (
+        <span
+          aria-label={`Reorder ${label} column`}
+          className={campaignListColDragGripClass}
+          data-col-grip=""
+          draggable
+          onDragStart={(event) => {
+            event.dataTransfer.setData(COLUMN_DRAG_MIME, columnId);
+            event.dataTransfer.effectAllowed = 'move';
+            setDragOverHighlight(true);
+            onDragStart();
+          }}
+        >
+          <GripVertical aria-hidden className="h-3 w-3" />
+        </span>
       ) : null}
     </div>
   );

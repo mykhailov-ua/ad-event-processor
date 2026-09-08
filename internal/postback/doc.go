@@ -31,5 +31,5 @@
 //	go test ./internal/postback/ -short -run TestMacroSubstitution -count=1
 //	go test ./internal/postback/ -short -run TestMacroRender_ZeroAlloc -count=1
 //	go test ./internal/postback/ -short -run TestConversionReject_rejectSkipsOutboxEnqueue -count=1
-//	go test ./internal/postback/ -run TestPostbackIntegration_IdempotencyAndEgress -count=1
+//	go test ./internal/postback/ -short -run Google -count=1
 package postback

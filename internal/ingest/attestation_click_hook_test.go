@@ -84,7 +84,7 @@ func TestClickRedirect_AttestationValidCookie_FallsThrough(t *testing.T) {
 	h, cid := attestationHookHandler(t, filter)
 	ip := "203.0.113.5"
 	now := time.Now().Unix()
-	token, err := MintAttestationToken(h.attestationKeys[0].secret, cid, ip, 300, now)
+	token, err := MintAttestationToken(h.attestationKeys[0].Secret, cid, ip, 300, now)
 	require.NoError(t, err)
 	require.True(t, h.verifyAttestationCookie([]byte("Attestation-Token="+token), cid, ip, now+1))
 	conn := serveClickWithCookie(h, cid, ip, "Attestation-Token="+token)
@@ -131,7 +131,7 @@ func TestClickRedirect_AttestationCookieMissingImp_ForceSafe(t *testing.T) {
 	})
 	ip := "203.0.113.7"
 	now := time.Now().Unix()
-	token, err := MintAttestationToken(h.attestationKeys[0].secret, cid, ip, 300, now)
+	token, err := MintAttestationToken(h.attestationKeys[0].Secret, cid, ip, 300, now)
 	require.NoError(t, err)
 	conn := serveClickWithCookie(h, cid, ip, "Attestation-Token="+token)
 	written := string(conn.Written())

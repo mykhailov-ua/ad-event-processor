@@ -1,4 +1,4 @@
-import { FILTER_PANEL_SUMMARY_CLASS } from '@/shell/filter_panel';
+import { FILTER_PANEL_SUMMARY_CLASS, DirectoryFilterForm, FilterField } from '@/shell/filter_panel';
 import { campaignPanelError } from '@/domains/campaigns/editor/campaign_editor_shared';
 import { Button } from '@/components/ui/button';
 import { Checkbox } from '@/components/ui/checkbox';
@@ -49,52 +49,47 @@ export function CampaignFraudPanel({
         ? campaignPanelError(loadError, 'Could not load fraud config')
         : null}
 
-      <div className="grid grid-cols-[repeat(auto-fill,minmax(10rem,1fr))] items-end gap-4">
-        <div className="grid gap-2 md:col-span-2">
-          <Label htmlFor="fraud-preset">Preset</Label>
+      <DirectoryFilterForm layout="auto-fill" onSubmit={(event) => event.preventDefault()}>
+        <FilterField className="md:col-span-2" htmlFor="fraud-preset" label="Preset">
           <Input
             id="fraud-preset"
             value={draftPreset}
             onChange={(event) => setDraftPreset(event.target.value)}
           />
-        </div>
-        <div className="grid gap-2">
-          <Label htmlFor="fraud-pass">Pass threshold</Label>
+        </FilterField>
+        <FilterField htmlFor="fraud-pass" label="Pass threshold">
           <Input
             id="fraud-pass"
             inputMode="numeric"
             value={draftPass}
             onChange={(event) => setDraftPass(event.target.value)}
           />
-        </div>
-        <div className="grid gap-2">
-          <Label htmlFor="fraud-suspect">Suspect threshold</Label>
+        </FilterField>
+        <FilterField htmlFor="fraud-suspect" label="Suspect threshold">
           <Input
             id="fraud-suspect"
             inputMode="numeric"
             value={draftSuspect}
             onChange={(event) => setDraftSuspect(event.target.value)}
           />
-        </div>
-        <div className="grid gap-2">
-          <Label htmlFor="fraud-ivt">IVT threshold</Label>
+        </FilterField>
+        <FilterField htmlFor="fraud-ivt" label="IVT threshold">
           <Input
             id="fraud-ivt"
             inputMode="numeric"
             value={draftIvt}
             onChange={(event) => setDraftIvt(event.target.value)}
           />
-        </div>
-        <div className="grid gap-2">
-          <Label htmlFor="fraud-block">Block threshold</Label>
+        </FilterField>
+        <FilterField htmlFor="fraud-block" label="Block threshold">
           <Input
             id="fraud-block"
             inputMode="numeric"
             value={draftBlock}
             onChange={(event) => setDraftBlock(event.target.value)}
           />
-        </div>
-      </div>
+        </FilterField>
+      </DirectoryFilterForm>
 
       <div className="flex items-center gap-2">
         <Checkbox

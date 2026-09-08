@@ -5,13 +5,13 @@ export const campaignDateRangeTriggerClass = cn(
   adminKit.controlHeight,
   adminKit.controlRadius,
   adminKit.controlText,
-  'flex w-full min-w-0 items-center justify-between gap-1.5 border border-border bg-background px-2 py-0 font-normal text-foreground shadow-none'
+  'flex w-full min-w-0 items-center justify-between gap-1.5 border border-border bg-background px-3 py-0 font-normal text-foreground shadow-none'
 );
 
 export const campaignDateRangePopoverClass =
   'text-foreground [&_.group\\/calendar]:[--cell-size:2rem]';
 
 export const campaignDateRangeFooterClass =
-  'flex items-center justify-between gap-3 border-t border-border px-4 py-3';
+  'grid grid-cols-[1fr_auto] items-center gap-3 border-t border-border px-4 py-3';
 
 export const campaignDateRangeClearButtonClass = cn('shrink-0', adminKit.controlHeight);

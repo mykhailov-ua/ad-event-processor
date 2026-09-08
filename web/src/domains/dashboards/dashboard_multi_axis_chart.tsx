@@ -167,11 +167,12 @@ export function DashboardMultiAxisChart({
 
   return (
     <DashboardCard
-      bodyClassName="pb-3 pt-0"
+      bodyClassName="px-5 pb-4 pt-2"
       className={cn('overflow-hidden', className)}
+      headerClassName="border-b-0 pb-0 pt-3"
       title="Performance"
     >
-      <div className={cn('border border-border bg-muted/10 p-2 sm:p-3', adminKit.panelRadius)}>
+      <div className={cn('border border-border bg-muted/10 px-2 py-3 sm:px-3', adminKit.panelRadius)}>
         <DashboardMultiAxisChartCanvas
           activeMetricIds={activeMetricIds}
           chartRows={chartRows}

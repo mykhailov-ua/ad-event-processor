@@ -217,7 +217,7 @@ Tracker lander pixel (required for browser conversions) and ad-network browser t
 | Provider | Postback tab field | Required on conversion payload |
 | :--- | :--- | :--- |
 | `facebook` | Pixel ID + CAPI token | `fbclid` (click URL or `/track` JSON) |
-| `google` | Conversion action resource + OAuth token | `gclid` |
+| `google` | `customer_id\|conversion_action_id` or full conversion action resource + OAuth token; developer token in test event code | `gclid` |
 | `tiktok` | Pixel code + access token | `ttclid` |
 | `taboola` | Event name | `tblci` |
 | `outbrain` | Conversion name | `ob_click_id` |

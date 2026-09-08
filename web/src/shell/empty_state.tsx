@@ -49,7 +49,7 @@ export function EmptyState({
   return (
     <div
       className={cn(
-        'flex flex-col items-center justify-center gap-4 border border-dashed border-border bg-muted/30 px-8 py-12 text-center',
+        'flex w-full flex-col items-center justify-center gap-4 border border-dashed border-border bg-muted/30 px-8 py-12 text-center',
         adminKit.panelRadius,
         className
       )}

@@ -23,9 +23,9 @@
 //     (TestUnifiedFilter_SetDeferStreamToProducer_DualStreamWriteFix).
 //   - Broker ring vs Redis XADD: CH_INGEST_SOURCE=broker uses mmap WAL BrokerProducer (default ring 32768, power-of-two MPSC)
 //     with the same TryReserve admission path; CH_INGEST_SOURCE=redis uses per-shard StreamProducer chan queue + async XADD.
-//     Lua never holds Redis thread for stream append; broker cutover runs BROKER_SHADOW_MODE before live CH commit.
 //   - Local quanta full-skip: zero sync EVALSHA when eligible; stream lane still defers to fcap:ignored when any Go producer
 //     is wired so local-quanta async lane cannot race the authoritative sink.
+//   - LocalFcapLedger: per-tracker freq-cap counter before budget-fast.lua; async Redis INCR via scheduleFcapBump.
 //
 // Forbidden:
 //   - Sync stream write before HTTP 202 on /track accept path.
@@ -34,6 +34,7 @@
 // Verify:
 //
 //	go test ./internal/stream/ -short -run TestLocalQuantaLedger_TrySpendLocal -count=1
+//	go test ./internal/stream/ -short -run TestLocalFcapLedger -count=1
 //	go test ./internal/stream/ -short -run TestStreamConsumer_FlushBatch_XAckError -count=1
 //	go test ./internal/stream/broker/ -short -run TestBrokerProducer_RingOverflow -count=1
 //	go test ./internal/ingest/ -short -run TestStreamProducerAdmissionRaceWithoutReserve -count=1

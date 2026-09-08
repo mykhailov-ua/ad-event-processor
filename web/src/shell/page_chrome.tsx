@@ -12,6 +12,8 @@ export type PageChromeProps = {
   footer?: ReactNode;
   workspaceClassName?: string;
   mainClassName?: string;
+  /** When omitted, footer enables viewport fill (directory tables). */
+  fillViewport?: boolean;
   children?: ReactNode;
 };
 
@@ -24,7 +26,8 @@ export function PageChrome({
   aside,
   footer,
   workspaceClassName,
-  mainClassName,
+  mainClassName = 'min-w-0 w-full',
+  fillViewport,
   children,
 }: PageChromeProps) {
   return (
@@ -33,6 +36,7 @@ export function PageChrome({
       badge={badge}
       controlPanel={controlPanel}
       description={description}
+      fillViewport={fillViewport}
       footer={footer}
       headerActions={actions}
       mainClassName={mainClassName}

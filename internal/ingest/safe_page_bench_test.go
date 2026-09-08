@@ -46,13 +46,13 @@ func BenchmarkClickRedirectGnet_forceSafe(b *testing.B) {
 		b.Fatal(err)
 	}
 	conn := NewGnetBenchConn(inbound)
-	h.React(req, conn)
+	h.React(&req, conn)
 	b.ReportAllocs()
 	b.SetBytes(int64(len(inbound)))
 	for b.Loop() {
 		conn.ClearWritten()
 		conn.ClearResponses()
-		h.React(req, conn)
+		h.React(&req, conn)
 	}
 }
 
@@ -68,12 +68,12 @@ func BenchmarkSafePageStubGnet_E2E(b *testing.B) {
 		b.Fatal(err)
 	}
 	conn := NewGnetBenchConn(inbound)
-	h.React(req, conn)
+	h.React(&req, conn)
 	b.ReportAllocs()
 	for b.Loop() {
 		conn.ClearWritten()
 		conn.ClearResponses()
-		h.React(req, conn)
+		h.React(&req, conn)
 	}
 }
 
@@ -101,13 +101,13 @@ func BenchmarkTrackVerifyGnet_E2E(b *testing.B) {
 		b.Fatal(err)
 	}
 	conn := NewGnetBenchConn(inbound)
-	h.React(req, conn)
+	h.React(&req, conn)
 	b.ReportAllocs()
 	b.SetBytes(int64(len(inbound)))
 	for b.Loop() {
 		conn.ClearWritten()
 		conn.ClearResponses()
-		h.React(req, conn)
+		h.React(&req, conn)
 	}
 }
 

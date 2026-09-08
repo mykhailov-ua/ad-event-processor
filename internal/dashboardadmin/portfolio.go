@@ -242,14 +242,17 @@ func (p *Portfolio) GetBuyerPortfolioRange(
 			resp.Fraud = &overview
 		}
 		if sources, sourcesErr := reports.QuerySourceBreakdownCH(clickhouseCtx, chQuery, scopedCampaignIDs, from, to, buyerBreakdownTopN); sourcesErr == nil {
+			reports.ApplyBreakdownTableEconomicsGaps(&sources)
 			resp.Breakdowns.Sources = sources
 		}
 		if landers, landersErr := reports.QueryLanderBreakdownCH(clickhouseCtx, chQuery, scopedCampaignIDs, from, to, buyerBreakdownTopN); landersErr == nil {
 			_ = attachFlowEntityNames(ctx, p.host.Pool(), &landers, "landers")
+			reports.ApplyBreakdownTableEconomicsGaps(&landers)
 			resp.Breakdowns.Landers = landers
 		}
 		if offers, offersErr := reports.QueryOfferBreakdownCH(clickhouseCtx, chQuery, scopedCampaignIDs, from, to, buyerBreakdownTopN); offersErr == nil {
 			_ = attachFlowEntityNames(ctx, p.host.Pool(), &offers, "offers")
+			reports.ApplyBreakdownTableEconomicsGaps(&offers)
 			resp.Breakdowns.Offers = offers
 		}
 		if recent, recentErr := reports.QueryRecentClickLogCH(clickhouseCtx, chQuery, scopedCampaignIDs, from, to, 20); recentErr == nil {
