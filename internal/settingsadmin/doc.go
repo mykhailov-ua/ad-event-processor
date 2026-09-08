@@ -12,7 +12,7 @@
 //   - blacklist_ttl.go maps manual/fraud/auto sources to TTL hours from Host config defaults.
 //
 // Invariants:
-//   - Block IP preview path (dryRun) does not write; apply path writes PG + outbox in one transaction.
+//   - Block IP preview path (dryRun) does not write; apply path writes Postgres + outbox in one transaction.
 //   - Protected IPs from Host cannot be blocked.
 //   - normalizeSystemSettings validates rtb_budget_authority and rtb_mode; other keys pass through unchanged.
 //   - Emergency breaker and settings patches audit in the same transaction as outbox enqueue.

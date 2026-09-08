@@ -6,7 +6,7 @@
 //   - Registry and slot map: generational atomic.Value snapshots; readers never lock.
 //   - StreamProducer/BrokerProducer TryReserve before debit; local quanta full-skip uses a separate async lane (internal/stream).
 //
-// PG pool is boot/background only; no synchronous PG on gnet or pinned worker request path.
+// Postgres pool is boot/background only; no synchronous Postgres on gnet or pinned worker request path.
 package main
 
 import (
@@ -95,15 +95,15 @@ func runTracker(cfg *config.Config) {
 		PtraceRequired: licensing.GuardCompiledIn() && config.LicenseGuardPtraceRequired(),
 	})
 
-	// Phase 2: PG read pool for registry/slot-map/settings sync only (not request thread).
+	// Phase 2: Postgres read pool for registry/slot-map/settings sync only (not request thread).
 	//
 	// Campaign registry snapshot (internal/filter.Registry):
 	//   - data atomic.Value holds *campaignMapSnapshot (generational: Store replaces whole map; readers Load once per lookup).
 	//   - snapGen atomic.Uint64 bumps on every storeCampaignSnapshot; per-worker registryWorkerCacheSlot uses gen+id (LRU-ish one-entry).
-	//   - StartWatchShards: Redis pub/sub campaigns:update; UUID payload -> UpdateAndWarmCampaign (incremental PG row);
+	//   - StartWatchShards: Redis pub/sub campaigns:update; UUID payload -> UpdateAndWarmCampaign (incremental Postgres row);
 	//     full-sync payload -> ReloadFullSnapshot. MarkPubSubOK resets stale TTL driver.
 	//   - StartEpochPoll: per-shard GET campaign:registry:epoch; when val > local, ReloadFullSnapshot (epoch catch-up if pub/sub missed).
-	//   - ConfigureStaleMode(REGISTRY_STALE_TTL_SEC): if lastPubSubOK exceeds TTL, IsStaleMode fail-open for settings PG fallback.
+	//   - ConfigureStaleMode(REGISTRY_STALE_TTL_SEC): if lastPubSubOK exceeds TTL, IsStaleMode fail-open for settings Postgres fallback.
 	pool, err := database.Connect(ctx, string(cfg.DBDSN), cfg.DBTrackerMaxConns, cfg.DBMinConns)
 	if err != nil {
 		slog.Error("failed to connect to database", "error", err)
@@ -177,7 +177,7 @@ func runTracker(cfg *config.Config) {
 	}
 	campaignRepo := ingestion.NewCampaignRepo(queries)
 	// StaticSlotSharder (internal/domain/shard): snapshot atomic.Value *SlotMapSnapshot (1024 slot table + version + routing_epoch).
-	// LoadActiveSlotMap: one-shot PG read at boot; on failure SwapSnapshot modulo fallback (fail-open routing).
+	// LoadActiveSlotMap: one-shot Postgres read at boot; on failure SwapSnapshot modulo fallback (fail-open routing).
 	sharder := ingestion.NewStaticSlotSharder(len(redisShards))
 	if version, loadErr := ingestion.LoadActiveSlotMap(ctx, pool, sharder, len(redisShards)); loadErr != nil {
 		slog.Warn("slot map load failed, using modulo fallback", "error", loadErr)
@@ -185,7 +185,7 @@ func runTracker(cfg *config.Config) {
 		slog.Info("slot map loaded at startup", "version", version)
 	}
 
-	// SlotMapWatcher: background ReloadStaticSlotMapIfChanged when PG active_version changes.
+	// SlotMapWatcher: background ReloadStaticSlotMapIfChanged when Postgres active_version changes.
 	// Poll loop (SLOT_MAP_POLL_INTERVAL_MS) + optional broker topic (SLOT_MAP_RELOAD_TOPIC) for push reload.
 	// Independent of registry pub/sub; both must match edge Lua slot table (generational swap, zero-lock GetShard).
 	slotMapWatcher := ingestion.NewSlotMapWatcher(ingestion.SlotMapWatcherConfig{
@@ -443,7 +443,7 @@ func runTracker(cfg *config.Config) {
 
 	trackerStreamName := cfg.RedisStreamName
 	if cfg.BrokerEnabled() && cfg.BrokerPrimaryCH() {
-		// CH_INGEST_SOURCE=broker: Lua stream key ignored; BrokerProducer is sole CH writer (Phase 8).
+		// CH_INGEST_SOURCE=broker: Lua stream key ignored; BrokerProducer is sole ClickHouse writer (Phase 8).
 		trackerStreamName = "fcap:ignored"
 	}
 
@@ -713,7 +713,7 @@ func runTracker(cfg *config.Config) {
 		}
 	}
 
-	// Phase 7: gnet handler shell; optional PG failover swaps pool on background subscriber only.
+	// Phase 7: gnet handler shell; optional Postgres failover swaps pool on background subscriber only.
 	// Producers attach in Phase 8 after handler exists so SetBrokerProducers/SetStreamProducers wire TryReserve sink.
 	gnetHandler := ingestion.NewAdsPacketHandler(cfg, registry, filterEngine, pool, redisShards, sharder, cfg.FraudStreamName, creativeStore)
 
@@ -743,9 +743,9 @@ func runTracker(cfg *config.Config) {
 	//
 	// Admission vs local quanta (internal/stream):
 	//   - STREAM_PRODUCER_ADMISSION_PCT: TryReserve on bounded queue before Lua debit (fail-closed overload).
-	//   - CH_INGEST_SOURCE=broker: trackerStreamName fcap:ignored; SetDeferStreamToProducer on handler wires BrokerProducer as sole CH writer.
+	//   - CH_INGEST_SOURCE=broker: trackerStreamName fcap:ignored; SetDeferStreamToProducer on handler wires BrokerProducer as sole ClickHouse writer.
 	//   - LOCAL_QUOTA_MODE live full-skip: debit in Go ledger; LocalQuantaStreamPublisher MPSC lane (fcap/budget sync Redis, optional XADD);
-	//     authoritative CH path remains TryReserve + publishAcceptedTrack -> BrokerProducer or StreamProducer ProcessReserved.
+	//     authoritative ClickHouse path remains TryReserve + publishAcceptedTrack -> BrokerProducer or StreamProducer ProcessReserved.
 	var brokerProducers *ingestion.BrokerProducerSet
 	var fraudBrokerSink *ingestion.FraudBrokerSink
 	if cfg.BrokerEnabled() && cfg.BrokerPrimaryCH() && cfg.Broker.URL != "" {

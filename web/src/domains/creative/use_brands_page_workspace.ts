@@ -1,4 +1,4 @@
-// L3 brands directory: customer-scoped list with edit/delete row actions.
+// brands directory: customer-scoped list with edit/delete row actions.
 import { useCallback, useState } from 'react';
 import { toast } from 'sonner';
 

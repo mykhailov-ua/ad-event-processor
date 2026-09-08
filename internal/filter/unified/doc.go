@@ -66,7 +66,7 @@
 //     local-quota-return.lua. Rejected: always sync Lua (p99 Redis); rejected full-skip without refill
 //     path (budget invariant drift). LOCAL_QUOTA_MODE=live gates eligibility in localQuantaFullSkipEligible.
 //   - fcap:ignored stream deferral (SetDeferStreamToProducer): Lua KEYS[9] set to fcap:ignored so script
-//     does not XADD; StreamProducer or BrokerProducer is sole CH/broker writer. Prevents dual XADD when
+//     does not XADD; StreamProducer or BrokerProducer is sole ClickHouse/broker writer. Prevents dual XADD when
 //     Go producer also publishes (holdout TestUnifiedFilter_SetDeferStreamToProducer_DualStreamWriteFix).
 //     Rejected: Lua XADD in same script as debit (holds Redis thread, tradeoffs.mdc); rejected deferred
 //     mode without wired producer (503 filterRejectInfra before debit;

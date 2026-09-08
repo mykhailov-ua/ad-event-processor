@@ -12,7 +12,7 @@
 //   - Not registered on admin HTTP handlers; controlplane bridges call settlement stores directly.
 //
 // Invariants:
-//   - VerifyBudgetInvariant: redis spend matches PG current_spend + sync_delta within tolerance.
+//   - VerifyBudgetInvariant: redis spend matches Postgres current_spend + sync_delta within tolerance.
 //   - AssertBudgetInvariant is the test helper wrapper; fault tests call after spend paths.
 //   - CheckAndSpend idempotency is enforced by caller click_id or dedup key, not inside BudgetManager.
 //   - Spend batch flush skips locked rows with ErrCampaignSpendSkipped without aborting the batch.

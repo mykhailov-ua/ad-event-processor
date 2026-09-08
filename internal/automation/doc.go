@@ -6,7 +6,7 @@
 //     PUT/DELETE /api/v1/automation/rules/{id}; POST /api/v1/automation/rules/{id}/dry-run.
 //   - RulesService persists rules in Postgres (sqlc automation_rules) and validates presets,
 //     metrics, operators, and actions.
-//   - Worker (worker.go) polls enabled rules on a ticker (automationTickTimeout 2 min per tick), evaluates CH windows (eval.go),
+//   - Worker (worker.go) polls enabled rules on a ticker (automationTickTimeout 2 min per tick), evaluates ClickHouse windows (eval.go),
 //     dedupes fires via ActionHash + automation_rule_fires, and applies actions through Executor.
 //   - Dry-run and HTTP read paths never insert fire rows or call Executor mutations.
 //
@@ -28,7 +28,7 @@
 //   - Per-customer eval cap per worker tick (default 50) skips excess rules until next tick.
 //   - blacklist_placement requires group_by placement_id; platform_pause requires network and
 //     ad_platform_campaign_api license when LicenseGate is wired.
-//   - CH queries use 15 s timeout per eval window.
+//   - ClickHouse queries use 15 s timeout per eval window.
 //
 // Defaults and limits:
 //   - Worker ticker interval: AUTOMATION_RULES_INTERVAL_MIN (default 15), clamped 5-60 min in

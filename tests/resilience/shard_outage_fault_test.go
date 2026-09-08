@@ -1,7 +1,7 @@
 // Role: Shard 0 Redis outage matrix: track 503, registry stale 503, partial outbox fanout, recovery after restart.
 // Tier: resilience.
 // Infra: testcontainers Postgres (ads schema), Redis x4 with fault infra and circuit breakers.
-// Invariants proved: shard 0 track 503 shard_unavailable; unknown campaign 404 when PG confirms missing (REGISTRY_STALE_PG_GRACE); 503 registry_stale when grace off or PG unreachable; shards 1-3 accept; outbox partial fanout PROCESSED; shard 0 recovers; budget invariant on shards 1-3.
+// Invariants proved: shard 0 track 503 shard_unavailable; unknown campaign 404 when Postgres confirms missing (REGISTRY_STALE_PG_GRACE); 503 registry_stale when grace off or Postgres unreachable; shards 1-3 accept; outbox partial fanout PROCESSED; shard 0 recovers; budget invariant on shards 1-3.
 // Verify: make test-resilience
 package resilience_test
 
@@ -26,7 +26,7 @@ import (
 	"github.com/stretchr/testify/require"
 )
 
-// Holdout: shard 0 down must 503 track; stale unknown campaign 404 with PG grace, 503 registry_stale when grace disabled; partial outbox fanout must succeed on shards 1-3.
+// Holdout: shard 0 down must 503 track; stale unknown campaign 404 with Postgres grace, 503 registry_stale when grace disabled; partial outbox fanout must succeed on shards 1-3.
 func TestFault_Shard0Outage(t *testing.T) {
 	if testing.Short() {
 		t.Skip("integration: run make test-integration (Docker testcontainers)")

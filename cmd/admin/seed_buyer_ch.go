@@ -1,4 +1,4 @@
-// Buyer dashboard ClickHouse seed: clicks, conversions, and hourly economics aligned with PG stats.
+// Buyer dashboard ClickHouse seed: clicks, conversions, and hourly economics aligned with Postgres stats.
 package main
 
 import (

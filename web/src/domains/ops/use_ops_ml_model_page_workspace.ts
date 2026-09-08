@@ -1,4 +1,4 @@
-// L3 ML model ops console: lazy GET lanes (status/eval/labels) via loadToken + skipLazyFetch AbortError skip.
+// ML model ops console: lazy GET lanes (status/eval/labels) via loadToken + skipLazyFetch AbortError skip.
 import { useCallback, useState } from 'react';
 
 import {

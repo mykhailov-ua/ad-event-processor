@@ -5,7 +5,7 @@ import (
 	"ad-event-processor/pkg/piihash"
 )
 
-// clickhousePIIFields holds FixedString(16) hashes and salt version for CH batch columns.
+// clickhousePIIFields holds FixedString(16) hashes and salt version for ClickHouse batch columns.
 // Populated once per event in insertTable before batch.Append; raw IP/UA/UserID never written.
 type clickhousePIIFields struct {
 	ipHash      [16]byte
@@ -24,7 +24,7 @@ type clickhousePIIFields struct {
 //   - fraud_events: user_id_hash (col 2), ip_hash, ua_hash, pii_salt_version; silent_reject from fraudSilentRejectFlag(e)
 //   - fraud_aggregate_spikes: subnet_hash only
 //
-// Invariant: nil hasher or nil event returns zero hashes and saltVersion 0 (CH gets empty FixedString).
+// Invariant: nil hasher or nil event returns zero hashes and saltVersion 0 (ClickHouse gets empty FixedString).
 //
 // Verify:
 // go test ./internal/stream/ -short -run TestClickHouseStore_StoreBatch_hashesPII -count=1

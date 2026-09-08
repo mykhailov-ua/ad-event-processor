@@ -11,7 +11,7 @@
 //   - Admin static stub from internal/controlplane/admin_static_stub (web/ rebuild pending).
 //
 // Invariants:
-//   - Admin mutation + outbox_events in same PG transaction (enforced in domain stores).
+//   - Admin mutation + outbox_events in same Postgres transaction (enforced in domain stores).
 //   - Cold-path body limit 64 KiB (pkg/coldpath.DefaultMaxBody).
 //   - Tracker is separate; control must not run FilterEngine on /track.
 //

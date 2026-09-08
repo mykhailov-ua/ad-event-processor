@@ -1,4 +1,4 @@
-// L3 ops metrics: GET dashboard by URL range + optional SSE liveSummary overlay (regime F leaf).
+// ops metrics: GET dashboard by URL range + optional SSE liveSummary overlay (regime F leaf).
 import { useEffect, useState } from 'react';
 
 import { getOpsDashboardMetrics, subscribeOpsDashboardStream } from '@/api/ops_api';

@@ -1,4 +1,4 @@
-// Package telegram owns Telegram bot admin HTTP, webhook ingest, Mini App initData validation, deeplinks, and CH-backed reports.
+// Package telegram owns Telegram bot admin HTTP, webhook ingest, Mini App initData validation, deeplinks, and ClickHouse-backed reports.
 //
 // Role:
 //   - HTTP under /api/v1/telegram/* (validate, clicks mint, webhook, bots, deeplink-tokens, postbacks).
@@ -8,14 +8,14 @@
 //   - outbox_event.go handles deeplink / welcome side effects from control outbox.
 //
 // Topology:
-//   - Wired via telegram_bridge.go; Host provides PG pool, per-campaign Redis, and ClickHouse read/write conns.
+//   - Wired via telegram_bridge.go; Host provides Postgres pool, per-campaign Redis, and ClickHouse read/write conns.
 //   - validate and clicks endpoints serve tracker /tg/* and Mini App flows; webhook ack must stay under 500ms.
 //
 // Invariants:
 //   - Webhook requires X-Telegram-Bot-Api-Secret-Token match per bot row.
 //   - Deeplink tokens TTL-bound in store; expired tokens rejected on read.
 //   - BotDTO includes bot_token and secret_token on list/get for campaigns:read holders (restrict RBAC).
-//   - CH report handlers are not on webhook path; webhook handler avoids blocking CH queries.
+//   - ClickHouse report handlers are not on webhook path; webhook handler avoids blocking ClickHouse queries.
 //
 // Forbidden:
 //   - Import internal/controlplane from telegram package.

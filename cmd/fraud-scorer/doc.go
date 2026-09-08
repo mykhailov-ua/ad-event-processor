@@ -16,7 +16,7 @@
 // Invariants:
 //   - Batch-only ML; no per-request inference on /track (tracker p95 < 50 ms, p99 < 80 ms is unrelated).
 //   - Policy from fraud.ResolvePolicyConfig (env + metadata.json).
-//   - Exits on missing license, DB/CH connect failure, or detector fatal error.
+//   - Exits on missing license, DB/ClickHouse connect failure, or detector fatal error.
 //
 // Defaults and limits:
 //   - FRAUD_SCORING_ENABLED=true required at startup.

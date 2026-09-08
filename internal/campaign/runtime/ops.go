@@ -61,7 +61,7 @@ func createCampaign(ctx context.Context, pool *pgxpool.Pool, fx campaign.Effects
 	now := time.Now()
 	initialStatus := campaign.ResolveScheduleStatus(now, spec.StartAt, spec.EndAt)
 
-	// One PG txn: idempotency ledger, customer balance freeze, campaign insert, FREEZE ledger,
+	// One Postgres txn: idempotency ledger, customer balance freeze, campaign insert, FREEZE ledger,
 	// status history, audit, and lifecycle outbox (Effects.EmitCampaignLifecycleOutbox).
 	err = pgx.BeginFunc(ctx, pool, func(tx pgx.Tx) error {
 		q := db.New(tx)
@@ -458,7 +458,7 @@ func ScrubCampaignFields(c campaign.CampaignDTO, level authz.MaskLevel) campaign
 }
 
 func RedactedMoneyDisplay() string {
-	return "—"
+	return "-"
 }
 
 func scrubCampaignDTO(ctx context.Context, c db.Campaign) campaign.CampaignDTO {
@@ -573,7 +573,7 @@ func updateCampaignPacing(ctx context.Context, pool *pgxpool.Pool, fx campaign.E
 	}
 
 	var updatedCamp db.Campaign
-	// Pacing mode PG update and UPDATE_CAMPAIGN_PACING outbox row share one txn for Redis mirror.
+	// Pacing mode Postgres update and UPDATE_CAMPAIGN_PACING outbox row share one txn for Redis mirror.
 	err = pgx.BeginFunc(ctx, pool, func(tx pgx.Tx) error {
 		q := db.New(tx)
 
@@ -654,7 +654,7 @@ func patchCampaign(ctx context.Context, pool *pgxpool.Pool, fx campaign.Effects,
 		}
 	}
 
-	// Flow, brand, ingress-cost, and click-preset patches run via Effects outside the PG txn below.
+	// Flow, brand, ingress-cost, and click-preset patches run via Effects outside the Postgres txn below.
 	if req.FlowID != nil {
 		if err := fx.AssignCampaignFlow(ctx, campaignID, *req.FlowID); err != nil {
 			return campaign.CampaignDTO{}, err
@@ -998,7 +998,7 @@ func patchCampaign(ctx context.Context, pool *pgxpool.Pool, fx campaign.Effects,
 	}
 
 	// Post-commit: INCR campaign epoch + PUBLISH on every Redis shard (tracker registry reload).
-	// Complements outbox worker apply; not rolled back if PG txn already committed.
+	// Complements outbox worker apply; not rolled back if Postgres txn already committed.
 	fx.PublishCampaignUpdate(ctx, campaignID.String())
 	return scrubCampaignDTO(ctx, updated), nil
 }
@@ -1103,11 +1103,11 @@ type clickhouseLagCache struct {
 
 const clickhouseLagCacheTTL = 30 * time.Second
 
-// Process-wide CH ingestion lag cache; stale=true when lag exceeds clickHouseStaleThreshold (5 min).
+// Process-wide ClickHouse ingestion lag cache; stale=true when lag exceeds clickHouseStaleThreshold (5 min).
 var globalClickHouseLagCache clickhouseLagCache
 
 // ResetClickHouseIngestionLagCache clears the cached max(created_at) lag probe.
-// Call after fault injection or fresh CH writes when the same process must re-probe immediately.
+// Call after fault injection or fresh ClickHouse writes when the same process must re-probe immediately.
 func ResetClickHouseIngestionLagCache() {
 	globalClickHouseLagCache.mu.Lock()
 	globalClickHouseLagCache.lag = 0
@@ -1148,7 +1148,7 @@ func getCampaignStats(
 		return campaign.CampaignStatsDTO{}, err
 	}
 
-	// PG campaign_stats rollup is strong-consistency default; CH buckets overlay below when wired.
+	// Postgres campaign_stats rollup is strong-consistency default; ClickHouse buckets overlay below when wired.
 	report := campaign.CampaignStatsDTO{
 		CampaignID:   campaignID.String(),
 		CurrentSpend: formatCampaignMicro(camp.CurrentSpend),

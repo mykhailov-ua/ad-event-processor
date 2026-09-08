@@ -13,7 +13,7 @@
 //
 // Invariants:
 //   - Flow path refs must resolve (URL or hosted_asset_id) before campaign publish gate passes.
-//   - Bandit apply is transactional; partial weight updates roll back on PG error.
+//   - Bandit apply is transactional; partial weight updates roll back on Postgres error.
 //   - Hosted ZIP uploads respect landerhost.DefaultMaxZipBytes + 1 MiB headroom at handler boundary.
 //
 // Forbidden:

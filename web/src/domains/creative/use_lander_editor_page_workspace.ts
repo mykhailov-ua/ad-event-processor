@@ -1,4 +1,4 @@
-// L3 hosted lander editor: file tree state + upload/publish/save mutations; acting guard on refresh.
+// hosted lander editor: file tree state + upload/publish/save mutations; acting guard on refresh.
 import { useCallback, useState } from 'react';
 import { useParams } from 'react-router-dom';
 import { toast } from 'sonner';

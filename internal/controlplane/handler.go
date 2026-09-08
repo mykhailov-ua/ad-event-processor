@@ -70,7 +70,7 @@ func NewHandler(svc *Service, cfg *config.Config, authMiddleware *AuthMiddleware
 	return h
 }
 
-// RegisterRoutes /api/v1 via BuildAdminAPIRegistry when PG pool present; legacy /admin/* 410; region ingest last.
+// RegisterRoutes /api/v1 via BuildAdminAPIRegistry when Postgres pool present; legacy /admin/* 410; region ingest last.
 func (h *Handler) RegisterRoutes(mux *http.ServeMux) {
 	if h.svc != nil && h.svc.GetPool() != nil {
 		RegisterRoutes(mux, h.BuildAdminAPIRegistry(h.svc.GetPool(), h.svc.RedisShards()))
@@ -112,7 +112,7 @@ func (h *Handler) allowFraudDecision(customerID string) bool {
 	return ctrlhttp.AllowFraudDecision(h.fraudDecisionLimiter, customerID)
 }
 
-// pgHigh per-request high-priority PG slot; 503 SERVICE_UNAVAILABLE when postgresGate saturated.
+// pgHigh per-request high-priority Postgres slot; 503 SERVICE_UNAVAILABLE when postgresGate saturated.
 // Background workers use Service.WithPostgresLow for report-heavy paths.
 func (h *Handler) pgHigh(next http.HandlerFunc) http.HandlerFunc {
 	return func(w http.ResponseWriter, r *http.Request) {
@@ -213,7 +213,7 @@ func (h *Handler) ensureCustomerAccess(r *http.Request, customerID string) error
 	return nil
 }
 
-// writeForecastError CH timeout/unavailable returns 503 + Retry-After; distinct from PG validation errors.
+// writeForecastError ClickHouse timeout/unavailable returns 503 + Retry-After; distinct from Postgres validation errors.
 func writeForecastError(w http.ResponseWriter, err error) {
 	if errors.Is(err, campaign.ErrForecastClickHouseTimeout) || errors.Is(err, campaign.ErrForecastUnavailable) {
 		w.Header().Set("Retry-After", strconv.Itoa(campaign.ForecastRetryAfterSec()))

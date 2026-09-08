@@ -3,7 +3,7 @@
 // Role:
 //   - HTTPHandlers under /api/v1/ops/*, /api/v1/audit/export, recon, consent, blacklist, dashboard, support bundle, RUM, ML model ops, fraud presets.
 //   - RegisterOpsRoutes adds GET /health, GET /metrics, GET /ops/shards/slot-map, GET /ops/node-weights, processor weight routes (no /api/v1 prefix).
-//   - ManagementOpsReader (NewReader) aggregates PG, Redis, ClickHouse, and Prometheus fan-out reads for incidents, DLQ, outbox, shards, audit export.
+//   - ManagementOpsReader (NewReader) aggregates Postgres, Redis, ClickHouse, and Prometheus fan-out reads for incidents, DLQ, outbox, shards, audit export.
 //   - AlertmanagerWebhook and OpsAlerter enqueue notify rows; edge metrics via FetchEdgeMetrics.
 //
 // Topology:

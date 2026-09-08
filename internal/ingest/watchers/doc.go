@@ -22,7 +22,7 @@
 //   - Registry reload uses atomic.Pointer swap inside filter.Registry; Tier B readers never block on watcher I/O.
 //   - Invalid broker payloads are logged and skipped; offsets still advance to avoid poison-pill stall.
 //   - Campaign full sync: domain.IsRegistryFullSyncPayload triggers ReloadFullSnapshot; UUID payload triggers UpdateAndWarmCampaign.
-//   - Slot map: shard.ReloadStaticSlotMapIfChanged publishes only when PG version changes; broker signal triggers tryReload.
+//   - Slot map: shard.ReloadStaticSlotMapIfChanged publishes only when Postgres version changes; broker signal triggers tryReload.
 //   - Default poll interval 10s when SlotMapWatcherConfig.PollInterval unset; startup tryReload before first tick.
 //   - Broker group defaults to campaign-update-<hostname> or slotmap-<hostname> when unset.
 //
@@ -34,10 +34,10 @@
 //
 // Tradeoffs:
 //   - Rejected synchronous broker or Postgres fetch inside FilterEngine.Check, processTrack, or Tier A gnet.
-//   - Rejected blocking hot readers during reload: RCU atomic.Pointer swap after PG/broker work completes.
+//   - Rejected blocking hot readers during reload: RCU atomic.Pointer swap after Postgres/broker work completes.
 //   - Rejected poison-pill stall: skip invalid payload, commit offset, retain last good registry/slot map snapshot.
 //   - Reload fail-open on error: failed tryReload or UpdateAndWarmCampaign logs and keeps prior snapshot.
-//   - Dual slot-map path: broker for promptness, PG poll as safety net when broker unavailable.
+//   - Dual slot-map path: broker for promptness, Postgres poll as safety net when broker unavailable.
 //   - Campaign watcher reconnect loop vs LISTEN/NOTIFY: broker poll chosen for appliance WAL reliability (tradeoffs.mdc).
 //
 // Forbidden:

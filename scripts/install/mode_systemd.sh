@@ -1,5 +1,5 @@
 #!/usr/bin/env bash
-# Role: Systemd appliance install: infra (optional docker), PG migrate, binaries, units, ingress, admin seed.
+# Role: Systemd appliance install: infra (optional docker), Postgres migrate, binaries, units, ingress, admin seed.
 # Execution context: ad-event-processor-install.sh --mode systemd up.
 # Env knobs: INSTALL_INFRA=docker|external; INGRESS_ENABLED; AD_EVENT_PROCESSOR_INSTALL_ROOT.
 # Verify: bash scripts/install/mode_systemd.sh --help

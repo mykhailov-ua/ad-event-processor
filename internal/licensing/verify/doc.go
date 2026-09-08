@@ -3,7 +3,7 @@
 //
 // Role:
 //   - verify.go / sign.go: JWT decode, Ed25519 signature validation, vendor signing helpers.
-//   - hwid*.go: Linux telemetry collection and Argon2id HWID bind (P-HWID-01).
+//   - hwid*.go: Linux telemetry collection and Argon2id HWID bind (hwid_test.go; bind.go).
 //   - file_verify.go / file_read.go / install_token.go: read and atomically write var/license.jwt.
 //   - bind.go / activation*.go: deployment fingerprint and activation-limit checks on apply.
 //   - key_resolver.go / public_key.go: kid-based public key resolution; decoy_* for red-team builds.
@@ -16,9 +16,9 @@
 //   - Property and red-team tests import internal/licensing/entitlements directly for state/limit helpers.
 //
 // Invariants:
-//   - Invalid signature or malformed JWT rejects apply (P-C2-01).
-//   - IngestAllowed false only for EXPIRED or REVOKED (P-C3-03; properties_test.go).
-//   - Effective() customer limits never exceed deployment ceiling (P-C4-03; properties_test.go).
+//   - Invalid signature or malformed JWT rejects apply (verify_test.go invalid JWT).
+//   - IngestAllowed false only for EXPIRED or REVOKED (properties_test.go IngestAllowed).
+//   - Effective() customer limits never exceed deployment ceiling (properties_test.go Effective ceiling).
 //   - JWT hwid_hash when present takes precedence over legacy host fingerprint (bind.go).
 //
 // Forbidden:

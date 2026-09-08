@@ -2,7 +2,7 @@
 //
 // Role:
 //   - ReconciliationWorker compares Postgres campaign spend vs ClickHouse aggregates; sets metrics.DataDriftRatio and logs when drift exceeds driftLimit.
-//   - SnapshotReplicator marshals CH spend snapshots, restores Postgres spend and Redis budget:campaign:* keys, and replays CH events through EventBudgetChecker.
+//   - SnapshotReplicator marshals ClickHouse spend snapshots, restores Postgres spend and Redis budget:campaign:* keys, and replays ClickHouse events through EventBudgetChecker.
 //   - ApplyRuntimeAutotune and DefaultMaxWorkers tune GOMAXPROCS (cpuset / TRACKER_CPUSET) and GOMEMLIMIT on cmd/tracker startup.
 //
 // Topology:
@@ -12,7 +12,7 @@
 //   - Not internal/reconciliation (admin ReconService / global spend sync on control :8188).
 //
 // Invariants:
-//   - Reconcile applies lag (until = now - lag) before CH aggregate query.
+//   - Reconcile applies lag (until = now - lag) before ClickHouse aggregate query.
 //   - RestoreSnapshot seeds Redis remaining budget as limit - spend (clamped at 0).
 //   - ReplayTelemetrySince skips filter.ErrBudgetExhausted; idempotent via Postgres click_id mark.
 //

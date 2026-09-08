@@ -10,7 +10,7 @@ import (
 	"github.com/google/uuid"
 )
 
-// synthesizeHourlyBuckets spreads PG daily totals across 24 hourly buckets for admin UI
+// synthesizeHourlyBuckets spreads Postgres daily totals across 24 hourly buckets for admin UI
 // when ClickHouse is not wired (ingest-only dev). Totals per metric match inputs.
 func synthesizeHourlyBuckets(
 	campaignID uuid.UUID,
@@ -100,7 +100,7 @@ func hourlyBucketsHaveActivity(buckets []campaign.CampaignHourlyBucketDTO) bool 
 }
 
 // hourlyBucketsForReport prefers ClickHouse hourly buckets when they carry activity.
-// When CH is wired but empty (ingest-only dev, lag, or new campaign), synthesize from PG
+// When ClickHouse is wired but empty (ingest-only dev, lag, or new campaign), synthesize from Postgres
 // daily totals so admin charts still render.
 func hourlyBucketsForReport(
 	campaignID uuid.UUID,

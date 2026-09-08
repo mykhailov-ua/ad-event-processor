@@ -1,4 +1,4 @@
-// L3 publisher portal dashboard: scoped GET snapshot (supply:read:scoped).
+// publisher portal dashboard: scoped GET snapshot (supply:read:scoped).
 import { getPublisherDashboard } from '@/api/publisher_api';
 import { useResource } from '@/api/use_resource';
 

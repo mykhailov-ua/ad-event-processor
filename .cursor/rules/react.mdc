@@ -48,6 +48,10 @@ Formal taxonomy (Big-O vs cache locality, scale regimes S/L/F, suboptimal operat
 | User action coalescing | Manual refresh: 500 ms leading window + in-flight guard in owner hook; mutations: `disabled` + `loading` until settled (`frontend-slop.mdc` **User action coalescing**) |
 | Errors | `ErrorBlock` on blocking error; stale-while-revalidate when `data` present (`ui.mdc`) |
 
+**Render errors (Cold):** async fetch errors use `ErrorBlock`; **synchronous render throws** use `AppRouteErrorBoundary` around routed `<Outlet />` so sidebar navigation clears PAGE ERROR without Ctrl+R (`frontend-slop.mdc` **RB-E***). Do not wrap every leaf in a boundary — one route subtree owner in `app_shell.tsx`.
+
+**Class-B overlay stability:** filter toolbars mount many `Select` / `DropdownMenu` / `Popover` instances. Unstable context identity + effects that depend on whole `ctx` cause React **#185** and can trip the route boundary — see **OV-*** in `frontend-slop.mdc` (`mergeOverlayPosition`, memoized provider value, no `[ctx,` deps).
+
 Forbidden on Cold directory tables:
 
 - Parallel string arrays / SoA `useMemo` builds for display columns

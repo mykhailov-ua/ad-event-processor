@@ -1,4 +1,4 @@
-// L3 integration schemas hub: snapshot list + schema CRUD/apply/import tabs.
+// integration schemas hub: snapshot list + schema CRUD/apply/import tabs.
 import { useCallback, useMemo, useState } from 'react';
 import { toast } from 'sonner';
 

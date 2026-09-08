@@ -1,4 +1,4 @@
-// L3 fraud policy presets: list snapshot + per-preset edit drafts; PATCH after client threshold parse (0..255).
+// fraud policy presets: list snapshot + per-preset edit drafts; PATCH after client threshold parse (0..255).
 import { useCallback, useEffect, useState } from 'react';
 import { toast } from 'sonner';
 

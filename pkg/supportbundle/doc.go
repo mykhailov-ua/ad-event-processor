@@ -7,7 +7,7 @@
 //
 // Defaults and limits:
 //   - DefaultMaxBytes 50 MiB total archive (limitedWriter truncates and returns error when exceeded).
-//   - DefaultTimeout 30s; callers wrap context (opsadmin, platformadmin) — Write checks ctx.Err() between sections only.
+//   - DefaultTimeout 30s; callers wrap context (opsadmin, platformadmin)  -  Write checks ctx.Err() between sections only.
 //   - defaultMaxLogLines 10000; LogDir defaults to LOGGER_DIR env, else /var/log/ad-event-processor.
 //
 // Topology:

@@ -110,6 +110,7 @@ func (h *DomainHealthHTTPHandlers) Register(mux *http.ServeMux) {
 }
 
 func (h *DomainHealthHTTPHandlers) listDomains(w http.ResponseWriter, r *http.Request) {
+	filter := parseDomainHealthFilter(r.URL.Query().Get("health_filter"))
 	domains, err := h.Service.ListDomainHealth(r.Context())
 	if err != nil {
 		httpresponse.Error(w, http.StatusInternalServerError, "INTERNAL_ERROR", err.Error())
@@ -118,6 +119,7 @@ func (h *DomainHealthHTTPHandlers) listDomains(w http.ResponseWriter, r *http.Re
 	if domains == nil {
 		domains = []DomainHealthDTO{}
 	}
+	domains = filterDomainHealthRows(domains, filter)
 	httpresponse.JSON(w, http.StatusOK, domains)
 }
 

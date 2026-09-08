@@ -1,4 +1,4 @@
-// L3 campaigns create lane: template list sync effects; toast after createSelfServeCampaign 2xx (EH-SI1); refreshList coalesced by parent.
+// campaigns create lane: template list sync effects; toast after createSelfServeCampaign 2xx; refreshList coalesced by parent.
 import { useCallback, useEffect, type Dispatch, type SetStateAction } from 'react';
 import { toast } from 'sonner';
 

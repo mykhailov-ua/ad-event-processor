@@ -1,4 +1,4 @@
-// L3 affiliate status presets: catalog GET on mount; apply imports preset then POST schema apply.
+// affiliate status presets: catalog GET on mount; apply imports preset then POST schema apply.
 import { useCallback, useState } from 'react';
 import { toast } from 'sonner';
 

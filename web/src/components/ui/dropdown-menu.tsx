@@ -7,6 +7,7 @@ import {
   computeFloatingPosition,
   subscribeFloatingPosition,
 } from '@/lib/floating_overlay_position';
+import { mergeOverlayPosition } from '@/lib/overlay_position_state';
 import { OverlayRoot } from '@/lib/overlay_root';
 import { useOverlayDismiss } from '@/lib/use_overlay_dismiss';
 import { cn } from '@/lib/utils';
@@ -51,8 +52,13 @@ function DropdownMenu({
   });
   const triggerRef = React.useRef<HTMLElement | null>(null);
 
+  const contextValue = React.useMemo(
+    () => ({ open: Boolean(isOpen), setOpen: setIsOpen, triggerRef }),
+    [isOpen, setIsOpen]
+  );
+
   return (
-    <MenuContext.Provider value={{ open: Boolean(isOpen), setOpen: setIsOpen, triggerRef }}>
+    <MenuContext.Provider value={contextValue}>
       {children}
     </MenuContext.Provider>
   );
@@ -148,7 +154,7 @@ const DropdownMenuContent = React.forwardRef<
           align,
           gap: sideOffset,
         });
-        setPosition({ ...next, visibility: 'visible' });
+        setPosition((prev) => mergeOverlayPosition(prev, { ...next, visibility: 'visible' }));
       };
 
       updatePosition();
@@ -167,7 +173,7 @@ const DropdownMenuContent = React.forwardRef<
         unsubscribeScroll();
         resizeObserver?.disconnect();
       };
-    }, [align, open, sideOffset, triggerRef, children]);
+    }, [align, open, sideOffset, triggerRef]);
 
     if (!open) {
       return null;

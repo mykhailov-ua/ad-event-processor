@@ -18,7 +18,7 @@
 //
 // Forbidden:
 //   - Session or API key verify on tracker /track path.
-//   - Storing passwords plaintext in PG.
+//   - Storing passwords plaintext in Postgres.
 //
 // Verify:
 //

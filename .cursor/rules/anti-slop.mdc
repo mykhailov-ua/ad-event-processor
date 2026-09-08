@@ -46,6 +46,10 @@ Remediation gates: `ci.mdc` (static gates), `ui.mdc` (admin anti-slop). Verifica
 | Frontend style / data lie | `truncate` on headings/numbers; inline `style`; `Promise.resolve([])` stub; fetch without `ErrorBlock` | `frontend-slop.mdc` visual + error tables |
 | Frontend table perf lie | "Smooth reorder/resize" while `setState` on `dragover`/`pointermove` repaints tbody | `frontend-slop.mdc` **Directory tables** anti-patterns |
 | Frontend overlay lie | Dropdown "works" but menu stays viewport-fixed while trigger scrolls; page scrolls behind open list; shell nav in `DropdownMenu` | `frontend-slop.mdc` **Overlays, scroll surfaces** classes A/B/C |
+| Frontend overlay loop lie | Select/Pacing opens then PAGE ERROR (#185); filter tabs dead until Ctrl+R | `frontend-slop.mdc` **OV-***; `mergeOverlayPosition` + `useMemo` context; `ui_slop.sh` overlay guards |
+| Frontend boundary freeze lie | Sidebar navigates after render error but `<Outlet />` stuck on PAGE ERROR | `AppRouteErrorBoundary` + `resetKey`; `frontend-slop.mdc` **RB-E*** |
+| Frontend CSP inline lie | Chart swatch or picker "works" in dev; CSP blocks `style={{ backgroundColor }}` in prod | `CHART_SWATCH_CLASS`; `react-day-picker/style.css` in `main.tsx`; **CSP-*** |
+| Frontend UUID HTTP lie | Flow/import idempotency throws on HTTP QA host | `newRandomUuid()` only; ban `crypto.randomUUID` in `domains/`/`api/` (**UUID-***) |
 | Frontend control height lie | Mixed `h-8` / `min-h-7` in one filter row; cites deleted `control_size.ts` | `admin_kit.controlHeight`; default primitives only |
 | Frontend trivial UUID lie | Fixture id `00000000-...-000001` or `devUuid()` sequential generator | `seedDeterministicUuid` / `uuid.NewV7()`; `frontend-slop.mdc` **Entity IDs** |
 | Frontend mock slug id | `user_id: "buyer-1"` in fixtures while OpenAPI expects UUID | `seedDeterministicUuid('user', n)`; `frontend-slop.mdc` **Entity IDs** |

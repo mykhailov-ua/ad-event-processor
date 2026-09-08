@@ -198,14 +198,23 @@ export function EditorStatusBanners({
 export function editorApiErrorBlock(
   error: Error,
   stubTitle: string,
-  errorTitle: string
+  errorTitle: string,
+  messageOverride?: string
 ): ReactNode {
   if (error instanceof ApiError && error.status === 501) {
     return <StubBanner title={stubTitle} message={error.message} />;
   }
-  return <ErrorBlock title={errorTitle} message={error.message} />;
+  return <ErrorBlock title={errorTitle} message={messageOverride ?? error.message} />;
+}
+
+export function cloneMutationErrorMessage(error: Error): string {
+  if (error instanceof ApiError && error.message.toLowerCase().includes('insufficient balance')) {
+    return 'Customer balance is too low to reserve this campaign budget. Reduce budget_limit or increase customer balance, then retry clone.';
+  }
+  return error.message;
 }
 
 export function campaignPanelError(error: Error, title: string): ReactNode {
-  return editorApiErrorBlock(error, `${title} unavailable`, title);
+  const message = /clone/i.test(title) ? cloneMutationErrorMessage(error) : error.message;
+  return editorApiErrorBlock(error, `${title} unavailable`, title, message);
 }

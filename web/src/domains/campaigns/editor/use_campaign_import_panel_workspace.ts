@@ -1,4 +1,4 @@
-// L3 import/migration panel: validate job, direct import, and pull/preview migration lanes (enabled when overlay open).
+// import/migration panel: validate job, direct import, and pull/preview migration lanes (enabled when overlay open).
 import { useCallback, useEffect, useMemo, useState } from 'react';
 import { useSearchParams } from 'react-router-dom';
 import { toast } from 'sonner';
@@ -28,6 +28,7 @@ import {
   type PullSourceKind,
 } from '@/domains/campaigns/editor/campaign_import_panel_shared';
 import { useCampaignImportPanelLoad } from '@/domains/campaigns/editor/use_campaign_import_panel_load';
+import { newRandomUuid } from '@/lib/uuid';
 import { useSession } from '@/hooks/use_session';
 import { mutationError } from '@/lib/mutation_audit';
 
@@ -161,7 +162,7 @@ export function useCampaignImportPanelWorkspace(enabled: boolean) {
           payload: parsePayloadJson(draftPayload),
           name_prefix: draftNamePrefix.trim() || undefined,
         },
-        crypto.randomUUID()
+        newRandomUuid()
       );
       setImportResult(result);
       toast.success('Migration import accepted');
@@ -192,7 +193,7 @@ export function useCampaignImportPanelWorkspace(enabled: boolean) {
         ...(bundle as ImportCampaignRequest),
         customer_id: customerId,
       };
-      const result = await importCampaign(body, crypto.randomUUID());
+      const result = await importCampaign(body, newRandomUuid());
       setImportResult(result);
       toast.success('Campaign import accepted');
     } catch (err: unknown) {
@@ -226,7 +227,7 @@ export function useCampaignImportPanelWorkspace(enabled: boolean) {
     setActionError(undefined);
     setImportResult(undefined);
     try {
-      const result = await importCampaignMigrationPull(buildPullRequest(), crypto.randomUUID());
+      const result = await importCampaignMigrationPull(buildPullRequest(), newRandomUuid());
       setImportResult(result);
       toast.success('Pull import accepted');
     } catch (err: unknown) {
@@ -243,7 +244,7 @@ export function useCampaignImportPanelWorkspace(enabled: boolean) {
     setActionError(undefined);
     try {
       const request = buildJobRequest();
-      const created = await createCampaignImportValidateJob(request, crypto.randomUUID());
+      const created = await createCampaignImportValidateJob(request, newRandomUuid());
       const nextId = created.job_id ?? created.id;
       if (!nextId) {
         throw new Error('job_id missing in create response');

@@ -1,4 +1,4 @@
-// L3 license apply form: GET license status only when showStatus; bumpRefresh after successful apply in parent.
+// license apply form: GET license status only when showStatus; bumpRefresh after successful apply in parent.
 import { getLicenseStatus } from '@/api/platform_api';
 import { useRefreshToken } from '@/hooks/use_coalesced_refresh_token';
 import { useResource } from '@/api/use_resource';

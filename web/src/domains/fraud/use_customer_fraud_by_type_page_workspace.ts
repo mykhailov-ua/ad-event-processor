@@ -1,4 +1,4 @@
-// L3 customer fraud by type report: URL filters and offset pagination.
+// customer fraud by type report: URL filters and offset pagination.
 import { useCallback, useEffect, useMemo, useState } from 'react';
 
 import { getCustomerFraudByTypeReport } from '@/api/reports_api';

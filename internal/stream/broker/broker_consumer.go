@@ -126,7 +126,7 @@ func (b *BrokerStreamConsumer) Wait(ctx context.Context) error {
 }
 
 // run loops Fetch -> parse -> batch until BatchSize or FlushInt, then flushAndCommit.
-// ShadowMode skips CH StoreBatch and broker group offset commits (local start only).
+// ShadowMode skips ClickHouse StoreBatch and broker group offset commits (local start only).
 func (b *BrokerStreamConsumer) run(ctx context.Context) {
 	if err := b.cli.Connect(); err != nil {
 		slog.Error("broker consumer failed to connect", "group", b.cfg.Group, "error", err)
@@ -135,7 +135,7 @@ func (b *BrokerStreamConsumer) run(ctx context.Context) {
 	defer func() { _ = b.cli.Close() }()
 
 	// Consumer group offset lives in broker Redis (per topic/partition/group). CommittedOffset is the
-	// mmap WAL replay cursor: fetch resumes at the first record not yet durably stored in CH.
+	// mmap WAL replay cursor: fetch resumes at the first record not yet durably stored in ClickHouse.
 	start, err := b.cli.CommittedOffset(b.cfg.Topic, b.cfg.Partition, b.cfg.Group)
 	if err != nil {
 		slog.Warn("broker consumer committed offset unavailable; starting from head", "group", b.cfg.Group, "error", err)
@@ -251,7 +251,7 @@ func (b *BrokerStreamConsumer) drain(ctx context.Context, nextCommit uint64, bat
 	_, _ = b.flushAndCommit(ctx, batch, startOffset, nextCommit)
 }
 
-// flushAndCommit writes batch to CH (live) or audit-only (shadow), then commits broker offset.
+// flushAndCommit writes batch to ClickHouse (live) or audit-only (shadow), then commits broker offset.
 // Returns 0, err on store/breaker failure so run() stops without advancing the group past undurable data.
 func (b *BrokerStreamConsumer) flushAndCommit(ctx context.Context, batch []*domain.Event, offsetStart, nextCommit uint64) (uint64, error) {
 	if len(batch) == 0 {
@@ -339,7 +339,7 @@ commitOffset:
 		return nextCommit, nil
 	}
 
-	// Live only: offset commit follows durable CH write (and dedup RecordApply when configured).
+	// Live only: offset commit follows durable ClickHouse write (and dedup RecordApply when configured).
 	stored, err := b.cli.CommitOffset(b.cfg.Topic, b.cfg.Partition, b.cfg.Group, nextCommit)
 	if err != nil {
 		slog.Error("broker offset commit failed", "group", b.cfg.Group, "error", err)

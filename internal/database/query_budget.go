@@ -21,7 +21,7 @@ func MeasureQueryBudget(counter *QueryCounter, fn func()) int64 {
 	return counter.Snapshot()
 }
 
-// AssertQueryBudgetSublinear fails when PG query count grows ~linearly with input size N.
+// AssertQueryBudgetSublinear fails when Postgres query count grows ~linearly with input size N.
 // maxQueriesPerItem is the ceiling on ceil(deltaQueries / deltaN) between consecutive samples.
 func AssertQueryBudgetSublinear(t *testing.T, label string, points []QueryBudgetPoint, maxQueriesPerItem int64) {
 	t.Helper()

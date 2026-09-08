@@ -3,7 +3,7 @@
 // Role:
 //   - Consumer.Run: poll Fetch, invoke Handler(payload, offset), CommitOffset on success.
 //   - Thin library over pkg/broker/client; offsets persist on broker leader (not local files).
-//   - Used in internal/broker offset/resume tests; production CH ingest uses
+//   - Used in internal/broker offset/resume tests; production ClickHouse ingest uses
 //     cmd/processor BrokerConsumerGroup (local ConsumerOffsetTracker + client RPC).
 //
 // pkg/internal boundary:

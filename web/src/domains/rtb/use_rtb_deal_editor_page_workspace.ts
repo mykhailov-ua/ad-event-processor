@@ -1,4 +1,4 @@
-// L3 RTB deal editor: GET/PATCH/DELETE single deal; local draft until save.
+// RTB deal editor: GET/PATCH/DELETE single deal; local draft until save.
 import { useCallback, useEffect, useMemo, useState } from 'react';
 import { useNavigate, useParams } from 'react-router-dom';
 

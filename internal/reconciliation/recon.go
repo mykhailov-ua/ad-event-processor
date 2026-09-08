@@ -54,7 +54,7 @@ func NewReconService(host Host) *ReconService {
 	return &ReconService{host: host}
 }
 
-// ReconcileWindow compares Redis campaign sync spend (hot-path mirror) against PG balance_ledger
+// ReconcileWindow compares Redis campaign sync spend (hot-path mirror) against Postgres balance_ledger
 // sums for [start,end). Drift is recorded in recon_discrepancies; small deltas enqueue outbox adjust.
 func (s *ReconService) ReconcileWindow(ctx context.Context, start, end time.Time) error {
 	opCtx, cancel := workerContext(ctx, workerBatchTimeout)
@@ -117,7 +117,7 @@ func (s *ReconService) ReconcileWindow(ctx context.Context, start, end time.Time
 			return err
 		}
 
-		// Positive delta: Redis sync ahead of PG ledger for the window; adjust payload negates both sides.
+		// Positive delta: Redis sync ahead of Postgres ledger for the window; adjust payload negates both sides.
 		delta := syncVal - ledgerSpent
 		if delta == 0 {
 			continue
@@ -153,7 +153,7 @@ func (s *ReconService) ReconcileWindow(ctx context.Context, start, end time.Time
 
 		shardID := int16(s.host.Sharder().GetShard(campID))
 		custUUID, _ := uuid.FromBytes(customerID.Bytes[:])
-		// LedgerAmt=-delta, RedisDelta=delta: outbox applier moves PG current_spend and Redis sync key together.
+		// LedgerAmt=-delta, RedisDelta=delta: outbox applier moves Postgres current_spend and Redis sync key together.
 		if err := s.enqueueReconciliationAdjust(opCtx, run.ID, campID, custUUID, shardID, -delta, delta, "hourly_window_recon"); err != nil {
 			slog.Error("failed to enqueue recon adjustment", "campaign_id", campID, "delta", delta, "error", err)
 			metrics.ReconAdjustmentErrors.Inc()
@@ -249,7 +249,7 @@ func (s *ReconService) AlertStaleUnresolvedDiscrepancies(ctx context.Context) {
 	}
 }
 
-// adjustRedisBudgetAtomically INCRBYs {campaign_id}:sync; DEL when non-positive. Used only after PG adjust commits.
+// adjustRedisBudgetAtomically INCRBYs {campaign_id}:sync; DEL when non-positive. Used only after Postgres adjust commits.
 func (s *ReconService) adjustRedisBudgetAtomically(ctx context.Context, redisClient redis.UniversalClient, campID uuid.UUID, delta int64) error {
 	script := `
 		local key = KEYS[1]

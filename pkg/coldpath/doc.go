@@ -5,7 +5,7 @@
 //   - BoundedContext caps handler/worker ctx when parent deadline is absent or longer.
 //   - WritePaginatedJSON sets X-Total-Count for list endpoints; Paginate/PaginatedList for cursor/offset lists.
 //   - ApplyTrackedSchemaMigrations: goose-style SQL dirs with public.tracked_migrations ledger.
-//   - MarshalOutbox/UnmarshalOutbox with optional proto magic prefix; PG error helpers for idempotency branches.
+//   - MarshalOutbox/UnmarshalOutbox with optional proto magic prefix; Postgres error helpers for idempotency branches.
 //   - ParseDryRun reads X-Dry-Run header or dry_run query for admin mutation previews.
 //
 // Topology:
@@ -24,9 +24,9 @@
 //   - DecodeRequestOrBadRequest maps read/decode failures to 400 BAD_REQUEST without leaking parse details.
 //   - ApplyTrackedSchemaMigrations applies .sql files in lexicographic order; records filename in tracked_migrations after success.
 //   - Goose Down sections and StatementBegin/End markers stripped; only Up SQL executes.
-//   - migrationAlreadyApplied PG codes (42P06, 42P07, 42701, 42710, 42723) record filename without re-running DDL.
+//   - migrationAlreadyApplied Postgres codes (42P06, 42P07, 42701, 42710, 42723) record filename without re-running DDL.
 //   - OutboxProtoMagic 0x1f prefixes registered codec payloads; unregistered types marshal as plain JSON.
-//   - IsUniqueViolation matches PG SQLSTATE 23505 only.
+//   - IsUniqueViolation matches Postgres SQLSTATE 23505 only.
 //
 // Tradeoffs:
 //   - encoding/json on cold path vs hot-path DFA/vtproto stack (admin latency acceptable; shared handler helpers).

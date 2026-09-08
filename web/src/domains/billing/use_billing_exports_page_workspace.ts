@@ -1,4 +1,4 @@
-// L3 billing export jobs: URL range + async job create/poll/download loop.
+// billing export jobs: URL range + async job create/poll/download loop.
 import { useCallback, useEffect, useMemo, useState } from 'react';
 
 import {

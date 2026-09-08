@@ -1,4 +1,4 @@
-// L3 RTB overview: typed rtb/* report APIs; URL date range drives refresh.
+// RTB overview: typed rtb/* report APIs; URL date range drives refresh.
 import { useCallback, useEffect, useMemo, useState } from 'react';
 
 import { ApiError } from '@/api/client';

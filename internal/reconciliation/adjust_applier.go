@@ -22,7 +22,7 @@ func NewAdjustApplier(host Host) *AdjustApplier {
 	return &AdjustApplier{host: host}
 }
 
-// Apply applies RECONCILIATION_ADJUST outbox: PG ledger + campaigns.current_spend in one txn, then Redis sync delta.
+// Apply applies RECONCILIATION_ADJUST outbox: Postgres ledger + campaigns.current_spend in one txn, then Redis sync delta.
 func (a *AdjustApplier) Apply(ctx context.Context, eventID int64, payload []byte) error {
 	p, err := parseReconciliationAdjustPayload(payload)
 	if err != nil {
@@ -84,7 +84,7 @@ func (a *AdjustApplier) applyPostgres(
 
 	spendDelta := -p.LedgerAmt
 	if spendDelta != 0 {
-		// current_spend moves opposite ledger entry so PG budget remaining tracks Redis correction.
+		// current_spend moves opposite ledger entry so Postgres budget remaining tracks Redis correction.
 		if err := q.UpdateCampaignSpend(ctx, db.UpdateCampaignSpendParams{
 			ID:           domain.ToUUID(campID),
 			CurrentSpend: spendDelta,
@@ -124,7 +124,7 @@ func (a *AdjustApplier) applyRedis(
 		return nil
 	}
 
-	// Redis INCRBY on {campaign_id}:sync runs only after PG commit; marker prevents double-apply on retry.
+	// Redis INCRBY on {campaign_id}:sync runs only after Postgres commit; marker prevents double-apply on retry.
 	if err := recon.adjustRedisBudgetAtomically(ctx, redisClient, campID, p.RedisDelta); err != nil {
 		return err
 	}

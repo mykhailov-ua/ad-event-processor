@@ -1,5 +1,5 @@
-// Runtime shape guards for high-traffic list/mutation responses (L1 transport).
-// Mismatch throws ApiError(502, INVALID_RESPONSE); callers surface via ErrorBlock (EH-*).
+// Runtime shape guards for high-traffic list/mutation responses.
+// Mismatch throws ApiError(502, INVALID_RESPONSE); callers surface via ErrorBlock.
 import { ApiError } from '@/api/api_error';
 import type {
   AuditLog,

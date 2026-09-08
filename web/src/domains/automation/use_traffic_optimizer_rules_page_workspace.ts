@@ -1,4 +1,4 @@
-// L3 traffic optimizer rules CRUD: customer-scoped list + dry-run lane.
+// traffic optimizer rules CRUD: customer-scoped list + dry-run lane.
 import { useCallback, useEffect, useState } from 'react';
 import { toast } from 'sonner';
 

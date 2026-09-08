@@ -1,4 +1,4 @@
-// L3 saved views CRUD: customer-scoped list + inline spec_json edit rows.
+// saved views CRUD: customer-scoped list + inline spec_json edit rows.
 import { useCallback, useEffect, useState } from 'react';
 import { toast } from 'sonner';
 

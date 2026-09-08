@@ -22,10 +22,10 @@
 // Defaults and limits:
 //   - -action default archive; -stream default ad:events:dlq; -dest default dlq_archive.bin.
 //   - -batch default 1000 messages per XREAD.
-//   - -rate 0 unlimited; >0 events/s token bucket on requeue and restore only (burst = rate).
+//   - -rate 0 means no rate limit; >0 events/s token bucket on requeue and restore only (burst = rate).
 //
 // Forbidden:
-//   - Not tracker /track path; no budget debit or CH sink claims from this binary.
+//   - Not tracker /track path; no budget debit or ClickHouse sink claims from this binary.
 //   - requeue/restore do not guarantee processor idempotency without downstream sync_idempotency guards.
 //   - Does not enqueue controlplane outbox or mutate Postgres campaign state.
 //

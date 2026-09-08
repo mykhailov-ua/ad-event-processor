@@ -13,6 +13,7 @@ import {
 } from '@/domains/dashboards/dashboard_multi_axis_chart_canvas';
 import {
   DASHBOARD_CHART_SERIES_STYLES,
+  CHART_SWATCH_CLASS,
   type DashboardMetricId,
 } from '@/domains/dashboards/dashboard_metrics';
 import { EmptyState } from '@/shell/empty_state';
@@ -81,8 +82,10 @@ function ChartLegendContent({
               onClick={() => onToggle(metric.id)}
             >
               <span
-                className="inline-block h-2 w-4 shrink-0 rounded-full"
-                style={{ backgroundColor: metric.stroke }}
+                className={cn(
+                  'inline-block h-2 w-4 shrink-0 rounded-full',
+                  CHART_SWATCH_CLASS[metric.chartToken]
+                )}
                 aria-hidden
               />
               <span className={cn('text-muted-foreground', active && 'text-foreground')}>

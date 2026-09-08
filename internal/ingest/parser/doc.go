@@ -11,7 +11,7 @@
 //
 //	Tier A (gnet epoll): may peek HTTP framing only; must not run full /track JSON accept scan here.
 //	Tier B (PinnedWorkerPool, LockOSThread): parseTrackIngest and OpenRTB split parse run the scanner
-//	  over OffloadHTTPPin / worker-arena bytes copied on enqueue — not the discarded gnet peek frame.
+//	  over OffloadHTTPPin / worker-arena bytes copied on enqueue  -  not the discarded gnet peek frame.
 //
 // Invariants:
 //   - ErrMalformed when depth, quote checks, key-pair budgets, or strict UTF-8 rules are exceeded.

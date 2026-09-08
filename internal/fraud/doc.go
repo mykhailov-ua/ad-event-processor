@@ -2,7 +2,7 @@
 //
 // Role:
 //   - cmd/fraud-scorer and cmd/ivt-detector sidecars run detector_batch and optional embedded LGBM scorer paths.
-//   - Rules (interval, tcp_edge, rtt_split_tunnel, mobile_biometrics, fraud_scoring_shadow) evaluate CH feature batches.
+//   - Rules (interval, tcp_edge, rtt_split_tunnel, mobile_biometrics, fraud_scoring_shadow) evaluate ClickHouse feature batches.
 //   - fraud_scoring_rule.go maps batch scores to enforcement actions via management HTTP enqueue (not per-request on tracker).
 //   - analyzer.go and impersonation.go support offline eval and residential intel enrichment.
 //

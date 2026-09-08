@@ -1,4 +1,4 @@
-// L3 audit log directory: paginated list + CSV export with optional PII redaction flag.
+// audit log directory: paginated list + CSV export with optional PII redaction flag.
 import { useCallback, useMemo, useState } from 'react';
 import { toast } from 'sonner';
 

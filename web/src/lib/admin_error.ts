@@ -1,4 +1,4 @@
-// Operator-facing error copy (frontend-slop.mdc EH-*).
+// Operator-facing error copy (admin API errors).
 // userErrorMessage maps ApiError status/code to safe operator text.
 // formatAdminErrorDetails is for ErrorBlock diagnostics, not end-user toasts.
 import { ApiError } from '../api/api_error.ts';

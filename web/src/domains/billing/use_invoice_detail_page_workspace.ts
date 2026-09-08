@@ -1,4 +1,4 @@
-// L3 invoice detail: invoice + deliveries resources; ledger cursor pagination append.
+// invoice detail: invoice + deliveries resources; ledger cursor pagination append.
 import { useCallback, useEffect, useState } from 'react';
 import { useParams } from 'react-router-dom';
 
@@ -15,14 +15,12 @@ import { useBreadcrumbSegmentLabel } from '@/shell/breadcrumb_context';
 import { useResource } from '@/api/use_resource';
 import { useSession } from '@/hooks/use_session';
 import { triggerBlobDownload } from '@/lib/trigger_blob_download';
+import { newRandomUuid } from '@/lib/uuid';
 
 const LEDGER_PAGE_LIMIT = 50;
 
 function newIdempotencyKey(): string {
-  if (typeof crypto !== 'undefined' && typeof crypto.randomUUID === 'function') {
-    return crypto.randomUUID();
-  }
-  return `retry-${Date.now()}`;
+  return newRandomUuid();
 }
 
 export function useInvoiceDetailPageWorkspace() {

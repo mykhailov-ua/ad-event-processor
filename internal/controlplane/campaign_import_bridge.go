@@ -106,7 +106,7 @@ func (s *Service) ImportMigrationPull(ctx context.Context, spec campaign.PullMig
 	return campaign.ImportMigrationPull(ctx, s, spec)
 }
 
-// StartMigrationPullImport runs remote pull plus PG import in the background (POST .../migrate/pull/import).
+// StartMigrationPullImport runs remote pull plus Postgres import in the background (POST .../migrate/pull/import).
 func (s *Service) StartMigrationPullImport(parent context.Context, spec campaign.PullMigrationImportSpec) error {
 	if s == nil {
 		return campaign.ErrServiceUnavailable()

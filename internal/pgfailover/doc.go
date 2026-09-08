@@ -1,4 +1,4 @@
-// Package pgfailover coordinates Postgres primary failover for control-plane and processor PG pools.
+// Package pgfailover coordinates Postgres primary failover for control-plane and processor Postgres pools.
 //
 // Role:
 //   - Coordinator (coordinator.go) is the Redis-lease leader: health-checks primary DSN, promotes standby
@@ -6,7 +6,7 @@
 //   - Subscriber (subscriber.go) polls and listens on the Redis notify channel; reconnects pgxpool on DSN or epoch change.
 //   - StandbyPromoter (promote.go) runs optional snapshot sync (snapshot.go), operator promote command, and writable check.
 //   - FencingGate (fencing.go) rejects stale writes with ErrStalePgFencingEpoch after epoch bump.
-//   - IngestRuntime (ingest.go) starts subscribers on processor Redis shards for hot-path PG readers (async background only).
+//   - IngestRuntime (ingest.go) starts subscribers on processor Redis shards for hot-path Postgres readers (async background only).
 //   - audit.go counts duplicate balance_ledger rows after failover for operator audit.
 //
 // Topology:
@@ -21,7 +21,7 @@
 //   - Optional SyncSnapshot copies customers and balance_ledger pages before promote when PostgresFailoverSnapshotSync is set.
 //
 // Forbidden:
-//   - Synchronous failover or PG pool swap on /track accept path.
+//   - Synchronous failover or Postgres pool swap on /track accept path.
 //   - Hot-path ingest imports of controlplane admin handlers.
 //
 // Verify:

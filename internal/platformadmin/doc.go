@@ -5,7 +5,7 @@
 //     /api/v1/meta, /api/v1/public/*, /api/v1/support/*, /api/v1/platform-campaigns/*.
 //   - domains/ subpackage registers /api/v1/domains/* and /api/v1/ops/domains/* (see domains/doc.go).
 //   - store.go reads/writes platformconfig via pkg/platformconfig; Bootstrap/Update/Apply call Host audit hooks
-//     and SyncEdgeExpose after PG write.
+//     and SyncEdgeExpose after Postgres write.
 //   - campaign_sync_handlers.go enqueues platformsync mutations and wires platformsync.Worker for vendor sync.
 //   - Workers: NginxWorker (Redis blacklist export), AuditExportWorker (CSV retention), vendor probe worker,
 //     telemetry pulse, SystemStateWorker (Redis system state), domains.StartDomainHealthWorker (via bridge).
@@ -19,7 +19,7 @@
 // Invariants:
 //   - Bootstrap requires valid install token; apply writes install.yaml and may flag restart_required fields.
 //   - Customer and team mutations audit through Host; public activate/invite routes are rate-limited without session.
-//   - Platform patch merges with existing platformconfig; invalid keys rejected before PG write.
+//   - Platform patch merges with existing platformconfig; invalid keys rejected before Postgres write.
 //   - Campaign sync preview runs dry-run via platformsync.PreviewMutation before enqueueing pending mutations.
 //
 // Forbidden:

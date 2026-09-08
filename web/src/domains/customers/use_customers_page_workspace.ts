@@ -1,4 +1,4 @@
-// L3 customers directory: sort/limit/offset in URL; server listCustomers only (Cold pagination).
+// customers directory: sort/limit/offset in URL; server listCustomers only (Cold pagination).
 import { useCallback, useMemo } from 'react';
 
 import { listCustomers } from '@/api/customers_api';

@@ -1,18 +1,18 @@
 // Package testutil provides testcontainer helpers, migration path helpers, and ingest test wiring for integration tests.
 //
 // Role:
-//   - postgres.go / redis.go: SetupPostgres, SetupRedis, SetupAdsPostgres, SetupInjectionEnv (PG + Redis pair).
+//   - postgres.go / redis.go: SetupPostgres, SetupRedis, SetupAdsPostgres, SetupInjectionEnv (Postgres + Redis pair).
 //   - paths.go: ModuleRoot and per-service migrations dirs (Ads, Payment, Billing, Notify, ServiceMigrationsDir).
 //   - registry.go / mock_registry.go / registry_watch.go: NewAdsRegistry and campaign registry test helpers.
 //   - shard.go: CampaignIDForShard for static-slot shard tests.
-//   - injection_env.go: NewInjectionEnv bundles PG + Redis containers for fault/resilience tests.
+//   - injection_env.go: NewInjectionEnv bundles Postgres + Redis containers for fault/resilience tests.
 //   - emergency_breaker.go / filter.go: SettingsWatcher and EmergencyBreakerFilter constructors for ingest tests.
 //   - fault_proof.go: LogFaultProof wrapper for pkg/faultproof telemetry in tests.
 //   - redis_fault.go, cohort_registry.go: Redis fault injection and cohort registry helpers.
 //
 // Topology:
 //   - Test-only package; imported from *_test.go, tests/*, and *_integration_test.go (not production cmd/*).
-//   - No ClickHouse testcontainer helper in this package (consumers use database or bespoke CH setup).
+//   - No ClickHouse testcontainer helper in this package (consumers use database or bespoke ClickHouse setup).
 //
 // Invariants:
 //   - Setup helpers return cleanup func; callers must defer cleanup to avoid container leaks.

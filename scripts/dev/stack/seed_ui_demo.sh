@@ -1,6 +1,6 @@
 #!/usr/bin/env bash
 # Role: Seed admin UI demo campaigns with varied names, spend, and delivery stats for charts.
-# Execution context: Requires existing seed campaigns (deterministic ids seq 1..N); uses host PG on DB_PORT.
+# Execution context: Requires existing seed campaigns (deterministic ids seq 1..N); uses host Postgres on DB_PORT.
 # Env knobs: SEED_UI_DEMO_COUNT (default 50).
 # Verify: bash scripts/dev/stack/seed_ui_demo.sh && curl -sf http://127.0.0.1:8188/health
 set -euo pipefail
@@ -51,4 +51,4 @@ fi
 log "seeding UI demo stats and campaign fields (count=${SEED_UI_DEMO_COUNT})"
 DB_DSN="$(host_db_dsn)" go run ./cmd/admin --env-path .env db seed-ui --count "${SEED_UI_DEMO_COUNT}"
 
-log "done — reload Campaigns in admin UI"
+log "done - reload Campaigns in admin UI"

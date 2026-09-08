@@ -1,9 +1,9 @@
-// Package smartalerts owns smart alert rule CRUD, CH-backed evaluation worker, and webhook delivery.
+// Package smartalerts owns smart alert rule CRUD, ClickHouse-backed evaluation worker, and webhook delivery.
 //
 // Role:
 //   - HTTP under /api/v1/smart-alerts/rules, /api/v1/smart-alerts/history,
 //     POST /api/v1/smart-alerts/events/{id}/ack.
-//   - worker_batch.go batches CH metric windows per customer/campaign; store.go persists rules and fired events.
+//   - worker_batch.go batches ClickHouse metric windows per customer/campaign; store.go persists rules and fired events.
 //   - drain.go (CheckStuckDrainJobs) alerts on stuck redis_slot_migration drain rows via Host.AlertDrainStuck.
 //
 // Topology:

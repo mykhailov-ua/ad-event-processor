@@ -126,6 +126,45 @@ func TestCloneCampaign_holdout(t *testing.T) {
 	assert.Equal(t, result.ID, dup.ID)
 }
 
+func TestCloneCampaignHTTP_holdout(t *testing.T) {
+	if testing.Short() {
+		t.Skip("integration: single campaign clone HTTP")
+	}
+	pool, cleanupDB := database.SetupTestDB(t)
+	defer cleanupDB()
+	redisClient, cleanupRedis := database.SetupTestRedis(t)
+	defer cleanupRedis()
+
+	svc := NewService(context.Background(), pool, []redis.UniversalClient{redisClient}, nil, nil)
+	defer svc.Close()
+
+	ctx := context.Background()
+	custID := uuid.New()
+	require.NoError(t, svc.CreateCustomer(ctx, custID, "HTTP Clone Customer", 500_000_000, "USD"))
+
+	srcID, err := svc.CreateCampaign(ctx, testCampaignSpec(custID, "HTTP Source", 25_000_000, "http-clone-src"))
+	require.NoError(t, err)
+
+	h := &campaign.CampaignsHTTPHandlers{Campaigns: svc}
+	mux := http.NewServeMux()
+	h.Register(mux)
+
+	payload, err := json.Marshal(map[string]any{
+		"name_suffix": " (http copy)",
+	})
+	require.NoError(t, err)
+	req := httptest.NewRequest(http.MethodPost, "/api/v1/campaigns/"+srcID.String()+"/clone", bytes.NewReader(payload))
+	req.Header.Set("Idempotency-Key", "clone-http-holdout")
+	rec := httptest.NewRecorder()
+	mux.ServeHTTP(rec, req)
+	require.Equal(t, http.StatusCreated, rec.Code, rec.Body.String())
+
+	var resp campaign.CloneCampaignResult
+	require.NoError(t, json.Unmarshal(rec.Body.Bytes(), &resp))
+	require.NotEqual(t, srcID.String(), resp.ID)
+	assert.Contains(t, resp.Name, "(http copy)")
+}
+
 func TestBulkCloneCampaignsHTTP_holdout(t *testing.T) {
 	if testing.Short() {
 		t.Skip("integration: bulk clone HTTP copies mappings and enforces customer scope")

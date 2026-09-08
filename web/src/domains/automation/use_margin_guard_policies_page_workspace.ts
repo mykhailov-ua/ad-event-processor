@@ -1,4 +1,4 @@
-// L3 margin guard policies: campaign-scoped list + create form.
+// margin guard policies: campaign-scoped list + create form.
 import { useCallback, useState } from 'react';
 import { toast } from 'sonner';
 

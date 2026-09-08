@@ -18,7 +18,7 @@
 //   - TryReserve before debit: reserves a queue/ring slot before UnifiedFilter Lua debit so overload returns 503
 //     filterRejectProducerOverload instead of debiting budget then failing enqueue (ad_stream_producer_post_debit_rejected_total).
 //     Rejected alternative: debit-first admission race (TestStreamProducerAdmissionRaceWithoutReserve holdout).
-//   - Dual stream write history: older paths could XADD in Lua and again in Go StreamProducer (duplicate CH rows).
+//   - Dual stream write history: older paths could XADD in Lua and again in Go StreamProducer (duplicate ClickHouse rows).
 //     SetDeferStreamToProducer sets KEYS[9]/local-quanta stream to fcap:ignored; Go producer is sole writer
 //     (TestUnifiedFilter_SetDeferStreamToProducer_DualStreamWriteFix).
 //   - Broker ring vs Redis XADD: CH_INGEST_SOURCE=broker uses mmap WAL BrokerProducer (default ring 32768, power-of-two MPSC)
@@ -29,7 +29,7 @@
 //
 // Forbidden:
 //   - Sync stream write before HTTP 202 on /track accept path.
-//   - Claiming CH ingest wired without integration/fault flush proof.
+//   - Claiming ClickHouse ingest wired without integration/fault flush proof.
 //
 // Verify:
 //

@@ -1,7 +1,7 @@
 import { useState } from 'react';
 import { useRunWhenTrue } from '@/hooks/use_run_when_true';
 
-import { PrimaryActionButton, SecondaryActionButton } from '@/shell/action_buttons';
+import { PrimaryActionButton, SecondaryActionButton, FilterApplyButton } from '@/shell/action_buttons';
 import { DirectoryFilterForm, FilterField } from '@/shell/filter_panel';
 import { PageChrome } from '@/shell/page_chrome';
 import { RowActionsMenu } from '@/shell/row_actions_menu';
@@ -77,8 +77,9 @@ export type DomainsDirectoryProps = {
   onDraftParkZoneIdChange: (value: string) => void;
   onParkDomain: () => void;
   parkMessage: string | undefined;
-  healthFilter: DomainHealthFilter;
-  onHealthFilterChange: (value: DomainHealthFilter) => void;
+  draftHealthFilter: DomainHealthFilter;
+  onDraftHealthFilterChange: (value: DomainHealthFilter) => void;
+  onApplyHealthFilter: (event?: { preventDefault?: () => void }) => void;
   bulkOpen: boolean;
   onBulkOpenChange: (open: boolean) => void;
   onOpenBulkDialog: () => void;
@@ -214,8 +215,9 @@ export function DomainsDirectory({
   onDraftParkZoneIdChange,
   onParkDomain,
   parkMessage,
-  healthFilter,
-  onHealthFilterChange,
+  draftHealthFilter,
+  onDraftHealthFilterChange,
+  onApplyHealthFilter,
   bulkOpen,
   onBulkOpenChange,
   onOpenBulkDialog,
@@ -284,11 +286,11 @@ export function DomainsDirectory({
       }
     >
       <CreativeDirectoryStack>
-        <DirectoryFilterForm layout="auto-fill" onSubmit={(event) => event.preventDefault()}>
+        <DirectoryFilterForm layout="auto-fill" onSubmit={onApplyHealthFilter}>
           <FilterField htmlFor="domain-health-filter" label="Health filter">
             <Select
-              value={healthFilter}
-              onValueChange={(value) => onHealthFilterChange(value as DomainHealthFilter)}
+              value={draftHealthFilter}
+              onValueChange={(value) => onDraftHealthFilterChange(value as DomainHealthFilter)}
             >
               <SelectTrigger id="domain-health-filter" className="w-full max-w-xs">
                 <SelectValue />
@@ -301,6 +303,9 @@ export function DomainsDirectory({
               </SelectContent>
             </Select>
           </FilterField>
+          <FilterApplyButton disabled={fetching} type="submit">
+            Apply
+          </FilterApplyButton>
         </DirectoryFilterForm>
 
         <Dialog onOpenChange={onBulkOpenChange} open={bulkOpen}>

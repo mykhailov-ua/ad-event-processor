@@ -1,6 +1,6 @@
 package reports
 
-// Gap-fill when ClickHouse rollups are missing but PG/CH traffic exists (seed-ui without seed-buyer-ch).
+// Gap-fill when ClickHouse rollups are missing but Postgres/ClickHouse traffic exists (seed-ui without seed-buyer-ch).
 
 const (
 	chartEconomicsCPCMinMicro      = 90_000

@@ -2,15 +2,15 @@
 // /openrtb/bid, /tg/*, and static track.js.
 //
 // Role:
-//   - Accept or reject under end-to-end SLA; 202/302 does not imply PG/CH wrote.
+//   - Accept or reject under end-to-end SLA; 202/302 does not imply Postgres/ClickHouse wrote.
 //   - Run FilterEngine (local gates then UnifiedFilter Redis Lua) off the gnet epoll loop.
 //   - Enqueue accepted events via StreamProducer (Redis XADD) or BrokerProducer (mmap WAL).
-//   - Serve campaign catalog from atomic.Pointer snapshot; reload via Redis pub/sub and PG boot sync.
+//   - Serve campaign catalog from atomic.Pointer snapshot; reload via Redis pub/sub and Postgres boot sync.
 //
 // Topology:
 //   - gnet event loops (WithLockOSThread(false)) + PinnedWorkerPool (runtime.LockOSThread per worker); not net/http on ingest.
 //   - Multi-shard Redis (one sync EVALSHA max per accept when not local-quanta full-skip).
-//   - PG read pool: boot-time registry/slot-map/settings fallback only; never on request thread.
+//   - Postgres read pool: boot-time registry/slot-map/settings fallback only; never on request thread.
 //   - HTTP: SERVER_PORT default 8181 (compose lanes 8181-8184 per TRACKER_INSTANCE).
 //   - Metrics sidecar: METRICS_PORT default 9090 (compose 9101-9104); /metrics, /health, /ready, optional pprof.
 //
@@ -30,15 +30,15 @@
 //
 // wire.go init order (runTracker):
 //  1. Retry policy, runtime autotune, logger + 15s metrics reporter.
-//  2. License guard; PG pool + registry bootstrap (Sync, StartSync, optional replica file).
+//  2. License guard; Postgres pool + registry bootstrap (Sync, StartSync, optional replica file).
 //  3. Redis shards, pool warm (REDIS_POOL_SIZE + MAX_WORKERS pings), license epoch sync.
-//  4. StaticSlotSharder + slot map PG load; SlotMapWatcher goroutine (SLOT_MAP_POLL_INTERVAL_MS).
+//  4. StaticSlotSharder + slot map Postgres load; SlotMapWatcher goroutine (SLOT_MAP_POLL_INTERVAL_MS).
 //  5. Budget cache warm; registry pub/sub + epoch poll; optional broker campaign-update watcher.
 //  6. Consent store watch; GeoIP (+ hot-reload watcher GEOIP_WATCHER_INTERVAL_SEC).
 //  7. Local filter chain pieces; SettingsWatcher (1s tick goroutine).
 //  8. Stream trimmer; InitUnifiedFilterLua + PreloadScripts + script preheater (30s).
 //  9. Optional local quanta (LOCAL_QUOTA_MODE shadow|live); FilterEngine assembly.
-//  10. Optional RTB catalog sync; NewAdsPacketHandler; optional PG failover subscriber.
+//  10. Optional RTB catalog sync; NewAdsPacketHandler; optional Postgres failover subscriber.
 //  11. StreamProducer or BrokerProducer (CH_INGEST_SOURCE=broker); fraud backpressure watcher.
 //  12. Optional UDP/TCP ingress control; L1 intel tables on handler; PinnedWorkerPool (queue 8192 per worker).
 //  13. gnet.Run; METRICS_PORT HTTP sidecar; signal drain (gnet, workers, quanta, broker, registry).
@@ -63,11 +63,11 @@
 //
 //	Generational snapshots (atomic.Value):
 //	  - Registry campaignMapSnapshot: full map swap on sync/pubsub/epoch reload; snapGen invalidates per-worker cache.
-//	  - StaticSlotSharder SlotMapSnapshot: PG version gate in SlotMapWatcher; GetShard is zero-lock read.
+//	  - StaticSlotSharder SlotMapSnapshot: Postgres version gate in SlotMapWatcher; GetShard is zero-lock read.
 //	  - SettingsWatcher / fraud boost maps: atomic snapshot readers on filter path.
 //
 //	TTL and stale drivers:
-//	  - Registry stale mode: REGISTRY_STALE_TTL since last pub/sub OK; REGISTRY_STALE_PG_GRACE warms known campaigns from PG on cache miss (404 when PG row missing, 503 registry_stale when grace off or PG down).
+//	  - Registry stale mode: REGISTRY_STALE_TTL since last pub/sub OK; REGISTRY_STALE_PG_GRACE warms known campaigns from Postgres on cache miss (404 when Postgres row missing, 503 registry_stale when grace off or Postgres down).
 //	  - Duplicate/idempotency: DUPLICATE_TTL_SEC, IDEMPOTENCY_TTL_HRS on Redis and local quanta idem cache.
 //	  - Registry epoch poll: REGISTRY_POLL_MS compares Redis campaign:registry:epoch across shards.
 //

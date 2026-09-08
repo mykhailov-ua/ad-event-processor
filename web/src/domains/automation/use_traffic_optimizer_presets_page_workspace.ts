@@ -1,4 +1,4 @@
-// L3 traffic optimizer preset catalog: read-only GET on mount.
+// traffic optimizer preset catalog: read-only GET on mount.
 import { listTrafficOptimizerPresets } from '@/api/traffic_optimizer_api';
 import { useResource } from '@/api/use_resource';
 

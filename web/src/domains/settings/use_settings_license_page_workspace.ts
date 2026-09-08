@@ -1,4 +1,4 @@
-// L3 license settings page: wraps useLicenseApplyFormLoad; refreshMeta after successful apply.
+// license settings page: wraps useLicenseApplyFormLoad; refreshMeta after successful apply.
 import { useCallback } from 'react';
 
 import type { LicenseApplyFormLoad } from '@/domains/onboarding/use_license_apply_form_load';

@@ -9,7 +9,7 @@
 // Topology:
 //   - Satellite regions forward deduped batches to primary region-proxy; primary appends WAL and broker topic
 //     DefaultIngressTopic (region-proxy-ingress).
-//   - Global control IngestBatch uses internal/dedup adapter with routing epoch from PG when source_epoch is zero.
+//   - Global control IngestBatch uses internal/dedup adapter with routing epoch from Postgres when source_epoch is zero.
 //   - iogate.DiskWriteGate backs pressure-aware disk writes; health/metrics HTTP on separate listen addr.
 //
 // Defaults and limits:

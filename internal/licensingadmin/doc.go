@@ -6,7 +6,7 @@
 //   - eula_handlers.go / eula.go: GET /api/v1/eula, POST /api/v1/eula/accept (any authenticated session).
 //   - gate.go: FeatureAllowed and RequireLicenseFeature for admin route middleware (403 feature_required).
 //   - service.go: ApplyLicenseToken (VerifyJWTResolved, CheckHostActivation, InstallToken, ReloadLicense).
-//   - worker.go: RevokeQueueWorker polls PG revoke queue and reloads when row matches active license key.
+//   - worker.go: RevokeQueueWorker polls Postgres revoke queue and reloads when row matches active license key.
 //
 // Topology:
 //   - Wired via controlplane/licensingadmin_bridge.go and adminapi_wire.go / adminapi_wire_domains.go.

@@ -146,7 +146,7 @@ function _M.record_and_forward()
         end
     end
 
-    -- Connection timing for tracker cold-path rtt_split_tunnel (CH rtt_syn_ms, ttfb_app_ms).
+    -- Connection timing for tracker cold-path rtt_split_tunnel (ClickHouse rtt_syn_ms, ttfb_app_ms).
     -- Emit only when computed ms in 1..65535; absent when nginx vars unset or out of range.
     local conn_time = tonumber(ngx.var.connection_time)
     if conn_time and conn_time > 0 then

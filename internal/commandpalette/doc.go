@@ -2,7 +2,7 @@
 //
 // Role:
 //   - HTTP: GET /api/v1/command-palette/search, /routes, /recents; POST /open, POST /recents.
-//   - Service.Search merges static catalog (catalog_search.go, routes.go) with PG entity search (Store).
+//   - Service.Search merges static catalog (catalog_search.go, routes.go) with Postgres entity search (Store).
 //   - RecentsStore persists per-user recent opens in Postgres (max 20 per user).
 //   - Rank and kind filters; audit hook for palette open events when enabled.
 //
@@ -13,9 +13,9 @@
 //   - Dedicated search rate limit via ApplyCommandPaletteSearchLimit; IP limit on routes/recents/open.
 //
 // Invariants:
-//   - Search query length 2..128 (MinSearchQueryLen, MaxSearchQueryLen); empty query skips PG entity search.
+//   - Search query length 2..128 (MinSearchQueryLen, MaxSearchQueryLen); empty query skips Postgres entity search.
 //   - customer_id required on search and recents; cross-customer recents rejected (holdout).
-//   - Entity search timeout 500 ms; PG failure returns catalog hits with degraded=true when applicable.
+//   - Entity search timeout 500 ms; Postgres failure returns catalog hits with degraded=true when applicable.
 //   - fraud-evidence-pack nav entry hidden for masked actors.
 //   - RequiredLiveNavPaths lists SPA routes that must stay live when web/ returns.
 //

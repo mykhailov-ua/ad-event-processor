@@ -1,4 +1,4 @@
-// L3 editor tools tabs: integration/fraud GET gated by tab; context uses lazy loadKey; fraud PATCH refresh coalesced while fetching.
+// editor tools tabs: integration/fraud GET gated by tab; context uses lazy loadKey; fraud PATCH refresh coalesced while fetching.
 import { useState } from 'react';
 
 import { getCampaignFraud, getCampaignIntegrationPanel } from '@/api/campaigns_api';

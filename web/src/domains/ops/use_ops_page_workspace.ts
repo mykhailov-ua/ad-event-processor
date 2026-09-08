@@ -1,4 +1,4 @@
-// L3 ops home: snapshot refresh + side-effect actions (role reload, support bundle download).
+// ops home: snapshot refresh + side-effect actions (role reload, support bundle download).
 import { useCallback, useState } from 'react';
 
 import { fetchOpsHomeSnapshot, postOpsSupportBundle, reloadOpsRoles } from '@/api/ops_api';

@@ -240,6 +240,65 @@ if [ "$failed" -ne 0 ]; then
   exit 1
 fi
 
+echo "ui slop: overlay React loop guards (OV-*)"
+OVERLAY_UI=(
+  web/src/components/ui/select.tsx
+  web/src/components/ui/popover.tsx
+  web/src/components/ui/dropdown-menu.tsx
+)
+for overlay_file in "${OVERLAY_UI[@]}"; do
+  [ -f "$overlay_file" ] || continue
+  if ! rg -n 'mergeOverlayPosition' "$overlay_file" 2> /dev/null; then
+    echo "Error: UI slop - ${overlay_file} must use mergeOverlayPosition (OV-3)"
+    failed=1
+  fi
+  if ! rg -n 'useMemo\(' "$overlay_file" 2> /dev/null; then
+    echo "Error: UI slop - ${overlay_file} overlay context must use useMemo (OV-1)"
+    failed=1
+  fi
+  if rg -n '\[ctx,' "$overlay_file" 2> /dev/null; then
+    echo "Error: UI slop - ${overlay_file} bans [ctx, in effect deps (OV-2)"
+    failed=1
+  fi
+done
+
+echo "ui slop: route error boundary reset (RB-E*)"
+if ! rg -n 'AppRouteErrorBoundary' web/src/app_shell.tsx 2> /dev/null; then
+  echo "Error: UI slop - app_shell must wrap Outlet in AppRouteErrorBoundary (RB-E1)"
+  failed=1
+fi
+
+echo "ui slop: UUID helper on HTTP paths (UUID-*)"
+for dir in web/src/domains web/src/api web/src/shell web/src/pages; do
+  [ -d "$dir" ] || continue
+  if rg -n 'crypto\.randomUUID' "$dir" --glob '*.ts' --glob '*.tsx' 2> /dev/null; then
+    echo "Error: UI slop - crypto.randomUUID under ${dir}; use newRandomUuid from @/lib/uuid (UUID-1)"
+    failed=1
+  fi
+done
+
+echo "ui slop: CSP inline swatch ban (CSP-1)"
+for dir in web/src/domains web/src/shell web/src/pages; do
+  [ -d "$dir" ] || continue
+  if rg -n 'style=\{\{\s*backgroundColor' "$dir" --glob '*.tsx' 2> /dev/null; then
+    echo "Error: UI slop - inline backgroundColor style under ${dir}; use CHART_SWATCH_CLASS / Tailwind (CSP-1)"
+    failed=1
+  fi
+done
+
+echo "ui slop: react-day-picker global CSS (CSP-2)"
+if [ -f web/src/main.tsx ]; then
+  if ! rg -n "react-day-picker/style\.css" web/src/main.tsx 2> /dev/null; then
+    echo "Error: UI slop - main.tsx must import react-day-picker/style.css (CSP-2)"
+    failed=1
+  fi
+fi
+
+if [ "$failed" -ne 0 ]; then
+  echo "Remediation: frontend-slop.mdc OV-*/RB-E*/CSP-*/UUID-*; overlay_position_state.ts; app_error_boundary.tsx"
+  exit 1
+fi
+
 # Class A mobile nav: Sheet dock with dedicated nav scroll (frontend-slop.mdc overlays).
 echo "ui slop: mobile nav sheet contract"
 if ! rg -n 'AppMobileNavSheet' web/src/app_shell.tsx 2> /dev/null; then

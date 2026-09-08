@@ -4,7 +4,7 @@
 //   - Hasher uses HighwayHash-128 with per-field type byte prefix (prevents cross-field collisions).
 //   - NewFromSalt decodes PII_SALT_HEX (32 bytes) or derives key from TOKEN_SYMMETRIC_KEY when salt hex is empty.
 //   - HashIP, HashUA, HashUserID, HashSubnet write version byte + kind byte + value into a stack buffer before Sum128.
-//   - FixedString16 converts [16]byte to string for CH batch insert without allocation.
+//   - FixedString16 converts [16]byte to string for ClickHouse batch insert without allocation.
 //   - TestHasher returns a deterministic key for unit tests and benches.
 //
 // Topology:
@@ -26,7 +26,7 @@
 //   - NewFromSalt errors when both PII_SALT_HEX and fallback secret are empty or hex decode length is wrong.
 //
 // Tradeoffs:
-//   - HighwayHash vs HMAC-SHA256: faster on hot ingest and CH batch paths; not a password-storage primitive.
+//   - HighwayHash vs HMAC-SHA256: faster on hot ingest and ClickHouse batch paths; not a password-storage primitive.
 //   - Deterministic fallback from TOKEN_SYMMETRIC_KEY vs fail-closed without PII_SALT_HEX: dev compose boots; prod should set explicit salt.
 //   - In-hash truncation at 510 bytes vs heap copy: zero alloc on hot path; ultra-long UA tails collide by design.
 //   - Type-byte domain separation vs separate keys per field: one 32-byte key with kind prefix limits key management overhead.

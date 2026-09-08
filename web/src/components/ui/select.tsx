@@ -9,6 +9,7 @@ import {
   computeFloatingPosition,
   subscribeFloatingPosition,
 } from '@/lib/floating_overlay_position';
+import { mergeOverlayPosition } from '@/lib/overlay_position_state';
 import { OverlayRoot } from '@/lib/overlay_root';
 import { useOverlayDismiss } from '@/lib/use_overlay_dismiss';
 import { cn } from '@/lib/utils';
@@ -67,19 +68,22 @@ function Select({
     });
   }, []);
 
+  const contextValue = React.useMemo(
+    () => ({
+      open,
+      setOpen,
+      value: internalValue,
+      onValueChange: setInternalValue,
+      disabled,
+      labels,
+      registerLabel,
+      triggerRef,
+    }),
+    [disabled, internalValue, labels, open, registerLabel, setInternalValue]
+  );
+
   return (
-    <SelectContext.Provider
-      value={{
-        open,
-        setOpen,
-        value: internalValue,
-        onValueChange: setInternalValue,
-        disabled,
-        labels,
-        registerLabel,
-        triggerRef,
-      }}
-    >
+    <SelectContext.Provider value={contextValue}>
       {children}
     </SelectContext.Provider>
   );
@@ -169,11 +173,13 @@ const SelectContent = React.forwardRef<
         align: 'start',
         gap: 4,
       });
-      setCoords({
-        ...next,
-        minWidth: position === 'popper' ? rect.width : undefined,
-        visibility: 'visible',
-      });
+      setCoords((prev) =>
+        mergeOverlayPosition(prev, {
+          ...next,
+          minWidth: position === 'popper' ? rect.width : undefined,
+          visibility: 'visible',
+        })
+      );
     };
 
     updatePosition();
@@ -192,7 +198,7 @@ const SelectContent = React.forwardRef<
       unsubscribeScroll();
       resizeObserver?.disconnect();
     };
-  }, [open, position, triggerRef, children]);
+  }, [open, position, triggerRef]);
 
   if (!open) {
     return null;
@@ -234,14 +240,14 @@ const SelectItem = React.forwardRef<
   HTMLButtonElement,
   React.ButtonHTMLAttributes<HTMLButtonElement> & { plain?: boolean; value: string }
 >(({ className, children, plain = false, value, disabled, onClick, ...props }, ref) => {
-  const ctx = useSelectContext();
+  const { registerLabel, value: selectedValue, onValueChange, setOpen } = useSelectContext();
   const label = typeof children === 'string' ? children : value;
 
   React.useEffect(() => {
-    ctx.registerLabel(value, label);
-  }, [ctx, label, value]);
+    registerLabel(value, label);
+  }, [label, registerLabel, value]);
 
-  const selected = ctx.value === value;
+  const selected = selectedValue === value;
 
   return (
     <button
@@ -259,8 +265,8 @@ const SelectItem = React.forwardRef<
       onClick={(event) => {
         onClick?.(event);
         if (!event.defaultPrevented && !disabled) {
-          ctx.onValueChange?.(value);
-          ctx.setOpen(false);
+          onValueChange?.(value);
+          setOpen(false);
         }
       }}
       {...props}

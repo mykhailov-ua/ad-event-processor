@@ -52,8 +52,13 @@ func TestLicense_VERIFYCatalog_coversBaselineProperties(t *testing.T) {
 	t.Parallel()
 	root := repoRoot(t)
 	verifyMD := readRepoFile(t, root, ".cursor/rules/LICENSING.mdc")
-	for _, prop := range []string{"P-C2-01", "P-C3-03", "P-C4-03", "P-HWID-01"} {
-		require.Contains(t, verifyMD, prop, "licensing.mdc missing %s", prop)
+	for _, phrase := range []string{
+		"IngestAllowed",
+		"deployment ceiling",
+		"Invalid signature",
+		"Argon2id",
+	} {
+		require.Contains(t, verifyMD, phrase, "licensing.mdc missing baseline topic %q", phrase)
 	}
 }
 

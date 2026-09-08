@@ -95,7 +95,7 @@ func NewTelegramService(svc *Service) *telegram.Service {
 	return telegram.NewService(svc)
 }
 
-// buildSessionNav: RBAC snapshot from request context; no per-nav-item PG round-trip.
+// buildSessionNav: RBAC snapshot from request context; no per-nav-item Postgres round-trip.
 func buildSessionNav(ctx context.Context) []platformadmin.SessionNavItemDTO {
 	catalogRows := reports.FilterReportCatalog(ctx, reports.ReportCatalogEntries)
 	items := []platformadmin.SessionNavItemDTO{
@@ -197,7 +197,7 @@ func (s *Service) startOpsMetricScraper(ctx context.Context, scrapeURL string) {
 	opsadmin.StartMetricScraper(s, ctx, scrapeURL)
 }
 
-// NewManagementOpsReader builds ops stack health fan-out (PG pool, Redis shards, optional ClickHouseQuery readonly).
+// NewManagementOpsReader builds ops stack health fan-out (Postgres pool, Redis shards, optional ClickHouseQuery readonly).
 func NewManagementOpsReader(svc *Service) opsadmin.ManagementOpsReader {
 	if svc == nil {
 		return nil
@@ -226,7 +226,7 @@ func newOpsReader(svc *Service) opsadmin.ManagementOpsReader {
 	return NewManagementOpsReader(svc)
 }
 
-// StartFilterRejectRollupWorker runs background CH->PG rollup; requires PG pool and clickhouseQuery (readonly).
+// StartFilterRejectRollupWorker runs background ClickHouse->Postgres rollup; requires Postgres pool and clickhouseQuery (readonly).
 func (s *Service) StartFilterRejectRollupWorker(ctx context.Context, scrapeURL string) {
 	if s == nil || s.GetPool() == nil || s.clickhouseQuery == nil {
 		slog.Warn("filter reject rollup worker not started: postgres or clickhouse unavailable")

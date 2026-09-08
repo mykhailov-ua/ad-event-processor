@@ -1,4 +1,4 @@
-// L3 dashboard table widths: localStorage overrides per scope; name column uses probe width from row labels.
+// dashboard table widths: localStorage overrides per scope; name column uses probe width from row labels.
 import { useCallback, useMemo, useState } from 'react';
 
 import type { DashboardBreakdownTable } from '@/domains/dashboards/buyer_dashboard_types';

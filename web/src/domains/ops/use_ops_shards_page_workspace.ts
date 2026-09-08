@@ -1,4 +1,4 @@
-// L3 shard admin: list snapshot + shard-0 catchup mutation; refresh coalesced while catchup in flight.
+// shard admin: list snapshot + shard-0 catchup mutation; refresh coalesced while catchup in flight.
 import { useCallback, useState } from 'react';
 import { toast } from 'sonner';
 

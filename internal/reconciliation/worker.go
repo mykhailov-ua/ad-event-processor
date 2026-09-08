@@ -101,7 +101,7 @@ func (w *ReconWorker) Start(ctx context.Context) {
 				slog.Error("budget snapshot recon failed", "err", err)
 			}
 		case <-ticker.C:
-			// Hourly window lags 2h so ledger batch flush and stream settlement can land in PG.
+			// Hourly window lags 2h so ledger batch flush and stream settlement can land in Postgres.
 			end := time.Now().Truncate(time.Hour).Add(-2 * time.Hour)
 			start := end.Add(-time.Hour)
 			if err := w.host.WithPostgresLow(ctx, func(runCtx context.Context) error {
@@ -314,7 +314,7 @@ func (w *ReconWorker) auditPostgresClickHouseStats(ctx context.Context) {
 		return
 	}
 
-	// HYG30-B: PG campaign_stats vs CH daily event totals; bounded by reports.ClickHouseQueryContext (10s).
+	// HYG30-B: Postgres campaign_stats vs ClickHouse daily event totals; bounded by reports.ClickHouseQueryContext (10s).
 	clickhouseCtx, cancel := clickhouseQueryContext(ctx)
 	defer cancel()
 

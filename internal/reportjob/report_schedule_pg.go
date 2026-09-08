@@ -358,7 +358,7 @@ func buildReportJobSpecFromSchedule(row reportScheduleRow) (ReportJobSpec, strin
 	if format == "" {
 		format = "csv"
 	}
-	// PG report_jobs.idempotency_key: one job per schedule fired slot; replays return same job id.
+	// Postgres report_jobs.idempotency_key: one job per schedule fired slot; replays return same job id.
 	idem := fmt.Sprintf("schedule:%s:%s", row.id.String(), row.nextRunAt.UTC().Format("2006-01-02T15:04"))
 	return ReportJobSpec{
 		CustomerID: row.customerID.String(),

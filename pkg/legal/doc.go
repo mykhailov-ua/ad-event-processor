@@ -12,12 +12,12 @@
 // Invariants:
 //   - SettingsKey eula_acceptance is stable across releases; do not rename without migration.
 //   - ParseAcceptance rejects empty raw, invalid JSON, and missing version field.
-//   - MarshalAcceptance emits compact JSON suitable for PG text column storage.
+//   - MarshalAcceptance emits compact JSON suitable for Postgres text column storage.
 //   - IsCurrent is strict equality on Version; licensingadmin AcceptEula rejects mismatched version.
 //
 // Tradeoffs:
 //   - Embedded text vs remote fetch: appliance installs must work offline; bump Version when EULA.txt changes.
-//   - PG settings KV vs dedicated table: one row per deployment; licensingadmin owns write path.
+//   - Postgres settings KV vs dedicated table: one row per deployment; licensingadmin owns write path.
 //   - time.Time JSON in acceptance: RFC3339 from encoding/json; callers store UTC from AcceptEula.
 //
 // Forbidden:

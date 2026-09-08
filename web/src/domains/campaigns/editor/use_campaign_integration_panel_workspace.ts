@@ -1,4 +1,4 @@
-// L3 campaign integration tab: template apply, dry-run preview, copy URLs, on-demand health.
+// campaign integration tab: template apply, dry-run preview, copy URLs, on-demand health.
 import { useCallback, useEffect, useState } from 'react';
 import { toast } from 'sonner';
 

@@ -1,4 +1,4 @@
-// governance_bridge: Service implements governance/reconciliation Host ports (PG + Redis side effects).
+// governance_bridge: Service implements governance/reconciliation Host ports (Postgres + Redis side effects).
 package controlplane
 
 import (

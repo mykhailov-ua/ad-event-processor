@@ -12,6 +12,7 @@ import {
 } from '@/domains/dashboards/dashboard_chart_scale';
 import {
   DASHBOARD_CHART_SERIES_STYLES,
+  CHART_SWATCH_CLASS,
   type DashboardMetricId,
 } from '@/domains/dashboards/dashboard_metrics';
 import { displayCount } from '@/lib/display';
@@ -110,8 +111,10 @@ function ChartTooltipContent({
             <div key={metric.id} className="grid grid-cols-[1fr_auto] items-center gap-4">
               <span className="flex items-center gap-2 text-muted-foreground">
                 <span
-                  className="inline-block h-2 w-2 shrink-0 rounded-full"
-                  style={{ backgroundColor: metric.stroke }}
+                  className={cn(
+                    'inline-block h-2 w-2 shrink-0 rounded-full',
+                    CHART_SWATCH_CLASS[metric.chartToken]
+                  )}
                 />
                 {metric.label}
               </span>

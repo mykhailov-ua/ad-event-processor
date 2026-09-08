@@ -1,4 +1,4 @@
-// L3 import panel load: sources when enabled; validate job polled via pollToken bump (draftJobId from enqueue or manual input).
+// import panel load: sources when enabled; validate job polled via pollToken bump (draftJobId from enqueue or manual input).
 import { useCallback, useState } from 'react';
 
 import { getCampaignImportValidateJob, listMigrationSources } from '@/api/campaigns_api';

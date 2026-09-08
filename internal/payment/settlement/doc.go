@@ -4,7 +4,7 @@
 //   - OutboxWorker: FOR UPDATE SKIP LOCKED claim on payment.payment_outbox, call in-process SettlementAPI, mark processed/failed.
 //   - SettlementLedgerClient for direct settlement batches when configured.
 //   - CryptoHoldWorker releases held crypto deposits after confirmation policy.
-//   - ReconService periodic PG vs provider reconciliation with optional ops alerts.
+//   - ReconService periodic Postgres vs provider reconciliation with optional ops alerts.
 //
 // Topology:
 //   - Started from payment.Module.StartWorkers alongside webhook HTTP on PAYMENT_WEBHOOK_PORT 8187.

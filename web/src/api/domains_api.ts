@@ -14,8 +14,23 @@ import type {
   WildcardSSLResponse,
 } from './types.js';
 
-export async function listDomains(signal?: AbortSignal): Promise<DomainHealth[]> {
-  return apiJsonArray<DomainHealth>('/api/v1/domains', { signal });
+export type DomainHealthFilter = 'all' | 'healthy' | 'degraded' | 'burned';
+
+export type DomainListQuery = {
+  health_filter?: DomainHealthFilter;
+};
+
+export async function listDomains(
+  query?: DomainListQuery,
+  signal?: AbortSignal
+): Promise<DomainHealth[]> {
+  const params = new URLSearchParams();
+  if (query?.health_filter && query.health_filter !== 'all') {
+    params.set('health_filter', query.health_filter);
+  }
+  const qs = params.toString();
+  const path = qs ? `/api/v1/domains?${qs}` : '/api/v1/domains';
+  return apiJsonArray<DomainHealth>(path, { signal });
 }
 
 export async function addDomain(

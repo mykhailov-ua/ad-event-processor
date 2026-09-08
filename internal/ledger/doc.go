@@ -6,7 +6,7 @@
 //     tax profiles (TaxCalculator), PDF render hooks, invoice delivery and retry paths.
 //   - Module / OpenModule (open.go): wires Handler and BillingAPI when BillingInternalToken set;
 //     StartWorkers runs InvoiceWorker on 1st of month 00:15 UTC when InvoiceWorkerEnabled.
-//   - Worker (worker.go): CH placement spend vs revenue margin guard; pauses placements when
+//   - Worker (worker.go): ClickHouse placement spend vs revenue margin guard; pauses placements when
 //     cost-over-revenue exceeds licensed threshold; started from internal/control/run.go.
 //   - BillingClient (client.go): thin domain.BillingAPI facade for controlplane operator billing calls.
 //   - CheckLedgerBalanceInvariant (ledger_invariant_assert.go): customers.balance vs ledger sum

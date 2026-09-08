@@ -231,7 +231,7 @@ func ListCustomerCampaignIDs(ctx context.Context, pool *pgxpool.Pool, customerID
 	return listCustomerCampaignIDs(ctx, pool, customerID)
 }
 
-// QueryPlacementReportRows unions impressions fact and placement_stats_hourly; 10s CH timeout per request.
+// QueryPlacementReportRows unions impressions fact and placement_stats_hourly; 10s ClickHouse timeout per request.
 func QueryPlacementReportRows(
 	ctx context.Context,
 	clickhouseQuery *database.ClickHouseQuery,

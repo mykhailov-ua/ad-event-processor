@@ -1,4 +1,4 @@
-// L3 DLQ inbox: cursor_stack in URL encodes forward/back pagination; retry bumps refreshToken.
+// DLQ inbox: cursor_stack in URL encodes forward/back pagination; retry bumps refreshToken.
 import { useCallback, useMemo, useState } from 'react';
 
 import { listDlqInbox, retryDlqInboxEntry } from '@/api/ops_api';

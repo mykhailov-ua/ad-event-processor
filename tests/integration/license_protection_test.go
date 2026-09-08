@@ -1,7 +1,7 @@
-// Role: LicenseFilter fail-closed matrix on ingest path (PG row, JWT file, HWID bind, production pubkey).
+// Role: LicenseFilter fail-closed matrix on ingest path (Postgres row, JWT file, HWID bind, production pubkey).
 // Tier: integration.
-// Infra: testcontainers Postgres (ads + billing) for PG-backed rows; file JWT only for file-based cases.
-// Invariants proved: empty PG license blocks ingest; HWID mismatch blocks; valid JWT/HWID allows; fake ACTIVE PG row without valid JWT still blocks; production profile ignores attacker AD_EVENT_PROCESSOR_LICENSE_PUBLIC_KEY.
+// Infra: testcontainers Postgres (ads + billing) for Postgres-backed rows; file JWT only for file-based cases.
+// Invariants proved: empty Postgres license blocks ingest; HWID mismatch blocks; valid JWT/HWID allows; fake ACTIVE Postgres row without valid JWT still blocks; production profile ignores attacker AD_EVENT_PROCESSOR_LICENSE_PUBLIC_KEY.
 // Verify: make test-integration
 package integration_test
 
@@ -181,7 +181,7 @@ func TestIntegration_LicenseProtection_validJWTAllowsIngest(t *testing.T) {
 	require.NoError(t, filter.Check(ctx, &domain.Event{}))
 }
 
-// Holdout: ACTIVE PG entitlements without valid on-disk JWT must still reject ingest.
+// Holdout: ACTIVE Postgres entitlements without valid on-disk JWT must still reject ingest.
 func TestIntegration_LicenseProtection_fakePGRowWithoutJWTBlocked(t *testing.T) {
 	if testing.Short() {
 		t.Skip("integration: license protection (run make test-integration)")

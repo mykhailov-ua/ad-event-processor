@@ -10,7 +10,7 @@
 //   - dry_run.go logs without outbound call when enabled.
 //
 // Topology:
-//   - cmd/postback-sender binary or in-process PostbackWorker in control; PG outbox and postback_dispatches for dispatch state.
+//   - cmd/postback-sender binary or in-process PostbackWorker in control; Postgres outbox and postback_dispatches for dispatch state.
 //   - SQL claim query GetPendingPostbackEventsForUpdate uses FOR UPDATE SKIP LOCKED (internal/ingest/queries/postback.sql).
 //
 // Invariants:

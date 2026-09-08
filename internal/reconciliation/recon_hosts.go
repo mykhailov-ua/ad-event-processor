@@ -37,7 +37,7 @@ type ReconInfraHost interface {
 	RedisShards() []redis.UniversalClient
 	Sharder() domain.Sharder
 	Config() *config.Config
-	// WithPostgresLow: recon worker defers ticks when PG write gate rejects cold-path work.
+	// WithPostgresLow: recon worker defers ticks when Postgres write gate rejects cold-path work.
 	WithPostgresLow(ctx context.Context, fn func(context.Context) error) error
 	ClickHouseQuery() *database.ClickHouseQuery
 	RedisClientForCampaign(campaignID uuid.UUID) redis.UniversalClient

@@ -1,4 +1,4 @@
-// L3 sellers.json rows: inline edit + create/delete; list refresh coalesced while saving.
+// sellers.json rows: inline edit + create/delete; list refresh coalesced while saving.
 import { useCallback, useEffect, useState } from 'react';
 import { toast } from 'sonner';
 

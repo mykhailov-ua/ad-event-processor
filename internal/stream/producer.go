@@ -237,7 +237,7 @@ func (p *StreamProducer) Process(evt *domain.Event) error {
 }
 
 // ProcessReserved pairs with ingest tryAcquireStreamAdmission: always releases the reserve token,
-// including on ErrQueueFull (post-debit reject — caller must run budget-rollback.lua).
+// including on ErrQueueFull (post-debit reject  -  caller must run budget-rollback.lua).
 func (p *StreamProducer) ProcessReserved(evt *domain.Event) error {
 	return p.process(evt, true)
 }

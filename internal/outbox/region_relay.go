@@ -17,7 +17,7 @@ import (
 	"github.com/jackc/pgx/v5"
 )
 
-// RegionOutboxRelay delivers home-region outbox rows to satellite cells (PG FOR UPDATE SKIP LOCKED).
+// RegionOutboxRelay delivers home-region outbox rows to satellite cells (Postgres FOR UPDATE SKIP LOCKED).
 type RegionOutboxRelay struct {
 	host       RegionRelayHost
 	regionCode uint8

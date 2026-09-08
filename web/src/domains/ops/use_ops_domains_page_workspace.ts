@@ -1,4 +1,4 @@
-// L3 TLS/domain ops: separate lazy GET lanes for rotation list and per-host TLS ask.
+// TLS/domain ops: separate lazy GET lanes for rotation list and per-host TLS ask.
 import { useState } from 'react';
 
 import { checkOpsTlsAllowed, getOpsDomainRotation } from '@/api/ops_api';

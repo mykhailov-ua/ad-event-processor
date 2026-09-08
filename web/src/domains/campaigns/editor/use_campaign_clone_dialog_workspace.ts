@@ -1,4 +1,4 @@
-// L3 campaign clone overlay: preview on open; POST clone when options confirmed.
+// campaign clone overlay: preview on open; POST clone when options confirmed.
 import { useCallback, useEffect, useState } from 'react';
 
 import {

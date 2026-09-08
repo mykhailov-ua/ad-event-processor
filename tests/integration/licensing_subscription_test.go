@@ -1,4 +1,4 @@
-// Role: Licensing entitlements merge, grace state, file watcher PG sync, hot-path daily quota filter.
+// Role: Licensing entitlements merge, grace state, file watcher Postgres sync, hot-path daily quota filter.
 // Tier: integration.
 // Infra: testcontainers Postgres (ads + billing), single Redis.
 // Invariants proved: Effective() min/max limits; grace after expiry; watcher writes ACTIVE to billing.license_status; EntitlementsFilter enforces max_requests_per_day after third event.

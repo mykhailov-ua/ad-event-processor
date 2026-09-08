@@ -1,4 +1,4 @@
-// L3 self-serve portal: customer-scoped billing/invoices + payment intent and campaign pause/resume.
+// self-serve portal: customer-scoped billing/invoices + payment intent and campaign pause/resume.
 import { useCallback, useMemo, useState } from 'react';
 import { toast } from 'sonner';
 

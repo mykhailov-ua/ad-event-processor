@@ -31,7 +31,7 @@ func campaignListSortMetricsChunkCount(campaignCount int) int {
 	return (campaignCount + campaignListSortMetricsChunk - 1) / campaignListSortMetricsChunk
 }
 
-// campaignListSortMetricsPGRoundTrips counts PG queries inside loadCampaignListSortMetrics.
+// campaignListSortMetricsPGRoundTrips counts Postgres queries inside loadCampaignListSortMetrics.
 func campaignListSortMetricsPGRoundTrips(campaignCount int, customerScoped bool) int {
 	if campaignCount <= 0 {
 		return 0

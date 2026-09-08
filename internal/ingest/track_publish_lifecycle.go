@@ -78,7 +78,7 @@ func (d TrackPublishDeps) PublishAcceptedOrRollback(ctx context.Context, evt *do
 				"click_id", evt.ClickID,
 				"error", err,
 			)
-			// Main CH/broker sink accepted; keep debit, alert via ad_local_quota_finalize_failed_total.
+			// Main ClickHouse/broker sink accepted; keep debit, alert via ad_local_quota_finalize_failed_total.
 			return true
 		}
 	}

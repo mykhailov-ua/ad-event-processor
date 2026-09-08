@@ -455,6 +455,51 @@ Canonical flows: `select.tsx` (inner scroll div), `popover.tsx` + `command.tsx` 
 | **Hand-rolled position** | `absolute`/`fixed` menu div in `domains/` without `floating_overlay_position` | Class B primitives only |
 | **Radix fiction** | Docs say Radix portal | First-party `OverlayRoot` + `components/ui/*` |
 
+### Overlay React loop slop (never) -- OV-*
+
+Manual QA 2026-09: unstable overlay context + `useEffect(..., [ctx, ...])` caused React **#185 Maximum update depth** on filter `Select`s (Pacing, status tabs); `AppErrorBoundary` showed PAGE ERROR and sidebar navigation changed URL without remounting content until hard refresh.
+
+| ID | Slop | Symptom | Required fix |
+| :--- | :--- | :--- | :--- |
+| **OV-1** | Provider context object recreated every render | Effect deps include whole `ctx`; register/unregister loops | `React.useMemo` on `contextValue` in `select.tsx`, `popover.tsx`, `dropdown-menu.tsx` |
+| **OV-2** | `[ctx,` in `useEffect` / `useLayoutEffect` deps | Infinite `setState` / layout thrash (#185) | Depend on stable callbacks (`registerLabel`, `setOpen`, …) only -- never the context object |
+| **OV-3** | Unconditional `setPosition` on scroll/resize | Re-render storm while float open | `mergeOverlayPosition` (`web/src/lib/overlay_position_state.ts`) -- skip when coords unchanged |
+| **OV-4** | `children` in layout effect deps for item label map | `SelectItem` mount/unmount loop | Deps: `[registerLabel, label, value]`; read `children` inside effect body only |
+
+**Gate:** `bash scripts/ci/admin/ui_slop.sh` (overlay loop guards on class-B primitives).
+
+### Route render error recovery (never) -- RB-E*
+
+| ID | Slop | Symptom | Required fix |
+| :--- | :--- | :--- | :--- |
+| **RB-E1** | `AppErrorBoundary` wraps `<Outlet />` without route reset | After render throw, sidebar `Link` updates URL but page stays on PAGE ERROR | `AppRouteErrorBoundary` in `app_shell.tsx`; `resetKey` = `pathname + search + location.key` |
+| **RB-E2** | Only Retry button clears boundary | Operator must Ctrl+R to recover | Navigation alone must clear boundary state (`componentDidUpdate` on `resetKey`) |
+
+Root `main.tsx` may keep plain `AppErrorBoundary` (outside router). Route subtree only: `AppRouteErrorBoundary`.
+
+### CSP-safe admin chrome (never) -- CSP-*
+
+Production admin CSP blocks decorative inline `style={{ … }}`. Chart legend swatches and third-party picker CSS must not rely on runtime inline styles or missing global sheets.
+
+| ID | Slop | Symptom | Required fix |
+| :--- | :--- | :--- | :--- |
+| **CSP-1** | `style={{ backgroundColor: … }}` on legend/metric swatches | Console CSP violation; swatch missing | `CHART_SWATCH_CLASS` / `CHART_TOKEN_CLASS` Tailwind on `dashboard_*` charts |
+| **CSP-2** | `react-day-picker` used without stylesheet import | Calendar layout broken / unstyled | `import 'react-day-picker/style.css'` in `web/src/main.tsx` |
+| **CSP-3** | Arbitrary inline `style={{ … }}` on shipped page chrome | CSP noise; brittle theming | Tailwind utilities or `app.css` tokens; data-axis inline only when unavoidable (canvas plot geometry) |
+
+**Gate:** `ui_slop.sh` scans `domains/` / `shell/` / `pages/` for `style={{ backgroundColor` and checks `main.tsx` for day-picker CSS.
+
+### UUID on non-secure HTTP (never) -- UUID-*
+
+| ID | Slop | Symptom | Required fix |
+| :--- | :--- | :--- | :--- |
+| **UUID-1** | `crypto.randomUUID()` in `domains/`, `api/`, `shell/`, `pages/` | `TypeError` on HTTP dev hosts without secure context | `newRandomUuid()` from `@/lib/uuid` (v7 + fallbacks) |
+| **UUID-2** | Direct `crypto.randomUUID` in feature code "because browser has it" | Flow builder / import / idempotency breaks on QA HTTP | Single helper; gate bans raw call outside allowlist |
+
+**Allowlist (only):** `web/src/lib/uuid.ts`, `web/src/static/track.js`, HTTPS doc example strings in `docs_tracker_section.ts`.
+
+**Gate:** `ui_slop.sh` bans `crypto.randomUUID` under `domains/`, `api/`, `shell/`, `pages/`.
+
 ### Repository audit (overlay + height, 2026-09; refreshed P5)
 
 | Area | Path | Verdict |

@@ -1,4 +1,4 @@
-// L3 landers directory: list, refresh band, create/edit/delete, row actions (EH-SI1).
+// landers directory: list, refresh band, create/edit/delete, row actions.
 import { useCallback, useState } from 'react';
 import { toast } from 'sonner';
 

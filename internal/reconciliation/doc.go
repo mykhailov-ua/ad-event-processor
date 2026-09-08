@@ -1,10 +1,10 @@
 // Package reconciliation owns spend recon windows, budget snapshot compare, global spend sync, and adjust applier.
 //
 // Role:
-//   - ReconWorker (worker.go): periodic PG/Redis/CH drift checks; tick also runs governance.QuotaRepairRunner.
-//   - ReconService (recon.go): ReconcileWindow compares CH spend vs PG/Redis; enqueues reconciliation adjust outbox.
+//   - ReconWorker (worker.go): periodic Postgres/Redis/ClickHouse drift checks; tick also runs governance.QuotaRepairRunner.
+//   - ReconService (recon.go): ReconcileWindow compares ClickHouse spend vs Postgres/Redis; enqueues reconciliation adjust outbox.
 //   - AdjustApplier (adjust_applier.go): applies RECONCILIATION_ADJUST outbox payloads (ledger + Redis delta).
-//   - GlobalSpendReconciler (global_spend.go): batches regional spend into PG/Redis under sync_idempotency.
+//   - GlobalSpendReconciler (global_spend.go): batches regional spend into Postgres/Redis under sync_idempotency.
 //   - ListRuns (runs.go): management/payment recon run history for opsadmin reader.
 //   - RTBCHStats (rtb_export.go): ClickHouse stats helper for RTB reconcile reads.
 //
@@ -21,7 +21,7 @@
 //
 // Forbidden:
 //   - Synchronous recon on /track accept path.
-//   - Adjust apply without outbox idempotency hash or PG commit before Redis retry.
+//   - Adjust apply without outbox idempotency hash or Postgres commit before Redis retry.
 //
 // Verify:
 //

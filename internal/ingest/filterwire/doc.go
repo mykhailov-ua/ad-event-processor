@@ -47,7 +47,7 @@
 //     Rejected sync GET on every /click: adds Redis RTT on hot path.
 //   - json.Unmarshal on brand creative replica only vs on track accept:
 //     Cold replica parse in LoadFromRedis is off accept path; track JSON uses parser scan budgets.
-//   - SegmentConversionHandler async PG/Redis vs inline on accept:
+//   - SegmentConversionHandler async Postgres/Redis vs inline on accept:
 //     Conversion events enqueue segment membership in background; keeps /track accept off Postgres.
 //
 // Forbidden:

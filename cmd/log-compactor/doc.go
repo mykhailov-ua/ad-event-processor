@@ -1,4 +1,4 @@
-// Package main compacts hot log segments to warm tier (and optional cold CH rollup).
+// Package main compacts hot log segments to warm tier (and optional cold ClickHouse rollup).
 //
 // Role:
 //   - Load config via config.LoadLogCompactor; run logpipeline.NewCompactor on source_dir -> warm_dir.

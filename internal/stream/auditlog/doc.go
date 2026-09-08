@@ -7,7 +7,7 @@
 //
 // Topology:
 //   - Called on tracker Tier B after filter outcome (filter.SetWriteAuditLog via ingest/compat).
-//   - StreamConsumer and BrokerStreamConsumer call Write after durable CH batch store (cold replay path).
+//   - StreamConsumer and BrokerStreamConsumer call Write after durable ClickHouse batch store (cold replay path).
 //   - Async logger shard sink; not a synchronous ClickHouse or Postgres insert.
 //
 // Sampling:

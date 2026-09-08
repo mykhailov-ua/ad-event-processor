@@ -156,7 +156,7 @@ func bytesEqualFoldASCII(b []byte, lit string) bool {
 	return true
 }
 
-// detectPlatformToken scans Sec-CH-UA-Platform; Linux is ignored when Android appears in the same string.
+// detectPlatformToken scans Sec-ClickHouse-UA-Platform; Linux is ignored when Android appears in the same string.
 func detectPlatformToken(platform string) uint8 {
 	if platform == "" {
 		return wirePlatformUnset

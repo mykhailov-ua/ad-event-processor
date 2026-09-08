@@ -1,4 +1,4 @@
-// L3 onboarding wizard: multi-step drafts + POST wizard session; URL step sync via useCampaignWizardPanelLoad.
+// onboarding wizard: multi-step drafts + POST wizard session; URL step sync via useCampaignWizardPanelLoad.
 import { useCallback, useEffect, useMemo, useState } from 'react';
 import { useSearchParams } from 'react-router-dom';
 import { toast } from 'sonner';
@@ -23,6 +23,7 @@ import {
   microQueryParamToUsdInput,
   usdInputToMicroQueryParam,
 } from '@/domains/campaigns/list/campaign_list_format';
+import { newRandomUuid } from '@/lib/uuid';
 import { useCampaignWizardPanelLoad } from '@/domains/campaigns/editor/use_campaign_wizard_panel_load';
 import { useSession } from '@/hooks/use_session';
 
@@ -259,7 +260,7 @@ export function useCampaignWizardPanelWorkspace({
       const result = await postCampaignWizardSession({
         action: 'commit',
         session_id: id,
-        idempotency_key: crypto.randomUUID(),
+        idempotency_key: newRandomUuid(),
         publish: publishOnCommit,
       });
       setCommitResult(result as CampaignWizardCommitResult);

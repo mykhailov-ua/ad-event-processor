@@ -222,9 +222,9 @@ func seedCustomerName(seq int) string {
 	goal := seedCampaignGoalLabels[(idx+seq+cycle)%len(seedCampaignGoalLabels)]
 	switch cycle % 3 {
 	case 0:
-		return fmt.Sprintf("%s — %s", base, region)
+		return fmt.Sprintf("%s - %s", base, region)
 	case 1:
-		return fmt.Sprintf("%s — %s", base, goal)
+		return fmt.Sprintf("%s - %s", base, goal)
 	default:
 		return fmt.Sprintf("%s %s", region, base)
 	}
@@ -247,11 +247,11 @@ func seedCampaignName(seq int) string {
 	goal := seedCampaignGoalLabels[goalIdx]
 	switch variantIndex % 4 {
 	case 0:
-		return fmt.Sprintf("%s — %s %s", base, flight, goal)
+		return fmt.Sprintf("%s - %s %s", base, flight, goal)
 	case 1:
 		return fmt.Sprintf("%s (%s, %s)", base, flight, goal)
 	case 2:
-		return fmt.Sprintf("%s, %s — %s", flight, base, goal)
+		return fmt.Sprintf("%s, %s - %s", flight, base, goal)
 	default:
 		return fmt.Sprintf("%s / %s / %s", base, flight, goal)
 	}
@@ -287,7 +287,7 @@ func seedCreativeDisplayName(seq int) string {
 		return kind
 	}
 	brand := seedBrandNames[(idx/len(seedCreativeNames))%len(seedBrandNames)]
-	return fmt.Sprintf("%s — %s", kind, brand)
+	return fmt.Sprintf("%s - %s", kind, brand)
 }
 
 func seedBrandDisplayName(seq int) string {

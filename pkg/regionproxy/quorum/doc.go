@@ -8,7 +8,7 @@
 // Topology:
 //   - internal/shardadmin OperationLeaseWorker books via host ControlRedis().
 //   - pkg/regionproxy/opkey BatchCommitter calls Book/Transition before regional uplink forward (optional).
-//   - Pairs with global control operation_leases PG rows and region-proxy uplink batches.
+//   - Pairs with global control operation_leases Postgres rows and region-proxy uplink batches.
 //
 // Invariants:
 //   - QuorumMet when SCard(ack) >= Required(replicaCount); stored replica_count on the lease hash overrides caller default when present.

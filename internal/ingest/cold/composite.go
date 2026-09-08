@@ -52,7 +52,7 @@ func FormatUUIDCanonical(dst *[36]byte, id uuid.UUID) {
 
 func ComputeCompositeHashUUID(campaignID uuid.UUID, userID []byte) uint32 {
 	// CRC32-IEEE chain: canonical 36-char campaign UUID then raw user_id bytes.
-	// Matches Redis stream sharding and CH dedup; returns 0 only when both inputs empty.
+	// Matches Redis stream sharding and ClickHouse dedup; returns 0 only when both inputs empty.
 	var crc uint32
 	var started bool
 

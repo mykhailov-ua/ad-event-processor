@@ -109,7 +109,7 @@ func seedApplianceLandersOffers(ctx context.Context, tx pgx.Tx, count int) ([]uu
 	for seq := 1; seq <= count; seq++ {
 		landerID := seedDeterministicUUID("lander", seq)
 		offerID := seedDeterministicUUID("offer", seq)
-		landerName := fmt.Sprintf("%s — %s", seedCampaignName(seq), seedCampaignFlightLabels[(seq-1)%len(seedCampaignFlightLabels)])
+		landerName := fmt.Sprintf("%s - %s", seedCampaignName(seq), seedCampaignFlightLabels[(seq-1)%len(seedCampaignFlightLabels)])
 		offerName := fmt.Sprintf("%s offer", seedCampaignName(seq))
 
 		_, err := tx.Exec(ctx, `

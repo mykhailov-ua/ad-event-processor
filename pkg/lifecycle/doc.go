@@ -27,14 +27,14 @@
 //   - Register skips readyz when ready probe is nil; healthz always registered when mux non-nil.
 //
 // Tradeoffs:
-//   - Generic probes vs domain checks: this package does not ping Redis/PG; callers wire check funcs.
+//   - Generic probes vs domain checks: this package does not ping Redis/Postgres; callers wire check funcs.
 //   - Background readiness ticker vs synchronous readyz: avoids blocking HTTP on dependency I/O.
 //   - Fixed sidecar timeouts vs per-binary tuning: shared constants reduce drift across sidecars.
 //   - RunHealthProbe minimal HTTP client vs shared transport: one-shot probes for compose; no connection pool.
 //
 // Forbidden:
 //   - pkg/* must not import internal/*.
-//   - Not a substitute for domain-specific readiness (Redis/PG checks stay in caller check func).
+//   - Not a substitute for domain-specific readiness (Redis/Postgres checks stay in caller check func).
 //
 // Verify:
 //

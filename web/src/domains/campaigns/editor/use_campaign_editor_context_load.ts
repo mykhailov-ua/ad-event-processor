@@ -1,4 +1,4 @@
-// L3 editor context panel: one loadKey at a time (geo|fraud|shell); loadToken bump re-fetches active lane on expand/preview toggle.
+// editor context panel: one loadKey at a time (geo|fraud|shell); loadToken bump re-fetches active lane on expand/preview toggle.
 import { useCallback, useEffect, useState } from 'react';
 
 import {

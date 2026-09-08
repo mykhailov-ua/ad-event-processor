@@ -1,4 +1,4 @@
-// L3 postbacks hub: configs/DLQ/test tabs over fetchPostbacksSnapshot; per-tab draft forms.
+// postbacks hub: configs/DLQ/test tabs over fetchPostbacksSnapshot; per-tab draft forms.
 import { useCallback, useMemo, useState } from 'react';
 import { toast } from 'sonner';
 

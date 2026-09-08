@@ -39,7 +39,7 @@ import (
 	"github.com/redis/go-redis/v9"
 )
 
-// Service control plane composition root; cold path only (PG, Redis shards, CH query, outbox).
+// Service control plane composition root; cold path only (Postgres, Redis shards, ClickHouse query, outbox).
 type Service struct {
 	pool                     *pgxpool.Pool
 	settlementPostgresPool   *pgxpool.Pool

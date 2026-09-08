@@ -1,6 +1,6 @@
 #!/usr/bin/env bash
-# Role: Full PG + ClickHouse synthetic demo for appliance testers (campaigns, stats, billing, landers, Redis budgets).
-# Execution context: systemd install with docker PG/Redis/CH; uses bin/admin on INSTALL_ROOT.
+# Role: Full Postgres + ClickHouse synthetic demo for appliance testers (campaigns, stats, billing, landers, Redis budgets).
+# Execution context: systemd install with docker Postgres/Redis/ClickHouse; uses bin/admin on INSTALL_ROOT.
 # Env knobs: SEED_APPLIANCE_COUNT (default 100); SEED_GLORY_CUSTOMER_ID; SEED_STATS_DAYS (default 30).
 # Verify: bash scripts/ops/seed_appliance_demo.sh
 set -euo pipefail

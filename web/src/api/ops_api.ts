@@ -1,4 +1,5 @@
 import { apiFetch, apiJson, apiJsonArray, parseApiError } from './client.js';
+import { newRandomUuid } from '@/lib/uuid';
 import type {
   DashboardMetrics,
   DashboardMetricsQuery,
@@ -109,10 +110,7 @@ export async function retryDlqInboxEntry(
   source: string,
   signal?: AbortSignal
 ): Promise<void> {
-  const idempotencyKey =
-    typeof crypto !== 'undefined' && 'randomUUID' in crypto
-      ? crypto.randomUUID()
-      : `${Date.now()}-${Math.random()}`;
+  const idempotencyKey = newRandomUuid();
 
   const response = await apiFetch(`/api/v1/ops/dlq/inbox/${encodeURIComponent(id)}/retry`, {
     method: 'POST',

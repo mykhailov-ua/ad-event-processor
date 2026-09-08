@@ -1,4 +1,4 @@
-// L3 telegram bot editor: GET bot + campaign context; configure/deeplink/initData test mutations.
+// telegram bot editor: GET bot + campaign context; configure/deeplink/initData test mutations.
 import { useCallback, useEffect, useState } from 'react';
 import { useParams } from 'react-router-dom';
 import { toast } from 'sonner';

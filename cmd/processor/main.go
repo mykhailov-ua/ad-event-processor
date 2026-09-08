@@ -1,7 +1,7 @@
 // Processor entrypoint. Package documentation: doc.go.
 //
 // Cold-path consumer wiring lives in main.go (no wire.go): Redis streams and optional mmap
-// broker -> SettlementWorker (PG stats) + StreamConsumer/BrokerConsumerGroup (CH batches).
+// broker -> SettlementWorker (Postgres stats) + StreamConsumer/BrokerConsumerGroup (ClickHouse batches).
 package main
 
 import (
@@ -42,7 +42,7 @@ import (
 )
 
 func main() {
-	// CLI probes and license watchdog exit before config.Load: no PG, Redis, or consumers on those paths.
+	// CLI probes and license watchdog exit before config.Load: no Postgres, Redis, or consumers on those paths.
 	if len(os.Args) > 2 && os.Args[1] == "--health-probe" {
 		if !lifecycle.RunHealthProbe(os.Args[2]) {
 			os.Exit(1)
@@ -108,11 +108,11 @@ func main() {
 		}
 	}
 
-	// consumerCtx: stream/broker settlement and CH consumers; cancelled first on SIGTERM.
+	// consumerCtx: stream/broker settlement and ClickHouse consumers; cancelled first on SIGTERM.
 	consumerCtx, consumerCancel := context.WithCancel(context.Background())
 	defer consumerCancel()
 
-	// syncCtx: per-shard SyncWorker budget reconciliation; cancelled after CH/PG consumers drain.
+	// syncCtx: per-shard SyncWorker budget reconciliation; cancelled after ClickHouse/Postgres consumers drain.
 	syncCtx, syncCancel := context.WithCancel(context.Background())
 	defer syncCancel()
 
@@ -250,7 +250,7 @@ func main() {
 	})
 	streamTrimmer.Start(consumerCtx)
 
-	// Phase 3: PG settlement store (gated writes); CH store wraps same settle path when clickhouse-first.
+	// Phase 3: Postgres settlement store (gated writes); ClickHouse store wraps same settle path when clickhouse-first.
 	pgStore := ingestion.NewPostgresStoreWithGate(settleQueries, time.Duration(cfg.WriteTimeoutMs)*time.Millisecond, processorPostgresGate)
 	piiHasher, piiErr := piihash.NewFromSalt(cfg.PIISaltVersion, string(cfg.PIISaltHex), string(cfg.TokenSymmetricKey))
 	if piiErr != nil {
@@ -277,7 +277,7 @@ func main() {
 		}
 	}
 
-	// clickhouse-first: PG settlement stats-only; events authoritative in CH when enabled.
+	// clickhouse-first: Postgres settlement stats-only; events authoritative in ClickHouse when enabled.
 	settleStore := domain.EventStore(pgStore)
 	if clickhouseStore != nil {
 		settleStore = ingestion.NewSettlementStore(pgStore, true)
@@ -478,7 +478,7 @@ func main() {
 		)
 	}
 
-	// Per-shard workers: SyncWorker (budget), SettlementWorker (PG stream), StreamConsumer (_ch/_fraud).
+	// Per-shard workers: SyncWorker (budget), SettlementWorker (Postgres stream), StreamConsumer (_ch/_fraud).
 	// CH_INGEST_SOURCE=broker disables Redis SettlementWorker and _ch/_fraud StreamConsumers on this path.
 	for i, redisClient := range redisShards {
 		shardID := fmt.Sprintf("shard_%d", i)
@@ -528,7 +528,7 @@ func main() {
 		}
 
 		if clickhouseStore != nil && !cfg.BrokerPrimaryCH() {
-			// StreamConsumer _ch: same ad:events stream as settlement; separate consumer group for CH batch ingest.
+			// StreamConsumer _ch: same ad:events stream as settlement; separate consumer group for ClickHouse batch ingest.
 			cc := ingestion.NewStreamConsumer(
 				clickhouseStore,
 				redisClient,
@@ -607,7 +607,7 @@ func main() {
 	}
 
 	// Phase 6: mmap WAL broker bridge when BROKER_ENABLED=1.
-	// PG partition consumers always; CH/fraud BrokerConsumerGroup when clickhouseStore set;
+	// Postgres partition consumers always; ClickHouse/fraud BrokerConsumerGroup when clickhouseStore set;
 	// reconcile worker only when CH_INGEST_SOURCE != broker (shadow/dual-path divergence).
 	if cfg.BrokerEnabled() {
 		brokerRedisURL := cfg.Broker.RedisURL
@@ -633,7 +633,7 @@ func main() {
 		retryMax := time.Duration(cfg.RetryMaxWaitMs) * time.Millisecond
 
 		for p := range partCount {
-			// BrokerStreamConsumer _pg_broker: PG settlement from broker topic (parallel to Redis stream path).
+			// BrokerStreamConsumer _pg_broker: Postgres settlement from broker topic (parallel to Redis stream path).
 			pgBrokerCfg := brokerBase
 			pgBrokerCfg.Partition = uint16(p)
 			pgBrokerCfg.Group = cfg.RedisGroupName + "_pg_broker"
@@ -645,7 +645,7 @@ func main() {
 		}
 
 		if clickhouseStore != nil {
-			// BrokerConsumerGroup _ch_broker: authoritative CH ingest when CH_INGEST_SOURCE=broker.
+			// BrokerConsumerGroup _ch_broker: authoritative ClickHouse ingest when CH_INGEST_SOURCE=broker.
 			chGroupCfg := BrokerConsumerGroupConfig{
 				BrokerAddr:     cfg.Broker.URL,
 				RedisURL:       brokerRedisURL,
@@ -678,7 +678,7 @@ func main() {
 
 		if clickhouseStore != nil && cfg.BrokerPrimaryCH() {
 			slog.Info("processor: Redis _fraud StreamConsumer disabled (CH_INGEST_SOURCE=broker)")
-			// BrokerConsumerGroup _fraud_broker: fraud topic when broker is sole CH ingest path.
+			// BrokerConsumerGroup _fraud_broker: fraud topic when broker is sole ClickHouse ingest path.
 			fraudGroupCfg := BrokerConsumerGroupConfig{
 				BrokerAddr:     cfg.Broker.URL,
 				RedisURL:       brokerRedisURL,
@@ -761,7 +761,7 @@ func main() {
 	}
 
 	// Phase 7: HTTP sidecar on PROCESSOR_PORT (default 8186): /metrics, /health, /ready.
-	// Readiness fails when PG/CH/Redis ping fails, CH spool over max segments, or stream lag exceeds cap.
+	// Readiness fails when Postgres/ClickHouse/Redis ping fails, ClickHouse spool over max segments, or stream lag exceeds cap.
 	mux := http.NewServeMux()
 	mux.Handle("GET /metrics", promhttp.Handler())
 	live := &lifecycle.Liveness{}
@@ -826,7 +826,7 @@ func main() {
 	// Shutdown drain (LIFECYCLE_SHUTDOWN_TIMEOUT_MS / LIFECYCLE_WAIT_TIMEOUT_MS):
 	// 1) consumerCancel stops stream/broker fetch loops
 	// 2) broker Close then HTTP server Shutdown
-	// 3) broker Wait, settlement Wait, CH consumers Wait, clickhouseStore.Close
+	// 3) broker Wait, settlement Wait, ClickHouse consumers Wait, clickhouseStore.Close
 	// 4) syncCancel + SyncWorker Wait, partition manager, stream trimmer, Redis Close
 	shutdownCtx, shutdownCancel := context.WithTimeout(context.Background(), time.Duration(cfg.Lifecycle.ShutdownTimeoutMs)*time.Millisecond)
 	defer shutdownCancel()

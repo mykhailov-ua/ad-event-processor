@@ -44,13 +44,17 @@ There is no in-browser mock API tier. Chart preview (`?chart_mock=1`) is dashboa
 | `audit.spec.js` | `/api/v1/audit` |
 | `automation_rules.spec.js` | `/api/v1/automation/rules` |
 | `campaign_editor.spec.js` | `/api/v1/campaigns/:id` on editor open |
-| `campaigns_filters.spec.js` | `/api/v1/campaigns` list bind |
+| `campaigns_filters.spec.js` | `/api/v1/campaigns` list bind; status GET; pacing overlay; Report link |
+| `campaign_single_clone.spec.js` | POST `/api/v1/campaigns/{id}/clone` (L2 API) |
 | `click_log.spec.js` | `/api/v1/reports/click-log` on Apply |
+| `edge_parity.spec.js` | `/api/v1/reports/edge-parity` on load |
 | `creative_flows.spec.js` | `/api/v1/flows`, `/api/v1/landers` |
 | `flow_stream.spec.js` | `/api/v1/flows/validate` 400; visual weight ErrorBlock; L2 flow -> campaign -> `/click` redirect |
 | `customer_detail_billing.spec.js` | `/api/v1/customers`, `/api/v1/customers/:id` |
 | `dashboards.spec.js` | `/api/v1/dashboards/buyer` on Apply |
 | `fraud_labels.spec.js` | `/api/v1/fraud/labels` |
+| `fraud_decision.spec.js` | `/api/v1/fraud/decisions` on Explain |
+| `fraud_integrations.spec.js` | `/api/v1/fraud/integrations` on Load |
 | `fraud_presets.spec.js` | `/api/v1/fraud/presets` |
 | `integrations_hub.spec.js` | Per integrations section GET |
 | `integrations_postbacks_health.spec.js` | `/api/v1/postbacks/health` on Health tab |
@@ -59,6 +63,7 @@ There is no in-browser mock API tier. Chart preview (`?chart_mock=1`) is dashboa
 | `ops_dlq.spec.js` | `/api/v1/ops/dlq/inbox` |
 | `portals_smoke.spec.js` | Self-serve / publisher reads |
 | `reports.spec.js` | `/api/v1/reports/catalog` |
+| `rtb.spec.js` | `/api/v1/reports/rtb/overview` when licensed |
 | `rtb_deals.spec.js` | `/api/v1/rtb/deals` |
 | `settings.spec.js` | `/api/v1/settings/platform` |
 | `sidebar.spec.js` | `/api/v1/session` after login |
@@ -74,6 +79,8 @@ Mutation specs carry `{ tag: '@write' }` on each test:
 | File | Mutation |
 | :--- | :--- |
 | `campaigns_bulk_pause.spec.js` | POST `/api/v1/campaigns/bulk` |
+| `campaign_bulk_clone.spec.js` | POST `/api/v1/campaigns/bulk-clone` |
+| `campaign_single_clone.spec.js` | POST `/api/v1/campaigns/{id}/clone` |
 | `campaign_publish.spec.js` | POST validate + GET publish-check |
 | `fraud_labels_write.spec.js` | POST `/api/v1/fraud/labels` |
 | `fraud_overrides_write.spec.js` | POST `/api/v1/fraud/overrides` |

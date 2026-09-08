@@ -1,4 +1,4 @@
-// L3 telegram bots directory: list snapshot + navigate to per-campaign editor by id.
+// telegram bots directory: list snapshot + navigate to per-campaign editor by id.
 import { useCallback, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 

@@ -1,4 +1,4 @@
-// L3 dashboard page: URL searchParams are applied filters; draft* mirrors controls until commitFilters.
+// dashboard page: URL searchParams are applied filters; draft* mirrors controls until commitFilters.
 // GET /dashboards/{role} requires customer_id; 403 clears error when licenseGated (StubBanner path).
 import { useCallback, useEffect, useMemo, useState, useTransition } from 'react';
 import { useNavigate, useParams } from 'react-router-dom';

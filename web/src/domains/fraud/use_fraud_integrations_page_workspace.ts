@@ -1,4 +1,4 @@
-// L3 fraud integration health list: scoped by applied customer_id in URL; no fetch until customer applied.
+// fraud integration health list: scoped by applied customer_id in URL; no fetch until customer applied.
 import { listFraudIntegrations } from '@/api/fraud_api';
 import { useCustomerScope } from '@/hooks/use_customer_scope';
 import { useResource } from '@/api/use_resource';

@@ -19,6 +19,7 @@ test('flows visual create dialog exposes stream editor', async ({ page }) => {
   await expect(page.getByRole('heading', { name: 'Create flow' })).toBeVisible();
   await expect(page.getByRole('button', { name: '50 / 50 split' })).toBeVisible();
   await expect(page.getByLabel('Weight %')).toBeVisible();
+  await expect(page.getByText('PAGE ERROR')).toHaveCount(0);
 });
 
 test('flows list loads from GET /api/v1/flows', async ({ page }) => {

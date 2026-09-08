@@ -17,7 +17,7 @@ func RTBCHStats(ctx context.Context, host ReconInfraHost, requestID string, wind
 		return RtbReconcileCHStats{}, false
 	}
 	since := time.Now().UTC().Add(-window)
-	// spend_micro sums won bids only; aligns with PG settlement lag checks in RTB admin reconcile.
+	// spend_micro sums won bids only; aligns with Postgres settlement lag checks in RTB admin reconcile.
 	query := `
 SELECT
  count() AS bids,

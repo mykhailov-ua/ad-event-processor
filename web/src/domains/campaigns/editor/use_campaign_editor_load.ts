@@ -1,4 +1,4 @@
-// L3 campaign editor load: GET campaign + flow; campaignSnapshot tracks post-mutation state separate from useResource data.
+// campaign editor load: GET campaign + flow; campaignSnapshot tracks post-mutation state separate from useResource data.
 // Auto publish-check once when status is PAUSED (autoPublishCheckDone ref resets on id change).
 import { useEffect, useMemo, useRef, useState } from 'react';
 import { useParams } from 'react-router-dom';

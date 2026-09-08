@@ -3,9 +3,11 @@ import { Link, Navigate, useLocation, useParams } from 'react-router-dom';
 import { useResource } from '@/api/use_resource';
 import { fetchReportCatalogCached } from '@/lib/report_catalog_cache';
 import { resolveReportCatalogKey, typedReportRedirectPath } from '@/lib/report_paths';
+import { ErrorBlock } from '@/shell/error_block';
 import { PageLayout } from '@/shell/page_layout';
 import { StubBanner } from '@/shell/stub_banner';
 import { DirectoryStack, MetaLinksBand } from '@/shell/ui_bands';
+import { PageSkeleton } from '@/shell/page_skeleton';
 
 type ReportRunnerPageProps = {
   reportKey?: string;
@@ -18,11 +20,23 @@ export function ReportRunnerPage({ reportKey: reportKeyProp }: ReportRunnerPageP
   const resolvedKey = resolveReportCatalogKey(decodeURIComponent(rawKey));
   const redirectPath = typedReportRedirectPath(resolvedKey);
 
-  const { data: catalog } = useResource((signal) => fetchReportCatalogCached(signal), []);
+  const { data: catalog, error, fetching } = useResource((signal) => fetchReportCatalogCached(signal), []);
   const catalogRow = catalog?.rows?.find((row) => row.key === resolvedKey);
 
   if (redirectPath) {
     return <Navigate replace to={`${redirectPath}${location.search}`} />;
+  }
+
+  if (fetching && !catalog && !error) {
+    return <PageSkeleton />;
+  }
+
+  if (error && !catalog) {
+    return (
+      <PageLayout title="Report">
+        <ErrorBlock title="Could not load report catalog" message={error.message} />
+      </PageLayout>
+    );
   }
 
   return (

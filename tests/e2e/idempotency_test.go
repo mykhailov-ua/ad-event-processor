@@ -1,4 +1,4 @@
-// Role: click_id idempotency across UnifiedFilter Lua, Redis stream length, PG events, SyncWorker sync_idempotency.
+// Role: click_id idempotency across UnifiedFilter Lua, Redis stream length, Postgres events, SyncWorker sync_idempotency.
 // Tier: e2e.
 // Infra: testcontainers Postgres (ads schema), single Redis.
 // Invariants proved: duplicate POST accepts but debits once; XLen=1; sync_idempotency row count stable on retry SyncAll.

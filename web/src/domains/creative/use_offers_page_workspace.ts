@@ -1,4 +1,4 @@
-// L3 offers directory: list, create, edit, delete (EH-SI1).
+// offers directory: list, create, edit, delete.
 import { useCallback, useState } from 'react';
 import { toast } from 'sonner';
 

@@ -1,7 +1,7 @@
 #!/usr/bin/env bash
 set -euo pipefail
 
-# Role: merge-integration query-budget gate; sublinear PG query growth vs input N on bulk admin routes.
+# Role: merge-integration query-budget gate; sublinear Postgres query growth vs input N on bulk admin routes.
 # Execution context: CI merge-integration via integration_test.sh; local reproduction with Docker.
 # Invariants/contracts enforced: TestQueryBudget_Sublinear* must pass without -short.
 # Verify: bash scripts/ci/query_budget_gate.sh

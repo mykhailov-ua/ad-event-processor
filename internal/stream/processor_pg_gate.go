@@ -15,7 +15,7 @@ const ProcessorPgReserve = 1
 const ProcessorChReserve = 1
 
 // ProcessorWriteGate bounds concurrent StoreBatch writes per backend (postgres/clickhouse).
-// WaitEMA feeds ProcessorWeightController pgDrainActive (floor weight when PG saturated).
+// WaitEMA feeds ProcessorWeightController pgDrainActive (floor weight when Postgres saturated).
 type ProcessorWriteGate struct {
 	sem      chan struct{}
 	capacity int

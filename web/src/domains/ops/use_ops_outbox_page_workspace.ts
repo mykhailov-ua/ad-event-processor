@@ -1,4 +1,4 @@
-// L3 outbox inspector: cursor_stack URL pagination (same pattern as DLQ inbox).
+// outbox inspector: cursor_stack URL pagination (same pattern as DLQ inbox).
 import { useCallback, useMemo } from 'react';
 
 import { listOpsOutbox } from '@/api/ops_api';

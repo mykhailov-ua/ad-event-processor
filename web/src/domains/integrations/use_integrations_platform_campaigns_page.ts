@@ -1,4 +1,4 @@
-// L3 platform campaigns page: customer scope gates list fetch; row mutations coalesce bumpRefresh while listBusy.
+// platform campaigns page: customer scope gates list fetch; row mutations coalesce bumpRefresh while listBusy.
 import { useCallback, useState } from 'react';
 
 import {
@@ -13,6 +13,7 @@ import {
 } from '@/api/integrations_api';
 import type { PlatformCampaignLink, PlatformCampaignMutation } from '@/api/types';
 import { confirmDestructiveAction, mutationError as toMutationError } from '@/lib/mutation_audit';
+import { newRandomUuid } from '@/lib/uuid';
 import { useCoalescedBumpRefresh, useRefreshToken } from '@/hooks/use_coalesced_refresh_token';
 import { useCustomerScope } from '@/hooks/use_customer_scope';
 import { useResource } from '@/api/use_resource';
@@ -208,7 +209,7 @@ export function useIntegrationsPlatformCampaignsPage() {
       }
       const body = {
         network,
-        idempotency_key: crypto.randomUUID(),
+        idempotency_key: newRandomUuid(),
         ...(action === 'budget'
           ? { daily_budget_micro: Number.parseInt(draftDailyBudgetMicro.trim(), 10) }
           : {}),

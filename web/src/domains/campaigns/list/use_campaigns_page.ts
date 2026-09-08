@@ -1,4 +1,4 @@
-// L3 campaigns page owner: URL searchParams are applied filters; draft* until commit; delegates list fetch to useCampaignsPageList (RF-9).
+// campaigns page owner: URL searchParams are applied filters; draft* until commit; delegates list fetch to useCampaignsPageList.
 import { useCallback, useEffect, useMemo, useState } from 'react';
 import { toast } from 'sonner';
 

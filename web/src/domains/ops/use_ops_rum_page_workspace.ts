@@ -1,4 +1,4 @@
-// L3 RUM snapshot: lazy load (loadToken 0 skips fetch until operator clicks Load).
+// RUM snapshot: lazy load (loadToken 0 skips fetch until operator clicks Load).
 import { useState } from 'react';
 
 import { getOpsRum } from '@/api/ops_api';

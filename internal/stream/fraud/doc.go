@@ -10,7 +10,7 @@
 // Topology:
 //   - Called from tracker Tier B after filter decision; background worker flushes XADD batches to per-shard Redis streams.
 //   - L3 blocklist and dual-L1-high signals bypass aggregation (fraudAggregateExempt); L3 never coalesced (holdout).
-//   - layer_desync_count copied into vtproto payload for CH funnel parity with edge vs filter desync signals.
+//   - layer_desync_count copied into vtproto payload for ClickHouse funnel parity with edge vs filter desync signals.
 //
 // Invariants:
 //   - fraudAggregateExempt events (L3 blocklist, >=2 L1-high signals) route to critical lane only; never enter agg table.
@@ -24,7 +24,7 @@
 //     critical lane preserves per-event rows for enforcement signals that must not be coalesced. Rejected: single ring with drop-on-full
 //     for L3 blocks (TestFault_FraudStreamL3NeverAggregated holdout).
 //   - L3 exemption: fraudAggregateExempt sends L3 blocklist and dual-L1-high events to critical lane even when analytical fill >=80%;
-//     aggregation subnet table skips exempt codes. CH funnels count individual blocks; coalescing would under-count enforcement.
+//     aggregation subnet table skips exempt codes. ClickHouse funnels count individual blocks; coalescing would under-count enforcement.
 //   - Aggregation vs per-event: at fraudAggThreshold (~80% of analytical usable slots) or fraud:agg_force, subnet/reason cells collapse
 //     many signals into fraud_aggregate rows to protect Redis stream RAM and processor PEL. L2-only and single-L1 signals may aggregate.
 //   - Broker vs Redis sink: SetBrokerSink skips shard XADD when CH_INGEST_SOURCE=broker; same slot layout and exempt routing either way.

@@ -14,7 +14,7 @@
 //
 // Invariants:
 //   - BPFTraceBuildTag matches //go:build tag in traceprobe markers and scripts/dev/stack/build_tracker_bpf_trace.sh.
-//   - LegacyVendorEnvKey(suffix) equals DeprecatedVendorEnvPrefix()+suffix at runtime (ESPX_ env family).
+//   - LegacyVendorEnvKey(suffix) equals DeprecatedVendorEnvPrefix()+suffix at runtime (deprecated vendor env prefix family).
 //   - DeprecatedIngressNativeSchema maps to ad_event_processor_native via platformconfig.NormalizeIngressSchema.
 //   - String literals for forbidden legacy tokens are split in source (ES+PX_, es+px) so naming.mdc CI grep stays clean.
 //

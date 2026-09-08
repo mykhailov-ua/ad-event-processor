@@ -1,4 +1,4 @@
-// L3 fraud decision lookup: URL searchParams are applied filters; draft* sync on navigation.
+// fraud decision lookup: URL searchParams are applied filters; draft* sync on navigation.
 // GET /fraud/decision runs only when customer_id and ip_hash are set (useResource gate).
 import { useCallback, useEffect, useState } from 'react';
 import { useSearchParams } from 'react-router-dom';

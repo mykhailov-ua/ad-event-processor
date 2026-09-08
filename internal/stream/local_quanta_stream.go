@@ -270,7 +270,7 @@ func fillLocalQuantaStreamSlot(slot *localQuantaStreamSlot, shard int, evt *doma
 }
 
 // Enqueue claims the next lane slot on Tier B after local TrySpendDebit. False on ring full (drop
-// metric); no TryReserve here — ingest TryReserve covers StreamProducer/BrokerProducer admission.
+// metric); no TryReserve here  -  ingest TryReserve covers StreamProducer/BrokerProducer admission.
 func (p *LocalQuantaStreamPublisher) Enqueue(shard int, evt *domain.Event, camp *domain.Campaign, amountMicro int64) bool {
 	if p == nil || evt == nil {
 		return false

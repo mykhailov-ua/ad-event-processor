@@ -1,4 +1,5 @@
 import type { FlowPath } from '@/api/types';
+import { newRandomUuid } from '@/lib/uuid';
 
 export type FlowPathVisualRow = {
   row_id: string;
@@ -14,7 +15,7 @@ const WEIGHT_TOLERANCE = 0.01;
 
 export function newFlowPathRow(): FlowPathVisualRow {
   return {
-    row_id: crypto.randomUUID(),
+    row_id: newRandomUuid(),
     weight: 100,
     lander_id: '',
     offer_id: '',
@@ -28,7 +29,7 @@ export function flowPathsToVisualRows(paths: FlowPath[]): FlowPathVisualRow[] {
     return [newFlowPathRow()];
   }
   return paths.map((path) => ({
-    row_id: crypto.randomUUID(),
+    row_id: newRandomUuid(),
     weight: path.weight ?? 0,
     lander_id: path.landers?.[0]?.lander_id ?? '',
     offer_id: path.offers?.[0]?.offer_id ?? '',

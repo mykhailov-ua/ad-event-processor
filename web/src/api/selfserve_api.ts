@@ -12,14 +12,12 @@ import type {
   SelfServeTemplateListResponse,
 } from './types.js';
 import type { components } from '../types/generated/openapi.js';
+import { newRandomUuid } from '@/lib/uuid';
 
 type IDCreatedResponse = components['schemas']['IDCreatedResponse'];
 
 function newIdempotencyKey(): string {
-  if (typeof crypto !== 'undefined' && 'randomUUID' in crypto) {
-    return crypto.randomUUID();
-  }
-  return `${Date.now()}-${Math.random()}`;
+  return newRandomUuid();
 }
 
 export function buildSelfServeTemplatesPath(customerId: string): string {

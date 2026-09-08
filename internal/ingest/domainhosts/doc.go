@@ -30,13 +30,13 @@
 //
 // Tradeoffs:
 //   - RCU atomic.Pointer snapshot vs per-request Postgres domain_pool_domains query: snapshot chosen;
-//     PG on /click accept path rejected (SLA + hot-path.mdc Tier B must not block on admin DB).
+//     Postgres on /click accept path rejected (SLA + hot-path.mdc Tier B must not block on admin DB).
 //   - Background Sync poll interval vs freshness: stale pool for one interval is acceptable; landing
 //     rotation is best-effort and reconciled on next publish; rejected blocking Tier B on reload.
 //   - In-snapshot banned-host linear scan vs Redis SET membership on every redirect: scan stays in
 //     process memory on the pinned worker (~tens of hosts per pool); rejected extra Redis RTT on /click.
 //   - Pool-scoped fallback (next active host in same pool_id) vs global domain ban table: pool rotation
 //     isolates blast radius; global bans remain on edge L7/XDP and fraud filters, not this table.
-//   - Sync goroutine isolated from hot path vs inline refresh on cache miss: miss does not trigger PG;
-//     rejected LISTEN/NOTIFY or admin webhook into tracker for domain edits (cold outbox -> PG -> poll).
+//   - Sync goroutine isolated from hot path vs inline refresh on cache miss: miss does not trigger Postgres;
+//     rejected LISTEN/NOTIFY or admin webhook into tracker for domain edits (cold outbox -> Postgres -> poll).
 package domainhosts

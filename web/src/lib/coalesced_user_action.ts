@@ -1,5 +1,4 @@
-// User-action coalescing (frontend-slop.mdc RF-* / User action coalescing).
-// Pure verdict function; React hooks wrap this with refs.
+// User-action coalescing: pure verdict function; React hooks wrap this with refs.
 //
 // Returns:
 // - allow: invoke the guarded callback

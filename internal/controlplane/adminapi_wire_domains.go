@@ -55,7 +55,7 @@ func (h *Handler) wireAdminDomainRoutes(reg *RouteRegistry, e adminWireEnv) {
 	selfServePaymentProvider := e.selfServePaymentProvider
 	selfServeCryptoSubProvider := e.selfServeCryptoSubProvider
 	fraudPresets := e.fraudPresets
-	// ReportsHTTP: CH readonly stats/forecasts; PG views store; license feature gate on premium catalog rows.
+	// ReportsHTTP: ClickHouse readonly stats/forecasts; Postgres views store; license feature gate on premium catalog rows.
 	reg.ReportsHTTP = &reports.ReportsHTTPHandlers{
 		CampaignStats:      campaignStatsAdapter{svc: svc},
 		CampaignForecaster: campaignForecasterAdapter{svc: svc},
@@ -84,7 +84,7 @@ func (h *Handler) wireAdminDomainRoutes(reg *RouteRegistry, e adminWireEnv) {
 		RequireLicenseFeature:     requireLicenseFeature,
 		DenyScopedAPIKeyReport:    selfserve.DenyScopedAPIKeyOperatorReport,
 	}
-	// ReportJobHTTP: async CH/PG export jobs; schedule validation is server-side only.
+	// ReportJobHTTP: async ClickHouse/Postgres export jobs; schedule validation is server-side only.
 	reg.ReportJobHTTP = &reportjob.HTTPHandlers{
 		Runner:                  reportJobs,
 		Pool:                    pool,
@@ -318,7 +318,7 @@ func (h *Handler) wireAdminDomainRoutes(reg *RouteRegistry, e adminWireEnv) {
 			return stats.Bids, stats.Wins, stats.SpendMicro, true
 		},
 	}
-	// CampaignsHTTP: PG mutations and onboarding wizard via Service; CH read-only via ClickHouseQuery.
+	// CampaignsHTTP: Postgres mutations and onboarding wizard via Service; ClickHouse read-only via ClickHouseQuery.
 	reg.CampaignsHTTP = &campaign.CampaignsHTTPHandlers{
 		Campaigns:                  svc,
 		CampaignFraud:              fraudadmin.CampaignFraudAPI{Host: svc, MapErr: mapFraudadminErr},
@@ -368,7 +368,7 @@ func (h *Handler) wireAdminDomainRoutes(reg *RouteRegistry, e adminWireEnv) {
 		AuthorizeCustomerAccess: authCustomer,
 		WriteServiceError:       writeErr,
 	}
-	// SupportHTTP: auth-only (no perm string); support bundle streams PG metadata + local log dir.
+	// SupportHTTP: auth-only (no perm string); support bundle streams Postgres metadata + local log dir.
 	reg.SupportHTTP = &platformadmin.SupportHTTPHandlers{
 		Feedback: svc,
 		SupportBundle: supportBundleWriter{
@@ -385,7 +385,7 @@ func (h *Handler) wireAdminDomainRoutes(reg *RouteRegistry, e adminWireEnv) {
 		WriteError:     writeErr,
 		PaymentEnabled: h.payment != nil,
 	}
-	// SessionHTTP: SPA bootstrap; CH ingestion lag probe when clickhouseQuery configured (readonly).
+	// SessionHTTP: SPA bootstrap; ClickHouse ingestion lag probe when clickhouseQuery configured (readonly).
 	reg.SessionHTTP = func() *platformadmin.SessionHTTPHandlers {
 		sh := wireSessionHTTPHandlers(h.svc, func(ctx context.Context) reports.DataFreshnessDTO {
 			if h.svc != nil && h.svc.clickhouseQuery != nil {

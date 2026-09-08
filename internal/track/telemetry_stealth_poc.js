@@ -186,7 +186,7 @@
     return null;
   }
 
-  // --- Signature mimicry: inert analytics-shaped decoys (never sends outbound). ---
+  // Signature mimicry: inert analytics-shaped decoys (never sends outbound).
   const dataLayer = globalThis.dataLayer || [];
   globalThis.dataLayer = dataLayer;
   function gtag() {

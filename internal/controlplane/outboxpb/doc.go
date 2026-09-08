@@ -16,7 +16,7 @@
 //   - CtvGtaxSettlementPayload, TelegramEventPayload
 //
 // Proto-only (no outbox codec registered yet):
-//   - SettleBalancePayload, ChargebackPayload — payment settlement still JSON-encodes in internal/payment/settlement.
+//   - SettleBalancePayload, ChargebackPayload  -  payment settlement still JSON-encodes in internal/payment/settlement.
 //
 // Invariants:
 //   - Do not hand-edit outbox.pb.go; regenerate with make proto after api/outbox.proto changes.

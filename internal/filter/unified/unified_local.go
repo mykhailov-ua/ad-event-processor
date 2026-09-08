@@ -127,7 +127,7 @@ func (m *RedisBudgetManager) CheckAndSpend(ctx context.Context, customerID, camp
 	ba.args[2] = &ba.campaignIDStr
 	ba.args[3] = &ba.customerIDStr
 
-	// Two-pass: -1 on first attempt hydrates budget:campaign from PG snapshot via SetNX, then retries once.
+	// Two-pass: -1 on first attempt hydrates budget:campaign from Postgres snapshot via SetNX, then retries once.
 	for i := range 2 {
 		res, err := m.redisClient.Eval(ctx, budgetLuaScript, ba.keys[:], ba.args[:]...).Int64()
 		if err != nil {

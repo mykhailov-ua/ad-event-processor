@@ -1,4 +1,4 @@
-// L3 fraud labels directory: server pagination via URL limit/offset; single-row and bulk JSON upsert.
+// fraud labels directory: server pagination via URL limit/offset; single-row and bulk JSON upsert.
 // IP hash validated client-side for UX; server remains authoritative (SV-*).
 import { useCallback, useEffect, useState } from 'react';
 import { toast } from 'sonner';
@@ -11,6 +11,7 @@ import { useSession } from '@/hooks/use_session';
 import { useTransitionSearchParams } from '@/hooks/use_transition_search_params';
 import { parseListLimit, parseListOffset } from '@/lib/list_query';
 import { mutationError } from '@/lib/mutation_audit';
+import { newRandomUuid } from '@/lib/uuid';
 
 const IP_HASH_PATTERN = /^[0-9a-fA-F]{32}$/;
 const FRAUD_LABELS_BULK_MAX_ROWS = 500;
@@ -24,7 +25,7 @@ export type FraudLabelBulkDraftRow = {
 
 function createBulkDraftRow(): FraudLabelBulkDraftRow {
   return {
-    id: crypto.randomUUID(),
+    id: newRandomUuid(),
     ip_hash: '',
     label: '1',
     reason: '',

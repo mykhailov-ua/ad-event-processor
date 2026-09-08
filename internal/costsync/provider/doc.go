@@ -19,14 +19,14 @@
 //   - OAuth app credentials passed from costsync.OAuthConfig at worker construction (internal/control/run.go).
 //
 // Invariants:
-//   - API credentials supplied by caller after PG decrypt; never logged in fetch paths.
+//   - API credentials supplied by caller after Postgres decrypt; never logged in fetch paths.
 //   - Unsupported network returns error from FetchNetworkCosts (no silent empty import).
 //   - Vendor HTTP responses size-limited before JSON decode.
 //   - Pagination and vendor rate limits handled inside each provider_* file; worker applies overall sync timeout.
 //
 // Forbidden:
 //   - Hot-path ingest imports.
-//   - Direct PG/CH writes (parent costsync persists rows).
+//   - Direct Postgres/ClickHouse writes (parent costsync persists rows).
 //
 // Verify:
 //

@@ -8,7 +8,7 @@
 //   - StartDomainHealthWorker runs probe ticks; parent platformadmin re-exports types via domains_export.go aliases.
 //
 // Topology:
-//   - Subpackage of platformadmin; DomainHealthHost supplies PG pool, config, and optional Cloudflare client.
+//   - Subpackage of platformadmin; DomainHealthHost supplies Postgres pool, config, and optional Cloudflare client.
 //   - TLS allow queries serve edge Caddy ask endpoints without admin session (token-gated when configured).
 //
 // Invariants:

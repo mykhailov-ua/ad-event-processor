@@ -2,7 +2,7 @@
 //
 // Role:
 //   - HTTP (http_handlers.go): POST/GET/DELETE /api/v1/reports/jobs*, GET/PUT/POST/DELETE /api/v1/report-schedules*.
-//   - ReportJobRunner: in-memory or PG-backed job queue; export via reports/export hook (ExportDeps).
+//   - ReportJobRunner: in-memory or Postgres-backed job queue; export via reports/export hook (ExportDeps).
 //   - ReportJobRunner.StartWorker poll 2 s (batch 4); ReportScheduleWorker poll 30 s (controlplane workers).
 //   - campaign-import-validation report key writes JSON validation export when importexport hook wired.
 //
@@ -19,7 +19,7 @@
 //   - Schedule cron validation via ValidateReportCronExpr; actor policy via reports/views.ValidateReportScheduleForActor.
 //
 // Forbidden:
-//   - Synchronous full CH export on HTTP POST (always async job id).
+//   - Synchronous full ClickHouse export on HTTP POST (always async job id).
 //   - Import from reports package (one-way reports -> reportjob only at export boundary).
 //
 // Verify:

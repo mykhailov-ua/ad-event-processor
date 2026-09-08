@@ -2,7 +2,7 @@
 //
 // Role:
 //   - HTTP: GET /api/v1/campaigns/onboarding-templates; GET/POST /api/v1/campaigns/wizard/session.
-//   - WizardStore (handlers.go): PG-backed draft JSON, step validation, commit via import/export bundle.
+//   - WizardStore (handlers.go): Postgres-backed draft JSON, step validation, commit via import/export bundle.
 //   - register.go init hooks campaign.SetWizardRouteRegistrar; blank import from controlplane/register.go.
 //   - WizardHost port: customer access, tracking domain, integration schema, PublishCampaign on commit.
 //
@@ -16,7 +16,7 @@
 // Invariants:
 //   - Wizard steps (order): traffic_source, integration_template, flow_skeleton, budget, review.
 //   - POST session requires campaigns:write; GET session and templates allow campaigns:read or campaigns:read:masked.
-//   - Commit requires complete step payload; incomplete commit returns validation error before PG import.
+//   - Commit requires complete step payload; incomplete commit returns validation error before Postgres import.
 //   - Idempotency key on commit; publish=false creates draft campaign, publish=true runs PublishCampaign after import.
 //   - Session DTO omits integration secrets on GET (controlplane holdout TestCampaignWizardSessionGET_omitsSecrets).
 //

@@ -115,7 +115,7 @@ func (w *SettlementWorker) SetOnMessageProcessed(cb func(evt *domain.Event, msgI
 	}
 }
 
-// settlementLaneIndex: stable campaign_id -> lane for ordered PG settlement without cross-campaign batching.
+// settlementLaneIndex: stable campaign_id -> lane for ordered Postgres settlement without cross-campaign batching.
 func settlementLaneIndex(campaignID uuid.UUID, lanes int) int {
 	if lanes <= 1 {
 		return 0
@@ -245,7 +245,7 @@ func (w *SettlementWorker) readLoop(ctx context.Context) {
 	}
 }
 
-// runLane micro-batches by flushInt/batchSize; SettlementSeedGateAllowed blocks PG writes
+// runLane micro-batches by flushInt/batchSize; SettlementSeedGateAllowed blocks Postgres writes
 // when trial SKU disallows settlement seed (events dropped, not ACKed until gate opens).
 func (w *SettlementWorker) runLane(ctx context.Context, laneIdx int) {
 	workerID := fmt.Sprintf("%s-lane-%d", w.consumerID, laneIdx)

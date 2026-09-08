@@ -1,4 +1,4 @@
-// L3 supply hub: parallel GET bundle (sellers, ads.txt, export path, validation) on mount.
+// supply hub: parallel GET bundle (sellers, ads.txt, export path, validation) on mount.
 import { useCallback, useState } from 'react';
 
 import {

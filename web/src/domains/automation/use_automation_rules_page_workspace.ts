@@ -1,4 +1,4 @@
-// L3 automation rules CRUD: customer-scoped list + inline edit rows + dry-run lane.
+// automation rules CRUD: customer-scoped list + inline edit rows + dry-run lane.
 import { useCallback, useEffect, useState } from 'react';
 import { toast } from 'sonner';
 

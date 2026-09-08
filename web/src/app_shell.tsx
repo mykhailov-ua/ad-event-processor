@@ -11,7 +11,7 @@ import {
 import { PageCanvasInset } from '@/shell/page_layout';
 import { shellChrome } from '@/shell/shell_chrome';
 import { AppMobileNavSheet, AppSidebar } from '@/shell/app_sidebar';
-import { AppErrorBoundary } from '@/shell/app_error_boundary';
+import { AppRouteErrorBoundary } from '@/shell/app_error_boundary';
 import { RoutePermissionGuard } from '@/shell/permission_gate';
 import { BreadcrumbProvider } from '@/shell/breadcrumb_context';
 import { PageBreadcrumbs } from '@/shell/page_breadcrumbs';
@@ -152,11 +152,11 @@ export function AppShell() {
                   >
                     <div className="ui-scrollbar min-h-0 min-w-0 flex-1 overflow-x-hidden overflow-y-auto">
                       <PageCanvasInset>
-                        <AppErrorBoundary layout="embedded">
+                        <AppRouteErrorBoundary layout="embedded">
                           <RoutePermissionGuard>
                             <Outlet />
                           </RoutePermissionGuard>
-                        </AppErrorBoundary>
+                        </AppRouteErrorBoundary>
                       </PageCanvasInset>
                     </div>
                   </main>

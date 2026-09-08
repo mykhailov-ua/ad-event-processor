@@ -1,4 +1,4 @@
-// slot-map subcommands: PG-backed StaticSlot table CRUD for operator debugging.
+// slot-map subcommands: Postgres-backed StaticSlot table CRUD for operator debugging.
 package main
 
 import (

@@ -51,7 +51,7 @@
 //   - findActualIndexSize trims corrupt partial index writes on open (torn tail discard).
 //
 // Forbidden:
-//   - Not Redis Streams; budget Lua remains on Redis when broker is CH-ingest-only.
+//   - Not Redis Streams; budget Lua remains on Redis when broker is ClickHouse-ingest-only.
 //   - pkg/* must not import internal/*.
 //
 // Verify:

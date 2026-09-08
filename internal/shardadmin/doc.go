@@ -1,9 +1,9 @@
-// Package shardadmin implements shard operations: slot-map PG lifecycle, Redis global fan-out, leases, and failover.
+// Package shardadmin implements shard operations: slot-map Postgres lifecycle, Redis global fan-out, leases, and failover.
 //
 // Role:
 //   - Slot map CRUD and migration orchestration (slot_map.go, slot_migration_*.go, SlotMigrationOrchestrator).
 //   - Redis global config/blacklist replication (redis_global.go, redis_fanout.go, control_fanout.go).
-//   - Operation lease worker and PG fencing for multi-region quorum paths (lease_*.go).
+//   - Operation lease worker and Postgres fencing for multi-region quorum paths (lease_*.go).
 //   - Postgres failover runtime, PostgresGate tracker connection budget, shard autoscale orchestrator,
 //     shard-0 catchup, health/outbox probes consumed by opsadmin.
 //   - Service methods exposed on controlplane/shard_bridge.go; not HTTP handlers in this package.

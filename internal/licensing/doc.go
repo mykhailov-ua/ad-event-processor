@@ -17,7 +17,7 @@
 // Invariants:
 //   - IngestAllowed false only for StateExpired and StateRevoked (entitlements/ingest_gate.go).
 //   - GRACE, OFFLINE_WARN, OFFLINE_GRACE, and ACTIVE permit ingest until expired/revoked.
-//   - Customer limits never exceed deployment ceiling (P-C4-03; entitlements/effective.go).
+//   - Customer limits never exceed deployment ceiling (entitlements/effective.go Effective ceiling).
 //   - Closed-network file mode: no license server ping on appliance (licensing.mdc).
 //
 // Forbidden:

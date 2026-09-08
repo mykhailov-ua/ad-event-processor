@@ -6,15 +6,15 @@
 //   - applier.go delegates Thompson and proportional updates to internal/flow bandit helpers.
 //
 // Topology:
-//   - Wired from controlplane via trafficoptimizer_bridge.go; Host port supplies CH queries, bandit stats, and brand-creative outbox enqueue.
+//   - Wired from controlplane via trafficoptimizer_bridge.go; Host port supplies ClickHouse queries, bandit stats, and brand-creative outbox enqueue.
 //   - PublishHost.PublishCampaignUpdate triggers catalog reload after successful apply.
 //   - Tracker reads flow/creative weights from Redis/catalog snapshots only after outbox reload.
 //
 // Invariants:
-//   - Rule apply is transactional; partial flow or creative weight update rolls back on PG error.
+//   - Rule apply is transactional; partial flow or creative weight update rolls back on Postgres error.
 //   - RuleSupported gates scope/objective/algorithm pairs (EPC requires proportional; creative ROI requires brand scope).
 //   - Disabled rules, cooldown windows, and eval-interval floors are skipped by the worker tick.
-//   - Empty CH stats or unsupported rule shape yields no-op apply, not an error storm.
+//   - Empty ClickHouse stats or unsupported rule shape yields no-op apply, not an error storm.
 //
 // Forbidden:
 //   - Weight mutation on /track synchronous path.

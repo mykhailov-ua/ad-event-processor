@@ -1,4 +1,4 @@
-// L3 report delivery schedules CRUD: customer-scoped list + cron edit rows.
+// report delivery schedules CRUD: customer-scoped list + cron edit rows.
 import { useCallback, useEffect, useState } from 'react';
 import { toast } from 'sonner';
 

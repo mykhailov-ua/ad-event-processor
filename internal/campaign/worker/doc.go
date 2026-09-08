@@ -4,7 +4,7 @@
 //   - Worker: schedule transitions (ProcessScheduleTick) via campaign/runtime and DeliveryHost effects.
 //   - Loop workers (loops.go): ScheduleWorker (1 min), PacingControllerWorker, AutoscaleBudgetWorker,
 //     DeliveryOptimizerWorker; intervals from config via serve_workers.go.
-//   - RunDeliveryOptimizerTick: closed-loop pacing, autoscale budgets, optional MAB + flow bandit in one PG txn.
+//   - RunDeliveryOptimizerTick: closed-loop pacing, autoscale budgets, optional MAB + flow bandit in one Postgres txn.
 //   - RunVPPPacingController: VPP ratio writes to Redis shards for campaigns in pacing_mode=vpp.
 //   - DrainWorker: finalizes campaigns in draining status; started every 20 ms from controlplane/workers.go.
 //

@@ -91,6 +91,14 @@ export const DASHBOARD_CHART_METRICS = DASHBOARD_KPI_METRICS.filter((metric) => 
 
 export type DashboardChartToken = 1 | 2 | 3 | 4 | 5;
 
+export const CHART_SWATCH_CLASS: Record<DashboardChartToken, string> = {
+  1: 'bg-[hsl(var(--chart-1)/0.78)]',
+  2: 'bg-[hsl(var(--chart-2)/0.78)]',
+  3: 'bg-[hsl(var(--chart-3)/0.78)]',
+  4: 'bg-[hsl(var(--chart-4)/0.78)]',
+  5: 'bg-[hsl(var(--chart-5)/0.78)]',
+};
+
 export type DashboardChartSeriesStyle = {
   id: DashboardMetricId;
   seriesKey: string;

@@ -106,7 +106,7 @@ func TestIntegration_StatsBatching(t *testing.T) {
 	assert.Equal(t, int64(1), convs)
 }
 
-// Fail-closed: invalid event_type must be rejected by PG CHECK, not stored.
+// Fail-closed: invalid event_type must be rejected by Postgres CHECK, not stored.
 func TestIntegration_InvalidEventType(t *testing.T) {
 	if testing.Short() {
 		t.Skip("integration: run make test-integration (Docker testcontainers)")
@@ -186,7 +186,7 @@ ON CONFLICT (campaign_id, date) DO UPDATE SET
 	require.NoError(t, rows.Err())
 }
 
-// Concurrent shuffled batch order must not deadlock; regression surfaces as PG deadlock error.
+// Concurrent shuffled batch order must not deadlock; regression surfaces as Postgres deadlock error.
 func TestIntegration_StatsDeadlockStress(t *testing.T) {
 	if testing.Short() {
 		t.Skip("integration: run make test-integration (Docker testcontainers)")

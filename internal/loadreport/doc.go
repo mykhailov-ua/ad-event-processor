@@ -3,7 +3,7 @@
 // Role:
 //   - bpf.go / bpf_snapshot.go: read bpf/maps/summary.json and emit human-readable BPF reports.
 //   - bpf_gate.go / bpf_extra_gates.go / bpf_hardware.go / bpf_redis_pool.go / bpf_disk_spool.go /
-//     bpf_pg_wire.go / bpf_rss.go: resource gate checks (handler p99, Lua p99, RSS, connects, PG wire).
+//     bpf_pg_wire.go / bpf_rss.go: resource gate checks (handler p99, Lua p99, RSS, connects, Postgres wire).
 //   - prom.go / sla_gate.go: Prometheus scalar queries; tracker and OpenRTB p99 SLA (80 ms ceiling).
 //   - telegram_gate.go: tracker outbound connect gate for Telegram traffic profile.
 //   - strict_contention.go: baseline vs current BPF snapshot regression compare.

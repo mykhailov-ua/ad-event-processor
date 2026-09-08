@@ -2,7 +2,7 @@
 
 set -euo pipefail
 
-# Role: Library: Stress CH spool for fault drills.
+# Role: Library: Stress ClickHouse spool for fault drills.
 # Execution context: Sourced by CI, fault, and dev scripts; not a standalone gate.
 # Invariants/contracts enforced: Helpers must not exit 0 on error paths when used as gate prerequisites.
 # Verify: source scripts/lib/stress_spool.sh

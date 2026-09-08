@@ -22,7 +22,7 @@
 //
 // Forbidden:
 //   - internal/ingest (non-_test) importing pkg/regionproxy/client on tracker hot path.
-//   - Using ProduceSpendSyncPayload as proof of global PG spend apply (broker commit != control ingest).
+//   - Using ProduceSpendSyncPayload as proof of global Postgres spend apply (broker commit != control ingest).
 //
 // Verify:
 // go test ./pkg/regionproxy/client/... -short -count=1

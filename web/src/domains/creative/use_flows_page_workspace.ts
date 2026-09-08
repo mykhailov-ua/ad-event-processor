@@ -1,4 +1,4 @@
-// L3 flows directory: list + visual create; paths validated client-side before POST.
+// flows directory: list + visual create; paths validated client-side before POST.
 import { useCallback, useState } from 'react';
 import { toast } from 'sonner';
 

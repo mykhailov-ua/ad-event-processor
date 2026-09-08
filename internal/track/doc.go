@@ -6,7 +6,7 @@
 //   - cors.go, static_assets.go, telegram_handlers.go: CORS preflight, embedded track.js/pixel, Telegram Mini App wire bytes.
 //     track_pixel.js is generated from web/src/static/track.js via web/scripts/build_track_pixel.mjs.
 //   - safe_page.go and safe_page_attest.go: safe-page stub HTML, attestation scoring, verify rate limits.
-//   - analytics_payload.go enriches CH payload dimensions on accepted events.
+//   - analytics_payload.go enriches ClickHouse payload dimensions on accepted events.
 //   - ip_rotation.go: IPv4/IPv6 rotation heuristics for fraud signals (called from ingest filter wiring).
 //
 // Topology:

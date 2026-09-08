@@ -6,21 +6,21 @@
 //   - effective.go: Effective merges deployment and customer entitlements (min non-zero limits, AND features).
 //   - tier_policy.go / sku_yaml.go: SanitizeFeaturesForSKU, OpenRTBAllowed, deploy/vendor/sku.yaml loader.
 //   - state.go / heartbeat_policy.go: DetermineState, DetermineEffectiveState, IngestAllowed, banner severity.
-//   - ingest_gate.go: IngestAllowed (P-C3-03) - false only for EXPIRED or REVOKED.
+//   - ingest_gate.go: IngestAllowed (properties_test.go IngestAllowed) - false only for EXPIRED or REVOKED.
 //   - deployment_gate.go: LoadDeploymentSnapshot from billing.license_status (cold path).
 //   - license_epoch_pubsub.go / epoch_gate.go: Redis license:epoch fan-out and local invalidation.
 //   - volume.go / tier_usage.go: billable units, volume bands, renewal warnings.
-//   - vendor_revoke.go: PG vendor revoke lookup; skew_watch*.go: clock-skew watchdog (linux).
+//   - vendor_revoke.go: Postgres vendor revoke lookup; skew_watch*.go: clock-skew watchdog (linux).
 //
 // Topology:
 //   - Consumed by internal/licensing root facade, internal/licensing/verify (EntitlementsFromClaims),
 //     and controlplane license watcher snapshot reload.
 //   - Tracker EntitlementsFilter (internal/filter) reads registry snapshot built from these types;
-//     per-customer ingress RPD uses Redis INCR in the filter, not PG in this package.
+//     per-customer ingress RPD uses Redis INCR in the filter, not Postgres in this package.
 //
 // Invariants:
-//   - Effective customer limits and features never exceed deployment ceiling (P-C4-03; verify/properties_test.go).
-//   - IngestAllowed false only for StateExpired and StateRevoked (licensing.mdc P-C3-03).
+//   - Effective customer limits and features never exceed deployment ceiling (verify/properties_test.go).
+//   - IngestAllowed false only for StateExpired and StateRevoked (ingest_gate.go).
 //   - SanitizeFeaturesForSKU enforces SKU tier feature matrix before claims reach Effective.
 //
 // Forbidden:

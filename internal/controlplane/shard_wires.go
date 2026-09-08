@@ -217,7 +217,7 @@ func NewSlotMigrationOrchestrator(svc *Service, interval time.Duration) *shardad
 	return shardadmin.NewSlotMigrationOrchestrator(svc, interval)
 }
 
-// afterSlotMapActivated bump routing_epoch in PG, reload StaticSlotSharder, publish TCP+broker cutover.
+// afterSlotMapActivated bump routing_epoch in Postgres, reload StaticSlotSharder, publish TCP+broker cutover.
 func (s *Service) afterSlotMapActivated(ctx context.Context, version int32) {
 	routingEpoch := int64(0)
 	if row, err := domain.NewCampaignRoutingRepo(s.GetPool()).BumpGlobalRoutingEpoch(ctx); err == nil {

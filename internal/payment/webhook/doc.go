@@ -2,7 +2,7 @@
 //
 // Role:
 //   - WebhookHandler HTTP on payment module port: POST /webhooks/stripe, POST /webhooks/crypto.
-//   - Service validates signatures, normalizes amounts, inserts outbox rows in the webhook PG transaction.
+//   - Service validates signatures, normalizes amounts, inserts outbox rows in the webhook Postgres transaction.
 //   - Dispute and refund replay paths share coldpath body limits and metrics counters.
 //
 // Topology:

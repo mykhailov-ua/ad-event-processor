@@ -1,4 +1,4 @@
-// L3 telegram postbacks CRUD: campaign-scoped list + inline edit rows.
+// telegram postbacks CRUD: campaign-scoped list + inline edit rows.
 import { useCallback, useEffect, useState } from 'react';
 import { toast } from 'sonner';
 

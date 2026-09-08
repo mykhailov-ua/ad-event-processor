@@ -1,4 +1,4 @@
-// L3 OpenRTB bid request validator: client JSON.parse then POST validate; license gate on 403.
+// OpenRTB bid request validator: client JSON.parse then POST validate; license gate on 403.
 import { useCallback, useState } from 'react';
 
 import { validateRtbBidRequest } from '@/api/rtb_api';

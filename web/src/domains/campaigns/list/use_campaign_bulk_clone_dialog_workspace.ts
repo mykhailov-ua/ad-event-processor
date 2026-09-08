@@ -1,4 +1,4 @@
-// L3 bulk clone overlay: POST bulk-clone for multi-selected campaigns.
+// bulk clone overlay: POST bulk-clone for multi-selected campaigns.
 import { useCallback, useEffect, useState } from 'react';
 import { toast } from 'sonner';
 

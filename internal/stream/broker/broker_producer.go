@@ -21,7 +21,7 @@ import (
 
 var (
 	// ErrRingBufferFull: MPSC ring has no free slot (seq lagging head). Returned from Enqueue after
-	// TryReserve succeeded — post-debit path; ingest must rollback Lua debit and bump
+	// TryReserve succeeded  -  post-debit path; ingest must rollback Lua debit and bump
 	// ad_stream_producer_post_debit_rejected_total. Distinct from TryReserve false (pre-debit 503 overload).
 	ErrRingBufferFull = errors.New("broker producer ring buffer full")
 	ErrProducerClosed = errors.New("broker producer closed")
@@ -252,7 +252,7 @@ func (bp *BrokerProducer) ReleaseReserve() {
 }
 
 // EnqueueReserved pairs with ingest tryAcquireStreamAdmission: always releases the reserve token,
-// including on ErrRingBufferFull (post-debit reject — caller must run budget-rollback.lua).
+// including on ErrRingBufferFull (post-debit reject  -  caller must run budget-rollback.lua).
 func (bp *BrokerProducer) EnqueueReserved(evt *domain.Event) error {
 	defer bp.ReleaseReserve()
 	return bp.Enqueue(evt)
@@ -343,7 +343,7 @@ func copyBytesToFixed(dst []byte, src []byte) uint8 {
 }
 
 // workerLoop runs off the request thread: drains tail, batches vtproto frames, calls mmap WAL Produce.
-// Shadow mode (BROKER_SHADOW_MODE) is consumer-side only — producer always appends to the broker topic.
+// Shadow mode (BROKER_SHADOW_MODE) is consumer-side only  -  producer always appends to the broker topic.
 func (bp *BrokerProducer) workerLoop() {
 	defer bp.wg.Done()
 

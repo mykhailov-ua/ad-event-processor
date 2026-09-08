@@ -1,4 +1,4 @@
-// L3 margin guard activity: campaign-scoped overrides list + remove placement override.
+// margin guard activity: campaign-scoped overrides list + remove placement override.
 import { useCallback, useState } from 'react';
 import { toast } from 'sonner';
 

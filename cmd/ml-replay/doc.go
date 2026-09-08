@@ -7,7 +7,7 @@
 //   - Uses fraud.DecideWithCampaign and shadowAction helpers (no live outbox enqueue).
 //
 // Topology:
-//   - Offline CLI; optional CH readonly via config.Load and database.ConnectClickHouseReadonly.
+//   - Offline CLI; optional ClickHouse readonly via config.Load and database.ConnectClickHouseReadonly.
 //   - internal/fraud LGBMScorer and feature vectorization only.
 //
 // Invariants:

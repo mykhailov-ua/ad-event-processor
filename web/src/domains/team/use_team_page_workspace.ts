@@ -1,4 +1,4 @@
-// L3 team admin: roster tab + budget approvals; separate refresh tokens per lane.
+// team admin: roster tab + budget approvals; separate refresh tokens per lane.
 import { useCallback, useEffect, useState } from 'react';
 import { toast } from 'sonner';
 

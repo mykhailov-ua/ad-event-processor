@@ -1,4 +1,4 @@
-// outbox_bridge: Service implements outbox.Host (PG poll + Redis fanout apply handlers).
+// outbox_bridge: Service implements outbox.Host (Postgres poll + Redis fanout apply handlers).
 // RegionOutboxRelay uses regionRelayHost for multi-region cell delivery with op leases.
 package controlplane
 

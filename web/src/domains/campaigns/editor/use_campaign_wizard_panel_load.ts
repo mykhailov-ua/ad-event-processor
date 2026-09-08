@@ -1,4 +1,4 @@
-// L3 wizard panel load: templates when enabled; session GET by sessionId with pollToken; localSession seeds UI before first poll 2xx.
+// wizard panel load: templates when enabled; session GET by sessionId with pollToken; localSession seeds UI before first poll 2xx.
 import { useCallback, useState } from 'react';
 
 import { getCampaignWizardSession, listCampaignOnboardingTemplates } from '@/api/campaigns_api';

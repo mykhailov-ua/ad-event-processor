@@ -1,4 +1,4 @@
-// L3 ads.txt rows: inline edit map keyed by domain; CRUD mutations refresh list via refreshToken.
+// ads.txt rows: inline edit map keyed by domain; CRUD mutations refresh list via refreshToken.
 import { useCallback, useEffect, useState } from 'react';
 import { toast } from 'sonner';
 

@@ -94,7 +94,7 @@ func (r rolesReloader) ReloadRoles() error {
 func (r rolesReloader) RolesPath() string { return authz.DefaultRolesPath() }
 
 // BuildAdminAPIRegistry returns cold-path RouteRegistry for RegisterRoutes (register.go); no HTTP listen here.
-// Returns empty registry when pool or svc nil so RegisterRoutes is a no-op until serve.go wires PG.
+// Returns empty registry when pool or svc nil so RegisterRoutes is a no-op until serve.go wires Postgres.
 func (h *Handler) BuildAdminAPIRegistry(pool *pgxpool.Pool, redisShards []redis.UniversalClient) RouteRegistry {
 	if h == nil || h.svc == nil || pool == nil {
 		return RouteRegistry{}
@@ -117,7 +117,7 @@ func (h *Handler) BuildAdminAPIRegistry(pool *pgxpool.Pool, redisShards []redis.
 	}
 
 	svc := h.svc
-	// CompositeReadService: PG ledger truth; ClickHouseQuery is readonly reporting conn (CH_READONLY_DSN).
+	// CompositeReadService: Postgres ledger truth; ClickHouseQuery is readonly reporting conn (CH_READONLY_DSN).
 	composite := billingadmin.NewCompositeReadService(pool, h.cfg)
 	if composite != nil {
 		composite.SetClickHouseQuery(svc.ClickHouseQuery())
@@ -228,7 +228,7 @@ func (h *Handler) BuildAdminAPIRegistry(pool *pgxpool.Pool, redisShards []redis.
 			BTCPayWebhookSecret: string(h.cfg.BTCPayWebhookSecret),
 			CryptomusAPIKey:     string(h.cfg.CryptomusAPIKey),
 		},
-		// DoctorHTTP ProbeDeps: synchronous cold probes (Redis shards, PG pool, license, edge XDP snapshot).
+		// DoctorHTTP ProbeDeps: synchronous cold probes (Redis shards, Postgres pool, license, edge XDP snapshot).
 		DoctorHTTP: doctorHTTP,
 		OpsHTTP: &opsadmin.HTTPHandlers{
 			OpsReader:               opsReader,

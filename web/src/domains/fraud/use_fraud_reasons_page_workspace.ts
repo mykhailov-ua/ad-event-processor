@@ -1,4 +1,4 @@
-// L3 fraud reasons report: URL filters, offset pagination, CSV export (EH-SI1).
+// fraud reasons report: URL filters, offset pagination, CSV export.
 import { useCallback, useEffect, useMemo, useState } from 'react';
 import { toast } from 'sonner';
 

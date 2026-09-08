@@ -200,6 +200,7 @@ export function CampaignsDirectory({
               statusTotalsLoading={statusTotalsLoading}
               summary={workspace.summary}
               selectedCount={workspace.selectedIds.size}
+              selectedCampaignId={workspace.selectedCampaignId}
               onArchiveClick={() => {
                 if (workspace.selectedIds.size === 0) {
                   toast.error('Select at least one campaign');
@@ -237,7 +238,6 @@ export function CampaignsDirectory({
                 workspace.onPauseSelected();
               }}
               onRefresh={onRefreshList}
-              onReportClick={workspace.onReportClick}
               onResumeClick={() => {
                 if (workspace.selectedIds.size === 0) {
                   toast.error('Select at least one campaign');

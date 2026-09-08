@@ -1,4 +1,4 @@
-// L3 cost sync hub: customer-scoped snapshot + credential/sync panel mutations.
+// cost sync hub: customer-scoped snapshot + credential/sync panel mutations.
 import { useCallback, useMemo, useState } from 'react';
 
 import {

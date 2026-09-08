@@ -10,7 +10,7 @@
 //   - NewRuntime(pool, effects) held on controlplane.Service; lazy init in CampaignRuntime().
 //   - Mutations call campaign.Effects (Service bridges: campaign_handlers_bridge, campaign_wizard_bridge,
 //     campaign_import_bridge, campaign_delivery_bridge) for outbox-heavy patches, publish, pause, clone.
-//   - PG reads and scrubbing in ops.go; patch/publish transactions enqueue outbox_events through Effects
+//   - Postgres reads and scrubbing in ops.go; patch/publish transactions enqueue outbox_events through Effects
 //     in the same transaction as domain row updates (not in Runtime public methods directly).
 //   - HTTP routes stay in parent internal/campaign/handlers.go and subpackages (editor, selfserve, integration).
 //
@@ -26,7 +26,7 @@
 //
 // Defaults and limits:
 //   - GetCampaignStats marks stale when ClickHouse ingestion lag exceeds 5 minutes (ops.go helper).
-//   - When ClickHouse is nil or hourly/daily query fails, stats fall back to PG rollups (source pg, consistency strong).
+//   - When ClickHouse is nil or hourly/daily query fails, stats fall back to Postgres rollups (source pg, consistency strong).
 //   - Campaign list/get field scrubbing via authz.MaskLevel from context (ScrubCampaignFields).
 //
 // Verify:

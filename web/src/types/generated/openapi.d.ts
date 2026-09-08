@@ -2090,7 +2090,7 @@ export interface paths {
     put?: never;
     /**
      * Campaign spend/impression forecast (wizard)
-     * @description ClickHouse-backed advisory for onboarding wizard; 503 when CH unavailable.
+     * @description ClickHouse-backed advisory for onboarding wizard; 503 when ClickHouse unavailable.
      */
     post: operations['campaignsForecast'];
     delete?: never;

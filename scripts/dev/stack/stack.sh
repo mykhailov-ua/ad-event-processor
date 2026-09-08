@@ -215,7 +215,7 @@ case "$CMD" in
     aed_stack_hardening
     ;;
   ingest-only | up-ingest-only)
-    # Canonical laptop path: no CH, cold-path workers off, control-dev overlay for payment stubs.
+    # Canonical laptop path: no ClickHouse, cold-path workers off, control-dev overlay for payment stubs.
     aed_stop_vps_extras
     aed_start_postgres_for_migrate
     aed_bootstrap_pg_schema

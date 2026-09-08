@@ -1,4 +1,4 @@
-// L1 transport for /api/v1/* (frontend-modular.mdc).
+// HTTP transport for /api/v1/* (frontend-modular.mdc).
 // Runs in the browser main thread on Cold surfaces; pairs with useResource abort on dep change.
 //
 // Contracts:

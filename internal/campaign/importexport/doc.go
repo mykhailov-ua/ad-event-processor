@@ -15,8 +15,8 @@
 // Invariants:
 //   - Export rejects deleted campaigns and enforces AssertMediaBuyerCampaignAccess on export.
 //   - Import requires customer_id, idempotency key, positive budget_limit_micro, and matching export_version.
-//   - Unknown export_version fails closed with validation error (no partial PG insert).
-//   - Import PG work runs in a transaction; flow lander/offer refs upserted by name+URL.
+//   - Unknown export_version fails closed with validation error (no partial Postgres insert).
+//   - Import Postgres work runs in a transaction; flow lander/offer refs upserted by name+URL.
 //
 // Forbidden:
 //   - HTTP transport, tracker ingest (internal/ingest), direct Redis writes.

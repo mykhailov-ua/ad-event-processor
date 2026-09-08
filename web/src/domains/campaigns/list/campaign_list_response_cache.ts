@@ -6,7 +6,7 @@ import {
   type CampaignListSelectionScope,
 } from '@/domains/campaigns/list/campaign_list_selection_scope';
 
-// Session LRU for GET /campaigns list keyed by query + stats window (RF-4).
+// Session LRU for GET /campaigns list keyed by query + stats window.
 // Invalidated on mutation via invalidateCampaignListResponseCache(); max 32 entries.
 const MAX_CACHE_ENTRIES = 32;
 

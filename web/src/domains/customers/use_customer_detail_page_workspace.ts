@@ -1,4 +1,4 @@
-// L3 owner: customer detail tabs, draft tax/cost-center forms, tab-gated useResource lanes (RP-3).
+// owner: customer detail tabs, draft tax/cost-center forms, tab-gated useResource lanes.
 // Each tab uses a separate useResource; inactive tabs call skipCustomerDetailTabFetch().
 import { useCallback, useEffect, useState } from 'react';
 import { toast } from 'sonner';

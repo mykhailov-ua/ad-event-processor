@@ -45,12 +45,12 @@ Reuse same `deployment_id` on renewals and tier upgrades. HWID v2 (Argon2id) pre
 
 Gate: `make license-verify`, `make license-red-team`.
 
-| ID | Property |
+| Slug | Property |
 | :--- | :--- |
-| P-C2-01 | Invalid signature or payload => reject |
-| P-C3-03 | `IngestAllowed` false iff state in {EXPIRED, REVOKED} |
-| P-C4-03 | Customer limits never exceed deployment ceiling |
-| P-HWID-01 | Argon2id hash deterministic for fixed telemetry |
+| `jwt_signature_reject` | Invalid signature or payload => reject |
+| `ingest_allowed_states` | `IngestAllowed` false iff state in {EXPIRED, REVOKED} |
+| `deployment_ceiling` | Customer limits never exceed deployment ceiling |
+| `hwid_argon2id_deterministic` | Argon2id hash deterministic for fixed telemetry |
 
 Status API: `GET /api/v1/license/status` (fields include `host_fingerprint`, `hwid_v2`, `hwid_match`, `days_to_expiry`).
 

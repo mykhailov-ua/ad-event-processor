@@ -1,4 +1,4 @@
-// L3 per-campaign dashboard: URL range + breakdown dimension/sort; GET /dashboards/campaign/{id}.
+// per-campaign dashboard: URL range + breakdown dimension/sort; GET /dashboards/campaign/{id}.
 import { useCallback, useMemo } from 'react';
 import { useParams, useSearchParams } from 'react-router-dom';
 

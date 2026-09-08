@@ -23,7 +23,7 @@
 //   - v2 pipe key plus dedup/v2: Redis namespace vs in-place v1 bump (parallel dedup lanes during migration).
 //   - Sorted canonical payloads vs raw byte concat (replay and reorder-safe dedup at cost of sort on batch encode).
 //   - JSON spend_sync WAL body vs pipe canonical key (human-debuggable batches; Redis identity stays canonical string).
-//   - SHA1 NameSpaceOID source IDs vs central allocator (deterministic per region/node/topic without PG sequence).
+//   - SHA1 NameSpaceOID source IDs vs central allocator (deterministic per region/node/topic without Postgres sequence).
 //
 // Forbidden:
 //   - Import internal/* packages.

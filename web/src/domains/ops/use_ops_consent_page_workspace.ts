@@ -1,4 +1,4 @@
-// L3 consent proofs list + signed POST /consent recorder for operator verification.
+// consent proofs list + signed POST /consent recorder for operator verification.
 import { useCallback, useState } from 'react';
 import { toast } from 'sonner';
 

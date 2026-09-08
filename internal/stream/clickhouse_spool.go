@@ -49,7 +49,7 @@ func DefaultClickHouseSpoolConfig() ClickHouseSpoolConfig {
 	}
 }
 
-// ClickHouseSpool uses mmap WAL segments when live CH insert fails. errCHSpoolMaxSegments is
+// ClickHouseSpool uses mmap WAL segments when live ClickHouse insert fails. errCHSpoolMaxSegments is
 // retriable (processor keeps PEL); segment cap from sealed processor_ch_ingest_policy.json.
 type ClickHouseSpool struct {
 	dir          string
@@ -316,7 +316,7 @@ func (s *ClickHouseSpool) Sync() error {
 }
 
 // AppendDurably writes length-prefixed CHSP records to the active mmap segment; rotates
-// when full. dedupToken is replayed with the batch so CH insert stays idempotent.
+// when full. dedupToken is replayed with the batch so ClickHouse insert stays idempotent.
 func (s *ClickHouseSpool) AppendDurably(dedupToken string, events []*domain.Event) error {
 	if len(events) == 0 {
 		return nil

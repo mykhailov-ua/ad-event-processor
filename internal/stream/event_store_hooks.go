@@ -7,7 +7,7 @@ import (
 )
 
 // afterBatchStoreFunc runs only after the wrapped EventStore.StoreBatch succeeds.
-// Used on processor settlement for post-CH side effects (e.g. conversion postback outbox).
+// Used on processor settlement for post-ClickHouse side effects (e.g. conversion postback outbox).
 type afterBatchStoreFunc func(ctx context.Context, events []*domain.Event)
 
 type afterBatchEventStore struct {
@@ -16,7 +16,7 @@ type afterBatchEventStore struct {
 }
 
 // WrapEventStoreAfterBatch decorates inner with a post-success hook. Nil inner or after returns inner unchanged.
-// In cmd/processor, afterStored (postback outbox) wraps the PG settlement store after CH-first wiring.
+// In cmd/processor, afterStored (postback outbox) wraps the Postgres settlement store after ClickHouse-first wiring.
 //
 // Invariant: after is not called when inner.StoreBatch returns an error or when events is empty.
 //
@@ -41,7 +41,7 @@ type beforeBatchEventStore struct {
 // WrapEventStoreBeforeBatch decorates inner with a pre-store hook. Nil inner or before returns inner unchanged.
 //
 // Registration order (cmd/processor): AfterBatch(postback) is applied first, then BeforeBatch(conversion
-// smart reject) wraps the outside. StoreBatch call order: before hook -> inner store (PG stats) ->
+// smart reject) wraps the outside. StoreBatch call order: before hook -> inner store (Postgres stats) ->
 // after hook. ClickHouseStore runs conversion reject inline in StoreBatch before insert, not via this wrapper.
 //
 // Invariant: before runs on the same []*domain.Event slice passed to inner.StoreBatch; skip when len(events)==0.

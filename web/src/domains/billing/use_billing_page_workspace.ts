@@ -1,4 +1,4 @@
-// L3 billing hub: URL month/status pagination + summary/invariant/preview lanes (multi useResource).
+// billing hub: URL month/status pagination + summary/invariant/preview lanes (multi useResource).
 import { useCallback, useEffect, useMemo, useState } from 'react';
 
 import {

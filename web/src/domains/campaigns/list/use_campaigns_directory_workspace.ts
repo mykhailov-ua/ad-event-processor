@@ -1,8 +1,7 @@
-// L3 workspace owner: campaigns directory toolbar, selection, column prefs, export, bulk actions.
-// Fetch fan-out lives in use_campaigns_page_list.ts (RF-9); this hook consumes list snapshots only.
+// workspace owner: campaigns directory toolbar, selection, column prefs, export, bulk actions.
+// Fetch fan-out lives in use_campaigns_page_list.ts; this hook consumes list snapshots only.
 // listScopeKey change clears row selection and popover stats cache (statsRevision in parent).
 import { useCallback, useDeferredValue, useEffect, useMemo, useState } from 'react';
-import { useNavigate } from 'react-router-dom';
 import { toast } from 'sonner';
 
 import type { CampaignListMetrics } from '@/api/campaigns_api';
@@ -77,7 +76,6 @@ export function useCampaignsDirectoryWorkspace({
   listScopeKey,
   onRefreshList,
 }: UseCampaignsDirectoryWorkspaceArgs) {
-  const navigate = useNavigate();
   const listItems = items ?? [];
   const [importOpen, setImportOpen] = useState(false);
   const [wizardOpen, setWizardOpen] = useState(false);
@@ -311,16 +309,6 @@ export function useCampaignsDirectoryWorkspace({
       .finally(() => setExportBusy(false));
   }, [resolveExportCampaigns]);
 
-  const onReportClick = useCallback(() => {
-    if (selectedIds.size !== 1) {
-      toast.error('Select exactly one campaign for report');
-      return;
-    }
-    if (selectedCampaignId) {
-      navigate(`/dashboards/campaign/${selectedCampaignId}`);
-    }
-  }, [navigate, selectedCampaignId, selectedIds.size]);
-
   return {
     archiveOpen,
     bulkBusy,
@@ -338,7 +326,6 @@ export function useCampaignsDirectoryWorkspace({
     onExportBundles,
     onExportCsv,
     onPauseSelected,
-    onReportClick,
     onResumeSelected,
     overviewCampaign,
     resetWorkspaceOpen,

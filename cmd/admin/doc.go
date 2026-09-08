@@ -1,15 +1,15 @@
 // Package main is the operator/dev CLI for Postgres seeding, slot maps, budgets, and identity tokens.
 //
 // Role:
-//   - db seed: synthetic customers/campaigns/brands in one PG transaction (dev/load-test fixtures).
+//   - db seed: synthetic customers/campaigns/brands in one Postgres transaction (dev/load-test fixtures).
 //   - slot-map: show/create/activate/rollback StaticSlot shard table versions (must match edge-slot-map.lua).
-//   - budget reset: clear Redis budget keys for a campaign; optional PG current_spend reset.
+//   - budget reset: clear Redis budget keys for a campaign; optional Postgres current_spend reset.
 //   - user: create-token (PASETO for /api/v1 testing), list/get/create/update/delete identity users.
 //   - campaign, customer, blacklist: break-glass CRUD (prod mutations use controlplane outbox).
 //
 // Topology:
 //   - Cobra root with --env-path default .env; PersistentPreRunE loads env + config.Load.
-//   - getDB: PG pool max 5 conns, min 1 (operator tool, not production service).
+//   - getDB: Postgres pool max 5 conns, min 1 (operator tool, not production service).
 //   - getRedisShards: ConnectRedisShards pool 10 + StaticSlotSharder for budget commands.
 //
 // Invariants:

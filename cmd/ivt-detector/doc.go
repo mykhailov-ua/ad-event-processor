@@ -2,7 +2,7 @@
 //
 // Role:
 //   - Require IVT_DETECTOR_ENABLED=true and ivt_ml_detector license module.
-//   - Register fraud.AnalyzerRegistry rules (CH readonly queries, optional embedded LGBM when FRAUD_SCORING_ENABLED and not FRAUD_SCORER_STANDALONE).
+//   - Register fraud.AnalyzerRegistry rules (ClickHouse readonly queries, optional embedded LGBM when FRAUD_SCORING_ENABLED and not FRAUD_SCORER_STANDALONE).
 //   - Run fraud.Detector loop; enqueue blacklist/boost/silent_reject via management HTTP API (ResolveManagementBlockerFromConfig).
 //   - Optional fraud.ResidentialIntelEnricher goroutine when external residential intel env + SKU allow.
 //   - Pause detector when outbox PENDING exceeds IVT_DETECTOR_OUTBOX_PENDING_LIMIT (default 500).

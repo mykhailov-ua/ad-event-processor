@@ -1,5 +1,5 @@
 #!/usr/bin/env bash
-# Role: Full campaign list UX dataset (PG stats + list facets + ClickHouse economics).
+# Role: Full campaign list UX dataset (Postgres stats + list facets + ClickHouse economics).
 # Execution context: ingest-only stack; runs buyer dashboard seed with list UX enrichment.
 # Env knobs: SEED_BUYER_COUNT (default 120).
 # Verify: bash scripts/dev/stack/seed_campaign_list_full.sh

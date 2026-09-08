@@ -1,4 +1,4 @@
-// L3 platform settings: GET snapshot + bootstrap/apply/patch mutations; restart_required flag surfacing.
+// platform settings: GET snapshot + bootstrap/apply/patch mutations; restart_required flag surfacing.
 import { useCallback, useState } from 'react';
 import { toast } from 'sonner';
 

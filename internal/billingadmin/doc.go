@@ -10,7 +10,7 @@
 //   - CostSyncHTTPHandlers: /api/v1/cost-sync/* credentials, networks, run, history.
 //   - CryptoWebhookHandlers: POST /api/v1/billing/crypto/webhook (management listener).
 //   - Workspace usage CSV: GET /api/v1/billing/usage/export (workspace_handlers.go).
-//   - CompositeReadService joins PG ledger with optional CH metrics (forecast timeout 1.5 s).
+//   - CompositeReadService joins Postgres ledger with optional ClickHouse metrics (forecast timeout 1.5 s).
 //   - Workers: VolumeMeterWorker, LedgerInvariantWorker, CreditScoringWorker,
 //     UsageDailyFlushWorker (optional).
 //
@@ -33,7 +33,7 @@
 // Defaults and limits:
 //   - LEDGER_INVARIANT_INTERVAL_HOURS default 24 (config.LedgerInvariantIntervalHours).
 //   - VOLUME_METER_INTERVAL default 1 h (time.ParseDuration); disable with VOLUME_METER_ENABLED=0.
-//   - VOLUME_METER_SOURCE default pg; clickhouseQuery reads accepted_events from CH when set
+//   - VOLUME_METER_SOURCE default pg; clickhouseQuery reads accepted_events from ClickHouse when set
 //     and ClickHouse client is wired (VolumeMeterSourceCH).
 //   - USAGE_DAILY_FLUSH_INTERVAL default 24 h when USAGE_DAILY_FLUSH_ENABLED=1.
 //   - Credit scoring interval fixed 24 h in controlplane; knobs CREDIT_SCORING_MIN_AGE_DAYS,

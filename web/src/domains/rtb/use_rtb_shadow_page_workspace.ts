@@ -1,4 +1,4 @@
-// L3 RTB shadow reconcile: parallel GET shadow diff + reconcile export; window/request_id in URL.
+// RTB shadow reconcile: parallel GET shadow diff + reconcile export; window/request_id in URL.
 import { useCallback, useEffect, useState } from 'react';
 
 import { getRtbReconcileExport, getRtbShadowDiff } from '@/api/rtb_api';

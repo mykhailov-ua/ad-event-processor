@@ -1,7 +1,7 @@
 // Package notify owns notifier-schema persistence, provider dispatch, rate limits, and retention.
 //
 // Role:
-//   - OpenModule in cmd/control wires PG pool, HTTP Handler, and StartWorkers (pending poller, optional retention janitor, queue metrics scraper).
+//   - OpenModule in cmd/control wires Postgres pool, HTTP Handler, and StartWorkers (pending poller, optional retention janitor, queue metrics scraper).
 //   - Service enqueues notifier.notifications rows; Worker pool calls processPending with per-provider circuit breakers and rate limiters.
 //   - Providers: Telegram, Slack (incoming webhook URL), SMS, SMTP; broadcast tries configured providers in fallback order.
 //

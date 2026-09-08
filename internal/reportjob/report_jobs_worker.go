@@ -47,7 +47,7 @@ func (r *ReportJobRunner) ProcessOnce(ctx context.Context) (int, error) {
 	if r == nil || !r.pgEnabled() {
 		return 0, nil
 	}
-	// PG txn: SELECT pending FOR UPDATE SKIP LOCKED, then UPDATE to RUNNING.
+	// Postgres txn: SELECT pending FOR UPDATE SKIP LOCKED, then UPDATE to RUNNING.
 	claimed, err := claimReportJobs(ctx, r.deps.Pool, reportJobWorkerBatchSize)
 	if err != nil {
 		return 0, err

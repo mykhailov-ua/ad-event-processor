@@ -1,4 +1,4 @@
-// Buyer dashboard PG seed: group deterministic campaigns under one demo customer.
+// Buyer dashboard Postgres seed: group deterministic campaigns under one demo customer.
 package main
 
 import (

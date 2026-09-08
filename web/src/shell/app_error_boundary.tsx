@@ -1,4 +1,5 @@
 import { Component, type ErrorInfo, type ReactNode } from 'react';
+import { useLocation } from 'react-router-dom';
 
 import { AdminErrorPage } from '@/shell/admin_error_page';
 
@@ -6,6 +7,7 @@ import { AdminErrorPage } from '@/shell/admin_error_page';
 type AppErrorBoundaryProps = {
   children: ReactNode;
   layout?: 'standalone' | 'embedded';
+  resetKey?: string;
 };
 
 type AppErrorBoundaryState = {
@@ -21,6 +23,12 @@ export class AppErrorBoundary extends Component<AppErrorBoundaryProps, AppErrorB
 
   static getDerivedStateFromError(error: Error): Partial<AppErrorBoundaryState> {
     return { error };
+  }
+
+  componentDidUpdate(prevProps: AppErrorBoundaryProps): void {
+    if (prevProps.resetKey !== this.props.resetKey && this.state.error) {
+      this.setState({ error: undefined, componentStack: undefined });
+    }
   }
 
   componentDidCatch(error: Error, info: ErrorInfo): void {
@@ -48,4 +56,20 @@ export class AppErrorBoundary extends Component<AppErrorBoundaryProps, AppErrorB
 
     return this.props.children;
   }
+}
+
+export function AppRouteErrorBoundary({
+  children,
+  layout = 'embedded',
+}: {
+  children: ReactNode;
+  layout?: 'standalone' | 'embedded';
+}) {
+  const location = useLocation();
+  const resetKey = `${location.pathname}${location.search}${location.key}`;
+  return (
+    <AppErrorBoundary layout={layout} resetKey={resetKey}>
+      {children}
+    </AppErrorBoundary>
+  );
 }

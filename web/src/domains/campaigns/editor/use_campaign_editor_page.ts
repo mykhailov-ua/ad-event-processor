@@ -1,4 +1,4 @@
-// L3 campaign editor page: composes load + form draft + actions; effectiveForm falls back to campaignToFormState when form unset.
+// campaign editor page: composes load + form draft + actions; effectiveForm falls back to campaignToFormState when form unset.
 import { campaignToFormState } from '@/domains/campaigns/editor/campaign_editor';
 import type { CampaignEditorProps } from '@/domains/campaigns/editor/campaign_editor_types';
 import { useCampaignEditorActions } from '@/domains/campaigns/editor/use_campaign_editor_actions';

@@ -1851,6 +1851,15 @@ paths:
       operationId: domainsList
       summary: List tracked domain health rows
       x-permissions: [settings:read]
+      parameters:
+        - name: health_filter
+          in: query
+          required: false
+          schema:
+            type: string
+            enum: [all, healthy, degraded, burned]
+            default: all
+          description: Filter rows by health and pool status (server-side; matches admin directory filter).
       responses:
         '200':
           description: Domain health list

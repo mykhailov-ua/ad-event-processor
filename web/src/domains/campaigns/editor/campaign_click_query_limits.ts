@@ -1,6 +1,6 @@
 /**
  * Mirrors internal/campaign/click_query_helpers.go (jsonb column stores map[string]string).
- * PG jsonb has no stricter app limit; these bounds match server ValidateClickQueryParams.
+ * Postgres jsonb has no stricter app limit; these bounds match server ValidateClickQueryParams.
  */
 export const CAMPAIGN_CLICK_QUERY_PARAM_MAX_KEYS = 40;
 export const CAMPAIGN_CLICK_QUERY_PARAM_MAX_VALUE_LEN = 512;

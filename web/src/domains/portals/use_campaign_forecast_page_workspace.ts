@@ -1,4 +1,4 @@
-// L3 campaign forecast tool: lazy POST forecast via loadToken + skipLazyFetch until Run.
+// campaign forecast tool: lazy POST forecast via loadToken + skipLazyFetch until Run.
 import { useState } from 'react';
 
 import { forecastCampaign } from '@/api/forecast_api';

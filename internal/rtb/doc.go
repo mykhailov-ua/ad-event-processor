@@ -38,12 +38,12 @@
 //   - SoA catalog vs pointer graph: CampaignAuctionRegistry parallel slices (Bids, CTRPPM, GeoHashes, Weights, ...)
 //     plus GeoBucketSoA/TargetBucketSoA candidate indices for cache-friendly linear scan; creativeCacheSoA avoids per-candidate
 //     pointer chase. Cold rebuild swaps atomic.Pointer[catalogSnapshot]; hot path loads once per auction with no mutex.
-//     Rejected: per-request PG catalog load or mutex-protected map on /track.
+//     Rejected: per-request Postgres catalog load or mutex-protected map on /track.
 //   - 500 scan cap (rankMaxScanCandidates): bounds worst-case auction CPU when buckets are large; returns NoBidScanLimit
 //     instead of unbounded catalog walk. Presorted buckets + score floor early break keep typical scans well under cap.
 //   - RTB_MODE shadow vs live: shadow runs RunAuctionEval + metrics only (applyRtbAuction returns without rewrite);
 //     live runs RunAuction, may rewrite evt.CampaignID and reject on NoBidReason before FilterEngine. Rejected: shadow mode
-//     that still debits budget or rewrites campaign (would skew PG/CH funnels during soak).
+//     that still debits budget or rewrites campaign (would skew Postgres/ClickHouse funnels during soak).
 //   - Budget authority redis vs rtb: RTB_BUDGET_AUTHORITY=rtb spends in CheckAndSpendAll during RunAuction with optional Redis mirror;
 //     redis authority leaves financial debit to unified-filter Lua so RTB winner selection and budget enforcement stay in one layer.
 //     BudgetAuthorityShadow forces eval-only for catalog glue and reconcile workers. Rejected: double debit (RTB CAS + Lua) without mirror skip.

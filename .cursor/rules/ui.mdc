@@ -438,6 +438,8 @@ Use primitives in `web/src/components/ui/`: `Select`, `DropdownMenu`, `Dialog`, 
 
 Date range picker, column menu, import sheet: must not clip bottom of popover/sheet content (see **Dialog, sheet, popover scroll**).
 
+**React loop guard (class B):** `select.tsx`, `popover.tsx`, `dropdown-menu.tsx` must memoize context values, avoid `[ctx,` effect deps, and use `mergeOverlayPosition` before `setPosition` (**OV-*** in `frontend-slop.mdc`; enforced by `ui_slop.sh`).
+
 ---
 
 ## Fetch and error UI
@@ -446,6 +448,7 @@ List lifecycle and charts: `react.mdc` (Hot vs Cold).
 
 | State | Condition | UI |
 | :--- | :--- | :--- |
+| Render throw | Uncaught error in route subtree | `AppRouteErrorBoundary` on `<Outlet />` in `app_shell.tsx`; clears on `location.key` change (**RB-E***). Root boot in `main.tsx` may use plain `AppErrorBoundary`. |
 | Initial load | `fetching && !data && !error` | `PageSkeleton` / grid skeleton |
 | Blocking error | `error && !data` | `ErrorBlock`; no empty table |
 | Stale revalidate | `data` present + error | Keep rows; toast or banner |

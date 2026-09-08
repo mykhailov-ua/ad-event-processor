@@ -29,7 +29,7 @@ import (
 	"github.com/stretchr/testify/require"
 )
 
-// Holdout: accepted event count must match PG rows after consumer Close/Wait (regression = stream drain gap).
+// Holdout: accepted event count must match Postgres rows after consumer Close/Wait (regression = stream drain gap).
 func TestE2E_GracefulShutdown_NoDataLoss(t *testing.T) {
 	if testing.Short() {
 		t.Skip("integration: run make test-integration (Docker testcontainers)")

@@ -1,4 +1,4 @@
-// L3 flow editor: GET snapshot keyed by refreshToken; visual path draft until PUT save.
+// flow editor: GET snapshot keyed by refreshToken; visual path draft until PUT save.
 import { useCallback, useEffect, useState } from 'react';
 import { useNavigate, useParams } from 'react-router-dom';
 import { toast } from 'sonner';

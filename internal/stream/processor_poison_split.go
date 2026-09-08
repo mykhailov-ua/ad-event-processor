@@ -10,7 +10,7 @@ import (
 
 // splitStoreBatch bisects a failed StoreBatch on non-retriable errors to isolate poison
 // rows. Retriable errors (isRetriableStoreError) fail the whole sub-batch without split.
-// DeduplicationTokenKey uses first+last msg ID for CH batch idempotency.
+// DeduplicationTokenKey uses first+last msg ID for ClickHouse batch idempotency.
 //
 // Verify:
 // go test ./internal/stream/ -short -run TestPoison -count=1

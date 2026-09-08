@@ -15,7 +15,7 @@ type campaignStatRollup struct {
 	conversions int64
 }
 
-// compactSettlementBatch dedupes click_id+type within a lane batch before PG upsert.
+// compactSettlementBatch dedupes click_id+type within a lane batch before Postgres upsert.
 func compactSettlementBatch(events []*domain.Event) ([]*domain.Event, int) {
 	if len(events) <= 1 {
 		return events, 0

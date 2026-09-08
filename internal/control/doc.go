@@ -4,7 +4,7 @@
 //   - RunCLI / RunFromCLI: config.Load, licensing guard watchdog, runtime policy init, then Run.
 //   - Run: optional in-process modules (identity, payment, ledger, notifier) via buildServeOptions;
 //     controlplane.ServeWithOptions when Management enabled.
-//   - Sidecar goroutines in same process: margin-guard (ingest registry + CH), cost-sync, platform-campaign-sync.
+//   - Sidecar goroutines in same process: margin-guard (ingest registry + ClickHouse), cost-sync, platform-campaign-sync.
 //   - StartControlServers: optional TCP/UDP control publishers for tracker shard config push.
 //   - ProbeHealth: --health-probe URL exit hook for container orchestration.
 //
@@ -16,7 +16,7 @@
 //
 // Invariants:
 //   - Run blocks on management server until context cancel when Management is true.
-//   - Margin-guard and cost-sync use dedicated PG pools; they do not serve admin HTTP.
+//   - Margin-guard and cost-sync use dedicated Postgres pools; they do not serve admin HTTP.
 //   - Module cleanups run in reverse order on shutdown when auth/billing/payment/notifier opened.
 //   - InitRuntimePolicy loads control_runtime_policy.json; dev mode may use embed fallback.
 //

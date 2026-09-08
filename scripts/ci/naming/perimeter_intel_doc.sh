@@ -15,7 +15,7 @@ if [[ ! -f "$DOC" ]]; then
 fi
 
 for heading in \
-  '## Threat catalog (T1–T30)' \
+  '## Threat catalog (T1-T30)' \
   '## T2: Human-in-the-loop Sybil (operator runbook)' \
   '## Operator checklist (pre-production and quarterly)' \
   '## T12: Cross-session device reuse' \

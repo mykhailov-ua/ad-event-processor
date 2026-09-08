@@ -1,4 +1,4 @@
-// L3 ops blacklist directory: paginated list + add/remove mutations; coalesced refresh while saving.
+// ops blacklist directory: paginated list + add/remove mutations; coalesced refresh while saving.
 import { useCallback, useState } from 'react';
 import { toast } from 'sonner';
 

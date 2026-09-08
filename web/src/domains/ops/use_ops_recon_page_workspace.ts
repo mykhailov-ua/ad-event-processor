@@ -1,4 +1,4 @@
-// L3 recon runs directory: service filter in URL; draft service resets when URL changes.
+// recon runs directory: service filter in URL; draft service resets when URL changes.
 import { useCallback, useEffect, useMemo, useState } from 'react';
 
 import { listReconRuns } from '@/api/ops_api';

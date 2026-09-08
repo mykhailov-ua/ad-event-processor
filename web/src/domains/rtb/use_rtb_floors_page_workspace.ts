@@ -1,4 +1,4 @@
-// L3 RTB floors apply tool: POST placement id list; dry_run default true.
+// RTB floors apply tool: POST placement id list; dry_run default true.
 import { useCallback, useState } from 'react';
 
 import { applyRtbFloors } from '@/api/rtb_api';

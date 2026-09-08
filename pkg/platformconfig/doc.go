@@ -2,7 +2,7 @@
 //
 // Role:
 //   - Config and Patch model tracking domain, ingress schema, Stripe block, edge expose flags, and appliance profile.
-//   - Parse, Marshal, Default, MergeDefaults load and persist settings key platform_config (JSON in PG settings KV).
+//   - Parse, Marshal, Default, MergeDefaults load and persist settings key platform_config (JSON in Postgres settings KV).
 //   - Patch.Apply pointer-merge updates; Validate normalizes tracking_domain and enforces profile/ingress/stripe rules.
 //   - RestartRequiredFields lists config deltas that need process restart (ingress, telemetry, edge, stripe, profile).
 //   - RenderComposeEnv and RenderInstallYAML emit install.compose.env and install.yaml fragments for installer.

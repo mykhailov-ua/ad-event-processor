@@ -67,7 +67,7 @@ export const NAV_GROUPS: NavGroup[] = [
 /** Flat list for command palette and legacy callers. */
 export const NAV_ITEMS: NavItem[] = NAV_GROUPS.flatMap((group) => group.items);
 
-// UX-only nav visibility; server RBAC on /api/v1 is authoritative (RB-L2).
+// UX-only nav visibility; server RBAC on /api/v1 is authoritative.
 export function filterNavItems(items: NavItem[], permissions: string[] | undefined): NavItem[] {
   if (permissions === undefined) {
     return items;

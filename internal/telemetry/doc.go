@@ -19,7 +19,7 @@
 //   - Opt-in: VENDOR_TELEMETRY_ENABLED or legacy vendor telemetry env (default false).
 //   - URL: ADSTACK_TELEMETRY_URL (legacy TELEMETRY_URL alias).
 //   - Interval / timeout: ADSTACK_TELEMETRY_INTERVAL_SEC (default 3600), ADSTACK_TELEMETRY_TIMEOUT_SEC (default 5).
-//   - deployment_id from billing.license_status when PG pool available.
+//   - deployment_id from billing.license_status when Postgres pool available.
 //
 // Invariants:
 //   - Opt-in false or empty URL means Worker.Enabled() false: no outbound calls.

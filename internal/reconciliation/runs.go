@@ -13,7 +13,7 @@ import (
 	"github.com/jackc/pgx/v5/pgtype"
 )
 
-// ListRuns merges management recon_runs (PG/Redis spend window) with payment.financial_recon_runs.
+// ListRuns merges management recon_runs (Postgres/Redis spend window) with payment.financial_recon_runs.
 func ListRuns(ctx context.Context, host listRunsHost, service string, limit, offset int32) ([]opsadmin.ReconRunDTO, int64, error) {
 	switch service {
 	case "", "all":

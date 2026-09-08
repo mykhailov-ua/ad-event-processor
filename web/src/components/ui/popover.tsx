@@ -5,6 +5,7 @@ import { adminChrome } from '@/lib/admin_chrome';
 import { useControllableState } from '@/lib/controllable_state';
 import { anchorAboveTrigger, anchorBelowTrigger } from '@/lib/floating_position';
 import { subscribeFloatingPosition } from '@/lib/floating_overlay_position';
+import { mergeOverlayPosition } from '@/lib/overlay_position_state';
 import { OverlayRoot } from '@/lib/overlay_root';
 import { useOverlayDismiss } from '@/lib/use_overlay_dismiss';
 import { cn } from '@/lib/utils';
@@ -43,8 +44,13 @@ function Popover({
   });
   const triggerRef = React.useRef<HTMLElement | null>(null);
 
+  const contextValue = React.useMemo(
+    () => ({ open: Boolean(isOpen), setOpen: setIsOpen, triggerRef }),
+    [isOpen, setIsOpen]
+  );
+
   return (
-    <PopoverContext.Provider value={{ open: Boolean(isOpen), setOpen: setIsOpen, triggerRef }}>
+    <PopoverContext.Provider value={contextValue}>
       {children}
     </PopoverContext.Provider>
   );
@@ -183,7 +189,7 @@ const PopoverContent = React.forwardRef<
           edgePadding,
           Math.min(left, window.innerWidth - contentWidth - edgePadding)
         );
-        setPosition({ ...base, left });
+        setPosition((prev) => mergeOverlayPosition(prev, { ...base, left }));
       };
 
       updatePosition();
@@ -206,7 +212,7 @@ const PopoverContent = React.forwardRef<
         window.removeEventListener('resize', updatePosition);
         resizeObserver?.disconnect();
       };
-    }, [align, open, side, sideOffset, triggerRef, children]);
+    }, [align, open, side, sideOffset, triggerRef]);
 
     if (!open) {
       return null;

@@ -14,7 +14,7 @@ import (
 )
 
 const (
-	// In-memory dev fallback caps; PG-backed runner uses report_jobs rows instead.
+	// In-memory dev fallback caps; Postgres-backed runner uses report_jobs rows instead.
 	reportJobMaxRecords = 512
 	reportJobTTL        = 24 * time.Hour
 	reportJobRunTimeout = 2 * time.Minute // bounds WriteReport/CH query per job goroutine

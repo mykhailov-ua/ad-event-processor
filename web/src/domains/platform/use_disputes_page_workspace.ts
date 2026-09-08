@@ -1,4 +1,4 @@
-// L3 disputes directory: customer scope + paginated list (limit/offset in URL).
+// disputes directory: customer scope + paginated list (limit/offset in URL).
 import { useCallback, useMemo } from 'react';
 
 import { listDisputes } from '@/api/platform_api';

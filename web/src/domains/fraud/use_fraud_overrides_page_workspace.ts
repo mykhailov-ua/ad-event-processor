@@ -1,4 +1,4 @@
-// L3 per-IP fraud override form: customer scope from useCustomerScope; POST on submit only.
+// per-IP fraud override form: customer scope from useCustomerScope; POST on submit only.
 import { useCallback, useState } from 'react';
 import { toast } from 'sonner';
 

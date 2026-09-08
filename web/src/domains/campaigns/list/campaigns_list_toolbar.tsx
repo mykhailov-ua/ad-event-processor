@@ -1,5 +1,6 @@
 import type { ReactNode } from 'react';
 import { useMemo } from 'react';
+import { Link } from 'react-router-dom';
 import { BarChart3, MoreHorizontal, Plus } from 'lucide-react';
 import { toast } from 'sonner';
 
@@ -80,6 +81,7 @@ export type CampaignsListToolbarProps = {
   statusTotals?: CampaignStatusTotals;
   statusTotalsLoading?: boolean;
   selectedCount?: number;
+  selectedCampaignId?: string | null;
   bulkBusy?: boolean;
   fetching?: boolean;
   onDraftCustomerIdChange: (customerId: string) => void;
@@ -96,7 +98,6 @@ export type CampaignsListToolbarProps = {
   onWizardClick?: () => void;
   onImportClick?: () => void;
   onCloneClick?: () => void;
-  onReportClick?: () => void;
   onPauseClick?: () => void;
   onResumeClick?: () => void;
   onArchiveClick?: () => void;
@@ -132,6 +133,7 @@ export function CampaignsListToolbar({
   statusTotals,
   statusTotalsLoading = false,
   selectedCount = 0,
+  selectedCampaignId = null,
   bulkBusy = false,
   fetching = false,
   onDraftCustomerIdChange,
@@ -148,7 +150,6 @@ export function CampaignsListToolbar({
   onWizardClick,
   onImportClick,
   onCloneClick,
-  onReportClick,
   onPauseClick,
   onResumeClick,
   onArchiveClick,
@@ -162,6 +163,10 @@ export function CampaignsListToolbar({
   const bulkActionBusy = bulkBusy;
   const hasSelection = selectedCount > 0;
   const singleSelected = selectedCount === 1;
+  const reportHref =
+    singleSelected && selectedCampaignId
+      ? `/dashboards/campaign/${selectedCampaignId}`
+      : null;
   const showWizardAction = onWizardClick != null;
   const showImportAction = onImportClick != null;
 
@@ -231,20 +236,37 @@ export function CampaignsListToolbar({
             >
               Clone
             </Button>
-            <Button
-              disabled={bulkActionBusy || !singleSelected}
-              type="button"
-              variant="outline"
-              title={
-                singleSelected ? 'Open report for selected campaign' : 'Select exactly one campaign'
-              }
-              onClick={() =>
-                runBulkAction(singleSelected, 'Select exactly one campaign', onReportClick)
-              }
-            >
-              <BarChart3 className="h-4 w-4" aria-hidden />
-              Report
-            </Button>
+            {reportHref ? (
+              <Button
+                asChild
+                disabled={bulkActionBusy}
+                type="button"
+                variant="outline"
+                title="Open report for selected campaign"
+              >
+                <Link to={reportHref}>
+                  <BarChart3 className="h-4 w-4" aria-hidden />
+                  Report
+                </Link>
+              </Button>
+            ) : (
+              <Button
+                disabled={bulkActionBusy || !singleSelected}
+                type="button"
+                variant="outline"
+                title={
+                  singleSelected
+                    ? 'Open report for selected campaign'
+                    : 'Select exactly one campaign'
+                }
+                onClick={() =>
+                  runBulkAction(singleSelected, 'Select exactly one campaign', undefined)
+                }
+              >
+                <BarChart3 className="h-4 w-4" aria-hidden />
+                Report
+              </Button>
+            )}
             <Button
               disabled={bulkActionBusy || !hasSelection}
               type="button"

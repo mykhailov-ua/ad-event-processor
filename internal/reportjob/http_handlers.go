@@ -136,7 +136,7 @@ func (h *HTTPHandlers) downloadReportJob(w http.ResponseWriter, r *http.Request)
 	}
 	w.Header().Set("Content-Type", reportJobDownloadContentType(status))
 	w.Header().Set("Content-Disposition", fmt.Sprintf(`attachment; filename="%s"`, reportJobDownloadFilename(status)))
-	// Streams completed file from REPORT_EXPORT_DIR; no CH/PG read on download path.
+	// Streams completed file from REPORT_EXPORT_DIR; no ClickHouse/Postgres read on download path.
 	http.ServeContent(w, r, reportJobDownloadFilename(status), time.Now().UTC(), f)
 }
 

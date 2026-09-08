@@ -1,4 +1,4 @@
-// L3 campaign editor actions: PATCH/publish/clone mutations; save errors via saveError (no toast on save, EH-SI1 on publish/clone 2xx).
+// campaign editor actions: PATCH/publish/clone mutations; save errors via saveError (no toast on save; toast only after publish/clone 2xx).
 import { useCallback, useState } from 'react';
 import { toast } from 'sonner';
 

@@ -1,4 +1,4 @@
-// L3 overview sheet: stats+margins when sheet open; session stats cache; skips fetch when campaign id not UUID-like.
+// overview sheet: stats+margins when sheet open; session stats cache; skips fetch when campaign id not UUID-like.
 import { useEffect, useMemo, useState } from 'react';
 
 import type { CampaignListMetrics } from '@/api/campaigns_api';

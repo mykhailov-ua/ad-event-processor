@@ -2,8 +2,8 @@
 //
 // Role:
 //   - features.go builds a 16-dim vector from FeatureRow; feature_spec.go lists FeatureNames and Dims().
-//   - residential_intel_* files resolve proxy/VPN signals via HTTP provider, Redis feed, and residential_intel_cache CH inserts.
-//   - clickhouse_pii_hasher.go hashes IPs for CH queries via pkg/piihash (SetPIIHasher for production wiring).
+//   - residential_intel_* files resolve proxy/VPN signals via HTTP provider, Redis feed, and residential_intel_cache ClickHouse inserts.
+//   - clickhouse_pii_hasher.go hashes IPs for ClickHouse queries via pkg/piihash (SetPIIHasher for production wiring).
 //   - Pure transforms and enrichment ticks; no HTTP routes in this package.
 //
 // Topology:
@@ -12,7 +12,7 @@
 //
 // Invariants:
 //   - FeatureNames order and len(FeatureNames) match scorer Dims() and FeatureRow.ToVectorInto buffer size.
-//   - Residential intel enricher skips invalid IPs; CH insert uses hashed ip_hash column, not raw IP strings.
+//   - Residential intel enricher skips invalid IPs; ClickHouse insert uses hashed ip_hash column, not raw IP strings.
 //
 // Forbidden:
 //   - Import on tracker /track synchronous path.

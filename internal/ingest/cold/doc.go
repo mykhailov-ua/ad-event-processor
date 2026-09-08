@@ -17,7 +17,7 @@
 //   - AppendAttributionPayload returns dst[:0] when only empty object would be emitted (len(dst)==1 after '{').
 //   - SecFetchAnomaly fires only for Chrome desktop UA (not in-app webview): missing Sec-Fetch trio or navigate+document pair.
 //   - AcceptEncodingBrowserMismatch requires Chrome UA, br present, and zstd when Chrome major >= 123.
-//   - ClientHintsPlatformMismatch skips in-app webview; compares Sec-CH-UA-Platform and ?0/?1 mobile vs ScanUAFamily.
+//   - ClientHintsPlatformMismatch skips in-app webview; compares Sec-ClickHouse-UA-Platform and ?0/?1 mobile vs ScanUAFamily.
 //   - ConversionDatacenterIPChecker: geo IsAnonymous true, or ASN from GeoProvider + DCASNTable.IsDatacenter.
 //   - CampaignTripletPick.PickShard: composite hash mod 100 maps 0-39 PrimaryA, 40-79 PrimaryB, 80-99 Reserve.
 //

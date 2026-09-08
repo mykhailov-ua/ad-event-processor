@@ -1,7 +1,7 @@
 // Role: StaticSlotSharder routes budget keys and stream XADD to correct Redis shard among four containers.
 // Tier: e2e.
 // Infra: testcontainers Postgres (ads schema), Redis x4 shards.
-// Invariants proved: budget key exists only on mapped shard; each shard stream length 1; all campaigns settle in PG.
+// Invariants proved: budget key exists only on mapped shard; each shard stream length 1; all campaigns settle in Postgres.
 // Verify: make test-integration
 package e2e_test
 

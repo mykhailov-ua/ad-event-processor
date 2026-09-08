@@ -1,5 +1,5 @@
 #!/bin/sh
-# Role: Init run-volume directories for compose UDS sockets, log offsets, and CH spool paths.
+# Role: Init run-volume directories for compose UDS sockets, log offsets, and ClickHouse spool paths.
 # Runs once as run-dir-init service before db/redis/tracker (deploy/compose/docker-compose.yaml).
 # Cross-ref: deploy/DEPLOY.md.
 #

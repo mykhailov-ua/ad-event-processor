@@ -298,7 +298,7 @@ func (r *Registry) SetStalePGGrace(enabled bool) {
 }
 
 // resolveStaleCampaignMiss warms one campaign row from Postgres when registry pub/sub is stale.
-// Returns nil when the row is active and now in the local snapshot; ErrCampaignNotFound when PG has no active row.
+// Returns nil when the row is active and now in the local snapshot; ErrCampaignNotFound when Postgres has no active row.
 func (r *Registry) resolveStaleCampaignMiss(ctx context.Context, id uuid.UUID) error {
 	if r == nil || !r.IsStaleMode() {
 		return ErrCampaignNotFound
@@ -326,7 +326,7 @@ func (r *Registry) resolveStaleCampaignMiss(ctx context.Context, id uuid.UUID) e
 	return ErrCampaignNotFound
 }
 
-// LookupCampaign resolves evt.CampaignID from the registry snapshot, or PG-warms once during stale mode.
+// LookupCampaign resolves evt.CampaignID from the registry snapshot, or Postgres-warms once during stale mode.
 func LookupCampaign(ctx context.Context, registry domain.CampaignRegistry, evt *domain.Event) (*domain.Campaign, error) {
 	if registry == nil || evt == nil {
 		return nil, ErrCampaignNotFound

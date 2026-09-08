@@ -8,7 +8,7 @@ import (
 	"ad-event-processor/pkg/coldpath"
 )
 
-// AdminRequestContextMiddleware bounds /api/* handler context for PG and outbound cancel propagation.
+// AdminRequestContextMiddleware bounds /api/* handler context for Postgres and outbound cancel propagation.
 // longRoutes maps "METHOD /path" to a longer ceiling than defaultTimeout (cost-sync run, migration pull, support bundle).
 func AdminRequestContextMiddleware(defaultTimeout time.Duration, longRoutes map[string]time.Duration) func(http.Handler) http.Handler {
 	if defaultTimeout <= 0 {

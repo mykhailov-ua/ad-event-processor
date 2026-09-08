@@ -9,7 +9,7 @@ source "$(cd "$(dirname "${BASH_SOURCE[0]}")/../.." && pwd)/lib/paths.sh"
 
 cd "$ROOT"
 
-# infra profile: PG and redis shards only; no tracker, processor, or ClickHouse.
+# infra profile: Postgres and redis shards only; no tracker, processor, or ClickHouse.
 COMPOSE=(docker compose --project-directory "$ROOT" -f "$ROOT/docker-compose.yaml" --profile infra)
 
 echo "dev_minimal_infra: stopping all infra-profile services"

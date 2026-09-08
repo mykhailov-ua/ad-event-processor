@@ -1,4 +1,4 @@
-// L3 campaign editor form: form undefined until syncFormFromCampaign; onFieldChange is no-op when form not seeded.
+// campaign editor form: form undefined until syncFormFromCampaign; onFieldChange is no-op when form not seeded.
 import { useCallback, useState } from 'react';
 
 import {

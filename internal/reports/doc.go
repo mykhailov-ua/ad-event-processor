@@ -3,7 +3,7 @@
 // Role:
 //   - ReportsHTTPHandlers (handlers*.go): /api/v1/reports/* catalog routes, /api/v1/campaigns/{id}/stats,
 //     POST /api/v1/forecast/campaign, GET /api/v1/reports/edge-parity.
-//   - Freshness metadata (stale=true) when CH lag exceeds policy; PG fallbacks where catalog specifies.
+//   - Freshness metadata (stale=true) when ClickHouse lag exceeds policy; Postgres fallbacks where catalog specifies.
 //   - Subpackages: clickhouse (query builders), fraud (IVT/silent-reject routes), export (async CSV/ZIP writers),
 //     views (/api/v1/views CRUD via ViewsHTTPHandlers, wired separately in adminapi_wire_domains.go).
 //   - Fraud routes registered via reports.SetFraudRegistrar; blank import _ "reports/fraud" in controlplane/register.go.

@@ -2,24 +2,24 @@
 //
 // Role:
 //   - Query helpers: placement/keyword stats, IVT rates, spend velocity, daypart heatmap, geo-device, discrepancy, true ROI.
-//   - campaign.go: campaign economics CH reads, Telegram export rows, daily event totals keyed by campaign+day.
+//   - campaign.go: campaign economics ClickHouse reads, Telegram export rows, daily event totals keyed by campaign+day.
 //   - dimensions.go: coalesce column vs JSONExtractString dimension expressions shared with fraud reports.
 //   - math.go: ROI and CPA helpers for report row shaping (no HTTP).
 //   - Parent reports package re-exports selected entry points via clickhouse_exports.go.
 //
 // Topology:
 //   - Called from internal/reports handlers and export writers; receives *database.ClickHouseQuery from controlplane.
-//   - PG pool used only to list customer campaign IDs (ListCustomerCampaignIDs) before CH IN (?) filters.
+//   - Postgres pool used only to list customer campaign IDs (ListCustomerCampaignIDs) before ClickHouse IN (?) filters.
 //
 // Invariants:
-//   - Read-only CH via database.ClickHouseQuery; ClickHouseQueryContext applies ReportClickHouseQueryTimeout (10s).
+//   - Read-only ClickHouse via database.ClickHouseQuery; ClickHouseQueryContext applies ReportClickHouseQueryTimeout (10s).
 //   - Default lookback ParseReportRange: 7 days when from/to omitted.
-//   - Dimension SQL prefers typed CH columns over payload JSONExtract when both exist (holdout in dimensions_test.go).
+//   - Dimension SQL prefers typed ClickHouse columns over payload JSONExtract when both exist (holdout in dimensions_test.go).
 //   - No balance_ledger reads; financial truth stays in Postgres billing paths.
 //
 // Forbidden:
 //   - HTTP handlers or authz in this package.
-//   - PG writes or outbox side effects.
+//   - Postgres writes or outbox side effects.
 //
 // Verify:
 // go list -e ./internal/reports/clickhouse/

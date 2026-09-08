@@ -1,4 +1,4 @@
-// L3 fraud catalog reports: URL filters and offset pagination per report key meta.
+// fraud catalog reports: URL filters and offset pagination per report key meta.
 import { useCallback, useEffect, useMemo, useState } from 'react';
 
 import { getFraudCatalogReport } from '@/api/reports_api';

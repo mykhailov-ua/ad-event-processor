@@ -6,7 +6,7 @@
 //     via pkg/broker/log; health/metrics HTTP on configurable health addr.
 //   - coord.go + registry_redis.go: per-topic leader lease, fencing epoch, topic id registry.
 //   - offset_redis.go / offset_store.go: consumer high-water marks (memory default, Redis HA).
-//   - replay.go: cutover drills and CH/compare replay from on-disk WAL segments.
+//   - replay.go: cutover drills and ClickHouse/compare replay from on-disk WAL segments.
 //   - retention.go: segment age/size eviction on leader nodes (default check every 5 min).
 //
 // Topology:

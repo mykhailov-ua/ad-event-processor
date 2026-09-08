@@ -1,4 +1,4 @@
-// L3 smart alert history: customer-scoped list + per-event ack mutation.
+// smart alert history: customer-scoped list + per-event ack mutation.
 import { useCallback, useState } from 'react';
 import { toast } from 'sonner';
 

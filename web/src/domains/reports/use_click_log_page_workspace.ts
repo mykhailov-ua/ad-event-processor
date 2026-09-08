@@ -1,4 +1,4 @@
-// L3 click log report: URL filters + cursor pagination stack; server GET only when customer applied.
+// click log report: URL filters + cursor pagination stack; server GET only when customer applied.
 import { useCallback, useEffect, useMemo, useState } from 'react';
 
 import { fetchCustomersComboboxCached } from '@/lib/customers_combobox_cache';

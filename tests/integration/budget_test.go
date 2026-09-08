@@ -1,4 +1,4 @@
-// Role: BudgetFilter debit, Redis budget key, SyncWorker PG spend sync, click_id dedup.
+// Role: BudgetFilter debit, Redis budget key, SyncWorker Postgres spend sync, click_id dedup.
 // Tier: integration.
 // Infra: testcontainers Postgres (ads schema), single Redis.
 // Invariants proved: debit reduces Redis budget; duplicate click_id skips second debit; SyncAll aligns campaign current_spend and customer balance.

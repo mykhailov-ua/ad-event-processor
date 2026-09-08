@@ -87,7 +87,7 @@ func loadEnvFile(path string) error {
 	return scanner.Err()
 }
 
-// getDB opens a small PG pool (5 max conns) for operator commands.
+// getDB opens a small Postgres pool (5 max conns) for operator commands.
 func getDB(ctx context.Context) (*pgxpool.Pool, error) {
 	return database.Connect(ctx, string(cfg.DBDSN), 5, 1)
 }

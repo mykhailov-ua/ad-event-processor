@@ -11,7 +11,7 @@ import (
 )
 
 func main() {
-	// CLI probes and license watchdog exit before config.Load: no PG, Redis, or gnet on those paths.
+	// CLI probes and license watchdog exit before config.Load: no Postgres, Redis, or gnet on those paths.
 	// --health-probe URL: exit 0 when /health or /ready returns 2xx (compose healthcheck).
 	if len(os.Args) > 2 && os.Args[1] == "--health-probe" {
 		if !lifecycle.RunHealthProbe(os.Args[2]) {

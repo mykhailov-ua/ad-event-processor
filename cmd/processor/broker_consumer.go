@@ -170,7 +170,7 @@ func (w *brokerWorker) run(ctx context.Context) {
 			parseErr := streambroker.ParseBrokerPayloadStream(iter.Payload, func(evt *domain.Event) {
 				metrics.BrokerIngestMessagesTotal.WithLabelValues(w.parent.cfg.Topic, w.parent.cfg.Group, evt.Type).Inc()
 				if w.parent.cfg.OnMessageProcessed != nil {
-					// CH broker path: fraud microbatch hook runs before StoreBatch (same as Redis _ch consumer).
+					// ClickHouse broker path: fraud microbatch hook runs before StoreBatch (same as Redis _ch consumer).
 					w.parent.cfg.OnMessageProcessed(evt, iter.Offset)
 				}
 				batch = append(batch, evt)

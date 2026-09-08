@@ -1,5 +1,5 @@
-// L3 fraud panel: local draft until PATCH; resets from fraudConfig prop when parent refetches.
-// Toast after await patchCampaignFraud (EH-SI1); errors surface via saveError/previewError in panel.
+// fraud panel: local draft until PATCH; resets from fraudConfig prop when parent refetches.
+// Toast after await patchCampaignFraud; errors surface via saveError/previewError in panel.
 import { useCallback, useEffect, useState } from 'react';
 import { toast } from 'sonner';
 

@@ -5,7 +5,7 @@
 //     (S3 or memory tier), persists evacuator checkpoint; optional compactor marker gate.
 //   - Compactor (compactor.go): claims hot segments, decrypts zstd streams, filters/samples impressions
 //     (sample.go, segment.go), key-compacts by click_id (key_compact.go), writes warm tier via TierStore.
-//   - ColdRolluper (cold_rollup.go, cold_clickhouse.go): aggregates warm segments into hourly CH rollups
+//   - ColdRolluper (cold_rollup.go, cold_clickhouse.go): aggregates warm segments into hourly ClickHouse rollups
 //     and filter-reject slice tables when cold tier enabled.
 //   - CheckpointStore (checkpoint.go): JSONL records with source/dest SHA256 digests for idempotent compaction.
 //   - Leader lock (leader.go), lag gauges (lag.go, metrics.go), lifecycle helpers (lifecycle.go).

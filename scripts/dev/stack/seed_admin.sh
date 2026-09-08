@@ -145,7 +145,7 @@ load_env() {
   export DB_DSN="$(read_env_var DB_DSN)"
 }
 
-# Host-side admin CLI cannot use compose PG unix sockets; published TCP port is canonical.
+# Host-side admin CLI cannot use compose Postgres unix sockets; published TCP port is canonical.
 host_db_dsn() {
   local user="${DB_USER:-ad_event_processor_user}"
   local pass="${DB_PASSWORD:-secure_pass_123}"
@@ -190,7 +190,7 @@ fi
 
 if [[ "$NO_UP" -eq 0 && "$control_up" -eq 0 ]]; then
   log "control not healthy; starting ingest-only stack"
-  # ingest_only profile: CH off, cold-path workers disabled for laptop dev.
+  # ingest_only profile: ClickHouse off, cold-path workers disabled for laptop dev.
   CH_ENABLED=0 CONTROL_ENABLE_PAYMENT=0 CONTROL_ENABLE_BILLING=0 \
     CONTROL_ENABLE_NOTIFIER=0 CONTROL_ENABLE_MARGIN_GUARD=0 CONTROL_ENABLE_COST_SYNC=0 \
     docker compose --profile ingest_only up -d db redis-0 control

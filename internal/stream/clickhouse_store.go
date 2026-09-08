@@ -103,7 +103,7 @@ var slicePool = sync.Pool{
 	},
 }
 
-// ClickHouseStore implements domain.EventStore for the stream processor. Live CH insert with
+// ClickHouseStore implements domain.EventStore for the stream processor. Live ClickHouse insert with
 // retry; on persistent failure appends to mmap ClickHouseSpool WAL (eventually consistent).
 // ProcessorClickHouseGate serializes concurrent StoreBatch against max_conns.
 type ClickHouseStore struct {
@@ -209,7 +209,7 @@ func (st *ClickHouseStore) StoreBatch(ctx context.Context, events []*domain.Even
 	return nil
 }
 
-// startSpoolReplayer drains mmap WAL in the background when live CH insert failed.
+// startSpoolReplayer drains mmap WAL in the background when live ClickHouse insert failed.
 // One record per tick (2s); ReleaseRecord truncates active segment only after insert OK.
 //
 // Verify:

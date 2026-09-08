@@ -1,4 +1,4 @@
-// L3 metrics popover (RF-3): seeds from list batch metrics; GET /stats on open; pendingRefreshRef bypasses session cache on manual refresh.
+// metrics popover: seeds from list batch metrics; GET /stats on open; pendingRefreshRef bypasses session cache on manual refresh.
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 
 import { getCampaignStats } from '@/api/campaigns_api';

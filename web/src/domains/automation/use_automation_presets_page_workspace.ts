@@ -1,4 +1,4 @@
-// L3 automation preset catalog: read-only GET on mount.
+// automation preset catalog: read-only GET on mount.
 import { listAutomationPresets } from '@/api/automation_api';
 import { useResource } from '@/api/use_resource';
 

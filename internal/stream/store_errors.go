@@ -6,7 +6,7 @@ import (
 	"strings"
 )
 
-// isRetriableStoreError: true -> retain batch in PEL and backoff (CH down, spool full).
+// isRetriableStoreError: true -> retain batch in PEL and backoff (ClickHouse down, spool full).
 // false -> splitStoreBatch/DLQ path for schema or poison rows.
 func isRetriableStoreError(err error) bool {
 	if err == nil {

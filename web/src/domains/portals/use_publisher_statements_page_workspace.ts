@@ -1,4 +1,4 @@
-// L3 publisher statements: paginated list (limit 50 fixed).
+// publisher statements: paginated list (limit 50 fixed).
 import { listPublisherStatements } from '@/api/publisher_api';
 import { useResource } from '@/api/use_resource';
 

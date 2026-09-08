@@ -1,4 +1,4 @@
-// UX-E / EH-TH1: shared destructive confirm + mutation error normalization.
+// shared destructive confirm + mutation error normalization.
 export function confirmDestructiveAction(message: string): boolean {
   return window.confirm(message);
 }

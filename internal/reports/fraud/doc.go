@@ -11,7 +11,7 @@
 //   - filter-rejects lives in parent internal/reports (rejects.go), not this subpackage.
 //
 // Topology:
-//   - CH queries via database.ClickHouseQuery; scrub helpers read authz.SnapshotFromContext.
+//   - ClickHouse queries via database.ClickHouseQuery; scrub helpers read authz.SnapshotFromContext.
 //   - exports.go exposes FraudExportAPI callbacks for parent reports and export subpackage.
 //
 // Invariants:
@@ -21,7 +21,7 @@
 //   - ML shadow delta snapshot freshness gate: stale after 24h (ml_shadow_delta_snapshot.go).
 //
 // Forbidden:
-//   - ghost_* report keys or ghost_event CH column names in new queries.
+//   - ghost_* report keys or ghost_event ClickHouse column names in new queries.
 //   - balance_ledger as fraud analytics source.
 //
 // Verify:

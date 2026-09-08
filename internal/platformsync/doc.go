@@ -1,7 +1,7 @@
 // Package platformsync mirrors linked ad-network campaigns and applies remote pause/resume/budget mutations.
 //
 // Role:
-//   - Worker (worker.go) holds a PG advisory lock and runs 15-minute cycles (platformSyncCycleTimeout 2 min per cycle): sync link statuses from vendor APIs
+//   - Worker (worker.go) holds a Postgres advisory lock and runs 15-minute cycles (platformSyncCycleTimeout 2 min per cycle): sync link statuses from vendor APIs
 //     and drain platform_campaign_mutations pending rows.
 //   - facebook.go, google.go, tiktok.go, microsoft_ads.go implement fetch and mutate HTTP for each network.
 //   - preview.go dry-runs mutations (PreviewMutation) before platformadmin enqueues pending rows.
@@ -9,7 +9,7 @@
 //   - platformadmin campaign_sync_handlers.go exposes /api/v1/platform-campaigns/* HTTP and manual sync-run.
 //
 // Topology:
-//   - Control worker tick only; PG platform_campaign_links and platform_campaign_mutations are source of truth.
+//   - Control worker tick only; Postgres platform_campaign_links and platform_campaign_mutations are source of truth.
 //   - Supported networks: facebook, google, tiktok, microsoft_ads (types.go NetworkSupported).
 //   - Not multi-region satellite config sync (see internal/regionproxy for enterprise uplink replication).
 //
@@ -18,7 +18,7 @@
 //     (TestMutationFault_remoteFailureDoesNotImplyLocalPause_holdout).
 //   - PreviewMutation returns noop when external status already matches requested action.
 //   - Mutation rows transition pending -> applied or failed; post-mutation link status refresh runs on success.
-//   - Only one worker cycle leader per cluster (PG advisory lock platformAdvisoryLockKey).
+//   - Only one worker cycle leader per cluster (Postgres advisory lock platformAdvisoryLockKey).
 //
 // Forbidden:
 //   - Hot-path tracker imports.

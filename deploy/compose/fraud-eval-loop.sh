@@ -5,7 +5,7 @@
 #
 # Execution context:
 # - Long-running container; cd /app/model then python3 -m eval.evaluate --format both.
-# - Reads CH/DB DSN from container env (CH_DSN, DB_DSN, FRAUD_EVAL_HOURS).
+# - Reads ClickHouse/DB DSN from container env (CH_DSN, DB_DSN, FRAUD_EVAL_HOURS).
 #
 # Env deps:
 # - FRAUD_EVAL_INTERVAL_SEC (default 21600, 6 h between eval runs).

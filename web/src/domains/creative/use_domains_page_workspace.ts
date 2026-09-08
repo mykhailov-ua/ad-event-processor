@@ -1,4 +1,4 @@
-// L3 tracking domains: list + add/delete/probe/park/SSL/bulk/burn actions; per-action acting guard.
+// tracking domains: list + add/delete/probe/park/SSL/bulk/burn actions; per-action acting guard.
 import { useCallback, useEffect, useMemo, useState } from 'react';
 import { toast } from 'sonner';
 

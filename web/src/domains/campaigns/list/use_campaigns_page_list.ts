@@ -1,6 +1,6 @@
-// L2 fetch orchestrator for campaigns directory (pages/campaigns_page.tsx).
-// L3 selection/export/column prefs: use_campaigns_directory_workspace.ts.
-// Campaign list workspace fetch fan-out (RF-9; Phase 6 trim):
+// Fetch orchestrator for campaigns directory (pages/campaigns_page.tsx).
+// selection/export/column prefs: use_campaigns_directory_workspace.ts.
+// Campaign list workspace fetch fan-out (Phase 6 trim):
 // Refresh lanes (up to 4 when paginated and filter totals not capped):
 // - GET list campaigns
 // - GET width-probe list (after main list snapshot; skipped when page rows cover probe dataset)

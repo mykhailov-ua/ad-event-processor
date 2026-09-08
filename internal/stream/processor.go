@@ -834,7 +834,7 @@ func firstN(ids []string, n int) []string {
 	return ids[:n]
 }
 
-// flushBatch: StoreBatch then XAck. domain.DeduplicationTokenKey scopes CH insert idempotency
+// flushBatch: StoreBatch then XAck. domain.DeduplicationTokenKey scopes ClickHouse insert idempotency
 // to first+last Redis msg ID in the batch. Never ACK on store error (message stays in PEL).
 func (c *StreamConsumer) flushBatch(ctx context.Context, batch []*domain.Event, msgIDs []string, workerID string) error {
 	if len(batch) == 0 {

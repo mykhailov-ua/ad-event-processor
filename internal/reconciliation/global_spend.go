@@ -115,7 +115,7 @@ func (r *GlobalSpendReconciler) PendingCount() int {
 	return len(r.pending)
 }
 
-// FlushPending holds txns until minBatchSize; avoids partial PG batches that would fail AssertBudgetInvariant probes.
+// FlushPending holds txns until minBatchSize; avoids partial Postgres batches that would fail AssertBudgetInvariant probes.
 func (r *GlobalSpendReconciler) FlushPending(ctx context.Context, batchDedupKey string) error {
 	if r == nil {
 		return nil
@@ -146,7 +146,7 @@ func (r *GlobalSpendReconciler) ApplyBatch(ctx context.Context, batchDedupKey st
 	items := make([]domain.SpendFlushItem, 0, len(txns))
 	redisDeltas := make(map[uuid.UUID]int64, len(txns))
 	for _, txn := range txns {
-		// Idempotency id global_spend:{batchDedupKey}:{txnID} dedupes PG ledger + Redis marker per campaign.
+		// Idempotency id global_spend:{batchDedupKey}:{txnID} dedupes Postgres ledger + Redis marker per campaign.
 		idemID := globalSpendIdempotencyPrefix + batchDedupKey + ":" + txn.TxnID
 		items = append(items, domain.SpendFlushItem{
 			CampaignID:  txn.CampaignID,
@@ -161,7 +161,7 @@ func (r *GlobalSpendReconciler) ApplyBatch(ctx context.Context, batchDedupKey st
 	if err != nil {
 		return fmt.Errorf("global spend batch dedup=%s pg probe: %w", batchDedupKey, err)
 	}
-	// PG first via UpdateSpendBatch (sync_idempotency per txn); Redis commit only after PG path succeeds.
+	// Postgres first via UpdateSpendBatch (sync_idempotency per txn); Redis commit only after Postgres path succeeds.
 	if !pgApplied {
 		for startIdx := 0; startIdx < len(items); startIdx += domain.MaxLedgerBatchSize() {
 			endIdx := startIdx + domain.MaxLedgerBatchSize()
@@ -207,7 +207,7 @@ func (r *GlobalSpendReconciler) commitRedisBudget(ctx context.Context, batchDedu
 	if len(r.redisShards) == 0 {
 		return nil
 	}
-	// Per-campaign EVAL on owning shard; marker makes Redis retry safe after PG already committed.
+	// Per-campaign EVAL on owning shard; marker makes Redis retry safe after Postgres already committed.
 	ttlSec := int64(globalSpendRedisMarkerTTL / time.Second)
 	sem := make(chan struct{}, r.maxConcurrency)
 	var wg sync.WaitGroup

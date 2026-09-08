@@ -1,4 +1,4 @@
-// L3 campaign ops tab: stats/margin/events/mappings/smoke/flow-validate lanes; uses popover stats cache keys.
+// campaign ops tab: stats/margin/events/mappings/smoke/flow-validate lanes; uses popover stats cache keys.
 import { useCallback, useEffect, useMemo, useState } from 'react';
 
 import {

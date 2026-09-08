@@ -1,4 +1,4 @@
-// UI demo seed: varied campaign names, spend, and campaign_stats for admin charts (PG-only dev).
+// UI demo seed: varied campaign names, spend, and campaign_stats for admin charts (Postgres-only dev).
 package main
 
 import (

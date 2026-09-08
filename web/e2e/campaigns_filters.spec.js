@@ -65,6 +65,70 @@ test('campaigns status chip filter updates query string', async ({ page }) => {
   await expect(page).not.toHaveURL(/status=PAUSED/);
 });
 
+test('campaigns paused status chip triggers GET /api/v1/campaigns', async ({ page }) => {
+  await loginAsAdmin(page);
+  await gotoCampaigns(page);
+
+  const pausedList = page.waitForResponse(
+    (response) => {
+      if (response.request().method() !== 'GET' || response.status() !== 200) {
+        return false;
+      }
+      const url = new URL(response.url());
+      return (
+        url.pathname.endsWith('/api/v1/campaigns') &&
+        url.searchParams.get('status') === 'PAUSED' &&
+        !url.pathname.includes('/metrics') &&
+        !url.pathname.includes('/list-facets')
+      );
+    },
+    { timeout: 20_000 }
+  );
+
+  await page.getByRole('button', { name: /^Paused/ }).click();
+  await expect(page).toHaveURL(/status=PAUSED/);
+  await pausedList;
+});
+
+test('campaigns pacing select opens without render error', async ({ page }) => {
+  await loginAsAdmin(page);
+  await gotoCampaigns(page);
+
+  await page.getByLabel('Pacing').click();
+  await expect(page.getByRole('option', { name: 'Even' })).toBeVisible();
+  await expect(page.getByText('PAGE ERROR')).toHaveCount(0);
+});
+
+test('campaigns sidebar navigation works after opening pacing select', async ({ page }) => {
+  await loginAsAdmin(page);
+  await gotoCampaigns(page);
+
+  await page.getByLabel('Pacing').click();
+  await expect(page.getByRole('option', { name: 'Even' })).toBeVisible();
+  await page.keyboard.press('Escape');
+
+  await page.getByRole('navigation', { name: 'Main' }).getByRole('link', { name: 'Creative' }).click();
+  await expect(page).toHaveURL(/\/creative/);
+  await expect(page.getByText('PAGE ERROR')).toHaveCount(0);
+});
+
+test('campaigns report link navigates when one campaign selected', async ({ page }) => {
+  await loginAsAdmin(page);
+  await gotoCampaigns(page);
+
+  const rowCheckbox = page.getByRole('checkbox', { name: /^Select / }).nth(1);
+  if ((await rowCheckbox.count()) === 0) {
+    test.skip(true, 'integration: no campaigns in directory');
+    return;
+  }
+
+  await rowCheckbox.check();
+  const reportLink = page.getByRole('link', { name: 'Report' });
+  await expect(reportLink).toBeVisible();
+  await reportLink.click();
+  await expect(page).toHaveURL(/\/dashboards\/campaign\//);
+});
+
 test('campaigns pacing filter updates query string', async ({ page }) => {
   await loginAsAdmin(page);
   await gotoCampaigns(page);
@@ -102,6 +166,19 @@ test('campaigns create dialog opens from toolbar', async ({ page }) => {
 
   await page.getByRole('button', { name: 'Quick create', exact: true }).click();
   await expect(page.getByRole('heading', { name: 'Quick create campaign' })).toBeVisible();
+});
+
+test('campaigns guided setup closes quick create dialog', async ({ page }) => {
+  await loginAsAdmin(page);
+  await gotoCampaigns(page);
+
+  await page.getByRole('button', { name: 'Quick create', exact: true }).click();
+  await expect(page.getByRole('heading', { name: 'Quick create campaign' })).toBeVisible();
+
+  await page.getByRole('button', { name: 'More campaign actions' }).click();
+  await page.getByRole('menuitem', { name: 'Guided setup' }).click();
+  await expect(page.getByRole('heading', { name: 'Guided setup' })).toBeVisible();
+  await expect(page.getByRole('heading', { name: 'Quick create campaign' })).toHaveCount(0);
 });
 
 test('campaigns column sort updates query string', async ({ page }) => {

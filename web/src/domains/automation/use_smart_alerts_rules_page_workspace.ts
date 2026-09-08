@@ -1,4 +1,4 @@
-// L3 smart alert rules CRUD: customer-scoped list + inline edit rows.
+// smart alert rules CRUD: customer-scoped list + inline edit rows.
 import { useCallback, useEffect, useState } from 'react';
 import { toast } from 'sonner';
 

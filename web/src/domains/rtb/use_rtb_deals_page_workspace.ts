@@ -1,4 +1,4 @@
-// L3 RTB deals directory: list + inline create; license gate via rtbLicenseGated on errors.
+// RTB deals directory: list + inline create; license gate via rtbLicenseGated on errors.
 import { useCallback, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { toast } from 'sonner';

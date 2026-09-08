@@ -1,4 +1,4 @@
-// L3 campaign list column resize: pointer capture on handle; colgroup/table width updated during drag; commit on pointerup only.
+// campaign list column resize: pointer capture on handle; colgroup/table width updated during drag; commit on pointerup only.
 import {
   useCallback,
   useEffect,

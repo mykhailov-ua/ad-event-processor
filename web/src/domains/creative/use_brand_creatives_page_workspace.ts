@@ -1,4 +1,4 @@
-// L3 brand creatives CRUD under /brands/{id}: parallel brand + creatives resources; toast after 2xx mutations.
+// brand creatives CRUD under /brands/{id}: parallel brand + creatives resources; toast after 2xx mutations.
 import { useCallback, useState } from 'react';
 import { useLocation, useParams } from 'react-router-dom';
 import { toast } from 'sonner';

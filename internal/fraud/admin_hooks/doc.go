@@ -14,7 +14,7 @@
 //   - Enqueue paths are cold only: management HTTP -> Postgres outbox -> async Redis fan-out.
 //   - silent_reject enqueue adds blacklist:fraud entry; does not UPDATE campaigns.silent_reject_enabled (ANTIFRAUD.md).
 //   - ghost action alias on wire is normalized to silent_reject before outbox insert.
-//   - Client calls must not block ivt-detector scan loop on CH queries; rules fetch CH, hooks only POST enqueue.
+//   - Client calls must not block ivt-detector scan loop on ClickHouse queries; rules fetch ClickHouse, hooks only POST enqueue.
 //
 // Forbidden:
 //   - Direct Redis SADD or ml:score:boost writes from this package (outbox worker owns side effects).

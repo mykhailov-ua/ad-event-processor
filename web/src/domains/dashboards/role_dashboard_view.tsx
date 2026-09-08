@@ -41,7 +41,7 @@ import {
 import { ListRefreshBand } from '@/shell/list_refresh_band';
 import { cn } from '@/lib/utils';
 
-// L3 dashboard shell: loading/error/stale-while-revalidate (EH-SI2).
+// dashboard shell: loading/error/stale-while-revalidate.
 // licenseGated -> StubBanner; blocking load -> PageSkeleton; refresh error with snapshot -> ErrorBlock band.
 export type { DashboardRangePreset };
 

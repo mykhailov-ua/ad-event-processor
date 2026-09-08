@@ -1,4 +1,4 @@
-// Package breaker provides a keyed circuit breaker for stream consumer CH write overload protection.
+// Package breaker provides a keyed circuit breaker for stream consumer ClickHouse write overload protection.
 //
 // Role:
 //   - CircuitBreaker tracks per-workerID failures; opens after failThreshold, probes half-open after openTimeout.
