@@ -27,6 +27,7 @@ export type CampaignEditorFormState = {
   traffic_template_id: string;
   click_query_params_json: string;
   click_filter_tier: string;
+  mobile_biometrics_click_enabled: boolean;
 };
 
 export type BuildCampaignPatchResult =

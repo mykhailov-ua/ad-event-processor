@@ -136,20 +136,23 @@ export type FraudEvidencePack = components['schemas']['FraudEvidencePack'];
 export type WireSignalBreakdownRow = components['schemas']['WireSignalBreakdownRow'];
 export type WireSignalBreakdownReportResponse =
   components['schemas']['WireSignalBreakdownReportResponse'];
+export type FraudBreakdownRow = components['schemas']['FraudBreakdownRow'];
+export type FraudBreakdownReportResponse = components['schemas']['FraudBreakdownReportResponse'];
+export type CustomerFraudByTypeRow = components['schemas']['CustomerFraudByTypeRow'];
+export type CustomerFraudByTypeReportResponse =
+  components['schemas']['CustomerFraudByTypeReportResponse'];
 
 export type FraudReasonsReportKey = 'fraud-breakdown' | 'wire-signal-breakdown';
 
-export type FraudReasonRow = {
-  campaign_id?: string;
-  placement_id?: string;
-  fraud_reason?: string;
-  fraud_category?: string;
-  fraud_category_label?: string;
-  event_count?: number;
-  silent_reject_count?: number;
-  silent_reject_ratio?: number;
-  signals_degraded?: boolean;
-};
+export type FraudReasonRow = FraudBreakdownRow | WireSignalBreakdownRow;
+
+export function fraudReasonPlacementId(row: FraudReasonRow): string | undefined {
+  return 'placement_id' in row ? row.placement_id : undefined;
+}
+
+export function fraudReasonSignalsDegraded(row: FraudReasonRow): boolean {
+  return 'signals_degraded' in row ? Boolean(row.signals_degraded) : false;
+}
 export type ReportJobSpec = components['schemas']['ReportJobSpec'];
 export type TelegramReportExportRequest = components['schemas']['TelegramReportExportRequest'];
 export type ReportJobStatus = components['schemas']['ReportJobStatus'];
@@ -179,6 +182,51 @@ export type FraudManualLabelBulkRequest = components['schemas']['FraudManualLabe
 export type FraudManualLabelBulkResponse = components['schemas']['FraudManualLabelBulkResponse'];
 export type FraudPolicyPreset = components['schemas']['FraudPolicyPreset'];
 export type PatchFraudPolicyPresetRequest = components['schemas']['PatchFraudPolicyPresetRequest'];
+
+export type ModeratorCorpusTuple = {
+  id: string;
+  ja3: string;
+  ja4?: string;
+  tcp_sig?: string;
+  webgl_renderer?: string;
+  layer_desync_count?: number;
+  note?: string;
+  source?: string;
+  created_at?: string;
+  created_at_display?: string;
+  updated_at?: string;
+  updated_at_display?: string;
+};
+
+export type ModeratorCorpusListResponse = {
+  items: ModeratorCorpusTuple[];
+  total: number;
+  limit: number;
+  offset: number;
+  last_refresh?: string;
+};
+
+export type ModeratorCorpusUpsertRequest = {
+  ja3: string;
+  ja4?: string;
+  tcp_sig?: string;
+  webgl_renderer?: string;
+  layer_desync_count?: number;
+  note?: string;
+  source?: string;
+};
+
+export type ModeratorCorpusImportRequest = {
+  csv: string;
+};
+
+export type ModeratorCorpusImportResponse = {
+  upserted: number;
+};
+
+export type ModeratorCorpusPreviewResponse = {
+  match_count_7d: number;
+};
 export type FraudOverrideRequest = components['schemas']['FraudOverrideRequest'];
 export type RoleDashboard = components['schemas']['RoleDashboard'];
 export type DashboardRole = 'buyer' | 'adops' | 'cfo' | 'accountant' | 'fraud' | 'operator';
@@ -297,6 +345,7 @@ export type CampaignFraudEditorSummary = components['schemas']['CampaignFraudEdi
 export type OpenRtbBidRequest = components['schemas']['OpenRtbBidRequest'];
 
 export type CampaignFraudConfig = components['schemas']['CampaignFraudConfig'];
+export type ConversionRejectRules = components['schemas']['ConversionRejectRules'];
 export type PatchCampaignFraudRequest = components['schemas']['PatchCampaignFraudRequest'];
 export type PreviewCampaignFraudRequest = components['schemas']['PreviewCampaignFraudRequest'];
 export type CampaignFraudPreview = components['schemas']['CampaignFraudPreview'];
@@ -611,8 +660,7 @@ export type PublicLoginResponse = components['schemas']['PublicLoginResponse'];
 export type OpsMlModelStatusResponse = OperationJsonBody<'opsMlModelStatus'>;
 export type OpsMlModelEvalResponse = OperationJsonBody<'opsMlModelEval'>;
 export type OpsDomainRotationResponse = OperationJsonBody<'opsDomainRotation'>;
-export type OpsTlsAllowedListResponse = OperationJsonBody<'opsTlsAllowedList'>;
-export type OpsTlsAllowedHostResponse = OperationJsonBody<'opsTlsAllowedHost'>;
+export type OpsTlsAllowedResponse = OperationJsonBody<'opsTlsAllowedCheck'>;
 export type OpsConsentProofsResponse = OperationJsonBody<'opsConsentProofs'>;
 export type OpsRumResponse = OperationJsonBody<'opsRum'>;
 export type TelegramReportExportResponse = OperationJsonBody<'reportTelegramExport'>;

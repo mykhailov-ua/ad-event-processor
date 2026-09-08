@@ -601,7 +601,21 @@ func (h *AdsPacketHandler) reactClickRedirect(req *Request, c gnet.Conn, ctx *Co
 			admissionHeld = true
 		}
 		outcome := processTrack(context.Background(), h.trackProc, evt, nil)
+		desyncPolicy := evalCrossLayerDesyncClickPolicy(h.registry, evt)
+		if desyncPolicy.Fired {
+			evt.CrossLayerDesyncFired = 1
+		}
+		if desyncPolicy.Block {
+			h.recordReviewTrafficClick(ctx, parsed.CampaignID, clickID, parsed.UserID, ip, ua)
+			h.write(c, respReviewTrafficBlocked, ctx)
+			h.recordMetrics(startMono, http.StatusForbidden)
+			releaseAdmission()
+			return gnet.None
+		}
 		forceSafe := req.ForceSafe || parsed.AttestationLightMissing
+		if desyncPolicy.ForceSafePage {
+			forceSafe = true
+		}
 		if mode.RequiresProbe() && clickHasTTCFraudSignal(evt) {
 			forceSafe = true
 		}
@@ -948,17 +962,22 @@ func (h *AdsPacketHandler) reactTrackVerify(req *Request, c gnet.Conn, ctx *Conn
 		country, _ = h.trackProc.ingestGeo.GetCountry(ip)
 	}
 	canvasRetestEnabled := false
+	mobileBiometricsRequired := false
 	if camp, ok := h.registry.GetCampaign(campaignID); ok && camp != nil {
 		canvasRetestEnabled = camp.CanvasRetestEnabled
+		if h.cfg != nil && h.cfg.MobileBiometricsClickEnabled {
+			mobileBiometricsRequired = camp.MobileBiometricsClickEnabled && camp.SafePageEnabled && camp.AttestationEnabled
+		}
 	}
 	if fail, code := evaluateSafePageAttestation(safePageAttestationInput{
-		RemoteIP:            ip,
-		Country:             country,
-		Fingerprint:         verifyReq.Fingerprint,
-		Events:              verifyReq.Events,
-		NowUnix:             time.Now().Unix(),
-		BehaviorScore:       scoreSafePageBehavior(verifyReq.Events),
-		CanvasRetestEnabled: canvasRetestEnabled,
+		RemoteIP:                 ip,
+		Country:                  country,
+		Fingerprint:              verifyReq.Fingerprint,
+		Events:                   verifyReq.Events,
+		NowUnix:                  time.Now().Unix(),
+		BehaviorScore:            scoreSafePageBehavior(verifyReq.Events),
+		CanvasRetestEnabled:      canvasRetestEnabled,
+		MobileBiometricsRequired: mobileBiometricsRequired,
 	}); fail {
 		landingURL, ok := resolveSafePageLanding(h.registry, campaignID)
 		if !ok {
@@ -1107,6 +1126,28 @@ func (h *AdsPacketHandler) moderatorIPShouldSafeView(ip string, campaignID uuid.
 func (h *AdsPacketHandler) writeGnetSafeViewModerator(c gnet.Conn, ctx *ConnContext, startMono int64, network uint8) {
 	h.moderatorMetrics.recordMatch(network)
 	h.write(c, respClickSafeViewModerator, ctx)
+	h.recordMetrics(startMono, http.StatusOK)
+}
+
+var respClickSafeViewModeratorCorpus = track.RespClickSafeViewModeratorCorpus
+
+func (h *AdsPacketHandler) moderatorCorpusShouldSafeView(ja3, ja4 []byte, tcpSig uint32, tcpSigSet uint8) bool {
+	if h == nil || h.cfg == nil || !h.cfg.ModeratorCorpusEnabled {
+		return false
+	}
+	t := h.moderatorCorpusTable
+	if t == nil || !t.Ready() {
+		return false
+	}
+	if !t.Match(ja3, ja4, tcpSig, tcpSigSet, nil, 0) {
+		return false
+	}
+	metrics.ModeratorCorpusMatchTotal.Inc()
+	return true
+}
+
+func (h *AdsPacketHandler) writeGnetSafeViewModeratorCorpus(c gnet.Conn, ctx *ConnContext, startMono int64) {
+	h.write(c, respClickSafeViewModeratorCorpus, ctx)
 	h.recordMetrics(startMono, http.StatusOK)
 }
 

@@ -26,6 +26,7 @@ import { Button } from '@/components/ui/button';
 import { DatetimePicker } from '@/components/ui/datetime_picker';
 import { Input } from '@/components/ui/input';
 import type { DataFreshness, FraudReasonRow, FraudReasonsReportKey } from '@/api/types';
+import { fraudReasonPlacementId, fraudReasonSignalsDegraded } from '@/api/types';
 import {
   campaignListCellContentClass,
   campaignListCellContentNumClass,
@@ -279,8 +280,11 @@ export function FraudReasonsDirectory({
                     </TableCell>
                     {showPlacement ? (
                       <TableCell className={campaignListTdClass}>
-                        <span className={campaignListEllipsisTextClass} title={row.placement_id}>
-                          {row.placement_id ?? '-'}
+                        <span
+                          className={campaignListEllipsisTextClass}
+                          title={fraudReasonPlacementId(row)}
+                        >
+                          {fraudReasonPlacementId(row) ?? '-'}
                         </span>
                       </TableCell>
                     ) : null}
@@ -301,7 +305,7 @@ export function FraudReasonsDirectory({
                     </TableCell>
                     {showDegraded ? (
                       <TableCell className={campaignListTdClass}>
-                        {row.signals_degraded ? (
+                        {fraudReasonSignalsDegraded(row) ? (
                           <Badge variant="secondary">degraded</Badge>
                         ) : (
                           <span className="text-muted-foreground">-</span>

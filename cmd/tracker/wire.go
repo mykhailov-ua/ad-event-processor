@@ -331,6 +331,7 @@ func runTracker(cfg *config.Config) {
 	jsonSerializationFilter.SetEnabled(cfg.JSONSerializationFingerprintEnabled)
 	behaviorTelemetryFilter := ingestion.NewBehaviorTelemetryFilter(registry)
 	behaviorTelemetryFilter.SetEnabled(cfg.BehaviorTelemetryEnabled)
+	behaviorTelemetryFilter.SetClickEnabled(cfg.MobileBiometricsClickEnabled)
 	var l7WireFilter ingestion.EventFilter
 	if cfg.SecFetchValidateEnabled || cfg.ClientHintsPlatformEnabled || cfg.TLSALPNMismatchEnabled ||
 		cfg.H2SettingsFingerprintEnabled || cfg.H2PseudoOrderEnabled || cfg.H2DowngradeArtifactEnabled ||
@@ -849,6 +850,14 @@ func runTracker(cfg *config.Config) {
 		if tlsLoader := ingestion.NewTLSFingerprintFeedLoader(cfg, tlsTable); tlsLoader != nil {
 			go tlsLoader.Start(ctx)
 			slog.Info("tls fingerprint l1 loader started", "dir", cfg.TLSFingerprintFeedDir, "refresh", cfg.TLSFingerprintFeedRefresh)
+		}
+	}
+	if cfg.ModeratorCorpusEnabled {
+		corpusTable := ingestion.NewModeratorCorpusTable()
+		gnetHandler.ConfigureModeratorCorpus(corpusTable)
+		if corpusLoader := ingestion.NewModeratorCorpusFeedLoader(cfg, corpusTable); corpusLoader != nil {
+			go corpusLoader.Start(ctx)
+			slog.Info("moderator corpus loader started", "dir", cfg.ModeratorCorpusFeedDir, "refresh", cfg.ModeratorCorpusFeedRefresh)
 		}
 	}
 	if secret := string(cfg.LinkSigningHMACSecret); secret != "" {

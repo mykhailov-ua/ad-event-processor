@@ -560,6 +560,23 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/api/v1/campaigns/{id}/apply-templates/dry-run": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /** Preview template URLs and sample postback payload without persisting */
+        post: operations["integrationDryRunCampaignTemplates"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/api/v1/campaigns/{id}/clone": {
         parameters: {
             query?: never;
@@ -993,6 +1010,26 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/api/v1/campaigns/bulk-clone": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /**
+         * Clone multiple campaigns with flow, postback, and conversion mappings
+         * @description Requires Idempotency-Key header; per-source idempotency is bulk key plus source id.
+         */
+        post: operations["campaignsBulkClone"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/api/v1/campaigns/export": {
         parameters: {
             query?: never;
@@ -1081,6 +1118,26 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/api/v1/campaigns/list-facets": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * Campaign list filter facets
+         * @description Returns distinct target countries and campaign owners for list filter dropdowns.
+         */
+        get: operations["campaignsListFacets"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/api/v1/campaigns/metrics": {
         parameters: {
             query?: never;
@@ -1093,6 +1150,26 @@ export interface paths {
          * @description Returns impressions, clicks, conversions, unique clicks, margin window, and blocks for up to 100 campaigns in one request.
          */
         get: operations["campaignsListMetrics"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/campaigns/metrics-totals": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * Aggregated campaign list metrics for current filters
+         * @description Sums list row metrics across all campaigns matching the list filter (max 5000 campaigns). Requires from/to window.
+         */
+        get: operations["campaignsListMetricsTotals"];
         put?: never;
         post?: never;
         delete?: never;
@@ -1198,6 +1275,26 @@ export interface paths {
         };
         /** List bundled campaign onboarding templates */
         get: operations["campaignsOnboardingTemplates"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/campaigns/target-countries": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * List distinct campaign target countries
+         * @description Returns ISO country codes used in campaign target_countries for the scoped customer.
+         */
+        get: operations["campaignsListTargetCountries"];
         put?: never;
         post?: never;
         delete?: never;
@@ -1843,6 +1940,23 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/api/v1/domains/cloudflare/zones": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** List Cloudflare zones for DNS-01 wildcard wizard */
+        get: operations["domainsListCloudflareZones"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/api/v1/domains/park": {
         parameters: {
             query?: never;
@@ -1931,6 +2045,40 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/api/v1/flows/{id}/clone": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /** Clone flow with a new name */
+        post: operations["flowsClone"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/flows/validate": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /** Validate flow path weights and references */
+        post: operations["flowsValidatePaths"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/api/v1/forecast/campaign": {
         parameters: {
             query?: never;
@@ -2014,6 +2162,58 @@ export interface paths {
         put?: never;
         /** Bulk upsert ML manual labels */
         post: operations["bulkUpsertFraudLabels"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/fraud/moderator-corpus": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** List moderator fingerprint corpus tuples */
+        get: operations["listModeratorCorpus"];
+        put?: never;
+        /** Upsert moderator fingerprint corpus tuple */
+        post: operations["upsertModeratorCorpus"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/fraud/moderator-corpus/import": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /** Bulk import moderator corpus tuples from CSV */
+        post: operations["importModeratorCorpus"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/fraud/moderator-corpus/preview": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** Preview review-routed click count for JA3 in last 7 days */
+        get: operations["previewModeratorCorpus"];
+        put?: never;
+        post?: never;
         delete?: never;
         options?: never;
         head?: never;
@@ -2171,6 +2371,23 @@ export interface paths {
         put?: never;
         /** Import bundled templates into integration_schemas */
         post: operations["integrationImportTemplates"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/integrations/postbacks/health": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** Postback delivery health aggregates (alias) */
+        get: operations["integrationsPostbacksHealth"];
+        put?: never;
+        post?: never;
         delete?: never;
         options?: never;
         head?: never;
@@ -2595,15 +2812,66 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
-    "/api/v1/ops/domains/{hostname}/tls-allowed": {
+    "/api/v1/ops/domains/{hostname}/burn": {
         parameters: {
             query?: never;
             header?: never;
             path?: never;
             cookie?: never;
         };
-        /** Check whether hostname is TLS-allowed */
-        get: operations["opsTlsAllowedHost"];
+        get?: never;
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        /** Burn domain (ban pool entry, revoke TLS allow) */
+        patch: operations["opsDomainsBurn"];
+        trace?: never;
+    };
+    "/api/v1/ops/domains/bulk": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /** Bulk park domains and run health probes (async job) */
+        post: operations["opsDomainsBulkParkProbe"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/ops/domains/bulk-ssl": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /** Bulk domain SSL setup (async job) */
+        post: operations["opsDomainsBulkSSL"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/ops/domains/jobs/{job_id}": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** Poll async domain bulk job status */
+        get: operations["opsDomainsBulkJobStatus"];
         put?: never;
         post?: never;
         delete?: never;
@@ -2636,10 +2904,34 @@ export interface paths {
             path?: never;
             cookie?: never;
         };
-        /** Hostnames allowed for TLS setup */
-        get: operations["opsTlsAllowedList"];
+        /**
+         * Check whether a hostname may receive TLS (Caddy on-demand ask)
+         * @description Edge TLS ask hook. Supply domain query param (hostname). When
+         *     AD_EVENT_PROCESSOR_TLS_ASK_TOKEN is set, authenticate with X-Caddy-Ask-Token
+         *     or Authorization Bearer; otherwise only loopback callers are accepted unless
+         *     AD_EVENT_PROCESSOR_TLS_ASK_ALLOW_LOCAL is enabled.
+         *
+         */
+        get: operations["opsTlsAllowedCheck"];
         put?: never;
         post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/ops/domains/wildcard-ssl": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /** Issue wildcard TLS certificate via ACME DNS-01 (Cloudflare) */
+        post: operations["opsDomainsWildcardSSL"];
         delete?: never;
         options?: never;
         head?: never;
@@ -3080,6 +3372,23 @@ export interface paths {
         put?: never;
         /** Re-enqueue a DLQ postback */
         post: operations["postbacksRetryDlq"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/postbacks/health": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** Postback delivery health aggregates (24h) */
+        get: operations["postbacksHealth"];
+        put?: never;
+        post?: never;
         delete?: never;
         options?: never;
         head?: never;
@@ -3558,8 +3867,8 @@ export interface paths {
             cookie?: never;
         };
         /**
-         * Fraud tier breakdown
-         * @description Returns rows plus freshness metadata; stale=true when ClickHouse lag exceeds SLA.
+         * Fraud events by reason and placement
+         * @description Fraud events grouped by campaign, placement, and reason. Supports cursor pagination via limit and cursor query params.
          */
         get: operations["reportFraudBreakdown"];
         put?: never;
@@ -5264,7 +5573,14 @@ export interface components {
         ApplyIntegrationSchemaResponse: {
             status: string;
             kind: string;
+            /**
+             * Format: int32
+             * @description Number of campaign_conversion_mappings rows upserted when kind is status_mapping. Unknown inbound status on conversion ingest is pass-through (no goal_name rewrite) unless campaign conversion_reject_rules reject it downstream.
+             *
+             */
             mappings_applied_count?: number;
+            /** @description Provider-specific template. Google: customer_id|conversion_action_id or customers/{customer_id}/conversionActions/{id}; OAuth access token in api_token; developer token in test_event_code or api_token JSON. Microsoft Ads: account_id|customer_id|conversion_name. Webhook/CAPI: pixel ID or full HTTPS URL.
+             *      */
             url_template?: string;
             panel_postback_url?: string;
             offer_url_suffix?: string;
@@ -5357,6 +5673,29 @@ export interface components {
             /** Format: date-time */
             updated_at: string;
         };
+        BulkCloneCampaignResultRow: {
+            /** Format: uuid */
+            source_id: string;
+            /** Format: uuid */
+            id?: string;
+            name?: string;
+            ok: boolean;
+            error_code?: string;
+        };
+        BulkCloneCampaignsRequest: {
+            source_campaign_ids: string[];
+            /**
+             * Format: uuid
+             * @description When set, each source campaign must belong to this customer.
+             */
+            customer_id?: string;
+            name_prefix?: string;
+            name_suffix?: string;
+            options?: components["schemas"]["CloneCampaignOptions"];
+        };
+        BulkCloneCampaignsResponse: {
+            results: components["schemas"]["BulkCloneCampaignResultRow"][];
+        };
         Campaign: {
             /** Format: uuid */
             id: string;
@@ -5399,9 +5738,17 @@ export interface components {
             /** Format: int32 */
             link_signing_ttl_sec?: number;
             click_delivery?: string;
+            /**
+             * @description GET /click filter depth. redirect_only requires CLICK_FILTER_REDIRECT_ONLY_LICENSED on tracker.
+             * @enum {string}
+             */
             click_filter_tier?: "full" | "light" | "redirect_only";
             proxy_upstream_url?: string;
             proxy_rewrite_assets?: boolean;
+            /** @description When true, upstream timeout on GET /click proxy falls back to 302 landing redirect. */
+            proxy_timeout_fallback_enabled?: boolean;
+            /** @description Require gyro/touch biometrics on safe-page click attestation verify. */
+            mobile_biometrics_click_enabled?: boolean;
             /** Format: uuid */
             brand_id?: string;
             creative_payload?: {
@@ -5438,6 +5785,7 @@ export interface components {
             integration_schema_name?: string;
             /** Format: uuid */
             status_integration_schema_id?: string;
+            /** @description Linked affiliate status preset name when status_mapping schema is applied. */
             status_integration_schema_name?: string;
         };
         CampaignBulkActionRequest: {
@@ -5523,6 +5871,15 @@ export interface components {
             accept_lang_geo_enabled: boolean;
             json_serialization_enabled?: boolean;
             conversion_reject_rules: components["schemas"]["ConversionRejectRules"];
+            /**
+             * Format: date-time
+             * @description When Redis ml:score:boost key was last refreshed by batch fraud-scorer (not inline /track inference).
+             */
+            ml_boost_last_refreshed_at?: string;
+            /** @enum {string} */
+            cross_layer_desync_action?: "off" | "boost" | "safe_page" | "block";
+            /** Format: int32 */
+            cross_layer_desync_threshold?: number;
         };
         CampaignFraudEditorSummary: {
             /** Format: uuid */
@@ -5757,6 +6114,22 @@ export interface components {
             last_probe_at?: string;
             /** Format: date-time */
             updated_at: string;
+            /** @enum {string} */
+            acme_state?: "pending" | "valid" | "failed" | "renewing";
+            cloudflare_proxied?: boolean;
+            wildcard_zone?: string;
+            /** Format: uuid */
+            pool_id?: string;
+            /** @enum {string} */
+            pool_status?: "pending" | "active" | "banned";
+        };
+        DryRunCampaignTemplatesResult: {
+            /** Format: uuid */
+            campaign_id: string;
+            target_url?: string;
+            panel_postback_url?: string;
+            postback_url_template?: string;
+            postback_dry_run: components["schemas"]["PostbackDryRunResult"];
         };
         ErrorBody: {
             error: {
@@ -6072,6 +6445,16 @@ export interface components {
             accept_lang_geo_enabled?: boolean;
             json_serialization_enabled?: boolean;
             conversion_reject_rules?: components["schemas"]["ConversionRejectRules"];
+            /**
+             * @description Action when layer_desync_count reaches threshold on click.
+             * @enum {string}
+             */
+            cross_layer_desync_action?: "off" | "boost" | "safe_page" | "block";
+            /**
+             * Format: int32
+             * @description Minimum distinct desync layers before cross_layer_desync_action applies.
+             */
+            cross_layer_desync_threshold?: number;
         };
         /** @description Partial update (PATCH /api/v1/campaigns/{id}). Only keys present in the JSON body are applied;
          *     omitted keys leave stored values unchanged. Empty string arrays replace target_countries or
@@ -6117,9 +6500,17 @@ export interface components {
             attestation_ttl_sec?: number;
             referrer_filter?: string;
             click_delivery?: string;
+            /**
+             * @description GET /click filter depth. redirect_only requires CLICK_FILTER_REDIRECT_ONLY_LICENSED on tracker.
+             * @enum {string}
+             */
             click_filter_tier?: "full" | "light" | "redirect_only";
             proxy_upstream_url?: string;
             proxy_rewrite_assets?: boolean;
+            /** @description When true, upstream timeout on GET /click proxy falls back to 302 landing redirect. */
+            proxy_timeout_fallback_enabled?: boolean;
+            /** @description Require gyro/touch biometrics on safe-page click attestation verify. */
+            mobile_biometrics_click_enabled?: boolean;
             /** Format: date-time */
             start_at?: string;
             /** Format: date-time */
@@ -6246,6 +6637,8 @@ export interface components {
             campaign_id: string;
             /** @enum {string} */
             provider: "webhook" | "facebook" | "google" | "tiktok" | "taboola" | "outbrain" | "microsoft_ads";
+            /** @description Provider-specific template. Google: customer_id|conversion_action_id or customers/{customer_id}/conversionActions/{id}; OAuth access token in api_token; developer token in test_event_code or api_token JSON. Microsoft Ads: account_id|customer_id|conversion_name. Webhook/CAPI: pixel ID or full HTTPS URL.
+             *      */
             url_template: string;
             target_event: string;
             test_event_code?: string;
@@ -6277,6 +6670,15 @@ export interface components {
             target_event?: string;
             test_event: boolean;
             warnings?: string[];
+        };
+        PostbackHealthResponse: {
+            rows: components["schemas"]["PostbackHealthRow"][];
+            /**
+             * Format: double
+             * @description Alert when success_rate_24h drops below this value (default 95).
+             */
+            alert_threshold_success_rate: number;
+            runbook_path?: string;
         };
         PublicAcceptInviteRequest: {
             token: string;
@@ -6484,6 +6886,21 @@ export interface components {
              * @description Optional third axis (touch force, device motion z)
              */
             z?: number;
+            /**
+             * Format: float
+             * @description Touch force where supported (Pointer Events)
+             */
+            force?: number;
+            /**
+             * Format: float
+             * @description Touch ellipse radiusX where supported
+             */
+            radius_x?: number;
+            /**
+             * Format: float
+             * @description Touch ellipse radiusY where supported
+             */
+            radius_y?: number;
         };
         /** @description Native JSON body for tracker POST /track (gnet ingress). */
         TrackIngestRequest: {
@@ -6518,6 +6935,8 @@ export interface components {
         UpdatePostbackConfigRequest: {
             /** @enum {string} */
             provider: "webhook" | "facebook" | "google" | "tiktok" | "taboola" | "outbrain" | "microsoft_ads";
+            /** @description Provider-specific template. Google: customer_id|conversion_action_id or customers/{customer_id}/conversionActions/{id}; OAuth access token in api_token; developer token in test_event_code or api_token JSON. Microsoft Ads: account_id|customer_id|conversion_name. Webhook/CAPI: pixel ID or full HTTPS URL.
+             *      */
             url_template: string;
             api_token?: string;
             target_event?: string;
@@ -7125,6 +7544,15 @@ export interface components {
                 [key: string]: unknown;
             } | unknown[];
         };
+        CampaignListFacetOwner: {
+            /** Format: uuid */
+            user_id: string;
+            email?: string;
+        };
+        CampaignListFacetsResponse: {
+            countries: string[];
+            owners: components["schemas"]["CampaignListFacetOwner"][];
+        };
         CampaignListMetricsRow: {
             /** Format: uuid */
             campaign_id: string;
@@ -7194,6 +7622,20 @@ export interface components {
             items: {
                 [key: string]: components["schemas"]["CampaignListMetricsRow"];
             };
+            /** Format: date-time */
+            from: string;
+            /** Format: date-time */
+            to: string;
+            stale: boolean;
+        };
+        CampaignListMetricsTotalsResponse: {
+            /** Format: int64 */
+            campaign_count: number;
+            /** Format: int64 */
+            flow_count: number;
+            /** Format: int64 */
+            margin_breach_count: number;
+            totals: components["schemas"]["CampaignListMetricsRow"];
             /** Format: date-time */
             from: string;
             /** Format: date-time */
@@ -7588,6 +8030,10 @@ export interface components {
             message: string;
             output?: string;
         };
+        CloudflareZone: {
+            id: string;
+            name: string;
+        };
         ParkDomainRequest: {
             domain: string;
             cloudflare_zone_id: string;
@@ -7670,6 +8116,56 @@ export interface components {
             /** Format: int32 */
             upserted?: number;
         };
+        ModeratorCorpusTuple: {
+            /** Format: uuid */
+            id?: string;
+            ja3?: string;
+            ja4?: string;
+            tcp_sig?: string;
+            webgl_renderer?: string;
+            /** Format: int32 */
+            layer_desync_count?: number;
+            note?: string;
+            source?: string;
+            /** Format: date-time */
+            created_at?: string;
+            created_at_display?: string;
+            /** Format: date-time */
+            updated_at?: string;
+            updated_at_display?: string;
+        };
+        ModeratorCorpusListResponse: {
+            items?: components["schemas"]["ModeratorCorpusTuple"][];
+            /** Format: int64 */
+            total?: number;
+            /** Format: int32 */
+            limit?: number;
+            /** Format: int32 */
+            offset?: number;
+            /** Format: date-time */
+            last_refresh?: string;
+        };
+        ModeratorCorpusUpsertRequest: {
+            ja3: string;
+            ja4?: string;
+            tcp_sig?: string;
+            webgl_renderer?: string;
+            /** Format: int32 */
+            layer_desync_count?: number;
+            note?: string;
+            source?: string;
+        };
+        ModeratorCorpusImportRequest: {
+            csv: string;
+        };
+        ModeratorCorpusImportResponse: {
+            /** Format: int32 */
+            upserted?: number;
+        };
+        ModeratorCorpusPreviewResponse: {
+            /** Format: int64 */
+            match_count_7d?: number;
+        };
         AffiliateStatusPresetEntry: {
             inbound_status?: string;
             goal_name?: string;
@@ -7681,6 +8177,23 @@ export interface components {
         IntegrationSnapshot: {
             schemas: components["schemas"]["IntegrationSchema"][];
             templates: components["schemas"]["IntegrationTemplateCatalogEntry"][];
+        };
+        PostbackHealthRow: {
+            /** Format: uuid */
+            campaign_id: string;
+            provider: string;
+            /**
+             * Format: double
+             * @description Percent of SENT dispatches in the last 24h; omitted when no terminal dispatches.
+             */
+            success_rate_24h?: number;
+            /** Format: int64 */
+            p95_latency_ms?: number;
+            last_error?: string;
+            /** Format: int64 */
+            dlq_pending_count: number;
+            /** @enum {string} */
+            health_status: "ok" | "warn" | "fail";
         };
         CreateLanderRequest: {
             name: string;
@@ -7888,6 +8401,70 @@ export interface components {
             hint?: string;
             /** Format: int64 */
             latency_ms?: number;
+        };
+        BurnDomainRequest: {
+            delete_cloudflare?: boolean;
+        };
+        BurnDomainResponse: {
+            hostname: string;
+            pool_status?: string;
+            cloudflare_deleted?: boolean;
+        };
+        DomainBulkRequest: {
+            hostnames?: string[];
+            csv?: string;
+            cloudflare_zone_id?: string;
+            /** Format: uuid */
+            pool_id?: string;
+        };
+        DomainBulkJobRow: {
+            hostname: string;
+            ok: boolean;
+            error?: string;
+        };
+        DomainBulkJobStatus: {
+            job_id: string;
+            /** @enum {string} */
+            kind: "park_probe" | "ssl";
+            /** @enum {string} */
+            status: "pending" | "running" | "completed" | "failed";
+            total: number;
+            completed: number;
+            failed: number;
+            results?: components["schemas"]["DomainBulkJobRow"][];
+            error?: string;
+            /** Format: date-time */
+            created_at: string;
+            /** Format: date-time */
+            updated_at: string;
+        };
+        DomainTLSAllowedResponse: {
+            /**
+             * @description Present and true when the hostname may receive a certificate.
+             * @enum {boolean}
+             */
+            allowed: true;
+        };
+        WildcardSSLRequest: {
+            cloudflare_zone_id: string;
+            /** @description Base zone for wildcard cert (e.g. trk.example.com issues *.trk.example.com) */
+            zone_name: string;
+            /** Format: uuid */
+            pool_id?: string;
+            /** @default false */
+            include_apex: boolean;
+        };
+        WildcardSSLResponse: {
+            /** Format: uuid */
+            id: string;
+            /** Format: uuid */
+            pool_id: string;
+            wildcard_hostname: string;
+            acme_state: string;
+            /** Format: date-time */
+            ssl_not_after?: string;
+            cloudflare_proxied: boolean;
+            message?: string;
         };
         PatchFraudPolicyPresetRequest: {
             /** Format: int32 */
@@ -8211,6 +8788,25 @@ export interface components {
             signals: components["schemas"]["FraudEvidenceSignals"];
             digest_sha256: string;
             signature: string;
+        };
+        FraudBreakdownRow: {
+            /** Format: uuid */
+            campaign_id?: string;
+            placement_id?: string;
+            fraud_reason?: string;
+            fraud_category?: string;
+            fraud_category_label?: string;
+            /** Format: int64 */
+            event_count?: number;
+            /** Format: int64 */
+            silent_reject_count?: number;
+            /** Format: double */
+            silent_reject_ratio?: number;
+        };
+        FraudBreakdownReportResponse: {
+            rows: components["schemas"]["FraudBreakdownRow"][];
+            freshness: components["schemas"]["DataFreshness"];
+            next_cursor?: string;
         };
         TelegramReportExportRequest: {
             /** Format: date-time */
@@ -9738,6 +10334,33 @@ export interface operations {
             default: components["responses"]["Error"];
         };
     };
+    integrationDryRunCampaignTemplates: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                id: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: {
+            content: {
+                "application/json": components["schemas"]["ApplyCampaignTemplatesRequest"];
+            };
+        };
+        responses: {
+            /** @description Dry-run preview */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["DryRunCampaignTemplatesResult"];
+                };
+            };
+            default: components["responses"]["Error"];
+        };
+    };
     campaignsClone: {
         parameters: {
             query?: never;
@@ -10429,6 +11052,33 @@ export interface operations {
             default: components["responses"]["Error"];
         };
     };
+    campaignsBulkClone: {
+        parameters: {
+            query?: never;
+            header: {
+                "Idempotency-Key": string;
+            };
+            path?: never;
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["BulkCloneCampaignsRequest"];
+            };
+        };
+        responses: {
+            /** @description Per-source clone results */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["BulkCloneCampaignsResponse"];
+                };
+            };
+            default: components["responses"]["Error"];
+        };
+    };
     campaignsExportBatch: {
         parameters: {
             query: {
@@ -10564,6 +11214,29 @@ export interface operations {
             default: components["responses"]["Error"];
         };
     };
+    campaignsListFacets: {
+        parameters: {
+            query?: {
+                customer_id?: components["parameters"]["CustomerIdQuery"];
+            };
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Distinct countries and owners for campaign list filters */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["CampaignListFacetsResponse"];
+                };
+            };
+            default: components["responses"]["Error"];
+        };
+    };
     campaignsListMetrics: {
         parameters: {
             query: {
@@ -10587,6 +11260,40 @@ export interface operations {
                 };
                 content: {
                     "application/json": components["schemas"]["CampaignListMetricsBatchResponse"];
+                };
+            };
+            default: components["responses"]["Error"];
+        };
+    };
+    campaignsListMetricsTotals: {
+        parameters: {
+            query?: {
+                customer_id?: components["parameters"]["CustomerIdQuery"];
+                status?: string;
+                q?: string;
+                pacing_mode?: string;
+                budget_min_micro?: number;
+                budget_max_micro?: number;
+                owner_user_id?: string;
+                country?: string;
+                /** @description Range start (RFC3339). Default is now minus 7 days. */
+                from?: components["parameters"]["ReportFromQuery"];
+                /** @description Range end (RFC3339). Default is now UTC. */
+                to?: components["parameters"]["ReportToQuery"];
+            };
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Filter-scoped metric totals */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["CampaignListMetricsTotalsResponse"];
                 };
             };
             default: components["responses"]["Error"];
@@ -10736,6 +11443,31 @@ export interface operations {
                 };
                 content: {
                     "application/json": components["schemas"]["CampaignOnboardingTemplate"][];
+                };
+            };
+            default: components["responses"]["Error"];
+        };
+    };
+    campaignsListTargetCountries: {
+        parameters: {
+            query?: {
+                customer_id?: components["parameters"]["CustomerIdQuery"];
+            };
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Distinct target country codes */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": {
+                        countries: string[];
+                    };
                 };
             };
             default: components["responses"]["Error"];
@@ -11776,6 +12508,27 @@ export interface operations {
             default: components["responses"]["Error"];
         };
     };
+    domainsListCloudflareZones: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Cloudflare zones */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["CloudflareZone"][];
+                };
+            };
+            default: components["responses"]["Error"];
+        };
+    };
     domainsPark: {
         parameters: {
             query?: never;
@@ -11964,6 +12717,71 @@ export interface operations {
             default: components["responses"]["Error"];
         };
     };
+    flowsClone: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                id: components["parameters"]["UuidPathId"];
+            };
+            cookie?: never;
+        };
+        requestBody?: {
+            content: {
+                "application/json": {
+                    name?: string;
+                };
+            };
+        };
+        responses: {
+            /** @description Cloned flow */
+            201: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Flow"];
+                };
+            };
+            default: components["responses"]["Error"];
+        };
+    };
+    flowsValidatePaths: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": {
+                    paths: components["schemas"]["FlowPath"][];
+                };
+            };
+        };
+        responses: {
+            /** @description Paths valid */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["CampaignFlowValidateResponse"];
+                };
+            };
+            /** @description Validation failed */
+            400: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["CampaignFlowValidateResponse"];
+                };
+            };
+            default: components["responses"]["Error"];
+        };
+    };
     campaignsForecast: {
         parameters: {
             query?: never;
@@ -12119,6 +12937,103 @@ export interface operations {
                 };
                 content: {
                     "application/json": components["schemas"]["FraudManualLabelBulkResponse"];
+                };
+            };
+            default: components["responses"]["Error"];
+        };
+    };
+    listModeratorCorpus: {
+        parameters: {
+            query?: {
+                limit?: components["parameters"]["LimitQuery"];
+                offset?: components["parameters"]["OffsetQuery"];
+            };
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Moderator fingerprint corpus tuples */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ModeratorCorpusListResponse"];
+                };
+            };
+            default: components["responses"]["Error"];
+        };
+    };
+    upsertModeratorCorpus: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["ModeratorCorpusUpsertRequest"];
+            };
+        };
+        responses: {
+            /** @description Upserted tuple */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ModeratorCorpusTuple"];
+                };
+            };
+            default: components["responses"]["Error"];
+        };
+    };
+    importModeratorCorpus: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["ModeratorCorpusImportRequest"];
+            };
+        };
+        responses: {
+            /** @description Import result */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ModeratorCorpusImportResponse"];
+                };
+            };
+            default: components["responses"]["Error"];
+        };
+    };
+    previewModeratorCorpus: {
+        parameters: {
+            query: {
+                ja3: string;
+            };
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Match count preview */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ModeratorCorpusPreviewResponse"];
                 };
             };
             default: components["responses"]["Error"];
@@ -12347,6 +13262,27 @@ export interface operations {
                 };
                 content: {
                     "application/json": components["schemas"]["IntegrationSchema"][];
+                };
+            };
+            default: components["responses"]["Error"];
+        };
+    };
+    integrationsPostbacksHealth: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Per-campaign postback health rows */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["PostbackHealthResponse"];
                 };
             };
             default: components["responses"]["Error"];
@@ -13149,7 +14085,7 @@ export interface operations {
             default: components["responses"]["Error"];
         };
     };
-    opsTlsAllowedHost: {
+    opsDomainsBurn: {
         parameters: {
             query?: never;
             header?: never;
@@ -13158,17 +14094,92 @@ export interface operations {
             };
             cookie?: never;
         };
-        requestBody?: never;
+        requestBody?: {
+            content: {
+                "application/json": components["schemas"]["BurnDomainRequest"];
+            };
+        };
         responses: {
-            /** @description Allow flag */
+            /** @description Domain burned */
             200: {
                 headers: {
                     [name: string]: unknown;
                 };
                 content: {
-                    "application/json": {
-                        [key: string]: unknown;
-                    };
+                    "application/json": components["schemas"]["BurnDomainResponse"];
+                };
+            };
+            default: components["responses"]["Error"];
+        };
+    };
+    opsDomainsBulkParkProbe: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["DomainBulkRequest"];
+            };
+        };
+        responses: {
+            /** @description Bulk job accepted */
+            202: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["DomainBulkJobStatus"];
+                };
+            };
+            default: components["responses"]["Error"];
+        };
+    };
+    opsDomainsBulkSSL: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["DomainBulkRequest"];
+            };
+        };
+        responses: {
+            /** @description Bulk SSL job accepted */
+            202: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["DomainBulkJobStatus"];
+                };
+            };
+            default: components["responses"]["Error"];
+        };
+    };
+    opsDomainsBulkJobStatus: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                job_id: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Job status */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["DomainBulkJobStatus"];
                 };
             };
             default: components["responses"]["Error"];
@@ -13197,24 +14208,57 @@ export interface operations {
             default: components["responses"]["Error"];
         };
     };
-    opsTlsAllowedList: {
+    opsTlsAllowedCheck: {
         parameters: {
-            query?: never;
+            query: {
+                /** @description Hostname to check for certificate issuance. */
+                domain: string;
+            };
             header?: never;
             path?: never;
             cookie?: never;
         };
         requestBody?: never;
         responses: {
-            /** @description Payload */
+            /** @description Hostname is TLS-allowed */
             200: {
                 headers: {
                     [name: string]: unknown;
                 };
                 content: {
-                    "application/json": {
-                        [key: string]: unknown;
-                    };
+                    "application/json": components["schemas"]["DomainTLSAllowedResponse"];
+                };
+            };
+            /** @description Hostname is not TLS-allowed */
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            default: components["responses"]["Error"];
+        };
+    };
+    opsDomainsWildcardSSL: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["WildcardSSLRequest"];
+            };
+        };
+        responses: {
+            /** @description Wildcard certificate issued */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["WildcardSSLResponse"];
                 };
             };
             default: components["responses"]["Error"];
@@ -13884,6 +14928,27 @@ export interface operations {
                 };
                 content: {
                     "application/json": components["schemas"]["StatusOKResponse"];
+                };
+            };
+            default: components["responses"]["Error"];
+        };
+    };
+    postbacksHealth: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Per-campaign postback health rows */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["PostbackHealthResponse"];
                 };
             };
             default: components["responses"]["Error"];
@@ -14731,13 +15796,13 @@ export interface operations {
         };
         requestBody?: never;
         responses: {
-            /** @description Report rows */
+            /** @description Fraud breakdown rows */
             200: {
                 headers: {
                     [name: string]: unknown;
                 };
                 content: {
-                    "application/json": components["schemas"]["ReportMapEnvelope"];
+                    "application/json": components["schemas"]["FraudBreakdownReportResponse"];
                 };
             };
             default: components["responses"]["Error"];

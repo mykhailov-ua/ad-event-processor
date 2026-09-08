@@ -3,7 +3,11 @@ import { reportKeyToApiPath } from '../lib/report_paths.js';
 import type {
   ClickLogReportQuery,
   ClickLogReportResponse,
+  CustomerFraudByTypeReportResponse,
+  FraudBreakdownReportResponse,
   FraudEvidencePack,
+  FraudReasonRow,
+  FraudReasonsReportKey,
   ReportCatalogResponse,
   ReportJobSpec,
   ReportJobStatus,
@@ -12,8 +16,6 @@ import type {
   TelegramReportExportRequest,
   TelegramReportExportResponse,
   WireSignalBreakdownReportResponse,
-  FraudReasonRow,
-  FraudReasonsReportKey,
 } from './types.js';
 
 export async function getReportCatalog(signal?: AbortSignal): Promise<ReportCatalogResponse> {
@@ -61,12 +63,6 @@ export async function runReport(
   return apiJson<ReportMapEnvelope>(buildReportRunPath(key, params), { signal });
 }
 
-type FraudBreakdownReportResponse = {
-  rows: FraudReasonRow[];
-  freshness?: WireSignalBreakdownReportResponse['freshness'];
-  next_cursor?: string;
-};
-
 export type FraudReasonsReportResponse = {
   rows: FraudReasonRow[];
   freshness?: WireSignalBreakdownReportResponse['freshness'];
@@ -93,6 +89,16 @@ export async function getFraudReasonsReport(
     freshness: payload.freshness,
     next_cursor: payload.next_cursor,
   };
+}
+
+export async function getCustomerFraudByTypeReport(
+  params: ReportRunQuery = {},
+  signal?: AbortSignal
+): Promise<CustomerFraudByTypeReportResponse> {
+  return apiJson<CustomerFraudByTypeReportResponse>(
+    buildReportRunPath('customer-fraud-by-type', params),
+    { signal }
+  );
 }
 
 export function buildClickLogReportPath(params: ClickLogReportQuery): string {

@@ -47,49 +47,56 @@ type CreateCampaignSpec struct {
 }
 
 type CampaignFraudConfigDTO struct {
-	CampaignID               string                       `json:"campaign_id"`
-	FraudThresholdPass       uint8                        `json:"fraud_threshold_pass"`
-	FraudThresholdSuspect    uint8                        `json:"fraud_threshold_suspect"`
-	FraudThresholdIVT        uint8                        `json:"fraud_threshold_ivt"`
-	FraudThresholdBlock      uint8                        `json:"fraud_threshold_block"`
-	SilentRejectEnabled      bool                         `json:"silent_reject_enabled"`
-	BehaviorFlags            uint32                       `json:"behavior_flags"`
-	CanvasRetestEnabled      bool                         `json:"canvas_retest_enabled"`
-	CgnatIPPolicyEnabled     bool                         `json:"cgnat_ip_policy_enabled"`
-	AcceptLangGeoEnabled     bool                         `json:"accept_lang_geo_enabled"`
-	JSONSerializationEnabled bool                         `json:"json_serialization_enabled"`
-	ConversionRejectRules    domain.ConversionRejectRules `json:"conversion_reject_rules"`
+	CampaignID                string                       `json:"campaign_id"`
+	FraudThresholdPass        uint8                        `json:"fraud_threshold_pass"`
+	FraudThresholdSuspect     uint8                        `json:"fraud_threshold_suspect"`
+	FraudThresholdIVT         uint8                        `json:"fraud_threshold_ivt"`
+	FraudThresholdBlock       uint8                        `json:"fraud_threshold_block"`
+	SilentRejectEnabled       bool                         `json:"silent_reject_enabled"`
+	BehaviorFlags             uint32                       `json:"behavior_flags"`
+	CanvasRetestEnabled       bool                         `json:"canvas_retest_enabled"`
+	CgnatIPPolicyEnabled      bool                         `json:"cgnat_ip_policy_enabled"`
+	AcceptLangGeoEnabled      bool                         `json:"accept_lang_geo_enabled"`
+	JSONSerializationEnabled  bool                         `json:"json_serialization_enabled"`
+	ConversionRejectRules     domain.ConversionRejectRules `json:"conversion_reject_rules"`
+	CrossLayerDesyncAction    string                       `json:"cross_layer_desync_action,omitempty"`
+	CrossLayerDesyncThreshold uint8                        `json:"cross_layer_desync_threshold,omitempty"`
+	MLBoostLastRefreshedAt    string                       `json:"ml_boost_last_refreshed_at,omitempty"`
 }
 
 type PatchCampaignFraudRequest struct {
-	Preset                   *string                       `json:"preset,omitempty"`
-	FraudThresholdPass       *uint8                        `json:"fraud_threshold_pass,omitempty"`
-	FraudThresholdSuspect    *uint8                        `json:"fraud_threshold_suspect,omitempty"`
-	FraudThresholdIVT        *uint8                        `json:"fraud_threshold_ivt,omitempty"`
-	FraudThresholdBlock      *uint8                        `json:"fraud_threshold_block,omitempty"`
-	SilentRejectEnabled      *bool                         `json:"silent_reject_enabled,omitempty"`
-	BehaviorFlags            *uint32                       `json:"behavior_flags,omitempty"`
-	CanvasRetestEnabled      *bool                         `json:"canvas_retest_enabled,omitempty"`
-	CgnatIPPolicyEnabled     *bool                         `json:"cgnat_ip_policy_enabled,omitempty"`
-	AcceptLangGeoEnabled     *bool                         `json:"accept_lang_geo_enabled,omitempty"`
-	JSONSerializationEnabled *bool                         `json:"json_serialization_enabled,omitempty"`
-	ConversionRejectRules    *domain.ConversionRejectRules `json:"conversion_reject_rules,omitempty"`
+	Preset                    *string                       `json:"preset,omitempty"`
+	FraudThresholdPass        *uint8                        `json:"fraud_threshold_pass,omitempty"`
+	FraudThresholdSuspect     *uint8                        `json:"fraud_threshold_suspect,omitempty"`
+	FraudThresholdIVT         *uint8                        `json:"fraud_threshold_ivt,omitempty"`
+	FraudThresholdBlock       *uint8                        `json:"fraud_threshold_block,omitempty"`
+	SilentRejectEnabled       *bool                         `json:"silent_reject_enabled,omitempty"`
+	BehaviorFlags             *uint32                       `json:"behavior_flags,omitempty"`
+	CanvasRetestEnabled       *bool                         `json:"canvas_retest_enabled,omitempty"`
+	CgnatIPPolicyEnabled      *bool                         `json:"cgnat_ip_policy_enabled,omitempty"`
+	AcceptLangGeoEnabled      *bool                         `json:"accept_lang_geo_enabled,omitempty"`
+	JSONSerializationEnabled  *bool                         `json:"json_serialization_enabled,omitempty"`
+	ConversionRejectRules     *domain.ConversionRejectRules `json:"conversion_reject_rules,omitempty"`
+	CrossLayerDesyncAction    *string                       `json:"cross_layer_desync_action,omitempty"`
+	CrossLayerDesyncThreshold *uint8                        `json:"cross_layer_desync_threshold,omitempty"`
 }
 
 type patchCampaignFraudRequestRaw struct {
-	Preset                   *string                       `json:"preset,omitempty"`
-	FraudThresholdPass       *uint8                        `json:"fraud_threshold_pass,omitempty"`
-	FraudThresholdSuspect    *uint8                        `json:"fraud_threshold_suspect,omitempty"`
-	FraudThresholdIVT        *uint8                        `json:"fraud_threshold_ivt,omitempty"`
-	FraudThresholdBlock      *uint8                        `json:"fraud_threshold_block,omitempty"`
-	SilentRejectEnabled      *bool                         `json:"silent_reject_enabled,omitempty"`
-	SilentRejectPatchLegacy  *bool                         `json:"ghost_ivt_enabled,omitempty"`
-	BehaviorFlags            *uint32                       `json:"behavior_flags,omitempty"`
-	CanvasRetestEnabled      *bool                         `json:"canvas_retest_enabled,omitempty"`
-	CgnatIPPolicyEnabled     *bool                         `json:"cgnat_ip_policy_enabled,omitempty"`
-	AcceptLangGeoEnabled     *bool                         `json:"accept_lang_geo_enabled,omitempty"`
-	JSONSerializationEnabled *bool                         `json:"json_serialization_enabled,omitempty"`
-	ConversionRejectRules    *domain.ConversionRejectRules `json:"conversion_reject_rules,omitempty"`
+	Preset                    *string                       `json:"preset,omitempty"`
+	FraudThresholdPass        *uint8                        `json:"fraud_threshold_pass,omitempty"`
+	FraudThresholdSuspect     *uint8                        `json:"fraud_threshold_suspect,omitempty"`
+	FraudThresholdIVT         *uint8                        `json:"fraud_threshold_ivt,omitempty"`
+	FraudThresholdBlock       *uint8                        `json:"fraud_threshold_block,omitempty"`
+	SilentRejectEnabled       *bool                         `json:"silent_reject_enabled,omitempty"`
+	SilentRejectPatchLegacy   *bool                         `json:"ghost_ivt_enabled,omitempty"`
+	BehaviorFlags             *uint32                       `json:"behavior_flags,omitempty"`
+	CanvasRetestEnabled       *bool                         `json:"canvas_retest_enabled,omitempty"`
+	CgnatIPPolicyEnabled      *bool                         `json:"cgnat_ip_policy_enabled,omitempty"`
+	AcceptLangGeoEnabled      *bool                         `json:"accept_lang_geo_enabled,omitempty"`
+	JSONSerializationEnabled  *bool                         `json:"json_serialization_enabled,omitempty"`
+	ConversionRejectRules     *domain.ConversionRejectRules `json:"conversion_reject_rules,omitempty"`
+	CrossLayerDesyncAction    *string                       `json:"cross_layer_desync_action,omitempty"`
+	CrossLayerDesyncThreshold *uint8                        `json:"cross_layer_desync_threshold,omitempty"`
 }
 
 func decodePatchCampaignFraudRequest(body []byte) (PatchCampaignFraudRequest, error) {
@@ -119,6 +126,12 @@ func decodePatchCampaignFraudRequest(body []byte) (PatchCampaignFraudRequest, er
 	}
 	if raw.ConversionRejectRules != nil {
 		req.ConversionRejectRules = raw.ConversionRejectRules
+	}
+	if raw.CrossLayerDesyncAction != nil {
+		req.CrossLayerDesyncAction = raw.CrossLayerDesyncAction
+	}
+	if raw.CrossLayerDesyncThreshold != nil {
+		req.CrossLayerDesyncThreshold = raw.CrossLayerDesyncThreshold
 	}
 	if raw.SilentRejectEnabled != nil {
 		req.SilentRejectEnabled = raw.SilentRejectEnabled
@@ -278,46 +291,47 @@ type CampaignExportBundle struct {
 }
 
 type CampaignExportCampaign struct {
-	Name                        string                `json:"name"`
-	BudgetLimitMicro            int64                 `json:"budget_limit_micro"`
-	PacingMode                  string                `json:"pacing_mode,omitempty"`
-	DailyBudgetMicro            int64                 `json:"daily_budget_micro,omitempty"`
-	Timezone                    string                `json:"timezone,omitempty"`
-	FreqLimit                   int32                 `json:"freq_limit,omitempty"`
-	FreqWindow                  int32                 `json:"freq_window,omitempty"`
-	TargetCountries             []string              `json:"target_countries,omitempty"`
-	TargetURL                   string                `json:"target_url,omitempty"`
-	SafePageURL                 string                `json:"safe_page_url,omitempty"`
-	SafePageEnabled             bool                  `json:"safe_page_enabled,omitempty"`
-	AttestationEnabled          bool                  `json:"attestation_enabled,omitempty"`
-	AttestationMode             string                `json:"attestation_mode,omitempty"`
-	AttestationTTLSec           int32                 `json:"attestation_ttl_sec,omitempty"`
-	DmrEnabled                  bool                  `json:"dmr_enabled,omitempty"`
-	CIDRBlockEnabled            bool                  `json:"cidr_block_enabled,omitempty"`
-	ProxyVPNBlockEnabled        bool                  `json:"proxy_vpn_block_enabled,omitempty"`
-	ModeratorIntelEnabled       bool                  `json:"moderator_intel_enabled,omitempty"`
-	ReviewTrafficAction         string                `json:"review_traffic_action,omitempty"`
-	TLSFingerprintBlockEnabled  bool                  `json:"tls_fingerprint_block_enabled,omitempty"`
-	ConnTypePolicy              string                `json:"conn_type_policy,omitempty"`
-	LinkSigningEnabled          bool                  `json:"link_signing_enabled,omitempty"`
-	LinkSigningTTLSec           int32                 `json:"link_signing_ttl_sec,omitempty"`
-	ClickDelivery               string                `json:"click_delivery,omitempty"`
-	ProxyUpstreamURL            string                `json:"proxy_upstream_url,omitempty"`
-	ProxyRewriteAssets          bool                  `json:"proxy_rewrite_assets,omitempty"`
-	ProxyTimeoutFallbackEnabled bool                  `json:"proxy_timeout_fallback_enabled,omitempty"`
-	ReferrerFilter              string                `json:"referrer_filter,omitempty"`
-	StartAt                     string                `json:"start_at,omitempty"`
-	EndAt                       string                `json:"end_at,omitempty"`
-	DaypartHours                []int16               `json:"daypart_hours,omitempty"`
-	IngressCostConfig           *IngressCostConfigDTO `json:"ingress_cost_config,omitempty"`
-	TrafficTemplateID           string                `json:"traffic_template_id,omitempty"`
-	ClickQueryParams            map[string]string     `json:"click_query_params,omitempty"`
-	CreativePayload             json.RawMessage       `json:"creative_payload,omitempty"`
-	FraudThresholdPass          int16                 `json:"fraud_threshold_pass,omitempty"`
-	FraudThresholdSuspect       int16                 `json:"fraud_threshold_suspect,omitempty"`
-	FraudThresholdIVT           int16                 `json:"fraud_threshold_ivt,omitempty"`
-	FraudThresholdBlock         int16                 `json:"fraud_threshold_block,omitempty"`
-	SilentRejectEnabled         bool                  `json:"silent_reject_enabled,omitempty"`
+	Name                         string                `json:"name"`
+	BudgetLimitMicro             int64                 `json:"budget_limit_micro"`
+	PacingMode                   string                `json:"pacing_mode,omitempty"`
+	DailyBudgetMicro             int64                 `json:"daily_budget_micro,omitempty"`
+	Timezone                     string                `json:"timezone,omitempty"`
+	FreqLimit                    int32                 `json:"freq_limit,omitempty"`
+	FreqWindow                   int32                 `json:"freq_window,omitempty"`
+	TargetCountries              []string              `json:"target_countries,omitempty"`
+	TargetURL                    string                `json:"target_url,omitempty"`
+	SafePageURL                  string                `json:"safe_page_url,omitempty"`
+	SafePageEnabled              bool                  `json:"safe_page_enabled,omitempty"`
+	AttestationEnabled           bool                  `json:"attestation_enabled,omitempty"`
+	AttestationMode              string                `json:"attestation_mode,omitempty"`
+	AttestationTTLSec            int32                 `json:"attestation_ttl_sec,omitempty"`
+	DmrEnabled                   bool                  `json:"dmr_enabled,omitempty"`
+	CIDRBlockEnabled             bool                  `json:"cidr_block_enabled,omitempty"`
+	ProxyVPNBlockEnabled         bool                  `json:"proxy_vpn_block_enabled,omitempty"`
+	ModeratorIntelEnabled        bool                  `json:"moderator_intel_enabled,omitempty"`
+	ReviewTrafficAction          string                `json:"review_traffic_action,omitempty"`
+	TLSFingerprintBlockEnabled   bool                  `json:"tls_fingerprint_block_enabled,omitempty"`
+	ConnTypePolicy               string                `json:"conn_type_policy,omitempty"`
+	LinkSigningEnabled           bool                  `json:"link_signing_enabled,omitempty"`
+	LinkSigningTTLSec            int32                 `json:"link_signing_ttl_sec,omitempty"`
+	ClickDelivery                string                `json:"click_delivery,omitempty"`
+	ProxyUpstreamURL             string                `json:"proxy_upstream_url,omitempty"`
+	ProxyRewriteAssets           bool                  `json:"proxy_rewrite_assets,omitempty"`
+	ProxyTimeoutFallbackEnabled  bool                  `json:"proxy_timeout_fallback_enabled,omitempty"`
+	MobileBiometricsClickEnabled bool                  `json:"mobile_biometrics_click_enabled,omitempty"`
+	ReferrerFilter               string                `json:"referrer_filter,omitempty"`
+	StartAt                      string                `json:"start_at,omitempty"`
+	EndAt                        string                `json:"end_at,omitempty"`
+	DaypartHours                 []int16               `json:"daypart_hours,omitempty"`
+	IngressCostConfig            *IngressCostConfigDTO `json:"ingress_cost_config,omitempty"`
+	TrafficTemplateID            string                `json:"traffic_template_id,omitempty"`
+	ClickQueryParams             map[string]string     `json:"click_query_params,omitempty"`
+	CreativePayload              json.RawMessage       `json:"creative_payload,omitempty"`
+	FraudThresholdPass           int16                 `json:"fraud_threshold_pass,omitempty"`
+	FraudThresholdSuspect        int16                 `json:"fraud_threshold_suspect,omitempty"`
+	FraudThresholdIVT            int16                 `json:"fraud_threshold_ivt,omitempty"`
+	FraudThresholdBlock          int16                 `json:"fraud_threshold_block,omitempty"`
+	SilentRejectEnabled          bool                  `json:"silent_reject_enabled,omitempty"`
 }
 
 type CampaignExportLander struct {

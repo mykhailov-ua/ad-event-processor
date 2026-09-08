@@ -1,5 +1,6 @@
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
+import { Checkbox } from '@/components/ui/checkbox';
 import { Textarea } from '@/components/ui/textarea';
 import {
   Select,
@@ -18,6 +19,7 @@ import {
   CAMPAIGN_EDITOR_MONO_EXTRALIGHT_CLASS,
 } from '@/domains/campaigns/editor/campaign_click_query_limits';
 import type { CampaignEditorFormState } from '@/domains/campaigns/editor/campaign_editor_types';
+import { FraudLimitsDocLink } from '@/domains/fraud/fraud_limits_doc_link';
 import { cn } from '@/lib/utils';
 
 type CampaignEditorAdvancedRoutingSectionProps = {
@@ -152,6 +154,33 @@ export function CampaignEditorAdvancedRoutingSection({
                 disabled={saving}
                 onChange={(event) => onFieldChange('ingress_policy', event.target.value)}
               />
+            </div>
+          </div>
+        </div>
+      </section>
+
+      <section className="flex flex-col gap-4">
+        <h2 className="text-sm font-semibold text-foreground">Safe-page attestation</h2>
+        <div className="grid gap-4">
+          <div className="flex items-start gap-2">
+            <Checkbox
+              checked={form.mobile_biometrics_click_enabled}
+              disabled={saving}
+              id="campaign-mobile-biometrics-click"
+              onCheckedChange={(checked) =>
+                onFieldChange('mobile_biometrics_click_enabled', checked === true)
+              }
+            />
+            <div className="grid gap-1">
+              <Label htmlFor="campaign-mobile-biometrics-click">
+                Require mobile biometrics on click
+              </Label>
+              <p className="text-xs text-muted-foreground">
+                Enforces gyro variance and touch pressure on safe-page verify before offer redirect.
+                Requires tracker <span className="font-mono">MOBILE_BIOMETRICS_CLICK_ENABLED=1</span>,
+                campaign safe-page + attestation, and probe JS sending devicemotion / touch force.
+              </p>
+              <FraudLimitsDocLink />
             </div>
           </div>
         </div>

@@ -82,6 +82,47 @@ func (a PresetsAPI) UpdateFraudPolicyPreset(ctx context.Context, name string, re
 	return out, nil
 }
 
+type ModeratorCorpusAPI struct {
+	Host   ModeratorCorpusHost
+	MapErr MapErrorFunc
+}
+
+func (a ModeratorCorpusAPI) ListTuples(ctx context.Context, limit, offset int) ([]ModeratorCorpusDTO, int64, error) {
+	rows, total, err := NewModeratorCorpus(a.Host).ListTuples(ctx, limit, offset)
+	if a.MapErr != nil {
+		err = a.MapErr(err)
+	}
+	return rows, total, err
+}
+
+func (a ModeratorCorpusAPI) UpsertTuple(ctx context.Context, req ModeratorCorpusUpsertRequest) (ModeratorCorpusDTO, error) {
+	out, err := NewModeratorCorpus(a.Host).UpsertTuple(ctx, req)
+	if a.MapErr != nil {
+		err = a.MapErr(err)
+	}
+	return out, err
+}
+
+func (a ModeratorCorpusAPI) ImportCSV(ctx context.Context, csvBody string) (int, error) {
+	n, err := NewModeratorCorpus(a.Host).ImportCSV(ctx, csvBody)
+	if a.MapErr != nil {
+		err = a.MapErr(err)
+	}
+	return n, err
+}
+
+func (a ModeratorCorpusAPI) PreviewMatchCount7d(ctx context.Context, ja3 string) (int64, error) {
+	n, err := NewModeratorCorpus(a.Host).PreviewMatchCount7d(ctx, ja3)
+	if a.MapErr != nil {
+		err = a.MapErr(err)
+	}
+	return n, err
+}
+
+func (a ModeratorCorpusAPI) FeedLastRefresh(ctx context.Context) (string, bool) {
+	return a.Host.ModeratorCorpusFeedLastRefresh(ctx)
+}
+
 type CampaignFraudAPI struct {
 	Host   CampaignConfigHost
 	MapErr MapErrorFunc

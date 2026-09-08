@@ -347,6 +347,34 @@ var (
 		Help: "Blocked JA4 hash count in the active TLS fingerprint snapshot",
 	})
 
+	ModeratorCorpusFeedRefreshTotal = promauto.NewCounter(prometheus.CounterOpts{
+		Name: "ad_moderator_corpus_feed_refresh_total",
+		Help: "Moderator fingerprint corpus feed refresh cycles completed",
+	})
+
+	ModeratorCorpusFeedRefreshErrorsTotal = promauto.NewCounter(prometheus.CounterOpts{
+		Name: "ad_moderator_corpus_feed_refresh_errors_total",
+		Help: "Moderator corpus feed read/parse failures; previous snapshot retained",
+	})
+
+	ModeratorCorpusSnapshotEntries = promauto.NewGauge(prometheus.GaugeOpts{
+		Name: "ad_moderator_corpus_snapshot_entries",
+		Help: "Tuple count in the active moderator corpus snapshot",
+	})
+
+	ModeratorCorpusMatchTotal = promauto.NewCounter(prometheus.CounterOpts{
+		Name: "ad_moderator_corpus_match_total",
+		Help: "Review-traffic safe-page routes triggered by moderator corpus tuple match",
+	})
+	TLSJA4CorpusMismatchTotal = promauto.NewCounter(prometheus.CounterOpts{
+		Name: "ad_tls_ja4_corpus_mismatch_total",
+		Help: "TLS JA4 browser corpus mismatches on hot-path DeviceFilter",
+	})
+	CrossLayerDesyncFiredTotal = promauto.NewCounter(prometheus.CounterOpts{
+		Name: "ad_cross_layer_desync_fired_total",
+		Help: "Click-path cross-layer desync policy firings",
+	})
+
 	ClickProxyDeliverTotal = promauto.NewCounter(prometheus.CounterOpts{
 		Name: "ad_click_proxy_deliver_total",
 		Help: "GET /click proxy deliveries completed (upstream streamed to client)",

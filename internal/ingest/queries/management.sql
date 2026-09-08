@@ -691,6 +691,7 @@ SET name = $2,
     review_traffic_action = $26,
     click_filter_tier = $27,
     proxy_timeout_fallback_enabled = $28,
+    mobile_biometrics_click_enabled = $29,
     updated_at = CURRENT_TIMESTAMP
 WHERE id = $1
 RETURNING *;
@@ -718,6 +719,8 @@ SET fraud_threshold_pass = $2,
     accept_lang_geo_enabled = $10,
     json_serialization_enabled = $11,
     conversion_reject_rules = $12,
+    cross_layer_desync_action = $13,
+    cross_layer_desync_threshold = $14,
     updated_at = CURRENT_TIMESTAMP
 WHERE id = $1
 RETURNING *;

@@ -135,3 +135,11 @@ type PresetsService interface {
 	ListFraudPolicyPresets(ctx context.Context) ([]FraudPolicyPresetDTO, error)
 	UpdateFraudPolicyPreset(ctx context.Context, name string, req PatchFraudPolicyPresetRequest) (FraudPolicyPresetDTO, error)
 }
+
+type ModeratorCorpusService interface {
+	ListTuples(ctx context.Context, limit, offset int) ([]ModeratorCorpusDTO, int64, error)
+	UpsertTuple(ctx context.Context, req ModeratorCorpusUpsertRequest) (ModeratorCorpusDTO, error)
+	ImportCSV(ctx context.Context, csvBody string) (int, error)
+	PreviewMatchCount7d(ctx context.Context, ja3 string) (int64, error)
+	FeedLastRefresh(ctx context.Context) (string, bool)
+}

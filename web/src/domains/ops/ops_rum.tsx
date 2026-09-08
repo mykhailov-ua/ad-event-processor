@@ -1,12 +1,9 @@
 import { Button } from '@/components/ui/button';
 import type {
   OpsConsentProofsResponse,
-  OpsDomainRotationResponse,
   OpsMlModelEvalResponse,
   OpsMlModelStatusResponse,
   OpsRumResponse,
-  OpsTlsAllowedHostResponse,
-  OpsTlsAllowedListResponse,
 } from '@/api/types';
 import { JsonPayloadView } from '@/shell/json_payload_view';
 import { opsPanelError } from '@/domains/ops/ops_nav';

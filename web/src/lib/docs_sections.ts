@@ -1,14 +1,13 @@
-export type DocsTopic = {
-  problem: string;
-  symptom: string;
-  fix: string;
-};
+import type { DocsGuide, DocsTopic } from '@/lib/docs_types';
+
+export type { DocsTopic };
 
 export type DocsSection = {
   id: string;
   title: string;
   summary: string;
-  topics: DocsTopic[];
+  topics?: DocsTopic[];
+  guides?: DocsGuide[];
 };
 
 export const DOCS_SECTIONS: DocsSection[] = [
@@ -156,7 +155,75 @@ export const DOCS_SECTIONS: DocsSection[] = [
       {
         problem: 'Preset patch no effect',
         symptom: 'Threshold change does not move block rate.',
-        fix: 'Confirm preset bound to campaign fraud panel. ML scoring is batch-sidecar; boost snapshot updates async.',
+        fix: 'Confirm preset bound to campaign fraud panel. ML scoring runs in cmd/fraud-scorer batch only; tracker reads ml:score:boost snapshot async, not inline inference on /track.',
+      },
+      {
+        problem: 'Safe-page bypass expectation',
+        symptom: 'Moderator still reaches offer despite attestation.',
+        fix: 'Read Documentation -> Fraud signal limits. Residential egress + real browser may pass single-layer checks; cross-layer reports are analytics until campaign desync policy ships.',
+      },
+    ],
+  },
+  {
+    id: 'fraud-signal-limits',
+    title: 'Fraud signal limits',
+    summary:
+      'Honest matrix of ingress, safe-page, residential proxy, and ML enforcement limits. Canonical operator copy: deploy/vendor/ANTIFRAUD.md.',
+    guides: [
+      {
+        id: 'signal-matrix',
+        title: 'Signal matrix',
+        blocks: [
+          {
+            type: 'note',
+            text:
+              'Residential crawler on datacenter egress is detectable when edge headers are present. Residential crawler on residential egress is not fully detectable at L4 alone.',
+          },
+          {
+            type: 'table',
+            headers: ['Layer', 'Signal', 'Evades when'],
+            rows: [
+              ['L4 XDP', 'Host map / flood drop', 'Rotating residential IP, CDN front door'],
+              ['TCP ingress', 'TTL/window vs UA', 'CDN path; OS_FINGERPRINT_MISMATCH_ENABLED=false'],
+              ['TLS ingress', 'JA3/JA4 blocklist + corpus', 'TLS terminated at CDN (headers missing)'],
+              ['Safe-page JS', 'Canvas/WebGL/timezone attestation', 'safe_page_enabled=false or real mobile browser'],
+              ['Mobile biometrics', 'Gyro/touch (conversion path)', 'No probe on /click; see backlog P3-MOBILE-BIOMETRICS-CLICK'],
+              ['ML boost', 'Redis snapshot on /track', 'Not inline LGBM; cmd/fraud-scorer batch + outbox only'],
+              ['ResidentialProxyFilter', 'Farm/heuristic intel', 'Clean residential IP; not moderator proof'],
+            ],
+          },
+        ],
+      },
+      {
+        id: 'ml-positioning',
+        title: 'ML enforcement path',
+        blocks: [
+          {
+            type: 'paragraph',
+            text:
+              'Tracker FilterEngine adds a fraud score boost from an in-memory snapshot (SettingsWatcher). LightGBM inference runs only in cmd/fraud-scorer or embedded ivt-detector batch workers. Suspect-tier scores enqueue ML_SCORE_BOOST outbox rows; they do not run synchronously on POST /track.',
+          },
+          {
+            type: 'list',
+            items: [
+              'Campaign fraud panel shows ml_boost_last_refreshed_at when Redis boost key is present.',
+              'No admin UI or comment should imply per-request model inference on the hot path.',
+              'SKU: ml_fraud_boost gates the fraud-scorer sidecar.',
+            ],
+          },
+        ],
+      },
+    ],
+    topics: [
+      {
+        problem: 'Buyer expects WebGL bypass on every click',
+        symptom: 'Safe-page enabled but moderator reaches offer.',
+        fix: 'Attestation is one layer. Check review_traffic_action, TLS corpus, and cross-layer reports. Enable multiple signals; read ANTIFRAUD.md safe-page section.',
+      },
+      {
+        problem: 'XDP should block residential crawlers',
+        symptom: 'Moderator on residential IP passes edge.',
+        fix: 'XDP is flood + blocklist, not cloaking detection. Use ResidentialProxyFilter heuristics + review corpus; expect fail-open on unknown residential egress.',
       },
     ],
   },

@@ -54,6 +54,7 @@ import { FraudIntegrationsPage } from '@/pages/fraud_integrations_page';
 import { FraudLabelsPage } from '@/pages/fraud_labels_page';
 import { FraudOverridesPage } from '@/pages/fraud_overrides_page';
 import { FraudPresetsPage } from '@/pages/fraud_presets_page';
+import { FraudModeratorCorpusPage } from '@/pages/fraud_moderator_corpus_page';
 import { OpsBlacklistPage } from '@/pages/ops_blacklist_page';
 import { OpsConsentPage } from '@/pages/ops_consent_page';
 import { OpsDlqPage } from '@/pages/ops_dlq_page';
@@ -69,6 +70,7 @@ import { OpsShardsPage } from '@/pages/ops_shards_page';
 import { ReportJobsPage } from '@/pages/report_jobs_page';
 import { ClickLogPage } from '@/pages/click_log_page';
 import { FraudReasonsPage } from '@/pages/fraud_reasons_page';
+import { CustomerFraudByTypePage } from '@/pages/customer_fraud_by_type_page';
 import { ReportRunnerPage } from '@/pages/report_runner_page';
 import { ReportsPage } from '@/pages/reports_page';
 import { RtbPage } from '@/pages/rtb_page';
@@ -186,6 +188,7 @@ export function AppRoutes() {
             element={<FraudReasonsPage reportKey="wire-signal-breakdown" />}
             path="reports/wire-signal-breakdown"
           />
+          <Route element={<CustomerFraudByTypePage />} path="reports/customer-fraud-by-type" />
           <Route element={<ReportRunnerPage reportKey="telegram" />} path="reports/telegram" />
           <Route element={<ReportRunnerPage />} path="reports/telegram/:segment" />
           <Route element={<ReportRunnerPage />} path="reports/:key" />
@@ -201,6 +204,7 @@ export function AppRoutes() {
           <Route element={<FraudLabelsPage />} path="fraud/labels" />
           <Route element={<FraudOverridesPage />} path="fraud/overrides" />
           <Route element={<FraudPresetsPage />} path="fraud/presets" />
+          <Route element={<FraudModeratorCorpusPage />} path="fraud/moderator-corpus" />
           <Route element={<FraudDecisionPage />} path="fraud/decisions" />
           <Route element={<IntegrationsHubPage />} path="integrations" />
           <Route element={<IntegrationsCostSyncPage />} path="integrations/cost-sync" />

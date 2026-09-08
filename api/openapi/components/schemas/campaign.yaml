@@ -123,6 +123,9 @@ Campaign:
     proxy_timeout_fallback_enabled:
       type: boolean
       description: When true, upstream timeout on GET /click proxy falls back to 302 landing redirect.
+    mobile_biometrics_click_enabled:
+      type: boolean
+      description: Require gyro/touch biometrics on safe-page click attestation verify.
     brand_id:
       type: string
       format: uuid
@@ -314,6 +317,9 @@ PatchCampaignRequest:
     proxy_timeout_fallback_enabled:
       type: boolean
       description: When true, upstream timeout on GET /click proxy falls back to 302 landing redirect.
+    mobile_biometrics_click_enabled:
+      type: boolean
+      description: Require gyro/touch biometrics on safe-page click attestation verify.
     start_at:
       type: string
       format: date-time
@@ -794,6 +800,18 @@ CampaignFraudConfig:
       type: boolean
     conversion_reject_rules:
       $ref: '#/ConversionRejectRules'
+    ml_boost_last_refreshed_at:
+      type: string
+      format: date-time
+      description: When Redis ml:score:boost key was last refreshed by batch fraud-scorer (not inline /track inference).
+    cross_layer_desync_action:
+      type: string
+      enum: [off, boost, safe_page, block]
+    cross_layer_desync_threshold:
+      type: integer
+      format: int32
+      minimum: 2
+      maximum: 5
 
 PatchCampaignFraudRequest:
   type: object
@@ -828,6 +846,16 @@ PatchCampaignFraudRequest:
       type: boolean
     conversion_reject_rules:
       $ref: '#/ConversionRejectRules'
+    cross_layer_desync_action:
+      type: string
+      enum: [off, boost, safe_page, block]
+      description: Action when layer_desync_count reaches threshold on click.
+    cross_layer_desync_threshold:
+      type: integer
+      format: int32
+      minimum: 2
+      maximum: 5
+      description: Minimum distinct desync layers before cross_layer_desync_action applies.
 
 PreviewCampaignFraudRequest:
   type: object
@@ -1422,6 +1450,15 @@ DomainHealth:
     pool_status:
       type: string
       enum: [pending, active, banned]
+
+DomainTLSAllowedResponse:
+  type: object
+  required: [allowed]
+  properties:
+    allowed:
+      type: boolean
+      enum: [true]
+      description: Present and true when the hostname may receive a certificate.
 
 DomainBulkRequest:
   type: object

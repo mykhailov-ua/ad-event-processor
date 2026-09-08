@@ -1,5 +1,6 @@
 import { getFraudReasonsReport } from '@/api/reports_api';
 import type { ReportRunQuery, FraudReasonRow, FraudReasonsReportKey } from '@/api/types';
+import { fraudReasonPlacementId, fraudReasonSignalsDegraded } from '@/api/types';
 
 export const FRAUD_REASONS_EXPORT_PAGE_SIZE = 1000;
 export const FRAUD_REASONS_EXPORT_MAX_ROWS = 5000;
@@ -51,7 +52,7 @@ export function fraudReasonExportCellValue(
     case 'fraud_category_label':
       return row.fraud_category_label ?? row.fraud_category ?? '';
     case 'placement_id':
-      return row.placement_id ?? '';
+      return fraudReasonPlacementId(row) ?? '';
     case 'event_count':
       return row.event_count != null ? String(row.event_count) : '';
     case 'silent_reject_count':
@@ -59,7 +60,7 @@ export function fraudReasonExportCellValue(
     case 'silent_reject_ratio':
       return formatRatio(row.silent_reject_ratio);
     case 'signals_degraded':
-      return row.signals_degraded ? 'yes' : '';
+      return fraudReasonSignalsDegraded(row) ? 'yes' : '';
     default:
       return '';
   }

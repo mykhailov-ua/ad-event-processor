@@ -382,7 +382,7 @@ func NewRouter(cfg *config.Config, registry domain.CampaignRegistry, filterEngin
 				evt.TelemetryEvents = append(evt.TelemetryEvents[:0], telemetryEvents...)
 			}
 		}
-		if cfg != nil && cfg.MobileBiometricsEnabled {
+		if shouldApplyMobileBiometrics(cfg, registry, campaignID, eventType) {
 			applyMobileBiometricSummary(evt)
 		}
 
@@ -664,6 +664,7 @@ type AdsPacketHandler struct {
 	proxyVPNBlockMetrics    proxyVPNBlockMetrics
 	moderatorIPTable        *ModeratorIPTable
 	moderatorMetrics        moderatorIntelMetrics
+	moderatorCorpusTable    *ModeratorCorpusTable
 	attestationKeys         []parser.AttestationHMACKey
 	attestationInnerScratch [linkHMACBlockSize + attestationPayloadLen]byte
 	linkSigningSecret       []byte
@@ -713,6 +714,13 @@ func (h *AdsPacketHandler) ConfigureTLSFingerprint(table *TLSFingerprintTable) {
 	h.tlsFingerprintMetrics = newTLSFingerprintMetrics()
 }
 
+func (h *AdsPacketHandler) shouldApplyMobileBiometrics(campaignID uuid.UUID, eventType string) bool {
+	if h == nil {
+		return false
+	}
+	return shouldApplyMobileBiometrics(h.cfg, h.registry, campaignID, eventType)
+}
+
 func (h *AdsPacketHandler) ConfigureLinkSigning(secret []byte) {
 	if h == nil {
 		return
@@ -738,6 +746,12 @@ func (h *AdsPacketHandler) ConfigureModeratorIntel(table *ModeratorIPTable) {
 	}
 	h.moderatorIPTable = table
 	h.moderatorMetrics = newModeratorIntelMetrics()
+}
+
+func (h *AdsPacketHandler) ConfigureModeratorCorpus(table *ModeratorCorpusTable) {
+	if h != nil {
+		h.moderatorCorpusTable = table
+	}
 }
 
 func (h *AdsPacketHandler) ConfigureDomainPool(table *domainhosts.Table) {
@@ -1298,7 +1312,7 @@ func (h *AdsPacketHandler) React(req *Request, c pkgnet.Conn) pkgnet.Action {
 	}
 
 	evt := &ctx.Evt
-	fillTrackEventWithMobileBiometrics(evt, fields, ip, ua, h.cfg != nil && h.cfg.MobileBiometricsEnabled)
+	fillTrackEventWithMobileBiometrics(evt, fields, ip, ua, h.shouldApplyMobileBiometrics(fields.campaignID, fields.eventType))
 	if ctx.WorkerID >= 0 {
 		if w := ctx.WorkerID; w >= 0 && w <= 127 {
 			evt.FilterWorkerIdx = int8(w)

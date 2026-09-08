@@ -4,6 +4,7 @@ import (
 	"context"
 	"errors"
 	"fmt"
+	"time"
 
 	"ad-event-processor/internal/campaign"
 	"ad-event-processor/internal/database"
@@ -50,6 +51,7 @@ var (
 	_ fraudadmin.MLSnapshotHost            = (*Service)(nil)
 	_ fraudadmin.MLShadowDeltaSnapshotHost = (*Service)(nil)
 	_ fraudadmin.MLSyncHost                = (*Service)(nil)
+	_ fraudadmin.ModeratorCorpusHost       = (*Service)(nil)
 )
 
 func (s *Service) LabelsPool() *pgxpool.Pool                      { return s.GetPool() }
@@ -61,6 +63,28 @@ func (s *Service) StaleEpochsPool() *pgxpool.Pool                 { return s.Get
 func (s *Service) SnapshotPool() *pgxpool.Pool                    { return s.GetPool() }
 func (s *Service) DecisionsClickHouse() *database.ClickHouseQuery { return s.clickhouseQuery }
 func (s *Service) ConfigClickHouse() *database.ClickHouseQuery    { return s.clickhouseQuery }
+
+func (s *Service) ConfigMLBoostLastRefreshedAt(ctx context.Context, campaignID uuid.UUID) (time.Time, bool) {
+	if s == nil || campaignID == uuid.Nil || len(s.redisShards) == 0 {
+		return time.Time{}, false
+	}
+	key := "ml:score:boost:" + campaignID.String()
+	for _, redisClient := range s.redisShards {
+		if redisClient == nil {
+			continue
+		}
+		ttl, err := redisClient.TTL(ctx, key).Result()
+		if err != nil || ttl <= 0 {
+			continue
+		}
+		remaining := ttl
+		if remaining > fraud.ScoreBoostTTL {
+			remaining = fraud.ScoreBoostTTL
+		}
+		return time.Now().Add(-(fraud.ScoreBoostTTL - remaining)), true
+	}
+	return time.Time{}, false
+}
 func (s *Service) FraudExplainLiveScoreEnabled() bool {
 	return s != nil && s.cfg != nil && s.cfg.FraudScoring.ExplainLiveScore
 }

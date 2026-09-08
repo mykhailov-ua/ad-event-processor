@@ -1,8 +1,9 @@
-import { Brain, FileSearch, Link2, Scale, ShieldAlert } from 'lucide-react';
+import { Brain, FileSearch, Link2, Scale, ShieldAlert, BarChart3 } from 'lucide-react';
 
 import { BentoSection } from '@/shell/bento_card';
 import { HubLinkCard, HubLinkGrid } from '@/shell/hub_link_card';
 import { PageChrome } from '@/shell/page_chrome';
+import { FRAUD_HUB_REPORT_LINKS } from '@/domains/fraud/fraud_hub_links';
 
 const FRAUD_LINKS = [
   {
@@ -34,6 +35,20 @@ const FRAUD_LINKS = [
     meta: 'Sensitivity tiers',
   },
   {
+    path: '/fraud/moderator-corpus',
+    title: 'Moderator corpus',
+    description: 'Learned moderator fingerprint tuples for review-traffic safe-page routing.',
+    icon: FileSearch,
+    meta: 'Review routing',
+  },
+  {
+    path: '/docs/fraud-signal-limits',
+    title: 'Signal limits',
+    description: 'Safe-page, residential proxy, and ML batch enforcement limits.',
+    icon: ShieldAlert,
+    meta: 'Operator doc',
+  },
+  {
     path: '/fraud/decisions',
     title: 'Decision explain',
     description: 'Explain fraud tier decision for an IP hash.',
@@ -44,11 +59,25 @@ const FRAUD_LINKS = [
 
 export function FraudHub() {
   return (
-    <PageChrome description="Integrations, labels, overrides, and decision explain." title="Fraud">
+    <PageChrome description="Integrations, labels, overrides, analytics, and decision explain." title="Fraud">
       <BentoSection title="Fraud operations">
         <HubLinkGrid>
           {FRAUD_LINKS.map((item) => (
             <HubLinkCard key={item.path} {...item} />
+          ))}
+        </HubLinkGrid>
+      </BentoSection>
+      <BentoSection title="Fraud analytics">
+        <HubLinkGrid>
+          {FRAUD_HUB_REPORT_LINKS.map((item) => (
+            <HubLinkCard
+              key={item.path}
+              description={item.description}
+              icon={BarChart3}
+              meta={item.meta}
+              path={item.path}
+              title={item.title}
+            />
           ))}
         </HubLinkGrid>
       </BentoSection>

@@ -139,6 +139,7 @@ export function campaignToFormState(campaign: Campaign): CampaignEditorFormState
     traffic_template_id: campaign.traffic_template_id ?? '',
     click_query_params_json: clickQueryParamsCanonicalJson(campaign.click_query_params),
     click_filter_tier: campaign.click_filter_tier ?? 'full',
+    mobile_biometrics_click_enabled: campaign.mobile_biometrics_click_enabled ?? false,
   };
 }
 
@@ -193,7 +194,11 @@ export function buildCampaignPatchBody(
 
   const originalTier = original.click_filter_tier ?? 'full';
   if (form.click_filter_tier !== originalTier) {
-    body.click_filter_tier = form.click_filter_tier;
+    body.click_filter_tier = form.click_filter_tier as PatchCampaignRequest['click_filter_tier'];
+  }
+
+  if (form.mobile_biometrics_click_enabled !== (original.mobile_biometrics_click_enabled ?? false)) {
+    body.mobile_biometrics_click_enabled = form.mobile_biometrics_click_enabled;
   }
 
   return { ok: true, body };

@@ -222,6 +222,7 @@ func loadIngestModules(cfg *Config, appEnv string) error {
 	cfg.JSONSerializationFingerprintEnabled = getEnvBool("JSON_SERIALIZATION_FINGERPRINT_ENABLED", false)
 	cfg.BehaviorTelemetryEnabled = getEnvBool("BEHAVIOR_TELEMETRY_ENABLED", false)
 	cfg.MobileBiometricsEnabled = getEnvBool("MOBILE_BIOMETRICS_ENABLED", false)
+	cfg.MobileBiometricsClickEnabled = getEnvBool("MOBILE_BIOMETRICS_CLICK_ENABLED", false)
 
 	cfg.ProxyVPNBlockEnabled = getEnvBool("PROXY_VPN_BLOCK_ENABLED", true)
 	cfg.ProxyVPNFeedDir = os.Getenv("PROXY_VPN_FEED_DIR")
@@ -231,6 +232,7 @@ func loadIngestModules(cfg *Config, appEnv string) error {
 	cfg.ProxyVPNFeedRefresh = 24 * time.Hour
 	cfg.TLSFingerprintEnabled = getEnvBool("TLS_FINGERPRINT_ENABLED", true)
 	cfg.TLSJA4BrowserCorpusEnabled = getEnvBool("TLS_JA4_BROWSER_CORPUS_ENABLED", true)
+	cfg.TLSJA4CorpusReviewRouteEnabled = getEnvBool("TLS_JA4_CORPUS_REVIEW_ROUTE_ENABLED", false)
 	cfg.TLSFingerprintFeedDir = os.Getenv("TLS_FINGERPRINT_FEED_DIR")
 	if cfg.TLSFingerprintFeedDir == "" {
 		cfg.TLSFingerprintFeedDir = "/var/lib/ad-event-processor/tls-fingerprint"
@@ -241,6 +243,19 @@ func loadIngestModules(cfg *Config, appEnv string) error {
 			cfg.TLSFingerprintFeedRefresh = d
 		} else if n, err := strconv.Atoi(raw); err == nil {
 			cfg.TLSFingerprintFeedRefresh = time.Duration(n) * time.Second
+		}
+	}
+	cfg.ModeratorCorpusEnabled = getEnvBool("MODERATOR_CORPUS_ENABLED", true)
+	cfg.ModeratorCorpusFeedDir = strings.TrimSpace(os.Getenv("MODERATOR_CORPUS_FEED_DIR"))
+	if cfg.ModeratorCorpusFeedDir == "" {
+		cfg.ModeratorCorpusFeedDir = "/var/lib/ad-event-processor/moderator-corpus"
+	}
+	cfg.ModeratorCorpusFeedRefresh = 60 * time.Second
+	if raw := strings.TrimSpace(os.Getenv("MODERATOR_CORPUS_FEED_REFRESH_INTERVAL")); raw != "" {
+		if d, err := time.ParseDuration(raw); err == nil && d > 0 {
+			cfg.ModeratorCorpusFeedRefresh = d
+		} else if n, err := strconv.Atoi(raw); err == nil && n > 0 {
+			cfg.ModeratorCorpusFeedRefresh = time.Duration(n) * time.Second
 		}
 	}
 	if raw := os.Getenv("LINK_SIGNING_HMAC_SECRET"); raw != "" {

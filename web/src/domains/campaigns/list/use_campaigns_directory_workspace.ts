@@ -345,6 +345,7 @@ export function useCampaignsDirectoryWorkspace({
     selectedCampaign,
     selectedCampaignId,
     selectedIds,
+    selectedIdsList,
     setArchiveOpen,
     setBulkCloneOpen,
     setCloneOpen,

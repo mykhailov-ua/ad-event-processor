@@ -50,7 +50,7 @@ function buildSessionValue(
   data: SessionState | null | undefined,
   error: Error | undefined,
   fetching: boolean
-): SessionContextValue {
+): Omit<SessionContextValue, 'revalidating' | 'refetchSession'> {
   const apiError = error instanceof ApiError ? error : undefined;
   const forbidden = apiError?.status === 403;
   const unauthenticated =

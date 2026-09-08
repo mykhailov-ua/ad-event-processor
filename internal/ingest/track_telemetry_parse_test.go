@@ -89,16 +89,17 @@ func TestBehaviorTelemetryFilter_holdoutMissingOnConversion(t *testing.T) {
 	assert.Equal(t, before+1, testutil.ToFloat64(metrics.BehaviorTelemetryMissingTotal))
 }
 
-func TestBehaviorTelemetryFilter_holdoutClickSkips(t *testing.T) {
+func TestBehaviorTelemetryFilter_holdoutClickSkipsWhenFlagOff(t *testing.T) {
 	reg := &Registry{}
 	campID := uuid.New()
 	reg.SeedCampaignForTest(&domain.Campaign{
-		ID:                 campID,
-		SafePageEnabled:    true,
-		AttestationEnabled: true,
+		ID:                           campID,
+		SafePageEnabled:              true,
+		AttestationEnabled:           true,
+		MobileBiometricsClickEnabled: true,
 	})
 	f := NewBehaviorTelemetryFilter(reg)
-	f.SetEnabled(true)
+	f.SetClickEnabled(false)
 
 	evt := domain.EventPool.Get().(*domain.Event)
 	defer domain.EventPool.Put(evt)
@@ -107,10 +108,40 @@ func TestBehaviorTelemetryFilter_holdoutClickSkips(t *testing.T) {
 	defer releaseFraudAccumulator(evt, acc)
 	evt.CampaignID = campID
 	evt.Type = "click"
-	evt.UA = "Mozilla/5.0 (Windows NT 10.0; Win64; x64)"
+	evt.UA = "Mozilla/5.0 (iPhone; CPU iPhone OS 17_0 like Mac OS X)"
+	evt.TelemetrySet = 1
+	evt.TelemetryEvents = []domain.BehaviorTelemetryEvent{{T: "touchstart", TS: 1, X: 1, Y: 2, Force: 1}}
 
 	require.NoError(t, f.Check(context.Background(), evt))
-	assert.False(t, acc.Has(FraudReasonBehaviorTelemetryMissing))
+	assert.Equal(t, uint8(0), evt.MobileBiometricSet)
+}
+
+func TestBehaviorTelemetryFilter_holdoutClickAppliesSummaryWhenEnabled(t *testing.T) {
+	reg := &Registry{}
+	campID := uuid.New()
+	reg.SeedCampaignForTest(&domain.Campaign{
+		ID:                           campID,
+		SafePageEnabled:              true,
+		AttestationEnabled:           true,
+		MobileBiometricsClickEnabled: true,
+	})
+	f := NewBehaviorTelemetryFilter(reg)
+	f.SetClickEnabled(true)
+
+	evt := domain.EventPool.Get().(*domain.Event)
+	defer domain.EventPool.Put(evt)
+	evt.Reset()
+	acc := attachFraudAccumulator(evt)
+	defer releaseFraudAccumulator(evt, acc)
+	evt.CampaignID = campID
+	evt.Type = "click"
+	evt.UA = "Mozilla/5.0 (iPhone; CPU iPhone OS 17_0 like Mac OS X)"
+	evt.TelemetrySet = 1
+	evt.TelemetryEvents = []domain.BehaviorTelemetryEvent{{T: "touchstart", TS: 1, X: 1, Y: 2, Force: 1}}
+
+	require.NoError(t, f.Check(context.Background(), evt))
+	assert.Equal(t, uint8(1), evt.MobileBiometricSet)
+	assert.Equal(t, uint8(1), evt.MobileTouchCount)
 }
 
 func TestBehaviorTelemetryFilter_holdoutHumanCurvePasses(t *testing.T) {

@@ -102,6 +102,52 @@ export async function patchFraudPreset(
   });
 }
 
+export async function listModeratorCorpus(
+  params: { limit?: number; offset?: number },
+  signal?: AbortSignal
+): Promise<import('./types.js').ModeratorCorpusListResponse> {
+  const search = new URLSearchParams();
+  if (params.limit != null) {
+    search.set('limit', String(params.limit));
+  }
+  if (params.offset != null) {
+    search.set('offset', String(params.offset));
+  }
+  const qs = search.toString();
+  const path = qs ? `/api/v1/fraud/moderator-corpus?${qs}` : '/api/v1/fraud/moderator-corpus';
+  return apiJson(path, { signal });
+}
+
+export async function upsertModeratorCorpus(
+  body: import('./types.js').ModeratorCorpusUpsertRequest,
+  signal?: AbortSignal
+): Promise<import('./types.js').ModeratorCorpusTuple> {
+  return apiJson('/api/v1/fraud/moderator-corpus', {
+    method: 'POST',
+    body: JSON.stringify(body),
+    signal,
+  });
+}
+
+export async function importModeratorCorpus(
+  body: import('./types.js').ModeratorCorpusImportRequest,
+  signal?: AbortSignal
+): Promise<import('./types.js').ModeratorCorpusImportResponse> {
+  return apiJson('/api/v1/fraud/moderator-corpus/import', {
+    method: 'POST',
+    body: JSON.stringify(body),
+    signal,
+  });
+}
+
+export async function previewModeratorCorpus(
+  ja3: string,
+  signal?: AbortSignal
+): Promise<import('./types.js').ModeratorCorpusPreviewResponse> {
+  const search = new URLSearchParams({ ja3 });
+  return apiJson(`/api/v1/fraud/moderator-corpus/preview?${search.toString()}`, { signal });
+}
+
 export function buildFraudDecisionPath(params: FraudDecisionQuery): string {
   const search = new URLSearchParams({
     customer_id: params.customer_id,

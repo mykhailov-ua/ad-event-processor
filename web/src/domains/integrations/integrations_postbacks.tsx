@@ -161,6 +161,8 @@ export function IntegrationsPostbacks({
                     <DirectoryTableHead>Campaign</DirectoryTableHead>
                     <DirectoryTableHead>Provider</DirectoryTableHead>
                     <DirectoryTableHead>Target event</DirectoryTableHead>
+                    <DirectoryTableHead>URL template</DirectoryTableHead>
+                    <DirectoryTableHead>Test event code</DirectoryTableHead>
                     <DirectoryTableHead>Token</DirectoryTableHead>
                   </TableRow>
                 </TableHeader>
@@ -174,6 +176,10 @@ export function IntegrationsPostbacks({
                       <TableCell className="font-mono text-xs">{row.campaign_id}</TableCell>
                       <TableCell>{row.provider}</TableCell>
                       <TableCell>{row.target_event}</TableCell>
+                      <TableCell className="max-w-xs truncate font-mono text-xs" title={row.url_template}>
+                        {row.url_template}
+                      </TableCell>
+                      <TableCell className="font-mono text-xs">{row.test_event_code ?? ''}</TableCell>
                       <TableCell>{row.has_api_token ? 'set' : 'missing'}</TableCell>
                     </TableRow>
                   ))}
@@ -195,7 +201,9 @@ export function IntegrationsPostbacks({
                 <TableRow>
                   <DirectoryTableHead>ID</DirectoryTableHead>
                   <DirectoryTableHead>Campaign</DirectoryTableHead>
+                  <DirectoryTableHead>Click ID</DirectoryTableHead>
                   <DirectoryTableHead>Event</DirectoryTableHead>
+                  <DirectoryTableHead>Status</DirectoryTableHead>
                   <DirectoryTableHead>Failures</DirectoryTableHead>
                   <DirectoryTableHead>Last error</DirectoryTableHead>
                   <DirectoryTableHead className="w-28">Actions</DirectoryTableHead>
@@ -208,7 +216,9 @@ export function IntegrationsPostbacks({
                     <TableRow key={rowId || row.campaign_id}>
                       <TableCell>{row.id}</TableCell>
                       <TableCell className="font-mono text-xs">{row.campaign_id ?? ''}</TableCell>
+                      <TableCell className="font-mono text-xs">{row.click_id ?? ''}</TableCell>
                       <TableCell>{row.event_type ?? ''}</TableCell>
+                      <TableCell>{row.status ?? ''}</TableCell>
                       <TableCell>{row.failures_count ?? ''}</TableCell>
                       <TableCell className="whitespace-nowrap">{row.last_error ?? ''}</TableCell>
                       <TableCell>

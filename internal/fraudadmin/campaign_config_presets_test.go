@@ -3,6 +3,7 @@ package fraudadmin
 import (
 	"context"
 	"testing"
+	"time"
 
 	"ad-event-processor/internal/campaign"
 	"ad-event-processor/internal/database"
@@ -28,6 +29,10 @@ func (h presetThresholdHost) ConfigResolvePresetThresholds(ctx context.Context, 
 
 func (h presetThresholdHost) ConfigEnqueueUpdateCampaignFraud(context.Context, db.Querier, uuid.UUID) error {
 	return nil
+}
+
+func (h presetThresholdHost) ConfigMLBoostLastRefreshedAt(context.Context, uuid.UUID) (time.Time, bool) {
+	return time.Time{}, false
 }
 
 func TestResolvePresetThresholds_fallbackWithoutPool(t *testing.T) {

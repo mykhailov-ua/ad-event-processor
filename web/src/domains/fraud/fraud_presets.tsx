@@ -17,6 +17,7 @@ import {
 import { ApiError } from '@/api/client';
 import type { FraudPolicyPreset } from '@/api/types';
 import { displayTimestamp } from '@/lib/display';
+import { FraudLimitsDocLink } from '@/domains/fraud/fraud_limits_doc_link';
 
 export type FraudPresetEditDraft = {
   pass: string;
@@ -83,9 +84,12 @@ export function FraudPresets({
 
   return (
     <PageChrome title="Fraud presets">
-      <Link className="text-sm text-muted-foreground hover:underline" to="/fraud">
-        Back to fraud hub
-      </Link>
+      <div className="flex flex-col gap-1">
+        <FraudLimitsDocLink />
+        <Link className="text-sm text-muted-foreground hover:underline" to="/fraud">
+          Back to fraud hub
+        </Link>
+      </div>
 
       {(items ?? []).length === 0 ? (
         <EmptyState title="No presets" description="No global fraud policy presets returned." />

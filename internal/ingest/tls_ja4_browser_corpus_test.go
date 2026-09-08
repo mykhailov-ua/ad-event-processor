@@ -2,6 +2,8 @@ package ingest
 
 import (
 	"context"
+	"os"
+	"path/filepath"
 	"testing"
 
 	"ad-event-processor/internal/config"
@@ -13,10 +15,36 @@ import (
 
 const chromeDesktopUAJA4 = "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36"
 
+const safariIOSUAJA4 = "Mozilla/5.0 (iPhone; CPU iPhone OS 17_0 like Mac OS X) AppleWebKit/605.1.15 (KHTML, like Gecko) Version/17.0 Mobile/15E148 Safari/604.1"
+
+func TestJA4BrowserCorpus_holdoutSafariIOSChromiumJA4Fail(t *testing.T) {
+	PublishJA4BrowserCorpus(parseJA4BrowserCorpus([]byte("t13d1516h2=chrome")))
+	ja4 := []byte("t13d1516h2_8daaf6152771_d8a5ae025ec7")
+	assert.True(t, ja4BrowserCorpusMismatch(safariIOSUAJA4, ja4))
+}
+
+func TestJA4BrowserCorpus_holdoutSafariIOSMatchingPass(t *testing.T) {
+	PublishJA4BrowserCorpus(parseJA4BrowserCorpus([]byte("t13d0511=safari")))
+	ja4 := []byte("t13d0511_aaaaaaaaaaaa_bbbbbbbbbbbb")
+	assert.False(t, ja4BrowserCorpusMismatch(safariIOSUAJA4, ja4))
+}
+
 func TestJA4BrowserCorpus_holdoutChromePass(t *testing.T) {
 	PublishJA4BrowserCorpus(parseJA4BrowserCorpus([]byte("t13d1516h2=chrome")))
 	ja4 := []byte("t13d1516h2_8daaf6152771_d8a5ae025ec7")
 	assert.False(t, ja4BrowserCorpusMismatch(chromeDesktopUAJA4, ja4))
+}
+
+func TestLoadJA4BrowserCorpusFromDir_holdoutBadOverlayKeepsBase(t *testing.T) {
+	dir := t.TempDir()
+	if err := os.WriteFile(filepath.Join(dir, "ja4_browser_corpus.txt"), []byte("not-valid-corpus"), 0o644); err != nil {
+		t.Fatal(err)
+	}
+	snap := LoadJA4BrowserCorpusFromDir(dir)
+	require.NotNil(t, snap)
+	chromeFamily, ok := snap.PrefixFamily("t13d1516h2")
+	require.True(t, ok)
+	assert.Equal(t, tlsBrowserChrome, chromeFamily)
 }
 
 func TestJA4BrowserCorpus_holdoutGoTLSFail(t *testing.T) {

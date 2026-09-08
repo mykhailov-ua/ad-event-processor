@@ -302,6 +302,52 @@ Global and per-campaign rules merge via `mergeConversionRejectConfig`. Click sto
 
 ---
 
+## Safe-page and signal limitations
+
+Buyers often expect WebGL/headless bypass on every click. This stack combines edge wire signals, safe-page JS attestation, review-traffic routing, and cold-path IVT/ML. None of these are magic against a residential moderator on a clean IP with a real browser.
+
+### Signal matrix (what runs where)
+
+| Layer | Signal / control | Hot path reader | Typical evasion |
+| :--- | :--- | :--- | :--- |
+| L4 edge (XDP) | Listed host / flood drop | `cmd/edge-xdp` | Rotating residential IP, CDN front door |
+| L4/L7 edge (nginx Lua) | Rate limit, slot map | `deploy/nginx/lua/` | Same; may 403 before tracker |
+| Ingress TCP | TTL/window vs UA (`OSFingerprintMismatch`) | `DeviceFilter` | CDN terminates TCP; set `OS_FINGERPRINT_MISMATCH_ENABLED=false` on CDN paths |
+| Ingress TCP | SYN signature corpus | `DeviceFilter` + `TCPSynSigCorpus` | Missing `X-TCP-SIG` headers behind CDN |
+| Ingress TLS | JA3/JA4 blocklist | `DeviceFilter` | TLS terminated at CDN; headers absent -> fail open |
+| Ingress TLS | JA4 browser corpus (`tls_ja4_mismatch`) | `DeviceFilter` + `ja4BrowserCorpusMismatch` | Corpus miss fail-open; Chromium UA on Safari row fires signal |
+| Ingress HTTP/2 | SETTINGS / pseudo-order (edge) | nginx Lua -> headers | CDN normalizes H2; signal degraded |
+| Safe-page JS | Canvas/WebGL/timezone attestation | `safe_page_attest.go` | Attestation off (`safe_page_enabled=false`); headless without probe |
+| Mobile biometrics | Gyro/touch on conversion | `BehaviorTelemetryFilter` / IVT `mobile_biometrics` | Flat gyro on `/click` when biometrics not wired on click path (see P3-MOBILE-BIOMETRICS-CLICK) |
+| Cross-layer | `layer_desync_count` (CH) | Reports only unless campaign policy set | Residential egress masks single-layer mismatch |
+| Residential intel | `ResidentialProxyFilter` | Farm/heuristic table | Not per-session moderator proof; rotating clean IP passes |
+| ML boost | `ml:score:boost:{campaign_id}` snapshot | `FilterEngine` read only | No inline LGBM on `/track`; batch `cmd/fraud-scorer` |
+
+**Residential crawler on datacenter egress:** detectable at L4/L7 when signals are present. **Residential crawler on residential egress:** not fully detectable at L4 alone; rely on cross-layer + safe-page + review corpus, not XDP host map alone.
+
+### Safe-page attestation limits
+
+| Condition | Behavior |
+| :--- | :--- |
+| `safe_page_enabled=false` | No attestation probe; review traffic may still route via `review_traffic_action` |
+| CDN / no edge TCP headers | OS/TCP/SYN signals skipped (`OSFingerprintSkippedTotal`) |
+| Moderator with real mobile browser | May pass attestation; use review corpus + cross-layer analytics |
+| Conversion-only biometrics | Gyro/touch checks on conversion when `BEHAVIOR_TELEMETRY_ENABLED`; not a click-time guarantee today |
+
+Cross-ref backlog: P3-MOBILE-BIOMETRICS-CLICK, P3-TLS-JA4-BROWSER-CORPUS, P3-MODERATOR-FINGERPRINT-CORPUS, P3-CROSS-LAYER-DESYNC-POLICY, P4-*.
+
+### Residential proxy and review traffic
+
+| Component | What it is | What it is not |
+| :--- | :--- | :--- |
+| `ResidentialProxyFilter` | Intel/heuristic on known farm ASNs and ring buffer | Proof that traffic is a human moderator |
+| XDP / edge blocklist | Flood control + known bad L3/L4 endpoints | Application-layer cloaking or residential session fingerprint |
+| `review_traffic_policy` | TLS blocklist, CIDR, proxy/VPN, moderator intel IP | Learned JA3/JA4 + safe-page tuple corpus (P3-MODERATOR-FINGERPRINT-CORPUS) |
+
+Operator UI: Documentation -> Fraud signal limits (`/docs/fraud-signal-limits`). Campaign fraud panel links to the same page.
+
+---
+
 ## Edge and XDP (enterprise)
 
 | Component | Role | Fraud scope |

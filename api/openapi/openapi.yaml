@@ -90,6 +90,12 @@ paths:
     $ref: paths/campaigns.yaml#/paths/~1api~1v1~1campaigns
   /api/v1/campaigns/metrics:
     $ref: paths/campaigns.yaml#/paths/~1api~1v1~1campaigns~1metrics
+  /api/v1/campaigns/metrics-totals:
+    $ref: paths/campaigns.yaml#/paths/~1api~1v1~1campaigns~1metrics-totals
+  /api/v1/campaigns/list-facets:
+    $ref: paths/campaigns.yaml#/paths/~1api~1v1~1campaigns~1list-facets
+  /api/v1/campaigns/target-countries:
+    $ref: paths/campaigns.yaml#/paths/~1api~1v1~1campaigns~1target-countries
   /api/v1/campaigns/{id}:
     $ref: paths/campaigns.yaml#/paths/~1api~1v1~1campaigns~1{id}
   /api/v1/campaigns/{id}/owner:
@@ -416,6 +422,12 @@ paths:
     $ref: paths/ops_reports.yaml#/paths/~1api~1v1~1fraud~1overrides
   /api/v1/fraud/presets:
     $ref: paths/ops_reports.yaml#/paths/~1api~1v1~1fraud~1presets
+  /api/v1/fraud/moderator-corpus:
+    $ref: paths/ops_reports.yaml#/paths/~1api~1v1~1fraud~1moderator-corpus
+  /api/v1/fraud/moderator-corpus/import:
+    $ref: paths/ops_reports.yaml#/paths/~1api~1v1~1fraud~1moderator-corpus~1import
+  /api/v1/fraud/moderator-corpus/preview:
+    $ref: paths/ops_reports.yaml#/paths/~1api~1v1~1fraud~1moderator-corpus~1preview
   /api/v1/ops/blacklist:
     $ref: paths/ops_reports.yaml#/paths/~1api~1v1~1ops~1blacklist
   /api/v1/ops/consent/proofs:
@@ -452,8 +464,6 @@ paths:
     $ref: paths/ops_reports.yaml#/paths/~1api~1v1~1ops~1domains~1jobs~1{job_id}
   /api/v1/ops/domains/{hostname}/burn:
     $ref: paths/ops_reports.yaml#/paths/~1api~1v1~1ops~1domains~1{hostname}~1burn
-  /api/v1/ops/domains/{hostname}/tls-allowed:
-    $ref: paths/ops_reports.yaml#/paths/~1api~1v1~1ops~1domains~1{hostname}~1tls-allowed
   /api/v1/ops/fraud/presets/{name}:
     $ref: paths/ops_reports.yaml#/paths/~1api~1v1~1ops~1fraud~1presets~1{name}
   /api/v1/ops/incidents:

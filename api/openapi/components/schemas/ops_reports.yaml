@@ -850,6 +850,101 @@ FraudPolicyPreset:
     updated_at_display:
       type: string
 
+ModeratorCorpusTuple:
+  type: object
+  properties:
+    id:
+      type: string
+      format: uuid
+    ja3:
+      type: string
+    ja4:
+      type: string
+    tcp_sig:
+      type: string
+    webgl_renderer:
+      type: string
+    layer_desync_count:
+      type: integer
+      format: int32
+    note:
+      type: string
+    source:
+      type: string
+    created_at:
+      type: string
+      format: date-time
+    created_at_display:
+      type: string
+    updated_at:
+      type: string
+      format: date-time
+    updated_at_display:
+      type: string
+
+ModeratorCorpusListResponse:
+  type: object
+  properties:
+    items:
+      type: array
+      items:
+        $ref: '#/ModeratorCorpusTuple'
+    total:
+      type: integer
+      format: int64
+    limit:
+      type: integer
+      format: int32
+    offset:
+      type: integer
+      format: int32
+    last_refresh:
+      type: string
+      format: date-time
+
+ModeratorCorpusUpsertRequest:
+  type: object
+  required:
+  - ja3
+  properties:
+    ja3:
+      type: string
+    ja4:
+      type: string
+    tcp_sig:
+      type: string
+    webgl_renderer:
+      type: string
+    layer_desync_count:
+      type: integer
+      format: int32
+    note:
+      type: string
+    source:
+      type: string
+
+ModeratorCorpusImportRequest:
+  type: object
+  required:
+  - csv
+  properties:
+    csv:
+      type: string
+
+ModeratorCorpusImportResponse:
+  type: object
+  properties:
+    upserted:
+      type: integer
+      format: int32
+
+ModeratorCorpusPreviewResponse:
+  type: object
+  properties:
+    match_count_7d:
+      type: integer
+      format: int64
+
 PatchFraudPolicyPresetRequest:
   type: object
   properties:
@@ -1270,6 +1365,43 @@ CustomerFraudByTypeReportResponse:
       type: array
       items:
         $ref: '#/CustomerFraudByTypeRow'
+    freshness:
+      $ref: '#/DataFreshness'
+    next_cursor:
+      type: string
+
+FraudBreakdownRow:
+  type: object
+  properties:
+    campaign_id:
+      type: string
+      format: uuid
+    placement_id:
+      type: string
+    fraud_reason:
+      type: string
+    fraud_category:
+      type: string
+    fraud_category_label:
+      type: string
+    event_count:
+      type: integer
+      format: int64
+    silent_reject_count:
+      type: integer
+      format: int64
+    silent_reject_ratio:
+      type: number
+      format: double
+
+FraudBreakdownReportResponse:
+  type: object
+  required: [rows, freshness]
+  properties:
+    rows:
+      type: array
+      items:
+        $ref: '#/FraudBreakdownRow'
     freshness:
       $ref: '#/DataFreshness'
     next_cursor:

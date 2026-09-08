@@ -14,11 +14,14 @@ type contextKey string
 const DeduplicationTokenKey contextKey = "dedup_token"
 
 type BehaviorTelemetryEvent struct {
-	T  string
-	TS int64
-	X  int
-	Y  int
-	Z  int
+	T       string
+	TS      int64
+	X       int
+	Y       int
+	Z       int
+	Force   float32
+	RadiusX float32
+	RadiusY float32
 }
 
 type Event struct {
@@ -57,6 +60,7 @@ type Event struct {
 	FraudReason            string
 	FraudScore             uint32
 	LayerDesyncCount       uint8
+	CrossLayerDesyncFired  uint8
 	SilentRejectEvent      bool
 	ReviewRoutedEvent      bool
 	ShadowEvent            bool
@@ -144,6 +148,7 @@ func (e *Event) Reset() {
 	e.FraudReason = ""
 	e.FraudScore = 0
 	e.LayerDesyncCount = 0
+	e.CrossLayerDesyncFired = 0
 	e.SilentRejectEvent = false
 	e.ReviewRoutedEvent = false
 	e.ShadowEvent = false

@@ -316,6 +316,96 @@ paths:
       x-permissions:
       - campaigns:read
       - shards:read
+  /api/v1/fraud/moderator-corpus:
+    get:
+      operationId: listModeratorCorpus
+      parameters:
+      - $ref: ../openapi.yaml#/components/parameters/LimitQuery
+      - $ref: ../openapi.yaml#/components/parameters/OffsetQuery
+      responses:
+        '200':
+          content:
+            application/json:
+              schema:
+                $ref: ../components/schemas/ops_reports.yaml#/ModeratorCorpusListResponse
+          description: Moderator fingerprint corpus tuples
+        default:
+          $ref: ../openapi.yaml#/components/responses/Error
+      summary: List moderator fingerprint corpus tuples
+      tags:
+      - fraud-admin
+      x-permissions:
+      - audit:read
+    post:
+      operationId: upsertModeratorCorpus
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: ../components/schemas/ops_reports.yaml#/ModeratorCorpusUpsertRequest
+        required: true
+      responses:
+        '200':
+          content:
+            application/json:
+              schema:
+                $ref: ../components/schemas/ops_reports.yaml#/ModeratorCorpusTuple
+          description: Upserted tuple
+        default:
+          $ref: ../openapi.yaml#/components/responses/Error
+      summary: Upsert moderator fingerprint corpus tuple
+      tags:
+      - fraud-admin
+      x-permissions:
+      - campaigns:write
+      - shards:write
+  /api/v1/fraud/moderator-corpus/import:
+    post:
+      operationId: importModeratorCorpus
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: ../components/schemas/ops_reports.yaml#/ModeratorCorpusImportRequest
+        required: true
+      responses:
+        '200':
+          content:
+            application/json:
+              schema:
+                $ref: ../components/schemas/ops_reports.yaml#/ModeratorCorpusImportResponse
+          description: Import result
+        default:
+          $ref: ../openapi.yaml#/components/responses/Error
+      summary: Bulk import moderator corpus tuples from CSV
+      tags:
+      - fraud-admin
+      x-permissions:
+      - campaigns:write
+      - shards:write
+  /api/v1/fraud/moderator-corpus/preview:
+    get:
+      operationId: previewModeratorCorpus
+      parameters:
+      - in: query
+        name: ja3
+        required: true
+        schema:
+          type: string
+      responses:
+        '200':
+          content:
+            application/json:
+              schema:
+                $ref: ../components/schemas/ops_reports.yaml#/ModeratorCorpusPreviewResponse
+          description: Match count preview
+        default:
+          $ref: ../openapi.yaml#/components/responses/Error
+      summary: Preview review-routed click count for JA3 in last 7 days
+      tags:
+      - fraud-admin
+      x-permissions:
+      - audit:read
   /api/v1/ops/blacklist:
     delete:
       operationId: opsRemoveBlacklist
@@ -576,22 +666,33 @@ paths:
       - shards:read
   /api/v1/ops/domains/tls-allowed:
     get:
-      operationId: opsTlsAllowedList
+      operationId: opsTlsAllowedCheck
+      summary: Check whether a hostname may receive TLS (Caddy on-demand ask)
+      description: |
+        Edge TLS ask hook. Supply domain query param (hostname). When
+        AD_EVENT_PROCESSOR_TLS_ASK_TOKEN is set, authenticate with X-Caddy-Ask-Token
+        or Authorization Bearer; otherwise only loopback callers are accepted unless
+        AD_EVENT_PROCESSOR_TLS_ASK_ALLOW_LOCAL is enabled.
+      tags:
+      - ops
+      parameters:
+      - in: query
+        name: domain
+        required: true
+        schema:
+          type: string
+        description: Hostname to check for certificate issuance.
       responses:
         '200':
           content:
             application/json:
               schema:
-                additionalProperties: true
-                type: object
-          description: Payload
+                $ref: ../components/schemas/campaign.yaml#/DomainTLSAllowedResponse
+          description: Hostname is TLS-allowed
+        '403':
+          description: Hostname is not TLS-allowed
         default:
           $ref: ../openapi.yaml#/components/responses/Error
-      summary: Hostnames allowed for TLS setup
-      tags:
-      - ops
-      x-permissions:
-      - shards:read
   /api/v1/ops/domains/wildcard-ssl:
     post:
       operationId: opsDomainsWildcardSSL
@@ -708,24 +809,6 @@ paths:
                 $ref: ../components/schemas/campaign.yaml#/BurnDomainResponse
         default:
           $ref: ../openapi.yaml#/components/responses/Error
-  /api/v1/ops/domains/{hostname}/tls-allowed:
-    get:
-      operationId: opsTlsAllowedHost
-      parameters:
-      - $ref: ../openapi.yaml#/components/parameters/HostnamePath
-      responses:
-        '200':
-          content:
-            application/json:
-              schema:
-                additionalProperties: true
-                type: object
-          description: Allow flag
-        default:
-          $ref: ../openapi.yaml#/components/responses/Error
-      summary: Check whether hostname is TLS-allowed
-      tags:
-      - ops
   /api/v1/ops/fraud/presets/{name}:
     patch:
       operationId: opsPatchFraudPreset
@@ -1329,7 +1412,7 @@ paths:
       - campaigns:read:masked
   /api/v1/reports/fraud-breakdown:
     get:
-      description: Returns rows plus freshness metadata; stale=true when ClickHouse lag exceeds SLA.
+      description: Fraud events grouped by campaign, placement, and reason. Supports cursor pagination via limit and cursor query params.
       operationId: reportFraudBreakdown
       parameters:
       - *id001
@@ -1345,14 +1428,15 @@ paths:
           content:
             application/json:
               schema:
-                $ref: ../components/schemas/ops_reports.yaml#/ReportMapEnvelope
-          description: Report rows
+                $ref: ../components/schemas/ops_reports.yaml#/FraudBreakdownReportResponse
+          description: Fraud breakdown rows
         default:
           $ref: ../openapi.yaml#/components/responses/Error
-      summary: Fraud tier breakdown
+      summary: Fraud events by reason and placement
       tags:
       - reports
       x-permissions:
+      - audit:read
       - campaigns:read
       - campaigns:read:masked
   /api/v1/reports/catalog:

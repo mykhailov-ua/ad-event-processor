@@ -1,7 +1,7 @@
-// L3 TLS/domain ops: separate lazy GET lanes for rotation list, allowed list, and per-host lookup.
+// L3 TLS/domain ops: separate lazy GET lanes for rotation list and per-host TLS ask.
 import { useState } from 'react';
 
-import { getOpsDomainRotation, getOpsTlsAllowedHost, getOpsTlsAllowedList } from '@/api/ops_api';
+import { checkOpsTlsAllowed, getOpsDomainRotation } from '@/api/ops_api';
 import { useResource } from '@/api/use_resource';
 import { useCoalescedCallback } from '@/hooks/use_coalesced_callback';
 import { useCoalescedBumpRefresh } from '@/hooks/use_coalesced_refresh_token';
@@ -13,7 +13,6 @@ function skipLazyFetch(): Promise<never> {
 export function useOpsDomainsPageWorkspace() {
   const [draftHostname, setDraftHostname] = useState('');
   const [rotationLoadToken, setRotationLoadToken] = useState(0);
-  const [tlsListLoadToken, setTlsListLoadToken] = useState(0);
   const [tlsHostLoadToken, setTlsHostLoadToken] = useState(0);
   const [lookupHostname, setLookupHostname] = useState('');
   const [tlsHostValidationError, setTlsHostValidationError] = useState<Error | undefined>();
@@ -28,22 +27,12 @@ export function useOpsDomainsPageWorkspace() {
     [rotationLoadToken]
   );
 
-  const tlsListResource = useResource(
-    (signal) => {
-      if (tlsListLoadToken === 0) {
-        return skipLazyFetch();
-      }
-      return getOpsTlsAllowedList(signal);
-    },
-    [tlsListLoadToken]
-  );
-
   const tlsHostResource = useResource(
     (signal) => {
       if (tlsHostLoadToken === 0 || !lookupHostname) {
         return skipLazyFetch();
       }
-      return getOpsTlsAllowedHost(lookupHostname, signal);
+      return checkOpsTlsAllowed(lookupHostname, signal);
     },
     [tlsHostLoadToken, lookupHostname]
   );
@@ -51,10 +40,6 @@ export function useOpsDomainsPageWorkspace() {
   const onLoadRotation = useCoalescedBumpRefresh(() => {
     setRotationLoadToken((value) => value + 1);
   }, rotationResource.fetching);
-
-  const onLoadTlsList = useCoalescedBumpRefresh(() => {
-    setTlsListLoadToken((value) => value + 1);
-  }, tlsListResource.fetching);
 
   const onLookupTlsHost = useCoalescedCallback(
     () => {
@@ -75,20 +60,15 @@ export function useOpsDomainsPageWorkspace() {
 
   return {
     rotation: rotationResource.data,
-    tlsAllowed: tlsListResource.data,
     tlsHost: tlsHostResource.data,
     draftHostname,
     fetchingRotation: rotationResource.fetching,
-    fetchingTlsList: tlsListResource.fetching,
     fetchingTlsHost: tlsHostResource.fetching,
     rotationError: rotationResource.error,
-    tlsListError: tlsListResource.error,
     tlsHostError: tlsHostValidationError ?? tlsHostResource.error,
     hasRotationSnapshot: rotationResource.data != null,
-    hasTlsListSnapshot: tlsListResource.data != null,
     onDraftHostnameChange: setDraftHostname,
     onLoadRotation,
-    onLoadTlsList,
     onLookupTlsHost,
   };
 }

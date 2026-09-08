@@ -19,6 +19,18 @@ TrackBehaviorTelemetryEvent:
       type: integer
       format: int32
       description: Optional third axis (touch force, device motion z)
+    force:
+      type: number
+      format: float
+      description: Touch force where supported (Pointer Events)
+    radius_x:
+      type: number
+      format: float
+      description: Touch ellipse radiusX where supported
+    radius_y:
+      type: number
+      format: float
+      description: Touch ellipse radiusY where supported
 
 TrackBehaviorTelemetry:
   type: object

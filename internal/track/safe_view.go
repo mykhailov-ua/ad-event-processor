@@ -9,12 +9,13 @@ import (
 var SafeViewCIDRBody = []byte(`<!DOCTYPE html><html lang="en"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><title>Loading</title></head><body><main><p>Please wait&hellip;</p></main></body></html>`)
 
 var (
-	RespClickSafeViewCIDR         = buildSafeViewResponse("l1")
-	RespClickSafeViewIPv4Rotation = buildSafeViewResponse("l1v4")
-	RespClickSafeViewIPv6Rotation = buildSafeViewResponse("l1v6")
-	RespClickSafeViewProxyVPN     = buildSafeViewResponse("l15")
-	RespClickSafeViewTLS          = buildSafeViewResponse("tls")
-	RespClickSafeViewModerator    = buildSafeViewResponse("moderator")
+	RespClickSafeViewCIDR            = buildSafeViewResponse("l1")
+	RespClickSafeViewIPv4Rotation    = buildSafeViewResponse("l1v4")
+	RespClickSafeViewIPv6Rotation    = buildSafeViewResponse("l1v6")
+	RespClickSafeViewProxyVPN        = buildSafeViewResponse("l15")
+	RespClickSafeViewTLS             = buildSafeViewResponse("tls")
+	RespClickSafeViewModerator       = buildSafeViewResponse("moderator")
+	RespClickSafeViewModeratorCorpus = buildSafeViewResponse("moderator_corpus")
 )
 
 func buildSafeViewResponse(tag string) []byte {

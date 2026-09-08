@@ -3,6 +3,7 @@ package fraudadmin
 import (
 	"context"
 	"fmt"
+	"time"
 
 	"ad-event-processor/internal/campaign"
 	"ad-event-processor/internal/domain"
@@ -27,20 +28,36 @@ func GetCampaignFraudConfig(ctx context.Context, host CampaignConfigHost, campai
 	if err != nil {
 		return campaign.CampaignFraudConfigDTO{}, mapCampaignNotFound(err)
 	}
-	return campaign.CampaignFraudConfigDTO{
-		CampaignID:               campaignID.String(),
-		FraudThresholdPass:       uint8(row.FraudThresholdPass),
-		FraudThresholdSuspect:    uint8(row.FraudThresholdSuspect),
-		FraudThresholdIVT:        uint8(row.FraudThresholdIvt),
-		FraudThresholdBlock:      uint8(row.FraudThresholdBlock),
-		SilentRejectEnabled:      row.SilentRejectEnabled,
-		BehaviorFlags:            uint32(row.BehaviorFlags),
-		CanvasRetestEnabled:      row.CanvasRetestEnabled,
-		CgnatIPPolicyEnabled:     row.CgnatIpPolicyEnabled,
-		AcceptLangGeoEnabled:     row.AcceptLangGeoEnabled,
-		JSONSerializationEnabled: row.JsonSerializationEnabled,
-		ConversionRejectRules:    domain.ParseConversionRejectRulesJSON(row.ConversionRejectRules),
-	}, nil
+	return enrichCampaignFraudMLBoost(ctx, host, campaign.CampaignFraudConfigDTO{
+		CampaignID:                campaignID.String(),
+		FraudThresholdPass:        uint8(row.FraudThresholdPass),
+		FraudThresholdSuspect:     uint8(row.FraudThresholdSuspect),
+		FraudThresholdIVT:         uint8(row.FraudThresholdIvt),
+		FraudThresholdBlock:       uint8(row.FraudThresholdBlock),
+		SilentRejectEnabled:       row.SilentRejectEnabled,
+		BehaviorFlags:             uint32(row.BehaviorFlags),
+		CanvasRetestEnabled:       row.CanvasRetestEnabled,
+		CgnatIPPolicyEnabled:      row.CgnatIpPolicyEnabled,
+		AcceptLangGeoEnabled:      row.AcceptLangGeoEnabled,
+		JSONSerializationEnabled:  row.JsonSerializationEnabled,
+		ConversionRejectRules:     domain.ParseConversionRejectRulesJSON(row.ConversionRejectRules),
+		CrossLayerDesyncAction:    string(domain.ParseCrossLayerDesyncAction(row.CrossLayerDesyncAction)),
+		CrossLayerDesyncThreshold: domain.NormalizeCrossLayerDesyncThreshold(uint8(row.CrossLayerDesyncThreshold)),
+	}), nil
+}
+
+func enrichCampaignFraudMLBoost(ctx context.Context, host CampaignConfigHost, dto campaign.CampaignFraudConfigDTO) campaign.CampaignFraudConfigDTO {
+	if host == nil {
+		return dto
+	}
+	campaignID, err := uuid.Parse(dto.CampaignID)
+	if err != nil || campaignID == uuid.Nil {
+		return dto
+	}
+	if refreshedAt, ok := host.ConfigMLBoostLastRefreshedAt(ctx, campaignID); ok {
+		dto.MLBoostLastRefreshedAt = refreshedAt.UTC().Format(time.RFC3339)
+	}
+	return dto
 }
 
 func UpdateCampaignFraudConfig(ctx context.Context, host CampaignConfigHost, campaignID uuid.UUID, upd campaign.PatchCampaignFraudRequest) (campaign.CampaignFraudConfigDTO, error) {
@@ -67,6 +84,8 @@ func UpdateCampaignFraudConfig(ctx context.Context, host CampaignConfigHost, cam
 		acceptLangGeo := locked.AcceptLangGeoEnabled
 		jsonSerialization := locked.JsonSerializationEnabled
 		conversionRejectRules := domain.ParseConversionRejectRulesJSON(locked.ConversionRejectRules)
+		crossLayerAction := domain.ParseCrossLayerDesyncAction(locked.CrossLayerDesyncAction)
+		crossLayerThreshold := domain.NormalizeCrossLayerDesyncThreshold(uint8(locked.CrossLayerDesyncThreshold))
 
 		if upd.Preset != nil {
 			presetPass, presetSuspect, presetIVT, presetBlock, err := host.ConfigResolvePresetThresholds(ctx, *upd.Preset)
@@ -112,6 +131,16 @@ func UpdateCampaignFraudConfig(ctx context.Context, host CampaignConfigHost, cam
 		if upd.ConversionRejectRules != nil {
 			conversionRejectRules = domain.MergeConversionRejectRulesPatch(conversionRejectRules, *upd.ConversionRejectRules)
 		}
+		if upd.CrossLayerDesyncAction != nil {
+			parsed := domain.ParseCrossLayerDesyncAction(*upd.CrossLayerDesyncAction)
+			if !parsed.Valid() {
+				return fmt.Errorf("invalid cross_layer_desync_action")
+			}
+			crossLayerAction = parsed
+		}
+		if upd.CrossLayerDesyncThreshold != nil {
+			crossLayerThreshold = domain.NormalizeCrossLayerDesyncThreshold(*upd.CrossLayerDesyncThreshold)
+		}
 
 		if err := validateFraudThresholds(pass, suspect, ivt, block); err != nil {
 			return err
@@ -138,18 +167,20 @@ func UpdateCampaignFraudConfig(ctx context.Context, host CampaignConfigHost, cam
 		}
 
 		updated, err := q.UpdateCampaignFraudConfig(ctx, db.UpdateCampaignFraudConfigParams{
-			ID:                       domain.ToUUID(campaignID),
-			FraudThresholdPass:       int16(pass),
-			FraudThresholdSuspect:    int16(suspect),
-			FraudThresholdIvt:        int16(ivt),
-			FraudThresholdBlock:      int16(block),
-			SilentRejectEnabled:      silentReject,
-			BehaviorFlags:            flags,
-			CanvasRetestEnabled:      canvasRetest,
-			CgnatIpPolicyEnabled:     cgnatPolicy,
-			AcceptLangGeoEnabled:     acceptLangGeo,
-			JsonSerializationEnabled: jsonSerialization,
-			ConversionRejectRules:    rulesBytes,
+			ID:                        domain.ToUUID(campaignID),
+			FraudThresholdPass:        int16(pass),
+			FraudThresholdSuspect:     int16(suspect),
+			FraudThresholdIvt:         int16(ivt),
+			FraudThresholdBlock:       int16(block),
+			SilentRejectEnabled:       silentReject,
+			BehaviorFlags:             flags,
+			CanvasRetestEnabled:       canvasRetest,
+			CgnatIpPolicyEnabled:      cgnatPolicy,
+			AcceptLangGeoEnabled:      acceptLangGeo,
+			JsonSerializationEnabled:  jsonSerialization,
+			ConversionRejectRules:     rulesBytes,
+			CrossLayerDesyncAction:    string(crossLayerAction),
+			CrossLayerDesyncThreshold: int16(crossLayerThreshold),
 		})
 		if err != nil {
 			return err
@@ -173,20 +204,22 @@ func UpdateCampaignFraudConfig(ctx context.Context, host CampaignConfigHost, cam
 			return err
 		}
 
-		out = campaign.CampaignFraudConfigDTO{
-			CampaignID:               campaignID.String(),
-			FraudThresholdPass:       uint8(updated.FraudThresholdPass),
-			FraudThresholdSuspect:    uint8(updated.FraudThresholdSuspect),
-			FraudThresholdIVT:        uint8(updated.FraudThresholdIvt),
-			FraudThresholdBlock:      uint8(updated.FraudThresholdBlock),
-			SilentRejectEnabled:      updated.SilentRejectEnabled,
-			BehaviorFlags:            uint32(updated.BehaviorFlags),
-			CanvasRetestEnabled:      updated.CanvasRetestEnabled,
-			CgnatIPPolicyEnabled:     updated.CgnatIpPolicyEnabled,
-			AcceptLangGeoEnabled:     updated.AcceptLangGeoEnabled,
-			JSONSerializationEnabled: updated.JsonSerializationEnabled,
-			ConversionRejectRules:    domain.ParseConversionRejectRulesJSON(updated.ConversionRejectRules),
-		}
+		out = enrichCampaignFraudMLBoost(ctx, host, campaign.CampaignFraudConfigDTO{
+			CampaignID:                campaignID.String(),
+			FraudThresholdPass:        uint8(updated.FraudThresholdPass),
+			FraudThresholdSuspect:     uint8(updated.FraudThresholdSuspect),
+			FraudThresholdIVT:         uint8(updated.FraudThresholdIvt),
+			FraudThresholdBlock:       uint8(updated.FraudThresholdBlock),
+			SilentRejectEnabled:       updated.SilentRejectEnabled,
+			BehaviorFlags:             uint32(updated.BehaviorFlags),
+			CanvasRetestEnabled:       updated.CanvasRetestEnabled,
+			CgnatIPPolicyEnabled:      updated.CgnatIpPolicyEnabled,
+			AcceptLangGeoEnabled:      updated.AcceptLangGeoEnabled,
+			JSONSerializationEnabled:  updated.JsonSerializationEnabled,
+			ConversionRejectRules:     domain.ParseConversionRejectRulesJSON(updated.ConversionRejectRules),
+			CrossLayerDesyncAction:    string(domain.ParseCrossLayerDesyncAction(updated.CrossLayerDesyncAction)),
+			CrossLayerDesyncThreshold: domain.NormalizeCrossLayerDesyncThreshold(uint8(updated.CrossLayerDesyncThreshold)),
+		})
 		return nil
 	})
 	if err != nil {

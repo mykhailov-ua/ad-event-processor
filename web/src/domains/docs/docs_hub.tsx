@@ -1,7 +1,7 @@
 import { Navigate } from 'react-router-dom';
 
 import { DocsNav } from '@/domains/docs/docs_nav';
-import { DocsTroubleshootingTable } from '@/domains/docs/docs_section_content';
+import { DocsSectionContent } from '@/domains/docs/docs_section_content';
 import { PageChrome } from '@/shell/page_chrome';
 import { PanelSection } from '@/shell/stat_panel';
 import { Badge } from '@/components/ui/badge';
@@ -42,12 +42,16 @@ export function DocsHub({ sectionId }: DocsHubProps) {
           </PanelSection>
 
           <PanelSection
-            meta={<Badge variant="outline">{section.topics.length} topics</Badge>}
+            meta={
+              <Badge variant="outline">
+                {(section.topics?.length ?? 0) + (section.guides?.length ?? 0)} items
+              </Badge>
+            }
             title={section.title}
           >
             <div className="grid min-w-0 gap-4 p-5">
               <p className="text-sm leading-relaxed text-muted-foreground">{section.summary}</p>
-              <DocsTroubleshootingTable topics={section.topics} />
+              <DocsSectionContent guides={section.guides} topics={section.topics} />
             </div>
           </PanelSection>
         </div>

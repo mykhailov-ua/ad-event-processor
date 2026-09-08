@@ -345,6 +345,7 @@ func (h *Handler) wireAdminDomainRoutes(reg *RouteRegistry, e adminWireEnv) {
 		Integrations:            fraudadmin.IntegrationsAPI{Pool: svc.GetPool(), MapErr: mapFraudadminErr},
 		Overrides:               fraudadmin.OverridesAPI{Host: svc, MapErr: mapFraudadminErr},
 		Presets:                 fraudPresets,
+		ModeratorCorpus:         fraudadmin.ModeratorCorpusAPI{Host: svc, MapErr: mapFraudadminErr},
 		ApplyRateLimit:          limit,
 		AllowFraudDecision:      h.allowFraudDecision,
 		RequirePermission:       perm,

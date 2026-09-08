@@ -74,6 +74,9 @@ export function useDomainsPageWorkspace() {
   const [bulkJob, setBulkJob] = useState<DomainBulkJobStatus | undefined>(undefined);
   const [bulkJobError, setBulkJobError] = useState<Error | undefined>(undefined);
   const [pollToken, setPollToken] = useState(0);
+  const [burnOpen, setBurnOpen] = useState(false);
+  const [burnHostname, setBurnHostname] = useState('');
+  const [burnDeleteCloudflare, setBurnDeleteCloudflare] = useState(false);
 
   const listBusy = fetching || acting;
   const bumpRefreshCoalesced = useCoalescedBumpRefresh(bumpRefresh, listBusy);
@@ -182,34 +185,38 @@ export function useDomainsPageWorkspace() {
     [acting, bumpReload]
   );
 
-  const onBurnDomain = useCallback(
-    (hostname: string) => {
-      if (acting) {
-        return;
-      }
-      if (!confirmDestructiveAction(`Burn domain "${hostname}"? TLS will be revoked.`)) {
-        return;
-      }
-      setActing(true);
-      setActionError(undefined);
-      setActionMessage(undefined);
-      void burnDomain(hostname, { delete_cloudflare: false })
-        .then(() => {
-          setActionMessage(`Burned ${hostname}`);
-          toast.success(`Burned ${hostname}`);
-          bumpReload();
-        })
-        .catch((err: unknown) => {
-          const nextError = mutationError(err);
-          setActionError(nextError);
-          toast.error(nextError.message);
-        })
-        .finally(() => {
-          setActing(false);
-        });
-    },
-    [acting, bumpReload]
-  );
+  const onOpenBurnDialog = useCallback((hostname: string) => {
+    setBurnHostname(hostname);
+    setBurnDeleteCloudflare(false);
+    setBurnOpen(true);
+  }, []);
+
+  const onConfirmBurn = useCallback(() => {
+    const hostname = burnHostname.trim();
+    if (!hostname || acting) {
+      return;
+    }
+    setActing(true);
+    setActionError(undefined);
+    setActionMessage(undefined);
+    void burnDomain(hostname, { delete_cloudflare: burnDeleteCloudflare })
+      .then(() => {
+        setActionMessage(`Burned ${hostname}`);
+        toast.success(`Burned ${hostname}`);
+        setBurnOpen(false);
+        bumpReload();
+      })
+      .catch((err: unknown) => {
+        const nextError = mutationError(err);
+        setActionError(nextError);
+        toast.error(nextError.message);
+      })
+      .finally(() => {
+        setActing(false);
+      });
+  }, [acting, burnDeleteCloudflare, burnHostname, bumpReload]);
+
+  const onBurnDomain = onOpenBurnDialog;
 
   const onProbeDomain = useCallback(
     (hostname: string) => {
@@ -404,6 +411,13 @@ export function useDomainsPageWorkspace() {
     onAddDomain,
     onDeleteDomain,
     onBurnDomain,
+    onOpenBurnDialog,
+    burnOpen,
+    onBurnOpenChange: setBurnOpen,
+    burnHostname,
+    burnDeleteCloudflare,
+    onBurnDeleteCloudflareChange: setBurnDeleteCloudflare,
+    onConfirmBurn,
     onProbeDomain,
     onSetupSsl,
     draftParkDomain,

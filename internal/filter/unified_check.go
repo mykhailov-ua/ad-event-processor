@@ -428,6 +428,7 @@ func (f *DeviceFilter) Check(ctx context.Context, evt *domain.Event) error {
 		AddFraudSignal(evt, FraudReasonDeviceMismatch)
 	}
 	if f.ja4CorpusEnabled.Load() && ja4BrowserCorpusMismatch(evt.UA, UnsafeBytes(evt.TLSJA4)) {
+		metrics.TLSJA4CorpusMismatchTotal.Inc()
 		AddFraudSignal(evt, FraudReasonTLSJA4Mismatch)
 	}
 	if f.osFingerprintEnabled.Load() && evt.UA != "" {
@@ -489,8 +490,9 @@ func deviceHintsMismatch(secCHUA, ua string) bool {
 }
 
 type BehaviorTelemetryFilter struct {
-	registry domain.CampaignRegistry
-	enabled  bool
+	registry     domain.CampaignRegistry
+	enabled      bool
+	clickEnabled bool
 }
 
 func NewBehaviorTelemetryFilter(registry domain.CampaignRegistry) *BehaviorTelemetryFilter {
@@ -504,8 +506,26 @@ func (f *BehaviorTelemetryFilter) SetEnabled(enabled bool) {
 	f.enabled = enabled
 }
 
+func (f *BehaviorTelemetryFilter) SetClickEnabled(enabled bool) {
+	if f == nil {
+		return
+	}
+	f.clickEnabled = enabled
+}
+
 func (f *BehaviorTelemetryFilter) Check(ctx context.Context, evt *domain.Event) error {
-	if f == nil || !f.enabled || evt == nil || evt.Type != "conversion" {
+	if f == nil || evt == nil {
+		return nil
+	}
+	isConversion := evt.Type == "conversion"
+	isClick := evt.Type == "click"
+	if !isConversion && !isClick {
+		return nil
+	}
+	if isConversion && !f.enabled {
+		return nil
+	}
+	if isClick && !f.clickEnabled {
 		return nil
 	}
 	if ScanUAFamily(evt.UA) == UAFamilyUnknown {
@@ -515,17 +535,30 @@ func (f *BehaviorTelemetryFilter) Check(ctx context.Context, evt *domain.Event) 
 		return nil
 	}
 	camp, ok := f.registry.GetCampaign(evt.CampaignID)
-	if !ok || camp == nil || !campaignRequiresBehaviorTelemetry(camp) {
+	if !ok || camp == nil {
+		return nil
+	}
+	if isConversion && !campaignRequiresBehaviorTelemetry(camp) {
+		return nil
+	}
+	if isClick && !CampaignRequiresClickMobileBiometrics(camp) {
 		return nil
 	}
 	if evt.TelemetrySet == 0 || len(evt.TelemetryEvents) == 0 {
-		metrics.BehaviorTelemetryMissingTotal.Inc()
-		AddFraudSignal(evt, FraudReasonBehaviorTelemetryMissing)
+		if isConversion {
+			metrics.BehaviorTelemetryMissingTotal.Inc()
+			AddFraudSignal(evt, FraudReasonBehaviorTelemetryMissing)
+		}
 		return nil
 	}
-	if CheckBezierBot(behaviorTelemetryToVerifyEvents(evt.TelemetryEvents)) != "" {
-		metrics.BehaviorBezierBotTotal.Inc()
-		AddFraudSignal(evt, FraudReasonBehaviorBezierBot)
+	if isClick {
+		ApplyMobileBiometricSummary(evt)
+	}
+	if isConversion {
+		if CheckBezierBot(behaviorTelemetryToVerifyEvents(evt.TelemetryEvents)) != "" {
+			metrics.BehaviorBezierBotTotal.Inc()
+			AddFraudSignal(evt, FraudReasonBehaviorBezierBot)
+		}
 	}
 	return nil
 }

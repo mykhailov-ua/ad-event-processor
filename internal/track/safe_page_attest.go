@@ -7,26 +7,30 @@ import (
 	"sync"
 	"time"
 
+	"ad-event-processor/internal/domain"
 	"ad-event-processor/internal/filter"
 )
 
 type SafePageAttestationInput struct {
-	RemoteIP            string
-	Country             string
-	Fingerprint         SafePageVerifyFingerprint
-	Events              []SafePageVerifyEvent
-	NowUnix             int64
-	BehaviorScore       int
-	CanvasRetestEnabled bool
+	RemoteIP                 string
+	Country                  string
+	Fingerprint              SafePageVerifyFingerprint
+	Events                   []SafePageVerifyEvent
+	NowUnix                  int64
+	BehaviorScore            int
+	CanvasRetestEnabled      bool
+	MobileBiometricsRequired bool
 }
 
 const (
-	safePageAttestWebRTCLeak          = "webrtc_leak"
-	safePageAttestTimezoneSpoof       = "timezone_spoof"
-	safePageAttestWebGLAutomation     = "webgl_automation"
-	safePageAttestHeadlessViewport    = "headless_viewport"
-	safePageAttestWebGLVendorMismatch = "webgl_vendor_mismatch"
-	safePageAttestLangMismatch        = "lang_mismatch"
+	safePageAttestWebRTCLeak           = "webrtc_leak"
+	safePageAttestTimezoneSpoof        = "timezone_spoof"
+	safePageAttestWebGLAutomation      = "webgl_automation"
+	safePageAttestHeadlessViewport     = "headless_viewport"
+	safePageAttestWebGLVendorMismatch  = "webgl_vendor_mismatch"
+	safePageAttestLangMismatch         = "lang_mismatch"
+	safePageAttestGyroFlat             = "gyro_flat"
+	safePageAttestTouchPressureMissing = "touch_pressure_missing"
 )
 
 var safePageStubHTMLHead = []byte("<!DOCTYPE html><html lang=\"en\"><head><meta charset=\"utf-8\"><meta name=\"viewport\" content=\"width=device-width,initial-scale=1\"><title>Loading</title></head><body><main><iframe src=\"")
@@ -66,6 +70,11 @@ func EvaluateSafePageAttestation(in SafePageAttestationInput) (fail bool, code s
 	}
 	if in.BehaviorScore >= safePageVerifyMinEvents+3 {
 		if code := checkBezierBot(in.Events); code != "" {
+			return true, code
+		}
+	}
+	if in.MobileBiometricsRequired {
+		if code := checkMobileBiometrics(in.Fingerprint, in.Events); code != "" {
 			return true, code
 		}
 	}
@@ -342,6 +351,64 @@ func CheckBezierBot(events []SafePageVerifyEvent) string {
 	return checkBezierBot(events)
 }
 
+func checkMobileBiometrics(fp SafePageVerifyFingerprint, events []SafePageVerifyEvent) string {
+	if !isMobileSafePageFingerprint(fp) {
+		return ""
+	}
+	telem := verifyEventsToTelemetry(events)
+	if filter.MobileGyroFlat(telem) {
+		return safePageAttestGyroFlat
+	}
+	if checkVerifyTouchPressureMissing(fp, events, telem) {
+		return safePageAttestTouchPressureMissing
+	}
+	return ""
+}
+
+func isMobileSafePageFingerprint(fp SafePageVerifyFingerprint) bool {
+	if fp.Mobile {
+		return true
+	}
+	return filter.ScanUAFamily(fp.UA) == filter.UAFamilyMobile
+}
+
+func checkVerifyTouchPressureMissing(fp SafePageVerifyFingerprint, events []SafePageVerifyEvent, telem []domain.BehaviorTelemetryEvent) bool {
+	if fp.TouchForce > 0 || fp.TouchRadiusX > 0 || fp.TouchRadiusY > 0 {
+		return false
+	}
+	for i := range events {
+		e := events[i]
+		if e.T != "touchstart" && e.T != "touchmove" {
+			continue
+		}
+		if e.Force > 0 || e.RadiusX > 0 || e.RadiusY > 0 {
+			return false
+		}
+	}
+	return filter.TouchPressureMissing(true, telem)
+}
+
+func verifyEventsToTelemetry(events []SafePageVerifyEvent) []domain.BehaviorTelemetryEvent {
+	if len(events) == 0 {
+		return nil
+	}
+	out := make([]domain.BehaviorTelemetryEvent, len(events))
+	for i := range events {
+		e := events[i]
+		out[i] = domain.BehaviorTelemetryEvent{
+			T:       e.T,
+			TS:      e.TS,
+			X:       e.X,
+			Y:       e.Y,
+			Z:       e.Z,
+			Force:   float32(e.Force),
+			RadiusX: float32(e.RadiusX),
+			RadiusY: float32(e.RadiusY),
+		}
+	}
+	return out
+}
+
 func checkBezierBot(events []SafePageVerifyEvent) string {
 	pts := collectMousePoints(events)
 	if len(pts) < safePageBezierMinPoints {
@@ -431,10 +498,14 @@ const (
 )
 
 type SafePageVerifyEvent struct {
-	T  string `json:"t"`
-	TS int64  `json:"ts"`
-	X  int    `json:"x,omitempty"`
-	Y  int    `json:"y,omitempty"`
+	T       string  `json:"t"`
+	TS      int64   `json:"ts"`
+	X       int     `json:"x,omitempty"`
+	Y       int     `json:"y,omitempty"`
+	Z       int     `json:"z,omitempty"`
+	Force   float64 `json:"force,omitempty"`
+	RadiusX float64 `json:"radius_x,omitempty"`
+	RadiusY float64 `json:"radius_y,omitempty"`
 }
 
 type SafePageVerifyFingerprint struct {
@@ -461,6 +532,10 @@ type SafePageVerifyFingerprint struct {
 	AudioHash              string   `json:"audio_hash,omitempty"`
 	NotificationPermission string   `json:"notification_permission,omitempty"`
 	NotificationQuery      string   `json:"notification_query,omitempty"`
+	TouchForce             float64  `json:"touch_force,omitempty"`
+	TouchRadiusX           float64  `json:"touch_radius_x,omitempty"`
+	TouchRadiusY           float64  `json:"touch_radius_y,omitempty"`
+	GyroSamples            int      `json:"gyro_samples,omitempty"`
 }
 
 type SafePageVerifyRequest struct {

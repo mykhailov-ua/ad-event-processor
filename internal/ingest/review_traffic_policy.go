@@ -19,6 +19,7 @@ const (
 	reviewTrafficCIDR
 	reviewTrafficProxyVPN
 	reviewTrafficModerator
+	reviewTrafficModeratorCorpus
 )
 
 type reviewTrafficMatch struct {
@@ -45,7 +46,17 @@ func campaignReviewTrafficAction(registry domain.CampaignRegistry, campaignID uu
 	return action
 }
 
-func (h *AdsPacketHandler) detectReviewTrafficMatch(ip string, campaignID uuid.UUID, ja3, ja4 []byte, ua string) reviewTrafficMatch {
+func (h *AdsPacketHandler) detectReviewTrafficMatch(ip string, campaignID uuid.UUID, req *Request, ua string) reviewTrafficMatch {
+	if req == nil {
+		return reviewTrafficMatch{}
+	}
+	ja3 := req.TLSJA3
+	ja4 := req.TLSJA4
+	if h.cfg != nil && h.cfg.TLSJA4CorpusReviewRouteEnabled && len(ja4) > 0 {
+		if ja4BrowserCorpusMismatch(ua, ja4) {
+			return reviewTrafficMatch{ok: true, signal: reviewTrafficTLS, tlsKind: "ja4_corpus"}
+		}
+	}
 	if matched, kind := h.tlsFingerprintShouldSafeView(ja3, ja4, campaignID, ua); matched {
 		return reviewTrafficMatch{ok: true, signal: reviewTrafficTLS, tlsKind: kind}
 	}
@@ -57,6 +68,9 @@ func (h *AdsPacketHandler) detectReviewTrafficMatch(ip string, campaignID uuid.U
 	}
 	if matched, network := h.moderatorIPShouldSafeView(ip, campaignID); matched {
 		return reviewTrafficMatch{ok: true, signal: reviewTrafficModerator, network: network}
+	}
+	if h.moderatorCorpusShouldSafeView(ja3, ja4, req.TCPSig, req.TCPSigSet) {
+		return reviewTrafficMatch{ok: true, signal: reviewTrafficModeratorCorpus}
 	}
 	return reviewTrafficMatch{}
 }
@@ -72,7 +86,7 @@ func (h *AdsPacketHandler) applyReviewTrafficPolicy(
 	if parsed == nil {
 		return false
 	}
-	match := h.detectReviewTrafficMatch(ip, parsed.CampaignID, req.TLSJA3, req.TLSJA4, ua)
+	match := h.detectReviewTrafficMatch(ip, parsed.CampaignID, req, ua)
 	if !match.ok {
 		return false
 	}
@@ -114,6 +128,8 @@ func reviewTrafficSignalLabel(signal reviewTrafficSignal) string {
 		return "proxy_vpn"
 	case reviewTrafficModerator:
 		return "moderator_intel"
+	case reviewTrafficModeratorCorpus:
+		return "moderator_corpus"
 	default:
 		return "unknown"
 	}
@@ -129,6 +145,8 @@ func (h *AdsPacketHandler) writeReviewTrafficSafeView(c gnet.Conn, ctx *ConnCont
 		h.writeGnetSafeViewProxyVPN(c, ctx, startMono, match.connType)
 	case reviewTrafficModerator:
 		h.writeGnetSafeViewModerator(c, ctx, startMono, match.network)
+	case reviewTrafficModeratorCorpus:
+		h.writeGnetSafeViewModeratorCorpus(c, ctx, startMono)
 	default:
 		h.write(c, respClickSafePage, ctx)
 		h.recordMetrics(startMono, http.StatusOK)

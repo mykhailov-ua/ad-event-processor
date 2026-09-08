@@ -141,6 +141,7 @@ func (l *residentialIntelFeedLoader) reloadOnce(ctx context.Context) {
 var (
 	PublishJA4BrowserCorpus     = conn.PublishJA4BrowserCorpus
 	ParseJA4BrowserCorpus       = conn.ParseJA4BrowserCorpus
+	LoadJA4BrowserCorpusFromDir = conn.LoadJA4BrowserCorpusFromDir
 	JA4BrowserCorpusMismatch    = conn.JA4BrowserCorpusMismatch
 	TLSFingerprintImpersonating = conn.TLSFingerprintImpersonating
 	UAClaimsChromeNotChromium   = conn.UAClaimsChromeNotChromium

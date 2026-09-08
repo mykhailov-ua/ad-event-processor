@@ -24,8 +24,7 @@ import type {
   OpsMlModelEvalResponse,
   OpsMlModelStatusResponse,
   OpsRumResponse,
-  OpsTlsAllowedHostResponse,
-  OpsTlsAllowedListResponse,
+  OpsTlsAllowedResponse,
   OutboxListResponse,
   ReconListQuery,
   ReconRun,
@@ -235,18 +234,13 @@ export async function getOpsDomainRotation(
   return apiJson<OpsDomainRotationResponse>('/api/v1/ops/domains/rotation', { signal });
 }
 
-export async function getOpsTlsAllowedList(
-  signal?: AbortSignal
-): Promise<OpsTlsAllowedListResponse> {
-  return apiJson<OpsTlsAllowedListResponse>('/api/v1/ops/domains/tls-allowed', { signal });
-}
-
-export async function getOpsTlsAllowedHost(
+export async function checkOpsTlsAllowed(
   hostname: string,
   signal?: AbortSignal
-): Promise<OpsTlsAllowedHostResponse> {
-  return apiJson<OpsTlsAllowedHostResponse>(
-    `/api/v1/ops/domains/${encodeURIComponent(hostname)}/tls-allowed`,
+): Promise<OpsTlsAllowedResponse> {
+  const query = new URLSearchParams({ domain: hostname });
+  return apiJson<OpsTlsAllowedResponse>(
+    `/api/v1/ops/domains/tls-allowed?${query.toString()}`,
     { signal }
   );
 }

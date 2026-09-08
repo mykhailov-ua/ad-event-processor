@@ -107,7 +107,6 @@ func (h *DomainHealthHTTPHandlers) Register(mux *http.ServeMux) {
 	mux.HandleFunc("PATCH /api/v1/ops/domains/{hostname}/burn", limit(perm("settings:write", h.burnDomain)))
 
 	mux.HandleFunc("GET /api/v1/ops/domains/tls-allowed", limit(h.tlsAllowed))
-	mux.HandleFunc("GET /api/v1/ops/domains/{hostname}/tls-allowed", limit(h.tlsAllowed))
 }
 
 func (h *DomainHealthHTTPHandlers) listDomains(w http.ResponseWriter, r *http.Request) {

@@ -49,6 +49,7 @@ const STATIC_PATH_LABELS: Record<string, string> = {
   '/fraud/labels': 'ML labels',
   '/fraud/overrides': 'Scoring overrides',
   '/fraud/presets': 'Policy presets',
+  '/fraud/moderator-corpus': 'Moderator corpus',
   '/fraud/decisions': 'Decision explain',
   '/integrations': 'Integrations',
   '/integrations/cost-sync': 'Cost sync',

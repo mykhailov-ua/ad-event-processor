@@ -390,6 +390,13 @@ func (st *ClickHouseStore) insertTable(ctx context.Context, table string, evts [
 				e.CreatedAt,
 				e.IngressCostMicro,
 				clickAttributedCostSource(e),
+				e.MobileTouchCount,
+				e.MobileGyroSamples,
+				e.MobileGyroVariance,
+				e.MobileGyroFlat,
+				e.MobileBiometricSet,
+				e.MobileBiometricMobile,
+				e.CrossLayerDesyncFired,
 			)
 		case table == "tg_events_raw":
 			var p telegramEventPayload

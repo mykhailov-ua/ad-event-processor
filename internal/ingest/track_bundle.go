@@ -4,6 +4,7 @@ import (
 	"context"
 	"net/http"
 
+	"ad-event-processor/internal/config"
 	"ad-event-processor/internal/domain"
 	"ad-event-processor/internal/filter"
 	"ad-event-processor/internal/ingest/httpingress"
@@ -253,6 +254,23 @@ func fillTrackEventWithMobileBiometrics(evt *domain.Event, fields trackIngestFie
 	if mobileBiometrics {
 		applyMobileBiometricSummary(evt)
 	}
+}
+
+func shouldApplyMobileBiometrics(cfg *config.Config, registry domain.CampaignRegistry, campaignID uuid.UUID, eventType string) bool {
+	if cfg == nil {
+		return false
+	}
+	if cfg.MobileBiometricsEnabled {
+		return true
+	}
+	if eventType != "click" || !cfg.MobileBiometricsClickEnabled {
+		return false
+	}
+	if registry == nil {
+		return false
+	}
+	camp, ok := registry.GetCampaign(campaignID)
+	return ok && camp != nil && camp.MobileBiometricsClickEnabled
 }
 
 // deliverGnetTrack maps processTrack outcome to gnet response. On accept, publishAcceptedOrRollback consumes
@@ -706,6 +724,43 @@ func parseTrackTelemetryEventObject(data []byte, start, n int, bud *jsonScanBudg
 				}
 				i = valEnd
 			}
+		case 5:
+			if key[0] == 'f' && key[1] == 'o' && key[2] == 'r' && key[3] == 'c' && key[4] == 'e' {
+				v, end, ok := parseJSONFloatValue(data, i, n, bud)
+				if !ok {
+					return evt, start, false
+				}
+				evt.Force = v
+				i = end
+			} else {
+				valEnd, err := skipJSONValueBudgetDepth(data, i, bud, MaxJSONDepth)
+				if err != nil {
+					return evt, start, false
+				}
+				i = valEnd
+			}
+		case 8:
+			if key[0] == 'r' && key[1] == 'a' && key[2] == 'd' && key[3] == 'i' && key[4] == 'u' && key[5] == 's' && key[6] == '_' {
+				v, end, ok := parseJSONFloatValue(data, i, n, bud)
+				if !ok {
+					return evt, start, false
+				}
+				switch key[7] {
+				case 'x':
+					evt.RadiusX = v
+				case 'y':
+					evt.RadiusY = v
+				default:
+					return evt, start, false
+				}
+				i = end
+			} else {
+				valEnd, err := skipJSONValueBudgetDepth(data, i, bud, MaxJSONDepth)
+				if err != nil {
+					return evt, start, false
+				}
+				i = valEnd
+			}
 		default:
 			valEnd, err := skipJSONValueBudgetDepth(data, i, bud, MaxJSONDepth)
 			if err != nil {
@@ -755,6 +810,49 @@ func parseJSONIntValue(data []byte, start, n int, bud *jsonScanBudget) (int, int
 		}
 		i++
 	}
+	if neg {
+		val = -val
+	}
+	if i < n && !isDelimiter(data[i]) {
+		return 0, start, false
+	}
+	return val, i, true
+}
+
+func parseJSONFloatValue(data []byte, start, n int, bud *jsonScanBudget) (float32, int, bool) {
+	i := start
+	if i >= n {
+		return 0, start, false
+	}
+	neg := false
+	if data[i] == '-' {
+		neg = true
+		i++
+	}
+	if i >= n {
+		return 0, start, false
+	}
+	intPart := 0
+	hasInt := false
+	for i < n && data[i] >= '0' && data[i] <= '9' {
+		hasInt = true
+		intPart = intPart*10 + int(data[i]-'0')
+		i++
+	}
+	fracPart := 0
+	fracDiv := 1.0
+	if i < n && data[i] == '.' {
+		i++
+		for i < n && data[i] >= '0' && data[i] <= '9' {
+			fracPart = fracPart*10 + int(data[i]-'0')
+			fracDiv *= 10
+			i++
+		}
+	}
+	if !hasInt && fracDiv == 1.0 {
+		return 0, start, false
+	}
+	val := float32(intPart) + float32(fracPart)/float32(fracDiv)
 	if neg {
 		val = -val
 	}

@@ -7,6 +7,8 @@ import { PageChrome } from '@/shell/page_chrome';
 import { RowActionsMenu } from '@/shell/row_actions_menu';
 import { EmptyState } from '@/shell/empty_state';
 import { PageSkeleton } from '@/shell/page_skeleton';
+import { Checkbox } from '@/components/ui/checkbox';
+import { Label } from '@/components/ui/label';
 import { Badge } from '@/components/ui/badge';
 import {
   Dialog,
@@ -16,8 +18,6 @@ import {
   DialogTitle,
 } from '@/components/ui/dialog';
 import { DropdownMenuItem } from '@/components/ui/dropdown-menu';
-import { Label } from '@/components/ui/label';
-import { Checkbox } from '@/components/ui/checkbox';
 import { Input } from '@/components/ui/input';
 import {
   Select,
@@ -38,6 +38,7 @@ import { ErrorBlock } from '@/shell/error_block';
 import type {
   CloudflareZone,
   DomainBulkJobStatus,
+  DomainBulkJobRow,
   DomainHealth,
   DomainSSLSetupResult,
   WildcardSSLResponse,
@@ -45,7 +46,6 @@ import type {
 import type { DomainHealthFilter } from '@/domains/creative/use_domains_page_workspace';
 import { CreativeDirectoryStack } from '@/domains/creative/creative_directory_stack';
 import { creativePanelError } from '@/domains/creative/creative_nav';
-import { JsonPayloadView } from '@/shell/json_payload_view';
 import { TableHost } from '@/shell/ui_bands';
 import { displayTimestamp } from '@/lib/display';
 
@@ -63,6 +63,12 @@ export type DomainsDirectoryProps = {
   onAddDomain: () => void;
   onDeleteDomain: (hostname: string) => void;
   onBurnDomain: (hostname: string) => void;
+  burnOpen: boolean;
+  onBurnOpenChange: (open: boolean) => void;
+  burnHostname: string;
+  burnDeleteCloudflare: boolean;
+  onBurnDeleteCloudflareChange: (value: boolean) => void;
+  onConfirmBurn: () => void;
   onProbeDomain: (hostname: string) => void;
   onSetupSsl: (hostname: string) => void;
   draftParkDomain: string;
@@ -114,6 +120,68 @@ function healthBadgeVariant(
   return 'outline';
 }
 
+function DomainSslResultSummary({ result }: { result: DomainSSLSetupResult }) {
+  return (
+    <div className="rounded-md border p-3 text-sm">
+      <p>
+        <span className="font-medium">{result.hostname}</span>
+        <span className="text-muted-foreground"> · {result.status}</span>
+      </p>
+      <p className="text-muted-foreground">{result.message}</p>
+      {result.output ? (
+        <pre className="mt-2 max-h-40 overflow-auto whitespace-pre-wrap font-mono text-xs">
+          {result.output}
+        </pre>
+      ) : null}
+    </div>
+  );
+}
+
+function WildcardSslResultSummary({ result }: { result: WildcardSSLResponse }) {
+  return (
+    <div className="grid gap-1 rounded-md border p-3 text-sm">
+      <p className="font-medium">{result.wildcard_hostname}</p>
+      <p className="text-muted-foreground">
+        ACME {result.acme_state} · pool {result.pool_id}
+        {result.ssl_not_after ? ` · expires ${displayTimestamp(result.ssl_not_after)}` : ''}
+        {' · '}
+        CF proxied {result.cloudflare_proxied ? 'yes' : 'no'}
+      </p>
+      {result.message ? <p className="text-muted-foreground">{result.message}</p> : null}
+    </div>
+  );
+}
+
+function DomainBulkJobResultsTable({ rows }: { rows: DomainBulkJobRow[] }) {
+  if (rows.length === 0) {
+    return null;
+  }
+  return (
+    <TableHost>
+      <DirectoryTable nested>
+        <TableHeader>
+          <TableRow>
+            <DirectoryTableHead>Hostname</DirectoryTableHead>
+            <DirectoryTableHead>Result</DirectoryTableHead>
+            <DirectoryTableHead>Error</DirectoryTableHead>
+          </TableRow>
+        </TableHeader>
+        <TableBody>
+          {rows.map((row) => (
+            <TableRow key={row.hostname}>
+              <TableCell>{row.hostname}</TableCell>
+              <TableCell>
+                <Badge variant={row.ok ? 'default' : 'destructive'}>{row.ok ? 'ok' : 'failed'}</Badge>
+              </TableCell>
+              <TableCell className="text-muted-foreground">{row.error ?? ''}</TableCell>
+            </TableRow>
+          ))}
+        </TableBody>
+      </DirectoryTable>
+    </TableHost>
+  );
+}
+
 export function DomainsDirectory({
   items,
   fetching,
@@ -128,6 +196,12 @@ export function DomainsDirectory({
   onAddDomain,
   onDeleteDomain,
   onBurnDomain,
+  burnOpen,
+  onBurnOpenChange,
+  burnHostname,
+  burnDeleteCloudflare,
+  onBurnDeleteCloudflareChange,
+  onConfirmBurn,
   onProbeDomain,
   onSetupSsl,
   draftParkDomain,
@@ -262,6 +336,9 @@ export function DomainsDirectory({
               {bulkJob.failed > 0 ? `, ${bulkJob.failed} failed` : ''})
             </p>
           ) : null}
+          {bulkJob?.results && bulkJob.results.length > 0 ? (
+            <DomainBulkJobResultsTable rows={bulkJob.results} />
+          ) : null}
           {bulkJobError ? <ErrorBlock title="Job poll failed" message={bulkJobError.message} /> : null}
           <DialogFooter>
             <SecondaryActionButton loading={acting} onClick={onStartBulkSSL} type="button">
@@ -383,6 +460,34 @@ export function DomainsDirectory({
         </DialogContent>
       </Dialog>
 
+      <Dialog onOpenChange={onBurnOpenChange} open={burnOpen}>
+        <DialogContent className="max-w-md">
+          <DialogHeader>
+            <DialogTitle>Burn domain</DialogTitle>
+          </DialogHeader>
+          <p className="text-sm text-muted-foreground">
+            Burn <span className="font-medium text-foreground">{burnHostname}</span> and remove it
+            from the rotation pool.
+          </p>
+          <div className="flex items-center gap-2">
+            <Checkbox
+              checked={burnDeleteCloudflare}
+              id="burn-delete-cloudflare"
+              onCheckedChange={(checked) => onBurnDeleteCloudflareChange(checked === true)}
+            />
+            <Label htmlFor="burn-delete-cloudflare">Also delete Cloudflare DNS record</Label>
+          </div>
+          <DialogFooter>
+            <SecondaryActionButton onClick={() => onBurnOpenChange(false)} type="button">
+              Cancel
+            </SecondaryActionButton>
+            <PrimaryActionButton loading={acting} onClick={onConfirmBurn} type="button">
+              Confirm burn
+            </PrimaryActionButton>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
+
       {(items ?? []).length === 0 ? (
         <EmptyState title="No domains" description="Domain health list returned no entries." />
       ) : (
@@ -450,8 +555,8 @@ export function DomainsDirectory({
       )}
 
       {actionMessage ? <p className="text-sm text-muted-foreground">{actionMessage}</p> : null}
-      {sslResult ? <JsonPayloadView payload={sslResult} /> : null}
-      {wildcardResult ? <JsonPayloadView payload={wildcardResult} /> : null}
+      {sslResult ? <DomainSslResultSummary result={sslResult} /> : null}
+      {wildcardResult ? <WildcardSslResultSummary result={wildcardResult} /> : null}
       {actionError ? creativePanelError(actionError, 'Domain action failed') : null}
       {error && hasSnapshot ? creativePanelError(error, 'Refresh failed') : null}
       </CreativeDirectoryStack>

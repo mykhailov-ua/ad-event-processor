@@ -1,3 +1,4 @@
+import { Link } from 'react-router-dom';
 import { getCampaignIntegrationPanel } from '@/api/campaigns_api';
 import type { IntegrationHealthRow } from '@/api/types';
 import { Badge } from '@/components/ui/badge';
@@ -21,6 +22,21 @@ import {
 } from '@/domains/campaigns/editor/integration_health_labels';
 import { campaignPanelError } from '@/domains/campaigns/editor/campaign_editor_shared';
 import type { CampaignIntegrationPanelWorkspace } from '@/domains/campaigns/editor/use_campaign_integration_panel_workspace';
+
+function integrationHealthBadgeVariant(
+  status: string
+): 'default' | 'secondary' | 'destructive' | 'outline' {
+  switch (status.trim().toLowerCase()) {
+    case 'ok':
+      return 'default';
+    case 'warn':
+      return 'secondary';
+    case 'fail':
+      return 'destructive';
+    default:
+      return 'outline';
+  }
+}
 
 export type CampaignIntegrationPanelProps = {
   panel: Awaited<ReturnType<typeof getCampaignIntegrationPanel>> | undefined;
@@ -181,24 +197,47 @@ export function CampaignIntegrationPanel({
         </p>
       ) : null}
       {health ? (
-        <DirectoryTable>
-          <TableHeader>
-            <TableRow>
-              <DirectoryTableHead>Check</DirectoryTableHead>
-              <DirectoryTableHead>Status</DirectoryTableHead>
-              <DirectoryTableHead>Detail</DirectoryTableHead>
-            </TableRow>
-          </TableHeader>
-          <TableBody>
-            {health.rows?.map((row, index) => (
-              <TableRow key={`health-${index}`}>
-                <TableCell>{formatIntegrationHealthSlug(row.slug ?? '')}</TableCell>
-                <TableCell>{formatIntegrationHealthStatus(row.status ?? '')}</TableCell>
-                <TableCell className="text-muted-foreground">{row.message ?? ''}</TableCell>
+        <div className="grid gap-2">
+          <div className="flex flex-wrap items-center gap-2">
+            <span className="text-sm font-medium">Integration health</span>
+            <Badge variant={integrationHealthBadgeVariant(health.summary)}>
+              {formatIntegrationHealthStatus(health.summary)}
+            </Badge>
+          </div>
+          <DirectoryTable>
+            <TableHeader>
+              <TableRow>
+                <DirectoryTableHead>Check</DirectoryTableHead>
+                <DirectoryTableHead>Status</DirectoryTableHead>
+                <DirectoryTableHead>Detail</DirectoryTableHead>
+                <DirectoryTableHead>Fix</DirectoryTableHead>
               </TableRow>
-            ))}
-          </TableBody>
-        </DirectoryTable>
+            </TableHeader>
+            <TableBody>
+              {health.rows?.map((row, index) => (
+                <TableRow key={`health-${index}`}>
+                  <TableCell>{formatIntegrationHealthSlug(row.slug ?? '')}</TableCell>
+                  <TableCell>
+                    <Badge variant={integrationHealthBadgeVariant(row.status ?? '')}>
+                      {formatIntegrationHealthStatus(row.status ?? '')}
+                    </Badge>
+                  </TableCell>
+                  <TableCell className="text-muted-foreground">{row.message ?? ''}</TableCell>
+                  <TableCell>
+                    {row.fix_route ? (
+                      <Link
+                        className="text-primary underline-offset-4 hover:underline"
+                        to={row.fix_route}
+                      >
+                        Open fix
+                      </Link>
+                    ) : null}
+                  </TableCell>
+                </TableRow>
+              ))}
+            </TableBody>
+          </DirectoryTable>
+        </div>
       ) : null}
     </div>
   );

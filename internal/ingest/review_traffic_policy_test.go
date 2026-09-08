@@ -6,6 +6,7 @@ import (
 
 	"ad-event-processor/internal/config"
 	"ad-event-processor/internal/domain"
+	"ad-event-processor/pkg/moderatorcorpus"
 
 	"github.com/google/uuid"
 	"github.com/stretchr/testify/assert"
@@ -62,4 +63,56 @@ func TestReviewTrafficPolicy_defaultSafePage(t *testing.T) {
 	conn := serveClickFromIP(h, cid, "203.0.113.44")
 	require.Equal(t, http.StatusOK, ParseGnetHTTPStatus(conn.Written()))
 	require.Contains(t, string(conn.Written()), "X-ad-event-processor-Safe-View: l1")
+}
+
+func reviewCorpusPolicyHandler(t *testing.T, filter EventFilter) (*AdsPacketHandler, uuid.UUID) {
+	t.Helper()
+	if filter == nil {
+		filter = &countingFilter{}
+	}
+	cid := uuid.New()
+	brandID := uuid.New()
+	lockStaticCampaign(func(c *domain.Campaign) {
+		c.ID = cid
+		c.BrandID = &brandID
+		c.ReviewTrafficAction = domain.ReviewTrafficActionSafePage
+		c.CIDRBlockEnabled = false
+	})
+	t.Cleanup(func() {
+		lockStaticCampaign(func(c *domain.Campaign) {
+			c.CIDRBlockEnabled = false
+			c.ReviewTrafficAction = domain.ReviewTrafficActionSafePage
+		})
+		cachedMockCamp.Store(nil)
+	})
+	cachedMockCamp.Store(nil)
+
+	cfg := &config.Config{MaxRequestBodySize: 1 << 20, ModeratorCorpusEnabled: true}
+	store := clickHookBrandStore(t, brandID)
+	h := NewAdsPacketHandler(cfg, &mockRegistry{}, NewFilterEngine(0, filter), nil, nil, NewJumpHashSharder(1), "fraud-stream", store)
+	configureClickHookRotationTables(h)
+	return h, cid
+}
+
+func TestReviewTrafficPolicy_moderatorCorpusMatch(t *testing.T) {
+	h, cid := reviewCorpusPolicyHandler(t, nil)
+	ja3 := "771,4865-4866-4867"
+	entry, err := moderatorcorpus.EntryFromTuple(moderatorcorpus.Tuple{JA3: ja3})
+	require.NoError(t, err)
+	table := NewModeratorCorpusTable()
+	table.Publish(BuildModeratorCorpusSnapshot([]moderatorcorpus.Entry{entry}, 1))
+	h.ConfigureModeratorCorpus(table)
+
+	conn := serveClickWithJA3(h, cid, "8.8.8.8", ja3)
+	require.Equal(t, http.StatusOK, ParseGnetHTTPStatus(conn.Written()))
+	require.Contains(t, string(conn.Written()), "X-ad-event-processor-Safe-View: moderator_corpus")
+}
+
+func TestReviewTrafficPolicy_moderatorCorpusEmptyHoldout(t *testing.T) {
+	filter := &countingFilter{}
+	h, cid := reviewCorpusPolicyHandler(t, filter)
+
+	conn := serveClickWithJA3(h, cid, "8.8.8.8", "771,4865-4866-4867")
+	require.NotContains(t, string(conn.Written()), "X-ad-event-processor-Safe-View: moderator_corpus")
+	require.Equal(t, 1, filter.calls)
 }

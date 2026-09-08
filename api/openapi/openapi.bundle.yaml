@@ -168,6 +168,12 @@ components:
             $ref: components/schemas/campaign.yaml#/Brand
         BrandCreative:
             $ref: components/schemas/campaign.yaml#/BrandCreative
+        BulkCloneCampaignResultRow:
+            $ref: components/schemas/campaign.yaml#/BulkCloneCampaignResultRow
+        BulkCloneCampaignsRequest:
+            $ref: components/schemas/campaign.yaml#/BulkCloneCampaignsRequest
+        BulkCloneCampaignsResponse:
+            $ref: components/schemas/campaign.yaml#/BulkCloneCampaignsResponse
         Campaign:
             $ref: components/schemas/campaign.yaml#/Campaign
         CampaignBulkActionRequest:
@@ -236,6 +242,8 @@ components:
             $ref: components/schemas/ops_reports.yaml#/DoctorSummary
         DomainHealth:
             $ref: components/schemas/campaign.yaml#/DomainHealth
+        DryRunCampaignTemplatesResult:
+            $ref: components/schemas/integrations.yaml#/DryRunCampaignTemplatesResult
         ErrorBody:
             $ref: components/schemas/errors.yaml#/ErrorBody
         Flow:
@@ -316,6 +324,8 @@ components:
             $ref: components/schemas/integrations.yaml#/PostbackDlqEntry
         PostbackDryRunResult:
             $ref: components/schemas/integrations.yaml#/PostbackDryRunResult
+        PostbackHealthResponse:
+            $ref: components/schemas/integrations.yaml#/PostbackHealthResponse
         PublicAcceptInviteRequest:
             $ref: components/schemas/platform.yaml#/PublicAcceptInviteRequest
         PublicActivateRequest:
@@ -453,6 +463,8 @@ paths:
         $ref: paths/campaigns.yaml#/paths/~1api~1v1~1campaigns~1{id}
     /api/v1/campaigns/{id}/apply-templates:
         $ref: paths/integrations.yaml#/paths/~1api~1v1~1campaigns~1{id}~1apply-templates
+    /api/v1/campaigns/{id}/apply-templates/dry-run:
+        $ref: paths/integrations.yaml#/paths/~1api~1v1~1campaigns~1{id}~1apply-templates~1dry-run
     /api/v1/campaigns/{id}/clone:
         $ref: paths/campaigns.yaml#/paths/~1api~1v1~1campaigns~1{id}~1clone
     /api/v1/campaigns/{id}/clone-preview:
@@ -503,6 +515,8 @@ paths:
         $ref: paths/campaigns.yaml#/paths/~1api~1v1~1campaigns~1{id}~1validate
     /api/v1/campaigns/bulk:
         $ref: paths/campaigns.yaml#/paths/~1api~1v1~1campaigns~1bulk
+    /api/v1/campaigns/bulk-clone:
+        $ref: paths/campaigns.yaml#/paths/~1api~1v1~1campaigns~1bulk-clone
     /api/v1/campaigns/export:
         $ref: paths/campaigns.yaml#/paths/~1api~1v1~1campaigns~1export
     /api/v1/campaigns/import:
@@ -513,8 +527,12 @@ paths:
         $ref: paths/campaigns.yaml#/paths/~1api~1v1~1campaigns~1import~1validate~1jobs
     /api/v1/campaigns/import/validate/jobs/{id}:
         $ref: paths/campaigns.yaml#/paths/~1api~1v1~1campaigns~1import~1validate~1jobs~1{id}
+    /api/v1/campaigns/list-facets:
+        $ref: paths/campaigns.yaml#/paths/~1api~1v1~1campaigns~1list-facets
     /api/v1/campaigns/metrics:
         $ref: paths/campaigns.yaml#/paths/~1api~1v1~1campaigns~1metrics
+    /api/v1/campaigns/metrics-totals:
+        $ref: paths/campaigns.yaml#/paths/~1api~1v1~1campaigns~1metrics-totals
     /api/v1/campaigns/migrate/import:
         $ref: paths/campaigns.yaml#/paths/~1api~1v1~1campaigns~1migrate~1import
     /api/v1/campaigns/migrate/preview:
@@ -527,6 +545,8 @@ paths:
         $ref: paths/campaigns.yaml#/paths/~1api~1v1~1campaigns~1migrate~1sources
     /api/v1/campaigns/onboarding-templates:
         $ref: paths/campaigns.yaml#/paths/~1api~1v1~1campaigns~1onboarding-templates
+    /api/v1/campaigns/target-countries:
+        $ref: paths/campaigns.yaml#/paths/~1api~1v1~1campaigns~1target-countries
     /api/v1/campaigns/wizard/session:
         $ref: paths/campaigns.yaml#/paths/~1api~1v1~1campaigns~1wizard~1session
     /api/v1/command-palette/open:
@@ -597,6 +617,8 @@ paths:
         $ref: paths/campaigns.yaml#/paths/~1api~1v1~1domains~1{hostname}~1probe
     /api/v1/domains/{hostname}/ssl/setup:
         $ref: paths/campaigns.yaml#/paths/~1api~1v1~1domains~1{hostname}~1ssl~1setup
+    /api/v1/domains/cloudflare/zones:
+        $ref: paths/campaigns.yaml#/paths/~1api~1v1~1domains~1cloudflare~1zones
     /api/v1/domains/park:
         $ref: paths/campaigns.yaml#/paths/~1api~1v1~1domains~1park
     /api/v1/eula:
@@ -607,6 +629,10 @@ paths:
         $ref: paths/campaigns.yaml#/paths/~1api~1v1~1flows
     /api/v1/flows/{id}:
         $ref: paths/campaigns.yaml#/paths/~1api~1v1~1flows~1{id}
+    /api/v1/flows/{id}/clone:
+        $ref: paths/campaigns.yaml#/paths/~1api~1v1~1flows~1{id}~1clone
+    /api/v1/flows/validate:
+        $ref: paths/campaigns.yaml#/paths/~1api~1v1~1flows~1validate
     /api/v1/forecast/campaign:
         $ref: paths/campaigns.yaml#/paths/~1api~1v1~1forecast~1campaign
     /api/v1/fraud/decisions:
@@ -617,6 +643,12 @@ paths:
         $ref: paths/ops_reports.yaml#/paths/~1api~1v1~1fraud~1labels
     /api/v1/fraud/labels/bulk:
         $ref: paths/ops_reports.yaml#/paths/~1api~1v1~1fraud~1labels~1bulk
+    /api/v1/fraud/moderator-corpus:
+        $ref: paths/ops_reports.yaml#/paths/~1api~1v1~1fraud~1moderator-corpus
+    /api/v1/fraud/moderator-corpus/import:
+        $ref: paths/ops_reports.yaml#/paths/~1api~1v1~1fraud~1moderator-corpus~1import
+    /api/v1/fraud/moderator-corpus/preview:
+        $ref: paths/ops_reports.yaml#/paths/~1api~1v1~1fraud~1moderator-corpus~1preview
     /api/v1/fraud/overrides:
         $ref: paths/ops_reports.yaml#/paths/~1api~1v1~1fraud~1overrides
     /api/v1/fraud/presets:
@@ -635,6 +667,8 @@ paths:
         $ref: paths/integrations.yaml#/paths/~1api~1v1~1integration~1templates
     /api/v1/integration/templates/import:
         $ref: paths/integrations.yaml#/paths/~1api~1v1~1integration~1templates~1import
+    /api/v1/integrations/postbacks/health:
+        $ref: paths/integrations.yaml#/paths/~1api~1v1~1integrations~1postbacks~1health
     /api/v1/landers:
         $ref: paths/campaigns.yaml#/paths/~1api~1v1~1landers
     /api/v1/landers/{id}:
@@ -683,12 +717,20 @@ paths:
         $ref: paths/ops_reports.yaml#/paths/~1api~1v1~1ops~1dlq~1inbox~1{id}~1retry
     /api/v1/ops/doctor:
         $ref: paths/ops_reports.yaml#/paths/~1api~1v1~1ops~1doctor
-    /api/v1/ops/domains/{hostname}/tls-allowed:
-        $ref: paths/ops_reports.yaml#/paths/~1api~1v1~1ops~1domains~1{hostname}~1tls-allowed
+    /api/v1/ops/domains/{hostname}/burn:
+        $ref: paths/ops_reports.yaml#/paths/~1api~1v1~1ops~1domains~1{hostname}~1burn
+    /api/v1/ops/domains/bulk:
+        $ref: paths/ops_reports.yaml#/paths/~1api~1v1~1ops~1domains~1bulk
+    /api/v1/ops/domains/bulk-ssl:
+        $ref: paths/ops_reports.yaml#/paths/~1api~1v1~1ops~1domains~1bulk-ssl
+    /api/v1/ops/domains/jobs/{job_id}:
+        $ref: paths/ops_reports.yaml#/paths/~1api~1v1~1ops~1domains~1jobs~1{job_id}
     /api/v1/ops/domains/rotation:
         $ref: paths/ops_reports.yaml#/paths/~1api~1v1~1ops~1domains~1rotation
     /api/v1/ops/domains/tls-allowed:
         $ref: paths/ops_reports.yaml#/paths/~1api~1v1~1ops~1domains~1tls-allowed
+    /api/v1/ops/domains/wildcard-ssl:
+        $ref: paths/ops_reports.yaml#/paths/~1api~1v1~1ops~1domains~1wildcard-ssl
     /api/v1/ops/fraud/presets/{name}:
         $ref: paths/ops_reports.yaml#/paths/~1api~1v1~1ops~1fraud~1presets~1{name}
     /api/v1/ops/health/snapshot:
@@ -739,6 +781,8 @@ paths:
         $ref: paths/integrations.yaml#/paths/~1api~1v1~1postbacks~1dlq
     /api/v1/postbacks/dlq/{id}/retry:
         $ref: paths/integrations.yaml#/paths/~1api~1v1~1postbacks~1dlq~1{id}~1retry
+    /api/v1/postbacks/health:
+        $ref: paths/integrations.yaml#/paths/~1api~1v1~1postbacks~1health
     /api/v1/postbacks/snapshot:
         $ref: paths/integrations.yaml#/paths/~1api~1v1~1postbacks~1snapshot
     /api/v1/public/activate:

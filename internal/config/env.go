@@ -421,6 +421,7 @@ type Config struct {
 	JSONSerializationFingerprintEnabled bool
 	BehaviorTelemetryEnabled            bool
 	MobileBiometricsEnabled             bool
+	MobileBiometricsClickEnabled        bool
 	ProxyVPNBlockEnabled                bool
 	ProxyVPNFeedDir                     string
 	ProxyVPNFeedRefresh                 time.Duration
@@ -433,8 +434,12 @@ type Config struct {
 	ModeratorIntelAllowUnsigned         bool
 	TLSFingerprintEnabled               bool
 	TLSJA4BrowserCorpusEnabled          bool
+	TLSJA4CorpusReviewRouteEnabled      bool
 	TLSFingerprintFeedDir               string
 	TLSFingerprintFeedRefresh           time.Duration
+	ModeratorCorpusEnabled              bool
+	ModeratorCorpusFeedDir              string
+	ModeratorCorpusFeedRefresh          time.Duration
 	LinkSigningHMACSecret               Secret
 	AttestationHMACSecret               Secret
 	AttestationHMACSecretPrev           Secret

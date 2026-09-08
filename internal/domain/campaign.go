@@ -89,6 +89,9 @@ type Campaign struct {
 	SilentRejectEnabled   bool
 	BehaviorFlags         BehaviorFlags
 
+	CrossLayerDesyncAction    CrossLayerDesyncAction
+	CrossLayerDesyncThreshold uint8
+
 	RetargetSegmentID uuid.UUID
 	SegmentTTLHours   int32
 	SegmentIncludeID  uuid.UUID
@@ -122,11 +125,12 @@ type Campaign struct {
 	LinkSigningEnabled bool
 	LinkSigningTTLSec  int32
 
-	ClickDelivery               string
-	ClickFilterTier             string
-	ProxyUpstreamURL            string
-	ProxyRewriteAssets          bool
-	ProxyTimeoutFallbackEnabled bool
+	ClickDelivery                string
+	ClickFilterTier              string
+	ProxyUpstreamURL             string
+	ProxyRewriteAssets           bool
+	ProxyTimeoutFallbackEnabled  bool
+	MobileBiometricsClickEnabled bool
 
 	IngressCost IngressCostConfig
 }

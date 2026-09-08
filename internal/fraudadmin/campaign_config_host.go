@@ -2,6 +2,7 @@ package fraudadmin
 
 import (
 	"context"
+	"time"
 
 	"ad-event-processor/internal/database"
 	db "ad-event-processor/internal/domain/db"
@@ -30,4 +31,5 @@ type CampaignConfigHost interface {
 	ConfigAuditUpdate(ctx context.Context, q db.Querier, adminID uuid.UUID, campaignID uuid.UUID, changes CampaignFraudAuditChange)
 	ConfigResolvePresetThresholds(ctx context.Context, name string) (pass, suspect, ivt, block uint8, err error)
 	ConfigEnqueueUpdateCampaignFraud(ctx context.Context, q db.Querier, campaignID uuid.UUID) error
+	ConfigMLBoostLastRefreshedAt(ctx context.Context, campaignID uuid.UUID) (time.Time, bool)
 }
