@@ -23,6 +23,9 @@ export function reportHubPath(key: string): string {
   if (key === 'click-log') {
     return '/reports/click-log';
   }
+  if (key === 'rtb-overview' || key === 'rtb-no-bid-reasons' || key === 'rtb-geo-device') {
+    return '/rtb';
+  }
   if (key === 'telegram') {
     return '/reports/telegram';
   }
