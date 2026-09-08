@@ -35,7 +35,7 @@ func TestHTTP1Parse_SplitAtHeaderBoundary(t *testing.T) {
 	full := []byte("POST /track HTTP/1.1\r\nContent-Length: 5\r\n\r\nhello")
 	n, _, err := parseHTTP1(full[:len(full)-3], maxBody, nil)
 	require.ErrorIs(t, err, errIncompleteRequest)
-	assert.Equal(t, 0, n)
+	assert.Equal(t, len(full)-5, n, "headers-complete partial body reports body offset")
 
 	n, req, err := parseHTTP1(full, maxBody, nil)
 	require.NoError(t, err)

@@ -89,9 +89,6 @@ func ParseHTTP1LimitsInto(data []byte, maxBody int64, scratchPtr *[]byte, limits
 }
 
 func parseHTTP1RequestLine(data []byte, n int, req *Request) (int, error) {
-	if n < 22 {
-		return 0, ErrIncomplete
-	}
 	// Fast path: constant compare for canonical POST /track line before generic request-line DFA.
 	if n >= 22 && *(*[22]byte)(unsafe.Pointer(&data[0])) == trackReqLine {
 		req.Method = data[0:4]
@@ -130,16 +127,22 @@ func parseHTTP1RequestLine(data []byte, n int, req *Request) (int, error) {
 		return 0, ErrInvalid
 	}
 	req.Path = data[pathStart:i]
-	if i+9 > n || data[i] != ' ' {
+	if i >= n {
+		return 0, ErrIncomplete
+	}
+	if data[i] != ' ' {
 		return 0, ErrInvalid
+	}
+	if i+9 > n {
+		return 0, ErrIncomplete
 	}
 	if !http1VersionValid(data[i+1 : i+9]) {
 		return 0, ErrInvalid
 	}
-	if i+9 >= n || data[i+9] != '\r' {
-		return 0, ErrInvalid
+	if i+10 >= n {
+		return 0, ErrIncomplete
 	}
-	if i+10 >= n || data[i+10] != '\n' {
+	if data[i+9] != '\r' || data[i+10] != '\n' {
 		return 0, ErrInvalid
 	}
 	if !http1IngressValid(req.Method, req.Path) {
