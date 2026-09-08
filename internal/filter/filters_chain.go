@@ -830,7 +830,7 @@ const (
 
 func fraudDesyncLayerBit(id FraudReasonID) uint8 {
 	switch id {
-	case FraudReasonTCPSynOSMismatch:
+	case FraudReasonTCPSynOSMismatch, FraudReasonTCPSynOptMismatch:
 		return fraudDesyncLayerTCPOS
 	case FraudReasonTLSJA4Mismatch:
 		return fraudDesyncLayerTLSJA4

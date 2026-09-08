@@ -126,6 +126,7 @@ const (
 	FraudReasonCodeAcceptEncodingMismatch   = "accept_encoding_mismatch"
 	FraudReasonCodeAcceptLangGeoMismatch    = "accept_lang_geo_mismatch"
 	FraudReasonCodeTLSJA4Mismatch           = "tls_ja4_mismatch"
+	FraudReasonCodeTCPSynOptMismatch        = "tcp_syn_opt_mismatch"
 	FraudReasonCodeBehaviorTelemetryMissing = "behavior_telemetry_missing"
 	FraudReasonCodeBehaviorBezierBot        = "behavior_bezier_bot"
 )
@@ -141,6 +142,7 @@ const (
 	FraudReasonTCPMSSAnomaly
 	FraudReasonTCPTunnelMSS
 	FraudReasonTCPSynOSMismatch
+	FraudReasonTCPSynOptMismatch
 	FraudReasonJSONSerializationBot
 	FraudReasonOSFingerprint
 	FraudReasonIPv4Rotation
@@ -187,6 +189,7 @@ var fraudReasonRegistry = [fraudReasonCount]fraudReasonEntry{
 	FraudReasonTCPMSSAnomaly:            {code: FraudReasonCodeTCPMSSAnomaly, weight: 35, flags: FraudSignalL2Weak},
 	FraudReasonTCPTunnelMSS:             {code: FraudReasonCodeTCPTunnelMSS, weight: 35, flags: FraudSignalL2Weak},
 	FraudReasonTCPSynOSMismatch:         {code: FraudReasonCodeTCPSynOSMismatch, weight: 35, flags: FraudSignalL2Weak},
+	FraudReasonTCPSynOptMismatch:        {code: FraudReasonCodeTCPSynOptMismatch, weight: 35, flags: FraudSignalL2Weak},
 	FraudReasonJSONSerializationBot:     {code: FraudReasonCodeJSONSerializationBot, weight: 35, flags: FraudSignalL2Weak},
 	FraudReasonOSFingerprint:            {code: FraudReasonCodeOSFingerprint, weight: 35, flags: FraudSignalL2Weak},
 	FraudReasonIPv4Rotation:             {code: FraudReasonCodeIPv4Rotation, weight: 35, flags: FraudSignalL2Weak},

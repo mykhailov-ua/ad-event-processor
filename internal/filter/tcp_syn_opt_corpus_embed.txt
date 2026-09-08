@@ -1,0 +1,3 @@
+# hash_hex=ua_families (windows,mac,linux,mobile)
+8bc1a792=linux
+7c400fe9=mobile

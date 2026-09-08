@@ -89,6 +89,8 @@ type Event struct {
 	TCPWindowSet           uint8
 	TCPSig                 uint32
 	TCPSigSet              uint8
+	TCPSigOptHash          uint32
+	TCPSigOptSet           uint8
 	RTTSynMS               uint16
 	TTFBAppMS              uint16
 	RTTSplitDeltaMS        uint16
@@ -174,6 +176,8 @@ func (e *Event) Reset() {
 	e.TCPWindowSet = 0
 	e.TCPSig = 0
 	e.TCPSigSet = 0
+	e.TCPSigOptHash = 0
+	e.TCPSigOptSet = 0
 	e.RTTSynMS = 0
 	e.TTFBAppMS = 0
 	e.RTTSplitDeltaMS = 0

@@ -5,13 +5,14 @@
 --
 -- Redis keys (shard 0 staging, written by edge-xdp):
 -- - edge:tcp_fp:recent ZSET; member {ip}:{tcp_hash_hex}; ZREVRANGE 0 511 picks hot IPs.
--- - edge:tcp_fp:ip:{ip} HASH fields ttl, window, mss, tcp_hash (Redis TTL 1 h).
+-- - edge:tcp_fp:ip:{ip} HASH fields ttl, window, mss, tcp_hash, tcp_opt_trace (Redis TTL 1 h).
 --
 -- ngx.shared tcp_fp_cache mapping (each set TTL 3600 s):
 -- - {ip}           -> mss (0..255)
 -- - t:{ip}         -> ttl (0..255)
 -- - w:{ip}         -> window (0..65535)
 -- - h:{ip}         -> tcp_hash 8-char hex sig
+-- - o:{ip}         -> tcp_opt_trace normalized token string -> X-TCP-SIG-V2
 --
 -- sync pipeline: ZREVRANGE recent -> parse ip from member -> HMGET pipeline per ip -> validate ranges -> cache:set.
 -- Empty recent set: return true (no SHM mutation).
@@ -28,6 +29,7 @@
 -- bash scripts/test/edge/lua_tests.sh
 -- go test ./internal/edge/... -count=1
 local blacklist_sync = require "edge-blacklist-sync"
+local tcp_sig_v2 = require "edge-tcp-sig-v2"
 
 local _M = {}
 
@@ -66,7 +68,7 @@ function _M.sync()
 
     red:init_pipeline()
     for _, ip in ipairs(ips) do
-        red:hmget(IP_KEY_PREFIX .. ip, "ttl", "window", "mss", "tcp_hash")
+        red:hmget(IP_KEY_PREFIX .. ip, "ttl", "window", "mss", "tcp_hash", "tcp_opt_trace")
     end
     local results, perr = red:commit_pipeline()
     red:set_keepalive(10000, 100)
@@ -77,11 +79,11 @@ function _M.sync()
     local stamped = 0
     for i, ip in ipairs(ips) do
         local res = results[i]
-        local ttl, win, mss, tcp_hash
+        local ttl, win, mss, tcp_hash, tcp_opt_trace
         if type(res) == "table" then
-            ttl, win, mss, tcp_hash = res[1], res[2], res[3], res[4]
+            ttl, win, mss, tcp_hash, tcp_opt_trace = res[1], res[2], res[3], res[4], res[5]
         else
-            ttl, win, mss, tcp_hash = res, nil, nil, nil
+            ttl, win, mss, tcp_hash, tcp_opt_trace = res, nil, nil, nil, nil
         end
         if mss and mss ~= ngx.null then
             local n = tonumber(mss)
@@ -104,6 +106,12 @@ function _M.sync()
         end
         if tcp_hash and tcp_hash ~= ngx.null and type(tcp_hash) == "string" and #tcp_hash == 8 then
             cache:set("h:" .. ip, tcp_hash, 3600)
+        end
+        if tcp_opt_trace and tcp_opt_trace ~= ngx.null and type(tcp_opt_trace) == "string" then
+            local trace = tcp_sig_v2.validate_trace(tcp_opt_trace)
+            if trace then
+                cache:set("o:" .. ip, trace, 3600)
+            end
         end
     end
 

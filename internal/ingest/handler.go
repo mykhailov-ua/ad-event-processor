@@ -1341,6 +1341,10 @@ func (h *AdsPacketHandler) React(req *Request, c pkgnet.Conn) pkgnet.Action {
 		evt.TCPSig = req.TCPSig
 		evt.TCPSigSet = 1
 	}
+	if req.TCPSigOptSet != 0 {
+		evt.TCPSigOptHash = req.TCPSigOptHash
+		evt.TCPSigOptSet = 1
+	}
 	fillConnTimingFromRequest(evt, req)
 
 	if h.udpControl != nil {

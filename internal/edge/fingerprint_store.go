@@ -17,12 +17,13 @@ const (
 )
 
 type Entry struct {
-	IP      string
-	TCPHash uint32
-	TTL     uint8
-	Window  uint16
-	MSS     uint8
-	SeenAt  time.Time
+	IP          string
+	TCPHash     uint32
+	TTL         uint8
+	Window      uint16
+	MSS         uint8
+	TCPOptTrace string
+	SeenAt      time.Time
 }
 
 func Record(ctx context.Context, redisClient redis.Cmdable, e Entry) error {
@@ -31,15 +32,19 @@ func Record(ctx context.Context, redisClient redis.Cmdable, e Entry) error {
 	}
 	score := float64(e.SeenAt.Unix())
 	member := fmt.Sprintf("%s:%08x", e.IP, e.TCPHash)
+	fields := map[string]interface{}{
+		"tcp_hash": fmt.Sprintf("%08x", e.TCPHash),
+		"ttl":      strconv.Itoa(int(e.TTL)),
+		"window":   strconv.Itoa(int(e.Window)),
+		"mss":      strconv.Itoa(int(e.MSS)),
+		"seen_at":  strconv.FormatInt(e.SeenAt.Unix(), 10),
+	}
+	if trace := strings.TrimSpace(e.TCPOptTrace); trace != "" {
+		fields["tcp_opt_trace"] = trace
+	}
 	pipe := redisClient.Pipeline()
 	pipe.ZAdd(ctx, redisRecentKey, redis.Z{Score: score, Member: member})
-	pipe.HSet(ctx, redisByIPKey+e.IP,
-		"tcp_hash", fmt.Sprintf("%08x", e.TCPHash),
-		"ttl", strconv.Itoa(int(e.TTL)),
-		"window", strconv.Itoa(int(e.Window)),
-		"mss", strconv.Itoa(int(e.MSS)),
-		"seen_at", strconv.FormatInt(e.SeenAt.Unix(), 10),
-	)
+	pipe.HSet(ctx, redisByIPKey+e.IP, fields)
 	pipe.Expire(ctx, redisByIPKey+e.IP, defaultTTL)
 	_, err := pipe.Exec(ctx)
 	return err

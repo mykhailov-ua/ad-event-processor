@@ -13,16 +13,17 @@
 -- - t:{ip} (number 0..255): TTL -> X-TCP-TTL.
 -- - w:{ip} (number 0..65535): window -> X-TCP-WINDOW.
 -- - h:{ip} (string 8 hex): tcp_hash -> X-TCP-SIG.
+-- - o:{ip} (string): tcp_opt_trace -> X-TCP-SIG-V2 (option-order corpus).
 --
 -- ngx.ctx inputs (optional, override SHM):
--- - tls_hash, tls_ja3, tls_ja4, tls_alpn; tcp_mss, tcp_ttl, tcp_window, tcp_sig.
+-- - tls_hash, tls_ja3, tls_ja4, tls_alpn; tcp_mss, tcp_ttl, tcp_window, tcp_sig, tcp_sig_opt.
 --
 -- State machine: record ingress proto -> set X-Original-Method/Path -> TLS headers -> TCP fp -> timing headers.
 --
 -- Upstream headers when data present:
 -- - X-Original-Method, X-Original-Path.
 -- - X-TLS-Hash (ctx or ssl_protocol:ssl_cipher), X-TLS-JA3, X-TLS-JA4, X-TLS-ALPN.
--- - X-TCP-MSS, X-TCP-TTL, X-TCP-WINDOW, X-TCP-SIG.
+-- - X-TCP-MSS, X-TCP-TTL, X-TCP-WINDOW, X-TCP-SIG, X-TCP-SIG-V2.
 -- - X-TTFB-APP-MS from connection_time (1..65535 ms); X-RTT-SYN-MS from tcpinfo_rtt us.
 --
 -- Constants and limits:
@@ -38,6 +39,7 @@
 -- bash scripts/test/edge/lua_tests.sh
 -- go test ./internal/ingestion/ -run=TestChaos_CrossHop_NginxGnet -count=1
 local edge_metrics = require "edge-metrics"
+local tcp_sig_v2 = require "edge-tcp-sig-v2"
 
 local _M = {}
 
@@ -118,6 +120,17 @@ function _M.record_and_forward()
     end
     if sig and sig ~= "" then
         ngx.req.set_header("X-TCP-SIG", sig)
+    end
+
+    local sig_opt = ngx.ctx.tcp_sig_opt
+    if not sig_opt and tcp_fp_cache then
+        sig_opt = tcp_fp_cache:get("o:" .. remote)
+    end
+    if sig_opt and sig_opt ~= "" then
+        local trace = tcp_sig_v2.validate_trace(sig_opt)
+        if trace then
+            ngx.req.set_header("X-TCP-SIG-V2", trace)
+        end
     end
 
     -- Connection timing for tracker cold-path rtt_split_tunnel (CH rtt_syn_ms, ttfb_app_ms).

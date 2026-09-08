@@ -366,6 +366,16 @@ var (
 		Name: "ad_moderator_corpus_match_total",
 		Help: "Review-traffic safe-page routes triggered by moderator corpus tuple match",
 	})
+
+	TCPSynOptMismatchTotal = promauto.NewCounter(prometheus.CounterOpts{
+		Name: "ad_tcp_syn_opt_mismatch_total",
+		Help: "TCP SYN option-order corpus mismatches against UA family",
+	})
+
+	TCPSynOptSkippedTotal = promauto.NewCounterVec(prometheus.CounterOpts{
+		Name: "ad_tcp_syn_opt_skipped_total",
+		Help: "TCP SYN option-order checks skipped (labels: no_tcp_sig_opt)",
+	}, []string{"reason"})
 	TLSJA4CorpusMismatchTotal = promauto.NewCounter(prometheus.CounterOpts{
 		Name: "ad_tls_ja4_corpus_mismatch_total",
 		Help: "TLS JA4 browser corpus mismatches on hot-path DeviceFilter",

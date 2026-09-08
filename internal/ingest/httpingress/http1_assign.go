@@ -102,6 +102,11 @@ func http1AssignHeader(req *Request, key, val []byte, hFlags *uint8, clValue *in
 				req.TCPWindow = win
 				req.TCPWindowSet = 1
 			}
+		} else if foldKeyU64(key, 0) == 0x69732d7063742d78 && foldKeyU32(key, 8) == 0x32762d67 {
+			if hash, ok := filter.ParseTCPSynOptHeader(val); ok {
+				req.TCPSigOptHash = hash
+				req.TCPSigOptSet = 1
+			}
 		} else if foldKeyU64(key, 0) == 0x2d746e65746e6f63 && foldKeyU32(key, 8) == 0x65707974 {
 			req.ContentType = val
 		}

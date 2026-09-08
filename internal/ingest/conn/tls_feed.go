@@ -90,6 +90,9 @@ func (l *tlsFingerprintFeedLoader) refreshOnce() {
 	if corpus := filter.LoadTCPSynSigCorpusFromDir(l.dir); corpus != nil {
 		filter.PublishTCPSynSigCorpus(corpus)
 	}
+	if corpus := filter.LoadTCPSynOptCorpusFromDir(l.dir); corpus != nil {
+		filter.PublishTCPSynOptCorpus(corpus)
+	}
 	metrics.TLSFingerprintFeedRefreshTotal.Inc()
 	metrics.TLSFingerprintBlocklistJA3.Set(float64(len(ja3Block)))
 	metrics.TLSFingerprintBlocklistJA4.Set(float64(len(ja4Block)))

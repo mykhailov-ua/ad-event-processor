@@ -95,6 +95,7 @@ Implementation: `internal/filter/engine.go`, `internal/filter/util.go` (`fraudRe
 | `tcp_mss_anomaly` | 35 | L2-weak | `TCPMSSFilter` |
 | `tcp_tunnel_mss` | 35 | L2-weak | `TCPMSSFilter` |
 | `tcp_syn_os_mismatch` | 35 | L2-weak | `DeviceFilter` |
+| `tcp_syn_opt_mismatch` | 35 | L2-weak | `DeviceFilter` (`TCP_SYN_OPT_CORPUS_ENABLED`) |
 | `json_serialization_bot` | 35 | L2-weak | `JSONSerializationFilter` |
 | `os_fingerprint_mismatch` | 35 | L2-weak | `DeviceFilter` (TTL/window vs UA) |
 | `ipv4_rotation` | 35 | L2-weak | Landing IPv4 rotation hook |
@@ -314,6 +315,7 @@ Buyers often expect WebGL/headless bypass on every click. This stack combines ed
 | L4/L7 edge (nginx Lua) | Rate limit, slot map | `deploy/nginx/lua/` | Same; may 403 before tracker |
 | Ingress TCP | TTL/window vs UA (`OSFingerprintMismatch`) | `DeviceFilter` | CDN terminates TCP; set `OS_FINGERPRINT_MISMATCH_ENABLED=false` on CDN paths |
 | Ingress TCP | SYN signature corpus | `DeviceFilter` + `TCPSynSigCorpus` | Missing `X-TCP-SIG` headers behind CDN |
+| Ingress TCP | SYN option-order corpus (`tcp_syn_opt_mismatch`) | `DeviceFilter` + `TCPSynOptCorpus` | Needs `X-TCP-SIG-V2` from edge (`tcp_opt_trace`); XDP emit deferred; ops may seed Redis; default flag off |
 | Ingress TLS | JA3/JA4 blocklist | `DeviceFilter` | TLS terminated at CDN; headers absent -> fail open |
 | Ingress TLS | JA4 browser corpus (`tls_ja4_mismatch`) | `DeviceFilter` + `ja4BrowserCorpusMismatch` | Corpus miss fail-open; Chromium UA on Safari row fires signal |
 | Ingress HTTP/2 | SETTINGS / pseudo-order (edge) | nginx Lua -> headers | CDN normalizes H2; signal degraded |
@@ -324,6 +326,19 @@ Buyers often expect WebGL/headless bypass on every click. This stack combines ed
 | ML boost | `ml:score:boost:{campaign_id}` snapshot | `FilterEngine` read only | No inline LGBM on `/track`; batch `cmd/fraud-scorer` |
 
 **Residential crawler on datacenter egress:** detectable at L4/L7 when signals are present. **Residential crawler on residential egress:** not fully detectable at L4 alone; rely on cross-layer + safe-page + review corpus, not XDP host map alone.
+
+
+### TCP SYN option-order corpus (`tcp_syn_opt_mismatch`)
+
+| Knob | Default | Behavior |
+| :--- | :--- | :--- |
+| `TCP_SYN_OPT_CORPUS_ENABLED` | `false` | When off, no signal; metric `ad_tcp_syn_opt_skipped_total{reason=no_tcp_sig_opt}` when header absent |
+| Header | `X-TCP-SIG-V2` | Comma-separated lower-case SYN option tokens (max 512 B); hashed by `pkg/tcpsynopt` |
+| Corpus | `tcp_syn_opt_corpus_embed.txt` + optional `tls_feed_dir/tcp_syn_opt_corpus.txt` | `hash=family` rows; UA family mismatch fires L2-weak signal |
+| Edge path | nginx `edge-tcp-fp-sync` | Redis field `tcp_opt_trace` -> SHM `o:{ip}` -> upstream header |
+| XDP emit | **Deferred** | Manual seed: `edge.Record` `TCPOptTrace` or `HMSET edge:tcp_fp:ip:{ip} tcp_opt_trace ...` |
+
+CDN/L4 termination: header absent -> fail-open (same as `X-TCP-SIG`). Do not enable on CDN-fronted tracker paths without edge TCP visibility.
 
 ### Safe-page attestation limits
 

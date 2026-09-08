@@ -621,6 +621,17 @@ sudo bash scripts/test/edge/xdp_resilience_drill.sh   # optional drill
 
 JWT must include `features.ebpf_xdp_edge`. XDP drops known L3/L4; residential rotating proxies still need tracker L7 fraud.
 
+**TCP SYN option-order (`X-TCP-SIG-V2`):** XDP emit of `tcp_opt_trace` is deferred. For local dev, seed Redis staging and let nginx sync forward the header:
+
+```bash
+redis-cli HMSET edge:tcp_fp:ip:203.0.113.50 ttl 64 window 64240 mss 44 tcp_hash deadbeef \
+  tcp_opt_trace 'nop,nop,sackok,mss:1460' seen_at $(date +%s)
+redis-cli EXPIRE edge:tcp_fp:ip:203.0.113.50 3600
+redis-cli ZADD edge:tcp_fp:recent $(date +%s) '203.0.113.50:deadbeef'
+```
+
+Or use `edge.Record` with `TCPOptTrace` from a small Go snippet / integration test. Tracker checks corpus only when `TCP_SYN_OPT_CORPUS_ENABLED=1` (default off). See `edge.mdc` and `deploy/vendor/ANTIFRAUD.md`.
+
 ---
 
 ## Shard 0 Outage Mitigation

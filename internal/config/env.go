@@ -409,6 +409,7 @@ type Config struct {
 	TCPMSSTunnelEnabled                 bool
 	TCPMSSTunnelThreshold               uint16
 	TCPSynSigEnabled                    bool
+	TCPSynOptCorpusEnabled              bool
 	SecFetchValidateEnabled             bool
 	ClientHintsPlatformEnabled          bool
 	TLSALPNMismatchEnabled              bool

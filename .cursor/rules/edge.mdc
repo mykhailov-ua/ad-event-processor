@@ -166,17 +166,20 @@ Control never writes kernel maps directly. Requires BTF, modern kernel. Not a su
 
 ### OS fingerprint
 
-Edge forwards `X-TCP-TTL`, `X-TCP-WINDOW`, `X-TCP-MSS`, `X-TCP-SIG` from `edge-tcp-fp-sync` / XDP fingerprints map. CDN/L4 LB: set `OS_FINGERPRINT_MISMATCH_ENABLED=false` and `TCP_SYN_SIG_ENABLED=false` or accept skip metrics.
+Edge forwards `X-TCP-TTL`, `X-TCP-WINDOW`, `X-TCP-MSS`, `X-TCP-SIG`, and optional `X-TCP-SIG-V2` from `edge-tcp-fp-sync` / Redis staging. **XDP emit of `tcp_opt_trace` is deferred** (distant backlog); ops may seed `tcp_opt_trace` via `internal/edge.Record` or `redis-cli HMSET` until bpf-sync ships. CDN/L4 LB: set `OS_FINGERPRINT_MISMATCH_ENABLED=false`, `TCP_SYN_SIG_ENABLED=false`, and `TCP_SYN_OPT_CORPUS_ENABLED=false` or accept skip metrics.
 
 Redis staging per client IP (`edge:tcp_fp:ip:{ip}` HASH, TTL 1h):
 
 | Field | Source | Edge cache key | Tracker header |
 | :--- | :--- | :--- | :--- |
-| `tcp_hash` | XDP `hash_tcp_syn_fields` | `h:{ip}` | `X-TCP-SIG` (8-char hex) |
+| `tcp_hash` | XDP `hash_tcp_syn_fields` (or manual seed) | `h:{ip}` | `X-TCP-SIG` (8-char hex) |
+| `tcp_opt_trace` | XDP option walk (**deferred**) or `edge.Record` / ops seed | `o:{ip}` | `X-TCP-SIG-V2` (comma tokens, max 512 B) |
 | `ttl` | SYN IP TTL | `t:{ip}` | `X-TCP-TTL` |
 | `window` | SYN window | `w:{ip}` | `X-TCP-WINDOW` |
 | `mss` | SYN MSS high byte | `{ip}` | `X-TCP-MSS` |
 | `seen_at` | Unix timestamp | not cached on nginx | n/a |
+
+`X-TCP-SIG-V2` wire: lower-case comma-separated SYN option tokens (`nop,nop,mss:1460,sackok`). Tracker hashes via `pkg/tcpsynopt` and matches `tcp_syn_opt_corpus` when `TCP_SYN_OPT_CORPUS_ENABLED=true` (default off). Invalid trace on nginx: header omitted (fail-open).
 
 Connection timing (cold `rtt_split_tunnel`; no hot signal):
 

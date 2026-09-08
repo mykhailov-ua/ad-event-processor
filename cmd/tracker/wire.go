@@ -327,6 +327,7 @@ func runTracker(cfg *config.Config) {
 	deviceFilter.SetOSFingerprintEnabled(cfg.OSFingerprintMismatchEnabled)
 	deviceFilter.SetJA4BrowserCorpusEnabled(cfg.TLSJA4BrowserCorpusEnabled)
 	deviceFilter.SetTCPSynSigEnabled(cfg.TCPSynSigEnabled)
+	deviceFilter.SetTCPSynOptCorpusEnabled(cfg.TCPSynOptCorpusEnabled)
 	jsonSerializationFilter := ingestion.NewJSONSerializationFilter(registry)
 	jsonSerializationFilter.SetEnabled(cfg.JSONSerializationFingerprintEnabled)
 	behaviorTelemetryFilter := ingestion.NewBehaviorTelemetryFilter(registry)

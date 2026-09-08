@@ -361,6 +361,7 @@ type DeviceFilter struct {
 	osFingerprintEnabled atomic.Bool
 	ja4CorpusEnabled     atomic.Bool
 	tcpSynSigEnabled     atomic.Bool
+	tcpSynOptEnabled     atomic.Bool
 }
 
 func NewDeviceFilter(settings *SettingsWatcher) *DeviceFilter {
@@ -385,6 +386,10 @@ func (f *DeviceFilter) SetJA4BrowserCorpusEnabled(enabled bool) {
 
 func (f *DeviceFilter) SetTCPSynSigEnabled(enabled bool) {
 	f.tcpSynSigEnabled.Store(enabled)
+}
+
+func (f *DeviceFilter) SetTCPSynOptCorpusEnabled(enabled bool) {
+	f.tcpSynOptEnabled.Store(enabled)
 }
 
 func (f *DeviceFilter) ReloadBlocklist() {
@@ -445,6 +450,14 @@ func (f *DeviceFilter) Check(ctx context.Context, evt *domain.Event) error {
 		} else if TCPSynSigMismatch(evt.UA, evt.TCPSig) {
 			metrics.TCPSynSigMismatchTotal.Inc()
 			AddFraudSignal(evt, FraudReasonTCPSynOSMismatch)
+		}
+	}
+	if f.tcpSynOptEnabled.Load() && evt.UA != "" {
+		if evt.TCPSigOptSet == 0 {
+			metrics.TCPSynOptSkippedTotal.WithLabelValues("no_tcp_sig_opt").Inc()
+		} else if TCPSynOptCorpusMismatch(evt.UA, evt.TCPSigOptHash) {
+			metrics.TCPSynOptMismatchTotal.Inc()
+			AddFraudSignal(evt, FraudReasonTCPSynOptMismatch)
 		}
 	}
 	return nil

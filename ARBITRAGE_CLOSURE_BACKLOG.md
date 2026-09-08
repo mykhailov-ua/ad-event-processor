@@ -632,19 +632,24 @@ Items below close **technical gaps vs dedicated anti-bot stacks**. Do not pitch 
 
 **Problem:** `TCPSynSigMismatch` hashes `ttl + window + mss + doff` only (`hash_tcp_syn_fields` in `edge_filter.c`). Does not encode full TCP option order (NOP, MSS, SACK, WScale, Timestamps) that distinguishes Linux 6.x from iOS stack behind residential tunnel.
 
+**Scope (current wave):** tracker filter + nginx forward + ops seed path. **XDP bpf emit deferred** to distant backlog (not near-term).
+
 **Tasks:**
 
-- [ ] Spec: option-order fingerprint format + corpus file layout (edge + tracker parity)
-- [ ] XDP: extend emit struct or second hash; nginx `X-TCP-SIG` v2 header
-- [ ] Holdout: Linux corpus row vs iOS UA -> signal; CDN skip documented
+- [x] Spec: option-order fingerprint format + corpus file layout (edge + tracker parity) — `pkg/tcpsynopt`, `edge-tcp-sig-v2.lua`
+- [x] Tracker: `X-TCP-SIG-V2` parse, `tcp_syn_opt_mismatch` signal, corpus overlay (`TCP_SYN_OPT_CORPUS_ENABLED`, default off)
+- [x] Nginx: `edge-tcp-fp-sync` + `edge-ingress` forward `tcp_opt_trace` -> `X-TCP-SIG-V2`
+- [x] Ops seed: `internal/edge.Record` `TCPOptTrace` -> Redis `tcp_opt_trace`
+- [ ] **Deferred (distant backlog):** XDP extend emit struct / `hash_tcp_syn_opt_order` in `edge_filter.c`; bpf-sync ringbuf
+- [x] Holdout: Linux corpus row vs iOS UA -> signal; CDN skip documented (`edge.mdc`, `ANTIFRAUD.md`)
 
 **DoD:**
 
-- [ ] `go test ./internal/edge/ -run TCPSyn -count=1`
-- [ ] `bash scripts/test/edge/lua_tests.sh unit`
-- [ ] Feature flag default **off**; `OS_FINGERPRINT_*` skip metrics unchanged when headers absent
+- [x] `go test ./internal/edge/ -run TCPSyn -count=1` (integration tier) / `go test ./pkg/tcpsynopt/ ./internal/ingest/ -short -run TCPSynOpt -count=1`
+- [x] `bash scripts/test/edge/lua_tests.sh unit` (`tcp_sig_v2_test.lua`)
+- [x] Feature flag default **off**; `OS_FINGERPRINT_*` skip metrics unchanged when headers absent
 
-**SLA:** XDP emit path unchanged p99 budget (`xdp-bpf.mdc`).
+**SLA:** XDP emit path unchanged until deferred slice ships (`xdp-bpf.mdc`).
 
 **Dependencies:** P3-SAFE-PAGE-LIMITS-DOC.
 

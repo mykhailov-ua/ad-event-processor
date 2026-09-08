@@ -47,6 +47,8 @@ type Request struct {
 	TCPWindowSet          uint8
 	TCPSig                uint32
 	TCPSigSet             uint8
+	TCPSigOptHash         uint32
+	TCPSigOptSet          uint8
 	RTTSynMS              uint16
 	TTFBAppMS             uint16
 	ConnTimingSet         uint8

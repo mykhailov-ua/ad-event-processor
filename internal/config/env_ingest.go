@@ -208,6 +208,7 @@ func loadIngestModules(cfg *Config, appEnv string) error {
 	cfg.TCPMSSTunnelEnabled = getEnvBool("TCP_MSS_TUNNEL_ENABLED", true)
 	cfg.TCPMSSTunnelThreshold = uint16(getEnvInt("TCP_MSS_TUNNEL_THRESHOLD", 1400))
 	cfg.TCPSynSigEnabled = getEnvBool("TCP_SYN_SIG_ENABLED", true)
+	cfg.TCPSynOptCorpusEnabled = getEnvBool("TCP_SYN_OPT_CORPUS_ENABLED", false)
 
 	cfg.SecFetchValidateEnabled = getEnvBool("SEC_FETCH_VALIDATE_ENABLED", true)
 	cfg.ClientHintsPlatformEnabled = getEnvBool("CLIENT_HINTS_PLATFORM_ENABLED", true)

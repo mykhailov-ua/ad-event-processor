@@ -18,4 +18,5 @@ test('fraud hub links are visible', async ({ page }) => {
   await expect(mainHeading(page, 'Fraud')).toBeVisible();
   await expect(hubCardLink(page, '/fraud/integrations')).toBeVisible();
   await expect(hubCardLink(page, '/fraud/labels')).toBeVisible();
+  await expect(hubCardLink(page, '/fraud/moderator-corpus')).toBeVisible();
 });
