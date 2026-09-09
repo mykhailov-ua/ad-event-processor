@@ -46,7 +46,7 @@ Reference implementations:
 | App shell | `web/src/app_shell.tsx` |
 | Page scaffold | `web/src/shell/page_layout.tsx` |
 
-Cross-ref: `frontend-modular.mdc`, `frontend-slop.mdc` (mocks, styling, errors, Playwright), `boundaries.mdc`, `cold-path.mdc`, `control-plane.mdc`, `naming.mdc`, `react.mdc`, `anti-slop.mdc`, `quality.mdc`.
+Cross-ref: `frontend-modular.mdc`, `frontend-patterns.mdc`, `frontend-primitives.mdc`, `frontend-slop.mdc` (mocks, styling, errors, Playwright), `boundaries.mdc`, `cold-path.mdc`, `control-plane.mdc`, `naming.mdc`, `react.mdc`, `anti-slop.mdc`, `quality.mdc`.
 
 ### Styling and controls (see `frontend-slop.mdc` for full mandate)
 
@@ -594,6 +594,68 @@ Formula and OKLCH ladder: `web/DESIGN.md` (**Surface hierarchy**).
 
 Use color **only** to encode data or state. Decorative gradients, glow, and per-country random pill colors (except stable GEO badge mapping) are banned.
 
+### Spacing and typography (canonical)
+
+**Single source of truth:** `web/src/lib/admin_spacing.ts` (re-exported from `admin_kit.ts`). Domains import shell roles or `adminKit` / `adminSpacing` / `adminTypography` -- never raw Tailwind scale drift.
+
+#### Gap scale (only these five)
+
+| Token | Tailwind | px | Use |
+| :--- | :--- | ---: | :--- |
+| `adminSpacing.gap.xs` | `gap-1` | 4 | Icon + label inside one control |
+| `adminSpacing.gap.sm` | `gap-1.5` | 6 | Chip inner, tight label row |
+| `adminSpacing.gap.md` | `gap-2` | 8 | Button groups, toolbar peers, field label to control |
+| `adminSpacing.gap.lg` | `gap-3` | 12 | Section stacks, panel interiors, main column |
+| `adminSpacing.gap.xl` | `gap-4` | 16 | Workspace bands, filter matrix, main + aside grid |
+
+**Banned:** `gap-5`, `gap-6`, `gap-7`, `gap-8` in `web/src/domains/**` and `web/src/pages/**` (CI: `ui_slop.sh`).
+
+**Margin:** avoid ad-hoc `m-*` / `mt-*` between bands; use `PageLayout` bands, `adminSpacing.flex.sectionStack`, or grid tracks (`frontend-slop.mdc` **Layout contract**).
+
+#### Inset scale (padding)
+
+| Token | Class | Use |
+| :--- | :--- | :--- |
+| `adminSpacing.inset.canvas` | `px-6 py-4` | Route canvas (`PageCanvasInset`) |
+| `adminSpacing.inset.panel` | `p-4` | Cards, selection panel, section panels |
+| `adminSpacing.inset.band` | `px-4 py-2` | Dialog section header, table caption |
+| `adminSpacing.inset.bandLg` | `px-4 py-3` | Dialog footer, raised band |
+| `adminSpacing.inset.tableCellX` | `px-4` | Table `th` / `td` horizontal |
+| `adminSpacing.inset.footer` | `px-6 pt-3` | Page footer band |
+| `adminSpacing.inset.emptyState` | `px-6 py-16` | `EmptyState` only |
+
+Control horizontal padding: `adminKit.controlPaddingX` (`px-3`). Do not mix `px-2` on buttons/inputs.
+
+#### Typography roles
+
+| Token | Size / weight | Use |
+| :--- | :--- | :--- |
+| `adminTypography.pageTitle` | 18px bold | Page `h1` only |
+| `adminTypography.sectionTitle` | 13px semibold | Section `h2`, empty state title |
+| `adminTypography.panelTitle` | 13px semibold | Aside control panel title |
+| `adminTypography.body` | 13px regular | Body, controls, table cells |
+| `adminTypography.bodyMuted` | 13px muted | Secondary copy, list meta |
+| `adminTypography.label` | 13px medium | Form labels (`FilterField`) |
+| `adminTypography.labelMuted` | 13px muted | Definition list labels |
+| `adminTypography.caption` | 11px semibold caps | Table headers, column labels |
+| `adminTypography.badge` | 12px (`text-xs`) | Status badges only |
+| `adminTypography.monoData` | 12px mono | UUID, deployment id, secrets |
+
+**Banned in domains/pages:** `text-sm`, `text-base`, `text-xs`, arbitrary `text-[Npx]` (CI gate). **Banned:** `font-bold` outside page title; use role token.
+
+#### Layout flex presets
+
+| Export | Use |
+| :--- | :--- |
+| `adminSpacing.flex.buttonGroup` | Refresh + Export + Create cluster |
+| `adminSpacing.flex.actionsRowEnd` | Dialog footer actions |
+| `adminSpacing.flex.pageHeader` | Title row + header actions |
+| `adminSpacing.flex.workspaceFlat` | Page workspace vertical rhythm |
+| `adminSpacing.grid.filterMatrix` | Directory filter field grid |
+| `COMPACT_TOOLBAR_ROW_CLASS` | Pagination + page size row |
+
+Verify: `bash scripts/ci/admin/ui_slop.sh`
+
 ### Typography
 
 | Content | Face | Class |
@@ -604,14 +666,17 @@ Use color **only** to encode data or state. Decorative gradients, glow, and per-
 
 | Rule | Detail |
 | :--- | :--- |
-| Table body | `13px`; headers `12px`, `font-weight: 600`, `--admin-muted` |
-| Row height | `34px` in `.admin-table--campaigns` (dense tracker-like, not airy cards) |
-| Headings | `tracking-tight`; page title in `admin-page-header` only |
+| Table body | `adminTypography.body` (13px / 18px line) |
+| Table header | `adminTypography.caption` (11px semibold caps) |
+| Row height | `adminKit.tableRowHeight` (`34px`) |
+| Headings | `adminTypography.pageTitle` / `sectionTitle` only; `tracking-tight` on page title |
 | Mono misuse | Never `font-mono` for money or KPI columns |
 
 ### Controls
 
 Use `web/src/components/ui/*` primitives + `admin_kit.ts` / `admin_chrome.ts` tokens. **No** `.admin-btn` / `.admin-input` BEM classes in TSX or new CSS.
+
+Primitive stack (variant vs action, shell roles, import matrix): `frontend-primitives.mdc`. Frontend patterns (паттерны фронтенда): `frontend-patterns.mdc`.
 
 | Control | Owner | Notes |
 | :--- | :--- | :--- |

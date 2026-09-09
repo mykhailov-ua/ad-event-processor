@@ -42,7 +42,6 @@ export type CampaignsDirectoryProps = {
   customerNameById: Record<string, string>;
   metricsById: Record<string, CampaignListMetrics>;
   marginsById: Record<string, CampaignMargin>;
-  columnWidthProbe?: CampaignListColumnWidthProbe;
   appliedCustomerId: string;
   appliedStatus: CampaignStatusFilter;
   appliedSort: CampaignSortField;
@@ -72,6 +71,8 @@ export type CampaignsDirectoryProps = {
   fetching: boolean;
   listRevalidating?: boolean;
   error: Error | undefined;
+  metricsError: Error | undefined;
+  filterTotalsError: Error | undefined;
   hasSnapshot: boolean;
   filtersActive: boolean;
   customerId: string | undefined;
@@ -91,12 +92,11 @@ export type CampaignsDirectoryProps = {
   onDraftPacingChange: (pacing: CampaignPacingFilter) => void;
   onDraftOwnerUserIdChange: (ownerUserId: string) => void;
   onDraftCountryChange: (country: string) => void;
+  onDirectoryFiltersApply: () => void;
   onDraftBudgetMinUsdChange: (value: string) => void;
   onDraftBudgetMaxUsdChange: (value: string) => void;
-  onBudgetFiltersApply: () => void;
   onStatsRangeChange: (from: string, to: string) => void;
   onRefreshList: () => void;
-  onColumnSort: (field: CampaignSortField) => void;
   onPageChange: (nextOffset: number) => void;
   onPageSizeChange: (size: number) => void;
   onDraftTemplateIdChange: (templateId: string) => void;

@@ -77,6 +77,111 @@ func TestSafePageAttestation_timezoneMismatch(t *testing.T) {
 	require.Equal(t, safePageAttestTimezoneSpoof, code)
 }
 
+func TestSafePageAttestation_timezoneOffPasses(t *testing.T) {
+	fp := validAdvancedFingerprint()
+	fp.Timezone = "Europe/Warsaw"
+	fail, code := evaluateSafePageAttestation(safePageAttestationInput{
+		Country:      "US",
+		TimezoneMode: domain.TimezoneAttestationModeOff,
+		Fingerprint:  fp,
+		NowUnix:      time.Date(2026, 8, 16, 12, 0, 0, 0, time.UTC).Unix(),
+	})
+	require.False(t, fail)
+	require.Equal(t, "", code)
+}
+
+func TestSafePageAttestation_timezoneIPCountryWarsawFails(t *testing.T) {
+	fp := validAdvancedFingerprint()
+	fp.Timezone = "Europe/Warsaw"
+	fail, code := evaluateSafePageAttestation(safePageAttestationInput{
+		Country:      "US",
+		TimezoneMode: domain.TimezoneAttestationModeIPCountry,
+		Fingerprint:  fp,
+		NowUnix:      time.Date(2026, 8, 16, 12, 0, 0, 0, time.UTC).Unix(),
+	})
+	require.True(t, fail)
+	require.Equal(t, safePageAttestTimezoneSpoof, code)
+}
+
+func TestSafePageAttestation_timezoneCampaignTargetUSIPPLTargetPasses(t *testing.T) {
+	fp := validAdvancedFingerprint()
+	fp.Timezone = "Europe/Warsaw"
+	fail, code := evaluateSafePageAttestation(safePageAttestationInput{
+		Country:         "US",
+		TargetCountries: map[string]struct{}{"PL": {}},
+		TimezoneMode:    domain.TimezoneAttestationModeCampaignTarget,
+		Fingerprint:     fp,
+		NowUnix:         time.Date(2026, 8, 16, 12, 0, 0, 0, time.UTC).Unix(),
+	})
+	require.False(t, fail)
+	require.Equal(t, "", code)
+}
+
+func TestSafePageAttestation_timezoneCampaignTargetPLIPPasses(t *testing.T) {
+	fp := validAdvancedFingerprint()
+	fp.Timezone = "Europe/Warsaw"
+	fail, code := evaluateSafePageAttestation(safePageAttestationInput{
+		Country:      "PL",
+		TimezoneMode: domain.TimezoneAttestationModeCampaignTarget,
+		Fingerprint:  fp,
+		NowUnix:      time.Date(2026, 8, 16, 12, 0, 0, 0, time.UTC).Unix(),
+	})
+	require.False(t, fail)
+	require.Equal(t, "", code)
+}
+
+func TestSafePageAttestation_timezoneIPCountryUnknownCountryFailOpen_holdout(t *testing.T) {
+	fp := validAdvancedFingerprint()
+	fp.Timezone = "Europe/Warsaw"
+	fail, code := evaluateSafePageAttestation(safePageAttestationInput{
+		Country:      "PH",
+		TimezoneMode: domain.TimezoneAttestationModeIPCountry,
+		Fingerprint:  fp,
+		NowUnix:      time.Date(2026, 8, 16, 12, 0, 0, 0, time.UTC).Unix(),
+	})
+	require.False(t, fail)
+	require.Equal(t, "", code)
+}
+
+func TestSafePageAttestation_network_proxyAnonymous(t *testing.T) {
+	fail, code := evaluateSafePageAttestation(safePageAttestationInput{
+		IngestAnonymous:      true,
+		ProxyVPNBlockEnabled: true,
+		ConnTypePolicy:       domain.ConnTypeBlockVPNHosting,
+		Fingerprint:          validAdvancedFingerprint(),
+		Events:               humanMouseEvents(18),
+		BehaviorScore:        safePageVerifyMinEvents + 3,
+	})
+	require.True(t, fail)
+	require.Equal(t, safePageAttestProxyAnonymous, code)
+}
+
+func TestSafePageAttestation_network_anonymousNoProxyBlockPasses(t *testing.T) {
+	fail, code := evaluateSafePageAttestation(safePageAttestationInput{
+		IngestAnonymous:      true,
+		ProxyVPNBlockEnabled: false,
+		ConnTypePolicy:       domain.ConnTypeMobileOnly,
+		Fingerprint:          validAdvancedFingerprint(),
+		Events:               humanMouseEvents(18),
+		BehaviorScore:        safePageVerifyMinEvents + 3,
+	})
+	require.False(t, fail)
+	require.Equal(t, "", code)
+}
+
+func TestSafePageAttestation_network_cleanIPPasses(t *testing.T) {
+	fail, code := evaluateSafePageAttestation(safePageAttestationInput{
+		IngestAnonymous:      false,
+		ProxyVPNBlockEnabled: true,
+		ConnTypePolicy:       domain.ConnTypeBlockVPNHosting,
+		Fingerprint:          validAdvancedFingerprint(),
+		Events:               humanMouseEvents(18),
+		BehaviorScore:        safePageVerifyMinEvents + 3,
+	})
+	require.False(t, fail)
+	require.Equal(t, "", code)
+}
+
 func TestSafePageAttestation_webglAutomation(t *testing.T) {
 	fail, code := evaluateSafePageAttestation(safePageAttestationInput{
 		Fingerprint: safePageVerifyFingerprint{

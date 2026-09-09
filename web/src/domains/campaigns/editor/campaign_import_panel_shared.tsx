@@ -28,16 +28,14 @@ export function ImportField({
   id,
   label,
   children,
-  className,
 }: {
   id: string;
   label: string;
   children: ReactNode;
-  className?: string;
 }) {
   return (
     <label
-      className={cn('flex flex-col gap-1 text-sm font-medium text-foreground', className)}
+     
       htmlFor={id}
     >
       {label}

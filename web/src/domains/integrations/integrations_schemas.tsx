@@ -1,6 +1,4 @@
-import { PageChrome } from '@/shell/page_chrome';
 import { EmptyState } from '@/shell/empty_state';
-import { ErrorBlock } from '@/shell/error_block';
 import { PageSkeleton } from '@/shell/page_skeleton';
 import { Button } from '@/components/ui/button';
 import {
@@ -21,7 +19,10 @@ import {
   IntegrationSchemaCreateForm,
   IntegrationTemplateImportForm,
 } from '@/domains/integrations/integration_schema_form';
-import { IntegrationsNav, integrationsPanelError } from '@/domains/integrations/integrations_nav';
+import {
+  IntegrationsPageWithLoad,
+  integrationsPanelError,
+} from '@/domains/integrations/integrations_nav';
 import { JsonPayloadView } from '@/shell/json_payload_view';
 import { displayTimestamp } from '@/lib/display';
 
@@ -95,24 +96,13 @@ export function IntegrationsSchemas({
   importForm,
   viewSchema,
 }: IntegrationsSchemasProps) {
-  if (fetching && !hasSnapshot && !error) {
-    return <PageSkeleton />;
-  }
-
-  if (error && !hasSnapshot) {
-    return (
-      <PageChrome title="Schemas and templates">
-        <IntegrationsNav />
-        {integrationsPanelError(error, 'Could not load integration schemas')}
-      </PageChrome>
-    );
-  }
-
   return (
-    <PageChrome title="Schemas and templates">
-      <IntegrationsNav />
-
-      <div className="flex flex-wrap gap-2">
+    <IntegrationsPageWithLoad
+      blockingErrorTitle="Could not load integration schemas"
+      fetchState={{ error, fetching, hasSnapshot }}
+      title="Schemas and templates"
+    >
+      <div >
         {SCHEMAS_TABS.map((item) => (
           <Button
             key={item.id}
@@ -126,7 +116,7 @@ export function IntegrationsSchemas({
       </div>
 
       {tab === 'schemas' ? (
-        <section className="grid gap-4">
+        <section >
           <IntegrationSchemaCreateForm
             draftName={createForm.draftName}
             draftVersion={createForm.draftVersion}
@@ -153,8 +143,8 @@ export function IntegrationsSchemas({
             onApply={applyForm.onApply}
           />
 
-          <div className="grid gap-2">
-            <h2 className="text-base font-semibold">Schemas</h2>
+          <div >
+            <h2 >Schemas</h2>
             {schemas.length === 0 ? (
               <EmptyState title="No schemas" description="Integration schema catalog is empty." />
             ) : (
@@ -165,14 +155,14 @@ export function IntegrationsSchemas({
                     <DirectoryTableHead>Kind</DirectoryTableHead>
                     <DirectoryTableHead>Version</DirectoryTableHead>
                     <DirectoryTableHead>Updated</DirectoryTableHead>
-                    <DirectoryTableHead className="w-[5rem]">Actions</DirectoryTableHead>
+                    <DirectoryTableHead >Actions</DirectoryTableHead>
                   </TableRow>
                 </TableHeader>
                 <TableBody>
                   {schemas.map((row) => (
                     <TableRow
                       key={row.id}
-                      className="cursor-pointer"
+                     
                       onClick={() => applyForm.onPrefillFromSchema(row)}
                     >
                       <TableCell>{row.name}</TableCell>
@@ -199,20 +189,20 @@ export function IntegrationsSchemas({
           </div>
 
           {viewSchema.fetching ? <PageSkeleton /> : null}
-          {viewSchema.error ? (
-            <ErrorBlock title="Could not load schema" message={viewSchema.error.message} />
-          ) : null}
+          {viewSchema.error
+            ? integrationsPanelError(viewSchema.error, 'Could not load schema')
+            : null}
           {viewSchema.schema ? (
-            <section className="grid gap-4">
-              <div className="grid grid-cols-[1fr_auto] items-center gap-2">
-                <h2 className="text-base font-semibold">
+            <section >
+              <div >
+                <h2 >
                   {viewSchema.schema.name ?? viewSchema.schema.id}
                 </h2>
                 <Button type="button" variant="ghost" onClick={viewSchema.onClose}>
                   Close
                 </Button>
               </div>
-              <pre className="ui-code-block overflow-x-auto">
+              <pre >
                 {JSON.stringify(viewSchema.schema.schema, null, 2)}
               </pre>
               <JsonPayloadView payload={viewSchema.schema} />
@@ -222,7 +212,7 @@ export function IntegrationsSchemas({
       ) : null}
 
       {tab === 'templates' ? (
-        <section className="grid gap-4">
+        <section >
           <IntegrationTemplateImportForm
             draftTemplateNames={importForm.draftTemplateNames}
             importing={importForm.importing}
@@ -233,8 +223,8 @@ export function IntegrationsSchemas({
             onImport={importForm.onImport}
           />
 
-          <div className="grid gap-2">
-            <h2 className="text-base font-semibold">Templates</h2>
+          <div >
+            <h2 >Templates</h2>
             {templates.length === 0 ? (
               <EmptyState
                 title="No templates"
@@ -266,7 +256,6 @@ export function IntegrationsSchemas({
         </section>
       ) : null}
 
-      {error && hasSnapshot ? integrationsPanelError(error, 'Refresh failed') : null}
-    </PageChrome>
+    </IntegrationsPageWithLoad>
   );
 }

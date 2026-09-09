@@ -76,8 +76,10 @@ func TestOpenRTB26_Exchange_Core_LatencySLA(t *testing.T) {
 	latencies := make([]time.Duration, 0, samples)
 	for range samples {
 		var evt domain.Event
+		var out openrtbExchangeOutcome
+		var targeting wireTargeting
 		start := time.Now()
-		out := runOpenRTBExchangeParsed(proc, &p.OpenRTB26Hot, &p.OpenRTB26Cold, []byte("bid-sla"), "8.8.8.8", exCfg, &admBuf, &evt)
+		runOpenRTBExchangeParsed(proc, &p.OpenRTB26Hot, &p.OpenRTB26Cold, []byte("bid-sla"), "8.8.8.8", exCfg, &admBuf, &evt, &out, &targeting)
 		latencies = append(latencies, time.Since(start))
 		require.True(t, out.HasBid)
 	}
@@ -134,9 +136,49 @@ func BenchmarkRunOpenRTBExchangeParsed(b *testing.B) {
 	p := ParseOpenRTB26(body)
 	exCfg := openrtb.ExchangeConfig{MultiImpMax: 1, SeatID: []byte("1")}
 	var admBuf [openrtb26ImpMax][512]byte
+	var out openrtbExchangeOutcome
+	var targeting wireTargeting
+	var evt domain.Event
+	bidID := []byte("bid-bench")
 	b.ReportAllocs()
 	for b.Loop() {
-		var evt domain.Event
-		_ = runOpenRTBExchangeParsed(proc, &p.OpenRTB26Hot, &p.OpenRTB26Cold, []byte("bid-bench"), "8.8.8.8", exCfg, &admBuf, &evt)
+		releaseAttachedFraudAccumulator(&evt)
+		evt.Reset()
+		runOpenRTBExchangeParsed(proc, &p.OpenRTB26Hot, &p.OpenRTB26Cold, bidID, "8.8.8.8", exCfg, &admBuf, &evt, &out, &targeting)
+	}
+}
+
+func TestRunOpenRTBExchangeParsed_zeroAlloc(t *testing.T) {
+	store := rtb.NewBudgetStore()
+	catalog := NewRtbCatalog(store, BudgetAuthorityRTB)
+	winnerID := uuid.New()
+	geo := GeoHashFromCountry("US")
+	catalog.SyncActiveCampaigns(
+		[]*domain.Campaign{{ID: winnerID, BudgetLimit: 50_000_000}},
+		map[uuid.UUID]RtbCampaignInput{
+			winnerID: {BidMicro: 2_000_000, DeviceMask: 7, CategoryMask: 3, GeoHash: geo, Weight: 1},
+		},
+	)
+	proc := trackProcessor{
+		rtbCatalog: catalog,
+		rtbMode:    rtbModeLive,
+		ingestGeo:  &staticGeoProvider{country: "US"},
+	}
+	body := validExchangeBody()
+	p := ParseOpenRTB26(body)
+	exCfg := openrtb.ExchangeConfig{MultiImpMax: 1, SeatID: []byte("1")}
+	var admBuf [openrtb26ImpMax][512]byte
+	var out openrtbExchangeOutcome
+	var targeting wireTargeting
+	var evt domain.Event
+	bidID := []byte("bid-bench")
+
+	allocs := testing.AllocsPerRun(100, func() {
+		releaseAttachedFraudAccumulator(&evt)
+		evt.Reset()
+		runOpenRTBExchangeParsed(proc, &p.OpenRTB26Hot, &p.OpenRTB26Cold, bidID, "8.8.8.8", exCfg, &admBuf, &evt, &out, &targeting)
+	})
+	if allocs != 0 {
+		t.Fatalf("runOpenRTBExchangeParsed allocs=%v want 0", allocs)
 	}
 }

@@ -30,6 +30,7 @@ type ReportJobSpec struct {
 	ExportedBy       string          `json:"exported_by,omitempty"`
 	ImportSourceKind string          `json:"import_source_kind,omitempty"`
 	ImportPayload    json.RawMessage `json:"import_payload,omitempty"`
+	RowLimit         int             `json:"row_limit,omitempty"`
 }
 
 type ReportJobStatusDTO struct {
@@ -90,6 +91,10 @@ func (r *ReportJobRunner) CreateJob(ctx context.Context, spec ReportJobSpec, ide
 		}
 	}
 	spec.Format = format
+	if format != "csv" && format != "json" && format != "zip" {
+		return "", fmt.Errorf("format must be csv, json, or zip")
+	}
+	spec.RowLimit = r.normalizeExportRowLimit(ctx, spec.ReportKey, spec.RowLimit)
 	if _, _, err := ParseReportRangeFromStrings(spec.From, spec.To); err != nil {
 		if spec.ReportKey != CampaignImportValidationReportKey {
 			return "", err
@@ -229,6 +234,22 @@ func (r *ReportJobRunner) OpenDownload(ctx context.Context, jobID string) (*os.F
 	return f, dto, nil
 }
 
+func (r *ReportJobRunner) normalizeExportRowLimit(ctx context.Context, reportKey string, requested int) int {
+	chunkBytes := uint64(0)
+	if r != nil && r.deps.ExportChunkMaxBytes != nil {
+		chunkBytes = uint64(r.deps.ExportChunkMaxBytes(ctx))
+	}
+	tierMax := ResolveExportRowLimitTierMax(chunkBytes, r.reportLicenseGated(reportKey))
+	return NormalizeExportRowLimit(requested, tierMax)
+}
+
+func (r *ReportJobRunner) reportLicenseGated(reportKey string) bool {
+	if r != nil && r.deps.ReportLicenseGated != nil {
+		return r.deps.ReportLicenseGated(reportKey)
+	}
+	return false
+}
+
 func (r *ReportJobRunner) toDTO(jobID string, rec *reportJobRecord) ReportJobStatusDTO {
 	return ReportJobStatusDTO{
 		ID:         jobID,
@@ -238,7 +259,7 @@ func (r *ReportJobRunner) toDTO(jobID string, rec *reportJobRecord) ReportJobSta
 		Format:     rec.spec.Format,
 		Status:     rec.status,
 		Bytes:      rec.bytes,
-		Error:      rec.errMsg,
+		Error:      SanitizeExportJobError(rec.errMsg),
 		CreatedAt:  rec.createdAt.Format(time.RFC3339),
 	}
 }

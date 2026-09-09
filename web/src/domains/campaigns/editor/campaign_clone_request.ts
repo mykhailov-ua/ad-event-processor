@@ -21,6 +21,16 @@ export function buildCloneRequestBody(
   return body;
 }
 
+export function cloneRequestError(err: unknown): Error {
+  if (err instanceof ApiError) {
+    return err;
+  }
+  if (err instanceof Error) {
+    return err;
+  }
+  return new Error(String(err));
+}
+
 export function cloneMutationErrorMessage(error: Error): string {
   if (error instanceof ApiError && error.message.toLowerCase().includes('insufficient balance')) {
     return 'Customer balance is too low to reserve this campaign budget. Reduce budget_limit or increase customer balance, then retry clone.';

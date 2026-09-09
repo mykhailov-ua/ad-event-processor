@@ -91,13 +91,22 @@ func (p *ProbeCluster) ExportHotClusters(ctx context.Context, policy probecluste
 		if err != nil {
 			return exported, err
 		}
+		pageIDs := make([]string, 0, len(keys))
 		for _, key := range keys {
 			clusterIDHex := probeClusterIDFromMetaKey(key)
 			if clusterIDHex == "" {
 				continue
 			}
-			summary, ok, err := p.store.GetSummary(ctx, clusterIDHex)
-			if err != nil || !ok || summary.ExportDone {
+			pageIDs = append(pageIDs, clusterIDHex)
+		}
+		summaries, err := p.store.GetSummaryBatch(ctx, pageIDs)
+		if err != nil {
+			return exported, err
+		}
+		upserts := make([]ModeratorCorpusUpsertRequest, 0, len(summaries))
+		exportIDs := make([]string, 0, len(summaries))
+		for clusterIDHex, summary := range summaries {
+			if summary.ExportDone {
 				continue
 			}
 			state := probecluster.State{
@@ -110,7 +119,7 @@ func (p *ProbeCluster) ExportHotClusters(ctx context.Context, policy probecluste
 				continue
 			}
 			note := "probe_cluster:" + clusterIDHex
-			_, err = corpus.UpsertTuple(ctx, ModeratorCorpusUpsertRequest{
+			upserts = append(upserts, ModeratorCorpusUpsertRequest{
 				JA3:           summary.JA3,
 				JA4:           summary.JA4,
 				TCPSig:        summary.TCPSig,
@@ -118,13 +127,17 @@ func (p *ProbeCluster) ExportHotClusters(ctx context.Context, policy probecluste
 				Note:          note,
 				Source:        "probe_cluster",
 			})
+			exportIDs = append(exportIDs, clusterIDHex)
+		}
+		if len(upserts) > 0 {
+			n, err := corpus.upsertTuples(ctx, upserts)
 			if err != nil {
 				return exported, err
 			}
-			if err := p.store.MarkExported(ctx, clusterIDHex); err != nil {
-				return exported, err
+			if err := p.store.MarkExportedBatch(ctx, exportIDs); err != nil {
+				return exported + n, err
 			}
-			exported++
+			exported += n
 		}
 		cursor = next
 		if cursor == 0 {

@@ -16,6 +16,7 @@ import type {
   UpdatePostbackConfigRequest,
 } from '@/api/types';
 import { type IntegrationsPostbacksTab } from '@/domains/integrations/integrations_postbacks';
+import { toError } from '@/lib/admin_error.ts';
 import { mutationError } from '@/lib/mutation_audit';
 import { useCoalescedBumpRefresh, useRefreshToken } from '@/hooks/use_coalesced_refresh_token';
 import { useResource } from '@/api/use_resource';
@@ -127,7 +128,7 @@ export function useIntegrationsPostbacksPageWorkspace() {
       const result = await testPostbackConfig(campaignId);
       setTestResult(result);
     } catch (err: unknown) {
-      setTestError(err instanceof Error ? err : new Error(String(err)));
+      setTestError(toError(err));
     } finally {
       setTesting(false);
     }

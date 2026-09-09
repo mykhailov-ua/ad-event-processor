@@ -1,3 +1,5 @@
+import { buildExportHubHref } from '@/lib/export_hub_paths';
+
 const REPORT_KEY_PATH_OVERRIDES: Record<string, string> = {
   clicks: '/api/v1/reports/clicks',
   'rtb-overview': '/api/v1/reports/rtb/overview',
@@ -14,41 +16,15 @@ const REPORT_KEY_PATH_OVERRIDES: Record<string, string> = {
   'telegram/fraud': '/api/v1/reports/telegram/fraud',
 };
 
-/** OpenAPI reportClicks alias; catalog and SPA use click-log. */
 export const REPORT_CATALOG_KEY_ALIASES: Record<string, string> = {
   clicks: 'click-log',
   'ghost-impression-funnel': 'silent-reject-impression-funnel',
 };
 
-export function reportHubPath(key: string): string {
-  if (key === 'click-log') {
-    return '/reports/click-log';
-  }
-  if (key === 'rtb-overview' || key === 'rtb-no-bid-reasons' || key === 'rtb-geo-device') {
-    return '/rtb';
-  }
-  if (key === 'telegram') {
-    return '/reports/telegram';
-  }
-  if (key.startsWith('telegram/')) {
-    return `/reports/telegram/${key.slice('telegram/'.length)}`;
-  }
-  if (key.startsWith('ml/')) {
-    return `/reports/ml/${key.slice('ml/'.length)}`;
-  }
-  if (key.includes('/')) {
-    return `/reports/${encodeURIComponent(key)}`;
-  }
-  return `/reports/${encodeURIComponent(key)}`;
-}
-
-/** Async ZIP export jobs only; no synchronous GET report body. */
 export const TYPED_EXPORT_ONLY_REPORT_KEYS = new Set(['fraud-evidence-pack-bulk']);
 
-/** CI live_routes gate scans this name for export-only catalog keys. */
 export const EXPORT_ONLY_REPORT_KEYS = TYPED_EXPORT_ONLY_REPORT_KEYS;
 
-/** Catalog keys with dedicated typed admin pages (registered before reports/:key). */
 export const TYPED_CUSTOMER_REPORT_KEYS = new Set([
   'click-log',
   'customer-fraud-by-type',
@@ -112,17 +88,6 @@ export const TYPED_RTB_REPORT_KEYS = new Set([
   'rtb-geo-device',
 ]);
 
-export function typedReportRedirectPath(key: string): string | undefined {
-  const resolved = resolveReportCatalogKey(key);
-  if (!isTypedCatalogReportKey(resolved)) {
-    return undefined;
-  }
-  if (TYPED_RTB_REPORT_KEYS.has(resolved)) {
-    return '/rtb';
-  }
-  return reportHubPath(resolved);
-}
-
 export function isTypedCatalogReportKey(key: string): boolean {
   const resolved = resolveReportCatalogKey(key);
   return (
@@ -141,6 +106,90 @@ export function resolveReportCatalogKey(key: string): string {
   return REPORT_CATALOG_KEY_ALIASES[key] ?? key;
 }
 
+const REPORT_TITLE_ACRONYMS = new Set(['roi', 'ivt', 'ml', 'rtb', 'rtt', 'kpi', 'cpa', 'csv']);
+
+const REPORT_TITLE_OVERRIDES: Record<string, string> = {
+  'campaign-geo-device': 'Campaign geo and device',
+  'campaign-overview': 'Campaign overview',
+  'campaign-stats': 'Campaign stats',
+  'campaign-toggle-cohort': 'Campaign toggle cohort',
+  'click-log': 'Click log',
+  'conversion-type-payout': 'Conversion type payout',
+  'cost-sync-coverage': 'Cost sync coverage',
+  'customer-fraud-by-dimension': 'Fraud by dimension',
+  'customer-fraud-by-type': 'Fraud by type',
+  'customer-fraud-evidence': 'Dispute evidence',
+  'customer-portfolio': 'Customer portfolio',
+  'data-quality': 'Data quality',
+  'daypart-heatmap': 'Daypart heatmap',
+  'discrepancy-buy-sell': 'Buy vs sell discrepancy',
+  'edge-parity': 'Edge parity',
+  'filter-rejects': 'Filter rejects',
+  'fraud-breakdown': 'Fraud breakdown',
+  'fraud-evidence-pack': 'Fraud evidence pack',
+  'fraud-evidence-pack-bulk': 'Fraud evidence pack bulk',
+  'geo-roi': 'Geo ROI',
+  'ivt-by-source': 'IVT by source',
+  keywords: 'Keywords',
+  'layer-desync-drilldown': 'Layer desync drilldown',
+  'layer-desync-summary': 'Layer desync summary',
+  'ml/feature-spikes': 'ML feature spikes',
+  'ml/score-distribution': 'ML score distribution',
+  'ml/shadow-delta': 'ML shadow delta',
+  'pacing-drift': 'Pacing drift',
+  placements: 'Placements',
+  'postback-reconciliation': 'Postback reconciliation',
+  'rtb-geo-device': 'RTB geo and device',
+  'rtb-no-bid-reasons': 'RTB no-bid reasons',
+  'rtb-overview': 'RTB overview',
+  'rtt-split-tunnel': 'RTT split tunnel',
+  'signal-effectiveness': 'Signal effectiveness',
+  'silent-reject-impression-funnel': 'Non-blocking fraud response funnel',
+  'source-quality': 'Source quality',
+  'spend-velocity': 'Spend velocity',
+  telegram: 'Telegram Mini App rollup',
+  'telegram/bots': 'Telegram bot performance',
+  'telegram/fraud': 'Telegram fraud signals',
+  'telegram/funnel': 'Telegram conversion funnel',
+  'telegram/premium': 'Telegram premium users',
+  'telegram/summary': 'Telegram summary KPIs',
+  'traffic-sources': 'Traffic sources',
+  'true-roi': 'True ROI',
+  'wire-signal-breakdown': 'Wire signal breakdown',
+};
+
+function humanizeReportKeyPart(part: string): string {
+  const lower = part.toLowerCase();
+  if (REPORT_TITLE_ACRONYMS.has(lower)) {
+    return lower.toUpperCase();
+  }
+  return lower.charAt(0).toUpperCase() + lower.slice(1);
+}
+
+export function reportTitleFromKey(reportKey: string): string {
+  const normalized = resolveReportCatalogKey(reportKey);
+  const override = REPORT_TITLE_OVERRIDES[normalized];
+  if (override) {
+    return override;
+  }
+  return normalized
+    .split(/[/-]/)
+    .filter(Boolean)
+    .map(humanizeReportKeyPart)
+    .join(' ');
+}
+
+export function resolveReportDisplayTitle(
+  reportKey: string,
+  catalogTitle?: string | null
+): string {
+  const fromCatalog = catalogTitle?.trim();
+  if (fromCatalog && fromCatalog !== reportKey) {
+    return fromCatalog;
+  }
+  return reportTitleFromKey(reportKey);
+}
+
 export type ReportJobsHrefParams = {
   reportKey?: string;
   customerId?: string;
@@ -151,27 +200,15 @@ export type ReportJobsHrefParams = {
 };
 
 export function buildReportJobsHref(params: ReportJobsHrefParams = {}): string {
-  const search = new URLSearchParams();
-  if (params.reportKey?.trim()) {
-    search.set('report_key', params.reportKey.trim());
-  }
-  if (params.customerId?.trim()) {
-    search.set('customer_id', params.customerId.trim());
-  }
-  if (params.from?.trim()) {
-    search.set('from', params.from.trim());
-  }
-  if (params.to?.trim()) {
-    search.set('to', params.to.trim());
-  }
-  if (params.format?.trim()) {
-    search.set('format', params.format.trim());
-  }
-  if (params.jobId?.trim()) {
-    search.set('job_id', params.jobId.trim());
-  }
-  const query = search.toString();
-  return query ? `/reports/jobs?${query}` : '/reports/jobs';
+  return buildExportHubHref({
+    reportKey: params.reportKey,
+    customerId: params.customerId,
+    from: params.from,
+    to: params.to,
+    format: params.format,
+    jobId: params.jobId,
+    kind: 'report',
+  });
 }
 
 export function reportKeyToApiPath(key: string): string {
@@ -200,4 +237,23 @@ export function defaultReportRange(defaultRange?: string): { from: string; to: s
   }
 
   return { from: from.toISOString(), to: to.toISOString() };
+}
+
+export function allTypedCatalogReportKeys(): Set<string> {
+  const keys = new Set<string>();
+  for (const set of [
+    TYPED_CUSTOMER_REPORT_KEYS,
+    TYPED_RTB_REPORT_KEYS,
+    TYPED_TELEGRAM_REPORT_KEYS,
+    TYPED_OPS_REPORT_KEYS,
+    TYPED_ML_REPORT_KEYS,
+    TYPED_CAMPAIGN_STATS_REPORT_KEYS,
+    TYPED_EVIDENCE_PACK_REPORT_KEYS,
+    TYPED_EXPORT_ONLY_REPORT_KEYS,
+  ]) {
+    for (const key of set) {
+      keys.add(key);
+    }
+  }
+  return keys;
 }

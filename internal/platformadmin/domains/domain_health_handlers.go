@@ -187,6 +187,10 @@ func (h *DomainHealthHTTPHandlers) setupSSL(w http.ResponseWriter, r *http.Reque
 	host := r.PathValue("hostname")
 	result, err := h.Service.SetupDomainSSL(r.Context(), host)
 	if err != nil {
+		if strings.Contains(err.Error(), "ssl setup script not found") {
+			httpresponse.Error(w, http.StatusNotImplemented, "NOT_IMPLEMENTED", err.Error())
+			return
+		}
 		httpresponse.Error(w, http.StatusServiceUnavailable, "UNAVAILABLE", err.Error())
 		return
 	}

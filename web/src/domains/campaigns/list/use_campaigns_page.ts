@@ -1,6 +1,5 @@
 // campaigns page owner: URL searchParams are applied filters; draft* until commit; delegates list fetch to useCampaignsPageList.
 import { useCallback, useEffect, useMemo, useState } from 'react';
-import { toast } from 'sonner';
 
 import {
   microQueryParamToUsdInput,
@@ -24,13 +23,7 @@ import {
   validateCampaignListStatsDraft,
   type CampaignListQueryPatch,
 } from '@/domains/campaigns/list/campaigns_list_query';
-import { isCampaignListAuxEndpointUnavailable } from '@/domains/campaigns/list/campaign_list_aux_error';
 import { campaignListSelectionScopeKey } from '@/domains/campaigns/list/campaign_list_selection_scope';
-import {
-  campaignListSortNeedsMetricWindow,
-  campaignListSortStartsDesc,
-  campaignListSortToApi,
-} from '@/domains/campaigns/list/campaign_list_sort';
 import type { CampaignsDirectoryProps } from '@/domains/campaigns/list/campaigns_directory_types';
 import type {
   CampaignPacingFilter,
@@ -43,7 +36,6 @@ import { useSession } from '@/hooks/use_session';
 import { useCoalescedBumpRefresh, useRefreshToken } from '@/hooks/use_coalesced_refresh_token';
 import { useTransitionSearchParams } from '@/hooks/use_transition_search_params';
 import { useTrackerHeaderSearchRegistration } from '@/lib/tracker_header_context';
-import { userErrorMessage } from '@/lib/admin_error';
 import { DEFAULT_LIST_LIMIT } from '@/lib/list_query';
 import { toDatetimeLocalValue } from '@/lib/datetime_range';
 
@@ -154,7 +146,6 @@ export function useCampaignsPage(): CampaignsDirectoryProps {
     error,
     fetching,
     listRevalidating,
-    columnWidthProbe,
     metricsById,
     marginsById,
     countryOptions,
@@ -189,16 +180,24 @@ export function useCampaignsPage(): CampaignsDirectoryProps {
 
   const refreshList = useCoalescedBumpRefresh(bumpRefresh, fetching || listRevalidating);
 
+  const onCreateSectionOpenChange = useCallback(
+    (open: boolean) => {
+      if (open) {
+        setDraftCreateCustomerId(appliedCustomerId || customerId || '');
+      }
+      setCreateSectionOpen(open);
+    },
+    [appliedCustomerId, customerId]
+  );
+
   const { onLoadTemplates, onCreateCampaign } = useCampaignsPageMutations({
     customerId,
     appliedCustomerId,
-    createSectionOpen,
-    setCreateSectionOpen,
     templates,
+    templatesFetching: templatesLoading,
     draftTemplateId,
     setDraftTemplateId,
     draftCreateCustomerId,
-    setDraftCreateCustomerId,
     draftCreateName,
     setDraftCreateName,
     draftBudgetLimitMicro,
@@ -206,6 +205,8 @@ export function useCampaignsPage(): CampaignsDirectoryProps {
     setCreating,
     setActionError,
     setTemplatesRefreshToken,
+    setCreateSectionOpen,
+    createSectionOpen,
     refreshList,
   });
 
@@ -217,24 +218,6 @@ export function useCampaignsPage(): CampaignsDirectoryProps {
     setDraftCreateName('');
     setDraftBudgetLimitMicro('');
   }, [createSectionOpen]);
-
-  useEffect(() => {
-    if (error && data != null) {
-      toast.error(userErrorMessage(error, 'Could not refresh campaign list'));
-    }
-  }, [data, error]);
-
-  useEffect(() => {
-    if (metricsError && data != null) {
-      toast.error(userErrorMessage(metricsError, 'Could not load campaign metrics'));
-    }
-  }, [data, metricsError]);
-
-  useEffect(() => {
-    if (filterTotalsError && !isCampaignListAuxEndpointUnavailable(filterTotalsError)) {
-      toast.error(userErrorMessage(filterTotalsError, 'Could not load filter totals'));
-    }
-  }, [filterTotalsError]);
 
   const updateQuery = useCallback(
     (patch: CampaignListQueryPatch) => {
@@ -258,60 +241,47 @@ export function useCampaignsPage(): CampaignsDirectoryProps {
     [updateQuery]
   );
 
-  const onDraftCustomerIdChange = useCallback(
-    (nextCustomerId: string) => {
-      setDraftCustomerId(nextCustomerId);
-      updateQuery({
-        customer_id: nextCustomerId.trim() || undefined,
-        offset: 0,
-      });
-    },
-    [updateQuery]
-  );
+  const onDraftCustomerIdChange = useCallback((nextCustomerId: string) => {
+    setDraftCustomerId(nextCustomerId);
+  }, []);
 
-  const onDraftStatusChange = useCallback(
-    (status: CampaignStatusFilter) => {
-      setDraftStatus(status);
-      updateQuery({
-        status: status || undefined,
-        offset: 0,
-      });
-    },
-    [updateQuery]
-  );
+  const onDraftStatusChange = useCallback((status: CampaignStatusFilter) => {
+    setDraftStatus(status);
+  }, []);
 
-  const onDraftPacingChange = useCallback(
-    (pacing: CampaignPacingFilter) => {
-      setDraftPacing(pacing);
-      updateQuery({
-        pacing_mode: pacing || undefined,
-        offset: 0,
-      });
-    },
-    [updateQuery]
-  );
+  const onDraftPacingChange = useCallback((pacing: CampaignPacingFilter) => {
+    setDraftPacing(pacing);
+  }, []);
 
-  const onDraftOwnerUserIdChange = useCallback(
-    (ownerUserId: string) => {
-      setDraftOwnerUserId(ownerUserId);
-      updateQuery({
-        owner_user_id: ownerUserId || undefined,
-        offset: 0,
-      });
-    },
-    [updateQuery]
-  );
+  const onDraftOwnerUserIdChange = useCallback((ownerUserId: string) => {
+    setDraftOwnerUserId(ownerUserId);
+  }, []);
 
-  const onDraftCountryChange = useCallback(
-    (country: string) => {
-      setDraftCountry(country);
-      updateQuery({
-        country: country || undefined,
-        offset: 0,
-      });
-    },
-    [updateQuery]
-  );
+  const onDraftCountryChange = useCallback((country: string) => {
+    setDraftCountry(country);
+  }, []);
+
+  const onDirectoryFiltersApply = useCallback(() => {
+    updateQuery({
+      customer_id: draftCustomerId.trim() || undefined,
+      status: draftStatus || undefined,
+      pacing_mode: draftPacing || undefined,
+      owner_user_id: draftOwnerUserId || undefined,
+      country: draftCountry || undefined,
+      budget_min_micro: usdInputToMicroQueryParam(draftBudgetMinUsd),
+      budget_max_micro: usdInputToMicroQueryParam(draftBudgetMaxUsd),
+      offset: 0,
+    });
+  }, [
+    draftBudgetMaxUsd,
+    draftBudgetMinUsd,
+    draftCountry,
+    draftCustomerId,
+    draftOwnerUserId,
+    draftPacing,
+    draftStatus,
+    updateQuery,
+  ]);
 
   const onStatsRangeChange = useCallback(
     (from: string, to: string) => {
@@ -336,14 +306,6 @@ export function useCampaignsPage(): CampaignsDirectoryProps {
     [defaultStatsRange.from, defaultStatsRange.to, updateQuery]
   );
 
-  const onBudgetFiltersApply = useCallback(() => {
-    updateQuery({
-      budget_min_micro: usdInputToMicroQueryParam(draftBudgetMinUsd),
-      budget_max_micro: usdInputToMicroQueryParam(draftBudgetMaxUsd),
-      offset: 0,
-    });
-  }, [draftBudgetMaxUsd, draftBudgetMinUsd, updateQuery]);
-
   const onSearchApply = useCallback(() => {
     updateQuery({
       q: draftQ.trim() || undefined,
@@ -363,30 +325,6 @@ export function useCampaignsPage(): CampaignsDirectoryProps {
   );
   useTrackerHeaderSearchRegistration(headerSearchConfig);
 
-  const onColumnSort = useCallback(
-    (field: CampaignSortField) => {
-      const nextOrder =
-        appliedSort === field
-          ? appliedOrder === 'asc'
-            ? 'desc'
-            : 'asc'
-          : campaignListSortStartsDesc(field)
-            ? 'desc'
-            : 'asc';
-      const patch: CampaignListQueryPatch = {
-        sort: field,
-        order: nextOrder,
-        offset: 0,
-      };
-      if (campaignListSortNeedsMetricWindow(campaignListSortToApi(field))) {
-        patch.stats_from = appliedStatsRange.from;
-        patch.stats_to = appliedStatsRange.to;
-      }
-      updateQuery(patch);
-    },
-    [appliedOrder, appliedSort, appliedStatsRange.from, appliedStatsRange.to, updateQuery]
-  );
-
   return {
     items: data?.items,
     total: data?.total ?? 0,
@@ -399,7 +337,6 @@ export function useCampaignsPage(): CampaignsDirectoryProps {
     customerNameById,
     metricsById: metricsById ?? {},
     marginsById: marginsById ?? {},
-    columnWidthProbe,
     appliedCustomerId,
     appliedStatus,
     appliedSort,
@@ -429,12 +366,14 @@ export function useCampaignsPage(): CampaignsDirectoryProps {
     fetching,
     listRevalidating: listRevalidating || listQueryPending,
     error,
+    metricsError,
+    filterTotalsError,
     hasSnapshot: data != null,
     filtersActive,
     customerId,
     createCustomerId: draftCreateCustomerId,
     createSectionOpen,
-    onCreateSectionOpenChange: setCreateSectionOpen,
+    onCreateSectionOpenChange,
     templates,
     templatesLoading,
     templatesError,
@@ -448,12 +387,11 @@ export function useCampaignsPage(): CampaignsDirectoryProps {
     onDraftPacingChange,
     onDraftOwnerUserIdChange,
     onDraftCountryChange,
+    onDirectoryFiltersApply,
     onDraftBudgetMinUsdChange: setDraftBudgetMinUsd,
     onDraftBudgetMaxUsdChange: setDraftBudgetMaxUsd,
-    onBudgetFiltersApply,
     onStatsRangeChange,
     onRefreshList: refreshList,
-    onColumnSort,
     onPageChange,
     onPageSizeChange,
     onDraftTemplateIdChange: setDraftTemplateId,

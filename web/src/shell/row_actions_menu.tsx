@@ -24,12 +24,12 @@ export function RowActionsMenu({
       <DropdownMenuTrigger asChild>
         <button
           aria-label={ariaLabel}
-          className={directoryTableRowMenuButtonClass}
+         
           disabled={disabled}
           type="button"
           onClick={(event) => event.stopPropagation()}
         >
-          <MoreHorizontal aria-hidden="true" className="h-4 w-4" />
+          <MoreHorizontal aria-hidden="true" />
         </button>
       </DropdownMenuTrigger>
       <DropdownMenuContent align="end">{children}</DropdownMenuContent>

@@ -1,4 +1,3 @@
-import type { BuyerPortfolio } from '@/domains/dashboards/buyer_dashboard_types';
 import { formatDashboardCrPct, formatDashboardRoiPct } from '@/lib/display_metrics';
 import { displayCount } from '@/lib/display';
 import type { CampaignListMetrics } from '@/api/campaigns_api';

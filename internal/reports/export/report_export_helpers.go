@@ -61,6 +61,7 @@ func exportCHMapReport(
 	clickhouseQuery *database.ClickHouseQuery,
 	campaignIDs []uuid.UUID,
 	from, to time.Time,
+	maxRows int,
 	queryFn clickhouseReportRowsFunc,
 	headers []string,
 	cols ...string,
@@ -68,7 +69,7 @@ func exportCHMapReport(
 	if err := w.Write(headers); err != nil {
 		return err
 	}
-	return paginateCHExport(reportExportPageSize,
+	return paginateCHExport(reportExportPageSize, maxRows,
 		func(offset, limit int) ([]map[string]any, int64, error) {
 			return queryFn(ctx, clickhouseQuery, campaignIDs, from, to, limit, offset)
 		},

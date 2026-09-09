@@ -2,8 +2,8 @@ import { Link } from 'react-router-dom';
 
 import { PageChrome } from '@/shell/page_chrome';
 import { EmptyState } from '@/shell/empty_state';
-import { ErrorBlock } from '@/shell/error_block';
 import { PageSkeleton } from '@/shell/page_skeleton';
+import { shouldShowDirectoryRefreshError } from '@/shell/directory_load_state';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
 import {
@@ -17,7 +17,7 @@ import {
 import type { BillingInvoiceLine, BillingLedgerLine, Invoice, InvoiceDelivery } from '@/api/types';
 import { CustomerDetailPanel } from '@/domains/customers/customer_detail_panel';
 import { CustomerDetailRow } from '@/domains/customers/customer_detail_row';
-import { BillingNav, billingPanelError } from '@/domains/billing/billing_nav';
+import { billingPanelError } from '@/domains/billing/billing_nav';
 import { displayMicro, displayTimestamp } from '@/lib/display';
 
 export type InvoiceDetailProps = {
@@ -76,7 +76,6 @@ export function InvoiceDetail({
   if (error && !hasSnapshot) {
     return (
       <PageChrome title="Invoice">
-        <BillingNav />
         {billingPanelError(error, 'Could not load invoice')}
       </PageChrome>
     );
@@ -85,7 +84,6 @@ export function InvoiceDetail({
   if (!invoice) {
     return (
       <PageChrome title="Invoice">
-        <BillingNav />
         {billingPanelError(new Error('No invoice data returned.'), 'Invoice not found')}
       </PageChrome>
     );
@@ -93,19 +91,26 @@ export function InvoiceDetail({
 
   const lines = invoice.lines ?? [];
   const status = invoice.status ?? '';
+  const invoiceFetchState = { fetching, error, hasSnapshot };
+  const ledgerHasSnapshot = ledgerLines.length > 0;
+  const deliveriesHasSnapshot = (deliveries ?? []).length > 0;
 
   return (
     <PageChrome
       title={`Invoice ${invoice.billing_month ?? invoice.id}`}
       badge={status ? <Badge variant="outline">{status}</Badge> : undefined}
     >
-      <p className="text-sm text-muted-foreground">
-        <Link className="hover:underline" to="/billing">
+      <p >
+        <Link  to="/billing">
           Billing
         </Link>
       </p>
 
-      <div className="flex flex-wrap gap-2">
+      {shouldShowDirectoryRefreshError(invoiceFetchState) && error
+        ? billingPanelError(error, 'Refresh failed')
+        : null}
+
+      <div >
         <Button disabled={downloadingPdf} onClick={onDownloadPdf} type="button" variant="outline">
           {downloadingPdf ? 'Downloading...' : 'Download PDF'}
         </Button>
@@ -131,14 +136,14 @@ export function InvoiceDetail({
         ) : null}
       </div>
 
-      {actionError ? <ErrorBlock title="Action failed" message={actionError.message} /> : null}
+      {actionError ? billingPanelError(actionError, 'Action failed') : null}
       {voidSuccess ? (
-        <p className="text-sm text-muted-foreground" role="status">
+        <p  role="status">
           Invoice voided.
         </p>
       ) : null}
       {retrySuccess ? (
-        <p className="text-sm text-muted-foreground" role="status">
+        <p  role="status">
           Delivery retry accepted.
         </p>
       ) : null}
@@ -166,11 +171,19 @@ export function InvoiceDetail({
 
       <InvoiceLinesTable caption="Invoice lines" lines={lines} />
 
-      <section className="grid gap-4">
-        <h2 className="text-base font-semibold">Ledger lines</h2>
-        {ledgerError && ledgerLines.length === 0 ? (
-          <ErrorBlock title="Could not load ledger lines" message={ledgerError.message} />
-        ) : ledgerLines.length === 0 && !ledgerFetching ? (
+      <section >
+        <h2 >Ledger lines</h2>
+        {shouldShowDirectoryRefreshError({
+          fetching: ledgerFetching,
+          error: ledgerError,
+          hasSnapshot: ledgerHasSnapshot,
+        }) && ledgerError
+          ? billingPanelError(ledgerError, 'Ledger refresh failed')
+          : null}
+        {ledgerError && !ledgerHasSnapshot
+          ? billingPanelError(ledgerError, 'Could not load ledger lines')
+          : null}
+        {ledgerLines.length === 0 && !ledgerFetching && !ledgerError ? (
           <EmptyState
             title="No ledger lines"
             description="No backing ledger rows for this invoice."
@@ -190,17 +203,22 @@ export function InvoiceDetail({
             ) : null}
           </>
         )}
-        {ledgerError && ledgerLines.length > 0 ? (
-          <ErrorBlock title="Ledger refresh failed" message={ledgerError.message} />
-        ) : null}
       </section>
 
-      <section className="grid gap-4">
-        <h2 className="text-base font-semibold">Deliveries</h2>
-        {deliveriesFetching && (deliveries ?? []).length === 0 ? <PageSkeleton /> : null}
-        {deliveriesError && (deliveries ?? []).length === 0 ? (
-          <ErrorBlock title="Could not load deliveries" message={deliveriesError.message} />
-        ) : (deliveries ?? []).length === 0 && !deliveriesFetching ? (
+      <section >
+        <h2 >Deliveries</h2>
+        {shouldShowDirectoryRefreshError({
+          fetching: deliveriesFetching,
+          error: deliveriesError,
+          hasSnapshot: deliveriesHasSnapshot,
+        }) && deliveriesError
+          ? billingPanelError(deliveriesError, 'Deliveries refresh failed')
+          : null}
+        {deliveriesFetching && !deliveriesHasSnapshot ? <PageSkeleton /> : null}
+        {deliveriesError && !deliveriesHasSnapshot
+          ? billingPanelError(deliveriesError, 'Could not load deliveries')
+          : null}
+        {(deliveries ?? []).length === 0 && !deliveriesFetching && !deliveriesError ? (
           <EmptyState
             title="No deliveries"
             description="No delivery attempts recorded for this invoice."
@@ -208,12 +226,7 @@ export function InvoiceDetail({
         ) : (
           <DeliveriesTable items={deliveries} />
         )}
-        {deliveriesError && (deliveries ?? []).length > 0 ? (
-          <ErrorBlock title="Deliveries refresh failed" message={deliveriesError.message} />
-        ) : null}
       </section>
-
-      {error && hasSnapshot ? <ErrorBlock title="Refresh failed" message={error.message} /> : null}
     </PageChrome>
   );
 }
@@ -221,30 +234,30 @@ export function InvoiceDetail({
 function InvoiceLinesTable({ caption, lines }: { caption: string; lines: BillingInvoiceLine[] }) {
   if (lines.length === 0) {
     return (
-      <section className="grid gap-2">
-        <h2 className="text-base font-semibold">{caption}</h2>
-        <p className="text-sm text-muted-foreground">No line items on this invoice.</p>
+      <section >
+        <h2 >{caption}</h2>
+        <p >No line items on this invoice.</p>
       </section>
     );
   }
 
   return (
-    <section className="grid gap-2">
-      <h2 className="text-base font-semibold">{caption}</h2>
+    <section >
+      <h2 >{caption}</h2>
       <DirectoryTable horizontalScroll>
         <TableHeader>
           <TableRow>
             <DirectoryTableHead>Ledger type</DirectoryTableHead>
-            <DirectoryTableHead className="text-right">Amount (micro)</DirectoryTableHead>
-            <DirectoryTableHead className="text-right">Entry count</DirectoryTableHead>
+            <DirectoryTableHead >Amount (micro)</DirectoryTableHead>
+            <DirectoryTableHead >Entry count</DirectoryTableHead>
           </TableRow>
         </TableHeader>
         <TableBody>
           {lines.map((line, index) => (
             <TableRow key={`${line.ledger_type ?? 'line'}-${index}`}>
               <TableCell>{line.ledger_type ?? ''}</TableCell>
-              <TableCell className="text-right">{displayMicro(line.amount_micro)}</TableCell>
-              <TableCell className="text-right">{line.entry_count ?? ''}</TableCell>
+              <TableCell >{displayMicro(line.amount_micro)}</TableCell>
+              <TableCell >{line.entry_count ?? ''}</TableCell>
             </TableRow>
           ))}
         </TableBody>
@@ -260,7 +273,7 @@ function LedgerLinesTable({ lines }: { lines: BillingLedgerLine[] }) {
         <TableRow>
           <DirectoryTableHead>ID</DirectoryTableHead>
           <DirectoryTableHead>Type</DirectoryTableHead>
-          <DirectoryTableHead className="text-right">Amount (micro)</DirectoryTableHead>
+          <DirectoryTableHead >Amount (micro)</DirectoryTableHead>
           <DirectoryTableHead>Created</DirectoryTableHead>
         </TableRow>
       </TableHeader>
@@ -269,7 +282,7 @@ function LedgerLinesTable({ lines }: { lines: BillingLedgerLine[] }) {
           <TableRow key={row.id ?? `${row.created_at}-${row.ledger_type}`}>
             <TableCell>{row.id ?? ''}</TableCell>
             <TableCell>{row.ledger_type ?? ''}</TableCell>
-            <TableCell className="text-right">{displayMicro(row.amount_micro)}</TableCell>
+            <TableCell >{displayMicro(row.amount_micro)}</TableCell>
             <TableCell>{displayTimestamp(row.created_at)}</TableCell>
           </TableRow>
         ))}
@@ -299,7 +312,7 @@ function DeliveriesTable({ items }: { items?: InvoiceDelivery[] }) {
             <TableCell>{row.recipient}</TableCell>
             <TableCell>{row.retry_count}</TableCell>
             <TableCell>{displayTimestamp(row.updated_at)}</TableCell>
-            <TableCell className="whitespace-nowrap">{row.error_message ?? ''}</TableCell>
+            <TableCell >{row.error_message ?? ''}</TableCell>
           </TableRow>
         ))}
       </TableBody>

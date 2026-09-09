@@ -2,7 +2,7 @@
 import { useCallback, useState } from 'react';
 
 import { getCampaignWizardSession, listCampaignOnboardingTemplates } from '@/api/campaigns_api';
-import type { CampaignOnboardingTemplate, CampaignWizardSession } from '@/api/types';
+import type { CampaignWizardSession } from '@/api/types';
 import { useResource } from '@/api/use_resource';
 
 export function useCampaignWizardPanelLoad(enabled: boolean) {
@@ -62,9 +62,12 @@ export function useCampaignWizardPanelLoad(enabled: boolean) {
   }, []);
 
   return {
-    templates: (templatesResource.data ?? []) as CampaignOnboardingTemplate[],
+    templates: templatesResource.data,
     templatesError: templatesResource.error,
-    templatesFetching: templatesResource.fetching,
+    templatesFetching:
+      templatesResource.fetching ||
+      templatesResource.revalidating ||
+      (enabled && templatesResource.data === undefined && !templatesResource.error),
     session: sessionResource.data ?? localSession,
     sessionError: sessionResource.error,
     sessionFetching: sessionResource.fetching,

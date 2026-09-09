@@ -155,7 +155,7 @@ func (s *campaignFlowSync) reloadOnce(ctx context.Context) {
 		slog.Warn("campaign flow sync landers", "error", err)
 		return
 	}
-	offerURLs, err := s.loadURLMap(ctx, "offers")
+	offerURLs, err := s.loadOfferURLMap(ctx)
 	if err != nil {
 		slog.Warn("campaign flow sync offers", "error", err)
 		return
@@ -227,9 +227,8 @@ func (s *campaignFlowSync) loadLanderURLMap(ctx context.Context) (map[uuid.UUID]
 	return out, rows.Err()
 }
 
-func (s *campaignFlowSync) loadURLMap(ctx context.Context, table string) (map[uuid.UUID][]byte, error) {
-	q := "SELECT id, url FROM " + table
-	rows, err := s.pool.Query(ctx, q)
+func (s *campaignFlowSync) loadOfferURLMap(ctx context.Context) (map[uuid.UUID][]byte, error) {
+	rows, err := s.pool.Query(ctx, `SELECT id, url FROM offers`)
 	if err != nil {
 		return nil, err
 	}

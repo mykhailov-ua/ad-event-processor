@@ -3,7 +3,6 @@ import {
   SelectContent,
   SelectItem,
   SelectTrigger,
-  SelectValue,
 } from '@/components/ui/select';
 
 export type AdminSelectOption = {
@@ -13,7 +12,6 @@ export type AdminSelectOption = {
 
 export type AdminSelectProps = {
   'aria-label': string;
-  className?: string;
   disabled?: boolean;
   title?: string;
   options: AdminSelectOption[];
@@ -23,27 +21,26 @@ export type AdminSelectProps = {
 
 export function AdminSelect({
   'aria-label': ariaLabel,
-  className,
   disabled = false,
   title,
   options,
   value,
   onValueChange,
 }: AdminSelectProps) {
+  const selectedLabel = options.find((option) => option.value === value)?.label;
+
   return (
-    <div className="w-full min-w-0">
-      <Select disabled={disabled} value={value} onValueChange={onValueChange}>
-        <SelectTrigger aria-label={ariaLabel} className={className} title={title}>
-          <SelectValue />
-        </SelectTrigger>
-        <SelectContent>
-          {options.map((option) => (
-            <SelectItem key={option.value} plain value={option.value}>
-              {option.label}
-            </SelectItem>
-          ))}
-        </SelectContent>
-      </Select>
-    </div>
+    <Select disabled={disabled} value={value} onValueChange={onValueChange}>
+      <SelectTrigger aria-label={ariaLabel} title={title}>
+        <span className="truncate text-left">{selectedLabel ?? 'Select...'}</span>
+      </SelectTrigger>
+      <SelectContent>
+        {options.map((option) => (
+          <SelectItem key={option.value} plain value={option.value}>
+            {option.label}
+          </SelectItem>
+        ))}
+      </SelectContent>
+    </Select>
   );
 }

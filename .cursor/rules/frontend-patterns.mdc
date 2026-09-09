@@ -1,0 +1,402 @@
+---
+description: Frontend patterns (паттерны фронтенда) - composition, effects, races, errors, async/cancel, server-owned work
+globs:
+  - web/**
+  - api/openapi/**
+  - scripts/ci/admin/web.sh
+  - scripts/ci/check_ui*.sh
+alwaysApply: false
+---
+
+# Frontend patterns (паттерны фронтенда)
+
+Canonical SPA pattern reference for `web/`. Visual control stack: `frontend-primitives.mdc`. Layer map: `frontend-modular.mdc`. Cold vs Hot runtime: `react.mdc`. Cost taxonomy: `frontend-hot-path.mdc`.
+
+## Purpose
+
+One pattern set for the admin SPA:
+
+- compose small layers instead of copying whole pages;
+- **never block the UI thread** with work that belongs on the server or in a Web Worker;
+- every network path is **async**, **cancellable**, and **time-bounded**;
+- counter **read and write races** explicitly (abort + generation + idempotency);
+- use `useEffect` only for imperative side work, not as a second render path.
+
+## Pattern 1: Composition over copy
+
+Same idea as a shared Button base with different `variant` and `onClick` — applied to **pages, data, and chrome**.
+
+| Piece | One implementation | What varies per screen |
+| :--- | :--- | :--- |
+| Route entry | `pages/*` thin wire | Which workspace + directory |
+| Data owner | `use_*_workspace.ts` | API calls, URL params, mutation state |
+| View | `domains/<domain>/*` | Columns, labels, handlers as props |
+| Page chrome | `PageLayout`, `OpsPageShell`, `DirectoryPageShell` | title, nav, filters slot |
+| Controls | `components/ui/*`, shell roles | variant, `onClick` |
+| Transport | `api/*_api.ts`, `use_resource.ts` | endpoint, DTO parse |
+
+**Rules:**
+
+- **One owner per resource** — workspace hook holds fetch deps, `saving`, `error`; leaf components receive props only (`frontend-slop.mdc` **State ownership**).
+- **One primary path per intent** — no duplicate Create/Save entry points without mutex (`frontend-slop.mdc` **UX scenario contract**).
+- **Promote on repeat** — third copy of the same lifecycle block (skeleton / `ErrorBlock` / scope gate) moves to `shell/`, not a fourth inline paste.
+- **Config over clone** — report catalog key, column defs, nav item arrays; not another `*_directory.tsx` that differs only by API path (FREEZE areas exempt until revived).
+
+**Banned:**
+
+- Full page markup in `pages/` (except auth/onboarding)
+- Second workspace for the same URL-owned filter state
+- Domain-specific `*PageShell` that only wraps `PageLayout` with a title
+- `Promise.resolve([])` or silent `catch` instead of `ErrorBlock`
+
+## Pattern 2: Where work runs (main thread vs server vs worker)
+
+Default admin surface is **Cold** (`react.mdc`). Assume **regime S** (<= 100 rows, small JSON) unless proven otherwise (`frontend-hot-path.mdc`).
+
+| Work | Owner | Why |
+| :--- | :--- | :--- |
+| Sort, filter, search, facets, totals | **Server** (query params on `/api/v1`) | O(n log n) and business rules stay in Go |
+| Pagination | **Server** (`limit`, `offset`, `total`) | Browser renders one page only |
+| Aggregates, report math, KPI rollups | **Server** (ClickHouse / handler) | No client KPI math |
+| Field validation before persist | **Server** (400 + field map) | UI shows errors only |
+| Display labels, money strings | **Server** (`*_display`, micros + format helpers) | No client money rules |
+| Session/RBAC enforcement | **Server** | Nav hide is not security |
+| Simple list render (`items.map`) | **Main thread** | 25-100 rows is fine on Cold |
+| Live charts / SSE ops metrics | **Main thread Hot** | rAF + imperative canvas; see `react.mdc` Hot tier |
+| `JSON.parse` on payloads **> 256 KiB** | **Web Worker** (when introduced) | Avoid long main-thread parse |
+| CPU-heavy transform (CSV parse, bulk diff) | **Web Worker** or **async job + poll** | Never sync loop on main thread during render |
+
+**Decision:**
+
+```
+Can the API accept limit/sort/filter params?  -> server
+Is it business logic or financial?             -> server
+Is n > 100 client-held without pagination?     -> fix API or worker/windowing
+Is it paint/scroll every frame?                -> Hot path (react.mdc)
+```
+
+**Lie mode:** `useMemo` sort/filter over `items[]` cited as "fast enough" — **Class A** architectural slop (`frontend-hot-path.mdc`).
+
+## Pattern 3: Async, Promise, and response may never arrive
+
+All control-plane I/O is **non-blocking**: `async` API functions return `Promise<T>`; UI uses `await` or `.then/.catch` with explicit error surfaces.
+
+| Surface | Pattern |
+| :--- | :--- |
+| List/detail load | `useResource(fetcher, deps)` in workspace |
+| One-shot mutation | `async` handler: `setSaving(true)` -> `await api*` -> toast/navigate on 2xx -> `finally` clear saving |
+| Parallel reads | `Promise.all` only when independent; each call gets `signal` |
+| Fire-and-forget | **Banned** for operator mutations — always `await` or `.catch` -> `ErrorBlock` / toast |
+
+**Rules:**
+
+- `api/*_api.ts` functions accept optional `signal?: AbortSignal` and pass it to `apiFetch` / `apiJson`.
+- Never `void fetch()` without `.catch` on operator-triggered paths.
+- Success toast **after** `await` resolves 2xx (`frontend-slop.mdc` **EH-***).
+- Navigate to new entity **after** response includes id (`UX scenario contract`).
+
+```ts
+// Workspace mutation (sketch)
+const onSave = async () => {
+  setSaving(true);
+  setActionError(undefined);
+  try {
+    await patchCampaign(id, body, signal);
+    bumpRefresh();
+  } catch (err) {
+    setActionError(toError(err));
+  } finally {
+    setSaving(false);
+  }
+};
+```
+
+## Pattern 4: Cancellation and timeout (mandatory)
+
+Every fetch must be **abortable** and **time-bounded**. Implementation: `web/src/api/client.ts` + `web/src/api/use_resource.ts`.
+
+| Mechanism | Behavior |
+| :--- | :--- |
+| `RESOURCE_FETCH_TIMEOUT_MS` (15 s) | `apiFetch` aborts hung requests; throws `ApiError(0, 'TIMEOUT', ...)` |
+| Caller `AbortSignal` | Linked with timeout signal; caller abort is **not** rewritten to TIMEOUT |
+| `useResource` deps change | Aborts in-flight fetch in effect cleanup |
+| Unmount | Same cleanup — no `setState` after unmount |
+| Stale response | `useResource` generation ref ignores late responses after dep change |
+| Manual refresh | Coalesce 500 ms + in-flight guard in **owner** hook (`frontend-slop.mdc` **User action coalescing**) — abort alone does not debounce double-clicks |
+| SSE / `EventSource` | `close()` in effect cleanup; do not leak stream on route change |
+| Long export jobs | Poll job status endpoint with abort; do not hold single fetch open past timeout |
+
+**AbortError handling:**
+
+```ts
+.catch((err) => {
+  if (isAbortError(err)) return; // dep change or unmount — not operator error
+  setError(toError(err));
+});
+```
+
+`useResource` already swallows abort in its catch path. Custom effects must mirror this.
+
+**Timeout UX:** show `ErrorBlock` with TIMEOUT message; clear `fetching` in `finally` so UI does not spin forever (`ui.mdc`).
+
+**Timeout is not anti-race:** it ends hung requests; it does **not** guarantee ordering when two responses are in flight. Pair timeout with abort + generation (Pattern 9).
+
+**Banned:**
+
+- `fetch(url)` without signal in new `*_api.ts`
+- Ignoring `AbortError` and setting generic "Network error"
+- Extending timeout per-page without operator ask — change `RESOURCE_FETCH_TIMEOUT_MS` once in `client.ts`
+- `refreshToken++` on every child click without coalesce (**RF-*** fan-out)
+
+## Pattern 5: Fetch lifecycle (Cold directory standard)
+
+Canonical sequence for KEEP list pages:
+
+1. URL / draft filters owned by workspace (`use_transition_search_params`)
+2. `useResource(() => list*(query, signal), [query deps])`
+3. Directory receives `{ data, error, fetching, revalidating, handlers }`
+4. Render: scope gate -> `DirectoryPageShell` (skeleton / blocking / refresh band / content)
+5. Apply filter: write URL -> deps change -> abort prior fetch -> new fetch
+
+Reference: `use_customers_page_workspace.ts`, `customers_directory.tsx`, `directory_page_shell.tsx`.
+
+Phase helpers live in `web/src/shell/directory_load_state.ts` (`resolveDirectoryLoadPhase`, `shouldShowDirectoryRefreshError`, `DirectoryFetchState`). Shell wrappers must not fork phase logic.
+
+**Shell catalog:**
+
+| Shell | Path | Use |
+| :--- | :--- | :--- |
+| `DirectoryPageShell` | `web/src/shell/directory_page_shell.tsx` | KEEP list pages (toolbar + table + footer) |
+| `CustomerTabShell` | `web/src/shell/customer_tab_shell.tsx` | Customer detail tab panels |
+| `EditorPageShell` | `web/src/shell/editor_page_shell.tsx` | Campaign editor initial load |
+| `OpsPageWithLoad` | `web/src/domains/ops/ops_page_shell.tsx` | Ops dashboards and tables |
+| `IntegrationsPageWithLoad` | `web/src/domains/integrations/integrations_nav.tsx` | Integrations hub pages |
+| `DirectoryMutationError` | `web/src/shell/directory_page_shell.tsx` | Mutation/export errors in `alerts` slot |
+| `DirectoryFetchError` | `web/src/shell/directory_page_shell.tsx` | Nested tab or secondary list fetch |
+
+Cross-ref: Pattern 7 three fetch error modes; `page_fetch_shell_phase.test.ts` for shell import contract.
+
+## Pattern 6: UI primitives (variant vs action)
+
+Controls follow the same compose pattern: shared chrome, different variant, action in domain. Details: `frontend-primitives.mdc`.
+
+## Pattern 7: Explicit error handling (Go-style, no silent swallow)
+
+Errors are **values**, not control flow by crash. Like Go `if err != nil`, every failure path must be **named**, **typed**, and **surfaced** — never `catch {}`, never empty table on 500, never full-app white screen for a leaf fetch.
+
+| Layer | Role | Implementation |
+| :--- | :--- | :--- |
+| Transport | Normalize unknown throws | `toError(err)` in workspace `catch` (`web/src/lib/admin_error.ts`) |
+| Abort / timeout | Not operator errors | `isAbortError` — ignore in `useResource` and custom effects (Pattern 4) |
+| Blocking load | No snapshot yet | `DirectoryPageShell` + `resolveDirectoryLoadPhase` -> `panelError` |
+| Refresh | Stale snapshot kept | `shouldShowDirectoryRefreshError` -> refresh band above content |
+| Mutation / export | Action failed, page still usable | `DirectoryMutationError` or `opsPanelError` in `alerts` slot |
+| Nested panel | Tab / secondary list | `DirectoryFetchError` with its own `fetchState` |
+| HTTP semantics | 403 / 501 vs 5xx | `panelError` -> `StubBanner` or `ErrorBlock` (`shell/panel_error.tsx`) |
+| Render throw | One route segment only | `AppRouteErrorBoundary` around `<Outlet />` — sidebar stays navigable |
+
+**Three fetch error modes (directory standard):**
+
+```
+loading:          fetching && !hasSnapshot && !error  -> PageSkeleton
+blocking-error:   error && !hasSnapshot               -> full-page panelError (no table)
+ready + refresh:  error && hasSnapshot                -> panelError band + stale rows
+```
+
+**Workspace rules (mirror Go handler):**
+
+```ts
+// List load: useResource owns error state; directory receives fetchState only.
+const { data, error, fetching } = useResource(() => listFoo(query, signal), deps);
+
+// Mutation: explicit actionError slot; clear before retry.
+setActionError(undefined);
+try {
+  await patchFoo(body, signal);
+} catch (err) {
+  setActionError(toError(err));
+} finally {
+  setSaving(false);
+}
+```
+
+**Banned (EH-* lie modes):**
+
+| Pattern | Why |
+| :--- | :--- |
+| `catch { }` or `catch { setItems([]) }` | Hides 500; operator sees empty data |
+| `error && <p>failed</p>` without `panelError` | Misses 403/501 StubBanner contract |
+| Early `return null` on error with no `ErrorBlock` | Blank canvas |
+| Toast before `await` resolves 2xx | False success |
+| `throw` in event handler without boundary | Can unmount whole shell |
+| Showing `AbortError` as "Network error" | Misleading after filter change |
+
+**Route boundary:** `AppRouteErrorBoundary` (`shell/app_error_boundary.tsx`) catches render errors in the outlet only. Fetch and mutation errors stay in workspace + directory — do not rely on the boundary for API failures.
+
+**Ops pages:** same phase helpers via `resolveOpsPagePhase`, `OpsPageRefreshError`, `OpsPageBlockingError` (`domains/ops/ops_page_shell.tsx`). Domain wrappers `opsPanelError` / `integrationsPanelError` delegate to `panelError` — do not fork 403 handling.
+
+## Pattern 8: useEffect — side work after commit, not a second render
+
+`useEffect` schedules **imperative work after React commits DOM** (subscriptions, timers, fetch kickoff, third-party widgets). It is a bridge between declarative UI and the outside world — **not** a substitute for render logic.
+
+**Mental model:**
+
+```
+render  = what to show (sync, predictable)
+effect  = what to do with the world after show (async, risky)
+event   = what to do on user action (preferred for mutations)
+```
+
+| Use `useEffect` for | Prefer alternative |
+| :--- | :--- |
+| Subscribe / unsubscribe (window, SSE) | Mutation on click -> `async` handler |
+| Sync `document.title`, focus trap | Derive UI from props at render time |
+| Kick off `useResource`-style fetch with cleanup | `useResource` in workspace (canonical) |
+| Integrate non-React widget | Reset form on id change -> `key={id}` remount |
+
+**Performance anti-patterns (never):**
+
+| Anti-pattern | Why it hurts |
+| :--- | :--- |
+| Effect with **no deps** or deps that change every render | Runs every render; fetch/setState storm |
+| `useEffect(() => setLocal(props))` | Double render; props already available |
+| Fetch without `AbortController` cleanup | Zombie requests, races, setState after unmount |
+| Heavy `JSON.parse` / filter loop in effect | Blocks main thread after paint |
+| Effect instead of event handler (`if (shouldSave) save()`) | Hidden control flow, extra renders |
+| Chain of effects A sets B sets C | Hard to reason; bad under concurrent rendering |
+| `setInterval` poll without backoff; deps restart interval | Request pile-up |
+| Read layout + `setState` in tight effect loop | Forced reflow |
+
+**Strict Mode:** dev double mount means effects run twice — cleanup must be idempotent; do not assume mount-once.
+
+**Banned:** using effect to copy server list into local state when URL/workspace already owns the query.
+
+## Pattern 9: Data races — read vs write, backend parity
+
+Two race classes need **different** controls. Do not substitute timeout or idempotency key for the wrong class.
+
+| Class | Example | Primary controls |
+| :--- | :--- | :--- |
+| **Read race** | Filter changed; slow old GET arrives last | `AbortSignal` + `generationRef` + URL as truth |
+| **Write race** | Double-click Clone; retry after TIMEOUT | `Idempotency-Key` + `inFlight` + coalesce |
+
+### Read races (lists, detail, tabs)
+
+Canonical implementation: `web/src/api/use_resource.ts`.
+
+1. **Abort** on dep change / unmount (`AbortController` in effect cleanup) — best-effort cancel.
+2. **Generation counter** — if `generation !== generationRef.current`, discard response even when abort did not win (same idea as backend routing epoch mismatch).
+3. **Stale-while-revalidate** — keep `hasSnapshot` rows; show refresh error band, not empty table.
+
+```
+Filter change -> abort prior -> generation++ -> new fetch
+Late old response -> generation mismatch -> ignored
+```
+
+### Write races (mutations, clone, billing)
+
+Mirror backend idempotency:
+
+| Backend | Frontend |
+| :--- | :--- |
+| `Idempotency-Key` / `idempotency_hash` | `Idempotency-Key` header on POST/PATCH (`campaigns_api`, `billing_api`, clone) |
+| Redis dedup `SET NX` on event key | One key per **user intent**, stable across **retry** |
+| Outbox at-least-once apply | Retry after TIMEOUT reuses same key; new click gets new key |
+| Admission / reserve before commit | `setSaving(true)` + disable + `useCoalescedBumpRefresh` before `await` |
+
+**Idempotency key rules:**
+
+```ts
+// One operator intent = one key until terminal outcome (2xx or abandon).
+const keyRef = useRef<string | null>(null);
+if (!keyRef.current) keyRef.current = newRandomUuid();
+
+try {
+  await cloneCampaign(id, body, { idempotencyKey: keyRef.current, signal });
+  keyRef.current = null; // success: next action gets fresh key
+} catch (err) {
+  // retry: SAME key. New dialog open: NEW key.
+}
+```
+
+**Banned:**
+
+| Pattern | Why |
+| :--- | :--- |
+| New UUID on every retry | Backend sees two intents; double clone / double debit |
+| Same UUID for every action forever | Second action may replay first result |
+| Abort on POST as "undo" | Server may still commit; use idempotency + server state |
+| Only timeout, no generation | Slow stale GET can still win |
+| Only generation, no coalesce on Save | Double-click sends two POSTs before `saving` renders |
+
+### Coalescing user actions
+
+`useCoalescedBumpRefresh` + `useCoalescedCallback` (`web/src/hooks/use_coalesced_refresh_token.ts`, `coalesced_user_action.ts`): 500 ms window + `inFlightGuard` — analog to backend dedup cooldown / admission gate.
+
+### Backend practices to adopt on the frontend
+
+| Practice | Frontend shape |
+| :--- | :--- |
+| Server authoritative query | URL owns filters; no client `useMemo` sort |
+| Epoch / version check | `generationRef` in `useResource` |
+| Idempotent handlers | Stable `Idempotency-Key` per intent |
+| Reserve before commit | `inFlight` + disabled controls |
+| Explicit `if err != nil` | `toError` + `panelError`; no silent catch |
+| At-least-once safe replay | Retry mutation with same key; refresh list after 2xx |
+
+### Cheat sheet
+
+```
+READ  -> AbortSignal + generationRef + stale snapshot
+WRITE -> Idempotency-Key + inFlight + coalesce
+TIMEOUT -> UX + resource limit; retry POST reuses key, GET uses new fetch
+```
+
+## Control Plane scope
+
+Active pattern enforcement on **KEEP** routes (`docs/CONTROL_PLANE_UI_SCOPE.md`). Do not mass-refactor FREEZE directories to extract shells — only apply when touching a file for CP work.
+
+## Lie modes (never)
+
+| Lie | Reality |
+| :--- | :--- |
+| "Client sort for UX" | Server must own sort; browser sends `sort`/`order` query params |
+| "useResource aborts double-click" | Need coalesced refresh in owner |
+| "Worker not needed" on 2 MB JSON | Main-thread parse blocks UI |
+| "Copied directory is faster" | Third copy should be shell extraction |
+| `mock` rows when API slow | `ErrorBlock` + stale snapshot (`EH-*`) |
+| Silent `catch` on fetch/mutation | `toError` + `panelError` / `DirectoryMutationError` |
+| Full page crash on list 500 | `DirectoryPageShell` blocking phase |
+| "Timeout fixes races" | Need abort + generation for reads; idempotency for writes |
+| "Idempotency key fixes stale list" | Generation ref fixes reads; keys are for writes |
+
+## Agent checklist
+
+| Step | Action |
+| :--- | :--- |
+| 1 | New list page: workspace + directory + thin page; server pagination |
+| 2 | Every new `*_api.ts` method: `signal?: AbortSignal` |
+| 3 | No sort/filter `useMemo` on full `items[]` |
+| 4 | Mutation: `await` + `ErrorBlock` / toast after 2xx |
+| 5 | Effect fetch: `AbortController` cleanup; ignore `AbortError` |
+| 6 | Directory: `DirectoryPageShell` + `panelError`; mutation via `DirectoryMutationError` |
+| 7 | Read race: `useResource` or mirror abort + generationRef |
+| 8 | Write race: stable `Idempotency-Key` per intent; coalesce double-click |
+| 9 | `useEffect`: side work only; mutations in event handlers |
+| 10 | Third duplicate lifecycle block: extract to `shell/` |
+| 11 | Payload > 256 KiB parse: plan worker or server chunking |
+| 12 | Hot chart/stream: classify F regime before micro-opts (`react.mdc`) |
+
+## Verification
+
+```bash
+cd web && npm run typecheck
+rg "useMemo\\(.*filter|useMemo\\(.*sort" web/src/domains --glob '*.ts*'
+rg "fetch\\(" web/src/api --glob '*_api.ts' | rg -v signal
+rg "useEffect\\(\\(\\) => \\{" web/src/domains --glob 'use_*_workspace.ts' -l
+bash scripts/ci/admin/web.sh
+```
+
+## Related rules
+
+`frontend-modular.mdc`, `frontend-primitives.mdc`, `frontend-slop.mdc`, `frontend-hot-path.mdc`, `react.mdc`, `ui.mdc`, `cold-path.mdc`, `anti-slop.mdc`.

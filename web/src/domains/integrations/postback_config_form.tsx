@@ -1,4 +1,4 @@
-import { ErrorBlock } from '@/shell/error_block';
+import { integrationsPanelError } from '@/domains/integrations/integrations_nav';
 import { DirectoryFilterForm, FilterPanel } from '@/shell/filter_panel';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
@@ -82,14 +82,14 @@ export function PostbackConfigForm({
 
   return (
     <FilterPanel>
-      <h2 className="text-base font-semibold">Upsert postback config</h2>
-      <p className="text-sm text-muted-foreground">
+      <h2 >Upsert postback config</h2>
+      <p >
         API token is encrypted at rest. Leave token empty on update to keep the existing value.
         Click a config row below to prefill this form.
       </p>
 
       <DirectoryFilterForm layout="auto-fill" onSubmit={(event) => event.preventDefault()}>
-        <div className="grid gap-2 md:col-span-2">
+        <div >
           <Label htmlFor="postback-campaign-id">Campaign ID</Label>
           <Input
             id="postback-campaign-id"
@@ -97,10 +97,10 @@ export function PostbackConfigForm({
             onChange={(event) => onDraftCampaignIdChange(event.target.value)}
           />
         </div>
-        <div className="grid gap-2">
+        <div >
           <Label htmlFor="postback-provider">Provider</Label>
           <Select value={draftProvider} onValueChange={onDraftProviderChange}>
-            <SelectTrigger id="postback-provider" className="w-full">
+            <SelectTrigger id="postback-provider">
               <SelectValue placeholder="Select provider" />
             </SelectTrigger>
             <SelectContent>
@@ -112,7 +112,7 @@ export function PostbackConfigForm({
             </SelectContent>
           </Select>
         </div>
-        <div className="grid gap-2">
+        <div >
           <Label htmlFor="postback-target-event">Target event</Label>
           <Input
             id="postback-target-event"
@@ -120,7 +120,7 @@ export function PostbackConfigForm({
             onChange={(event) => onDraftTargetEventChange(event.target.value)}
           />
         </div>
-        <div className="grid gap-2 md:col-span-2">
+        <div >
           <Label htmlFor="postback-url-template">URL template</Label>
           <Input
             id="postback-url-template"
@@ -135,10 +135,10 @@ export function PostbackConfigForm({
             }
           />
           {urlTemplateHint ? (
-            <p className="text-xs text-muted-foreground">{urlTemplateHint}</p>
+            <p >{urlTemplateHint}</p>
           ) : null}
         </div>
-        <div className="grid gap-2 md:col-span-2">
+        <div >
           <Label htmlFor="postback-api-token">API token</Label>
           <Input
             id="postback-api-token"
@@ -148,7 +148,7 @@ export function PostbackConfigForm({
             onChange={(event) => onDraftApiTokenChange(event.target.value)}
           />
         </div>
-        <div className="grid gap-2 md:col-span-2">
+        <div >
           <Label htmlFor="postback-test-event-code">Test event code</Label>
           <Input
             id="postback-test-event-code"
@@ -164,20 +164,20 @@ export function PostbackConfigForm({
         </Button>
       </DirectoryFilterForm>
 
-      {saveError ? <ErrorBlock title="Save failed" message={saveError.message} /> : null}
-      {testError ? <ErrorBlock title="Dry-run failed" message={testError.message} /> : null}
+      {saveError ? integrationsPanelError(saveError, 'Save failed') : null}
+      {testError ? integrationsPanelError(testError, 'Dry-run failed') : null}
       {saveSuccess ? (
-        <p className="text-sm text-muted-foreground">Config saved. List refreshed.</p>
+        <p >Config saved. List refreshed.</p>
       ) : null}
       {testResult ? (
-        <div className="ui-surface grid gap-1 p-3 text-sm">
+        <div >
           <p>
             Dry-run {testResult.ok ? 'succeeded' : 'failed'} ({testResult.provider})
           </p>
           {testResult.http_status != null ? <p>HTTP status: {testResult.http_status}</p> : null}
-          {testResult.error ? <p className="text-destructive">{testResult.error}</p> : null}
+          {testResult.error ? <p >{testResult.error}</p> : null}
           {testResult.rendered_url ? (
-            <p className="break-all text-xs">{testResult.rendered_url}</p>
+            <p >{testResult.rendered_url}</p>
           ) : null}
         </div>
       ) : null}

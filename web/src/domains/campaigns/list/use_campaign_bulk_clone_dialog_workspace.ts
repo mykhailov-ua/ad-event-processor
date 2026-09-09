@@ -1,5 +1,5 @@
 // bulk clone overlay: POST bulk-clone for multi-selected campaigns.
-import { useCallback, useEffect, useState } from 'react';
+import { useCallback, useEffect, useRef, useState } from 'react';
 import { toast } from 'sonner';
 
 import { bulkCloneCampaigns } from '@/api/campaigns_api';
@@ -8,6 +8,7 @@ import {
   buildCloneRequestBody,
   DEFAULT_CLONE_OPTIONS,
 } from '@/domains/campaigns/editor/campaign_clone_request';
+import { toError } from '@/lib/admin_error';
 import { newRandomUuid } from '@/lib/uuid';
 
 type UseCampaignBulkCloneDialogWorkspaceArgs = {
@@ -28,13 +29,17 @@ export function useCampaignBulkCloneDialogWorkspace({
   const [cloning, setCloning] = useState(false);
   const [cloneError, setCloneError] = useState<Error | undefined>();
   const [results, setResults] = useState<BulkCloneCampaignResultRow[] | undefined>();
+  const idempotencyKeyRef = useRef<string | null>(null);
 
   useEffect(() => {
     if (!open) {
+      idempotencyKeyRef.current = null;
       setCloneError(undefined);
       setResults(undefined);
       setNameSuffix(' (copy)');
       setCloneOptions(DEFAULT_CLONE_OPTIONS);
+    } else if (!idempotencyKeyRef.current) {
+      idempotencyKeyRef.current = newRandomUuid();
     }
   }, [open]);
 
@@ -46,6 +51,10 @@ export function useCampaignBulkCloneDialogWorkspace({
     if (cloning || sourceCampaignIds.length === 0) {
       return;
     }
+    if (!idempotencyKeyRef.current) {
+      idempotencyKeyRef.current = newRandomUuid();
+    }
+
     setCloning(true);
     setCloneError(undefined);
     setResults(undefined);
@@ -59,8 +68,9 @@ export function useCampaignBulkCloneDialogWorkspace({
           name_suffix: cloneBody.name_suffix,
           options: cloneBody.options,
         },
-        { idempotencyKey: newRandomUuid() }
+        { idempotencyKey: idempotencyKeyRef.current }
       );
+      idempotencyKeyRef.current = null;
       setResults(response.results);
       const { succeeded, failed } = summarizeBulkCloneResults(response.results);
       if (succeeded.length > 0 && failed.length === 0) {
@@ -73,7 +83,7 @@ export function useCampaignBulkCloneDialogWorkspace({
         toast.error('Bulk clone failed for all selected campaigns');
       }
     } catch (err: unknown) {
-      setCloneError(err instanceof Error ? err : new Error(String(err)));
+      setCloneError(toError(err));
     } finally {
       setCloning(false);
     }

@@ -6,6 +6,7 @@ import (
 	"strconv"
 	"time"
 
+	"ad-event-processor/internal/platformadmin"
 	"ad-event-processor/pkg/coldpath"
 	"ad-event-processor/pkg/httpresponse"
 )
@@ -128,9 +129,14 @@ func (h *HTTPHandlers) registerAuditRoutes(mux *http.ServeMux) {
 }
 
 func (h *HTTPHandlers) listAudit(w http.ResponseWriter, r *http.Request) {
+	filter, err := platformadmin.ParseAuditListFilter(r)
+	if err != nil {
+		httpresponse.Error(w, http.StatusBadRequest, "BAD_REQUEST", err.Error())
+		return
+	}
 	limit, offset := coldpath.ParseAPIPagination(r)
 	redact := r.URL.Query().Get("redact_pii") == "true"
-	logs, total, err := h.AuditLister.ListAuditLogs(r.Context(), limit, offset, redact)
+	logs, total, err := h.AuditLister.ListAuditLogs(r.Context(), filter, limit, offset, redact)
 	if err != nil {
 		h.writeServiceError(w, err)
 		return

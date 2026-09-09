@@ -52,19 +52,19 @@ export function LicenseApplyForm({
   }, [draftToken, load, onApplied]);
 
   return (
-    <div className="grid gap-4">
+    <div >
       {showStatus && load.licenseStatus ? (
         <LicenseStatusSummary status={load.licenseStatus} />
       ) : null}
       {showStatus && load.statusError && !load.licenseStatus ? (
         <ErrorBlock title="Could not load license status" message={load.statusError.message} />
       ) : null}
-      <div className="grid gap-2">
+      <div >
         <Label htmlFor="license-token">{title}</Label>
-        {description ? <p className="text-sm text-muted-foreground">{description}</p> : null}
+        {description ? <p >{description}</p> : null}
         <Textarea
           id="license-token"
-          className="min-h-[7.5rem] text-xs"
+         
           rows={textareaRows}
           value={draftToken}
           onChange={(event) => setDraftToken(event.target.value)}
@@ -81,7 +81,7 @@ export function LicenseApplyForm({
         </PrimaryActionButton>
       </div>
       {success ? (
-        <p className="text-sm text-muted-foreground">License applied. Status refreshed.</p>
+        <p >License applied. Status refreshed.</p>
       ) : null}
       {error ? <ErrorBlock title="License apply failed" message={error.message} /> : null}
     </div>
@@ -90,21 +90,21 @@ export function LicenseApplyForm({
 
 function LicenseStatusSummary({ status }: { status: LicenseStatus }) {
   return (
-    <dl className="grid gap-1 text-sm">
+    <dl >
       <div>
-        <dt className="text-muted-foreground">State</dt>
+        <dt >State</dt>
         <dd>{status.state ?? ''}</dd>
       </div>
       {status.valid_until ? (
         <div>
-          <dt className="text-muted-foreground">Valid until</dt>
+          <dt >Valid until</dt>
           <dd>{status.valid_until}</dd>
         </div>
       ) : null}
       {status.deployment_id ? (
         <div>
-          <dt className="text-muted-foreground">Deployment</dt>
-          <dd className="text-xs">{status.deployment_id}</dd>
+          <dt >Deployment</dt>
+          <dd >{status.deployment_id}</dd>
         </div>
       ) : null}
     </dl>

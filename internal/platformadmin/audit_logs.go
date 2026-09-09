@@ -14,13 +14,13 @@ import (
 )
 
 type AuditLogsHost interface {
-	ListAuditLogRows(ctx context.Context, limit, offset int32) ([]db.AdminAuditLog, int64, error)
+	ListAuditLogRows(ctx context.Context, filter AuditLogFilter, limit, offset int32) ([]db.AdminAuditLog, int64, error)
 }
 
 var emailPIIPattern = regexp.MustCompile(`(?i)[a-z0-9._%+\-]+@[a-z0-9.\-]+\.[a-z]{2,}`)
 
-func ListAuditLogs(ctx context.Context, host AuditLogsHost, limit, offset int32, redactPII bool) ([]AuditLogDTO, int64, error) {
-	rows, total, err := host.ListAuditLogRows(ctx, limit, offset)
+func ListAuditLogs(ctx context.Context, host AuditLogsHost, filter AuditLogFilter, limit, offset int32, redactPII bool) ([]AuditLogDTO, int64, error) {
+	rows, total, err := host.ListAuditLogRows(ctx, filter, limit, offset)
 	if err != nil {
 		return nil, 0, err
 	}

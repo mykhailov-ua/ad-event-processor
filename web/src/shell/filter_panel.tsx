@@ -2,12 +2,16 @@ import type { FormHTMLAttributes, HTMLAttributes, ReactNode } from 'react';
 
 import { Label } from '@/components/ui/label';
 import { adminKit } from '@/lib/admin_kit';
+import { uiSurfaces } from '@/lib/ui_surfaces';
 import { cn } from '@/lib/utils';
 
 import {
   AUTO_FILL_FILTER_GRID,
   CAMPAIGNS_FILTER_ROW,
   COMPACT_TOOLBAR_ROW_CLASS,
+  DIRECTORY_CONTENT_BAND_CLASS,
+  DIRECTORY_FIELD_LABEL_CLASS,
+  DIRECTORY_FILTER_FORM_STACK_CLASS,
   DIRECTORY_FILTER_GRID,
   EDITOR_MAIN_COLUMN_CLASS,
   FILTER_PANEL_FLAT_CLASS,
@@ -29,6 +33,9 @@ export {
   AUTO_FILL_FILTER_GRID,
   CAMPAIGNS_FILTER_ROW,
   COMPACT_TOOLBAR_ROW_CLASS,
+  DIRECTORY_CONTENT_BAND_CLASS,
+  DIRECTORY_FIELD_LABEL_CLASS,
+  DIRECTORY_FILTER_FORM_STACK_CLASS,
   DIRECTORY_FILTER_GRID,
   EDITOR_MAIN_COLUMN_CLASS,
   FILTER_PANEL_FLAT_CLASS,
@@ -57,7 +64,7 @@ export function FilterPanel({
   ...props
 }: FilterPanelProps) {
   return (
-    <Component className={cn('ui-filter-panel', className)} {...props}>
+    <Component className={cn(uiSurfaces.filterPanel, className)} {...props}>
       {children}
     </Component>
   );
@@ -68,8 +75,8 @@ export type DirectoryFilterFormProps = FormHTMLAttributes<HTMLFormElement> & {
 };
 
 export function DirectoryFilterForm({
-  className,
   layout = 'auto-fill',
+  className,
   ...props
 }: DirectoryFilterFormProps) {
   const layoutClass =
@@ -84,31 +91,20 @@ export function DirectoryFilterForm({
 
 export type FilterFieldProps = {
   children: ReactNode;
-  className?: string;
   htmlFor?: string;
   label: string;
-  labelClassName?: string;
   wide?: boolean;
 };
 
 export function FilterField({
   children,
-  className,
   htmlFor,
   label,
-  labelClassName,
   wide = false,
 }: FilterFieldProps) {
   return (
-    <div
-      className={cn(
-        'grid w-full min-w-0',
-        adminKit.fieldLabelGap,
-        wide && 'sm:col-span-2 xl:col-span-1',
-        className
-      )}
-    >
-      <Label className={labelClassName} htmlFor={htmlFor}>
+    <div className={cn('grid min-w-0', adminKit.fieldLabelGap, wide && 'md:col-span-2')}>
+      <Label className={DIRECTORY_FIELD_LABEL_CLASS} htmlFor={htmlFor}>
         {label}
       </Label>
       {children}
@@ -124,9 +120,5 @@ export function FilterFormActions({
   children: ReactNode;
   className?: string;
 }) {
-  return (
-    <div className={cn('col-span-full flex flex-wrap items-center justify-start gap-2', className)}>
-      {children}
-    </div>
-  );
+  return <div className={cn(uiSurfaces.toolbarBand, className)}>{children}</div>;
 }

@@ -56,27 +56,6 @@ func (st *Store) CreateLander(ctx context.Context, req CreateLanderRequest) (Lan
 	return dto, nil
 }
 
-func (st *Store) ListLanders(ctx context.Context) ([]LanderDTO, error) {
-	if st.poolOrNil() == nil {
-		return nil, fmt.Errorf("service unavailable")
-	}
-	rows, err := st.poolOrNil().Query(ctx, landerSelectWithVersions+` ORDER BY l.created_at DESC`)
-	if err != nil {
-		return nil, err
-	}
-	defer rows.Close()
-	publicBase := st.host.LanderPublicBase(ctx)
-	var out []LanderDTO
-	for rows.Next() {
-		dto, err := st.scanLanderRow(rows, publicBase)
-		if err != nil {
-			return nil, err
-		}
-		out = append(out, dto)
-	}
-	return out, rows.Err()
-}
-
 func (st *Store) CreateOffer(ctx context.Context, req CreateOfferRequest) (OfferDTO, error) {
 	if st.poolOrNil() == nil {
 		return OfferDTO{}, fmt.Errorf("service unavailable")

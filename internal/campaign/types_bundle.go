@@ -308,6 +308,7 @@ type CampaignExportCampaign struct {
 	AttestationTTLSec            int32                 `json:"attestation_ttl_sec,omitempty"`
 	DmrEnabled                   bool                  `json:"dmr_enabled,omitempty"`
 	RedirectComplianceMode       string                `json:"redirect_compliance_mode,omitempty"`
+	TimezoneAttestationMode      string                `json:"timezone_attestation_mode,omitempty"`
 	CIDRBlockEnabled             bool                  `json:"cidr_block_enabled,omitempty"`
 	ProxyVPNBlockEnabled         bool                  `json:"proxy_vpn_block_enabled,omitempty"`
 	ModeratorIntelEnabled        bool                  `json:"moderator_intel_enabled,omitempty"`

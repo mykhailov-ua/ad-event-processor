@@ -106,9 +106,12 @@ func (h *AdsPacketHandler) reactOpenRTBBidCore(req *Request, c gnet.Conn, ctx *C
 	ctx.WReqID.Buf = bidID
 	clientIP := extractClientIPGnet(ctx, req, c, h.cfg.TrustedProxies)
 	evt := &ctx.Evt
+	releaseAttachedFraudAccumulator(evt)
 	evt.Reset()
 	evt.IP = clientIP
-	outcome := runOpenRTBExchangeParsed(h.trackProc, &parsed.OpenRTB26Hot, &parsed.OpenRTB26Cold, bidID, clientIP, exCfg, &ctx.OpenRTBMultiADM, evt)
+	var outcome openrtbExchangeOutcome
+	var targeting wireTargeting
+	runOpenRTBExchangeParsed(h.trackProc, &parsed.OpenRTB26Hot, &parsed.OpenRTB26Cold, bidID, clientIP, exCfg, &ctx.OpenRTBMultiADM, evt, &outcome, &targeting)
 	recordOpenRTBExchangeOutcome(&parsed.OpenRTB26Hot, &parsed.OpenRTB26Cold, bidID, outcome)
 	httpOpts := openRTBHTTPWriteOpts(h.cfg, req)
 	if outcome.HasBid {

@@ -10,11 +10,10 @@ import { cn } from '@/lib/utils';
 
 export type CountryFlagIconProps = {
   code: string;
-  className?: string;
   title?: string;
 };
 
-export function CountryFlagIcon({ code, className, title }: CountryFlagIconProps) {
+export function CountryFlagIcon({ code, title }: CountryFlagIconProps) {
   const [broken, setBroken] = useState(false);
   const normalized = normalizeCountryFlagCode(code) ?? code.trim().toUpperCase();
   const src = countryFlagAssetPath(code);
@@ -23,10 +22,7 @@ export function CountryFlagIcon({ code, className, title }: CountryFlagIconProps
     return (
       <span
         aria-hidden
-        className={cn(
-          'inline-flex h-3 w-[18px] shrink-0 items-center justify-center rounded bg-muted text-ui-micro font-bold text-muted-foreground',
-          className
-        )}
+       
         title={title ?? normalized}
       >
         {normalized.slice(0, 1)}
@@ -37,7 +33,7 @@ export function CountryFlagIcon({ code, className, title }: CountryFlagIconProps
   return (
     <img
       alt=""
-      className={cn('inline-block h-3 w-[18px] shrink-0 rounded object-cover', className)}
+     
       decoding="async"
       height={COUNTRY_FLAG_HEIGHT}
       loading="lazy"

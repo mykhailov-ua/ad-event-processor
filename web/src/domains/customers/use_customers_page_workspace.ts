@@ -1,9 +1,8 @@
 // customers directory: sort/limit/offset in URL; server listCustomers only (Cold pagination).
-import { useCallback, useMemo } from 'react';
+import { useCallback, useEffect, useMemo, useState } from 'react';
 
 import { listCustomers } from '@/api/customers_api';
 import type { CustomerListQuery } from '@/api/types';
-import type { CustomerSortField, SortOrder } from '@/domains/customers/customers_directory';
 import { useResource } from '@/api/use_resource';
 import { useTransitionSearchParams } from '@/hooks/use_transition_search_params';
 import {
@@ -13,17 +12,15 @@ import {
   parseListOffset,
 } from '@/lib/list_query';
 
+type CustomerSortField = 'name' | 'created_at';
+type SortOrder = 'asc' | 'desc';
+
 function parseSort(raw: string | null): CustomerSortField {
-  switch (raw) {
-    case 'created_at':
-      return 'created_at';
-    case 'balance':
-      return 'balance';
-    case 'active_campaigns':
-      return 'active_campaigns';
-    default:
-      return 'name';
-  }
+  return raw === 'created_at' ? 'created_at' : 'name';
+}
+
+function isAllowedSortParam(raw: string | null): boolean {
+  return raw == null || raw === 'name' || raw === 'created_at';
 }
 
 function parseOrder(raw: string | null): SortOrder {
@@ -31,13 +28,10 @@ function parseOrder(raw: string | null): SortOrder {
 }
 
 function buildListQuery(params: URLSearchParams): CustomerListQuery {
-  const parsedSort = parseSort(params.get('sort'));
-  const serverSort: CustomerListQuery['sort'] = parsedSort === 'created_at' ? 'created_at' : 'name';
-
   return {
     limit: parseListLimit(params.get('limit')),
     offset: parseListOffset(params.get('offset')),
-    sort: serverSort,
+    sort: parseSort(params.get('sort')),
     order: parseOrder(params.get('order')),
   };
 }
@@ -49,6 +43,16 @@ export function useCustomersPageWorkspace() {
   const query = useMemo(() => buildListQuery(searchParams), [searchParams]);
   const appliedSort = parseSort(searchParams.get('sort'));
   const appliedOrder = parseOrder(searchParams.get('order'));
+
+  useEffect(() => {
+    const rawSort = searchParams.get('sort');
+    if (isAllowedSortParam(rawSort)) {
+      return;
+    }
+    const next = new URLSearchParams(searchParams);
+    next.set('sort', 'name');
+    replaceSearchParams(next);
+  }, [replaceSearchParams, searchParams]);
 
   const {
     data,
@@ -94,31 +98,24 @@ export function useCustomersPageWorkspace() {
     [updateQuery]
   );
 
-  const onColumnSort = useCallback(
-    (field: CustomerSortField) => {
-      const nextOrder = appliedSort === field && appliedOrder === 'asc' ? 'desc' : 'asc';
-      updateQuery({
-        sort: field,
-        order: nextOrder,
-        offset: 0,
-      });
-    },
-    [appliedOrder, appliedSort, updateQuery]
-  );
+  const [selectedCustomerId, setSelectedCustomerId] = useState<string | null>(null);
+
+  useEffect(() => {
+    setSelectedCustomerId(null);
+  }, [query.limit, query.offset, query.sort, query.order]);
 
   return {
     items: data?.items,
     total: data?.total ?? 0,
     limit: data?.limit ?? query.limit ?? DEFAULT_LIST_LIMIT,
     offset: data?.offset ?? query.offset ?? 0,
-    appliedSort,
-    appliedOrder,
     fetching,
     listRevalidating: listRevalidating || listQueryPending,
     error,
     hasSnapshot: data != null,
     freshnessLabel: data?.freshness_label,
-    onColumnSort,
+    selectedCustomerId,
+    onSelectedCustomerIdChange: setSelectedCustomerId,
     onPageChange,
     onLimitChange,
   };

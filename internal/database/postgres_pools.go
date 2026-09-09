@@ -34,7 +34,9 @@ func ConnectPostgresPools(ctx context.Context, cfg *config.Config) (*PostgresPoo
 	if err != nil {
 		return nil, fmt.Errorf("read pool: %w", err)
 	}
-	settlementPool, err := Connect(ctx, string(cfg.DBDSN), settleMax, 1)
+	settlementPool, err := Connect(ctx, string(cfg.DBDSN), settleMax, 1, PoolConfig{
+		StatementTimeout: cfg.SettlementPGStatementTimeout(),
+	})
 	if err != nil {
 		readPool.Close()
 		return nil, fmt.Errorf("settle pool: %w", err)

@@ -1,10 +1,5 @@
 import { useEffect, useState } from 'react';
 
-import { ApiError } from '@/api/client';
-import { ErrorBlock } from '@/shell/error_block';
-import { PageSkeleton } from '@/shell/page_skeleton';
-import { StubBanner } from '@/shell/stub_banner';
-import { formatCampaignStatusLabel } from '@/lib/admin_typography';
 import { CampaignEditorAdvancedPanel } from '@/domains/campaigns/editor/campaign_editor_advanced_panel';
 import { CampaignEditorShell } from '@/domains/campaigns/editor/campaign_editor_shell';
 import { EditorStatusBanners } from '@/domains/campaigns/editor/campaign_editor_shared';
@@ -12,6 +7,9 @@ import type {
   CampaignDisplayFields,
   CampaignEditorProps,
 } from '@/domains/campaigns/editor/campaign_editor_types';
+import { formatCampaignStatusLabel } from '@/lib/admin_typography';
+import { EditorPageShell } from '@/shell/editor_page_shell';
+import { panelError } from '@/shell/panel_error';
 
 export type {
   BuildCampaignPatchResult,
@@ -42,7 +40,6 @@ export function CampaignEditor(props: CampaignEditorProps) {
     checking,
     validating,
     publishing,
-    publishCheck,
     macroPreviewResult,
     publishCheckError,
     validateError,
@@ -58,19 +55,51 @@ export function CampaignEditor(props: CampaignEditorProps) {
     }
   }, [cloneSuccess]);
 
-  if (fetching && !hasSnapshot && !loadError) {
-    return <PageSkeleton />;
-  }
+  const fetchState = {
+    fetching,
+    error: loadError,
+    hasSnapshot,
+  };
 
-  if (loadError && !hasSnapshot) {
-    if (loadError instanceof ApiError && loadError.status === 501) {
-      return <StubBanner title="Campaign editor unavailable" message={loadError.message} />;
-    }
-    return <ErrorBlock title="Could not load campaign" message={loadError.message} />;
-  }
+  return (
+    <EditorPageShell blockingErrorTitle="Could not load campaign" fetchState={fetchState}>
+      <CampaignEditorContent
+        {...props}
+        cloneOpen={cloneOpen}
+        onCloneOpenChange={setCloneOpen}
+        clickUrl={clickUrl ?? macroPreviewResult?.resolved_click_url}
+      />
+    </EditorPageShell>
+  );
+}
 
+type CampaignEditorContentProps = CampaignEditorProps & {
+  cloneOpen: boolean;
+  onCloneOpenChange: (open: boolean) => void;
+  clickUrl?: string;
+};
+
+function CampaignEditorContent(props: CampaignEditorContentProps) {
+  const {
+    campaign,
+    flowPaths,
+    form,
+    saving,
+    saveError,
+    onFieldChange,
+    onSave,
+    clickUrl,
+    checking,
+    validating,
+    publishing,
+    publishCheckError,
+    validateError,
+    publishError,
+    cloneOpen,
+    onCloneOpenChange,
+  } = props;
   if (!campaign) {
-    return <ErrorBlock title="Campaign not found" message="No campaign data returned." />;
+    return panelError(new Error('No campaign data returned.'), 'Campaign not found');
   }
 
   const displayCampaign = campaign as CampaignDisplayFields;
@@ -84,7 +113,7 @@ export function CampaignEditor(props: CampaignEditorProps) {
     <CampaignEditorShell
       campaignId={campaign.id}
       campaignName={campaign.name}
-      clickUrl={clickUrl ?? macroPreviewResult?.resolved_click_url}
+      clickUrl={clickUrl}
       flowPaths={flowPaths}
       form={form}
       saving={saving}
@@ -103,10 +132,10 @@ export function CampaignEditor(props: CampaignEditorProps) {
           gateBusy={gateBusy}
           statusLabel={statusLabel}
           cloneOpen={cloneOpen}
-          onCloneOpenChange={setCloneOpen}
+          onCloneOpenChange={onCloneOpenChange}
         />
       }
-      onClone={() => setCloneOpen(true)}
+      onClone={() => onCloneOpenChange(true)}
       onFieldChange={onFieldChange}
       onSave={onSave}
     />

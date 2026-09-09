@@ -11,6 +11,7 @@ import { CustomerDetailTaxTab } from '@/domains/customers/customer_detail_tax_ta
 import type { CustomerDetailProps } from '@/domains/customers/customer_detail_types';
 import { CustomerDetailWalletTab } from '@/domains/customers/customer_detail_wallet_tab';
 import { ErrorBlock } from '@/shell/error_block';
+import { panelError } from '@/shell/panel_error';
 import { PageSkeleton } from '@/shell/page_skeleton';
 
 export type {
@@ -96,7 +97,7 @@ export function CustomerDetail({
   }
 
   if (customerError && !hasCustomerSnapshot) {
-    return <ErrorBlock title="Could not load customer" message={customerError.message} />;
+    return panelError(customerError, 'Could not load customer');
   }
 
   if (!customer) {
@@ -104,16 +105,16 @@ export function CustomerDetail({
   }
 
   return (
-    <section className="grid gap-4">
-      <header className="grid gap-1">
+    <section >
+      <header >
         <div>
-          <p className="text-sm text-muted-foreground">
-            <Link className="text-primary hover:underline" to="/customers">
+          <p >
+            <Link  to="/customers">
               Customers
             </Link>
           </p>
-          <h1 className="text-lg font-semibold">{customer.name ?? customer.id}</h1>
-          {customerFetching ? <p className="text-sm text-muted-foreground">Refreshing...</p> : null}
+          <h1 >{customer.name ?? customer.id}</h1>
+          {customerFetching ? <p >Refreshing...</p> : null}
         </div>
       </header>
 

@@ -41,6 +41,14 @@ func (m *mockAuthAPI) CreateAPIKey(context.Context, string, string, []string) (i
 	return identity.CreateAPIKeyResult{}, errors.New("unexpected call to CreateAPIKey")
 }
 
+func (m *mockAuthAPI) ListAPIKeys(context.Context, string) ([]identity.APIKey, error) {
+	return nil, errors.New("unexpected call to ListAPIKeys")
+}
+
+func (m *mockAuthAPI) RevokeAPIKey(context.Context, string, string) error {
+	return errors.New("unexpected call to RevokeAPIKey")
+}
+
 func (m *mockAuthAPI) Login(ctx context.Context, email, password string, durationHours int32) (identity.LoginResult, error) {
 	if m.loginFunc != nil {
 		return m.loginFunc(ctx, email, password, durationHours)

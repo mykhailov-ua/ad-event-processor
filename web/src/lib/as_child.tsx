@@ -1,7 +1,5 @@
 import * as React from 'react';
 
-import { cn } from '@/lib/utils';
-
 export function mergeRefs<T>(...refs: Array<React.Ref<T> | undefined>) {
   return (value: T) => {
     for (const ref of refs) {
@@ -27,7 +25,7 @@ export type SlotProps = React.HTMLAttributes<HTMLElement> & {
 };
 
 export const Slot = React.forwardRef<HTMLElement, SlotProps>(function Slot(
-  { children, className, ...props },
+  { children, ...props },
   forwardedRef
 ) {
   if (!React.isValidElement(children)) {
@@ -40,7 +38,6 @@ export const Slot = React.forwardRef<HTMLElement, SlotProps>(function Slot(
   return React.cloneElement(child, {
     ...props,
     ...child.props,
-    className: cn(className, child.props.className as string | undefined),
     ref: mergeRefs(forwardedRef, childRef),
     onClick: composeHandlers(
       props.onClick as ((event: React.MouseEvent<HTMLElement>) => void) | undefined,

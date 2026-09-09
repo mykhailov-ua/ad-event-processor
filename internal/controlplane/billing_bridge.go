@@ -124,8 +124,8 @@ func (s *Service) ListDisputes(ctx context.Context, customerFilter string, limit
 	return s.disputesAdmin().ListDisputes(ctx, customerFilter, limit, offset)
 }
 
-func (s *Service) ListAuditLogs(ctx context.Context, limit, offset int32, redactPII bool) ([]platformadmin.AuditLogDTO, int64, error) {
-	return platformadmin.ListAuditLogs(ctx, s, limit, offset, redactPII)
+func (s *Service) ListAuditLogs(ctx context.Context, filter platformadmin.AuditLogFilter, limit, offset int32, redactPII bool) ([]platformadmin.AuditLogDTO, int64, error) {
+	return platformadmin.ListAuditLogs(ctx, s, filter, limit, offset, redactPII)
 }
 
 func (s *Service) RetryNotification(ctx context.Context, notificationID string) error {

@@ -18,13 +18,13 @@ const sizeClass: Record<NonNullable<ButtonProps['size']>, string> = {
   default: '',
   sm: 'text-xs',
   lg: 'px-5',
-  icon: 'h-7 w-7 min-h-7 min-w-7 p-0',
+  icon: 'size-7 p-0',
 };
 
 const shapeClass: Record<NonNullable<ButtonProps['shape']>, string> = {
   default: '',
-  pill: 'rounded-none',
-  square: 'rounded-none',
+  pill: adminKit.pillRadius,
+  square: adminKit.controlRadius,
 };
 
 const Button = React.forwardRef<HTMLButtonElement, ButtonProps>(
@@ -46,7 +46,7 @@ const Button = React.forwardRef<HTMLButtonElement, ButtonProps>(
     const classes = cn(
       adminKit.buttonShell,
       adminKit.controlRadius,
-      'font-normal transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 focus-visible:ring-offset-background disabled:pointer-events-none disabled:opacity-50',
+      'font-normal transition-colors focus-visible:outline-none focus-visible:ring-0 focus-visible:ring-offset-0 disabled:pointer-events-none disabled:opacity-50',
       buttonVariantClass[variant],
       sizeClass[size],
       shapeClass[shape],
@@ -96,7 +96,7 @@ export function buttonVariants({
   return cn(
     adminKit.buttonShell,
     adminKit.controlRadius,
-    'font-normal transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 focus-visible:ring-offset-background disabled:pointer-events-none disabled:opacity-50',
+    'font-normal transition-colors focus-visible:outline-none focus-visible:ring-0 focus-visible:ring-offset-0 disabled:pointer-events-none disabled:opacity-50',
     buttonVariantClass[variant],
     sizeClass[size],
     shapeClass[shape]

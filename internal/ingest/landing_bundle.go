@@ -77,19 +77,17 @@ func (m *l1IPv4RotationMetrics) recordShadow() {
 	m.shadow.Inc()
 }
 
-func (h *AdsPacketHandler) l1IPv4RotationObserve(ip, userID string, campaignID uuid.UUID, parsed *clickQueryParsed, nowMono int64) (shouldSafeView bool) {
+func (h *AdsPacketHandler) l1IPv4RotationObserve(ip, userID string, camp *domain.Campaign, parsed *clickQueryParsed, nowMono int64) (shouldSafeView bool) {
 	if h.registry != nil {
-		if camp, ok := h.registry.GetCampaign(campaignID); ok && camp != nil {
-			if !camp.CIDRBlockEnabled {
-				return false
+		if camp == nil || !camp.CIDRBlockEnabled {
+			return false
+		}
+		t := h.ipv4RotationTable
+		if t == nil || !t.Ready() {
+			if _, _, ok := track.IPv4HostAndSubnet24(ip); ok {
+				return true
 			}
-			t := h.ipv4RotationTable
-			if t == nil || !t.Ready() {
-				if _, _, ok := track.IPv4HostAndSubnet24(ip); ok {
-					return true
-				}
-				return false
-			}
+			return false
 		}
 	}
 	t := h.ipv4RotationTable
@@ -99,6 +97,10 @@ func (h *AdsPacketHandler) l1IPv4RotationObserve(ip, userID string, campaignID u
 	host, subnet24, ok := track.IPv4HostAndSubnet24(ip)
 	if !ok {
 		return false
+	}
+	campaignID := uuid.Nil
+	if camp != nil {
+		campaignID = camp.ID
 	}
 	if cgnatBypassForCampaign(h.cfg.CGNATMobileIPBypassEnabled(), h.registry, campaignID, h.mobileCarrierASN, asnLookupFromGeo(h.trackProc.ingestGeo), ip, "ipv4_rotation") {
 		return false
@@ -144,19 +146,17 @@ func (m *l1IPv6RotationMetrics) recordShadow() {
 	m.shadow.Inc()
 }
 
-func (h *AdsPacketHandler) l1IPv6RotationObserve(ip string, campaignID uuid.UUID, parsed *clickQueryParsed, nowMono int64) (shouldSafeView bool) {
+func (h *AdsPacketHandler) l1IPv6RotationObserve(ip string, camp *domain.Campaign, parsed *clickQueryParsed, nowMono int64) (shouldSafeView bool) {
 	if h.registry != nil {
-		if camp, ok := h.registry.GetCampaign(campaignID); ok && camp != nil {
-			if !camp.CIDRBlockEnabled {
-				return false
+		if camp == nil || !camp.CIDRBlockEnabled {
+			return false
+		}
+		t := h.ipv6RotationTable
+		if t == nil || !t.Ready() {
+			if _, _, ok := parseIPv6To128(ip); ok {
+				return true
 			}
-			t := h.ipv6RotationTable
-			if t == nil || !t.Ready() {
-				if _, _, ok := parseIPv6To128(ip); ok {
-					return true
-				}
-				return false
-			}
+			return false
 		}
 	}
 	t := h.ipv6RotationTable
@@ -166,6 +166,10 @@ func (h *AdsPacketHandler) l1IPv6RotationObserve(ip string, campaignID uuid.UUID
 	hi, lo, ok := parseIPv6To128(ip)
 	if !ok {
 		return false
+	}
+	campaignID := uuid.Nil
+	if camp != nil {
+		campaignID = camp.ID
 	}
 	campaignHash := crc32Castagnoli(&campaignID)
 	live, shadow := t.Observe(campaignHash, hi, lo, nowMono)
@@ -421,11 +425,16 @@ func (h *AdsPacketHandler) reactClickRedirect(req *Request, c gnet.Conn, ctx *Co
 		return gnet.None
 	}
 
-	if h.l1IPv6RotationObserve(ip, parsed.CampaignID, parsed, startMono) {
+	var camp *domain.Campaign
+	if h.registry != nil {
+		camp, _ = h.registry.GetCampaign(parsed.CampaignID)
+	}
+
+	if h.l1IPv6RotationObserve(ip, camp, parsed, startMono) {
 		h.writeGnetCampaignDecoySafeView(c, ctx, startMono, "l1v6", parsed.CampaignID)
 		return gnet.None
 	}
-	if h.l1IPv4RotationObserve(ip, parsed.UserID, parsed.CampaignID, parsed, startMono) {
+	if h.l1IPv4RotationObserve(ip, parsed.UserID, camp, parsed, startMono) {
 		h.writeGnetCampaignDecoySafeView(c, ctx, startMono, "l1v4", parsed.CampaignID)
 		return gnet.None
 	}
@@ -464,6 +473,7 @@ func (h *AdsPacketHandler) reactClickRedirect(req *Request, c gnet.Conn, ctx *Co
 	}
 
 	evt := &ctx.Evt
+	releaseAttachedFraudAccumulator(evt)
 	evt.Reset()
 	if parsed.Smoke {
 		evt.SmokeEvent = true
@@ -473,7 +483,7 @@ func (h *AdsPacketHandler) reactClickRedirect(req *Request, c gnet.Conn, ctx *Co
 	evt.UserID = parsed.UserID
 	evt.Type = parsed.EventType
 	evt.PlacementID = parsed.PlacementID
-	if camp, ok := h.registry.GetCampaign(parsed.CampaignID); ok {
+	if camp != nil {
 		attachIngressCost(evt, camp, parsed)
 	}
 	evt.IP = ip
@@ -867,6 +877,8 @@ func bodyLenDigits(n int) int { return track.BodyLenDigits(n) }
 
 const (
 	safePageAttestOK                   = ""
+	safePageAttestProxyAnonymous       = "proxy_anonymous"
+	safePageAttestConnTypeViolation    = "conn_type_violation"
 	safePageAttestWebRTCLeak           = "webrtc_leak"
 	safePageAttestTimezoneSpoof        = "timezone_spoof"
 	safePageAttestWebGLAutomation      = "webgl_automation"
@@ -939,26 +951,53 @@ func (h *AdsPacketHandler) reactTrackVerify(req *Request, c gnet.Conn, ctx *Conn
 	}
 
 	country := ""
+	ingestAnonymous := false
 	if h.trackProc.ingestGeo != nil {
 		country, _ = h.trackProc.ingestGeo.GetCountry(ip)
+		if anon, err := h.trackProc.ingestGeo.IsAnonymous(ip); err == nil {
+			ingestAnonymous = anon
+		}
 	}
 	canvasRetestEnabled := false
 	mobileBiometricsRequired := false
+	proxyVPNBlockEnabled := false
+	connTypePolicy := domain.ConnTypePolicy("")
+	proxyVPNMatched := false
+	var proxyVPNConnType uint8
+	timezoneMode := domain.TimezoneAttestationModeIPCountry
+	var targetCountries map[string]struct{}
 	if camp, ok := h.registry.GetCampaign(campaignID); ok && camp != nil {
 		canvasRetestEnabled = camp.CanvasRetestEnabled
+		proxyVPNBlockEnabled = camp.ProxyVPNBlockEnabled
+		connTypePolicy = camp.ConnTypePolicy
+		timezoneMode = camp.TimezoneAttestationMode.Effective()
+		targetCountries = camp.TargetCountries
 		if h.cfg != nil && h.cfg.MobileBiometricsClickEnabled {
 			mobileBiometricsRequired = camp.MobileBiometricsClickEnabled && camp.SafePageEnabled && camp.AttestationEnabled
 		}
+		if h.proxyVPNTable != nil && h.proxyVPNTable.Ready() {
+			proxyVPNMatched, proxyVPNConnType, _ = h.proxyVPNTable.MatchIP(ip)
+		}
+	}
+	if ingestAnonymous && !proxyVPNBlockEnabled {
+		metrics.SafePageAttestSignalTotal.WithLabelValues("anonymous").Inc()
 	}
 	if fail, code := evaluateSafePageAttestation(safePageAttestationInput{
 		RemoteIP:                 ip,
 		Country:                  country,
+		TargetCountries:          targetCountries,
+		TimezoneMode:             timezoneMode,
 		Fingerprint:              verifyReq.Fingerprint,
 		Events:                   verifyReq.Events,
 		NowUnix:                  time.Now().Unix(),
 		BehaviorScore:            scoreSafePageBehavior(verifyReq.Events),
 		CanvasRetestEnabled:      canvasRetestEnabled,
 		MobileBiometricsRequired: mobileBiometricsRequired,
+		IngestAnonymous:          ingestAnonymous,
+		ProxyVPNBlockEnabled:     proxyVPNBlockEnabled,
+		ConnTypePolicy:           connTypePolicy,
+		ProxyVPNMatched:          proxyVPNMatched,
+		ProxyVPNConnType:         proxyVPNConnType,
 	}); fail {
 		landingURL, ok := resolveSafePageLanding(h.registry, campaignID)
 		if !ok {
@@ -966,7 +1005,7 @@ func (h *AdsPacketHandler) reactTrackVerify(req *Request, c gnet.Conn, ctx *Conn
 			return gnet.None
 		}
 		body := buildCampaignDecoyBody(h, campaignID, landingURL)
-		metrics.SafePageVerifyTotal.Inc()
+		metrics.SafePageAttestDecoyTotal.WithLabelValues(code).Inc()
 		h.writeGnetVerifyJSON(c, ctx, startMono, safePageVerifyResponse{
 			Success:     true,
 			HTMLContent: string(body),
@@ -990,7 +1029,7 @@ func (h *AdsPacketHandler) reactTrackVerify(req *Request, c gnet.Conn, ctx *Conn
 				return gnet.None
 			}
 			body := buildCampaignDecoyBody(h, campaignID, landingURL)
-			metrics.SafePageVerifyTotal.Inc()
+			metrics.SafePageAttestDecoyTotal.WithLabelValues("crowd_wave_active").Inc()
 			h.writeGnetVerifyJSON(c, ctx, startMono, safePageVerifyResponse{
 				Success:     true,
 				HTMLContent: string(body),

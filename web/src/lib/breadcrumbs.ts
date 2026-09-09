@@ -1,4 +1,3 @@
-import { getDocsSection } from './docs_sections.ts';
 import { NAV_ITEMS } from './nav_config.ts';
 
 export type BreadcrumbItem = {
@@ -14,7 +13,9 @@ const STATIC_PATH_LABELS: Record<string, string> = {
   '/billing': 'Billing',
   '/billing/exports': 'Exports',
   '/ops': 'Ops',
-  '/ops/dlq': 'DLQ inbox',
+  '/ops/health': 'Health',
+  '/ops/sync-errors': 'Sync errors',
+  '/ops/dlq': 'Sync errors',
   '/ops/blacklist': 'Blacklist',
   '/ops/incidents': 'Incidents',
   '/ops/outbox': 'Outbox',
@@ -26,18 +27,19 @@ const STATIC_PATH_LABELS: Record<string, string> = {
   '/ops/rum': 'RUM',
   '/ops/metrics': 'Metrics',
   '/settings': 'Settings',
-  '/settings/license': 'License',
-  '/settings/licence': 'License',
+  '/settings/license': 'Settings',
+  '/settings/licence': 'Settings',
   '/licence': 'License',
   '/license': 'License',
   '/support/feedback': 'Support feedback',
   '/disputes': 'Disputes',
   '/team': 'Team',
   '/audit': 'Audit',
+  '/exports': 'Exports',
   '/dashboards': 'Dashboards',
   '/dashboards/campaign': 'Campaign dashboard',
   '/reports': 'Reports',
-  '/reports/jobs': 'Report jobs',
+  '/reports/jobs': 'Exports',
   '/rtb': 'RTB',
   '/rtb/deals': 'Deals',
   '/rtb/shadow': 'Shadow',
@@ -53,7 +55,9 @@ const STATIC_PATH_LABELS: Record<string, string> = {
   '/fraud/decisions': 'Decision explain',
   '/integrations': 'Integrations',
   '/integrations/cost-sync': 'Cost sync',
+  '/integrations/api-keys': 'Service accounts',
   '/integrations/postbacks': 'Postbacks',
+  '/integrations/debugger': 'Debugger',
   '/integrations/schemas': 'Schemas',
   '/integrations/platform-campaigns': 'Platform links',
   '/integrations/affiliate-presets': 'Affiliate presets',
@@ -240,15 +244,7 @@ function resolveStepLabel(
     return shortenId(segment);
   }
 
-  const docsSection = getDocsSection(segment);
   const previousSegment = stepIndex > 0 ? steps[stepIndex - 1]?.segment : undefined;
-  if (docsSection && previousSegment === 'docs') {
-    return docsSection.title;
-  }
-
-  if (previousSegment === 'dashboards' && segment !== 'campaign') {
-    return DASHBOARD_ROLE_LABELS[segment] ?? humanizeSegment(segment);
-  }
 
   if (previousSegment === 'reports' && segment !== 'jobs') {
     return humanizeSegment(segment);

@@ -1,4 +1,5 @@
 import type { DocsSection } from '@/lib/docs_types';
+import { LANDER_CONVERSION_EVENT_ID_LINE } from '@/lib/uuid';
 
 export const TRACKER_DOCS_SECTION: DocsSection = {
   id: 'tracker',
@@ -186,7 +187,7 @@ Content-Type: application/json
           type: 'code',
           code: `<script src="https://{lander_host}/_aed/track.js"></script>
 <script>
-  const conversionEventId = crypto.randomUUID();
+  ${LANDER_CONVERSION_EVENT_ID_LINE}
   trackEvent({
     endpoint: 'https://{track_host}/track',
     campaignId: '{campaign_uuid}',
@@ -204,12 +205,13 @@ Content-Type: application/json
           type: 'code',
           code: `<script src="https://{track_host}/static/track.js"></script>
 <script>
+  ${LANDER_CONVERSION_EVENT_ID_LINE}
   trackEvent({
     endpoint: 'https://{track_host}/track',
     campaignId: '{campaign_uuid}',
     type: 'conversion',
     clickId: new URLSearchParams(location.search).get('click_id'),
-    eventId: crypto.randomUUID()
+    eventId: conversionEventId
   });
 </script>`,
         },

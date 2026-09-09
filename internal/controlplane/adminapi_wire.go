@@ -135,6 +135,7 @@ func (h *Handler) BuildAdminAPIRegistry(pool *pgxpool.Pool, redisShards []redis.
 		}
 		exportHTTP = &billingadmin.ExportHTTPHandlers{
 			JobRunner:               jobRunner,
+			ExportChunkMaxBytes:     h.svc.ExportChunkMaxBytes,
 			ApplyRateLimit:          limit,
 			RequirePermission:       perm,
 			AuthorizeCustomerAccess: authCustomer,

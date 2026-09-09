@@ -41,7 +41,7 @@ export function CampaignListRowAlertBadge(props: CampaignListRowAlertBadgeProps)
       <TooltipTrigger asChild>
         <span
           aria-label="Campaign alert"
-          className={`inline-flex h-4 w-4 shrink-0 items-center justify-center rounded-sm text-[10px] font-bold leading-none ${toneClass}`}
+         
           role="img"
         >
           !

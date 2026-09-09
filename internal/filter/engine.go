@@ -436,7 +436,6 @@ func (f *DuplicateEventFilter) Check(ctx context.Context, evt *domain.Event) err
 	bufPool.Put(w)
 
 	ok, err := f.redisClient.SetNX(ctx, key, "1", f.ttl).Result()
-
 	if err != nil {
 		return err
 	}
@@ -829,6 +828,12 @@ func ReleaseFraudAccumulator(evt *domain.Event, acc *fraudAccumulator) {
 	fraudAccPool.Put(acc)
 	if evt != nil {
 		evt.Scratch = nil
+	}
+}
+
+func ReleaseAttachedFraudAccumulator(evt *domain.Event) {
+	if acc, ok := fraudAccFromEvent(evt); ok {
+		ReleaseFraudAccumulator(evt, acc)
 	}
 }
 

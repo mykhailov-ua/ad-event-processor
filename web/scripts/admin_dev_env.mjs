@@ -5,5 +5,7 @@ export function adminApiTarget() {
 }
 
 export async function prepareDevBuildEnv() {
-  // No-op: local dev server always proxies /api/* to the control plane.
+  if (process.env.ADMIN_UI_BARE === undefined) {
+    delete process.env.ADMIN_UI_BARE;
+  }
 }

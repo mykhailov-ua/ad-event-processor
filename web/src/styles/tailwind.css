@@ -1,0 +1,390 @@
+@import '@fontsource-variable/inter';
+@import '@fontsource/inter/400.css';
+@import '@fontsource/inter/500.css';
+@import '@fontsource/inter/600.css';
+@import '@fontsource/inter/700.css';
+
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+@layer base {
+  :root {
+    /* pgAdmin standard theme (light.js + styleguide color palettes) */
+    --background: 220 27% 92%;
+    --foreground: 0 0% 13%;
+    --card: 0 0% 100%;
+    --card-foreground: 0 0% 13%;
+    --popover: 0 0% 100%;
+    --popover-foreground: 0 0% 13%;
+    --primary: 206 48% 38%;
+    --primary-foreground: 0 0% 100%;
+    --secondary: 220 27% 94%;
+    --secondary-foreground: 0 0% 13%;
+    --muted: 220 33% 97%;
+    --muted-foreground: 223 11% 45%;
+    --accent: 220 27% 94%;
+    --accent-foreground: 0 0% 13%;
+    --destructive: 1 76% 55%;
+    --destructive-foreground: 0 0% 100%;
+    --border: 220 14% 88%;
+    --input: 220 14% 88%;
+    --ring: 206 48% 38%;
+    --radius: 0.5rem;
+    --font-sans: 'Inter Variable', 'Inter', sans-serif;
+    --scrollbar-thumb: 218 14% 77%;
+    --scrollbar-track: 218 14% 77%;
+
+    --chart-1: 206 48% 38%;
+    --chart-2: 123 46% 45%;
+    --chart-3: 35 84% 57%;
+    --chart-4: 223 11% 45%;
+    --chart-5: 199 88% 92%;
+
+    --admin-brand: 206 48% 38%;
+    --admin-brand-hover: 206 48% 29%;
+    --admin-brand-fg: 0 0% 100%;
+    --admin-fg: 0 0% 13%;
+    --admin-fg-strong: 0 0% 9%;
+    --admin-fg-secondary: 223 11% 45%;
+    --admin-muted: 220 12% 58%;
+    --admin-positive-fg: 123 46% 45%;
+    --admin-negative-fg: 1 76% 55%;
+    --admin-metric-zero-fg: 220 12% 58%;
+    --admin-metric-conversion-fg: 206 48% 38%;
+    --admin-header-faq-bg: 206 48% 42%;
+    --admin-header-faq-hover: 206 48% 38%;
+    --admin-status-active: 123 46% 45%;
+    --admin-status-paused: 35 84% 57%;
+    --admin-status-draft: 223 11% 45%;
+    --admin-status-scheduled: 35 84% 57%;
+    --admin-warn-fg: 35 84% 45%;
+    --admin-warn-bg: 35 90% 92%;
+    --admin-warn-border: 35 84% 75%;
+    --admin-filters-bg: 220 33% 97%;
+    --admin-table-header-bg: 220 33% 97%;
+    --admin-table-pin-bg: 0 0% 100%;
+    --admin-table-row-hover: 220 27% 94%;
+    --admin-table-totals-bg: 220 33% 97%;
+    --admin-selection: 199 88% 92%;
+    --admin-input-disabled: 220 33% 97%;
+    --admin-control-bg: 0 0% 98%;
+
+    --admin-row-selected-bg: 199 88% 92%;
+    --admin-row-selected-edge: 206 48% 38%;
+    --admin-row-muted-bg: 220 27% 94%;
+    --admin-row-muted-edge: 220 12% 58%;
+    --admin-row-warning-bg: 35 90% 92%;
+    --admin-row-warning-edge: 35 84% 45%;
+    --admin-row-critical-bg: 1 76% 95%;
+    --admin-row-critical-edge: 1 76% 55%;
+
+    --page-canvas-padding-block: 2rem;
+    --tracker-header-height: 2.75rem;
+    --page-fill-min-height: calc(
+      100dvh - var(--tracker-header-height) - var(--page-canvas-padding-block)
+    );
+  }
+
+  .dark {
+    /* pgAdmin dark theme (dark.js) */
+    --background: 0 0% 8%;
+    --foreground: 0 0% 83%;
+    --card: 0 0% 12%;
+    --card-foreground: 0 0% 83%;
+    --popover: 0 0% 12%;
+    --popover-foreground: 0 0% 83%;
+    --primary: 206 52% 28%;
+    --primary-foreground: 0 0% 100%;
+    --secondary: 0 0% 20%;
+    --secondary-foreground: 0 0% 83%;
+    --muted: 0 0% 20%;
+    --muted-foreground: 0 0% 54%;
+    --accent: 0 0% 20%;
+    --accent-foreground: 0 0% 83%;
+    --destructive: 6 63% 60%;
+    --destructive-foreground: 0 0% 100%;
+    --border: 0 0% 16%;
+    --input: 0 0% 16%;
+    --ring: 206 52% 28%;
+    --scrollbar-thumb: 0 0% 26%;
+    --scrollbar-track: 0 0% 16%;
+
+    --chart-1: 206 52% 28%;
+    --chart-2: 124 55% 33%;
+    --chart-3: 35 84% 57%;
+    --chart-4: 0 0% 54%;
+    --chart-5: 200 11% 23%;
+
+    --admin-brand: 206 52% 28%;
+    --admin-brand-hover: 206 52% 22%;
+    --admin-brand-fg: 0 0% 100%;
+    --admin-fg: 0 0% 83%;
+    --admin-fg-strong: 0 0% 93%;
+    --admin-fg-secondary: 0 0% 72%;
+    --admin-muted: 0 0% 54%;
+    --admin-positive-fg: 124 55% 33%;
+    --admin-negative-fg: 6 63% 60%;
+    --admin-metric-zero-fg: 0 0% 54%;
+    --admin-metric-conversion-fg: 206 52% 40%;
+    --admin-header-faq-bg: 206 52% 34%;
+    --admin-header-faq-hover: 206 52% 38%;
+    --admin-status-active: 124 55% 33%;
+    --admin-status-paused: 35 84% 57%;
+    --admin-status-draft: 0 0% 54%;
+    --admin-status-scheduled: 35 84% 57%;
+    --admin-warn-fg: 35 84% 57%;
+    --admin-warn-bg: 38 48% 16%;
+    --admin-warn-border: 38 42% 28%;
+    --admin-filters-bg: 0 0% 8%;
+    --admin-table-header-bg: 0 0% 16%;
+    --admin-table-pin-bg: 0 0% 14%;
+    --admin-table-row-hover: 0 0% 20%;
+    --admin-table-totals-bg: 0 0% 16%;
+    --admin-selection: 200 11% 23%;
+    --admin-input-disabled: 0 0% 20%;
+    --admin-control-bg: 0 0% 10%;
+
+    --admin-row-selected-bg: 200 11% 23%;
+    --admin-row-selected-edge: 206 52% 40%;
+    --admin-row-muted-bg: 0 0% 14%;
+    --admin-row-muted-edge: 0 0% 42%;
+    --admin-row-warning-bg: 38 48% 15%;
+    --admin-row-warning-edge: 35 84% 57%;
+    --admin-row-critical-bg: 6 42% 14%;
+    --admin-row-critical-edge: 6 63% 60%;
+  }
+
+  html {
+    @apply antialiased;
+    font-family: var(--font-sans);
+    font-synthesis: none;
+  }
+
+  body {
+    @apply min-h-screen bg-background font-sans text-sm font-medium text-foreground;
+    font-synthesis: none;
+  }
+
+  input:-webkit-autofill,
+  input:-webkit-autofill:hover,
+  input:-webkit-autofill:focus,
+  input:-webkit-autofill:active,
+  textarea:-webkit-autofill,
+  textarea:-webkit-autofill:hover,
+  textarea:-webkit-autofill:focus,
+  textarea:-webkit-autofill:active {
+    -webkit-text-fill-color: hsl(var(--foreground));
+    caret-color: hsl(var(--foreground));
+    transition: background-color 99999s ease-out 0s;
+    box-shadow: 0 0 0 1000px hsl(var(--admin-control-bg)) inset;
+    border-color: hsl(var(--border) / 0.4);
+  }
+
+  #root {
+    font-family: var(--font-sans);
+    font-synthesis: none;
+  }
+
+  h1 {
+    @apply m-0 text-xl font-bold tracking-tight text-foreground;
+  }
+
+  h2 {
+    @apply m-0 mb-2 text-base font-bold tracking-tight text-foreground;
+  }
+
+  h3 {
+    @apply m-0 mb-2 text-base font-semibold tracking-tight text-foreground;
+  }
+
+  a {
+    @apply text-inherit no-underline hover:underline;
+  }
+
+  table {
+    @apply border-collapse;
+  }
+}
+
+@layer utilities {
+  .scrollbar-admin {
+    scrollbar-width: thin;
+    scrollbar-color: hsl(var(--scrollbar-thumb)) hsl(var(--scrollbar-track));
+  }
+
+  .scrollbar-admin::-webkit-scrollbar {
+    width: 10px;
+    height: 10px;
+  }
+
+  .scrollbar-admin::-webkit-scrollbar-thumb {
+    border-radius: 4px;
+    background-color: hsl(var(--scrollbar-thumb));
+  }
+
+  .scrollbar-admin::-webkit-scrollbar-track {
+    background-color: hsl(var(--scrollbar-track));
+  }
+
+  /* Overlay menus: thumb only; no track/corner gray block at list bottom. */
+  .scrollbar-overlay {
+    scrollbar-color: hsl(var(--scrollbar-thumb)) transparent;
+  }
+
+  .scrollbar-overlay::-webkit-scrollbar {
+    width: 8px;
+  }
+
+  .scrollbar-overlay::-webkit-scrollbar:horizontal {
+    height: 0;
+  }
+
+  .scrollbar-overlay::-webkit-scrollbar-thumb {
+    border-radius: 4px;
+    background-color: hsl(var(--scrollbar-thumb));
+  }
+
+  .scrollbar-overlay::-webkit-scrollbar-track {
+    background-color: transparent;
+  }
+
+  .scrollbar-overlay::-webkit-scrollbar-corner {
+    background-color: transparent;
+  }
+}
+
+@layer components {
+  [data-sonner-toaster] {
+    font-family: var(--font-sans) !important;
+  }
+
+  .toaster[data-sonner-toaster] {
+    position: fixed;
+    width: var(--width, 356px);
+    max-width: min(420px, calc(100vw - 2rem));
+    font-family: var(--font-sans) !important;
+    --toast-close-button-start: unset;
+    --toast-close-button-end: 0.75rem;
+    --toast-close-button-transform: translate(0, 0.75rem);
+    pointer-events: none;
+  }
+
+  .toaster[data-sonner-toaster][data-y-position='bottom'] {
+    bottom: var(--offset-bottom, 1rem);
+    top: auto;
+  }
+
+  .toaster[data-sonner-toaster][data-x-position='right'] {
+    right: var(--offset-right, 1rem);
+    left: auto;
+  }
+
+  .toaster[data-sonner-toaster] [data-sonner-toast] {
+    pointer-events: auto;
+    align-items: center !important;
+    gap: 0.5rem !important;
+    min-height: 0 !important;
+    padding: 0.375rem 0.75rem !important;
+    border-radius: 8px !important;
+    box-shadow: none !important;
+    backdrop-filter: none;
+  }
+
+  .toaster[data-sonner-toaster] [data-sonner-toast] [data-title],
+  .toaster[data-sonner-toaster] [data-sonner-toast] [data-description] {
+    color: hsl(var(--foreground)) !important;
+    opacity: 1 !important;
+    font-size: 13px;
+    line-height: 18px;
+  }
+
+  .toaster[data-sonner-toaster] [data-sonner-toast] [data-description] {
+    font-weight: 400;
+    color: hsl(var(--admin-fg-secondary)) !important;
+  }
+
+  .toaster[data-sonner-toaster] [data-sonner-toast] [data-close-button] {
+    display: none !important;
+  }
+
+  .toaster[data-sonner-toaster] [data-sonner-toast] [data-icon] {
+    width: 1rem !important;
+    height: 1rem !important;
+    margin: 0 !important;
+  }
+
+  .toaster[data-sonner-toaster] [data-sonner-toast][data-type='error'] {
+    background-color: hsl(var(--destructive) / 0.16) !important;
+    border: 1px solid hsl(var(--destructive) / 0.34) !important;
+    color: hsl(var(--foreground)) !important;
+  }
+
+  .toaster[data-sonner-toaster] [data-sonner-toast][data-type='error'] [data-icon] {
+    color: hsl(var(--destructive)) !important;
+  }
+
+  .toaster[data-sonner-toaster] [data-sonner-toast][data-type='warning'] {
+    background-color: hsl(var(--admin-warn-bg) / 0.55) !important;
+    border: 1px solid hsl(var(--admin-warn-border) / 0.45) !important;
+    color: hsl(var(--foreground)) !important;
+  }
+
+  .toaster[data-sonner-toaster] [data-sonner-toast][data-type='warning'] [data-icon] {
+    color: hsl(var(--admin-warn-fg)) !important;
+  }
+
+  .toaster[data-sonner-toaster] [data-sonner-toast][data-type='success'] {
+    background-color: hsl(var(--admin-status-active) / 0.16) !important;
+    border: 1px solid hsl(var(--admin-status-active) / 0.34) !important;
+    color: hsl(var(--foreground)) !important;
+  }
+
+  .toaster[data-sonner-toaster] [data-sonner-toast][data-type='success'] [data-icon] {
+    color: hsl(var(--admin-positive-fg)) !important;
+  }
+
+  .toaster[data-sonner-toaster] [data-sonner-toast][data-type='info'],
+  .toaster[data-sonner-toaster] [data-sonner-toast][data-type='default'] {
+    background-color: hsl(var(--primary) / 0.18) !important;
+    border: 1px solid hsl(var(--primary) / 0.34) !important;
+    color: hsl(var(--foreground)) !important;
+  }
+
+  .toaster[data-sonner-toaster] [data-sonner-toast][data-type='info'] [data-icon],
+  .toaster[data-sonner-toaster] [data-sonner-toast][data-type='default'] [data-icon] {
+    color: hsl(var(--admin-metric-conversion-fg)) !important;
+  }
+
+  @keyframes toast-fly-in {
+    from {
+      opacity: 0;
+      transform: translate3d(100%, 0, 0);
+    }
+
+    to {
+      opacity: 1;
+      transform: translate3d(0, 0, 0);
+    }
+  }
+
+  @keyframes toast-fall-out {
+    from {
+      opacity: 1;
+      transform: translate3d(0, 0, 0);
+    }
+
+    to {
+      opacity: 0;
+      transform: translate3d(0, 110%, 0);
+    }
+  }
+
+  .toaster[data-sonner-toaster] [data-sonner-toast][data-state='open'] {
+    animation: toast-fly-in 0.28s cubic-bezier(0.21, 1.02, 0.73, 1) forwards;
+  }
+
+  .toaster[data-sonner-toaster] [data-sonner-toast][data-state='closed'] {
+    animation: toast-fall-out 0.32s cubic-bezier(0.06, 0.71, 0.55, 1) forwards;
+  }
+}

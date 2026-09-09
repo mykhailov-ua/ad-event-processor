@@ -17,6 +17,8 @@ import (
 
 const openrtb26ImpMax = openrtb.OpenRTB26ImpMax
 
+var defaultOpenRTBSeatID = []byte("1")
+
 type openrtbExchangeLimiter struct {
 	maxQPS   atomic.Int64
 	tokens   atomic.Int64
@@ -72,15 +74,26 @@ type openrtbExchangeOutcome struct {
 	DealIDLen    uint8
 }
 
-func runOpenRTBExchangeParsed(proc trackProcessor, hot *OpenRTB26Hot, cold *OpenRTB26Cold, bidID []byte, clientIP string, exCfg openrtb.ExchangeConfig, admBuf *[openrtb26ImpMax][512]byte, evt *domain.Event) openrtbExchangeOutcome {
+func (o *openrtbExchangeOutcome) reset() {
+	*o = openrtbExchangeOutcome{}
+}
+
+func runOpenRTBExchangeParsed(proc trackProcessor, hot *OpenRTB26Hot, cold *OpenRTB26Cold, bidID []byte, clientIP string, exCfg openrtb.ExchangeConfig, admBuf *[openrtb26ImpMax][512]byte, evt *domain.Event, out *openrtbExchangeOutcome, targeting *wireTargeting) {
+	if out == nil {
+		return
+	}
+	out.reset()
 	if proc.rtbCatalog == nil || proc.rtbMode == rtbModeOff {
-		return openrtbExchangeOutcome{NoBid: rtb.NoBidInvalidRequest}
+		out.NoBid = rtb.NoBidInvalidRequest
+		return
 	}
 	if evt == nil {
-		return openrtbExchangeOutcome{NoBid: rtb.NoBidInvalidRequest}
+		out.NoBid = rtb.NoBidInvalidRequest
+		return
 	}
 	if seatBlockedByBSeat(cold, exCfg.SeatID) {
-		return openrtbExchangeOutcome{NoBid: rtb.NoBidInvalidRequest}
+		out.NoBid = rtb.NoBidInvalidRequest
+		return
 	}
 
 	impCount := int(hot.ImpCount)
@@ -93,11 +106,13 @@ func runOpenRTBExchangeParsed(proc trackProcessor, hot *OpenRTB26Hot, cold *Open
 
 	seatOne := exCfg.SeatID
 	if len(seatOne) == 0 {
-		seatOne = []byte("1")
+		seatOne = defaultOpenRTBSeatID
 	}
-	var outcome openrtbExchangeOutcome
 	lastReason := rtb.NoBidNone
 	currencyUSD := hot.Flags&openrtb26FlagEUR == 0
+
+	evt.IP = clientIP
+	ensureIngestGeo(proc.ingestGeo, evt)
 
 	for i := range impCount {
 		var slot *OpenRTB26ImpSlot
@@ -113,9 +128,7 @@ func runOpenRTBExchangeParsed(proc trackProcessor, hot *OpenRTB26Hot, cold *Open
 			continue
 		}
 
-		targeting := mapImpSlotToTargeting(hot, cold, slot, proc.ingestGeo, clientIP)
-		evt.IP = clientIP
-		ensureIngestGeo(proc.ingestGeo, evt)
+		mapImpSlotToTargetingInto(hot, cold, slot, proc.ingestGeo, evt, targeting)
 		if targeting.Input.GeoHash == 0 && evt.GeoHash != 0 {
 			targeting.Input.GeoHash = evt.GeoHash
 		}
@@ -137,7 +150,8 @@ func runOpenRTBExchangeParsed(proc trackProcessor, hot *OpenRTB26Hot, cold *Open
 
 		if proc.rtbMode == rtbModeShadow {
 			recordRtbShadowAuction(proc.rtbCatalog, evt, res, reason, targeting.Input.PublisherFloorMicro)
-			return openrtbExchangeOutcome{NoBid: reason}
+			out.NoBid = reason
+			return
 		}
 		if !reason.OK() {
 			lastReason = reason
@@ -189,7 +203,8 @@ func runOpenRTBExchangeParsed(proc trackProcessor, hot *OpenRTB26Hot, cold *Open
 		}
 		if exCfg.Delivery == openrtb.ExchangeDeliveryNURL {
 			if len(exCfg.NURLTemplate) == 0 {
-				return openrtbExchangeOutcome{NoBid: rtb.NoBidInvalidRequest}
+				out.NoBid = rtb.NoBidInvalidRequest
+				return
 			}
 			wire.NURL = exCfg.NURLTemplate
 		} else {
@@ -200,51 +215,58 @@ func runOpenRTBExchangeParsed(proc trackProcessor, hot *OpenRTB26Hot, cold *Open
 		}
 		_ = mediaType
 
-		idx := outcome.BidCount
-		outcome.Bids[idx] = wire
-		outcome.BidCount++
-		if outcome.PriceMicro < res.Price {
-			outcome.PriceMicro = res.Price
+		idx := out.BidCount
+		out.Bids[idx] = wire
+		out.BidCount++
+		if out.PriceMicro < res.Price {
+			out.PriceMicro = res.Price
 		}
-		if targeting.Input.DealIDLen > 0 && outcome.DealIDLen == 0 {
-			outcome.DealIDLen = targeting.Input.DealIDLen
-			copy(outcome.DealIDBuf[:], wire.DealID)
+		if targeting.Input.DealIDLen > 0 && out.DealIDLen == 0 {
+			out.DealIDLen = targeting.Input.DealIDLen
+			copy(out.DealIDBuf[:], wire.DealID)
 		}
 	}
 
-	if outcome.BidCount == 0 {
+	if out.BidCount == 0 {
 		if lastReason.OK() {
 			lastReason = rtb.NoBidNoCandidates
 		}
-		return openrtbExchangeOutcome{NoBid: lastReason}
+		out.NoBid = lastReason
+		return
 	}
 
-	outcome.HasBid = true
-	outcome.ResponseWire = openrtb.BidResponseWire{
+	out.HasBid = true
+	out.ResponseWire = openrtb.BidResponseWire{
 		RequestID: hot.RequestID[:hot.RequestIDLen],
 		BidID:     bidID,
 		CurUSD:    currencyUSD,
 		SeatID:    seatOne,
-		Bids:      outcome.Bids[:outcome.BidCount],
+		Bids:      out.Bids[:out.BidCount],
 	}
-	return outcome
+}
+
+func runOpenRTBExchangeParsedOutcome(proc trackProcessor, hot *OpenRTB26Hot, cold *OpenRTB26Cold, bidID []byte, clientIP string, exCfg openrtb.ExchangeConfig, admBuf *[openrtb26ImpMax][512]byte, evt *domain.Event) openrtbExchangeOutcome {
+	var out openrtbExchangeOutcome
+	var targeting wireTargeting
+	runOpenRTBExchangeParsed(proc, hot, cold, bidID, clientIP, exCfg, admBuf, evt, &out, &targeting)
+	return out
 }
 
 func runOpenRTBExchange(proc trackProcessor, wireReq openrtb.BidRequest, bidID []byte, clientIP string, exCfg openrtb.ExchangeConfig) openrtbExchangeOutcome {
-	targeting := mapWireToTargeting(wireReq, proc.ingestGeo, clientIP)
+	mappedTargeting := mapWireToTargeting(wireReq, proc.ingestGeo, clientIP)
 	var parsed OpenRTB26Parsed
 	parsed.OK = true
 	parsed.RequestIDLen = uint8(copy(parsed.RequestID[:], wireReq.ID))
-	parsed.BidFloorMicro = targeting.Input.PublisherFloorMicro
-	parsed.DeviceType = targeting.Input.DeviceType
-	parsed.CategoryMask = targeting.Input.CategoryMask
+	parsed.BidFloorMicro = mappedTargeting.Input.PublisherFloorMicro
+	parsed.DeviceType = mappedTargeting.Input.DeviceType
+	parsed.CategoryMask = mappedTargeting.Input.CategoryMask
 	parsed.TmaxMs = int32(wireReq.Tmax)
-	parsed.ImpIDLen = targeting.ImpIDLen
-	copy(parsed.ImpID[:], targeting.ImpIDBuf[:targeting.ImpIDLen])
-	parsed.DealIDLen = targeting.Input.DealIDLen
-	copy(parsed.DealID[:], targeting.Input.DealIDBuf[:targeting.Input.DealIDLen])
-	parsed.Schain = targeting.Input.Schain
-	parsed.FcapUserHash = targeting.Input.FcapUserHash
+	parsed.ImpIDLen = mappedTargeting.ImpIDLen
+	copy(parsed.ImpID[:], mappedTargeting.ImpIDBuf[:mappedTargeting.ImpIDLen])
+	parsed.DealIDLen = mappedTargeting.Input.DealIDLen
+	copy(parsed.DealID[:], mappedTargeting.Input.DealIDBuf[:mappedTargeting.Input.DealIDLen])
+	parsed.Schain = mappedTargeting.Input.Schain
+	parsed.FcapUserHash = mappedTargeting.Input.FcapUserHash
 	if wireReq.Test == 1 {
 		parsed.Flags |= openrtb26FlagTest
 	}
@@ -273,7 +295,10 @@ func runOpenRTBExchange(proc trackProcessor, wireReq openrtb.BidRequest, bidID [
 		parsed.UserIDLen = uint8(copy(parsed.UserID[:], wireReq.User.ID))
 	}
 	var evt domain.Event
-	return runOpenRTBExchangeParsed(proc, &parsed.OpenRTB26Hot, &parsed.OpenRTB26Cold, bidID, clientIP, exCfg, nil, &evt)
+	var out openrtbExchangeOutcome
+	var targeting wireTargeting
+	runOpenRTBExchangeParsed(proc, &parsed.OpenRTB26Hot, &parsed.OpenRTB26Cold, bidID, clientIP, exCfg, nil, &evt, &out, &targeting)
+	return out
 }
 
 func appendDisplayHTMLStub(dst []byte, campaignID uuid.UUID, secure bool) []byte {
@@ -338,7 +363,7 @@ func exchangeConfigFrom(cfg *config.Config) openrtb.ExchangeConfig {
 	if cfg.RtbExchangeSeatID != "" {
 		out.SeatID = []byte(cfg.RtbExchangeSeatID)
 	} else {
-		out.SeatID = []byte("1")
+		out.SeatID = defaultOpenRTBSeatID
 	}
 	return out
 }

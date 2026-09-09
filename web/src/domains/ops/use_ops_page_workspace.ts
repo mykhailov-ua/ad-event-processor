@@ -2,6 +2,7 @@
 import { useCallback, useState } from 'react';
 
 import { fetchOpsHomeSnapshot, postOpsSupportBundle, reloadOpsRoles } from '@/api/ops_api';
+import { toError } from '@/lib/admin_error.ts';
 import { useCoalescedBumpRefresh, useRefreshToken } from '@/hooks/use_coalesced_refresh_token';
 import { useResource } from '@/api/use_resource';
 import { triggerBlobDownload } from '@/lib/trigger_blob_download';
@@ -34,7 +35,7 @@ export function useOpsPageWorkspace() {
         bumpRefreshCoalesced();
       })
       .catch((err: unknown) => {
-        setRolesReloadError(err instanceof Error ? err : new Error(String(err)));
+        setRolesReloadError(toError(err));
       })
       .finally(() => {
         setReloadingRoles(false);
@@ -49,7 +50,7 @@ export function useOpsPageWorkspace() {
         triggerBlobDownload(result.blob, result.filename);
       })
       .catch((err: unknown) => {
-        setBundleDownloadError(err instanceof Error ? err : new Error(String(err)));
+        setBundleDownloadError(toError(err));
       })
       .finally(() => {
         setDownloadingBundle(false);

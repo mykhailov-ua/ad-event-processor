@@ -1,4 +1,4 @@
-import { ErrorBlock } from '@/shell/error_block';
+import { integrationsPanelError } from '@/domains/integrations/integrations_nav';
 import { DirectoryFilterForm, FilterPanel } from '@/shell/filter_panel';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
@@ -69,18 +69,18 @@ export function CostSyncCredentialForm({
 
   return (
     <FilterPanel>
-      <h2 className="text-base font-semibold">Upsert credentials</h2>
-      <p className="text-sm text-muted-foreground">
+      <h2 >Upsert credentials</h2>
+      <p >
         Secrets are encrypted at rest. Leave token fields empty to keep existing values on update.
         Click a credentials row below to prefill the network and account fields.
       </p>
 
       <DirectoryFilterForm layout="auto-fill" onSubmit={(event) => event.preventDefault()}>
-        <div className="grid gap-2">
+        <div >
           <Label htmlFor="cost-sync-network">Network</Label>
           {networkOptions.length > 0 ? (
             <Select value={draftNetwork} onValueChange={onDraftNetworkChange} disabled={disabled}>
-              <SelectTrigger id="cost-sync-network" className="w-full">
+              <SelectTrigger id="cost-sync-network">
                 <SelectValue placeholder="Select network" />
               </SelectTrigger>
               <SelectContent>
@@ -100,7 +100,7 @@ export function CostSyncCredentialForm({
             />
           )}
         </div>
-        <div className="grid gap-2">
+        <div >
           <Label htmlFor="cost-sync-account-id">Account ID</Label>
           <Input
             id="cost-sync-account-id"
@@ -109,14 +109,14 @@ export function CostSyncCredentialForm({
             onChange={(event) => onDraftAccountIdChange(event.target.value)}
           />
         </div>
-        <div className="grid gap-2">
+        <div >
           <Label htmlFor="cost-sync-sync-interval">Sync interval (min)</Label>
           <Select
             value={draftSyncIntervalMinutes}
             onValueChange={onDraftSyncIntervalMinutesChange}
             disabled={disabled}
           >
-            <SelectTrigger id="cost-sync-sync-interval" className="w-full">
+            <SelectTrigger id="cost-sync-sync-interval">
               <SelectValue />
             </SelectTrigger>
             <SelectContent>
@@ -128,7 +128,7 @@ export function CostSyncCredentialForm({
             </SelectContent>
           </Select>
         </div>
-        <div className="grid gap-2 md:col-span-2">
+        <div >
           <Label htmlFor="cost-sync-access-token">Access token</Label>
           <Input
             id="cost-sync-access-token"
@@ -139,7 +139,7 @@ export function CostSyncCredentialForm({
             onChange={(event) => onDraftAccessTokenChange(event.target.value)}
           />
         </div>
-        <div className="grid gap-2 md:col-span-2">
+        <div >
           <Label htmlFor="cost-sync-refresh-token">Refresh token</Label>
           <Input
             id="cost-sync-refresh-token"
@@ -150,7 +150,7 @@ export function CostSyncCredentialForm({
             onChange={(event) => onDraftRefreshTokenChange(event.target.value)}
           />
         </div>
-        <div className="grid gap-2 md:col-span-2">
+        <div >
           <Label htmlFor="cost-sync-api-key">API key</Label>
           <Input
             id="cost-sync-api-key"
@@ -174,13 +174,13 @@ export function CostSyncCredentialForm({
         </Button>
       </DirectoryFilterForm>
 
-      {saveError ? <ErrorBlock title="Save failed" message={saveError.message} /> : null}
-      {deleteError ? <ErrorBlock title="Delete failed" message={deleteError.message} /> : null}
+      {saveError ? integrationsPanelError(saveError, 'Save failed') : null}
+      {deleteError ? integrationsPanelError(deleteError, 'Delete failed') : null}
       {saveSuccess ? (
-        <p className="text-sm text-muted-foreground">Credentials saved. List refreshed.</p>
+        <p >Credentials saved. List refreshed.</p>
       ) : null}
       {deleteSuccess ? (
-        <p className="text-sm text-muted-foreground">Credentials deleted. List refreshed.</p>
+        <p >Credentials deleted. List refreshed.</p>
       ) : null}
     </FilterPanel>
   );

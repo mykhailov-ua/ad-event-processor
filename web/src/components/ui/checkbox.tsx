@@ -27,7 +27,7 @@ const Checkbox = React.forwardRef<HTMLInputElement, CheckboxProps>(
       <span
         aria-hidden
         className={cn(
-          'pointer-events-none flex h-4 w-4 items-center justify-center border border-input bg-background text-primary-foreground transition-colors peer-focus-visible:outline-none peer-focus-visible:ring-2 peer-focus-visible:ring-ring peer-disabled:cursor-not-allowed peer-disabled:opacity-50 peer-checked:border-primary peer-checked:bg-primary',
+          'pointer-events-none flex h-4 w-4 items-center justify-center border border-muted-foreground/70 bg-card text-primary-foreground transition-colors peer-focus-visible:outline-none peer-focus-visible:ring-2 peer-focus-visible:ring-primary/30 peer-disabled:cursor-not-allowed peer-disabled:border-input peer-disabled:bg-admin-input-disabled peer-disabled:opacity-100 peer-checked:border-primary peer-checked:bg-primary',
           adminKit.controlRadius,
           className
         )}

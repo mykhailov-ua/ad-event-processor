@@ -1,12 +1,27 @@
 import type { ReactNode } from 'react';
 
+import {
+  adminSpacing,
+  adminTypography,
+  pageCanvasInsetClass,
+  pageFooterFlatClass,
+  pageSectionStackClass,
+  pageWorkspaceFlatClass,
+} from '@/lib/admin_spacing';
 import { cn } from '@/lib/utils';
 
-/** Canonical inset for route outlet and full-page fallbacks (skeleton, blocking error). */
-export const pageCanvasInsetClass = 'flex w-full min-w-0 flex-col p-4';
+export {
+  pageCanvasInsetClass,
+  pageFooterFlatClass,
+  pageSectionStackClass,
+  pageWorkspaceFlatClass,
+};
 
-/** Min height for directory/dashboard pages inside the scroll canvas (see app.css vars). */
+/** Min height for directory/dashboard pages inside the scroll canvas (see tailwind.css vars). */
 export const pageFillViewportMinHeightClass = 'min-h-[var(--page-fill-min-height)]';
+
+/** Fill viewport below page header for directory tables and dashboards. */
+export const pageWorkspaceFillClass = cn(pageWorkspaceFlatClass, pageFillViewportMinHeightClass);
 
 /** Footer implies directory fill unless fillViewport is explicitly false. */
 export function resolvePageFillViewport(
@@ -24,23 +39,11 @@ export function resolvePageFillViewport(
 
 export function PageCanvasInset({
   children,
-  className,
 }: {
   children: ReactNode;
-  className?: string;
 }) {
-  return <div className={cn(pageCanvasInsetClass, className)}>{children}</div>;
+  return <div className={pageCanvasInsetClass}>{children}</div>;
 }
-
-/** Flat L0 workspace; hugs content (sparse pages keep canvas bottom padding). */
-export const pageWorkspaceFlatClass = 'flex min-w-0 flex-col gap-3';
-
-/** Fill viewport below page header for directory tables and dashboards. */
-export const pageWorkspaceFillClass = 'flex min-h-0 min-w-0 flex-1 flex-col gap-3';
-
-/** Semantic page bands: thin dividers with compact vertical padding between direct children. */
-export const pageSectionStackClass =
-  'flex min-w-0 flex-col [&>*]:pb-3 [&>*:last-child]:pb-0 [&>*+*]:border-t [&>*+*]:border-border [&>*+*]:pt-3';
 
 export function PageSectionStack({
   children,
@@ -52,9 +55,6 @@ export function PageSectionStack({
   return <div className={cn(pageSectionStackClass, className)}>{children}</div>;
 }
 
-const pageFooterFlatClass =
-  'flex shrink-0 flex-wrap items-center gap-3 border-0 border-t border-border bg-transparent pt-3';
-
 export type PageLayoutProps = {
   title?: ReactNode;
   description?: ReactNode;
@@ -64,6 +64,7 @@ export type PageLayoutProps = {
   aside?: ReactNode;
   footer?: ReactNode;
   workspaceClassName?: string;
+  headerClassName?: string;
   mainClassName?: string;
   asideClassName?: string;
   footerClassName?: string;
@@ -84,6 +85,7 @@ export function PageLayout({
   aside,
   footer,
   workspaceClassName,
+  headerClassName,
   mainClassName,
   asideClassName,
   footerClassName,
@@ -93,22 +95,27 @@ export function PageLayout({
   const stretchWorkspace = resolvePageFillViewport(fillViewport, footer);
 
   return (
-    <div
-      className={cn(
-        'flex w-full min-w-0 flex-col gap-3',
-        stretchWorkspace && pageFillViewportMinHeightClass,
-        stretchWorkspace && 'min-h-0 flex-1'
-      )}
-    >
+    <div className="flex min-h-0 min-w-0 w-full flex-1 flex-col">
       {title != null && title !== '' ? (
-        <header className="grid grid-cols-[1fr_auto] items-start gap-2">
-          <div className="flex min-w-0 flex-wrap items-center gap-2">
-            <h1>{title}</h1>
-            {badge}
-            {description ? <span className="text-muted-foreground">{description}</span> : null}
+        <header className={cn(adminSpacing.flex.pageHeader, 'border-b border-border', headerClassName)}>
+          <div className={cn('min-w-0', adminSpacing.stack.titleBlock)}>
+            <div className={adminSpacing.flex.buttonGroup}>
+              <h1 className={adminTypography.pageTitle}>{title}</h1>
+              {badge}
+            </div>
+            {description ? (
+              <div
+                className={cn(
+                  adminTypography.bodyMuted,
+                  '[&_a]:relative [&_a]:z-[1] [&_a]:text-primary [&_a:hover]:underline'
+                )}
+              >
+                {description}
+              </div>
+            ) : null}
           </div>
           {headerActions ? (
-            <div className="flex flex-wrap items-center gap-2">{headerActions}</div>
+            <div className={adminSpacing.flex.headerActions}>{headerActions}</div>
           ) : null}
         </header>
       ) : null}
@@ -116,42 +123,30 @@ export function PageLayout({
       <div
         className={cn(
           stretchWorkspace ? pageWorkspaceFillClass : pageWorkspaceFlatClass,
+          'w-full',
           workspaceClassName
         )}
       >
-        {controlPanel ? (
-          <div className="relative z-[5] flex shrink-0 flex-col gap-2">{controlPanel}</div>
-        ) : null}
+        {controlPanel ? <div className="min-w-0 w-full">{controlPanel}</div> : null}
 
         <div
           className={cn(
+            adminSpacing.grid.mainAside,
             aside
-              ? 'grid min-w-0 grid-cols-1 items-start gap-2 lg:grid-cols-[minmax(0,1fr)_minmax(16rem,22rem)]'
-              : 'grid min-w-0 grid-cols-1 items-start gap-2',
-            stretchWorkspace && 'min-h-0 flex-1'
+              ? 'grid-cols-1 lg:grid-cols-[minmax(0,1fr)_minmax(16rem,20rem)] grid-rows-[minmax(0,1fr)]'
+              : 'grid-rows-[minmax(0,1fr)]'
           )}
         >
-          <main
-            className={cn(
-              pageSectionStackClass,
-              'w-full min-w-0',
-              stretchWorkspace && 'min-h-0 flex-1',
-              mainClassName
-            )}
-          >
+          <main className={cn('flex min-h-0 min-w-0 flex-1 flex-col', adminSpacing.gap.lg, mainClassName)}>
             {children}
           </main>
           {aside ? (
-            <aside className={cn('flex min-w-0 flex-col gap-2 self-start', asideClassName)}>
-              {aside}
-            </aside>
+            <aside className={cn('min-w-0 lg:min-h-0', asideClassName)}>{aside}</aside>
           ) : null}
         </div>
 
         {footer ? (
-          <footer className={cn('relative z-[5]', pageFooterFlatClass, footerClassName)}>
-            {footer}
-          </footer>
+          <footer className={cn(pageFooterFlatClass, footerClassName)}>{footer}</footer>
         ) : null}
       </div>
     </div>

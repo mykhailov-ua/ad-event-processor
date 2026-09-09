@@ -7,6 +7,7 @@ import {
   parseCampaignBulkActionResponse,
   parseCampaignFlowValidateResponse,
   parseCampaignListResponse,
+  parseLanderListResponse,
 } from '@/api/validate.ts';
 
 test('parseAuditLogRow rejects non-object payload', () => {
@@ -44,4 +45,34 @@ test('parseCampaignFlowValidateResponse rejects missing valid flag', () => {
       return err instanceof ApiError && err.code === 'INVALID_RESPONSE';
     }
   );
+});
+
+test('parseLanderListResponse rejects missing pagination', () => {
+  assert.throws(
+    () =>
+      parseLanderListResponse({
+        items: [],
+        hosting_counts: { total: 0, external: 0, hosted: 0, unconfigured: 0 },
+      }),
+    (err: unknown) => err instanceof ApiError && err.code === 'INVALID_RESPONSE'
+  );
+});
+
+test('parseLanderListResponse accepts paginated lander page', () => {
+  const parsed = parseLanderListResponse({
+    items: [
+      {
+        id: '00000000-0000-4000-8000-000000000001',
+        name: 'Hosted LP',
+        created_at: '2026-01-01T00:00:00.000Z',
+      },
+    ],
+    total: 1,
+    limit: 25,
+    offset: 0,
+    hosting_counts: { total: 3, external: 1, hosted: 1, unconfigured: 1 },
+  });
+  assert.equal(parsed.items.length, 1);
+  assert.equal(parsed.total, 1);
+  assert.equal(parsed.hosting_counts.hosted, 1);
 });

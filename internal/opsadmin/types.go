@@ -7,6 +7,7 @@ import (
 
 	"ad-event-processor/internal/campaign"
 	"ad-event-processor/internal/fraudadmin"
+	"ad-event-processor/internal/platformadmin"
 	"ad-event-processor/internal/shardadmin"
 )
 
@@ -178,7 +179,7 @@ type ManagementOpsReader interface {
 }
 
 type AuditLister interface {
-	ListAuditLogs(ctx context.Context, limit, offset int32, redactPII bool) ([]AuditLogDTO, int64, error)
+	ListAuditLogs(ctx context.Context, filter platformadmin.AuditLogFilter, limit, offset int32, redactPII bool) ([]AuditLogDTO, int64, error)
 }
 
 type ConsentRecord struct {

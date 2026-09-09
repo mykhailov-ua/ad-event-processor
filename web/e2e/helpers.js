@@ -247,14 +247,12 @@ export async function gotoLiveAwaitResponse(page, path, predicate) {
 export const ADMIN_SMOKE_ROUTE_READS = [
   { path: '/customers', heading: 'Customers', api: '/api/v1/customers' },
   { path: '/campaigns', heading: 'Campaigns', useCampaignsList: true },
-  { path: '/billing', heading: 'Billing', api: '/api/v1/billing/invoices' },
-  { path: '/settings', heading: 'Platform settings', api: '/api/v1/settings/platform' },
-  { path: '/settings/license', heading: 'License', api: '/api/v1/license/status' },
+  { path: '/exports', heading: 'Exports', api: '/api/v1/reports/catalog' },
+  { path: '/settings', heading: 'Settings', api: '/api/v1/meta' },
   { path: '/team', heading: 'Team', api: '/api/v1/team/overview', skipWithoutCustomer: true },
   { path: '/audit', heading: 'Audit', api: '/api/v1/audit' },
-  { path: '/reports', heading: 'Reports', api: '/api/v1/reports/catalog' },
+  { path: '/integrations', heading: 'Integrations', api: '/api/v1/postbacks' },
   { path: '/ops', heading: 'Ops', api: '/api/v1/ops/home' },
-  { path: '/fraud/presets', heading: 'Fraud presets', api: '/api/v1/fraud/presets' },
 ];
 
 /** Ops section pages with list/read GET on mount. */
@@ -499,6 +497,67 @@ export async function gotoLiveTeam(page, customerId = '') {
 }
 
 /**
+ * @param {import('@playwright/test').Page} page
+ * @param {Record<string, string>} [headers]
+ * @returns {Promise<Record<string, string>>}
+ */
+export async function apiMutationHeaders(page, headers = {}) {
+  const cookies = await page.context().cookies();
+  const csrfCookie = cookies.find((cookie) => cookie.name === 'csrfToken');
+  if (csrfCookie?.value) {
+    return { ...headers, 'X-CSRF-Token': csrfCookie.value };
+  }
+  return headers;
+}
+
+/**
+ * @param {string | undefined} value
+ * @returns {number | null}
+ */
+export function parseDisplayMoneyMicro(value) {
+  if (typeof value !== 'string') {
+    return null;
+  }
+  const match = value.trim().match(/^(-)?(\d+)\.(\d{2})$/);
+  if (!match) {
+    return null;
+  }
+  const whole = Number(match[2]);
+  const frac = Number(match[3]);
+  if (!Number.isFinite(whole) || !Number.isFinite(frac)) {
+    return null;
+  }
+  const micro = whole * 1_000_000 + frac * 10_000;
+  return match[1] === '-' ? -micro : micro;
+}
+
+/**
+ * @param {Record<string, unknown>} item
+ * @returns {number | null}
+ */
+export function campaignBudgetLimitMicro(item) {
+  const micro = item?.budget_limit_micro;
+  if (typeof micro === 'number') {
+    return micro;
+  }
+  return parseDisplayMoneyMicro(
+    typeof item?.budget_limit === 'string' ? item.budget_limit : undefined
+  );
+}
+
+export function campaignsToolbar(page) {
+  return page.getByRole('toolbar', { name: 'Campaign actions' });
+}
+
+/**
+ * Page header search input (campaigns register via tracker header context).
+ * @param {import('@playwright/test').Page} page
+ */
+export function headerSearchInput(page) {
+  return page.locator('header').getByRole('textbox', { name: 'Search' });
+}
+
+/**
  * @param {Page} page
  */
 export async function gotoCustomers(page) {
@@ -558,6 +617,10 @@ export async function openFirstCampaignEditor(page) {
  * @returns {Promise<string>}
  */
 export async function fetchFirstCampaignId(page) {
+  const cloneableId = await fetchFirstCloneableCampaignId(page);
+  if (cloneableId) {
+    return cloneableId;
+  }
   const response = await page.request.get(new URL('/api/v1/campaigns?limit=1', baseURL).toString());
   if (!response.ok()) {
     return '';
@@ -566,6 +629,71 @@ export async function fetchFirstCampaignId(page) {
   const first = body?.items?.[0];
   const id = first?.id;
   return typeof id === 'string' ? id : '';
+}
+
+/**
+ * @param {import('@playwright/test').Page} page
+ * @param {string} customerId
+ * @returns {Promise<{ balance: number, overdraft: number } | null>}
+ */
+export async function fetchCustomerWalletMicro(page, customerId) {
+  const response = await page.request.get(
+    new URL(`/api/v1/customers/${customerId}/wallet`, baseURL).toString()
+  );
+  if (!response.ok()) {
+    return null;
+  }
+  const body = await response.json();
+  const balance = body?.balance_micro;
+  const overdraft = body?.allowed_overdraft_micro;
+  if (typeof balance !== 'number' || typeof overdraft !== 'number') {
+    return null;
+  }
+  return { balance, overdraft };
+}
+
+/**
+ * Picks a campaign whose customer can afford clone (balance + overdraft >= budget_limit_micro).
+ * @param {import('@playwright/test').Page} page
+ * @returns {Promise<string>}
+ */
+export async function fetchFirstCloneableCampaignId(page) {
+  const response = await page.request.get(
+    new URL(
+      '/api/v1/campaigns?limit=100&sort_field=budget_limit&sort_order=ASC',
+      baseURL
+    ).toString()
+  );
+  if (!response.ok()) {
+    return '';
+  }
+  const body = await response.json();
+  const items = Array.isArray(body?.items) ? body.items : [];
+  const walletCache = new Map();
+
+  for (const item of items) {
+    const id = item?.id;
+    const customerId = item?.customer_id;
+    const budgetLimit = campaignBudgetLimitMicro(item);
+    if (typeof id !== 'string' || typeof customerId !== 'string' || budgetLimit == null) {
+      continue;
+    }
+
+    let wallet = walletCache.get(customerId);
+    if (!wallet) {
+      wallet = await fetchCustomerWalletMicro(page, customerId);
+      if (wallet) {
+        walletCache.set(customerId, wallet);
+      }
+    }
+    if (!wallet) {
+      continue;
+    }
+    if (wallet.balance + wallet.overdraft >= budgetLimit) {
+      return id;
+    }
+  }
+  return '';
 }
 
 /**

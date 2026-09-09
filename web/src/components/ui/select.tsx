@@ -4,6 +4,7 @@ import { Check, ChevronDown } from 'lucide-react';
 import { Slot } from '@/lib/as_child';
 import { Button } from '@/components/ui/button';
 import { adminChrome } from '@/lib/admin_chrome';
+import { adminKit } from '@/lib/admin_kit';
 import { useControllableState } from '@/lib/controllable_state';
 import {
   computeFloatingPosition,
@@ -35,19 +36,21 @@ function useSelectContext() {
   return ctx;
 }
 
+type SelectProps = {
+  value?: string;
+  defaultValue?: string;
+  onValueChange?: (value: string) => void;
+  disabled?: boolean;
+  children?: React.ReactNode;
+};
+
 function Select({
   value,
   defaultValue,
   onValueChange,
   disabled,
   children,
-}: {
-  value?: string;
-  defaultValue?: string;
-  onValueChange?: (value: string) => void;
-  disabled?: boolean;
-  children?: React.ReactNode;
-}) {
+}: SelectProps) {
   const [open, setOpen] = React.useState(false);
   const [internalValue, setInternalValue] = useControllableState({
     value,
@@ -82,22 +85,25 @@ function Select({
     [disabled, internalValue, labels, open, registerLabel, setInternalValue]
   );
 
-  return (
-    <SelectContext.Provider value={contextValue}>
-      {children}
-    </SelectContext.Provider>
-  );
+  return <SelectContext.Provider value={contextValue}>{children}</SelectContext.Provider>;
 }
 
 function SelectGroup({ children }: { children?: React.ReactNode }) {
   return <div role="group">{children}</div>;
 }
 
-const SelectValue = ({ placeholder, className }: { placeholder?: string; className?: string }) => {
+const SelectValue = ({ placeholder }: { placeholder?: string }) => {
   const { value, labels } = useSelectContext();
-  const label = value ? labels.get(value) : undefined;
+  const registered = value ? labels.get(value) : undefined;
+  const fallback =
+    value && /^__.*__$/.test(value)
+      ? undefined
+      : value && value.length <= 8
+        ? value.toUpperCase()
+        : value;
+  const label = registered ?? fallback;
   return (
-    <span className={cn('truncate', !label && 'text-muted-foreground', className)}>
+    <span className="truncate text-left">
       {label ?? placeholder ?? 'Select...'}
     </span>
   );
@@ -106,7 +112,7 @@ const SelectValue = ({ placeholder, className }: { placeholder?: string; classNa
 const SelectTrigger = React.forwardRef<
   HTMLButtonElement,
   React.ButtonHTMLAttributes<HTMLButtonElement> & { plain?: boolean }
->(({ className, children, plain = false, disabled, onClick, ...props }, ref) => {
+>(({ children, plain = false, disabled, onClick, ...props }, ref) => {
   const ctx = useSelectContext();
   const isDisabled = disabled ?? ctx.disabled;
 
@@ -127,7 +133,7 @@ const SelectTrigger = React.forwardRef<
       disabled={isDisabled}
       aria-expanded={ctx.open}
       aria-haspopup="listbox"
-      className={cn('w-full justify-between gap-2 font-normal', className)}
+      className="w-full justify-between font-normal"
       onClick={(event) => {
         onClick?.(event);
         if (!event.defaultPrevented && !isDisabled) {
@@ -220,7 +226,9 @@ const SelectContent = React.forwardRef<
         style={coords}
         {...props}
       >
-        <div className={cn(adminChrome.menuList, 'ui-scrollbar max-h-60 overflow-y-auto p-1')}>
+        <div
+          className={cn(adminChrome.menuList, 'scrollbar-admin max-h-60 overflow-y-auto p-1')}
+        >
           {children}
         </div>
       </div>
@@ -231,7 +239,11 @@ SelectContent.displayName = 'SelectContent';
 
 const SelectLabel = React.forwardRef<HTMLDivElement, React.HTMLAttributes<HTMLDivElement>>(
   ({ className, ...props }, ref) => (
-    <div ref={ref} className={cn('px-2 py-1.5 text-sm font-semibold', className)} {...props} />
+    <div
+      ref={ref}
+      className={cn(adminKit.labelCaps, 'px-2 py-1.5', className)}
+      {...props}
+    />
   )
 );
 SelectLabel.displayName = 'SelectLabel';
@@ -259,7 +271,7 @@ const SelectItem = React.forwardRef<
       className={cn(
         adminChrome.menuItem,
         'relative pr-8',
-        selected && 'bg-accent text-accent-foreground',
+        selected && adminChrome.menuItemSelected,
         className
       )}
       onClick={(event) => {
@@ -273,8 +285,8 @@ const SelectItem = React.forwardRef<
     >
       {children}
       {!plain && selected ? (
-        <span className="absolute right-2 flex h-3.5 w-3.5 items-center justify-center">
-          <Check className="h-4 w-4" />
+        <span className="absolute right-2 flex h-3.5 w-3.5 items-center justify-center text-foreground">
+          <Check className="h-4 w-4" strokeWidth={2.5} />
         </span>
       ) : null}
     </button>
@@ -283,8 +295,8 @@ const SelectItem = React.forwardRef<
 SelectItem.displayName = 'SelectItem';
 
 const SelectSeparator = React.forwardRef<HTMLDivElement, React.HTMLAttributes<HTMLDivElement>>(
-  ({ className, ...props }, ref) => (
-    <div ref={ref} className={cn('my-1 h-px bg-border', className)} {...props} />
+  ({ ...props }, ref) => (
+    <div ref={ref} {...props} />
   )
 );
 SelectSeparator.displayName = 'SelectSeparator';

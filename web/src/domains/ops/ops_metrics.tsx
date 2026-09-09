@@ -4,7 +4,6 @@ import { Label } from '@/components/ui/label';
 import { EmptyState } from '@/shell/empty_state';
 import type { DashboardMetrics, DashboardSummary } from '@/api/types';
 import { cn } from '@/lib/utils';
-import { opsPanelError } from '@/domains/ops/ops_nav';
 import { OpsMetricsLiveSummary } from '@/domains/ops/ops_metrics_live_summary';
 import {
   OpsMetricsPointsTable,
@@ -12,9 +11,7 @@ import {
 } from '@/domains/ops/ops_metrics_points_table';
 import {
   OpsActionGroup,
-  OpsPageBlockingError,
-  OpsPageLoading,
-  OpsPageShell,
+  OpsPageWithLoad,
 } from '@/domains/ops/ops_page_shell';
 
 export type OpsMetricsProps = {
@@ -42,26 +39,15 @@ export function OpsMetrics({
   onLoad,
   onLiveEnabledChange,
 }: OpsMetricsProps) {
-  if (fetching && !hasSnapshot && !error) {
-    return <OpsPageLoading />;
-  }
-
-  if (error && !hasSnapshot) {
-    return (
-      <OpsPageBlockingError
-        error={error}
-        pageTitle="Dashboard metrics"
-        title="Could not load dashboard metrics"
-      />
-    );
-  }
-
   const points = metrics?.points ?? [];
 
   return (
-    <OpsPageShell
+    <OpsPageWithLoad
+      blockingErrorTitle="Could not load dashboard metrics"
+      fetchState={{ fetching, error, hasSnapshot }}
+      title="Dashboard metrics"
       filters={
-        <div className="grid gap-2">
+        <div >
           <Label htmlFor="metrics-range">Range</Label>
           <Input
             id="metrics-range"
@@ -71,7 +57,6 @@ export function OpsMetrics({
           />
         </div>
       }
-      title="Dashboard metrics"
       actions={
         <>
           <OpsActionGroup label="Metrics">
@@ -81,7 +66,7 @@ export function OpsMetrics({
           </OpsActionGroup>
           <OpsActionGroup label="Live stream">
             <Button
-              className={cn(liveEnabled && 'bg-primary text-primary-foreground')}
+             
               type="button"
               variant="secondary"
               onClick={() => onLiveEnabledChange(!liveEnabled)}
@@ -105,7 +90,6 @@ export function OpsMetrics({
 
       <OpsMetricsPointsTable points={points} />
 
-      {error && hasSnapshot ? opsPanelError(error, 'Refresh failed') : null}
-    </OpsPageShell>
+    </OpsPageWithLoad>
   );
 }

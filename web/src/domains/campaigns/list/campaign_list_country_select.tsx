@@ -22,7 +22,6 @@ export function campaignCountryOptionLabel(value: string, fallback: string): str
 
 export type CampaignListCountrySelectProps = {
   'aria-label': string;
-  className?: string;
   disabled?: boolean;
   options: CampaignsListFilterOption[];
   title?: string;
@@ -32,7 +31,6 @@ export type CampaignListCountrySelectProps = {
 
 export function CampaignListCountrySelect({
   'aria-label': ariaLabel,
-  className,
   disabled = false,
   options,
   title,
@@ -42,7 +40,7 @@ export function CampaignListCountrySelect({
   return (
     <SearchableFilterSelect
       aria-label={ariaLabel}
-      className={className}
+     
       disabled={disabled}
       formatOptionLabel={campaignCountryOptionLabel}
       options={options}

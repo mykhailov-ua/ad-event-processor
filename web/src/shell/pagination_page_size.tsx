@@ -41,8 +41,8 @@ export function PaginationPageSize({
   }
 
   return (
-    <div className="flex shrink-0 items-center gap-2">
-      <label className={cn('shrink-0', adminKit.controlText, 'text-muted-foreground')} htmlFor={id}>
+    <div className="flex items-center gap-2">
+      <label className={adminKit.fieldLabelClass} htmlFor={id}>
         Per page
       </label>
       <Input
@@ -51,7 +51,7 @@ export function PaginationPageSize({
         inputMode="numeric"
         min={1}
         max={OPTIMAL_LIST_LIMIT_MAX}
-        className={cn(adminKit.controlHeight, 'w-14 px-2 py-0 ', adminKit.controlText)}
+        className="w-16"
         disabled={disabled}
         value={draft}
         onChange={(event) => setDraft(event.target.value)}

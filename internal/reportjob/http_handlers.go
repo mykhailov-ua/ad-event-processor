@@ -73,7 +73,11 @@ func (h *HTTPHandlers) postReportJob(w http.ResponseWriter, r *http.Request) {
 	idemKey := r.Header.Get("Idempotency-Key") // PG unique key; duplicate POST returns original job id
 	jobID, err := h.Runner.CreateJob(r.Context(), spec, idemKey)
 	if err != nil {
-		httpresponse.Error(w, http.StatusBadRequest, "BAD_REQUEST", err.Error())
+		msg := err.Error()
+		if !isSafeExportValidationMessage(msg) {
+			msg = SanitizeExportJobError(msg)
+		}
+		httpresponse.Error(w, http.StatusBadRequest, "BAD_REQUEST", msg)
 		return
 	}
 	status, _ := h.Runner.GetJob(r.Context(), jobID)
@@ -124,7 +128,7 @@ func (h *HTTPHandlers) downloadReportJob(w http.ResponseWriter, r *http.Request)
 			httpresponse.Error(w, http.StatusNotFound, "NOT_FOUND", "job not found")
 			return
 		}
-		httpresponse.Error(w, http.StatusConflict, "NOT_READY", err.Error())
+		httpresponse.Error(w, http.StatusConflict, "NOT_READY", SanitizeExportJobError(err.Error()))
 		return
 	}
 	defer func() { _ = f.Close() }()

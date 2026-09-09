@@ -1,6 +1,7 @@
 package ingest
 
 import (
+	"ad-event-processor/internal/domain"
 	"ad-event-processor/internal/ingest/ortbreact"
 	"ad-event-processor/internal/openrtb"
 )
@@ -34,6 +35,10 @@ func mapParsedToTargeting(hot *OpenRTB26Hot, cold *OpenRTB26Cold, geo GeoProvide
 
 func mapImpSlotToTargeting(hot *OpenRTB26Hot, cold *OpenRTB26Cold, slot *OpenRTB26ImpSlot, geo GeoProvider, clientIP string) wireTargeting {
 	return ortbreact.MapImpSlotToTargeting(hot, cold, slot, geo, clientIP)
+}
+
+func mapImpSlotToTargetingInto(hot *OpenRTB26Hot, cold *OpenRTB26Cold, slot *OpenRTB26ImpSlot, geo GeoProvider, evt *domain.Event, out *wireTargeting) {
+	ortbreact.MapImpSlotToTargetingInto(hot, cold, slot, geo, evt, out)
 }
 
 func mapWireToTargeting(req openrtb.BidRequest, geo GeoProvider, clientIP string) wireTargeting {

@@ -5,7 +5,7 @@ import { EmptyState } from '@/shell/empty_state';
 import type { MLManualLabel, OpsMlModelEvalResponse, OpsMlModelStatusResponse } from '@/api/types';
 import { JsonPayloadView } from '@/shell/json_payload_view';
 import { opsPanelError } from '@/domains/ops/ops_nav';
-import { OpsActionGroup, OpsPageLoading, OpsPageShell } from '@/domains/ops/ops_page_shell';
+import { OpsActionGroup, OpsPageWithLoad } from '@/domains/ops/ops_page_shell';
 import {
   OpsTable,
   OpsTableCell,
@@ -71,15 +71,30 @@ export function OpsMlModel({
 }: OpsMlModelProps) {
   const labelRows = labels ?? [];
 
-  if (fetchingStatus && !hasStatusSnapshot && !statusError) {
-    return <OpsPageLoading />;
-  }
-
   return (
-    <OpsPageShell
+    <OpsPageWithLoad
+      blockingErrorTitle="Could not load ML status"
+      fetchState={{
+        fetching: fetchingStatus,
+        error: statusError,
+        hasSnapshot: hasStatusSnapshot,
+      }}
+      refreshErrorTitle="ML status refresh failed"
+      title="ML model ops"
+      alerts={
+        <>
+          {evalError && !hasEvalSnapshot
+            ? opsPanelError(evalError, 'Could not load ML eval')
+            : null}
+          {labelsError && !hasLabelsSnapshot
+            ? opsPanelError(labelsError, 'Could not load ML labels')
+            : null}
+          {saveError ? opsPanelError(saveError, 'Could not add ML label') : null}
+        </>
+      }
       filters={
         <>
-          <div className="grid gap-2">
+          <div >
             <Label htmlFor="ml-ip-hash">IP hash</Label>
             <Input
               id="ml-ip-hash"
@@ -87,7 +102,7 @@ export function OpsMlModel({
               onChange={(event) => onDraftIpHashChange(event.target.value)}
             />
           </div>
-          <div className="grid gap-2">
+          <div >
             <Label htmlFor="ml-label">Label</Label>
             <Input
               id="ml-label"
@@ -96,7 +111,7 @@ export function OpsMlModel({
               onChange={(event) => onDraftLabelChange(event.target.value)}
             />
           </div>
-          <div className="grid gap-2">
+          <div >
             <Label htmlFor="ml-reason">Reason</Label>
             <Input
               id="ml-reason"
@@ -106,7 +121,6 @@ export function OpsMlModel({
           </div>
         </>
       }
-      title="ML model ops"
       actions={
         <>
           <OpsActionGroup label="ML data">
@@ -143,20 +157,11 @@ export function OpsMlModel({
         </>
       }
     >
-      {statusError && !hasStatusSnapshot
-        ? opsPanelError(statusError, 'Could not load ML status')
-        : null}
-      {evalError && !hasEvalSnapshot ? opsPanelError(evalError, 'Could not load ML eval') : null}
-      {labelsError && !hasLabelsSnapshot
-        ? opsPanelError(labelsError, 'Could not load ML labels')
-        : null}
-
       {status ? <JsonPayloadView payload={status} /> : null}
       {evalBlock ? <JsonPayloadView payload={evalBlock} /> : null}
 
-      {saveError ? opsPanelError(saveError, 'Could not add ML label') : null}
       {saveSuccess ? (
-        <p className="text-muted-foreground" role="status">
+        <p  role="status">
           Label stored.
         </p>
       ) : null}
@@ -184,7 +189,7 @@ export function OpsMlModel({
                   : (row.ip_hash ?? `row-${index}`)
               }
             >
-              <OpsTableCell className="text-xs text-muted-foreground">
+              <OpsTableCell >
                 {row.ip_hash ?? ''}
               </OpsTableCell>
               <OpsTableCell>{row.label ?? ''}</OpsTableCell>
@@ -193,6 +198,6 @@ export function OpsMlModel({
           ))}
         </OpsTable>
       ) : null}
-    </OpsPageShell>
+    </OpsPageWithLoad>
   );
 }

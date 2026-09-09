@@ -35,6 +35,7 @@ while IFS= read -r file; do
       web/src/lib/overlay_root.tsx | */web/src/lib/overlay_root.tsx | \
       web/src/lib/floating_position.ts | */web/src/lib/floating_position.ts | \
       web/src/lib/floating_overlay_position.ts | */web/src/lib/floating_overlay_position.ts | \
+      web/src/lib/overlay_position_state.ts | */web/src/lib/overlay_position_state.ts | \
       web/src/lib/use_overlay_dismiss.ts | */web/src/lib/use_overlay_dismiss.ts | \
       web/src/main.tsx | */web/src/main.tsx | \
       web/src/login.tsx | */web/src/login.tsx | \

@@ -6,7 +6,7 @@ import { ApiError } from '@/api/client';
 import { PrimaryActionButton } from '@/shell/action_buttons';
 import { ErrorBlock } from '@/shell/error_block';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
-import { Input } from '@/components/ui/input';
+import { PasswordInput } from '@/components/ui/password_input';
 import { Label } from '@/components/ui/label';
 
 export function InviteAcceptPage() {
@@ -46,19 +46,19 @@ export function InviteAcceptPage() {
   }
 
   return (
-    <div className="flex min-h-screen items-center justify-center bg-background p-4">
-      <Card className="w-full max-w-sm">
+    <div >
+      <Card >
         <CardHeader>
           <CardTitle>Accept invite</CardTitle>
           <CardDescription>
             Set your password to join the team. Already have access?{' '}
-            <Link className="text-foreground underline" to="/login">
+            <Link  to="/login">
               Sign in
             </Link>
             .
           </CardDescription>
         </CardHeader>
-        <CardContent className="grid gap-4">
+        <CardContent >
           {error ? <ErrorBlock title="Invite accept failed" message={error} /> : null}
           {!inviteToken ? (
             <ErrorBlock
@@ -66,23 +66,21 @@ export function InviteAcceptPage() {
               message="Open the invite URL from your email. It must include ?token=..."
             />
           ) : null}
-          <form className="grid gap-4" onSubmit={handleSubmit}>
-            <div className="grid gap-2">
+          <form  onSubmit={handleSubmit}>
+            <div >
               <Label htmlFor="invite-password">Password</Label>
-              <Input
+              <PasswordInput
                 id="invite-password"
-                type="password"
                 autoComplete="new-password"
                 required
                 value={password}
                 onChange={(event) => setPassword(event.target.value)}
               />
             </div>
-            <div className="grid gap-2">
+            <div >
               <Label htmlFor="invite-confirm">Confirm password</Label>
-              <Input
+              <PasswordInput
                 id="invite-confirm"
-                type="password"
                 autoComplete="new-password"
                 required
                 value={confirmPassword}
@@ -90,7 +88,7 @@ export function InviteAcceptPage() {
               />
             </div>
             <PrimaryActionButton
-              className="w-full"
+             
               disabled={!inviteToken}
               loading={submitting}
               type="submit"

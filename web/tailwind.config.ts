@@ -57,6 +57,10 @@ const config: Config = {
             foreground: 'hsl(var(--admin-brand-fg))',
             soft: 'hsl(var(--admin-brand) / 0.12)',
           },
+          headerFaq: {
+            DEFAULT: 'hsl(var(--admin-header-faq-bg))',
+            hover: 'hsl(var(--admin-header-faq-hover))',
+          },
           positive: 'hsl(var(--admin-positive-fg))',
           negative: 'hsl(var(--admin-negative-fg))',
           warn: {
@@ -77,12 +81,15 @@ const config: Config = {
             totals: 'hsl(var(--admin-table-totals-bg))',
           },
           filters: 'hsl(var(--admin-filters-bg))',
+          selection: 'hsl(var(--admin-selection))',
+          inputDisabled: 'hsl(var(--admin-input-disabled))',
+          control: 'hsl(var(--admin-control-bg))',
         },
       },
       borderRadius: {
-        lg: '0',
-        md: '0',
-        sm: '0',
+        lg: '0.5rem',
+        md: '0.375rem',
+        sm: '0.25rem',
       },
       fontSize: {
         'ui-dense': ['0.8125rem', { lineHeight: '1.125rem' }],

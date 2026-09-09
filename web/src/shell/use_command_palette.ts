@@ -12,6 +12,7 @@ import { ApiError } from '@/api/client';
 import { useResource } from '@/api/use_resource';
 import { fetchCommandPaletteRoutesCached } from '@/lib/command_palette_routes_cache';
 import { useSession } from '@/hooks/use_session';
+import { useCommandPaletteContextualState } from '@/shell/command_palette_contextual';
 
 const SEARCH_DEBOUNCE_MS = 250;
 
@@ -37,6 +38,7 @@ export function useCommandPalette({
 }: UseCommandPaletteOptions = {}) {
   const navigate = useNavigate();
   const { session } = useSession();
+  const { actions: contextualActions, resolveRun } = useCommandPaletteContextualState();
   const customerId = session?.default_customer_id ?? '';
 
   const [internalOpen, setInternalOpen] = useState(false);
@@ -119,6 +121,10 @@ export function useCommandPalette({
 
   const routes = catalogResource.data?.routes ?? [];
   const recents = catalogResource.data?.recents ?? [];
+  const contextualItems = useMemo(
+    () => contextualActions.map((action) => action.item),
+    [contextualActions]
+  );
   const catalogItems = useMemo(() => {
     if (recents.length === 0) {
       return routes;
@@ -139,13 +145,18 @@ export function useCommandPalette({
 
   const onSelectItem = useCallback(
     (item: CommandPaletteItem) => {
+      const contextualRun = resolveRun(item.id);
       setOpen(false);
+      if (contextualRun) {
+        contextualRun();
+        return;
+      }
       if (customerId) {
         void recordCommandPaletteRecent({ customer_id: customerId, item }).catch(() => undefined);
       }
       navigate(normalizeHref(item.href));
     },
-    [customerId, navigate, setOpen]
+    [customerId, navigate, resolveRun, setOpen]
   );
 
   return {
@@ -154,6 +165,7 @@ export function useCommandPalette({
     query,
     setQuery,
     isSearching,
+    contextualItems,
     catalogItems,
     recents,
     searchItems,

@@ -4,12 +4,17 @@ import { Link, Navigate } from 'react-router-dom';
 import { login } from '@/api/auth_api';
 import { ApiError } from '@/api/client';
 import { PrimaryActionButton } from '@/shell/action_buttons';
+import { AuthPageLayout } from '@/shell/auth_page_layout';
 import { ErrorBlock } from '@/shell/error_block';
 import { PageSkeleton } from '@/shell/page_skeleton';
-import { Card, CardContent, CardDescription, CardHeader } from '@/components/ui/card';
+import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Input } from '@/components/ui/input';
+import { PasswordInput } from '@/components/ui/password_input';
 import { Label } from '@/components/ui/label';
 import { useMeta } from '@/hooks/use_meta';
+import { productConsoleTagline } from '@/lib/product_display_name';
+import { adminSpacing, adminTypography } from '@/lib/admin_spacing';
+import { cn } from '@/lib/utils';
 
 export function LoginPage() {
   const { bootstrapComplete, loading: metaLoading } = useMeta();
@@ -48,16 +53,16 @@ export function LoginPage() {
   }
 
   return (
-    <div className="flex min-h-screen items-center justify-center bg-background p-4">
-      <Card className="w-full max-w-sm">
+    <AuthPageLayout>
+      <Card>
         <CardHeader>
-          <h1 className="font-semibold">Sign in</h1>
-          <CardDescription>ad-event-processor operator console</CardDescription>
+          <CardTitle>Sign in</CardTitle>
+          <CardDescription>{productConsoleTagline()}</CardDescription>
         </CardHeader>
-        <CardContent className="grid gap-4">
+        <CardContent>
           {error ? <ErrorBlock title="Sign in failed" message={error} /> : null}
-          <form className="grid gap-4" onSubmit={handleSubmit}>
-            <div className="grid gap-2">
+          <form className={cn('grid', adminSpacing.gap.xl)} onSubmit={handleSubmit}>
+            <div className={cn('grid', adminSpacing.gap.md)}>
               <Label htmlFor="email">Email</Label>
               <Input
                 id="email"
@@ -68,11 +73,10 @@ export function LoginPage() {
                 onChange={(event) => setEmail(event.target.value)}
               />
             </div>
-            <div className="grid gap-2">
+            <div className={cn('grid', adminSpacing.gap.md)}>
               <Label htmlFor="password">Password</Label>
-              <Input
+              <PasswordInput
                 id="password"
-                type="password"
                 autoComplete="current-password"
                 required
                 value={password}
@@ -83,15 +87,13 @@ export function LoginPage() {
               Sign in
             </PrimaryActionButton>
           </form>
-          <p className="text-center text-sm text-muted-foreground">
-            First install?{' '}
-            <Link className="text-foreground underline" to="/activate">
+          <p className={cn('text-center', adminTypography.bodyMuted)}>
+            <Link className="text-primary hover:underline" to="/activate">
               Activate with license
             </Link>
-            .
           </p>
         </CardContent>
       </Card>
-    </div>
+    </AuthPageLayout>
   );
 }

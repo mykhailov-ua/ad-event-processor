@@ -919,6 +919,8 @@ paths:
         $ref: paths/rtb.yaml#/paths/~1api~1v1~1rtb~1validate-bid-request
     /api/v1/selfserve/api-keys:
         $ref: paths/billing.yaml#/paths/~1api~1v1~1selfserve~1api-keys
+    /api/v1/selfserve/api-keys/{id}:
+        $ref: paths/billing.yaml#/paths/~1api~1v1~1selfserve~1api-keys~1{id}
     /api/v1/selfserve/billing/statement:
         $ref: paths/billing.yaml#/paths/~1api~1v1~1selfserve~1billing~1statement
     /api/v1/selfserve/campaigns:

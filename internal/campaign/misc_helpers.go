@@ -2504,6 +2504,7 @@ type CampaignDTO struct {
 	AttestationTTLSec            int32                 `json:"attestation_ttl_sec"`
 	DmrEnabled                   bool                  `json:"dmr_enabled"`
 	RedirectComplianceMode       string                `json:"redirect_compliance_mode,omitempty"`
+	TimezoneAttestationMode      string                `json:"timezone_attestation_mode,omitempty"`
 	CIDRBlockEnabled             bool                  `json:"cidr_block_enabled"`
 	ProxyVPNBlockEnabled         bool                  `json:"proxy_vpn_block_enabled"`
 	ModeratorIntelEnabled        bool                  `json:"moderator_intel_enabled"`
@@ -2700,6 +2701,7 @@ type PatchCampaignRequest struct {
 	DecoyLanderID                *uuid.UUID            `json:"decoy_lander_id,omitempty"`
 	DmrEnabled                   *bool                 `json:"dmr_enabled,omitempty"`
 	RedirectComplianceMode       *string               `json:"redirect_compliance_mode,omitempty"`
+	TimezoneAttestationMode      *string               `json:"timezone_attestation_mode,omitempty"`
 	CIDRBlockEnabled             *bool                 `json:"cidr_block_enabled,omitempty"`
 	ProxyVPNBlockEnabled         *bool                 `json:"proxy_vpn_block_enabled,omitempty"`
 	ModeratorIntelEnabled        *bool                 `json:"moderator_intel_enabled,omitempty"`

@@ -42,7 +42,7 @@ const TooltipTrigger = React.forwardRef<
   React.HTMLAttributes<HTMLElement> & { asChild?: boolean }
 >(
   (
-    { asChild = false, className, onMouseEnter, onMouseLeave, onFocus, onBlur, children, ...props },
+    { asChild = false, onMouseEnter, onMouseLeave, onFocus, onBlur, children, ...props },
     ref
   ) => {
     const { setOpen, triggerRef } = useTooltipContext();
@@ -80,20 +80,22 @@ const TooltipTrigger = React.forwardRef<
       const childRef = (child as { ref?: React.Ref<HTMLElement> }).ref;
       return React.cloneElement(child, {
         ref: mergeRefs(mergedRef, childRef),
-        className: cn(className, (children.props as { className?: string }).className),
+
         ...handlers,
         ...props,
       });
     }
 
     return (
-      <span ref={mergedRef} className={cn('inline-flex', className)} {...handlers} {...props}>
+      <span ref={mergedRef} {...handlers} {...props}>
         {children}
       </span>
     );
   }
 );
 TooltipTrigger.displayName = 'TooltipTrigger';
+
+const TOOLTIP_FADE_MS = 150;
 
 const TooltipContent = React.forwardRef<
   HTMLDivElement,
@@ -104,14 +106,35 @@ const TooltipContent = React.forwardRef<
   }
 >(
   (
-    { className, side = 'top', align = 'center', sideOffset = 4, style, children, ...props },
+    { side = 'top', align = 'center', sideOffset = 4, className, style, children, ...props },
     ref
   ) => {
     const { open, triggerRef } = useTooltipContext();
     const [coords, setCoords] = React.useState<React.CSSProperties>({});
+    const [mounted, setMounted] = React.useState(false);
+    const [visible, setVisible] = React.useState(false);
+
+    React.useEffect(() => {
+      if (open) {
+        setMounted(true);
+        const frame = window.requestAnimationFrame(() => {
+          setVisible(true);
+        });
+        return () => {
+          window.cancelAnimationFrame(frame);
+        };
+      }
+      setVisible(false);
+      const timer = window.setTimeout(() => {
+        setMounted(false);
+      }, TOOLTIP_FADE_MS);
+      return () => {
+        window.clearTimeout(timer);
+      };
+    }, [open]);
 
     React.useLayoutEffect(() => {
-      if (!open || !triggerRef.current) {
+      if (!mounted || !triggerRef.current) {
         return;
       }
 
@@ -130,9 +153,9 @@ const TooltipContent = React.forwardRef<
         window.removeEventListener('scroll', updateCoords, true);
         window.removeEventListener('resize', updateCoords);
       };
-    }, [align, open, side, sideOffset, triggerRef]);
+    }, [align, mounted, side, sideOffset, triggerRef]);
 
-    if (!open) {
+    if (!mounted) {
       return null;
     }
 
@@ -142,8 +165,9 @@ const TooltipContent = React.forwardRef<
           ref={ref}
           role="tooltip"
           className={cn(
-            adminChrome.panel,
-            'pointer-events-none px-3 py-1.5 text-xs text-foreground shadow-lg',
+            adminChrome.floating,
+            'pointer-events-none z-[10002] whitespace-nowrap px-2 py-1 text-xs transition-opacity duration-150 ease-out',
+            visible ? 'opacity-100' : 'opacity-0',
             className
           )}
           style={{ ...coords, ...style }}

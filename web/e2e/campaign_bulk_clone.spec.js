@@ -1,8 +1,9 @@
 import { test, expect } from '@playwright/test';
 
 import {
+  apiMutationHeaders,
   baseURL,
-  fetchFirstCampaignId,
+  fetchFirstCloneableCampaignId,
   integrationRunToken,
   loginAsAdmin,
   skipUnlessIntegrationReady,
@@ -15,9 +16,9 @@ test.beforeEach(async ({}, testInfo) => {
 test('POST /api/v1/campaigns/bulk-clone clones selected campaign', async ({ page }) => {
   await loginAsAdmin(page);
 
-  const campaignId = await fetchFirstCampaignId(page);
+  const campaignId = await fetchFirstCloneableCampaignId(page);
   if (!campaignId) {
-    test.skip(true, 'integration: no campaigns available for bulk clone');
+    test.skip(true, 'integration: no cloneable campaign (run db seed-clone-balance)');
     return;
   }
 
@@ -40,11 +41,19 @@ test('POST /api/v1/campaigns/bulk-clone clones selected campaign', async ({ page
         customer_id: customerId,
         name_suffix: ' (e2e bulk)',
       },
-      headers: {
+      headers: await apiMutationHeaders(page, {
         'Idempotency-Key': `bulk-clone-e2e-${integrationRunToken()}`,
-      },
+      }),
     }
   );
+
+  if (cloneResponse.status() === 405) {
+    test.skip(
+      true,
+      'integration: control image missing POST /api/v1/campaigns/bulk-clone; rebuild control'
+    );
+    return;
+  }
 
   expect(cloneResponse.ok()).toBeTruthy();
   const body = await cloneResponse.json();

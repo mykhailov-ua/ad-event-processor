@@ -1,7 +1,17 @@
 import assert from 'node:assert/strict';
 import test from 'node:test';
 
+import { seedDeterministicUuid } from '../lib/uuid.ts';
 import { trackEvent } from './track.js';
+
+const CAMPAIGN_1 = seedDeterministicUuid('campaign', 1);
+const CAMPAIGN_2 = seedDeterministicUuid('campaign', 2);
+const CAMPAIGN_DWELL = seedDeterministicUuid('campaign', 3);
+const CAMPAIGN_ATTRIB = seedDeterministicUuid('campaign', 4);
+const CAMPAIGN_SUBS = seedDeterministicUuid('campaign', 5);
+const USER_1 = seedDeterministicUuid('user', 1);
+const EVENT_1 = seedDeterministicUuid('event', 1);
+const EVENT_SUBS = seedDeterministicUuid('event', 2);
 
 async function withMockWindow(run, { search = '?msclkid=ms-1&ob_click_id=ob-9' } = {}) {
   const previousWindow = globalThis.window;
@@ -51,12 +61,12 @@ test('trackEvent honors minDwellMs before fetch', async () => {
     const started = performance.now();
     await trackEvent({
       endpoint: 'https://track.example/track',
-      campaignId: 'camp-dwell',
+      campaignId: CAMPAIGN_DWELL,
       type: 'conversion',
       minDwellMs: 35,
     });
     assert.ok(performance.now() - started >= 30);
-    assert.equal(capturedBody.campaign_id, 'camp-dwell');
+    assert.equal(capturedBody.campaign_id, CAMPAIGN_DWELL);
   } finally {
     globalThis.window = previousWindow;
     globalThis.fetch = previousFetch;
@@ -67,20 +77,20 @@ test('trackEvent maps core fields and query attribution', async () => {
   await withMockWindow(async (readBody) => {
     await trackEvent({
       endpoint: 'https://track.example/track',
-      campaignId: 'camp-1',
+      campaignId: CAMPAIGN_1,
       type: 'conversion',
       clickId: 'click-1',
-      userId: 'user-1',
-      eventId: 'evt-1',
+      userId: USER_1,
+      eventId: EVENT_1,
       subs: { sub1: 'a', sub30: 'z' },
     });
 
     const body = readBody();
-    assert.equal(body.campaign_id, 'camp-1');
+    assert.equal(body.campaign_id, CAMPAIGN_1);
     assert.equal(body.type, 'conversion');
-    assert.equal(body.event_id, 'evt-1');
+    assert.equal(body.event_id, EVENT_1);
     assert.equal(body.click_id, 'click-1');
-    assert.equal(body.user_id, 'user-1');
+    assert.equal(body.user_id, USER_1);
     assert.equal(body.sub1, 'a');
     assert.equal(body.sub30, 'z');
     assert.equal(body.msclkid, 'ms-1');
@@ -94,7 +104,7 @@ test('trackEvent maps full query attribution and obclid alias', async () => {
     async (readBody) => {
       await trackEvent({
         endpoint: 'https://track.example/track',
-        campaignId: 'camp-attrib',
+        campaignId: CAMPAIGN_ATTRIB,
         type: 'click',
       });
 
@@ -121,14 +131,14 @@ test('trackEvent maps subs sub1 through sub30', async () => {
 
     await trackEvent({
       endpoint: 'https://track.example/track',
-      campaignId: 'camp-subs',
+      campaignId: CAMPAIGN_SUBS,
       type: 'click',
-      eventId: 'evt-subs',
+      eventId: EVENT_SUBS,
       subs,
     });
 
     const body = readBody();
-    assert.equal(body.event_id, 'evt-subs');
+    assert.equal(body.event_id, EVENT_SUBS);
     for (let index = 1; index <= 30; index += 1) {
       assert.equal(body[`sub${index}`], `value-${index}`);
     }
@@ -142,7 +152,7 @@ test('trackEvent auto event_id and telemetry snapshots', async () => {
 
     await trackEvent({
       endpoint: 'https://track.example/track',
-      campaignId: 'camp-2',
+      campaignId: CAMPAIGN_2,
       type: 'impression',
     });
 

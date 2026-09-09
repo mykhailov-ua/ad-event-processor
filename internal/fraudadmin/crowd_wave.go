@@ -79,27 +79,28 @@ func (w *CrowdWave) ExportActiveWaves(ctx context.Context) (int, error) {
 	if err != nil {
 		return 0, err
 	}
-	exported := 0
-	for _, campaignID := range ids {
-		state, err := w.store.Snapshot(ctx, campaignID)
-		if err != nil || !state.Active {
+	states, err := w.store.SnapshotBatch(ctx, ids)
+	if err != nil {
+		return 0, err
+	}
+	upserts := make([]ModeratorCorpusUpsertRequest, 0, len(states))
+	for campaignID, state := range states {
+		if !state.Active {
 			continue
 		}
 		note := fmt.Sprintf("crowd_wave:%s:score=%d:uniq=%d", campaignID.String(), state.Score, state.UniqueClusters)
-		_, err = corpus.UpsertTuple(ctx, ModeratorCorpusUpsertRequest{
+		upserts = append(upserts, ModeratorCorpusUpsertRequest{
 			JA3:    "crowd_wave_" + campaignID.String(),
 			Note:   note,
 			Source: "crowd_wave",
 		})
-		if err != nil {
-			return exported, err
-		}
-		exported++
 	}
-	if exported > 0 {
-		if err := w.host.RefreshModeratorCorpusFeed(ctx); err != nil {
-			return exported, err
-		}
+	if len(upserts) == 0 {
+		return 0, nil
+	}
+	exported, err := corpus.UpsertTuples(ctx, upserts)
+	if err != nil {
+		return exported, err
 	}
 	return exported, nil
 }

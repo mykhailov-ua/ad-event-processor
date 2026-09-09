@@ -35,7 +35,7 @@ export function EulaGate({ children }: EulaGateProps) {
       {children}
       <Dialog open={blocked} onOpenChange={() => undefined}>
         <DialogContent
-          className="max-w-2xl p-0"
+         
           onEscapeKeyDown={(event) => event.preventDefault()}
           onInteractOutside={(event) => event.preventDefault()}
         >
@@ -47,7 +47,7 @@ export function EulaGate({ children }: EulaGateProps) {
           </DialogHeader>
 
           <DialogBody>
-            <div className="border border-border whitespace-pre-wrap text-sm">
+            <div >
               {eulaText?.trim() ? eulaText : 'EULA text unavailable from server.'}
             </div>
 
@@ -67,7 +67,7 @@ export function EulaGate({ children }: EulaGateProps) {
                 Accept EULA
               </PrimaryActionButton>
             ) : (
-              <p className="text-sm text-muted-foreground">
+              <p >
                 Your session lacks settings:write permission required to accept the EULA.
               </p>
             )}

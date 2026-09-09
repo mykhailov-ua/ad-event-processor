@@ -1,5 +1,5 @@
-// recon runs directory: service filter in URL; draft service resets when URL changes.
-import { useCallback, useEffect, useMemo, useState } from 'react';
+// recon runs directory: service filter in URL; draft resets on Apply only.
+import { useCallback, useMemo, useState } from 'react';
 
 import { listReconRuns } from '@/api/ops_api';
 import { useResource } from '@/api/use_resource';
@@ -13,10 +13,6 @@ export function useOpsReconPageWorkspace() {
   const limit = parseListLimit(searchParams.get('limit'));
   const offset = parseListOffset(searchParams.get('offset'));
   const [draftService, setDraftService] = useState(appliedService);
-
-  useEffect(() => {
-    setDraftService(appliedService);
-  }, [appliedService]);
 
   const query = useMemo(
     () => ({

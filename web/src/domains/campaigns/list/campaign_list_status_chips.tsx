@@ -1,6 +1,6 @@
 import type { CampaignStatusFilter } from '@/domains/campaigns/list/campaigns_list_types';
-import { uiSurfaces } from '@/lib/ui_surfaces';
 import { adminKit } from '@/lib/admin_kit';
+import { uiSurfaces } from '@/lib/ui_surfaces';
 import { cn } from '@/lib/utils';
 import { ChipRow } from '@/shell/ui_bands';
 
@@ -15,7 +15,6 @@ export type CampaignListStatusChipsProps = {
   value: CampaignStatusFilter;
   onChange: (value: CampaignStatusFilter) => void;
   countsLoading?: boolean;
-  className?: string;
 };
 
 const STATUS_CHIP_CLASS: Record<
@@ -68,10 +67,9 @@ export function CampaignListStatusChips({
   value,
   onChange,
   countsLoading = false,
-  className,
 }: CampaignListStatusChipsProps) {
   return (
-    <ChipRow aria-label="Campaign status" className={className} role="group">
+    <ChipRow aria-label="Campaign status" role="group">
       {options.map((option) => {
         const selected = value === option.value;
         const tone = chipTone(option.value);
@@ -87,9 +85,9 @@ export function CampaignListStatusChips({
             key={option.value || 'all'}
             aria-pressed={selected}
             className={cn(
-              'group',
               uiSurfaces.chip,
-              adminKit.controlRadius,
+              adminKit.nestedRadius,
+              'group transition-colors',
               selected ? tone.active : tone.idle
             )}
             type="button"
@@ -97,7 +95,10 @@ export function CampaignListStatusChips({
           >
             {option.label}
             <span
-              className={cn(uiSurfaces.chipCount, selected ? tone.countActive : tone.countIdle)}
+              className={cn(
+                uiSurfaces.chipCount,
+                selected ? tone.countActive : tone.countIdle
+              )}
             >
               {countLabel}
             </span>

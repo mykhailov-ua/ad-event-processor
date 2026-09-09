@@ -6,12 +6,9 @@ import type {
   OpsRumResponse,
 } from '@/api/types';
 import { JsonPayloadView } from '@/shell/json_payload_view';
-import { opsPanelError } from '@/domains/ops/ops_nav';
 import {
   OpsActionGroup,
-  OpsPageBlockingError,
-  OpsPageLoading,
-  OpsPageShell,
+  OpsPageWithLoad,
 } from '@/domains/ops/ops_page_shell';
 
 export type OpsRumProps = {
@@ -23,18 +20,10 @@ export type OpsRumProps = {
 };
 
 export function OpsRum({ payload, fetching, error, hasSnapshot, onLoad }: OpsRumProps) {
-  if (fetching && !hasSnapshot && !error) {
-    return <OpsPageLoading />;
-  }
-
-  if (error && !hasSnapshot) {
-    return (
-      <OpsPageBlockingError error={error} pageTitle="RUM" title="Could not load RUM samples" />
-    );
-  }
-
   return (
-    <OpsPageShell
+    <OpsPageWithLoad
+      blockingErrorTitle="Could not load RUM samples"
+      fetchState={{ fetching, error, hasSnapshot }}
       title="RUM"
       actions={
         <OpsActionGroup label="RUM">
@@ -47,9 +36,8 @@ export function OpsRum({ payload, fetching, error, hasSnapshot, onLoad }: OpsRum
       {payload ? (
         <JsonPayloadView payload={payload} />
       ) : (
-        <p className="text-muted-foreground">Load RUM samples from the control plane.</p>
+        <p >Load RUM samples from the control plane.</p>
       )}
-      {error && hasSnapshot ? opsPanelError(error, 'Refresh failed') : null}
-    </OpsPageShell>
+    </OpsPageWithLoad>
   );
 }

@@ -102,17 +102,9 @@ type ProbeClusterSummary struct {
 	ExportDone    bool
 }
 
-func (st *ProbeClusterStore) GetSummary(ctx context.Context, clusterIDHex string) (ProbeClusterSummary, bool, error) {
-	if st == nil || st.client == nil || clusterIDHex == "" {
-		return ProbeClusterSummary{}, false, nil
-	}
-	metaKey := probeClusterKeyPrefix + clusterIDHex + ":meta"
-	fields, err := st.client.HGetAll(ctx, metaKey).Result()
-	if err != nil {
-		return ProbeClusterSummary{}, false, err
-	}
+func parseProbeClusterMeta(clusterIDHex string, fields map[string]string) (ProbeClusterSummary, bool) {
 	if len(fields) == 0 {
-		return ProbeClusterSummary{}, false, nil
+		return ProbeClusterSummary{}, false
 	}
 	out := ProbeClusterSummary{
 		ClusterID:  clusterIDHex,
@@ -130,7 +122,54 @@ func (st *ProbeClusterStore) GetSummary(ctx context.Context, clusterIDHex string
 	if n > 0 {
 		out.AvgProbeScore = uint8(sum / n)
 	}
-	return out, true, nil
+	return out, true
+}
+
+func (st *ProbeClusterStore) GetSummary(ctx context.Context, clusterIDHex string) (ProbeClusterSummary, bool, error) {
+	if st == nil || st.client == nil || clusterIDHex == "" {
+		return ProbeClusterSummary{}, false, nil
+	}
+	summaries, err := st.GetSummaryBatch(ctx, []string{clusterIDHex})
+	if err != nil {
+		return ProbeClusterSummary{}, false, err
+	}
+	summary, ok := summaries[clusterIDHex]
+	return summary, ok, nil
+}
+
+func (st *ProbeClusterStore) GetSummaryBatch(ctx context.Context, clusterIDHexes []string) (map[string]ProbeClusterSummary, error) {
+	if st == nil || st.client == nil || len(clusterIDHexes) == 0 {
+		return map[string]ProbeClusterSummary{}, nil
+	}
+	pipe := st.client.Pipeline()
+	cmds := make([]*redis.MapStringStringCmd, 0, len(clusterIDHexes))
+	idOrder := make([]string, 0, len(clusterIDHexes))
+	for _, clusterIDHex := range clusterIDHexes {
+		if clusterIDHex == "" {
+			continue
+		}
+		idOrder = append(idOrder, clusterIDHex)
+		metaKey := probeClusterKeyPrefix + clusterIDHex + ":meta"
+		cmds = append(cmds, pipe.HGetAll(ctx, metaKey))
+	}
+	if len(cmds) == 0 {
+		return map[string]ProbeClusterSummary{}, nil
+	}
+	if _, err := pipe.Exec(ctx); err != nil {
+		return nil, err
+	}
+	out := make(map[string]ProbeClusterSummary, len(idOrder))
+	for i, clusterIDHex := range idOrder {
+		fields, err := cmds[i].Result()
+		if err != nil {
+			return nil, err
+		}
+		summary, ok := parseProbeClusterMeta(clusterIDHex, fields)
+		if ok {
+			out[clusterIDHex] = summary
+		}
+	}
+	return out, nil
 }
 
 func atoi64(s string) int64 {
@@ -145,8 +184,23 @@ func (st *ProbeClusterStore) MarkExported(ctx context.Context, clusterIDHex stri
 	if st == nil || st.client == nil || clusterIDHex == "" {
 		return nil
 	}
-	metaKey := probeClusterKeyPrefix + clusterIDHex + ":meta"
-	return st.client.HSet(ctx, metaKey, "export_done", "1").Err()
+	return st.MarkExportedBatch(ctx, []string{clusterIDHex})
+}
+
+func (st *ProbeClusterStore) MarkExportedBatch(ctx context.Context, clusterIDHexes []string) error {
+	if st == nil || st.client == nil || len(clusterIDHexes) == 0 {
+		return nil
+	}
+	pipe := st.client.Pipeline()
+	for _, clusterIDHex := range clusterIDHexes {
+		if clusterIDHex == "" {
+			continue
+		}
+		metaKey := probeClusterKeyPrefix + clusterIDHex + ":meta"
+		pipe.HSet(ctx, metaKey, "export_done", "1")
+	}
+	_, err := pipe.Exec(ctx)
+	return err
 }
 
 func (st *ProbeClusterStore) ScanMetaKeys(ctx context.Context, cursor uint64, count int64) ([]string, uint64, error) {

@@ -13,7 +13,7 @@ alwaysApply: false
 
 Formalize **suboptimal operation** for admin SPA (`web/`). Same engineering stance as tracker ingest (`hot-path.mdc`): classify surface tier, pick the dominant cost model at current scale, reject work that violates it.
 
-Runtime patterns (fetch, canvas, windowing): `react.mdc`. Layout and server contracts: `ui.mdc`. Layer boundaries: `frontend-modular.mdc`.
+Runtime patterns (fetch, canvas, windowing): `react.mdc`. Layout and server contracts: `ui.mdc`. Frontend patterns (races, cancellation, effects): `frontend-patterns.mdc`. Layer boundaries: `frontend-modular.mdc`.
 
 ## Definition
 

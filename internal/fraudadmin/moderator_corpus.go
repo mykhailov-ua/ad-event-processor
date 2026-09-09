@@ -160,6 +160,79 @@ func (m *ModeratorCorpus) UpsertTuple(ctx context.Context, req ModeratorCorpusUp
 	}, nil
 }
 
+func (m *ModeratorCorpus) UpsertTuples(ctx context.Context, reqs []ModeratorCorpusUpsertRequest) (int, error) {
+	upserted, err := m.upsertTuples(ctx, reqs)
+	if err != nil || upserted == 0 {
+		return upserted, err
+	}
+	if err := m.host.RefreshModeratorCorpusFeed(ctx); err != nil {
+		return upserted, err
+	}
+	return upserted, nil
+}
+
+func (m *ModeratorCorpus) upsertTuples(ctx context.Context, reqs []ModeratorCorpusUpsertRequest) (int, error) {
+	if len(reqs) == 0 {
+		return 0, nil
+	}
+	if m == nil || m.host == nil || m.host.ModeratorCorpusPool() == nil {
+		return 0, fmt.Errorf("postgres pool not configured")
+	}
+	type normalizedRow struct {
+		tuple  moderatorcorpus.Tuple
+		note   string
+		source string
+	}
+	rows := make([]normalizedRow, 0, len(reqs))
+	for i, req := range reqs {
+		tuple, err := moderatorcorpus.NormalizeTuple(moderatorcorpus.Tuple{
+			JA3:              req.JA3,
+			JA4:              req.JA4,
+			TCPSig:           req.TCPSig,
+			WebGLRenderer:    req.WebGLRenderer,
+			LayerDesyncCount: uint8(req.LayerDesyncCount),
+		})
+		if err != nil {
+			return 0, ValidationError(fmt.Sprintf("row %d: %s", i+1, err.Error()))
+		}
+		source := strings.TrimSpace(req.Source)
+		if source == "" {
+			source = "manual"
+		}
+		rows = append(rows, normalizedRow{
+			tuple:  tuple,
+			note:   strings.TrimSpace(req.Note),
+			source: source,
+		})
+	}
+	var upserted int
+	err := pgx.BeginFunc(ctx, m.host.ModeratorCorpusPool(), func(tx pgx.Tx) error {
+		batch := &pgx.Batch{}
+		for _, row := range rows {
+			batch.Queue(`
+				INSERT INTO fraud_moderator_corpus (ja3, ja4, tcp_sig, webgl_renderer, layer_desync_count, note, source, created_at, updated_at)
+				VALUES ($1, $2, $3, $4, $5, $6, $7, now(), now())
+				ON CONFLICT (ja3, ja4, tcp_sig, webgl_renderer, layer_desync_count)
+				DO UPDATE SET note = EXCLUDED.note, source = EXCLUDED.source, updated_at = now()`,
+				row.tuple.JA3, row.tuple.JA4, row.tuple.TCPSig, row.tuple.WebGLRenderer, row.tuple.LayerDesyncCount, row.note, row.source,
+			)
+		}
+		br := tx.SendBatch(ctx, batch)
+		for range rows {
+			if _, err := br.Exec(); err != nil {
+				_ = br.Close()
+				return fmt.Errorf("upsert fraud_moderator_corpus: %w", err)
+			}
+			upserted++
+		}
+		return br.Close()
+	})
+	if err != nil {
+		return upserted, err
+	}
+	return upserted, nil
+}
+
 func (m *ModeratorCorpus) ImportCSV(ctx context.Context, csvBody string) (int, error) {
 	rows, err := parseModeratorCorpusCSV(csvBody)
 	if err != nil {

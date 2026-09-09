@@ -56,8 +56,8 @@ export function PlatformBootstrapForm({ onComplete }: PlatformBootstrapFormProps
   }, [bootstrapJson, installToken, onComplete]);
 
   return (
-    <div className="grid gap-4">
-      <div className="grid gap-2">
+    <div >
+      <div >
         <Label htmlFor="setup-install-token">Setup token</Label>
         <Input
           id="setup-install-token"
@@ -67,7 +67,7 @@ export function PlatformBootstrapForm({ onComplete }: PlatformBootstrapFormProps
           onChange={(event) => setInstallToken(event.target.value)}
         />
       </div>
-      <div className="grid gap-2">
+      <div >
         <Label htmlFor="setup-bootstrap-json">Setup configuration</Label>
         <Textarea
           id="setup-bootstrap-json"
@@ -78,7 +78,7 @@ export function PlatformBootstrapForm({ onComplete }: PlatformBootstrapFormProps
       </div>
       <div>
         <PrimaryActionButton
-          className="w-full"
+         
           disabled={!installToken.trim() || !bootstrapJson.trim()}
           loading={submitting}
           onClick={() => void onSubmit()}
@@ -88,7 +88,7 @@ export function PlatformBootstrapForm({ onComplete }: PlatformBootstrapFormProps
         </PrimaryActionButton>
       </div>
       {success ? (
-        <p className="text-sm text-muted-foreground">
+        <p >
           Setup complete. Sign in with the admin account you configured.
         </p>
       ) : null}

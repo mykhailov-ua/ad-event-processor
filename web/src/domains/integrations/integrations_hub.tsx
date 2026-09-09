@@ -1,4 +1,4 @@
-import { Link2, Plug, ScrollText, Share2, Tags } from 'lucide-react';
+import { Bug, Key, Link2, Plug, ScrollText, Share2, Tags } from 'lucide-react';
 
 import { BentoSection } from '@/shell/bento_card';
 import { HubLinkCard, HubLinkGrid } from '@/shell/hub_link_card';
@@ -6,6 +6,13 @@ import { PageChrome } from '@/shell/page_chrome';
 import { IntegrationsNav } from '@/domains/integrations/integrations_nav';
 
 const INTEGRATION_LINKS = [
+  {
+    path: '/integrations/api-keys',
+    title: 'Service accounts',
+    description: 'Mint Bearer API keys for automation (Dolphin, scripts, CAPI) separate from user login.',
+    icon: Key,
+    meta: 'Bearer tokens',
+  },
   {
     path: '/integrations/cost-sync',
     title: 'Cost sync',
@@ -16,9 +23,16 @@ const INTEGRATION_LINKS = [
   {
     path: '/integrations/postbacks',
     title: 'Postbacks',
-    description: 'Conversion postback configs, DLQ retries, and per-campaign delivery status.',
+    description: 'Conversion postback configs and per-campaign delivery status.',
     icon: Plug,
     meta: 'Delivery pipeline',
+  },
+  {
+    path: '/integrations/debugger',
+    title: 'Integration debugger',
+    description: 'Campaign smoke test, flow validation, and postback dry-run tools.',
+    icon: Bug,
+    meta: 'Diagnostics',
   },
   {
     path: '/integrations/schemas',

@@ -2,9 +2,8 @@
 
 set -euo pipefail
 
-# Role: Admin gate: report catalog keys must have SPA route + Go HTTP handler (or export-only contract).
+# Role: Admin gate: report catalog keys map to export-hub contract (no per-report SPA routes).
 # Execution context: CI via admin/web.sh when web/src exists.
-# Invariants/contracts enforced: catalog keys have Go handlers and typed SPA routes from report_paths.ts.
 # Verify: bash scripts/ci/admin/live_routes.sh
 source "$(cd "$(dirname "${BASH_SOURCE[0]}")/../.." && pwd)/lib/paths.sh"
 cd "$ROOT"
@@ -26,23 +25,13 @@ for path in "$CATALOG_GO" "$APP_ROUTES" "$REPORT_PATHS_TS"; do
   fi
 done
 
-if ! rg -q 'path="reports/:key"' "$APP_ROUTES"; then
-  echo "Error: $APP_ROUTES missing Route path=\"reports/:key\" for ReportRunnerPage"
-  exit 1
-fi
-
-if ! rg -q 'path="reports/click-log"' "$APP_ROUTES"; then
-  echo "Error: $APP_ROUTES missing dedicated click-log report route"
-  exit 1
-fi
-
-if ! rg -q 'path="reports/telegram"' "$APP_ROUTES"; then
-  echo "Error: $APP_ROUTES missing dedicated telegram report route"
+if ! rg -q 'path="exports"' "$APP_ROUTES"; then
+  echo "Error: $APP_ROUTES missing Route path=\"exports\" for Export Hub"
   exit 1
 fi
 
 if ! rg -q 'path="reports/jobs"' "$APP_ROUTES"; then
-  echo "Error: $APP_ROUTES missing reports/jobs route"
+  echo "Error: $APP_ROUTES missing reports/jobs legacy alias route"
   exit 1
 fi
 
@@ -51,17 +40,15 @@ if ! command -v python3 > /dev/null 2>&1; then
   exit 1
 fi
 
-python3 - "$CATALOG_GO" "$REPORT_PATHS_TS" "$REPORTS_TREE" "internal/telegram/handlers.go" "$APP_ROUTES" << 'PY'
+python3 - "$CATALOG_GO" "$REPORT_PATHS_TS" "$REPORTS_TREE" "internal/telegram/handlers.go" << 'PY'
 import re
 import sys
 from pathlib import Path
-from urllib.parse import quote
 
 catalog_path = Path(sys.argv[1])
 report_paths_ts = Path(sys.argv[2])
 reports_tree = Path(sys.argv[3])
 telegram_handlers = Path(sys.argv[4])
-app_routes_path = Path(sys.argv[5])
 
 catalog_src = catalog_path.read_text(encoding="utf-8")
 keys = re.findall(r'\{Key:\s*"([^"]+)"', catalog_src)
@@ -70,7 +57,6 @@ if not keys:
     sys.exit(1)
 
 rp_src = report_paths_ts.read_text(encoding="utf-8")
-app_routes_src = app_routes_path.read_text(encoding="utf-8")
 
 alias_block = re.search(
     r"REPORT_CATALOG_KEY_ALIASES[^=]*=\s*\{([^}]*)\}",
@@ -84,16 +70,6 @@ if alias_block:
 
 def resolve_catalog_key(key: str) -> str:
     return aliases.get(key, key)
-
-override_block = re.search(
-    r"REPORT_KEY_PATH_OVERRIDES[^=]*=\s*\{([^}]*)\}",
-    rp_src,
-    re.DOTALL,
-)
-overrides: dict[str, str] = {}
-if override_block:
-    for m in re.finditer(r"'([^']+)':\s*'([^']+)'", override_block.group(1)):
-        overrides[m.group(1)] = m.group(2)
 
 typed_keys: set[str] = set()
 for m in re.finditer(r"TYPED_\w+_REPORT_KEYS\s*=\s*new Set\(\[([^\]]*)\]", rp_src, re.DOTALL):
@@ -115,34 +91,6 @@ else:
     if m:
         export_only_keys = set(re.findall(r"'([^']+)'", m.group(1)))
 
-def report_hub_path(key: str) -> str:
-    if key == "click-log":
-        return "reports/click-log"
-    if key in ("rtb-overview", "rtb-no-bid-reasons", "rtb-geo-device"):
-        return "rtb"
-    if key == "telegram":
-        return "reports/telegram"
-    if key.startswith("telegram/"):
-        return f"reports/telegram/{key[len('telegram/'):]}"
-    if key.startswith("ml/"):
-        return f"reports/ml/{key[len('ml/'):]}"
-    if "/" in key:
-        return f"reports/{quote(key, safe='')}"
-    return f"reports/{quote(key, safe='')}"
-
-missing_spa: list[str] = []
-for key in sorted(typed_keys):
-    hub = report_hub_path(key)
-    needle = f'path="{hub}"'
-    if needle not in app_routes_src:
-        missing_spa.append(f"{key} (expected {needle})")
-
-if missing_spa:
-    print("Error: typed catalog keys without dedicated SPA route:", file=sys.stderr)
-    for item in missing_spa:
-        print(f"  - {item}", file=sys.stderr)
-    sys.exit(1)
-
 catalog_typed = {resolve_catalog_key(k) for k in keys}
 extra_typed = sorted(typed_keys - catalog_typed)
 if extra_typed:
@@ -158,6 +106,16 @@ for path in reports_tree.rglob("*.go"):
     handler_sources.append(path.read_text(encoding="utf-8", errors="replace"))
 handler_blob = "\n".join(handler_sources)
 telegram_blob = telegram_handlers.read_text(encoding="utf-8", errors="replace")
+
+override_block = re.search(
+    r"REPORT_KEY_PATH_OVERRIDES[^=]*=\s*\{([^}]*)\}",
+    rp_src,
+    re.DOTALL,
+)
+overrides: dict[str, str] = {}
+if override_block:
+    for m in re.finditer(r"'([^']+)':\s*'([^']+)'", override_block.group(1)):
+        overrides[m.group(1)] = m.group(2)
 
 missing_handler: list[str] = []
 for key in keys:
@@ -187,7 +145,7 @@ if missing_handler:
 
 print(
     f"Report live routes gate: OK ({len(keys)} catalog keys, "
-    f"{len(typed_keys)} typed SPA routes, reports/:key fallback)"
+    f"{len(typed_keys)} typed export keys, export-hub only)"
 )
 PY
 

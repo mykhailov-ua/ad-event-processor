@@ -2,11 +2,11 @@ import { Check, Copy } from 'lucide-react';
 import { useEffect, useRef, useState } from 'react';
 import { toast } from 'sonner';
 
+import { copyTextToClipboard } from '@/lib/copy_text_to_clipboard';
 import { directoryTableRowCopyButtonClass } from '@/shell/directory_table_row_actions';
 import { cn } from '@/lib/utils';
 
 export type CopyButtonProps = {
-  className?: string;
   label?: string;
   value: string;
   /** Swap to checkmark, then hide feedback without layout shift. */
@@ -14,9 +14,7 @@ export type CopyButtonProps = {
   showToast?: boolean;
 };
 
-export function CopyButton({
-  className,
-  label,
+export function CopyButton({ label,
   value,
   flashOnCopy = false,
   showToast = true,
@@ -51,7 +49,7 @@ export function CopyButton({
 
   const onCopy = async () => {
     try {
-      await navigator.clipboard.writeText(trimmed);
+      await copyTextToClipboard(trimmed);
       clearTimers();
       if (showToast) {
         toast.success(label ? `${label} copied` : 'Copied to clipboard');
@@ -73,15 +71,15 @@ export function CopyButton({
   return (
     <button
       aria-label={label ? `Copy ${label}` : 'Copy to clipboard'}
-      className={cn(directoryTableRowCopyButtonClass, className)}
+     
       type="button"
       onClick={() => {
         void onCopy();
       }}
     >
-      <span aria-hidden className="relative inline-flex size-4 items-center justify-center">
-        <Copy className={cn('h-4 w-4', showCheck && 'invisible')} />
-        {showCheck ? <Check className="absolute inset-0 m-auto h-4 w-4" /> : null}
+      <span aria-hidden >
+        <Copy  />
+        {showCheck ? <Check  /> : null}
       </span>
     </button>
   );

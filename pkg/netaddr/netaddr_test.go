@@ -31,6 +31,24 @@ func TestParseRedisURL_unix(t *testing.T) {
 	_ = redisClient.Close()
 }
 
+func TestRedisUniversalOptions_dialTimeout(t *testing.T) {
+	opts := RedisUniversalOptions("127.0.0.1:6379", "")
+	assert.Equal(t, DefaultRedisDialTimeout, opts.DialTimeout)
+	assert.Nil(t, opts.Dialer)
+
+	opts = RedisUniversalOptions("/run/redis-0.sock", "")
+	assert.Equal(t, DefaultRedisDialTimeout, opts.DialTimeout)
+	require.NotNil(t, opts.Dialer)
+}
+
+func TestRedisClientOptions_dialTimeout(t *testing.T) {
+	opts := RedisClientOptions("127.0.0.1:6379", "")
+	assert.Equal(t, DefaultRedisDialTimeout, opts.DialTimeout)
+
+	opts = RedisClientOptions("/run/redis-0.sock", "")
+	assert.Equal(t, DefaultRedisDialTimeout, opts.DialTimeout)
+}
+
 func TestEnsureUnixSocketWritable(t *testing.T) {
 	dir := t.TempDir()
 	path := dir + "/probe.sock"

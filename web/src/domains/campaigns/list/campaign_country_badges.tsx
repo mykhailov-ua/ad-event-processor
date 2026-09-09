@@ -71,21 +71,16 @@ function CountryCodeBadge({
   listItem?: boolean;
 }) {
   if (compact) {
-    return <CountryFlagIcon className="shrink-0" code={code} title={code} />;
+    return <CountryFlagIcon  code={code} title={code} />;
   }
 
   return (
     <span
-      className={cn(
-        'inline-flex shrink-0 items-center gap-1 rounded border border-border px-1.5 py-0.5 text-xs ',
-        !listItem && 'max-w-full overflow-hidden',
-        listItem && 'text-ui-mini',
-        countryBadgeTone(code)
-      )}
+     
       title={code}
     >
-      <CountryFlagIcon className="shrink-0" code={code} title={code} />
-      <span className="whitespace-nowrap">{code}</span>
+      <CountryFlagIcon  code={code} title={code} />
+      <span >{code}</span>
     </span>
   );
 }
@@ -95,7 +90,6 @@ export type CampaignCountryBadgesProps = {
   compact?: boolean;
   max?: number;
   overflowMenu?: boolean;
-  className?: string;
 };
 
 export function CampaignCountryBadges({
@@ -103,7 +97,6 @@ export function CampaignCountryBadges({
   compact = false,
   max = CAMPAIGN_COUNTRY_BADGES_MAX_VISIBLE,
   overflowMenu = false,
-  className,
 }: CampaignCountryBadgesProps) {
   const codes = Array.from(
     new Set(
@@ -122,10 +115,7 @@ export function CampaignCountryBadges({
 
   return (
     <span
-      className={cn(
-        'inline-flex max-w-full flex-nowrap items-center gap-0.5 overflow-hidden',
-        className
-      )}
+     
       title={overflow > 0 && !overflowMenu ? title : undefined}
     >
       {visible.map((code) => (
@@ -137,23 +127,23 @@ export function CampaignCountryBadges({
             <PopoverTrigger asChild>
               <button
                 aria-label={`Show all ${codes.length} countries`}
-                className={directoryTableRowCopyButtonClass}
+               
                 type="button"
                 onClick={(event) => event.stopPropagation()}
               >
-                <MoreHorizontal aria-hidden className="h-4 w-4" />
+                <MoreHorizontal aria-hidden  />
               </button>
             </PopoverTrigger>
             <PopoverContent
               align="start"
-              className="p-0"
+             
               matchTriggerMinWidth={false}
               panelClassName={campaignCountriesOverflowPopoverPanelClass}
               panelScroll="none"
               side="bottom"
               onClick={(event) => event.stopPropagation()}
             >
-              <div className="flex flex-wrap gap-1 p-2">
+              <div >
                 {codes.map((code) => (
                   <CountryCodeBadge key={code} code={code} compact={false} listItem />
                 ))}
@@ -161,7 +151,7 @@ export function CampaignCountryBadges({
             </PopoverContent>
           </Popover>
         ) : (
-          <span className="inline-flex max-w-full items-center gap-0.5 overflow-hidden rounded border border-border bg-muted/50 px-1 text-ui-mini text-muted-foreground">
+          <span >
             +{overflow}
           </span>
         )

@@ -4,13 +4,10 @@ import { Label } from '@/components/ui/label';
 import { EmptyState } from '@/shell/empty_state';
 import type { ReconRun } from '@/api/types';
 import { displayTimestamp } from '@/lib/display';
-import { opsPanelError } from '@/domains/ops/ops_nav';
 import { OpsListFooter } from '@/domains/ops/ops_list_footer';
 import {
   OpsActionGroup,
-  OpsPageBlockingError,
-  OpsPageLoading,
-  OpsPageShell,
+  OpsPageWithLoad,
 } from '@/domains/ops/ops_page_shell';
 import {
   OpsTable,
@@ -45,27 +42,16 @@ export function OpsRecon({
   onApplyFilters,
   onPageChange,
 }: OpsReconProps) {
-  if (fetching && !hasSnapshot && !error) {
-    return <OpsPageLoading />;
-  }
-
-  if (error && !hasSnapshot) {
-    return (
-      <OpsPageBlockingError
-        error={error}
-        pageTitle="Reconciliation runs"
-        title="Could not load recon runs"
-      />
-    );
-  }
-
   const canGoPrev = offset > 0;
   const canGoNext = (items ?? []).length >= limit;
 
   return (
-    <OpsPageShell
+    <OpsPageWithLoad
+      blockingErrorTitle="Could not load recon runs"
+      fetchState={{ fetching, error, hasSnapshot }}
+      title="Reconciliation runs"
       filters={
-        <div className="grid gap-2">
+        <div >
           <Label htmlFor="recon-service">Service</Label>
           <Input
             id="recon-service"
@@ -84,7 +70,6 @@ export function OpsRecon({
           onPrev={() => onPageChange(Math.max(0, offset - limit))}
         />
       }
-      title="Reconciliation runs"
       actions={
         <OpsActionGroup label="Filters">
           <Button disabled={fetching} loading={fetching} type="button" onClick={onApplyFilters}>
@@ -112,7 +97,7 @@ export function OpsRecon({
         >
           {(items ?? []).map((row) => (
             <OpsTableRow key={`${row.service ?? 'svc'}-${row.id ?? row.created_at}`}>
-              <OpsTableCell className="text-xs text-muted-foreground">{row.id ?? ''}</OpsTableCell>
+              <OpsTableCell >{row.id ?? ''}</OpsTableCell>
               <OpsTableCell>{row.service ?? ''}</OpsTableCell>
               <OpsTableCell>{row.status ?? ''}</OpsTableCell>
               <OpsTableCell>{displayTimestamp(row.period_start)}</OpsTableCell>
@@ -124,7 +109,6 @@ export function OpsRecon({
         </OpsTable>
       )}
 
-      {error && hasSnapshot ? opsPanelError(error, 'Refresh failed') : null}
-    </OpsPageShell>
+    </OpsPageWithLoad>
   );
 }

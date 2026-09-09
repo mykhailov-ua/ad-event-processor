@@ -31,10 +31,10 @@ export function CampaignEditorAdvancedMacroSection({
   onMacroPreview,
 }: CampaignEditorAdvancedMacroSectionProps) {
   return (
-    <section className="flex flex-col gap-4">
-      <h2 className="text-sm font-semibold text-foreground">Macro preview</h2>
-      <div className="grid gap-2 sm:grid-cols-3">
-        <div className="grid gap-2">
+    <section >
+      <h2 >Macro preview</h2>
+      <div >
+        <div >
           <Label htmlFor="macro-preview-sub1">sub1</Label>
           <Input
             id="macro-preview-sub1"
@@ -43,7 +43,7 @@ export function CampaignEditorAdvancedMacroSection({
             onChange={(event) => onMacroPreviewFieldChange('sub1', event.target.value)}
           />
         </div>
-        <div className="grid gap-2">
+        <div >
           <Label htmlFor="macro-preview-country">country</Label>
           <Input
             id="macro-preview-country"
@@ -52,7 +52,7 @@ export function CampaignEditorAdvancedMacroSection({
             onChange={(event) => onMacroPreviewFieldChange('country', event.target.value)}
           />
         </div>
-        <div className="grid gap-2">
+        <div >
           <Label htmlFor="macro-preview-click-id">click_id</Label>
           <Input
             id="macro-preview-click-id"
@@ -63,7 +63,7 @@ export function CampaignEditorAdvancedMacroSection({
         </div>
       </div>
 
-      <div className={campaignEditorActionsRowClass}>
+      <div >
         <Button
           type="button"
           variant="secondary"
@@ -83,17 +83,17 @@ export function CampaignEditorAdvancedMacroSection({
         : null}
 
       {macroPreviewResult ? (
-        <div className={cn(campaignEditorSectionClass, 'gap-3')}>
-          <div className="grid gap-2">
-            <p className="text-sm font-medium">Resolved click URL</p>
-            <p className="break-all text-xs text-muted-foreground">
+        <div >
+          <div >
+            <p >Resolved click URL</p>
+            <p >
               {formatReadonly(macroPreviewResult.resolved_click_url)}
             </p>
           </div>
           {macroPreviewResult.resolved_postback_url ? (
-            <div className="grid gap-2">
-              <p className="text-sm font-medium">Resolved postback URL</p>
-              <p className="break-all text-xs text-muted-foreground">
+            <div >
+              <p >Resolved postback URL</p>
+              <p >
                 {macroPreviewResult.resolved_postback_url}
               </p>
             </div>

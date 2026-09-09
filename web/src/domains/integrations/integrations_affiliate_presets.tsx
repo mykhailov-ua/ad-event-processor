@@ -1,6 +1,4 @@
-import { PageChrome } from '@/shell/page_chrome';
 import { EmptyState } from '@/shell/empty_state';
-import { PageSkeleton } from '@/shell/page_skeleton';
 import {
   DirectoryTable,
   DirectoryTableHead,
@@ -12,9 +10,11 @@ import {
 import { DirectoryFilterForm, FilterField } from '@/shell/filter_panel';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
-import { ErrorBlock } from '@/shell/error_block';
 import type { AffiliateStatusPreset } from '@/api/types';
-import { IntegrationsNav, integrationsPanelError } from '@/domains/integrations/integrations_nav';
+import {
+  IntegrationsPageWithLoad,
+  integrationsPanelError,
+} from '@/domains/integrations/integrations_nav';
 
 export type IntegrationsAffiliatePresetsProps = {
   presets?: AffiliateStatusPreset[];
@@ -41,28 +41,17 @@ export function IntegrationsAffiliatePresets({
   applyResult,
   onApplyPreset,
 }: IntegrationsAffiliatePresetsProps) {
-  if (fetching && !hasSnapshot && !error) {
-    return <PageSkeleton />;
-  }
-
-  if (error && !hasSnapshot) {
-    return (
-      <PageChrome title="Affiliate status presets">
-        <IntegrationsNav />
-        {integrationsPanelError(error, 'Could not load affiliate presets')}
-      </PageChrome>
-    );
-  }
-
   const canApply = draftCampaignId.trim().length > 0;
 
   return (
-    <PageChrome title="Affiliate status presets">
-      <IntegrationsNav />
-
+    <IntegrationsPageWithLoad
+      blockingErrorTitle="Could not load affiliate presets"
+      fetchState={{ error, fetching, hasSnapshot }}
+      title="Affiliate status presets"
+    >
       <DirectoryFilterForm layout="auto-fill" onSubmit={(event) => event.preventDefault()}>
         <FilterField
-          className="md:col-span-2"
+         
           htmlFor="affiliate-preset-campaign-id"
           label="Campaign ID"
         >
@@ -75,9 +64,9 @@ export function IntegrationsAffiliatePresets({
         </FilterField>
       </DirectoryFilterForm>
 
-      {applyError ? <ErrorBlock title="Apply failed" message={applyError.message} /> : null}
+      {applyError ? integrationsPanelError(applyError, 'Apply failed') : null}
       {applyResult?.mappings_applied_count != null ? (
-        <p className="text-sm text-muted-foreground" role="status">
+        <p  role="status">
           Last apply: {applyResult.mappings_applied_count} mapping(s) upserted.
         </p>
       ) : null}
@@ -114,7 +103,6 @@ export function IntegrationsAffiliatePresets({
         </DirectoryTable>
       )}
 
-      {error && hasSnapshot ? integrationsPanelError(error, 'Refresh failed') : null}
-    </PageChrome>
+    </IntegrationsPageWithLoad>
   );
 }

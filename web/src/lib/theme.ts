@@ -1,7 +1,7 @@
 export type Theme = 'light' | 'dark';
 
-export const THEME_STORAGE_KEY = 'aed-admin-theme';
-export const THEME_DARK_DEFAULT_MIGRATION_KEY = 'aed-admin-theme-dark-default-v3';
+export const THEME_STORAGE_KEY = '';
+export const THEME_DARK_DEFAULT_MIGRATION_KEY = '';
 
 export function readStoredTheme(): Theme {
   try {

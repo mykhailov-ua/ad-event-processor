@@ -14,11 +14,7 @@ var (
 	benchClickBrandID    = uuid.MustParse("660e8400-e29b-41d4-a716-446655440001")
 )
 
-func benchClickHandler(b *testing.B) (*AdsPacketHandler, []byte) {
-	return benchClickHandlerTier(b, "")
-}
-
-func benchClickHandlerTier(b *testing.B, tier string) (*AdsPacketHandler, []byte) {
+func benchClickHandlerSetup(tier string) (*AdsPacketHandler, []byte) {
 	WithStaticCampaign(func(campPtr **domain.Campaign) {
 		camp := &domain.Campaign{
 			ID:         benchClickCampaignID,
@@ -48,6 +44,14 @@ func benchClickHandlerTier(b *testing.B, tier string) (*AdsPacketHandler, []byte
 		"User-Agent":     "Mozilla/5.0",
 	}, nil)
 	return h, inbound
+}
+
+func benchClickHandler(b *testing.B) (*AdsPacketHandler, []byte) {
+	return benchClickHandlerSetup("")
+}
+
+func benchClickHandlerTier(b *testing.B, tier string) (*AdsPacketHandler, []byte) {
+	return benchClickHandlerSetup(tier)
 }
 
 func BenchmarkParseClickQuery(b *testing.B) {
@@ -128,5 +132,24 @@ func BenchmarkClickRedirectExpandMacros(b *testing.B) {
 	b.ReportAllocs()
 	for b.Loop() {
 		dst = expandRedirectMacros(dst[:0], base, "bench-click", "u1", subs)
+	}
+}
+
+func TestClickRedirectGnet_E2E_zeroAlloc(t *testing.T) {
+	h, inbound := benchClickHandlerSetup("")
+	_, req, err := parseHTTP1(inbound, 1<<20, nil)
+	if err != nil {
+		t.Fatal(err)
+	}
+	conn := NewGnetBenchConn(inbound)
+	h.React(&req, conn)
+
+	allocs := testing.AllocsPerRun(100, func() {
+		conn.ClearWritten()
+		conn.ClearResponses()
+		h.React(&req, conn)
+	})
+	if allocs != 0 {
+		t.Fatalf("click redirect E2E allocs=%v want 0", allocs)
 	}
 }

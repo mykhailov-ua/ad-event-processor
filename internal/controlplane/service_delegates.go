@@ -256,15 +256,25 @@ func (s *Service) publishRoutingCutover(ctx context.Context, routingEpoch int64,
 	metrics.ElasticRoutingCutoverTotal.Inc()
 }
 
-func (s *Service) ListAuditLogRows(ctx context.Context, limit, offset int32) ([]db.AdminAuditLog, int64, error) {
+func (s *Service) ListAuditLogRows(ctx context.Context, filter platformadmin.AuditLogFilter, limit, offset int32) ([]db.AdminAuditLog, int64, error) {
 	q := db.New(s.pool)
+	if filter == (platformadmin.AuditLogFilter{}) {
+		return coldpath.PaginatedQuery(
+			func() (int64, error) { return q.CountAuditLogs(ctx) },
+			func() ([]db.AdminAuditLog, error) {
+				return q.ListAuditPaginated(ctx, db.ListAuditPaginatedParams{
+					Limit:  limit,
+					Offset: offset,
+				})
+			},
+		)
+	}
+	countParams := platformadmin.AuditFilterSQLParams(filter)
+	listParams := platformadmin.AuditListSQLParams(filter, limit, offset)
 	return coldpath.PaginatedQuery(
-		func() (int64, error) { return q.CountAuditLogs(ctx) },
+		func() (int64, error) { return q.CountAuditLogsFiltered(ctx, countParams) },
 		func() ([]db.AdminAuditLog, error) {
-			return q.ListAuditPaginated(ctx, db.ListAuditPaginatedParams{
-				Limit:  limit,
-				Offset: offset,
-			})
+			return q.ListAuditPaginatedFiltered(ctx, listParams)
 		},
 	)
 }

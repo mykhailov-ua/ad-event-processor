@@ -50,5 +50,6 @@ fi
 
 log "seeding UI demo stats and campaign fields (count=${SEED_UI_DEMO_COUNT})"
 DB_DSN="$(host_db_dsn)" go run ./cmd/admin --env-path .env db seed-ui --count "${SEED_UI_DEMO_COUNT}"
+DB_DSN="$(host_db_dsn)" go run ./cmd/admin --env-path .env db seed-clone-balance
 
 log "done - reload Campaigns in admin UI"

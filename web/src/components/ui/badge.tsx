@@ -12,8 +12,9 @@ function Badge({ className, variant = 'default', ...props }: BadgeProps) {
   return (
     <div
       className={cn(
-        adminKit.controlRadius,
-        'inline-flex items-center border px-2.5 py-0.5 text-xs font-normal leading-4',
+        'inline-flex items-center rounded-md border text-xs font-medium',
+        adminKit.chipPaddingX,
+        'py-1',
         badgeVariantClass[variant],
         className
       )}

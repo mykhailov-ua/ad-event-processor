@@ -59,7 +59,7 @@ function Popover({
 const PopoverTrigger = React.forwardRef<
   HTMLElement,
   React.HTMLAttributes<HTMLElement> & { asChild?: boolean }
->(({ asChild = false, className, onClick, children, ...props }, ref) => {
+>(({ asChild = false, onClick, children, ...props }, ref) => {
   const { open, setOpen, triggerRef } = usePopoverContext();
 
   const handleClick = (event: React.MouseEvent<HTMLElement>) => {
@@ -83,7 +83,7 @@ const PopoverTrigger = React.forwardRef<
       <Slot
         ref={mergedRef}
         aria-expanded={open}
-        className={className}
+        
         onClick={handleClick}
         {...props}
       >
@@ -97,7 +97,7 @@ const PopoverTrigger = React.forwardRef<
       ref={mergedRef as React.Ref<HTMLButtonElement>}
       type="button"
       aria-expanded={open}
-      className={className}
+      
       onClick={handleClick}
       {...(props as React.ButtonHTMLAttributes<HTMLButtonElement>)}
     >
@@ -108,8 +108,8 @@ const PopoverTrigger = React.forwardRef<
 PopoverTrigger.displayName = 'PopoverTrigger';
 
 const PopoverAnchor = React.forwardRef<HTMLDivElement, React.HTMLAttributes<HTMLDivElement>>(
-  ({ className, ...props }, ref) => (
-    <div ref={ref} className={cn('inline-flex', className)} {...props} />
+  ({ ...props }, ref) => (
+    <div ref={ref}  {...props} />
   )
 );
 PopoverAnchor.displayName = 'PopoverAnchor';
@@ -129,9 +129,7 @@ const PopoverContent = React.forwardRef<
   }
 >(
   (
-    {
-      className,
-      children,
+    { children,
       align = 'center',
       side = 'bottom',
       sideOffset = 8,
@@ -139,7 +137,6 @@ const PopoverContent = React.forwardRef<
       panelClassName,
       matchTriggerMinWidth = true,
       onOpenAutoFocus,
-      style,
       ...props
     },
     ref
@@ -147,7 +144,7 @@ const PopoverContent = React.forwardRef<
     const { open, setOpen, triggerRef } = usePopoverContext();
     const contentRef = React.useRef<HTMLDivElement | null>(null);
     const [position, setPosition] = React.useState<React.CSSProperties>({});
-    const flush = /\bp-0\b/.test(className ?? '');
+    const flush = false;
     const scrollMode = panelScroll ?? (flush ? 'inner' : 'panel');
 
     useOverlayDismiss(open, () => setOpen(false), contentRef, [triggerRef]);
@@ -218,6 +215,24 @@ const PopoverContent = React.forwardRef<
       return null;
     }
 
+    const {
+      className,
+      style,
+      ...contentProps
+    } = props;
+
+    const panelClass = cn(
+      adminChrome.floating,
+      matchTriggerMinWidth && 'min-w-[var(--popover-anchor-width,12rem)]',
+      scrollMode === 'panel' && 'max-h-[min(28rem,calc(100dvh-2rem))] overflow-y-auto',
+      panelClassName
+    );
+
+    const anchorWidth = `${triggerRef.current?.offsetWidth ?? 0}px`;
+    const anchorWidthStyle = {
+      '--popover-anchor-width': anchorWidth,
+    } as React.CSSProperties;
+
     return (
       <OverlayRoot>
         <div
@@ -229,32 +244,12 @@ const PopoverContent = React.forwardRef<
               ref.current = node;
             }
           }}
-          className={cn('border-0 bg-transparent p-0 outline-none', className)}
-          style={{ position: 'fixed', zIndex: 60, ...position, ...style }}
-          {...props}
+          className={cn('fixed z-50', className)}
+          style={{ ...position, ...style, ...anchorWidthStyle }}
+          {...contentProps}
         >
-          <div
-            className={cn(
-              adminChrome.panel,
-              'shadow-lg',
-              flush ? 'w-auto max-w-[min(calc(100vw-1rem),44rem)]' : 'w-full',
-              panelClassName
-            )}
-            style={
-              matchTriggerMinWidth
-                ? { minWidth: triggerRef.current?.getBoundingClientRect().width }
-                : undefined
-            }
-          >
-            <div
-              className={cn(
-                scrollMode === 'panel' &&
-                  'ui-scrollbar max-h-[min(70vh,32rem)] overflow-y-auto overflow-x-auto',
-                scrollMode === 'inner' && 'max-h-[min(70vh,32rem)] overflow-hidden',
-                scrollMode === 'none' && 'overflow-visible',
-                !flush && 'p-4'
-              )}
-            >
+          <div className={panelClass} style={anchorWidthStyle}>
+            <div className={cn(scrollMode === 'inner' && 'max-h-[min(28rem,calc(100dvh-2rem))] overflow-y-auto')}>
               {children}
             </div>
           </div>

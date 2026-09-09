@@ -1,7 +1,6 @@
 import { PageChrome } from '@/shell/page_chrome';
 import { CustomerScopeBar } from '@/shell/customer_scope_bar';
 import { EmptyState } from '@/shell/empty_state';
-import { PageSkeleton } from '@/shell/page_skeleton';
 import { Badge } from '@/components/ui/badge';
 import {
   DirectoryTable,
@@ -12,7 +11,7 @@ import {
   TableRow,
 } from '@/shell/directory_table';
 import type { PlatformCampaignLink, PlatformCampaignMutation } from '@/api/types';
-import { IntegrationsNav, integrationsPanelError } from '@/domains/integrations/integrations_nav';
+import { IntegrationsNav, IntegrationsPageWithLoad } from '@/domains/integrations/integrations_nav';
 import { PlatformCampaignLinkForm } from '@/domains/integrations/platform_campaign_link_form';
 import { displayMicro, displayTimestamp } from '@/lib/display';
 
@@ -75,16 +74,20 @@ export function IntegrationsPlatformCampaigns({
   onApplyCustomerScope,
   linkForm,
 }: IntegrationsPlatformCampaignsProps) {
+  const customerScopeBar = (
+    <CustomerScopeBar
+      appliedCustomerId={appliedCustomerId}
+      draftCustomerId={draftCustomerId}
+      onApply={onApplyCustomerScope}
+      onDraftCustomerIdChange={onDraftCustomerIdChange}
+    />
+  );
+
   if (!appliedCustomerId) {
     return (
       <PageChrome title="Platform campaign links">
         <IntegrationsNav />
-        <CustomerScopeBar
-          appliedCustomerId={appliedCustomerId}
-          draftCustomerId={draftCustomerId}
-          onApply={onApplyCustomerScope}
-          onDraftCustomerIdChange={onDraftCustomerIdChange}
-        />
+        {customerScopeBar}
         <EmptyState
           title="Customer required"
           description="Apply a customer ID to list platform campaign links."
@@ -93,36 +96,13 @@ export function IntegrationsPlatformCampaigns({
     );
   }
 
-  if (fetching && !hasSnapshot && !error) {
-    return <PageSkeleton />;
-  }
-
-  if (error && !hasSnapshot) {
-    return (
-      <PageChrome title="Platform campaign links">
-        <IntegrationsNav />
-        <CustomerScopeBar
-          appliedCustomerId={appliedCustomerId}
-          draftCustomerId={draftCustomerId}
-          onApply={onApplyCustomerScope}
-          onDraftCustomerIdChange={onDraftCustomerIdChange}
-        />
-        {integrationsPanelError(error, 'Could not load platform campaign links')}
-      </PageChrome>
-    );
-  }
-
   return (
-    <PageChrome title="Platform campaign links">
-      <IntegrationsNav />
-
-      <CustomerScopeBar
-        appliedCustomerId={appliedCustomerId}
-        draftCustomerId={draftCustomerId}
-        onApply={onApplyCustomerScope}
-        onDraftCustomerIdChange={onDraftCustomerIdChange}
-      />
-
+    <IntegrationsPageWithLoad
+      blockingErrorTitle="Could not load platform campaign links"
+      fetchState={{ error, fetching, hasSnapshot }}
+      header={customerScopeBar}
+      title="Platform campaign links"
+    >
       <PlatformCampaignLinkForm
         disabled={!appliedCustomerId}
         draftCampaignId={linkForm.draftCampaignId}
@@ -182,12 +162,12 @@ export function IntegrationsPlatformCampaigns({
             {(links ?? []).map((row) => (
               <TableRow
                 key={`${row.campaign_id}-${row.network}`}
-                className="cursor-pointer"
+               
                 onClick={() => linkForm.onPrefillFromLink(row)}
               >
-                <TableCell className="text-xs">{row.campaign_id}</TableCell>
+                <TableCell >{row.campaign_id}</TableCell>
                 <TableCell>{row.network}</TableCell>
-                <TableCell className="text-xs">{row.external_campaign_id}</TableCell>
+                <TableCell >{row.external_campaign_id}</TableCell>
                 <TableCell>
                   {row.sync_error ? (
                     <Badge variant="destructive">{row.external_status ?? 'error'}</Badge>
@@ -203,7 +183,6 @@ export function IntegrationsPlatformCampaigns({
         </DirectoryTable>
       )}
 
-      {error && hasSnapshot ? integrationsPanelError(error, 'Refresh failed') : null}
-    </PageChrome>
+    </IntegrationsPageWithLoad>
   );
 }

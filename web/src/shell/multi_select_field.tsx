@@ -18,7 +18,6 @@ export type MultiSelectFieldProps<T extends string> = {
   options: MultiSelectOption<T>[];
   value: T[];
   onChange: (value: T[]) => void;
-  className?: string;
   minSelected?: number;
 };
 
@@ -38,7 +37,6 @@ export function MultiSelectField<T extends string>({
   options,
   value,
   onChange,
-  className,
   minSelected = 1,
 }: MultiSelectFieldProps<T>) {
   const [open, setOpen] = useState(false);
@@ -64,7 +62,7 @@ export function MultiSelectField<T extends string>({
 
   return (
     <label
-      className={cn('flex flex-col', adminKit.fieldLabelGap, adminKit.fieldLabelClass, className)}
+     
       htmlFor={id}
     >
       {label}
@@ -73,30 +71,27 @@ export function MultiSelectField<T extends string>({
           <button
             id={id}
             aria-expanded={open}
-            className={cn(
-              adminChrome.control,
-              'relative flex w-full items-center justify-between gap-2 text-left'
-            )}
+           
             type="button"
           >
-            <span className="whitespace-nowrap" title={summary}>
+            <span  title={summary}>
               {summary}
             </span>
-            <ChevronDown aria-hidden className={cn('h-4 w-4 opacity-50', open && 'rotate-180')} />
+            <ChevronDown aria-hidden  />
           </button>
         </PopoverTrigger>
-        <PopoverContent align="start" className="w-64 p-0" sideOffset={4}>
-          <ul className="ui-scrollbar flex max-h-64 flex-col gap-1 overflow-y-auto p-1">
+        <PopoverContent align="start" sideOffset={4}>
+          <ul >
             {options.map((option) => {
               const selected = value.includes(option.id);
               return (
                 <li key={option.id}>
-                  <label className={cn('flex items-center gap-2', adminKit.controlText)}>
+                  <label >
                     <Checkbox
                       checked={selected}
                       onCheckedChange={(next) => toggleOption(option.id, next === true)}
                     />
-                    <span className="font-medium text-muted-foreground">{option.label}</span>
+                    <span >{option.label}</span>
                   </label>
                 </li>
               );

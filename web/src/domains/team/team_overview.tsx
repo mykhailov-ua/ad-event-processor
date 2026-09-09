@@ -2,10 +2,12 @@ import { useState } from 'react';
 import { useRunWhenTrue } from '@/hooks/use_run_when_true';
 
 import { PrimaryActionButton, SecondaryActionButton } from '@/shell/action_buttons';
-import { PageChrome } from '@/shell/page_chrome';
+import {
+  DirectoryFetchError,
+  DirectoryMutationError,
+  DirectoryPageShell,
+} from '@/shell/directory_page_shell';
 import { EmptyState } from '@/shell/empty_state';
-import { ErrorBlock } from '@/shell/error_block';
-import { PageSkeleton } from '@/shell/page_skeleton';
 import { DirectoryPaginationFooter } from '@/shell/directory_pagination_footer';
 import {
   DirectoryFilterForm,
@@ -159,14 +161,6 @@ export function TeamOverviewView({
 
   useRunWhenTrue(inviteSuccess, () => setInviteOpen(false));
 
-  if (fetching && !hasSnapshot && !error) {
-    return <PageSkeleton variant="directory" columns={5} />;
-  }
-
-  if (error && !hasSnapshot) {
-    return <ErrorBlock title="Could not load team overview" message={error.message} />;
-  }
-
   const membersList = members;
   const membersFooterVisible =
     rosterTab === 'members' && Boolean(membersCustomerId) && membersList.length > 0;
@@ -174,8 +168,7 @@ export function TeamOverviewView({
     rosterTab === 'approvals' && Boolean(approvalsCustomerId) && approvals.length > 0;
 
   return (
-    <PageChrome
-      title="Team"
+    <DirectoryPageShell
       actions={
         <PrimaryActionButton
           disabled={!draftCustomerId.trim()}
@@ -185,10 +178,11 @@ export function TeamOverviewView({
           Invite member
         </PrimaryActionButton>
       }
+      blockingErrorTitle="Could not load team overview"
       controlPanel={
         <FilterPanel>
           <DirectoryFilterForm
-            className={INLINE_FILTER_ACTION_GRID_CLASS}
+           
             onSubmit={(event) => {
               event.preventDefault();
               onApplyCustomer();
@@ -224,10 +218,14 @@ export function TeamOverviewView({
           />
         ) : undefined
       }
+      fetchState={{ fetching, error, hasSnapshot }}
+      skeletonColumns={5}
+      title="Team"
+      alerts={<DirectoryMutationError error={actionError} />}
     >
       {overview ? (
-        <div className={FILTER_PANEL_SUMMARY_CLASS}>
-          <div className="flex flex-wrap gap-4">
+        <div >
+          <div >
             <span>{overview.customer_name ?? overview.customer_id}</span>
             {overview.cost_center ? <span>Cost center: {overview.cost_center}</span> : null}
             {overview.balance_micro != null ? (
@@ -237,7 +235,7 @@ export function TeamOverviewView({
             ) : null}
           </div>
           {overview.license ? (
-            <div className="flex flex-wrap items-center gap-2 text-muted-foreground">
+            <div >
               <span>License: {overview.license.state ?? ''}</span>
               {overview.license.plan_code ? (
                 <Badge variant="outline">{overview.license.plan_code}</Badge>
@@ -248,12 +246,12 @@ export function TeamOverviewView({
       ) : null}
 
       <Dialog onOpenChange={setInviteOpen} open={inviteOpen}>
-        <DialogContent className="max-w-lg">
+        <DialogContent >
           <DialogHeader>
             <DialogTitle>Invite member</DialogTitle>
           </DialogHeader>
           <DirectoryFilterForm layout="auto-fill" onSubmit={(event) => event.preventDefault()}>
-            <FilterField className="md:col-span-2" htmlFor="team-invite-email" label="Email">
+            <FilterField  htmlFor="team-invite-email" label="Email">
               <Input
                 id="team-invite-email"
                 type="email"
@@ -293,10 +291,10 @@ export function TeamOverviewView({
           ))}
         </TabsList>
 
-        <TabsContent className="grid gap-6" value="members">
-          <h2 className="text-base font-semibold">Members</h2>
+        <TabsContent  value="members">
+          <h2 >Members</h2>
           {membersFetching && !hasMembersSnapshot ? (
-            <p className="text-sm text-muted-foreground">Loading members...</p>
+            <p >Loading members...</p>
           ) : !membersCustomerId ? (
             <EmptyState
               title="Customer required"
@@ -305,7 +303,7 @@ export function TeamOverviewView({
           ) : membersList.length === 0 ? (
             <EmptyState title="No members" description="Team roster is empty for this customer." />
           ) : (
-            <DirectoryTable className={directoryTableRevalidatingClass(membersListRevalidating)}>
+            <DirectoryTable >
               <TableHeader>
                 <TableRow>
                   <DirectoryTableHead>Email</DirectoryTableHead>
@@ -328,7 +326,7 @@ export function TeamOverviewView({
                       <TableCell>
                         <Input
                           aria-label={`Role for ${member.email ?? memberId}`}
-                          className="min-w-[5rem]"
+                         
                           value={draft.role}
                           onChange={(event) =>
                             onMemberDraftChange(memberId, { role: event.target.value })
@@ -339,7 +337,7 @@ export function TeamOverviewView({
                       <TableCell>
                         <Input
                           aria-label={`Spend cap for ${member.email ?? memberId}`}
-                          className="min-w-[6rem] text-xs"
+                         
                           inputMode="numeric"
                           value={draft.spend_cap_micro}
                           onChange={(event) =>
@@ -359,7 +357,7 @@ export function TeamOverviewView({
                       <TableCell>
                         {displayTimestamp(member.created_at, member.created_at_display)}
                       </TableCell>
-                      <TableCell className="text-right">
+                      <TableCell >
                         <Button
                           disabled={!memberId || updating}
                           onClick={() => onSaveMember(memberId)}
@@ -376,15 +374,21 @@ export function TeamOverviewView({
             </DirectoryTable>
           )}
 
-          {membersError ? (
-            <ErrorBlock title="Could not load members" message={membersError.message} />
-          ) : null}
+          <DirectoryFetchError
+            error={membersError}
+            fetchState={{
+              fetching: membersFetching,
+              error: membersError,
+              hasSnapshot: hasMembersSnapshot,
+            }}
+            title="Could not load members"
+          />
         </TabsContent>
 
-        <TabsContent className="grid gap-6" value="approvals">
-          <h2 className="text-base font-semibold">Budget approvals</h2>
+        <TabsContent  value="approvals">
+          <h2 >Budget approvals</h2>
           {approvalsFetching && !hasApprovalsSnapshot ? (
-            <p className="text-sm text-muted-foreground">Loading approvals...</p>
+            <p >Loading approvals...</p>
           ) : !approvalsCustomerId ? (
             <EmptyState
               title="Customer required"
@@ -396,7 +400,7 @@ export function TeamOverviewView({
               description="Budget approval queue is empty."
             />
           ) : (
-            <DirectoryTable className={directoryTableRevalidatingClass(approvalsListRevalidating)}>
+            <DirectoryTable >
               <TableHeader>
                 <TableRow>
                   <DirectoryTableHead>Status</DirectoryTableHead>
@@ -414,14 +418,14 @@ export function TeamOverviewView({
                   return (
                     <TableRow key={rowId}>
                       <TableCell>{row.status ?? ''}</TableCell>
-                      <TableCell className="text-xs">{row.user_id ?? ''}</TableCell>
-                      <TableCell className="text-xs">{row.campaign_id ?? ''}</TableCell>
+                      <TableCell >{row.user_id ?? ''}</TableCell>
+                      <TableCell >{row.campaign_id ?? ''}</TableCell>
                       <TableCell>{row.requested_budget_micro ?? ''}</TableCell>
                       <TableCell>{row.previous_budget_micro ?? ''}</TableCell>
                       <TableCell>
                         {displayTimestamp(row.created_at, row.created_at_display)}
                       </TableCell>
-                      <TableCell className="text-right">
+                      <TableCell >
                         <RowActionsMenu
                           ariaLabel="Approval actions"
                           disabled={!rowId || actingId === rowId}
@@ -433,7 +437,7 @@ export function TeamOverviewView({
                             Approve
                           </DropdownMenuItem>
                           <DropdownMenuItem
-                            className="text-destructive focus:text-destructive"
+                           
                             disabled={!rowId || actingId === rowId}
                             onClick={() => onDeny(rowId)}
                           >
@@ -448,13 +452,17 @@ export function TeamOverviewView({
             </DirectoryTable>
           )}
 
-          {approvalsError ? (
-            <ErrorBlock title="Could not load approvals" message={approvalsError.message} />
-          ) : null}
+          <DirectoryFetchError
+            error={approvalsError}
+            fetchState={{
+              fetching: approvalsFetching,
+              error: approvalsError,
+              hasSnapshot: hasApprovalsSnapshot,
+            }}
+            title="Could not load approvals"
+          />
         </TabsContent>
       </Tabs>
-      {actionError ? <ErrorBlock title="Action failed" message={actionError.message} /> : null}
-      {error && hasSnapshot ? <ErrorBlock title="Refresh failed" message={error.message} /> : null}
-    </PageChrome>
+    </DirectoryPageShell>
   );
 }

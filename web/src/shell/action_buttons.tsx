@@ -1,44 +1,39 @@
 import { Button, type ButtonProps } from '@/components/ui/button';
 import { cn } from '@/lib/utils';
 
-export function PrimaryActionButton({
-  className,
-  shape = 'default',
+export function PrimaryActionButton({ shape = 'default',
   variant = 'brand',
   ...props
 }: ButtonProps) {
-  return <Button shape={shape} variant={variant} className={cn(className)} {...props} />;
+  return <Button shape={shape} variant={variant} {...props} />;
 }
 
-export function SecondaryActionButton({
-  className,
-  shape = 'pill',
+export function SecondaryActionButton({ shape = 'pill',
   variant = 'outline',
   ...props
 }: ButtonProps) {
-  return <Button shape={shape} variant={variant} className={cn('px-4', className)} {...props} />;
+  return <Button shape={shape} variant={variant} {...props} />;
 }
 
-export function FilterApplyButton({
-  className,
-  shape = 'pill',
+export function FilterApplyButton({ shape = 'pill',
   type = 'submit',
   variant = 'brand',
+  children = 'Apply',
   ...props
 }: ButtonProps) {
   return (
-    <Button shape={shape} type={type} variant={variant} className={cn(className)} {...props} />
+    <Button shape={shape} type={type} variant={variant} {...props}>
+      {children}
+    </Button>
   );
 }
 
-export function FilterResetButton({
-  className,
-  shape = 'pill',
+export function FilterResetButton({ shape = 'pill',
   type = 'button',
   variant = 'outline',
   ...props
 }: ButtonProps) {
   return (
-    <Button shape={shape} type={type} variant={variant} className={cn(className)} {...props} />
+    <Button shape={shape} type={type} variant={variant} {...props} />
   );
 }

@@ -1,7 +1,6 @@
 import { EmptyState } from '@/shell/empty_state';
 import type { IncidentSnapshot } from '@/api/types';
-import { opsPanelError } from '@/domains/ops/ops_nav';
-import { OpsPageBlockingError, OpsPageLoading, OpsPageShell } from '@/domains/ops/ops_page_shell';
+import { OpsPageWithLoad } from '@/domains/ops/ops_page_shell';
 import { OpsStatusChip } from '@/domains/ops/ops_status';
 import {
   OpsBlock,
@@ -20,40 +19,30 @@ export type OpsIncidentsProps = {
 };
 
 export function OpsIncidents({ snapshot, fetching, error, hasSnapshot }: OpsIncidentsProps) {
-  if (fetching && !hasSnapshot && !error) {
-    return <OpsPageLoading />;
-  }
-
-  if (error && !hasSnapshot) {
-    return (
-      <OpsPageBlockingError error={error} pageTitle="Incidents" title="Could not load incidents" />
-    );
-  }
-
-  if (!snapshot) {
-    return (
-      <OpsPageShell title="Incidents">
-        <EmptyState description="Incident snapshot returned no data." title="No incidents" />
-      </OpsPageShell>
-    );
-  }
-
-  const shards = snapshot.shards ?? [];
-  const campaigns = snapshot.affected_campaigns ?? [];
+  const shards = snapshot?.shards ?? [];
+  const campaigns = snapshot?.affected_campaigns ?? [];
 
   return (
-    <OpsPageShell
+    <OpsPageWithLoad
       badge={
-        <>
-          {snapshot.emergency_breaker ? (
-            <OpsStatusChip status={snapshot.emergency_breaker} />
-          ) : null}
-          {snapshot.partial ? <OpsStatusChip status="partial" /> : null}
-          {snapshot.stale_dashboard ? <OpsStatusChip status="stale" /> : null}
-        </>
+        snapshot ? (
+          <>
+            {snapshot.emergency_breaker ? (
+              <OpsStatusChip status={snapshot.emergency_breaker} />
+            ) : null}
+            {snapshot.partial ? <OpsStatusChip status="partial" /> : null}
+            {snapshot.stale_dashboard ? <OpsStatusChip status="stale" /> : null}
+          </>
+        ) : undefined
       }
+      blockingErrorTitle="Could not load incidents"
+      fetchState={{ fetching, error, hasSnapshot }}
       title="Incidents"
     >
+      {!snapshot ? (
+        <EmptyState description="Incident snapshot returned no data." title="No incidents" />
+      ) : (
+        <>
       {shards.length > 0 ? (
         <OpsBlock title="Shard health">
           <OpsTable
@@ -93,7 +82,7 @@ export function OpsIncidents({ snapshot, fetching, error, hasSnapshot }: OpsInci
           >
             {campaigns.map((row) => (
               <OpsTableRow key={row.campaign_id ?? row.name}>
-                <OpsTableCell className="text-xs text-muted-foreground">
+                <OpsTableCell >
                   {row.campaign_id ?? ''}
                 </OpsTableCell>
                 <OpsTableCell>{row.name ?? ''}</OpsTableCell>
@@ -102,8 +91,8 @@ export function OpsIncidents({ snapshot, fetching, error, hasSnapshot }: OpsInci
           </OpsTable>
         </OpsBlock>
       ) : null}
-
-      {error && hasSnapshot ? opsPanelError(error, 'Refresh failed') : null}
-    </OpsPageShell>
+        </>
+      )}
+    </OpsPageWithLoad>
   );
 }

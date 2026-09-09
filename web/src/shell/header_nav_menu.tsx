@@ -1,0 +1,76 @@
+import { useMemo } from 'react';
+import { Menu } from 'lucide-react';
+import { useLocation, useNavigate } from 'react-router-dom';
+
+import { Button } from '@/components/ui/button';
+import {
+  DropdownMenu,
+  DropdownMenuContent,
+  DropdownMenuItem,
+  DropdownMenuLabel,
+  DropdownMenuSeparator,
+  DropdownMenuTrigger,
+} from '@/components/ui/dropdown-menu';
+import { adminChrome } from '@/lib/admin_chrome';
+import { cn } from '@/lib/utils';
+import type { NavGroup } from '@/lib/nav_config';
+import { isSectionNavActive } from '@/lib/nav_config';
+
+export type HeaderNavMenuProps = {
+  navGroups: NavGroup[];
+};
+
+function resolveCurrentLabel(pathname: string, navGroups: NavGroup[]): string {
+  for (const group of navGroups) {
+    for (const item of group.items) {
+      if (isSectionNavActive(pathname, item)) {
+        return item.label;
+      }
+    }
+  }
+  return 'Pages';
+}
+
+export function HeaderNavMenu({ navGroups }: HeaderNavMenuProps) {
+  const location = useLocation();
+  const navigate = useNavigate();
+  const currentLabel = useMemo(
+    () => resolveCurrentLabel(location.pathname, navGroups),
+    [location.pathname, navGroups]
+  );
+
+  return (
+    <DropdownMenu>
+      <DropdownMenuTrigger asChild>
+        <Button aria-haspopup="menu" type="button" variant="outline">
+          <Menu aria-hidden className="h-4 w-4" />
+          <span>{currentLabel}</span>
+        </Button>
+      </DropdownMenuTrigger>
+      <DropdownMenuContent
+        align="start"
+        className={cn(adminChrome.floating, 'z-[10001] min-w-56 max-h-[min(28rem,calc(100vh-4rem))] overflow-auto')}
+      >
+        {navGroups.map((group, groupIndex) => (
+          <div key={group.id}>
+            {groupIndex > 0 ? <DropdownMenuSeparator /> : null}
+            <DropdownMenuLabel>{group.label}</DropdownMenuLabel>
+            {group.items.map((item) => {
+              const active = isSectionNavActive(location.pathname, item);
+              return (
+                <DropdownMenuItem
+                  key={item.path}
+                  aria-current={active ? 'page' : undefined}
+                  className={active ? 'bg-accent text-accent-foreground' : undefined}
+                  onSelect={() => navigate(item.path)}
+                >
+                  {item.label}
+                </DropdownMenuItem>
+              );
+            })}
+          </div>
+        ))}
+      </DropdownMenuContent>
+    </DropdownMenu>
+  );
+}

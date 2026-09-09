@@ -7,7 +7,11 @@ func GeoHashFromCountry(country string) uint32 {
 	if country == "" {
 		return 0
 	}
-	return crc32.ChecksumIEEE([]byte(country))
+	crc := uint32(0xffffffff)
+	for i := 0; i < len(country); i++ {
+		crc = crc32.IEEETable[byte(crc^uint32(country[i]))] ^ (crc >> 8)
+	}
+	return crc ^ 0xffffffff
 }
 
 func GeoHashFromCountryBytes(country []byte) uint32 {

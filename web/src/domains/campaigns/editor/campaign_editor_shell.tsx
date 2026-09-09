@@ -8,6 +8,8 @@ import { Link, useNavigate } from 'react-router-dom';
 import { PageLayout } from '@/shell/page_layout';
 import { EDITOR_MAIN_COLUMN_CLASS } from '@/shell/filter_panel';
 import { cn } from '@/lib/utils';
+import { buildCampaignAuditHref } from '@/lib/audit_paths';
+import { campaignReportPath } from '@/lib/campaign_nav';
 import type { FlowPath } from '@/api/types';
 import type { CampaignEditorFormState } from '@/domains/campaigns/editor/campaign_editor_types';
 import { CAMPAIGN_EDITOR_MONO_EXTRALIGHT_CLASS } from '@/domains/campaigns/editor/campaign_click_query_limits';
@@ -43,23 +45,24 @@ export function CampaignEditorShell({
   statusBanner,
 }: CampaignEditorShellProps) {
   const navigate = useNavigate();
+  const reportPath = campaignReportPath(campaignId);
   const paths = flowPaths.length > 0 ? flowPaths : [{ weight: 100, landers: [], offers: [] }];
 
   const pathsAside = (
-    <section className="grid gap-4">
-      <h2 className="m-0 text-sm font-semibold text-foreground">Paths</h2>
-      <div className="grid gap-4">
+    <section >
+      <h2 >Paths</h2>
+      <div >
         {paths.map((path, pathIndex) => (
-          <div key={`path-${pathIndex}`} className="grid gap-3">
-            <p className="m-0">
+          <div key={`path-${pathIndex}`}>
+            <p >
               <strong>Path {pathIndex + 1}</strong> / weight {path.weight ?? 100}
             </p>
-            <div className="grid gap-2">
-              <h3 className="m-0 text-sm font-semibold text-foreground">Landers</h3>
+            <div >
+              <h3 >Landers</h3>
               {(path.landers ?? []).length === 0 ? (
-                <p className="m-0 text-muted-foreground">No landers</p>
+                <p >No landers</p>
               ) : (
-                <ul className="m-0 flex list-disc flex-col gap-1 pl-5">
+                <ul >
                   {(path.landers ?? []).map((lander, landerIndex) => (
                     <li key={`lander-${landerIndex}`}>
                       {lander.lander_id?.slice(0, 12) ?? `Lander ${landerIndex + 1}`} /{' '}
@@ -69,12 +72,12 @@ export function CampaignEditorShell({
                 </ul>
               )}
             </div>
-            <div className="grid gap-2">
-              <h3 className="m-0 text-sm font-semibold text-foreground">Offers</h3>
+            <div >
+              <h3 >Offers</h3>
               {(path.offers ?? []).length === 0 ? (
-                <p className="m-0 text-muted-foreground">No offers</p>
+                <p >No offers</p>
               ) : (
-                <ul className="m-0 flex list-disc flex-col gap-1 pl-5">
+                <ul >
                   {(path.offers ?? []).map((offer, offerIndex) => (
                     <li key={`offer-${offerIndex}`}>
                       {offer.offer_id?.slice(0, 20) ?? `Offer ${offerIndex + 1}`} /{' '}
@@ -104,8 +107,13 @@ export function CampaignEditorShell({
           <Button type="button" variant="secondary" onClick={onClone}>
             Clone
           </Button>
+          {reportPath ? (
+            <Button asChild type="button" variant="secondary">
+              <Link to={reportPath}>Report</Link>
+            </Button>
+          ) : null}
           <Button asChild type="button" variant="secondary">
-            <Link to={`/dashboards/campaign/${campaignId}`}>Report</Link>
+            <Link to={buildCampaignAuditHref(campaignId)}>Audit log</Link>
           </Button>
           <Button type="button" variant="secondary" onClick={() => navigate('/campaigns')}>
             Close
@@ -116,11 +124,11 @@ export function CampaignEditorShell({
     >
       {statusBanner}
 
-      <section className={cn(EDITOR_MAIN_COLUMN_CLASS, 'gap-4')}>
-        <h2 className="m-0 text-sm font-semibold text-foreground">Main options</h2>
+      <section >
+        <h2 >Main options</h2>
 
-        <div className="grid gap-4">
-          <div className="grid grid-cols-[8rem_minmax(0,1fr)] items-center gap-x-4 gap-y-2">
+        <div >
+          <div >
             <Label htmlFor="campaign-editor-name">Name</Label>
             <Input
               disabled={saving}
@@ -130,7 +138,7 @@ export function CampaignEditorShell({
             />
           </div>
 
-          <div className="grid grid-cols-[8rem_minmax(0,1fr)] items-center gap-x-4 gap-y-2">
+          <div >
             <Label htmlFor="campaign-editor-budget">Budget limit</Label>
             <Input
               disabled={saving}
@@ -140,7 +148,7 @@ export function CampaignEditorShell({
             />
           </div>
 
-          <div className="grid grid-cols-[8rem_minmax(0,1fr)] items-center gap-x-4 gap-y-2">
+          <div >
             <Label htmlFor="campaign-editor-status">Status</Label>
             <Input
               disabled={saving}
@@ -150,10 +158,10 @@ export function CampaignEditorShell({
             />
           </div>
 
-          <div className="grid grid-cols-[8rem_minmax(0,1fr)] items-start gap-x-4 gap-y-2">
+          <div >
             <Label htmlFor="campaign-editor-url">Campaign URL</Label>
             <Textarea
-              className={CAMPAIGN_EDITOR_MONO_EXTRALIGHT_CLASS}
+             
               id="campaign-editor-url"
               readOnly
               rows={3}

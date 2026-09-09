@@ -1,40 +1,24 @@
-import { Link } from 'react-router-dom';
+import { useCallback, useEffect, useMemo } from 'react';
 
 import type { Customer } from '@/api/types';
-import { displayTimestamp } from '@/lib/display';
+import { CustomersSelectionPanel } from '@/domains/customers/customers_selection_panel';
 import { listPageRange } from '@/lib/list_page_stats';
 import { DirectoryPaginationFooter } from '@/shell/directory_pagination_footer';
-import {
-  DirectoryTable,
-  DirectoryTableHead,
-  SortableTableHead,
-  TableBody,
-  TableCell,
-  TableHeader,
-  TableRow,
-  directoryTableRevalidatingClass,
-} from '@/shell/directory_table';
-import { EmptyState } from '@/shell/empty_state';
-import { ErrorBlock } from '@/shell/error_block';
-import { PageLayout } from '@/shell/page_layout';
-import { PageSkeleton } from '@/shell/page_skeleton';
-
-export type CustomerSortField = 'name' | 'created_at' | 'balance' | 'active_campaigns';
-export type SortOrder = 'asc' | 'desc';
+import { DirectoryPageShell } from '@/shell/directory_page_shell';
+import { ControlPlaneSelectTable } from '@/shell/control_plane_select_table';
 
 export type CustomersDirectoryProps = {
   items?: Customer[];
   total: number;
   limit: number;
   offset: number;
-  appliedSort: CustomerSortField;
-  appliedOrder: SortOrder;
   fetching: boolean;
   listRevalidating?: boolean;
   error: Error | undefined;
   hasSnapshot: boolean;
   freshnessLabel?: string;
-  onColumnSort: (field: CustomerSortField) => void;
+  selectedCustomerId: string | null;
+  onSelectedCustomerIdChange: (id: string | null) => void;
   onPageChange: (nextOffset: number) => void;
   onLimitChange: (limit: number) => void;
 };
@@ -44,25 +28,16 @@ export function CustomersDirectory({
   total,
   limit,
   offset,
-  appliedSort,
-  appliedOrder,
   fetching,
   listRevalidating = false,
   error,
   hasSnapshot,
   freshnessLabel,
-  onColumnSort,
+  selectedCustomerId,
+  onSelectedCustomerIdChange,
   onPageChange,
   onLimitChange,
 }: CustomersDirectoryProps) {
-  if (fetching && !hasSnapshot && !error) {
-    return <PageSkeleton variant="directory" columns={4} />;
-  }
-
-  if (error && !hasSnapshot) {
-    return <ErrorBlock title="Could not load customers" message={error.message} />;
-  }
-
   const canGoPrev = offset > 0;
   const canGoNext = offset + limit < total;
   const pageRange = listPageRange(total, limit, offset, (items ?? []).length);
@@ -71,15 +46,49 @@ export function CustomersDirectory({
       ? `${pageRange.rangeStart} - ${pageRange.rangeEnd} of ${total}`
       : '0 of 0';
 
+  const operateRows = useMemo(
+    () =>
+      (items ?? [])
+        .filter((customer): customer is Customer & { id: string } => Boolean(customer.id))
+        .map((customer) => ({
+          id: customer.id,
+          label: customer.name ?? customer.id,
+        })),
+    [items]
+  );
+
+  const selectedCustomer = useMemo(
+    () => (items ?? []).find((customer) => customer.id === selectedCustomerId),
+    [items, selectedCustomerId]
+  );
+
+  const handleClearSelection = useCallback(() => {
+    onSelectedCustomerIdChange(null);
+  }, [onSelectedCustomerIdChange]);
+
+  useEffect(() => {
+    if (selectedCustomerId && !selectedCustomer) {
+      onSelectedCustomerIdChange(null);
+    }
+  }, [onSelectedCustomerIdChange, selectedCustomer, selectedCustomerId]);
+
   return (
-    <PageLayout
+    <DirectoryPageShell
+      aside={
+        <CustomersSelectionPanel
+          selectedCustomer={selectedCustomer}
+          onClearSelection={handleClearSelection}
+        />
+      }
       badge={
         freshnessLabel ? (
-          <span className="inline-flex items-center rounded-none border border-border bg-muted px-2 py-0.5 text-xs text-muted-foreground">
+          <span >
             {freshnessLabel}
           </span>
         ) : null
       }
+      blockingErrorTitle="Could not load customers"
+      fetchState={{ fetching, error, hasSnapshot }}
       footer={
         <DirectoryPaginationFooter
           canGoNext={canGoNext}
@@ -93,110 +102,18 @@ export function CustomersDirectory({
           onPrev={() => onPageChange(Math.max(0, offset - limit))}
         />
       }
+      skeletonColumns={2}
       title="Customers"
     >
-      {(items ?? []).length === 0 ? (
-        <EmptyState
-          actionHref="/docs"
-          actionLabel="View documentation"
-          description="Customers are provisioned through billing and platform setup."
-          title="No customers"
-          variant="blank-slate"
-        />
-      ) : (
-        <DirectoryTable
-          className={directoryTableRevalidatingClass(listRevalidating)}
-          fixedLayout
-          horizontalScroll
-        >
-          <TableHeader>
-            <TableRow>
-              <SortableTableHead
-                activeOrder={appliedOrder}
-                activeSort={appliedSort}
-                className="w-[28%]"
-                label="Name"
-                sortField="name"
-                onSort={(field) => onColumnSort(field as CustomerSortField)}
-              />
-              <SortableTableHead
-                activeOrder={appliedOrder}
-                activeSort={appliedSort}
-                className="w-[11%]"
-                label="Balance"
-                numeric
-                sortField="balance"
-                onSort={(field) => onColumnSort(field as CustomerSortField)}
-              />
-              <DirectoryTableHead className="w-[7%]">Currency</DirectoryTableHead>
-              <DirectoryTableHead className="w-[14%]">Cost center</DirectoryTableHead>
-              <SortableTableHead
-                activeOrder={appliedOrder}
-                activeSort={appliedSort}
-                className="w-[10%]"
-                label="Active"
-                numeric
-                sortField="active_campaigns"
-                onSort={(field) => onColumnSort(field as CustomerSortField)}
-              />
-              <DirectoryTableHead align="end" className="w-[12%]">
-                Total spend
-              </DirectoryTableHead>
-              <SortableTableHead
-                activeOrder={appliedOrder}
-                activeSort={appliedSort}
-                className="w-[18%]"
-                label="Created"
-                sortField="created_at"
-                onSort={(field) => onColumnSort(field as CustomerSortField)}
-              />
-            </TableRow>
-          </TableHeader>
-          <TableBody>
-            {(items ?? []).map((customer) => {
-              const createdLabel = displayTimestamp(
-                customer.created_at,
-                customer.created_at_display
-              );
-              return (
-                <TableRow key={customer.id ?? customer.name}>
-                  <TableCell className="whitespace-nowrap font-medium">
-                    {customer.id ? (
-                      <Link
-                        className="whitespace-nowrap"
-                        title={customer.name ?? customer.id}
-                        to={`/customers/${customer.id}`}
-                      >
-                        {customer.name ?? customer.id}
-                      </Link>
-                    ) : (
-                      <span className="whitespace-nowrap" title={customer.name ?? undefined}>
-                        {customer.name}
-                      </span>
-                    )}
-                  </TableCell>
-                  <TableCell className="text-right">{customer.balance ?? ''}</TableCell>
-                  <TableCell className="whitespace-nowrap">{customer.currency ?? ''}</TableCell>
-                  <TableCell
-                    className="whitespace-nowrap"
-                    title={customer.cost_center ?? undefined}
-                  >
-                    {customer.cost_center ?? ''}
-                  </TableCell>
-                  <TableCell className="text-right">{customer.active_campaigns ?? ''}</TableCell>
-                  <TableCell className="text-right">{customer.total_spend ?? ''}</TableCell>
-                  <TableCell
-                    className="whitespace-nowrap text-muted-foreground"
-                    title={createdLabel}
-                  >
-                    {createdLabel}
-                  </TableCell>
-                </TableRow>
-              );
-            })}
-          </TableBody>
-        </DirectoryTable>
-      )}
-    </PageLayout>
+      <ControlPlaneSelectTable
+        disabled={fetching}
+        emptyMessage="Customers are provisioned through billing and platform setup."
+        nameColumnLabel="Customer"
+        revalidating={listRevalidating}
+        rows={operateRows}
+        selectedId={selectedCustomerId}
+        onSelectedIdChange={onSelectedCustomerIdChange}
+      />
+    </DirectoryPageShell>
   );
 }

@@ -5,7 +5,7 @@ import type { DLQInboxEntry } from '@/api/types';
 import { displayTimestamp } from '@/lib/display';
 import { opsPanelError } from '@/domains/ops/ops_nav';
 import { OpsListFooter } from '@/domains/ops/ops_list_footer';
-import { OpsPageBlockingError, OpsPageLoading, OpsPageShell } from '@/domains/ops/ops_page_shell';
+import { OpsPageWithLoad } from '@/domains/ops/ops_page_shell';
 import { OpsStatusChip } from '@/domains/ops/ops_status';
 import {
   OpsTable,
@@ -29,6 +29,7 @@ export type OpsDlqInboxProps = {
   onNext: () => void;
   canGoPrev: boolean;
   onRetry: (entry: DLQInboxEntry) => void;
+  embedded?: boolean;
 };
 
 export function OpsDlqInbox({
@@ -44,32 +45,10 @@ export function OpsDlqInbox({
   onNext,
   canGoPrev,
   onRetry,
+  embedded = false,
 }: OpsDlqInboxProps) {
-  if (fetching && !hasSnapshot && !error) {
-    return <OpsPageLoading />;
-  }
-
-  if (error && !hasSnapshot) {
-    return (
-      <OpsPageBlockingError error={error} pageTitle="DLQ inbox" title="Could not load DLQ inbox" />
-    );
-  }
-
-  return (
-    <OpsPageShell
-      badge={partial ? <OpsStatusChip status="partial" /> : undefined}
-      footer={
-        <OpsListFooter
-          canGoNext={Boolean(nextCursor)}
-          canGoPrev={canGoPrev}
-          disabled={fetching}
-          summary={`${(items ?? []).length} entries on this page${nextCursor ? '  /  more pages available' : ''}`}
-          onNext={onNext}
-          onPrev={onPrev}
-        />
-      }
-      title="DLQ inbox"
-    >
+  const body = (
+    <>
       {(items ?? []).length === 0 ? (
         <EmptyState description="No failed deliveries are queued." title="DLQ inbox empty" />
       ) : (
@@ -97,18 +76,18 @@ export function OpsDlqInbox({
                 <OpsTableCell>
                   {entry.status ? <OpsStatusChip status={entry.status} /> : ''}
                 </OpsTableCell>
-                <OpsTableCell className="text-xs text-muted-foreground">
+                <OpsTableCell >
                   {entry.campaign_id ?? ''}
                 </OpsTableCell>
                 <OpsTableCell>{entry.event_type ?? ''}</OpsTableCell>
-                <OpsTableCell className="whitespace-nowrap text-muted-foreground">
+                <OpsTableCell >
                   {entry.error ?? ''}
                 </OpsTableCell>
                 <OpsTableCell>
                   {displayTimestamp(entry.failed_at, entry.failed_at_display)}
                 </OpsTableCell>
                 <OpsTableCell numeric>{entry.retry_count ?? ''}</OpsTableCell>
-                <OpsTableCell className="w-10 text-center">
+                <OpsTableCell >
                   {canRetry ? (
                     <RowActionsMenu
                       ariaLabel="DLQ entry actions"
@@ -128,9 +107,45 @@ export function OpsDlqInbox({
           })}
         </OpsTable>
       )}
+    </>
+  );
 
-      {retryError ? opsPanelError(retryError, 'Retry failed') : null}
-      {error && hasSnapshot ? opsPanelError(error, 'Refresh failed') : null}
-    </OpsPageShell>
+  if (embedded) {
+    return (
+      <>
+        {retryError ? opsPanelError(retryError, 'Retry failed') : null}
+        {body}
+        <OpsListFooter
+          canGoNext={Boolean(nextCursor)}
+          canGoPrev={canGoPrev}
+          disabled={fetching}
+          summary={`${(items ?? []).length} entries on this page${nextCursor ? '  /  more pages available' : ''}`}
+          onNext={onNext}
+          onPrev={onPrev}
+        />
+      </>
+    );
+  }
+
+  return (
+    <OpsPageWithLoad
+      badge={partial ? <OpsStatusChip status="partial" /> : undefined}
+      blockingErrorTitle="Could not load DLQ inbox"
+      fetchState={{ fetching, error, hasSnapshot }}
+      title="DLQ inbox"
+      alerts={retryError ? opsPanelError(retryError, 'Retry failed') : null}
+      footer={
+        <OpsListFooter
+          canGoNext={Boolean(nextCursor)}
+          canGoPrev={canGoPrev}
+          disabled={fetching}
+          summary={`${(items ?? []).length} entries on this page${nextCursor ? '  /  more pages available' : ''}`}
+          onNext={onNext}
+          onPrev={onPrev}
+        />
+      }
+    >
+      {body}
+    </OpsPageWithLoad>
   );
 }

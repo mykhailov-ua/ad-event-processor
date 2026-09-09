@@ -29,8 +29,6 @@ export type DateRangePickerProps = {
   to: string;
   onChange: (from: string, to: string) => void;
   disabled?: boolean;
-  className?: string;
-  labelClassName?: string;
   variant?: 'default' | 'admin';
 };
 
@@ -41,8 +39,6 @@ export function DateRangePicker({
   to,
   onChange,
   disabled = false,
-  className,
-  labelClassName,
   variant = 'default',
 }: DateRangePickerProps) {
   const triggerRef = useRef<HTMLButtonElement>(null);
@@ -97,22 +93,16 @@ export function DateRangePicker({
           type="button"
           variant="outline"
           disabled={disabled}
-          className={cn(
-            adminChrome.control,
-            isAdmin
-              ? 'relative inline-flex w-full max-w-full items-center justify-between gap-2 font-normal'
-              : 'flex w-full items-center justify-between gap-2 font-normal',
-            !fromDate && 'text-muted-foreground'
-          )}
+         
         >
-          <CalendarIcon className={cn('h-4 w-4 shrink-0', isAdmin && 'opacity-60')} aria-hidden />
-          <span className={cn('whitespace-nowrap', isAdmin && 'min-w-0 flex-1 text-left')}>
+          <CalendarIcon  aria-hidden />
+          <span >
             {displayLabel}
           </span>
         </Button>
       </PopoverTrigger>
-      <PopoverContent align={align} className="w-auto p-0" side={side}>
-        <div className="p-3">
+      <PopoverContent align={align} side={side}>
+        <div >
           <Calendar
             mode="range"
             numberOfMonths={monthCount}
@@ -123,11 +113,7 @@ export function DateRangePicker({
           />
         </div>
         <div
-          className={
-            isAdmin
-              ? 'flex justify-end gap-2 border-t border-border p-2'
-              : 'flex justify-end gap-2 border-t border-border/50 px-3 py-3'
-          }
+         
         >
           <Button
             type="button"
@@ -146,16 +132,16 @@ export function DateRangePicker({
 
   if (isAdmin) {
     return (
-      <label className={cn(adminKit.fieldLabelClass, className)}>
-        <span className={labelClassName}>{label}</span>
+      <label >
+        <span >{label}</span>
         {trigger}
       </label>
     );
   }
 
   return (
-    <div className={cn('grid w-full min-w-0', adminKit.fieldLabelGap, className)}>
-      <Label className={labelClassName} htmlFor={id}>
+    <div >
+      <Label  htmlFor={id}>
         {label}
       </Label>
       {trigger}

@@ -28,6 +28,7 @@ import { useBreadcrumbSegmentLabel } from '@/shell/breadcrumb_context';
 import { useResource } from '@/api/use_resource';
 import { useMeta } from '@/hooks/use_meta';
 import { useSession } from '@/hooks/use_session';
+import { toError } from '@/lib/admin_error';
 import { triggerBlobDownload } from '@/lib/trigger_blob_download';
 
 export function useCustomerDetailPageWorkspace() {
@@ -197,9 +198,7 @@ export function useCustomerDetailPageWorkspace() {
       triggerBlobDownload(result.blob, `customer-${id}-ledger.csv`);
       toast.success('Ledger CSV exported');
     } catch (err: unknown) {
-      const nextError = err instanceof Error ? err : new Error(String(err));
-      setLedgerExportError(nextError);
-      toast.error(nextError.message);
+      setLedgerExportError(toError(err));
     } finally {
       setLedgerExporting(false);
     }
@@ -238,7 +237,7 @@ export function useCustomerDetailPageWorkspace() {
       toast.success('Tax profile saved');
       setTaxRefreshToken((value) => value + 1);
     } catch (err: unknown) {
-      const nextError = err instanceof Error ? err : new Error(String(err));
+      const nextError = toError(err);
       setSaveError(nextError);
       toast.error(nextError.message);
     } finally {
@@ -269,7 +268,7 @@ export function useCustomerDetailPageWorkspace() {
       toast.success('Customer profile saved');
       setCustomerRefreshToken((value) => value + 1);
     } catch (err: unknown) {
-      const nextError = err instanceof Error ? err : new Error(String(err));
+      const nextError = toError(err);
       setProfileSaveError(nextError);
       toast.error(nextError.message);
     } finally {

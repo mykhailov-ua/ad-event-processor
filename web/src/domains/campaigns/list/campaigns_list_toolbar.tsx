@@ -1,9 +1,5 @@
-import type { ReactNode } from 'react';
 import { useMemo } from 'react';
-import { Link } from 'react-router-dom';
-import { BarChart3, MoreHorizontal, Plus } from 'lucide-react';
-import { toast } from 'sonner';
-
+import { MoreHorizontal, Plus } from 'lucide-react';
 import type { CampaignStatusTotals } from '@/api/campaigns_api';
 import type { CustomerComboboxOption } from '@/shell/customer_combobox';
 import { Button } from '@/components/ui/button';
@@ -22,25 +18,18 @@ import {
   CampaignsListSearchableFilterSelect,
 } from '@/domains/campaigns/list/campaigns_list_filter_select';
 import { ListRefreshBand } from '@/shell/list_refresh_band';
-import type { CampaignListSummary } from '@/domains/campaigns/list/campaign_list_summary';
-import { CampaignListSummaryBox } from '@/domains/campaigns/list/campaign_list_summary_box';
 import { CampaignListStatusChips } from '@/domains/campaigns/list/campaign_list_status_chips';
-import {
-  campaignListArchiveButtonClass,
-  campaignListFilterFieldClass,
-  campaignListFilterLabelClass,
-} from '@/domains/campaigns/list/campaign_list_classes';
 import type {
   CampaignPacingFilter,
   CampaignStatusFilter,
 } from '@/domains/campaigns/list/campaigns_list_types';
 import {
-  DirectoryFilterForm,
+  CAMPAIGNS_FILTER_ROW,
+  DIRECTORY_CONTENT_BAND_CLASS,
+  DIRECTORY_FILTER_FORM_STACK_CLASS,
   FilterField,
   FilterPanel,
-  FILTER_PANEL_FLAT_CLASS,
 } from '@/shell/filter_panel';
-import { PaginationPrevNext } from '@/shell/pagination_prev_next';
 import {
   StatusMetricsBand,
   ToolbarBand,
@@ -59,7 +48,7 @@ const PACING_FILTER_OPTIONS: CampaignsListFilterOption[] = [
 
 export type CampaignsListToolbarProps = {
   draftCustomerId: string;
-  appliedStatus: CampaignStatusFilter;
+  draftStatus: CampaignStatusFilter;
   draftPacing: CampaignPacingFilter;
   draftBudgetMinUsd: string;
   draftBudgetMaxUsd: string;
@@ -72,17 +61,10 @@ export type CampaignsListToolbarProps = {
   countryOptions: CampaignsListFilterOption[];
   listFacetsFetching?: boolean;
   listFacetsDegraded?: boolean;
-  filterTotalsCapped?: boolean;
-  filteredTotal?: number;
-  metricsStale?: boolean;
   listLastUpdatedAt?: string | null;
   listRevalidating?: boolean;
-  summary: CampaignListSummary;
   statusTotals?: CampaignStatusTotals;
   statusTotalsLoading?: boolean;
-  selectedCount?: number;
-  selectedCampaignId?: string | null;
-  bulkBusy?: boolean;
   fetching?: boolean;
   onDraftCustomerIdChange: (customerId: string) => void;
   onDraftStatusChange: (status: CampaignStatusFilter) => void;
@@ -92,26 +74,16 @@ export type CampaignsListToolbarProps = {
   onDraftOwnerUserIdChange: (userId: string) => void;
   onDraftCountryChange: (country: string) => void;
   onStatsRangeChange: (from: string, to: string) => void;
-  onBudgetFiltersApply: () => void;
+  onDirectoryFiltersApply: () => void;
   onRefresh: () => void;
   onCreateClick: () => void;
   onWizardClick?: () => void;
   onImportClick?: () => void;
-  onCloneClick?: () => void;
-  onPauseClick?: () => void;
-  onResumeClick?: () => void;
-  onArchiveClick?: () => void;
-  canGoPrev?: boolean;
-  canGoNext?: boolean;
-  paginationDisabled?: boolean;
-  onPagePrev?: () => void;
-  onPageNext?: () => void;
-  tableViewTools?: ReactNode;
 };
 
 export function CampaignsListToolbar({
   draftCustomerId,
-  appliedStatus,
+  draftStatus,
   draftPacing,
   draftBudgetMinUsd,
   draftBudgetMaxUsd,
@@ -124,17 +96,10 @@ export function CampaignsListToolbar({
   countryOptions,
   listFacetsFetching = false,
   listFacetsDegraded = false,
-  filterTotalsCapped = false,
-  filteredTotal = 0,
-  metricsStale = false,
   listLastUpdatedAt = null,
   listRevalidating = false,
-  summary,
   statusTotals,
   statusTotalsLoading = false,
-  selectedCount = 0,
-  selectedCampaignId = null,
-  bulkBusy = false,
   fetching = false,
   onDraftCustomerIdChange,
   onDraftStatusChange,
@@ -144,43 +109,14 @@ export function CampaignsListToolbar({
   onDraftOwnerUserIdChange,
   onDraftCountryChange,
   onStatsRangeChange,
-  onBudgetFiltersApply,
+  onDirectoryFiltersApply,
   onRefresh,
   onCreateClick,
   onWizardClick,
   onImportClick,
-  onCloneClick,
-  onPauseClick,
-  onResumeClick,
-  onArchiveClick,
-  canGoPrev = false,
-  canGoNext = false,
-  paginationDisabled = false,
-  onPagePrev,
-  onPageNext,
-  tableViewTools,
 }: CampaignsListToolbarProps) {
-  const bulkActionBusy = bulkBusy;
-  const hasSelection = selectedCount > 0;
-  const singleSelected = selectedCount === 1;
-  const reportHref =
-    singleSelected && selectedCampaignId
-      ? `/dashboards/campaign/${selectedCampaignId}`
-      : null;
   const showWizardAction = onWizardClick != null;
   const showImportAction = onImportClick != null;
-
-  function runBulkAction(allowed: boolean, hint: string, action?: () => void) {
-    if (bulkActionBusy) {
-      toast.message('Bulk action in progress');
-      return;
-    }
-    if (!allowed) {
-      toast.message(hint);
-      return;
-    }
-    action?.();
-  }
 
   const groupOptions = useMemo<CampaignsListFilterOption[]>(
     () => [
@@ -217,97 +153,21 @@ export function CampaignsListToolbar({
       <ToolbarBand split>
         <ToolbarBandActions aria-label="Campaign actions">
           <Button type="button" variant="brand" onClick={onCreateClick}>
-            <Plus className="h-3.5 w-3.5" aria-hidden />
+            <Plus aria-hidden />
             Quick create
           </Button>
-          <div className="flex flex-nowrap items-center gap-2" aria-label="Selected campaigns">
-            <Button
-              disabled={bulkActionBusy || !hasSelection}
-              type="button"
-              variant="outline"
-              title={
-                hasSelection
-                  ? singleSelected
-                    ? 'Clone selected campaign'
-                    : 'Bulk clone selected campaigns'
-                  : 'Select campaigns first'
-              }
-              onClick={() => runBulkAction(hasSelection, 'Select campaigns first', onCloneClick)}
-            >
-              Clone
-            </Button>
-            {reportHref ? (
-              <Button
-                asChild
-                disabled={bulkActionBusy}
-                type="button"
-                variant="outline"
-                title="Open report for selected campaign"
-              >
-                <Link to={reportHref}>
-                  <BarChart3 className="h-4 w-4" aria-hidden />
-                  Report
-                </Link>
-              </Button>
-            ) : (
-              <Button
-                disabled={bulkActionBusy || !singleSelected}
-                type="button"
-                variant="outline"
-                title={
-                  singleSelected
-                    ? 'Open report for selected campaign'
-                    : 'Select exactly one campaign'
-                }
-                onClick={() =>
-                  runBulkAction(singleSelected, 'Select exactly one campaign', undefined)
-                }
-              >
-                <BarChart3 className="h-4 w-4" aria-hidden />
-                Report
-              </Button>
-            )}
-            <Button
-              disabled={bulkActionBusy || !hasSelection}
-              type="button"
-              variant="outline"
-              title={hasSelection ? 'Pause selected campaigns' : 'Select campaigns first'}
-              onClick={() => runBulkAction(hasSelection, 'Select campaigns first', onPauseClick)}
-            >
-              Pause
-            </Button>
-            <Button
-              disabled={bulkActionBusy || !hasSelection}
-              type="button"
-              variant="outline"
-              title={hasSelection ? 'Resume selected campaigns' : 'Select campaigns first'}
-              onClick={() => runBulkAction(hasSelection, 'Select campaigns first', onResumeClick)}
-            >
-              Resume
-            </Button>
-            <Button
-              disabled={bulkActionBusy || !hasSelection}
-              type="button"
-              variant="outline"
-              className={campaignListArchiveButtonClass}
-              title={hasSelection ? 'Archive selected campaigns' : 'Select campaigns first'}
-              onClick={() => runBulkAction(hasSelection, 'Select campaigns first', onArchiveClick)}
-            >
-              Archive
-            </Button>
-          </div>
           <DropdownMenu>
             <DropdownMenuTrigger asChild>
               <Button
                 aria-label="More campaign actions"
-                className="size-7 p-0"
+               
                 type="button"
                 variant="outline"
               >
-                <MoreHorizontal className="h-4 w-4" aria-hidden />
+                <MoreHorizontal  aria-hidden />
               </Button>
             </DropdownMenuTrigger>
-            <DropdownMenuContent align="end" className="w-44">
+            <DropdownMenuContent align="end">
               {showWizardAction ? (
                 <DropdownMenuItem onSelect={onWizardClick}>Guided setup</DropdownMenuItem>
               ) : null}
@@ -325,47 +185,28 @@ export function CampaignsListToolbar({
         />
       </ToolbarBand>
 
-      <StatusMetricsBand aria-label="Status and page summary">
+      <StatusMetricsBand aria-label="Status filters">
         {statusTotals || statusTotalsLoading ? (
           <CampaignListStatusChips
-            className="shrink-0"
             countsLoading={statusTotalsLoading}
             options={statusChipOptions}
-            value={appliedStatus}
+            value={draftStatus}
             onChange={onDraftStatusChange}
           />
         ) : null}
-        <CampaignListSummaryBox
-          filterTotalsCapped={filterTotalsCapped}
-          filteredTotal={filteredTotal}
-          metricsStale={metricsStale}
-          summary={summary}
-        />
       </StatusMetricsBand>
 
-      <FilterPanel aria-label="List filters" className={FILTER_PANEL_FLAT_CLASS} role="search">
-        <DirectoryFilterForm
-          layout="campaigns"
-          onKeyDown={(event) => {
-            if (event.key !== 'Enter' || event.defaultPrevented) {
-              return;
-            }
-            const target = event.target;
-            if (!(target instanceof HTMLInputElement)) {
-              return;
-            }
-            if (target.id !== 'campaigns-budget-min' && target.id !== 'campaigns-budget-max') {
-              return;
-            }
+      <FilterPanel aria-label="List filters" role="search">
+        <form
+          className={cn(DIRECTORY_FILTER_FORM_STACK_CLASS, 'w-full')}
+          onSubmit={(event) => {
             event.preventDefault();
-            onBudgetFiltersApply();
+            onDirectoryFiltersApply();
           }}
         >
-          <FilterField
-            className={campaignListFilterFieldClass}
-            label="Customer group"
-            labelClassName={campaignListFilterLabelClass}
-          >
+          <div className={DIRECTORY_CONTENT_BAND_CLASS}>
+            <div className={CAMPAIGNS_FILTER_ROW}>
+          <FilterField label="Customer group">
             <CampaignsListSearchableFilterSelect
               aria-label="Customer group"
               options={groupOptions}
@@ -377,11 +218,7 @@ export function CampaignsListToolbar({
             />
           </FilterField>
 
-          <FilterField
-            className={campaignListFilterFieldClass}
-            label="Pacing"
-            labelClassName={campaignListFilterLabelClass}
-          >
+          <FilterField label="Pacing">
             <CampaignsListFilterSelect
               aria-label="Pacing"
               options={PACING_FILTER_OPTIONS}
@@ -394,11 +231,7 @@ export function CampaignsListToolbar({
             />
           </FilterField>
 
-          <FilterField
-            className={campaignListFilterFieldClass}
-            label="Owner"
-            labelClassName={campaignListFilterLabelClass}
-          >
+          <FilterField label="Owner">
             <CampaignsListSearchableFilterSelect
               aria-label="Owner"
               disabled={fetching || listFacetsFetching || listFacetsDegraded}
@@ -416,11 +249,7 @@ export function CampaignsListToolbar({
             />
           </FilterField>
 
-          <FilterField
-            className={campaignListFilterFieldClass}
-            label="Country"
-            labelClassName={campaignListFilterLabelClass}
-          >
+          <FilterField label="Country">
             <CampaignListCountrySelect
               aria-label="Country"
               disabled={fetching || listFacetsFetching || listFacetsDegraded}
@@ -437,84 +266,45 @@ export function CampaignsListToolbar({
             />
           </FilterField>
 
-          <FilterField
-            className={campaignListFilterFieldClass}
-            htmlFor="campaigns-budget-min"
-            label="Budget min ($)"
-            labelClassName={campaignListFilterLabelClass}
-          >
+          <FilterField htmlFor="campaigns-budget-min" label="Budget min ($)">
             <Input
               id="campaigns-budget-min"
               disabled={fetching}
               inputMode="decimal"
-              placeholder="0.00"
-              title="Server filter; applied when field loses focus"
+              placeholder="Min budget"
               value={draftBudgetMinUsd}
-              onBlur={onBudgetFiltersApply}
               onChange={(event) => onDraftBudgetMinUsdChange(event.target.value)}
             />
           </FilterField>
 
-          <FilterField
-            className={campaignListFilterFieldClass}
-            htmlFor="campaigns-budget-max"
-            label="Budget max ($)"
-            labelClassName={campaignListFilterLabelClass}
-          >
+          <FilterField htmlFor="campaigns-budget-max" label="Budget max ($)">
             <Input
               id="campaigns-budget-max"
               disabled={fetching}
               inputMode="decimal"
-              placeholder="0.00"
-              title="Server filter; applied when field loses focus"
+              placeholder="Max budget"
               value={draftBudgetMaxUsd}
-              onBlur={onBudgetFiltersApply}
               onChange={(event) => onDraftBudgetMaxUsdChange(event.target.value)}
             />
           </FilterField>
 
           <ToolbarDateRangePicker
-            className={cn(campaignListFilterFieldClass, 'min-w-0')}
             disabled={fetching}
             from={draftStatsFrom}
             id="campaign-list-stats-range"
             label="Period"
-            labelClassName={campaignListFilterLabelClass}
             to={draftStatsTo}
             onChange={onStatsRangeChange}
           />
 
-          {onPagePrev && onPageNext ? (
-            <FilterField
-              className="min-w-0"
-              label="Page"
-              labelClassName={campaignListFilterLabelClass}
-            >
-              <PaginationPrevNext
-                canGoNext={canGoNext}
-                canGoPrev={canGoPrev}
-                className="w-full"
-                disabled={paginationDisabled}
-                layout="split"
-                nextLabel="Next"
-                prevLabel="Prev"
-                variant="outline"
-                onNext={onPageNext}
-                onPrev={onPagePrev}
-              />
-            </FilterField>
-          ) : null}
-          {tableViewTools ? (
-            <div
-              className={cn(
-                'flex min-w-0 items-end justify-end gap-2 self-end pb-0.5',
-                onPagePrev && onPageNext ? 'xl:col-span-6' : 'xl:col-span-7'
-              )}
-            >
-              {tableViewTools}
             </div>
-          ) : null}
-        </DirectoryFilterForm>
+            <div className="mt-4">
+              <Button disabled={fetching} type="submit" variant="brand">
+                Apply
+              </Button>
+            </div>
+          </div>
+        </form>
       </FilterPanel>
     </DirectoryStack>
   );

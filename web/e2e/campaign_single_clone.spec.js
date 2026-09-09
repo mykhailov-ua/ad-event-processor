@@ -1,8 +1,9 @@
 import { test, expect } from '@playwright/test';
 
 import {
+  apiMutationHeaders,
   baseURL,
-  fetchFirstCampaignId,
+  fetchFirstCloneableCampaignId,
   integrationRunToken,
   loginAsAdmin,
   skipUnlessIntegrationReady,
@@ -15,9 +16,9 @@ test.beforeEach(async ({}, testInfo) => {
 test('POST /api/v1/campaigns/{id}/clone clones one campaign', async ({ page }) => {
   await loginAsAdmin(page);
 
-  const campaignId = await fetchFirstCampaignId(page);
+  const campaignId = await fetchFirstCloneableCampaignId(page);
   if (!campaignId) {
-    test.skip(true, 'integration: no campaigns available for clone');
+    test.skip(true, 'integration: no cloneable campaign (run db seed-clone-balance)');
     return;
   }
 
@@ -27,9 +28,9 @@ test('POST /api/v1/campaigns/{id}/clone clones one campaign', async ({ page }) =
       data: {
         name_suffix: ' (e2e single)',
       },
-      headers: {
+      headers: await apiMutationHeaders(page, {
         'Idempotency-Key': `single-clone-e2e-${integrationRunToken()}`,
-      },
+      }),
     }
   );
 

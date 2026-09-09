@@ -3,46 +3,52 @@ import { createPortal } from 'react-dom';
 import { Toaster as Sonner } from 'sonner';
 
 import { useTheme } from '@/hooks/use_theme';
-import { adminKit } from '@/lib/admin_kit';
 import { cn } from '@/lib/utils';
 
 type ToasterProps = ComponentProps<typeof Sonner>;
 
 const TOAST_DURATION_MS = 3000;
 
+const toastShellClass = cn(
+  'flex w-[var(--width)] items-center gap-2 rounded-[8px] border px-3 py-1.5 shadow-none'
+);
+
+const toastClassNames = {
+  toast: toastShellClass,
+  title: 'text-[13px] leading-[18px] font-medium text-foreground',
+  description: 'text-[13px] leading-[18px] font-normal text-admin-fg-secondary',
+  closeButton: 'hidden',
+  error:
+    'border-destructive/35 bg-destructive/16 text-foreground [&_[data-icon]]:text-destructive',
+  warning:
+    'border-admin-warn-border/45 bg-admin-warn-bg/55 text-foreground [&_[data-icon]]:text-admin-warn-fg',
+  success:
+    'border-admin-status-active/35 bg-admin-status-active/16 text-foreground [&_[data-icon]]:text-admin-positive-fg',
+  info:
+    'border-primary/35 bg-primary/18 text-foreground [&_[data-icon]]:text-admin-metric-conversion-fg',
+  default:
+    'border-primary/35 bg-primary/18 text-foreground [&_[data-icon]]:text-admin-metric-conversion-fg',
+};
+
 const Toaster = ({ ...props }: ToasterProps) => {
   const { theme } = useTheme();
 
   return createPortal(
     <Sonner
-      closeButton
+      className="toaster"
+      closeButton={false}
+      cn={cn}
       duration={TOAST_DURATION_MS}
       expand={false}
-      gap={10}
+      gap={8}
       offset="1rem"
       position="bottom-right"
       theme={theme}
       visibleToasts={4}
-      className="toaster group"
       toastOptions={{
         duration: TOAST_DURATION_MS,
-        classNames: {
-          toast: cn(
-            'group toast group-[.toaster]:rounded-sm group-[.toaster]:border group-[.toaster]:px-4 group-[.toaster]:py-3 group-[.toaster]:pr-10 group-[.toaster]:text-[13px]',
-            adminKit.toastSurface
-          ),
-          success:
-            'group-[.toaster]:border-admin-status-active/30 group-[.toaster]:bg-admin-status-active/15 group-[.toaster]:text-admin-positive',
-          error: cn('group-[.toaster]:text-destructive', adminKit.errorSurface),
-          warning:
-            'group-[.toaster]:border-admin-warn-border/50 group-[.toaster]:bg-admin-warn-bg/80 group-[.toaster]:text-admin-warn',
-          description: 'group-[.toast]:text-muted-foreground',
-          actionButton:
-            'group-[.toast]:rounded-sm group-[.toast]:border group-[.toast]:border-border group-[.toast]:bg-card/90 group-[.toast]:text-foreground',
-          cancelButton: 'group-[.toast]:text-muted-foreground',
-          closeButton:
-            'group-[.toast]:border-border/60 group-[.toast]:bg-card/90 group-[.toast]:text-muted-foreground group-[.toast]:opacity-100 hover:group-[.toast]:bg-card',
-        },
+        unstyled: true,
+        classNames: toastClassNames,
       }}
       {...props}
     />,

@@ -5,7 +5,7 @@ import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { opsPanelError } from '@/domains/ops/ops_nav';
-import { OpsActionGroup, OpsPageLoading, OpsPageShell } from '@/domains/ops/ops_page_shell';
+import { OpsActionGroup, OpsPageWithLoad } from '@/domains/ops/ops_page_shell';
 
 type DomainRotationHostRow = {
   hostname: string;
@@ -63,14 +63,19 @@ export function OpsDomains({
 }: OpsDomainsProps) {
   const rotationHosts = rotation ? readRotationHosts(rotation) : [];
 
-  if (fetchingRotation && !hasRotationSnapshot && !rotationError) {
-    return <OpsPageLoading />;
-  }
-
   return (
-    <OpsPageShell
+    <OpsPageWithLoad
+      blockingErrorTitle="Could not load domain rotation"
+      fetchState={{
+        fetching: fetchingRotation,
+        error: rotationError,
+        hasSnapshot: hasRotationSnapshot,
+      }}
+      refreshErrorTitle="Domain rotation refresh failed"
+      title="Domain ops"
+      alerts={tlsHostError ? opsPanelError(tlsHostError, 'TLS allow check failed') : null}
       filters={
-        <div className="grid gap-2">
+        <div >
           <Label htmlFor="ops-tls-hostname">Hostname</Label>
           <Input
             id="ops-tls-hostname"
@@ -79,7 +84,6 @@ export function OpsDomains({
           />
         </div>
       }
-      title="Domain ops"
       actions={
         <>
           <OpsActionGroup label="Domain data">
@@ -105,26 +109,22 @@ export function OpsDomains({
         </>
       }
     >
-      <p className="text-sm text-muted-foreground">
-        <Link className="text-primary underline-offset-4 hover:underline" to="/domains">
+      <p >
+        <Link  to="/domains">
           Open domains directory
         </Link>{' '}
         for bulk import, SSL setup, wildcard certs, and burn workflows.
       </p>
 
-      {rotationError && !hasRotationSnapshot
-        ? opsPanelError(rotationError, 'Could not load domain rotation')
-        : null}
-
       {rotation ? (
-        <div className="grid gap-2 rounded-md border p-3 text-sm">
-          <p className="font-medium">Domain rotation ({rotationHosts.length})</p>
+        <div >
+          <p >Domain rotation ({rotationHosts.length})</p>
           {rotationHosts.length > 0 ? (
-            <ul className="grid gap-2">
+            <ul >
               {rotationHosts.map((row) => (
-                <li key={row.hostname} className="grid gap-0.5">
-                  <span className="text-xs">{row.hostname}</span>
-                  <span className="text-muted-foreground">
+                <li key={row.hostname}>
+                  <span >{row.hostname}</span>
+                  <span >
                     {row.role ?? 'role n/a'}
                     {row.health_status ? ` | health ${row.health_status}` : ''}
                     {row.ssl_status ? ` | SSL ${row.ssl_status}` : ''}
@@ -138,19 +138,18 @@ export function OpsDomains({
               ))}
             </ul>
           ) : (
-            <p className="text-muted-foreground">No rotation hosts returned.</p>
+            <p >No rotation hosts returned.</p>
           )}
         </div>
       ) : null}
-      {tlsHostError ? opsPanelError(tlsHostError, 'TLS allow check failed') : null}
       {tlsHost ? (
-        <div className="flex flex-wrap items-center gap-2 text-sm">
-          <span className="font-medium">
-            TLS allowed for <span className="text-xs">{draftHostname.trim() || 'hostname'}</span>
+        <div >
+          <span >
+            TLS allowed for <span >{draftHostname.trim() || 'hostname'}</span>
           </span>
           <Badge variant="default">yes</Badge>
         </div>
       ) : null}
-    </OpsPageShell>
+    </OpsPageWithLoad>
   );
 }

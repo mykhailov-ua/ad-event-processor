@@ -104,6 +104,10 @@ ON CONFLICT (campaign_id, date) DO UPDATE SET
 			}
 		}
 
+		if _, err = ensureCustomerBalancesCoverCampaignBudgets(ctx, tx); err != nil {
+			return fmt.Errorf("ensure clone balances: %w", err)
+		}
+
 		if err = tx.Commit(ctx); err != nil {
 			return err
 		}

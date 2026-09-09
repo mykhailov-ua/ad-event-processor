@@ -1,6 +1,5 @@
 import type { HTMLAttributes, ReactNode } from 'react';
 
-import { adminKit } from '@/lib/admin_kit';
 import { uiSurfaces } from '@/lib/ui_surfaces';
 import { cn } from '@/lib/utils';
 
@@ -20,8 +19,8 @@ export function ToolbarBand({ split = false, className, children, ...props }: To
 }
 
 export function ToolbarBandActions({
-  className,
   children,
+  className,
   ...props
 }: HTMLAttributes<HTMLDivElement>) {
   return (
@@ -45,7 +44,7 @@ export type SummaryBandProps = HTMLAttributes<HTMLDivElement>;
 
 export function SummaryBand({ className, children, ...props }: SummaryBandProps) {
   return (
-    <div className={cn(uiSurfaces.summaryBand, adminKit.panelRadius, className)} {...props}>
+    <div className={cn(uiSurfaces.summaryBand, className)} {...props}>
       {children}
     </div>
   );
@@ -73,11 +72,7 @@ export type TableHostProps = HTMLAttributes<HTMLDivElement> & {
 export function TableHost({ fill = false, className, children, ...props }: TableHostProps) {
   return (
     <div
-      className={cn(
-        fill ? uiSurfaces.tableHostFill : uiSurfaces.tableHost,
-        adminKit.panelRadius,
-        className
-      )}
+      className={cn(fill ? uiSurfaces.tableHostFill : uiSurfaces.tableHost, className)}
       {...props}
     >
       {children}

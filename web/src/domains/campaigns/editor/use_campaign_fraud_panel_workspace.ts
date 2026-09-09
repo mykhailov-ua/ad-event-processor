@@ -4,6 +4,7 @@ import { useCallback, useEffect, useState } from 'react';
 import { toast } from 'sonner';
 
 import { patchCampaignFraud, previewCampaignFraud } from '@/api/campaigns_api';
+import { toError } from '@/lib/admin_error';
 import type {
   CampaignFraudConfig,
   CampaignFraudPreview,
@@ -179,7 +180,7 @@ export function useCampaignFraudPanelWorkspace({
       toast.success('Fraud config saved');
       onSaved();
     } catch (err: unknown) {
-      setSaveError(err instanceof Error ? err : new Error(String(err)));
+      setSaveError(toError(err));
     } finally {
       setSaving(false);
     }
@@ -199,7 +200,7 @@ export function useCampaignFraudPanelWorkspace({
       });
       setPreview(result);
     } catch (err: unknown) {
-      setPreviewError(err instanceof Error ? err : new Error(String(err)));
+      setPreviewError(toError(err));
     } finally {
       setPreviewing(false);
     }

@@ -40,9 +40,9 @@ export function CampaignEditorAdvancedCompareSection({
   onCompareDiff,
 }: CampaignEditorAdvancedCompareSectionProps) {
   return (
-    <section className="flex flex-col gap-4">
-      <h2 className="text-sm font-semibold text-foreground">Compare campaigns</h2>
-      <div className="grid gap-2">
+    <section >
+      <h2 >Compare campaigns</h2>
+      <div >
         <Label htmlFor="campaign-diff-against-id">Against campaign ID</Label>
         <Input
           id="campaign-diff-against-id"
@@ -51,12 +51,12 @@ export function CampaignEditorAdvancedCompareSection({
           placeholder="Other campaign UUID"
           onChange={(event) => onDiffAgainstIdChange(event.target.value)}
         />
-        <p className="text-xs text-muted-foreground">
+        <p >
           Compare this campaign ({campaign.id}) against another campaign in the same customer.
         </p>
       </div>
 
-      <div className={campaignEditorActionsRowClass}>
+      <div >
         <Button
           type="button"
           variant="secondary"
@@ -72,12 +72,12 @@ export function CampaignEditorAdvancedCompareSection({
         : null}
 
       {diffResult ? (
-        <div className="grid gap-3">
+        <div >
           {diffResult.truncated ? (
             <Badge variant="outline">Diff truncated - showing first rows only</Badge>
           ) : null}
           {diffResult.rows.length === 0 ? (
-            <p className="text-sm text-muted-foreground">No differences found.</p>
+            <p >No differences found.</p>
           ) : (
             <DirectoryTable>
               <TableHeader>
@@ -91,9 +91,9 @@ export function CampaignEditorAdvancedCompareSection({
               <TableBody>
                 {diffResult.rows.map((row) => (
                   <TableRow key={row.path}>
-                    <TableCell className="font-medium">{row.label}</TableCell>
-                    <TableCell className="text-xs">{formatReadonly(row.left_display)}</TableCell>
-                    <TableCell className="text-xs">{formatReadonly(row.right_display)}</TableCell>
+                    <TableCell >{row.label}</TableCell>
+                    <TableCell >{formatReadonly(row.left_display)}</TableCell>
+                    <TableCell >{formatReadonly(row.right_display)}</TableCell>
                     <TableCell>
                       <Badge variant={diffSeverityVariant(row.severity)}>{row.severity}</Badge>
                     </TableCell>

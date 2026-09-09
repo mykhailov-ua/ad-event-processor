@@ -1,21 +1,14 @@
 import { test, expect } from '@playwright/test';
 
-import {
-  gotoLiveAwaitGet,
-  loginAsAdmin,
-  mainHeading,
-  skipUnlessIntegrationReady,
-} from './helpers.js';
+import { gotoLive, loginAsAdmin, mainHeading, skipUnlessIntegrationReady } from './helpers.js';
 
 test.beforeEach(async ({}, testInfo) => {
   await skipUnlessIntegrationReady(testInfo);
 });
 
-test('settings page loads platform config from GET /api/v1/settings/platform', async ({ page }) => {
+test('settings page shows license state and apply form', async ({ page }) => {
   await loginAsAdmin(page);
-  const settingsResponse = await gotoLiveAwaitGet(page, '/settings', '/api/v1/settings/platform');
-  await expect(mainHeading(page, 'Platform settings')).toBeVisible();
-  expect(settingsResponse.ok()).toBe(true);
-  const body = await settingsResponse.json();
-  expect(body).toBeTruthy();
+  await gotoLive(page, '/settings');
+  await expect(mainHeading(page, 'Settings')).toBeVisible();
+  await expect(page.getByRole('button', { name: 'Apply license' })).toBeVisible();
 });

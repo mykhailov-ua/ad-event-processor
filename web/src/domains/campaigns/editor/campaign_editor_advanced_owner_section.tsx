@@ -29,9 +29,9 @@ export function CampaignEditorAdvancedOwnerSection({
   onExportCampaign,
 }: CampaignEditorAdvancedOwnerSectionProps) {
   return (
-    <section className="flex flex-col gap-4">
-      <h2 className="text-sm font-semibold text-foreground">Owner and export</h2>
-      <div className={INLINE_FILTER_ACTION_GRID_CLASS}>
+    <section >
+      <h2 >Owner and export</h2>
+      <div >
         <FilterField htmlFor="campaign-owner-user-id" label="New owner user ID">
           <Input
             id="campaign-owner-user-id"
@@ -45,7 +45,7 @@ export function CampaignEditorAdvancedOwnerSection({
         </Button>
       </div>
       {ownerSuccess ? (
-        <p className="text-sm text-muted-foreground" role="status">
+        <p  role="status">
           Owner transfer accepted.
         </p>
       ) : null}
@@ -53,7 +53,7 @@ export function CampaignEditorAdvancedOwnerSection({
         ? editorApiErrorBlock(ownerError, 'Owner transfer unavailable', 'Could not transfer owner')
         : null}
 
-      <div className="flex justify-start gap-2">
+      <div >
         <Button
           type="button"
           variant="secondary"

@@ -40,8 +40,7 @@ echo "admin web e2e smoke: playwright bundle"
     campaign_integrations.spec.js \
     campaign_publish.spec.js \
     campaign_diff.spec.js \
-    settings_patch.spec.js \
-    settings_apply.spec.js \
+    settings.spec.js \
     fraud_hub.spec.js \
     fraud_presets.spec.js \
     fraud_labels_write.spec.js \

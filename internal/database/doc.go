@@ -2,7 +2,9 @@
 //
 // Role:
 //   - postgres_connect.go opens a pgxpool; postgres_pools.go splits read vs settlement lanes (ConnectPostgresPools).
-//     Admin read pool sets statement_timeout from ADMIN_PG_STATEMENT_TIMEOUT_MS (default 30 s); settlement pool has no cap.
+//     Connect uses ConnectTimeout 5 s and MaxConnLifetime 1 h (stale TCP behind L4 idle); MaxConnIdleTime 30 m.
+//     Admin read pool sets statement_timeout from ADMIN_PG_STATEMENT_TIMEOUT_MS (default 30 s).
+//     Settlement pool sets statement_timeout from SETTLEMENT_PG_STATEMENT_TIMEOUT_MS (default 60 s).
 //   - goose_migrate.go applies embedded SQL migrations (ApplyGooseMigrationsDir/FS).
 //   - partition_manager.go creates and drops dated Postgres partitions for high-volume tables.
 //   - redis_connect.go dials standalone Redis; redis_shards.go builds per-shard UniversalClient (Sentinel, UDS, sticky pin).

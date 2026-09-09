@@ -488,6 +488,7 @@ func scrubCampaignDTO(ctx context.Context, c db.Campaign) campaign.CampaignDTO {
 		AttestationTTLSec:            c.AttestationTtlSec,
 		DmrEnabled:                   c.DmrEnabled,
 		RedirectComplianceMode:       string(domain.ParseRedirectComplianceMode(c.RedirectComplianceMode)),
+		TimezoneAttestationMode:      string(domain.ParseTimezoneAttestationMode(c.TimezoneAttestationMode).Effective()),
 		CIDRBlockEnabled:             c.CidrBlockEnabled,
 		ProxyVPNBlockEnabled:         c.ProxyVpnBlockEnabled,
 		ModeratorIntelEnabled:        c.ModeratorIntelEnabled,
@@ -699,7 +700,7 @@ func patchCampaign(ctx context.Context, pool *pgxpool.Pool, fx campaign.Effects,
 	adminPatch := req.Name != nil || req.DailyBudgetMicro != nil || req.Timezone != nil ||
 		req.FreqLimit != nil || req.FreqWindow != nil || req.TargetCountries != nil ||
 		req.TargetURL != nil || req.ReferrerFilter != nil ||
-		req.SafePageURL != nil || req.SafePageEnabled != nil || req.DecoyLanderID != nil || req.AttestationEnabled != nil || req.AttestationMode != nil || req.AttestationTTLSec != nil || req.DmrEnabled != nil || req.RedirectComplianceMode != nil ||
+		req.SafePageURL != nil || req.SafePageEnabled != nil || req.DecoyLanderID != nil || req.AttestationEnabled != nil || req.AttestationMode != nil || req.AttestationTTLSec != nil || req.DmrEnabled != nil || req.RedirectComplianceMode != nil || req.TimezoneAttestationMode != nil ||
 		req.CIDRBlockEnabled != nil || req.ProxyVPNBlockEnabled != nil || req.ModeratorIntelEnabled != nil ||
 		req.ReviewTrafficAction != nil ||
 		req.TLSFingerprintBlockEnabled != nil || req.ConnTypePolicy != nil ||
@@ -852,6 +853,14 @@ func patchCampaign(ctx context.Context, pool *pgxpool.Pool, fx campaign.Effects,
 				}
 				redirectComplianceMode = string(parsed)
 			}
+			timezoneAttestationMode := locked.TimezoneAttestationMode
+			if req.TimezoneAttestationMode != nil {
+				parsed, _, err := campaign.ParsePatchTimezoneAttestationMode(req.TimezoneAttestationMode)
+				if err != nil {
+					return err
+				}
+				timezoneAttestationMode = string(parsed)
+			}
 			cidrBlock := locked.CidrBlockEnabled
 			if req.CIDRBlockEnabled != nil {
 				cidrBlock = *req.CIDRBlockEnabled
@@ -952,6 +961,7 @@ func patchCampaign(ctx context.Context, pool *pgxpool.Pool, fx campaign.Effects,
 				AttestationMode:              attestationMode,
 				DmrEnabled:                   dmrEnabled,
 				RedirectComplianceMode:       redirectComplianceMode,
+				TimezoneAttestationMode:      timezoneAttestationMode,
 				ClickDelivery:                clickDelivery,
 				ProxyUpstreamUrl:             proxyUpstream,
 				ProxyRewriteAssets:           proxyRewrite,

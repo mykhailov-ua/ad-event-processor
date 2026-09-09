@@ -1,28 +1,19 @@
 import {
-  AppWindow,
-  BarChart3,
-  BookOpen,
   Building2,
-  Gavel,
-  GitBranch,
-  Globe,
-  LayoutDashboard,
-  LayoutTemplate,
-  Layers,
+  Download,
   Megaphone,
-  Palette,
   Plug,
-  Receipt,
   ScrollText,
   Settings,
-  ShieldAlert,
-  Tag,
   Users,
-  Workflow,
   Wrench,
   type LucideIcon,
 } from 'lucide-react';
 
+import {
+  CONTROL_PLANE_NAV_ENABLED,
+  filterControlPlaneNavGroups,
+} from '@/lib/control_plane_scope';
 import { filterNavItems, NAV_GROUPS, type NavItem } from '@/lib/nav_config';
 
 export type TrackerNavItem = NavItem & {
@@ -36,30 +27,18 @@ export type TrackerNavGroup = {
 };
 
 const TRACKER_NAV_ICONS: Record<string, LucideIcon> = {
-  '/dashboards/buyer': LayoutDashboard,
   '/customers': Building2,
   '/campaigns': Megaphone,
-  '/billing': Receipt,
   '/team': Users,
+  '/settings': Settings,
+  '/exports': Download,
   '/ops': Wrench,
   '/audit': ScrollText,
-  '/reports': BarChart3,
-  '/rtb': Gavel,
-  '/fraud': ShieldAlert,
   '/integrations': Plug,
-  '/creative': Palette,
-  '/automation': Workflow,
-  '/portals': AppWindow,
-  '/settings': Settings,
-  '/landers': LayoutTemplate,
-  '/offers': Tag,
-  '/domains': Globe,
-  '/flows': GitBranch,
-  '/docs': BookOpen,
 };
 
 function iconForPath(path: string): LucideIcon {
-  return TRACKER_NAV_ICONS[path] ?? Layers;
+  return TRACKER_NAV_ICONS[path] ?? Megaphone;
 }
 
 /** Lucide icon for the current pathname (longest registered nav prefix). */
@@ -76,113 +55,37 @@ export function trackerNavIconForPathname(pathname: string): LucideIcon {
       return icon;
     }
   }
-  return Layers;
+  return Megaphone;
 }
 
-/** Sidebar sections in tracker-style order (paths within each group). */
-const TRACKER_NAV_GROUP_DEFS: ReadonlyArray<{
-  id: string;
-  label: string;
-  paths: readonly string[];
-}> = [
-  { id: 'overview', label: 'Overview', paths: ['/dashboards/buyer'] },
-  {
-    id: 'traffic',
-    label: 'Traffic',
-    paths: ['/campaigns', '/landers', '/offers', '/domains', '/creative'],
-  },
-  { id: 'analytics', label: 'Analytics', paths: ['/reports'] },
-  {
-    id: 'platform',
-    label: 'Platform',
-    paths: ['/integrations', '/automation', '/rtb', '/fraud', '/portals'],
-  },
-  {
-    id: 'organization',
-    label: 'Organization',
-    paths: ['/customers', '/team', '/billing', '/settings'],
-  },
-  { id: 'operations', label: 'Operations', paths: ['/ops', '/audit', '/docs'] },
-];
-
-const TRACKER_NAV_LABELS: Record<string, string> = {
-  '/dashboards/buyer': 'Dashboard',
-  '/campaigns': 'Campaigns',
-  '/landers': 'Landing Pages',
-  '/offers': 'Offers',
-  '/integrations': 'Integrations',
-  '/reports': 'Reports',
-  '/domains': 'Domains',
-  '/customers': 'Users',
-  '/settings': 'Settings',
-  '/creative': 'Creative',
-  '/automation': 'Automation',
-  '/billing': 'Billing',
-  '/team': 'Team',
-  '/ops': 'Maintenance',
-  '/audit': 'Audit',
-  '/rtb': 'RTB',
-  '/fraud': 'Fraud',
-  '/portals': 'Portals',
-  '/docs': 'Documentation',
-};
-
-const EXTRA_TRACKER_NAV: NavItem[] = [
-  { path: '/landers', label: 'Landing Pages', permission: 'campaigns:read' },
-  { path: '/offers', label: 'Offers', permission: 'campaigns:read' },
-  { path: '/domains', label: 'Domains', permission: 'campaigns:read' },
-];
-
-function buildTrackerNavItemMap(permissions: string[] | undefined): Map<string, TrackerNavItem> {
-  const flat = [...NAV_GROUPS.flatMap((group) => group.items), ...EXTRA_TRACKER_NAV];
-  const filtered = filterNavItems(flat, permissions);
-  const byPath = new Map<string, TrackerNavItem>();
-
-  for (const item of filtered) {
-    if (byPath.has(item.path)) {
-      continue;
-    }
-    byPath.set(item.path, {
-      ...item,
-      label: TRACKER_NAV_LABELS[item.path] ?? item.label,
-      icon: iconForPath(item.path),
-    });
-  }
-
-  return byPath;
+function withIcons(items: NavItem[]): TrackerNavItem[] {
+  return items.map((item) => ({
+    ...item,
+    icon: iconForPath(item.path),
+  }));
 }
 
 export function listTrackerNavGroups(permissions: string[] | undefined): TrackerNavGroup[] {
-  const byPath = buildTrackerNavItemMap(permissions);
-  const groups: TrackerNavGroup[] = [];
-  const assigned = new Set<string>();
-
-  for (const def of TRACKER_NAV_GROUP_DEFS) {
-    const items: TrackerNavItem[] = [];
-    for (const path of def.paths) {
-      const item = byPath.get(path);
-      if (!item || assigned.has(path)) {
-        continue;
-      }
-      assigned.add(path);
-      items.push(item);
-    }
-    if (items.length > 0) {
-      groups.push({ id: def.id, label: def.label, items });
-    }
+  if (CONTROL_PLANE_NAV_ENABLED) {
+    return filterControlPlaneNavGroups(permissions).map((group) => ({
+      ...group,
+      items: withIcons(group.items),
+    }));
   }
 
-  const remainder: TrackerNavItem[] = [];
-  for (const [path, item] of byPath) {
-    if (!assigned.has(path)) {
-      remainder.push(item);
+  const flat = filterNavItems(NAV_GROUPS.flatMap((group) => group.items), permissions);
+  const byPath = new Map<string, TrackerNavItem>();
+  for (const item of flat) {
+    if (!byPath.has(item.path)) {
+      byPath.set(item.path, { ...item, icon: iconForPath(item.path) });
     }
   }
-  if (remainder.length > 0) {
-    groups.push({ id: 'more', label: 'More', items: remainder });
-  }
-
-  return groups;
+  return NAV_GROUPS.map((group) => ({
+    ...group,
+    items: group.items
+      .map((item) => byPath.get(item.path))
+      .filter((item): item is TrackerNavItem => item != null),
+  })).filter((group) => group.items.length > 0);
 }
 
 export function listTrackerNavItems(permissions: string[] | undefined): TrackerNavItem[] {

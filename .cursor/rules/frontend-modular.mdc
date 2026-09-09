@@ -26,7 +26,7 @@ Same invariants as Go `cmd/control` (`modular-monolith.mdc`, `structure.mdc`):
 
 **Agent audits:** mandatory toolchain + catalog IDs in `frontend-slop.mdc` **Agent execution protocol** — no subjective "best practices" reviews.
 
-Cross-ref: `ui.mdc` (macro Grid / micro Flex layout, styling stack), `react.mdc` (Hot vs Cold runtime), `frontend-hot-path.mdc` (suboptimal ops, scale regimes), `boundaries.mdc` (coupling limits), `naming.mdc`.
+Cross-ref: `ui.mdc` (macro Grid / micro Flex layout, styling stack), `frontend-patterns.mdc` (паттерны фронтенда; composition, effects, races, errors, async), `frontend-primitives.mdc` (Button/Input stack), `react.mdc` (Hot vs Cold runtime), `frontend-hot-path.mdc` (suboptimal ops, scale regimes), `boundaries.mdc` (coupling limits), `naming.mdc`.
 
 ## Status
 
@@ -210,4 +210,4 @@ Milestone PR: paste verification commands (`ui.mdc`).
 
 ## Related rules
 
-`ui.mdc`, `react.mdc`, `boundaries.mdc`, `anti-slop.mdc`, `modular-monolith.mdc`, `structure.mdc`.
+`ui.mdc`, `frontend-patterns.mdc`, `frontend-primitives.mdc`, `react.mdc`, `boundaries.mdc`, `anti-slop.mdc`, `modular-monolith.mdc`, `structure.mdc`.

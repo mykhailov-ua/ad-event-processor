@@ -43,7 +43,20 @@ type WireTargeting struct {
 }
 
 func MapParsedToTargeting(hot *openrtb.OpenRTB26Hot, cold *openrtb.OpenRTB26Cold, geo filter.GeoProvider, clientIP string) WireTargeting {
-	out := WireTargeting{
+	var out WireTargeting
+	var evt domain.Event
+	if clientIP != "" {
+		evt.IP = clientIP
+	}
+	MapParsedToTargetingInto(hot, cold, geo, &evt, &out)
+	return out
+}
+
+func MapParsedToTargetingInto(hot *openrtb.OpenRTB26Hot, cold *openrtb.OpenRTB26Cold, geo filter.GeoProvider, evt *domain.Event, out *WireTargeting) {
+	if out == nil {
+		return
+	}
+	*out = WireTargeting{
 		Test:        hot.Flags&openrtb26FlagTest != 0,
 		CurrencyUSD: hot.Flags&openrtb26FlagEUR == 0,
 	}
@@ -86,19 +99,28 @@ func MapParsedToTargeting(hot *openrtb.OpenRTB26Hot, cold *openrtb.OpenRTB26Cold
 	}
 	if hot.Flags&openrtb26FlagGeoCountry != 0 && hot.GeoCountryLen > 0 {
 		out.Input.GeoHash = rtb.GeoHashFromCountryBytes(hot.GeoCountry[:hot.GeoCountryLen])
-	} else if geo != nil && clientIP != "" {
-		var evt domain.Event
-		evt.IP = clientIP
-		ingestcold.EnsureIngestGeo(geo, &evt)
+	} else if evt != nil && evt.GeoHash != 0 {
+		out.Input.GeoHash = evt.GeoHash
+	} else if geo != nil && evt != nil && evt.IP != "" {
+		ingestcold.EnsureIngestGeo(geo, evt)
 		out.Input.GeoHash = evt.GeoHash
 	}
-	return out
 }
 
 func MapImpSlotToTargeting(hot *openrtb.OpenRTB26Hot, cold *openrtb.OpenRTB26Cold, slot *openrtb.OpenRTB26ImpSlot, geo filter.GeoProvider, clientIP string) WireTargeting {
-	out := MapParsedToTargeting(hot, cold, geo, clientIP)
+	var out WireTargeting
+	var evt domain.Event
+	if clientIP != "" {
+		evt.IP = clientIP
+	}
+	MapImpSlotToTargetingInto(hot, cold, slot, geo, &evt, &out)
+	return out
+}
+
+func MapImpSlotToTargetingInto(hot *openrtb.OpenRTB26Hot, cold *openrtb.OpenRTB26Cold, slot *openrtb.OpenRTB26ImpSlot, geo filter.GeoProvider, evt *domain.Event, out *WireTargeting) {
+	MapParsedToTargetingInto(hot, cold, geo, evt, out)
 	if slot == nil {
-		return out
+		return
 	}
 	out.Input.PublisherFloorMicro = slot.BidFloorMicro
 	if slot.DealBidFloorMicro > out.Input.PublisherFloorMicro {
@@ -121,7 +143,6 @@ func MapImpSlotToTargeting(hot *openrtb.OpenRTB26Hot, cold *openrtb.OpenRTB26Col
 		out.MaxDuration = 0
 	}
 	out.Input.SeatCount = impSlotSeatCount(slot, hot)
-	return out
 }
 
 func ImpSlotFromHot(hot *openrtb.OpenRTB26Hot) openrtb.OpenRTB26ImpSlot {

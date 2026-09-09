@@ -755,9 +755,26 @@ func (s *Service) ListUserAPIKeys(ctx context.Context, userID uuid.UUID) ([]APIK
 	return out, nil
 }
 
+func (s *Service) RevokeAPIKey(ctx context.Context, userID, keyID uuid.UUID) error {
+	deleted, err := s.repo.DeleteUserAPIKey(ctx, db.DeleteUserAPIKeyParams{
+		ID:     pgtype.UUID{Bytes: keyID, Valid: true},
+		UserID: pgtype.UUID{Bytes: userID, Valid: true},
+	})
+	if err != nil {
+		return err
+	}
+	if deleted == 0 {
+		return ErrInvalidAPIKey
+	}
+	s.AuditLog(ctx, userID, "API_KEY_REVOKED", "api_key", keyID.String(), "", "",
+		map[string]any{"api_key_id": keyID.String()}, nil)
+	return nil
+}
+
 type VerifiedAPIKey struct {
 	User   db.User
 	Scopes []string
+	KeyID  uuid.UUID
 }
 
 func (s *Service) VerifyAPIKey(ctx context.Context, rawKey string) (VerifiedAPIKey, error) {
@@ -798,7 +815,11 @@ func (s *Service) VerifyAPIKey(ctx context.Context, rawKey string) (VerifiedAPIK
 	if user.IsBlocked {
 		return VerifiedAPIKey{}, ErrAccountLocked
 	}
-	return VerifiedAPIKey{User: user, Scopes: row.Scopes}, nil
+	return VerifiedAPIKey{
+		User:   user,
+		Scopes: row.Scopes,
+		KeyID:  uuidFromPg(row.ID),
+	}, nil
 }
 
 func (s *Service) RequestEmailVerification(ctx context.Context, userID uuid.UUID) (string, error) {

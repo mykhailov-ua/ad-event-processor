@@ -56,7 +56,7 @@ export function CampaignBulkCloneDialog({
 
   return (
     <Dialog onOpenChange={onOpenChange} open={open}>
-      <DialogContent className="max-w-lg">
+      <DialogContent >
         <DialogHeader>
           <DialogTitle>Bulk clone campaigns</DialogTitle>
           <DialogDescription>
@@ -64,8 +64,8 @@ export function CampaignBulkCloneDialog({
             conversion mappings. Budget spend is reset on each clone.
           </DialogDescription>
         </DialogHeader>
-        <DialogBody className="grid gap-4">
-          <div className={cn('grid', adminKit.fieldLabelGap)}>
+        <DialogBody >
+          <div >
             <Label htmlFor="bulk-clone-name-suffix">Name suffix</Label>
             <Input
               id="bulk-clone-name-suffix"
@@ -75,14 +75,14 @@ export function CampaignBulkCloneDialog({
             />
           </div>
 
-          <div className="grid gap-3">
-            <p className="m-0 text-sm font-medium">Clone options</p>
+          <div >
+            <p >Clone options</p>
             {CLONE_OPTION_FIELDS.map(({ field, label, description }) => {
               const inputId = `bulk-clone-option-${field}`;
               const checked = cloneOptions[field] ?? DEFAULT_CLONE_OPTIONS[field];
               return (
-                <div key={field} className="grid gap-1">
-                  <div className="flex items-center gap-2">
+                <div key={field}>
+                  <div >
                     <Checkbox
                       checked={checked}
                       disabled={cloning || successCount > 0}
@@ -91,7 +91,7 @@ export function CampaignBulkCloneDialog({
                     />
                     <Label htmlFor={inputId}>{label}</Label>
                   </div>
-                  <p className="text-xs text-muted-foreground">{description}</p>
+                  <p >{description}</p>
                 </div>
               );
             })}
@@ -99,13 +99,13 @@ export function CampaignBulkCloneDialog({
 
           {cloneError ? campaignPanelError(cloneError, 'Bulk clone failed') : null}
           {results && successCount > 0 ? (
-            <p className="text-sm text-muted-foreground" role="status">
+            <p  role="status">
               Cloned {successCount} campaign(s)
               {failedCount > 0 ? `; ${failedCount} failed` : ''}.
             </p>
           ) : null}
         </DialogBody>
-        <DialogFooter className="gap-2">
+        <DialogFooter >
           <SecondaryActionButton type="button" onClick={() => onOpenChange(false)}>
             {successCount > 0 ? 'Close' : 'Cancel'}
           </SecondaryActionButton>

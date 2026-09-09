@@ -8,7 +8,6 @@ export type PaginationPrevNextProps = {
   disabled?: boolean;
   onPrev: () => void;
   onNext: () => void;
-  className?: string;
   variant?: ButtonVariant;
   prevLabel?: string;
   nextLabel?: string;
@@ -21,7 +20,6 @@ export function PaginationPrevNext({
   disabled = false,
   onPrev,
   onNext,
-  className,
   variant = 'outline',
   prevLabel = 'Previous',
   nextLabel = 'Next',
@@ -32,10 +30,10 @@ export function PaginationPrevNext({
   const nextDisabled = disabled || !canGoNext;
 
   return (
-    <div className={cn(split ? 'flex w-full gap-2' : 'flex items-center gap-2', className)}>
+    <div >
       <Button
         aria-label={prevLabel}
-        className={split ? 'flex-1' : undefined}
+       
         disabled={prevDisabled}
         shape={split ? 'pill' : undefined}
         type="button"
@@ -46,7 +44,7 @@ export function PaginationPrevNext({
       </Button>
       <Button
         aria-label={nextLabel}
-        className={split ? 'flex-1' : undefined}
+       
         disabled={nextDisabled}
         shape={split ? 'pill' : undefined}
         type="button"

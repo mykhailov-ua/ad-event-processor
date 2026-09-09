@@ -5,10 +5,10 @@ export const ADMIN_TABULAR_CLASS = '';
 export const ADMIN_NUMERIC_CLASS = '';
 
 /** Inter for UUIDs, hashes, URLs, JSON, secrets. */
-export const ADMIN_MONO_CLASS = 'text-xs';
+export const ADMIN_MONO_CLASS = '';
 
 /** Inter for slug identifiers (integration_schema, template keys, traffic family). */
-export const ADMIN_SLUG_CLASS = 'text-xs';
+export const ADMIN_SLUG_CLASS = '';
 
 export type AdminTypographyRole = 'prose' | 'tabular' | 'mono' | 'slug';
 

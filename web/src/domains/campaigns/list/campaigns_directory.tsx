@@ -1,36 +1,36 @@
-import { useCallback } from 'react';
+import { useCallback, useEffect, useMemo } from 'react';
+import { useLocation } from 'react-router-dom';
 import { toast } from 'sonner';
 
-import type { CampaignWithMoneyDisplay } from '@/domains/campaigns/list/campaign_metrics_shared';
-import { CampaignListTableCardTools } from '@/domains/campaigns/list/campaign_list_table_card_tools';
-import { CampaignsListTable } from '@/domains/campaigns/list/campaigns_list_table';
 import { CampaignsListToolbar } from '@/domains/campaigns/list/campaigns_list_toolbar';
+import { useCampaignsCommandPaletteActions } from '@/domains/campaigns/list/use_campaigns_command_palette_actions';
 import { CampaignsDirectoryOverlays } from '@/domains/campaigns/list/campaigns_directory_overlays';
+import { CampaignsSelectionPanel } from '@/domains/campaigns/list/campaigns_selection_panel';
 import type { CampaignsDirectoryProps } from '@/domains/campaigns/list/campaigns_directory_types';
-import { TableHost } from '@/shell/ui_bands';
+import { ControlPlaneSelectTable } from '@/shell/control_plane_select_table';
 import { useCampaignsDirectoryWorkspace } from '@/domains/campaigns/list/use_campaigns_directory_workspace';
-import { ErrorBlock } from '@/shell/error_block';
-import { PageSkeleton } from '@/shell/page_skeleton';
-import { PageLayout } from '@/shell/page_layout';
 import { DirectoryPaginationFooter } from '@/shell/directory_pagination_footer';
+import { DirectoryFetchError, DirectoryPageShell } from '@/shell/directory_page_shell';
 import { StubBanner } from '@/shell/stub_banner';
 import { CAMPAIGN_LIST_FACETS_DEGRADED_MESSAGE } from '@/domains/campaigns/list/campaign_list_facets_source';
+import { isCampaignListAuxEndpointUnavailable } from '@/domains/campaigns/list/campaign_list_aux_error';
 import {
   openCampaignCreateDialog,
   openCampaignWizardSheet,
   setCampaignCreateDialogOpen,
   setCampaignWizardSheetOpen,
 } from '@/domains/campaigns/list/campaign_list_create_overlay';
-import { Button } from '@/components/ui/button';
+import { buildExportHubHref } from '@/lib/export_hub_paths';
+import { rememberExportHubReturnPath } from '@/lib/export_hub_return';
 import { listPageRange } from '@/lib/list_page_stats';
+import { InAppLink } from '@/shell/in_app_link';
 
 export type {
   CampaignPacingFilter,
   CampaignSortField,
   CampaignStatusFilter,
   SortOrder,
-  CampaignListColumnWidthProbe,
-} from '@/domains/campaigns/list/campaigns_directory_types';
+} from '@/domains/campaigns/list/campaigns_list_types';
 
 export function CampaignsDirectory({
   items,
@@ -44,9 +44,6 @@ export function CampaignsDirectory({
   customerNameById,
   metricsById,
   marginsById,
-  columnWidthProbe,
-  appliedSort,
-  appliedOrder,
   draftCustomerId,
   draftStatus,
   draftPacing,
@@ -61,10 +58,6 @@ export function CampaignsDirectory({
   countryOptions,
   listFacetsFetching = false,
   listFacetsDegraded = false,
-  filterTotals,
-  filterTotalsCapped = false,
-  filteredTotal = 0,
-  metricsStale = false,
   listLastUpdatedAt = null,
   listScopeKey,
   statsQuery,
@@ -72,6 +65,8 @@ export function CampaignsDirectory({
   fetching,
   listRevalidating = false,
   error,
+  metricsError,
+  filterTotalsError,
   hasSnapshot,
   filtersActive,
   customerId,
@@ -91,12 +86,11 @@ export function CampaignsDirectory({
   onDraftPacingChange,
   onDraftOwnerUserIdChange,
   onDraftCountryChange,
+  onDirectoryFiltersApply,
   onDraftBudgetMinUsdChange,
   onDraftBudgetMaxUsdChange,
-  onBudgetFiltersApply,
   onStatsRangeChange,
   onRefreshList,
-  onColumnSort,
   onPageChange,
   onPageSizeChange,
   onDraftTemplateIdChange,
@@ -106,6 +100,19 @@ export function CampaignsDirectory({
   onLoadTemplates,
   onCreateCampaign,
 }: CampaignsDirectoryProps) {
+  const location = useLocation();
+  const exportHubHref = useMemo(
+    () =>
+      buildExportHubHref({
+        returnTo: `${location.pathname}${location.search}`,
+      }),
+    [location.pathname, location.search]
+  );
+
+  useEffect(() => {
+    rememberExportHubReturnPath(`${location.pathname}${location.search}`);
+  }, [location.pathname, location.search]);
+
   const workspace = useCampaignsDirectoryWorkspace({
     items,
     customerOptions,
@@ -113,8 +120,6 @@ export function CampaignsDirectory({
     ownerEmailById,
     metricsById,
     marginsById,
-    columnWidthProbe,
-    filterTotals,
     exportFilterQuery,
     listScopeKey,
     statsQuery,
@@ -153,21 +158,86 @@ export function CampaignsDirectory({
     [onCreateSectionOpenChange, workspace.setWizardOpen]
   );
 
-  if (fetching && !hasSnapshot && !error) {
-    return <PageSkeleton variant="directory" columns={8} />;
-  }
+  const directoryMetricsError =
+    metricsError && !isCampaignListAuxEndpointUnavailable(metricsError) ? metricsError : undefined;
+  const directoryFilterTotalsError =
+    filterTotalsError && !isCampaignListAuxEndpointUnavailable(filterTotalsError)
+      ? filterTotalsError
+      : undefined;
 
-  if (error && !hasSnapshot) {
-    return <ErrorBlock title="Could not load campaigns" message={error.message} />;
-  }
+  const handlePauseSelected = useCallback(() => {
+    if (workspace.selectedIds.size === 0) {
+      toast.error('Select at least one campaign');
+      return;
+    }
+    workspace.onPauseSelected();
+  }, [workspace.onPauseSelected, workspace.selectedIds.size]);
+
+  const handleResumeSelected = useCallback(() => {
+    if (workspace.selectedIds.size === 0) {
+      toast.error('Select at least one campaign');
+      return;
+    }
+    workspace.onResumeSelected();
+  }, [workspace.onResumeSelected, workspace.selectedIds.size]);
+
+  const handleArchiveSelected = useCallback(() => {
+    if (workspace.selectedIds.size === 0) {
+      toast.error('Select at least one campaign');
+      return;
+    }
+    workspace.setArchiveOpen(true);
+  }, [workspace.selectedIds.size, workspace.setArchiveOpen]);
+
+  const handleClearSelection = useCallback(() => {
+    workspace.setSelectedIds(new Set());
+  }, [workspace.setSelectedIds]);
+
+  useCampaignsCommandPaletteActions({
+    selectedCount: workspace.selectedIds.size,
+    onPauseSelected: handlePauseSelected,
+    onResumeSelected: handleResumeSelected,
+  });
+
+  const selectedCampaignId = workspace.selectedCampaignId ?? null;
+  const operateRows = useMemo(
+    () =>
+      (items ?? [])
+        .filter((campaign): campaign is typeof campaign & { id: string } => Boolean(campaign.id))
+        .map((campaign) => ({
+          id: campaign.id,
+          label: campaign.name ?? campaign.id,
+        })),
+    [items]
+  );
 
   return (
     <>
-      <PageLayout
-        description="Create, edit, pause, and bulk-manage campaigns. Open Report for read-only analytics."
-        title="Campaigns"
+      <DirectoryPageShell
+        alerts={
+          <>
+            <DirectoryFetchError
+              error={directoryMetricsError}
+              fetchState={{ fetching, error: directoryMetricsError, hasSnapshot }}
+              refreshTitle="Could not refresh campaign metrics"
+              title="Could not load campaign metrics"
+            />
+            <DirectoryFetchError
+              error={directoryFilterTotalsError}
+              fetchState={{ fetching, error: directoryFilterTotalsError, hasSnapshot }}
+              refreshTitle="Could not refresh filter totals"
+              title="Could not load filter totals"
+            />
+          </>
+        }
+        blockingErrorTitle="Could not load campaigns"
+        fillViewport={false}
+        footerClassName="border-t-0 px-0 pt-2"
+        headerClassName="border-b-0"
+        mainClassName="min-w-0 w-full flex-none"
+        workspaceClassName="pt-3"
         controlPanel={
-          <div className="grid gap-3">
+          <div >
             {listFacetsDegraded ? (
               <StubBanner
                 title="Owner and country filters limited"
@@ -175,7 +245,6 @@ export function CampaignsDirectory({
               />
             ) : null}
             <CampaignsListToolbar
-              bulkBusy={workspace.bulkBusy || workspace.exportBusy}
               countryOptions={countryOptions}
               customerOptions={customerOptions}
               draftStatsFrom={draftStatsFrom}
@@ -184,43 +253,19 @@ export function CampaignsDirectory({
               draftBudgetMinUsd={draftBudgetMinUsd}
               draftCountry={draftCountry}
               draftCustomerId={draftCustomerId}
-              appliedStatus={draftStatus}
+              draftStatus={draftStatus}
               draftOwnerUserId={draftOwnerUserId}
               draftPacing={draftPacing}
               fetching={fetching}
-              filterTotalsCapped={filterTotalsCapped}
-              filteredTotal={filteredTotal}
               listFacetsFetching={listFacetsFetching}
               listFacetsDegraded={listFacetsDegraded}
-              metricsStale={metricsStale}
               listLastUpdatedAt={listLastUpdatedAt}
               listRevalidating={listRevalidating}
               ownerOptions={ownerOptions}
               statusTotals={statusTotals}
               statusTotalsLoading={statusTotalsLoading}
-              summary={workspace.summary}
-              selectedCount={workspace.selectedIds.size}
-              selectedCampaignId={workspace.selectedCampaignId}
-              onArchiveClick={() => {
-                if (workspace.selectedIds.size === 0) {
-                  toast.error('Select at least one campaign');
-                  return;
-                }
-                workspace.setArchiveOpen(true);
-              }}
-              onBudgetFiltersApply={onBudgetFiltersApply}
-              onCloneClick={() => {
-                if (workspace.selectedIds.size === 0) {
-                  toast.error('Select at least one campaign');
-                  return;
-                }
-                if (workspace.selectedIds.size === 1) {
-                  workspace.setCloneOpen(true);
-                  return;
-                }
-                workspace.setBulkCloneOpen(true);
-              }}
               onCreateClick={handleCreateClick}
+              onDirectoryFiltersApply={onDirectoryFiltersApply}
               onStatsRangeChange={onStatsRangeChange}
               onDraftBudgetMaxUsdChange={onDraftBudgetMaxUsdChange}
               onDraftBudgetMinUsdChange={onDraftBudgetMinUsdChange}
@@ -228,110 +273,80 @@ export function CampaignsDirectory({
               onDraftCustomerIdChange={onDraftCustomerIdChange}
               onDraftOwnerUserIdChange={onDraftOwnerUserIdChange}
               onDraftPacingChange={onDraftPacingChange}
-              onDraftStatusChange={onDraftStatusChange}
+              onDraftStatusChange={(status) => {
+                workspace.setSelectedIds(new Set());
+                onDraftStatusChange(status);
+              }}
               onImportClick={() => workspace.setImportOpen(true)}
-              onPauseClick={() => {
-                if (workspace.selectedIds.size === 0) {
-                  toast.error('Select at least one campaign');
-                  return;
-                }
-                workspace.onPauseSelected();
-              }}
               onRefresh={onRefreshList}
-              onResumeClick={() => {
-                if (workspace.selectedIds.size === 0) {
-                  toast.error('Select at least one campaign');
-                  return;
-                }
-                workspace.onResumeSelected();
-              }}
               onWizardClick={handleWizardClick}
-              tableViewTools={
-                <CampaignListTableCardTools
-                  columnPrefs={workspace.columnPrefs}
-                  disabled={fetching}
-                  onColumnPrefsChange={workspace.handleColumnPrefsApply}
-                  onResetWorkspaceClick={() => workspace.setResetWorkspaceOpen(true)}
-                />
-              }
             />
           </div>
+        }
+        description={
+          <>
+            Create, edit, pause, and bulk-manage campaigns. BI report jobs run on{' '}
+            <InAppLink className="text-primary hover:underline" to={exportHubHref}>
+              Export hub
+            </InAppLink>{' '}
+            (Operations nav).
+          </>
+        }
+        fetchState={{ fetching, error, hasSnapshot }}
+        aside={
+          <CampaignsSelectionPanel
+            bulkBusy={workspace.bulkBusy}
+            exportBusy={workspace.exportBusy}
+            selectedCampaign={workspace.selectedCampaign}
+            onArchive={handleArchiveSelected}
+            onClearSelection={handleClearSelection}
+            onClone={() => {
+              if (workspace.selectedIds.size === 0) {
+                toast.error('Select a campaign first');
+                return;
+              }
+              workspace.setCloneOpen(true);
+            }}
+            onExportBundles={workspace.onExportBundles}
+            onExportCsv={workspace.onExportCsv}
+            onPause={handlePauseSelected}
+            onResume={handleResumeSelected}
+          />
         }
         footer={
-          <div className="flex flex-wrap items-center gap-3">
-            <DirectoryPaginationFooter
-              canGoNext={canGoNext}
-              canGoPrev={canGoPrev}
-              className="gap-2"
-              disabled={fetching}
-              limit={limit}
-              page={page}
-              pageCount={pageCount}
-              pageSizeId="campaigns-page-size"
-              rangeLabel={rangeLabel}
-              showPrevNext={false}
-              onLimitChange={onPageSizeChange}
-              onNext={() => onPageChange(offset + limit)}
-              onPageChange={(nextPage) => onPageChange((nextPage - 1) * limit)}
-              onPrev={() => onPageChange(Math.max(0, offset - limit))}
-            />
-            <div aria-label="Export" className="flex flex-wrap items-center gap-2">
-              <Button
-                disabled={fetching || total === 0 || workspace.exportBusy}
-                title="Download CSV for selected campaigns, or all campaigns matching the current filters"
-                type="button"
-                variant="outline"
-                onClick={workspace.onExportCsv}
-              >
-                Export CSV
-              </Button>
-              <Button
-                disabled={fetching || total === 0 || workspace.exportBusy}
-                title="Download JSON bundles for selected campaigns, or all campaigns matching the current filters"
-                type="button"
-                variant="outline"
-                onClick={workspace.onExportBundles}
-              >
-                Export JSON
-              </Button>
-            </div>
-          </div>
+          <DirectoryPaginationFooter
+            canGoNext={canGoNext}
+            canGoPrev={canGoPrev}
+            disabled={fetching}
+            limit={limit}
+            page={page}
+            pageCount={pageCount}
+            pageSizeId="campaigns-page-size"
+            rangeLabel={rangeLabel}
+            showPrevNext={false}
+            onLimitChange={onPageSizeChange}
+            onNext={() => onPageChange(offset + limit)}
+            onPageChange={(nextPage) => onPageChange((nextPage - 1) * limit)}
+            onPrev={() => onPageChange(Math.max(0, offset - limit))}
+          />
         }
+        skeletonColumns={2}
+        title="Campaigns"
       >
-        <div className="min-w-0 w-full">
-          <TableHost className="w-full">
-            <CampaignsListTable
-              appliedOrder={appliedOrder}
-              appliedSort={appliedSort}
-              columnPrefs={workspace.columnPrefs}
-              columnWidths={workspace.columnWidths}
-              customerNameById={customerNameById}
-              ownerEmailById={ownerEmailById}
-              emptyMessage={
-                filtersActive
-                  ? 'No campaigns match the current filters.'
-                  : 'No campaigns yet. Create one to start tracking spend and delivery.'
-              }
-              fetching={fetching}
-              listRevalidating={listRevalidating}
-              filterTotals={filterTotals}
-              items={items}
-              marginsById={marginsById}
-              metricsById={metricsById}
-              selectedIds={workspace.selectedIds}
-              onColumnPrefsChange={workspace.handleColumnPrefsApply}
-              onColumnSort={onColumnSort}
-              onColumnWidthCommit={workspace.handleColumnWidthCommit}
-              onCampaignOverview={(campaign) =>
-                workspace.setOverviewCampaign(campaign as CampaignWithMoneyDisplay)
-              }
-              onSelectedIdsChange={workspace.setSelectedIds}
-              statsCacheRevision={listScopeKey}
-              statsQuery={statsQuery}
-            />
-          </TableHost>
-        </div>
-      </PageLayout>
+        <ControlPlaneSelectTable
+          disabled={fetching}
+          emptyMessage={
+            filtersActive
+              ? 'No campaigns match the current filters.'
+              : 'No campaigns yet. Create one to start tracking spend and delivery.'
+          }
+          nameColumnLabel="Campaign"
+          revalidating={listRevalidating}
+          rows={operateRows}
+          selectedId={selectedCampaignId}
+          onSelectedIdChange={(id) => workspace.setSelectedIds(id ? new Set([id]) : new Set())}
+        />
+      </DirectoryPageShell>
 
       <CampaignsDirectoryOverlays
         actionError={actionError}
@@ -359,11 +374,11 @@ export function CampaignsDirectory({
         onBulkCloned={() => {
           workspace.setBulkCloneOpen(false);
           workspace.setSelectedIds(new Set());
-          onRefreshList();
+          workspace.refreshListAfterMutation();
         }}
         onCloned={() => {
           workspace.setCloneOpen(false);
-          onRefreshList();
+          workspace.refreshListAfterMutation();
         }}
         onCreateCampaign={onCreateCampaign}
         onCreateSectionOpenChange={handleCreateSectionOpenChange}
@@ -373,25 +388,12 @@ export function CampaignsDirectory({
         onDraftTemplateIdChange={onDraftTemplateIdChange}
         onImportOpenChange={workspace.setImportOpen}
         onLoadTemplates={onLoadTemplates}
-        onOverviewOpenChange={(open) => {
-          if (!open) {
-            workspace.setOverviewCampaign(null);
-          }
-        }}
-        onResetWorkspaceConfirm={workspace.handleResetWorkspaceConfirm}
-        onResetWorkspaceOpenChange={workspace.setResetWorkspaceOpen}
         onWizardOpenChange={handleWizardOpenChange}
-        onWizardRefresh={onRefreshList}
-        overviewCampaign={workspace.overviewCampaign}
-        marginsById={marginsById}
-        metricsById={metricsById}
-        listScopeKey={listScopeKey}
-        resetWorkspaceOpen={workspace.resetWorkspaceOpen}
+        onWizardRefresh={workspace.refreshListAfterMutation}
         selectedCampaignId={workspace.selectedCampaignId}
         selectedCampaignIds={workspace.selectedIdsList}
         selectedCampaignName={workspace.selectedCampaign?.name}
         selectedCount={workspace.selectedIds.size}
-        statsQuery={statsQuery}
         templates={templates}
         templatesError={templatesError}
         templatesLoading={templatesLoading}

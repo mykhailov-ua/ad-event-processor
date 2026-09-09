@@ -174,8 +174,50 @@ LIMIT $1 OFFSET $2;
 -- name: CountAuditLogs :one
 SELECT COUNT(*) FROM admin_audit_log;
 
+-- name: CountAuditLogsFiltered :one
+SELECT COUNT(*) FROM admin_audit_log
+WHERE (sqlc.narg('admin_id')::uuid IS NULL OR admin_id = sqlc.narg('admin_id')::uuid)
+  AND (sqlc.narg('target_id')::uuid IS NULL OR target_id = sqlc.narg('target_id')::uuid)
+  AND (
+    sqlc.narg('action')::text IS NULL
+    OR btrim(sqlc.narg('action')::text) = ''
+    OR action = btrim(sqlc.narg('action')::text)
+  )
+  AND (
+    sqlc.narg('auth_source')::text IS NULL
+    OR btrim(sqlc.narg('auth_source')::text) = ''
+    OR metadata->>'auth_source' = btrim(sqlc.narg('auth_source')::text)
+  )
+  AND (
+    sqlc.narg('api_key_id')::text IS NULL
+    OR btrim(sqlc.narg('api_key_id')::text) = ''
+    OR metadata->>'api_key_id' = btrim(sqlc.narg('api_key_id')::text)
+  );
+
 -- name: ListAuditPaginated :many
 SELECT * FROM admin_audit_log
+ORDER BY created_at DESC
+LIMIT $1 OFFSET $2;
+
+-- name: ListAuditPaginatedFiltered :many
+SELECT * FROM admin_audit_log
+WHERE (sqlc.narg('admin_id')::uuid IS NULL OR admin_id = sqlc.narg('admin_id')::uuid)
+  AND (sqlc.narg('target_id')::uuid IS NULL OR target_id = sqlc.narg('target_id')::uuid)
+  AND (
+    sqlc.narg('action')::text IS NULL
+    OR btrim(sqlc.narg('action')::text) = ''
+    OR action = btrim(sqlc.narg('action')::text)
+  )
+  AND (
+    sqlc.narg('auth_source')::text IS NULL
+    OR btrim(sqlc.narg('auth_source')::text) = ''
+    OR metadata->>'auth_source' = btrim(sqlc.narg('auth_source')::text)
+  )
+  AND (
+    sqlc.narg('api_key_id')::text IS NULL
+    OR btrim(sqlc.narg('api_key_id')::text) = ''
+    OR metadata->>'api_key_id' = btrim(sqlc.narg('api_key_id')::text)
+  )
 ORDER BY created_at DESC
 LIMIT $1 OFFSET $2;
 
@@ -789,6 +831,7 @@ SET name = $2,
     mobile_biometrics_click_enabled = $29,
     decoy_lander_id = $30,
     redirect_compliance_mode = $31,
+    timezone_attestation_mode = $32,
     updated_at = CURRENT_TIMESTAMP
 WHERE id = $1
 RETURNING *;

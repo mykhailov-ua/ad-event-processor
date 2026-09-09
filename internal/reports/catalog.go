@@ -74,6 +74,15 @@ var ReportCatalogEntries = []ReportCatalogRowDTO{
 	{Key: "telegram/fraud", Title: "Telegram fraud signals", Description: "Telegram fraud signals", Category: "telegram", RequiredPermissions: reportPermsCampaignRead, DefaultRange: "7d"},
 }
 
+func ReportCatalogLicenseGated(reportKey string) bool {
+	for _, row := range ReportCatalogEntries {
+		if row.Key == reportKey {
+			return row.LicenseGated
+		}
+	}
+	return false
+}
+
 func FilterReportCatalog(ctx context.Context, entries []ReportCatalogRowDTO) []ReportCatalogRowDTO {
 	snap, ok := authz.SnapshotFromContext(ctx)
 	if !ok {

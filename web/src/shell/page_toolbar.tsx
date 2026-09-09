@@ -6,9 +6,9 @@ export type PageToolbarProps = HTMLAttributes<HTMLDivElement> & {
   children: ReactNode;
 };
 
-export function PageToolbar({ children, className, ...props }: PageToolbarProps) {
+export function PageToolbar({ children, ...props }: PageToolbarProps) {
   return (
-    <div className={cn('ui-surface flex flex-wrap items-center gap-3 p-4', className)} {...props}>
+    <div  {...props}>
       {children}
     </div>
   );

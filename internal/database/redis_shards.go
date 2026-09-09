@@ -184,11 +184,13 @@ func shardUniversalOptions(cfg *config.Config, shardIdx int, masterNames []strin
 		MinIdleConns:   poolSize,
 		MaxActiveConns: maxActiveConns,
 	}
+	uopts.DialTimeout = netaddr.DefaultRedisDialTimeout
 	if opts.FilterTimeoutMs > 0 {
 		d := time.Duration(opts.FilterTimeoutMs) * time.Millisecond
 		uopts.ReadTimeout = d
 		uopts.WriteTimeout = d
 	}
+	dialTimeout := uopts.DialTimeout
 	if cfg.RedisSentinelEnabled() {
 		uopts.MasterName = masterNames[shardIdx]
 		uopts.Addrs = cfg.RedisSentinelAddrs
@@ -199,6 +201,7 @@ func shardUniversalOptions(cfg *config.Config, shardIdx int, masterNames []strin
 	if netaddr.IsUnixSocketPath(addr) {
 		uopts.Dialer = func(ctx context.Context, _, addr string) (net.Conn, error) {
 			var netDialer net.Dialer
+			netDialer.Timeout = dialTimeout
 			return netDialer.DialContext(ctx, "unix", addr)
 		}
 	}

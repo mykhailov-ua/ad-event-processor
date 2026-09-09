@@ -138,6 +138,7 @@ type Config struct {
 	HTTPReadTimeoutMs                   int
 	HTTPWriteTimeoutMs                  int
 	AdminPGStatementTimeoutMs           int
+	SettlementPGStatementTimeoutMs      int
 	HTTPIdleTimeoutMs                   int
 	DefaultTokenDurationHrs             int
 	StreamMaxLen                        int
@@ -816,6 +817,7 @@ func Load() (*Config, error) {
 		HTTPReadTimeoutMs:                      getEnvInt("HTTP_READ_TIMEOUT_MS", 5000),
 		HTTPWriteTimeoutMs:                     getEnvInt("HTTP_WRITE_TIMEOUT_MS", 10000),
 		AdminPGStatementTimeoutMs:              getEnvInt("ADMIN_PG_STATEMENT_TIMEOUT_MS", 30000),
+		SettlementPGStatementTimeoutMs:         getEnvInt("SETTLEMENT_PG_STATEMENT_TIMEOUT_MS", 60000),
 		HTTPIdleTimeoutMs:                      getEnvInt("HTTP_IDLE_TIMEOUT_MS", 30000),
 		DefaultTokenDurationHrs:                getEnvInt("DEFAULT_TOKEN_DURATION_HRS", 24),
 		ClickAmount:                            getEnvMicro("CLICK_AMOUNT", 100_000),
@@ -1067,6 +1069,13 @@ func (c *Config) AdminPGStatementTimeout() time.Duration {
 		return 30 * time.Second
 	}
 	return time.Duration(c.AdminPGStatementTimeoutMs) * time.Millisecond
+}
+
+func (c *Config) SettlementPGStatementTimeout() time.Duration {
+	if c == nil || c.SettlementPGStatementTimeoutMs <= 0 {
+		return 60 * time.Second
+	}
+	return time.Duration(c.SettlementPGStatementTimeoutMs) * time.Millisecond
 }
 
 func (c *Config) TelemetryInterval() time.Duration {

@@ -16,11 +16,13 @@ export function useLicenseApplyFormLoad(showStatus: boolean) {
     [showStatus, refreshToken]
   );
 
+  const bumpStatusRefresh = bumpRefresh;
+
   return {
     licenseStatus: data,
     statusError: error,
     statusFetching: fetching,
-    bumpStatusRefresh: bumpRefresh,
+    bumpStatusRefresh,
   };
 }
 

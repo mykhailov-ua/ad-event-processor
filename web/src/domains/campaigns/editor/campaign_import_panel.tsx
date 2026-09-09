@@ -65,16 +65,16 @@ export function CampaignImportPanel({ workspace }: { workspace: CampaignImportPa
   } = workspace;
 
   return (
-    <div className="grid gap-4">
-      <section className={cn(campaignEditorSectionClass, 'gap-3')}>
-        <header className="grid gap-1">
-          <h2 className="m-0 text-sm font-semibold">Import validate</h2>
-          <p className="text-muted-foreground text-sm">
+    <div >
+      <section >
+        <header >
+          <h2 >Import validate</h2>
+          <p >
             Validate external tracker payloads before migration import.
           </p>
         </header>
 
-        <div className="grid gap-3">
+        <div >
           <ImportField id="import-customer-id" label="Customer ID">
             <Input
               id="import-customer-id"
@@ -83,13 +83,13 @@ export function CampaignImportPanel({ workspace }: { workspace: CampaignImportPa
             />
           </ImportField>
 
-          <div className="grid gap-3 sm:grid-cols-2">
+          <div >
             <ImportField id="import-source-kind" label="Source kind">
               <Select
                 value={draftSourceKind}
                 onValueChange={(value) => setDraftSourceKind(value as SourceKind)}
               >
-                <SelectTrigger id="import-source-kind" className="w-full">
+                <SelectTrigger id="import-source-kind">
                   <SelectValue />
                 </SelectTrigger>
                 <SelectContent>
@@ -114,17 +114,14 @@ export function CampaignImportPanel({ workspace }: { workspace: CampaignImportPa
           <ImportField id="import-payload" label="Payload JSON">
             <textarea
               id="import-payload"
-              className={cn(
-                'min-h-40 w-full border border-border bg-background px-3 py-2  text-sm text-foreground',
-                adminKit.controlRadius
-              )}
+             
               value={draftPayload}
               onChange={(event) => setDraftPayload(event.target.value)}
             />
           </ImportField>
 
-          <div className="flex flex-wrap gap-2">
-            <div className="flex flex-wrap items-center gap-1" aria-label="Validate actions">
+          <div >
+            <div  aria-label="Validate actions">
               <Button disabled={validating} onClick={onValidateSync} type="button">
                 {validating ? 'Validating...' : 'Validate now'}
               </Button>
@@ -145,7 +142,7 @@ export function CampaignImportPanel({ workspace }: { workspace: CampaignImportPa
                 {enqueueing ? 'Enqueueing...' : 'Enqueue validate job'}
               </Button>
             </div>
-            <div className="flex flex-wrap items-center gap-1" aria-label="Import actions">
+            <div  aria-label="Import actions">
               <Button disabled={migrating} onClick={onImportMigration} type="button">
                 {migrating ? 'Importing...' : 'Migrate import'}
               </Button>
@@ -160,7 +157,7 @@ export function CampaignImportPanel({ workspace }: { workspace: CampaignImportPa
             </div>
           </div>
 
-          <div className="flex flex-wrap items-center gap-2 text-sm">
+          <div >
             <ImportField id="import-job-id" label="Validate job ID">
               <Input
                 id="import-job-id"
@@ -179,13 +176,13 @@ export function CampaignImportPanel({ workspace }: { workspace: CampaignImportPa
           </div>
 
           {load.job?.status ? (
-            <p className="text-sm text-muted-foreground text-sm">
+            <p >
               Job status: <strong>{load.job.status}</strong>
             </p>
           ) : null}
 
           {importedCampaignIds.length > 0 ? (
-            <p className="text-sm text-muted-foreground text-sm" role="status">
+            <p  role="status">
               Imported campaign ID(s): <strong>{importedCampaignIds.join(', ')}</strong>
             </p>
           ) : null}
@@ -206,21 +203,21 @@ export function CampaignImportPanel({ workspace }: { workspace: CampaignImportPa
         </div>
       </section>
 
-      <section className={cn(campaignEditorSectionClass, 'gap-3')}>
-        <header className="grid gap-1">
-          <h2 className="m-0 text-sm font-semibold">Migrate pull</h2>
-          <p className="text-muted-foreground text-sm">
+      <section >
+        <header >
+          <h2 >Migrate pull</h2>
+          <p >
             Pull campaigns from Keitaro or Binom admin APIs.
           </p>
         </header>
 
-        <div className="grid gap-3">
+        <div >
           <ImportField id="pull-source-kind" label="Pull source">
             <Select
               value={draftPullSourceKind}
               onValueChange={(value) => setDraftPullSourceKind(value as PullSourceKind)}
             >
-              <SelectTrigger id="pull-source-kind" className="w-full">
+              <SelectTrigger id="pull-source-kind">
                 <SelectValue />
               </SelectTrigger>
               <SelectContent>
@@ -251,7 +248,7 @@ export function CampaignImportPanel({ workspace }: { workspace: CampaignImportPa
             />
           </ImportField>
 
-          <div className="flex flex-wrap items-center gap-1">
+          <div >
             <Button
               disabled={pullPreviewing}
               onClick={onPullPreview}

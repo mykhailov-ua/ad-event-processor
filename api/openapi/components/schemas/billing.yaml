@@ -409,6 +409,11 @@ BillingExportJobSpec:
       type: string
       enum: [csv, ndjson]
       default: csv
+    row_limit:
+      type: integer
+      minimum: 1
+      maximum: 5000000
+      description: Max ledger lines exported. Server clamps to deployment tier (hard cap 5M).
 
 BillingExportJob:
   type: object
@@ -713,6 +718,38 @@ CreateAPIKeyRequest:
   properties:
     name:
       type: string
+    scopes:
+      type: array
+      items:
+        type: string
+
+APIKeySummary:
+  type: object
+  required: [id, name, created_at]
+  properties:
+    id:
+      type: string
+    name:
+      type: string
+    created_at:
+      type: string
+      format: date-time
+    expires_at:
+      type: string
+      format: date-time
+    scopes:
+      type: array
+      items:
+        type: string
+
+APIKeyListResponse:
+  type: object
+  required: [keys]
+  properties:
+    keys:
+      type: array
+      items:
+        $ref: '#/APIKeySummary'
 
 APIKeyCreatedResponse:
   type: object

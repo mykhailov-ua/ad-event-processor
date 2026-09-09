@@ -1,7 +1,4 @@
-import { PageChrome } from '@/shell/page_chrome';
 import { EmptyState } from '@/shell/empty_state';
-import { ErrorBlock } from '@/shell/error_block';
-import { PageSkeleton } from '@/shell/page_skeleton';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
 import {
@@ -19,7 +16,10 @@ import type {
   PostbackDryRunResult,
   PostbackHealthRow,
 } from '@/api/types';
-import { IntegrationsNav, integrationsPanelError } from '@/domains/integrations/integrations_nav';
+import {
+  IntegrationsPageWithLoad,
+  integrationsPanelError,
+} from '@/domains/integrations/integrations_nav';
 import { PostbackConfigForm } from '@/domains/integrations/postback_config_form';
 import { displayTimestamp } from '@/lib/display';
 
@@ -95,24 +95,13 @@ export function IntegrationsPostbacks({
   configForm,
   dlqActions,
 }: IntegrationsPostbacksProps) {
-  if (fetching && !hasSnapshot && !error) {
-    return <PageSkeleton />;
-  }
-
-  if (error && !hasSnapshot) {
-    return (
-      <PageChrome title="Postbacks">
-        <IntegrationsNav />
-        {integrationsPanelError(error, 'Could not load postbacks')}
-      </PageChrome>
-    );
-  }
-
   return (
-    <PageChrome title="Postbacks">
-      <IntegrationsNav />
-
-      <div className="flex flex-wrap gap-2">
+    <IntegrationsPageWithLoad
+      blockingErrorTitle="Could not load postbacks"
+      fetchState={{ error, fetching, hasSnapshot }}
+      title="Postbacks"
+    >
+      <div >
         {POSTBACKS_TABS.map((item) => (
           <Button
             key={item.id}
@@ -126,7 +115,7 @@ export function IntegrationsPostbacks({
       </div>
 
       {tab === 'configs' ? (
-        <section className="grid gap-4">
+        <section >
           <PostbackConfigForm
             draftCampaignId={configForm.draftCampaignId}
             draftProvider={configForm.draftProvider}
@@ -150,8 +139,8 @@ export function IntegrationsPostbacks({
             onTest={configForm.onTest}
           />
 
-          <div className="grid gap-2">
-            <h2 className="text-base font-semibold">Configs</h2>
+          <div >
+            <h2 >Configs</h2>
             {configs.length === 0 ? (
               <EmptyState title="No configs" description="No postback configs are configured." />
             ) : (
@@ -170,16 +159,19 @@ export function IntegrationsPostbacks({
                   {configs.map((row) => (
                     <TableRow
                       key={`${row.campaign_id}-${row.provider}`}
-                      className="cursor-pointer"
+                     
                       onClick={() => configForm.onPrefillFromConfig(row)}
                     >
-                      <TableCell className="text-xs">{row.campaign_id}</TableCell>
+                      <TableCell >{row.campaign_id}</TableCell>
                       <TableCell>{row.provider}</TableCell>
                       <TableCell>{row.target_event}</TableCell>
-                      <TableCell className="max-w-xs truncate text-xs" title={row.url_template}>
+                      <TableCell
+                       
+                        title={row.url_template}
+                      >
                         {row.url_template}
                       </TableCell>
-                      <TableCell className="text-xs">{row.test_event_code ?? ''}</TableCell>
+                      <TableCell >{row.test_event_code ?? ''}</TableCell>
                       <TableCell>{row.has_api_token ? 'set' : 'missing'}</TableCell>
                     </TableRow>
                   ))}
@@ -191,8 +183,8 @@ export function IntegrationsPostbacks({
       ) : null}
 
       {tab === 'dlq' ? (
-        <section className="grid gap-2">
-          <h2 className="text-base font-semibold">DLQ</h2>
+        <section >
+          <h2 >DLQ</h2>
           {dlq.length === 0 ? (
             <EmptyState title="DLQ empty" description="No failed postback deliveries in DLQ." />
           ) : (
@@ -206,7 +198,7 @@ export function IntegrationsPostbacks({
                   <DirectoryTableHead>Status</DirectoryTableHead>
                   <DirectoryTableHead>Failures</DirectoryTableHead>
                   <DirectoryTableHead>Last error</DirectoryTableHead>
-                  <DirectoryTableHead className="w-28">Actions</DirectoryTableHead>
+                  <DirectoryTableHead >Actions</DirectoryTableHead>
                 </TableRow>
               </TableHeader>
               <TableBody>
@@ -215,12 +207,12 @@ export function IntegrationsPostbacks({
                   return (
                     <TableRow key={rowId || row.campaign_id}>
                       <TableCell>{row.id}</TableCell>
-                      <TableCell className="text-xs">{row.campaign_id ?? ''}</TableCell>
-                      <TableCell className="text-xs">{row.click_id ?? ''}</TableCell>
+                      <TableCell >{row.campaign_id ?? ''}</TableCell>
+                      <TableCell >{row.click_id ?? ''}</TableCell>
                       <TableCell>{row.event_type ?? ''}</TableCell>
                       <TableCell>{row.status ?? ''}</TableCell>
                       <TableCell>{row.failures_count ?? ''}</TableCell>
-                      <TableCell className="whitespace-nowrap">{row.last_error ?? ''}</TableCell>
+                      <TableCell >{row.last_error ?? ''}</TableCell>
                       <TableCell>
                         <Button
                           disabled={!rowId || dlqActions.retryingId === rowId}
@@ -241,15 +233,15 @@ export function IntegrationsPostbacks({
               </TableBody>
             </DirectoryTable>
           )}
-          {dlqActions.retryError ? (
-            <ErrorBlock title="DLQ retry failed" message={dlqActions.retryError.message} />
-          ) : null}
+          {dlqActions.retryError
+            ? integrationsPanelError(dlqActions.retryError, 'DLQ retry failed')
+            : null}
         </section>
       ) : null}
 
       {tab === 'status' ? (
-        <section className="grid gap-2">
-          <h2 className="text-base font-semibold">Campaign status</h2>
+        <section >
+          <h2 >Campaign status</h2>
           {campaignStatus.length === 0 ? (
             <EmptyState
               title="No campaign status"
@@ -268,7 +260,7 @@ export function IntegrationsPostbacks({
               <TableBody>
                 {campaignStatus.map((row) => (
                   <TableRow key={`${row.campaign_id}-${row.provider}`}>
-                    <TableCell className="text-xs">{row.campaign_id}</TableCell>
+                    <TableCell >{row.campaign_id}</TableCell>
                     <TableCell>{row.provider}</TableCell>
                     <TableCell>{displayTimestamp(row.last_success_at)}</TableCell>
                     <TableCell>
@@ -287,15 +279,15 @@ export function IntegrationsPostbacks({
       ) : null}
 
       {tab === 'health' ? (
-        <section className="grid gap-2">
-          <div className="flex flex-wrap items-center gap-2">
-            <h2 className="text-base font-semibold">Delivery health (24h)</h2>
-            <span className="text-sm text-muted-foreground">
+        <section >
+          <div >
+            <h2 >Delivery health (24h)</h2>
+            <span >
               Alert when success rate drops below {healthAlertThreshold}%
             </span>
             {healthRunbookPath ? (
               <a
-                className="text-sm text-primary underline-offset-4 hover:underline"
+               
                 href={healthRunbookPath}
               >
                 Runbook
@@ -303,11 +295,9 @@ export function IntegrationsPostbacks({
             ) : null}
           </div>
           {healthFetching && !hasHealthSnapshot ? (
-            <p className="text-sm text-muted-foreground">Loading health metrics...</p>
+            <p >Loading health metrics...</p>
           ) : null}
-          {healthError ? (
-            <ErrorBlock title="Health load failed" message={healthError.message} />
-          ) : null}
+          {healthError ? integrationsPanelError(healthError, 'Health load failed') : null}
           {healthRows.length === 0 && hasHealthSnapshot ? (
             <EmptyState title="No health rows" description="No postback configs to aggregate." />
           ) : null}
@@ -321,13 +311,13 @@ export function IntegrationsPostbacks({
                   <DirectoryTableHead>p95 latency</DirectoryTableHead>
                   <DirectoryTableHead>Status</DirectoryTableHead>
                   <DirectoryTableHead>Last error</DirectoryTableHead>
-                  <DirectoryTableHead className="w-28">DLQ</DirectoryTableHead>
+                  <DirectoryTableHead >DLQ</DirectoryTableHead>
                 </TableRow>
               </TableHeader>
               <TableBody>
                 {healthRows.map((row) => (
                   <TableRow key={`${row.campaign_id}-${row.provider}`}>
-                    <TableCell className="text-xs">{row.campaign_id}</TableCell>
+                    <TableCell >{row.campaign_id}</TableCell>
                     <TableCell>{row.provider}</TableCell>
                     <TableCell>
                       {row.success_rate_24h != null ? `${row.success_rate_24h}%` : 'n/a'}
@@ -348,7 +338,7 @@ export function IntegrationsPostbacks({
                         {row.health_status}
                       </Badge>
                     </TableCell>
-                    <TableCell className="whitespace-nowrap">{row.last_error ?? ''}</TableCell>
+                    <TableCell >{row.last_error ?? ''}</TableCell>
                     <TableCell>
                       {row.dlq_pending_count > 0 ? (
                         <Button onClick={() => onTabChange('dlq')} type="button" variant="outline">
@@ -366,7 +356,6 @@ export function IntegrationsPostbacks({
         </section>
       ) : null}
 
-      {error && hasSnapshot ? integrationsPanelError(error, 'Refresh failed') : null}
-    </PageChrome>
+    </IntegrationsPageWithLoad>
   );
 }

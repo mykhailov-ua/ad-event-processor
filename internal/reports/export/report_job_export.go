@@ -54,6 +54,10 @@ func writeReportCSV(ctx context.Context, deps reports.ReportExportDeps, path str
 	if err := writeExportMetaHeader(w, exportedBy, exportDeploymentID()); err != nil {
 		return err
 	}
+	maxRows := spec.RowLimit
+	if maxRows <= 0 {
+		maxRows = reportjob.ExportRowLimitDefault
+	}
 	freshness := reports.DataFreshnessFromClickHouse(ctx, deps.ClickHouseQuery)
 	if profile == ExportProfileBuyerSummary && (spec.ReportKey == "customer-fraud-by-type" || spec.ReportKey == "customer-fraud-by-dimension") {
 		if err := writeBuyerFraudExportPreamble(w, freshness); err != nil {
@@ -70,7 +74,7 @@ func writeReportCSV(ctx context.Context, deps reports.ReportExportDeps, path str
 		if err := w.Write([]string{"placement_id", "campaign_id", "impressions", "clicks", "conversions", "spend_micro", "revenue_micro", "profit_micro", "roi_pct", "ctr", "ivt_rate"}); err != nil {
 			return err
 		}
-		err = paginateCHExport(reportExportPageSize,
+		err = paginateCHExport(reportExportPageSize, maxRows,
 			func(offset, limit int) ([]reports.ReportMetricsCHRow, int64, error) {
 				return reports.QueryPlacementReportRows(ctx, deps.ClickHouseQuery, campaignIDs, from, to, limit, offset)
 			},
@@ -92,7 +96,7 @@ func writeReportCSV(ctx context.Context, deps reports.ReportExportDeps, path str
 		if err := w.Write([]string{"keyword", "campaign_id", "impressions", "clicks", "conversions", "spend_micro", "revenue_micro", "profit_micro", "roi_pct", "ctr", "ivt_rate"}); err != nil {
 			return err
 		}
-		err = paginateCHExport(reportExportPageSize,
+		err = paginateCHExport(reportExportPageSize, maxRows,
 			func(offset, limit int) ([]reports.ReportMetricsCHRow, int64, error) {
 				return reports.QueryKeywordReportRows(ctx, deps.ClickHouseQuery, campaignIDs, from, to, limit, offset)
 			},
@@ -110,7 +114,7 @@ func writeReportCSV(ctx context.Context, deps reports.ReportExportDeps, path str
 		if err := w.Write([]string{"campaign_id", "sub1", "sub2", "country", "impressions", "clicks", "ivt_events", "ivt_rate"}); err != nil {
 			return err
 		}
-		err = paginateCHExport(reportExportPageSize,
+		err = paginateCHExport(reportExportPageSize, maxRows,
 			func(offset, limit int) ([]reports.IVTBySourceRowDTO, int64, error) {
 				raw, total, err := reportfraud.QueryIVTBySourceRows(ctx, deps.ClickHouseQuery, campaignIDs, from, to, limit, offset)
 				if err != nil {
@@ -143,7 +147,7 @@ func writeReportCSV(ctx context.Context, deps reports.ReportExportDeps, path str
 		if err := w.Write([]string{"channel", "impressions", "clicks", "conversions", "spend_micro", "revenue_micro", "profit_micro", "roi_pct", "ctr"}); err != nil {
 			return err
 		}
-		err = paginateCHExport(reportExportPageSize,
+		err = paginateCHExport(reportExportPageSize, maxRows,
 			func(offset, limit int) ([]reports.TrafficSourceRowDTO, int64, error) {
 				return reports.QueryTrafficSourceRows(ctx, deps.ClickHouseQuery, campaignIDs, from, to, limit, offset)
 			},
@@ -160,7 +164,7 @@ func writeReportCSV(ctx context.Context, deps reports.ReportExportDeps, path str
 		if err := w.Write([]string{"country", "impressions", "clicks", "conversions", "ivt_events", "ivt_rate", "spend_micro", "revenue_micro", "profit_micro", "roi_pct", "ctr"}); err != nil {
 			return err
 		}
-		err = paginateCHExport(reportExportPageSize,
+		err = paginateCHExport(reportExportPageSize, maxRows,
 			func(offset, limit int) ([]reports.GeoROIRowDTO, int64, error) {
 				return reports.QueryGeoROIRows(ctx, deps.ClickHouseQuery, campaignIDs, from, to, limit, offset)
 			},
@@ -178,7 +182,7 @@ func writeReportCSV(ctx context.Context, deps reports.ReportExportDeps, path str
 		if err := w.Write([]string{"start_param", "clicks", "impressions", "conversions", "premium_clicks", "motivated_clicks"}); err != nil {
 			return err
 		}
-		err = paginateCHExport(reportExportPageSize,
+		err = paginateCHExport(reportExportPageSize, maxRows,
 			func(offset, limit int) ([]reports.TelegramExportCHRow, int64, error) {
 				return reports.QueryTelegramExportRows(ctx, deps.ClickHouseQuery, campaignIDs, from, to, limit, offset)
 			},
@@ -197,7 +201,7 @@ func writeReportCSV(ctx context.Context, deps reports.ReportExportDeps, path str
 		if err := w.Write([]string{"reject_kind", "reject_count"}); err != nil {
 			return err
 		}
-		err = paginateCHExport(reportExportPageSize,
+		err = paginateCHExport(reportExportPageSize, maxRows,
 			func(offset, limit int) ([]reports.FilterRejectRowDTO, int64, error) {
 				return reports.QueryFilterRejectRows(ctx, deps.ClickHouseQuery, from, to, limit, offset)
 			},
@@ -214,7 +218,7 @@ func writeReportCSV(ctx context.Context, deps reports.ReportExportDeps, path str
 		if err := w.Write(header); err != nil {
 			return err
 		}
-		err = paginateCHExport(reportExportPageSize,
+		err = paginateCHExport(reportExportPageSize, maxRows,
 			func(offset, limit int) ([]reports.FraudBreakdownRowDTO, int64, error) {
 				return reportfraud.QueryFraudBreakdownRows(ctx, deps.ClickHouseQuery, campaignIDs, from, to, limit, offset)
 			},
@@ -234,7 +238,7 @@ func writeReportCSV(ctx context.Context, deps reports.ReportExportDeps, path str
 		}); err != nil {
 			return err
 		}
-		err = paginateCHExport(reportExportPageSize,
+		err = paginateCHExport(reportExportPageSize, maxRows,
 			func(offset, limit int) ([]reports.SilentRejectImpressionFunnelRowDTO, int64, error) {
 				return reportfraud.QuerySilentRejectImpressionFunnelRows(ctx, deps.ClickHouseQuery, campaignIDs, from, to, limit, offset)
 			},
@@ -251,7 +255,7 @@ func writeReportCSV(ctx context.Context, deps reports.ReportExportDeps, path str
 		if err := w.Write([]string{"deal_id", "bids", "wins", "win_rate", "spend_micro"}); err != nil {
 			return err
 		}
-		err = paginateCHExport(reportExportPageSize,
+		err = paginateCHExport(reportExportPageSize, maxRows,
 			func(offset, limit int) ([]reports.RtbOverviewRowDTO, int64, error) {
 				return reports.QueryRtbOverviewRows(ctx, deps.ClickHouseQuery, from, to, limit, offset)
 			},
@@ -267,7 +271,7 @@ func writeReportCSV(ctx context.Context, deps reports.ReportExportDeps, path str
 		if err := w.Write([]string{"no_bid_reason", "bid_count"}); err != nil {
 			return err
 		}
-		err = paginateCHExport(reportExportPageSize,
+		err = paginateCHExport(reportExportPageSize, maxRows,
 			func(offset, limit int) ([]reports.RtbNoBidReasonRowDTO, int64, error) {
 				return reports.QueryRtbNoBidReasonRows(ctx, deps.ClickHouseQuery, from, to, limit, offset)
 			},
@@ -279,7 +283,7 @@ func writeReportCSV(ctx context.Context, deps reports.ReportExportDeps, path str
 		if err := w.Write([]string{"campaign_id", "date", "planned_spend_micro", "actual_spend_micro", "drift_pct", "pacing_mode"}); err != nil {
 			return err
 		}
-		err = paginateCHExport(reportExportPageSize,
+		err = paginateCHExport(reportExportPageSize, maxRows,
 			func(offset, limit int) ([]reports.PacingDriftRowDTO, int64, error) {
 				return reports.QueryPacingDriftExportRows(ctx, deps, campaignIDs, from, to, limit, offset)
 			},
@@ -300,7 +304,7 @@ func writeReportCSV(ctx context.Context, deps reports.ReportExportDeps, path str
 		if err := w.Write(header); err != nil {
 			return err
 		}
-		err = paginateCHExport(reportExportPageSize,
+		err = paginateCHExport(reportExportPageSize, maxRows,
 			func(offset, limit int) ([]reports.PostbackReconRowDTO, int64, error) {
 				return reports.QueryPostbackReconExportRows(ctx, deps, campaignIDs, from, to, limit, offset)
 			},
@@ -314,17 +318,17 @@ func writeReportCSV(ctx context.Context, deps reports.ReportExportDeps, path str
 			},
 		)
 	case "spend-velocity":
-		err = exportCHMapReport(ctx, w, deps.ClickHouseQuery, campaignIDs, from, to, reports.QuerySpendVelocityRows,
+		err = exportCHMapReport(ctx, w, deps.ClickHouseQuery, campaignIDs, from, to, maxRows, reports.QuerySpendVelocityRows,
 			[]string{"bucket", "spend_micro", "clicks"},
 			"bucket", "spend_micro", "clicks",
 		)
 	case "daypart-heatmap":
-		err = exportCHMapReport(ctx, w, deps.ClickHouseQuery, campaignIDs, from, to, reports.QueryDaypartHeatmapRows,
+		err = exportCHMapReport(ctx, w, deps.ClickHouseQuery, campaignIDs, from, to, maxRows, reports.QueryDaypartHeatmapRows,
 			[]string{"hour", "clicks"},
 			"hour", "clicks",
 		)
 	case "campaign-geo-device":
-		err = exportCHMapReport(ctx, w, deps.ClickHouseQuery, campaignIDs, from, to, reports.QueryGeoDeviceRows,
+		err = exportCHMapReport(ctx, w, deps.ClickHouseQuery, campaignIDs, from, to, maxRows, reports.QueryGeoDeviceRows,
 			[]string{"country", "device", "clicks"},
 			"country", "device", "clicks",
 		)
@@ -336,7 +340,7 @@ func writeReportCSV(ctx context.Context, deps reports.ReportExportDeps, path str
 		if err := w.Write([]string{"placement_id", "campaign_id", "clicks", "conversions", "ivt_rate", "roi_pct"}); err != nil {
 			return err
 		}
-		err = paginateCHExport(reportExportPageSize,
+		err = paginateCHExport(reportExportPageSize, maxRows,
 			func(offset, limit int) ([]reports.ReportMetricsCHRow, int64, error) {
 				return reports.QueryPlacementReportRows(ctx, deps.ClickHouseQuery, campaignIDs, from, to, limit, offset)
 			},
@@ -350,12 +354,12 @@ func writeReportCSV(ctx context.Context, deps reports.ReportExportDeps, path str
 			},
 		)
 	case "discrepancy-buy-sell":
-		err = exportCHMapReport(ctx, w, deps.ClickHouseQuery, campaignIDs, from, to, reports.QueryDiscrepancyRows,
+		err = exportCHMapReport(ctx, w, deps.ClickHouseQuery, campaignIDs, from, to, maxRows, reports.QueryDiscrepancyRows,
 			[]string{"campaign_id", "buy_spend_micro", "sell_rev_micro", "delta_micro", "delta_pct"},
 			"campaign_id", "buy_spend_micro", "sell_rev_micro", "delta_micro", "delta_pct",
 		)
 	case "true-roi":
-		err = exportCHMapReport(ctx, w, deps.ClickHouseQuery, campaignIDs, from, to, reports.QueryTrueROIRows,
+		err = exportCHMapReport(ctx, w, deps.ClickHouseQuery, campaignIDs, from, to, maxRows, reports.QueryTrueROIRows,
 			[]string{"campaign_id", "ad_spend_micro", "revenue_micro", "true_profit_micro", "true_roi_pct", "true_cpa_micro", "conversions"},
 			"campaign_id", "ad_spend_micro", "revenue_micro", "true_profit_micro", "true_roi_pct", "true_cpa_micro", "conversions",
 		)
@@ -363,7 +367,7 @@ func writeReportCSV(ctx context.Context, deps reports.ReportExportDeps, path str
 		if err := w.Write([]string{"country", "device_os", "bids", "wins", "win_rate", "spend_micro"}); err != nil {
 			return err
 		}
-		err = paginateCHExport(reportExportPageSize,
+		err = paginateCHExport(reportExportPageSize, maxRows,
 			func(offset, limit int) ([]reports.RtbGeoDeviceRowDTO, int64, error) {
 				return reports.QueryRtbGeoDeviceRows(ctx, deps.ClickHouseQuery, from, to, limit, offset)
 			},
@@ -380,7 +384,7 @@ func writeReportCSV(ctx context.Context, deps reports.ReportExportDeps, path str
 			return err
 		}
 		customerUUID := uuid.MustParse(spec.CustomerID)
-		err = paginateCHExport(reportExportPageSize,
+		err = paginateCHExport(reportExportPageSize, maxRows,
 			func(offset, limit int) ([]reports.DataQualityRowDTO, int64, error) {
 				return reports.QueryDataQualityExportRows(ctx, deps, customerUUID, campaignIDs, from, to, limit, offset)
 			},
@@ -401,7 +405,7 @@ func writeReportCSV(ctx context.Context, deps reports.ReportExportDeps, path str
 			return err
 		}
 		customerUUID := uuid.MustParse(spec.CustomerID)
-		err = paginateCHExport(reportExportPageSize,
+		err = paginateCHExport(reportExportPageSize, maxRows,
 			func(offset, limit int) ([]reports.CostCoverageRowDTO, int64, error) {
 				return reports.QueryCostCoverageExportRows(ctx, deps, customerUUID, campaignIDs, from, to, limit, offset)
 			},

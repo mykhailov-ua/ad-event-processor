@@ -132,6 +132,22 @@ func parsePatchAttestationMode(raw *string) (domain.AttestationMode, bool, error
 	}
 }
 
+func ParsePatchTimezoneAttestationMode(raw *string) (domain.TimezoneAttestationMode, bool, error) {
+	if raw == nil {
+		return "", false, nil
+	}
+	mode := domain.ParseTimezoneAttestationMode(*raw)
+	switch mode {
+	case domain.TimezoneAttestationModeOff,
+		domain.TimezoneAttestationModeIPCountry,
+		domain.TimezoneAttestationModeCampaignTarget,
+		domain.TimezoneAttestationModeStrict:
+		return mode, true, nil
+	default:
+		return "", false, errValidation("timezone_attestation_mode must be off, ip_country, campaign_target, or strict")
+	}
+}
+
 func parsePatchConnTypePolicy(raw *string) (string, bool, error) {
 	if raw == nil {
 		return "", false, nil

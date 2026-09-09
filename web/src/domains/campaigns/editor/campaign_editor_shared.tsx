@@ -6,29 +6,33 @@ import { ErrorBlock } from '@/shell/error_block';
 import { StubBanner } from '@/shell/stub_banner';
 import type { CloneCampaignOptions } from '@/api/campaigns_api';
 import { cloneMutationErrorMessage } from '@/domains/campaigns/editor/campaign_clone_request';
-import { adminKit } from '@/lib/admin_kit';
+import { adminKit, adminSpacing, adminTypography } from '@/lib/admin_kit';
 import { cn } from '@/lib/utils';
 
 /** Bordered editor/wizard section card. */
 export const campaignEditorSectionClass = cn(
-  'grid gap-4 border border-border bg-card p-4',
+  `grid ${adminSpacing.gap.xl} border border-border bg-card ${adminSpacing.inset.panel}`,
   adminKit.panelRadius
 );
 
 /** Muted inset panel inside an editor section. */
 export const campaignEditorInsetPanelClass = cn(
-  'grid gap-2 border border-border bg-muted p-4 text-sm',
+  `grid ${adminSpacing.gap.md} border border-border bg-muted ${adminSpacing.inset.panel}`,
+  adminTypography.body,
   adminKit.panelRadius
 );
 
 /** Wizard/import panel stack inside sheet body. */
-export const campaignEditorWizardRootClass = 'grid gap-4';
+export const campaignEditorWizardRootClass = `grid ${adminSpacing.gap.xl}`;
 
 /** Two-column form row with explicit horizontal gap between fields. */
-export const campaignEditorFormColumnsClass =
-  'grid w-full min-w-0 grid-cols-1 gap-x-4 gap-y-4 sm:grid-cols-2';
+export const campaignEditorFormColumnsClass = cn(
+  'grid w-full min-w-0 grid-cols-1 sm:grid-cols-2',
+  adminSpacing.gapX.formColumns,
+  adminSpacing.gapY.formColumns
+);
 
-export const campaignEditorActionsRowClass = 'flex flex-wrap justify-end gap-2';
+export const campaignEditorActionsRowClass = adminSpacing.flex.actionsRowEnd;
 
 export function formatReadonly(value: string | undefined): string {
   if (value == null || value === '') {
@@ -57,16 +61,16 @@ export function FieldErrorsPanel({
   }
 
   return (
-    <div className="grid gap-2">
-      <p className="text-sm font-medium">{title}</p>
-      <ul className="m-0 flex list-disc flex-col gap-1 pl-5 text-sm text-muted-foreground">
+    <div >
+      <p >{title}</p>
+      <ul >
         {entries.map(([field, message]) => (
           <li key={field}>
-            <span className="text-xs">{field}</span>: {message}
+            <span >{field}</span>: {message}
           </li>
         ))}
       </ul>
-      <pre className="overflow-x-auto bg-muted p-2 text-xs">
+      <pre >
         {JSON.stringify(fieldErrors, null, 2)}
       </pre>
     </div>
@@ -135,9 +139,9 @@ export function StringList({ title, items }: { title: string; items: string[] | 
   }
 
   return (
-    <div className="grid gap-1">
-      <p className="text-sm font-medium">{title}</p>
-      <ul className="m-0 flex list-disc flex-col gap-1 pl-5 text-sm text-muted-foreground">
+    <div >
+      <p >{title}</p>
+      <ul >
         {items.map((item) => (
           <li key={item}>{item}</li>
         ))}
@@ -193,7 +197,7 @@ export function EditorStatusBanners({
   if (blocks.length === 0) {
     return null;
   }
-  return <div className="grid gap-3">{blocks}</div>;
+  return <div >{blocks}</div>;
 }
 
 export function editorApiErrorBlock(

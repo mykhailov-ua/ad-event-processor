@@ -134,3 +134,46 @@ func TestProbeClusterFilter_holdoutRoutesHotCluster(t *testing.T) {
 	assert.Equal(t, uint8(1), evt2.ProbeClusterSet)
 	assert.GreaterOrEqual(t, testutil.ToFloat64(metrics.ProbeClusterRouteTotal), before+1)
 }
+
+func TestProbeClusterStore_GetSummaryBatch_holdoutMatchesGetSummary(t *testing.T) {
+	mr := miniredis.RunT(t)
+	client := redis.NewClient(&redis.Options{Addr: mr.Addr()})
+	store := NewProbeClusterStore(client, 30*24*time.Hour)
+	secret := []byte("probe-cluster-batch-secret")
+	tuple := probecluster.Tuple{
+		TLSJA3:    "ja3-batch",
+		TLSJA4:    "ja4-batch",
+		TCPSig:    0xabc123,
+		TCPSigSet: 1,
+	}
+	clusterID := probecluster.ClusterID(secret, tuple)
+	clusterHex := probecluster.ClusterIDHex(clusterID)
+	campaignID := uuid.MustParse("aaaaaaaa-aaaa-4aaa-8aaa-aaaaaaaaaaaa")
+	ctx := context.Background()
+	_, err := store.Observe(ctx, ProbeClusterObserveInput{
+		ClusterID:  clusterID,
+		SessionID:  "session-batch",
+		CampaignID: campaignID,
+		ProbeScore: 70,
+		JA3:        tuple.TLSJA3,
+		JA4:        tuple.TLSJA4,
+		TCPSig:     tuple.TCPSig,
+		TCPSigSet:  tuple.TCPSigSet,
+	})
+	require.NoError(t, err)
+
+	batch, err := store.GetSummaryBatch(ctx, []string{clusterHex, "00000000000000000000000000000000"})
+	require.NoError(t, err)
+	require.Len(t, batch, 1)
+
+	single, ok, err := store.GetSummary(ctx, clusterHex)
+	require.NoError(t, err)
+	require.True(t, ok)
+	assert.Equal(t, single, batch[clusterHex])
+
+	require.NoError(t, store.MarkExportedBatch(ctx, []string{clusterHex}))
+	single, ok, err = store.GetSummary(ctx, clusterHex)
+	require.NoError(t, err)
+	require.True(t, ok)
+	assert.True(t, single.ExportDone)
+}

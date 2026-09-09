@@ -6,6 +6,8 @@
 //   - cors.go, static_assets.go, telegram_handlers.go: CORS preflight, embedded track.js/pixel, Telegram Mini App wire bytes.
 //     track_pixel.js is generated from web/src/static/track.js via web/scripts/build_track_pixel.mjs.
 //   - safe_page.go and safe_page_attest.go: safe-page stub HTML, attestation scoring, verify rate limits.
+//     Network attestation (before timezone): proxy_anonymous (MaxMind anonymous + ProxyVPNBlockEnabled),
+//     conn_type_violation (ConnTypeResidentialOnly or ConnTypeBlockVPNHosting vs anonymous/LPM conn type).
 //   - analytics_payload.go enriches ClickHouse payload dimensions on accepted events.
 //   - ip_rotation.go: IPv4/IPv6 rotation heuristics for fraud signals (called from ingest filter wiring).
 //
@@ -33,4 +35,6 @@
 //	go test ./internal/track/ -short -run TestApplyStaticPolymorph -count=1
 //	bash scripts/install/polymorph_static.sh
 //	bash scripts/ci/static/wasm_polymorph_gate.sh
+//	go test ./internal/track/ -short -run TestEvaluateSafePageAttestation_network -count=1
+//	go test ./internal/ingest/ -short -run TestSafePageAttestation_network -count=1
 package track

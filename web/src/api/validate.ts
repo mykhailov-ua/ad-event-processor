@@ -10,6 +10,9 @@ import type {
   CampaignListResponse,
   CampaignPublishBlockedError,
   CampaignValidateResponse,
+  Lander,
+  LanderHostingCounts,
+  LanderListResponse,
 } from '@/api/types';
 
 export function isRecord(value: unknown): value is Record<string, unknown> {
@@ -64,6 +67,50 @@ export function parseCampaignListResponse(value: unknown): CampaignListResponse 
     parseCampaign(item);
   }
   return value as CampaignListResponse;
+}
+
+function parseLanderRow(value: unknown): Lander {
+  if (!isRecord(value) || typeof value.id !== 'string' || typeof value.name !== 'string') {
+    invalidResponse('Lander row missing id or name');
+  }
+  return value as Lander;
+}
+
+function parseLanderHostingCounts(value: unknown): LanderHostingCounts {
+  if (
+    !isRecord(value) ||
+    typeof value.total !== 'number' ||
+    typeof value.external !== 'number' ||
+    typeof value.hosted !== 'number' ||
+    typeof value.unconfigured !== 'number'
+  ) {
+    invalidResponse('Lander list response missing hosting_counts');
+  }
+  return value as LanderHostingCounts;
+}
+
+export function parseLanderListResponse(value: unknown): LanderListResponse {
+  if (!isRecord(value) || !Array.isArray(value.items)) {
+    invalidResponse('Lander list response must include items array');
+  }
+  if (
+    typeof value.total !== 'number' ||
+    typeof value.limit !== 'number' ||
+    typeof value.offset !== 'number'
+  ) {
+    invalidResponse('Lander list response missing pagination fields');
+  }
+  const hostingCounts = parseLanderHostingCounts(value.hosting_counts);
+  for (const item of value.items) {
+    parseLanderRow(item);
+  }
+  return {
+    items: value.items as Lander[],
+    total: value.total,
+    limit: value.limit,
+    offset: value.offset,
+    hosting_counts: hostingCounts,
+  };
 }
 
 export function parseCampaignBulkActionResultRow(value: unknown): CampaignBulkActionResultRow {

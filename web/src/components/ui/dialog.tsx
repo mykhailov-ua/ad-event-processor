@@ -100,12 +100,12 @@ const DialogPortal = ({ children }: { children: React.ReactNode }) => (
 );
 
 const DialogOverlay = React.forwardRef<HTMLDivElement, React.HTMLAttributes<HTMLDivElement>>(
-  ({ className, onClick, ...props }, ref) => {
+  ({ onClick, ...props }, ref) => {
     const { setOpen } = useDialogContext();
     return (
       <div
         ref={ref}
-        className={cn(adminChrome.overlayBackdrop, className)}
+        
         onClick={(event) => {
           onClick?.(event);
           setOpen(false);
@@ -127,9 +127,7 @@ const DialogContent = React.forwardRef<
   }
 >(
   (
-    {
-      className,
-      children,
+    { children,
       onEscapeKeyDown,
       onInteractOutside,
       panelClassName,
@@ -139,7 +137,7 @@ const DialogContent = React.forwardRef<
     ref
   ) => {
     const { open, setOpen } = useDialogContext();
-    const flush = /\bp-0\b/.test(className ?? '');
+    const flush = false;
     const scrollBody = React.Children.toArray(children).some(
       (child) =>
         React.isValidElement(child) &&
@@ -166,10 +164,7 @@ const DialogContent = React.forwardRef<
         />
         <div
           ref={ref}
-          className={cn(
-            'fixed left-1/2 top-1/2 z-50 w-full max-w-lg -translate-x-1/2 -translate-y-1/2 border-0 bg-transparent p-0',
-            className
-          )}
+          
           role="dialog"
           aria-modal="true"
           onKeyDown={(event) => {
@@ -188,26 +183,17 @@ const DialogContent = React.forwardRef<
         >
           <DialogLayoutContext.Provider value={{ scrollBody }}>
             <div
-              className={cn(
-                adminChrome.panel,
-                'relative w-full shadow-lg',
-                panelClassName,
-                scrollBody
-                  ? 'flex max-h-[min(90vh,48rem)] flex-col gap-0 overflow-hidden'
-                  : flush || useCompactShell
-                    ? 'overflow-hidden'
-                    : 'ui-scrollbar flex max-h-[min(90vh,48rem)] flex-col gap-4 overflow-y-auto p-6'
-              )}
+              
             >
-              {useCompactShell ? <div className="grid w-full gap-4 p-6">{children}</div> : children}
+              {useCompactShell ? <div >{children}</div> : children}
               {showCloseButton ? (
                 <button
                   type="button"
-                  className="absolute right-4 top-4 z-10 rounded-sm p-1 text-muted-foreground hover:text-foreground"
+                  
                   aria-label="Close"
                   onClick={() => setOpen(false)}
                 >
-                  <X className="h-4 w-4" />
+                  <X  />
                 </button>
               ) : null}
             </div>
@@ -219,16 +205,12 @@ const DialogContent = React.forwardRef<
 );
 DialogContent.displayName = 'DialogContent';
 
-const DialogHeader = ({ className, ...props }: React.HTMLAttributes<HTMLDivElement>) => {
+const DialogHeader = ({ ...props }: React.HTMLAttributes<HTMLDivElement>) => {
   const { scrollBody } = useDialogLayout();
 
   return (
     <div
-      className={cn(
-        'flex w-full shrink-0 flex-col items-start gap-1.5 text-left',
-        scrollBody && 'px-6 pt-6',
-        className
-      )}
+      
       {...props}
     />
   );
@@ -236,13 +218,10 @@ const DialogHeader = ({ className, ...props }: React.HTMLAttributes<HTMLDivEleme
 DialogHeader.displayName = 'DialogHeader';
 
 const DialogBody = React.forwardRef<HTMLDivElement, React.HTMLAttributes<HTMLDivElement>>(
-  ({ className, onWheel, ...props }, ref) => (
+  ({ onWheel, ...props }, ref) => (
     <div
       ref={ref}
-      className={cn(
-        'ui-scrollbar min-h-0 flex-1 overflow-y-auto overscroll-y-contain px-6 pt-4 pb-6',
-        className
-      )}
+      
       onWheel={(event) => {
         onWheel?.(event);
         event.stopPropagation();
@@ -253,16 +232,12 @@ const DialogBody = React.forwardRef<HTMLDivElement, React.HTMLAttributes<HTMLDiv
 );
 DialogBody.displayName = 'DialogBody';
 
-const DialogFooter = ({ className, ...props }: React.HTMLAttributes<HTMLDivElement>) => {
+const DialogFooter = ({ ...props }: React.HTMLAttributes<HTMLDivElement>) => {
   const { scrollBody } = useDialogLayout();
 
   return (
     <div
-      className={cn(
-        'flex w-full shrink-0 flex-col-reverse items-stretch gap-2 sm:flex-row sm:justify-end',
-        scrollBody && 'px-6 pb-6',
-        className
-      )}
+      
       {...props}
     />
   );
@@ -270,8 +245,8 @@ const DialogFooter = ({ className, ...props }: React.HTMLAttributes<HTMLDivEleme
 DialogFooter.displayName = 'DialogFooter';
 
 const DialogTitle = React.forwardRef<HTMLHeadingElement, React.HTMLAttributes<HTMLHeadingElement>>(
-  ({ className, ...props }, ref) => (
-    <h2 ref={ref} className={cn(adminChrome.pageTitle, 'text-lg', className)} {...props} />
+  ({ ...props }, ref) => (
+    <h2 ref={ref}  {...props} />
   )
 );
 DialogTitle.displayName = 'DialogTitle';
@@ -279,8 +254,8 @@ DialogTitle.displayName = 'DialogTitle';
 const DialogDescription = React.forwardRef<
   HTMLParagraphElement,
   React.HTMLAttributes<HTMLParagraphElement>
->(({ className, ...props }, ref) => (
-  <p ref={ref} className={cn('text-sm text-muted-foreground', className)} {...props} />
+>(({ ...props }, ref) => (
+  <p ref={ref}  {...props} />
 ));
 DialogDescription.displayName = 'DialogDescription';
 

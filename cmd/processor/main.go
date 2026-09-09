@@ -125,7 +125,9 @@ func main() {
 	defer pool.Close()
 
 	// Settlement-dedicated pool; gated by ProcessorPostgresGate slot count.
-	settlementPool, err := database.Connect(ctx, string(cfg.DBDSN), cfg.PostgresPoolSettleConns(cfg.SettlementLaneCount()), 1)
+	settlementPool, err := database.Connect(ctx, string(cfg.DBDSN), cfg.PostgresPoolSettleConns(cfg.SettlementLaneCount()), 1, database.PoolConfig{
+		StatementTimeout: cfg.AdminPGStatementTimeout(),
+	})
 	if err != nil {
 		slog.Error("failed to connect settlement pool", "error", err)
 		os.Exit(1)
@@ -409,7 +411,9 @@ func main() {
 		if dsn == "" {
 			dsn = string(cfg.DBDSN)
 		}
-		settleNew, connectErr := database.Connect(ctx, dsn, cfg.PostgresPoolSettleConns(cfg.SettlementLaneCount()), 1)
+		settleNew, connectErr := database.Connect(ctx, dsn, cfg.PostgresPoolSettleConns(cfg.SettlementLaneCount()), 1, database.PoolConfig{
+			StatementTimeout: cfg.AdminPGStatementTimeout(),
+		})
 		if connectErr != nil {
 			slog.Warn("processor pg failover settle pool reconnect failed", "error", connectErr)
 			return

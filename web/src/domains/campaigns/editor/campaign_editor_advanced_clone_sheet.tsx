@@ -59,13 +59,13 @@ export function CampaignEditorAdvancedCloneSheet({
 }: CampaignEditorAdvancedCloneSheetProps) {
   return (
     <Sheet onOpenChange={onCloneOpenChange} open={cloneOpen}>
-      <SheetContent className="gap-0 p-0 sm:max-w-2xl">
-        <SheetHeader className="border-b border-border py-4 text-left">
+      <SheetContent >
+        <SheetHeader >
           <SheetTitle>Clone campaign</SheetTitle>
         </SheetHeader>
-        <SheetBody className="grid gap-4 pb-8">
-          <section className={cn(campaignEditorSectionClass, 'gap-3')}>
-            <div className={cn('grid', adminKit.fieldLabelGap)}>
+        <SheetBody >
+          <section >
+            <div >
               <Label htmlFor="campaign-clone-name-suffix">Clone name suffix</Label>
               <Input
                 id="campaign-clone-name-suffix"
@@ -74,24 +74,24 @@ export function CampaignEditorAdvancedCloneSheet({
                 placeholder=" (copy)"
                 onChange={(event) => onCloneNameSuffixChange(event.target.value)}
               />
-              <p className="text-xs text-muted-foreground">
+              <p >
                 Leave empty for the default &quot;{campaign.name} (copy)&quot;. Enter a suffix such
                 as &quot; - v2&quot; to append to the source name.
               </p>
             </div>
           </section>
 
-          <section className={cn(campaignEditorSectionClass, 'gap-3')}>
-            <p className="m-0 text-sm font-medium">Clone options</p>
-            <div className="grid gap-3">
+          <section >
+            <p >Clone options</p>
+            <div >
               {CLONE_OPTION_FIELDS.map(({ field, label, description }) => {
                 const inputId = `campaign-clone-option-${field}`;
                 const defaultChecked = field === 'reset_spend' ? false : true;
                 const checked = cloneOptions[field] ?? defaultChecked;
 
                 return (
-                  <div key={field} className="grid gap-1">
-                    <div className="flex items-center gap-2">
+                  <div key={field}>
+                    <div >
                       <Checkbox
                         checked={checked}
                         disabled={clonePreviewing || cloning || fetching}
@@ -100,14 +100,14 @@ export function CampaignEditorAdvancedCloneSheet({
                       />
                       <Label htmlFor={inputId}>{label}</Label>
                     </div>
-                    <p className="text-xs text-muted-foreground">{description}</p>
+                    <p >{description}</p>
                   </div>
                 );
               })}
             </div>
           </section>
 
-          <div className={campaignEditorActionsRowClass}>
+          <div >
             <Button
               type="button"
               variant="secondary"
@@ -130,10 +130,10 @@ export function CampaignEditorAdvancedCloneSheet({
             : null}
 
           {cloneSuccess && clonedCampaignId ? (
-            <p className="text-sm text-muted-foreground">
+            <p >
               Clone created.{' '}
               <Link
-                className="text-primary hover:underline"
+               
                 to={`/campaigns/${clonedCampaignId}/edit`}
               >
                 Open cloned campaign

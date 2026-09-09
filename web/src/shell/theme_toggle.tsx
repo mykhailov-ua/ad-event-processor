@@ -7,11 +7,10 @@ import { cn } from '@/lib/utils';
 import { useTheme } from '@/hooks/use_theme';
 
 export type ThemeToggleProps = {
-  className?: string;
   showLabel?: boolean;
 };
 
-export function ThemeToggle({ className, showLabel = false }: ThemeToggleProps) {
+export function ThemeToggle({ showLabel = false }: ThemeToggleProps) {
   const { theme, setTheme } = useTheme();
   const nextTheme = theme === 'dark' ? 'light' : 'dark';
   const Icon = theme === 'dark' ? Sun : Moon;
@@ -19,9 +18,9 @@ export function ThemeToggle({ className, showLabel = false }: ThemeToggleProps) 
   const button = (
     <Button
       aria-label={themeToggleLabel(theme)}
-      className={cn(showLabel ? '' : cn('size-7 p-0', className))}
+      size={showLabel ? 'default' : 'icon'}
       type="button"
-      variant="secondary"
+      variant="outline"
       onClick={() => setTheme(nextTheme)}
     >
       <Icon aria-hidden className="h-4 w-4" />

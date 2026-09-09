@@ -55,8 +55,8 @@ export function CampaignCloneDialog({
 
   return (
     <Sheet open={open} onOpenChange={onOpenChange}>
-      <SheetContent className="gap-0 p-0 sm:max-w-2xl">
-        <SheetHeader className="border-b border-border py-4 text-left">
+      <SheetContent >
+        <SheetHeader >
           <SheetTitle>Clone campaign</SheetTitle>
           <SheetDescription>
             {campaignName ? (
@@ -69,9 +69,9 @@ export function CampaignCloneDialog({
           </SheetDescription>
         </SheetHeader>
 
-        <SheetBody className="grid gap-4 pb-8">
-          <section className={cn(campaignEditorSectionClass, 'gap-3')}>
-            <div className={cn('grid', adminKit.fieldLabelGap)}>
+        <SheetBody >
+          <section >
+            <div >
               <Label htmlFor="clone-name-suffix">Name suffix</Label>
               <Input
                 id="clone-name-suffix"
@@ -79,22 +79,22 @@ export function CampaignCloneDialog({
                 value={nameSuffix}
                 onChange={(event) => setNameSuffix(event.target.value)}
               />
-              <p className="text-xs text-muted-foreground">
+              <p >
                 Appended to the source name. Leave empty for the default &quot; (copy)&quot;.
               </p>
             </div>
           </section>
 
-          <section className={cn(campaignEditorSectionClass, 'gap-3')}>
-            <p className="m-0 text-sm font-medium">Clone options</p>
-            <div className="grid gap-3">
+          <section >
+            <p >Clone options</p>
+            <div >
               {CLONE_OPTION_FIELDS.map(({ field, label, description }) => {
                 const inputId = `clone-option-${field}`;
                 const checked = cloneOptions[field] ?? DEFAULT_CLONE_OPTIONS[field];
 
                 return (
-                  <div key={field} className="grid gap-1">
-                    <div className="flex items-center gap-2">
+                  <div key={field}>
+                    <div >
                       <Checkbox
                         checked={checked}
                         disabled={cloning || Boolean(clonedId)}
@@ -103,7 +103,7 @@ export function CampaignCloneDialog({
                       />
                       <Label htmlFor={inputId}>{label}</Label>
                     </div>
-                    <p className="text-xs text-muted-foreground">{description}</p>
+                    <p >{description}</p>
                   </div>
                 );
               })}
@@ -111,9 +111,9 @@ export function CampaignCloneDialog({
           </section>
 
           {preview ? (
-            <section className={cn(campaignEditorSectionClass, 'gap-2')}>
-              <p className="m-0 text-sm text-muted-foreground">
-                Preview name: <strong className="text-foreground">{preview.name}</strong>
+            <section >
+              <p >
+                Preview name: <strong >{preview.name}</strong>
               </p>
             </section>
           ) : null}
@@ -122,15 +122,15 @@ export function CampaignCloneDialog({
           {cloneError ? campaignPanelError(cloneError, 'Clone failed') : null}
 
           {clonedId ? (
-            <p className="text-sm text-muted-foreground">
+            <p >
               Created{' '}
-              <Link className="text-primary hover:underline" to={`/campaigns/${clonedId}/edit`}>
+              <Link  to={`/campaigns/${clonedId}/edit`}>
                 open cloned campaign
               </Link>
             </p>
           ) : null}
 
-          <div className={campaignEditorActionsRowClass}>
+          <div >
             <SecondaryActionButton
               disabled={!campaignId || previewing || cloning || Boolean(clonedId)}
               type="button"

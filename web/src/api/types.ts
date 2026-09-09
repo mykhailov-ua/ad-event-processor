@@ -605,6 +605,25 @@ export type FlowValidateResponse = {
 export type CreateFlowRequest = components['schemas']['CreateFlowRequest'];
 export type UpdateFlowRequest = components['schemas']['UpdateFlowRequest'];
 export type Lander = components['schemas']['Lander'];
+export type LanderHostingCounts = {
+  total: number;
+  external: number;
+  hosted: number;
+  unconfigured: number;
+};
+export type LanderListResponse = {
+  items: Lander[];
+  total: number;
+  limit: number;
+  offset: number;
+  hosting_counts: LanderHostingCounts;
+};
+export type LanderListQuery = {
+  q?: string;
+  hosting?: '' | 'external' | 'hosted';
+  limit?: number;
+  offset?: number;
+};
 export type CreateLanderRequest = components['schemas']['CreateLanderRequest'];
 export type UpdateLanderRequest = components['schemas']['UpdateLanderRequest'];
 export type HostedEditorState = components['schemas']['HostedEditorState'];
@@ -762,6 +781,8 @@ export type CreatePaymentIntentRequest = components['schemas']['CreatePaymentInt
 export type PaymentIntentCreatedResponse = components['schemas']['PaymentIntentCreatedResponse'];
 export type CreateAPIKeyRequest = components['schemas']['CreateAPIKeyRequest'];
 export type APIKeyCreatedResponse = components['schemas']['APIKeyCreatedResponse'];
+export type APIKeySummary = components['schemas']['APIKeySummary'];
+export type APIKeyListResponse = components['schemas']['APIKeyListResponse'];
 export type SelfServePauseCampaignRequest = components['schemas']['SelfServePauseCampaignRequest'];
 
 export type CommandPaletteItem = components['schemas']['CommandPaletteItem'];

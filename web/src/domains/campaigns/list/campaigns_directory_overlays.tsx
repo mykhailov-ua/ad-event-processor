@@ -1,5 +1,8 @@
 import { PrimaryActionButton, SecondaryActionButton } from '@/shell/action_buttons';
-import { ErrorBlock } from '@/shell/error_block';
+import {
+  DirectoryMutationError,
+} from '@/shell/directory_page_shell';
+import { panelError } from '@/shell/panel_error';
 import {
   Dialog,
   DialogBody,
@@ -27,17 +30,13 @@ import {
   SheetTitle,
 } from '@/components/ui/sheet';
 import type { CustomerComboboxOption } from '@/shell/customer_combobox';
-import type { CampaignListMetrics } from '@/api/campaigns_api';
-import type { CampaignMargin, CampaignStatsQuery, SelfServeCampaignTemplate } from '@/api/types';
-import type { CampaignWithMoneyDisplay } from '@/domains/campaigns/list/campaign_metrics_shared';
+import type { SelfServeCampaignTemplate } from '@/api/types';
 import { CampaignBulkCloneDialog } from '@/domains/campaigns/list/campaign_bulk_clone_dialog';
 import { CampaignCloneDialog } from '@/domains/campaigns/editor/campaign_clone_dialog';
 import { CampaignImportPanel } from '@/domains/campaigns/editor/campaign_import_panel';
-import { CampaignOverviewSheet } from '@/domains/campaigns/list/campaign_overview_sheet';
 import { CampaignWizardPanel } from '@/domains/campaigns/editor/campaign_wizard_panel';
 import type { CampaignImportPanelWorkspace } from '@/domains/campaigns/editor/use_campaign_import_panel_workspace';
 import type { CampaignWizardPanelWorkspace } from '@/domains/campaigns/editor/use_campaign_wizard_panel_workspace';
-import { CampaignListResetWorkspaceDialog } from '@/domains/campaigns/list/campaign_list_reset_workspace_dialog';
 
 export type CampaignsDirectoryOverlaysProps = {
   actionError: Error | undefined;
@@ -73,20 +72,11 @@ export type CampaignsDirectoryOverlaysProps = {
   onDraftTemplateIdChange: (templateId: string) => void;
   onImportOpenChange: (open: boolean) => void;
   onLoadTemplates: () => void;
-  onOverviewOpenChange: (open: boolean) => void;
-  onResetWorkspaceConfirm: () => void;
-  onResetWorkspaceOpenChange: (open: boolean) => void;
   onWizardOpenChange: (open: boolean) => void;
   onWizardRefresh: () => void;
-  overviewCampaign: CampaignWithMoneyDisplay | null;
-  marginsById: Record<string, CampaignMargin>;
-  metricsById: Record<string, CampaignListMetrics>;
-  listScopeKey: string;
-  resetWorkspaceOpen: boolean;
   selectedCampaignId: string | undefined;
   selectedCampaignName: string | undefined;
   selectedCount: number;
-  statsQuery: CampaignStatsQuery;
   templates: SelfServeCampaignTemplate[];
   templatesError: Error | undefined;
   templatesLoading: boolean;
@@ -127,21 +117,12 @@ export function CampaignsDirectoryOverlays({
   onDraftTemplateIdChange,
   onImportOpenChange,
   onLoadTemplates,
-  onOverviewOpenChange,
-  onResetWorkspaceConfirm,
-  onResetWorkspaceOpenChange,
   onWizardOpenChange,
   onWizardRefresh,
-  overviewCampaign,
-  marginsById,
-  metricsById,
-  listScopeKey,
-  resetWorkspaceOpen,
   selectedCampaignId,
   selectedCampaignIds,
   selectedCampaignName,
   selectedCount,
-  statsQuery,
   templates,
   templatesError,
   templatesLoading,
@@ -154,11 +135,11 @@ export function CampaignsDirectoryOverlays({
   return (
     <>
       {actionError && !createSectionOpen ? (
-        <ErrorBlock title="Action failed" message={actionError.message} />
+        <DirectoryMutationError error={actionError} />
       ) : null}
 
       <Dialog open={createSectionOpen} onOpenChange={onCreateSectionOpenChange}>
-        <DialogContent className="max-w-lg">
+        <DialogContent >
           <DialogHeader>
             <DialogTitle>Quick create campaign</DialogTitle>
             <DialogDescription>
@@ -167,20 +148,20 @@ export function CampaignsDirectoryOverlays({
           </DialogHeader>
 
           <form
-            className="grid gap-4"
+           
             onSubmit={(event) => {
               event.preventDefault();
               onCreateCampaign();
             }}
           >
-            <div className="grid gap-2">
+            <div >
               <Label htmlFor="campaigns-create-customer">Customer group</Label>
               <Select
                 disabled={customersLoading || customerOptions.length === 0}
                 value={createCustomerId || undefined}
                 onValueChange={onDraftCreateCustomerIdChange}
               >
-                <SelectTrigger className="w-full" id="campaigns-create-customer">
+                <SelectTrigger  id="campaigns-create-customer">
                   <SelectValue
                     placeholder={
                       customersLoading
@@ -201,14 +182,14 @@ export function CampaignsDirectoryOverlays({
               </Select>
             </div>
 
-            <div className="grid gap-2">
+            <div >
               <Label htmlFor="campaigns-template">Template</Label>
               <Select
                 disabled={createFieldsDisabled || templatesLoading}
                 value={draftTemplateId}
                 onValueChange={onDraftTemplateIdChange}
               >
-                <SelectTrigger className="w-full" id="campaigns-template">
+                <SelectTrigger  id="campaigns-template">
                   <SelectValue
                     placeholder={
                       createFieldsDisabled
@@ -231,7 +212,7 @@ export function CampaignsDirectoryOverlays({
               </Select>
             </div>
 
-            <div className="grid gap-2">
+            <div >
               <Label htmlFor="campaigns-create-name">Name</Label>
               <Input
                 id="campaigns-create-name"
@@ -242,7 +223,7 @@ export function CampaignsDirectoryOverlays({
               />
             </div>
 
-            <div className="grid gap-2">
+            <div >
               <Label htmlFor="campaigns-budget-micro">Budget (micro)</Label>
               <Input
                 id="campaigns-budget-micro"
@@ -254,23 +235,21 @@ export function CampaignsDirectoryOverlays({
               />
             </div>
 
-            {templatesError ? (
-              <ErrorBlock title="Could not load templates" message={templatesError.message} />
-            ) : null}
-            {actionError ? (
-              <ErrorBlock title="Action failed" message={actionError.message} />
-            ) : null}
+            {templatesError
+              ? panelError(templatesError, 'Could not load templates')
+              : null}
+            {actionError ? <DirectoryMutationError error={actionError} /> : null}
             {effectiveCreateCustomerId &&
             !templatesLoading &&
             templates.length === 0 &&
             !templatesError ? (
-              <p className="text-sm text-muted-foreground">
+              <p >
                 No templates for{' '}
                 {customerNameById[effectiveCreateCustomerId] ?? effectiveCreateCustomerId}.
               </p>
             ) : null}
 
-            <DialogFooter className="gap-2 sm:gap-0">
+            <DialogFooter >
               <SecondaryActionButton
                 disabled={createFieldsDisabled}
                 loading={templatesLoading}
@@ -304,7 +283,7 @@ export function CampaignsDirectoryOverlays({
       />
 
       <Dialog open={archiveOpen} onOpenChange={onArchiveOpenChange}>
-        <DialogContent className="max-w-md">
+        <DialogContent >
           <DialogHeader>
             <DialogTitle>Archive campaigns</DialogTitle>
             <DialogDescription>
@@ -312,7 +291,7 @@ export function CampaignsDirectoryOverlays({
               status.
             </DialogDescription>
           </DialogHeader>
-          <DialogFooter className="gap-2">
+          <DialogFooter >
             <SecondaryActionButton type="button" onClick={() => onArchiveOpenChange(false)}>
               Cancel
             </SecondaryActionButton>
@@ -323,48 +302,27 @@ export function CampaignsDirectoryOverlays({
         </DialogContent>
       </Dialog>
 
-      <CampaignListResetWorkspaceDialog
-        open={resetWorkspaceOpen}
-        onConfirm={onResetWorkspaceConfirm}
-        onOpenChange={onResetWorkspaceOpenChange}
-      />
-
-      <CampaignOverviewSheet
-        campaign={overviewCampaign}
-        customerName={
-          overviewCampaign
-            ? (customerNameById[overviewCampaign.customer_id] ?? overviewCampaign.customer_id)
-            : ''
-        }
-        listMargin={overviewCampaign ? marginsById[overviewCampaign.id] : undefined}
-        listMetrics={overviewCampaign ? metricsById[overviewCampaign.id] : undefined}
-        onOpenChange={onOverviewOpenChange}
-        open={overviewCampaign != null}
-        statsCacheRevision={listScopeKey}
-        statsQuery={statsQuery}
-      />
-
       <Sheet onOpenChange={onImportOpenChange} open={importOpen}>
-        <SheetContent className="gap-0 p-0 sm:max-w-2xl">
-          <SheetHeader className="border-b border-border py-4 text-left">
+        <SheetContent >
+          <SheetHeader >
             <SheetTitle>Import campaign</SheetTitle>
             <SheetDescription>Validate, migrate, or import a campaign bundle.</SheetDescription>
           </SheetHeader>
-          <SheetBody className="pb-8">
+          <SheetBody >
             <CampaignImportPanel workspace={importPanelWorkspace} />
           </SheetBody>
         </SheetContent>
       </Sheet>
 
       <Dialog onOpenChange={onWizardOpenChange} open={wizardOpen}>
-        <DialogContent className="max-w-2xl p-0">
-          <DialogHeader className="border-b border-border px-6 py-4 text-left">
+        <DialogContent >
+          <DialogHeader >
             <DialogTitle>Guided setup</DialogTitle>
             <DialogDescription>
               Step-by-step campaign setup with traffic, flow, and budget.
             </DialogDescription>
           </DialogHeader>
-          <DialogBody className="grid gap-4 pb-8">
+          <DialogBody >
             <CampaignWizardPanel workspace={wizardPanelWorkspace} />
           </DialogBody>
         </DialogContent>

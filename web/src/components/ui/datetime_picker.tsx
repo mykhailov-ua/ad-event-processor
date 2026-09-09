@@ -4,10 +4,10 @@ import { CalendarIcon } from 'lucide-react';
 
 import { Button } from '@/components/ui/button';
 import { Calendar } from '@/components/ui/calendar';
-import { Input } from '@/components/ui/input';
+import { DatetimeTimePicker } from '@/components/ui/datetime_time_picker';
 import { Label } from '@/components/ui/label';
 import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover';
-import { adminChrome } from '@/lib/admin_chrome';
+import { adminKit } from '@/lib/admin_kit';
 import {
   formatDateValue,
   formatMonthValue,
@@ -21,14 +21,19 @@ import { cn } from '@/lib/utils';
 
 type CalendarPickerMode = 'datetime' | 'date' | 'month';
 
-type CalendarPickerProps = {
+function timeSelectionEnabled(mode: CalendarPickerMode, showTime?: boolean): boolean {
+  return mode === 'datetime' && (showTime ?? true);
+}
+
+export type CalendarPickerProps = {
   id?: string;
   label?: string;
   value: string;
   onChange: (value: string) => void;
   mode: CalendarPickerMode;
+  /** When mode is datetime: hour/minute inputs and Apply footer. Default true. */
+  showTime?: boolean;
   disabled?: boolean;
-  className?: string;
   placeholder?: string;
 };
 
@@ -39,7 +44,7 @@ const PLACEHOLDER: Record<CalendarPickerMode, string> = {
 };
 
 const POPOVER_HEIGHT: Record<CalendarPickerMode, number> = {
-  datetime: 440,
+  datetime: 320,
   date: 360,
   month: 360,
 };
@@ -74,32 +79,31 @@ function formatPickerDisplay(mode: CalendarPickerMode, date: Date): string {
   return format(date, 'MMMM yyyy');
 }
 
-function CalendarPicker({
+export function CalendarPicker({
   id,
   label,
   value,
   onChange,
   mode,
+  showTime,
   disabled = false,
-  className,
   placeholder,
 }: CalendarPickerProps) {
+  const timeEnabled = timeSelectionEnabled(mode, showTime);
   const triggerRef = useRef<HTMLButtonElement>(null);
   const [open, setOpen] = useState(false);
   const [align, setAlign] = useState<'start' | 'end'>('start');
   const [side, setSide] = useState<'top' | 'bottom'>('bottom');
   const selected = useMemo(() => parsePickerValue(mode, value), [mode, value]);
-  const timeValue = useMemo(() => {
-    if (mode !== 'datetime' || !selected) {
-      return '00:00';
-    }
-    const pad = (part: number) => String(part).padStart(2, '0');
-    return `${pad(selected.getHours())}:${pad(selected.getMinutes())}`;
-  }, [mode, selected]);
+  const selectedHours = selected?.getHours() ?? 0;
+  const selectedMinutes = selected?.getMinutes() ?? 0;
+  const popoverHeight = timeEnabled ? POPOVER_HEIGHT.datetime : POPOVER_HEIGHT.date;
 
   const displayLabel = selected
-    ? formatPickerDisplay(mode, selected)
-    : (placeholder ?? PLACEHOLDER[mode]);
+    ? timeEnabled
+      ? formatPickerDisplay(mode, selected)
+      : formatPickerDisplay('date', selected)
+    : (placeholder ?? (timeEnabled ? PLACEHOLDER.datetime : PLACEHOLDER.date));
 
   function applyDate(date: Date | undefined) {
     if (!date) {
@@ -107,21 +111,24 @@ function CalendarPicker({
       return;
     }
     if (mode === 'datetime') {
-      const [hours, minutes] = timeValue.split(':').map((part) => Number(part));
-      onChange(mergeDatetimeLocalDate(date, hours || 0, minutes || 0));
+      onChange(mergeDatetimeLocalDate(date, selectedHours, selectedMinutes));
+      if (!timeEnabled) {
+        setOpen(false);
+      }
       return;
     }
     onChange(formatPickerValue(mode, date));
     setOpen(false);
   }
 
-  function applyTime(nextTime: string) {
+  function applyHours(hours: number) {
     const base = selected ?? new Date();
-    const [hours, minutes] = nextTime.split(':').map((part) => Number(part));
-    if (Number.isNaN(hours) || Number.isNaN(minutes)) {
-      return;
-    }
-    onChange(mergeDatetimeLocalDate(base, hours, minutes));
+    onChange(mergeDatetimeLocalDate(base, hours, selectedMinutes));
+  }
+
+  function applyMinutes(minutes: number) {
+    const base = selected ?? new Date();
+    onChange(mergeDatetimeLocalDate(base, selectedHours, minutes));
   }
 
   const field = (
@@ -130,8 +137,8 @@ function CalendarPicker({
       onOpenChange={(nextOpen) => {
         if (nextOpen) {
           const trigger = triggerRef.current;
-          setSide(resolvePopoverSide(trigger, POPOVER_HEIGHT[mode]));
-          setAlign(resolvePopoverAlign(trigger, undefined, 320));
+          setSide(resolvePopoverSide(trigger, popoverHeight));
+          setAlign(resolvePopoverAlign(trigger, undefined, timeEnabled ? 380 : 320));
         }
         setOpen(nextOpen);
       }}
@@ -143,41 +150,48 @@ function CalendarPicker({
           type="button"
           variant="outline"
           disabled={disabled}
-          className={cn(
-            adminChrome.control,
-            'w-full justify-start gap-2 text-left font-normal',
-            !selected && 'text-muted-foreground',
-            className
-          )}
+          className="w-full min-w-0 justify-start gap-2 overflow-hidden font-normal"
+          title={selected ? displayLabel : undefined}
         >
-          <CalendarIcon className="h-4 w-4 shrink-0 opacity-60" aria-hidden />
-          <span className="min-w-0 truncate">{displayLabel}</span>
+          <CalendarIcon aria-hidden className="size-4 shrink-0 text-muted-foreground" />
+          <span
+            className={cn(
+              'min-w-0 truncate whitespace-nowrap text-left',
+              !selected && 'text-muted-foreground'
+            )}
+          >
+            {displayLabel}
+          </span>
         </Button>
       </PopoverTrigger>
-      <PopoverContent className="w-auto p-0" align={align} side={side} panelScroll="none">
-        <div className="flex justify-center p-3">
+      <PopoverContent
+        align={align}
+        className="w-auto p-0"
+        panelClassName="p-3"
+        panelScroll="none"
+        side={side}
+      >
+        <div className={cn('flex flex-col gap-3', timeEnabled && 'sm:flex-row sm:items-start')}>
           <Calendar
+            autoFocus
+            defaultMonth={selected ?? new Date()}
             mode="single"
             selected={selected}
-            defaultMonth={selected ?? new Date()}
             onSelect={applyDate}
-            autoFocus
           />
-        </div>
-        {mode === 'datetime' ? (
-          <div className="grid gap-2 border-t p-3">
-            <Label className="text-xs text-muted-foreground" htmlFor={`${id}-time`}>
-              Time
-            </Label>
-            <Input
-              id={`${id}-time`}
-              type="time"
-              value={timeValue}
-              onChange={(event) => applyTime(event.target.value)}
+          {timeEnabled ? (
+            <DatetimeTimePicker
+              disabled={disabled}
+              hourInputId={id ? `${id}-hour` : 'datetime-hour'}
+              hours={selectedHours}
+              minuteInputId={id ? `${id}-minute` : 'datetime-minute'}
+              minutes={selectedMinutes}
+              onHoursChange={applyHours}
+              onMinutesChange={applyMinutes}
             />
-          </div>
-        ) : null}
-        <div className="flex justify-end gap-2 border-t border-border p-2">
+          ) : null}
+        </div>
+        <div className="mt-3 flex items-center justify-between gap-2 border-t border-border pt-3">
           <Button
             type="button"
             variant="ghost"
@@ -188,6 +202,11 @@ function CalendarPicker({
           >
             Clear
           </Button>
+          {timeEnabled ? (
+            <Button type="button" variant="brand" onClick={() => setOpen(false)}>
+              Apply
+            </Button>
+          ) : null}
         </div>
       </PopoverContent>
     </Popover>
@@ -198,8 +217,13 @@ function CalendarPicker({
   }
 
   return (
-    <div className={cn('grid gap-2', className)}>
-      <Label htmlFor={id}>{label}</Label>
+    <div className={cn('grid min-w-0', adminKit.fieldLabelGap)}>
+      <Label
+        className="block min-h-[18px] truncate whitespace-nowrap leading-[18px]"
+        htmlFor={id}
+      >
+        {label}
+      </Label>
       {field}
     </div>
   );
@@ -211,19 +235,20 @@ export type DatetimePickerProps = {
   value: string;
   onChange: (value: string) => void;
   disabled?: boolean;
-  className?: string;
+  /** Hour/minute inputs in popover. Default true. Wire value stays YYYY-MM-DDTHH:mm. */
+  showTime?: boolean;
 };
 
-export function DatetimePicker(props: DatetimePickerProps) {
-  return <CalendarPicker {...props} mode="datetime" />;
+export function DatetimePicker({ showTime = true, ...props }: DatetimePickerProps) {
+  return <CalendarPicker {...props} mode="datetime" showTime={showTime} />;
 }
 
-export type DatePickerProps = Omit<CalendarPickerProps, 'mode' | 'label'> & {
+export type DatePickerProps = Omit<CalendarPickerProps, 'mode' | 'label' | 'showTime'> & {
   label?: string;
 };
 
 export function DatePicker(props: DatePickerProps) {
-  return <CalendarPicker {...props} mode="date" />;
+  return <CalendarPicker {...props} mode="date" showTime={false} />;
 }
 
 export type MonthPickerProps = Omit<CalendarPickerProps, 'mode' | 'label'> & {

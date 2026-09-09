@@ -8,6 +8,31 @@ paths:
       parameters:
         - $ref: '../openapi.yaml#/components/parameters/LimitQuery'
         - $ref: '../openapi.yaml#/components/parameters/OffsetQuery'
+        - name: admin_id
+          in: query
+          schema:
+            type: string
+            format: uuid
+        - name: target_id
+          in: query
+          description: Filter audit rows by target UUID (e.g. campaign id).
+          schema:
+            type: string
+            format: uuid
+        - name: action
+          in: query
+          schema:
+            type: string
+        - name: auth_source
+          in: query
+          schema:
+            type: string
+            enum: [session, api_key]
+        - name: api_key_id
+          in: query
+          schema:
+            type: string
+            format: uuid
         - name: redact_pii
           in: query
           schema:

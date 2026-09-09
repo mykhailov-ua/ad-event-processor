@@ -64,7 +64,7 @@ export function useCampaignWizardPanelWorkspace({
   const templates = load.templates;
 
   useEffect(() => {
-    if (templates.length === 0 || draftTemplateKey) {
+    if (!templates?.length || draftTemplateKey) {
       return;
     }
     setDraftTemplateKey(templates[0]?.key as TemplateKey);
@@ -89,7 +89,7 @@ export function useCampaignWizardPanelWorkspace({
   }, [enabled, load]);
 
   const selectedTemplate = useMemo(
-    () => templates.find((item) => item.key === draftTemplateKey),
+    () => templates?.find((item) => item.key === draftTemplateKey),
     [draftTemplateKey, templates]
   );
 
@@ -288,7 +288,7 @@ export function useCampaignWizardPanelWorkspace({
   return {
     load,
     customerOptions,
-    templates: templates as CampaignOnboardingTemplate[],
+    templates,
     selectedTemplate,
     draftCustomerId,
     setDraftCustomerId,

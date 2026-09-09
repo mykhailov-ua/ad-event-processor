@@ -99,6 +99,10 @@ Campaign:
       type: string
       enum: [strict, legacy_dmr]
       description: strict uses 302 only; legacy_dmr allows meta-refresh DMR when dmr_enabled or dmr=1 on /click.
+    timezone_attestation_mode:
+      type: string
+      enum: [off, ip_country, campaign_target, strict]
+      description: Safe-page timezone attestation policy. Omitted or empty on read resolves to ip_country for legacy campaigns.
     cidr_block_enabled:
       type: boolean
     proxy_vpn_block_enabled:
@@ -295,6 +299,10 @@ PatchCampaignRequest:
       type: string
       enum: [strict, legacy_dmr]
       description: strict uses 302 only; legacy_dmr allows meta-refresh DMR when dmr_enabled or dmr=1 on /click.
+    timezone_attestation_mode:
+      type: string
+      enum: [off, ip_country, campaign_target, strict]
+      description: Safe-page timezone attestation policy. Omitted or empty on read resolves to ip_country for legacy campaigns.
     cidr_block_enabled:
       type: boolean
     proxy_vpn_block_enabled:
@@ -1128,6 +1136,43 @@ Lander:
     created_at:
       type: string
       format: date-time
+
+LanderHostingCounts:
+  type: object
+  required: [total, external, hosted, unconfigured]
+  properties:
+    total:
+      type: integer
+      format: int64
+    external:
+      type: integer
+      format: int64
+    hosted:
+      type: integer
+      format: int64
+    unconfigured:
+      type: integer
+      format: int64
+
+LanderListResponse:
+  type: object
+  required: [items, total, limit, offset, hosting_counts]
+  properties:
+    items:
+      type: array
+      items:
+        $ref: '#/Lander'
+    total:
+      type: integer
+      format: int64
+    limit:
+      type: integer
+      format: int32
+    offset:
+      type: integer
+      format: int32
+    hosting_counts:
+      $ref: '#/LanderHostingCounts'
 
 CreateLanderRequest:
   type: object

@@ -42,6 +42,7 @@ func TestVerifyAPIKey_validSecret(t *testing.T) {
 	verified, err := service.VerifyAPIKey(context.Background(), rawKey)
 	require.NoError(t, err)
 	assert.Equal(t, userID, uuid.UUID(verified.User.ID.Bytes))
+	assert.Equal(t, uuid.UUID(repo.lookupRow.ID.Bytes), verified.KeyID)
 	assert.False(t, verified.User.IsBlocked)
 	assert.Equal(t, []string{"campaigns:read"}, verified.Scopes)
 }

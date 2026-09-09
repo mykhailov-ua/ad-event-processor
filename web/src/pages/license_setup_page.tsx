@@ -12,8 +12,8 @@ export function LicenseSetupPage() {
   const licenseLoad = useLicenseApplyFormLoad(true);
 
   return (
-    <div className="flex min-h-screen items-center justify-center bg-background p-4">
-      <Card className="w-full max-w-lg">
+    <div >
+      <Card >
         <CardHeader>
           <CardTitle>Apply license</CardTitle>
           <CardDescription>
@@ -21,16 +21,16 @@ export function LicenseSetupPage() {
             {stateLabel}.
           </CardDescription>
         </CardHeader>
-        <CardContent className="grid gap-4">
+        <CardContent >
           <LicenseApplyForm
             load={licenseLoad}
             onApplied={() => {
               refreshMeta();
             }}
           />
-          <p className="text-sm text-muted-foreground">
+          <p >
             License management remains available later under{' '}
-            <Link className="text-foreground underline" to="/settings/license">
+            <Link to="/settings">
               Settings
             </Link>
             .

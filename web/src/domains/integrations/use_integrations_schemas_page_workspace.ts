@@ -11,6 +11,7 @@ import {
 } from '@/api/integrations_api';
 import type { ApplyIntegrationSchemaResponse, IntegrationSchema } from '@/api/types';
 import { type IntegrationsSchemasTab } from '@/domains/integrations/integrations_schemas';
+import { toError } from '@/lib/admin_error.ts';
 import { confirmDestructiveAction, mutationError } from '@/lib/mutation_audit';
 import { useCoalescedBumpRefresh, useRefreshToken } from '@/hooks/use_coalesced_refresh_token';
 import { useResource } from '@/api/use_resource';
@@ -70,7 +71,7 @@ export function useIntegrationsSchemasPageWorkspace() {
         setViewedSchema(schema);
       })
       .catch((err: unknown) => {
-        setViewSchemaError(err instanceof Error ? err : new Error(String(err)));
+        setViewSchemaError(toError(err));
       })
       .finally(() => {
         setViewingSchema(false);
@@ -108,7 +109,7 @@ export function useIntegrationsSchemasPageWorkspace() {
       toast.success('Integration schema created');
       bumpRefreshCoalesced();
     } catch (err: unknown) {
-      setCreateError(err instanceof Error ? err : new Error(String(err)));
+      setCreateError(toError(err));
     } finally {
       setCreating(false);
     }
@@ -162,7 +163,7 @@ export function useIntegrationsSchemasPageWorkspace() {
       setImportSuccess(true);
       bumpRefreshCoalesced();
     } catch (err: unknown) {
-      setImportError(err instanceof Error ? err : new Error(String(err)));
+      setImportError(toError(err));
     } finally {
       setImporting(false);
     }

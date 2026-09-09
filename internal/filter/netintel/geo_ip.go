@@ -298,6 +298,20 @@ func TimezoneMismatchHours(browserTZ, country string, now time.Time) (mismatch b
 	return delta > 2, delta
 }
 
+func TimezoneMatchesCountry(browserTZ, country string, now time.Time) bool {
+	mismatch, _ := TimezoneMismatchHours(browserTZ, country, now)
+	return !mismatch
+}
+
+func BrowserTimezoneMatchesAnyCountry(browserTZ string, countries []string, now time.Time) bool {
+	for _, country := range countries {
+		if TimezoneMatchesCountry(browserTZ, country, now) {
+			return true
+		}
+	}
+	return false
+}
+
 type GeoIPUpdaterConfig struct {
 	DBPath         string
 	StagingPath    string

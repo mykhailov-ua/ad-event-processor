@@ -107,6 +107,35 @@ func TestCrowdWaveFilter_holdoutOrganicSpreadDoesNotTrigger(t *testing.T) {
 	assert.False(t, state.Active)
 }
 
+func TestCrowdWaveStore_SnapshotBatch_holdoutMatchesSnapshot(t *testing.T) {
+	mr := miniredis.RunT(t)
+	client := redis.NewClient(&redis.Options{Addr: mr.Addr()})
+	policy := crowdwave.DefaultWavePolicy()
+	store := NewCrowdWaveStore(client, time.Hour, policy)
+	ctx := context.Background()
+	activeID := uuid.MustParse("aaaaaaaa-aaaa-4aaa-8aaa-aaaaaaaaaaaa")
+	inactiveID := uuid.MustParse("bbbbbbbb-bbbb-4bbb-8bbb-bbbbbbbbbbbb")
+	now := time.Now().Unix()
+	require.NoError(t, client.LPush(ctx, crowdWaveKey(activeID),
+		formatWaveEntry(synthWaveClusterID(0), 0xabc, now),
+		formatWaveEntry(synthWaveClusterID(1), 0xabc, now),
+	).Err())
+	require.NoError(t, client.LPush(ctx, crowdWaveKey(inactiveID),
+		formatWaveEntry(synthWaveClusterID(2), 0xdef, now),
+	).Err())
+
+	batch, err := store.SnapshotBatch(ctx, []uuid.UUID{activeID, inactiveID, uuid.Nil})
+	require.NoError(t, err)
+	require.Len(t, batch, 2)
+
+	singleActive, err := store.Snapshot(ctx, activeID)
+	require.NoError(t, err)
+	assert.Equal(t, singleActive, batch[activeID])
+	singleInactive, err := store.Snapshot(ctx, inactiveID)
+	require.NoError(t, err)
+	assert.Equal(t, singleInactive, batch[inactiveID])
+}
+
 func eventTypeFromIndex(i int) string {
 	switch i % 7 {
 	case 0:

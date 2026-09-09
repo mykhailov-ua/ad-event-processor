@@ -13,8 +13,8 @@ import {
 } from '@/components/ui/select';
 import type { CampaignFraudConfig } from '@/api/types';
 import type { CampaignFraudPanelWorkspace } from '@/domains/campaigns/editor/use_campaign_fraud_panel_workspace';
-import { FraudLimitsDocLink } from '@/domains/fraud/fraud_limits_doc_link';
-import { PerimeterSybilDocLink } from '@/domains/fraud/perimeter_sybil_doc_link';
+import { FraudLimitsDocLink } from '@/domains/campaigns/editor/fraud_limits_doc_link';
+import { PerimeterSybilDocLink } from '@/domains/campaigns/editor/perimeter_sybil_doc_link';
 import { displayTimestamp } from '@/lib/display';
 
 export type CampaignFraudPanelProps = {
@@ -70,23 +70,23 @@ export function CampaignFraudPanel({
   } = workspace;
 
   return (
-    <div className="grid gap-4">
+    <div >
       <FraudLimitsDocLink />
       <PerimeterSybilDocLink />
-      <p className="text-sm text-muted-foreground">
+      <p >
         Ingress attestation and crowd-wave signals do not replace contractual controls for
         authorized human auditors on residential mobile. See Documentation for the Sybil operator
         runbook.
       </p>
-      <p className="text-sm text-muted-foreground">
+      <p >
         ML fraud boost is applied from a Redis snapshot on the tracker. Batch scoring runs in{' '}
-        <span className="text-xs">cmd/fraud-scorer</span>; there is no inline model call on{' '}
-        <span className="text-xs">/track</span>.
+        <span >cmd/fraud-scorer</span>; there is no inline model call on{' '}
+        <span >/track</span>.
       </p>
       {fraudConfig?.ml_boost_last_refreshed_at ? (
-        <p className="text-sm text-muted-foreground">
+        <p >
           Last ML boost refresh:{' '}
-          <span className="text-xs text-foreground">
+          <span >
             {displayTimestamp(fraudConfig.ml_boost_last_refreshed_at)}
           </span>
         </p>
@@ -96,7 +96,7 @@ export function CampaignFraudPanel({
         : null}
 
       <DirectoryFilterForm layout="auto-fill" onSubmit={(event) => event.preventDefault()}>
-        <FilterField className="md:col-span-2" htmlFor="fraud-preset" label="Preset">
+        <FilterField  htmlFor="fraud-preset" label="Preset">
           <Input
             id="fraud-preset"
             value={draftPreset}
@@ -104,7 +104,7 @@ export function CampaignFraudPanel({
           />
         </FilterField>
         {draftPreset.trim().toLowerCase() === 'social_in_app' ? (
-          <p className="md:col-span-2 text-sm text-muted-foreground">
+          <p >
             Social in-app preset relaxes Sec-Fetch and TLS/JA4 checks for known FB/IG/TikTok WebView
             UAs. Cross-layer desync and behavioral probes still apply.
           </p>
@@ -143,8 +143,8 @@ export function CampaignFraudPanel({
         </FilterField>
       </DirectoryFilterForm>
 
-      <div className="flex flex-wrap items-center gap-4">
-        <div className="flex items-center gap-2">
+      <div >
+        <div >
           <Checkbox
             checked={draftSilentReject}
             id="fraud-silent-reject"
@@ -152,7 +152,7 @@ export function CampaignFraudPanel({
           />
           <Label htmlFor="fraud-silent-reject">Non-blocking fraud response enabled</Label>
         </div>
-        <div className="flex items-center gap-2">
+        <div >
           <Checkbox
             checked={draftCanvasRetest}
             id="fraud-canvas-retest"
@@ -160,7 +160,7 @@ export function CampaignFraudPanel({
           />
           <Label htmlFor="fraud-canvas-retest">Canvas retest enabled</Label>
         </div>
-        <div className="flex items-center gap-2">
+        <div >
           <Checkbox
             checked={draftCgnatPolicy}
             id="fraud-cgnat-policy"
@@ -168,7 +168,7 @@ export function CampaignFraudPanel({
           />
           <Label htmlFor="fraud-cgnat-policy">CGNAT IP policy enabled</Label>
         </div>
-        <div className="flex items-center gap-2">
+        <div >
           <Checkbox
             checked={draftAcceptLangGeo}
             id="fraud-accept-lang-geo"
@@ -176,7 +176,7 @@ export function CampaignFraudPanel({
           />
           <Label htmlFor="fraud-accept-lang-geo">Accept-Language geo check</Label>
         </div>
-        <div className="flex items-center gap-2">
+        <div >
           <Checkbox
             checked={draftJsonSerialization}
             id="fraud-json-serialization"
@@ -197,9 +197,9 @@ export function CampaignFraudPanel({
         </FilterField>
       </DirectoryFilterForm>
 
-      <section className="grid gap-3 border border-border p-3">
-        <h3 className="m-0 text-sm font-semibold text-foreground">Conversion reject rules</h3>
-        <div className="flex items-center gap-2">
+      <section >
+        <h3 >Conversion reject rules</h3>
+        <div >
           <Checkbox
             checked={draftConversionRules.enabled}
             id="conversion-reject-enabled"
@@ -218,7 +218,7 @@ export function CampaignFraudPanel({
             />
           </FilterField>
         </DirectoryFilterForm>
-        <div className="flex flex-wrap gap-4">
+        <div >
           {(
             [
               ['reject_no_click', 'Reject missing click'],
@@ -228,7 +228,7 @@ export function CampaignFraudPanel({
               ['reject_datacenter_ip', 'Reject datacenter IP'],
             ] as const
           ).map(([field, label]) => (
-            <div key={field} className="flex items-center gap-2">
+            <div key={field}>
               <Checkbox
                 checked={draftConversionRules[field]}
                 disabled={!draftConversionRules.enabled}
@@ -267,13 +267,13 @@ export function CampaignFraudPanel({
           />
         </FilterField>
       </DirectoryFilterForm>
-      <p className="text-xs text-muted-foreground">
+      <p >
         Cross-layer policy counts distinct wire/safe-page mismatch layers (TCP, TLS JA4, client
         hints, Sec-Fetch, H2). Residential IPs may still pass individual L2 signals; see fraud
         signal limits doc.
       </p>
 
-      <div className="flex flex-wrap gap-2">
+      <div >
         <Button disabled={saving || fetching} onClick={onSave} type="button">
           {saving ? 'Saving...' : 'Save fraud config'}
         </Button>
@@ -288,21 +288,21 @@ export function CampaignFraudPanel({
       </div>
 
       {saveSuccess ? (
-        <p className="text-sm text-muted-foreground" role="status">
+        <p  role="status">
           Fraud config saved.
         </p>
       ) : null}
       {saveError ? campaignPanelError(saveError, 'Could not save fraud config') : null}
       {previewError ? campaignPanelError(previewError, 'Could not preview fraud impact') : null}
       {preview ? (
-        <section className={FILTER_PANEL_SUMMARY_CLASS}>
+        <section >
           <p>
             Affected IPs (7d): <strong>{preview.affected_ips_7d ?? 0}</strong>
           </p>
           <p>
             Sample size: <strong>{preview.sample_size ?? 0}</strong>
           </p>
-          <p className="text-muted-foreground">{preview.disclaimer}</p>
+          <p >{preview.disclaimer}</p>
         </section>
       ) : null}
     </div>

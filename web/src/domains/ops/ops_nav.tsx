@@ -4,7 +4,8 @@ import type { SectionNavItem } from '@/lib/nav_config';
 
 export const OPS_NAV_ITEMS: SectionNavItem[] = [
   { path: '/ops', label: 'Home', exact: true },
-  { path: '/ops/dlq', label: 'DLQ inbox' },
+  { path: '/ops/health', label: 'Health' },
+  { path: '/ops/sync-errors', label: 'Sync errors' },
   { path: '/ops/blacklist', label: 'Blacklist' },
   { path: '/ops/incidents', label: 'Incidents' },
   { path: '/ops/outbox', label: 'Outbox' },

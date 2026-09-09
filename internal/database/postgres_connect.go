@@ -10,9 +10,16 @@ import (
 	"github.com/jackc/pgx/v5/pgxpool"
 )
 
+const (
+	defaultPostgresConnectTimeout  = 5 * time.Second
+	defaultPostgresMaxConnLifetime = time.Hour
+)
+
 // PoolConfig optional pgxpool tuning applied in Connect.
 type PoolConfig struct {
 	StatementTimeout time.Duration
+	ConnectTimeout   time.Duration
+	MaxConnLifetime  time.Duration
 }
 
 // Connect warms minConns with parallel Ping so first /track burst does not pay pgx dial latency.
@@ -26,7 +33,7 @@ func Connect(ctx context.Context, dsn string, maxConns, minConns int, poolCfg ..
 	if len(poolCfg) > 0 {
 		opts = poolCfg[0]
 	}
-	applyPoolRuntimeParams(config, opts)
+	applyPoolConfig(config, opts)
 
 	config.MaxConns = int32(maxConns)
 	config.MinConns = int32(minConns)
@@ -55,6 +62,26 @@ func Connect(ctx context.Context, dsn string, maxConns, minConns int, poolCfg ..
 	}
 
 	return pool, nil
+}
+
+func applyPoolConfig(config *pgxpool.Config, opts PoolConfig) {
+	if config == nil {
+		return
+	}
+	connectTimeout := opts.ConnectTimeout
+	if connectTimeout <= 0 {
+		connectTimeout = defaultPostgresConnectTimeout
+	}
+	config.ConnConfig.ConnectTimeout = connectTimeout
+
+	// Avoid stale TCP behind L4 idle timeout (mirror clickhouse_connect.go ConnMaxLifetime).
+	maxLifetime := opts.MaxConnLifetime
+	if maxLifetime <= 0 {
+		maxLifetime = defaultPostgresMaxConnLifetime
+	}
+	config.MaxConnLifetime = maxLifetime
+
+	applyPoolRuntimeParams(config, opts)
 }
 
 func applyPoolRuntimeParams(config *pgxpool.Config, opts PoolConfig) {

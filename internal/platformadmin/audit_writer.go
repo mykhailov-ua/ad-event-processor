@@ -32,6 +32,7 @@ func auditLogMasked(ctx context.Context, host AuditWriterHost, q db.Querier, adm
 		slog.Error("audit marshal changes failed", "error", err, "admin_id", adminID, "action", action)
 		changesJSON = []byte("{}")
 	}
+	metadata = authz.MergeAuditMetadata(ctx, metadata)
 	metadataJSON, err := coldpath.MarshalJSON(metadata)
 	if err != nil {
 		slog.Error("audit marshal metadata failed", "error", err, "admin_id", adminID, "action", action)

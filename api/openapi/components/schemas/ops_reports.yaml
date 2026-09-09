@@ -722,6 +722,11 @@ ReportJobSpec:
     format:
       type: string
       enum: [csv, json]
+    row_limit:
+      type: integer
+      minimum: 1
+      maximum: 5000000
+      description: Max data rows in the export file. Server clamps to deployment tier (hard cap 5M).
 
 ReportJobStatus:
   type: object

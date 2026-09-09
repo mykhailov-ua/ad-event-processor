@@ -20,13 +20,13 @@ export function CampaignEditorTools({ campaignId }: { campaignId: string }) {
   const tools = useCampaignEditorToolsLoad(campaignId);
 
   return (
-    <section className={cn(EDITOR_MAIN_COLUMN_CLASS, 'gap-4')}>
-      <h2 className="text-sm font-semibold text-foreground">Campaign tools</h2>
-      <div className="flex flex-wrap gap-2">
+    <section >
+      <h2 >Campaign tools</h2>
+      <div >
         {TOOL_TABS.map((item) => (
           <Button
             key={item.id}
-            className="focus-visible:ring-0 focus-visible:ring-offset-0"
+           
             type="button"
             variant={tools.tab === item.id ? 'default' : 'outline'}
             onClick={() => tools.setTab(item.id)}
@@ -51,7 +51,9 @@ export function CampaignEditorTools({ campaignId }: { campaignId: string }) {
           workspace={tools.fraud.workspace}
         />
       ) : null}
-      {tools.tab === 'ops' ? <CampaignOpsPanel workspace={tools.ops.workspace} /> : null}
+      {tools.tab === 'ops' ? (
+        <CampaignOpsPanel campaignId={campaignId} workspace={tools.ops.workspace} />
+      ) : null}
       {tools.tab === 'context' ? (
         <CampaignEditorContextPanel campaignId={campaignId} context={tools.context} />
       ) : null}

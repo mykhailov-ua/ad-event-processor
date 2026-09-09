@@ -1,19 +1,21 @@
-// campaigns create lane: template list sync effects; toast after createSelfServeCampaign 2xx; refreshList coalesced by parent.
-import { useCallback, useEffect, type Dispatch, type SetStateAction } from 'react';
+// campaigns create lane: draft defaults on dialog open / submit; toast after createSelfServeCampaign 2xx; refreshList coalesced by parent.
+import { useCallback, useEffect, useRef, type Dispatch, type SetStateAction } from 'react';
 import { toast } from 'sonner';
 
 import { createSelfServeCampaign } from '@/api/selfserve_api';
+import { invalidateCampaignListResponseCache } from '@/domains/campaigns/list/campaign_list_response_cache';
+import { useCoalescedCallback } from '@/hooks/use_coalesced_callback';
+import { toError } from '@/lib/admin_error';
+import { newRandomUuid } from '@/lib/uuid';
 
 export type UseCampaignsPageMutationsArgs = {
   customerId: string | undefined;
   appliedCustomerId: string;
-  createSectionOpen: boolean;
-  setCreateSectionOpen: (open: boolean) => void;
   templates: Array<{ id?: string }>;
+  templatesFetching: boolean;
   draftTemplateId: string;
   setDraftTemplateId: (value: string) => void;
   draftCreateCustomerId: string;
-  setDraftCreateCustomerId: (value: string) => void;
   draftCreateName: string;
   setDraftCreateName: (value: string) => void;
   draftBudgetLimitMicro: string;
@@ -21,19 +23,29 @@ export type UseCampaignsPageMutationsArgs = {
   setCreating: (value: boolean) => void;
   setActionError: (error: Error | undefined) => void;
   setTemplatesRefreshToken: Dispatch<SetStateAction<number>>;
+  setCreateSectionOpen: (open: boolean) => void;
+  createSectionOpen: boolean;
   refreshList: () => void;
 };
+
+function resolveCreateTemplateId(
+  draftTemplateId: string,
+  templates: Array<{ id?: string }>
+): string {
+  if (draftTemplateId && templates.some((template) => template.id === draftTemplateId)) {
+    return draftTemplateId;
+  }
+  return templates[0]?.id ?? '';
+}
 
 export function useCampaignsPageMutations({
   customerId,
   appliedCustomerId,
-  createSectionOpen,
-  setCreateSectionOpen,
   templates,
+  templatesFetching,
   draftTemplateId,
   setDraftTemplateId,
   draftCreateCustomerId,
-  setDraftCreateCustomerId,
   draftCreateName,
   setDraftCreateName,
   draftBudgetLimitMicro,
@@ -41,32 +53,32 @@ export function useCampaignsPageMutations({
   setCreating,
   setActionError,
   setTemplatesRefreshToken,
+  setCreateSectionOpen,
+  createSectionOpen,
   refreshList,
 }: UseCampaignsPageMutationsArgs) {
-  useEffect(() => {
-    if (!createSectionOpen) {
-      return;
-    }
-    setDraftCreateCustomerId(appliedCustomerId || customerId || '');
-  }, [appliedCustomerId, createSectionOpen, customerId, setDraftCreateCustomerId]);
+  const createIdempotencyKeyRef = useRef<string | null>(null);
 
   useEffect(() => {
-    if (templates.length === 0) {
-      setDraftTemplateId('');
-      return;
+    if (createSectionOpen) {
+      createIdempotencyKeyRef.current = newRandomUuid();
+    } else {
+      createIdempotencyKeyRef.current = null;
     }
-    if (!templates.some((template) => template.id === draftTemplateId)) {
-      setDraftTemplateId(templates[0]?.id ?? '');
-    }
-  }, [draftTemplateId, setDraftTemplateId, templates]);
+  }, [createSectionOpen]);
 
-  const onLoadTemplates = useCallback(() => {
-    setTemplatesRefreshToken((value) => value + 1);
-  }, [setTemplatesRefreshToken]);
+  const onLoadTemplates = useCoalescedCallback(
+    () => {
+      setTemplatesRefreshToken((value) => value + 1);
+    },
+    { inFlightGuard: true, inFlight: templatesFetching }
+  );
 
   const onCreateCampaign = useCallback(async () => {
-    const effectiveCustomerId = draftCreateCustomerId.trim() || customerId;
-    if (!effectiveCustomerId || !draftTemplateId) {
+    const effectiveCustomerId =
+      draftCreateCustomerId.trim() || appliedCustomerId || customerId || '';
+    const effectiveTemplateId = resolveCreateTemplateId(draftTemplateId, templates);
+    if (!effectiveCustomerId || !effectiveTemplateId) {
       return;
     }
 
@@ -81,27 +93,39 @@ export function useCampaignsPageMutations({
       budgetLimitMicro = parsed;
     }
 
+    if (!createIdempotencyKeyRef.current) {
+      createIdempotencyKeyRef.current = newRandomUuid();
+    }
+
     setCreating(true);
     setActionError(undefined);
     try {
-      await createSelfServeCampaign({
-        customer_id: effectiveCustomerId,
-        template_id: draftTemplateId,
-        name: draftCreateName.trim() || undefined,
-        budget_limit_micro: budgetLimitMicro,
-      });
+      await createSelfServeCampaign(
+        {
+          customer_id: effectiveCustomerId,
+          template_id: effectiveTemplateId,
+          name: draftCreateName.trim() || undefined,
+          budget_limit_micro: budgetLimitMicro,
+        },
+        { idempotencyKey: createIdempotencyKeyRef.current }
+      );
+      createIdempotencyKeyRef.current = null;
       setDraftCreateName('');
       setDraftBudgetLimitMicro('');
+      setDraftTemplateId('');
       setCreateSectionOpen(false);
       toast.success('Campaign created');
+      invalidateCampaignListResponseCache();
       refreshList();
     } catch (err: unknown) {
-      setActionError(err instanceof Error ? err : new Error(String(err)));
-      toast.error(err instanceof Error ? err.message : String(err));
+      const nextError = toError(err);
+      setActionError(nextError);
+      toast.error(nextError.message);
     } finally {
       setCreating(false);
     }
   }, [
+    appliedCustomerId,
     customerId,
     draftBudgetLimitMicro,
     draftCreateCustomerId,
@@ -113,6 +137,8 @@ export function useCampaignsPageMutations({
     setCreating,
     setDraftBudgetLimitMicro,
     setDraftCreateName,
+    setDraftTemplateId,
+    templates,
   ]);
 
   return {

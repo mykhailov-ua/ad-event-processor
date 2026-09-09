@@ -166,8 +166,8 @@ func (s *Service) CreateLander(ctx context.Context, req flow.CreateLanderRequest
 	return s.FlowStore().CreateLander(ctx, req)
 }
 
-func (s *Service) ListLanders(ctx context.Context) ([]flow.LanderDTO, error) {
-	return s.FlowStore().ListLanders(ctx)
+func (s *Service) ListLandersPage(ctx context.Context, filter flow.ListLandersFilter) (flow.LanderListResponse, error) {
+	return s.FlowStore().ListLandersPage(ctx, filter)
 }
 
 func (s *Service) GetLander(ctx context.Context, landerID uuid.UUID) (flow.LanderDTO, error) {

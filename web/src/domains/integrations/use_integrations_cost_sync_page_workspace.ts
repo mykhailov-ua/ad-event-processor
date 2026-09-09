@@ -9,6 +9,7 @@ import {
 } from '@/api/integrations_api';
 import type { CostSyncCredential } from '@/api/types';
 import { type IntegrationsCostSyncPanel } from '@/domains/integrations/integrations_cost_sync';
+import { toError } from '@/lib/admin_error.ts';
 import { confirmDestructiveAction, mutationError as toMutationError } from '@/lib/mutation_audit';
 import { useCustomerScope } from '@/hooks/use_customer_scope';
 import { useCoalescedBumpRefresh, useRefreshToken } from '@/hooks/use_coalesced_refresh_token';
@@ -99,7 +100,7 @@ export function useIntegrationsCostSyncPageWorkspace() {
       setSaveSuccess(true);
       bumpRefreshCoalesced();
     } catch (err: unknown) {
-      setSaveError(err instanceof Error ? err : new Error(String(err)));
+      setSaveError(toError(err));
     } finally {
       setSaving(false);
     }
@@ -159,7 +160,7 @@ export function useIntegrationsCostSyncPageWorkspace() {
       setRunSuccess(true);
       bumpRefreshCoalesced();
     } catch (err: unknown) {
-      setRunError(err instanceof Error ? err : new Error(String(err)));
+      setRunError(toError(err));
     } finally {
       setRunning(false);
     }

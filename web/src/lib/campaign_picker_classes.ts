@@ -1,17 +1,10 @@
 import { adminKit } from '@/lib/admin_kit';
 import { cn } from '@/lib/utils';
 
-export const campaignDateRangeTriggerClass = cn(
-  adminKit.controlHeight,
-  adminKit.controlRadius,
-  adminKit.controlText,
-  'flex w-full min-w-0 items-center justify-between gap-1.5 border border-border bg-background px-3 py-0 font-normal text-foreground shadow-none'
-);
+export const campaignDateRangeTriggerClass = '';
 
-export const campaignDateRangePopoverClass =
-  'text-foreground [&_.group\\/calendar]:[--cell-size:2rem]';
+export const campaignDateRangePopoverClass = '';
 
-export const campaignDateRangeFooterClass =
-  'grid grid-cols-[1fr_auto] items-center gap-3 border-t border-border px-4 py-3';
+export const campaignDateRangeFooterClass = '';
 
-export const campaignDateRangeClearButtonClass = cn('shrink-0', adminKit.controlHeight);
+export const campaignDateRangeClearButtonClass = '';

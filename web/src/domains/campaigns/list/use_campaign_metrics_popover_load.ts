@@ -2,6 +2,7 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 
 import { getCampaignStats } from '@/api/campaigns_api';
+import { toError } from '@/lib/admin_error';
 import type { CampaignListMetrics } from '@/api/campaigns_api';
 import type { CampaignStats, CampaignStatsQuery } from '@/api/types';
 import {
@@ -55,6 +56,14 @@ export function useCampaignMetricsPopoverLoad({
         setLoading(false);
         return;
       }
+      if (listMetrics) {
+        const seeded = campaignStatsFromListMetrics(campaignId, listMetrics, resolvedStatsQuery);
+        writeCachedCampaignStats(cacheKey, seeded);
+        setStats(seeded);
+        setError(undefined);
+        setLoading(false);
+        return;
+      }
     }
 
     const controller = new AbortController();
@@ -74,7 +83,7 @@ export function useCampaignMetricsPopoverLoad({
         if (controller.signal.aborted) {
           return;
         }
-        setError(err instanceof Error ? err : new Error(String(err)));
+        setError(toError(err));
       })
       .finally(() => {
         if (!controller.signal.aborted) {

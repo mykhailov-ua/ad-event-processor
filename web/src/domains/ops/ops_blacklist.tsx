@@ -8,9 +8,7 @@ import { opsPanelError } from '@/domains/ops/ops_nav';
 import { OpsListFooter } from '@/domains/ops/ops_list_footer';
 import {
   OpsActionGroup,
-  OpsPageBlockingError,
-  OpsPageLoading,
-  OpsPageShell,
+  OpsPageWithLoad,
 } from '@/domains/ops/ops_page_shell';
 import {
   OpsTable,
@@ -61,25 +59,15 @@ export function OpsBlacklist({
   onRemove,
   onPageChange,
 }: OpsBlacklistProps) {
-  if (fetching && !hasSnapshot && !error) {
-    return <OpsPageLoading />;
-  }
-
-  if (error && !hasSnapshot) {
-    return (
-      <OpsPageBlockingError
-        error={error}
-        pageTitle="Fraud blacklist"
-        title="Could not load blacklist"
-      />
-    );
-  }
-
   const canGoPrev = offset > 0;
   const canGoNext = offset + limit < total;
 
   return (
-    <OpsPageShell
+    <OpsPageWithLoad
+      blockingErrorTitle="Could not load blacklist"
+      fetchState={{ fetching, error, hasSnapshot }}
+      title="Fraud blacklist"
+      alerts={actionError ? opsPanelError(actionError, 'Action failed') : null}
       actions={
         <>
           <OpsActionGroup label="Block">
@@ -106,7 +94,7 @@ export function OpsBlacklist({
       }
       filters={
         <>
-          <div className="grid gap-2">
+          <div >
             <Label htmlFor="blacklist-ip">IP to block</Label>
             <Input
               id="blacklist-ip"
@@ -114,7 +102,7 @@ export function OpsBlacklist({
               onChange={(event) => onDraftIpChange(event.target.value)}
             />
           </div>
-          <div className="grid gap-2">
+          <div >
             <Label htmlFor="blacklist-reason">Reason</Label>
             <Input
               id="blacklist-reason"
@@ -122,7 +110,7 @@ export function OpsBlacklist({
               onChange={(event) => onDraftReasonChange(event.target.value)}
             />
           </div>
-          <div className="grid gap-2">
+          <div >
             <Label htmlFor="blacklist-remove-ip">IP to unblock</Label>
             <Input
               id="blacklist-remove-ip"
@@ -146,7 +134,6 @@ export function OpsBlacklist({
           onPrev={() => onPageChange(Math.max(0, offset - limit))}
         />
       }
-      title="Fraud blacklist"
     >
       {(items ?? []).length === 0 ? (
         <EmptyState description="No blocked IPs on record." title="Blacklist empty" />
@@ -177,8 +164,6 @@ export function OpsBlacklist({
         </OpsTable>
       )}
 
-      {actionError ? opsPanelError(actionError, 'Action failed') : null}
-      {error && hasSnapshot ? opsPanelError(error, 'Refresh failed') : null}
-    </OpsPageShell>
+    </OpsPageWithLoad>
   );
 }

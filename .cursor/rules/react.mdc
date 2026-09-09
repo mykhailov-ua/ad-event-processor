@@ -15,7 +15,7 @@ alwaysApply: false
 
 ## Status
 
-Applies when `web/src/pages` and `web/src/domains` exist (`ui.mdc`, `frontend-modular.mdc`). Layout and server contracts: `ui.mdc`. Layer boundaries: `frontend-modular.mdc`.
+Applies when `web/src/pages` and `web/src/domains` exist (`ui.mdc`, `frontend-modular.mdc`, `frontend-patterns.mdc`). Layout and server contracts: `ui.mdc`. Layer boundaries: `frontend-modular.mdc`. Frontend patterns (effects, races, errors, async/cancel): `frontend-patterns.mdc`.
 
 ## Purpose
 
@@ -381,4 +381,4 @@ Before claiming Hot surface perf: paste Profiler note + visible point/row count.
 
 ## Related rules
 
-`frontend-hot-path.mdc`, `frontend-modular.mdc`, `ui.mdc`, `anti-slop.mdc`, `quality.mdc`, `hot-path.mdc`, `cold-path.mdc`, `boundaries.mdc`.
+`frontend-patterns.mdc`, `frontend-hot-path.mdc`, `frontend-modular.mdc`, `ui.mdc`, `anti-slop.mdc`, `quality.mdc`, `hot-path.mdc`, `cold-path.mdc`, `boundaries.mdc`.

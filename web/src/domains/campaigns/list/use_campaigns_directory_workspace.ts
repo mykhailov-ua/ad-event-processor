@@ -1,20 +1,23 @@
-// workspace owner: campaigns directory toolbar, selection, column prefs, export, bulk actions.
+// workspace owner: campaigns directory selection, export, bulk actions.
 // Fetch fan-out lives in use_campaigns_page_list.ts; this hook consumes list snapshots only.
 // listScopeKey change clears row selection and popover stats cache (statsRevision in parent).
-import { useCallback, useDeferredValue, useEffect, useMemo, useState } from 'react';
+import { useCallback, useEffect, useMemo, useState } from 'react';
 import { toast } from 'sonner';
 
 import type { CampaignListMetrics } from '@/api/campaigns_api';
 import { fetchCampaignListMetricsBatch } from '@/api/campaigns_api';
 import type { Campaign, CampaignMargin } from '@/api/types';
 import type { CustomerComboboxOption } from '@/shell/customer_combobox';
-import type { CampaignWithMoneyDisplay } from '@/domains/campaigns/list/campaign_metrics_shared';
 import { useCampaignImportPanelWorkspace } from '@/domains/campaigns/editor/use_campaign_import_panel_workspace';
 import { useCampaignWizardPanelWorkspace } from '@/domains/campaigns/editor/use_campaign_wizard_panel_workspace';
 import {
   archiveCampaigns,
   bulkPauseOrResumeCampaigns,
 } from '@/domains/campaigns/list/campaign_list_bulk_actions';
+import {
+  defaultCampaignListColumnPrefs,
+  visibleCampaignListColumns,
+} from '@/domains/campaigns/list/campaign_list_columns';
 import {
   exportCampaignBundles,
   exportCampaignRowsCsv,
@@ -27,25 +30,14 @@ import {
   exportableCampaignListColumns,
 } from '@/domains/campaigns/list/campaign_list_export_rows';
 import type { CampaignListFilterQuery } from '@/domains/campaigns/list/campaigns_list_query';
-import { resolveCampaignListSummary } from '@/domains/campaigns/list/campaign_list_summary';
-import {
-  loadCampaignListColumnPrefs,
-  mergeCampaignListColumnWidths,
-  saveCampaignListColumnPrefs,
-  setCampaignListColumnWidth,
-  type CampaignListColumnId,
-  type CampaignListColumnPrefs,
-  visibleCampaignListColumns,
-} from '@/domains/campaigns/list/campaign_list_columns';
-import { resetCampaignListWorkspacePrefs } from '@/domains/campaigns/list/campaign_list_workspace_prefs';
 import { clearCampaignStatsCache } from '@/domains/campaigns/list/campaign_list_stats_cache';
-import {
-  computeCampaignListColumnWidths,
-  defaultCampaignListColumnWidths,
-} from '@/domains/campaigns/list/campaign_list_column_widths';
-import type { CampaignListColumnWidthProbe } from '@/domains/campaigns/list/campaigns_directory_types';
-import type { CampaignListFilterTotalsView } from '@/domains/campaigns/list/campaign_list_filter_totals';
 import type { CampaignStatsQuery } from '@/api/types';
+import { invalidateCampaignListResponseCache } from '@/domains/campaigns/list/campaign_list_response_cache';
+import { toError } from '@/lib/admin_error';
+
+const DEFAULT_EXPORT_COLUMNS = exportableCampaignListColumns(
+  visibleCampaignListColumns(defaultCampaignListColumnPrefs())
+);
 
 type UseCampaignsDirectoryWorkspaceArgs = {
   items?: Campaign[];
@@ -54,8 +46,6 @@ type UseCampaignsDirectoryWorkspaceArgs = {
   ownerEmailById: Record<string, string>;
   metricsById: Record<string, CampaignListMetrics>;
   marginsById: Record<string, CampaignMargin>;
-  columnWidthProbe?: CampaignListColumnWidthProbe;
-  filterTotals?: CampaignListFilterTotalsView;
   exportFilterQuery: CampaignListFilterQuery;
   statsQuery: CampaignStatsQuery;
   listScopeKey: string;
@@ -67,10 +57,6 @@ export function useCampaignsDirectoryWorkspace({
   customerOptions,
   customerNameById,
   ownerEmailById,
-  metricsById,
-  marginsById,
-  columnWidthProbe,
-  filterTotals,
   exportFilterQuery,
   statsQuery,
   listScopeKey,
@@ -79,88 +65,28 @@ export function useCampaignsDirectoryWorkspace({
   const listItems = items ?? [];
   const [importOpen, setImportOpen] = useState(false);
   const [wizardOpen, setWizardOpen] = useState(false);
+  const refreshListAfterMutation = useCallback(() => {
+    invalidateCampaignListResponseCache();
+    onRefreshList();
+  }, [onRefreshList]);
+
   const importPanelWorkspace = useCampaignImportPanelWorkspace(importOpen);
   const wizardPanelWorkspace = useCampaignWizardPanelWorkspace({
     enabled: wizardOpen,
     customerOptions,
-    onCampaignCreated: onRefreshList,
+    onCampaignCreated: refreshListAfterMutation,
   });
   const [cloneOpen, setCloneOpen] = useState(false);
   const [bulkCloneOpen, setBulkCloneOpen] = useState(false);
   const [archiveOpen, setArchiveOpen] = useState(false);
-  const [resetWorkspaceOpen, setResetWorkspaceOpen] = useState(false);
   const [bulkBusy, setBulkBusy] = useState(false);
   const [exportBusy, setExportBusy] = useState(false);
-  const [overviewCampaign, setOverviewCampaign] = useState<CampaignWithMoneyDisplay | null>(null);
   const [selectedIds, setSelectedIds] = useState<Set<string>>(() => new Set());
-  const [columnPrefs, setColumnPrefs] = useState<CampaignListColumnPrefs>(() =>
-    loadCampaignListColumnPrefs()
-  );
 
   useEffect(() => {
     setSelectedIds(new Set());
     clearCampaignStatsCache();
   }, [listScopeKey]);
-
-  const handleColumnPrefsApply = useCallback((prefs: CampaignListColumnPrefs) => {
-    setColumnPrefs(prefs);
-    saveCampaignListColumnPrefs(prefs);
-  }, []);
-
-  const handleResetWorkspaceConfirm = useCallback(() => {
-    const prefs = resetCampaignListWorkspacePrefs();
-    setColumnPrefs(prefs.columnPrefs);
-    setResetWorkspaceOpen(false);
-    toast.success('Campaign list view reset');
-  }, []);
-
-  const visibleColumns = useMemo(() => visibleCampaignListColumns(columnPrefs), [columnPrefs]);
-  const deferredColumnPrefs = useDeferredValue(columnPrefs);
-  const deferredVisibleColumns = useMemo(
-    () => visibleCampaignListColumns(deferredColumnPrefs),
-    [deferredColumnPrefs]
-  );
-
-  const computedColumnWidths = useMemo((): Record<CampaignListColumnId, number> => {
-    const widthItems = columnWidthProbe?.items?.length ? columnWidthProbe.items : (items ?? []);
-    if (!widthItems.length) {
-      return defaultCampaignListColumnWidths(deferredVisibleColumns);
-    }
-    return computeCampaignListColumnWidths({
-      columns: deferredVisibleColumns,
-      items: widthItems,
-      metricsById: columnWidthProbe?.metricsById ?? metricsById,
-      marginsById: columnWidthProbe?.marginsById ?? marginsById,
-      customerNameById,
-      ownerEmailById,
-      filterTotals,
-    });
-  }, [
-    columnWidthProbe,
-    customerNameById,
-    deferredVisibleColumns,
-    filterTotals,
-    items,
-    marginsById,
-    metricsById,
-    ownerEmailById,
-  ]);
-
-  const columnWidths = useMemo(
-    () => mergeCampaignListColumnWidths(computedColumnWidths, columnPrefs.widthPx, visibleColumns),
-    [columnPrefs.widthPx, computedColumnWidths, visibleColumns]
-  );
-
-  const handleColumnWidthCommit = useCallback(
-    (columnId: CampaignListColumnId, widthPx: number) => {
-      setColumnPrefs((current) => {
-        const next = setCampaignListColumnWidth(current, columnId, widthPx, visibleColumns);
-        saveCampaignListColumnPrefs(next);
-        return next;
-      });
-    },
-    [visibleColumns]
-  );
 
   const selectedCampaignId = useMemo(() => {
     if (selectedIds.size !== 1) {
@@ -172,12 +98,6 @@ export function useCampaignsDirectoryWorkspace({
   const selectedCampaign = useMemo(
     () => listItems.find((item) => item.id === selectedCampaignId),
     [listItems, selectedCampaignId]
-  );
-
-  const summary = useMemo(
-    () =>
-      resolveCampaignListSummary(listItems, selectedIds, metricsById, marginsById, filterTotals),
-    [filterTotals, listItems, marginsById, metricsById, selectedIds]
   );
 
   const selectedIdsList = useMemo(() => [...selectedIds], [selectedIds]);
@@ -204,16 +124,16 @@ export function useCampaignsDirectoryWorkspace({
         }
         if (result.succeeded.length > 0) {
           setSelectedIds(new Set());
-          onRefreshList();
+          refreshListAfterMutation();
         }
       } catch (err: unknown) {
-        toast.error(err instanceof Error ? err.message : String(err));
+        toast.error(toError(err).message);
       } finally {
         setBulkBusy(false);
         setArchiveOpen(false);
       }
     },
-    [onRefreshList, selectedIdsList]
+    [refreshListAfterMutation, selectedIdsList]
   );
 
   const onPauseSelected = useCallback(() => {
@@ -248,11 +168,10 @@ export function useCampaignsDirectoryWorkspace({
       };
     }
     return listAllCampaignsForFilter(exportFilterQuery);
-  }, [exportFilterQuery, items, selectedIdsList]);
+  }, [exportFilterQuery, listItems, selectedIdsList]);
 
   const onExportCsv = useCallback(() => {
     setExportBusy(true);
-    const exportColumns = exportableCampaignListColumns(visibleColumns);
     void resolveExportCampaigns()
       .then(async (dataset) => {
         if (dataset.items.length === 0) {
@@ -263,13 +182,13 @@ export function useCampaignsDirectoryWorkspace({
         const batch = await fetchCampaignListMetricsBatch(campaignIds, statsQuery);
         const exportRows = buildCampaignListExportRows(
           dataset.items,
-          exportColumns,
+          DEFAULT_EXPORT_COLUMNS,
           batch.metricsById,
           batch.marginsById,
           customerNameById,
           ownerEmailById
         );
-        exportCampaignRowsCsv(exportColumns, exportRows);
+        exportCampaignRowsCsv(DEFAULT_EXPORT_COLUMNS, exportRows);
         toast.success(
           formatCampaignListExportToast(
             dataset.items.length,
@@ -280,10 +199,10 @@ export function useCampaignsDirectoryWorkspace({
         );
       })
       .catch((err: unknown) => {
-        toast.error(err instanceof Error ? err.message : String(err));
+        toast.error(toError(err).message);
       })
       .finally(() => setExportBusy(false));
-  }, [customerNameById, ownerEmailById, resolveExportCampaigns, statsQuery, visibleColumns]);
+  }, [customerNameById, ownerEmailById, resolveExportCampaigns, statsQuery]);
 
   const onExportBundles = useCallback(() => {
     setExportBusy(true);
@@ -304,7 +223,7 @@ export function useCampaignsDirectoryWorkspace({
         );
       })
       .catch((err: unknown) => {
-        toast.error(err instanceof Error ? err.message : String(err));
+        toast.error(toError(err).message);
       })
       .finally(() => setExportBusy(false));
   }, [resolveExportCampaigns]);
@@ -314,12 +233,7 @@ export function useCampaignsDirectoryWorkspace({
     bulkBusy,
     bulkCloneOpen,
     cloneOpen,
-    columnPrefs,
-    columnWidths,
     exportBusy,
-    handleColumnPrefsApply,
-    handleColumnWidthCommit,
-    handleResetWorkspaceConfirm,
     importOpen,
     importPanelWorkspace,
     onArchiveSelected,
@@ -327,8 +241,6 @@ export function useCampaignsDirectoryWorkspace({
     onExportCsv,
     onPauseSelected,
     onResumeSelected,
-    overviewCampaign,
-    resetWorkspaceOpen,
     selectedCampaign,
     selectedCampaignId,
     selectedIds,
@@ -337,12 +249,10 @@ export function useCampaignsDirectoryWorkspace({
     setBulkCloneOpen,
     setCloneOpen,
     setImportOpen,
-    setOverviewCampaign,
-    setResetWorkspaceOpen,
     setSelectedIds,
     setWizardOpen,
-    summary,
     wizardOpen,
     wizardPanelWorkspace,
+    refreshListAfterMutation,
   };
 }

@@ -12,12 +12,11 @@ type CampaignWithStatusDisplay = Campaign & {
 
 export type CampaignStatusBadgeProps = {
   campaign: CampaignWithStatusDisplay;
-  className?: string;
 };
 
-export function CampaignStatusBadge({ campaign, className }: CampaignStatusBadgeProps) {
+export function CampaignStatusBadge({ campaign, }: CampaignStatusBadgeProps) {
   const label = formatCampaignStatusLabel(campaign.status, campaign.status_label);
   const tone = campaignStatusToAdminTone(campaign.status, campaign.status_tone);
 
-  return <StatusBadge className={className} label={label} tone={tone} />;
+  return <StatusBadge  label={label} tone={tone} />;
 }

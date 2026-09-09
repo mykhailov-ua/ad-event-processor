@@ -13,7 +13,9 @@ import {
 } from '@/api/team_api';
 import { refreshSession } from '@/api/auth_api';
 import type { TeamMemberEditDraft, TeamRosterTab } from '@/domains/team/team_overview';
-import { confirmDestructiveAction, mutationError } from '@/lib/mutation_audit';
+import { confirmDestructiveAction } from '@/lib/mutation_audit';
+import { toError } from '@/lib/admin_error';
+import { useCoalescedBumpRefresh, useRefreshToken } from '@/hooks/use_coalesced_refresh_token';
 import { useResource } from '@/api/use_resource';
 import { useSession } from '@/hooks/use_session';
 import { useTransitionSearchParams } from '@/hooks/use_transition_search_params';
@@ -24,8 +26,8 @@ export function useTeamPageWorkspace() {
     useTransitionSearchParams();
   const { session, user, refetchSession } = useSession();
   const [rosterTab, setRosterTab] = useState<TeamRosterTab>('members');
-  const [overviewRefreshToken, setOverviewRefreshToken] = useState(0);
-  const [rosterRefreshToken, setRosterRefreshToken] = useState(0);
+  const { refreshToken: overviewRefreshToken } = useRefreshToken();
+  const { refreshToken: rosterRefreshToken, bumpRefresh: bumpRosterRefresh } = useRefreshToken();
   const [actingId, setActingId] = useState<string | undefined>();
   const [memberUpdatingId, setMemberUpdatingId] = useState<string | undefined>();
   const [actionError, setActionError] = useState<Error | undefined>();
@@ -39,13 +41,10 @@ export function useTeamPageWorkspace() {
   const appliedApprovalsLimit = parseListLimit(searchParams.get('approval_limit'), 100);
   const appliedApprovalsOffset = parseListOffset(searchParams.get('approval_offset'));
 
+  // draftCustomerId: useState(appliedCustomerId) on mount; sync trimmed value only on Apply (not on URL drift).
   const [draftCustomerId, setDraftCustomerId] = useState(appliedCustomerId);
   const [draftInviteEmail, setDraftInviteEmail] = useState('');
   const [draftInviteRole, setDraftInviteRole] = useState('MB');
-
-  useEffect(() => {
-    setDraftCustomerId(appliedCustomerId);
-  }, [appliedCustomerId]);
 
   const { data, error, fetching } = useResource(
     (signal) => getTeamOverview({ customer_id: appliedCustomerId || undefined }, signal),
@@ -135,6 +134,14 @@ export function useTeamPageWorkspace() {
     ]
   );
 
+  const rosterRefreshBusy =
+    membersFetching ||
+    approvalsFetching ||
+    inviting ||
+    memberUpdatingId != null ||
+    actingId != null;
+  const bumpRosterRefreshCoalesced = useCoalescedBumpRefresh(bumpRosterRefresh, rosterRefreshBusy);
+
   const updateTeamQuery = useCallback(
     (patch: {
       customer_id?: string;
@@ -173,11 +180,13 @@ export function useTeamPageWorkspace() {
   );
 
   const onApplyCustomer = useCallback(() => {
+    const trimmed = draftCustomerId.trim();
     updateTeamQuery({
-      customer_id: draftCustomerId.trim(),
+      customer_id: trimmed,
       member_offset: 0,
       approval_offset: 0,
     });
+    setDraftCustomerId(trimmed);
   }, [draftCustomerId, updateTeamQuery]);
 
   const onMembersPageChange = useCallback(
@@ -236,16 +245,16 @@ export function useTeamPageWorkspace() {
           refetchSession();
         }
         toast.success('Member updated');
-        setRosterRefreshToken((value) => value + 1);
+        bumpRosterRefreshCoalesced();
       } catch (err: unknown) {
-        const nextError = mutationError(err);
+        const nextError = toError(err);
         setActionError(nextError);
         toast.error(nextError.message);
       } finally {
         setMemberUpdatingId(undefined);
       }
     },
-    [appliedCustomerId, memberDrafts, refetchSession, user?.id]
+    [appliedCustomerId, bumpRosterRefreshCoalesced, memberDrafts, refetchSession, user?.id]
   );
 
   const onInvite = useCallback(async () => {
@@ -266,39 +275,42 @@ export function useTeamPageWorkspace() {
       setInviteSuccess(true);
       setDraftInviteEmail('');
       toast.success('Invite sent');
-      setRosterRefreshToken((value) => value + 1);
+      bumpRosterRefreshCoalesced();
     } catch (err: unknown) {
-      const nextError = mutationError(err);
+      const nextError = toError(err);
       setActionError(nextError);
       toast.error(nextError.message);
     } finally {
       setInviting(false);
     }
-  }, [appliedCustomerId, draftInviteEmail, draftInviteRole, inviting]);
+  }, [appliedCustomerId, bumpRosterRefreshCoalesced, draftInviteEmail, draftInviteRole, inviting]);
 
-  const runApprovalAction = useCallback(async (id: string, action: 'approve' | 'deny') => {
-    if (action === 'deny' && !confirmDestructiveAction('Deny this budget approval request?')) {
-      return;
-    }
-    setActingId(id);
-    setActionError(undefined);
-    try {
-      if (action === 'approve') {
-        await approveTeamBudgetApproval(id);
-        toast.success('Budget approval granted');
-      } else {
-        await denyTeamBudgetApproval(id);
-        toast.success('Budget approval denied');
+  const runApprovalAction = useCallback(
+    async (id: string, action: 'approve' | 'deny') => {
+      if (action === 'deny' && !confirmDestructiveAction('Deny this budget approval request?')) {
+        return;
       }
-      setRosterRefreshToken((value) => value + 1);
-    } catch (err: unknown) {
-      const nextError = mutationError(err);
-      setActionError(nextError);
-      toast.error(nextError.message);
-    } finally {
-      setActingId(undefined);
-    }
-  }, []);
+      setActingId(id);
+      setActionError(undefined);
+      try {
+        if (action === 'approve') {
+          await approveTeamBudgetApproval(id);
+          toast.success('Budget approval granted');
+        } else {
+          await denyTeamBudgetApproval(id);
+          toast.success('Budget approval denied');
+        }
+        bumpRosterRefreshCoalesced();
+      } catch (err: unknown) {
+        const nextError = toError(err);
+        setActionError(nextError);
+        toast.error(nextError.message);
+      } finally {
+        setActingId(undefined);
+      }
+    },
+    [bumpRosterRefreshCoalesced]
+  );
 
   return {
     rosterTab,

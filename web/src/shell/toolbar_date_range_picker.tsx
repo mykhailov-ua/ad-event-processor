@@ -36,8 +36,6 @@ export type ToolbarDateRangePickerProps = {
   to: string;
   onChange: (from: string, to: string) => void;
   disabled?: boolean;
-  className?: string;
-  labelClassName?: string;
 };
 
 export function ToolbarDateRangePicker({
@@ -47,8 +45,6 @@ export function ToolbarDateRangePicker({
   to,
   onChange,
   disabled = false,
-  className,
-  labelClassName,
 }: ToolbarDateRangePickerProps) {
   const triggerRef = useRef<HTMLButtonElement>(null);
   const [open, setOpen] = useState(false);
@@ -103,8 +99,8 @@ export function ToolbarDateRangePicker({
   }
 
   return (
-    <div className={cn('grid w-full min-w-0', adminKit.fieldLabelGap, className)}>
-      <Label className={labelClassName} htmlFor={id}>
+    <div >
+      <Label  htmlFor={id}>
         {label}
       </Label>
       <Popover open={open} onOpenChange={handleOpenChange}>
@@ -112,22 +108,22 @@ export function ToolbarDateRangePicker({
           <Button
             ref={triggerRef}
             id={id}
-            className={cn(campaignDateRangeTriggerClass, !fromDate && 'text-muted-foreground')}
+           
             disabled={disabled}
             type="button"
             variant="outline"
           >
-            <CalendarIcon className="h-4 w-4 shrink-0 opacity-60" aria-hidden />
-            <span className="min-w-0 flex-1 whitespace-nowrap text-left">{displayLabel}</span>
+            <CalendarIcon  aria-hidden />
+            <span >{displayLabel}</span>
           </Button>
         </PopoverTrigger>
         <PopoverContent
           align={align}
-          className={cn('w-auto p-0', campaignDateRangePopoverClass)}
+         
           panelScroll="none"
           side={side}
         >
-          <div className="p-3 pb-2">
+          <div >
             <Calendar
               mode="range"
               numberOfMonths={monthCount}
@@ -137,12 +133,12 @@ export function ToolbarDateRangePicker({
               onSelect={handleDraftSelect}
             />
           </div>
-          <div className={campaignDateRangeFooterClass}>
-            <span className="min-w-0 whitespace-nowrap text-[13px] leading-[18px] text-muted-foreground">
+          <div >
+            <span >
               {draftFooterLabel || 'Pick date range'}
             </span>
             <Button
-              className={campaignDateRangeClearButtonClass}
+             
               type="button"
               variant="outline"
               onClick={() => {

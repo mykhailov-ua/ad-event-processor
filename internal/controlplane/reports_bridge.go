@@ -165,6 +165,10 @@ func (s *Service) InitReportJobRunner(exportDir string) *reportjob.ReportJobRunn
 		}
 		s.reportJobRunner = reportjob.NewReportJobRunner(exportDir, reportjob.ExportDeps{
 			Pool: s.pool,
+			ExportChunkMaxBytes: func(ctx context.Context) int {
+				return s.ExportChunkMaxBytes()
+			},
+			ReportLicenseGated: reports.ReportCatalogLicenseGated,
 			WriteReport: func(ctx context.Context, path string, spec reportjob.ReportJobSpec) error {
 				return reports.WriteReportExport(ctx, exportDeps, path, spec)
 			},

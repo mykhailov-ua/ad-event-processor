@@ -395,6 +395,10 @@ func ReleaseFraudAccumulator(evt *domain.Event, acc *FraudAccumulator) {
 	filter.ReleaseFraudAccumulator(evt, acc)
 }
 
+func ReleaseAttachedFraudAccumulator(evt *domain.Event) {
+	filter.ReleaseAttachedFraudAccumulator(evt)
+}
+
 const ConversionEventType = filter.ConversionEventType
 
 func SegmentUserHash(hasher *piihash.Hasher, evt *domain.Event) ([16]byte, bool) {

@@ -231,6 +231,7 @@ start_web() {
     cd \"$ROOT/web\"
     export ADMIN_API_PROXY=\"${ADMIN_API_PROXY:-${CONTROL_URL}}\"
     export ADMIN_DEV_PORT=\"${ADMIN_DEV_PORT}\"
+    export ADMIN_UI_BARE=\"${ADMIN_UI_BARE:-}\"
     exec node scripts/dev.mjs
   " >> "$WEB_LOG" 2>&1 &
   echo $! > "$WEB_PID"

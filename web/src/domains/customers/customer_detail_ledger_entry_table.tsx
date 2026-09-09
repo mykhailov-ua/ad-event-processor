@@ -30,8 +30,8 @@ export function CustomerDetailLedgerEntryTable({ items }: CustomerDetailLedgerEn
           <TableRow key={row.id ?? `${row.created_at}-${row.type}`}>
             <TableCell>{row.id ?? ''}</TableCell>
             <TableCell>{row.type ?? ''}</TableCell>
-            <TableCell className="text-right">{row.amount ?? ''}</TableCell>
-            <TableCell className="text-xs">{row.campaign_id ?? ''}</TableCell>
+            <TableCell >{row.amount ?? ''}</TableCell>
+            <TableCell >{row.campaign_id ?? ''}</TableCell>
             <TableCell>{displayTimestamp(row.created_at)}</TableCell>
           </TableRow>
         ))}

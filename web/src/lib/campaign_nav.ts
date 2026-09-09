@@ -18,8 +18,8 @@ export function buildCampaignsDirectoryHref(params: {
   return query ? `/campaigns?${query}` : '/campaigns';
 }
 
-export function campaignReportPath(campaignId: string): string {
-  return `/dashboards/campaign/${campaignId}`;
+export function campaignReportPath(_campaignId: string): string | null {
+  return null;
 }
 
 export function campaignEditPath(campaignId: string): string {

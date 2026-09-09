@@ -61,7 +61,9 @@ export function useResource<T>(
         if (isAbortError(err)) {
           return;
         }
-        snapshotRef.current = true;
+        if (hadSnapshot) {
+          snapshotRef.current = true;
+        }
         setError(err instanceof Error ? err : new Error(String(err)));
       })
       .finally(() => {

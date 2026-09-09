@@ -1,23 +1,11 @@
-import type { ReactNode } from 'react';
-
 import { Badge } from '@/components/ui/badge';
 import { LicenseApplyForm } from '@/domains/onboarding/license_apply_form';
 import type { LicenseApplyFormLoad } from '@/domains/onboarding/use_license_apply_form_load';
 import { licenseBadgeVariant } from '@/domains/settings/license_badge';
-import { SettingsCard } from '@/domains/settings/settings_card';
-import {
-  settingsHintClass,
-  settingsPageWorkspaceClass,
-  settingsRowClass,
-  settingsRowLabelClass,
-  settingsRowValueClass,
-} from '@/domains/settings/settings_classes';
-import { settingsEmptyValue, settingsTextValue } from '@/domains/settings/settings_empty';
-import { SettingsNav } from '@/domains/settings/settings_nav';
 import { PageChrome } from '@/shell/page_chrome';
 import type { MetaResponse } from '@/api/types';
 import { displayTimestamp } from '@/lib/display';
-import { adminKit } from '@/lib/admin_kit';
+import { adminSpacing, adminTypography } from '@/lib/admin_spacing';
 import { cn } from '@/lib/utils';
 
 export type SettingsLicenseProps = {
@@ -27,15 +15,6 @@ export type SettingsLicenseProps = {
   onLicenseApplied: () => void;
 };
 
-function SettingsStatRow({ label, value }: { label: string; value: ReactNode }) {
-  return (
-    <div className={settingsRowClass}>
-      <span className={settingsRowLabelClass}>{label}</span>
-      <div className={settingsRowValueClass}>{value}</div>
-    </div>
-  );
-}
-
 export function SettingsLicense({
   meta,
   licenseLoad,
@@ -43,74 +22,47 @@ export function SettingsLicense({
   onLicenseApplied,
 }: SettingsLicenseProps) {
   const license = meta?.license;
+  const validUntil = license?.valid_until?.trim();
+  const deploymentId = meta?.deployment_id?.trim();
 
   return (
     <PageChrome
-      title="License"
-      workspaceClassName={settingsPageWorkspaceClass}
+      title="Settings"
       badge={
         stateLabel ? (
           <Badge variant={licenseBadgeVariant(stateLabel)}>{stateLabel}</Badge>
         ) : undefined
       }
-      controlPanel={
-        <div className="grid gap-3">
-          <SettingsNav />
-          <p className={settingsHintClass}>
-            Deployment license state and token replacement for this control plane.
-          </p>
-        </div>
-      }
     >
-      <div className="grid gap-3 lg:grid-cols-2">
-        <SettingsCard title="License status">
-          <div className={cn('border border-border bg-card', adminKit.panelRadius)}>
-            <SettingsStatRow label="State" value={stateLabel} />
-            <SettingsStatRow
-              label="Valid until"
-              value={
-                license?.valid_until?.trim()
-                  ? displayTimestamp(license.valid_until)
-                  : settingsEmptyValue('license_valid_until')
-              }
-            />
-            <SettingsStatRow
-              label="Deployment"
-              value={
-                meta?.deployment_id?.trim() ? (
-                  <span className="break-all text-xs">{meta.deployment_id}</span>
-                ) : (
-                  settingsEmptyValue('license_deployment')
-                )
-              }
-            />
+      <div className={cn('flex max-w-lg flex-col', adminSpacing.gap.xl)}>
+        <section className={cn('grid', adminSpacing.gap.lg, adminTypography.body)}>
+          <div className={adminSpacing.stack.titleBlock}>
+            <span className={adminTypography.labelMuted}>License state</span>
+            <span>{stateLabel || 'Unknown'}</span>
           </div>
-        </SettingsCard>
+          {validUntil ? (
+            <div className={adminSpacing.stack.titleBlock}>
+              <span className={adminTypography.labelMuted}>Valid until</span>
+              <span>{displayTimestamp(validUntil)}</span>
+            </div>
+          ) : null}
+          {deploymentId ? (
+            <div className={adminSpacing.stack.titleBlock}>
+              <span className={adminTypography.labelMuted}>Deployment ID</span>
+              <span className={adminTypography.monoData}>{deploymentId}</span>
+            </div>
+          ) : null}
+        </section>
 
-        <SettingsCard title="Entitlements snapshot">
-          <div className={cn('border border-border bg-card', adminKit.panelRadius)}>
-            <SettingsStatRow
-              label="Plan"
-              value={settingsTextValue(license?.plan_code ?? '', 'license_plan')}
-            />
-            <SettingsStatRow
-              label="Bootstrap"
-              value={meta?.bootstrap_complete ? 'Complete' : 'Pending'}
-            />
-          </div>
-        </SettingsCard>
-
-        <SettingsCard className="lg:col-span-2" title="Apply license">
-          <p className={settingsHintClass}>
-            Paste the license token from your deployment bundle or vendor portal.
-          </p>
+        <section className={cn('grid', adminSpacing.gap.lg)}>
+          <h2 className={adminTypography.sectionTitle}>Replace license</h2>
           <LicenseApplyForm
             load={licenseLoad}
             showStatus={false}
             description=""
             onApplied={onLicenseApplied}
           />
-        </SettingsCard>
+        </section>
       </div>
     </PageChrome>
   );

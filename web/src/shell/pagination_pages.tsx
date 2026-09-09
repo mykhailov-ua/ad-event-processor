@@ -6,7 +6,6 @@ export type PaginationPagesProps = {
   pageCount: number;
   disabled?: boolean;
   onPageChange: (page: number) => void;
-  className?: string;
   maxVisible?: number;
 };
 
@@ -26,7 +25,6 @@ export function PaginationPages({
   pageCount,
   disabled = false,
   onPageChange,
-  className,
   maxVisible = 5,
 }: PaginationPagesProps) {
   if (pageCount <= 1) {
@@ -36,7 +34,7 @@ export function PaginationPages({
   const pages = pageRange(page, pageCount, maxVisible);
 
   return (
-    <div className={cn('flex items-center gap-1', className)} aria-label="Pagination">
+    <div aria-label="Pagination" className="flex flex-wrap items-center gap-2">
       {pages.map((pageNumber) => {
         const active = pageNumber === page;
         return (
@@ -44,10 +42,7 @@ export function PaginationPages({
             key={pageNumber}
             aria-current={active ? 'page' : undefined}
             aria-label={`Page ${pageNumber}`}
-            className={cn(
-              'min-w-7 px-2 text-[13px] ',
-              active && 'border-primary bg-primary text-primary-foreground hover:bg-primary/90'
-            )}
+           
             disabled={disabled}
             type="button"
             variant={active ? 'default' : 'outline'}

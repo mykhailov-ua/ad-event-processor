@@ -3,9 +3,8 @@ import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { opsPanelError } from '@/domains/ops/ops_nav';
-import { OpsPageBlockingError, OpsPageLoading, OpsPageShell } from '@/domains/ops/ops_page_shell';
+import { OpsPageWithLoad } from '@/domains/ops/ops_page_shell';
 import { FILTER_PANEL_NARROW_CLASS } from '@/shell/filter_panel';
-import { ErrorBlock } from '@/shell/error_block';
 import { JsonPayloadView } from '@/shell/json_payload_view';
 
 export type OpsConsentProps = {
@@ -55,29 +54,19 @@ export function OpsConsent({
   onDraftSignatureHexChange,
   onRecordConsent,
 }: OpsConsentProps) {
-  if (fetching && !hasSnapshot && !error) {
-    return <OpsPageLoading />;
-  }
-
-  if (error && !hasSnapshot) {
-    return (
-      <OpsPageBlockingError
-        error={error}
-        pageTitle="Consent proofs"
-        title="Could not load consent proofs"
-      />
-    );
-  }
-
   return (
-    <OpsPageShell title="Consent proofs">
-      <section className={FILTER_PANEL_NARROW_CLASS}>
-        <h2 className="text-sm font-medium">Record signed consent</h2>
-        <p className="text-sm text-muted-foreground">
+    <OpsPageWithLoad
+      blockingErrorTitle="Could not load consent proofs"
+      fetchState={{ fetching, error, hasSnapshot }}
+      title="Consent proofs"
+    >
+      <section >
+        <h2 >Record signed consent</h2>
+        <p >
           POST /api/v1/consent with X-Consent-Signature. Use a local HMAC secret (test) or paste a
           precomputed signature hex.
         </p>
-        <div className="grid gap-2">
+        <div >
           <Label htmlFor="consent-user-id">User ID</Label>
           <Input
             id="consent-user-id"
@@ -85,7 +74,7 @@ export function OpsConsent({
             onChange={(event) => onDraftUserIdChange(event.target.value)}
           />
         </div>
-        <div className="grid gap-2">
+        <div >
           <Label htmlFor="consent-purposes">Purposes (int32 bitmask)</Label>
           <Input
             id="consent-purposes"
@@ -94,7 +83,7 @@ export function OpsConsent({
             onChange={(event) => onDraftPurposesChange(event.target.value)}
           />
         </div>
-        <div className="grid gap-2">
+        <div >
           <Label htmlFor="consent-source">Source</Label>
           <Input
             id="consent-source"
@@ -102,7 +91,7 @@ export function OpsConsent({
             onChange={(event) => onDraftSourceChange(event.target.value)}
           />
         </div>
-        <div className="grid gap-2">
+        <div >
           <Label htmlFor="consent-timestamp">Timestamp (optional, RFC3339)</Label>
           <Input
             id="consent-timestamp"
@@ -110,7 +99,7 @@ export function OpsConsent({
             onChange={(event) => onDraftTimestampChange(event.target.value)}
           />
         </div>
-        <div className="grid gap-2">
+        <div >
           <Label htmlFor="consent-hmac-secret">HMAC secret (local test)</Label>
           <Input
             autoComplete="off"
@@ -120,7 +109,7 @@ export function OpsConsent({
             onChange={(event) => onDraftSigningSecretChange(event.target.value)}
           />
         </div>
-        <div className="grid gap-2">
+        <div >
           <Label htmlFor="consent-signature">Signature hex (optional if secret set)</Label>
           <Input
             id="consent-signature"
@@ -136,20 +125,19 @@ export function OpsConsent({
           {recording ? 'Recording...' : 'Record consent'}
         </Button>
         {recordSuccess ? (
-          <p className="text-sm text-muted-foreground">Consent accepted by server.</p>
+          <p >Consent accepted by server.</p>
         ) : null}
-        {recordError ? <ErrorBlock title="Record failed" message={recordError.message} /> : null}
+        {recordError ? opsPanelError(recordError, 'Record failed') : null}
       </section>
 
       {payload ? (
         <JsonPayloadView payload={payload} />
       ) : (
-        <p className="text-muted-foreground">No consent proof payload returned.</p>
+        <p >No consent proof payload returned.</p>
       )}
       {listRevalidating ? (
-        <p className="text-sm text-muted-foreground">Refreshing proofs...</p>
+        <p >Refreshing proofs...</p>
       ) : null}
-      {error && hasSnapshot ? opsPanelError(error, 'Refresh failed') : null}
-    </OpsPageShell>
+    </OpsPageWithLoad>
   );
 }

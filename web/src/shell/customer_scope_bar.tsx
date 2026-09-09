@@ -20,10 +20,10 @@ export function CustomerScopeBar({
   onApply,
 }: CustomerScopeBarProps) {
   return (
-    <FilterPanel className="gap-2">
-      <h2 className="text-base font-semibold">Customer scope</h2>
+    <FilterPanel >
+      <h2 >Customer scope</h2>
       <form
-        className={INLINE_FILTER_ACTION_GRID_WIDE_CLASS}
+       
         onSubmit={(event) => {
           event.preventDefault();
           onApply();
@@ -40,11 +40,11 @@ export function CustomerScopeBar({
         <FilterApplyButton>Apply</FilterApplyButton>
       </form>
       {appliedCustomerId ? (
-        <p className="text-sm text-muted-foreground">
-          Active scope: <span className="text-xs text-foreground">{appliedCustomerId}</span>
+        <p >
+          Active scope: <span >{appliedCustomerId}</span>
         </p>
       ) : (
-        <p className="text-sm text-muted-foreground">
+        <p >
           Set customer_id for scoped integration reads and writes.
         </p>
       )}

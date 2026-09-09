@@ -14,6 +14,7 @@ import (
 	"sync"
 	"time"
 
+	"ad-event-processor/internal/reportjob"
 	"ad-event-processor/pkg/coldpath"
 	"ad-event-processor/pkg/httpresponse"
 
@@ -36,6 +37,7 @@ type JobSpec struct {
 	From       string `json:"from"`
 	To         string `json:"to"`
 	Format     string `json:"format"`
+	RowLimit   int    `json:"row_limit,omitempty"`
 }
 
 type JobStatusDTO struct {
@@ -186,7 +188,7 @@ func (s *JobRunner) toDTO(jobID string, rec *jobRecord) JobStatusDTO {
 		dto.DownloadURL = "/api/v1/billing/exports/" + jobID + "/download"
 	}
 	if rec.errMsg != "" {
-		dto.Error = rec.errMsg
+		dto.Error = reportjob.SanitizeExportJobError(rec.errMsg)
 	}
 	if !rec.completedAt.IsZero() {
 		dto.CompletedAt = rec.completedAt.UTC().Format(time.RFC3339)
@@ -269,15 +271,30 @@ func (s *JobRunner) writeCSV(ctx context.Context, path string, rec *jobRecord) e
 	}
 
 	var cursor int64
+	maxRows := rec.spec.RowLimit
+	if maxRows <= 0 {
+		maxRows = reportjob.ExportRowLimitDefault
+	}
+	written := 0
 	for {
 		if err := ctx.Err(); err != nil {
 			return err
 		}
-		lines, next, err := s.ledgerReads.ListLedgerLinesInWindow(ctx, rec.customerID, rec.from, rec.to, cursor, s.fetchRows)
+		if written >= maxRows {
+			break
+		}
+		batchLimit := s.fetchRows
+		if int(batchLimit) > maxRows-written {
+			batchLimit = int32(maxRows - written)
+		}
+		lines, next, err := s.ledgerReads.ListLedgerLinesInWindow(ctx, rec.customerID, rec.from, rec.to, cursor, batchLimit)
 		if err != nil {
 			return err
 		}
 		for _, line := range lines {
+			if written >= maxRows {
+				break
+			}
 			if err := cw.Write([]string{
 				fmt.Sprintf("%d", line.ID),
 				fmt.Sprintf("%d", line.AmountMicro),
@@ -286,8 +303,9 @@ func (s *JobRunner) writeCSV(ctx context.Context, path string, rec *jobRecord) e
 			}); err != nil {
 				return err
 			}
+			written++
 		}
-		if next == "" {
+		if written >= maxRows || next == "" {
 			break
 		}
 		var parsed int64
@@ -307,20 +325,36 @@ func (s *JobRunner) writeNDJSON(ctx context.Context, path string, rec *jobRecord
 
 	enc := json.NewEncoder(f)
 	var cursor int64
+	maxRows := rec.spec.RowLimit
+	if maxRows <= 0 {
+		maxRows = reportjob.ExportRowLimitDefault
+	}
+	written := 0
 	for {
 		if err := ctx.Err(); err != nil {
 			return err
 		}
-		lines, next, err := s.ledgerReads.ListLedgerLinesInWindow(ctx, rec.customerID, rec.from, rec.to, cursor, s.fetchRows)
+		if written >= maxRows {
+			break
+		}
+		batchLimit := s.fetchRows
+		if int(batchLimit) > maxRows-written {
+			batchLimit = int32(maxRows - written)
+		}
+		lines, next, err := s.ledgerReads.ListLedgerLinesInWindow(ctx, rec.customerID, rec.from, rec.to, cursor, batchLimit)
 		if err != nil {
 			return err
 		}
 		for _, line := range lines {
+			if written >= maxRows {
+				break
+			}
 			if err := enc.Encode(line); err != nil {
 				return err
 			}
+			written++
 		}
-		if next == "" {
+		if written >= maxRows || next == "" {
 			break
 		}
 		var parsed int64
@@ -332,6 +366,7 @@ func (s *JobRunner) writeNDJSON(ctx context.Context, path string, rec *jobRecord
 
 type ExportHTTPHandlers struct {
 	JobRunner               *JobRunner
+	ExportChunkMaxBytes     func() int
 	ApplyRateLimit          func(http.HandlerFunc) http.HandlerFunc
 	RequirePermission       func(string, http.HandlerFunc) http.HandlerFunc
 	AuthorizeCustomerAccess func(*http.Request, string) error
@@ -375,6 +410,11 @@ func (h *ExportHTTPHandlers) createExport(w http.ResponseWriter, r *http.Request
 			return
 		}
 	}
+	tierMax := reportjob.ExportRowLimitMax
+	if h.ExportChunkMaxBytes != nil {
+		tierMax = reportjob.ExportRowLimitMaxForChunkBytes(uint64(h.ExportChunkMaxBytes()))
+	}
+	spec.RowLimit = reportjob.NormalizeExportRowLimit(spec.RowLimit, tierMax)
 	jobID, err := h.JobRunner.CreateJob(r.Context(), spec)
 	if err != nil {
 		httpresponse.Error(w, http.StatusBadRequest, "BAD_REQUEST", err.Error())

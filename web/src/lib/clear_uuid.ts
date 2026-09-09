@@ -1,7 +1,7 @@
 /**
  * Clears optional UUID FK fields on campaign PATCH (Go uuid.Nil). Empty string decodes as 400.
  */
-export const CLEAR_UUID = '00000000-0000-0000-0000-000000000000';
+export const CLEAR_UUID = '';
 
 export function resolveOptionalUuidPatchValue(
   formValue: string,

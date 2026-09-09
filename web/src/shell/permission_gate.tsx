@@ -17,7 +17,7 @@ export type PermissionGateProps = RoutePermission & {
 
 export function ForbiddenPanel() {
   return (
-    <div className="grid gap-4">
+    <div >
       <AdminErrorPage kind="forbidden" layout="embedded" />
       <div>
         <Button asChild type="button" variant="outline">

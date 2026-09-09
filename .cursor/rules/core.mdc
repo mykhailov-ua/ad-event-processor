@@ -88,6 +88,8 @@ Always applied on every agent turn (no glob filter):
 | `control-plane.mdc` | Outbox, workers, admin API, server-authoritative RBAC |
 | `modular-monolith.mdc` | Modular monolith, bridges, god- and micro-package policy, migration cruft ban |
 | `frontend-modular.mdc` | Admin SPA layers, Tailwind + shadcn/ui package map |
+| `frontend-patterns.mdc` | Frontend patterns (паттерны фронтенда): composition, effects, races, errors, async/cancel |
+| `frontend-primitives.mdc` | UI primitive stack (kit, chrome, Button/Input, shell roles, variant vs action) |
 | `frontend-slop.mdc` | Admin mock tiers, agent execution protocol, visual layout drift **VL-***, RBAC, styling, errors, Playwright honesty |
 | `rtb.mdc` | OpenRTB auction, shadow to live |
 | `edge.mdc` | Nginx Lua, XDP sync operators, fingerprint pipeline |
@@ -97,6 +99,7 @@ Always applied on every agent turn (no glob filter):
 | `regions.mdc` | Enterprise multi-region |
 | `ui.mdc` | Admin layout, macro/micro layout, cold path, AI honesty |
 | `frontend-slop.mdc` | Admin mock tiers, agent protocol, **Shared style contracts**, visual layout VL-* |
+| `agent-self-initiative.mdc` | LLM self-initiative ban: SD-* catalog, layout invariant, revert protocol (@ cite) |
 | `react.mdc` | React Hot (charts/telemetry) vs Cold (CRUD), heap leaks, canvas |
 | `frontend-hot-path.mdc` | Suboptimal ops taxonomy, scale regimes S/L/F, Big-O vs locality |
 | `tradeoffs.mdc` | Rejected alternatives, evidence matrix |

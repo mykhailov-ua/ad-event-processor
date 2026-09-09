@@ -8,6 +8,7 @@ import { isAbortError } from '@/api/client';
 import { getFlow } from '@/api/flows_api';
 import type { Campaign, CampaignPublishCheck } from '@/api/types';
 import { useResource } from '@/api/use_resource';
+import { toError } from '@/lib/admin_error';
 
 export type UseCampaignEditorLoadArgs = {
   syncFormFromCampaign: (campaign: Campaign) => void;
@@ -66,22 +67,29 @@ export function useCampaignEditorLoad({ syncFormFromCampaign }: UseCampaignEdito
     }
     autoPublishCheckDone.current = true;
 
+    const controller = new AbortController();
     setChecking(true);
     setPublishCheckError(undefined);
 
-    void checkCampaignPublish(id)
-      .then((result) => {
+    void (async () => {
+      try {
+        const result = await checkCampaignPublish(id, controller.signal);
         setPublishCheck(result);
-      })
-      .catch((err: unknown) => {
+      } catch (err: unknown) {
         if (isAbortError(err)) {
           return;
         }
-        setPublishCheckError(err instanceof Error ? err : new Error(String(err)));
-      })
-      .finally(() => {
-        setChecking(false);
-      });
+        setPublishCheckError(toError(err));
+      } finally {
+        if (!controller.signal.aborted) {
+          setChecking(false);
+        }
+      }
+    })();
+
+    return () => {
+      controller.abort();
+    };
   }, [data, id]);
 
   const campaign = campaignSnapshot ?? data;

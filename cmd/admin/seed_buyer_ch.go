@@ -78,6 +78,18 @@ var seedBuyerCountries = []string{"US", "GB", "DE", "CA", "UA", "FR", "JP", "AU"
 
 var seedBuyerDevices = []string{"mobile", "desktop", "tablet"}
 
+var seedBuyerFraudReasons = []struct {
+	reason string
+	score  uint32
+	silent uint8
+}{
+	{"datacenter_ip", 85, 0},
+	{"low_ttc", 72, 0},
+	{"silent_reject", 90, 1},
+	{"placement_blacklist", 95, 0},
+	{"bot_signature", 88, 0},
+}
+
 func runSeedBuyerCH(cmd *cobra.Command, args []string) error {
 	if !cfg.IsClickHouseEnabled() {
 		return fmt.Errorf("CH_ENABLED=0 or CH_DSN empty; set CH_ENABLED=1, CH_USE_UDS=0, and CH_DSN (TCP) before seeding ClickHouse")
@@ -126,7 +138,7 @@ func runSeedBuyerCH(cmd *cobra.Command, args []string) error {
 	today := time.Now().UTC().Truncate(24 * time.Hour)
 	fromDay := today.AddDate(0, 0, -(historyDays - 1))
 
-	var clickRows, convRows, hourlyRows int
+	var clickRows, convRows, hourlyRows, fraudRows int
 	hasher := piihash.TestHasher()
 	for _, camp := range campaigns {
 		statsByDay, err := loadBuyerCampaignStats(ctx, pool, camp.id, fromDay, today.Add(24*time.Hour))
@@ -140,13 +152,14 @@ func runSeedBuyerCH(cmd *cobra.Command, args []string) error {
 				imp, clk, conv := seedUIDemoDeliveryCounts(camp.seq, dayOffset)
 				st = buyerDayStats{impressions: imp, clicks: clk, conversions: conv}
 			}
-			cInserted, vInserted, hInserted, err := seedBuyerCampaignDay(ctx, chConn, hasher, camp, day, st, clickCap, convCap)
+			cInserted, vInserted, hInserted, fInserted, err := seedBuyerCampaignDay(ctx, chConn, hasher, camp, day, st, clickCap, convCap)
 			if err != nil {
 				return fmt.Errorf("campaign %s day %s: %w", camp.id, day.Format("2006-01-02"), err)
 			}
 			clickRows += cInserted
 			convRows += vInserted
 			hourlyRows += hInserted
+			fraudRows += fInserted
 		}
 	}
 
@@ -155,6 +168,7 @@ func runSeedBuyerCH(cmd *cobra.Command, args []string) error {
 	fmt.Printf("  Click rows: %d\n", clickRows)
 	fmt.Printf("  Conversion rows: %d\n", convRows)
 	fmt.Printf("  Hourly rollup rows: %d\n", hourlyRows)
+	fmt.Printf("  Fraud event rows: %d\n", fraudRows)
 	fmt.Printf("  Window: last %d days\n", historyDays)
 	fmt.Printf("  Demo customer: %s (%s)\n", seedCustomerUUID(buyerCHCustomerSeq), seedCustomerName(buyerCHCustomerSeq))
 	return nil
@@ -225,7 +239,7 @@ WHERE database = 'ad_event_processor' AND is_done = 0`).Scan(&pending); err != n
 }
 
 func clearBuyerClickHouseRows(ctx context.Context, conn driver.Conn, campaignIDs []uuid.UUID) error {
-	tables := []string{"clicks", "conversions", "placement_stats_hourly", "cost_snapshots"}
+	tables := []string{"clicks", "conversions", "placement_stats_hourly", "cost_snapshots", "fraud_events"}
 	for i := 0; i < len(campaignIDs); i += buyerCHClearBatchSize {
 		end := i + buyerCHClearBatchSize
 		if end > len(campaignIDs) {
@@ -253,10 +267,10 @@ func seedBuyerCampaignDay(
 	st buyerDayStats,
 	maxClicksPerDay int64,
 	maxConversionsPerDay int64,
-) (clickRows, convRows, hourlyRows int, err error) {
+) (clickRows, convRows, hourlyRows, fraudRows int, err error) {
 	targetClicks := st.clicks
 	if targetClicks <= 0 {
-		return 0, 0, 0, nil
+		return 0, 0, 0, 0, nil
 	}
 	insertClicks := targetClicks
 	if insertClicks > maxClicksPerDay {
@@ -277,7 +291,7 @@ INSERT INTO ad_event_processor.clicks (
  ip_hash, ua_hash, pii_salt_version, payload, created_at, attributed_cost_micro, cost_source
 )`)
 	if err != nil {
-		return 0, 0, 0, err
+		return 0, 0, 0, 0, err
 	}
 
 	for i := int64(0); i < insertClicks; i++ {
@@ -324,20 +338,82 @@ INSERT INTO ad_event_processor.clicks (
 			"seed",
 		); err != nil {
 			_ = clickBatch.Abort()
-			return 0, 0, 0, err
+			return 0, 0, 0, 0, err
 		}
 	}
 	if err := clickBatch.Send(); err != nil {
-		return 0, 0, 0, err
+		return 0, 0, 0, 0, err
 	}
 	clickRows = int(insertClicks)
+
+	fraudBatch, err := conn.PrepareBatch(ctx, `
+INSERT INTO ad_event_processor.fraud_events (
+ click_id, campaign_id, user_id_hash, event_type, ip_hash, ua_hash, pii_salt_version,
+ payload, fraud_reason, fraud_score, silent_reject_event, layer_desync_count, created_at
+)`)
+	if err != nil {
+		return clickRows, 0, 0, 0, err
+	}
+	fraudTarget := insertClicks / 18
+	if fraudTarget < 1 && insertClicks >= 4 {
+		fraudTarget = 1
+	}
+	if fraudTarget > 16 {
+		fraudTarget = 16
+	}
+	for i := int64(0); i < fraudTarget; i++ {
+		source := seedBuyerTrafficSources[int((camp.seq+int(i))%len(seedBuyerTrafficSources))]
+		publisher := seedBuyerPublishers[int((camp.seq*3+int(i))%len(seedBuyerPublishers))]
+		placement := seedBuyerPlacements[int((camp.seq*5+int(i))%len(seedBuyerPlacements))]
+		country := seedBuyerCountries[int((camp.seq*7+int(i))%len(seedBuyerCountries))]
+		device := seedBuyerDevices[int((camp.seq+int(i*2))%len(seedBuyerDevices))]
+		reason := seedBuyerFraudReasons[int((camp.seq+int(i))%len(seedBuyerFraudReasons))]
+
+		hour := 8 + int(i)%14
+		minute := int((i * 19) % 60)
+		createdAt := time.Date(day.Year(), day.Month(), day.Day(), hour, minute, int(i%60), 0, time.UTC)
+
+		clickID := fmt.Sprintf("seed-fraud-%s-%s-%04d", camp.id.String()[:8], day.Format("20060102"), i)
+		ipHash := piihash.FixedString16(hasher.HashIP(fmt.Sprintf("203.0.113.%d", (camp.seq+int(i)+50)%250)))
+		uaHash := piihash.FixedString16(hasher.HashUA(fmt.Sprintf("buyer-fraud/%s/%d", device, i%50)))
+		userHash := piihash.FixedString16(hasher.HashIP(fmt.Sprintf("user-%s-%d", camp.id.String()[:8], i)))
+		payload, _ := json.Marshal(map[string]string{
+			"sub1":         source,
+			"sub2":         publisher,
+			"country":      country,
+			"device_type":  device,
+			"placement_id": placement,
+		})
+		if err := fraudBatch.Append(
+			clickID,
+			camp.id,
+			userHash,
+			"track",
+			ipHash,
+			uaHash,
+			uint8(1),
+			string(payload),
+			reason.reason,
+			reason.score,
+			reason.silent,
+			uint8(int(i)%3),
+			createdAt,
+		); err != nil {
+			_ = fraudBatch.Abort()
+			return clickRows, 0, 0, 0, err
+		}
+	}
+	if err := fraudBatch.Send(); err != nil {
+		return clickRows, 0, 0, 0, err
+	}
+	fraudRows = int(fraudTarget)
 
 	convBatch, err := conn.PrepareBatch(ctx, `
 INSERT INTO ad_event_processor.conversions (
  click_id, campaign_id, placement_id, ip_hash, ua_hash, pii_salt_version, payload, created_at, device_type
 )`)
 	if err != nil {
-		return clickRows, 0, 0, err
+		return clickRows, 0, 0, fraudRows, err
 	}
 
 	revenuePerConv := int64(0)
@@ -388,11 +464,11 @@ INSERT INTO ad_event_processor.conversions (
 			device,
 		); err != nil {
 			_ = convBatch.Abort()
-			return clickRows, 0, 0, err
+			return clickRows, 0, 0, fraudRows, err
 		}
 	}
 	if err := convBatch.Send(); err != nil {
-		return clickRows, 0, 0, err
+		return clickRows, 0, 0, fraudRows, err
 	}
 	convRows = int(insertConversions)
 
@@ -401,7 +477,7 @@ INSERT INTO ad_event_processor.placement_stats_hourly (
  campaign_id, placement_id, hour, spend_micro, revenue_micro, click_count, conversion_count
 )`)
 	if err != nil {
-		return clickRows, convRows, 0, err
+		return clickRows, convRows, 0, fraudRows, err
 	}
 
 	for h := 8; h < 22; h++ {
@@ -423,16 +499,16 @@ INSERT INTO ad_event_processor.placement_stats_hourly (
 				convPart,
 			); err != nil {
 				_ = hourlyBatch.Abort()
-				return clickRows, convRows, 0, err
+				return clickRows, convRows, 0, fraudRows, err
 			}
 			hourlyRows++
 		}
 	}
 	if err := hourlyBatch.Send(); err != nil {
-		return clickRows, convRows, 0, err
+		return clickRows, convRows, 0, fraudRows, err
 	}
 
-	return clickRows, convRows, hourlyRows, nil
+	return clickRows, convRows, hourlyRows, fraudRows, nil
 }
 
 func buyerCampaignROINumerator(seq int) int64 {

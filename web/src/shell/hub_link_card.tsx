@@ -13,8 +13,8 @@ export type HubLinkItem = {
   meta?: string;
 };
 
-export function HubLinkGrid({ children, className }: { children: ReactNode; className?: string }) {
-  return <BentoGrid className={className}>{children}</BentoGrid>;
+export function HubLinkGrid({ children }: { children: ReactNode }) {
+  return <BentoGrid >{children}</BentoGrid>;
 }
 
 export function HubLinkCard({ path, title, description, icon, tone, meta }: HubLinkItem) {

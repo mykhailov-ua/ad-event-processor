@@ -51,7 +51,7 @@ func BenchmarkIPv6Rotation_ClickHook(b *testing.B) {
 	var block bool
 	benchN := 0
 	for b.Loop() {
-		block = h.l1IPv6RotationObserve(ips[benchN%len(ips)], cid, parsed, now)
+		block = h.l1IPv6RotationObserve(ips[benchN%len(ips)], &cidrBenchCampaign, parsed, now)
 		benchN++
 	}
 	ipv6RotationBenchSink = ipv6RotationBenchSink || block

@@ -1,5 +1,5 @@
 // campaign editor actions: PATCH/publish/clone mutations; save errors via saveError (no toast on save; toast only after publish/clone 2xx).
-import { useCallback, useState } from 'react';
+import { useCallback, useRef, useState } from 'react';
 import { toast } from 'sonner';
 
 import {
@@ -34,6 +34,7 @@ import {
   type CampaignEditorFormState,
   type MacroPreviewFormState,
 } from '@/domains/campaigns/editor/campaign_editor';
+import { toError } from '@/lib/admin_error';
 import { newRandomUuid } from '@/lib/uuid';
 
 export type UseCampaignEditorActionsArgs = {
@@ -100,8 +101,9 @@ export function useCampaignEditorActions({
   const [ownerSuccess, setOwnerSuccess] = useState(false);
   const [exporting, setExporting] = useState(false);
   const [exportError, setExportError] = useState<Error | undefined>(undefined);
+  const cloneIdempotencyKeyRef = useRef<string | null>(null);
 
-  const onSave = useCallback(() => {
+  const onSave = useCallback(async () => {
     if (!id || !campaignSnapshot || !form) {
       return;
     }
@@ -118,23 +120,21 @@ export function useCampaignEditorActions({
     setSaving(true);
     setSaveError(undefined);
 
-    void patchCampaign(id, patchResult.body)
-      .then((updated) => {
-        setCampaignSnapshot(updated);
-        syncFormFromCampaign(updated);
-      })
-      .catch((err: unknown) => {
-        if (isAbortError(err)) {
-          return;
-        }
-        setSaveError(err instanceof Error ? err : new Error(String(err)));
-      })
-      .finally(() => {
-        setSaving(false);
-      });
+    try {
+      const updated = await patchCampaign(id, patchResult.body);
+      setCampaignSnapshot(updated);
+      syncFormFromCampaign(updated);
+    } catch (err: unknown) {
+      if (isAbortError(err)) {
+        return;
+      }
+      setSaveError(toError(err));
+    } finally {
+      setSaving(false);
+    }
   }, [campaignSnapshot, form, id, setCampaignSnapshot, syncFormFromCampaign]);
 
-  const onCheckPublish = useCallback(() => {
+  const onCheckPublish = useCallback(async () => {
     if (!id) {
       return;
     }
@@ -143,22 +143,20 @@ export function useCampaignEditorActions({
     setPublishCheckError(undefined);
     setPublishCheck(undefined);
 
-    void checkCampaignPublish(id)
-      .then((result) => {
-        setPublishCheck(result);
-      })
-      .catch((err: unknown) => {
-        if (isAbortError(err)) {
-          return;
-        }
-        setPublishCheckError(err instanceof Error ? err : new Error(String(err)));
-      })
-      .finally(() => {
-        setChecking(false);
-      });
+    try {
+      const result = await checkCampaignPublish(id);
+      setPublishCheck(result);
+    } catch (err: unknown) {
+      if (isAbortError(err)) {
+        return;
+      }
+      setPublishCheckError(toError(err));
+    } finally {
+      setChecking(false);
+    }
   }, [id, setChecking, setPublishCheck, setPublishCheckError]);
 
-  const onValidateChanges = useCallback(() => {
+  const onValidateChanges = useCallback(async () => {
     if (!id || !campaignSnapshot || !form) {
       return;
     }
@@ -179,22 +177,20 @@ export function useCampaignEditorActions({
     setValidateError(undefined);
     setValidateResult(undefined);
 
-    void validateCampaignPatch(id, patchResult.body)
-      .then((result) => {
-        setValidateResult(result);
-      })
-      .catch((err: unknown) => {
-        if (isAbortError(err)) {
-          return;
-        }
-        setValidateError(err instanceof Error ? err : new Error(String(err)));
-      })
-      .finally(() => {
-        setValidating(false);
-      });
+    try {
+      const result = await validateCampaignPatch(id, patchResult.body);
+      setValidateResult(result);
+    } catch (err: unknown) {
+      if (isAbortError(err)) {
+        return;
+      }
+      setValidateError(toError(err));
+    } finally {
+      setValidating(false);
+    }
   }, [campaignSnapshot, form, id]);
 
-  const onPublish = useCallback(() => {
+  const onPublish = useCallback(async () => {
     if (!id) {
       return;
     }
@@ -204,26 +200,24 @@ export function useCampaignEditorActions({
     setPublishBlocked(undefined);
     setPublishSuccess(false);
 
-    void publishCampaign(id, { force: forcePublish })
-      .then((result) => {
-        if (result.status === 'published') {
-          setPublishSuccess(true);
-          toast.success('Campaign published');
-          setCampaignSnapshot(result.campaign);
-          syncFormFromCampaign(result.campaign);
-          return;
-        }
-        setPublishBlocked(result.error);
-      })
-      .catch((err: unknown) => {
-        if (isAbortError(err)) {
-          return;
-        }
-        setPublishError(err instanceof Error ? err : new Error(String(err)));
-      })
-      .finally(() => {
-        setPublishing(false);
-      });
+    try {
+      const result = await publishCampaign(id, { force: forcePublish });
+      if (result.status === 'published') {
+        setPublishSuccess(true);
+        toast.success('Campaign published');
+        setCampaignSnapshot(result.campaign);
+        syncFormFromCampaign(result.campaign);
+        return;
+      }
+      setPublishBlocked(result.error);
+    } catch (err: unknown) {
+      if (isAbortError(err)) {
+        return;
+      }
+      setPublishError(toError(err));
+    } finally {
+      setPublishing(false);
+    }
   }, [forcePublish, id, setCampaignSnapshot, syncFormFromCampaign]);
 
   const onMacroPreviewFieldChange = useCallback(
@@ -233,7 +227,7 @@ export function useCampaignEditorActions({
     []
   );
 
-  const onMacroPreview = useCallback(() => {
+  const onMacroPreview = useCallback(async () => {
     if (!id) {
       return;
     }
@@ -253,22 +247,20 @@ export function useCampaignEditorActions({
       body.click_id = macroPreviewForm.click_id.trim();
     }
 
-    void previewCampaignMacros(id, body)
-      .then((result) => {
-        setMacroPreviewResult(result);
-      })
-      .catch((err: unknown) => {
-        if (isAbortError(err)) {
-          return;
-        }
-        setMacroPreviewError(err instanceof Error ? err : new Error(String(err)));
-      })
-      .finally(() => {
-        setMacroPreviewing(false);
-      });
+    try {
+      const result = await previewCampaignMacros(id, body);
+      setMacroPreviewResult(result);
+    } catch (err: unknown) {
+      if (isAbortError(err)) {
+        return;
+      }
+      setMacroPreviewError(toError(err));
+    } finally {
+      setMacroPreviewing(false);
+    }
   }, [id, macroPreviewForm.click_id, macroPreviewForm.country, macroPreviewForm.sub1]);
 
-  const onClonePreview = useCallback(() => {
+  const onClonePreview = useCallback(async () => {
     if (!id) {
       return;
     }
@@ -277,24 +269,26 @@ export function useCampaignEditorActions({
     setClonePreviewError(undefined);
     setClonePreview(undefined);
 
-    void previewCampaignClone(id, buildCloneRequestBody(cloneNameSuffix, cloneOptions))
-      .then((result) => {
-        setClonePreview(result);
-      })
-      .catch((err: unknown) => {
-        if (isAbortError(err)) {
-          return;
-        }
-        setClonePreviewError(err instanceof Error ? err : new Error(String(err)));
-      })
-      .finally(() => {
-        setClonePreviewing(false);
-      });
+    try {
+      const result = await previewCampaignClone(id, buildCloneRequestBody(cloneNameSuffix, cloneOptions));
+      setClonePreview(result);
+    } catch (err: unknown) {
+      if (isAbortError(err)) {
+        return;
+      }
+      setClonePreviewError(toError(err));
+    } finally {
+      setClonePreviewing(false);
+    }
   }, [cloneNameSuffix, cloneOptions, id]);
 
-  const onCloneExecute = useCallback(() => {
+  const onCloneExecute = useCallback(async () => {
     if (!id) {
       return;
+    }
+
+    if (!cloneIdempotencyKeyRef.current) {
+      cloneIdempotencyKeyRef.current = newRandomUuid();
     }
 
     setCloning(true);
@@ -302,30 +296,29 @@ export function useCampaignEditorActions({
     setCloneSuccess(false);
     setClonedCampaignId(undefined);
 
-    void cloneCampaign(id, buildCloneRequestBody(cloneNameSuffix, cloneOptions), {
-      idempotencyKey: newRandomUuid(),
-    })
-      .then((result) => {
-        setCloneSuccess(true);
-        setClonedCampaignId(result.id);
-        toast.success('Campaign clone created');
-      })
-      .catch((err: unknown) => {
-        if (isAbortError(err)) {
-          return;
-        }
-        setCloneError(err instanceof Error ? err : new Error(String(err)));
-      })
-      .finally(() => {
-        setCloning(false);
+    try {
+      const result = await cloneCampaign(id, buildCloneRequestBody(cloneNameSuffix, cloneOptions), {
+        idempotencyKey: cloneIdempotencyKeyRef.current,
       });
+      cloneIdempotencyKeyRef.current = null;
+      setCloneSuccess(true);
+      setClonedCampaignId(result.id);
+      toast.success('Campaign clone created');
+    } catch (err: unknown) {
+      if (isAbortError(err)) {
+        return;
+      }
+      setCloneError(toError(err));
+    } finally {
+      setCloning(false);
+    }
   }, [cloneNameSuffix, cloneOptions, id]);
 
   const onCloneOptionChange = useCallback((field: keyof CloneCampaignOptions, value: boolean) => {
     setCloneOptions((prev) => ({ ...prev, [field]: value }));
   }, []);
 
-  const onCompareDiff = useCallback(() => {
+  const onCompareDiff = useCallback(async () => {
     if (!id) {
       return;
     }
@@ -341,22 +334,20 @@ export function useCampaignEditorActions({
     setDiffError(undefined);
     setDiffResult(undefined);
 
-    void getCampaignDiff(id, against)
-      .then((result) => {
-        setDiffResult(result);
-      })
-      .catch((err: unknown) => {
-        if (isAbortError(err)) {
-          return;
-        }
-        setDiffError(err instanceof Error ? err : new Error(String(err)));
-      })
-      .finally(() => {
-        setComparingDiff(false);
-      });
+    try {
+      const result = await getCampaignDiff(id, against);
+      setDiffResult(result);
+    } catch (err: unknown) {
+      if (isAbortError(err)) {
+        return;
+      }
+      setDiffError(toError(err));
+    } finally {
+      setComparingDiff(false);
+    }
   }, [diffAgainstId, id]);
 
-  const onTransferOwner = useCallback(() => {
+  const onTransferOwner = useCallback(async () => {
     if (!id) {
       return;
     }
@@ -368,42 +359,46 @@ export function useCampaignEditorActions({
     setTransferringOwner(true);
     setOwnerError(undefined);
     setOwnerSuccess(false);
-    void putCampaignOwner(id, { user_id: userId })
-      .then(() => {
-        setOwnerSuccess(true);
-      })
-      .catch((err: unknown) => {
-        setOwnerError(err instanceof Error ? err : new Error(String(err)));
-      })
-      .finally(() => {
-        setTransferringOwner(false);
-      });
+
+    try {
+      await putCampaignOwner(id, { user_id: userId });
+      setOwnerSuccess(true);
+    } catch (err: unknown) {
+      if (isAbortError(err)) {
+        return;
+      }
+      setOwnerError(toError(err));
+    } finally {
+      setTransferringOwner(false);
+    }
   }, [draftOwnerUserId, id]);
 
-  const onExportCampaign = useCallback(() => {
+  const onExportCampaign = useCallback(async () => {
     if (!id) {
       return;
     }
     setExporting(true);
     setExportError(undefined);
-    void exportCampaign(id)
-      .then((bundle) => {
-        const blob = new Blob([JSON.stringify(bundle, null, 2)], {
-          type: 'application/json',
-        });
-        const url = URL.createObjectURL(blob);
-        const anchor = document.createElement('a');
-        anchor.href = url;
-        anchor.download = `campaign-${id}.json`;
-        anchor.click();
-        URL.revokeObjectURL(url);
-      })
-      .catch((err: unknown) => {
-        setExportError(err instanceof Error ? err : new Error(String(err)));
-      })
-      .finally(() => {
-        setExporting(false);
+
+    try {
+      const bundle = await exportCampaign(id);
+      const blob = new Blob([JSON.stringify(bundle, null, 2)], {
+        type: 'application/json',
       });
+      const url = URL.createObjectURL(blob);
+      const anchor = document.createElement('a');
+      anchor.href = url;
+      anchor.download = `campaign-${id}.json`;
+      anchor.click();
+      URL.revokeObjectURL(url);
+    } catch (err: unknown) {
+      if (isAbortError(err)) {
+        return;
+      }
+      setExportError(toError(err));
+    } finally {
+      setExporting(false);
+    }
   }, [id]);
 
   return {

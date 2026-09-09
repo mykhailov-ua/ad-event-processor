@@ -1,4 +1,3 @@
-import { PageChrome } from '@/shell/page_chrome';
 import { CustomerScopeBar } from '@/shell/customer_scope_bar';
 import { EmptyState } from '@/shell/empty_state';
 import { PageSkeleton } from '@/shell/page_skeleton';
@@ -12,7 +11,6 @@ import {
   TableHeader,
   TableRow,
 } from '@/shell/directory_table';
-import { ErrorBlock } from '@/shell/error_block';
 import { DirectoryFilterForm, FilterPanel } from '@/shell/filter_panel';
 import { DatePicker } from '@/components/ui/datetime_picker';
 import { Input } from '@/components/ui/input';
@@ -26,7 +24,10 @@ import {
 } from '@/components/ui/select';
 import type { CostSyncCredential, CostSyncNetworkSchema, CostSyncRun } from '@/api/types';
 import { CostSyncCredentialForm } from '@/domains/integrations/cost_sync_credential_form';
-import { IntegrationsNav, integrationsPanelError } from '@/domains/integrations/integrations_nav';
+import {
+  IntegrationsPageWithLoad,
+  integrationsPanelError,
+} from '@/domains/integrations/integrations_nav';
 import { displayMicro, displayTimestamp } from '@/lib/display';
 
 export type IntegrationsCostSyncPanel = 'networks' | 'credentials' | 'history';
@@ -109,23 +110,18 @@ export function IntegrationsCostSync({
   runSyncForm,
   credentialForm,
 }: IntegrationsCostSyncProps) {
-  if (fetchingNetworks && panel === 'networks' && !hasNetworks && !networksError) {
-    return <PageSkeleton />;
-  }
-
-  if (networksError && panel === 'networks' && !hasNetworks) {
-    return (
-      <PageChrome title="Cost sync">
-        <IntegrationsNav />
-        {integrationsPanelError(networksError, 'Could not load cost sync networks')}
-      </PageChrome>
-    );
-  }
+  const networksFetchState = {
+    fetching: fetchingNetworks && panel === 'networks' && !hasNetworks && !networksError,
+    error: panel === 'networks' ? networksError : undefined,
+    hasSnapshot: hasNetworks || panel !== 'networks',
+  };
 
   return (
-    <PageChrome title="Cost sync">
-      <IntegrationsNav />
-
+    <IntegrationsPageWithLoad
+      blockingErrorTitle="Could not load cost sync networks"
+      fetchState={networksFetchState}
+      title="Cost sync"
+    >
       <CustomerScopeBar
         appliedCustomerId={appliedCustomerId}
         draftCustomerId={draftCustomerId}
@@ -134,13 +130,13 @@ export function IntegrationsCostSync({
       />
 
       <FilterPanel>
-        <h2 className="text-base font-semibold">Run cost sync</h2>
-        <p className="text-sm text-muted-foreground">
+        <h2 >Run cost sync</h2>
+        <p >
           Enqueue a manual sync for the applied customer. Network and date range are optional; dates
           default to yesterday UTC on the server.
         </p>
         <DirectoryFilterForm layout="auto-fill" onSubmit={(event) => event.preventDefault()}>
-          <div className="grid gap-2">
+          <div >
             <Label htmlFor="cost-sync-run-network">Network (optional)</Label>
             <Select
               value={runSyncForm.draftNetwork || '__all__'}
@@ -149,7 +145,7 @@ export function IntegrationsCostSync({
               }
               disabled={!appliedCustomerId || runSyncForm.running}
             >
-              <SelectTrigger id="cost-sync-run-network" className="w-full">
+              <SelectTrigger id="cost-sync-run-network">
                 <SelectValue placeholder="All networks" />
               </SelectTrigger>
               <SelectContent>
@@ -162,7 +158,7 @@ export function IntegrationsCostSync({
               </SelectContent>
             </Select>
           </div>
-          <div className="grid gap-2">
+          <div >
             <Label htmlFor="cost-sync-run-from">From (UTC)</Label>
             <DatePicker
               id="cost-sync-run-from"
@@ -171,7 +167,7 @@ export function IntegrationsCostSync({
               onChange={runSyncForm.onDraftFromChange}
             />
           </div>
-          <div className="grid gap-2">
+          <div >
             <Label htmlFor="cost-sync-run-to">To (UTC)</Label>
             <DatePicker
               id="cost-sync-run-to"
@@ -188,17 +184,17 @@ export function IntegrationsCostSync({
             {runSyncForm.running ? 'Running...' : 'Run sync'}
           </Button>
         </DirectoryFilterForm>
-        {runSyncForm.runError ? (
-          <ErrorBlock title="Cost sync run failed" message={runSyncForm.runError.message} />
-        ) : null}
+        {runSyncForm.runError
+          ? integrationsPanelError(runSyncForm.runError, 'Cost sync run failed')
+          : null}
         {runSyncForm.runSuccess ? (
-          <p className="text-sm text-muted-foreground">
+          <p >
             Sync accepted. Refresh history for results.
           </p>
         ) : null}
       </FilterPanel>
 
-      <div className="flex flex-wrap gap-2">
+      <div >
         {COST_SYNC_PANELS.map((item) => (
           <Button
             key={item.id}
@@ -212,8 +208,8 @@ export function IntegrationsCostSync({
       </div>
 
       {panel === 'networks' ? (
-        <section className="grid gap-2">
-          <h2 className="text-base font-semibold">Networks</h2>
+        <section >
+          <h2 >Networks</h2>
           {networks.length === 0 ? (
             <EmptyState
               title="No networks"
@@ -231,7 +227,7 @@ export function IntegrationsCostSync({
               <TableBody>
                 {networks.map((row) => (
                   <TableRow key={row.network}>
-                    <TableCell className="text-xs">{row.network}</TableCell>
+                    <TableCell >{row.network}</TableCell>
                     <TableCell>{row.label}</TableCell>
                     <TableCell>{row.account_id_label ?? ''}</TableCell>
                   </TableRow>
@@ -253,7 +249,7 @@ export function IntegrationsCostSync({
         ) : scopedError && !hasScopedData ? (
           integrationsPanelError(scopedError, 'Could not load cost sync credentials')
         ) : (
-          <section className="grid gap-4">
+          <section >
             <CostSyncCredentialForm
               networks={networks}
               disabled={!appliedCustomerId}
@@ -279,8 +275,8 @@ export function IntegrationsCostSync({
               onDelete={credentialForm.onDelete}
             />
 
-            <div className="grid gap-2">
-              <h2 className="text-base font-semibold">Credentials</h2>
+            <div >
+              <h2 >Credentials</h2>
               {credentials.length === 0 ? (
                 <EmptyState
                   title="No credentials"
@@ -300,10 +296,10 @@ export function IntegrationsCostSync({
                     {credentials.map((row) => (
                       <TableRow
                         key={`${row.customer_id}-${row.network}`}
-                        className="cursor-pointer"
+                       
                         onClick={() => credentialForm.onPrefillFromCredential(row)}
                       >
-                        <TableCell className="text-xs">{row.network}</TableCell>
+                        <TableCell >{row.network}</TableCell>
                         <TableCell>{row.account_id ?? ''}</TableCell>
                         <TableCell>{row.sync_interval_minutes}</TableCell>
                         <TableCell>{displayTimestamp(row.updated_at)}</TableCell>
@@ -328,8 +324,8 @@ export function IntegrationsCostSync({
         ) : scopedError && !hasScopedData ? (
           integrationsPanelError(scopedError, 'Could not load cost sync history')
         ) : (
-          <section className="grid gap-2">
-            <h2 className="text-base font-semibold">Sync history</h2>
+          <section >
+            <h2 >Sync history</h2>
             {history.length === 0 ? (
               <EmptyState
                 title="No sync runs"
@@ -351,7 +347,7 @@ export function IntegrationsCostSync({
                   {history.map((row) => (
                     <TableRow key={row.id}>
                       <TableCell>{row.id}</TableCell>
-                      <TableCell className="text-xs">{row.network}</TableCell>
+                      <TableCell >{row.network}</TableCell>
                       <TableCell>{row.cost_date}</TableCell>
                       <TableCell>
                         <Badge variant="outline">{row.status}</Badge>
@@ -367,7 +363,9 @@ export function IntegrationsCostSync({
         )
       ) : null}
 
-      {scopedError && hasScopedData ? integrationsPanelError(scopedError, 'Refresh failed') : null}
-    </PageChrome>
+      {scopedError && hasScopedData
+        ? integrationsPanelError(scopedError, 'Refresh failed')
+        : null}
+    </IntegrationsPageWithLoad>
   );
 }

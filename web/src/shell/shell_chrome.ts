@@ -1,25 +1,24 @@
+import { adminSpacing, adminTypography } from '@/lib/admin_spacing';
+
 /**
  * Shell chrome bands (tracker header, card section titles). Equal inset on all sides;
  * not used for page body or table cell padding.
  */
 export const shellChrome = {
   /** Tracker top bar: h-11; p-2 matches vertical inset around size-7 controls. */
-  trackerHeaderClass:
-    'grid h-11 shrink-0 grid-cols-[minmax(0,1fr)_minmax(12rem,28rem)_minmax(0,1fr)] items-center gap-3 border-b border-border bg-card p-2 text-card-foreground',
+  trackerHeaderClass: `flex h-11 shrink-0 items-center ${adminSpacing.gap.md} border-b border-border px-2`,
   /** Section/card title row inside bordered panels. */
-  sectionHeaderBandClass: 'grid grid-cols-[1fr_auto] items-center gap-2 border-b border-border p-3',
+  sectionHeaderBandClass: `flex items-center justify-between ${adminSpacing.gap.md} border-b border-border ${adminSpacing.inset.band}`,
   /** Dialog or raised panel title row. */
-  sectionHeaderBandLgClass: 'shrink-0 border-b border-border p-4 text-left',
+  sectionHeaderBandLgClass: `flex items-center justify-between ${adminSpacing.gap.md} border-b border-border ${adminSpacing.inset.bandLg}`,
   /** Dialog footer band. */
-  sectionFooterBandLgClass:
-    'shrink-0 grid grid-cols-[1fr_auto] items-center gap-3 border-t border-border bg-muted/20 p-4',
+  sectionFooterBandLgClass: `flex flex-wrap items-center justify-end ${adminSpacing.gap.md} border-t border-border ${adminSpacing.inset.bandLg}`,
   /** Caption row above a nested table. */
-  tableCaptionBandClass:
-    'border border-b-0 border-border p-2 text-[13px] font-medium leading-[18px]',
+  tableCaptionBandClass: `${adminSpacing.inset.band} ${adminTypography.caption}`,
   /** Compact meta band (error details, dev banner). */
-  compactHeaderBandClass: 'p-2',
+  compactHeaderBandClass: `${adminSpacing.inset.bandCompact} ${adminTypography.bodyMuted}`,
   /** Bordered panel for ops cards and nested sections (replaces legacy ops-section-card). */
-  sectionPanelClass: 'grid gap-3 border border-border bg-card p-3',
+  sectionPanelClass: adminSpacing.grid.sectionPanel,
   /** Raised surface block inside a page section stack. */
-  surfaceRaisedClass: 'ui-surface-raised grid gap-3 p-4',
+  surfaceRaisedClass: `rounded-[8px] border border-border bg-card ${adminSpacing.inset.panel} text-card-foreground shadow-none`,
 } as const;

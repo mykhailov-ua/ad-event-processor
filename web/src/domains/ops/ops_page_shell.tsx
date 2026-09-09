@@ -1,8 +1,13 @@
 import type { ReactNode } from 'react';
 
-import { ErrorBlock } from '@/shell/error_block';
 import { PageLayout } from '@/shell/page_layout';
 import { PageSkeleton } from '@/shell/page_skeleton';
+import { panelError } from '@/shell/panel_error';
+import {
+  type DirectoryFetchState,
+  resolveDirectoryLoadPhase,
+  shouldShowDirectoryRefreshError,
+} from '@/shell/directory_load_state';
 import { OpsNav } from '@/domains/ops/ops_nav';
 
 export type OpsPageShellProps = {
@@ -28,14 +33,14 @@ export function OpsPageShell({
     <PageLayout
       badge={badge}
       controlPanel={
-        <div className="grid gap-4">
-          <div aria-label="Ops sections" className="flex flex-wrap items-center gap-2">
+        <div >
+          <div aria-label="Ops sections">
             <OpsNav variant="admin" />
           </div>
           {actions ? (
             <div
               aria-label="Ops actions"
-              className="flex flex-wrap items-center gap-2"
+             
               role="toolbar"
             >
               {actions}
@@ -44,7 +49,7 @@ export function OpsPageShell({
           {filters ? (
             <div
               aria-label="Ops filters"
-              className="flex flex-wrap items-center gap-2"
+             
               role="search"
             >
               {filters}
@@ -60,8 +65,8 @@ export function OpsPageShell({
   );
 }
 
-export function OpsPageLoading() {
-  return <PageSkeleton />;
+export function OpsPageLoading({ columns = 4 }: { columns?: number } = {}) {
+  return <PageSkeleton columns={columns} variant="directory" />;
 }
 
 export function OpsPageBlockingError({
@@ -75,7 +80,89 @@ export function OpsPageBlockingError({
 }) {
   return (
     <OpsPageShell title={pageTitle}>
-      <ErrorBlock error={error} title={title} />
+      {panelError(error, title)}
+    </OpsPageShell>
+  );
+}
+
+export function OpsPageRefreshError({
+  error,
+  fetchState,
+  title = 'Refresh failed',
+}: {
+  error: Error | null | undefined;
+  fetchState: DirectoryFetchState;
+  title?: string;
+}) {
+  if (!error || !shouldShowDirectoryRefreshError(fetchState)) {
+    return null;
+  }
+  return panelError(error, title);
+}
+
+export function resolveOpsPagePhase(fetchState: DirectoryFetchState) {
+  return resolveDirectoryLoadPhase(fetchState);
+}
+
+export type OpsPageWithLoadProps = {
+  title: string;
+  badge?: ReactNode;
+  actions?: ReactNode;
+  filters?: ReactNode;
+  footer?: ReactNode;
+  blockingErrorTitle: string;
+  refreshErrorTitle?: string;
+  skeletonColumns?: number;
+  fetchState: DirectoryFetchState;
+  /** Non-fetch errors (mutation, export) and status lines above main content. */
+  alerts?: ReactNode;
+  children: ReactNode;
+};
+
+export function OpsPageWithLoad({
+  title,
+  badge,
+  actions,
+  filters,
+  footer,
+  blockingErrorTitle,
+  refreshErrorTitle,
+  skeletonColumns = 4,
+  fetchState,
+  alerts,
+  children,
+}: OpsPageWithLoadProps) {
+  const phase = resolveDirectoryLoadPhase(fetchState);
+
+  if (phase === 'loading') {
+    return <OpsPageLoading columns={skeletonColumns} />;
+  }
+
+  if (phase === 'blocking-error' && fetchState.error) {
+    return (
+      <OpsPageBlockingError
+        error={fetchState.error}
+        pageTitle={title}
+        title={blockingErrorTitle}
+      />
+    );
+  }
+
+  return (
+    <OpsPageShell
+      badge={badge}
+      actions={actions}
+      filters={filters}
+      footer={footer}
+      title={title}
+    >
+      <OpsPageRefreshError
+        error={fetchState.error}
+        fetchState={fetchState}
+        title={refreshErrorTitle}
+      />
+      {alerts}
+      {children}
     </OpsPageShell>
   );
 }
@@ -83,7 +170,7 @@ export function OpsPageBlockingError({
 /** Group action buttons the same way as campaigns_list_toolbar. */
 export function OpsActionGroup({ label, children }: { label: string; children: ReactNode }) {
   return (
-    <div aria-label={label} className="flex flex-wrap items-center gap-1">
+    <div aria-label={label}>
       {children}
     </div>
   );

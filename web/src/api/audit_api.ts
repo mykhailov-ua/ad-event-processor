@@ -20,6 +20,21 @@ export function buildAuditListPath(params: AuditListQuery = {}): string {
   if (params.redact_pii != null) {
     search.set('redact_pii', String(params.redact_pii));
   }
+  if (params.admin_id) {
+    search.set('admin_id', params.admin_id);
+  }
+  if (params.target_id) {
+    search.set('target_id', params.target_id);
+  }
+  if (params.action) {
+    search.set('action', params.action);
+  }
+  if (params.auth_source) {
+    search.set('auth_source', params.auth_source);
+  }
+  if (params.api_key_id) {
+    search.set('api_key_id', params.api_key_id);
+  }
 
   const query = search.toString();
   return query ? `/api/v1/audit?${query}` : '/api/v1/audit';

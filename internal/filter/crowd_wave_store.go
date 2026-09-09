@@ -52,11 +52,43 @@ func (st *CrowdWaveStore) Snapshot(ctx context.Context, campaignID uuid.UUID) (c
 	if st == nil || st.client == nil || campaignID == uuid.Nil {
 		return crowdwave.WaveState{}, nil
 	}
-	raw, err := st.client.LRange(ctx, crowdWaveKey(campaignID), 0, -1).Result()
+	states, err := st.SnapshotBatch(ctx, []uuid.UUID{campaignID})
 	if err != nil {
 		return crowdwave.WaveState{}, err
 	}
-	return evaluateWaveEntries(raw, time.Now().Unix(), st.policy), nil
+	return states[campaignID], nil
+}
+
+func (st *CrowdWaveStore) SnapshotBatch(ctx context.Context, campaignIDs []uuid.UUID) (map[uuid.UUID]crowdwave.WaveState, error) {
+	if st == nil || st.client == nil || len(campaignIDs) == 0 {
+		return map[uuid.UUID]crowdwave.WaveState{}, nil
+	}
+	nowUnix := time.Now().Unix()
+	pipe := st.client.Pipeline()
+	cmds := make([]*redis.StringSliceCmd, 0, len(campaignIDs))
+	idOrder := make([]uuid.UUID, 0, len(campaignIDs))
+	for _, campaignID := range campaignIDs {
+		if campaignID == uuid.Nil {
+			continue
+		}
+		idOrder = append(idOrder, campaignID)
+		cmds = append(cmds, pipe.LRange(ctx, crowdWaveKey(campaignID), 0, -1))
+	}
+	if len(cmds) == 0 {
+		return map[uuid.UUID]crowdwave.WaveState{}, nil
+	}
+	if _, err := pipe.Exec(ctx); err != nil {
+		return nil, err
+	}
+	out := make(map[uuid.UUID]crowdwave.WaveState, len(idOrder))
+	for i, campaignID := range idOrder {
+		raw, err := cmds[i].Result()
+		if err != nil {
+			return nil, err
+		}
+		out[campaignID] = evaluateWaveEntries(raw, nowUnix, st.policy)
+	}
+	return out, nil
 }
 
 func evaluateWaveEntries(raw []string, nowUnix int64, policy crowdwave.WavePolicy) crowdwave.WaveState {

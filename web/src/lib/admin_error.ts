@@ -196,3 +196,7 @@ export function adminErrorKindFromUnknown(error: unknown): AdminErrorKind {
   }
   return 'route';
 }
+
+export function toError(err: unknown): Error {
+  return err instanceof Error ? err : new Error(String(err));
+}

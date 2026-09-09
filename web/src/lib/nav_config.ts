@@ -1,4 +1,3 @@
-import { PORTAL_PERMISSIONS } from '@/lib/portal_access';
 import { sessionHasAnyPermission, sessionHasPermission } from '@/lib/session_permissions';
 
 export type NavItem = {
@@ -21,53 +20,24 @@ const CORE_NAV: NavItem[] = [
     label: 'Campaigns',
     permissionAny: ['campaigns:read', 'campaigns:read:masked'],
   },
-  { path: '/billing', label: 'Billing', permission: 'customers:read' },
-  {
-    path: '/dashboards/buyer',
-    label: 'Dashboard',
-    permissionAny: ['campaigns:read', 'campaigns:read:masked'],
-  },
   { path: '/team', label: 'Team', permission: 'campaigns:read' },
+  { path: '/settings', label: 'Settings', permission: 'settings:read' },
 ];
 
 const OPERATIONS_NAV: NavItem[] = [
+  { path: '/exports', label: 'Exports', permission: 'campaigns:read' },
   { path: '/ops', label: 'Ops', permission: 'shards:read' },
   { path: '/audit', label: 'Audit', permission: 'audit:read' },
-  { path: '/reports', label: 'Reports', permission: 'campaigns:read' },
-];
-
-const PLATFORM_NAV: NavItem[] = [
-  { path: '/rtb', label: 'RTB', permission: 'rtb:read' },
-  { path: '/fraud', label: 'Fraud', permission: 'audit:read' },
   { path: '/integrations', label: 'Integrations', permission: 'campaigns:read' },
-];
-
-const CONTENT_NAV: NavItem[] = [
-  { path: '/creative', label: 'Creative', permission: 'campaigns:read' },
-  { path: '/automation', label: 'Automation', permission: 'campaigns:read' },
-];
-
-const MORE_NAV: NavItem[] = [
-  {
-    path: '/portals',
-    label: 'Portals',
-    permissionAny: Object.values(PORTAL_PERMISSIONS),
-  },
-  { path: '/settings', label: 'Settings', permission: 'settings:read' },
 ];
 
 export const NAV_GROUPS: NavGroup[] = [
   { id: 'core', label: 'Core', items: CORE_NAV },
   { id: 'operations', label: 'Operations', items: OPERATIONS_NAV },
-  { id: 'platform', label: 'Platform', items: PLATFORM_NAV },
-  { id: 'content', label: 'Content', items: CONTENT_NAV },
-  { id: 'more', label: 'More', items: MORE_NAV },
 ];
 
-/** Flat list for command palette and legacy callers. */
 export const NAV_ITEMS: NavItem[] = NAV_GROUPS.flatMap((group) => group.items);
 
-// UX-only nav visibility; server RBAC on /api/v1 is authoritative.
 export function filterNavItems(items: NavItem[], permissions: string[] | undefined): NavItem[] {
   if (permissions === undefined) {
     return items;

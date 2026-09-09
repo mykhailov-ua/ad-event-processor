@@ -100,7 +100,7 @@ WHERE id = $1`, parsed).Scan(
 	dto.CustomerID = customerID.String()
 	dto.Format = spec.Format
 	if errMsg != nil {
-		dto.Error = *errMsg
+		dto.Error = SanitizeExportJobError(*errMsg)
 	}
 	dto.CreatedAt = createdAt.UTC().Format(time.RFC3339)
 	return dto, true, nil
@@ -141,7 +141,7 @@ LIMIT $2`, cid, limit)
 		dto.CustomerID = rowCustomerID.String()
 		dto.Format = spec.Format
 		if errMsg != nil {
-			dto.Error = *errMsg
+			dto.Error = SanitizeExportJobError(*errMsg)
 		}
 		dto.CreatedAt = createdAt.UTC().Format(time.RFC3339)
 		out = append(out, dto)

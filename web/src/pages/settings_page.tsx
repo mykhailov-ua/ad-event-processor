@@ -1,6 +1,6 @@
-import { PlatformSettings } from '@/domains/settings/platform_settings';
-import { useSettingsPageWorkspace } from '@/domains/settings/use_settings_page_workspace';
+import { SettingsLicense } from '@/domains/settings/settings_license';
+import { useSettingsLicensePageWorkspace } from '@/domains/settings/use_settings_license_page_workspace';
 
 export function SettingsPage() {
-  return <PlatformSettings {...useSettingsPageWorkspace()} />;
+  return <SettingsLicense {...useSettingsLicensePageWorkspace()} />;
 }

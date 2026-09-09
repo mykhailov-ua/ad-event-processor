@@ -181,6 +181,14 @@ func seedApplianceExtendedCampaigns(
 		reviewActions := []string{"safe_page", "block", "passthrough"}
 		connPolicies := []string{"block_vpn_hosting", "mobile_only", "residential_only"}
 		clickDeliveries := []string{"redirect", "proxy"}
+		plTarget := seq%5 == 0
+		tzMode := ""
+		if plTarget {
+			tzMode = "campaign_target"
+		} else {
+			tzModes := []string{"", "ip_country", "strict", "off"}
+			tzMode = tzModes[seq%len(tzModes)]
+		}
 
 		tag, err := tx.Exec(ctx, `
 UPDATE campaigns
@@ -218,6 +226,9 @@ SET start_at = $2,
     cgnat_ip_policy_enabled = $33,
     accept_lang_geo_enabled = $34,
     json_serialization_enabled = $35,
+    timezone_attestation_mode = $36,
+    target_countries = CASE WHEN $37 THEN ARRAY['PL']::text[] ELSE target_countries END,
+    timezone = CASE WHEN $37 THEN 'Europe/Warsaw' ELSE timezone END,
     updated_at = CURRENT_TIMESTAMP
 WHERE id = $1`,
 			pgtype.UUID{Bytes: campID, Valid: true},
@@ -255,6 +266,8 @@ WHERE id = $1`,
 			seq%14 == 0,
 			seq%15 == 0,
 			seq%16 == 0,
+			tzMode,
+			plTarget,
 		)
 		if err != nil {
 			return updated, fmt.Errorf("campaign enrich seq=%d: %w", seq, err)

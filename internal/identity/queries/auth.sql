@@ -48,7 +48,12 @@ RETURNING id, name, expires_at, created_at, scopes;
 -- name: ListUserAPIKeys :many
 SELECT id, name, expires_at, created_at, scopes
 FROM api_keys
-WHERE user_id = $1;
+WHERE user_id = $1
+ORDER BY created_at DESC;
+
+-- name: DeleteUserAPIKey :execrows
+DELETE FROM api_keys
+WHERE id = $1 AND user_id = $2;
 
 -- name: CreateSession :one
 INSERT INTO sessions (id, user_id, refresh_token, user_agent, client_ip, is_blocked, expires_at)

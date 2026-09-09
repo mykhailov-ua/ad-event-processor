@@ -20,10 +20,10 @@ export function CampaignScopeBar({
   onApply,
 }: CampaignScopeBarProps) {
   return (
-    <FilterPanel className="gap-2">
-      <h2 className="text-base font-semibold">Campaign scope</h2>
+    <FilterPanel >
+      <h2 >Campaign scope</h2>
       <form
-        className={INLINE_FILTER_ACTION_GRID_WIDE_CLASS}
+       
         onSubmit={(event) => {
           event.preventDefault();
           onApply();
@@ -39,11 +39,11 @@ export function CampaignScopeBar({
         <FilterApplyButton>Apply</FilterApplyButton>
       </form>
       {appliedCampaignId ? (
-        <p className="text-sm text-muted-foreground">
-          Active scope: <span className="text-xs text-foreground">{appliedCampaignId}</span>
+        <p >
+          Active scope: <span >{appliedCampaignId}</span>
         </p>
       ) : (
-        <p className="text-sm text-muted-foreground">
+        <p >
           Set campaign_id for scoped margin guard reads.
         </p>
       )}

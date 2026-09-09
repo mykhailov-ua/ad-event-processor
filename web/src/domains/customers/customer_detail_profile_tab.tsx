@@ -7,7 +7,7 @@ import { CustomerDetailRow } from '@/domains/customers/customer_detail_row';
 import { customerDetailRowValueClass } from '@/domains/customers/customer_detail_classes';
 import { PrimaryActionButton } from '@/shell/action_buttons';
 import { COMPACT_TOOLBAR_ROW_CLASS } from '@/shell/filter_panel';
-import { ErrorBlock } from '@/shell/error_block';
+import { panelError } from '@/shell/panel_error';
 import { displayTimestamp } from '@/lib/display';
 
 export type CustomerDetailProfileTabProps = {
@@ -38,9 +38,9 @@ export function CustomerDetailProfileTab({
   return (
     <Card>
       <CardHeader>
-        <CardTitle className="text-base">Customer profile</CardTitle>
+        <CardTitle >Customer profile</CardTitle>
       </CardHeader>
-      <CardContent className="grid gap-6">
+      <CardContent >
         <CustomerDetailPanel>
           <CustomerDetailRow label="ID" value={customer.id} />
           <CustomerDetailRow label="Balance" value={customer.balance} />
@@ -58,7 +58,7 @@ export function CustomerDetailProfileTab({
         </CustomerDetailPanel>
 
         <form
-          className="grid gap-4"
+         
           onSubmit={(event) => {
             event.preventDefault();
             onSaveProfile();
@@ -73,7 +73,7 @@ export function CustomerDetailProfileTab({
                   onChange={(event) => onDraftNameChange(event.target.value)}
                 />
               ) : (
-                <p className={customerDetailRowValueClass}>{customer.name}</p>
+                <p >{customer.name}</p>
               )}
             </CustomerDetailFieldRow>
             <CustomerDetailFieldRow htmlFor="customer-cost-center" label="Cost center">
@@ -84,23 +84,21 @@ export function CustomerDetailProfileTab({
                   onChange={(event) => onDraftCostCenterChange(event.target.value)}
                 />
               ) : (
-                <p className={customerDetailRowValueClass}>{customer.cost_center ?? '-'}</p>
+                <p >{customer.cost_center ?? '-'}</p>
               )}
             </CustomerDetailFieldRow>
           </CustomerDetailPanel>
           {canSaveProfile ? (
-            <div className={COMPACT_TOOLBAR_ROW_CLASS}>
+            <div >
               <PrimaryActionButton loading={savingProfile} type="submit">
                 Save profile
               </PrimaryActionButton>
             </div>
           ) : null}
         </form>
-        {profileSaveError ? (
-          <ErrorBlock title="Save failed" message={profileSaveError.message} />
-        ) : null}
+        {profileSaveError ? panelError(profileSaveError, 'Save failed') : null}
         {profileSaveSuccess ? (
-          <p className="m-0 text-sm text-muted-foreground" role="status">
+          <p  role="status">
             Profile saved.
           </p>
         ) : null}

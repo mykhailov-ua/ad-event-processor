@@ -8,6 +8,7 @@ import (
 	"ad-event-processor/internal/reports"
 
 	"github.com/google/uuid"
+	"github.com/jackc/pgx/v5"
 	"github.com/jackc/pgx/v5/pgxpool"
 )
 
@@ -108,8 +109,18 @@ func lookupFlowEntityNamesPG(
 	if pool == nil || len(ids) == 0 {
 		return out, nil
 	}
-	query := fmt.Sprintf(`SELECT id::text, name FROM %s WHERE id = ANY($1)`, entityTable)
-	rows, err := pool.Query(ctx, query, ids)
+	var (
+		rows pgx.Rows
+		err  error
+	)
+	switch entityTable {
+	case "landers":
+		rows, err = pool.Query(ctx, `SELECT id::text, name FROM landers WHERE id = ANY($1)`, ids)
+	case "offers":
+		rows, err = pool.Query(ctx, `SELECT id::text, name FROM offers WHERE id = ANY($1)`, ids)
+	default:
+		return nil, fmt.Errorf("invalid flow entity table %q", entityTable)
+	}
 	if err != nil {
 		return nil, err
 	}

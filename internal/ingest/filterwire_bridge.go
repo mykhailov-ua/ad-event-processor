@@ -274,6 +274,10 @@ func releaseFraudAccumulator(evt *domain.Event, acc *fraudAccumulator) {
 	fw.ReleaseFraudAccumulator(evt, acc)
 }
 
+func releaseAttachedFraudAccumulator(evt *domain.Event) {
+	fw.ReleaseAttachedFraudAccumulator(evt)
+}
+
 func addSegmentMember(ctx context.Context, redisShards []redis.UniversalClient, segmentID uuid.UUID, userHash [16]byte, ttl time.Duration) error {
 	return fw.AddSegmentMember(ctx, redisShards, segmentID, userHash, ttl)
 }

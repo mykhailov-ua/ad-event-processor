@@ -1,38 +1,39 @@
+import { adminSpacing, adminTypography } from '@/lib/admin_spacing';
+import { uiSurfaces } from '@/lib/ui_surfaces';
+
 /**
- * Admin Control Panel UI kit tokens. Primitives import from here or admin_chrome;
+ * Admin Control Plane UI kit tokens. Primitives import from here or admin_chrome;
  * domains use components/ui and shell, not these strings directly.
  */
-/** Radius scale: preview flat corners (--radius 0). */
 export const adminKit = {
-  controlRadius: 'rounded-none',
-  panelRadius: 'rounded-none',
-  pillRadius: 'rounded-none',
+  controlRadius: 'rounded-[8px]',
+  panelRadius: 'rounded-[8px]',
+  /** Nested chips, menu rows, and insets inside panelRadius / controlRadius shells. */
+  nestedRadius: 'rounded-[4px]',
+  pillRadius: 'rounded-full',
   /** Horizontal inset for controls; square corners need more than pill-era px-2. */
   controlPaddingX: 'px-3',
   /** Label-to-control gap in filter fields and date pickers. */
-  fieldLabelGap: 'gap-2',
+  fieldLabelGap: adminSpacing.gap.md,
   /** Toggle/status chip horizontal padding. */
   chipPaddingX: 'px-3',
-  chipInnerGap: 'gap-1.5',
+  chipInnerGap: adminSpacing.gap.sm,
   /** Compact summary / metric band inset. */
   compactInsetX: 'px-3',
-  focusRing:
-    'focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 focus-visible:ring-offset-background',
-  controlHeight: 'min-h-7',
-  controlBorder: 'border border-border',
-  controlText: 'text-[13px] leading-[18px]',
+  focusRing: 'focus-visible:outline-none focus-visible:ring-0 focus-visible:ring-offset-0',
+  controlHeight: 'h-7 min-h-7',
+  controlBorder: 'border border-border/40',
+  controlText: adminTypography.body,
   /** Form field labels (campaign filter rows, editor fields). */
-  fieldLabelClass: 'text-[13px] font-medium leading-[18px] text-foreground',
+  fieldLabelClass: adminTypography.label,
   /** Directory table header cell inner shell (campaign list parity). */
-  directoryTableHeadInnerClass:
-    'flex w-full items-center gap-1.5 px-4 text-[11px] font-semibold uppercase leading-[14px] tracking-normal text-muted-foreground',
-  buttonShell: 'ui-control-surface',
-  labelCaps:
-    'text-[11px] font-semibold uppercase leading-[14px] tracking-normal text-muted-foreground',
-  tableHeader: 'text-[11px] font-semibold uppercase leading-[14px] text-muted-foreground',
+  directoryTableHeadInnerClass: `flex w-full items-center ${adminSpacing.gap.sm} ${adminSpacing.inset.tableCellX} ${adminTypography.tableHeader}`,
+  buttonShell: uiSurfaces.control,
+  labelCaps: adminTypography.caption,
+  tableHeader: adminTypography.tableHeader,
   tableRowHeight: 'h-[34px]',
   /** Error surfaces: flat alpha tint; no backdrop-filter (avoids scroll jank). */
-  errorSurface: 'ui-message-surface ui-message-surface-error',
+  errorSurface: uiSurfaces.messageError,
   toastSurface:
     'border-border/60 bg-card/90 text-card-foreground shadow-md shadow-black/10 backdrop-blur-none',
 } as const;
@@ -56,15 +57,14 @@ export const adminStatusBadgeClass: Record<AdminStatusTone, string> = {
   muted: 'border-border bg-muted/50 text-muted-foreground',
 };
 
-export const adminStatusBadgeBase =
-  'inline-flex max-w-full shrink-0 items-center whitespace-nowrap rounded-none border border-border px-2.5 py-0.5 text-xs font-normal leading-4';
+export const adminStatusBadgeBase = `inline-flex max-w-full shrink-0 items-center whitespace-nowrap rounded-md border border-border px-2.5 py-0.5 ${adminTypography.badge} font-normal`;
 
 export type AdminAlertTone = 'success' | 'error' | 'warning';
 
 export const adminAlertClass: Record<AdminAlertTone, string> = {
-  success: 'ui-message-surface-success',
-  error: 'ui-message-surface-error',
-  warning: 'ui-message-surface-warning',
+  success: uiSurfaces.messageSuccess,
+  error: uiSurfaces.messageError,
+  warning: uiSurfaces.messageWarning,
 };
 
 export function campaignStatusToAdminTone(
@@ -98,3 +98,5 @@ export function campaignStatusToAdminTone(
       return 'muted';
   }
 }
+
+export { adminSpacing, adminTypography } from '@/lib/admin_spacing';

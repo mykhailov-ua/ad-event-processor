@@ -6,7 +6,7 @@ import { LoginPage } from '@/pages/login_page';
 import { SetupPage } from '@/pages/setup_page';
 import { MetaProvider } from '@/context/meta_context';
 import { ThemeProvider } from '@/context/theme_context';
-import '@/styles/app.css';
+import '@/styles/tailwind.css';
 
 const root = document.getElementById('root');
 if (root) {

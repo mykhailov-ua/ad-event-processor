@@ -12,6 +12,8 @@ import (
 	redis "github.com/redis/go-redis/v9"
 )
 
+const DefaultRedisDialTimeout = 5 * time.Second
+
 func IsUnixSocketPath(addr string) bool {
 	if addr == "" {
 		return false
@@ -83,12 +85,15 @@ func ResolveListenAddr(tcpAddr, unixPath string) string {
 
 func RedisUniversalOptions(addr, password string) *redis.UniversalOptions {
 	uopts := &redis.UniversalOptions{
-		Addrs:    []string{addr},
-		Password: password,
+		Addrs:       []string{addr},
+		Password:    password,
+		DialTimeout: DefaultRedisDialTimeout,
 	}
 	if IsUnixSocketPath(addr) {
+		dialTimeout := DefaultRedisDialTimeout
 		uopts.Dialer = func(ctx context.Context, _, addr string) (net.Conn, error) {
 			var d net.Dialer
+			d.Timeout = dialTimeout
 			return d.DialContext(ctx, "unix", addr)
 		}
 	}
@@ -98,14 +103,16 @@ func RedisUniversalOptions(addr, password string) *redis.UniversalOptions {
 func RedisClientOptions(addr, password string) *redis.Options {
 	if IsUnixSocketPath(addr) {
 		return &redis.Options{
-			Network:  "unix",
-			Addr:     addr,
-			Password: password,
+			Network:     "unix",
+			Addr:        addr,
+			Password:    password,
+			DialTimeout: DefaultRedisDialTimeout,
 		}
 	}
 	return &redis.Options{
-		Addr:     addr,
-		Password: password,
+		Addr:        addr,
+		Password:    password,
+		DialTimeout: DefaultRedisDialTimeout,
 	}
 }
 

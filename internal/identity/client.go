@@ -32,6 +32,20 @@ func (c *AuthClient) CreateAPIKey(ctx context.Context, bearerToken, name string,
 	return c.api.CreateAPIKey(ctx, bearerToken, name, scopes)
 }
 
+func (c *AuthClient) ListAPIKeys(ctx context.Context, bearerToken string) ([]APIKey, error) {
+	if c == nil || c.api == nil {
+		return nil, ErrAuthUnavailable
+	}
+	return c.api.ListAPIKeys(ctx, bearerToken)
+}
+
+func (c *AuthClient) RevokeAPIKey(ctx context.Context, bearerToken, keyID string) error {
+	if c == nil || c.api == nil {
+		return ErrAuthUnavailable
+	}
+	return c.api.RevokeAPIKey(ctx, bearerToken, keyID)
+}
+
 func (c *AuthClient) Login(ctx context.Context, email, password string, durationHours int32) (LoginResult, error) {
 	if c == nil || c.api == nil {
 		return LoginResult{}, ErrAuthUnavailable

@@ -29,6 +29,7 @@ type AuthenticatedUser struct {
 	AuthSource   string
 	Scope        Scope
 	APIKeyScopes []string
+	APIKeyID     uuid.UUID
 }
 
 func (u AuthenticatedUser) IsUser() bool {

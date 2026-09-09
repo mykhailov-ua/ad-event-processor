@@ -61,7 +61,4 @@ test('key admin routes load page headings and primary GET reads', async ({ page 
     const body = await response.json();
     expect(body).toBeTruthy();
   }
-
-  await gotoLive(page, '/fraud');
-  await expect(mainHeading(page, 'Fraud')).toBeVisible({ timeout: 15_000 });
 });

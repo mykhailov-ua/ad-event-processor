@@ -1,4 +1,5 @@
 import type { ButtonVariant } from '@/lib/admin_chrome';
+import { uiSurfaces } from '@/lib/ui_surfaces';
 import { cn } from '@/lib/utils';
 import { DirectoryListMeta } from '@/shell/directory_list_meta';
 import { PaginationPageSize } from '@/shell/pagination_page_size';
@@ -23,7 +24,6 @@ export type DirectoryPaginationFooterProps = {
   pageCount?: number;
   onPageChange?: (page: number) => void;
   showPrevNext?: boolean;
-  className?: string;
 };
 
 export function DirectoryPaginationFooter({
@@ -44,19 +44,14 @@ export function DirectoryPaginationFooter({
   pageCount,
   onPageChange,
   showPrevNext = true,
-  className,
 }: DirectoryPaginationFooterProps) {
   const showPageSize = onLimitChange != null && pageSizeId != null && limit != null;
   const showPageNumbers =
     page != null && pageCount != null && pageCount > 1 && onPageChange != null;
 
   return (
-    <div className={cn('flex flex-wrap items-center gap-3', className)}>
-      {rangeLabel ? (
-        <DirectoryListMeta className="shrink-0 text-[13px] text-muted-foreground">
-          {rangeLabel}
-        </DirectoryListMeta>
-      ) : null}
+    <div className={uiSurfaces.toolbarBand}>
+      {rangeLabel ? <DirectoryListMeta>{rangeLabel}</DirectoryListMeta> : null}
       {showPrevNext ? (
         <PaginationPrevNext
           canGoNext={canGoNext}

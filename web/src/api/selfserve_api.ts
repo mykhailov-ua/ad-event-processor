@@ -1,6 +1,7 @@
 import { apiFetch, apiJson, parseApiError } from './client.js';
 import type {
   APIKeyCreatedResponse,
+  APIKeyListResponse,
   BillingStatement,
   CreateAPIKeyRequest,
   CreatePaymentIntentRequest,
@@ -37,15 +38,15 @@ export async function listSelfServeTemplates(
 
 export async function createSelfServeCampaign(
   body: SelfServeCreateCampaignRequest,
-  signal?: AbortSignal
+  options: { idempotencyKey: string; signal?: AbortSignal }
 ): Promise<IDCreatedResponse> {
   return apiJson<IDCreatedResponse>('/api/v1/selfserve/campaigns', {
     method: 'POST',
     headers: {
-      'Idempotency-Key': newIdempotencyKey(),
+      'Idempotency-Key': options.idempotencyKey,
     },
     body: JSON.stringify(body),
-    signal,
+    signal: options.signal,
   });
 }
 
@@ -109,6 +110,20 @@ export async function createSelfServeApiKey(
     body: JSON.stringify(body),
     signal,
   });
+}
+
+export async function listSelfServeApiKeys(signal?: AbortSignal): Promise<APIKeyListResponse> {
+  return apiJson<APIKeyListResponse>('/api/v1/selfserve/api-keys', { signal });
+}
+
+export async function revokeSelfServeApiKey(keyId: string, signal?: AbortSignal): Promise<void> {
+  const response = await apiFetch(`/api/v1/selfserve/api-keys/${encodeURIComponent(keyId)}`, {
+    method: 'DELETE',
+    signal,
+  });
+  if (!response.ok && response.status !== 204) {
+    throw await parseApiError(response);
+  }
 }
 
 export async function pauseSelfServeCampaign(

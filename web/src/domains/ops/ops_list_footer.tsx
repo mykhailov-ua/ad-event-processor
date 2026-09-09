@@ -8,7 +8,7 @@ export function OpsListFooter({
   onPrev,
   onNext,
 }: {
-  summary?: string;
+  summary: string;
   canGoPrev: boolean;
   canGoNext: boolean;
   disabled?: boolean;

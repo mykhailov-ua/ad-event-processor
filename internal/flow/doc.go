@@ -26,5 +26,6 @@
 //
 // Verify:
 // go test ./internal/flow/ -short -run Validate -count=1
+// go test ./internal/flow/ -short -run TestBuildLanderListWhere -count=1
 // go test ./internal/flow/ -short -run TestBandit_WorkerUpdatesWeights -count=1
 package flow

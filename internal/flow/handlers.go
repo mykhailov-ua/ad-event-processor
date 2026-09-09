@@ -14,7 +14,7 @@ import (
 
 type Service interface {
 	CreateLander(ctx context.Context, req CreateLanderRequest) (LanderDTO, error)
-	ListLanders(ctx context.Context) ([]LanderDTO, error)
+	ListLandersPage(ctx context.Context, filter ListLandersFilter) (LanderListResponse, error)
 	GetLander(ctx context.Context, landerID uuid.UUID) (LanderDTO, error)
 	UpdateLander(ctx context.Context, landerID uuid.UUID, req UpdateLanderRequest) (LanderDTO, error)
 	DeleteLander(ctx context.Context, landerID uuid.UUID) error
@@ -72,16 +72,31 @@ func (h *HTTPHandlers) Register(mux *http.ServeMux) {
 	h.RegisterHostedLanderRoutes(mux)
 }
 
+func parseLanderHostingQuery(raw string) string {
+	switch strings.TrimSpace(raw) {
+	case "external", "hosted":
+		return raw
+	default:
+		return ""
+	}
+}
+
 func (h *HTTPHandlers) listLanders(w http.ResponseWriter, r *http.Request) {
-	items, err := h.Service.ListLanders(r.Context())
+	limit, offset := coldpath.ParseAPIPaginationWith(r, landerListDefaultLimit, landerListMaxLimit)
+	page, err := h.Service.ListLandersPage(r.Context(), ListLandersFilter{
+		Search:  strings.TrimSpace(r.URL.Query().Get("q")),
+		Hosting: parseLanderHostingQuery(r.URL.Query().Get("hosting")),
+		Limit:   limit,
+		Offset:  offset,
+	})
 	if err != nil {
 		httpresponse.Error(w, http.StatusInternalServerError, "INTERNAL_ERROR", err.Error())
 		return
 	}
-	if items == nil {
-		items = []LanderDTO{}
+	if page.Items == nil {
+		page.Items = []LanderDTO{}
 	}
-	httpresponse.JSON(w, http.StatusOK, items)
+	httpresponse.JSON(w, http.StatusOK, page)
 }
 
 func (h *HTTPHandlers) createLander(w http.ResponseWriter, r *http.Request) {

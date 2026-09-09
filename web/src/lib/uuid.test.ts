@@ -1,7 +1,12 @@
 import assert from 'node:assert/strict';
 import test from 'node:test';
 
-import { isTrivialSequentialUuid, newRandomUuid, seedDeterministicUuid } from './uuid.ts';
+import {
+  isTrivialSequentialUuid,
+  LANDER_CONVERSION_EVENT_ID_LINE,
+  newRandomUuid,
+  seedDeterministicUuid,
+} from './uuid.ts';
 
 test('seedDeterministicUuid matches Go seed_catalog parity vectors', () => {
   const cases: Array<[string, number, string]> = [
@@ -28,6 +33,10 @@ test('isTrivialSequentialUuid rejects legacy sequential fixture patterns', () =>
   assert.equal(isTrivialSequentialUuid('00000000-cust-4000-8000-000000000001'), true);
   assert.equal(isTrivialSequentialUuid('00000000-camp-4000-8000-000000000025'), true);
   assert.equal(isTrivialSequentialUuid('9e05f63f-e1a2-5c32-9843-03bdd1cb2ff1'), false);
+});
+
+test('landerConversionEventIdLine_holdoutNoSecureContextRandomUuid', () => {
+  assert.equal(LANDER_CONVERSION_EVENT_ID_LINE.includes('crypto.randomUUID'), false);
 });
 
 test('newRandomUuid is not trivial sequential', () => {

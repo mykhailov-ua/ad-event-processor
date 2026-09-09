@@ -112,6 +112,7 @@ func CampaignFromDBRow(row db.Campaign) *Campaign {
 	applyCampaignSegmentFields(camp, row.RetargetSegmentID, row.SegmentInclude, row.SegmentExclude, row.SegmentTtlHours)
 	applyCampaignDecoyFields(camp, row.DecoyLanderID)
 	applyCampaignRedirectCompliance(camp, row.RedirectComplianceMode)
+	applyCampaignTimezoneAttestation(camp, row.TimezoneAttestationMode)
 	camp.IngressCost = ParseIngressCostConfigJSON(row.IngressCostConfig)
 	return camp
 }
@@ -201,6 +202,7 @@ func CampaignFromGetCampaignFullRow(row db.GetCampaignFullRow) *Campaign {
 	applyCampaignSegmentFields(camp, row.RetargetSegmentID, row.SegmentInclude, row.SegmentExclude, row.SegmentTtlHours)
 	applyCampaignDecoyFields(camp, row.DecoyLanderID)
 	applyCampaignRedirectCompliance(camp, row.RedirectComplianceMode)
+	applyCampaignTimezoneAttestation(camp, row.TimezoneAttestationMode)
 	camp.IngressCost = ParseIngressCostConfigJSON(row.IngressCostConfig)
 
 	if row.PrimaryAShard.Valid {
@@ -304,6 +306,7 @@ func CampaignFromListActiveCampaignsRow(row db.ListActiveCampaignsRow) *Campaign
 	applyCampaignSegmentFields(camp, row.RetargetSegmentID, row.SegmentInclude, row.SegmentExclude, row.SegmentTtlHours)
 	applyCampaignDecoyFields(camp, row.DecoyLanderID)
 	applyCampaignRedirectCompliance(camp, row.RedirectComplianceMode)
+	applyCampaignTimezoneAttestation(camp, row.TimezoneAttestationMode)
 	camp.IngressCost = ParseIngressCostConfigJSON(row.IngressCostConfig)
 
 	if row.PrimaryAShard.Valid {

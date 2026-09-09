@@ -6,10 +6,9 @@ test.beforeEach(async ({}, testInfo) => {
   await skipUnlessIntegrationReady(testInfo);
 });
 
-test('settings license route loads for authenticated operator', async ({ page }) => {
+test('legacy /settings/license redirects to settings', async ({ page }) => {
   await loginAsAdmin(page);
   await page.goto('/settings/license');
-
-  await expect(page.getByRole('heading', { name: 'License' })).toBeVisible();
-  await expect(page.getByRole('button', { name: 'Apply license' })).toBeVisible();
+  await expect(page).toHaveURL(/\/settings$/);
+  await expect(page.getByRole('heading', { name: 'Settings' })).toBeVisible();
 });

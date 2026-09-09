@@ -291,6 +291,7 @@ func (m *Middleware) authenticateAPIKey(w http.ResponseWriter, r *http.Request, 
 		CustomerID:   user.CustomerID,
 		AuthSource:   "api_key",
 		APIKeyScopes: user.Scopes,
+		APIKeyID:     user.APIKeyID,
 	}, true
 }
 

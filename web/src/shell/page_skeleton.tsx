@@ -12,9 +12,9 @@ export function PageSkeleton({ variant = 'page', columns = 4, rows = 6 }: PageSk
   }
 
   return (
-    <div className="motion-safe:animate-pulse grid gap-4 p-6" aria-busy="true" aria-label="Loading">
-      <div className="h-7 w-48 rounded bg-muted" />
-      <div className="h-64 rounded bg-muted" />
+    <div  aria-busy="true" aria-label="Loading">
+      <div  />
+      <div  />
     </div>
   );
 }

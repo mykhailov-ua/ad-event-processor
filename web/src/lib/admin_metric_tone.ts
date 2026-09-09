@@ -2,31 +2,29 @@
  * Metric and ops status colors backed by --admin-* tokens in app.css.
  * Domains import these instead of ad-hoc Tailwind hue families.
  */
-export const adminMetricMutedZeroClass = 'text-muted-foreground/60';
+export const adminMetricMutedZeroClass = 'text-muted-foreground';
 
-export const adminMetricPositiveClass = 'font-semibold text-admin-positive';
+export const adminMetricPositiveClass = 'text-admin-positive';
 
-export const adminMetricNegativeClass = 'font-semibold text-admin-negative';
+export const adminMetricNegativeClass = 'text-destructive';
 
 export const adminMetricDeltaPositiveClass = 'text-admin-positive';
 
-export const adminMetricDeltaNegativeClass = 'text-admin-negative';
+export const adminMetricDeltaNegativeClass = 'text-destructive';
 
-export const adminMetricConversionClass = 'text-[hsl(var(--admin-metric-conversion-fg))]';
+export const adminMetricConversionClass = 'text-chart-2';
 
 export const adminMetricApprovedClass = 'text-admin-positive';
 
 export const adminOpsHealthyClass = 'text-admin-positive';
 
-export const adminOpsWarnClass = 'text-admin-warn';
+export const adminOpsWarnClass = 'text-admin-warn-fg';
 
-export const adminOpsCriticalClass = 'text-admin-negative';
+export const adminOpsCriticalClass = 'text-destructive';
 
-export const adminWizardStepDoneClass =
-  'border-admin-status-active/40 bg-admin-status-active/10 text-admin-positive';
+export const adminWizardStepDoneClass = 'text-admin-positive';
 
-export const adminStaleHintClass =
-  'inline-flex items-center gap-1 border border-admin-warn-border bg-admin-warn-bg px-1.5 py-0.5 text-[11px] font-semibold leading-[14px] text-admin-warn';
+export const adminStaleHintClass = 'text-muted-foreground';
 
 /** Chart-aligned KPI accents (1..5 map to --chart-* tokens). */
 export type AdminKpiAccent = 1 | 2 | 3 | 4 | 5;

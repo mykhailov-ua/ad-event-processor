@@ -8,7 +8,6 @@ type ErrorBlockProps = {
   message?: string;
   error?: unknown;
   componentStack?: string;
-  className?: string;
 };
 
 export function ErrorBlock({
@@ -16,16 +15,15 @@ export function ErrorBlock({
   message,
   error,
   componentStack,
-  className,
 }: ErrorBlockProps) {
   const resolvedMessage = message ?? userErrorMessage(error, 'Request failed.');
   const details =
     error != null || componentStack ? formatAdminErrorDetails(error, componentStack) : '';
 
   return (
-    <div className={cn(uiSurfaces.messageError, className)} role="alert">
-      <p className="m-0 text-base font-semibold">{title}</p>
-      <p className="m-0 text-sm text-muted-foreground">{resolvedMessage}</p>
+    <div className={cn(uiSurfaces.messageError)} role="alert">
+      <p className="font-semibold">{title}</p>
+      <p>{resolvedMessage}</p>
       <AdminErrorDetails details={details} />
     </div>
   );

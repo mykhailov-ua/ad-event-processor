@@ -1,9 +1,8 @@
 import { EmptyState } from '@/shell/empty_state';
 import type { OutboxEvent } from '@/api/types';
 import { displayTimestamp } from '@/lib/display';
-import { opsPanelError } from '@/domains/ops/ops_nav';
 import { OpsListFooter } from '@/domains/ops/ops_list_footer';
-import { OpsPageBlockingError, OpsPageLoading, OpsPageShell } from '@/domains/ops/ops_page_shell';
+import { OpsPageWithLoad } from '@/domains/ops/ops_page_shell';
 import {
   OpsTable,
   OpsTableCell,
@@ -36,16 +35,11 @@ export function OpsOutbox({
   onPrev,
   onNext,
 }: OpsOutboxProps) {
-  if (fetching && !hasSnapshot && !error) {
-    return <OpsPageLoading />;
-  }
-
-  if (error && !hasSnapshot) {
-    return <OpsPageBlockingError error={error} pageTitle="Outbox" title="Could not load outbox" />;
-  }
-
   return (
-    <OpsPageShell
+    <OpsPageWithLoad
+      blockingErrorTitle="Could not load outbox"
+      fetchState={{ fetching, error, hasSnapshot }}
+      title="Outbox"
       footer={
         <OpsListFooter
           canGoNext={Boolean(nextCursor)}
@@ -56,7 +50,6 @@ export function OpsOutbox({
           onPrev={onPrev}
         />
       }
-      title="Outbox"
     >
       {(items ?? []).length === 0 ? (
         <EmptyState description="Outbox tail is empty for this page." title="No outbox events" />
@@ -74,7 +67,7 @@ export function OpsOutbox({
         >
           {(items ?? []).map((row) => (
             <OpsTableRow key={row.id ?? `${row.event_type}-${row.created_at}`}>
-              <OpsTableCell className="text-xs text-muted-foreground">{row.id ?? ''}</OpsTableCell>
+              <OpsTableCell >{row.id ?? ''}</OpsTableCell>
               <OpsTableCell>{row.event_type ?? ''}</OpsTableCell>
               <OpsTableCell>{row.status ?? ''}</OpsTableCell>
               <OpsTableCell>{displayTimestamp(row.created_at)}</OpsTableCell>
@@ -83,7 +76,6 @@ export function OpsOutbox({
         </OpsTable>
       )}
 
-      {error && hasSnapshot ? opsPanelError(error, 'Refresh failed') : null}
-    </OpsPageShell>
+    </OpsPageWithLoad>
   );
 }

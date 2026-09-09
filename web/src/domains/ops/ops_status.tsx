@@ -25,7 +25,7 @@ export function OpsStatusChip({ status }: { status?: string }) {
     return null;
   }
   return (
-    <span className={cn('text-xs text-muted-foreground', opsStatusTone(status))}>
+    <span >
       {formatAdminEnumLabel(status)}
     </span>
   );

@@ -1,15 +1,12 @@
 import type { ReactNode } from 'react';
 
+import { adminTypography } from '@/lib/admin_spacing';
 import { cn } from '@/lib/utils';
 
-export function DirectoryListMeta({
-  children,
-  className,
-}: {
-  children: ReactNode;
-  className?: string;
-}) {
+export function DirectoryListMeta({ children }: { children: ReactNode }) {
   return (
-    <p className={cn('text-[13px] leading-[18px] text-muted-foreground', className)}>{children}</p>
+    <p className={cn('whitespace-nowrap', adminTypography.bodyMuted)}>
+      {children}
+    </p>
   );
 }

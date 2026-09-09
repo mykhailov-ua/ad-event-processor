@@ -622,6 +622,23 @@ paths:
           $ref: '../openapi.yaml#/components/responses/Error'
 
   /api/v1/selfserve/api-keys:
+    get:
+      tags: [selfserve]
+      operationId: selfserveListApiKeys
+      summary: List self-serve API keys (session required)
+      description: Returns metadata for keys owned by the authenticated user; never includes raw secrets.
+      security:
+        - SessionCookie: []
+      x-permissions: [campaigns:write]
+      responses:
+        '200':
+          description: API keys
+          content:
+            application/json:
+              schema:
+                $ref: '../components/schemas/billing.yaml#/APIKeyListResponse'
+        default:
+          $ref: '../openapi.yaml#/components/responses/Error'
     post:
       tags: [selfserve]
       operationId: selfserveCreateApiKey
@@ -643,6 +660,27 @@ paths:
             application/json:
               schema:
                 $ref: '../components/schemas/billing.yaml#/APIKeyCreatedResponse'
+        default:
+          $ref: '../openapi.yaml#/components/responses/Error'
+
+  /api/v1/selfserve/api-keys/{id}:
+    delete:
+      tags: [selfserve]
+      operationId: selfserveRevokeApiKey
+      summary: Revoke self-serve API key (session required)
+      security:
+        - SessionCookie: []
+      x-permissions: [campaigns:write]
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: string
+            format: uuid
+      responses:
+        '204':
+          description: API key revoked
         default:
           $ref: '../openapi.yaml#/components/responses/Error'
 

@@ -82,6 +82,16 @@ var (
 		Help: "POST /track/verify behavioral unlock to money landing HTML",
 	})
 
+	SafePageAttestSignalTotal = promauto.NewCounterVec(prometheus.CounterOpts{
+		Name: "ad_safe_page_attest_signal_total",
+		Help: "Safe-page verify network signals observed without decoy (fixed label set)",
+	}, []string{"signal"})
+
+	SafePageAttestDecoyTotal = promauto.NewCounterVec(prometheus.CounterOpts{
+		Name: "ad_safe_page_attest_decoy_total",
+		Help: "POST /track/verify attestation failure returning decoy HTML by fail code",
+	}, []string{"code"})
+
 	SafePageDecoyTemplateTotal = promauto.NewCounterVec(prometheus.CounterOpts{
 		Name: "ad_safe_page_decoy_template_total",
 		Help: "Sandbox decoy HTML template source (static, hosted /lp/, or safe_page_url iframe)",

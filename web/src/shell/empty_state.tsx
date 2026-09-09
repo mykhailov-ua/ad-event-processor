@@ -2,7 +2,7 @@ import { Inbox } from 'lucide-react';
 import { Link } from 'react-router-dom';
 
 import { Button } from '@/components/ui/button';
-import { adminKit } from '@/lib/admin_kit';
+import { adminSpacing, adminTypography } from '@/lib/admin_spacing';
 import { cn } from '@/lib/utils';
 
 type EmptyStateVariant = 'default' | 'no-results' | 'blank-slate';
@@ -14,7 +14,6 @@ type EmptyStateProps = {
   actionLabel?: string;
   actionHref?: string;
   onAction?: () => void;
-  className?: string;
 };
 
 const variantDefaults: Record<EmptyStateVariant, { title: string; description: string }> = {
@@ -39,7 +38,6 @@ export function EmptyState({
   actionLabel,
   actionHref,
   onAction,
-  className,
 }: EmptyStateProps) {
   const defaults = variantDefaults[variant];
   const resolvedTitle = title ?? defaults.title;
@@ -49,22 +47,21 @@ export function EmptyState({
   return (
     <div
       className={cn(
-        'flex w-full flex-col items-center justify-center gap-4 border border-dashed border-border bg-muted/30 px-8 py-12 text-center',
-        adminKit.panelRadius,
-        className
+        'flex flex-col items-center justify-center text-center',
+        adminSpacing.gap.xl,
+        adminSpacing.inset.emptyState
       )}
     >
       <div
         className={cn(
-          'flex h-12 w-12 items-center justify-center bg-background text-muted-foreground',
-          adminKit.pillRadius
+          'flex size-10 items-center justify-center rounded-[8px] border border-border/40 bg-muted/30 text-muted-foreground'
         )}
       >
-        <Inbox aria-hidden className="h-6 w-6" />
+        <Inbox aria-hidden className="size-5" />
       </div>
-      <div className="flex max-w-md flex-col gap-1">
-        <p className="m-0 text-base font-semibold text-foreground">{resolvedTitle}</p>
-        <p className="m-0 text-[13px] leading-[18px] text-muted-foreground">
+      <div className={cn('max-w-md', adminSpacing.stack.titleBlock)}>
+        <p className={cn('whitespace-normal', adminTypography.sectionTitle)}>{resolvedTitle}</p>
+        <p className={cn('whitespace-normal', adminTypography.bodyMuted)}>
           {resolvedDescription}
         </p>
       </div>

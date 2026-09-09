@@ -148,7 +148,7 @@ Directory tables use semantic `<table>` inside `DirectoryTable` / `Table` — no
 
 Reference: `web/src/domains/campaigns/list/campaigns_directory.tsx`.
 
-Stack: `PageLayout` → `CampaignsListToolbar` (command + scope + filter well) → `CampaignsListTable` → footer pagination.
+Stack: `PageLayout` → `CampaignsListToolbar` (filters + create) → `ControlPlaneSelectTable` + `CampaignsSelectionPanel` aside → footer pagination.
 
 Use `DirectoryFilterForm layout="directory"` and `ToggleChipGroup` for status chips.
 

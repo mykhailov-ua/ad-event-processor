@@ -38,3 +38,11 @@ func BudgetQuotaKey(id uuid.UUID) string {
 func TimezoneMismatchHours(browserTZ, country string, now time.Time) (bool, int) {
 	return netintel.TimezoneMismatchHours(browserTZ, country, now)
 }
+
+func TimezoneMatchesCountry(browserTZ, country string, now time.Time) bool {
+	return netintel.TimezoneMatchesCountry(browserTZ, country, now)
+}
+
+func BrowserTimezoneMatchesAnyCountry(browserTZ string, countries []string, now time.Time) bool {
+	return netintel.BrowserTimezoneMatchesAnyCountry(browserTZ, countries, now)
+}

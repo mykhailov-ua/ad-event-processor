@@ -3,7 +3,7 @@ import { useState, type ReactNode } from 'react';
 import type { CampaignListMetrics } from '@/api/campaigns_api';
 import { ApiError } from '@/api/client';
 import type { CampaignStats, CampaignStatsQuery } from '@/api/types';
-import { ErrorBlock } from '@/shell/error_block';
+import { panelError } from '@/shell/panel_error';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
 import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover';
@@ -44,31 +44,31 @@ function MetricsPopoverBody({
     displayMoneyDecimal(campaign.current_spend, campaign.current_spend_display) || '-';
 
   return (
-    <div className="grid">
-      <header className="grid gap-3 border-b border-border p-4">
-        <div className="grid gap-1">
-          <p className="whitespace-nowrap text-sm leading-snug">{campaign.name}</p>
-          <p className="text-xs text-muted-foreground">Campaign metrics</p>
+    <div >
+      <header >
+        <div >
+          <p >{campaign.name}</p>
+          <p >Campaign metrics</p>
         </div>
-        <BudgetUsedSummary campaign={campaign} className="max-w-none" />
+        <BudgetUsedSummary campaign={campaign} />
         {campaign.margin_breach ? (
-          <p className="text-xs font-medium text-destructive">Margin breach flagged</p>
+          <p >Margin breach flagged</p>
         ) : null}
       </header>
 
-      <div className="grid gap-4 p-4">
+      <div >
         <MetricsSection title="Budget">
-          <div className="grid grid-cols-2 gap-2">
+          <div >
             <MetricTile label="Budget limit" value={budgetLimit} />
             <MetricTile label="Spend" value={currentSpend} />
             <MetricTile label="Daily cap" value={dailyBudget || '-'} />
             <MetricTile label="Remaining" value={formatRemaining(campaign)} />
           </div>
-          <div className="flex flex-wrap gap-1.5">
-            <Badge className="font-normal" variant="outline">
+          <div >
+            <Badge  variant="outline">
               {pacingMode}
             </Badge>
-            <Badge className="font-normal" variant="outline">
+            <Badge  variant="outline">
               {timezone}
             </Badge>
           </div>
@@ -77,26 +77,26 @@ function MetricsPopoverBody({
         <MetricsSection
           meta={
             stats?.stale ? (
-              <span className="text-ui-caption text-muted-foreground">Stale ({stats.source})</span>
+              <span >Stale ({stats.source})</span>
             ) : null
           }
           title="Delivery"
         >
           {loading ? (
-            <p className="text-sm text-muted-foreground">Loading delivery stats...</p>
+            <p >Loading delivery stats...</p>
           ) : null}
 
           {error ? (
             error instanceof ApiError && error.status === 501 ? (
-              <p className="text-sm text-muted-foreground">
+              <p >
                 Delivery stats are not available in this environment.
               </p>
             ) : (
-              <ErrorBlock title="Could not load stats" message={error.message} />
+              panelError(error, 'Could not load stats')
             )
           ) : null}
 
-          <div className="grid grid-cols-3 gap-2">
+          <div >
             <MetricTile
               label="Impressions"
               value={stats ? displayCount(stats.metrics?.impressions) : loading ? '...' : '-'}
@@ -123,9 +123,9 @@ function MetricsPopoverBody({
       </div>
 
       {onOpenOverview ? (
-        <footer className="border-t border-border p-4">
+        <footer >
           <Button
-            className="w-full"
+           
             onClick={() => onOpenOverview(campaign)}
             type="button"
             variant="secondary"
@@ -182,7 +182,7 @@ export function CampaignMetricsPopover({
       <PopoverTrigger asChild>
         <Button
           aria-label={`View metrics for ${campaign.name}`}
-          className="block h-auto w-full min-w-0 justify-start border-0 bg-transparent p-0 text-left font-normal shadow-none hover:bg-muted/50"
+         
           type="button"
           variant="ghost"
         >

@@ -134,8 +134,8 @@ export function CampaignEditorAdvancedPanel({
   onCloneOpenChange,
 }: CampaignEditorAdvancedPanelProps) {
   return (
-    <div className={cn(EDITOR_MAIN_COLUMN_CLASS, 'gap-8')}>
-      <p className="text-sm text-muted-foreground">
+    <div >
+      <p >
         Status: {statusLabel}
         {checking ? '  /  Checking publish...' : ''}
         {publishCheck && !checking

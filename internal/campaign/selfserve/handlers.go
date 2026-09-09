@@ -2,6 +2,7 @@ package selfserve
 
 import (
 	"context"
+	"errors"
 	"fmt"
 	"log/slog"
 	"net/http"
@@ -137,6 +138,8 @@ type PaymentIntents = domain.PaymentAPI
 
 type APIKeyCreator interface {
 	CreateAPIKey(ctx context.Context, accessToken, name string, scopes []string) (identity.CreateAPIKeyResult, error)
+	ListAPIKeys(ctx context.Context, accessToken string) ([]identity.APIKey, error)
+	RevokeAPIKey(ctx context.Context, accessToken, keyID string) error
 }
 type InvoiceLister = domain.BillingAPI
 
@@ -179,6 +182,18 @@ type selfServeAPIKeyCreatedResponse struct {
 	ExpiresAt string   `json:"expires_at,omitempty"`
 }
 
+type selfServeAPIKeySummary struct {
+	ID        string   `json:"id"`
+	Name      string   `json:"name"`
+	CreatedAt string   `json:"created_at"`
+	Scopes    []string `json:"scopes,omitempty"`
+	ExpiresAt string   `json:"expires_at,omitempty"`
+}
+
+type selfServeAPIKeyListResponse struct {
+	Keys []selfServeAPIKeySummary `json:"keys"`
+}
+
 type selfServeInvoiceListResponse struct {
 	Invoices []domain.Invoice `json:"invoices"`
 	Total    int64            `json:"total"`
@@ -214,6 +229,8 @@ func (h *SelfServeHTTPHandlers) Register(mux *http.ServeMux) {
 	mux.HandleFunc("POST /api/v1/selfserve/payment-intents", limit(perm("customers:read", h.createPaymentIntent)))
 	mux.HandleFunc("GET /api/v1/selfserve/invoices", limit(perm("customers:read", h.listInvoices)))
 	mux.HandleFunc("POST /api/v1/selfserve/api-keys", limit(perm("campaigns:write", h.createAPIKey)))
+	mux.HandleFunc("GET /api/v1/selfserve/api-keys", limit(perm("campaigns:write", h.listAPIKeys)))
+	mux.HandleFunc("DELETE /api/v1/selfserve/api-keys/{id}", limit(perm("campaigns:write", h.revokeAPIKey)))
 }
 
 func (h *SelfServeHTTPHandlers) createCampaign(w http.ResponseWriter, r *http.Request) {
@@ -555,6 +572,92 @@ func (h *SelfServeHTTPHandlers) createAPIKey(w http.ResponseWriter, r *http.Requ
 		out.ExpiresAt = resp.ExpiresAt.UTC().Format(time.RFC3339)
 	}
 	httpresponse.JSON(w, http.StatusCreated, out)
+}
+
+func (h *SelfServeHTTPHandlers) listAPIKeys(w http.ResponseWriter, r *http.Request) {
+	if h.APIKeys == nil {
+		httpresponse.Error(w, http.StatusServiceUnavailable, "AUTH_UNAVAILABLE", "auth service not configured")
+		return
+	}
+	accessToken, ok := h.sessionAccessToken(w, r)
+	if !ok {
+		return
+	}
+	keys, err := h.APIKeys.ListAPIKeys(r.Context(), accessToken)
+	if err != nil {
+		h.writeAPIKeyHandlerError(w, err)
+		return
+	}
+	out := selfServeAPIKeyListResponse{Keys: make([]selfServeAPIKeySummary, 0, len(keys))}
+	for _, key := range keys {
+		row := selfServeAPIKeySummary{
+			ID:        key.ID,
+			Name:      key.Name,
+			CreatedAt: key.CreatedAt.UTC().Format(time.RFC3339),
+			Scopes:    key.Scopes,
+		}
+		if key.ExpiresAt != nil {
+			row.ExpiresAt = key.ExpiresAt.UTC().Format(time.RFC3339)
+		}
+		out.Keys = append(out.Keys, row)
+	}
+	httpresponse.JSON(w, http.StatusOK, out)
+}
+
+func (h *SelfServeHTTPHandlers) revokeAPIKey(w http.ResponseWriter, r *http.Request) {
+	if h.APIKeys == nil {
+		httpresponse.Error(w, http.StatusServiceUnavailable, "AUTH_UNAVAILABLE", "auth service not configured")
+		return
+	}
+	accessToken, ok := h.sessionAccessToken(w, r)
+	if !ok {
+		return
+	}
+	keyID := strings.TrimSpace(r.PathValue("id"))
+	if keyID == "" {
+		httpresponse.Error(w, http.StatusBadRequest, "BAD_REQUEST", "id is required")
+		return
+	}
+	if err := h.APIKeys.RevokeAPIKey(r.Context(), accessToken, keyID); err != nil {
+		h.writeAPIKeyHandlerError(w, err)
+		return
+	}
+	w.WriteHeader(http.StatusNoContent)
+}
+
+func (h *SelfServeHTTPHandlers) sessionAccessToken(w http.ResponseWriter, r *http.Request) (string, bool) {
+	user, ok := authz.GetUser(r.Context())
+	if !ok || user.AuthSource != "session" {
+		httpresponse.Error(w, http.StatusUnauthorized, "UNAUTHORIZED", "session required for api key management")
+		return "", false
+	}
+	cookie, err := r.Cookie("accessToken")
+	if err != nil || cookie.Value == "" {
+		httpresponse.Error(w, http.StatusUnauthorized, "UNAUTHORIZED", "session required for api key management")
+		return "", false
+	}
+	return cookie.Value, true
+}
+
+func (h *SelfServeHTTPHandlers) writeAPIKeyHandlerError(w http.ResponseWriter, err error) {
+	if st, ok := status.FromError(err); ok {
+		switch st.Code() {
+		case codes.InvalidArgument:
+			httpresponse.Error(w, http.StatusBadRequest, "BAD_REQUEST", st.Message())
+			return
+		case codes.Unauthenticated:
+			httpresponse.Error(w, http.StatusUnauthorized, "UNAUTHORIZED", st.Message())
+			return
+		case codes.NotFound:
+			httpresponse.Error(w, http.StatusNotFound, "NOT_FOUND", st.Message())
+			return
+		}
+	}
+	if errors.Is(err, identity.ErrInvalidAPIKey) {
+		httpresponse.Error(w, http.StatusNotFound, "NOT_FOUND", "api key not found")
+		return
+	}
+	httpresponse.Error(w, http.StatusInternalServerError, "INTERNAL", "api key request failed")
 }
 
 func (h *SelfServeHTTPHandlers) resolveCustomerID(r *http.Request, bodyCustomerID *uuid.UUID) (uuid.UUID, error) {

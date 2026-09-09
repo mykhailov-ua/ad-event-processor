@@ -1,6 +1,6 @@
 import { useEffect, useState } from 'react';
 
-import { ErrorBlock } from '@/shell/error_block';
+import { integrationsPanelError } from '@/domains/integrations/integrations_nav';
 import { DirectoryFilterForm, FilterField, FilterPanel } from '@/shell/filter_panel';
 import { Button } from '@/components/ui/button';
 import {
@@ -66,15 +66,15 @@ export function IntegrationSchemaCreateForm({
         Create schema
       </Button>
       <Dialog onOpenChange={setCreateOpen} open={createOpen}>
-        <DialogContent className="max-w-2xl">
+        <DialogContent >
           <DialogHeader>
             <DialogTitle>Create schema</DialogTitle>
           </DialogHeader>
-          <p className="text-sm text-muted-foreground">
+          <p >
             Register a new integration schema definition. Schema body must be valid JSON.
           </p>
-          <div className="grid gap-4">
-            <div className="grid gap-2">
+          <div >
+            <div >
               <Label htmlFor="integration-schema-name">Name</Label>
               <Input
                 id="integration-schema-name"
@@ -82,7 +82,7 @@ export function IntegrationSchemaCreateForm({
                 onChange={(event) => onDraftNameChange(event.target.value)}
               />
             </div>
-            <div className="grid gap-2">
+            <div >
               <Label htmlFor="integration-schema-version">Version</Label>
               <Input
                 id="integration-schema-version"
@@ -92,18 +92,16 @@ export function IntegrationSchemaCreateForm({
                 onChange={(event) => onDraftVersionChange(event.target.value)}
               />
             </div>
-            <div className="grid gap-2">
+            <div >
               <Label htmlFor="integration-schema-json">Schema JSON</Label>
               <Textarea
                 id="integration-schema-json"
-                className="min-h-32 text-xs"
+               
                 value={draftSchemaJson}
                 onChange={(event) => onDraftSchemaJsonChange(event.target.value)}
               />
             </div>
-            {createError ? (
-              <ErrorBlock title="Create failed" message={createError.message} />
-            ) : null}
+            {createError ? integrationsPanelError(createError, 'Create failed') : null}
           </div>
           <DialogFooter>
             <Button disabled={creating || !canCreate} onClick={onCreate} type="button">
@@ -145,17 +143,17 @@ export function IntegrationSchemaApplyForm({
 
   return (
     <FilterPanel>
-      <h2 className="text-base font-semibold">Apply schema</h2>
-      <p className="text-sm text-muted-foreground">
+      <h2 >Apply schema</h2>
+      <p >
         Apply a registered schema to a campaign. Click a schema row below to prefill the schema
         field.
       </p>
 
       <DirectoryFilterForm layout="auto-fill" onSubmit={(event) => event.preventDefault()}>
-        <FilterField className="md:col-span-2" htmlFor="integration-apply-schema" label="Schema">
+        <FilterField  htmlFor="integration-apply-schema" label="Schema">
           {schemas.length > 0 ? (
             <Select value={draftSchemaId} onValueChange={onDraftSchemaIdChange}>
-              <SelectTrigger id="integration-apply-schema" className="w-full">
+              <SelectTrigger id="integration-apply-schema">
                 <SelectValue placeholder="Select schema" />
               </SelectTrigger>
               <SelectContent>
@@ -176,7 +174,7 @@ export function IntegrationSchemaApplyForm({
           )}
         </FilterField>
         <FilterField
-          className="md:col-span-2"
+         
           htmlFor="integration-apply-campaign-id"
           label="Campaign ID"
         >
@@ -191,26 +189,26 @@ export function IntegrationSchemaApplyForm({
         </Button>
       </DirectoryFilterForm>
 
-      {applyError ? <ErrorBlock title="Apply failed" message={applyError.message} /> : null}
+      {applyError ? integrationsPanelError(applyError, 'Apply failed') : null}
       {applySuccess ? (
-        <p className="text-sm text-muted-foreground">Schema applied to campaign.</p>
+        <p >Schema applied to campaign.</p>
       ) : null}
       {applyResult ? (
-        <div className="ui-surface grid gap-1 p-3 text-sm">
+        <div >
           <p>
             Status: {applyResult.status} ({applyResult.kind})
           </p>
           {applyResult.url_template ? (
-            <p className="break-all text-xs">URL: {applyResult.url_template}</p>
+            <p >URL: {applyResult.url_template}</p>
           ) : null}
           {applyResult.panel_postback_url ? (
-            <p className="break-all text-xs">Postback: {applyResult.panel_postback_url}</p>
+            <p >Postback: {applyResult.panel_postback_url}</p>
           ) : null}
           {applyResult.target_url ? (
-            <p className="break-all text-xs">Target: {applyResult.target_url}</p>
+            <p >Target: {applyResult.target_url}</p>
           ) : null}
           {applyResult.mappings_applied_count != null ? (
-            <p className="text-sm text-muted-foreground">
+            <p >
               Mappings applied: {applyResult.mappings_applied_count}
             </p>
           ) : null}
@@ -241,15 +239,15 @@ export function IntegrationTemplateImportForm({
 }: IntegrationTemplateImportFormProps) {
   return (
     <FilterPanel>
-      <h2 className="text-base font-semibold">Import templates</h2>
-      <p className="text-sm text-muted-foreground">
+      <h2 >Import templates</h2>
+      <p >
         Import integration templates from the catalog into registered schemas. Leave names empty to
         import all templates. Use comma-separated names to import a subset.
       </p>
 
       <DirectoryFilterForm layout="auto-fill" onSubmit={(event) => event.preventDefault()}>
         <FilterField
-          className="md:col-span-2"
+         
           htmlFor="integration-import-names"
           label="Template names (optional)"
         >
@@ -265,9 +263,9 @@ export function IntegrationTemplateImportForm({
         </Button>
       </DirectoryFilterForm>
 
-      {importError ? <ErrorBlock title="Import failed" message={importError.message} /> : null}
+      {importError ? integrationsPanelError(importError, 'Import failed') : null}
       {importSuccess ? (
-        <p className="text-sm text-muted-foreground">
+        <p >
           Templates imported
           {importedCount != null
             ? ` (${importedCount} schema${importedCount === 1 ? '' : 's'})`

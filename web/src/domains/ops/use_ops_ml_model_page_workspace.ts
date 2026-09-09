@@ -8,6 +8,7 @@ import {
   listOpsMlLabels,
 } from '@/api/ops_api';
 import { useResource } from '@/api/use_resource';
+import { toError } from '@/lib/admin_error.ts';
 import { useCoalescedBumpRefresh } from '@/hooks/use_coalesced_refresh_token';
 
 function skipLazyFetch(): Promise<never> {
@@ -94,7 +95,7 @@ export function useOpsMlModelPageWorkspace() {
       setSaveSuccess(true);
       setLabelsLoadToken((value) => value + 1);
     } catch (err: unknown) {
-      setSaveError(err instanceof Error ? err : new Error(String(err)));
+      setSaveError(toError(err));
     } finally {
       setSavingLabel(false);
     }

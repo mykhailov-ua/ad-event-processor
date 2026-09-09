@@ -5,6 +5,7 @@ import (
 	"crypto/subtle"
 	"errors"
 	"net"
+	"strings"
 	"time"
 
 	"ad-event-processor/internal/config"
@@ -39,6 +40,7 @@ type AuthUser struct {
 	Role       string
 	CustomerID uuid.UUID
 	Scopes     []string
+	APIKeyID   uuid.UUID
 }
 
 type LoginResult struct {
@@ -68,6 +70,8 @@ type AuthAPI interface {
 	VerifyAPIKey(ctx context.Context, apiKey string) (AuthUser, error)
 	VerifyToken(ctx context.Context, accessToken string) (AuthUser, error)
 	CreateAPIKey(ctx context.Context, bearerToken, name string, scopes []string) (CreateAPIKeyResult, error)
+	ListAPIKeys(ctx context.Context, bearerToken string) ([]APIKey, error)
+	RevokeAPIKey(ctx context.Context, bearerToken, keyID string) error
 	Login(ctx context.Context, email, password string, durationHours int32) (LoginResult, error)
 	Register(ctx context.Context, adminAPIKey, email, password, role, customerID string) (RegisterResult, error)
 	RefreshToken(ctx context.Context, refreshToken string) (RefreshResult, error)
@@ -111,19 +115,38 @@ func (a *authAPI) VerifyToken(ctx context.Context, accessToken string) (AuthUser
 }
 
 func (a *authAPI) CreateAPIKey(ctx context.Context, bearerToken, name string, scopes []string) (CreateAPIKeyResult, error) {
-	accessToken, ok := parseBearerToken("Bearer " + bearerToken)
-	if !ok {
-		accessToken, ok = parseBearerToken(bearerToken)
+	ctx, err := a.h.contextWithSessionBearer(ctx, bearerToken)
+	if err != nil {
+		return CreateAPIKeyResult{}, err
 	}
-	if !ok {
-		return CreateAPIKeyResult{}, ErrInvalidToken
-	}
-	ctx = metadata.NewIncomingContext(ctx, metadata.Pairs(authorizationHeaderKey, authorizationTypeBearer+" "+accessToken))
 	result, err := a.h.createAPIKey(ctx, name, scopes, nil)
 	if err != nil {
 		return CreateAPIKeyResult{}, grpcStatusToError(err)
 	}
 	return result, nil
+}
+
+func (a *authAPI) ListAPIKeys(ctx context.Context, bearerToken string) ([]APIKey, error) {
+	ctx, err := a.h.contextWithSessionBearer(ctx, bearerToken)
+	if err != nil {
+		return nil, err
+	}
+	keys, err := a.h.listAPIKeys(ctx)
+	if err != nil {
+		return nil, grpcStatusToError(err)
+	}
+	return keys, nil
+}
+
+func (a *authAPI) RevokeAPIKey(ctx context.Context, bearerToken, keyID string) error {
+	ctx, err := a.h.contextWithSessionBearer(ctx, bearerToken)
+	if err != nil {
+		return err
+	}
+	if err := a.h.revokeAPIKey(ctx, keyID); err != nil {
+		return grpcStatusToError(err)
+	}
+	return nil
 }
 
 func (a *authAPI) Login(ctx context.Context, email, password string, durationHours int32) (LoginResult, error) {
@@ -281,6 +304,7 @@ func (h *Handler) verifyAPIKeyUser(ctx context.Context, apiKey string) (AuthUser
 	}
 	user := authUserFromDB(verified.User)
 	user.Scopes = verified.Scopes
+	user.APIKeyID = verified.KeyID
 	return user, nil
 }
 
@@ -294,6 +318,40 @@ func (h *Handler) createAPIKey(ctx context.Context, name string, scopes []string
 		return CreateAPIKeyResult{}, mapError(err)
 	}
 	return result, nil
+}
+
+func (h *Handler) listAPIKeys(ctx context.Context) ([]APIKey, error) {
+	user, err := h.requireAuthUser(ctx)
+	if err != nil {
+		return nil, err
+	}
+	return h.service.ListUserAPIKeys(ctx, uuidFromPg(user.ID))
+}
+
+func (h *Handler) revokeAPIKey(ctx context.Context, keyID string) error {
+	user, err := h.requireAuthUser(ctx)
+	if err != nil {
+		return err
+	}
+	id, err := uuid.Parse(strings.TrimSpace(keyID))
+	if err != nil {
+		return status.Error(codes.InvalidArgument, "invalid api key id")
+	}
+	if err := h.service.RevokeAPIKey(ctx, uuidFromPg(user.ID), id); err != nil {
+		return mapError(err)
+	}
+	return nil
+}
+
+func (h *Handler) contextWithSessionBearer(ctx context.Context, bearerToken string) (context.Context, error) {
+	accessToken, ok := parseBearerToken("Bearer "+bearerToken)
+	if !ok {
+		accessToken, ok = parseBearerToken(bearerToken)
+	}
+	if !ok {
+		return ctx, ErrInvalidToken
+	}
+	return metadata.NewIncomingContext(ctx, metadata.Pairs(authorizationHeaderKey, authorizationTypeBearer+" "+accessToken)), nil
 }
 
 func (h *Handler) refreshSession(ctx context.Context, refreshToken string) (RefreshResult, error) {

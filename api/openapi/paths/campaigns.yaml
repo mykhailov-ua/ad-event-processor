@@ -1377,15 +1377,25 @@ paths:
       operationId: landersList
       summary: List landers
       x-permissions: [campaigns:read]
+      parameters:
+        - name: q
+          in: query
+          schema:
+            type: string
+        - name: hosting
+          in: query
+          schema:
+            type: string
+            enum: [external, hosted]
+        - $ref: '../openapi.yaml#/components/parameters/LimitQuery'
+        - $ref: '../openapi.yaml#/components/parameters/OffsetQuery'
       responses:
         '200':
-          description: Lander list
+          description: Paginated lander list
           content:
             application/json:
               schema:
-                type: array
-                items:
-                  $ref: '../components/schemas/campaign.yaml#/Lander'
+                $ref: '../components/schemas/campaign.yaml#/LanderListResponse'
         default:
           $ref: '../openapi.yaml#/components/responses/Error'
     post:

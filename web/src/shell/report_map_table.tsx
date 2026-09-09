@@ -11,13 +11,11 @@ import {
   TableRow,
   directoryTableRevalidatingClass,
 } from '@/shell/directory_table';
-
 export type ReportMapTableProps = {
   caption?: string;
   columns: readonly string[];
   rows: readonly ReportMapRow[];
   rowKeyPrefix?: string;
-  className?: string;
   revalidating?: boolean;
   formatColumn?: (column: string) => string;
 };
@@ -28,18 +26,13 @@ export function ReportMapTable({
   columns,
   rows,
   rowKeyPrefix,
-  className,
   revalidating = false,
   formatColumn,
 }: ReportMapTableProps) {
   const keyPrefix = rowKeyPrefix ?? caption;
   const table = (
     <DirectoryTable
-      className={cn(
-        caption ? 'rounded-t-none' : undefined,
-        directoryTableRevalidatingClass(revalidating),
-        className
-      )}
+     
     >
       <TableHeader>
         <TableRow>
@@ -67,8 +60,8 @@ export function ReportMapTable({
   }
 
   return (
-    <div className="grid gap-0">
-      <p className={cn(shellChrome.tableCaptionBandClass, 'rounded-t-md')}>{caption}</p>
+    <div >
+      <p >{caption}</p>
       {table}
     </div>
   );

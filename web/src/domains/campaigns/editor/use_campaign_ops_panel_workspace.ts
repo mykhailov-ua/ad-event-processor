@@ -1,4 +1,4 @@
-// campaign ops tab: stats/margin/events/mappings/smoke/flow-validate lanes; uses popover stats cache keys.
+// campaign ops tab: stats/margin/events/mappings lanes; integration debugger lives under /integrations/debugger.
 import { useCallback, useEffect, useMemo, useState } from 'react';
 
 import {
@@ -10,8 +10,6 @@ import {
   listCampaignConversionMappings,
   listCampaignEvents,
   replaceCampaignConversionMappings,
-  runCampaignSmoke,
-  validateCampaignFlow,
   type CampaignListMetrics,
 } from '@/api/campaigns_api';
 import { applyIntegrationSchema } from '@/api/integrations_api';
@@ -87,8 +85,6 @@ export function useCampaignOpsPanelWorkspace({
   const [mappings, setMappings] = useState<ConversionMappingListResponse | undefined>();
   const [mappingDrafts, setMappingDrafts] = useState<MappingDraft[]>([]);
   const [suggestions, setSuggestions] = useState<PlacementBlockSuggestion[]>([]);
-  const [smokeMessage, setSmokeMessage] = useState<string | undefined>();
-  const [flowMessage, setFlowMessage] = useState<string | undefined>();
   const [actionError, setActionError] = useState<Error | undefined>();
   const [savingMappings, setSavingMappings] = useState(false);
   const [mappingSaveSuccess, setMappingSaveSuccess] = useState(false);
@@ -113,8 +109,6 @@ export function useCampaignOpsPanelWorkspace({
     setMappings(undefined);
     setMappingDrafts([]);
     setSuggestions([]);
-    setSmokeMessage(undefined);
-    setFlowMessage(undefined);
     setActionError(undefined);
     setMappingSaveSuccess(false);
     setSyncPresetMessage(undefined);
@@ -200,22 +194,6 @@ export function useCampaignOpsPanelWorkspace({
     });
   }, [campaignId, runAction]);
 
-  const onRunSmoke = useCallback(() => {
-    void runAction('smoke', async () => {
-      const result = await runCampaignSmoke(campaignId);
-      setSmokeMessage(
-        result.passed ? 'Smoke test passed' : (result.failure_reason ?? 'Smoke test failed')
-      );
-    });
-  }, [campaignId, runAction]);
-
-  const onValidateFlow = useCallback(() => {
-    void runAction('flow', async () => {
-      const result = await validateCampaignFlow(campaignId);
-      setFlowMessage(result.valid ? 'Flow valid' : 'Flow validation failed');
-    });
-  }, [campaignId, runAction]);
-
   const onSaveMappings = useCallback(async () => {
     setSavingMappings(true);
     setActionError(undefined);
@@ -286,8 +264,6 @@ export function useCampaignOpsPanelWorkspace({
     mappingDrafts,
     setMappingDrafts,
     suggestions,
-    smokeMessage,
-    flowMessage,
     actionError,
     savingMappings,
     mappingSaveSuccess,
@@ -302,8 +278,6 @@ export function useCampaignOpsPanelWorkspace({
     onLoadMargin,
     onLoadMappings,
     onLoadSuggestions,
-    onRunSmoke,
-    onValidateFlow,
     onSaveMappings,
     onBlockPlacement,
     onSyncFromPreset,

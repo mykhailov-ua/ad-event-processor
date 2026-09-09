@@ -23,7 +23,6 @@ import { fetchCustomersComboboxCached } from '@/lib/customers_combobox_cache';
 import type { CampaignListQuery } from '@/api/types';
 import { useResource } from '@/api/use_resource';
 import type { CustomerComboboxOption } from '@/shell/customer_combobox';
-import type { CampaignListColumnWidthProbe } from '@/domains/campaigns/list/campaigns_directory_types';
 import {
   buildCampaignListCountryOptions,
   buildCampaignListOwnerEmailById,
@@ -220,18 +219,6 @@ export function useCampaignsPageList({
   const metricsById = metricsBatch?.metricsById;
   const marginsById = metricsBatch?.marginsById;
 
-  const columnWidthProbe = useMemo((): CampaignListColumnWidthProbe | undefined => {
-    const probeItems = listCoversWidthProbeDataset ? data?.items : widthProbeData?.items;
-    if (!probeItems?.length) {
-      return undefined;
-    }
-    return {
-      items: probeItems,
-      metricsById: metricsById ?? {},
-      marginsById: marginsById ?? {},
-    };
-  }, [data?.items, listCoversWidthProbeDataset, marginsById, metricsById, widthProbeData?.items]);
-
   const { data: listFacetsFromApi, fetching: listFacetsFetching } = useResource(
     (signal) =>
       fetchCampaignListFacets(customerId, signal).catch((err) => {
@@ -310,7 +297,6 @@ export function useCampaignsPageList({
     error,
     fetching,
     listRevalidating,
-    columnWidthProbe,
     metricsById,
     marginsById,
     countryOptions,

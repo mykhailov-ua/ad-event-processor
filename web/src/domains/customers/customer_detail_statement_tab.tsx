@@ -12,9 +12,8 @@ import {
   TableHeader,
   TableRow,
 } from '@/shell/directory_table';
-import { ErrorBlock } from '@/shell/error_block';
+import { CustomerTabShell } from '@/shell/customer_tab_shell';
 import { INLINE_FILTER_ACTION_GRID_CLASS, FilterField } from '@/shell/filter_panel';
-import { PageSkeleton } from '@/shell/page_skeleton';
 import { displayMicro } from '@/lib/display';
 
 export type CustomerDetailStatementTabProps = {
@@ -39,8 +38,8 @@ export function CustomerDetailStatementTab({
   const lines = statement?.lines ?? [];
 
   return (
-    <section className="grid gap-4">
-      <div className={INLINE_FILTER_ACTION_GRID_CLASS}>
+    <section >
+      <div >
         <FilterField htmlFor="statement-month" label="Billing month">
           <MonthPicker
             id="statement-month"
@@ -58,88 +57,87 @@ export function CustomerDetailStatementTab({
         </SecondaryActionButton>
       </div>
 
-      {fetching && !hasSnapshot && !error ? <PageSkeleton /> : null}
+      <CustomerTabShell
+        blockingErrorTitle="Could not load statement"
+        fetchState={{ fetching, error, hasSnapshot }}
+      >
+        {hasSnapshot && statement ? (
+          <section >
+            <Card>
+              <CardHeader>
+                <CardTitle >Statement summary</CardTitle>
+              </CardHeader>
+              <CardContent>
+                <CustomerDetailPanel>
+                  <CustomerDetailRow label="Currency" value={statement.currency} />
+                  <CustomerDetailRow label="Period from" value={statement.period?.from} />
+                  <CustomerDetailRow label="Period to" value={statement.period?.to} />
+                  <CustomerDetailRow
+                    label="Opening balance (micro)"
+                    value={displayMicro(statement.opening_balance_micro)}
+                  />
+                  <CustomerDetailRow
+                    label="Closing balance (micro)"
+                    value={displayMicro(statement.closing_balance_micro)}
+                  />
+                  <CustomerDetailRow
+                    label="Tax (micro)"
+                    value={displayMicro(statement.tax_breakdown?.tax_micro)}
+                  />
+                  <CustomerDetailRow
+                    label="Invoice total (micro)"
+                    value={displayMicro(statement.reconciliation?.invoice_total_micro)}
+                  />
+                  <CustomerDetailRow
+                    label="Ledger sum (micro)"
+                    value={displayMicro(statement.reconciliation?.ledger_sum_micro)}
+                  />
+                  <CustomerDetailRow
+                    label="Reconciliation delta (micro)"
+                    value={displayMicro(statement.reconciliation?.delta_micro)}
+                  />
+                </CustomerDetailPanel>
+              </CardContent>
+            </Card>
 
-      {error && !hasSnapshot ? (
-        <ErrorBlock title="Could not load statement" message={error.message} />
-      ) : null}
-
-      {hasSnapshot && statement ? (
-        <>
-          <Card>
-            <CardHeader>
-              <CardTitle className="text-base">Statement summary</CardTitle>
-            </CardHeader>
-            <CardContent>
-              <CustomerDetailPanel>
-                <CustomerDetailRow label="Currency" value={statement.currency} />
-                <CustomerDetailRow label="Period from" value={statement.period?.from} />
-                <CustomerDetailRow label="Period to" value={statement.period?.to} />
-                <CustomerDetailRow
-                  label="Opening balance (micro)"
-                  value={displayMicro(statement.opening_balance_micro)}
-                />
-                <CustomerDetailRow
-                  label="Closing balance (micro)"
-                  value={displayMicro(statement.closing_balance_micro)}
-                />
-                <CustomerDetailRow
-                  label="Tax (micro)"
-                  value={displayMicro(statement.tax_breakdown?.tax_micro)}
-                />
-                <CustomerDetailRow
-                  label="Invoice total (micro)"
-                  value={displayMicro(statement.reconciliation?.invoice_total_micro)}
-                />
-                <CustomerDetailRow
-                  label="Ledger sum (micro)"
-                  value={displayMicro(statement.reconciliation?.ledger_sum_micro)}
-                />
-                <CustomerDetailRow
-                  label="Reconciliation delta (micro)"
-                  value={displayMicro(statement.reconciliation?.delta_micro)}
-                />
-              </CustomerDetailPanel>
-            </CardContent>
-          </Card>
-
-          <Card>
-            <CardHeader>
-              <CardTitle className="text-base">Statement lines</CardTitle>
-            </CardHeader>
-            <CardContent className="overflow-x-auto">
-              {lines.length === 0 ? (
-                <p className="text-sm text-muted-foreground">No statement lines for this month.</p>
-              ) : (
-                <DirectoryTable nested>
-                  <TableHeader>
-                    <TableRow>
-                      <DirectoryTableHead>Ledger type</DirectoryTableHead>
-                      <DirectoryTableHead align="end">Amount (micro)</DirectoryTableHead>
-                      <DirectoryTableHead align="end">Entry count</DirectoryTableHead>
-                    </TableRow>
-                  </TableHeader>
-                  <TableBody>
-                    {lines.map((line, index) => (
-                      <TableRow key={`${line.ledger_type ?? 'line'}-${index}`}>
-                        <TableCell>{line.ledger_type ?? ''}</TableCell>
-                        <TableCell className="text-right">
-                          {displayMicro(line.amount_micro)}
-                        </TableCell>
-                        <TableCell className="text-right">{line.entry_count ?? ''}</TableCell>
+            <Card>
+              <CardHeader>
+                <CardTitle >Statement lines</CardTitle>
+              </CardHeader>
+              <CardContent >
+                {lines.length === 0 ? (
+                  <p >No statement lines for this month.</p>
+                ) : (
+                  <DirectoryTable nested>
+                    <TableHeader>
+                      <TableRow>
+                        <DirectoryTableHead>Ledger type</DirectoryTableHead>
+                        <DirectoryTableHead align="end">Amount (micro)</DirectoryTableHead>
+                        <DirectoryTableHead align="end">Entry count</DirectoryTableHead>
                       </TableRow>
-                    ))}
-                  </TableBody>
-                </DirectoryTable>
-              )}
-            </CardContent>
-          </Card>
-        </>
-      ) : null}
+                    </TableHeader>
+                    <TableBody>
+                      {lines.map((line, index) => (
+                        <TableRow key={`${line.ledger_type ?? 'line'}-${index}`}>
+                          <TableCell>{line.ledger_type ?? ''}</TableCell>
+                          <TableCell >
+                            {displayMicro(line.amount_micro)}
+                          </TableCell>
+                          <TableCell >{line.entry_count ?? ''}</TableCell>
+                        </TableRow>
+                      ))}
+                    </TableBody>
+                  </DirectoryTable>
+                )}
+              </CardContent>
+            </Card>
+          </section>
+        ) : null}
 
-      {!hasSnapshot && !fetching && !error ? (
-        <p className="text-sm text-muted-foreground">Choose a month and click Load.</p>
-      ) : null}
+        {!hasSnapshot && !fetching && !error ? (
+          <p >Choose a month and click Load.</p>
+        ) : null}
+      </CustomerTabShell>
     </section>
   );
 }

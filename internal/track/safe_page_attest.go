@@ -14,15 +14,24 @@ import (
 type SafePageAttestationInput struct {
 	RemoteIP                 string
 	Country                  string
+	TargetCountries          map[string]struct{}
+	TimezoneMode             domain.TimezoneAttestationMode
 	Fingerprint              SafePageVerifyFingerprint
 	Events                   []SafePageVerifyEvent
 	NowUnix                  int64
 	BehaviorScore            int
 	CanvasRetestEnabled      bool
 	MobileBiometricsRequired bool
+	IngestAnonymous          bool
+	ProxyVPNBlockEnabled     bool
+	ConnTypePolicy           domain.ConnTypePolicy
+	ProxyVPNMatched          bool
+	ProxyVPNConnType         uint8
 }
 
 const (
+	safePageAttestProxyAnonymous       = "proxy_anonymous"
+	safePageAttestConnTypeViolation    = "conn_type_violation"
 	safePageAttestWebRTCLeak           = "webrtc_leak"
 	safePageAttestTimezoneSpoof        = "timezone_spoof"
 	safePageAttestWebGLAutomation      = "webgl_automation"
@@ -51,10 +60,13 @@ func BuildSafePageMoneyHTML(landing []byte) ([]byte, bool) {
 }
 
 func EvaluateSafePageAttestation(in SafePageAttestationInput) (fail bool, code string) {
+	if code := checkNetworkAttestation(in); code != "" {
+		return true, code
+	}
 	if code := checkWebRTCLeak(in.RemoteIP, in.Fingerprint); code != "" {
 		return true, code
 	}
-	if code := checkTimezoneSpoof(in.Country, in.Fingerprint, in.NowUnix); code != "" {
+	if code := checkTimezoneAttestation(in.Country, in.TargetCountries, in.TimezoneMode, in.Fingerprint, in.NowUnix); code != "" {
 		return true, code
 	}
 	if code := checkWebGLAutomation(in.Fingerprint); code != "" {
@@ -99,10 +111,6 @@ func EvaluateSafePageAttestation(in SafePageAttestationInput) (fail bool, code s
 	return false, ""
 }
 
-func timezoneMismatchHours(browserTZ, country string, now time.Time) (bool, int) {
-	return filter.TimezoneMismatchHours(browserTZ, country, now)
-}
-
 func safePageURLAttrBytes(url string) ([]byte, bool) {
 	if url == "" || len(url) > 2048 {
 		return nil, false
@@ -117,6 +125,28 @@ func safePageURLAttrBytes(url string) ([]byte, bool) {
 		}
 	}
 	return u, true
+}
+
+func checkNetworkAttestation(in SafePageAttestationInput) string {
+	if in.ProxyVPNBlockEnabled && in.IngestAnonymous {
+		return safePageAttestProxyAnonymous
+	}
+	if checkConnTypePolicyViolation(in) {
+		return safePageAttestConnTypeViolation
+	}
+	return ""
+}
+
+func checkConnTypePolicyViolation(in SafePageAttestationInput) bool {
+	switch in.ConnTypePolicy {
+	case domain.ConnTypeResidentialOnly, domain.ConnTypeBlockVPNHosting:
+		if in.IngestAnonymous {
+			return true
+		}
+		return ConnTypePolicyBlocks(in.ConnTypePolicy, in.ProxyVPNMatched, in.ProxyVPNConnType)
+	default:
+		return false
+	}
 }
 
 func checkWebRTCLeak(remoteIP string, fp SafePageVerifyFingerprint) string {
@@ -136,15 +166,68 @@ func checkWebRTCLeak(remoteIP string, fp SafePageVerifyFingerprint) string {
 	return ""
 }
 
-func checkTimezoneSpoof(country string, fp SafePageVerifyFingerprint, nowUnix int64) string {
-	if country == "" || fp.Timezone == "" {
+func checkTimezoneAttestation(country string, targetCountries map[string]struct{}, mode domain.TimezoneAttestationMode, fp SafePageVerifyFingerprint, nowUnix int64) string {
+	mode = mode.Effective()
+	if mode == domain.TimezoneAttestationModeOff || fp.Timezone == "" {
 		return ""
 	}
-	mismatch, _ := timezoneMismatchHours(fp.Timezone, country, unixToTime(nowUnix))
+	now := unixToTime(nowUnix)
+	browserTZ := fp.Timezone
+
+	switch mode {
+	case domain.TimezoneAttestationModeIPCountry:
+		return timezoneAttestIPCountry(browserTZ, country, now)
+	case domain.TimezoneAttestationModeCampaignTarget:
+		if len(targetCountries) == 0 {
+			return ""
+		}
+		if filter.BrowserTimezoneMatchesAnyCountry(browserTZ, countriesFromSet(targetCountries), now) {
+			return ""
+		}
+		return safePageAttestTimezoneSpoof
+	case domain.TimezoneAttestationModeStrict:
+		if len(targetCountries) == 0 {
+			return timezoneAttestIPCountry(browserTZ, country, now)
+		}
+		ipMismatch := timezoneAttestIPMismatch(browserTZ, country, now)
+		targetsMismatch := !filter.BrowserTimezoneMatchesAnyCountry(browserTZ, countriesFromSet(targetCountries), now)
+		if ipMismatch && targetsMismatch {
+			return safePageAttestTimezoneSpoof
+		}
+		return ""
+	default:
+		return timezoneAttestIPCountry(browserTZ, country, now)
+	}
+}
+
+func timezoneAttestIPCountry(browserTZ, country string, now time.Time) string {
+	if country == "" {
+		return ""
+	}
+	mismatch, _ := filter.TimezoneMismatchHours(browserTZ, country, now)
 	if mismatch {
 		return safePageAttestTimezoneSpoof
 	}
 	return ""
+}
+
+func timezoneAttestIPMismatch(browserTZ, country string, now time.Time) bool {
+	if country == "" {
+		return false
+	}
+	mismatch, _ := filter.TimezoneMismatchHours(browserTZ, country, now)
+	return mismatch
+}
+
+func countriesFromSet(m map[string]struct{}) []string {
+	if len(m) == 0 {
+		return nil
+	}
+	out := make([]string, 0, len(m))
+	for c := range m {
+		out = append(out, c)
+	}
+	return out
 }
 
 func checkWebGLAutomation(fp SafePageVerifyFingerprint) string {

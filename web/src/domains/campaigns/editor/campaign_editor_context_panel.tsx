@@ -29,9 +29,9 @@ export function CampaignEditorContextPanel({
   } = context;
 
   return (
-    <div className="grid gap-4">
-      <div className="flex flex-wrap items-center gap-4">
-        <div className="flex items-center gap-2">
+    <div >
+      <div >
+        <div >
           <Checkbox
             checked={geoExpand}
             disabled={busy}
@@ -40,7 +40,7 @@ export function CampaignEditorContextPanel({
           />
           <Label htmlFor="editor-context-geo-expand">Expand geo rows</Label>
         </div>
-        <div className="flex items-center gap-2">
+        <div >
           <Checkbox
             checked={fraudPreview}
             disabled={busy}
@@ -51,7 +51,7 @@ export function CampaignEditorContextPanel({
         </div>
       </div>
 
-      <div className="flex flex-wrap gap-2">
+      <div >
         <Button disabled={busy} onClick={onLoadGeo} type="button" variant="outline">
           {loadKey === 'geo' && geoResource.fetching ? 'Loading...' : 'Geo summary'}
         </Button>

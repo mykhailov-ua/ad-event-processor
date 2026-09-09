@@ -9,15 +9,15 @@ export type CommandPaletteRowProps = {
 export function CommandPaletteRow({ item, onSelect }: CommandPaletteRowProps) {
   return (
     <CommandItem value={item.id} onSelect={() => onSelect(item)}>
-      <span className="min-w-0 flex-1">
-        <span className="block truncate font-medium leading-snug">{item.label}</span>
+      <span >
+        <span >{item.label}</span>
         {item.meta ? (
-          <span className="block whitespace-normal text-xs leading-snug text-muted-foreground">
+          <span >
             {item.meta}
           </span>
         ) : null}
       </span>
-      <CommandShortcut data-command-meta className="capitalize">
+      <CommandShortcut data-command-meta >
         {item.kind}
       </CommandShortcut>
     </CommandItem>

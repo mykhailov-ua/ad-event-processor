@@ -1,4 +1,4 @@
-import { ErrorBlock } from '@/shell/error_block';
+import { integrationsPanelError } from '@/domains/integrations/integrations_nav';
 import { DirectoryFilterForm, FilterPanel } from '@/shell/filter_panel';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
@@ -94,15 +94,15 @@ export function PlatformCampaignLinkForm({
 
   return (
     <FilterPanel>
-      <h2 className="text-base font-semibold">Manage platform campaign links</h2>
-      <p className="text-sm text-muted-foreground">
+      <h2 >Manage platform campaign links</h2>
+      <p >
         Upsert, refresh, or remove external platform links for the applied customer. Pause, resume,
         and budget mutations use a fresh idempotency key per request. Click a link row below to
         prefill campaign and network fields.
       </p>
 
       <DirectoryFilterForm layout="auto-fill" onSubmit={(event) => event.preventDefault()}>
-        <div className="grid gap-2 md:col-span-2">
+        <div >
           <Label htmlFor="platform-campaign-id">Campaign ID</Label>
           <Input
             id="platform-campaign-id"
@@ -111,7 +111,7 @@ export function PlatformCampaignLinkForm({
             onChange={(event) => onDraftCampaignIdChange(event.target.value)}
           />
         </div>
-        <div className="grid gap-2">
+        <div >
           <Label htmlFor="platform-network">Network</Label>
           <Input
             id="platform-network"
@@ -120,7 +120,7 @@ export function PlatformCampaignLinkForm({
             onChange={(event) => onDraftNetworkChange(event.target.value)}
           />
         </div>
-        <div className="grid gap-2 md:col-span-2">
+        <div >
           <Label htmlFor="platform-external-campaign-id">External campaign ID</Label>
           <Input
             id="platform-external-campaign-id"
@@ -129,7 +129,7 @@ export function PlatformCampaignLinkForm({
             onChange={(event) => onDraftExternalCampaignIdChange(event.target.value)}
           />
         </div>
-        <div className="grid gap-2 md:col-span-2">
+        <div >
           <Label htmlFor="platform-account-id">Account ID (optional)</Label>
           <Input
             id="platform-account-id"
@@ -138,7 +138,7 @@ export function PlatformCampaignLinkForm({
             onChange={(event) => onDraftAccountIdChange(event.target.value)}
           />
         </div>
-        <div className="grid gap-2 md:col-span-2">
+        <div >
           <Label htmlFor="platform-daily-budget-micro">Daily budget (micro)</Label>
           <Input
             id="platform-daily-budget-micro"
@@ -197,32 +197,30 @@ export function PlatformCampaignLinkForm({
         </Button>
       </DirectoryFilterForm>
 
-      {saveError ? <ErrorBlock title="Upsert failed" message={saveError.message} /> : null}
-      {deleteError ? <ErrorBlock title="Delete failed" message={deleteError.message} /> : null}
-      {refreshError ? <ErrorBlock title="Refresh failed" message={refreshError.message} /> : null}
-      {syncError ? <ErrorBlock title="Platform sync failed" message={syncError.message} /> : null}
-      {mutationError ? (
-        <ErrorBlock title="Campaign mutation failed" message={mutationError.message} />
-      ) : null}
+      {saveError ? integrationsPanelError(saveError, 'Upsert failed') : null}
+      {deleteError ? integrationsPanelError(deleteError, 'Delete failed') : null}
+      {refreshError ? integrationsPanelError(refreshError, 'Refresh failed') : null}
+      {syncError ? integrationsPanelError(syncError, 'Platform sync failed') : null}
+      {mutationError ? integrationsPanelError(mutationError, 'Campaign mutation failed') : null}
       {saveSuccess ? (
-        <p className="text-sm text-muted-foreground">Link saved. List refreshed.</p>
+        <p >Link saved. List refreshed.</p>
       ) : null}
       {deleteSuccess ? (
-        <p className="text-sm text-muted-foreground">Link deleted. List refreshed.</p>
+        <p >Link deleted. List refreshed.</p>
       ) : null}
       {refreshSuccess ? (
-        <p className="text-sm text-muted-foreground">Link refreshed. List refreshed.</p>
+        <p >Link refreshed. List refreshed.</p>
       ) : null}
       {syncSuccess ? (
-        <p className="text-sm text-muted-foreground">Platform sync completed for campaign.</p>
+        <p >Platform sync completed for campaign.</p>
       ) : null}
       {mutationResult ? (
-        <div className="ui-surface grid gap-1 p-3 text-sm">
+        <div >
           <p>
             {mutationResult.action}: {mutationResult.status} ({mutationResult.network})
           </p>
           {mutationResult.error_message ? (
-            <p className="text-destructive">{mutationResult.error_message}</p>
+            <p >{mutationResult.error_message}</p>
           ) : null}
         </div>
       ) : null}

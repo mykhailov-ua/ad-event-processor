@@ -20,9 +20,9 @@ export function CustomerDetailRow({
         ? String(value)
         : value;
   return (
-    <div className={customerDetailRowClass}>
-      <span className={customerDetailRowLabelClass}>{label}</span>
-      <span className={customerDetailRowValueClass}>{display}</span>
+    <div >
+      <span >{label}</span>
+      <span >{display}</span>
     </div>
   );
 }

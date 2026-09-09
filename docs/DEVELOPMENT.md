@@ -244,6 +244,8 @@ bash scripts/dev/stack/preflight.sh
 
 The administrative dashboard is a Single-Page App (SPA) built with React and TypeScript, located in `web/`.
 
+**Control Plane scope (KEEP vs FREEZE) and backend parity audit:** `docs/CONTROL_PLANE_UI_SCOPE.md`. Frontend patterns (паттерны фронтенда; composition, effects, races, errors, async/cancel): `.cursor/rules/frontend-patterns.mdc`. Active work targets customers, campaigns editor/list, team, settings, customer billing tabs, ops, audit, and integrations.
+
 ### 1. Local UI Ingestion
 To launch the hot-reloading development server (accessible at `http://127.0.0.1:5173`):
 ```bash
@@ -272,6 +274,8 @@ aed-admin web         # :5173, proxies /api to control
 Logs: `var/admin_web.log`; compose control: `docker logs ad-event-processor-control-1`. Without sourcing aliases: `bash scripts/dev/aed-admin up`.
 
 **Non-prod UI tiers:** `?chart_mock=1` fills buyer dashboard charts with synthetic data (`dashboard_series_mock.ts`) for chart component preview only. Live API verification requires control `:8188` healthy (`curl -sf :8188/health`). See `web/WEB.md` (**Non-prod verification tiers**).
+
+**Report data QA:** `/api/v1/reports/catalog` is Postgres-backed and returns 200 on `ingest-only` stacks. Report **data** routes (`GET /api/v1/reports/<key>?...`) query ClickHouse and return `503 CLICKHOUSE_UNAVAILABLE` when CH is absent — expected fail-closed. Use `bash scripts/dev/stack/stack.sh minimal` or `full` for report table QA; do not stub rows in the admin UI when CH is down (`ErrorBlock` + server JSON is correct).
 
 ### 2. Admin UI Bootstrap & Production Build
 To seed a local developer account and embed the UI assets directly into the Go `control` binary:

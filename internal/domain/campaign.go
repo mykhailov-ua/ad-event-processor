@@ -105,6 +105,7 @@ type Campaign struct {
 	JSONSerializationEnabled bool
 	AttestationEnabled       bool
 	AttestationMode          AttestationMode
+	TimezoneAttestationMode  TimezoneAttestationMode
 	AttestationTTLSec        int32
 	DmrEnabled               bool
 

@@ -1,11 +1,11 @@
 import { cn } from '@/lib/utils';
 
 /** Sidebar product mark: layered shards + ascending event stream. */
-export function AdminMark({ className }: { className?: string }) {
+export function AdminMark({ }: {}) {
   return (
     <svg
       aria-hidden
-      className={cn('block', className)}
+     
       fill="none"
       viewBox="0 0 24 24"
       xmlns="http://www.w3.org/2000/svg"

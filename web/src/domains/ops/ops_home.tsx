@@ -1,14 +1,12 @@
 import { Button } from '@/components/ui/button';
 import { EmptyState } from '@/shell/empty_state';
-import { ErrorBlock } from '@/shell/error_block';
 import type { OpsHomeSnapshot } from '@/api/types';
 import { OpsKvRow, OpsStatGrid, OpsStatPanel } from '@/domains/ops/ops_stat_panel';
 import {
   OpsActionGroup,
-  OpsPageBlockingError,
-  OpsPageLoading,
-  OpsPageShell,
+  OpsPageWithLoad,
 } from '@/domains/ops/ops_page_shell';
+import { opsPanelError } from '@/domains/ops/ops_nav';
 import { OpsStatusChip } from '@/domains/ops/ops_status';
 import {
   OpsBlock,
@@ -54,34 +52,28 @@ export function OpsHome({
   bundleDownloadError,
   onDownloadSupportBundle,
 }: OpsHomeProps) {
-  if (fetching && !hasSnapshot && !error) {
-    return <OpsPageLoading />;
-  }
-
-  if (error && !hasSnapshot) {
-    return (
-      <OpsPageBlockingError error={error} pageTitle="Ops" title="Could not load ops snapshot" />
-    );
-  }
-
-  if (!snapshot) {
-    return (
-      <OpsPageShell title="Ops">
-        <EmptyState description="Ops health snapshot is unavailable." title="No ops data" />
-      </OpsPageShell>
-    );
-  }
-
-  const doctor = snapshot.doctor ?? { checks: [] };
-  const stackHealth = snapshot.stackHealth ?? { status: 'unknown' };
-  const dashboardSummary = snapshot.dashboardSummary ?? { services: [] };
+  const doctor = snapshot?.doctor ?? { checks: [] };
+  const stackHealthRaw = snapshot?.stackHealth;
+  const stackHealth =
+    stackHealthRaw && 'clickhouse_lag_seconds' in stackHealthRaw ? stackHealthRaw : undefined;
+  const dashboardSummary = snapshot?.dashboardSummary ?? { services: [] };
   const checks = doctor.checks ?? [];
   const services = dashboardSummary.services ?? [];
 
   return (
-    <OpsPageShell
-      badge={doctor.overall ? <OpsStatusChip status={doctor.overall} /> : undefined}
+    <OpsPageWithLoad
+      badge={snapshot && doctor.overall ? <OpsStatusChip status={doctor.overall} /> : undefined}
+      blockingErrorTitle="Could not load ops snapshot"
+      fetchState={{ fetching, error, hasSnapshot }}
       title="Ops"
+      alerts={
+        <>
+          {rolesReloadError ? opsPanelError(rolesReloadError, 'Could not reload roles') : null}
+          {bundleDownloadError
+            ? opsPanelError(bundleDownloadError, 'Could not download support bundle')
+            : null}
+        </>
+      }
       actions={
         <OpsActionGroup label="Support">
           <Button type="button" variant="outline" disabled={reloadingRoles} onClick={onReloadRoles}>
@@ -96,42 +88,41 @@ export function OpsHome({
             {downloadingBundle ? 'Downloading...' : 'Download support bundle'}
           </Button>
           {rolesReloadMessage ? (
-            <span className="text-muted-foreground" role="status">
+            <span  role="status">
               {rolesReloadMessage}
             </span>
           ) : null}
         </OpsActionGroup>
       }
     >
-      {rolesReloadError ? (
-        <ErrorBlock error={rolesReloadError} title="Could not reload roles" />
-      ) : null}
-      {bundleDownloadError ? (
-        <ErrorBlock error={bundleDownloadError} title="Could not download support bundle" />
-      ) : null}
-
+      {!snapshot ? (
+        <EmptyState description="Ops health snapshot is unavailable." title="No ops data" />
+      ) : (
+        <>
       <OpsStatGrid>
-        <OpsStatPanel status={stackHealth.status} title="Stack health">
-          <OpsKvRow
-            label="ClickHouse lag"
-            value={formatSeconds(stackHealth.clickhouse_lag_seconds)}
-          />
-          <OpsKvRow
-            label="Outbox oldest pending"
-            value={formatSeconds(stackHealth.outbox_oldest_pending_seconds)}
-          />
-          <OpsKvRow
-            label="Redis shards"
-            value={`${stackHealth.redis_shards_reachable}/${stackHealth.redis_shards_total}`}
-          />
-          <OpsKvRow label="License" value={stackHealth.license_state} />
-          {stackHealth.cost_sync_last_success_seconds != null ? (
+        {stackHealth ? (
+          <OpsStatPanel status={stackHealth.status} title="Stack health">
             <OpsKvRow
-              label="Cost sync last success"
-              value={formatSeconds(stackHealth.cost_sync_last_success_seconds)}
+              label="ClickHouse lag"
+              value={formatSeconds(stackHealth.clickhouse_lag_seconds)}
             />
-          ) : null}
-        </OpsStatPanel>
+            <OpsKvRow
+              label="Outbox oldest pending"
+              value={formatSeconds(stackHealth.outbox_oldest_pending_seconds)}
+            />
+            <OpsKvRow
+              label="Redis shards"
+              value={`${stackHealth.redis_shards_reachable}/${stackHealth.redis_shards_total}`}
+            />
+            <OpsKvRow label="License" value={stackHealth.license_state} />
+            {stackHealth.cost_sync_last_success_seconds != null ? (
+              <OpsKvRow
+                label="Cost sync last success"
+                value={formatSeconds(stackHealth.cost_sync_last_success_seconds)}
+              />
+            ) : null}
+          </OpsStatPanel>
+        ) : null}
 
         <OpsStatPanel title="Dashboard summary">
           {dashboardSummary.generated_at ? (
@@ -182,7 +173,7 @@ export function OpsHome({
                 <OpsTableCell>
                   <OpsStatusChip status={service.status} />
                 </OpsTableCell>
-                <OpsTableCell className="text-muted-foreground">
+                <OpsTableCell >
                   {service.detail ?? ''}
                 </OpsTableCell>
               </OpsTableRow>
@@ -193,7 +184,7 @@ export function OpsHome({
 
       <OpsBlock title="Doctor checks">
         {checks.length === 0 ? (
-          <p className="text-muted-foreground">No doctor checks returned.</p>
+          <p >No doctor checks returned.</p>
         ) : (
           <OpsTable
             horizontalScroll
@@ -214,7 +205,7 @@ export function OpsHome({
                   <OpsStatusChip status={check.status} />
                 </OpsTableCell>
                 <OpsTableCell>{check.message ?? ''}</OpsTableCell>
-                <OpsTableCell className="text-muted-foreground">{check.hint ?? ''}</OpsTableCell>
+                <OpsTableCell >{check.hint ?? ''}</OpsTableCell>
                 <OpsTableCell numeric>
                   {check.latency_ms != null ? `${check.latency_ms} ms` : ''}
                 </OpsTableCell>
@@ -223,8 +214,8 @@ export function OpsHome({
           </OpsTable>
         )}
       </OpsBlock>
-
-      {error && hasSnapshot ? <ErrorBlock error={error} title="Refresh failed" /> : null}
-    </OpsPageShell>
+        </>
+      )}
+    </OpsPageWithLoad>
   );
 }

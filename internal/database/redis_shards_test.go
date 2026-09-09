@@ -4,6 +4,7 @@ import (
 	"testing"
 
 	"ad-event-processor/internal/config"
+	"ad-event-processor/pkg/netaddr"
 )
 
 func TestShardUniversalOptions_direct(t *testing.T) {
@@ -26,6 +27,19 @@ func TestShardUniversalOptions_direct(t *testing.T) {
 	}
 	if opts.ReadTimeout.Milliseconds() != 12 || opts.WriteTimeout.Milliseconds() != 12 {
 		t.Fatalf("timeouts read=%s write=%s", opts.ReadTimeout, opts.WriteTimeout)
+	}
+	if opts.DialTimeout != netaddr.DefaultRedisDialTimeout {
+		t.Fatalf("dial=%s want %s", opts.DialTimeout, netaddr.DefaultRedisDialTimeout)
+	}
+}
+
+func TestShardUniversalOptions_defaultDialTimeout(t *testing.T) {
+	cfg := &config.Config{
+		RedisAddrs: []string{"127.0.0.1:6379"},
+	}
+	opts := shardUniversalOptions(cfg, 0, nil, RedisShardOptions{})
+	if opts.DialTimeout != netaddr.DefaultRedisDialTimeout {
+		t.Fatalf("dial=%s want %s", opts.DialTimeout, netaddr.DefaultRedisDialTimeout)
 	}
 }
 

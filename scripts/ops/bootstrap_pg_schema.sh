@@ -251,7 +251,7 @@ run_migrate() {
 
   if migrations_present && aed_go_bin > /dev/null 2>&1; then
     echo "bootstrap_pg_schema: go run ./cmd/migrate-cold-path"
-    env DB_DSN="$dsn" PAYMENT_DB_DSN="$dsn" DB_PORT="$port" \
+    DB_DSN="$dsn" PAYMENT_DB_DSN="$dsn" DB_PORT="$port" \
       aed_go_run ./cmd/migrate-cold-path/ "${args[@]}"
     return 0
   fi

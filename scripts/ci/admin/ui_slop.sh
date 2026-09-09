@@ -218,6 +218,27 @@ for dir in web/src/domains web/src/shell web/src/pages; do
   fi
 done
 
+# Spacing and typography drift in domains (canonical: web/src/lib/admin_spacing.ts).
+for dir in web/src/domains web/src/pages; do
+  [ -d "$dir" ] || continue
+  if rg -n '\bgap-[5678]\b' "$dir" --glob '*.tsx' 2> /dev/null; then
+    echo "Error: UI slop - gap-5+ banned under ${dir}; use adminSpacing.gap (xs|sm|md|lg|xl) from admin_kit"
+    failed=1
+  fi
+  if rg -n '\btext-sm\b|\btext-base\b' "$dir" --glob '*.tsx' 2> /dev/null; then
+    echo "Error: UI slop - text-sm/text-base banned under ${dir}; use adminTypography.body / sectionTitle"
+    failed=1
+  fi
+  if rg -n '\btext-xs\b' "$dir" --glob '*.tsx' 2> /dev/null; then
+    echo "Error: UI slop - text-xs banned under ${dir}; use adminTypography.badge or monoData"
+    failed=1
+  fi
+  if rg -n 'text-\[(8|9|1[0-9])px\]' "$dir" --glob '*.tsx' 2> /dev/null; then
+    echo "Error: UI slop - arbitrary text-[Npx] banned under ${dir}; use adminTypography.* from admin_spacing.ts"
+    failed=1
+  fi
+done
+
 # Legacy admin-* BEM hooks in class strings (text-ui-* typography tokens are allowed).
 for dir in web/src/domains web/src/shell web/src/pages; do
   [ -d "$dir" ] || continue
@@ -236,7 +257,7 @@ for dir in web/src/domains web/src/shell web/src/pages; do
 done
 
 if [ "$failed" -ne 0 ]; then
-  echo "Remediation: .cursor/rules/ui.mdc; mocks/tables/styling: .cursor/rules/frontend-slop.mdc (Tailwind vs global CSS collision); control height: web/src/lib/admin_kit.ts"
+  echo "Remediation: .cursor/rules/ui.mdc (**Spacing and typography**); web/src/lib/admin_spacing.ts; frontend-slop.mdc layout contract"
   exit 1
 fi
 
@@ -325,7 +346,7 @@ if ! rg -n 'stopPropagation' web/src/components/ui/dropdown-menu.tsx 2> /dev/nul
 fi
 
 if [ "$failed" -ne 0 ]; then
-  echo "Remediation: .cursor/rules/ui.mdc; mocks/tables/styling: .cursor/rules/frontend-slop.mdc (Tailwind vs global CSS collision); control height: web/src/lib/admin_kit.ts"
+  echo "Remediation: .cursor/rules/ui.mdc (**Spacing and typography**); web/src/lib/admin_spacing.ts; frontend-slop.mdc layout contract"
   exit 1
 fi
 

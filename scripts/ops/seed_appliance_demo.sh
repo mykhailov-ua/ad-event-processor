@@ -74,10 +74,37 @@ ensure_clickhouse() {
 }
 
 enable_control_clickhouse() {
-  if grep -q '^CH_ENABLED=0' "$ROOT/.env" 2> /dev/null; then
-    sed -i 's/^CH_ENABLED=0/CH_ENABLED=1/' "$ROOT/.env"
-    log "enabled CH_ENABLED=1 in .env"
-  fi
+  local ch_tcp_dsn="clickhouse://${CH_USER}:${CH_PASSWORD}@127.0.0.1:${CH_PORT}/${CH_NAME}"
+  patch_env_file() {
+    local file="$1"
+    [[ -f "$file" ]] || return 0
+    if grep -q '^CH_ENABLED=0' "$file" 2> /dev/null; then
+      sed -i 's/^CH_ENABLED=0/CH_ENABLED=1/' "$file"
+    fi
+    if grep -q '^CH_ENABLED=' "$file" 2> /dev/null; then
+      sed -i 's/^CH_ENABLED=.*/CH_ENABLED=1/' "$file"
+    else
+      printf '\nCH_ENABLED=1\n' >> "$file"
+    fi
+    if grep -q '^CH_USE_UDS=' "$file" 2> /dev/null; then
+      sed -i 's/^CH_USE_UDS=.*/CH_USE_UDS=0/' "$file"
+    else
+      printf 'CH_USE_UDS=0\n' >> "$file"
+    fi
+    if grep -q '^CH_DSN=' "$file" 2> /dev/null; then
+      sed -i "s|^CH_DSN=.*|CH_DSN=${ch_tcp_dsn}|" "$file"
+    else
+      printf 'CH_DSN=%s\n' "$ch_tcp_dsn" >> "$file"
+    fi
+    if grep -q '^CH_READONLY_DSN=' "$file" 2> /dev/null; then
+      sed -i "s|^CH_READONLY_DSN=.*|CH_READONLY_DSN=${ch_tcp_dsn}|" "$file"
+    else
+      printf 'CH_READONLY_DSN=%s\n' "$ch_tcp_dsn" >> "$file"
+    fi
+  }
+  patch_env_file "$ROOT/.env"
+  patch_env_file "/etc/ad-event-processor/secrets.env"
+  log "enabled ClickHouse for host control (CH_ENABLED=1, CH_USE_UDS=0, TCP ${CH_PORT})"
   if systemctl is-enabled ad-event-processor-control > /dev/null 2>&1; then
     systemctl restart ad-event-processor-control || true
     sleep 2

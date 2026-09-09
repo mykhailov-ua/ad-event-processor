@@ -224,7 +224,7 @@ const DropdownMenuItem = React.forwardRef<
       type="button"
       role="menuitem"
       disabled={disabled}
-      className={cn(adminChrome.menuItem, inset && 'pl-6', className)}
+      className={cn(adminChrome.menuItem, inset && 'pl-8', className)}
       onClick={(event) => {
         onClick?.(event);
         if (!event.defaultPrevented && !disabled) {

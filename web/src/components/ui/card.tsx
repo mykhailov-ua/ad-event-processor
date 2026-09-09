@@ -9,7 +9,7 @@ const Card = React.forwardRef<HTMLDivElement, React.HTMLAttributes<HTMLDivElemen
     <div
       ref={ref}
       data-ui-card=""
-      className={cn(uiSurfaces.panel, 'gap-2', adminKit.panelRadius, className)}
+      className={cn(uiSurfaces.panel, adminKit.panelRadius, className)}
       {...props}
     />
   )
@@ -17,34 +17,36 @@ const Card = React.forwardRef<HTMLDivElement, React.HTMLAttributes<HTMLDivElemen
 Card.displayName = 'Card';
 
 const CardHeader = React.forwardRef<HTMLDivElement, React.HTMLAttributes<HTMLDivElement>>(
-  ({ className, ...props }, ref) => <div ref={ref} className={cn(className)} {...props} />
+  ({ className, ...props }, ref) => (
+    <div ref={ref} className={cn('flex flex-col gap-1.5', className)} {...props} />
+  )
 );
 CardHeader.displayName = 'CardHeader';
 
 const CardTitle = React.forwardRef<HTMLDivElement, React.HTMLAttributes<HTMLDivElement>>(
   ({ className, ...props }, ref) => (
-    <div ref={ref} className={cn('font-semibold', className)} {...props} />
+    <div ref={ref} className={cn('text-lg font-bold tracking-tight text-foreground', className)} {...props} />
   )
 );
 CardTitle.displayName = 'CardTitle';
 
 const CardDescription = React.forwardRef<HTMLDivElement, React.HTMLAttributes<HTMLDivElement>>(
   ({ className, ...props }, ref) => (
-    <div ref={ref} className={cn('text-muted-foreground text-sm', className)} {...props} />
+    <div ref={ref} className={cn('text-sm text-muted-foreground', className)} {...props} />
   )
 );
 CardDescription.displayName = 'CardDescription';
 
 const CardContent = React.forwardRef<HTMLDivElement, React.HTMLAttributes<HTMLDivElement>>(
   ({ className, ...props }, ref) => (
-    <div ref={ref} className={cn('grid gap-3', className)} {...props} />
+    <div ref={ref} className={cn('grid gap-4', className)} {...props} />
   )
 );
 CardContent.displayName = 'CardContent';
 
 const CardFooter = React.forwardRef<HTMLDivElement, React.HTMLAttributes<HTMLDivElement>>(
   ({ className, ...props }, ref) => (
-    <div ref={ref} className={cn('grid gap-2', className)} {...props} />
+    <div ref={ref} className={cn('flex items-center gap-2', className)} {...props} />
   )
 );
 CardFooter.displayName = 'CardFooter';

@@ -4,9 +4,7 @@ import type { OpsShardsResponse } from '@/api/types';
 import { opsPanelError } from '@/domains/ops/ops_nav';
 import {
   OpsActionGroup,
-  OpsPageBlockingError,
-  OpsPageLoading,
-  OpsPageShell,
+  OpsPageWithLoad,
 } from '@/domains/ops/ops_page_shell';
 import { OpsStatusChip } from '@/domains/ops/ops_status';
 import {
@@ -38,24 +36,28 @@ export function OpsShards({
   catchupStatus,
   onCatchup,
 }: OpsShardsProps) {
-  if (fetching && !hasSnapshot && !error) {
-    return <OpsPageLoading />;
-  }
-
-  if (error && !hasSnapshot) {
-    return <OpsPageBlockingError error={error} pageTitle="Shards" title="Could not load shards" />;
-  }
-
   const shards = snapshot?.shards ?? [];
 
   return (
-    <OpsPageShell
+    <OpsPageWithLoad
       badge={
         snapshot?.emergency_breaker ? (
           <OpsStatusChip status={snapshot.emergency_breaker} />
         ) : undefined
       }
+      blockingErrorTitle="Could not load shards"
+      fetchState={{ fetching, error, hasSnapshot }}
       title="Shards"
+      alerts={
+        <>
+          {catchupStatus ? (
+            <p  role="status">
+              Catch-up status: {catchupStatus}
+            </p>
+          ) : null}
+          {catchupError ? opsPanelError(catchupError, 'Catch-up failed') : null}
+        </>
+      }
       actions={
         <OpsActionGroup label="Shard maintenance">
           <Button disabled={catchingUp} loading={catchingUp} type="button" onClick={onCatchup}>
@@ -64,13 +66,6 @@ export function OpsShards({
         </OpsActionGroup>
       }
     >
-      {catchupStatus ? (
-        <p className="text-muted-foreground" role="status">
-          Catch-up status: {catchupStatus}
-        </p>
-      ) : null}
-      {catchupError ? opsPanelError(catchupError, 'Catch-up failed') : null}
-
       {shards.length === 0 ? (
         <EmptyState description="Shard health matrix is empty." title="No shard rows" />
       ) : (
@@ -100,7 +95,6 @@ export function OpsShards({
         </OpsTable>
       )}
 
-      {error && hasSnapshot ? opsPanelError(error, 'Refresh failed') : null}
-    </OpsPageShell>
+    </OpsPageWithLoad>
   );
 }

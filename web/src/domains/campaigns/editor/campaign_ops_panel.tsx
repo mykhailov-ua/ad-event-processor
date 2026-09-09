@@ -1,4 +1,7 @@
+import { Link } from 'react-router-dom';
+
 import { campaignPanelError } from '@/domains/campaigns/editor/campaign_editor_shared';
+import { buildIntegrationsDebuggerHref } from '@/domains/integrations/integration_debug_api';
 import {
   DirectoryFilterForm,
   FilterField,
@@ -19,10 +22,11 @@ import { displayTimestamp } from '@/lib/display';
 import type { CampaignOpsPanelWorkspace } from '@/domains/campaigns/editor/use_campaign_ops_panel_workspace';
 
 export type CampaignOpsPanelProps = {
+  campaignId: string;
   workspace: CampaignOpsPanelWorkspace;
 };
 
-export function CampaignOpsPanel({ workspace }: CampaignOpsPanelProps) {
+export function CampaignOpsPanel({ campaignId, workspace }: CampaignOpsPanelProps) {
   const {
     draftPlacementId,
     setDraftPlacementId,
@@ -34,8 +38,6 @@ export function CampaignOpsPanel({ workspace }: CampaignOpsPanelProps) {
     mappingDrafts,
     setMappingDrafts,
     suggestions,
-    smokeMessage,
-    flowMessage,
     actionError,
     savingMappings,
     mappingSaveSuccess,
@@ -46,8 +48,6 @@ export function CampaignOpsPanel({ workspace }: CampaignOpsPanelProps) {
     onLoadMargin,
     onLoadMappings,
     onLoadSuggestions,
-    onRunSmoke,
-    onValidateFlow,
     onSaveMappings,
     onBlockPlacement,
     onSyncFromPreset,
@@ -58,8 +58,8 @@ export function CampaignOpsPanel({ workspace }: CampaignOpsPanelProps) {
   } = workspace;
 
   return (
-    <div className="grid gap-4">
-      <div className="flex flex-wrap gap-2">
+    <div >
+      <div >
         <Button disabled={busy} onClick={onLoadStats} type="button" variant="outline">
           {loadingKey === 'stats' ? 'Loading...' : 'Stats'}
         </Button>
@@ -75,17 +75,14 @@ export function CampaignOpsPanel({ workspace }: CampaignOpsPanelProps) {
         <Button disabled={busy} onClick={onLoadSuggestions} type="button" variant="outline">
           {loadingKey === 'suggestions' ? 'Loading...' : 'Placement suggestions'}
         </Button>
-        <Button disabled={busy} onClick={onRunSmoke} type="button" variant="secondary">
-          {loadingKey === 'smoke' ? 'Running...' : 'Smoke test'}
-        </Button>
-        <Button disabled={busy} onClick={onValidateFlow} type="button" variant="secondary">
-          {loadingKey === 'flow' ? 'Validating...' : 'Validate flow'}
+        <Button asChild type="button" variant="secondary">
+          <Link to={buildIntegrationsDebuggerHref(campaignId)}>Open integration debugger</Link>
         </Button>
       </div>
 
       {statusIntegrationSchemaName ? (
-        <FilterPanel className="w-full max-w-2xl gap-2 text-[13px] leading-[18px]">
-          <h3 className="font-semibold">Status integration preset</h3>
+        <FilterPanel >
+          <h3 >Status integration preset</h3>
           <p>{statusIntegrationSchemaName}</p>
           {statusIntegrationSchemaId ? (
             <Button disabled={busy} onClick={onSyncFromPreset} type="button" variant="secondary">
@@ -93,7 +90,7 @@ export function CampaignOpsPanel({ workspace }: CampaignOpsPanelProps) {
             </Button>
           ) : null}
           {syncPresetMessage ? (
-            <p className="text-sm text-muted-foreground" role="status">
+            <p  role="status">
               {syncPresetMessage}
             </p>
           ) : null}
@@ -101,23 +98,23 @@ export function CampaignOpsPanel({ workspace }: CampaignOpsPanelProps) {
       ) : null}
 
       {stats ? (
-        <FilterPanel className="w-full max-w-2xl gap-2 text-[13px] leading-[18px]">
-          <h3 className="font-semibold">Campaign stats</h3>
-          <div className="grid grid-cols-2 gap-2 sm:grid-cols-4">
+        <FilterPanel >
+          <h3 >Campaign stats</h3>
+          <div >
             <div>
-              <span className="text-muted-foreground">Current spend</span>
+              <span >Current spend</span>
               <p>{stats.current_spend ?? ''}</p>
             </div>
             <div>
-              <span className="text-muted-foreground">Clicks</span>
+              <span >Clicks</span>
               <p>{stats.metrics?.clicks ?? 0}</p>
             </div>
             <div>
-              <span className="text-muted-foreground">Conversions</span>
+              <span >Conversions</span>
               <p>{stats.metrics?.conversions ?? 0}</p>
             </div>
             <div>
-              <span className="text-muted-foreground">Impressions</span>
+              <span >Impressions</span>
               <p>{stats.metrics?.impressions ?? 0}</p>
             </div>
           </div>
@@ -125,8 +122,8 @@ export function CampaignOpsPanel({ workspace }: CampaignOpsPanelProps) {
       ) : null}
 
       {margin ? (
-        <FilterPanel className="w-full max-w-2xl gap-2 text-[13px] leading-[18px]">
-          <h3 className="font-semibold">Margin</h3>
+        <FilterPanel >
+          <h3 >Margin</h3>
           <p>
             Operator margin (micro): <strong>{margin.operator_margin_micro ?? ''}</strong>
           </p>
@@ -153,7 +150,7 @@ export function CampaignOpsPanel({ workspace }: CampaignOpsPanelProps) {
               <TableRow key={`${row.click_id ?? 'event'}-${index}`}>
                 <TableCell>{displayTimestamp(row.created_at)}</TableCell>
                 <TableCell>{row.event_type ?? ''}</TableCell>
-                <TableCell className="text-xs">{row.click_id ?? ''}</TableCell>
+                <TableCell >{row.click_id ?? ''}</TableCell>
               </TableRow>
             ))}
           </TableBody>
@@ -161,8 +158,8 @@ export function CampaignOpsPanel({ workspace }: CampaignOpsPanelProps) {
       ) : null}
 
       {mappings ? (
-        <FilterPanel className="w-full max-w-2xl gap-3">
-          <h3 className="font-semibold">Conversion mappings</h3>
+        <FilterPanel >
+          <h3 >Conversion mappings</h3>
           {mappingDrafts.map((draft, index) => (
             <DirectoryFilterForm
               key={`mapping-${index}`}
@@ -205,7 +202,7 @@ export function CampaignOpsPanel({ workspace }: CampaignOpsPanelProps) {
               </FilterField>
             </DirectoryFilterForm>
           ))}
-          <div className="flex flex-wrap gap-2">
+          <div >
             <Button
               disabled={busy}
               onClick={() =>
@@ -224,7 +221,7 @@ export function CampaignOpsPanel({ workspace }: CampaignOpsPanelProps) {
             </Button>
           </div>
           {mappingSaveSuccess ? (
-            <p className="text-sm text-muted-foreground" role="status">
+            <p  role="status">
               Conversion mappings saved.
             </p>
           ) : null}
@@ -244,7 +241,7 @@ export function CampaignOpsPanel({ workspace }: CampaignOpsPanelProps) {
           <TableBody>
             {suggestions.map((row) => (
               <TableRow key={row.placement_id}>
-                <TableCell className="text-xs">{row.placement_id}</TableCell>
+                <TableCell >{row.placement_id}</TableCell>
                 <TableCell>{row.ivt_rate_label ?? row.ivt_rate ?? ''}</TableCell>
                 <TableCell>{row.reason_label ?? row.suggested_action ?? ''}</TableCell>
                 <TableCell>
@@ -263,7 +260,7 @@ export function CampaignOpsPanel({ workspace }: CampaignOpsPanelProps) {
         </DirectoryTable>
       ) : null}
 
-      <div className={INLINE_FILTER_ACTION_GRID_CLASS}>
+      <div >
         <FilterField htmlFor="ops-placement-id" label="Placement ID to block">
           <Input
             id="ops-placement-id"
@@ -275,17 +272,6 @@ export function CampaignOpsPanel({ workspace }: CampaignOpsPanelProps) {
           {blocking ? 'Blocking...' : 'Block placement'}
         </Button>
       </div>
-
-      {smokeMessage ? (
-        <p className="text-sm text-muted-foreground" role="status">
-          {smokeMessage}
-        </p>
-      ) : null}
-      {flowMessage ? (
-        <p className="text-sm text-muted-foreground" role="status">
-          Flow validation: {flowMessage}
-        </p>
-      ) : null}
 
       {actionError ? campaignPanelError(actionError, 'Campaign ops action failed') : null}
     </div>

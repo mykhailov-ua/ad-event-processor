@@ -2,28 +2,24 @@
 
 import { createServer, request as httpRequest } from 'node:http';
 import { existsSync, readFileSync, watch } from 'node:fs';
-import { extname, resolve, dirname, join } from 'node:path';
-import { spawn } from 'node:child_process';
+import { extname, join, resolve, dirname } from 'node:path';
 import { fileURLToPath } from 'node:url';
 
 import { adminApiTarget, prepareDevBuildEnv } from './admin_dev_env.mjs';
+import {
+  BUILD_DIST as DIST,
+  BUILD_ROOT as ROOT,
+  BUILD_SRC as SRC,
+  buildAppCss,
+  buildDevBootstrap,
+  createDevEsbuildContext,
+} from './build_lib.mjs';
 
-const ROOT = resolve(dirname(fileURLToPath(import.meta.url)), '..');
-const DIST = join(ROOT, 'dist');
-const SRC = join(ROOT, 'src');
 const PORT = Number(process.env.ADMIN_DEV_PORT ?? 5173);
 const WATCH = process.env.ADMIN_DEV_WATCH !== '0';
-const BUILD_SCRIPT = join(ROOT, 'scripts', 'build.mjs');
-
-function runBuild() {
-  return new Promise((resolvePromise, reject) => {
-    const child = spawn(process.execPath, [BUILD_SCRIPT], { stdio: 'inherit', cwd: ROOT });
-    child.on('exit', (code) => {
-      if (code === 0) resolvePromise();
-      else reject(new Error(`build exited ${code}`));
-    });
-  });
-}
+const LIVERELOAD_PATH = '/__livereload';
+const LIVERELOAD_SNIPPET =
+  '<script>(function(){var es=new EventSource("/__livereload");es.onmessage=function(){location.reload()};})();</script>';
 
 const MIME = {
   '.html': 'text/html; charset=utf-8',
@@ -35,6 +31,28 @@ const MIME = {
   '.svg': 'image/svg+xml',
 };
 
+const reloadClients = new Set();
+let reloadTimer = null;
+let cssBuilding = false;
+let cssPending = false;
+
+function scheduleReload() {
+  clearTimeout(reloadTimer);
+  reloadTimer = setTimeout(() => {
+    for (const client of reloadClients) {
+      client.write('data: reload\n\n');
+    }
+  }, 120);
+}
+
+function serveBytes(res, body, contentType) {
+  res.writeHead(200, {
+    'Content-Type': contentType,
+    'Cache-Control': 'no-store',
+  });
+  res.end(body);
+}
+
 function serveFile(res, filePath) {
   if (!existsSync(filePath)) {
     res.writeHead(404, { 'Cache-Control': 'no-store' });
@@ -42,18 +60,21 @@ function serveFile(res, filePath) {
     return;
   }
   const ext = extname(filePath);
-  res.writeHead(200, {
-    'Content-Type': MIME[ext] ?? 'application/octet-stream',
-    'Cache-Control': 'no-store',
-  });
-  res.end(readFileSync(filePath));
+  let body = readFileSync(filePath);
+  if (ext === '.html') {
+    const html = body.toString('utf8');
+    if (!html.includes(LIVERELOAD_PATH)) {
+      body = Buffer.from(html.replace('</body>', `    ${LIVERELOAD_SNIPPET}\n  </body>`), 'utf8');
+    }
+  }
+  serveBytes(res, body, MIME[ext] ?? 'application/octet-stream');
 }
 
 function readRequestBody(req) {
-  return new Promise((resolve, reject) => {
+  return new Promise((resolvePromise, reject) => {
     const chunks = [];
     req.on('data', (chunk) => chunks.push(chunk));
-    req.on('end', () => resolve(Buffer.concat(chunks).toString('utf8')));
+    req.on('end', () => resolvePromise(Buffer.concat(chunks).toString('utf8')));
     req.on('error', reject);
   });
 }
@@ -118,6 +139,18 @@ function startServer() {
       return;
     }
 
+    if (path === LIVERELOAD_PATH) {
+      res.writeHead(200, {
+        'Content-Type': 'text/event-stream',
+        'Cache-Control': 'no-store',
+        Connection: 'keep-alive',
+      });
+      res.write(':\n\n');
+      reloadClients.add(res);
+      req.on('close', () => reloadClients.delete(res));
+      return;
+    }
+
     if (shouldProxyToControl(path)) {
       void handleApi(req, res);
       return;
@@ -144,40 +177,73 @@ function startServer() {
     res.end('Not found');
   }).listen(PORT, () => {
     console.log(`Admin dev: http://127.0.0.1:${PORT} (API -> ${adminApiTarget()})`);
-    if (WATCH) console.log('Watching web/src for rebuilds');
+    if (WATCH) {
+      console.log('Live reload: save a file -> incremental rebuild -> browser refresh');
+    }
+  });
+}
+
+async function runCssBuild() {
+  if (cssBuilding) {
+    cssPending = true;
+    return;
+  }
+  cssBuilding = true;
+  try {
+    await buildAppCss();
+    scheduleReload();
+  } catch (err) {
+    console.error(err);
+  } finally {
+    cssBuilding = false;
+    if (cssPending) {
+      cssPending = false;
+      void runCssBuild();
+    }
+  }
+}
+
+function watchCssSources() {
+  let timer = null;
+  const kick = () => {
+    clearTimeout(timer);
+    timer = setTimeout(() => {
+      void runCssBuild();
+    }, 300);
+  };
+  watch(join(SRC, 'styles'), { recursive: true }, kick);
+  watch(join(ROOT, 'tailwind.config.ts'), kick);
+  watch(SRC, { recursive: true }, (_event, filename) => {
+    if (!filename) {
+      kick();
+      return;
+    }
+    if (/\.(tsx?|jsx?)$/.test(filename)) {
+      kick();
+    }
   });
 }
 
 await prepareDevBuildEnv();
-await runBuild();
+await buildDevBootstrap();
+
+let esbuildContext = null;
+if (WATCH) {
+  esbuildContext = await createDevEsbuildContext({
+    onRebuild: () => scheduleReload(),
+  });
+  await esbuildContext.watch();
+  watchCssSources();
+} else {
+  const { buildJsBundle } = await import('./build_lib.mjs');
+  await buildJsBundle({ minify: false });
+}
+
 startServer();
 
-if (WATCH) {
-  let timer = null;
-  let building = false;
-  let pending = false;
-  const kick = () => {
-    if (building) {
-      pending = true;
-      return;
-    }
-    building = true;
-    runBuild()
-      .catch((err) => console.error(err))
-      .finally(() => {
-        building = false;
-        if (pending) {
-          pending = false;
-          kick();
-        }
-      });
-  };
-  watch(SRC, { recursive: true }, () => {
-    clearTimeout(timer);
-    timer = setTimeout(kick, 120);
-  });
-  watch(join(ROOT, 'tailwind.config.ts'), () => {
-    clearTimeout(timer);
-    timer = setTimeout(kick, 120);
-  });
-}
+process.on('SIGINT', async () => {
+  if (esbuildContext) {
+    await esbuildContext.dispose();
+  }
+  process.exit(0);
+});

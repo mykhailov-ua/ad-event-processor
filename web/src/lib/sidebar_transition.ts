@@ -1,4 +1,4 @@
-export const SIDEBAR_COLLAPSED_KEY = 'aed-sidebar-collapsed';
+export const SIDEBAR_COLLAPSED_KEY = '';
 
 export function readSidebarCollapsed(): boolean {
   if (typeof window === 'undefined') {

@@ -6,8 +6,7 @@ import { AppErrorBoundary } from '@/shell/app_error_boundary';
 import { MetaProvider } from '@/context/meta_context';
 import { SessionProvider } from '@/context/session_context';
 import { ThemeProvider } from '@/context/theme_context';
-import '@/styles/app.css';
-import 'react-day-picker/style.css';
+import '@/styles/tailwind.css';
 
 const root = document.getElementById('root');
 if (root) {
