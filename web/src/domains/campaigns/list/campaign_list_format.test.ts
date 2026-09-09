@@ -1,35 +1,38 @@
 import assert from 'node:assert/strict';
 import test from 'node:test';
 
-import type { CampaignWithMoneyDisplay } from '@/domains/campaigns/list/campaign_metrics_shared';
+import {
+  campaignListTotalsFromMetricsTotals,
+  formatTableMoneyFromMicro,
+} from './campaign_list_format.ts';
 
-import { formatTableMoneyFromMicro, sumCampaignListTotals } from './campaign_list_format.ts';
-
-test('formatTableMoneyFromMicro formats negative micro amounts', () => {
-  assert.equal(formatTableMoneyFromMicro(-3_775_260_000).text, '-3,775.26');
+test('campaignListTotalsFromMetricsTotals maps server metrics-totals response', () => {
+  const totals = campaignListTotalsFromMetricsTotals({
+    campaign_count: 1,
+    flow_count: 2,
+    margin_breach_count: 0,
+    totals: {
+      campaign_id: '00000000-0000-0000-0000-000000000001',
+      clicks: 10,
+      revenue_micro: 2_000_000,
+      cost_micro: 1_000_000,
+      profit_micro: 1_000_000,
+    },
+    from: '2026-01-01T00:00:00.000Z',
+    to: '2026-01-02T00:00:00.000Z',
+    stale: false,
+  });
+  assert.equal(totals.flows, 2);
+  assert.equal(totals.clicks, 10);
+  assert.equal(totals.revenueMicro, 2_000_000);
+  assert.equal(totals.costMicro, 1_000_000);
+  assert.equal(totals.profitMicro, 1_000_000);
 });
 
-test('sumCampaignListTotals_holdout prefers metrics batch micros over margin', () => {
-  const totals = sumCampaignListTotals(
-    [{ id: 'a' } as CampaignWithMoneyDisplay],
-    {
-      a: {
-        clicks: 10,
-        revenue_micro: 9_000_000,
-        cost_micro: 4_000_000,
-        profit_micro: 5_000_000,
-      },
-    },
-    {
-      a: {
-        operator_margin_micro: 1,
-        rtb_cost_micro: 2,
-        advertiser_spend_micro: 3,
-      },
-    }
-  );
-
-  assert.equal(totals.revenueMicro, 9_000_000);
-  assert.equal(totals.costMicro, 4_000_000);
-  assert.equal(totals.profitMicro, 5_000_000);
+test('formatTableMoneyFromMicro formats micro-units as USD', () => {
+  assert.deepEqual(formatTableMoneyFromMicro(1_500_000), {
+    text: '1.50',
+    valUsd: 1.5,
+    isZero: false,
+  });
 });

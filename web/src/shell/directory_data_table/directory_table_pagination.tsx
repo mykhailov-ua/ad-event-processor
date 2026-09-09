@@ -1,5 +1,4 @@
 import { Button } from '@/components/ui/button';
-import { cn } from '@/lib/utils';
 
 export type DirectoryTablePaginationProps = {
   page: number;
@@ -31,15 +30,13 @@ export function DirectoryTablePagination({
   const totalLabel = truncatedTotal ?? totalRows;
 
   return (
-    <div
-     
-    >
+    <div className="grid grid-cols-[1fr_auto] items-center gap-2 border-t border-border px-3 py-2 text-xs text-muted-foreground">
       <p>
         {truncatedTotal != null
           ? `Showing ${visibleStart}-${visibleEnd} of top ${totalRows} (${totalLabel} total).`
           : `Showing ${visibleStart}-${visibleEnd} of ${totalRows}.`}
       </p>
-      <div >
+      <div className="flex items-center gap-1">
         <Button
           disabled={page <= 0}
           type="button"
@@ -48,7 +45,7 @@ export function DirectoryTablePagination({
         >
           Previous
         </Button>
-        <span >
+        <span className="px-1 tabular-nums">
           {page + 1} / {pageCount}
         </span>
         <Button

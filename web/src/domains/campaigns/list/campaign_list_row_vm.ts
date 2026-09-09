@@ -4,14 +4,9 @@ import { formatDashboardCrPct, formatDashboardRoiPct } from '@/lib/display_metri
 import {
   formatTableCount,
   formatTableMoneyFromMicro,
-  formatTableRoi,
-  parseAndFormatTableMoneyStr,
 } from '@/domains/campaigns/list/campaign_list_format';
 import type { CampaignFunnelCounts } from '@/domains/campaigns/list/campaign_list_funnel';
-import {
-  metricsBatchHasMoneyFields,
-  resolveCampaignListRowMetrics,
-} from '@/domains/campaigns/list/campaign_list_row_metrics';
+import { resolveCampaignListRowMetrics } from '@/domains/campaigns/list/campaign_list_row_metrics';
 import {
   campaignStatusCellClass,
   resolveCampaignListRowAccent,
@@ -25,7 +20,7 @@ import {
 } from '@/domains/campaigns/list/campaign_list_tone';
 import type { CampaignListMiddleColumnId } from '@/domains/campaigns/list/campaign_list_columns';
 import { campaignDisplayId } from '@/domains/campaigns/list/campaign_display_id';
-import type { CampaignWithMoneyDisplay } from '@/domains/campaigns/list/campaign_metrics_shared';
+import type { CampaignWithMoneyDisplay } from '@/domains/campaigns/list/campaign_list_format';
 import { formatCampaignStatusLabel } from '@/lib/admin_typography';
 import { resolveCustomerLabel } from '@/lib/customer_label';
 
@@ -143,7 +138,7 @@ export function buildCampaignRowVm(
 ): CampaignRowVm {
   const row = campaign as CampaignWithMoneyDisplay;
   const { clicks, impressions, blocks, costMicro, profitMicro, revenueMicro, funnel } =
-    resolveCampaignListRowMetrics(metrics, margin);
+    resolveCampaignListRowMetrics(metrics);
 
   const displayId = campaignDisplayId(campaign);
 
@@ -165,16 +160,9 @@ export function buildCampaignRowVm(
   const cpm = metrics?.cpm_usd && metrics.cpm_usd !== '0.00' ? metrics.cpm_usd : null;
 
   const revenue = formatTableMoneyFromMicro(revenueMicro);
-  const cost =
-    costMicro > 0
-      ? formatTableMoneyFromMicro(costMicro)
-      : parseAndFormatTableMoneyStr(row.current_spend_display ?? row.current_spend);
+  const cost = formatTableMoneyFromMicro(costMicro);
   const profitRes = formatTableMoneyFromMicro(profitMicro);
-  const hasMoneyFields = metricsBatchHasMoneyFields(metrics) || (metrics == null && margin != null);
-  const roiRes =
-    costMicro > 0 && hasMoneyFields
-      ? formatTableRoi(profitMicro, costMicro)
-      : vmRoi(metrics?.roi_pct);
+  const roiRes = vmRoi(metrics?.roi_pct);
 
   const budgetPct = campaign.budget_used_pct ?? null;
 

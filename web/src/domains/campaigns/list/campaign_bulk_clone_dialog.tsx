@@ -17,7 +17,7 @@ import {
 } from '@/domains/campaigns/editor/campaign_editor_shared';
 import { useCampaignBulkCloneDialogWorkspace } from '@/domains/campaigns/list/use_campaign_bulk_clone_dialog_workspace';
 import { PrimaryActionButton, SecondaryActionButton } from '@/shell/action_buttons';
-import { adminKit } from '@/lib/admin_kit';
+import { adminKit, adminTypography } from '@/lib/admin_kit';
 import { cn } from '@/lib/utils';
 
 export type CampaignBulkCloneDialogProps = {
@@ -56,7 +56,7 @@ export function CampaignBulkCloneDialog({
 
   return (
     <Dialog onOpenChange={onOpenChange} open={open}>
-      <DialogContent >
+      <DialogContent className="max-w-lg" >
         <DialogHeader>
           <DialogTitle>Bulk clone campaigns</DialogTitle>
           <DialogDescription>
@@ -64,8 +64,8 @@ export function CampaignBulkCloneDialog({
             conversion mappings. Budget spend is reset on each clone.
           </DialogDescription>
         </DialogHeader>
-        <DialogBody >
-          <div >
+        <DialogBody className="grid gap-4" >
+          <div className={cn('grid', adminKit.fieldLabelGap)} >
             <Label htmlFor="bulk-clone-name-suffix">Name suffix</Label>
             <Input
               id="bulk-clone-name-suffix"
@@ -75,14 +75,14 @@ export function CampaignBulkCloneDialog({
             />
           </div>
 
-          <div >
-            <p >Clone options</p>
+          <div className="grid gap-3" >
+            <p className={cn("m-0", adminTypography.label)}>Clone options</p>
             {CLONE_OPTION_FIELDS.map(({ field, label, description }) => {
               const inputId = `bulk-clone-option-${field}`;
               const checked = cloneOptions[field] ?? DEFAULT_CLONE_OPTIONS[field];
               return (
-                <div key={field}>
-                  <div >
+                <div className="grid gap-1" key={field}>
+                  <div className="flex items-center gap-2" >
                     <Checkbox
                       checked={checked}
                       disabled={cloning || successCount > 0}
@@ -91,7 +91,7 @@ export function CampaignBulkCloneDialog({
                     />
                     <Label htmlFor={inputId}>{label}</Label>
                   </div>
-                  <p >{description}</p>
+                  <p className={adminTypography.captionPlain} >{description}</p>
                 </div>
               );
             })}
@@ -99,13 +99,13 @@ export function CampaignBulkCloneDialog({
 
           {cloneError ? campaignPanelError(cloneError, 'Bulk clone failed') : null}
           {results && successCount > 0 ? (
-            <p  role="status">
+            <p  className={adminTypography.bodyMuted} role="status">
               Cloned {successCount} campaign(s)
               {failedCount > 0 ? `; ${failedCount} failed` : ''}.
             </p>
           ) : null}
         </DialogBody>
-        <DialogFooter >
+        <DialogFooter className="gap-2" >
           <SecondaryActionButton type="button" onClick={() => onOpenChange(false)}>
             {successCount > 0 ? 'Close' : 'Cancel'}
           </SecondaryActionButton>

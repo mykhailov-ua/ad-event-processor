@@ -5,7 +5,8 @@ import { toast } from 'sonner';
 import { createSelfServeCampaign } from '@/api/selfserve_api';
 import { invalidateCampaignListResponseCache } from '@/domains/campaigns/list/campaign_list_response_cache';
 import { useCoalescedCallback } from '@/hooks/use_coalesced_callback';
-import { toError } from '@/lib/admin_error';
+import { toError, userErrorMessage } from '@/lib/admin_error';
+import { requirePositiveInteger } from '@/lib/admin_validation_error';
 import { newRandomUuid } from '@/lib/uuid';
 
 export type UseCampaignsPageMutationsArgs = {
@@ -85,12 +86,16 @@ export function useCampaignsPageMutations({
     const budgetRaw = draftBudgetLimitMicro.trim();
     let budgetLimitMicro: number | undefined;
     if (budgetRaw) {
-      const parsed = Number.parseInt(budgetRaw, 10);
-      if (!Number.isFinite(parsed) || parsed <= 0) {
-        setActionError(new Error('Budget must be a positive integer (micro units)'));
+      const parsed = requirePositiveInteger(
+        budgetRaw,
+        'Budget',
+        'budget_limit_micro'
+      );
+      if (!parsed.ok) {
+        setActionError(parsed.error);
         return;
       }
-      budgetLimitMicro = parsed;
+      budgetLimitMicro = parsed.value;
     }
 
     if (!createIdempotencyKeyRef.current) {
@@ -120,7 +125,7 @@ export function useCampaignsPageMutations({
     } catch (err: unknown) {
       const nextError = toError(err);
       setActionError(nextError);
-      toast.error(nextError.message);
+      toast.error(userErrorMessage(nextError));
     } finally {
       setCreating(false);
     }

@@ -2,6 +2,8 @@ export type DirectoryFetchState = {
   fetching: boolean;
   error: Error | undefined;
   hasSnapshot: boolean;
+  /** Stale-while-revalidate refresh; optional for shells that do not dim content. */
+  revalidating?: boolean;
 };
 
 export type DirectoryLoadPhase = 'loading' | 'blocking-error' | 'ready';

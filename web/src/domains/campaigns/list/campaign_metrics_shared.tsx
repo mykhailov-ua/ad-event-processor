@@ -5,6 +5,7 @@ import type { CampaignStatusTone } from '@/domains/campaigns/list/campaign_list_
 import { campaignBudgetUsedPercent, formatBudgetUsedPercent } from '@/lib/campaign_budget_used';
 import { displayMoneyDecimal } from '@/lib/display';
 import { adminKit } from '@/lib/admin_kit';
+import { adminTypography } from '@/lib/admin_spacing';
 import { cn } from '@/lib/utils';
 
 export type CampaignWithMoneyDisplay = Campaign & {
@@ -29,18 +30,18 @@ export function campaignFraudHref(campaignId: string, customerId: string): strin
 
 export function MetricRow({ label, value }: { label: string; value: string }) {
   return (
-    <div >
-      <span >{label}</span>
-      <span >{value}</span>
+    <div className={cn('grid grid-cols-[1fr_auto] items-center gap-4', adminTypography.body)}>
+      <span className={adminTypography.bodyMuted}>{label}</span>
+      <span>{value}</span>
     </div>
   );
 }
 
 export function MetricTile({ label, value }: { label: string; value: string }) {
   return (
-    <div >
-      <p >{label}</p>
-      <p >{value}</p>
+    <div className={cn('bg-muted/30 px-3 py-2', adminKit.panelRadius)}>
+      <p className="text-ui-caption text-muted-foreground">{label}</p>
+      <p className={cn('whitespace-nowrap', adminTypography.label)}>{value}</p>
     </div>
   );
 }
@@ -55,9 +56,9 @@ export function MetricsSection({
   title: string;
 }) {
   return (
-    <section >
-      <div >
-        <h3 >{title}</h3>
+    <section className="grid gap-3">
+      <div className="grid grid-cols-[1fr_auto] items-center gap-2">
+        <h3 className="text-ui-caption font-medium tracking-wide text-muted-foreground">{title}</h3>
         {meta}
       </div>
       {children}
@@ -67,9 +68,11 @@ export function MetricsSection({
 
 export function BudgetUsedSummary({
   campaign,
+  className,
   showBar = true,
 }: {
   campaign: CampaignWithMoneyDisplay;
+  className?: string;
   showBar?: boolean;
 }) {
   const percent =
@@ -84,22 +87,25 @@ export function BudgetUsedSummary({
       : spendLabel || budgetLabel || undefined;
 
   if (percent == null && !moneySummary) {
-    return <span >-</span>;
+    return <span className="text-muted-foreground">-</span>;
   }
 
   return (
-    <div >
-      <span >
+    <div className={cn('grid min-w-[6.5rem] max-w-[10rem] gap-1', className)}>
+      <span className={adminTypography.label}>
         {percent != null ? formatBudgetUsedPercent(percent) : '-'}
       </span>
       {moneySummary ? (
-        <p >{moneySummary}</p>
+        <p className={cn('whitespace-nowrap', adminTypography.captionPlain)}>{moneySummary}</p>
       ) : null}
       {showBar && percent != null ? (
-        <div aria-hidden >
+        <div aria-hidden className="h-1.5 overflow-hidden rounded-full bg-muted">
           <div
-           
-           
+            className={cn(
+              'h-full rounded-full bg-primary transition-all',
+              percent >= 90 && 'bg-destructive'
+            )}
+            style={{ width: `${percent}%` }}
           />
         </div>
       ) : null}
@@ -175,10 +181,10 @@ export function HourlyTrendChart({
     const shellHeight = height + 28;
     return (
       <div
-       
-       
+        className={cn('h-[var(--hourly-chart-shell-height)] bg-muted/25', adminKit.panelRadius)}
+        style={{ '--hourly-chart-shell-height': `${shellHeight}px` } as CSSProperties}
       >
-        <div >
+        <div className={cn('flex h-full items-center justify-center', adminTypography.captionPlain)}>
           Loading chart...
         </div>
       </div>
@@ -186,25 +192,25 @@ export function HourlyTrendChart({
   }
 
   return (
-    <div >
-      <div >
+    <div className="grid gap-2">
+      <div className="grid grid-cols-[1fr_auto] items-center gap-2 text-ui-caption text-muted-foreground">
         <span>Last 24 hours</span>
-        <div >
-          <span >
-            <span aria-hidden  />
+        <div className="flex items-center gap-3">
+          <span className="inline-flex items-center gap-1">
+            <span aria-hidden className="h-0.5 w-3 rounded-full bg-primary" />
             Clicks
           </span>
-          <span >
-            <span aria-hidden  />
+          <span className="inline-flex items-center gap-1">
+            <span aria-hidden className="h-0.5 w-3 rounded-full bg-muted-foreground/60" />
             Impressions
           </span>
         </div>
       </div>
 
-      <div >
+      <div className={cn('relative grid gap-2 bg-muted/20 p-2', adminKit.panelRadius)}>
         <svg
           aria-hidden
-         
+          className="block w-full"
           height={height}
           preserveAspectRatio="none"
           viewBox={`0 0 ${width} ${height}`}
@@ -262,13 +268,13 @@ export function HourlyTrendChart({
         </svg>
 
         {!hasActivity ? (
-          <p >
+          <p className="m-0 text-center text-ui-caption text-muted-foreground">
             No delivery activity in the last 24 hours
           </p>
         ) : null}
 
         {firstLabel || lastLabel ? (
-          <div >
+          <div className="grid grid-cols-[1fr_auto] items-center px-1 text-ui-mini text-muted-foreground">
             <span>{firstLabel ?? ''}</span>
             <span>{lastLabel ?? ''}</span>
           </div>

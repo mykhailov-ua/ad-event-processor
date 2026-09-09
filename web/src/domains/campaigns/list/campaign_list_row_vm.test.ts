@@ -3,6 +3,7 @@ import test from 'node:test';
 
 import type { CampaignListMetrics } from '@/api/campaigns_api';
 import type { Campaign, CampaignMargin } from '@/api/types';
+import { adminMetricNegativeClass } from '@/lib/admin_metric_tone';
 import { seedDeterministicUuid } from '@/lib/uuid.ts';
 import { buildCampaignRowVm } from '@/domains/campaigns/list/campaign_list_row_vm.ts';
 
@@ -78,14 +79,14 @@ test('buildCampaignRowVm maps server derived fields', () => {
   );
 
   assert.equal(vm.ctr?.valPct, 5);
-  assert.equal(vm.roi.text, '+66.67%');
+  assert.equal(vm.roi.text, '+16.67%');
   assert.equal(vm.epc.text, '2.00');
   assert.equal(vm.budgetPct, 25);
   assert.equal(vm.cpm, '0.06');
   assert.equal(vm.rowAlert, 'none');
 });
 
-test('buildCampaignRowVm_holdout shows negative profit and roi when cost exceeds revenue', () => {
+test('buildCampaignRowVm_holdout formats negative server profit and roi', () => {
   const metrics: CampaignListMetrics = {
     revenue_micro: 2_670_000,
     cost_micro: 3_777_930_000,
@@ -95,9 +96,9 @@ test('buildCampaignRowVm_holdout shows negative profit and roi when cost exceeds
   const vm = buildCampaignRowVm(baseCampaign, metrics, undefined, {}, {});
 
   assert.equal(vm.profit.text, '-3,775.26');
-  assert.match(vm.roi.text, /^-/);
-  assert.match(vm.profitToneClass, /text-admin-negative/);
-  assert.match(vm.roiToneClass, /text-admin-negative/);
+  assert.equal(vm.roi.text, '-99.93%');
+  assert.equal(vm.profitToneClass, adminMetricNegativeClass);
+  assert.equal(vm.roiToneClass, adminMetricNegativeClass);
 });
 
 test('buildCampaignRowVm sets row alert for high budget usage', () => {
@@ -113,14 +114,15 @@ test('buildCampaignRowVm sets row alert for high budget usage', () => {
   assert.equal(vm.rowAccent, 'none');
 });
 
-test('buildCampaignRowVm_holdout does not use current_spend for revenue before metrics load', () => {
+test('buildCampaignRowVm_holdout shows zero economics before metrics batch', () => {
   const vm = buildCampaignRowVm(baseCampaign, undefined, undefined, {}, {});
 
   assert.equal(vm.revenue.text, '0.00');
-  assert.equal(vm.cost.text, '25.00');
+  assert.equal(vm.cost.text, '0.00');
+  assert.equal(vm.roi.text, '-');
 });
 
-test('buildCampaignRowVm_holdout ignores stale zero profit_micro when revenue and cost are present', () => {
+test('buildCampaignRowVm_holdout uses server profit_micro without client recalculation', () => {
   const metrics: CampaignListMetrics = {
     revenue_micro: 2_670_000,
     cost_micro: 3_777_930_000,
@@ -129,8 +131,8 @@ test('buildCampaignRowVm_holdout ignores stale zero profit_micro when revenue an
   };
   const vm = buildCampaignRowVm(baseCampaign, metrics, undefined, {}, {});
 
-  assert.equal(vm.profit.text, '-3,775.26');
-  assert.match(vm.roi.text, /^-/);
+  assert.equal(vm.profit.text, '0.00');
+  assert.equal(vm.roi.text, '0.00%');
 });
 
 test('buildCampaignRowVm uses profit_micro for profit tone', () => {

@@ -84,10 +84,11 @@ export function DirectoryDataTableEngine<Row, Col extends string>({
   return (
     <DirectoryTable
       hostRef={hostRef}
-     
+      className={cn(surfaceClassName, 'rounded-none border-0 shadow-none')}
       fixedLayout
       horizontalScroll={useHorizontalScroll}
       nested
+      tableClassName={tableClassName}
       tableRef={tableRef}
       tableStyle={tableStyle}
     >
@@ -97,13 +98,13 @@ export function DirectoryDataTableEngine<Row, Col extends string>({
             useHorizontalScroll || columnId !== stretchColumnId
               ? { width: `${columnWidths[columnId]}px` }
               : undefined;
-          return <col key={columnId} />;
+          return <col key={columnId} style={fixedWidth} />;
         })}
       </colgroup>
       <TableHeader>
         <tr>
           {columns.map((columnId) => (
-            <th key={columnId}>
+            <th key={columnId} className={headerCellClassName}>
               {renderHeaderLabel(columnId)}
               {isResizableColumn(columnId) ? renderResizeHandle?.(columnId) : null}
             </th>
@@ -114,12 +115,12 @@ export function DirectoryDataTableEngine<Row, Col extends string>({
         {rows.map((row) => (
           <tr
             key={rowKey(row)}
-           
+            className={rowClassName}
             onClick={onRowClick ? () => onRowClick(row) : undefined}
             {...getRowAttributes?.(row)}
           >
             {columns.map((columnId) => (
-              <td key={columnId}>
+              <td key={columnId} className={bodyCellClassName}>
                 {renderBodyCell(columnId, row)}
               </td>
             ))}
@@ -130,7 +131,7 @@ export function DirectoryDataTableEngine<Row, Col extends string>({
         <TableFooter>
           <tr>
             {columns.map((columnId) => (
-              <td key={columnId}>
+              <td key={columnId} className={footerCellClassName}>
                 {renderFooterCell(columnId, footerRow)}
               </td>
             ))}

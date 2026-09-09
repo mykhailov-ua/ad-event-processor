@@ -21,10 +21,11 @@ export function directoryTableRevalidatingClass(revalidating?: boolean): string 
 }
 
 /** Wrap section body when it may contain a DirectoryTable inside bordered chrome. */
-export const SECTION_TABLE_HOST_CLASS = '';
+export const SECTION_TABLE_HOST_CLASS = 'ui-section-table-host mt-2 min-w-0';
 
 export type DirectoryTableProps = {
   children: ReactNode;
+  className?: string;
   hostClassName?: string;
   hostRef?: Ref<HTMLDivElement>;
   hostStyle?: CSSProperties;
@@ -60,6 +61,7 @@ function directoryTableUsesContentWidth(tableStyle?: CSSProperties): boolean {
 
 export function DirectoryTable({
   children,
+  className,
   hostClassName,
   hostRef,
   hostStyle,
@@ -79,22 +81,41 @@ export function DirectoryTable({
     <div
       ref={hostRef}
       data-directory-table=""
-     
-     
+      className={cn(
+        'ui-scrollbar relative min-w-0 border border-border bg-card text-card-foreground',
+        nested && 'border-0 shadow-none',
+        scrollable && 'max-h-[min(70vh,48rem)] overflow-y-auto',
+        horizontalScroll && 'overflow-x-auto',
+        className,
+        hostClassName
+      )}
+      style={hostStyle}
     >
       {pinnedEdgeWidthPx != null && pinnedEdgeWidthPx > 0 ? (
         <div
           aria-hidden
-         
+          className="directory-table-pinned-edge-shadow pointer-events-none"
           data-directory-pinned-edge=""
-         
+          style={{ left: `${pinnedEdgeWidthPx}px` }}
         />
       ) : null}
       <Table
         bare
         ref={tableRef}
-       
-       
+        className={cn(
+          'border-collapse text-[13px] leading-[18px]',
+          '[&_thead_th]:border-b [&_thead_th]:border-r [&_thead_th]:border-border',
+          '[&_tbody_td]:border-b [&_tbody_td]:border-r [&_tbody_td]:border-border',
+          '[&_tfoot_td]:border-r [&_tfoot_td]:border-border',
+          '[&_thead_tr_th:last-child]:border-r-0',
+          '[&_tbody_tr_td:last-child]:border-r-0',
+          '[&_tfoot_tr_td:last-child]:border-r-0',
+          '[&_tbody_tr:last-child_td]:border-b-0',
+          !explicitTableWidth && (contentWidth ? 'w-max' : 'w-full'),
+          fixedLayout && '[&_td]:whitespace-nowrap [&_th]:whitespace-nowrap',
+          tableClassName
+        )}
+        style={tableStyle}
       >
         {children}
       </Table>
@@ -106,10 +127,14 @@ export { TableBody, TableCell, TableFooter, TableHeader, TableRow } from '@/comp
 
 type HeadAlign = 'start' | 'end';
 
-function DirectoryTableHeadShell({ ...props }: ComponentProps<typeof TableHead>) {
+function DirectoryTableHeadShell({ className, ...props }: ComponentProps<typeof TableHead>) {
   return (
     <TableHead
-     
+      className={cn(
+        DIRECTORY_TABLE_HEAD_ROW_CLASS,
+        'bg-admin-table-header p-0 backdrop-blur-sm',
+        className
+      )}
       {...props}
     />
   );
@@ -126,23 +151,28 @@ function DirectoryTableHeadContent({
 }) {
   return (
     <div
-     
+      className={cn(
+        DIRECTORY_TABLE_HEAD_ROW_CLASS,
+        adminKit.directoryTableHeadInnerClass,
+        align === 'end' ? 'justify-end text-right' : 'justify-start text-left'
+      )}
     >
       {children}
-      {reserveSortIcon ? <span aria-hidden  /> : null}
+      {reserveSortIcon ? <span aria-hidden className={SORT_ICON_CLASS} /> : null}
     </div>
   );
 }
 
 export function DirectoryTableHead({
   align = 'start',
+  className,
   children,
   ...props
 }: Omit<ComponentProps<typeof TableHead>, 'align'> & { align?: HeadAlign }) {
   return (
-    <DirectoryTableHeadShell  {...props}>
+    <DirectoryTableHeadShell className={className} {...props}>
       <DirectoryTableHeadContent align={align} reserveSortIcon={align === 'end'}>
-        <span >{children}</span>
+        <span className="whitespace-nowrap">{children}</span>
       </DirectoryTableHeadContent>
     </DirectoryTableHeadShell>
   );
@@ -154,6 +184,7 @@ export type SortableTableHeadProps = {
   activeSort: string;
   activeOrder: 'asc' | 'desc';
   onSort: (field: string) => void;
+  className?: string;
   numeric?: boolean;
 };
 
@@ -163,6 +194,7 @@ export function SortableTableHead({
   activeSort,
   activeOrder,
   onSort,
+  className,
   numeric = false,
 }: SortableTableHeadProps) {
   const active = activeSort === sortField;
@@ -170,16 +202,22 @@ export function SortableTableHead({
   const align: HeadAlign = numeric ? 'end' : 'start';
 
   return (
-    <DirectoryTableHeadShell >
+    <DirectoryTableHeadShell className={className}>
       <button
         aria-label={`Sort by ${label}`}
         aria-sort={active ? (activeOrder === 'asc' ? 'ascending' : 'descending') : 'none'}
-       
+        className={cn(
+          DIRECTORY_TABLE_HEAD_ROW_CLASS,
+          adminKit.directoryTableHeadInnerClass,
+          'transition-colors hover:text-foreground',
+          align === 'end' ? 'justify-end text-right' : 'justify-start text-left',
+          active && 'text-foreground'
+        )}
         onClick={() => onSort(sortField)}
         type="button"
       >
-        <span >{label}</span>
-        <Icon aria-hidden  />
+        <span className="whitespace-nowrap">{label}</span>
+        <Icon aria-hidden className={cn(SORT_ICON_CLASS, active ? 'opacity-90' : 'opacity-45')} />
       </button>
     </DirectoryTableHeadShell>
   );

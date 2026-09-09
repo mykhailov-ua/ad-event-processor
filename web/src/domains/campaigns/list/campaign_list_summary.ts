@@ -64,7 +64,7 @@ export function computeCampaignListSummary(
     if (margin?.margin_breach) {
       marginBreachCount += 1;
     }
-    const row = resolveCampaignListRowMetrics(metrics, margin);
+    const row = resolveCampaignListRowMetrics(metrics);
     totals.revenueMicro += row.revenueMicro;
     totals.costMicro += row.costMicro;
     totals.profitMicro += row.profitMicro;

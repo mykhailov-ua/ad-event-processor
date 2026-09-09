@@ -39,6 +39,7 @@ export type CampaignsDirectoryProps = {
   statusTotalsLoading: boolean;
   customerOptions: CustomerComboboxOption[];
   customersLoading: boolean;
+  customersError?: Error | undefined;
   customerNameById: Record<string, string>;
   metricsById: Record<string, CampaignListMetrics>;
   marginsById: Record<string, CampaignMargin>;
@@ -60,6 +61,7 @@ export type CampaignsDirectoryProps = {
   countryOptions: CampaignsListFilterOption[];
   listFacetsFetching?: boolean;
   listFacetsDegraded?: boolean;
+  listFacetsError?: Error | undefined;
   filterTotals?: CampaignListFilterTotalsView;
   filterTotalsCapped?: boolean;
   filteredTotal?: number;

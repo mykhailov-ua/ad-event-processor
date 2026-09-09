@@ -1,6 +1,6 @@
 import type { ReactNode } from 'react';
 
-import { Button } from '@/components/ui/button';
+import { Checkbox } from '@/components/ui/checkbox';
 import { adminChrome } from '@/lib/admin_chrome';
 import { adminKit } from '@/lib/admin_kit';
 import { cn } from '@/lib/utils';
@@ -14,6 +14,7 @@ import {
   directoryTableRevalidatingClass,
 } from '@/shell/directory_table';
 import { EmptyState } from '@/shell/empty_state';
+import { TableHost } from '@/shell/ui_bands';
 
 export type ControlPlaneSelectRow = {
   id: string;
@@ -25,13 +26,15 @@ export type ControlPlaneSelectTableProps = {
   selectedId: string | null;
   onSelectedIdChange: (id: string | null) => void;
   emptyMessage?: string;
-  selectLabel?: string;
-  selectedLabel?: string;
   selectColumnLabel?: string;
+  selectAriaLabel?: (row: ControlPlaneSelectRow, selected: boolean) => string;
   nameColumnLabel?: string;
+  actionsColumnLabel?: string;
+  renderActions?: (row: ControlPlaneSelectRow) => ReactNode;
   revalidating?: boolean;
   disabled?: boolean;
   nameCellClassName?: string;
+  onNameClick?: (row: ControlPlaneSelectRow) => void;
 };
 
 export function ControlPlaneSelectTable({
@@ -39,13 +42,15 @@ export function ControlPlaneSelectTable({
   selectedId,
   onSelectedIdChange,
   emptyMessage = 'No items.',
-  selectLabel = 'Select',
-  selectedLabel = 'Selected',
   selectColumnLabel = 'Select',
+  selectAriaLabel,
   nameColumnLabel = 'Name',
+  actionsColumnLabel = 'Actions',
+  renderActions,
   revalidating = false,
   disabled = false,
   nameCellClassName,
+  onNameClick,
 }: ControlPlaneSelectTableProps) {
   if (rows.length === 0) {
     return (
@@ -58,17 +63,23 @@ export function ControlPlaneSelectTable({
   }
 
   return (
-    <DirectoryTable
-      fixedLayout
-      horizontalScroll={false}
-      nested
-      scrollable={false}
-      tableClassName="w-full table-fixed"
-    >
+    <TableHost>
+      <DirectoryTable
+        fixedLayout
+        horizontalScroll={false}
+        nested
+        scrollable={false}
+        tableClassName="w-full table-fixed"
+      >
       <TableHeader>
         <TableRow className={adminKit.tableRowHeight}>
-          <DirectoryTableHead className="w-[7.5rem]">{selectColumnLabel}</DirectoryTableHead>
+          <DirectoryTableHead className="w-12">
+            <span className="sr-only">{selectColumnLabel}</span>
+          </DirectoryTableHead>
           <DirectoryTableHead>{nameColumnLabel}</DirectoryTableHead>
+          {renderActions ? (
+            <DirectoryTableHead className="w-[5.5rem] text-right">{actionsColumnLabel}</DirectoryTableHead>
+          ) : null}
         </TableRow>
       </TableHeader>
       <TableBody className={directoryTableRevalidatingClass(revalidating)}>
@@ -84,16 +95,18 @@ export function ControlPlaneSelectTable({
               )}
               data-selected={isSelected ? 'true' : undefined}
             >
-              <TableCell className={adminChrome.tableCell}>
-                <Button
-                  aria-pressed={isSelected}
+              <TableCell className={cn(adminChrome.tableCell, 'w-12')}>
+                <Checkbox
+                  aria-label={
+                    selectAriaLabel?.(row, isSelected) ??
+                    (isSelected ? `Deselect ${String(row.label)}` : `Select ${String(row.label)}`)
+                  }
+                  checked={isSelected}
                   disabled={disabled}
-                  type="button"
-                  variant={isSelected ? 'accent' : 'outline'}
-                  onClick={() => onSelectedIdChange(isSelected ? null : row.id)}
-                >
-                  {isSelected ? selectedLabel : selectLabel}
-                </Button>
+                  onCheckedChange={(checked) =>
+                    onSelectedIdChange(checked ? row.id : null)
+                  }
+                />
               </TableCell>
               <TableCell
                 className={cn(
@@ -102,12 +115,29 @@ export function ControlPlaneSelectTable({
                   nameCellClassName
                 )}
               >
-                {row.label}
+                {onNameClick ? (
+                  <button
+                    className="w-full min-w-0 text-left text-foreground hover:underline"
+                    disabled={disabled}
+                    type="button"
+                    onClick={() => onNameClick(row)}
+                  >
+                    {row.label}
+                  </button>
+                ) : (
+                  row.label
+                )}
               </TableCell>
+              {renderActions ? (
+                <TableCell className={cn(adminChrome.tableCell, 'text-right')}>
+                  {renderActions(row)}
+                </TableCell>
+              ) : null}
             </TableRow>
           );
         })}
       </TableBody>
-    </DirectoryTable>
+      </DirectoryTable>
+    </TableHost>
   );
 }

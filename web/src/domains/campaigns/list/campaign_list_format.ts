@@ -1,9 +1,14 @@
-import { formatDashboardCrPct, formatDashboardRoiPct } from '@/lib/display_metrics';
+import type { CampaignListMetricsTotalsResponse } from '@/api/campaigns_types';
 import { displayCount } from '@/lib/display';
-import type { CampaignListMetrics } from '@/api/campaigns_api';
-import type { CampaignMargin } from '@/api/types';
-import type { CampaignWithMoneyDisplay } from '@/domains/campaigns/list/campaign_metrics_shared';
-import { resolveCampaignListRowMetrics } from '@/domains/campaigns/list/campaign_list_row_metrics';
+import type { Campaign } from '@/api/types';
+import type { CampaignStatusTone } from '@/domains/campaigns/list/campaign_list_row_tone';
+
+export type CampaignWithMoneyDisplay = Campaign & {
+  budget_limit_display?: string;
+  current_spend_display?: string;
+  status_label?: string;
+  status_tone?: CampaignStatusTone;
+};
 
 const MICRO_PER_USD = 1_000_000;
 
@@ -60,36 +65,6 @@ export function formatTableCount(val?: number | null): {
   return { text: displayCount(val), val, isZero: false };
 }
 
-export function formatTableCr(
-  clicks?: number,
-  conversions?: number
-): { text: string; valPct: number; isZero: boolean } {
-  if (clicks == null || clicks <= 0 || conversions == null || conversions <= 0) {
-    return { text: '0.00%', valPct: 0, isZero: true };
-  }
-  const pct = (conversions / clicks) * 100;
-  return { text: formatDashboardCrPct(pct), valPct: pct, isZero: false };
-}
-
-export function formatTableRoi(
-  profitMicro?: number,
-  costMicro?: number
-): { text: string; valPct: number; isZero: boolean } {
-  if (costMicro == null || costMicro <= 0 || profitMicro == null) {
-    return { text: '-', valPct: 0, isZero: true };
-  }
-  const pct = (profitMicro / costMicro) * 100;
-  return { text: formatDashboardRoiPct(pct), valPct: pct, isZero: pct === 0 };
-}
-
-export function formatCampaignListCr(clicks?: number, conversions?: number): string {
-  return formatTableCr(clicks, conversions).text;
-}
-
-export function formatCampaignListRoi(profitMicro?: number, costMicro?: number): string {
-  return formatTableRoi(profitMicro, costMicro).text;
-}
-
 export function microQueryParamToUsdInput(microRaw: string): string {
   if (!microRaw.trim()) {
     return '';
@@ -136,26 +111,19 @@ export function emptyCampaignListTotals(): CampaignListTotals {
   };
 }
 
-export function sumCampaignListTotals(
-  items: CampaignWithMoneyDisplay[],
-  metricsById: Record<string, CampaignListMetrics>,
-  marginsById: Record<string, CampaignMargin>
+/** Maps GET /api/v1/campaigns/metrics-totals; economics derived on server via enrichCampaignListMetricsRowDerived. */
+export function campaignListTotalsFromMetricsTotals(
+  response: CampaignListMetricsTotalsResponse
 ): CampaignListTotals {
-  const totals = emptyCampaignListTotals();
-  for (const campaign of items) {
-    if (campaign.flow_id) {
-      totals.flows += 1;
-    }
-    const metrics = metricsById[campaign.id];
-    const margin = marginsById[campaign.id];
-    const row = resolveCampaignListRowMetrics(metrics, margin);
-    totals.clicks += row.clicks;
-    totals.impressions += row.impressions;
-    totals.blocks += row.blocks;
-    totals.conversions += metrics?.conversions ?? 0;
-    totals.revenueMicro += row.revenueMicro;
-    totals.costMicro += row.costMicro;
-    totals.profitMicro += row.profitMicro;
-  }
-  return totals;
+  const row = response.totals;
+  return {
+    flows: response.flow_count,
+    clicks: row.clicks ?? 0,
+    impressions: row.impressions ?? 0,
+    blocks: row.blocks ?? 0,
+    conversions: row.conversions ?? 0,
+    revenueMicro: row.revenue_micro ?? 0,
+    costMicro: row.cost_micro ?? 0,
+    profitMicro: row.profit_micro ?? 0,
+  };
 }

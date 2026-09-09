@@ -7,19 +7,28 @@ export const CAMPAIGN_LIST_FACETS_DEGRADED_MESSAGE =
 
 export function isCampaignListFacetsDegraded(
   listFacetsFromApi: CampaignListFacetsResponse | undefined,
-  listFacetsFetching: boolean
+  listFacetsFetching: boolean,
+  listFacetsError: Error | undefined
 ): boolean {
-  return !listFacetsFetching && listFacetsFromApi === undefined;
+  if (listFacetsFetching || listFacetsError !== undefined) {
+    return false;
+  }
+  return listFacetsFromApi === undefined;
 }
 
 export function resolveCampaignListFacets(
   listFacetsFromApi: CampaignListFacetsResponse | undefined,
-  listFacetsFetching: boolean
+  listFacetsFetching: boolean,
+  listFacetsError: Error | undefined
 ): {
   facets: CampaignListFacetsResponse | undefined;
   degraded: boolean;
 } {
-  const degraded = isCampaignListFacetsDegraded(listFacetsFromApi, listFacetsFetching);
+  const degraded = isCampaignListFacetsDegraded(
+    listFacetsFromApi,
+    listFacetsFetching,
+    listFacetsError
+  );
   return {
     facets: listFacetsFromApi,
     degraded,

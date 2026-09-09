@@ -1,8 +1,8 @@
 import type { CampaignStatusFilter } from '@/domains/campaigns/list/campaigns_list_types';
-import { adminKit } from '@/lib/admin_kit';
-import { uiSurfaces } from '@/lib/ui_surfaces';
-import { cn } from '@/lib/utils';
-import { ChipRow } from '@/shell/ui_bands';
+import {
+  FilterChipGroup,
+  type FilterChipTone,
+} from '@/shell/filter_chip_group';
 
 export type CampaignListStatusChipOption = {
   value: CampaignStatusFilter;
@@ -15,12 +15,10 @@ export type CampaignListStatusChipsProps = {
   value: CampaignStatusFilter;
   onChange: (value: CampaignStatusFilter) => void;
   countsLoading?: boolean;
+  className?: string;
 };
 
-const STATUS_CHIP_CLASS: Record<
-  string,
-  { idle: string; active: string; countIdle: string; countActive: string }
-> = {
+const STATUS_CHIP_TONE: Record<string, FilterChipTone> = {
   '': {
     idle: 'border-border bg-card text-foreground hover:border-foreground/35 hover:bg-accent hover:text-foreground',
     active:
@@ -58,53 +56,23 @@ const STATUS_CHIP_CLASS: Record<
   },
 };
 
-function chipTone(value: CampaignStatusFilter) {
-  return STATUS_CHIP_CLASS[value] ?? STATUS_CHIP_CLASS[''];
-}
-
 export function CampaignListStatusChips({
   options,
   value,
   onChange,
   countsLoading = false,
+  className,
 }: CampaignListStatusChipsProps) {
   return (
-    <ChipRow aria-label="Campaign status" role="group">
-      {options.map((option) => {
-        const selected = value === option.value;
-        const tone = chipTone(option.value);
-        const countLabel =
-          countsLoading && option.count == null
-            ? '...'
-            : option.count != null
-              ? String(option.count)
-              : '0';
-
-        return (
-          <button
-            key={option.value || 'all'}
-            aria-pressed={selected}
-            className={cn(
-              uiSurfaces.chip,
-              adminKit.nestedRadius,
-              'group transition-colors',
-              selected ? tone.active : tone.idle
-            )}
-            type="button"
-            onClick={() => onChange(option.value)}
-          >
-            {option.label}
-            <span
-              className={cn(
-                uiSurfaces.chipCount,
-                selected ? tone.countActive : tone.countIdle
-              )}
-            >
-              {countLabel}
-            </span>
-          </button>
-        );
-      })}
-    </ChipRow>
+    <FilterChipGroup
+      ariaLabel="Campaign status"
+      className={className}
+      countsLoading={countsLoading}
+      defaultCountLabel="0"
+      onChange={onChange}
+      options={options}
+      toneMap={STATUS_CHIP_TONE}
+      value={value}
+    />
   );
 }

@@ -73,5 +73,5 @@ test('campaignStatusCellClass fills status column with muted tone colors', () =>
 test('campaignStatusBadgeClass tints active campaigns green', () => {
   assert.match(campaignStatusBadgeClass('ACTIVE'), /text-admin-status-active/);
   assert.match(campaignStatusBadgeClass('PAUSED'), /text-admin-status-paused/);
-  assert.match(campaignStatusBadgeClass('ACTIVE'), /rounded-none/);
+  assert.match(campaignStatusBadgeClass('ACTIVE'), /rounded-md/);
 });

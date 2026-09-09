@@ -76,29 +76,3 @@ export function formatCpmUsd(costMicro: number, impressions: number): string {
   const cpmMicro = (costMicro * 1000) / impressions;
   return (cpmMicro / 1_000_000).toFixed(2);
 }
-
-export function sumCampaignFunnelTotals(
-  items: ReadonlyArray<{ id: string }>,
-  metricsById: Readonly<Record<string, CampaignListMetrics>>
-): CampaignFunnelCounts {
-  const totals: CampaignFunnelCounts = {
-    rawLeads: 0,
-    approved: 0,
-    hold: 0,
-    rejected: 0,
-    lpClicks: 0,
-    lpViews: 0,
-    bots: 0,
-  };
-  for (const item of items) {
-    const funnel = resolveCampaignFunnelCounts(metricsById[item.id]);
-    totals.rawLeads += funnel.rawLeads;
-    totals.approved += funnel.approved;
-    totals.hold += funnel.hold;
-    totals.rejected += funnel.rejected;
-    totals.lpClicks += funnel.lpClicks;
-    totals.lpViews += funnel.lpViews;
-    totals.bots += funnel.bots;
-  }
-  return totals;
-}

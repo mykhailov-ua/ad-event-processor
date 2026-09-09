@@ -1,4 +1,4 @@
-import { useMemo } from 'react';
+import { useMemo, type ReactNode } from 'react';
 import { MoreHorizontal, Plus } from 'lucide-react';
 import type { CampaignStatusTotals } from '@/api/campaigns_api';
 import type { CustomerComboboxOption } from '@/shell/customer_combobox';
@@ -25,18 +25,14 @@ import type {
 } from '@/domains/campaigns/list/campaigns_list_types';
 import {
   CAMPAIGNS_FILTER_ROW,
-  DIRECTORY_CONTENT_BAND_CLASS,
-  DIRECTORY_FILTER_FORM_STACK_CLASS,
   FilterField,
   FilterPanel,
 } from '@/shell/filter_panel';
 import {
   StatusMetricsBand,
-  ToolbarBand,
   ToolbarBandActions,
   DirectoryStack,
 } from '@/shell/ui_bands';
-import { cn } from '@/lib/utils';
 
 const ALL_OPTION_VALUE = '__all__';
 
@@ -79,6 +75,8 @@ export type CampaignsListToolbarProps = {
   onCreateClick: () => void;
   onWizardClick?: () => void;
   onImportClick?: () => void;
+  /** Rendered beside Apply inside the filter panel (e.g. row selection actions). */
+  filterFooter?: ReactNode;
 };
 
 export function CampaignsListToolbar({
@@ -114,6 +112,7 @@ export function CampaignsListToolbar({
   onCreateClick,
   onWizardClick,
   onImportClick,
+  filterFooter,
 }: CampaignsListToolbarProps) {
   const showWizardAction = onWizardClick != null;
   const showImportAction = onImportClick != null;
@@ -149,64 +148,63 @@ export function CampaignsListToolbar({
   );
 
   return (
-    <DirectoryStack>
-      <ToolbarBand split>
-        <ToolbarBandActions aria-label="Campaign actions">
-          <Button type="button" variant="brand" onClick={onCreateClick}>
-            <Plus aria-hidden />
-            Quick create
-          </Button>
-          <DropdownMenu>
-            <DropdownMenuTrigger asChild>
-              <Button
-                aria-label="More campaign actions"
-               
-                type="button"
-                variant="outline"
-              >
-                <MoreHorizontal  aria-hidden />
-              </Button>
-            </DropdownMenuTrigger>
-            <DropdownMenuContent align="end">
-              {showWizardAction ? (
-                <DropdownMenuItem onSelect={onWizardClick}>Guided setup</DropdownMenuItem>
+    <DirectoryStack className="gap-2">
+      <FilterPanel aria-label="List filters" className="gap-2 p-3" role="search">
+        <div className="flex flex-wrap items-center gap-2">
+          <ToolbarBandActions aria-label="Campaign actions">
+            <Button type="button" variant="brand" onClick={onCreateClick}>
+              <Plus aria-hidden />
+              Quick create
+            </Button>
+            <DropdownMenu>
+              <DropdownMenuTrigger asChild>
+                <Button
+                  aria-label="More campaign actions"
+                  type="button"
+                  variant="outline"
+                >
+                  <MoreHorizontal aria-hidden />
+                </Button>
+              </DropdownMenuTrigger>
+              <DropdownMenuContent align="end">
+                {showWizardAction ? (
+                  <DropdownMenuItem onSelect={onWizardClick}>Guided setup</DropdownMenuItem>
+                ) : null}
+                {showImportAction ? (
+                  <DropdownMenuItem onSelect={onImportClick}>Import</DropdownMenuItem>
+                ) : null}
+              </DropdownMenuContent>
+            </DropdownMenu>
+          </ToolbarBandActions>
+          <div className="min-w-0 flex-1">
+            <StatusMetricsBand aria-label="Status filters">
+              {statusTotals || statusTotalsLoading ? (
+                <CampaignListStatusChips
+                  countsLoading={statusTotalsLoading}
+                  options={statusChipOptions}
+                  value={draftStatus}
+                  onChange={onDraftStatusChange}
+                />
               ) : null}
-              {showImportAction ? (
-                <DropdownMenuItem onSelect={onImportClick}>Import</DropdownMenuItem>
-              ) : null}
-            </DropdownMenuContent>
-          </DropdownMenu>
-        </ToolbarBandActions>
-        <ListRefreshBand
-          ariaLabel="Refresh campaign list"
-          lastUpdatedAt={listLastUpdatedAt}
-          loading={fetching || listRevalidating}
-          onRefresh={onRefresh}
-        />
-      </ToolbarBand>
-
-      <StatusMetricsBand aria-label="Status filters">
-        {statusTotals || statusTotalsLoading ? (
-          <CampaignListStatusChips
-            countsLoading={statusTotalsLoading}
-            options={statusChipOptions}
-            value={draftStatus}
-            onChange={onDraftStatusChange}
+            </StatusMetricsBand>
+          </div>
+          <ListRefreshBand
+            ariaLabel="Refresh campaign list"
+            lastUpdatedAt={listLastUpdatedAt}
+            loading={fetching || listRevalidating}
+            onRefresh={onRefresh}
           />
-        ) : null}
-      </StatusMetricsBand>
+        </div>
 
-      <FilterPanel aria-label="List filters" role="search">
         <form
-          className={cn(DIRECTORY_FILTER_FORM_STACK_CLASS, 'w-full')}
+          className="grid w-full gap-2"
           onSubmit={(event) => {
             event.preventDefault();
             onDirectoryFiltersApply();
           }}
         >
-          <div className={DIRECTORY_CONTENT_BAND_CLASS}>
-            <div className={CAMPAIGNS_FILTER_ROW}>
-          <FilterField label="Customer group">
+          <div className={CAMPAIGNS_FILTER_ROW}>
+          <FilterField compact label="Customer group">
             <CampaignsListSearchableFilterSelect
               aria-label="Customer group"
               options={groupOptions}
@@ -218,7 +216,7 @@ export function CampaignsListToolbar({
             />
           </FilterField>
 
-          <FilterField label="Pacing">
+          <FilterField compact label="Pacing">
             <CampaignsListFilterSelect
               aria-label="Pacing"
               options={PACING_FILTER_OPTIONS}
@@ -231,7 +229,7 @@ export function CampaignsListToolbar({
             />
           </FilterField>
 
-          <FilterField label="Owner">
+          <FilterField compact label="Owner">
             <CampaignsListSearchableFilterSelect
               aria-label="Owner"
               disabled={fetching || listFacetsFetching || listFacetsDegraded}
@@ -249,7 +247,7 @@ export function CampaignsListToolbar({
             />
           </FilterField>
 
-          <FilterField label="Country">
+          <FilterField compact label="Country">
             <CampaignListCountrySelect
               aria-label="Country"
               disabled={fetching || listFacetsFetching || listFacetsDegraded}
@@ -266,7 +264,7 @@ export function CampaignsListToolbar({
             />
           </FilterField>
 
-          <FilterField htmlFor="campaigns-budget-min" label="Budget min ($)">
+          <FilterField compact htmlFor="campaigns-budget-min" label="Budget min ($)">
             <Input
               id="campaigns-budget-min"
               disabled={fetching}
@@ -277,7 +275,7 @@ export function CampaignsListToolbar({
             />
           </FilterField>
 
-          <FilterField htmlFor="campaigns-budget-max" label="Budget max ($)">
+          <FilterField compact htmlFor="campaigns-budget-max" label="Budget max ($)">
             <Input
               id="campaigns-budget-max"
               disabled={fetching}
@@ -297,13 +295,16 @@ export function CampaignsListToolbar({
             onChange={onStatsRangeChange}
           />
 
-            </div>
-            <div className="mt-4">
-              <Button disabled={fetching} type="submit" variant="brand">
+          <FilterField compact hideLabel label="Apply filters">
+            <div className="flex w-fit max-w-full flex-wrap items-center gap-2">
+              <Button disabled={fetching} shape="default" type="submit" variant="brand">
                 Apply
               </Button>
+              {filterFooter}
             </div>
-          </div>
+          </FilterField>
+
+            </div>
         </form>
       </FilterPanel>
     </DirectoryStack>

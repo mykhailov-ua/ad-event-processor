@@ -16,13 +16,8 @@ export {
   percentRate,
 } from '@/domains/campaigns/list/campaign_list_rate_tone';
 
-export function profitToneClass(margin?: CampaignMargin): string {
-  if (!margin) {
-    return profitToneClassFromMicro(undefined);
-  }
-  const revenueMicro = (margin.advertiser_spend_micro ?? 0) + (margin.operator_margin_micro ?? 0);
-  const costMicro = margin.rtb_cost_micro ?? 0;
-  return profitToneClassFromMicro(revenueMicro - costMicro);
+export function profitToneClass(_margin?: CampaignMargin): string {
+  return profitToneClassFromMicro(undefined);
 }
 
 export function profitToneClassFromMicro(profitMicro?: number | null): string {
