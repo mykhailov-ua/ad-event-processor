@@ -174,11 +174,6 @@ type IPRateLimiter struct {
 	scriptHashAny any
 	scriptAny     any
 	windowMsAny   any
-	wire          [5]any
-	redisCmd      redis.Cmd
-	keyBuf        [64]byte
-	keyVal        filt.StringVal
-	lastIP        string
 }
 
 func NewIPRateLimiter(redisClient redis.UniversalClient, limit int, window time.Duration) *IPRateLimiter {
@@ -193,10 +188,6 @@ func NewIPRateLimiter(redisClient redis.UniversalClient, limit int, window time.
 	if fc, ok := redisClient.(filterEvalFastClient); ok {
 		l.fastEval = fc
 	}
-	l.wire[0] = evalShaCmdAny
-	l.wire[1] = l.scriptHashAny
-	l.wire[2] = numKeys1Any
-	l.wire[4] = l.windowMsAny
 	return l
 }
 
@@ -205,20 +196,26 @@ func (l *IPRateLimiter) Check(ctx context.Context, evt *domain.Event) error {
 		return nil
 	}
 
-	if evt.IP != l.lastIP {
-		const prefix = "ratelimit:ip:"
-		n := len(prefix)
-		if n+len(evt.IP) > len(l.keyBuf) {
-			return filt.ErrRateLimitExceeded
-		}
-		copy(l.keyBuf[:n], prefix)
-		copy(l.keyBuf[n:], evt.IP)
-		l.keyVal.S = filt.UnsafeString(l.keyBuf[:n+len(evt.IP)])
-		l.wire[3] = l.keyVal.S
-		l.lastIP = evt.IP
+	const prefix = "ratelimit:ip:"
+	const maxKeyLen = 64
+	n := len(prefix)
+	if n+len(evt.IP) > maxKeyLen {
+		return filt.ErrRateLimitExceeded
 	}
+	var keyBuf [maxKeyLen]byte
+	copy(keyBuf[:n], prefix)
+	copy(keyBuf[n:], evt.IP)
+	key := filt.UnsafeString(keyBuf[:n+len(evt.IP)])
 
-	count, err := l.evalRateLimit(ctx)
+	var wire [5]any
+	wire[0] = evalShaCmdAny
+	wire[1] = l.scriptHashAny
+	wire[2] = numKeys1Any
+	wire[3] = key
+	wire[4] = l.windowMsAny
+
+	var redisCmd redis.Cmd
+	count, err := l.evalRateLimit(ctx, &redisCmd, wire[:])
 	if err != nil {
 		return err
 	}
@@ -228,19 +225,19 @@ func (l *IPRateLimiter) Check(ctx context.Context, evt *domain.Event) error {
 	return nil
 }
 
-func (l *IPRateLimiter) evalRateLimit(ctx context.Context) (int64, error) {
-	resetPooledRedisCmd(&l.redisCmd, ctx, l.wire[:], 3)
+func (l *IPRateLimiter) evalRateLimit(ctx context.Context, cmd *redis.Cmd, wire []any) (int64, error) {
+	resetPooledRedisCmd(cmd, ctx, wire, 3)
 	if l.fastEval != nil {
-		return l.fastEval.FilterEvalFast(&l.redisCmd)
+		return l.fastEval.FilterEvalFast(cmd)
 	}
-	err := l.redisClient.Process(ctx, &l.redisCmd)
-	val, intErr := l.redisCmd.Int64()
+	err := l.redisClient.Process(ctx, cmd)
+	val, intErr := cmd.Int64()
 	if intErr != nil && err == nil {
 		err = intErr
 	}
 	if err != nil && isNoScriptErr(err) {
 		// NOSCRIPT after deploy: fall back to EVAL once; PreloadScripts repopulates SHA on background goroutine.
-		return l.evalRateLimitScript(ctx)
+		return l.evalRateLimitScript(ctx, cmd, wire)
 	}
 	if err != nil {
 		return 0, err
@@ -248,21 +245,19 @@ func (l *IPRateLimiter) evalRateLimit(ctx context.Context) (int64, error) {
 	return val, nil
 }
 
-func (l *IPRateLimiter) evalRateLimitScript(ctx context.Context) (int64, error) {
-	l.wire[0] = evalCmdAny
-	l.wire[1] = l.scriptAny
+func (l *IPRateLimiter) evalRateLimitScript(ctx context.Context, cmd *redis.Cmd, wire []any) (int64, error) {
+	wire[0] = evalCmdAny
+	wire[1] = l.scriptAny
 
-	resetPooledRedisCmd(&l.redisCmd, ctx, l.wire[:], 3)
+	resetPooledRedisCmd(cmd, ctx, wire, 3)
 	if l.fastEval != nil {
-		return l.fastEval.FilterEvalFast(&l.redisCmd)
+		return l.fastEval.FilterEvalFast(cmd)
 	}
-	err := l.redisClient.Process(ctx, &l.redisCmd)
-	val, intErr := l.redisCmd.Int64()
+	err := l.redisClient.Process(ctx, cmd)
+	val, intErr := cmd.Int64()
 	if intErr != nil && err == nil {
 		err = intErr
 	}
-	l.wire[0] = evalShaCmdAny
-	l.wire[1] = l.scriptHashAny
 	if err != nil {
 		return 0, err
 	}
