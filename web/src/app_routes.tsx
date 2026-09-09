@@ -19,7 +19,13 @@ import { SetupPage } from '@/pages/setup_page';
 import { NotFoundPage } from '@/pages/not_found_page';
 import { AuditPage } from '@/pages/audit_page';
 import { ExportsPage } from '@/pages/exports_page';
-import { BillingExportsRoute, ReportJobsRoute } from '@/shell/export_hub_legacy_redirect';
+import { CampaignIdRedirect } from '@/shell/campaign_id_redirect';
+import {
+  BillingExportsRoute,
+  PreserveSearchRedirect,
+  ReportJobsRoute,
+} from '@/shell/export_hub_legacy_redirect';
+import { ReportIndexLegacyRedirect, ReportLegacyRedirect } from '@/shell/report_legacy_redirect';
 import { IntegrationsAffiliatePresetsPage } from '@/pages/integrations_affiliate_presets_page';
 import { IntegrationsCostSyncPage } from '@/pages/integrations_cost_sync_page';
 import { IntegrationsHubPage } from '@/pages/integrations_hub_page';
@@ -99,11 +105,15 @@ export function AppRoutes() {
           <Route element={<CustomersPage />} path="customers" />
           <Route element={<CustomerDetailPage />} path="customers/:id" />
           <Route element={<CampaignsPage />} path="campaigns" />
+          <Route element={<PreserveSearchRedirect to="/campaigns" />} path="campaigns/new" />
+          <Route element={<PreserveSearchRedirect to="/campaigns" />} path="campaigns/migrate" />
           <Route element={<CampaignEditorPage />} path="campaigns/:id/edit" />
+          <Route element={<CampaignIdRedirect />} path="campaigns/:id" />
           <Route element={<InvoiceDetailPage />} path="billing/invoices/:id" />
           <Route element={<Navigate replace to="/exports" />} path="billing" />
           <Route element={<OpsPage />} path="ops" />
           <Route element={<OpsHealthPage />} path="ops/health" />
+          <Route element={<PreserveSearchRedirect to="/ops/health" />} path="ops/doctor" />
           <Route element={<OpsSyncErrorsPage />} path="ops/sync-errors" />
           <Route element={<Navigate replace to="/ops/sync-errors" />} path="ops/dlq" />
           <Route element={<OpsBlacklistPage />} path="ops/blacklist" />
@@ -137,15 +147,32 @@ export function AppRoutes() {
             element={<IntegrationsAffiliatePresetsPage />}
             path="integrations/affiliate-presets"
           />
-          <Route element={<Navigate replace to="/exports" />} path="reports" />
-          <Route element={<Navigate replace to="/exports" />} path="reports/*" />
+          <Route element={<PreserveSearchRedirect to="/exports" />} path="integrations/automation" />
+          <Route element={<PreserveSearchRedirect to="/exports" />} path="integrations/smart-alerts" />
+          <Route element={<PreserveSearchRedirect to="/exports" />} path="integrations/margin-guard" />
+          <Route
+            element={<PreserveSearchRedirect to="/exports" />}
+            path="integrations/traffic-optimizer"
+          />
+          <Route
+            element={<PreserveSearchRedirect to="/integrations/platform-campaigns" />}
+            path="platform-campaigns"
+          />
+          <Route
+            element={<PreserveSearchRedirect to="/integrations/platform-campaigns" />}
+            path="platform-campaigns/*"
+          />
+          <Route element={<ReportIndexLegacyRedirect />} path="reports" />
+          <Route element={<ReportLegacyRedirect />} path="reports/*" />
           <Route element={<Navigate replace to="/exports" />} path="dashboards/*" />
+          <Route element={<PreserveSearchRedirect to="/exports" />} path="rtb" />
           <Route element={<Navigate replace to="/exports" />} path="rtb/*" />
           <Route element={<Navigate replace to="/exports" />} path="fraud/*" />
-          <Route element={<Navigate replace to="/campaigns" />} path="creative" />
-          <Route element={<Navigate replace to="/campaigns" />} path="flows/*" />
-          <Route element={<Navigate replace to="/campaigns" />} path="landers/*" />
-          <Route element={<Navigate replace to="/campaigns" />} path="offers" />
+          <Route element={<PreserveSearchRedirect to="/campaigns" />} path="creative" />
+          <Route element={<PreserveSearchRedirect to="/campaigns" />} path="flows/*" />
+          <Route element={<PreserveSearchRedirect to="/campaigns" />} path="landers/*" />
+          <Route element={<PreserveSearchRedirect to="/campaigns" />} path="offers" />
+          <Route element={<PreserveSearchRedirect to="/campaigns" />} path="offers/*" />
           <Route element={<Navigate replace to="/campaigns" />} path="brands" />
           <Route element={<Navigate replace to="/campaigns" />} path="brand-creatives/*" />
           <Route element={<Navigate replace to="/integrations" />} path="supply/*" />

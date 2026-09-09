@@ -2,30 +2,35 @@ import { type FormEvent, useMemo, useState } from 'react';
 import { Link, useSearchParams } from 'react-router-dom';
 
 import { publicAcceptInvite } from '@/api/auth_api';
-import { ApiError } from '@/api/client';
 import { PrimaryActionButton } from '@/shell/action_buttons';
+import { AuthPageLayout } from '@/shell/auth_page_layout';
 import { ErrorBlock } from '@/shell/error_block';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { PasswordInput } from '@/components/ui/password_input';
 import { Label } from '@/components/ui/label';
+import { normalizeSubmitError } from '@/lib/admin_error';
+import { adminSpacing } from '@/lib/admin_spacing';
+import { cn } from '@/lib/utils';
 
 export function InviteAcceptPage() {
   const [searchParams] = useSearchParams();
   const inviteToken = useMemo(() => searchParams.get('token')?.trim() ?? '', [searchParams]);
   const [password, setPassword] = useState('');
   const [confirmPassword, setConfirmPassword] = useState('');
-  const [error, setError] = useState<string | undefined>();
+  const [clientError, setClientError] = useState<string | undefined>();
+  const [apiError, setApiError] = useState<Error | undefined>();
   const [submitting, setSubmitting] = useState(false);
 
   async function handleSubmit(event: FormEvent<HTMLFormElement>) {
     event.preventDefault();
-    setError(undefined);
+    setClientError(undefined);
+    setApiError(undefined);
     if (!inviteToken) {
-      setError('Invite token missing from URL query (?token=...)');
+      setClientError('Invite token missing from URL query (?token=...)');
       return;
     }
     if (password !== confirmPassword) {
-      setError('Passwords do not match');
+      setClientError('Passwords do not match');
       return;
     }
     setSubmitting(true);
@@ -33,41 +38,38 @@ export function InviteAcceptPage() {
       await publicAcceptInvite({ token: inviteToken, password });
       window.location.replace('/');
     } catch (err: unknown) {
-      const message =
-        err instanceof ApiError
-          ? err.message
-          : err instanceof Error
-            ? err.message
-            : 'Invite accept failed';
-      setError(message);
+      setApiError(normalizeSubmitError(err, 'Invite accept failed'));
     } finally {
       setSubmitting(false);
     }
   }
 
   return (
-    <div >
-      <Card >
+    <AuthPageLayout>
+      <Card>
         <CardHeader>
           <CardTitle>Accept invite</CardTitle>
           <CardDescription>
             Set your password to join the team. Already have access?{' '}
-            <Link  to="/login">
+            <Link className="text-primary hover:underline" to="/login">
               Sign in
             </Link>
             .
           </CardDescription>
         </CardHeader>
-        <CardContent >
-          {error ? <ErrorBlock title="Invite accept failed" message={error} /> : null}
+        <CardContent className={cn('grid', adminSpacing.gap.xl)}>
+          {apiError ? <ErrorBlock title="Invite accept failed" error={apiError} /> : null}
+          {clientError ? (
+            <ErrorBlock title="Invite accept failed" message={clientError} />
+          ) : null}
           {!inviteToken ? (
             <ErrorBlock
               title="Invite link invalid"
               message="Open the invite URL from your email. It must include ?token=..."
             />
           ) : null}
-          <form  onSubmit={handleSubmit}>
-            <div >
+          <form className={cn('grid', adminSpacing.gap.xl)} onSubmit={handleSubmit}>
+            <div className={cn('grid', adminSpacing.gap.md)}>
               <Label htmlFor="invite-password">Password</Label>
               <PasswordInput
                 id="invite-password"
@@ -77,7 +79,7 @@ export function InviteAcceptPage() {
                 onChange={(event) => setPassword(event.target.value)}
               />
             </div>
-            <div >
+            <div className={cn('grid', adminSpacing.gap.md)}>
               <Label htmlFor="invite-confirm">Confirm password</Label>
               <PasswordInput
                 id="invite-confirm"
@@ -88,7 +90,7 @@ export function InviteAcceptPage() {
               />
             </div>
             <PrimaryActionButton
-             
+              className="w-full"
               disabled={!inviteToken}
               loading={submitting}
               type="submit"
@@ -98,6 +100,6 @@ export function InviteAcceptPage() {
           </form>
         </CardContent>
       </Card>
-    </div>
+    </AuthPageLayout>
   );
 }

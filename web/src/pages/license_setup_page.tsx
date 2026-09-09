@@ -5,6 +5,7 @@ import { useLicenseApplyFormLoad } from '@/domains/onboarding/use_license_apply_
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { useMeta } from '@/hooks/use_meta';
 import { licenseStateLabel } from '@/lib/install_meta';
+import { adminTypography } from '@/lib/admin_kit';
 
 export function LicenseSetupPage() {
   const { meta, refreshMeta } = useMeta();
@@ -12,8 +13,8 @@ export function LicenseSetupPage() {
   const licenseLoad = useLicenseApplyFormLoad(true);
 
   return (
-    <div >
-      <Card >
+    <div className="flex min-h-screen items-center justify-center bg-background p-4" >
+      <Card className="w-full max-w-lg" >
         <CardHeader>
           <CardTitle>Apply license</CardTitle>
           <CardDescription>
@@ -21,16 +22,16 @@ export function LicenseSetupPage() {
             {stateLabel}.
           </CardDescription>
         </CardHeader>
-        <CardContent >
+        <CardContent className="grid gap-4" >
           <LicenseApplyForm
             load={licenseLoad}
             onApplied={() => {
               refreshMeta();
             }}
           />
-          <p >
+          <p className={adminTypography.bodyMuted} >
             License management remains available later under{' '}
-            <Link to="/settings">
+            <Link className="text-foreground underline" to="/settings">
               Settings
             </Link>
             .

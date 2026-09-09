@@ -3,6 +3,7 @@ import { Outlet } from 'react-router-dom';
 
 import { logout } from '@/api/auth_api';
 import { AppHeader } from '@/shell/app_header';
+import { AppMobileNavSheet } from '@/shell/app_sidebar';
 import { AppRouteErrorBoundary } from '@/shell/app_error_boundary';
 import { CommandPalette } from '@/shell/command_palette';
 import { CommandPaletteContextualProvider } from '@/shell/command_palette_contextual';
@@ -19,6 +20,7 @@ import { TrackerHeaderProvider } from '@/lib/tracker_header_context';
 export function AppShell() {
   const { user } = useSession();
   const [signingOut, setSigningOut] = useState(false);
+  const [mobileNavOpen, setMobileNavOpen] = useState(false);
 
   const navGroups = useMemo(() => listTrackerNavGroups(user?.permissions), [user?.permissions]);
 
@@ -59,9 +61,17 @@ export function AppShell() {
                 <AppHeader
                   navGroups={navGroups}
                   signingOut={signingOut}
+                  onOpenMobileNav={() => setMobileNavOpen(true)}
                   onSignOut={handleSignOut}
                 />
               </BreadcrumbProvider>
+              <AppMobileNavSheet
+                groups={navGroups}
+                open={mobileNavOpen}
+                signingOut={signingOut}
+                onOpenChange={setMobileNavOpen}
+                onSignOut={handleSignOut}
+              />
               <main className="pt-12" id="main-content" tabIndex={-1}>
                 <PageCanvasInset>{outlet}</PageCanvasInset>
               </main>

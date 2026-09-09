@@ -3,7 +3,6 @@ import { Check } from 'lucide-react';
 import { Link } from 'react-router-dom';
 
 import { publicActivate } from '@/api/auth_api';
-import { ApiError } from '@/api/client';
 import { Button } from '@/components/ui/button';
 import { PrimaryActionButton } from '@/shell/action_buttons';
 import { AuthPageLayout } from '@/shell/auth_page_layout';
@@ -14,41 +13,58 @@ import { PasswordInput } from '@/components/ui/password_input';
 import { Label } from '@/components/ui/label';
 import { Textarea } from '@/components/ui/textarea';
 import { useMeta } from '@/hooks/use_meta';
+import { normalizeSubmitError } from '@/lib/admin_error';
+import { requireNonEmpty } from '@/lib/admin_validation_error';
 import { productDisplayName } from '@/lib/product_display_name';
 import { adminSpacing, adminTypography } from '@/lib/admin_spacing';
 import { uiMessageSurfaceClass } from '@/lib/ui_surfaces';
 import { cn } from '@/lib/utils';
 import { PageSkeleton } from '@/shell/page_skeleton';
-
 export function ActivatePage() {
   const { bootstrapComplete, loading } = useMeta();
   const [licenseToken, setLicenseToken] = useState('');
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
   const [teamName, setTeamName] = useState('');
-  const [error, setError] = useState<string | undefined>();
+  const [error, setError] = useState<Error | undefined>();
   const [submitting, setSubmitting] = useState(false);
 
   async function handleSubmit(event: FormEvent<HTMLFormElement>) {
     event.preventDefault();
     setError(undefined);
+
+    const licenseResult = requireNonEmpty(licenseToken, 'License key', 'license_token');
+    if (!licenseResult.ok) {
+      setError(licenseResult.error);
+      return;
+    }
+    const emailResult = requireNonEmpty(email, 'Email', 'email');
+    if (!emailResult.ok) {
+      setError(emailResult.error);
+      return;
+    }
+    const passwordResult = requireNonEmpty(password, 'Password', 'password');
+    if (!passwordResult.ok) {
+      setError(passwordResult.error);
+      return;
+    }
+    const teamResult = requireNonEmpty(teamName, 'Team name', 'team_name');
+    if (!teamResult.ok) {
+      setError(teamResult.error);
+      return;
+    }
+
     setSubmitting(true);
     try {
       await publicActivate({
-        license_token: licenseToken.trim(),
-        email: email.trim(),
-        password,
-        team_name: teamName.trim(),
+        license_token: licenseResult.value,
+        email: emailResult.value,
+        password: passwordResult.value,
+        team_name: teamResult.value,
       });
       window.location.replace('/');
     } catch (err: unknown) {
-      const message =
-        err instanceof ApiError
-          ? err.message
-          : err instanceof Error
-            ? err.message
-            : 'Activation failed';
-      setError(message);
+      setError(normalizeSubmitError(err, 'Activation failed'));
     } finally {
       setSubmitting(false);
     }
@@ -105,9 +121,9 @@ export function ActivatePage() {
           </CardDescription>
         </CardHeader>
         <CardContent>
-          {error ? <ErrorBlock title="Activation failed" message={error} /> : null}
-          <form className="grid gap-4" onSubmit={handleSubmit}>
-            <div className="grid gap-2">
+          {error ? <ErrorBlock title="Activation failed" error={error} /> : null}
+          <form className={cn('grid', adminSpacing.gap.xl)} onSubmit={handleSubmit}>
+            <div className={cn('grid', adminSpacing.gap.md)}>
               <Label htmlFor="activate-license">License key</Label>
               <Textarea
                 id="activate-license"
@@ -118,7 +134,7 @@ export function ActivatePage() {
                 onChange={(event) => setLicenseToken(event.target.value)}
               />
             </div>
-            <div className="grid gap-2">
+            <div className={cn('grid', adminSpacing.gap.md)}>
               <Label htmlFor="activate-email">Your email</Label>
               <Input
                 id="activate-email"
@@ -129,7 +145,7 @@ export function ActivatePage() {
                 onChange={(event) => setEmail(event.target.value)}
               />
             </div>
-            <div className="grid gap-2">
+            <div className={cn('grid', adminSpacing.gap.md)}>
               <Label htmlFor="activate-password">Password</Label>
               <PasswordInput
                 id="activate-password"
@@ -139,7 +155,7 @@ export function ActivatePage() {
                 onChange={(event) => setPassword(event.target.value)}
               />
             </div>
-            <div className="grid gap-2">
+            <div className={cn('grid', adminSpacing.gap.md)}>
               <Label htmlFor="activate-team">Team / company name</Label>
               <Input
                 id="activate-team"
