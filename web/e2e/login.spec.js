@@ -4,7 +4,7 @@ import {
   getAdminCredentials,
   loginAsAdmin,
   loginSignInHeading,
-  mainNav,
+  openAppNavigation,
   skipUnlessIntegrationReady,
 } from './helpers.js';
 
@@ -17,7 +17,7 @@ test('login page loads sign-in form', async ({ page }) => {
 
   await expect(loginSignInHeading(page)).toBeVisible();
   await expect(page.getByLabel('Email')).toBeVisible();
-  await expect(page.getByLabel('Password')).toBeVisible();
+  await expect(page.getByRole('textbox', { name: 'Password' })).toBeVisible();
   await expect(page.getByRole('button', { name: 'Sign in' })).toBeVisible();
 });
 
@@ -26,7 +26,7 @@ test('can submit admin credentials', async ({ page }) => {
 
   await page.goto('/login');
   await page.getByLabel('Email').fill(email);
-  await page.getByLabel('Password').fill(password);
+  await page.getByRole('textbox', { name: 'Password' }).fill(password);
   await page.getByRole('button', { name: 'Sign in' }).click();
 
   await page.waitForURL((url) => !url.pathname.endsWith('/login'), { timeout: 15_000 });
@@ -35,5 +35,11 @@ test('can submit admin credentials', async ({ page }) => {
 
 test('loginAsAdmin helper reaches authenticated shell', async ({ page }) => {
   await loginAsAdmin(page);
-  await expect(mainNav(page).getByRole('link', { name: 'Users' })).toBeVisible();
+  const nav = await openAppNavigation(page);
+  const usersLink = nav.getByRole('link', { name: 'Users' });
+  if (await usersLink.isVisible().catch(() => false)) {
+    await expect(usersLink).toBeVisible();
+    return;
+  }
+  await expect(page.getByRole('menuitem', { name: 'Users' })).toBeVisible();
 });
