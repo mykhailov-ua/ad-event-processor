@@ -1,4 +1,4 @@
-import { toast } from 'sonner';
+import { actionGuardError, toastValidationError } from '@/lib/admin_validation_error';
 
 export function runCampaignListBulkAction(
   bulkBusy: boolean,
@@ -7,11 +7,11 @@ export function runCampaignListBulkAction(
   action?: () => void
 ) {
   if (bulkBusy) {
-    toast.message('Bulk action in progress');
+    toastValidationError(actionGuardError('Bulk action in progress'));
     return;
   }
   if (!allowed) {
-    toast.message(hint);
+    toastValidationError(actionGuardError(hint));
     return;
   }
   action?.();
