@@ -1,4 +1,5 @@
 import { apiFetch, apiJson, apiJsonArray, parseApiError } from './client.js';
+import { parsePostbackDryRunResult } from './validate.js';
 import type {
   AffiliateStatusPreset,
   ApplyIntegrationSchemaRequest,
@@ -183,7 +184,7 @@ export async function testPostbackConfig(
     { method: 'POST', signal }
   );
   if (response.ok || response.status === 422) {
-    return (await response.json()) as PostbackDryRunResult;
+    return parsePostbackDryRunResult(await response.json());
   }
   throw await parseApiError(response);
 }

@@ -12,9 +12,13 @@ import {
   parseCampaign,
   parseCampaignBulkActionResponse,
   parseCampaignFlowValidateResponse,
+  parseCampaignListMetricsBatchResponse,
+  parseCampaignListMetricsTotalsResponse,
   parseCampaignListResponse,
   parseCampaignPublishBlockedError,
   parseCampaignValidateResponse,
+  parseCampaignWizardCommitResult,
+  parseCampaignWizardSession,
 } from './validate.js';
 import { CAMPAIGN_LIST_METRICS_BATCH_CHUNK_SIZE } from '@/domains/campaigns/list/campaign_list_limits';
 import { isUuidLike } from '@/lib/customer_label';
@@ -218,14 +222,19 @@ export async function fetchCampaignListMetricsTotals(
   statsQuery: Pick<CampaignListMetricsQuery, 'from' | 'to'> = {},
   signal?: AbortSignal
 ): Promise<CampaignListMetricsTotalsResponse> {
-  return apiJson<CampaignListMetricsTotalsResponse>(
+  return apiJsonValidated(
     buildCampaignListMetricsTotalsPath(filter, statsQuery),
-    { signal }
+    { signal },
+    parseCampaignListMetricsTotalsResponse
   );
 }
 
 export async function getCampaign(id: string, signal?: AbortSignal): Promise<Campaign> {
-  return apiJson<Campaign>(`/api/v1/campaigns/${encodeURIComponent(id)}`, { signal });
+  return apiJsonValidated(
+    `/api/v1/campaigns/${encodeURIComponent(id)}`,
+    { signal },
+    parseCampaign
+  );
 }
 
 export async function patchCampaign(
@@ -233,11 +242,15 @@ export async function patchCampaign(
   body: PatchCampaignRequest,
   signal?: AbortSignal
 ): Promise<Campaign> {
-  return apiJson<Campaign>(`/api/v1/campaigns/${encodeURIComponent(id)}`, {
-    method: 'PATCH',
-    body: JSON.stringify(body),
-    signal,
-  });
+  return apiJsonValidated(
+    `/api/v1/campaigns/${encodeURIComponent(id)}`,
+    {
+      method: 'PATCH',
+      body: JSON.stringify(body),
+      signal,
+    },
+    parseCampaign
+  );
 }
 
 export async function validateCampaignPatch(
@@ -501,14 +514,21 @@ export async function postCampaignWizardSession(
   body: CampaignWizardSessionRequest,
   signal?: AbortSignal
 ): Promise<CampaignWizardSession | CampaignWizardCommitResult> {
-  return apiJson<CampaignWizardSession | CampaignWizardCommitResult>(
-    '/api/v1/campaigns/wizard/session',
-    {
-      method: 'POST',
-      body: JSON.stringify(body),
-      signal,
-    }
-  );
+  const response = await apiFetch('/api/v1/campaigns/wizard/session', {
+    method: 'POST',
+    body: JSON.stringify(body),
+    signal,
+  });
+
+  if (!response.ok) {
+    throw await parseApiError(response);
+  }
+
+  const payload: unknown = await response.json();
+  if (body.action === 'commit') {
+    return parseCampaignWizardCommitResult(payload);
+  }
+  return parseCampaignWizardSession(payload);
 }
 
 export async function getCampaignIntegrationPanel(
@@ -669,9 +689,10 @@ export async function fetchCampaignListMetricsBatch(
 
   for (let start = 0; start < validIds.length; start += CAMPAIGN_LIST_METRICS_BATCH_CHUNK_SIZE) {
     const chunk = validIds.slice(start, start + CAMPAIGN_LIST_METRICS_BATCH_CHUNK_SIZE);
-    const batch = await apiJson<CampaignListMetricsBatchResponse>(
+    const batch = await apiJsonValidated(
       buildCampaignListMetricsPath(chunk, statsQuery),
-      { signal }
+      { signal },
+      parseCampaignListMetricsBatchResponse
     );
     if (batch.stale) {
       stale = true;

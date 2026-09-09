@@ -1,4 +1,9 @@
-import { apiFetch, apiJson, parseApiError } from './client.js';
+import { apiFetch, apiJson, apiJsonValidated, parseApiError } from './client.js';
+import {
+  parseFraudBreakdownReportResponse,
+  parseFraudCatalogReportResponse,
+  parseWireSignalBreakdownReportResponse,
+} from './validate.js';
 import { reportKeyToApiPath } from '../lib/report_paths.js';
 import type {
   ClickLogReportQuery,
@@ -54,7 +59,7 @@ import type {
   CampaignToggleCohortReportResponse,
   FraudCatalogReportKey,
   FraudCatalogReportQuery,
-  FraudCatalogReportResponse,
+  FraudCatalogReportResponseMap,
   PostbackReconciliationQuery,
   SourceQualityReportQuery,
 } from './types.js';
@@ -138,12 +143,16 @@ export function buildFraudCatalogReportPath(
   return query ? `${basePath}?${query}` : basePath;
 }
 
-export async function getFraudCatalogReport(
-  key: FraudCatalogReportKey,
+export async function getFraudCatalogReport<K extends FraudCatalogReportKey>(
+  key: K,
   params: FraudCatalogReportQuery = {},
   signal?: AbortSignal
-): Promise<FraudCatalogReportResponse> {
-  return apiJson<FraudCatalogReportResponse>(buildFraudCatalogReportPath(key, params), { signal });
+): Promise<FraudCatalogReportResponseMap[K]> {
+  return apiJsonValidated(
+    buildFraudCatalogReportPath(key, params),
+    { signal },
+    (value) => parseFraudCatalogReportResponse(key, value)
+  );
 }
 
 export function buildCampaignToggleCohortPath(params: CampaignToggleCohortQuery): string {
@@ -181,14 +190,14 @@ export async function getFraudReasonsReport(
 ): Promise<FraudReasonsReportResponse> {
   const path = buildReportRunPath(reportKey, params);
   if (reportKey === 'wire-signal-breakdown') {
-    const payload = await apiJson<WireSignalBreakdownReportResponse>(path, { signal });
+    const payload = await apiJsonValidated(path, { signal }, parseWireSignalBreakdownReportResponse);
     return {
       rows: payload.rows ?? [],
       freshness: payload.freshness,
       next_cursor: payload.next_cursor,
     };
   }
-  const payload = await apiJson<FraudBreakdownReportResponse>(path, { signal });
+  const payload = await apiJsonValidated(path, { signal }, parseFraudBreakdownReportResponse);
   return {
     rows: payload.rows ?? [],
     freshness: payload.freshness,

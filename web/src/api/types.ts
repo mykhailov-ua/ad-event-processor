@@ -86,6 +86,8 @@ export type CampaignListMetricsQuery = OperationQuery<'campaignsListMetrics'>;
 export type CampaignListMetricsRow = components['schemas']['CampaignListMetricsRow'];
 export type CampaignListMetricsBatchResponse =
   components['schemas']['CampaignListMetricsBatchResponse'];
+export type CampaignListMetricsTotalsResponse =
+  components['schemas']['CampaignListMetricsTotalsResponse'];
 
 export type CampaignStatusTotals = components['schemas']['CampaignStatusTotals'];
 
@@ -287,16 +289,6 @@ export type ReportRunQuery = Omit<OperationQuery<'reportConversionTypePayout'>, 
   click_id?: string;
 };
 
-export type FraudCatalogReportKey =
-  | 'silent-reject-impression-funnel'
-  | 'signal-effectiveness'
-  | 'customer-fraud-by-dimension'
-  | 'ivt-by-source'
-  | 'layer-desync-summary'
-  | 'layer-desync-drilldown'
-  | 'rtt-split-tunnel'
-  | 'filter-rejects';
-
 export type SilentRejectImpressionFunnelRow =
   components['schemas']['SilentRejectImpressionFunnelRow'];
 export type SilentRejectImpressionFunnelReportResponse =
@@ -312,24 +304,46 @@ export type IVTBySourceReportResponse = components['schemas']['IVTBySourceReport
 export type LayerDesyncSummaryRow = components['schemas']['LayerDesyncSummaryRow'];
 export type LayerDesyncSummaryReportResponse =
   components['schemas']['LayerDesyncSummaryReportResponse'];
-export type FilterRejectRow = components['schemas']['FilterRejectRow'];
-export type FilterRejectReportResponse = components['schemas']['FilterRejectReportResponse'];
+export type LayerDesyncDrilldownRow = components['schemas']['LayerDesyncDrilldownRow'];
+export type LayerDesyncDrilldownSeriesPoint =
+  components['schemas']['LayerDesyncDrilldownSeriesPoint'];
 export type LayerDesyncDrilldownReportResponse =
   components['schemas']['LayerDesyncDrilldownReportResponse'];
+export type RTTSplitTunnelRow = components['schemas']['RTTSplitTunnelRow'];
 export type RTTSplitTunnelReportResponse = components['schemas']['RTTSplitTunnelReportResponse'];
+export type FilterRejectRow = components['schemas']['FilterRejectRow'];
+export type FilterRejectReportResponse = components['schemas']['FilterRejectReportResponse'];
 export type CampaignToggleCohortReportResponse =
   components['schemas']['CampaignToggleCohortReportResponse'];
 export type CampaignToggleCohortKPIRow = components['schemas']['CampaignToggleCohortKPIRow'];
 
-export type FraudCatalogReportRow = Record<string, unknown>;
-
-export type FraudCatalogReportResponse = {
-  rows: FraudCatalogReportRow[];
-  series?: FraudCatalogReportRow[];
-  freshness?: DataFreshness;
-  next_cursor?: string;
-  truncated?: boolean;
+export type FraudCatalogReportResponseMap = {
+  'silent-reject-impression-funnel': SilentRejectImpressionFunnelReportResponse;
+  'signal-effectiveness': SignalEffectivenessReportResponse;
+  'customer-fraud-by-dimension': CustomerFraudByDimensionReportResponse;
+  'ivt-by-source': IVTBySourceReportResponse;
+  'layer-desync-summary': LayerDesyncSummaryReportResponse;
+  'layer-desync-drilldown': LayerDesyncDrilldownReportResponse;
+  'rtt-split-tunnel': RTTSplitTunnelReportResponse;
+  'filter-rejects': FilterRejectReportResponse;
 };
+
+export type FraudCatalogReportKey = keyof FraudCatalogReportResponseMap;
+
+export type FraudCatalogReportResponse =
+  FraudCatalogReportResponseMap[FraudCatalogReportKey];
+
+export type FraudCatalogReportRow =
+  | SilentRejectImpressionFunnelRow
+  | SignalEffectivenessRow
+  | CustomerFraudByDimensionRow
+  | IVTBySourceRow
+  | LayerDesyncSummaryRow
+  | LayerDesyncDrilldownRow
+  | RTTSplitTunnelRow
+  | FilterRejectRow;
+
+export type FraudCatalogReportSeriesPoint = LayerDesyncDrilldownSeriesPoint;
 
 export type FraudCatalogDimension = 'placement' | 'sub1' | 'sub2' | 'country' | 'campaign';
 
@@ -588,36 +602,22 @@ export type PlatformCampaignSyncRunRequest =
 export type AffiliateStatusPreset = components['schemas']['AffiliateStatusPreset'];
 
 export type Flow = components['schemas']['Flow'];
-export type FlowPath = components['schemas']['FlowPath'] & {
-  filters?: {
-    countries?: string[];
-    devices?: string[];
-    os?: string[];
-    languages?: string[];
-  };
+export type FlowPathWire = components['schemas']['FlowPath'];
+export type FlowPathFilters = {
+  countries?: string[];
+  devices?: string[];
+  os?: string[];
+  languages?: string[];
+};
+export type FlowPath = FlowPathWire & {
+  filters?: FlowPathFilters;
 };
 
-export type FlowValidateResponse = {
-  valid: boolean;
-  path_errors?: CampaignFlowPathError[];
-  suggested_fix_action?: string;
-};
 export type CreateFlowRequest = components['schemas']['CreateFlowRequest'];
 export type UpdateFlowRequest = components['schemas']['UpdateFlowRequest'];
 export type Lander = components['schemas']['Lander'];
-export type LanderHostingCounts = {
-  total: number;
-  external: number;
-  hosted: number;
-  unconfigured: number;
-};
-export type LanderListResponse = {
-  items: Lander[];
-  total: number;
-  limit: number;
-  offset: number;
-  hosting_counts: LanderHostingCounts;
-};
+export type LanderHostingCounts = components['schemas']['LanderHostingCounts'];
+export type LanderListResponse = components['schemas']['LanderListResponse'];
 export type LanderListQuery = {
   q?: string;
   hosting?: '' | 'external' | 'hosted';

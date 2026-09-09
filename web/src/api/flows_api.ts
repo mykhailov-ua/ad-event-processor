@@ -1,21 +1,31 @@
-import { apiFetch, apiJson, apiJsonArray, parseApiError } from './client.js';
-import type { CreateFlowRequest, Flow, FlowValidateResponse, UpdateFlowRequest } from './types.js';
+import { apiFetch, apiJsonValidated, parseApiError } from './client.js';
+import { parseCampaignFlowValidateResponse, parseFlow, parseFlowList } from './validate.js';
+import type {
+  CampaignFlowValidateResponse,
+  CreateFlowRequest,
+  Flow,
+  UpdateFlowRequest,
+} from './types.js';
 import type { FlowPath } from './types.js';
 
 export async function listFlows(signal?: AbortSignal): Promise<Flow[]> {
-  return apiJsonArray<Flow>('/api/v1/flows', { signal });
+  return apiJsonValidated('/api/v1/flows', { signal }, parseFlowList);
 }
 
 export async function getFlow(id: string, signal?: AbortSignal): Promise<Flow> {
-  return apiJson<Flow>(`/api/v1/flows/${encodeURIComponent(id)}`, { signal });
+  return apiJsonValidated(`/api/v1/flows/${encodeURIComponent(id)}`, { signal }, parseFlow);
 }
 
 export async function createFlow(body: CreateFlowRequest, signal?: AbortSignal): Promise<Flow> {
-  return apiJson<Flow>('/api/v1/flows', {
-    method: 'POST',
-    body: JSON.stringify(body),
-    signal,
-  });
+  return apiJsonValidated(
+    '/api/v1/flows',
+    {
+      method: 'POST',
+      body: JSON.stringify(body),
+      signal,
+    },
+    parseFlow
+  );
 }
 
 export async function updateFlow(
@@ -23,11 +33,15 @@ export async function updateFlow(
   body: UpdateFlowRequest,
   signal?: AbortSignal
 ): Promise<Flow> {
-  return apiJson<Flow>(`/api/v1/flows/${encodeURIComponent(id)}`, {
-    method: 'PUT',
-    body: JSON.stringify(body),
-    signal,
-  });
+  return apiJsonValidated(
+    `/api/v1/flows/${encodeURIComponent(id)}`,
+    {
+      method: 'PUT',
+      body: JSON.stringify(body),
+      signal,
+    },
+    parseFlow
+  );
 }
 
 export async function deleteFlow(id: string, signal?: AbortSignal): Promise<void> {
@@ -45,30 +59,40 @@ export async function cloneFlow(
   body: { name?: string },
   signal?: AbortSignal
 ): Promise<Flow> {
-  return apiJson<Flow>(`/api/v1/flows/${encodeURIComponent(id)}/clone`, {
-    method: 'POST',
-    body: JSON.stringify(body),
-    signal,
-  });
+  return apiJsonValidated(
+    `/api/v1/flows/${encodeURIComponent(id)}/clone`,
+    {
+      method: 'POST',
+      body: JSON.stringify(body),
+      signal,
+    },
+    parseFlow
+  );
 }
 
 export async function validateFlowPaths(
   paths: FlowPath[],
   signal?: AbortSignal
-): Promise<FlowValidateResponse> {
+): Promise<CampaignFlowValidateResponse> {
   const response = await apiFetch('/api/v1/flows/validate', {
     method: 'POST',
     body: JSON.stringify({ paths }),
     signal,
   });
-  const payload = (await response.json()) as FlowValidateResponse;
-  if (!response.ok) {
+
+  if (response.ok) {
+    return parseCampaignFlowValidateResponse(await response.json());
+  }
+
+  if (response.status === 400) {
+    const parsed = parseCampaignFlowValidateResponse(await response.json());
     const message =
-      payload.path_errors
+      parsed.path_errors
         ?.map((row) => row.message)
         .filter(Boolean)
         .join('; ') || 'Flow validation failed';
     throw new Error(message);
   }
-  return payload;
+
+  throw await parseApiError(response);
 }

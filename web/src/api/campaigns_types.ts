@@ -10,6 +10,7 @@ import type {
   CampaignFraudEditorSummary,
   CampaignGeoSummary,
   CampaignListMetricsRow,
+  CampaignListMetricsTotalsResponse,
   CampaignPublishBlockedError,
   CampaignStatusTotals,
   CloneCampaignOptions,
@@ -36,6 +37,7 @@ export type {
   MacroPreviewRequest,
   MacroPreviewResponse,
   CampaignStatusTotals,
+  CampaignListMetricsTotalsResponse,
 };
 
 export type CampaignListFacetOwner = {
@@ -46,16 +48,6 @@ export type CampaignListFacetOwner = {
 export type CampaignListFacetsResponse = {
   countries: string[];
   owners: CampaignListFacetOwner[];
-};
-
-export type CampaignListMetricsTotalsResponse = {
-  campaign_count: number;
-  flow_count: number;
-  margin_breach_count: number;
-  totals: CampaignListMetricsRow;
-  from: string;
-  to: string;
-  stale: boolean;
 };
 
 export type PublishCampaignResult =
