@@ -1,8 +1,8 @@
 // Fetch orchestrator for campaigns directory (pages/campaigns_page.tsx).
 // selection/export/column prefs: use_campaigns_directory_workspace.ts.
 // Campaign list workspace fetch fan-out (Phase 6 trim):
-// Refresh lanes (up to 4 when paginated and filter totals not capped):
-// - GET list campaigns
+// Refresh lanes (staggered after main list snapshot via listLastUpdatedAt):
+// - GET list campaigns (refreshToken)
 // - GET width-probe list (after main list snapshot; skipped when page rows cover probe dataset)
 // - POST metrics batch
 // - POST filter totals (skipped when total > CAMPAIGN_LIST_FILTER_TOTALS_MAX)
@@ -110,6 +110,8 @@ export function useCampaignsPageList({
     ]
   );
 
+  const listAuxFetchKey = listLastUpdatedAt ?? '';
+
   const listCoversWidthProbeDataset = useMemo(
     () => listResponseCoversWidthProbeDataset(data),
     [data]
@@ -119,12 +121,13 @@ export function useCampaignsPageList({
 
   const { data: widthProbeData } = useResource(
     (signal) => {
-      if (!shouldFetchWidthProbeList) {
+      if (!shouldFetchWidthProbeList || !listAuxFetchKey) {
         return Promise.resolve(undefined);
       }
       return listCampaigns(widthProbeQuery, signal);
     },
     [
+      listAuxFetchKey,
       shouldFetchWidthProbeList,
       widthProbeQuery.budget_min_micro,
       widthProbeQuery.budget_max_micro,
@@ -134,7 +137,6 @@ export function useCampaignsPageList({
       widthProbeQuery.pacing_mode,
       widthProbeQuery.q,
       widthProbeQuery.status,
-      refreshToken,
     ]
   );
 
@@ -154,8 +156,13 @@ export function useCampaignsPageList({
   );
 
   const { data: metricsBatch, error: metricsError } = useResource(
-    (signal) => fetchCampaignListMetricsBatch(metricsCampaignIds, statsQuery, signal),
-    [metricsCampaignIds?.join(',') ?? '', refreshToken, statsQuery.from, statsQuery.to]
+    (signal) => {
+      if (!listAuxFetchKey || metricsCampaignIds.length === 0) {
+        return Promise.resolve(undefined);
+      }
+      return fetchCampaignListMetricsBatch(metricsCampaignIds, statsQuery, signal);
+    },
+    [listAuxFetchKey, metricsCampaignIds?.join(',') ?? '', statsQuery.from, statsQuery.to]
   );
 
   const filterTotalsQuery = useMemo(
@@ -185,7 +192,7 @@ export function useCampaignsPageList({
 
   const { data: metricsTotalsResponse, error: filterTotalsError } = useResource(
     (signal) => {
-      if (filterTotalsCapped) {
+      if (filterTotalsCapped || !listAuxFetchKey) {
         return Promise.resolve(undefined);
       }
       return fetchCampaignListMetricsTotals(filterTotalsQuery, statsQuery, signal).catch((err) => {
@@ -196,6 +203,7 @@ export function useCampaignsPageList({
       });
     },
     [
+      listAuxFetchKey,
       filterTotalsQuery.customer_id,
       filterTotalsQuery.status,
       filterTotalsQuery.q,
@@ -205,7 +213,6 @@ export function useCampaignsPageList({
       filterTotalsQuery.owner_user_id,
       filterTotalsQuery.country,
       filterTotalsCapped,
-      refreshToken,
       statsQuery.from,
       statsQuery.to,
     ]
@@ -219,7 +226,7 @@ export function useCampaignsPageList({
   const metricsById = metricsBatch?.metricsById;
   const marginsById = metricsBatch?.marginsById;
 
-  const { data: listFacetsFromApi, fetching: listFacetsFetching } = useResource(
+  const { data: listFacetsFromApi, error: listFacetsError, fetching: listFacetsFetching } = useResource(
     (signal) =>
       fetchCampaignListFacets(customerId, signal).catch((err) => {
         if (isCampaignListAuxEndpointUnavailable(err)) {
@@ -231,8 +238,8 @@ export function useCampaignsPageList({
   );
 
   const { facets: listFacets, degraded: listFacetsDegraded } = useMemo(
-    () => resolveCampaignListFacets(listFacetsFromApi, listFacetsFetching),
-    [listFacetsFromApi, listFacetsFetching]
+    () => resolveCampaignListFacets(listFacetsFromApi, listFacetsFetching, listFacetsError),
+    [listFacetsFromApi, listFacetsError, listFacetsFetching]
   );
 
   const countryOptions = useMemo(

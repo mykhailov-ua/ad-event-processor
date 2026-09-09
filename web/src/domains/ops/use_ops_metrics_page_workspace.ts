@@ -7,28 +7,26 @@ import { useResource } from '@/api/use_resource';
 import { useCoalescedBumpRefresh } from '@/hooks/use_coalesced_refresh_token';
 import { useTransitionSearchParams } from '@/hooks/use_transition_search_params';
 
-function skipLazyFetch(): Promise<never> {
-  return Promise.reject(new DOMException('Skipped', 'AbortError'));
-}
-
 export function useOpsMetricsPageWorkspace() {
   const [searchParams, { replaceSearchParams }] = useTransitionSearchParams();
   const appliedRange = searchParams.get('range') ?? '1h';
   const [draftRange, setDraftRange] = useState(appliedRange);
   const [metricsLoadToken, setMetricsLoadToken] = useState(0);
-  const [pendingRange, setPendingRange] = useState('');
+  const [pendingRange, setPendingRange] = useState(appliedRange);
   const [liveSummary, setLiveSummary] = useState<DashboardSummary | undefined>();
   const [liveEnabled, setLiveEnabled] = useState(false);
   const [streamError, setStreamError] = useState<Error | undefined>();
 
   useEffect(() => {
     setDraftRange(appliedRange);
+    setPendingRange(appliedRange);
+    setMetricsLoadToken((value) => value + 1);
   }, [appliedRange]);
 
   const metricsResource = useResource(
     async (signal) => {
       if (metricsLoadToken === 0) {
-        return skipLazyFetch();
+        return Promise.reject(new DOMException('Skipped', 'AbortError'));
       }
       const range = pendingRange.trim() || '1h';
       const result = await getOpsDashboardMetrics({ range }, signal);

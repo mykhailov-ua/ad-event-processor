@@ -1,13 +1,21 @@
-import { useCallback, useEffect, useMemo } from 'react';
-import { useLocation } from 'react-router-dom';
-import { toast } from 'sonner';
+import { useCallback, useEffect, useMemo, useState } from 'react';
+import { Link, useLocation } from 'react-router-dom';
 
 import { CampaignsListToolbar } from '@/domains/campaigns/list/campaigns_list_toolbar';
 import { useCampaignsCommandPaletteActions } from '@/domains/campaigns/list/use_campaigns_command_palette_actions';
 import { CampaignsDirectoryOverlays } from '@/domains/campaigns/list/campaigns_directory_overlays';
 import { CampaignsSelectionPanel } from '@/domains/campaigns/list/campaigns_selection_panel';
 import type { CampaignsDirectoryProps } from '@/domains/campaigns/list/campaigns_directory_types';
-import { ControlPlaneSelectTable } from '@/shell/control_plane_select_table';
+import type { DirectoryOverviewField } from '@/shell/directory_overview_dialog';
+import {
+  DirectorySelectOverviewTable,
+  directoryOperateRows,
+  directoryRecordMap,
+} from '@/shell/directory_select_overview_table';
+import { PrimaryActionButton, SecondaryActionButton } from '@/shell/action_buttons';
+import { StatusBadge } from '@/shell/status_badge';
+import { campaignStatusToAdminTone } from '@/lib/admin_kit';
+import { formatCampaignStatusLabel } from '@/lib/admin_typography';
 import { useCampaignsDirectoryWorkspace } from '@/domains/campaigns/list/use_campaigns_directory_workspace';
 import { DirectoryPaginationFooter } from '@/shell/directory_pagination_footer';
 import { DirectoryFetchError, DirectoryPageShell } from '@/shell/directory_page_shell';
@@ -24,6 +32,39 @@ import { buildExportHubHref } from '@/lib/export_hub_paths';
 import { rememberExportHubReturnPath } from '@/lib/export_hub_return';
 import { listPageRange } from '@/lib/list_page_stats';
 import { InAppLink } from '@/shell/in_app_link';
+import type { Campaign } from '@/api/types';
+import {
+  actionGuardError,
+  toastValidationError,
+  type AdminValidationError,
+} from '@/lib/admin_validation_error';
+import { ValidationErrorBlock } from '@/shell/validation_error_block';
+
+function buildCampaignOverviewFields(
+  campaign: Campaign,
+  customerNameById: Record<string, string>
+): DirectoryOverviewField[] {
+  return [
+    { label: 'Name', value: campaign.name ?? campaign.id },
+    { label: 'ID', value: campaign.id ?? '-' },
+    {
+      label: 'Status',
+      value: (
+        <StatusBadge
+          label={formatCampaignStatusLabel(campaign.status)}
+          tone={campaignStatusToAdminTone(campaign.status)}
+        />
+      ),
+    },
+    {
+      label: 'Customer',
+      value:
+        customerNameById[campaign.customer_id ?? ''] ?? campaign.customer_id ?? '-',
+    },
+    { label: 'Budget limit', value: campaign.budget_limit ?? '-' },
+    { label: 'Pacing', value: campaign.pacing_mode ?? '-' },
+  ];
+}
 
 export type {
   CampaignPacingFilter,
@@ -125,6 +166,27 @@ export function CampaignsDirectory({
     statsQuery,
     onRefreshList,
   });
+  const [selectionGuardError, setSelectionGuardError] = useState<
+    AdminValidationError | undefined
+  >();
+
+  useEffect(() => {
+    setSelectionGuardError(undefined);
+  }, [workspace.selectedIds]);
+
+  const requireSelectedCampaigns = useCallback(
+    (hint: string, action: () => void) => {
+      if (workspace.selectedIds.size === 0) {
+        const err = actionGuardError(hint);
+        setSelectionGuardError(err);
+        toastValidationError(err);
+        return;
+      }
+      setSelectionGuardError(undefined);
+      action();
+    },
+    [workspace.selectedIds.size]
+  );
 
   const canGoPrev = offset > 0;
   const canGoNext = offset + limit < total;
@@ -166,28 +228,16 @@ export function CampaignsDirectory({
       : undefined;
 
   const handlePauseSelected = useCallback(() => {
-    if (workspace.selectedIds.size === 0) {
-      toast.error('Select at least one campaign');
-      return;
-    }
-    workspace.onPauseSelected();
-  }, [workspace.onPauseSelected, workspace.selectedIds.size]);
+    requireSelectedCampaigns('Select at least one campaign', workspace.onPauseSelected);
+  }, [requireSelectedCampaigns, workspace.onPauseSelected]);
 
   const handleResumeSelected = useCallback(() => {
-    if (workspace.selectedIds.size === 0) {
-      toast.error('Select at least one campaign');
-      return;
-    }
-    workspace.onResumeSelected();
-  }, [workspace.onResumeSelected, workspace.selectedIds.size]);
+    requireSelectedCampaigns('Select at least one campaign', workspace.onResumeSelected);
+  }, [requireSelectedCampaigns, workspace.onResumeSelected]);
 
   const handleArchiveSelected = useCallback(() => {
-    if (workspace.selectedIds.size === 0) {
-      toast.error('Select at least one campaign');
-      return;
-    }
-    workspace.setArchiveOpen(true);
-  }, [workspace.selectedIds.size, workspace.setArchiveOpen]);
+    requireSelectedCampaigns('Select at least one campaign', () => workspace.setArchiveOpen(true));
+  }, [requireSelectedCampaigns, workspace.setArchiveOpen]);
 
   const handleClearSelection = useCallback(() => {
     workspace.setSelectedIds(new Set());
@@ -200,15 +250,22 @@ export function CampaignsDirectory({
   });
 
   const selectedCampaignId = workspace.selectedCampaignId ?? null;
+  const campaignById = useMemo(
+    () => directoryRecordMap(items, (campaign) => campaign.id),
+    [items]
+  );
   const operateRows = useMemo(
     () =>
-      (items ?? [])
-        .filter((campaign): campaign is typeof campaign & { id: string } => Boolean(campaign.id))
-        .map((campaign) => ({
-          id: campaign.id,
-          label: campaign.name ?? campaign.id,
-        })),
+      directoryOperateRows(
+        items,
+        (campaign) => campaign.id,
+        (campaign) => campaign.name ?? campaign.id ?? ''
+      ),
     [items]
+  );
+  const buildOverviewFields = useCallback(
+    (campaign: Campaign) => buildCampaignOverviewFields(campaign, customerNameById),
+    [customerNameById]
   );
 
   return (
@@ -216,6 +273,9 @@ export function CampaignsDirectory({
       <DirectoryPageShell
         alerts={
           <>
+            {selectionGuardError ? (
+              <ValidationErrorBlock error={selectionGuardError} title="Select a campaign first" />
+            ) : null}
             <DirectoryFetchError
               error={directoryMetricsError}
               fetchState={{ fetching, error: directoryMetricsError, hasSnapshot }}
@@ -235,7 +295,7 @@ export function CampaignsDirectory({
         footerClassName="border-t-0 px-0 pt-2"
         headerClassName="border-b-0"
         mainClassName="min-w-0 w-full flex-none"
-        workspaceClassName="pt-3"
+        workspaceClassName="pt-2"
         controlPanel={
           <div >
             {listFacetsDegraded ? (
@@ -257,6 +317,28 @@ export function CampaignsDirectory({
               draftOwnerUserId={draftOwnerUserId}
               draftPacing={draftPacing}
               fetching={fetching}
+              filterFooter={
+                workspace.selectedCampaign ? (
+                  <CampaignsSelectionPanel
+                    bulkBusy={workspace.bulkBusy}
+                    exportBusy={workspace.exportBusy}
+                    selectedCampaign={workspace.selectedCampaign}
+                    selectionGuardError={selectionGuardError}
+                    variant="inline"
+                    onArchive={handleArchiveSelected}
+                    onClearSelection={handleClearSelection}
+                    onClone={() => {
+                      requireSelectedCampaigns('Select a campaign first', () =>
+                        workspace.setCloneOpen(true)
+                      );
+                    }}
+                    onExportBundles={workspace.onExportBundles}
+                    onExportCsv={workspace.onExportCsv}
+                    onPause={handlePauseSelected}
+                    onResume={handleResumeSelected}
+                  />
+                ) : null
+              }
               listFacetsFetching={listFacetsFetching}
               listFacetsDegraded={listFacetsDegraded}
               listLastUpdatedAt={listLastUpdatedAt}
@@ -293,26 +375,6 @@ export function CampaignsDirectory({
           </>
         }
         fetchState={{ fetching, error, hasSnapshot }}
-        aside={
-          <CampaignsSelectionPanel
-            bulkBusy={workspace.bulkBusy}
-            exportBusy={workspace.exportBusy}
-            selectedCampaign={workspace.selectedCampaign}
-            onArchive={handleArchiveSelected}
-            onClearSelection={handleClearSelection}
-            onClone={() => {
-              if (workspace.selectedIds.size === 0) {
-                toast.error('Select a campaign first');
-                return;
-              }
-              workspace.setCloneOpen(true);
-            }}
-            onExportBundles={workspace.onExportBundles}
-            onExportCsv={workspace.onExportCsv}
-            onPause={handlePauseSelected}
-            onResume={handleResumeSelected}
-          />
-        }
         footer={
           <DirectoryPaginationFooter
             canGoNext={canGoNext}
@@ -333,7 +395,8 @@ export function CampaignsDirectory({
         skeletonColumns={2}
         title="Campaigns"
       >
-        <ControlPlaneSelectTable
+        <DirectorySelectOverviewTable
+          buildOverviewFields={buildOverviewFields}
           disabled={fetching}
           emptyMessage={
             filtersActive
@@ -341,6 +404,20 @@ export function CampaignsDirectory({
               : 'No campaigns yet. Create one to start tracking spend and delivery.'
           }
           nameColumnLabel="Campaign"
+          overviewFooter={(campaign) => (
+            <>
+              {campaign.id ? (
+                <PrimaryActionButton asChild>
+                  <Link to={`/campaigns/${campaign.id}/edit`}>Edit</Link>
+                </PrimaryActionButton>
+              ) : null}
+              <SecondaryActionButton asChild>
+                <InAppLink to={exportHubHref}>Export hub</InAppLink>
+              </SecondaryActionButton>
+            </>
+          )}
+          overviewTitle={(campaign) => campaign.name ?? campaign.id ?? ''}
+          recordById={campaignById}
           revalidating={listRevalidating}
           rows={operateRows}
           selectedId={selectedCampaignId}

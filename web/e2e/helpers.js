@@ -62,7 +62,7 @@ export async function loginWithCredentials(page, email, password) {
   for (let attempt = 0; attempt < 2; attempt++) {
     await page.goto('/login');
     await page.getByLabel('Email').fill(email);
-    await page.getByLabel('Password').fill(password);
+    await page.getByRole('textbox', { name: 'Password' }).fill(password);
     await page.getByRole('button', { name: 'Sign in' }).click();
 
     const navigated = await page
@@ -73,10 +73,29 @@ export async function loginWithCredentials(page, email, password) {
       return;
     }
 
+    const loginError = page.getByRole('alert').getByText(/Sign in failed|session expired|permission/i);
+    const errorText = (await loginError.textContent().catch(() => null))?.trim();
     if (attempt === 1) {
-      throw new Error('login failed: still on /login');
+      throw new Error(errorText ? `login failed: ${errorText}` : 'login failed: still on /login');
+    }
+    await page.waitForTimeout(500);
+  }
+}
+
+/**
+ * @param {import('@playwright/test').Page} page
+ */
+export async function ensureLoggedIn(page) {
+  if (!page.url().includes('/login')) {
+    const accountVisible = await page
+      .getByRole('button', { name: 'Account' })
+      .isVisible({ timeout: 1500 })
+      .catch(() => false);
+    if (accountVisible) {
+      return;
     }
   }
+  await loginAsAdmin(page);
 }
 
 /**
@@ -145,11 +164,57 @@ export function loginSignInHeading(page) {
 }
 
 /**
- * Primary sidebar navigation landmark.
+ * Primary sidebar navigation landmark (mobile sheet only).
  * @param {import('@playwright/test').Page} page
  */
 export function mainNav(page) {
   return page.getByRole('navigation', { name: 'Main' });
+}
+
+/**
+ * Opens the header section menu on desktop or the mobile nav sheet.
+ * @param {import('@playwright/test').Page} page
+ */
+export async function openAppNavigation(page) {
+  const sheetNav = mainNav(page);
+  if (await sheetNav.isVisible().catch(() => false)) {
+    return sheetNav;
+  }
+
+  const headerMenuTrigger = page.locator('header button[aria-haspopup="menu"]');
+  if (await headerMenuTrigger.isVisible().catch(() => false)) {
+    await headerMenuTrigger.click();
+    return page.getByRole('menu');
+  }
+
+  const mobileSheetTrigger = page.locator('header button[aria-haspopup="dialog"]');
+  await mobileSheetTrigger.click();
+  await sheetNav.waitFor({ state: 'visible', timeout: 15_000 });
+  return sheetNav;
+}
+
+/**
+ * Navigates to a top-level section via header menu or mobile sheet.
+ * @param {import('@playwright/test').Page} page
+ * @param {string} label
+ */
+export async function navigateAppSection(page, label) {
+  const sheetNav = mainNav(page);
+  if (await sheetNav.isVisible().catch(() => false)) {
+    await sheetNav.getByRole('link', { name: label }).click();
+    return;
+  }
+
+  const headerMenuTrigger = page.locator('header button[aria-haspopup="menu"]');
+  if ((await headerMenuTrigger.count()) > 0) {
+    await headerMenuTrigger.first().click();
+    await page.getByRole('menuitem', { name: label }).click();
+    return;
+  }
+
+  await page.locator('header button[aria-haspopup="dialog"]').click();
+  await sheetNav.waitFor({ state: 'visible', timeout: 15_000 });
+  await sheetNav.getByRole('link', { name: label }).click();
 }
 
 /**
@@ -475,7 +540,7 @@ export async function gotoCampaignsLive(page) {
 export async function loginAsAdmin(page) {
   const { email, password } = getAdminCredentials();
   await loginWithCredentials(page, email, password);
-  await mainNav(page).waitFor({ timeout: 15_000 });
+  await page.getByRole('button', { name: 'Account' }).waitFor({ timeout: 15_000 });
 }
 
 /**
@@ -549,12 +614,20 @@ export function campaignsToolbar(page) {
   return page.getByRole('toolbar', { name: 'Campaign actions' });
 }
 
+export function statusFiltersBand(page) {
+  return page.locator('[aria-label="Status filters"]');
+}
+
+export async function applyCampaignFilters(page) {
+  await page.getByRole('button', { name: 'Apply', exact: true }).click();
+}
+
 /**
  * Page header search input (campaigns register via tracker header context).
  * @param {import('@playwright/test').Page} page
  */
 export function headerSearchInput(page) {
-  return page.locator('header').getByRole('textbox', { name: 'Search' });
+  return page.getByRole('combobox', { name: 'Search pages and records' });
 }
 
 /**
@@ -569,11 +642,64 @@ export async function gotoCustomers(page) {
  * @param {Page} page
  */
 export async function gotoCampaigns(page) {
-  await page.goto('/campaigns');
-  await mainHeading(page, 'Campaigns').waitFor({ timeout: 15_000 });
-  await page
-    .getByRole('button', { name: 'Quick create', exact: true })
-    .waitFor({ timeout: 15_000 });
+  const heading = mainHeading(page, 'Campaigns');
+  const toolbar = page.getByRole('toolbar', { name: 'Campaign actions' });
+  const loading = page.getByLabel('Loading');
+
+  async function waitForCampaignsChrome(options = {}) {
+    const headingTimeout = options.headingTimeout ?? 15_000;
+    const toolbarTimeout = options.toolbarTimeout ?? 15_000;
+    if (await loading.isVisible({ timeout: 1000 }).catch(() => false)) {
+      await loading.waitFor({ state: 'hidden', timeout: 30_000 }).catch(() => {});
+    }
+    try {
+      await heading.waitFor({ state: 'visible', timeout: headingTimeout });
+      await toolbar.waitFor({ state: 'visible', timeout: toolbarTimeout });
+      return true;
+    } catch {
+      return false;
+    }
+  }
+
+  if (page.url().includes('/campaigns')) {
+    if (await waitForCampaignsChrome()) {
+      return;
+    }
+    // Serial suite often reuses /campaigns from the prior test; wait through revalidate.
+    if (await waitForCampaignsChrome({ headingTimeout: 30_000, toolbarTimeout: 30_000 })) {
+      return;
+    }
+  }
+
+  for (let attempt = 0; attempt < 6; attempt++) {
+    if (!page.url().includes('/campaigns')) {
+      await page.goto('/campaigns', { waitUntil: 'domcontentloaded' });
+    }
+    const rateLimited = page.getByText(/too many requests/i);
+    const loadFailed = page.getByText('Could not load campaigns', { exact: true });
+    if (await rateLimited.isVisible({ timeout: 2000 }).catch(() => false)) {
+      await page.waitForTimeout(3000 + attempt * 2000);
+      await page.reload({ waitUntil: 'domcontentloaded' });
+      continue;
+    }
+    if (await loadFailed.isVisible({ timeout: 2000 }).catch(() => false)) {
+      await page.waitForTimeout(2000 + attempt * 1000);
+      await page.reload({ waitUntil: 'domcontentloaded' });
+      continue;
+    }
+    if (await waitForCampaignsChrome({ headingTimeout: 20_000, toolbarTimeout: 20_000 })) {
+      return;
+    }
+    await page.waitForTimeout(2000 + attempt * 1500);
+    if (!page.url().includes('/campaigns')) {
+      await page.goto('/campaigns', { waitUntil: 'domcontentloaded' });
+    }
+  }
+
+  if (await waitForCampaignsChrome({ headingTimeout: 10_000, toolbarTimeout: 10_000 })) {
+    return;
+  }
+  throw new Error('campaigns directory did not load (rate limit or API error)');
 }
 
 /**
