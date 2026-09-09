@@ -50,7 +50,7 @@ func TestHTTPHandlers_search_returnsStoreResults(t *testing.T) {
 			ID:    "00000000-0000-4000-8000-000000000099",
 			Kind:  "campaign",
 			Label: "Camp Alpha",
-			Href:  "/campaigns/00000000-0000-4000-8000-000000000099",
+			Href:  "/campaigns/00000000-0000-4000-8000-000000000099/edit",
 			Group: "campaigns",
 		}},
 	}

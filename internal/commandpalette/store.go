@@ -157,7 +157,7 @@ func campaignRowsToCandidates(query string, rows []db.SearchCommandPaletteCampai
 				Label:       row.Name,
 				StatusLabel: campaignStatusLabel(status),
 				StatusTone:  campaignStatusTone(status),
-				Href:        "/campaigns/" + id.String(),
+				Href:        "/campaigns/" + id.String() + "/edit",
 				Group:       "campaigns",
 			},
 			prefixRank: prefixRank(query, row.Name),

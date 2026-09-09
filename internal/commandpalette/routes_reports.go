@@ -1,5 +1,23 @@
 package commandpalette
 
+import "net/url"
+
+func reportExportHubHref(reportKey string) string {
+	v := url.Values{}
+	v.Set("kind", "report")
+	v.Set("report_key", reportKey)
+	return "/exports?" + v.Encode()
+}
+
+func init() {
+	for i := range reportNavEntries {
+		if reportNavEntries[i].ReportKey == "" {
+			continue
+		}
+		reportNavEntries[i].Href = reportExportHubHref(reportNavEntries[i].ReportKey)
+	}
+}
+
 var reportNavEntries = []navEntry{
 	{ID: "report:fraud-breakdown", Kind: "report", Label: "Fraud breakdown", Href: "/reports/fraud-breakdown", Meta: "fraud", Group: "reports", Permissions: []string{"campaigns:read", "campaigns:read:masked", "fraud:read"}, ReportKey: "fraud-breakdown"},
 	{ID: "report:customer-fraud-by-type", Kind: "report", Label: "Fraud by type", Href: "/reports/customer-fraud-by-type", Meta: "fraud", Group: "reports", Permissions: []string{"campaigns:read", "campaigns:read:masked", "fraud:read"}, ReportKey: "customer-fraud-by-type"},

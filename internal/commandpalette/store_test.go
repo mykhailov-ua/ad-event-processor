@@ -3,7 +3,6 @@ package commandpalette
 import (
 	"context"
 	"os"
-	"strings"
 	"testing"
 
 	db "ad-event-processor/internal/domain/db"
@@ -100,5 +99,5 @@ func TestCampaignRowsToCandidates_statusMapping(t *testing.T) {
 	items := campaignRowsToCandidates("camp", rows)
 	require.Len(t, items, 1)
 	assert.Equal(t, "campaign", items[0].item.Kind)
-	assert.True(t, strings.HasPrefix(items[0].item.Href, "/campaigns/"))
+	assert.Equal(t, "/campaigns/00000000-0000-4000-8000-000000000099/edit", items[0].item.Href)
 }

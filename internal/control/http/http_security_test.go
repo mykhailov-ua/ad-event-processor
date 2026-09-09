@@ -12,7 +12,7 @@ func TestContentSecurityPolicy(t *testing.T) {
 	t.Parallel()
 	assert.Equal(t, "default-src 'none'; frame-ancestors 'none'", contentSecurityPolicy("/api/v1/meta"))
 	assert.Contains(t, contentSecurityPolicy("/login"), "script-src 'self'")
-	assert.Contains(t, contentSecurityPolicy("/assets/login.js"), "style-src 'self'")
+	assert.Contains(t, contentSecurityPolicy("/login"), "style-src-attr 'unsafe-inline'")
 	assert.Contains(t, contentSecurityPolicy("/customers"), "font-src 'self'")
 	assert.Contains(t, contentSecurityPolicy("/customers"), "connect-src 'self'")
 }

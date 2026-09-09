@@ -22,6 +22,7 @@ func fullReadSnapshot() authz.Snapshot {
 			"rtb:read":              {},
 			"fraud:read":            {},
 			"audit:read":            {},
+			"shards:read":           {},
 		},
 		Mask: authz.MaskFull,
 	}
@@ -70,7 +71,7 @@ func TestSearchCatalog_costSyncRouteAndReport(t *testing.T) {
 		if item.Href == "/integrations/cost-sync" {
 			hasRoute = true
 		}
-		if item.Href == "/reports/cost-sync-coverage" {
+		if item.Href == reportExportHubHref("cost-sync-coverage") {
 			hasReport = true
 		}
 	}
@@ -103,7 +104,7 @@ func TestCommandPalette_search_licenseGatedReport_holdout(t *testing.T) {
 	})
 	items := mergeSearchResults(25, candidates)
 	for _, item := range items {
-		assert.NotEqual(t, "/reports/rtb-overview", item.Href)
+		assert.NotEqual(t, reportExportHubHref("rtb-overview"), item.Href)
 		assert.NotEqual(t, "/rtb", item.Href)
 	}
 }
@@ -119,8 +120,7 @@ func TestCommandPalette_action_requiresPermission_holdout(t *testing.T) {
 	candidates := searchCatalog(ctx, "campaign", 25, catalogKindSet{searchActions: true}, nil)
 	items := mergeSearchResults(25, candidates)
 	for _, item := range items {
-		assert.NotEqual(t, "/campaigns/new", item.Href)
-		assert.NotEqual(t, "/campaigns/migrate", item.Href)
+		assert.NotEqual(t, "action", item.Kind)
 	}
 }
 
@@ -132,7 +132,7 @@ func TestService_Search_mergesCatalogAndEntities(t *testing.T) {
 			ID:    "00000000-0000-4000-8000-000000000099",
 			Kind:  "campaign",
 			Label: "Camp Alpha",
-			Href:  "/campaigns/00000000-0000-4000-8000-000000000099",
+			Href:  "/campaigns/00000000-0000-4000-8000-000000000099/edit",
 			Group: "campaigns",
 		}},
 	}}
