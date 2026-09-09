@@ -1,3 +1,5 @@
+import { adminSpacing, adminTypography } from '@/lib/admin_kit';
+import { cn } from '@/lib/utils';
 import { ErrorBlock } from '@/shell/error_block';
 import { CommandPaletteRow } from '@/shell/command_palette_row';
 import { useCommandPalette } from '@/shell/use_command_palette';
@@ -35,7 +37,7 @@ export function CommandPalette({ open: controlledOpen, onOpenChange }: CommandPa
 
   return (
     <CommandDialog onOpenChange={setOpen} open={open} shouldFilter={false}>
-      <p  id="command-palette-description">
+      <p className="sr-only" id="command-palette-description">
         Search admin routes and entities. Press Ctrl+K or Cmd+K to reopen.
       </p>
       <CommandInput
@@ -45,17 +47,17 @@ export function CommandPalette({ open: controlledOpen, onOpenChange }: CommandPa
         onValueChange={setQuery}
       />
       {degraded ? (
-        <p >
+        <p className={cn('m-0 border-b border-border px-3 py-2', adminTypography.captionPlain)}>
           Search results may be incomplete.
         </p>
       ) : null}
       {paletteForbidden ? (
-        <div >
-          <ErrorBlock title="Command palette forbidden" message={activeError?.message ?? ''} />
+        <div className={adminSpacing.inset.bandLg}>
+          <ErrorBlock error={activeError} title="Command palette forbidden" />
         </div>
       ) : activeError && !paletteForbidden ? (
-        <div >
-          <ErrorBlock title="Command palette failed" message={activeError.message} />
+        <div className={adminSpacing.inset.bandLg}>
+          <ErrorBlock error={activeError} title="Command palette failed" />
         </div>
       ) : (
         <CommandList aria-label="Command palette results">

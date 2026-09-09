@@ -18,7 +18,7 @@ export function ThemeToggle({ showLabel = false }: ThemeToggleProps) {
   const button = (
     <Button
       aria-label={themeToggleLabel(theme)}
-      size={showLabel ? 'default' : 'icon'}
+      className={cn(!showLabel && 'size-7 p-0')}
       type="button"
       variant="outline"
       onClick={() => setTheme(nextTheme)}

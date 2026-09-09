@@ -7,6 +7,7 @@ export type EconomicsMicroRow = {
   roi_pct?: number;
 };
 
+/** Wire cost field preference only; no derived totals. */
 export function resolveEconomicsCostMicro(row: EconomicsMicroRow): number | undefined {
   if (row.cost_micro != null && Number.isFinite(row.cost_micro)) {
     return row.cost_micro;
@@ -20,37 +21,30 @@ export function resolveEconomicsCostMicro(row: EconomicsMicroRow): number | unde
   return undefined;
 }
 
+/** Server-authoritative profit micro; optional explicit fallback (e.g. true_profit_micro). */
 export function resolveEconomicsProfitMicro(
   row: EconomicsMicroRow,
   profitMicroFallback?: number
 ): number | undefined {
-  const revenueMicro = row.revenue_micro;
-  const costMicro = resolveEconomicsCostMicro(row);
-  if (
-    revenueMicro != null &&
-    costMicro != null &&
-    Number.isFinite(revenueMicro) &&
-    Number.isFinite(costMicro)
-  ) {
-    return revenueMicro - costMicro;
+  if (row.profit_micro != null && Number.isFinite(row.profit_micro)) {
+    return row.profit_micro;
   }
   if (profitMicroFallback != null && Number.isFinite(profitMicroFallback)) {
     return profitMicroFallback;
   }
-  return row.profit_micro;
+  return undefined;
 }
 
+/** Server-authoritative ROI percent; optional explicit fallback (e.g. true_roi_pct). */
 export function resolveEconomicsRoiPct(
   row: EconomicsMicroRow,
   roiPctFallback?: number
 ): number | undefined {
-  const costMicro = resolveEconomicsCostMicro(row);
-  const profitMicro = resolveEconomicsProfitMicro(row);
-  if (costMicro != null && costMicro > 0 && profitMicro != null) {
-    return (profitMicro / costMicro) * 100;
+  if (row.roi_pct != null && Number.isFinite(row.roi_pct)) {
+    return row.roi_pct;
   }
   if (roiPctFallback != null && Number.isFinite(roiPctFallback)) {
     return roiPctFallback;
   }
-  return row.roi_pct;
+  return undefined;
 }

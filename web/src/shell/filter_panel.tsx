@@ -2,6 +2,7 @@ import type { FormHTMLAttributes, HTMLAttributes, ReactNode } from 'react';
 
 import { Label } from '@/components/ui/label';
 import { adminKit } from '@/lib/admin_kit';
+import { adminSpacing } from '@/lib/admin_spacing';
 import { uiSurfaces } from '@/lib/ui_surfaces';
 import { cn } from '@/lib/utils';
 
@@ -94,6 +95,10 @@ export type FilterFieldProps = {
   htmlFor?: string;
   label: string;
   wide?: boolean;
+  /** Tighter label-to-control gap (filter matrices). */
+  compact?: boolean;
+  /** Skip visible label row; keep sr-only for a11y when label is set. */
+  hideLabel?: boolean;
 };
 
 export function FilterField({
@@ -101,12 +106,24 @@ export function FilterField({
   htmlFor,
   label,
   wide = false,
+  compact = false,
+  hideLabel = false,
 }: FilterFieldProps) {
   return (
-    <div className={cn('grid min-w-0', adminKit.fieldLabelGap, wide && 'md:col-span-2')}>
-      <Label className={DIRECTORY_FIELD_LABEL_CLASS} htmlFor={htmlFor}>
-        {label}
-      </Label>
+    <div
+      className={cn(
+        'grid min-w-0',
+        compact ? adminSpacing.gap.sm : adminKit.fieldLabelGap,
+        wide && 'md:col-span-2'
+      )}
+    >
+      {hideLabel ? (
+        <span className="sr-only">{label}</span>
+      ) : (
+        <Label className={DIRECTORY_FIELD_LABEL_CLASS} htmlFor={htmlFor}>
+          {label}
+        </Label>
+      )}
       {children}
     </div>
   );

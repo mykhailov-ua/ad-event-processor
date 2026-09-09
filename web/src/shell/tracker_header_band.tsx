@@ -3,6 +3,7 @@ import {
   TrackerShellHeaderSearch,
   TrackerShellSidebarToggle,
 } from '@/shell/tracker_shell_header';
+import { adminSpacing } from '@/lib/admin_spacing';
 import { PageBreadcrumbs } from '@/shell/page_breadcrumbs';
 import { shellChrome } from '@/shell/shell_chrome';
 import { cn } from '@/lib/utils';
@@ -22,9 +23,9 @@ export function TrackerHeaderBand({
 }: TrackerHeaderBandProps) {
   if (variant === 'bare') {
     return (
-      <div>
+      <div className={cn(shellChrome.trackerHeaderClass, 'justify-between')}>
         <TrackerShellSidebarToggle expanded={navigationExpanded} onToggle={onNavToggle} />
-        <PageBreadcrumbs  />
+        <PageBreadcrumbs />
         <TrackerShellHeaderSearch onOpenCommandPalette={onOpenCommandPalette} />
         <TrackerShellHeaderActions />
       </div>
@@ -32,15 +33,15 @@ export function TrackerHeaderBand({
   }
 
   return (
-    <header >
-      <div >
+    <header className={cn(shellChrome.trackerHeaderClass, adminSpacing.inset.headerX)}>
+      <div className={cn(adminSpacing.flex.headerStart, adminSpacing.gap.md)}>
         <TrackerShellSidebarToggle expanded={navigationExpanded} onToggle={onNavToggle} />
-        <PageBreadcrumbs  />
+        <PageBreadcrumbs />
       </div>
-      <div >
+      <div className={adminSpacing.flex.headerStart}>
         <TrackerShellHeaderSearch onOpenCommandPalette={onOpenCommandPalette} />
       </div>
-      <div >
+      <div className={adminSpacing.flex.headerEnd}>
         <TrackerShellHeaderActions />
       </div>
     </header>

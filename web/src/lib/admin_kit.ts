@@ -99,4 +99,8 @@ export function campaignStatusToAdminTone(
   }
 }
 
-export { adminSpacing, adminTypography } from '@/lib/admin_spacing';
+export {
+  adminSpacing,
+  adminTypography,
+  customerDetailSectionClass,
+} from '@/lib/admin_spacing';

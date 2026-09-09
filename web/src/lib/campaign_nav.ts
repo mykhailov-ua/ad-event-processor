@@ -1,3 +1,5 @@
+import { buildExportHubHref } from '@/lib/export_hub_paths';
+
 export function buildCampaignsDirectoryHref(params: {
   customerId?: string;
   from?: string;
@@ -18,8 +20,14 @@ export function buildCampaignsDirectoryHref(params: {
   return query ? `/campaigns?${query}` : '/campaigns';
 }
 
-export function campaignReportPath(_campaignId: string): string | null {
-  return null;
+export function campaignReportPath(campaignId: string): string {
+  return buildExportHubHref({
+    kind: 'report',
+    reportKey: 'campaign-stats',
+    entry: 'report-campaign-stats',
+    format: 'csv',
+    returnTo: campaignEditPath(campaignId),
+  });
 }
 
 export function campaignEditPath(campaignId: string): string {

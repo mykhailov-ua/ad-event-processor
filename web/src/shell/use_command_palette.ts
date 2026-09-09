@@ -2,7 +2,6 @@ import { useCallback, useEffect, useMemo, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 
 import {
-  listCommandPaletteRecents,
   recordCommandPaletteOpen,
   recordCommandPaletteRecent,
   searchCommandPalette,
@@ -10,6 +9,8 @@ import {
 } from '@/api/command_palette_api';
 import { ApiError } from '@/api/client';
 import { useResource } from '@/api/use_resource';
+import { resolveCommandPaletteHref } from '@/lib/command_palette_href';
+import { fetchCommandPaletteRecentsCached } from '@/lib/command_palette_recents_cache';
 import { fetchCommandPaletteRoutesCached } from '@/lib/command_palette_routes_cache';
 import { useSession } from '@/hooks/use_session';
 import { useCommandPaletteContextualState } from '@/shell/command_palette_contextual';
@@ -18,13 +19,6 @@ const SEARCH_DEBOUNCE_MS = 250;
 
 function skipLazyFetch(): Promise<never> {
   return Promise.reject(new DOMException('Skipped', 'AbortError'));
-}
-
-function normalizeHref(href: string): string {
-  if (href.startsWith('/')) {
-    return href;
-  }
-  return `/${href}`;
 }
 
 export type UseCommandPaletteOptions = {
@@ -84,20 +78,22 @@ export function useCommandPalette({
     return () => window.clearTimeout(timer);
   }, [customerId, isSearching, open, trimmedQuery]);
 
-  const catalogResource = useResource(
+  const routesResource = useResource(
     async (signal) => {
       if (!open) {
         return skipLazyFetch();
       }
-      const routes = await fetchCommandPaletteRoutesCached(signal);
-      if (!customerId) {
-        return { routes, recents: [] };
+      return fetchCommandPaletteRoutesCached(signal);
+    },
+    [open]
+  );
+
+  const recentsResource = useResource(
+    async (signal) => {
+      if (!open || !customerId) {
+        return skipLazyFetch();
       }
-      const recentsResponse = await listCommandPaletteRecents(customerId, signal);
-      return {
-        routes,
-        recents: recentsResponse.items ?? [],
-      };
+      return fetchCommandPaletteRecentsCached(customerId, signal);
     },
     [customerId, open]
   );
@@ -119,8 +115,8 @@ export function useCommandPalette({
     [customerId, debouncedQuery, open]
   );
 
-  const routes = catalogResource.data?.routes ?? [];
-  const recents = catalogResource.data?.recents ?? [];
+  const routes = routesResource.data ?? [];
+  const recents = recentsResource.data ?? [];
   const contextualItems = useMemo(
     () => contextualActions.map((action) => action.item),
     [contextualActions]
@@ -134,9 +130,10 @@ export function useCommandPalette({
 
   const searchItems = searchResource.data?.items ?? [];
   const degraded = searchResource.data?.degraded === true;
-  const catalogError = catalogResource.error;
+  const catalogError = routesResource.error ?? recentsResource.error;
   const searchError = searchResource.error;
-  const catalogLoading = catalogResource.fetching;
+  const catalogLoading =
+    routesResource.fetching || (customerId ? recentsResource.fetching : false);
   const searchLoading = searchResource.fetching;
 
   const activeError = isSearching ? searchError : catalogError;
@@ -154,7 +151,7 @@ export function useCommandPalette({
       if (customerId) {
         void recordCommandPaletteRecent({ customer_id: customerId, item }).catch(() => undefined);
       }
-      navigate(normalizeHref(item.href));
+      navigate(resolveCommandPaletteHref(item.href));
     },
     [customerId, navigate, resolveRun, setOpen]
   );

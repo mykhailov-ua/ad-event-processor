@@ -1,3 +1,5 @@
+import { Button } from '@/components/ui/button';
+import { adminKit } from '@/lib/admin_kit';
 import { uiSurfaces } from '@/lib/ui_surfaces';
 import { cn } from '@/lib/utils';
 import { ChipRow } from '@/shell/ui_bands';
@@ -13,16 +15,22 @@ export type ToggleChipGroupProps<T extends string> = {
   value: T;
   onChange: (value: T) => void;
   countsLoading?: boolean;
+  className?: string;
 };
+
+const CHIP_IDLE =
+  'border-border bg-card text-foreground hover:border-foreground/35 hover:bg-accent hover:text-foreground';
+const CHIP_ACTIVE = 'border-primary bg-primary text-primary-foreground hover:border-primary hover:bg-primary';
 
 export function ToggleChipGroup<T extends string>({
   options,
   value,
   onChange,
   countsLoading = false,
+  className,
 }: ToggleChipGroupProps<T>) {
   return (
-    <ChipRow >
+    <ChipRow className={className}>
       {options.map((option) => {
         const selected = value === option.value;
         const countLabel =
@@ -33,20 +41,24 @@ export function ToggleChipGroup<T extends string>({
               : '0';
 
         return (
-          <button
+          <Button
             key={option.value || 'all'}
             aria-pressed={selected}
-           
-            onClick={() => onChange(option.value)}
+            className={cn(
+              uiSurfaces.chip,
+              adminKit.nestedRadius,
+              'font-semibold',
+              selected ? CHIP_ACTIVE : CHIP_IDLE
+            )}
             type="button"
+            variant="outline"
+            onClick={() => onChange(option.value)}
           >
             {option.label}
-            <span
-             
-            >
+            <span className={cn(uiSurfaces.chipCount, selected ? '' : 'text-muted-foreground')}>
               {countLabel}
             </span>
-          </button>
+          </Button>
         );
       })}
     </ChipRow>

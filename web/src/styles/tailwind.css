@@ -10,7 +10,7 @@
 
 @layer base {
   :root {
-    /* pgAdmin standard theme (light.js + styleguide color palettes) */
+    /* AEP Muted Cool (light) -- web/DESIGN.md */
     --background: 220 27% 92%;
     --foreground: 0 0% 13%;
     --card: 0 0% 100%;
@@ -22,10 +22,10 @@
     --secondary: 220 27% 94%;
     --secondary-foreground: 0 0% 13%;
     --muted: 220 33% 97%;
-    --muted-foreground: 223 11% 45%;
+    --muted-foreground: 220 9% 46%;
     --accent: 220 27% 94%;
     --accent-foreground: 0 0% 13%;
-    --destructive: 1 76% 55%;
+    --destructive: 6 50% 45%;
     --destructive-foreground: 0 0% 100%;
     --border: 220 14% 88%;
     --input: 220 14% 88%;
@@ -36,8 +36,8 @@
     --scrollbar-track: 218 14% 77%;
 
     --chart-1: 206 48% 38%;
-    --chart-2: 123 46% 45%;
-    --chart-3: 35 84% 57%;
+    --chart-2: 124 32% 34%;
+    --chart-3: 38 42% 42%;
     --chart-4: 223 11% 45%;
     --chart-5: 199 88% 92%;
 
@@ -46,38 +46,38 @@
     --admin-brand-fg: 0 0% 100%;
     --admin-fg: 0 0% 13%;
     --admin-fg-strong: 0 0% 9%;
-    --admin-fg-secondary: 223 11% 45%;
+    --admin-fg-secondary: 222 10% 40%;
     --admin-muted: 220 12% 58%;
-    --admin-positive-fg: 123 46% 45%;
-    --admin-negative-fg: 1 76% 55%;
+    --admin-positive-fg: 124 32% 34%;
+    --admin-negative-fg: 6 50% 45%;
     --admin-metric-zero-fg: 220 12% 58%;
     --admin-metric-conversion-fg: 206 48% 38%;
     --admin-header-faq-bg: 206 48% 42%;
     --admin-header-faq-hover: 206 48% 38%;
-    --admin-status-active: 123 46% 45%;
-    --admin-status-paused: 35 84% 57%;
+    --admin-status-active: 124 32% 34%;
+    --admin-status-paused: 38 42% 42%;
     --admin-status-draft: 223 11% 45%;
-    --admin-status-scheduled: 35 84% 57%;
-    --admin-warn-fg: 35 84% 45%;
-    --admin-warn-bg: 35 90% 92%;
-    --admin-warn-border: 35 84% 75%;
-    --admin-filters-bg: 220 33% 97%;
+    --admin-status-scheduled: 38 42% 42%;
+    --admin-warn-fg: 38 42% 42%;
+    --admin-warn-bg: 38 45% 94%;
+    --admin-warn-border: 38 35% 75%;
+    --admin-filters-bg: 220 27% 92%;
     --admin-table-header-bg: 220 33% 97%;
     --admin-table-pin-bg: 0 0% 100%;
     --admin-table-row-hover: 220 27% 94%;
     --admin-table-totals-bg: 220 33% 97%;
-    --admin-selection: 199 88% 92%;
+    --admin-selection: 206 36% 92%;
     --admin-input-disabled: 220 33% 97%;
     --admin-control-bg: 0 0% 98%;
 
-    --admin-row-selected-bg: 199 88% 92%;
+    --admin-row-selected-bg: 206 36% 92%;
     --admin-row-selected-edge: 206 48% 38%;
     --admin-row-muted-bg: 220 27% 94%;
     --admin-row-muted-edge: 220 12% 58%;
-    --admin-row-warning-bg: 35 90% 92%;
-    --admin-row-warning-edge: 35 84% 45%;
-    --admin-row-critical-bg: 1 76% 95%;
-    --admin-row-critical-edge: 1 76% 55%;
+    --admin-row-warning-bg: 38 45% 94%;
+    --admin-row-warning-edge: 38 42% 42%;
+    --admin-row-critical-bg: 6 45% 95%;
+    --admin-row-critical-edge: 6 50% 45%;
 
     --page-canvas-padding-block: 2rem;
     --tracker-header-height: 2.75rem;
@@ -87,14 +87,14 @@
   }
 
   .dark {
-    /* pgAdmin dark theme (dark.js) */
+    /* AEP Muted Cool (dark, canonical) -- web/DESIGN.md */
     --background: 0 0% 8%;
     --foreground: 0 0% 83%;
     --card: 0 0% 12%;
     --card-foreground: 0 0% 83%;
-    --popover: 0 0% 12%;
+    --popover: 0 0% 13%;
     --popover-foreground: 0 0% 83%;
-    --primary: 206 52% 28%;
+    --primary: 210 32% 37%;
     --primary-foreground: 0 0% 100%;
     --secondary: 0 0% 20%;
     --secondary-foreground: 0 0% 83%;
@@ -102,19 +102,19 @@
     --muted-foreground: 0 0% 54%;
     --accent: 0 0% 20%;
     --accent-foreground: 0 0% 83%;
-    --destructive: 6 63% 60%;
+    --destructive: 6 35% 58%;
     --destructive-foreground: 0 0% 100%;
     --border: 0 0% 16%;
     --input: 0 0% 16%;
-    --ring: 206 52% 28%;
-    --scrollbar-thumb: 0 0% 26%;
+    --ring: 206 46% 32%;
+    --scrollbar-thumb: 210 12% 28%;
     --scrollbar-track: 0 0% 16%;
 
     --chart-1: 206 52% 28%;
-    --chart-2: 124 55% 33%;
-    --chart-3: 35 84% 57%;
-    --chart-4: 0 0% 54%;
-    --chart-5: 200 11% 23%;
+    --chart-2: 124 32% 42%;
+    --chart-3: 38 42% 50%;
+    --chart-4: 210 20% 45%;
+    --chart-5: 206 36% 19%;
 
     --admin-brand: 206 52% 28%;
     --admin-brand-hover: 206 52% 22%;
@@ -122,37 +122,37 @@
     --admin-fg: 0 0% 83%;
     --admin-fg-strong: 0 0% 93%;
     --admin-fg-secondary: 0 0% 72%;
-    --admin-muted: 0 0% 54%;
-    --admin-positive-fg: 124 55% 33%;
-    --admin-negative-fg: 6 63% 60%;
+    --admin-muted: 0 0% 40%;
+    --admin-positive-fg: 124 32% 42%;
+    --admin-negative-fg: 6 35% 58%;
     --admin-metric-zero-fg: 0 0% 54%;
-    --admin-metric-conversion-fg: 206 52% 40%;
-    --admin-header-faq-bg: 206 52% 34%;
-    --admin-header-faq-hover: 206 52% 38%;
-    --admin-status-active: 124 55% 33%;
-    --admin-status-paused: 35 84% 57%;
+    --admin-metric-conversion-fg: 206 38% 48%;
+    --admin-header-faq-bg: 206 52% 28%;
+    --admin-header-faq-hover: 206 46% 32%;
+    --admin-status-active: 124 32% 42%;
+    --admin-status-paused: 38 42% 50%;
     --admin-status-draft: 0 0% 54%;
-    --admin-status-scheduled: 35 84% 57%;
-    --admin-warn-fg: 35 84% 57%;
-    --admin-warn-bg: 38 48% 16%;
-    --admin-warn-border: 38 42% 28%;
+    --admin-status-scheduled: 38 42% 50%;
+    --admin-warn-fg: 38 42% 50%;
+    --admin-warn-bg: 38 35% 14%;
+    --admin-warn-border: 38 32% 24%;
     --admin-filters-bg: 0 0% 8%;
     --admin-table-header-bg: 0 0% 16%;
     --admin-table-pin-bg: 0 0% 14%;
     --admin-table-row-hover: 0 0% 20%;
     --admin-table-totals-bg: 0 0% 16%;
-    --admin-selection: 200 11% 23%;
+    --admin-selection: 206 36% 19%;
     --admin-input-disabled: 0 0% 20%;
     --admin-control-bg: 0 0% 10%;
 
-    --admin-row-selected-bg: 200 11% 23%;
-    --admin-row-selected-edge: 206 52% 40%;
+    --admin-row-selected-bg: 206 36% 19%;
+    --admin-row-selected-edge: 206 46% 32%;
     --admin-row-muted-bg: 0 0% 14%;
     --admin-row-muted-edge: 0 0% 42%;
-    --admin-row-warning-bg: 38 48% 15%;
-    --admin-row-warning-edge: 35 84% 57%;
-    --admin-row-critical-bg: 6 42% 14%;
-    --admin-row-critical-edge: 6 63% 60%;
+    --admin-row-warning-bg: 38 35% 14%;
+    --admin-row-warning-edge: 38 42% 50%;
+    --admin-row-critical-bg: 6 30% 14%;
+    --admin-row-critical-edge: 6 35% 58%;
   }
 
   html {

@@ -36,7 +36,7 @@ export function ListRefreshBand({
         {statusText}
       </span>
       <Button
-        aria-busy={loading || undefined}
+        className={cn('size-7 shrink-0 p-0', busy && 'pointer-events-none')} aria-busy={loading || undefined}
         aria-label={ariaLabel}
         disabled={busy}
         title={title ?? ariaLabel}
@@ -49,7 +49,7 @@ export function ListRefreshBand({
           onRefresh();
         }}
       >
-        <RefreshCw aria-hidden className={loading ? 'animate-spin' : undefined} />
+        <RefreshCw className={cn('h-4 w-4 shrink-0', loading && 'animate-spin')} aria-hidden />
       </Button>
     </div>
   );

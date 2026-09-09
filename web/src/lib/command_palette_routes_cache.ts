@@ -4,7 +4,7 @@ let cachedRoutes: CommandPaletteItem[] | undefined;
 let inflightRoutes: Promise<CommandPaletteItem[]> | undefined;
 
 /**
- * Fetches command palette routes once per browser session; recents stay fresh on each open.
+ * Fetches command palette routes once per browser session; parallel mounts share inflight.
  */
 export function fetchCommandPaletteRoutesCached(
   signal?: AbortSignal

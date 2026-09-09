@@ -37,7 +37,6 @@ const Toaster = ({ ...props }: ToasterProps) => {
     <Sonner
       className="toaster"
       closeButton={false}
-      cn={cn}
       duration={TOAST_DURATION_MS}
       expand={false}
       gap={8}

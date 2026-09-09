@@ -1,6 +1,6 @@
 import * as React from 'react';
 
-import { adminKit } from '@/lib/admin_kit';
+import { adminKit, adminSpacing, adminTypography } from '@/lib/admin_kit';
 import { uiSurfaces } from '@/lib/ui_surfaces';
 import { cn } from '@/lib/utils';
 
@@ -18,35 +18,35 @@ Card.displayName = 'Card';
 
 const CardHeader = React.forwardRef<HTMLDivElement, React.HTMLAttributes<HTMLDivElement>>(
   ({ className, ...props }, ref) => (
-    <div ref={ref} className={cn('flex flex-col gap-1.5', className)} {...props} />
+    <div ref={ref} className={cn(adminSpacing.stack.titleBlock, className)} {...props} />
   )
 );
 CardHeader.displayName = 'CardHeader';
 
 const CardTitle = React.forwardRef<HTMLDivElement, React.HTMLAttributes<HTMLDivElement>>(
   ({ className, ...props }, ref) => (
-    <div ref={ref} className={cn('text-lg font-bold tracking-tight text-foreground', className)} {...props} />
+    <div ref={ref} className={cn(adminTypography.sectionTitle, className)} {...props} />
   )
 );
 CardTitle.displayName = 'CardTitle';
 
 const CardDescription = React.forwardRef<HTMLDivElement, React.HTMLAttributes<HTMLDivElement>>(
   ({ className, ...props }, ref) => (
-    <div ref={ref} className={cn('text-sm text-muted-foreground', className)} {...props} />
+    <div ref={ref} className={cn(adminTypography.bodyMuted, className)} {...props} />
   )
 );
 CardDescription.displayName = 'CardDescription';
 
 const CardContent = React.forwardRef<HTMLDivElement, React.HTMLAttributes<HTMLDivElement>>(
   ({ className, ...props }, ref) => (
-    <div ref={ref} className={cn('grid gap-4', className)} {...props} />
+    <div ref={ref} className={cn(`grid ${adminSpacing.gap.xl}`, className)} {...props} />
   )
 );
 CardContent.displayName = 'CardContent';
 
 const CardFooter = React.forwardRef<HTMLDivElement, React.HTMLAttributes<HTMLDivElement>>(
   ({ className, ...props }, ref) => (
-    <div ref={ref} className={cn('flex items-center gap-2', className)} {...props} />
+    <div ref={ref} className={cn(adminSpacing.flex.buttonGroup, className)} {...props} />
   )
 );
 CardFooter.displayName = 'CardFooter';

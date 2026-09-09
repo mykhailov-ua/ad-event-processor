@@ -2,10 +2,10 @@ import { useEffect } from 'react';
 
 import { Loader2 } from 'lucide-react';
 
+import { adminSpacing, adminTypography } from '@/lib/admin_spacing';
+import { uiMessageSurfaceClass } from '@/lib/ui_surfaces';
 import { AdminError } from '@/shell/admin_error';
-import { uiSurfaces } from '@/lib/ui_surfaces';
 import { cn } from '@/lib/utils';
-
 export type AsyncStatusPhase = 'idle' | 'pending' | 'ready' | 'error';
 
 export type AsyncStatusBannerProps = {
@@ -43,7 +43,7 @@ export function AsyncStatusBanner({
 
   if (phase === 'error' && error) {
     return (
-      <div >
+      <div className={uiMessageSurfaceClass('error')}>
         <AdminError error={error} title="Export failed" variant="inline" />
       </div>
     );
@@ -53,10 +53,10 @@ export function AsyncStatusBanner({
     return (
       <div
         aria-live="polite"
-       
+        className={uiMessageSurfaceClass('success')}
         role="status"
       >
-        <p >{readyLabel}</p>
+        <p className={adminTypography.body}>{readyLabel}</p>
       </div>
     );
   }
@@ -65,11 +65,11 @@ export function AsyncStatusBanner({
     <div
       aria-busy="true"
       aria-live="polite"
-     
+      className={cn(uiMessageSurfaceClass('muted'), adminSpacing.flex.statusBanner)}
       role="status"
     >
-      <Loader2  aria-hidden />
-      <p >{pendingLabel}</p>
+      <Loader2 aria-hidden className="h-4 w-4 shrink-0 animate-spin" />
+      <p className={adminTypography.body}>{pendingLabel}</p>
     </div>
   );
 }

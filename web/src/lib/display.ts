@@ -1,16 +1,22 @@
 import { formatDistanceToNow, isValid, parseISO } from 'date-fns';
 
-// Display helpers for Cold directory cells (ui.mdc): prefer server *_display; never recompute money/status rules.
-/** Prefer server *_display fields; fall back to wire micro integer. */
+const MICRO_PER_USD = 1_000_000;
+
+// Display helpers for Cold directory cells (ui.mdc): prefer server *_display; format wire micro as USD.
+/** Prefer server *_display fields; otherwise format wire micro integer as USD. */
 export function displayMicro(value?: number | null, display?: string | null): string {
   const formatted = display?.trim();
   if (formatted) {
     return formatted;
   }
-  if (value == null) {
+  if (value == null || !Number.isFinite(value)) {
     return '';
   }
-  return String(value);
+  const usd = value / MICRO_PER_USD;
+  return new Intl.NumberFormat('en-US', {
+    minimumFractionDigits: 2,
+    maximumFractionDigits: 2,
+  }).format(usd);
 }
 
 /** Prefer server *_display fields; fall back to wire count integer. */

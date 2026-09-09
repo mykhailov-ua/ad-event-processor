@@ -1,8 +1,11 @@
 import type { ReactNode } from 'react';
 
 import { ApiError } from '@/api/client';
+import { adminTypography } from '@/lib/admin_kit';
+import { cn } from '@/lib/utils';
 import { PrimaryActionButton } from '@/shell/action_buttons';
 import { ErrorBlock } from '@/shell/error_block';
+import { PageSkeleton } from '@/shell/page_skeleton';
 import { useEulaGate } from '@/shell/use_eula_gate';
 import {
   Dialog,
@@ -23,11 +26,11 @@ export function EulaGate({ children }: EulaGateProps) {
     useEulaGate();
 
   if (loading) {
-    return null;
+    return <PageSkeleton />;
   }
 
   if (error && !(error instanceof ApiError && error.status === 404)) {
-    return <ErrorBlock title="Could not load EULA status" message={error.message} />;
+    return <ErrorBlock title="Could not load EULA status" error={error} />;
   }
 
   return (
@@ -35,7 +38,7 @@ export function EulaGate({ children }: EulaGateProps) {
       {children}
       <Dialog open={blocked} onOpenChange={() => undefined}>
         <DialogContent
-         
+          className="max-w-2xl p-0"
           onEscapeKeyDown={(event) => event.preventDefault()}
           onInteractOutside={(event) => event.preventDefault()}
         >
@@ -47,12 +50,12 @@ export function EulaGate({ children }: EulaGateProps) {
           </DialogHeader>
 
           <DialogBody>
-            <div >
+            <div className={cn('border border-border whitespace-pre-wrap', adminTypography.body)}>
               {eulaText?.trim() ? eulaText : 'EULA text unavailable from server.'}
             </div>
 
             {acceptError ? (
-              <ErrorBlock title="Accept failed" message={acceptError.message} />
+              <ErrorBlock title="Accept failed" error={acceptError} />
             ) : null}
           </DialogBody>
 
@@ -67,7 +70,7 @@ export function EulaGate({ children }: EulaGateProps) {
                 Accept EULA
               </PrimaryActionButton>
             ) : (
-              <p >
+              <p className={adminTypography.bodyMuted}>
                 Your session lacks settings:write permission required to accept the EULA.
               </p>
             )}

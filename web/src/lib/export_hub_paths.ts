@@ -32,7 +32,9 @@ export function resolveExportHubReturnHref(
   searchParams: URLSearchParams,
   fallback = '/campaigns'
 ): string {
-  const fromQuery = normalizeExportHubReturnTo(searchParams.get(EXPORT_HUB_RETURN_TO_PARAM));
+  const fromQuery = normalizeExportHubReturnTo(
+    searchParams.get(EXPORT_HUB_RETURN_TO_PARAM) ?? undefined
+  );
   if (fromQuery) {
     return fromQuery;
   }

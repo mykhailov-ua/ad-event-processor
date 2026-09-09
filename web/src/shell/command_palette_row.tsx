@@ -9,10 +9,10 @@ export type CommandPaletteRowProps = {
 export function CommandPaletteRow({ item, onSelect }: CommandPaletteRowProps) {
   return (
     <CommandItem value={item.id} onSelect={() => onSelect(item)}>
-      <span >
-        <span >{item.label}</span>
+      <span className="min-w-0 flex-1" >
+        <span className="block font-medium" >{item.label}</span>
         {item.meta ? (
-          <span >
+          <span className="block whitespace-normal text-xs text-muted-foreground" >
             {item.meta}
           </span>
         ) : null}

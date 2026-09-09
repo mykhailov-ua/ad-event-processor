@@ -5,6 +5,7 @@ import {
   INLINE_FILTER_ACTION_GRID_WIDE_CLASS,
 } from '@/shell/filter_panel';
 import { Input } from '@/components/ui/input';
+import { adminTypography } from '@/lib/admin_kit';
 
 export type CustomerScopeBarProps = {
   draftCustomerId: string;
@@ -20,11 +21,11 @@ export function CustomerScopeBar({
   onApply,
 }: CustomerScopeBarProps) {
   return (
-    <FilterPanel >
-      <h2 >Customer scope</h2>
+    <FilterPanel className="gap-2" >
+      <h2 className={adminTypography.sectionTitle}>Customer scope</h2>
       <form
        
-        onSubmit={(event) => {
+        className={INLINE_FILTER_ACTION_GRID_WIDE_CLASS} onSubmit={(event) => {
           event.preventDefault();
           onApply();
         }}
@@ -40,11 +41,11 @@ export function CustomerScopeBar({
         <FilterApplyButton>Apply</FilterApplyButton>
       </form>
       {appliedCustomerId ? (
-        <p >
-          Active scope: <span >{appliedCustomerId}</span>
+        <p className={adminTypography.bodyMuted} >
+          Active scope: <span className="font-mono text-xs text-foreground" >{appliedCustomerId}</span>
         </p>
       ) : (
-        <p >
+        <p className={adminTypography.bodyMuted} >
           Set customer_id for scoped integration reads and writes.
         </p>
       )}

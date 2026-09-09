@@ -42,7 +42,7 @@ const TooltipTrigger = React.forwardRef<
   React.HTMLAttributes<HTMLElement> & { asChild?: boolean }
 >(
   (
-    { asChild = false, onMouseEnter, onMouseLeave, onFocus, onBlur, children, ...props },
+    { asChild = false, onMouseEnter, onMouseLeave, onFocus, onBlur, children, className, ...props },
     ref
   ) => {
     const { setOpen, triggerRef } = useTooltipContext();
@@ -87,7 +87,7 @@ const TooltipTrigger = React.forwardRef<
     }
 
     return (
-      <span ref={mergedRef} {...handlers} {...props}>
+      <span className={cn('inline-flex', className)} ref={mergedRef} {...handlers} {...props}>
         {children}
       </span>
     );

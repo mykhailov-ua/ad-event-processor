@@ -5,6 +5,7 @@ import {
   INLINE_FILTER_ACTION_GRID_WIDE_CLASS,
 } from '@/shell/filter_panel';
 import { Input } from '@/components/ui/input';
+import { adminTypography } from '@/lib/admin_kit';
 
 export type CampaignScopeBarProps = {
   draftCampaignId: string;
@@ -20,11 +21,11 @@ export function CampaignScopeBar({
   onApply,
 }: CampaignScopeBarProps) {
   return (
-    <FilterPanel >
-      <h2 >Campaign scope</h2>
+    <FilterPanel className="gap-2" >
+      <h2 className={adminTypography.sectionTitle}>Campaign scope</h2>
       <form
        
-        onSubmit={(event) => {
+        className={INLINE_FILTER_ACTION_GRID_WIDE_CLASS} onSubmit={(event) => {
           event.preventDefault();
           onApply();
         }}
@@ -39,11 +40,11 @@ export function CampaignScopeBar({
         <FilterApplyButton>Apply</FilterApplyButton>
       </form>
       {appliedCampaignId ? (
-        <p >
-          Active scope: <span >{appliedCampaignId}</span>
+        <p className={adminTypography.bodyMuted} >
+          Active scope: <span className="font-mono text-xs text-foreground" >{appliedCampaignId}</span>
         </p>
       ) : (
-        <p >
+        <p className={adminTypography.bodyMuted} >
           Set campaign_id for scoped margin guard reads.
         </p>
       )}

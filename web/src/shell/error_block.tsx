@@ -1,6 +1,7 @@
 import { AdminErrorDetails } from '@/shell/admin_error_details';
 import { uiSurfaces } from '@/lib/ui_surfaces';
 import { formatAdminErrorDetails, userErrorMessage } from '@/lib/admin_error';
+import { isValidationError, validationErrorMessage } from '@/lib/admin_validation_error';
 import { cn } from '@/lib/utils';
 
 type ErrorBlockProps = {
@@ -16,7 +17,11 @@ export function ErrorBlock({
   error,
   componentStack,
 }: ErrorBlockProps) {
-  const resolvedMessage = message ?? userErrorMessage(error, 'Request failed.');
+  const resolvedMessage =
+    message ??
+    (error != null && isValidationError(error)
+      ? validationErrorMessage(error)
+      : userErrorMessage(error, 'Request failed.'));
   const details =
     error != null || componentStack ? formatAdminErrorDetails(error, componentStack) : '';
 

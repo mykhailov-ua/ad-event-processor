@@ -2,7 +2,7 @@ import { NavLink } from 'react-router-dom';
 
 import { Button } from '@/components/ui/button';
 import { Sheet, SheetContent, SheetTitle } from '@/components/ui/sheet';
-import { adminKit } from '@/lib/admin_kit';
+import { adminKit, adminSpacing, adminTypography } from '@/lib/admin_kit';
 import { productDisplayName } from '@/lib/product_display_name';
 import { AdminMark } from '@/shell/admin_mark';
 import type { TrackerNavGroup, TrackerNavItem } from '@/lib/tracker_nav';
@@ -11,20 +11,19 @@ import { cn } from '@/lib/utils';
 /** Baseline sidebar width and nav link chrome (pgAdmin tree selection palette). */
 const SIDEBAR_WIDTH_CLASS = 'w-64';
 const SIDEBAR_NAV_LINK_BASE = cn(
-  'flex items-center gap-2 px-2.5 py-1 text-[13px] leading-[18px] font-medium no-underline transition-colors',
+  'flex items-center no-underline transition-colors',
+  adminSpacing.gap.sm,
+  adminSpacing.inset.navItemX,
+  adminSpacing.inset.navItemY,
+  adminTypography.label,
   adminKit.nestedRadius
 );
 const SIDEBAR_NAV_ACTIVE = 'bg-admin-selection font-semibold text-foreground';
 const SIDEBAR_NAV_IDLE = 'text-foreground hover:bg-accent';
-const SIDEBAR_NAV_SCROLL_CLASS =
-  'scrollbar-admin flex min-h-0 flex-1 flex-col overflow-y-auto overscroll-y-contain px-2.5 pb-2';
-
-export type AppSidebarProps = {
-  collapsed: boolean;
-  groups: TrackerNavGroup[];
-  signingOut: boolean;
-  onSignOut: () => void;
-};
+const SIDEBAR_NAV_SCROLL_CLASS = cn(
+  'scrollbar-admin flex min-h-0 flex-1 flex-col overflow-y-auto overscroll-y-contain pb-2',
+  adminSpacing.inset.sidebarX
+);
 
 export type AppSidebarNavProps = {
   groups: TrackerNavGroup[];
@@ -41,7 +40,7 @@ export type AppMobileNavSheetProps = {
 
 function AppSidebarBrand() {
   return (
-    <div className="flex shrink-0 items-center gap-2.5 border-b border-border px-4 py-3">
+    <div className={cn('flex shrink-0 items-center border-b border-border', adminSpacing.gap.sm, adminSpacing.inset.bandLg)}>
       <span
         aria-hidden
         className={cn(
@@ -51,7 +50,7 @@ function AppSidebarBrand() {
       >
         <AdminMark className="h-4 w-4" />
       </span>
-      <span className="whitespace-nowrap text-sm font-bold leading-5 tracking-tight text-foreground">
+      <span className={cn('whitespace-nowrap tracking-tight', adminTypography.sectionTitle)}>
         {productDisplayName}
       </span>
     </div>
@@ -90,7 +89,7 @@ export function AppSidebarNav({ groups, onNavigate }: AppSidebarNavProps) {
     >
       {groups.map((group) => (
         <section key={group.id} className="mb-2">
-          <h2 className="px-2.5 py-1.5 text-[11px] font-semibold uppercase leading-[14px] text-muted-foreground">
+          <h2 className={cn(adminSpacing.inset.navGroupLabel, adminKit.labelCaps)}>
             {group.label}
           </h2>
           {group.items.map((item) => (
@@ -121,7 +120,7 @@ export function AppMobileNavSheet({
         <SheetTitle className="sr-only">Navigation</SheetTitle>
         <AppSidebarBrand />
         <AppSidebarNav groups={groups} onNavigate={() => onOpenChange(false)} />
-        <div className="shrink-0 border-t border-border p-2">
+        <div className={adminSpacing.inset.bandCompact}>
           <Button
             className="w-full"
             disabled={signingOut}
@@ -135,32 +134,5 @@ export function AppMobileNavSheet({
         </div>
       </SheetContent>
     </Sheet>
-  );
-}
-
-export function AppSidebar({ collapsed, groups, signingOut, onSignOut }: AppSidebarProps) {
-  return (
-    <aside
-      className={cn(
-        'h-full min-h-0 shrink-0 flex-col overflow-hidden border-r border-border bg-card text-card-foreground',
-        SIDEBAR_WIDTH_CLASS,
-        collapsed ? 'hidden' : 'hidden md:flex'
-      )}
-    >
-      <AppSidebarBrand />
-      <AppSidebarNav groups={groups} />
-      <div className="shrink-0 border-t border-border p-2">
-        <Button
-          className="w-full"
-          disabled={signingOut}
-          loading={signingOut}
-          type="button"
-          variant="outline"
-          onClick={onSignOut}
-        >
-          Sign out
-        </Button>
-      </div>
-    </aside>
   );
 }

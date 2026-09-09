@@ -4,7 +4,6 @@ import { Link } from 'react-router-dom';
 import { Button } from '@/components/ui/button';
 import { adminSpacing, adminTypography } from '@/lib/admin_spacing';
 import { cn } from '@/lib/utils';
-
 type EmptyStateVariant = 'default' | 'no-results' | 'blank-slate';
 
 type EmptyStateProps = {

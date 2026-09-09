@@ -45,6 +45,20 @@ export const adminSpacing = {
     emptyState: 'px-6 py-16',
     /** Sidebar nav item horizontal inset. */
     navItemX: 'px-2.5',
+    /** Sidebar nav link vertical inset. */
+    navItemY: 'py-1',
+    /** Sidebar group label inset. */
+    navGroupLabel: 'px-2.5 py-1.5',
+    /** Sidebar scroll container horizontal inset. */
+    sidebarX: 'px-2.5',
+    /** App header horizontal inset. */
+    headerX: 'px-3 md:px-4',
+    /** Combobox / listbox message rows. */
+    listMessage: 'px-3 py-2',
+    /** Combobox section heading inset. */
+    listHeading: 'px-3 py-1',
+    /** Combobox section vertical band. */
+    listSectionY: 'py-1',
   },
   stack: {
     /** Title + description lines in page header. */
@@ -61,13 +75,21 @@ export const adminSpacing = {
     sectionStack:
       'flex flex-col gap-3 border-t border-border pt-3 first:border-t-0 first:pt-0',
     footer: 'flex shrink-0 flex-wrap items-center gap-3 border-0 border-t border-border bg-transparent',
+    /** App header three-zone row (nav | search overlay | account). */
+    headerBar: 'relative flex h-full items-center gap-3',
+    headerStart: 'relative z-[1] flex min-w-0 items-center',
+    headerEnd: 'relative z-[1] flex min-w-0 items-center justify-end gap-2',
+    headerSearchOverlay:
+      'pointer-events-none absolute inset-x-0 top-0 flex h-12 items-center justify-center px-14 md:px-20',
+    filterField: 'grid min-w-0 gap-2',
+    statusBanner: 'flex items-center gap-2',
   },
   grid: {
     mainAside: 'grid min-h-0 min-w-0 w-full flex-1 gap-4',
     filterMatrix:
       'grid gap-4 md:grid-cols-[repeat(auto-fill,minmax(12rem,1fr))] md:items-end',
     campaignsFilterRow:
-      'grid w-full gap-x-3 gap-y-4 md:grid-cols-[repeat(auto-fill,minmax(12rem,1fr))] md:items-end',
+      'grid w-full grid-cols-2 gap-x-3 gap-y-2 sm:grid-cols-3 md:grid-cols-4 md:items-end',
     filterFormStack: 'grid w-full justify-items-start gap-4',
     sectionPanel: 'grid gap-3 rounded-[8px] border border-border bg-card p-4 text-card-foreground',
   },
@@ -98,3 +120,8 @@ export const pageCanvasInsetClass = adminSpacing.inset.canvas;
 export const pageWorkspaceFlatClass = adminSpacing.flex.workspaceFlat;
 export const pageSectionStackClass = adminSpacing.flex.sectionStack;
 export const pageFooterFlatClass = `${adminSpacing.flex.footer} ${adminSpacing.inset.footer}`;
+export const customerTabHeaderClass = `${adminSpacing.inset.sectionTop} ${adminTypography.sectionTitle}`;
+export const customerDetailSectionClass = `grid ${adminSpacing.gap.xl}`;
+export const customerDetailHeaderClass = adminSpacing.stack.titleBlock;
+export const opsControlPanelClass = `grid ${adminSpacing.gap.xl}`;
+export const opsFilterFieldClass = adminSpacing.flex.filterField;

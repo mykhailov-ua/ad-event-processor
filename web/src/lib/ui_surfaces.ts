@@ -1,4 +1,6 @@
 /** Thin scrollbars; webkit thumb styling lives in tailwind.css. */
+import { adminSpacing, adminTypography } from '@/lib/admin_spacing';
+
 export const uiScrollbarClass = 'scrollbar-admin';
 
 const messageBase =
@@ -25,12 +27,13 @@ export const uiSurfaces = {
   summaryBand:
     'inline-flex h-7 max-w-full flex-nowrap items-center gap-2.5 overflow-x-auto border border-primary/20 bg-primary/5 px-3 text-card-foreground',
   summaryBandDivider: 'mx-1 h-3 w-px shrink-0 bg-border',
-  tableHost: 'w-full min-w-0 border border-border bg-card',
+  tableHost:
+    'w-full min-w-0 overflow-hidden rounded-[8px] border border-border bg-card text-card-foreground',
   tableHostFill: 'flex min-h-0 min-w-0 flex-1 flex-col overflow-hidden',
   tableHostScroll: `${uiScrollbarClass} min-w-0 overflow-x-auto bg-card`,
   directoryStack: 'flex w-full flex-col gap-3',
   metaLinksBand:
-    'flex flex-wrap items-center gap-3 text-sm text-muted-foreground [&_a]:text-primary [&_a:hover]:underline',
+    `flex flex-wrap items-center ${adminSpacing.gap.lg} ${adminTypography.bodyMuted} [&_a]:text-primary [&_a:hover]:underline`,
   actionLinksBand: 'flex flex-wrap gap-2',
   filterPanel: 'grid gap-4 rounded-[8px] border border-border bg-card p-4 text-muted-foreground',
 } as const;

@@ -4,6 +4,7 @@ import { Link, useLocation } from 'react-router-dom';
 import { useSession } from '@/hooks/use_session';
 import { AdminErrorPage } from '@/shell/admin_error_page';
 import { Button } from '@/components/ui/button';
+import { PageSkeleton } from '@/shell/page_skeleton';
 import {
   resolveRoutePermission,
   sessionHasRoutePermission,
@@ -17,7 +18,7 @@ export type PermissionGateProps = RoutePermission & {
 
 export function ForbiddenPanel() {
   return (
-    <div >
+    <div className="grid gap-4" >
       <AdminErrorPage kind="forbidden" layout="embedded" />
       <div>
         <Button asChild type="button" variant="outline">
@@ -47,7 +48,7 @@ export function RoutePermissionGuard({ children }: { children: ReactNode }) {
   const { user, loading } = useSession();
   const rule = resolveRoutePermission(pathname);
   if (loading && rule) {
-    return null;
+    return <PageSkeleton columns={3} variant="directory" />;
   }
   const allowed = sessionHasRoutePermission(user?.permissions, rule);
   if (!allowed) {

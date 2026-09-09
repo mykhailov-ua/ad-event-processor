@@ -2,13 +2,14 @@ import { useCallback, useEffect, useMemo, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 
 import {
-  listCommandPaletteRecents,
   recordCommandPaletteRecent,
   searchCommandPalette,
   type CommandPaletteItem,
 } from '@/api/command_palette_api';
 import { ApiError } from '@/api/client';
 import { useResource } from '@/api/use_resource';
+import { resolveCommandPaletteHref } from '@/lib/command_palette_href';
+import { fetchCommandPaletteRecentsCached } from '@/lib/command_palette_recents_cache';
 import { fetchCommandPaletteRoutesCached } from '@/lib/command_palette_routes_cache';
 import { useSession } from '@/hooks/use_session';
 
@@ -17,13 +18,6 @@ const MIN_SERVER_QUERY_LENGTH = 2;
 
 function skipLazyFetch(): Promise<never> {
   return Promise.reject(new DOMException('Skipped', 'AbortError'));
-}
-
-function normalizeHref(href: string): string {
-  if (href.startsWith('/')) {
-    return href;
-  }
-  return `/${href}`;
 }
 
 function matchesQuery(item: CommandPaletteItem, query: string): boolean {
@@ -54,19 +48,21 @@ export function useHeaderSearch() {
     return () => window.clearTimeout(timer);
   }, [trimmedQuery, useServerSearch]);
 
-  const catalogResource = useResource(
+  const routesResource = useResource(
+    (signal) => fetchCommandPaletteRoutesCached(signal),
+    []
+  );
+
+  const routesReady = routesResource.data !== undefined;
+
+  const recentsResource = useResource(
     async (signal) => {
-      const routes = await fetchCommandPaletteRoutesCached(signal);
-      if (!customerId) {
-        return { routes, recents: [] as CommandPaletteItem[] };
+      if (!customerId || !routesReady) {
+        return skipLazyFetch();
       }
-      const recentsResponse = await listCommandPaletteRecents(customerId, signal);
-      return {
-        routes,
-        recents: recentsResponse.items ?? [],
-      };
+      return fetchCommandPaletteRecentsCached(customerId, signal);
     },
-    [customerId]
+    [customerId, routesReady]
   );
 
   const searchResource = useResource(
@@ -86,8 +82,8 @@ export function useHeaderSearch() {
     [customerId, debouncedQuery, useServerSearch]
   );
 
-  const routes = catalogResource.data?.routes ?? [];
-  const recents = catalogResource.data?.recents ?? [];
+  const routes = routesResource.data ?? [];
+  const recents = recentsResource.data ?? [];
 
   const localItems = useMemo(() => {
     if (!isSearching) {
@@ -129,9 +125,12 @@ export function useHeaderSearch() {
     return merged;
   }, [isSearching, localItems, serverItems, useServerSearch]);
 
-  const activeError = useServerSearch ? searchResource.error : catalogResource.error;
+  const catalogError = routesResource.error ?? recentsResource.error;
+  const catalogLoading =
+    routesResource.fetching || (customerId && routesReady && recentsResource.fetching);
+  const activeError = useServerSearch ? searchResource.error : catalogError;
   const activeLoading =
-    catalogResource.fetching || (useServerSearch && searchResource.fetching && items.length === 0);
+    catalogLoading || (useServerSearch && searchResource.fetching && items.length === 0);
   const paletteForbidden = activeError instanceof ApiError && activeError.status === 403;
 
   const onSelectItem = useCallback(
@@ -141,7 +140,7 @@ export function useHeaderSearch() {
       if (customerId) {
         void recordCommandPaletteRecent({ customer_id: customerId, item }).catch(() => undefined);
       }
-      navigate(normalizeHref(item.href));
+      navigate(resolveCommandPaletteHref(item.href));
     },
     [customerId, navigate]
   );

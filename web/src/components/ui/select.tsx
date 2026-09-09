@@ -112,7 +112,7 @@ const SelectValue = ({ placeholder }: { placeholder?: string }) => {
 const SelectTrigger = React.forwardRef<
   HTMLButtonElement,
   React.ButtonHTMLAttributes<HTMLButtonElement> & { plain?: boolean }
->(({ children, plain = false, disabled, onClick, ...props }, ref) => {
+>(({ children, plain = false, disabled, className, onClick, ...props }, ref) => {
   const ctx = useSelectContext();
   const isDisabled = disabled ?? ctx.disabled;
 
@@ -125,15 +125,42 @@ const SelectTrigger = React.forwardRef<
     }
   };
 
+  if (plain) {
+    return (
+      <Button
+        ref={mergedRef}
+        type="button"
+        variant="ghost"
+        disabled={isDisabled}
+        aria-expanded={ctx.open}
+        aria-haspopup="listbox"
+        className={cn('w-full justify-between font-normal', className)}
+        onClick={(event) => {
+          onClick?.(event);
+          if (!event.defaultPrevented && !isDisabled) {
+            ctx.setOpen(!ctx.open);
+          }
+        }}
+        {...props}
+      >
+        {children}
+        <ChevronDown className="h-4 w-4 shrink-0 opacity-60" aria-hidden />
+      </Button>
+    );
+  }
+
   return (
-    <Button
+    <button
       ref={mergedRef}
       type="button"
-      variant={plain ? 'ghost' : 'outline'}
       disabled={isDisabled}
       aria-expanded={ctx.open}
       aria-haspopup="listbox"
-      className="w-full justify-between font-normal"
+      className={cn(
+        adminChrome.control,
+        'inline-flex w-full items-center justify-between gap-2 text-left font-normal',
+        className
+      )}
       onClick={(event) => {
         onClick?.(event);
         if (!event.defaultPrevented && !isDisabled) {
@@ -144,7 +171,7 @@ const SelectTrigger = React.forwardRef<
     >
       {children}
       <ChevronDown className="h-4 w-4 shrink-0 opacity-60" aria-hidden />
-    </Button>
+    </button>
   );
 });
 SelectTrigger.displayName = 'SelectTrigger';
@@ -295,8 +322,8 @@ const SelectItem = React.forwardRef<
 SelectItem.displayName = 'SelectItem';
 
 const SelectSeparator = React.forwardRef<HTMLDivElement, React.HTMLAttributes<HTMLDivElement>>(
-  ({ ...props }, ref) => (
-    <div ref={ref} {...props} />
+  ({ className, ...props }, ref) => (
+    <div ref={ref} className={cn('my-1 h-px bg-border', className)} {...props} />
   )
 );
 SelectSeparator.displayName = 'SelectSeparator';

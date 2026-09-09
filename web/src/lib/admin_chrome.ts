@@ -40,7 +40,7 @@ export const adminChrome = {
 
 function cnControl(): string {
   return [
-    adminKit.controlHeight,
+    'min-h-7 h-auto',
     adminKit.controlRadius,
     adminKit.controlText,
     `${adminKit.controlBorder} bg-admin-control ${adminKit.controlPaddingX} py-1 text-foreground shadow-none transition-colors`,
@@ -64,7 +64,7 @@ export type ButtonVariant =
 
 export const buttonVariantClass: Record<ButtonVariant, string> = {
   default:
-    'border-primary bg-primary text-primary-foreground shadow-none hover:border-admin-brand-hover hover:bg-admin-brand-hover',
+    'border-admin-brand bg-admin-brand text-admin-brand-foreground shadow-none hover:border-admin-brand-hover hover:bg-admin-brand-hover',
   brand:
     'border-admin-brand bg-admin-brand text-admin-brand-foreground shadow-none hover:border-admin-brand-hover hover:bg-admin-brand-hover',
   accent:

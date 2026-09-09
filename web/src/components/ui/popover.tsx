@@ -59,7 +59,7 @@ function Popover({
 const PopoverTrigger = React.forwardRef<
   HTMLElement,
   React.HTMLAttributes<HTMLElement> & { asChild?: boolean }
->(({ asChild = false, onClick, children, ...props }, ref) => {
+>(({ asChild = false, className, onClick, children, ...props }, ref) => {
   const { open, setOpen, triggerRef } = usePopoverContext();
 
   const handleClick = (event: React.MouseEvent<HTMLElement>) => {
@@ -83,7 +83,7 @@ const PopoverTrigger = React.forwardRef<
       <Slot
         ref={mergedRef}
         aria-expanded={open}
-        
+        className={className}
         onClick={handleClick}
         {...props}
       >
@@ -97,7 +97,7 @@ const PopoverTrigger = React.forwardRef<
       ref={mergedRef as React.Ref<HTMLButtonElement>}
       type="button"
       aria-expanded={open}
-      
+      className={className}
       onClick={handleClick}
       {...(props as React.ButtonHTMLAttributes<HTMLButtonElement>)}
     >
@@ -108,8 +108,8 @@ const PopoverTrigger = React.forwardRef<
 PopoverTrigger.displayName = 'PopoverTrigger';
 
 const PopoverAnchor = React.forwardRef<HTMLDivElement, React.HTMLAttributes<HTMLDivElement>>(
-  ({ ...props }, ref) => (
-    <div ref={ref}  {...props} />
+  ({ className, ...props }, ref) => (
+    <div ref={ref} className={cn('inline-flex', className)} {...props} />
   )
 );
 PopoverAnchor.displayName = 'PopoverAnchor';
@@ -129,7 +129,9 @@ const PopoverContent = React.forwardRef<
   }
 >(
   (
-    { children,
+    {
+      className,
+      children,
       align = 'center',
       side = 'bottom',
       sideOffset = 8,
@@ -137,17 +139,27 @@ const PopoverContent = React.forwardRef<
       panelClassName,
       matchTriggerMinWidth = true,
       onOpenAutoFocus,
+      style,
       ...props
     },
     ref
   ) => {
     const { open, setOpen, triggerRef } = usePopoverContext();
     const contentRef = React.useRef<HTMLDivElement | null>(null);
-    const [position, setPosition] = React.useState<React.CSSProperties>({});
-    const flush = false;
+    const [position, setPosition] = React.useState<React.CSSProperties>({
+      position: 'fixed',
+      visibility: 'hidden',
+    });
+    const flush = /\bp-0\b/.test(className ?? '');
     const scrollMode = panelScroll ?? (flush ? 'inner' : 'panel');
 
     useOverlayDismiss(open, () => setOpen(false), contentRef, [triggerRef]);
+
+    React.useEffect(() => {
+      if (!open) {
+        setPosition({ position: 'fixed', visibility: 'hidden' });
+      }
+    }, [open]);
 
     React.useEffect(() => {
       if (open && onOpenAutoFocus) {
@@ -186,7 +198,14 @@ const PopoverContent = React.forwardRef<
           edgePadding,
           Math.min(left, window.innerWidth - contentWidth - edgePadding)
         );
-        setPosition((prev) => mergeOverlayPosition(prev, { ...base, left }));
+        setPosition((prev) =>
+          mergeOverlayPosition(prev, {
+            ...base,
+            left,
+            minWidth: matchTriggerMinWidth ? rect.width : undefined,
+            visibility: 'visible',
+          })
+        );
       };
 
       updatePosition();
@@ -194,13 +213,12 @@ const PopoverContent = React.forwardRef<
       const unsubscribeScroll = subscribeFloatingPosition(triggerRef.current, updatePosition);
       window.addEventListener('resize', updatePosition);
 
-      const panel = contentRef.current?.firstElementChild;
       const resizeObserver =
-        typeof ResizeObserver !== 'undefined' && panel
+        typeof ResizeObserver !== 'undefined' && contentRef.current
           ? new ResizeObserver(() => updatePosition())
           : undefined;
-      if (resizeObserver && panel) {
-        resizeObserver.observe(panel);
+      if (resizeObserver && contentRef.current) {
+        resizeObserver.observe(contentRef.current);
       }
 
       return () => {
@@ -209,29 +227,11 @@ const PopoverContent = React.forwardRef<
         window.removeEventListener('resize', updatePosition);
         resizeObserver?.disconnect();
       };
-    }, [align, open, side, sideOffset, triggerRef]);
+    }, [align, matchTriggerMinWidth, open, side, sideOffset, triggerRef]);
 
     if (!open) {
       return null;
     }
-
-    const {
-      className,
-      style,
-      ...contentProps
-    } = props;
-
-    const panelClass = cn(
-      adminChrome.floating,
-      matchTriggerMinWidth && 'min-w-[var(--popover-anchor-width,12rem)]',
-      scrollMode === 'panel' && 'max-h-[min(28rem,calc(100dvh-2rem))] overflow-y-auto',
-      panelClassName
-    );
-
-    const anchorWidth = `${triggerRef.current?.offsetWidth ?? 0}px`;
-    const anchorWidthStyle = {
-      '--popover-anchor-width': anchorWidth,
-    } as React.CSSProperties;
 
     return (
       <OverlayRoot>
@@ -244,12 +244,27 @@ const PopoverContent = React.forwardRef<
               ref.current = node;
             }
           }}
-          className={cn('fixed z-50', className)}
-          style={{ ...position, ...style, ...anchorWidthStyle }}
-          {...contentProps}
+          className={cn('border-0 bg-transparent p-0 outline-none', className)}
+          style={{ position: 'fixed', zIndex: 60, ...position, ...style }}
+          {...props}
         >
-          <div className={panelClass} style={anchorWidthStyle}>
-            <div className={cn(scrollMode === 'inner' && 'max-h-[min(28rem,calc(100dvh-2rem))] overflow-y-auto')}>
+          <div
+            className={cn(
+              adminChrome.panel,
+              'shadow-lg',
+              flush ? 'w-auto max-w-[min(calc(100vw-1rem),44rem)]' : 'w-full',
+              panelClassName
+            )}
+          >
+            <div
+              className={cn(
+                scrollMode === 'panel' &&
+                  'ui-scrollbar max-h-[min(70vh,32rem)] overflow-y-auto overflow-x-auto',
+                scrollMode === 'inner' && 'max-h-[min(70vh,32rem)] overflow-hidden',
+                scrollMode === 'none' && 'overflow-visible',
+                !flush && 'p-4'
+              )}
+            >
               {children}
             </div>
           </div>

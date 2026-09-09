@@ -55,24 +55,32 @@ export function AdminErrorPage({
 
   return (
     <div
-     
+      className={cn(
+        'flex min-h-0 flex-1 items-center justify-center p-6',
+        layout === 'standalone' && 'min-h-screen bg-background'
+      )}
       role="alert"
     >
       <div
-       
+        className={cn(
+          'w-full max-w-lg border border-border bg-card p-6 text-card-foreground',
+          adminKit.panelRadius
+        )}
       >
-        <div >
-          <div >
-            <p >
+        <div className="grid gap-4">
+          <div className="grid gap-2">
+            <p className="m-0 text-xs font-semibold uppercase tracking-wide text-muted-foreground">
               {resolvedTitle}
             </p>
-            <h1 >
+            <h1 className="m-0 text-xl font-semibold text-foreground">
               {kind === 'not-found' ? '404' : kind === 'forbidden' ? '403' : 'Error'}
             </h1>
-            <p >{resolvedMessage}</p>
-            {devHint ? <p >{devHint}</p> : null}
+            <p className="m-0 text-sm text-muted-foreground">{resolvedMessage}</p>
+            {devHint ? (
+              <p className="m-0 font-mono text-xs text-muted-foreground">{devHint}</p>
+            ) : null}
           </div>
-          <div >
+          <div className="flex flex-wrap gap-2">
             <Button type="button" variant="default" onClick={handleReload}>
               {onRetry ? 'Try again' : 'Reload page'}
             </Button>

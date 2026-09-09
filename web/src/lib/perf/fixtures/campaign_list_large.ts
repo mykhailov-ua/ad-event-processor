@@ -1,16 +1,13 @@
 import type { CampaignListMetrics } from '@/api/campaigns_api';
 import type { Campaign } from '@/api/types';
-import {
-  visibleCampaignListColumns,
-  defaultCampaignListColumnPrefs,
-} from '@/domains/campaigns/list/campaign_list_columns';
+import { defaultCampaignListExportDataColumns } from '@/domains/campaigns/list/campaign_list_columns';
 import { seedDeterministicUuid } from '@/lib/uuid';
 
 export function buildLargeCampaignListFixture(rowCount: number): {
   items: Campaign[];
   metricsById: Record<string, CampaignListMetrics>;
   customerNameById: Record<string, string>;
-  columns: ReturnType<typeof visibleCampaignListColumns>;
+  columns: ReturnType<typeof defaultCampaignListExportDataColumns>;
 } {
   const customerId = seedDeterministicUuid('customer', 1);
   const items: Campaign[] = [];
@@ -20,7 +17,7 @@ export function buildLargeCampaignListFixture(rowCount: number): {
     const id = seedDeterministicUuid('campaign', i + 1);
     items.push({
       id,
-      name: `Campaign ${i + 1} | US | Native | Long label for width probe ${i}`,
+      name: `Campaign ${i + 1} | US | Native | Long label for export ${i}`,
       customer_id: customerId,
       status: i % 3 === 0 ? 'PAUSED' : 'ACTIVE',
       owner_user_id: seedDeterministicUuid('user', (i % 5) + 1),
@@ -39,13 +36,10 @@ export function buildLargeCampaignListFixture(rowCount: number): {
     };
   }
 
-  const prefs = defaultCampaignListColumnPrefs();
-  const columns = visibleCampaignListColumns(prefs);
-
   return {
     items,
     metricsById,
     customerNameById: { [customerId]: 'Fixture Buyer GmbH' },
-    columns,
+    columns: defaultCampaignListExportDataColumns(),
   };
 }

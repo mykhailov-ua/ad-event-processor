@@ -2,6 +2,7 @@
 // userErrorMessage maps ApiError status/code to safe operator text.
 // formatAdminErrorDetails is for ErrorBlock diagnostics, not end-user toasts.
 import { ApiError } from '../api/api_error.ts';
+import { isValidationError } from './admin_validation_error.ts';
 
 export type AdminErrorKind = 'load' | 'render' | 'route' | 'not-found' | 'forbidden';
 
@@ -67,6 +68,9 @@ export function userErrorMessage(
   error: unknown,
   fallback = 'Something went wrong. Try again or return to the home page.'
 ): string {
+  if (isValidationError(error)) {
+    return error.message;
+  }
   if (error instanceof ApiError) {
     if (error.code === 'PAYMENT_UNAVAILABLE') {
       return 'Payment history is not available in this deployment. Enable the payment module or use the ledger tab for balance activity.';
@@ -82,6 +86,12 @@ export function userErrorMessage(
     }
     if (error.status === 0 && error.code === 'TIMEOUT') {
       return 'The request timed out. Check your connection and try again.';
+    }
+    if (error.status === 501) {
+      if (error.message.trim() !== '') {
+        return error.message;
+      }
+      return fallback;
     }
     if (error.status >= 500) {
       return 'The server encountered an error. Try again later.';
@@ -199,4 +209,14 @@ export function adminErrorKindFromUnknown(error: unknown): AdminErrorKind {
 
 export function toError(err: unknown): Error {
   return err instanceof Error ? err : new Error(String(err));
+}
+
+export function normalizeSubmitError(err: unknown, fallback: string): Error {
+  if (isValidationError(err)) {
+    return err;
+  }
+  if (err instanceof Error) {
+    return err;
+  }
+  return new Error(fallback);
 }

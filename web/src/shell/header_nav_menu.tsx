@@ -18,6 +18,7 @@ import { isSectionNavActive } from '@/lib/nav_config';
 
 export type HeaderNavMenuProps = {
   navGroups: NavGroup[];
+  onOpenMobileNav: () => void;
 };
 
 function resolveCurrentLabel(pathname: string, navGroups: NavGroup[]): string {
@@ -31,7 +32,7 @@ function resolveCurrentLabel(pathname: string, navGroups: NavGroup[]): string {
   return 'Pages';
 }
 
-export function HeaderNavMenu({ navGroups }: HeaderNavMenuProps) {
+export function HeaderNavMenu({ navGroups, onOpenMobileNav }: HeaderNavMenuProps) {
   const location = useLocation();
   const navigate = useNavigate();
   const currentLabel = useMemo(
@@ -40,13 +41,24 @@ export function HeaderNavMenu({ navGroups }: HeaderNavMenuProps) {
   );
 
   return (
-    <DropdownMenu>
-      <DropdownMenuTrigger asChild>
-        <Button aria-haspopup="menu" type="button" variant="outline">
-          <Menu aria-hidden className="h-4 w-4" />
-          <span>{currentLabel}</span>
-        </Button>
-      </DropdownMenuTrigger>
+    <>
+      <Button
+        aria-haspopup="dialog"
+        className="md:hidden"
+        type="button"
+        variant="outline"
+        onClick={onOpenMobileNav}
+      >
+        <Menu aria-hidden className="h-4 w-4" />
+        <span>{currentLabel}</span>
+      </Button>
+      <DropdownMenu>
+        <DropdownMenuTrigger asChild>
+          <Button aria-haspopup="menu" className="hidden md:inline-flex" type="button" variant="outline">
+            <Menu aria-hidden className="h-4 w-4" />
+            <span>{currentLabel}</span>
+          </Button>
+        </DropdownMenuTrigger>
       <DropdownMenuContent
         align="start"
         className={cn(adminChrome.floating, 'z-[10001] min-w-56 max-h-[min(28rem,calc(100vh-4rem))] overflow-auto')}
@@ -72,5 +84,6 @@ export function HeaderNavMenu({ navGroups }: HeaderNavMenuProps) {
         ))}
       </DropdownMenuContent>
     </DropdownMenu>
+    </>
   );
 }

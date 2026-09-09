@@ -1,19 +1,21 @@
 import { Search } from 'lucide-react';
 import type { ComponentProps } from 'react';
 
+import { Input } from '@/components/ui/input';
 import { adminChrome } from '@/lib/admin_chrome';
-import { adminKit } from '@/lib/admin_kit';
 import { cn } from '@/lib/utils';
 
 export type SearchInputProps = Omit<ComponentProps<'input'>, 'type'> & {
+  className?: string;
+  wrapperClassName?: string;
 };
 
-export function SearchInput({ ...props }: SearchInputProps) {
+export function SearchInput({ className, wrapperClassName, ...props }: SearchInputProps) {
   return (
-    <div >
-      <Search aria-hidden  />
-      <input
-       
+    <div className={cn(adminChrome.controlFieldGroup, 'min-w-0', wrapperClassName)}>
+      <Search aria-hidden className="size-3.5 shrink-0 text-muted-foreground" />
+      <Input
+        className={cn(adminChrome.controlFieldInset, 'w-full', className)}
         type="search"
         {...props}
       />

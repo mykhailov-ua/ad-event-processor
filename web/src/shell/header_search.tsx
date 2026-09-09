@@ -2,6 +2,7 @@ import { useEffect, useId, useRef, useState, type RefObject } from 'react';
 
 import type { CommandPaletteItem } from '@/api/command_palette_api';
 import { Input } from '@/components/ui/input';
+import { adminSpacing, adminTypography } from '@/lib/admin_kit';
 import { adminChrome } from '@/lib/admin_chrome';
 import { cn } from '@/lib/utils';
 import { ErrorBlock } from '@/shell/error_block';
@@ -61,7 +62,7 @@ export function HeaderSearch({ inputRef: externalInputRef }: HeaderSearchProps) 
     return () => document.removeEventListener('mousedown', onPointerDown);
   }, [inputRef, open]);
 
-  const showPanel = open && isSearching;
+  const showPanel = open && (isSearching || Boolean(activeError));
   const { routes, entities } = groupItems(items);
 
   return (
@@ -85,9 +86,7 @@ export function HeaderSearch({ inputRef: externalInputRef }: HeaderSearchProps) 
           setOpen(true);
         }}
         onFocus={() => {
-          if (query.trim()) {
-            setOpen(true);
-          }
+          setOpen(true);
         }}
         onKeyDown={(event) => {
           if (event.key === 'Escape') {
@@ -107,25 +106,25 @@ export function HeaderSearch({ inputRef: externalInputRef }: HeaderSearchProps) 
           role="listbox"
         >
           {paletteForbidden ? (
-            <ErrorBlock message={activeError?.message ?? ''} title="Search forbidden" />
-          ) : activeError && !paletteForbidden ? (
-            <ErrorBlock message={activeError.message} title="Search failed" />
+            <ErrorBlock error={activeError} title="Search forbidden" />
+          ) : activeError ? (
+            <ErrorBlock error={activeError} title="Search failed" />
           ) : (
             <>
               {degraded ? (
-                <p className="px-3 py-2 text-[13px] text-muted-foreground">
+                <p className={cn(adminSpacing.inset.listMessage, adminTypography.bodyMuted)}>
                   Search results may be incomplete.
                 </p>
               ) : null}
               {activeLoading ? (
-                <p className="px-3 py-2 text-[13px] text-muted-foreground">Loading...</p>
+                <p className={cn(adminSpacing.inset.listMessage, adminTypography.bodyMuted)}>Loading...</p>
               ) : items.length === 0 ? (
-                <p className="px-3 py-2 text-[13px] text-muted-foreground">No matches.</p>
+                <p className={cn(adminSpacing.inset.listMessage, adminTypography.bodyMuted)}>No matches.</p>
               ) : (
                 <>
                   {routes.length > 0 ? (
-                    <section className="py-1">
-                      <h3 className="px-3 py-1 text-[11px] font-semibold uppercase tracking-wide text-muted-foreground">
+                    <section className={adminSpacing.inset.listSectionY}>
+                      <h3 className={cn(adminSpacing.inset.listHeading, adminTypography.caption)}>
                         Pages
                       </h3>
                       {routes.map((item) => (
@@ -139,15 +138,17 @@ export function HeaderSearch({ inputRef: externalInputRef }: HeaderSearchProps) 
                         >
                           <span className="block font-medium">{item.label}</span>
                           {item.meta ? (
-                            <span className="block text-[12px] text-muted-foreground">{item.meta}</span>
+                            <span className={cn('block', adminTypography.tooltip, 'text-muted-foreground')}>
+                              {item.meta}
+                            </span>
                           ) : null}
                         </button>
                       ))}
                     </section>
                   ) : null}
                   {entities.length > 0 ? (
-                    <section className="py-1">
-                      <h3 className="px-3 py-1 text-[11px] font-semibold uppercase tracking-wide text-muted-foreground">
+                    <section className={adminSpacing.inset.listSectionY}>
+                      <h3 className={cn(adminSpacing.inset.listHeading, adminTypography.caption)}>
                         Records
                       </h3>
                       {entities.map((item) => (
@@ -161,7 +162,9 @@ export function HeaderSearch({ inputRef: externalInputRef }: HeaderSearchProps) 
                         >
                           <span className="block font-medium">{item.label}</span>
                           {item.meta ? (
-                            <span className="block text-[12px] text-muted-foreground">{item.meta}</span>
+                            <span className={cn('block', adminTypography.tooltip, 'text-muted-foreground')}>
+                              {item.meta}
+                            </span>
                           ) : null}
                         </button>
                       ))}
