@@ -13,6 +13,7 @@ import {
   TableRow,
 } from '@/shell/directory_table';
 import { adminChrome } from '@/lib/admin_chrome';
+import { adminSpacing, adminTypography } from '@/lib/admin_kit';
 import { cn } from '@/lib/utils';
 import { CopyButton } from '@/shell/copy_button';
 import { DirectoryFilterForm, FilterField, FilterFormActions } from '@/shell/filter_panel';
@@ -76,37 +77,37 @@ export function CampaignIntegrationPanel({
   } = workspace;
 
   return (
-    <div >
+    <div className="grid gap-4" >
       {statusIntegrationSchemaName ? (
-        <p >
+        <p className={adminTypography.bodyMuted} >
           Linked status preset: <strong>{statusIntegrationSchemaName}</strong>
         </p>
       ) : null}
       {panelFetching && !panel ? (
-        <p >Loading panel...</p>
+        <p className={adminTypography.bodyMuted} >Loading panel...</p>
       ) : null}
       {loadError && !panel
         ? campaignPanelError(loadError, 'Could not load integration panel')
         : null}
 
       {panel ? (
-        <div >
-          <div >
-            <span >{panel.overall_status_label}</span>
+        <div className={cn(adminChrome.panel, `grid ${adminSpacing.gap.lg} p-4`, adminTypography.body)} >
+          <div className="flex flex-wrap items-center gap-2" >
+            <span className="font-medium" >{panel.overall_status_label}</span>
             <Badge variant="outline">{formatIntegrationHealthStatus(panel.overall_status)}</Badge>
           </div>
           {((panel.rows ?? []) as IntegrationHealthRow[]).length > 0 ? (
-            <ul >
+            <ul className="grid gap-2" >
               {(panel.rows as IntegrationHealthRow[] | undefined)?.map((row, index) => {
                 const slug = row.slug;
                 const message = row.message;
                 return (
-                  <li key={`integration-row-${index}`}>
-                    <span >
+                  <li className="leading-relaxed" key={`integration-row-${index}`}>
+                    <span className="font-medium text-foreground" >
                       {formatIntegrationHealthSlug(slug)}
                     </span>
                     {message ? (
-                      <span >{`: ${message}`}</span>
+                      <span className="text-muted-foreground" >{`: ${message}`}</span>
                     ) : null}
                   </li>
                 );
@@ -152,25 +153,25 @@ export function CampaignIntegrationPanel({
       </DirectoryFilterForm>
 
       {clickCopyURL || postbackCopyURL || panel?.browser_pixel_snippet ? (
-        <div >
+        <div className={cn(adminChrome.panel, `grid ${adminSpacing.gap.lg} p-4`, adminTypography.body)} >
           {clickCopyURL ? (
-            <div >
-              <span >Click URL</span>
-              <code >{clickCopyURL}</code>
+            <div className="flex items-center gap-2" >
+              <span className="font-medium" >Click URL</span>
+              <code className={cn('min-w-0 flex-1 truncate', adminTypography.monoData)}>{clickCopyURL}</code>
               <CopyButton label="Click URL" value={clickCopyURL} />
             </div>
           ) : null}
           {postbackCopyURL ? (
-            <div >
-              <span >Postback URL</span>
-              <code >{postbackCopyURL}</code>
+            <div className="flex items-center gap-2" >
+              <span className="font-medium" >Postback URL</span>
+              <code className={cn('min-w-0 flex-1 truncate', adminTypography.monoData)}>{postbackCopyURL}</code>
               <CopyButton label="Postback URL" value={postbackCopyURL} />
             </div>
           ) : null}
           {panel?.browser_pixel_snippet ? (
-            <div >
-              <div >
-                <span >Browser pixel (track.js)</span>
+            <div>
+              <div>
+                <span>Browser pixel (track.js)</span>
                 {panel.browser_pixel_first_party ? (
                   <Badge variant="secondary">First-party /_aed/track.js</Badge>
                 ) : (
@@ -178,15 +179,15 @@ export function CampaignIntegrationPanel({
                 )}
               </div>
               {panel.browser_pixel_script_url ? (
-                <p >
+                <p>
                   {panel.browser_pixel_script_url}
                 </p>
               ) : null}
-              <pre >
+              <pre>
                 {panel.browser_pixel_snippet}
               </pre>
               <CopyButton label="Browser pixel snippet" value={panel.browser_pixel_snippet} />
-              <p >
+              <p>
                 Same-origin script when LANDER_PUBLIC_BASE_URL is set; POST /track still targets the
                 tracker host (add lander origin to TRACK_CORS_ORIGINS or rely on auto-merge).
               </p>
@@ -217,9 +218,9 @@ export function CampaignIntegrationPanel({
         </p>
       ) : null}
       {health ? (
-        <div >
-          <div >
-            <span >Integration health</span>
+        <div>
+          <div>
+            <span>Integration health</span>
             <Badge variant={integrationHealthBadgeVariant(health.summary)}>
               {formatIntegrationHealthStatus(health.summary)}
             </Badge>
@@ -242,7 +243,7 @@ export function CampaignIntegrationPanel({
                       {formatIntegrationHealthStatus(row.status ?? '')}
                     </Badge>
                   </TableCell>
-                  <TableCell >{row.message ?? ''}</TableCell>
+                  <TableCell>{row.message ?? ''}</TableCell>
                   <TableCell>
                     {row.fix_route ? (
                       <Link

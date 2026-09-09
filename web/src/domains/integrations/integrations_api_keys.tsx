@@ -1,3 +1,4 @@
+import { useMemo, useState } from 'react';
 import { Copy } from 'lucide-react';
 
 import { Badge } from '@/components/ui/badge';
@@ -15,16 +16,16 @@ import { Label } from '@/components/ui/label';
 import type { APIKeyCreatedResponse, APIKeySummary } from '@/api/types';
 import { displayTimestamp } from '@/lib/display';
 import { EmptyState } from '@/shell/empty_state';
+import { FieldGroup } from '@/shell/field_group';
+import type { DirectoryOverviewField } from '@/shell/directory_overview_dialog';
 import {
-  DirectoryTable,
-  DirectoryTableHead,
-  TableBody,
-  TableCell,
-  TableHeader,
-  TableRow,
-} from '@/shell/directory_table';
-import { RowActionsMenu } from '@/shell/row_actions_menu';
+  DirectorySelectOverviewTable,
+  directoryRecordMap,
+  directoryOperateRows,
+} from '@/shell/directory_select_overview_table';
+import { DirectoryRowActionsMenu } from '@/shell/directory_row_actions_menu';
 import { DropdownMenuItem } from '@/components/ui/dropdown-menu';
+import { TableHost } from '@/shell/ui_bands';
 import {
   IntegrationsPageWithLoad,
   integrationsPanelError,
@@ -33,6 +34,8 @@ import {
   SELF_SERVE_API_KEY_SCOPES,
   type useIntegrationsApiKeysPageWorkspace,
 } from '@/domains/integrations/use_integrations_api_keys_page_workspace';
+import { ValidationErrorBlock } from '@/shell/validation_error_block';
+import { adminTypography } from '@/lib/admin_kit';
 
 export type IntegrationsApiKeysProps = ReturnType<typeof useIntegrationsApiKeysPageWorkspace>;
 
@@ -48,6 +51,30 @@ async function copyText(value: string) {
   textarea.select();
   document.execCommand('copy');
   document.body.removeChild(textarea);
+}
+
+function buildApiKeyOverviewFields(row: APIKeySummary): DirectoryOverviewField[] {
+  const scopes = row.scopes ?? [];
+  return [
+    { label: 'Name', value: row.name },
+    {
+      label: 'Scopes',
+      value:
+        scopes.length === 0
+          ? ''
+          : scopes.map((scope) => (
+              <Badge key={scope} variant="secondary">
+                {scope}
+              </Badge>
+            )),
+    },
+    { label: 'Created', value: displayTimestamp(row.created_at) },
+    {
+      label: 'Expires',
+      value: row.expires_at ? displayTimestamp(row.expires_at) : '',
+    },
+    { label: 'ID', value: <span className={adminTypography.monoData}>{row.id}</span> },
+  ];
 }
 
 export function IntegrationsApiKeys({
@@ -68,7 +95,17 @@ export function IntegrationsApiKeys({
   onCreate,
   onRevoke,
   onDismissCreatedKey,
+  formValidationError,
 }: IntegrationsApiKeysProps) {
+  const [selectedId, setSelectedId] = useState<string | null>(null);
+  const actionsDisabled = fetching || revokingId != null;
+
+  const recordById = useMemo(() => directoryRecordMap(keys, (row) => row.id), [keys]);
+  const rows = useMemo(
+    () => directoryOperateRows(keys, (row) => row.id, (row) => row.name),
+    [keys]
+  );
+
   return (
     <IntegrationsPageWithLoad
       blockingErrorTitle="Could not load service accounts"
@@ -93,18 +130,21 @@ export function IntegrationsApiKeys({
             value={draftName}
           />
         </div>
-        <fieldset disabled={creating}>
-          <legend>Scopes</legend>
+        <FieldGroup disabled={creating} legend="Scopes">
           {SELF_SERVE_API_KEY_SCOPES.map((scope) => (
             <label key={scope}>
               <Checkbox
                 checked={draftScopes.includes(scope)}
+                disabled={creating}
                 onCheckedChange={(checked) => onToggleScope(scope, checked === true)}
               />
               {scope}
             </label>
           ))}
-        </fieldset>
+        </FieldGroup>
+        {formValidationError ? (
+          <ValidationErrorBlock error={formValidationError} title="Check key fields" />
+        ) : null}
         <Button disabled={creating || draftName.trim() === ''} onClick={onCreate} type="button">
           {creating ? 'Creating...' : 'Create Bearer key'}
         </Button>
@@ -118,67 +158,40 @@ export function IntegrationsApiKeys({
             title="No service account keys"
           />
         ) : (
-          <DirectoryTable horizontalScroll>
-            <TableHeader>
-              <TableRow>
-                <DirectoryTableHead>Name</DirectoryTableHead>
-                <DirectoryTableHead>Scopes</DirectoryTableHead>
-                <DirectoryTableHead>Created</DirectoryTableHead>
-                <DirectoryTableHead>Expires</DirectoryTableHead>
-                <DirectoryTableHead>Actions</DirectoryTableHead>
-              </TableRow>
-            </TableHeader>
-            <TableBody>
-              {keys.map((row) => (
-                <ApiKeyRow
-                  key={row.id}
-                  disabled={fetching || revokingId != null}
-                  onRevoke={onRevoke}
-                  revoking={revokingId === row.id}
-                  row={row}
-                />
-              ))}
-            </TableBody>
-          </DirectoryTable>
+          <TableHost>
+            <DirectorySelectOverviewTable
+              buildOverviewFields={buildApiKeyOverviewFields}
+              disabled={actionsDisabled}
+              overviewTitle={(row) => row.name}
+              recordById={recordById}
+              revalidating={listRevalidating}
+              renderActions={(tableRow, record, openOverview) => {
+                const revoking = revokingId === record.id;
+                return (
+                  <DirectoryRowActionsMenu
+                    ariaLabel={`Actions for ${String(tableRow.label)}`}
+                    disabled={actionsDisabled || !record.id}
+                    onOverview={openOverview}
+                  >
+                    <DropdownMenuItem
+                      disabled={actionsDisabled || revoking || !record.id}
+                      onClick={() => onRevoke(record)}
+                    >
+                      {revoking ? 'Revoking...' : 'Revoke'}
+                    </DropdownMenuItem>
+                  </DirectoryRowActionsMenu>
+                );
+              }}
+              rows={rows}
+              selectedId={selectedId}
+              onSelectedIdChange={setSelectedId}
+            />
+          </TableHost>
         )}
       </section>
 
       <CreatedKeyDialog createdKey={createdKey} onDismiss={onDismissCreatedKey} />
     </IntegrationsPageWithLoad>
-  );
-}
-
-function ApiKeyRow({
-  row,
-  disabled,
-  revoking,
-  onRevoke,
-}: {
-  row: APIKeySummary;
-  disabled: boolean;
-  revoking: boolean;
-  onRevoke: (row: APIKeySummary) => void;
-}) {
-  return (
-    <TableRow>
-      <TableCell>{row.name}</TableCell>
-      <TableCell>
-        {(row.scopes ?? []).map((scope) => (
-          <Badge key={scope} variant="secondary">
-            {scope}
-          </Badge>
-        ))}
-      </TableCell>
-      <TableCell>{displayTimestamp(row.created_at)}</TableCell>
-      <TableCell>{row.expires_at ? displayTimestamp(row.expires_at) : ''}</TableCell>
-      <TableCell>
-        <RowActionsMenu ariaLabel="API key actions" disabled={disabled || !row.id}>
-          <DropdownMenuItem disabled={disabled || revoking || !row.id} onClick={() => onRevoke(row)}>
-            {revoking ? 'Revoking...' : 'Revoke'}
-          </DropdownMenuItem>
-        </RowActionsMenu>
-      </TableCell>
-    </TableRow>
   );
 }
 

@@ -2,7 +2,7 @@
 import { useState } from 'react';
 
 import { getCampaignFraud, getCampaignIntegrationPanel } from '@/api/campaigns_api';
-import type { CampaignFraudConfig } from '@/api/types';
+import type { Campaign, CampaignFraudConfig } from '@/api/types';
 import { useCoalescedBumpRefresh, useRefreshToken } from '@/hooks/use_coalesced_refresh_token';
 import { useResource } from '@/api/use_resource';
 
@@ -10,9 +10,8 @@ import type { CampaignEditorToolsTab } from '@/domains/campaigns/editor/campaign
 import { useCampaignEditorContextLoad } from '@/domains/campaigns/editor/use_campaign_editor_context_load';
 import { useCampaignFraudPanelWorkspace } from '@/domains/campaigns/editor/use_campaign_fraud_panel_workspace';
 import { useCampaignIntegrationPanelWorkspace } from '@/domains/campaigns/editor/use_campaign_integration_panel_workspace';
-import { useCampaignOpsPanelWorkspace } from '@/domains/campaigns/editor/use_campaign_ops_panel_workspace';
 
-export function useCampaignEditorToolsLoad(campaignId: string) {
+export function useCampaignEditorToolsLoad(campaignId: string, campaign?: Campaign) {
   const [tab, setTab] = useState<CampaignEditorToolsTab>('integration');
   const { refreshToken, bumpRefresh } = useRefreshToken();
 
@@ -39,13 +38,12 @@ export function useCampaignEditorToolsLoad(campaignId: string) {
   const bumpFraudRefresh = useCoalescedBumpRefresh(bumpRefresh, fraudResource.fetching);
 
   const contextLoad = useCampaignEditorContextLoad(campaignId, tab === 'context');
-  const integrationWorkspace = useCampaignIntegrationPanelWorkspace(campaignId);
+  const integrationWorkspace = useCampaignIntegrationPanelWorkspace(campaignId, campaign);
   const fraudWorkspace = useCampaignFraudPanelWorkspace({
     campaignId,
     fraudConfig: fraudResource.data as CampaignFraudConfig | undefined,
     onSaved: bumpFraudRefresh,
   });
-  const opsWorkspace = useCampaignOpsPanelWorkspace({ campaignId });
 
   return {
     tab,
@@ -62,9 +60,6 @@ export function useCampaignEditorToolsLoad(campaignId: string) {
       fetching: fraudResource.fetching,
       bumpRefresh: bumpFraudRefresh,
       workspace: fraudWorkspace,
-    },
-    ops: {
-      workspace: opsWorkspace,
     },
     context: contextLoad,
   };

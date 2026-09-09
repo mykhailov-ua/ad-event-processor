@@ -1,19 +1,15 @@
 import { Badge } from '@/components/ui/badge';
 import {
-  Tooltip,
-  TooltipContent,
-  TooltipProvider,
-  TooltipTrigger,
-} from '@/components/ui/tooltip';
-import {
   exportJobCanCancel,
   exportJobCanDownload,
   exportJobPhase,
   formatExportJobRowSummary,
   normalizeExportJobStatus,
 } from '@/domains/exports/export_hub_job_status';
+import { exportHubJobErrorMessage } from '@/domains/exports/export_hub_errors';
 import { useExportJobElapsed } from '@/domains/exports/use_export_job_elapsed';
 import { Button } from '@/components/ui/button';
+import { ErrorBlock } from '@/shell/error_block';
 
 export type ExportHubJobLifecycleProps = {
   jobId: string;
@@ -33,11 +29,9 @@ export type ExportHubJobLifecycleProps = {
 
 export function ExportJobStatusBadge({
   status,
-  errorMessage,
   elapsed,
 }: {
   status: string | undefined;
-  errorMessage?: string;
   elapsed: string;
 }) {
   const phase = exportJobPhase(status);
@@ -56,18 +50,7 @@ export function ExportJobStatusBadge({
   }
 
   if (phase === 'failed') {
-    const badge = <Badge variant="outline">Failed</Badge>;
-    if (!errorMessage) {
-      return badge;
-    }
-    return (
-      <TooltipProvider>
-        <Tooltip>
-          <TooltipTrigger asChild>{badge}</TooltipTrigger>
-          <TooltipContent side="top">{errorMessage}</TooltipContent>
-        </Tooltip>
-      </TooltipProvider>
-    );
+    return <Badge variant="outline">Failed</Badge>;
   }
 
   if (phase === 'cancelled') {
@@ -98,13 +81,18 @@ export function ExportHubJobLifecycle({
   const canCancel = canCancelKind && exportJobCanCancel(status);
   const sizeSummary =
     phase === 'completed' ? formatExportJobRowSummary(rowLimit, bytes) : undefined;
+  const failedJobMessage = exportHubJobErrorMessage(errorMessage);
 
   return (
     <div>
       <div>
-        <ExportJobStatusBadge elapsed={elapsed} errorMessage={errorMessage} status={status} />
+        <ExportJobStatusBadge elapsed={elapsed} status={status} />
         {autoPolling && phase === 'pending' ? <span>Auto-refreshing every 3s</span> : null}
       </div>
+
+      {phase === 'failed' && failedJobMessage ? (
+        <ErrorBlock message={failedJobMessage} title="Export failed" />
+      ) : null}
 
       <div>
         {canCancel ? (

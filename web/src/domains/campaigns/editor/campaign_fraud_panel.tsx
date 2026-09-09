@@ -70,23 +70,23 @@ export function CampaignFraudPanel({
   } = workspace;
 
   return (
-    <div >
+    <div className="grid gap-4" >
       <FraudLimitsDocLink />
       <PerimeterSybilDocLink />
-      <p >
+      <p>
         Ingress attestation and crowd-wave signals do not replace contractual controls for
         authorized human auditors on residential mobile. See Documentation for the Sybil operator
         runbook.
       </p>
-      <p >
+      <p>
         ML fraud boost is applied from a Redis snapshot on the tracker. Batch scoring runs in{' '}
-        <span >cmd/fraud-scorer</span>; there is no inline model call on{' '}
-        <span >/track</span>.
+        <span>cmd/fraud-scorer</span>; there is no inline model call on{' '}
+        <span>/track</span>.
       </p>
       {fraudConfig?.ml_boost_last_refreshed_at ? (
-        <p >
+        <p>
           Last ML boost refresh:{' '}
-          <span >
+          <span>
             {displayTimestamp(fraudConfig.ml_boost_last_refreshed_at)}
           </span>
         </p>
@@ -104,7 +104,7 @@ export function CampaignFraudPanel({
           />
         </FilterField>
         {draftPreset.trim().toLowerCase() === 'social_in_app' ? (
-          <p >
+          <p>
             Social in-app preset relaxes Sec-Fetch and TLS/JA4 checks for known FB/IG/TikTok WebView
             UAs. Cross-layer desync and behavioral probes still apply.
           </p>
@@ -143,8 +143,8 @@ export function CampaignFraudPanel({
         </FilterField>
       </DirectoryFilterForm>
 
-      <div >
-        <div >
+      <div>
+        <div>
           <Checkbox
             checked={draftSilentReject}
             id="fraud-silent-reject"
@@ -152,7 +152,7 @@ export function CampaignFraudPanel({
           />
           <Label htmlFor="fraud-silent-reject">Non-blocking fraud response enabled</Label>
         </div>
-        <div >
+        <div>
           <Checkbox
             checked={draftCanvasRetest}
             id="fraud-canvas-retest"
@@ -160,7 +160,7 @@ export function CampaignFraudPanel({
           />
           <Label htmlFor="fraud-canvas-retest">Canvas retest enabled</Label>
         </div>
-        <div >
+        <div>
           <Checkbox
             checked={draftCgnatPolicy}
             id="fraud-cgnat-policy"
@@ -168,7 +168,7 @@ export function CampaignFraudPanel({
           />
           <Label htmlFor="fraud-cgnat-policy">CGNAT IP policy enabled</Label>
         </div>
-        <div >
+        <div>
           <Checkbox
             checked={draftAcceptLangGeo}
             id="fraud-accept-lang-geo"
@@ -176,7 +176,7 @@ export function CampaignFraudPanel({
           />
           <Label htmlFor="fraud-accept-lang-geo">Accept-Language geo check</Label>
         </div>
-        <div >
+        <div>
           <Checkbox
             checked={draftJsonSerialization}
             id="fraud-json-serialization"
@@ -197,9 +197,9 @@ export function CampaignFraudPanel({
         </FilterField>
       </DirectoryFilterForm>
 
-      <section >
-        <h3 >Conversion reject rules</h3>
-        <div >
+      <section>
+        <h3>Conversion reject rules</h3>
+        <div>
           <Checkbox
             checked={draftConversionRules.enabled}
             id="conversion-reject-enabled"
@@ -218,7 +218,7 @@ export function CampaignFraudPanel({
             />
           </FilterField>
         </DirectoryFilterForm>
-        <div >
+        <div>
           {(
             [
               ['reject_no_click', 'Reject missing click'],
@@ -267,13 +267,13 @@ export function CampaignFraudPanel({
           />
         </FilterField>
       </DirectoryFilterForm>
-      <p >
+      <p>
         Cross-layer policy counts distinct wire/safe-page mismatch layers (TCP, TLS JA4, client
         hints, Sec-Fetch, H2). Residential IPs may still pass individual L2 signals; see fraud
         signal limits doc.
       </p>
 
-      <div >
+      <div>
         <Button disabled={saving || fetching} onClick={onSave} type="button">
           {saving ? 'Saving...' : 'Save fraud config'}
         </Button>
@@ -295,14 +295,14 @@ export function CampaignFraudPanel({
       {saveError ? campaignPanelError(saveError, 'Could not save fraud config') : null}
       {previewError ? campaignPanelError(previewError, 'Could not preview fraud impact') : null}
       {preview ? (
-        <section >
+        <section>
           <p>
             Affected IPs (7d): <strong>{preview.affected_ips_7d ?? 0}</strong>
           </p>
           <p>
             Sample size: <strong>{preview.sample_size ?? 0}</strong>
           </p>
-          <p >{preview.disclaimer}</p>
+          <p>{preview.disclaimer}</p>
         </section>
       ) : null}
     </div>

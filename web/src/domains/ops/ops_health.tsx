@@ -1,3 +1,5 @@
+import { useMemo, useState } from 'react';
+
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
@@ -7,14 +9,16 @@ import { OpsKvRow, OpsStatGrid, OpsStatPanel } from '@/domains/ops/ops_stat_pane
 import { opsPanelError } from '@/domains/ops/ops_nav';
 import { OpsActionGroup, OpsPageWithLoad } from '@/domains/ops/ops_page_shell';
 import { OpsStatusChip } from '@/domains/ops/ops_status';
+import { OpsBlock } from '@/domains/ops/ops_table';
+import type { DirectoryOverviewField } from '@/shell/directory_overview_dialog';
 import {
-  OpsBlock,
-  OpsTable,
-  OpsTableCell,
-  OpsTableHead,
-  OpsTableHeaderRow,
-  OpsTableRow,
-} from '@/domains/ops/ops_table';
+  DirectorySelectOverviewTable,
+  directoryOperateRows,
+  directoryRecordMap,
+} from '@/shell/directory_select_overview_table';
+import { TableHost } from '@/shell/ui_bands';
+import { adminSpacing, adminTypography } from '@/lib/admin_kit';
+import { cn } from '@/lib/utils';
 import { displayTimestamp } from '@/lib/display';
 
 export type OpsHealthProps = {
@@ -36,11 +40,100 @@ export type OpsHealthProps = {
   onRunProbe: () => void;
 };
 
+type DoctorCheck = NonNullable<DoctorSummary['checks']>[number];
+
 function formatSeconds(value: number | null | undefined): string {
   if (value == null || !Number.isFinite(value)) {
     return '';
   }
   return `${value.toFixed(1)}s`;
+}
+
+function doctorCheckRowId(check: DoctorCheck): string | undefined {
+  return check.id ?? check.message ?? undefined;
+}
+
+function doctorCheckRowLabel(check: DoctorCheck): string {
+  return check.id ?? check.message ?? 'Doctor check';
+}
+
+function buildDoctorCheckOverviewFields(check: DoctorCheck): DirectoryOverviewField[] {
+  return [
+    { label: 'Check', value: check.id ?? '-' },
+    {
+      label: 'Status',
+      value: check.status ? <OpsStatusChip status={check.status} /> : '-',
+    },
+    { label: 'Message', value: check.message ?? '-' },
+    { label: 'Hint', value: check.hint ?? '-' },
+    {
+      label: 'Latency',
+      value: check.latency_ms != null ? `${check.latency_ms} ms` : '-',
+    },
+  ];
+}
+
+function buildDomainProbeOverviewFields(probe: DomainHealth): DirectoryOverviewField[] {
+  return [
+    { label: 'Hostname', value: probe.hostname ?? '-' },
+    {
+      label: 'Health',
+      value: probe.health_status ? <OpsStatusChip status={probe.health_status} /> : '-',
+    },
+    {
+      label: 'SSL',
+      value: probe.ssl_status ? <OpsStatusChip status={probe.ssl_status} /> : '-',
+    },
+    { label: 'Role', value: probe.role ?? '-' },
+    { label: 'HTTP status', value: probe.http_status ?? '-' },
+    {
+      label: 'Probe latency',
+      value: probe.probe_latency_ms != null ? `${probe.probe_latency_ms} ms` : '-',
+    },
+    { label: 'Detail', value: probe.probe_detail ?? '-' },
+    {
+      label: 'Last probe',
+      value: probe.last_probe_at ? displayTimestamp(probe.last_probe_at) : '-',
+    },
+  ];
+}
+
+function OpsHealthDoctorChecksTable({ checks }: { checks: DoctorCheck[] }) {
+  const [selectedId, setSelectedId] = useState<string | null>(null);
+  const recordById = useMemo(() => directoryRecordMap(checks, doctorCheckRowId), [checks]);
+  const rows = useMemo(
+    () => directoryOperateRows(checks, doctorCheckRowId, doctorCheckRowLabel),
+    [checks]
+  );
+
+  return (
+    <TableHost>
+      <DirectorySelectOverviewTable
+        buildOverviewFields={buildDoctorCheckOverviewFields}
+        nameColumnLabel="Doctor check"
+        overviewTitle={(check) => doctorCheckRowLabel(check)}
+        recordById={recordById}
+        rows={rows}
+        selectedId={selectedId}
+        onSelectedIdChange={setSelectedId}
+      />
+    </TableHost>
+  );
+}
+
+function DomainProbeOverview({ probe }: { probe: DomainHealth }) {
+  const fields = buildDomainProbeOverviewFields(probe);
+
+  return (
+    <dl className={cn('grid', adminSpacing.gap.md)}>
+      {fields.map((field) => (
+        <div key={field.label} className={cn('grid', adminSpacing.gap.xs)}>
+          <dt className={adminTypography.labelMuted}>{field.label}</dt>
+          <dd className={cn('m-0', adminTypography.body)}>{field.value}</dd>
+        </div>
+      ))}
+    </dl>
+  );
 }
 
 export function OpsHealth({
@@ -175,32 +268,7 @@ export function OpsHealth({
             ) : checks.length === 0 ? (
               <p>No doctor checks returned.</p>
             ) : (
-              <OpsTable
-                horizontalScroll
-                head={
-                  <OpsTableHeaderRow>
-                    <OpsTableHead>Check</OpsTableHead>
-                    <OpsTableHead>Status</OpsTableHead>
-                    <OpsTableHead>Message</OpsTableHead>
-                    <OpsTableHead>Hint</OpsTableHead>
-                    <OpsTableHead numeric>Latency</OpsTableHead>
-                  </OpsTableHeaderRow>
-                }
-              >
-                {checks.map((check) => (
-                  <OpsTableRow key={check.id ?? check.message}>
-                    <OpsTableCell>{check.id ?? ''}</OpsTableCell>
-                    <OpsTableCell>
-                      <OpsStatusChip status={check.status} />
-                    </OpsTableCell>
-                    <OpsTableCell>{check.message ?? ''}</OpsTableCell>
-                    <OpsTableCell>{check.hint ?? ''}</OpsTableCell>
-                    <OpsTableCell numeric>
-                      {check.latency_ms != null ? `${check.latency_ms} ms` : ''}
-                    </OpsTableCell>
-                  </OpsTableRow>
-                ))}
-              </OpsTable>
+              <OpsHealthDoctorChecksTable checks={checks} />
             )}
             {doctor?.rtb_mode ? (
               <p>
@@ -218,61 +286,7 @@ export function OpsHealth({
             {!probeResult ? (
               <p>Enter a hostname and run probe to fetch live domain health.</p>
             ) : (
-              <OpsTable
-                head={
-                  <OpsTableHeaderRow>
-                    <OpsTableHead>Field</OpsTableHead>
-                    <OpsTableHead>Value</OpsTableHead>
-                  </OpsTableHeaderRow>
-                }
-              >
-                <OpsTableRow>
-                  <OpsTableCell>Hostname</OpsTableCell>
-                  <OpsTableCell>{probeResult.hostname}</OpsTableCell>
-                </OpsTableRow>
-                <OpsTableRow>
-                  <OpsTableCell>Health</OpsTableCell>
-                  <OpsTableCell>
-                    <OpsStatusChip status={probeResult.health_status} />
-                  </OpsTableCell>
-                </OpsTableRow>
-                <OpsTableRow>
-                  <OpsTableCell>SSL</OpsTableCell>
-                  <OpsTableCell>
-                    <OpsStatusChip status={probeResult.ssl_status} />
-                  </OpsTableCell>
-                </OpsTableRow>
-                <OpsTableRow>
-                  <OpsTableCell>Role</OpsTableCell>
-                  <OpsTableCell>{probeResult.role}</OpsTableCell>
-                </OpsTableRow>
-                {probeResult.http_status != null ? (
-                  <OpsTableRow>
-                    <OpsTableCell>HTTP status</OpsTableCell>
-                    <OpsTableCell numeric>{probeResult.http_status}</OpsTableCell>
-                  </OpsTableRow>
-                ) : null}
-                {probeResult.probe_latency_ms != null ? (
-                  <OpsTableRow>
-                    <OpsTableCell>Probe latency</OpsTableCell>
-                    <OpsTableCell numeric>{probeResult.probe_latency_ms} ms</OpsTableCell>
-                  </OpsTableRow>
-                ) : null}
-                {probeResult.probe_detail ? (
-                  <OpsTableRow>
-                    <OpsTableCell>Detail</OpsTableCell>
-                    <OpsTableCell>{probeResult.probe_detail}</OpsTableCell>
-                  </OpsTableRow>
-                ) : null}
-                {probeResult.last_probe_at ? (
-                  <OpsTableRow>
-                    <OpsTableCell>Last probe</OpsTableCell>
-                    <OpsTableCell>
-                      {displayTimestamp(probeResult.last_probe_at)}
-                    </OpsTableCell>
-                  </OpsTableRow>
-                ) : null}
-              </OpsTable>
+              <DomainProbeOverview probe={probeResult} />
             )}
           </OpsBlock>
         </>

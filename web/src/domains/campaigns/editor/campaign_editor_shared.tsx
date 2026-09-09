@@ -7,6 +7,7 @@ import { StubBanner } from '@/shell/stub_banner';
 import type { CloneCampaignOptions } from '@/api/campaigns_api';
 import { cloneMutationErrorMessage } from '@/domains/campaigns/editor/campaign_clone_request';
 import { adminKit, adminSpacing, adminTypography } from '@/lib/admin_kit';
+import { userErrorMessage } from '@/lib/admin_error';
 import { cn } from '@/lib/utils';
 
 /** Bordered editor/wizard section card. */
@@ -61,16 +62,22 @@ export function FieldErrorsPanel({
   }
 
   return (
-    <div >
-      <p >{title}</p>
-      <ul >
+    <div className={`grid ${adminSpacing.gap.md}`}>
+      <p className={adminTypography.label}>{title}</p>
+      <ul
+        className={cn(
+          'm-0 flex list-disc flex-col pl-5',
+          adminSpacing.gap.xs,
+          adminTypography.bodyMuted
+        )}
+      >
         {entries.map(([field, message]) => (
           <li key={field}>
-            <span >{field}</span>: {message}
+            <span className={adminTypography.captionPlain}>{field}</span>: {message}
           </li>
         ))}
       </ul>
-      <pre >
+      <pre className={cn('overflow-x-auto bg-muted p-2', adminTypography.monoData)}>
         {JSON.stringify(fieldErrors, null, 2)}
       </pre>
     </div>
@@ -139,9 +146,15 @@ export function StringList({ title, items }: { title: string; items: string[] | 
   }
 
   return (
-    <div >
-      <p >{title}</p>
-      <ul >
+    <div className={`grid ${adminSpacing.gap.xs}`}>
+      <p className={adminTypography.label}>{title}</p>
+      <ul
+        className={cn(
+          'm-0 flex list-disc flex-col pl-5',
+          adminSpacing.gap.xs,
+          adminTypography.bodyMuted
+        )}
+      >
         {items.map((item) => (
           <li key={item}>{item}</li>
         ))}
@@ -165,54 +178,58 @@ export function EditorStatusBanners({
   if (saveError) {
     blocks.push(
       saveError instanceof ApiError && saveError.status === 501 ? (
-        <StubBanner key="save" title="Save not available" message={saveError.message} />
+        <StubBanner key="save" title="Save not available" message={userErrorMessage(saveError)} />
       ) : (
-        <ErrorBlock key="save" title="Could not save campaign" message={saveError.message} />
+        <ErrorBlock key="save" title="Could not save campaign" error={saveError} />
       )
     );
   }
   if (publishCheckError) {
     blocks.push(
-      <ErrorBlock
-        key="publish-check"
-        title="Could not check publish gate"
-        message={publishCheckError.message}
-      />
+      <ErrorBlock key="publish-check" title="Could not check publish gate" error={publishCheckError} />
     );
   }
   if (validateError) {
     blocks.push(
-      <ErrorBlock
-        key="validate"
-        title="Could not validate changes"
-        message={validateError.message}
-      />
+      <ErrorBlock key="validate" title="Could not validate changes" error={validateError} />
     );
   }
   if (publishError) {
     blocks.push(
-      <ErrorBlock key="publish" title="Could not publish campaign" message={publishError.message} />
+      <ErrorBlock key="publish" title="Could not publish campaign" error={publishError} />
     );
   }
   if (blocks.length === 0) {
     return null;
   }
-  return <div >{blocks}</div>;
+  return <div className={`grid ${adminSpacing.gap.lg}`}>{blocks}</div>;
 }
 
 export function editorApiErrorBlock(
   error: Error,
   stubTitle: string,
-  errorTitle: string,
-  messageOverride?: string
+  errorTitle: string
 ): ReactNode {
   if (error instanceof ApiError && error.status === 501) {
-    return <StubBanner title={stubTitle} message={error.message} />;
+    return <StubBanner title={stubTitle} message={userErrorMessage(error)} />;
   }
-  return <ErrorBlock title={errorTitle} message={messageOverride ?? error.message} />;
+  return <ErrorBlock title={errorTitle} error={error} />;
+}
+
+function clonePanelUserMessage(error: Error): string {
+  const cloneMessage = cloneMutationErrorMessage(error);
+  if (cloneMessage !== error.message) {
+    return cloneMessage;
+  }
+  return userErrorMessage(error);
 }
 
 export function campaignPanelError(error: Error, title: string): ReactNode {
-  const message = /clone/i.test(title) ? cloneMutationErrorMessage(error) : error.message;
-  return editorApiErrorBlock(error, `${title} unavailable`, title, message);
+  if (/clone/i.test(title)) {
+    if (error instanceof ApiError && error.status === 501) {
+      return editorApiErrorBlock(error, `${title} unavailable`, title);
+    }
+    return <ErrorBlock title={title} error={error} message={clonePanelUserMessage(error)} />;
+  }
+  return editorApiErrorBlock(error, `${title} unavailable`, title);
 }

@@ -5,6 +5,10 @@ import { PrimaryActionButton } from '@/shell/action_buttons';
 import { ErrorBlock } from '@/shell/error_block';
 import { Label } from '@/components/ui/label';
 import { Textarea } from '@/components/ui/textarea';
+import { adminSpacing, adminTypography } from '@/lib/admin_kit';
+import { toError } from '@/lib/admin_error';
+import { requireNonEmpty } from '@/lib/admin_validation_error';
+import { cn } from '@/lib/utils';
 import type { LicenseStatus } from '@/api/types';
 import type { LicenseApplyFormLoad } from '@/domains/onboarding/use_license_apply_form_load';
 
@@ -31,40 +35,43 @@ export function LicenseApplyForm({
   const [success, setSuccess] = useState(false);
 
   const onApply = useCallback(async () => {
-    const token = draftToken.trim();
-    if (!token) {
+    const tokenResult = requireNonEmpty(draftToken, 'License token', 'token');
+    if (!tokenResult.ok) {
+      setError(tokenResult.error);
       return;
     }
     setApplying(true);
     setError(undefined);
     setSuccess(false);
     try {
-      await applyLicense({ token });
+      await applyLicense({ token: tokenResult.value });
       setSuccess(true);
       setDraftToken('');
       load.bumpStatusRefresh();
       onApplied?.();
     } catch (err: unknown) {
-      setError(err instanceof Error ? err : new Error(String(err)));
+      setError(toError(err));
     } finally {
       setApplying(false);
     }
   }, [draftToken, load, onApplied]);
 
   return (
-    <div >
+    <div className={`grid ${adminSpacing.gap.xl}`}>
       {showStatus && load.licenseStatus ? (
         <LicenseStatusSummary status={load.licenseStatus} />
       ) : null}
       {showStatus && load.statusError && !load.licenseStatus ? (
-        <ErrorBlock title="Could not load license status" message={load.statusError.message} />
+        <ErrorBlock title="Could not load license status" error={load.statusError} />
       ) : null}
-      <div >
+      <div className={`grid ${adminSpacing.gap.md}`}>
         <Label htmlFor="license-token">{title}</Label>
-        {description ? <p >{description}</p> : null}
+        {description ? (
+          <p className={cn('whitespace-normal', adminTypography.bodyMuted)}>{description}</p>
+        ) : null}
         <Textarea
           id="license-token"
-         
+          className={cn('min-h-[7.5rem]', adminTypography.monoData)}
           rows={textareaRows}
           value={draftToken}
           onChange={(event) => setDraftToken(event.target.value)}
@@ -81,30 +88,30 @@ export function LicenseApplyForm({
         </PrimaryActionButton>
       </div>
       {success ? (
-        <p >License applied. Status refreshed.</p>
+        <p className={adminTypography.bodyMuted}>License applied. Status refreshed.</p>
       ) : null}
-      {error ? <ErrorBlock title="License apply failed" message={error.message} /> : null}
+      {error ? <ErrorBlock title="License apply failed" error={error} /> : null}
     </div>
   );
 }
 
 function LicenseStatusSummary({ status }: { status: LicenseStatus }) {
   return (
-    <dl >
+    <dl className={cn('grid', adminSpacing.gap.xs, adminTypography.body)}>
       <div>
-        <dt >State</dt>
+        <dt className={adminTypography.labelMuted}>State</dt>
         <dd>{status.state ?? ''}</dd>
       </div>
       {status.valid_until ? (
         <div>
-          <dt >Valid until</dt>
+          <dt className={adminTypography.labelMuted}>Valid until</dt>
           <dd>{status.valid_until}</dd>
         </div>
       ) : null}
       {status.deployment_id ? (
         <div>
-          <dt >Deployment</dt>
-          <dd >{status.deployment_id}</dd>
+          <dt className={adminTypography.labelMuted}>Deployment</dt>
+          <dd className={adminTypography.monoData}>{status.deployment_id}</dd>
         </div>
       ) : null}
     </dl>

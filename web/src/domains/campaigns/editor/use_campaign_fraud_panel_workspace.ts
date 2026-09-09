@@ -5,6 +5,7 @@ import { toast } from 'sonner';
 
 import { patchCampaignFraud, previewCampaignFraud } from '@/api/campaigns_api';
 import { toError } from '@/lib/admin_error';
+import { validationError } from '@/lib/admin_validation_error';
 import type {
   CampaignFraudConfig,
   CampaignFraudPreview,
@@ -129,7 +130,7 @@ export function useCampaignFraudPanelWorkspace({
     }
     const parsed = Number.parseInt(trimmed, 10);
     if (!Number.isFinite(parsed)) {
-      throw new Error('Thresholds must be integers.');
+      throw validationError('Thresholds must be integers.');
     }
     return parsed;
   }, []);

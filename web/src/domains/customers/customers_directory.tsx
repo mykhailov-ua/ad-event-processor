@@ -1,11 +1,30 @@
 import { useCallback, useEffect, useMemo } from 'react';
+import { Link } from 'react-router-dom';
 
 import type { Customer } from '@/api/types';
 import { CustomersSelectionPanel } from '@/domains/customers/customers_selection_panel';
 import { listPageRange } from '@/lib/list_page_stats';
 import { DirectoryPaginationFooter } from '@/shell/directory_pagination_footer';
 import { DirectoryPageShell } from '@/shell/directory_page_shell';
-import { ControlPlaneSelectTable } from '@/shell/control_plane_select_table';
+import type { DirectoryOverviewField } from '@/shell/directory_overview_dialog';
+import {
+  DirectorySelectOverviewTable,
+  directoryOperateRows,
+  directoryRecordMap,
+} from '@/shell/directory_select_overview_table';
+import { DirectoryRowActionsMenu } from '@/shell/directory_row_actions_menu';
+import { PrimaryActionButton } from '@/shell/action_buttons';
+
+function buildCustomerOverviewFields(customer: Customer): DirectoryOverviewField[] {
+  return [
+    { label: 'Name', value: customer.name ?? customer.id },
+    { label: 'ID', value: customer.id ?? '-' },
+    { label: 'Balance', value: customer.balance ?? '-' },
+    { label: 'Currency', value: customer.currency ?? '-' },
+    { label: 'Active campaigns', value: customer.active_campaigns ?? '-' },
+    { label: 'Total spend', value: customer.total_spend ?? '-' },
+  ];
+}
 
 export type CustomersDirectoryProps = {
   items?: Customer[];
@@ -48,18 +67,21 @@ export function CustomersDirectory({
 
   const operateRows = useMemo(
     () =>
-      (items ?? [])
-        .filter((customer): customer is Customer & { id: string } => Boolean(customer.id))
-        .map((customer) => ({
-          id: customer.id,
-          label: customer.name ?? customer.id,
-        })),
+      directoryOperateRows(
+        items,
+        (customer) => customer.id,
+        (customer) => customer.name ?? customer.id ?? ''
+      ),
     [items]
   );
 
   const selectedCustomer = useMemo(
     () => (items ?? []).find((customer) => customer.id === selectedCustomerId),
     [items, selectedCustomerId]
+  );
+  const customerById = useMemo(
+    () => directoryRecordMap(items, (customer) => customer.id),
+    [items]
   );
 
   const handleClearSelection = useCallback(() => {
@@ -82,7 +104,7 @@ export function CustomersDirectory({
       }
       badge={
         freshnessLabel ? (
-          <span >
+          <span>
             {freshnessLabel}
           </span>
         ) : null
@@ -102,14 +124,31 @@ export function CustomersDirectory({
           onPrev={() => onPageChange(Math.max(0, offset - limit))}
         />
       }
-      skeletonColumns={2}
+      skeletonColumns={3}
       title="Customers"
     >
-      <ControlPlaneSelectTable
+      <DirectorySelectOverviewTable
+        buildOverviewFields={buildCustomerOverviewFields}
         disabled={fetching}
         emptyMessage="Customers are provisioned through billing and platform setup."
         nameColumnLabel="Customer"
+        overviewFooter={(customer) =>
+          customer.id ? (
+            <PrimaryActionButton asChild>
+              <Link to={`/customers/${customer.id}`}>Open detail</Link>
+            </PrimaryActionButton>
+          ) : null
+        }
+        overviewTitle={(customer) => customer.name ?? customer.id ?? ''}
+        recordById={customerById}
         revalidating={listRevalidating}
+        renderActions={(row, _customer, openOverview) => (
+          <DirectoryRowActionsMenu
+            ariaLabel={`Customer actions ${row.id}`}
+            disabled={fetching}
+            onOverview={openOverview}
+          />
+        )}
         rows={operateRows}
         selectedId={selectedCustomerId}
         onSelectedIdChange={onSelectedCustomerIdChange}

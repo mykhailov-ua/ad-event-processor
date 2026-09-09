@@ -8,6 +8,12 @@ import {
 } from '@/api/selfserve_api';
 import type { APIKeyCreatedResponse, APIKeySummary } from '@/api/types';
 import { mutationError } from '@/lib/mutation_audit';
+import {
+  requireNonEmpty,
+  toastValidationError,
+  validationError,
+  type AdminValidationError,
+} from '@/lib/admin_validation_error';
 import { useCoalescedBumpRefresh, useRefreshToken } from '@/hooks/use_coalesced_refresh_token';
 import { useResource } from '@/api/use_resource';
 
@@ -30,6 +36,7 @@ export function useIntegrationsApiKeysPageWorkspace() {
   const [draftScopes, setDraftScopes] = useState<string[]>(['campaigns:read']);
   const [creating, setCreating] = useState(false);
   const [createError, setCreateError] = useState<Error | undefined>();
+  const [formValidationError, setFormValidationError] = useState<AdminValidationError | undefined>();
   const [createdKey, setCreatedKey] = useState<APIKeyCreatedResponse | undefined>();
   const [revokingId, setRevokingId] = useState<string | undefined>();
   const [revokeError, setRevokeError] = useState<Error | undefined>();
@@ -51,17 +58,29 @@ export function useIntegrationsApiKeysPageWorkspace() {
   }, []);
 
   const onCreate = useCallback(async () => {
-    const name = draftName.trim();
-    if (!name || creating) {
+    if (creating) {
+      return;
+    }
+    const nameCheck = requireNonEmpty(draftName, 'Key name', 'name');
+    if (!nameCheck.ok) {
+      setFormValidationError(nameCheck.error);
+      toastValidationError(nameCheck.error);
+      return;
+    }
+    if (draftScopes.length === 0) {
+      const err = validationError('Select at least one scope.', { field: 'scopes' });
+      setFormValidationError(err);
+      toastValidationError(err);
       return;
     }
     setCreating(true);
     setCreateError(undefined);
+    setFormValidationError(undefined);
     setCreatedKey(undefined);
     try {
       const response = await createSelfServeApiKey({
-        name,
-        scopes: draftScopes.length > 0 ? draftScopes : undefined,
+        name: nameCheck.value,
+        scopes: draftScopes,
       });
       setCreatedKey(response);
       setDraftName('');
@@ -109,10 +128,14 @@ export function useIntegrationsApiKeysPageWorkspace() {
     draftScopes,
     creating,
     createError,
+    formValidationError,
     createdKey,
     revokingId,
     revokeError,
-    onDraftNameChange: setDraftName,
+    onDraftNameChange: (value: string) => {
+      setFormValidationError(undefined);
+      setDraftName(value);
+    },
     onToggleScope,
     onCreate,
     onRevoke,

@@ -10,6 +10,13 @@ import {
 import type { CostSyncCredential } from '@/api/types';
 import { type IntegrationsCostSyncPanel } from '@/domains/integrations/integrations_cost_sync';
 import { toError } from '@/lib/admin_error.ts';
+import {
+  actionGuardError,
+  requireInteger,
+  requireNonEmpty,
+  toastValidationError,
+  type AdminValidationError,
+} from '@/lib/admin_validation_error';
 import { confirmDestructiveAction, mutationError as toMutationError } from '@/lib/mutation_audit';
 import { useCustomerScope } from '@/hooks/use_customer_scope';
 import { useCoalescedBumpRefresh, useRefreshToken } from '@/hooks/use_coalesced_refresh_token';
@@ -44,6 +51,10 @@ export function useIntegrationsCostSyncPageWorkspace() {
   const [deleting, setDeleting] = useState(false);
   const [saveError, setSaveError] = useState<Error | undefined>();
   const [deleteError, setDeleteError] = useState<Error | undefined>();
+  const [credentialValidationError, setCredentialValidationError] = useState<
+    AdminValidationError | undefined
+  >();
+  const [runValidationError, setRunValidationError] = useState<AdminValidationError | undefined>();
   const [saveSuccess, setSaveSuccess] = useState(false);
   const [deleteSuccess, setDeleteSuccess] = useState(false);
   const [runNetwork, setRunNetwork] = useState('');
@@ -80,22 +91,39 @@ export function useIntegrationsCostSyncPageWorkspace() {
     if (saving) {
       return;
     }
-    const network = draftNetwork.trim();
-    if (!network || !appliedCustomerId) {
+    if (!appliedCustomerId) {
+      const err = actionGuardError('Apply a customer ID before saving credentials.');
+      setCredentialValidationError(err);
+      toastValidationError(err);
       return;
     }
-    const interval = Number.parseInt(draftSyncIntervalMinutes.trim(), 10);
+    const networkCheck = requireNonEmpty(draftNetwork, 'Network', 'network');
+    if (!networkCheck.ok) {
+      setCredentialValidationError(networkCheck.error);
+      toastValidationError(networkCheck.error);
+      return;
+    }
+    const intervalCheck = requireInteger(draftSyncIntervalMinutes, 'Sync interval', {
+      min: 15,
+      field: 'sync_interval_minutes',
+    });
+    if (!intervalCheck.ok) {
+      setCredentialValidationError(intervalCheck.error);
+      toastValidationError(intervalCheck.error);
+      return;
+    }
     setSaving(true);
     setSaveError(undefined);
+    setCredentialValidationError(undefined);
     setSaveSuccess(false);
     try {
-      await upsertCostSyncCredential(network, {
+      await upsertCostSyncCredential(networkCheck.value, {
         customer_id: appliedCustomerId,
         account_id: draftAccountId.trim() || undefined,
         access_token: draftAccessToken.trim() || undefined,
         refresh_token: draftRefreshToken.trim() || undefined,
         api_key: draftApiKey.trim() || undefined,
-        sync_interval_minutes: (Number.isFinite(interval) ? interval : 60) as 15 | 30 | 60 | 1440,
+        sync_interval_minutes: intervalCheck.value as 15 | 30 | 60 | 1440,
       });
       setSaveSuccess(true);
       bumpRefreshCoalesced();
@@ -119,18 +147,27 @@ export function useIntegrationsCostSyncPageWorkspace() {
     if (deleting) {
       return;
     }
-    const network = draftNetwork.trim();
-    if (!network || !appliedCustomerId) {
+    if (!appliedCustomerId) {
+      const err = actionGuardError('Apply a customer ID before deleting credentials.');
+      setCredentialValidationError(err);
+      toastValidationError(err);
       return;
     }
-    if (!confirmDestructiveAction(`Delete credential for network "${network}"?`)) {
+    const networkCheck = requireNonEmpty(draftNetwork, 'Network', 'network');
+    if (!networkCheck.ok) {
+      setCredentialValidationError(networkCheck.error);
+      toastValidationError(networkCheck.error);
+      return;
+    }
+    if (!confirmDestructiveAction(`Delete credential for network "${networkCheck.value}"?`)) {
       return;
     }
     setDeleting(true);
     setDeleteError(undefined);
+    setCredentialValidationError(undefined);
     setDeleteSuccess(false);
     try {
-      await deleteCostSyncCredential(network, appliedCustomerId);
+      await deleteCostSyncCredential(networkCheck.value, appliedCustomerId);
       setDeleteSuccess(true);
       bumpRefreshCoalesced();
     } catch (err: unknown) {
@@ -145,10 +182,14 @@ export function useIntegrationsCostSyncPageWorkspace() {
       return;
     }
     if (!appliedCustomerId) {
+      const err = actionGuardError('Apply a customer ID before running cost sync.');
+      setRunValidationError(err);
+      toastValidationError(err);
       return;
     }
     setRunning(true);
     setRunError(undefined);
+    setRunValidationError(undefined);
     setRunSuccess(false);
     try {
       await runCostSync({
@@ -188,10 +229,20 @@ export function useIntegrationsCostSyncPageWorkspace() {
       draftTo: runTo,
       running,
       runError,
+      runValidationError,
       runSuccess,
-      onDraftNetworkChange: setRunNetwork,
-      onDraftFromChange: setRunFrom,
-      onDraftToChange: setRunTo,
+      onDraftNetworkChange: (value: string) => {
+        setRunValidationError(undefined);
+        setRunNetwork(value);
+      },
+      onDraftFromChange: (value: string) => {
+        setRunValidationError(undefined);
+        setRunFrom(value);
+      },
+      onDraftToChange: (value: string) => {
+        setRunValidationError(undefined);
+        setRunTo(value);
+      },
       onRun: () => {
         void onRunSync();
       },
@@ -207,14 +258,33 @@ export function useIntegrationsCostSyncPageWorkspace() {
       deleting,
       saveError,
       deleteError,
+      credentialValidationError,
       saveSuccess,
       deleteSuccess,
-      onDraftNetworkChange: setDraftNetwork,
-      onDraftAccountIdChange: setDraftAccountId,
-      onDraftAccessTokenChange: setDraftAccessToken,
-      onDraftRefreshTokenChange: setDraftRefreshToken,
-      onDraftApiKeyChange: setDraftApiKey,
-      onDraftSyncIntervalMinutesChange: setDraftSyncIntervalMinutes,
+      onDraftNetworkChange: (value: string) => {
+        setCredentialValidationError(undefined);
+        setDraftNetwork(value);
+      },
+      onDraftAccountIdChange: (value: string) => {
+        setCredentialValidationError(undefined);
+        setDraftAccountId(value);
+      },
+      onDraftAccessTokenChange: (value: string) => {
+        setCredentialValidationError(undefined);
+        setDraftAccessToken(value);
+      },
+      onDraftRefreshTokenChange: (value: string) => {
+        setCredentialValidationError(undefined);
+        setDraftRefreshToken(value);
+      },
+      onDraftApiKeyChange: (value: string) => {
+        setCredentialValidationError(undefined);
+        setDraftApiKey(value);
+      },
+      onDraftSyncIntervalMinutesChange: (value: string) => {
+        setCredentialValidationError(undefined);
+        setDraftSyncIntervalMinutes(value);
+      },
       onSave: () => {
         void onSave();
       },

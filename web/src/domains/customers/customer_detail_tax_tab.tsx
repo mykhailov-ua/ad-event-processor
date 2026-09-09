@@ -5,9 +5,10 @@ import { CustomerDetailFieldRow } from '@/domains/customers/customer_detail_fiel
 import { CustomerDetailPanel } from '@/domains/customers/customer_detail_panel';
 import { CustomerDetailRow } from '@/domains/customers/customer_detail_row';
 import { PrimaryActionButton } from '@/shell/action_buttons';
-import { CustomerTabShell } from '@/shell/customer_tab_shell';
 import { COMPACT_TOOLBAR_ROW_CLASS } from '@/shell/filter_panel';
-import { panelError } from '@/shell/panel_error';
+import { ErrorBlock } from '@/shell/error_block';
+import { PageSkeleton } from '@/shell/page_skeleton';
+import { adminTypography } from '@/lib/admin_kit';
 
 export type CustomerDetailTaxTabProps = {
   taxProfile: TaxProfile | undefined;
@@ -48,81 +49,87 @@ export function CustomerDetailTaxTab({
   canSave,
   onSave,
 }: CustomerDetailTaxTabProps) {
-  return (
-    <CustomerTabShell
-      blockingErrorTitle="Could not load tax profile"
-      fetchState={{ fetching, error, hasSnapshot }}
-    >
-      {hasSnapshot ? (
-        <section >
-          <Card>
-            <CardHeader>
-              <CardTitle >Tax profile</CardTitle>
-            </CardHeader>
-            <CardContent >
-              <form
-               
-                onSubmit={(event) => {
-                  event.preventDefault();
-                  onSave();
-                }}
-              >
-                <CustomerDetailPanel>
-                  <CustomerDetailFieldRow htmlFor="tax-country-code" label="Country code">
-                    <Input
-                      disabled={!canSave}
-                      id="tax-country-code"
-                      value={draftCountryCode}
-                      onChange={(event) => onDraftCountryCodeChange(event.target.value)}
-                    />
-                  </CustomerDetailFieldRow>
-                  <CustomerDetailFieldRow htmlFor="tax-region" label="Tax region">
-                    <Input
-                      disabled={!canSave}
-                      id="tax-region"
-                      value={draftTaxRegion}
-                      onChange={(event) => onDraftTaxRegionChange(event.target.value)}
-                    />
-                  </CustomerDetailFieldRow>
-                  <CustomerDetailFieldRow htmlFor="tax-scheme" label="Tax scheme">
-                    <Input
-                      disabled={!canSave}
-                      id="tax-scheme"
-                      value={draftTaxScheme}
-                      onChange={(event) => onDraftTaxSchemeChange(event.target.value)}
-                    />
-                  </CustomerDetailFieldRow>
-                  <CustomerDetailFieldRow htmlFor="tax-rate-bps" label="Tax rate (bps)">
-                    <Input
-                      disabled={!canSave}
-                      id="tax-rate-bps"
-                      inputMode="numeric"
-                      type="number"
-                      value={draftTaxRateBps}
-                      onChange={(event) => onDraftTaxRateBpsChange(event.target.value)}
-                    />
-                  </CustomerDetailFieldRow>
-                  {taxProfile?.customer_id ? (
-                    <CustomerDetailRow label="Customer ID" value={taxProfile.customer_id} />
-                  ) : null}
-                </CustomerDetailPanel>
-                <div >
-                  <PrimaryActionButton disabled={!canSave} loading={saving} type="submit">
-                    Save
-                  </PrimaryActionButton>
-                </div>
-              </form>
-            </CardContent>
-          </Card>
+  if (fetching && !hasSnapshot && !error) {
+    return <PageSkeleton />;
+  }
 
-          {saveError ? panelError(saveError, 'Save failed') : null}
-          {saveSuccess ? (
-            <p  role="status">
-              Tax profile saved.
-            </p>
-          ) : null}
-        </section>
+  if (error && !hasSnapshot) {
+    return <ErrorBlock title="Could not load tax profile" message={error.message} />;
+  }
+
+  if (!hasSnapshot) {
+    return null;
+  }
+
+  return (
+    <section className="grid gap-4">
+      <Card>
+        <CardHeader>
+          <CardTitle className={adminTypography.sectionTitle}>Tax profile</CardTitle>
+        </CardHeader>
+        <CardContent className="grid gap-4">
+          <form
+            className="grid gap-4"
+            onSubmit={(event) => {
+              event.preventDefault();
+              onSave();
+            }}
+          >
+            <CustomerDetailPanel>
+              <CustomerDetailFieldRow htmlFor="tax-country-code" label="Country code">
+                <Input
+                  disabled={!canSave}
+                  id="tax-country-code"
+                  value={draftCountryCode}
+                  onChange={(event) => onDraftCountryCodeChange(event.target.value)}
+                />
+              </CustomerDetailFieldRow>
+              <CustomerDetailFieldRow htmlFor="tax-region" label="Tax region">
+                <Input
+                  disabled={!canSave}
+                  id="tax-region"
+                  value={draftTaxRegion}
+                  onChange={(event) => onDraftTaxRegionChange(event.target.value)}
+                />
+              </CustomerDetailFieldRow>
+              <CustomerDetailFieldRow htmlFor="tax-scheme" label="Tax scheme">
+                <Input
+                  disabled={!canSave}
+                  id="tax-scheme"
+                  value={draftTaxScheme}
+                  onChange={(event) => onDraftTaxSchemeChange(event.target.value)}
+                />
+              </CustomerDetailFieldRow>
+              <CustomerDetailFieldRow htmlFor="tax-rate-bps" label="Tax rate (bps)">
+                <Input
+                  disabled={!canSave}
+                  id="tax-rate-bps"
+                  inputMode="numeric"
+                  type="number"
+                  value={draftTaxRateBps}
+                  onChange={(event) => onDraftTaxRateBpsChange(event.target.value)}
+                />
+              </CustomerDetailFieldRow>
+              {taxProfile?.customer_id ? (
+                <CustomerDetailRow label="Customer ID" value={taxProfile.customer_id} />
+              ) : null}
+            </CustomerDetailPanel>
+            <div className={COMPACT_TOOLBAR_ROW_CLASS}>
+              <PrimaryActionButton disabled={!canSave} loading={saving} type="submit">
+                Save
+              </PrimaryActionButton>
+            </div>
+          </form>
+        </CardContent>
+      </Card>
+
+      {saveError ? <ErrorBlock title="Save failed" message={saveError.message} /> : null}
+      {saveSuccess ? (
+        <p className={adminTypography.bodyMuted} role="status">
+          Tax profile saved.
+        </p>
       ) : null}
-    </CustomerTabShell>
+      {error && hasSnapshot ? <ErrorBlock title="Refresh failed" message={error.message} /> : null}
+    </section>
   );
 }

@@ -1,19 +1,22 @@
+import { useMemo, useState } from 'react';
+
 import { PageChrome } from '@/shell/page_chrome';
 import { CustomerScopeBar } from '@/shell/customer_scope_bar';
 import { EmptyState } from '@/shell/empty_state';
 import { Badge } from '@/components/ui/badge';
-import {
-  DirectoryTable,
-  DirectoryTableHead,
-  TableBody,
-  TableCell,
-  TableHeader,
-  TableRow,
-} from '@/shell/directory_table';
 import type { PlatformCampaignLink, PlatformCampaignMutation } from '@/api/types';
 import { IntegrationsNav, IntegrationsPageWithLoad } from '@/domains/integrations/integrations_nav';
 import { PlatformCampaignLinkForm } from '@/domains/integrations/platform_campaign_link_form';
 import { displayMicro, displayTimestamp } from '@/lib/display';
+import type { AdminValidationError } from '@/lib/admin_validation_error';
+import { adminTypography } from '@/lib/admin_kit';
+import type { DirectoryOverviewField } from '@/shell/directory_overview_dialog';
+import {
+  DirectorySelectOverviewTable,
+  directoryRecordMap,
+  directoryOperateRows,
+} from '@/shell/directory_select_overview_table';
+import { TableHost } from '@/shell/ui_bands';
 
 export type IntegrationsPlatformCampaignsProps = {
   links?: PlatformCampaignLink[];
@@ -47,6 +50,7 @@ export type IntegrationsPlatformCampaignsProps = {
     refreshSuccess: boolean;
     syncSuccess: boolean;
     mutationResult: PlatformCampaignMutation | undefined;
+    formValidationError?: AdminValidationError;
     onDraftCampaignIdChange: (value: string) => void;
     onDraftNetworkChange: (value: string) => void;
     onDraftExternalCampaignIdChange: (value: string) => void;
@@ -63,6 +67,37 @@ export type IntegrationsPlatformCampaignsProps = {
   };
 };
 
+function platformLinkId(row: PlatformCampaignLink): string {
+  return `${row.campaign_id}-${row.network}`;
+}
+
+function buildPlatformLinkOverviewFields(row: PlatformCampaignLink): DirectoryOverviewField[] {
+  const statusLabel = row.sync_error
+    ? (row.external_status ?? 'error')
+    : (row.external_status ?? 'unknown');
+  return [
+    {
+      label: 'Campaign',
+      value: <span className={adminTypography.monoData}>{row.campaign_id}</span>,
+    },
+    { label: 'Network', value: row.network },
+    {
+      label: 'External ID',
+      value: <span className={adminTypography.monoData}>{row.external_campaign_id}</span>,
+    },
+    {
+      label: 'Status',
+      value: (
+        <Badge variant={row.sync_error ? 'destructive' : 'outline'}>{statusLabel}</Badge>
+      ),
+    },
+    { label: 'Daily budget (micro)', value: displayMicro(row.external_daily_budget_micro) },
+    { label: 'Last synced', value: displayTimestamp(row.last_synced_at) },
+    { label: 'Account ID', value: row.account_id ?? '' },
+    { label: 'Sync error', value: row.sync_error ?? '' },
+  ];
+}
+
 export function IntegrationsPlatformCampaigns({
   links,
   appliedCustomerId,
@@ -74,6 +109,32 @@ export function IntegrationsPlatformCampaigns({
   onApplyCustomerScope,
   linkForm,
 }: IntegrationsPlatformCampaignsProps) {
+  const [selectedId, setSelectedId] = useState<string | null>(null);
+
+  const recordById = useMemo(
+    () => directoryRecordMap(links, platformLinkId),
+    [links]
+  );
+  const rows = useMemo(
+    () =>
+      directoryOperateRows(
+        links,
+        platformLinkId,
+        (row) => row.external_campaign_id ?? platformLinkId(row)
+      ),
+    [links]
+  );
+
+  const handleSelectedIdChange = (id: string | null) => {
+    setSelectedId(id);
+    if (id) {
+      const record = recordById.get(id);
+      if (record) {
+        linkForm.onPrefillFromLink(record);
+      }
+    }
+  };
+
   const customerScopeBar = (
     <CustomerScopeBar
       appliedCustomerId={appliedCustomerId}
@@ -127,6 +188,7 @@ export function IntegrationsPlatformCampaigns({
         refreshSuccess={linkForm.refreshSuccess}
         syncSuccess={linkForm.syncSuccess}
         mutationResult={linkForm.mutationResult}
+        formValidationError={linkForm.formValidationError}
         onDraftCampaignIdChange={linkForm.onDraftCampaignIdChange}
         onDraftNetworkChange={linkForm.onDraftNetworkChange}
         onDraftExternalCampaignIdChange={linkForm.onDraftExternalCampaignIdChange}
@@ -147,42 +209,19 @@ export function IntegrationsPlatformCampaigns({
           description="No external platform campaign links exist for this customer."
         />
       ) : (
-        <DirectoryTable>
-          <TableHeader>
-            <TableRow>
-              <DirectoryTableHead>Campaign</DirectoryTableHead>
-              <DirectoryTableHead>Network</DirectoryTableHead>
-              <DirectoryTableHead>External ID</DirectoryTableHead>
-              <DirectoryTableHead>Status</DirectoryTableHead>
-              <DirectoryTableHead>Daily budget (micro)</DirectoryTableHead>
-              <DirectoryTableHead>Last synced</DirectoryTableHead>
-            </TableRow>
-          </TableHeader>
-          <TableBody>
-            {(links ?? []).map((row) => (
-              <TableRow
-                key={`${row.campaign_id}-${row.network}`}
-               
-                onClick={() => linkForm.onPrefillFromLink(row)}
-              >
-                <TableCell >{row.campaign_id}</TableCell>
-                <TableCell>{row.network}</TableCell>
-                <TableCell >{row.external_campaign_id}</TableCell>
-                <TableCell>
-                  {row.sync_error ? (
-                    <Badge variant="destructive">{row.external_status ?? 'error'}</Badge>
-                  ) : (
-                    <Badge variant="outline">{row.external_status ?? 'unknown'}</Badge>
-                  )}
-                </TableCell>
-                <TableCell>{displayMicro(row.external_daily_budget_micro)}</TableCell>
-                <TableCell>{displayTimestamp(row.last_synced_at)}</TableCell>
-              </TableRow>
-            ))}
-          </TableBody>
-        </DirectoryTable>
+        <TableHost>
+          <DirectorySelectOverviewTable
+            buildOverviewFields={buildPlatformLinkOverviewFields}
+            disabled={fetching}
+            overviewTitle={(row) => row.external_campaign_id ?? platformLinkId(row)}
+            recordById={recordById}
+            revalidating={fetching && hasSnapshot}
+            rows={rows}
+            selectedId={selectedId}
+            onSelectedIdChange={handleSelectedIdChange}
+          />
+        </TableHost>
       )}
-
     </IntegrationsPageWithLoad>
   );
 }

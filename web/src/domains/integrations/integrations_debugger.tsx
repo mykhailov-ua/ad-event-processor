@@ -14,6 +14,7 @@ import {
   IntegrationsPageWithLoad,
   integrationsPanelError,
 } from '@/domains/integrations/integrations_nav';
+import { ErrorBlock } from '@/shell/error_block';
 import type { IntegrationsDebuggerPageWorkspace } from '@/domains/integrations/use_integrations_debugger_page_workspace';
 import { displayTimestamp } from '@/lib/display';
 
@@ -21,8 +22,9 @@ export type IntegrationsDebuggerProps = IntegrationsDebuggerPageWorkspace;
 
 export function IntegrationsDebugger({
   draftCampaignId,
-  setDraftCampaignId,
+  onDraftCampaignIdChange,
   onApplyCampaignId,
+  formValidationError,
   loadingKey,
   busy,
   canRun,
@@ -46,6 +48,9 @@ export function IntegrationsDebugger({
           Run smoke, flow validation, and postback dry-run against a single campaign. Deep links
           from the campaign editor prefill the campaign ID query parameter.
         </p>
+        {formValidationError ? (
+          <ErrorBlock error={formValidationError} title="Check campaign scope" />
+        ) : null}
         <DirectoryFilterForm
           layout="auto-fill"
           onSubmit={(event) => {
@@ -58,7 +63,7 @@ export function IntegrationsDebugger({
               id="integration-debugger-campaign-id"
               required
               value={draftCampaignId}
-              onChange={(event) => setDraftCampaignId(event.target.value)}
+              onChange={(event) => onDraftCampaignIdChange(event.target.value)}
             />
           </FilterField>
           <Button disabled={!canRun} type="submit" variant="outline">

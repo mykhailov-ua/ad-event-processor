@@ -1,10 +1,10 @@
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
+import { adminSpacing, adminTypography, customerDetailSectionClass } from '@/lib/admin_spacing';
 import type { CustomerBalance } from '@/api/types';
 import { CustomerDetailLedgerEntryTable } from '@/domains/customers/customer_detail_ledger_entry_table';
 import { CustomerDetailPanel } from '@/domains/customers/customer_detail_panel';
 import { CustomerDetailRow } from '@/domains/customers/customer_detail_row';
 import { CustomerTabShell } from '@/shell/customer_tab_shell';
-
 export type CustomerDetailBalanceTabProps = {
   balance: CustomerBalance | undefined;
   fetching: boolean;
@@ -26,10 +26,10 @@ export function CustomerDetailBalanceTab({
       fetchState={{ fetching, error, hasSnapshot }}
     >
       {balance ? (
-        <section >
+        <section className={customerDetailSectionClass}>
           <Card>
             <CardHeader>
-              <CardTitle >Ledger balance</CardTitle>
+              <CardTitle>Ledger balance</CardTitle>
             </CardHeader>
             <CardContent>
               <CustomerDetailPanel>
@@ -41,11 +41,11 @@ export function CustomerDetailBalanceTab({
 
           <Card>
             <CardHeader>
-              <CardTitle >Recent ledger entries</CardTitle>
+              <CardTitle>Recent ledger entries</CardTitle>
             </CardHeader>
-            <CardContent >
+            <CardContent className="overflow-x-auto">
               {recent.length === 0 ? (
-                <p >No recent ledger entries.</p>
+                <p className={adminTypography.bodyMuted}>No recent ledger entries.</p>
               ) : (
                 <CustomerDetailLedgerEntryTable items={recent} />
               )}

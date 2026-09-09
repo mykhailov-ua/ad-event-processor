@@ -1,18 +1,18 @@
+import { useMemo, useState } from 'react';
+
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
-import { EmptyState } from '@/shell/empty_state';
 import type { MLManualLabel, OpsMlModelEvalResponse, OpsMlModelStatusResponse } from '@/api/types';
 import { JsonPayloadView } from '@/shell/json_payload_view';
+import { EmptyState } from '@/shell/empty_state';
+import type { DirectoryOverviewField } from '@/shell/directory_overview_dialog';
+import { DirectorySelectOverviewTable } from '@/shell/directory_select_overview_table';
+import { TableHost } from '@/shell/ui_bands';
+import { adminTypography } from '@/lib/admin_kit';
+import { cn } from '@/lib/utils';
 import { opsPanelError } from '@/domains/ops/ops_nav';
-import { OpsActionGroup, OpsPageWithLoad } from '@/domains/ops/ops_page_shell';
-import {
-  OpsTable,
-  OpsTableCell,
-  OpsTableHead,
-  OpsTableHeaderRow,
-  OpsTableRow,
-} from '@/domains/ops/ops_table';
+import { OpsActionGroup, OpsPageLoading, OpsPageShell } from '@/domains/ops/ops_page_shell';
 
 export type OpsMlModelProps = {
   status: OpsMlModelStatusResponse | undefined;
@@ -42,6 +42,37 @@ export type OpsMlModelProps = {
   onAddLabel: () => void;
 };
 
+function mlLabelRowId(row: MLManualLabel, index: number): string | undefined {
+  if (row.ip_hash && row.created_at) {
+    return `${row.ip_hash}:${row.created_at}`;
+  }
+  return row.ip_hash ?? `label-${index}`;
+}
+
+function mlLabelRowLabel(row: MLManualLabel): string {
+  return row.ip_hash ?? 'ML label';
+}
+
+function buildMlLabelOverviewFields(row: MLManualLabel): DirectoryOverviewField[] {
+  return [
+    {
+      label: 'IP hash',
+      value: (
+        <span className={cn(adminTypography.monoData, 'text-muted-foreground')}>
+          {row.ip_hash ?? '-'}
+        </span>
+      ),
+    },
+    { label: 'Label', value: row.label ?? '-' },
+    { label: 'Reason', value: row.reason ?? '-' },
+    { label: 'Source', value: row.source ?? '-' },
+    {
+      label: 'Created',
+      value: row.created_at ?? '-',
+    },
+  ];
+}
+
 export function OpsMlModel({
   status,
   evalBlock,
@@ -69,32 +100,39 @@ export function OpsMlModel({
   onLoadLabels,
   onAddLabel,
 }: OpsMlModelProps) {
+  const [selectedId, setSelectedId] = useState<string | null>(null);
   const labelRows = labels ?? [];
+  const recordById = useMemo(() => {
+    const map = new Map<string, MLManualLabel>();
+    labelRows.forEach((row, index) => {
+      const id = mlLabelRowId(row, index);
+      if (id) {
+        map.set(id, row);
+      }
+    });
+    return map;
+  }, [labelRows]);
+  const rows = useMemo(() => {
+    const operateRows: { id: string; label: string }[] = [];
+    labelRows.forEach((row, index) => {
+      const id = mlLabelRowId(row, index);
+      if (!id) {
+        return;
+      }
+      operateRows.push({ id, label: mlLabelRowLabel(row) });
+    });
+    return operateRows;
+  }, [labelRows]);
+
+  if (fetchingStatus && !hasStatusSnapshot && !statusError) {
+    return <OpsPageLoading />;
+  }
 
   return (
-    <OpsPageWithLoad
-      blockingErrorTitle="Could not load ML status"
-      fetchState={{
-        fetching: fetchingStatus,
-        error: statusError,
-        hasSnapshot: hasStatusSnapshot,
-      }}
-      refreshErrorTitle="ML status refresh failed"
-      title="ML model ops"
-      alerts={
-        <>
-          {evalError && !hasEvalSnapshot
-            ? opsPanelError(evalError, 'Could not load ML eval')
-            : null}
-          {labelsError && !hasLabelsSnapshot
-            ? opsPanelError(labelsError, 'Could not load ML labels')
-            : null}
-          {saveError ? opsPanelError(saveError, 'Could not add ML label') : null}
-        </>
-      }
+    <OpsPageShell
       filters={
         <>
-          <div >
+          <div className="grid gap-2">
             <Label htmlFor="ml-ip-hash">IP hash</Label>
             <Input
               id="ml-ip-hash"
@@ -102,7 +140,7 @@ export function OpsMlModel({
               onChange={(event) => onDraftIpHashChange(event.target.value)}
             />
           </div>
-          <div >
+          <div className="grid gap-2">
             <Label htmlFor="ml-label">Label</Label>
             <Input
               id="ml-label"
@@ -111,7 +149,7 @@ export function OpsMlModel({
               onChange={(event) => onDraftLabelChange(event.target.value)}
             />
           </div>
-          <div >
+          <div className="grid gap-2">
             <Label htmlFor="ml-reason">Reason</Label>
             <Input
               id="ml-reason"
@@ -121,6 +159,7 @@ export function OpsMlModel({
           </div>
         </>
       }
+      title="ML model ops"
       actions={
         <>
           <OpsActionGroup label="ML data">
@@ -157,11 +196,20 @@ export function OpsMlModel({
         </>
       }
     >
+      {statusError && !hasStatusSnapshot
+        ? opsPanelError(statusError, 'Could not load ML status')
+        : null}
+      {evalError && !hasEvalSnapshot ? opsPanelError(evalError, 'Could not load ML eval') : null}
+      {labelsError && !hasLabelsSnapshot
+        ? opsPanelError(labelsError, 'Could not load ML labels')
+        : null}
+
       {status ? <JsonPayloadView payload={status} /> : null}
       {evalBlock ? <JsonPayloadView payload={evalBlock} /> : null}
 
+      {saveError ? opsPanelError(saveError, 'Could not add ML label') : null}
       {saveSuccess ? (
-        <p  role="status">
+        <p className="text-muted-foreground" role="status">
           Label stored.
         </p>
       ) : null}
@@ -171,33 +219,19 @@ export function OpsMlModel({
       ) : null}
 
       {labelRows.length > 0 ? (
-        <OpsTable
-          horizontalScroll
-          head={
-            <OpsTableHeaderRow>
-              <OpsTableHead>IP hash</OpsTableHead>
-              <OpsTableHead>Label</OpsTableHead>
-              <OpsTableHead>Reason</OpsTableHead>
-            </OpsTableHeaderRow>
-          }
-        >
-          {labelRows.map((row, index) => (
-            <OpsTableRow
-              key={
-                row.ip_hash && row.created_at
-                  ? `${row.ip_hash}:${row.created_at}`
-                  : (row.ip_hash ?? `row-${index}`)
-              }
-            >
-              <OpsTableCell >
-                {row.ip_hash ?? ''}
-              </OpsTableCell>
-              <OpsTableCell>{row.label ?? ''}</OpsTableCell>
-              <OpsTableCell>{row.reason ?? ''}</OpsTableCell>
-            </OpsTableRow>
-          ))}
-        </OpsTable>
+        <TableHost>
+          <DirectorySelectOverviewTable
+            buildOverviewFields={buildMlLabelOverviewFields}
+            disabled={fetchingLabels || savingLabel}
+            nameColumnLabel="ML label"
+            overviewTitle={(row) => mlLabelRowLabel(row)}
+            recordById={recordById}
+            rows={rows}
+            selectedId={selectedId}
+            onSelectedIdChange={setSelectedId}
+          />
+        </TableHost>
       ) : null}
-    </OpsPageWithLoad>
+    </OpsPageShell>
   );
 }

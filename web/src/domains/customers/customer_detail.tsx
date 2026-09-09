@@ -10,10 +10,10 @@ import { CustomerDetailTabBar } from '@/domains/customers/customer_detail_tab_ba
 import { CustomerDetailTaxTab } from '@/domains/customers/customer_detail_tax_tab';
 import type { CustomerDetailProps } from '@/domains/customers/customer_detail_types';
 import { CustomerDetailWalletTab } from '@/domains/customers/customer_detail_wallet_tab';
+import { adminSpacing, adminTypography, customerDetailHeaderClass, customerDetailSectionClass } from '@/lib/admin_spacing';
 import { ErrorBlock } from '@/shell/error_block';
 import { panelError } from '@/shell/panel_error';
 import { PageSkeleton } from '@/shell/page_skeleton';
-
 export type {
   CustomerDetailTab,
   CustomerDetailProps,
@@ -105,16 +105,16 @@ export function CustomerDetail({
   }
 
   return (
-    <section >
-      <header >
+    <section className={customerDetailSectionClass}>
+      <header className={customerDetailHeaderClass}>
         <div>
-          <p >
-            <Link  to="/customers">
+          <p className={adminTypography.bodyMuted}>
+            <Link className="text-primary hover:underline" to="/customers">
               Customers
             </Link>
           </p>
-          <h1 >{customer.name ?? customer.id}</h1>
-          {customerFetching ? <p >Refreshing...</p> : null}
+          <h1 className={adminTypography.pageTitle}>{customer.name ?? customer.id}</h1>
+          {customerFetching ? <p className={adminTypography.bodyMuted}>Refreshing...</p> : null}
         </div>
       </header>
 

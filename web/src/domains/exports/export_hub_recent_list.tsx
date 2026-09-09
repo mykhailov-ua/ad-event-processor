@@ -1,4 +1,7 @@
 import { Button } from '@/components/ui/button';
+import { adminTypography } from '@/lib/admin_kit';
+import { uiSurfaces } from '@/lib/ui_surfaces';
+import { cn } from '@/lib/utils';
 import { EXPORT_HUB_KIND_LABELS } from '@/domains/exports/export_hub_catalog';
 import { exportHubJobErrorMessage } from '@/domains/exports/export_hub_errors';
 import type { ExportHubRecentJob } from '@/domains/exports/export_hub_recent';
@@ -30,10 +33,10 @@ export function ExportHubRecentList({
   }
 
   return (
-    <section aria-label="Recent exports">
-      <h2>Recent exports</h2>
-      <p>Last {jobs.length} job(s) in this browser session.</p>
-      <ul>
+    <section aria-label="Recent exports" className={uiSurfaces.panel}>
+      <h2 className={adminTypography.sectionTitle}>Recent exports</h2>
+      <p className={adminTypography.bodyMuted}>Last {jobs.length} job(s) in this browser session.</p>
+      <ul className={cn('m-0 list-none p-0', uiSurfaces.directoryStack)}>
         {jobs.map((job) => {
           const active = job.jobId === activeJobId;
           const canDownload = exportJobCanDownload(job.status);
@@ -44,24 +47,41 @@ export function ExportHubRecentList({
           const errorInline = errorMessage ? truncateExportJobInlineText(errorMessage) : undefined;
           const kindLabel = EXPORT_HUB_KIND_LABELS[job.kind];
           return (
-            <li key={job.jobId} aria-current={active ? 'true' : undefined}>
-              <button type="button" onClick={() => onSelectJob(job.jobId)}>
-                <p>{kindLabel}</p>
-                <p>{job.label}</p>
-                <p>Job ID {job.jobId}</p>
-                {job.customerId ? <p>Customer ID {job.customerId}</p> : null}
+            <li
+              key={job.jobId}
+              aria-current={active ? 'true' : undefined}
+              className={cn(
+                'grid gap-2 border border-border p-3',
+                active && 'border-primary/40 bg-admin-selection'
+              )}
+            >
+              <Button
+                className="h-auto min-h-0 w-full justify-start whitespace-normal px-0 py-0 text-left font-normal hover:bg-transparent"
+                type="button"
+                variant="ghost"
+                onClick={() => onSelectJob(job.jobId)}
+              >
+                <p className={adminTypography.label}>{kindLabel}</p>
+                <p className={adminTypography.body}>{job.label}</p>
+                <p className={adminTypography.monoData}>Job ID {job.jobId}</p>
+                {job.customerId ? (
+                  <p className={adminTypography.monoData}>Customer ID {job.customerId}</p>
+                ) : null}
                 {errorInline ? (
-                  <p title={errorInline.truncated ? errorInline.full : undefined}>
+                  <p
+                    className={adminTypography.bodyMuted}
+                    title={errorInline.truncated ? errorInline.full : undefined}
+                  >
                     {errorInline.display}
                   </p>
                 ) : null}
-                <p>
+                <p className={adminTypography.bodyMuted}>
                   {normalizeExportJobStatus(job.status) || 'unknown'}
                   {' · '}
                   {new Date(job.createdAt).toLocaleString()}
                   {summary ? ` · ${summary}` : null}
                 </p>
-              </button>
+              </Button>
               <Button
                 disabled={!canDownload || downloadingJobId === job.jobId}
                 type="button"

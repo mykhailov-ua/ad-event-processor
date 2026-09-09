@@ -28,7 +28,12 @@ import { useBreadcrumbSegmentLabel } from '@/shell/breadcrumb_context';
 import { useResource } from '@/api/use_resource';
 import { useMeta } from '@/hooks/use_meta';
 import { useSession } from '@/hooks/use_session';
-import { toError } from '@/lib/admin_error';
+import { toError, userErrorMessage } from '@/lib/admin_error';
+import {
+  requireNonEmpty,
+  requireNonNegativeInteger,
+  validationError,
+} from '@/lib/admin_validation_error';
 import { triggerBlobDownload } from '@/lib/trigger_blob_download';
 
 export function useCustomerDetailPageWorkspace() {
@@ -69,7 +74,7 @@ export function useCustomerDetailPageWorkspace() {
   const customerResource = useResource(
     (signal) => {
       if (!id) {
-        return Promise.reject(new Error('Customer id is required'));
+        return Promise.reject(validationError('Customer id is required.', { field: 'customer_id' }));
       }
       return getCustomer(id, signal);
     },
@@ -215,12 +220,19 @@ export function useCustomerDetailPageWorkspace() {
     if (!id || !canSaveTax) {
       return;
     }
-    const trimmedRate = draftTaxRateBps.trim();
-    const parsedRate = trimmedRate === '' ? undefined : Number.parseInt(trimmedRate, 10);
-    if (trimmedRate !== '' && (parsedRate == null || Number.isNaN(parsedRate))) {
-      setSaveError(new Error('Tax rate (bps) must be an integer'));
-      setSaveSuccess(false);
-      return;
+    let parsedRate: number | undefined;
+    if (draftTaxRateBps.trim() !== '') {
+      const rateResult = requireNonNegativeInteger(
+        draftTaxRateBps,
+        'Tax rate (bps)',
+        'tax_rate_bps'
+      );
+      if (!rateResult.ok) {
+        setSaveError(rateResult.error);
+        setSaveSuccess(false);
+        return;
+      }
+      parsedRate = rateResult.value;
     }
 
     setSavingTax(true);
@@ -239,7 +251,7 @@ export function useCustomerDetailPageWorkspace() {
     } catch (err: unknown) {
       const nextError = toError(err);
       setSaveError(nextError);
-      toast.error(nextError.message);
+      toast.error(userErrorMessage(nextError));
     } finally {
       setSavingTax(false);
     }
@@ -249,12 +261,13 @@ export function useCustomerDetailPageWorkspace() {
     if (!id || !canSaveProfile) {
       return;
     }
-    const name = draftName.trim();
-    if (!name) {
-      setProfileSaveError(new Error('Customer name is required'));
+    const nameResult = requireNonEmpty(draftName, 'Customer name', 'name');
+    if (!nameResult.ok) {
+      setProfileSaveError(nameResult.error);
       setProfileSaveSuccess(false);
       return;
     }
+    const name = nameResult.value;
 
     setSavingProfile(true);
     setProfileSaveError(undefined);
@@ -270,7 +283,7 @@ export function useCustomerDetailPageWorkspace() {
     } catch (err: unknown) {
       const nextError = toError(err);
       setProfileSaveError(nextError);
-      toast.error(nextError.message);
+      toast.error(userErrorMessage(nextError));
     } finally {
       setSavingProfile(false);
     }

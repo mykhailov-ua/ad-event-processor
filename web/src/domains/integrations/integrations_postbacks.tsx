@@ -1,14 +1,8 @@
+import { useMemo, useState } from 'react';
+
 import { EmptyState } from '@/shell/empty_state';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
-import {
-  DirectoryTable,
-  DirectoryTableHead,
-  TableBody,
-  TableCell,
-  TableHeader,
-  TableRow,
-} from '@/shell/directory_table';
 import type {
   PostbackCampaignStatus,
   PostbackConfig,
@@ -22,6 +16,17 @@ import {
 } from '@/domains/integrations/integrations_nav';
 import { PostbackConfigForm } from '@/domains/integrations/postback_config_form';
 import { displayTimestamp } from '@/lib/display';
+import type { AdminValidationError } from '@/lib/admin_validation_error';
+import { adminTypography } from '@/lib/admin_kit';
+import type { DirectoryOverviewField } from '@/shell/directory_overview_dialog';
+import {
+  DirectorySelectOverviewTable,
+  directoryRecordMap,
+  directoryOperateRows,
+} from '@/shell/directory_select_overview_table';
+import { DirectoryRowActionsMenu } from '@/shell/directory_row_actions_menu';
+import { DropdownMenuItem } from '@/components/ui/dropdown-menu';
+import { TableHost } from '@/shell/ui_bands';
 
 export type IntegrationsPostbacksTab = 'configs' | 'dlq' | 'status' | 'health';
 
@@ -58,6 +63,7 @@ export type IntegrationsPostbacksProps = {
     testing: boolean;
     saveError: Error | undefined;
     testError: Error | undefined;
+    formValidationError?: AdminValidationError;
     saveSuccess: boolean;
     testResult: PostbackDryRunResult | undefined;
     onDraftCampaignIdChange: (value: string) => void;
@@ -77,6 +83,103 @@ export type IntegrationsPostbacksProps = {
   };
 };
 
+function postbackConfigId(row: PostbackConfig): string {
+  return `${row.campaign_id}-${row.provider}`;
+}
+
+function postbackCampaignProviderId(row: { campaign_id: string; provider: string }): string {
+  return `${row.campaign_id}-${row.provider}`;
+}
+
+function postbackDlqId(row: PostbackDlqEntry): string | null {
+  return row.id != null ? String(row.id) : null;
+}
+
+function buildPostbackConfigOverviewFields(row: PostbackConfig): DirectoryOverviewField[] {
+  return [
+    {
+      label: 'Campaign',
+      value: <span className={adminTypography.monoData}>{row.campaign_id}</span>,
+    },
+    { label: 'Provider', value: row.provider },
+    { label: 'Target event', value: row.target_event },
+    { label: 'URL template', value: row.url_template },
+    { label: 'Test event code', value: row.test_event_code ?? '' },
+    { label: 'Token', value: row.has_api_token ? 'set' : 'missing' },
+  ];
+}
+
+function buildPostbackDlqOverviewFields(row: PostbackDlqEntry): DirectoryOverviewField[] {
+  return [
+    { label: 'ID', value: row.id ?? '' },
+    {
+      label: 'Campaign',
+      value: <span className={adminTypography.monoData}>{row.campaign_id ?? ''}</span>,
+    },
+    { label: 'Click ID', value: row.click_id ?? '' },
+    { label: 'Event', value: row.event_type ?? '' },
+    { label: 'Status', value: row.status ?? '' },
+    { label: 'Failures', value: row.failures_count ?? '' },
+    { label: 'Last error', value: row.last_error ?? '' },
+  ];
+}
+
+function buildPostbackStatusOverviewFields(row: PostbackCampaignStatus): DirectoryOverviewField[] {
+  return [
+    {
+      label: 'Campaign',
+      value: <span className={adminTypography.monoData}>{row.campaign_id}</span>,
+    },
+    { label: 'Provider', value: row.provider },
+    { label: 'Last success', value: displayTimestamp(row.last_success_at) },
+    {
+      label: 'DLQ pending',
+      value:
+        row.dlq_pending_count > 0 ? (
+          <Badge variant="destructive">{row.dlq_pending_count}</Badge>
+        ) : (
+          row.dlq_pending_count
+        ),
+    },
+  ];
+}
+
+function buildPostbackHealthOverviewFields(row: PostbackHealthRow): DirectoryOverviewField[] {
+  return [
+    {
+      label: 'Campaign',
+      value: <span className={adminTypography.monoData}>{row.campaign_id}</span>,
+    },
+    { label: 'Provider', value: row.provider },
+    {
+      label: 'Success 24h',
+      value: row.success_rate_24h != null ? `${row.success_rate_24h}%` : 'n/a',
+    },
+    {
+      label: 'p95 latency',
+      value: row.p95_latency_ms != null ? `${row.p95_latency_ms} ms` : 'n/a',
+    },
+    {
+      label: 'Status',
+      value: (
+        <Badge
+          variant={
+            row.health_status === 'fail'
+              ? 'destructive'
+              : row.health_status === 'warn'
+                ? 'secondary'
+                : 'outline'
+          }
+        >
+          {row.health_status}
+        </Badge>
+      ),
+    },
+    { label: 'Last error', value: row.last_error ?? '' },
+    { label: 'DLQ pending', value: row.dlq_pending_count },
+  ];
+}
+
 export function IntegrationsPostbacks({
   tab,
   onTabChange,
@@ -95,13 +198,81 @@ export function IntegrationsPostbacks({
   configForm,
   dlqActions,
 }: IntegrationsPostbacksProps) {
+  const [selectedConfigId, setSelectedConfigId] = useState<string | null>(null);
+  const [selectedDlqId, setSelectedDlqId] = useState<string | null>(null);
+  const [selectedStatusId, setSelectedStatusId] = useState<string | null>(null);
+  const [selectedHealthId, setSelectedHealthId] = useState<string | null>(null);
+
+  const configRecordById = useMemo(
+    () => directoryRecordMap(configs, postbackConfigId),
+    [configs]
+  );
+  const configRows = useMemo(
+    () =>
+      directoryOperateRows(
+        configs,
+        postbackConfigId,
+        (row) => `${row.provider} (${row.campaign_id})`
+      ),
+    [configs]
+  );
+
+  const dlqRecordById = useMemo(() => directoryRecordMap(dlq, postbackDlqId), [dlq]);
+  const dlqRows = useMemo(
+    () =>
+      directoryOperateRows(
+        dlq,
+        postbackDlqId,
+        (row) => row.click_id ?? String(row.id ?? '')
+      ),
+    [dlq]
+  );
+
+  const statusRecordById = useMemo(
+    () => directoryRecordMap(campaignStatus, postbackCampaignProviderId),
+    [campaignStatus]
+  );
+  const statusRows = useMemo(
+    () =>
+      directoryOperateRows(
+        campaignStatus,
+        postbackCampaignProviderId,
+        (row) => `${row.provider} (${row.campaign_id})`
+      ),
+    [campaignStatus]
+  );
+
+  const healthRecordById = useMemo(
+    () => directoryRecordMap(healthRows, postbackCampaignProviderId),
+    [healthRows]
+  );
+  const healthTableRows = useMemo(
+    () =>
+      directoryOperateRows(
+        healthRows,
+        postbackCampaignProviderId,
+        (row) => `${row.provider} (${row.campaign_id})`
+      ),
+    [healthRows]
+  );
+
+  const handleConfigSelectedIdChange = (id: string | null) => {
+    setSelectedConfigId(id);
+    if (id) {
+      const record = configRecordById.get(id);
+      if (record) {
+        configForm.onPrefillFromConfig(record);
+      }
+    }
+  };
+
   return (
     <IntegrationsPageWithLoad
       blockingErrorTitle="Could not load postbacks"
       fetchState={{ error, fetching, hasSnapshot }}
       title="Postbacks"
     >
-      <div >
+      <div>
         {POSTBACKS_TABS.map((item) => (
           <Button
             key={item.id}
@@ -115,7 +286,7 @@ export function IntegrationsPostbacks({
       </div>
 
       {tab === 'configs' ? (
-        <section >
+        <section>
           <PostbackConfigForm
             draftCampaignId={configForm.draftCampaignId}
             draftProvider={configForm.draftProvider}
@@ -127,6 +298,7 @@ export function IntegrationsPostbacks({
             testing={configForm.testing}
             saveError={configForm.saveError}
             testError={configForm.testError}
+            formValidationError={configForm.formValidationError}
             saveSuccess={configForm.saveSuccess}
             testResult={configForm.testResult}
             onDraftCampaignIdChange={configForm.onDraftCampaignIdChange}
@@ -139,99 +311,66 @@ export function IntegrationsPostbacks({
             onTest={configForm.onTest}
           />
 
-          <div >
-            <h2 >Configs</h2>
+          <div>
+            <h2>Configs</h2>
             {configs.length === 0 ? (
               <EmptyState title="No configs" description="No postback configs are configured." />
             ) : (
-              <DirectoryTable horizontalScroll>
-                <TableHeader>
-                  <TableRow>
-                    <DirectoryTableHead>Campaign</DirectoryTableHead>
-                    <DirectoryTableHead>Provider</DirectoryTableHead>
-                    <DirectoryTableHead>Target event</DirectoryTableHead>
-                    <DirectoryTableHead>URL template</DirectoryTableHead>
-                    <DirectoryTableHead>Test event code</DirectoryTableHead>
-                    <DirectoryTableHead>Token</DirectoryTableHead>
-                  </TableRow>
-                </TableHeader>
-                <TableBody>
-                  {configs.map((row) => (
-                    <TableRow
-                      key={`${row.campaign_id}-${row.provider}`}
-                     
-                      onClick={() => configForm.onPrefillFromConfig(row)}
-                    >
-                      <TableCell >{row.campaign_id}</TableCell>
-                      <TableCell>{row.provider}</TableCell>
-                      <TableCell>{row.target_event}</TableCell>
-                      <TableCell
-                       
-                        title={row.url_template}
-                      >
-                        {row.url_template}
-                      </TableCell>
-                      <TableCell >{row.test_event_code ?? ''}</TableCell>
-                      <TableCell>{row.has_api_token ? 'set' : 'missing'}</TableCell>
-                    </TableRow>
-                  ))}
-                </TableBody>
-              </DirectoryTable>
+              <TableHost>
+                <DirectorySelectOverviewTable
+                  buildOverviewFields={buildPostbackConfigOverviewFields}
+                  disabled={fetching}
+                  overviewTitle={(row) => `${row.provider} (${row.campaign_id})`}
+                  recordById={configRecordById}
+                  rows={configRows}
+                  selectedId={selectedConfigId}
+                  onSelectedIdChange={handleConfigSelectedIdChange}
+                />
+              </TableHost>
             )}
           </div>
         </section>
       ) : null}
 
       {tab === 'dlq' ? (
-        <section >
-          <h2 >DLQ</h2>
+        <section>
+          <h2>DLQ</h2>
           {dlq.length === 0 ? (
             <EmptyState title="DLQ empty" description="No failed postback deliveries in DLQ." />
           ) : (
-            <DirectoryTable horizontalScroll>
-              <TableHeader>
-                <TableRow>
-                  <DirectoryTableHead>ID</DirectoryTableHead>
-                  <DirectoryTableHead>Campaign</DirectoryTableHead>
-                  <DirectoryTableHead>Click ID</DirectoryTableHead>
-                  <DirectoryTableHead>Event</DirectoryTableHead>
-                  <DirectoryTableHead>Status</DirectoryTableHead>
-                  <DirectoryTableHead>Failures</DirectoryTableHead>
-                  <DirectoryTableHead>Last error</DirectoryTableHead>
-                  <DirectoryTableHead >Actions</DirectoryTableHead>
-                </TableRow>
-              </TableHeader>
-              <TableBody>
-                {dlq.map((row) => {
-                  const rowId = row.id != null ? String(row.id) : '';
+            <TableHost>
+              <DirectorySelectOverviewTable
+                buildOverviewFields={buildPostbackDlqOverviewFields}
+                disabled={fetching || dlqActions.retryingId != null}
+                overviewTitle={(row) => row.click_id ?? String(row.id ?? 'DLQ entry')}
+                recordById={dlqRecordById}
+                renderActions={(tableRow, record, openOverview) => {
+                  const rowId = postbackDlqId(record) ?? '';
+                  const retrying = dlqActions.retryingId === rowId;
                   return (
-                    <TableRow key={rowId || row.campaign_id}>
-                      <TableCell>{row.id}</TableCell>
-                      <TableCell >{row.campaign_id ?? ''}</TableCell>
-                      <TableCell >{row.click_id ?? ''}</TableCell>
-                      <TableCell>{row.event_type ?? ''}</TableCell>
-                      <TableCell>{row.status ?? ''}</TableCell>
-                      <TableCell>{row.failures_count ?? ''}</TableCell>
-                      <TableCell >{row.last_error ?? ''}</TableCell>
-                      <TableCell>
-                        <Button
-                          disabled={!rowId || dlqActions.retryingId === rowId}
-                          onClick={() => {
-                            if (rowId) {
-                              dlqActions.onRetry(rowId);
-                            }
-                          }}
-                          type="button"
-                          variant="outline"
-                        >
-                          {dlqActions.retryingId === rowId ? 'Retrying...' : 'Retry'}
-                        </Button>
-                      </TableCell>
-                    </TableRow>
+                    <DirectoryRowActionsMenu
+                      ariaLabel={`Actions for ${String(tableRow.label)}`}
+                      disabled={!rowId || fetching || dlqActions.retryingId != null}
+                      onOverview={openOverview}
+                    >
+                      <DropdownMenuItem
+                        disabled={!rowId || retrying || dlqActions.retryingId != null}
+                        onClick={() => {
+                          if (rowId) {
+                            dlqActions.onRetry(rowId);
+                          }
+                        }}
+                      >
+                        {retrying ? 'Retrying...' : 'Retry'}
+                      </DropdownMenuItem>
+                    </DirectoryRowActionsMenu>
                   );
-                })}
-              </TableBody>
-            </DirectoryTable>
+                }}
+                rows={dlqRows}
+                selectedId={selectedDlqId}
+                onSelectedIdChange={setSelectedDlqId}
+              />
+            </TableHost>
           )}
           {dlqActions.retryError
             ? integrationsPanelError(dlqActions.retryError, 'DLQ retry failed')
@@ -240,122 +379,73 @@ export function IntegrationsPostbacks({
       ) : null}
 
       {tab === 'status' ? (
-        <section >
-          <h2 >Campaign status</h2>
+        <section>
+          <h2>Campaign status</h2>
           {campaignStatus.length === 0 ? (
             <EmptyState
               title="No campaign status"
               description="No postback delivery status rows returned."
             />
           ) : (
-            <DirectoryTable horizontalScroll>
-              <TableHeader>
-                <TableRow>
-                  <DirectoryTableHead>Campaign</DirectoryTableHead>
-                  <DirectoryTableHead>Provider</DirectoryTableHead>
-                  <DirectoryTableHead>Last success</DirectoryTableHead>
-                  <DirectoryTableHead>DLQ pending</DirectoryTableHead>
-                </TableRow>
-              </TableHeader>
-              <TableBody>
-                {campaignStatus.map((row) => (
-                  <TableRow key={`${row.campaign_id}-${row.provider}`}>
-                    <TableCell >{row.campaign_id}</TableCell>
-                    <TableCell>{row.provider}</TableCell>
-                    <TableCell>{displayTimestamp(row.last_success_at)}</TableCell>
-                    <TableCell>
-                      {row.dlq_pending_count > 0 ? (
-                        <Badge variant="destructive">{row.dlq_pending_count}</Badge>
-                      ) : (
-                        row.dlq_pending_count
-                      )}
-                    </TableCell>
-                  </TableRow>
-                ))}
-              </TableBody>
-            </DirectoryTable>
+            <TableHost>
+              <DirectorySelectOverviewTable
+                buildOverviewFields={buildPostbackStatusOverviewFields}
+                disabled={fetching}
+                overviewTitle={(row) => `${row.provider} (${row.campaign_id})`}
+                recordById={statusRecordById}
+                rows={statusRows}
+                selectedId={selectedStatusId}
+                onSelectedIdChange={setSelectedStatusId}
+              />
+            </TableHost>
           )}
         </section>
       ) : null}
 
       {tab === 'health' ? (
-        <section >
-          <div >
-            <h2 >Delivery health (24h)</h2>
-            <span >
-              Alert when success rate drops below {healthAlertThreshold}%
-            </span>
+        <section>
+          <div>
+            <h2>Delivery health (24h)</h2>
+            <span>Alert when success rate drops below {healthAlertThreshold}%</span>
             {healthRunbookPath ? (
-              <a
-               
-                href={healthRunbookPath}
-              >
-                Runbook
-              </a>
+              <a href={healthRunbookPath}>Runbook</a>
             ) : null}
           </div>
           {healthFetching && !hasHealthSnapshot ? (
-            <p >Loading health metrics...</p>
+            <p>Loading health metrics...</p>
           ) : null}
           {healthError ? integrationsPanelError(healthError, 'Health load failed') : null}
           {healthRows.length === 0 && hasHealthSnapshot ? (
             <EmptyState title="No health rows" description="No postback configs to aggregate." />
           ) : null}
           {healthRows.length > 0 ? (
-            <DirectoryTable horizontalScroll>
-              <TableHeader>
-                <TableRow>
-                  <DirectoryTableHead>Campaign</DirectoryTableHead>
-                  <DirectoryTableHead>Provider</DirectoryTableHead>
-                  <DirectoryTableHead>Success 24h</DirectoryTableHead>
-                  <DirectoryTableHead>p95 latency</DirectoryTableHead>
-                  <DirectoryTableHead>Status</DirectoryTableHead>
-                  <DirectoryTableHead>Last error</DirectoryTableHead>
-                  <DirectoryTableHead >DLQ</DirectoryTableHead>
-                </TableRow>
-              </TableHeader>
-              <TableBody>
-                {healthRows.map((row) => (
-                  <TableRow key={`${row.campaign_id}-${row.provider}`}>
-                    <TableCell >{row.campaign_id}</TableCell>
-                    <TableCell>{row.provider}</TableCell>
-                    <TableCell>
-                      {row.success_rate_24h != null ? `${row.success_rate_24h}%` : 'n/a'}
-                    </TableCell>
-                    <TableCell>
-                      {row.p95_latency_ms != null ? `${row.p95_latency_ms} ms` : 'n/a'}
-                    </TableCell>
-                    <TableCell>
-                      <Badge
-                        variant={
-                          row.health_status === 'fail'
-                            ? 'destructive'
-                            : row.health_status === 'warn'
-                              ? 'secondary'
-                              : 'outline'
-                        }
-                      >
-                        {row.health_status}
-                      </Badge>
-                    </TableCell>
-                    <TableCell >{row.last_error ?? ''}</TableCell>
-                    <TableCell>
-                      {row.dlq_pending_count > 0 ? (
-                        <Button onClick={() => onTabChange('dlq')} type="button" variant="outline">
-                          {row.dlq_pending_count} pending
-                        </Button>
-                      ) : (
-                        '0'
-                      )}
-                    </TableCell>
-                  </TableRow>
-                ))}
-              </TableBody>
-            </DirectoryTable>
+            <TableHost>
+              <DirectorySelectOverviewTable
+                buildOverviewFields={buildPostbackHealthOverviewFields}
+                disabled={healthFetching}
+                overviewTitle={(row) => `${row.provider} (${row.campaign_id})`}
+                recordById={healthRecordById}
+                renderActions={(tableRow, record, openOverview) => (
+                  <DirectoryRowActionsMenu
+                    ariaLabel={`Actions for ${String(tableRow.label)}`}
+                    disabled={healthFetching}
+                    onOverview={openOverview}
+                  >
+                    {record.dlq_pending_count > 0 ? (
+                      <DropdownMenuItem onClick={() => onTabChange('dlq')}>
+                        {record.dlq_pending_count} pending in DLQ
+                      </DropdownMenuItem>
+                    ) : null}
+                  </DirectoryRowActionsMenu>
+                )}
+                rows={healthTableRows}
+                selectedId={selectedHealthId}
+                onSelectedIdChange={setSelectedHealthId}
+              />
+            </TableHost>
           ) : null}
         </section>
       ) : null}
-
     </IntegrationsPageWithLoad>
   );
 }

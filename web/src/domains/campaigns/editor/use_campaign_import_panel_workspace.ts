@@ -30,6 +30,8 @@ import {
 import { useCampaignImportPanelLoad } from '@/domains/campaigns/editor/use_campaign_import_panel_load';
 import { newRandomUuid } from '@/lib/uuid';
 import { useSession } from '@/hooks/use_session';
+import { userErrorMessage } from '@/lib/admin_error';
+import { requireNonEmpty, validationError } from '@/lib/admin_validation_error';
 import { mutationError } from '@/lib/mutation_audit';
 
 export function useCampaignImportPanelWorkspace(enabled: boolean) {
@@ -70,12 +72,12 @@ export function useCampaignImportPanelWorkspace(enabled: boolean) {
   }, [load.sources?.sources]);
 
   const buildJobRequest = useCallback((): ImportValidateJobRequest => {
-    const customerId = draftCustomerId.trim();
-    if (!customerId) {
-      throw new Error('Customer ID is required.');
+    const customerId = requireNonEmpty(draftCustomerId, 'Customer ID', 'customer_id');
+    if (!customerId.ok) {
+      throw customerId.error;
     }
     return {
-      customer_id: customerId,
+      customer_id: customerId.value,
       source_kind: draftSourceKind,
       payload: parsePayloadJson(draftPayload),
     };
@@ -89,17 +91,17 @@ export function useCampaignImportPanelWorkspace(enabled: boolean) {
   }, [draftPayload, draftSourceKind]);
 
   const buildPullRequest = useCallback((): MigratePullRequest => {
-    const customerId = draftCustomerId.trim();
-    if (!customerId) {
-      throw new Error('Customer ID is required.');
+    const customerId = requireNonEmpty(draftCustomerId, 'Customer ID', 'customer_id');
+    if (!customerId.ok) {
+      throw customerId.error;
     }
     const baseUrl = draftPullBaseUrl.trim();
     const apiToken = draftPullToken.trim();
     if (!baseUrl || !apiToken) {
-      throw new Error('Pull base URL and API token are required.');
+      throw validationError('Pull base URL and API token are required.');
     }
     const body: MigratePullRequest = {
-      customer_id: customerId,
+      customer_id: customerId.value,
       source_kind: draftPullSourceKind,
       base_url: baseUrl,
       api_token: apiToken,
@@ -122,7 +124,7 @@ export function useCampaignImportPanelWorkspace(enabled: boolean) {
     } catch (err: unknown) {
       const nextError = mutationError(err);
       setActionError(nextError);
-      toast.error(nextError.message);
+      toast.error(userErrorMessage(nextError));
     } finally {
       setValidating(false);
     }
@@ -139,16 +141,16 @@ export function useCampaignImportPanelWorkspace(enabled: boolean) {
     } catch (err: unknown) {
       const nextError = mutationError(err);
       setActionError(nextError);
-      toast.error(nextError.message);
+      toast.error(userErrorMessage(nextError));
     } finally {
       setValidating(false);
     }
   }, [buildSyncRequest]);
 
   const onImportMigration = useCallback(async () => {
-    const customerId = draftCustomerId.trim();
-    if (!customerId) {
-      setActionError(new Error('Customer ID is required.'));
+    const customerId = requireNonEmpty(draftCustomerId, 'Customer ID', 'customer_id');
+    if (!customerId.ok) {
+      setActionError(customerId.error);
       return;
     }
     setMigrating(true);
@@ -157,7 +159,7 @@ export function useCampaignImportPanelWorkspace(enabled: boolean) {
     try {
       const result = await importCampaignMigration(
         {
-          customer_id: customerId,
+          customer_id: customerId.value,
           source_kind: draftSourceKind,
           payload: parsePayloadJson(draftPayload),
           name_prefix: draftNamePrefix.trim() || undefined,
@@ -169,16 +171,16 @@ export function useCampaignImportPanelWorkspace(enabled: boolean) {
     } catch (err: unknown) {
       const nextError = mutationError(err);
       setActionError(nextError);
-      toast.error(nextError.message);
+      toast.error(userErrorMessage(nextError));
     } finally {
       setMigrating(false);
     }
   }, [draftCustomerId, draftNamePrefix, draftPayload, draftSourceKind]);
 
   const onImportBundle = useCallback(async () => {
-    const customerId = draftCustomerId.trim();
-    if (!customerId) {
-      setActionError(new Error('Customer ID is required.'));
+    const customerId = requireNonEmpty(draftCustomerId, 'Customer ID', 'customer_id');
+    if (!customerId.ok) {
+      setActionError(customerId.error);
       return;
     }
     setImporting(true);
@@ -187,11 +189,11 @@ export function useCampaignImportPanelWorkspace(enabled: boolean) {
     try {
       const bundle = parsePayloadJson(draftPayload);
       if (Array.isArray(bundle)) {
-        throw new Error('Import bundle must be a JSON object.');
+        throw validationError('Import bundle must be a JSON object.', { kind: 'format' });
       }
       const body: ImportCampaignRequest = {
         ...(bundle as ImportCampaignRequest),
-        customer_id: customerId,
+        customer_id: customerId.value,
       };
       const result = await importCampaign(body, newRandomUuid());
       setImportResult(result);
@@ -199,7 +201,7 @@ export function useCampaignImportPanelWorkspace(enabled: boolean) {
     } catch (err: unknown) {
       const nextError = mutationError(err);
       setActionError(nextError);
-      toast.error(nextError.message);
+      toast.error(userErrorMessage(nextError));
     } finally {
       setImporting(false);
     }
@@ -216,7 +218,7 @@ export function useCampaignImportPanelWorkspace(enabled: boolean) {
     } catch (err: unknown) {
       const nextError = mutationError(err);
       setActionError(nextError);
-      toast.error(nextError.message);
+      toast.error(userErrorMessage(nextError));
     } finally {
       setPullPreviewing(false);
     }
@@ -233,7 +235,7 @@ export function useCampaignImportPanelWorkspace(enabled: boolean) {
     } catch (err: unknown) {
       const nextError = mutationError(err);
       setActionError(nextError);
-      toast.error(nextError.message);
+      toast.error(userErrorMessage(nextError));
     } finally {
       setPullImporting(false);
     }
@@ -247,13 +249,13 @@ export function useCampaignImportPanelWorkspace(enabled: boolean) {
       const created = await createCampaignImportValidateJob(request, newRandomUuid());
       const nextId = created.job_id ?? created.id;
       if (!nextId) {
-        throw new Error('job_id missing in create response');
+        throw validationError('job_id missing in create response');
       }
       onJobEnqueued(nextId);
     } catch (err: unknown) {
       const nextError = mutationError(err);
       setActionError(nextError);
-      toast.error(nextError.message);
+      toast.error(userErrorMessage(nextError));
     } finally {
       setEnqueueing(false);
     }

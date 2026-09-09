@@ -4,6 +4,10 @@ import { useSearchParams } from 'react-router-dom';
 import { toast } from 'sonner';
 
 import { postCampaignWizardSession } from '@/api/campaigns_api';
+import {
+  isCampaignWizardCommitResult,
+  isCampaignWizardSession,
+} from '@/api/validate';
 import type {
   CampaignOnboardingTemplate,
   CampaignWizardCommitResult,
@@ -23,6 +27,7 @@ import {
   microQueryParamToUsdInput,
   usdInputToMicroQueryParam,
 } from '@/domains/campaigns/list/campaign_list_format';
+import { validationError } from '@/lib/admin_validation_error';
 import { newRandomUuid } from '@/lib/uuid';
 import { useCampaignWizardPanelLoad } from '@/domains/campaigns/editor/use_campaign_wizard_panel_load';
 import { useSession } from '@/hooks/use_session';
@@ -144,11 +149,11 @@ export function useCampaignWizardPanelWorkspace({
   const onCreateSession = useCallback(async () => {
     const customerId = draftCustomerId.trim();
     if (!customerId) {
-      setActionError(new Error('Customer is required.'));
+      setActionError(validationError('Customer is required.', { field: 'customer_id' }));
       return;
     }
     if (!draftTemplateKey) {
-      setActionError(new Error('Template is required.'));
+      setActionError(validationError('Template is required.', { field: 'template_key' }));
       return;
     }
     setCreating(true);
@@ -160,8 +165,8 @@ export function useCampaignWizardPanelWorkspace({
         customer_id: customerId,
         template_key: draftTemplateKey,
       });
-      if ('session_id' in result && result.session_id) {
-        load.onSessionCreated(result.session_id, result as CampaignWizardSession);
+      if (isCampaignWizardSession(result)) {
+        load.onSessionCreated(result.session_id, result);
         toast.success('Wizard session created');
       }
     } catch (err: unknown) {
@@ -193,7 +198,12 @@ export function useCampaignWizardPanelWorkspace({
             );
           }
         } catch {
-          setActionError(new Error('Click query params must be valid JSON.'));
+          setActionError(
+            validationError('Click query params must be valid JSON.', {
+              field: 'click_query_params',
+              kind: 'format',
+            })
+          );
           return;
         }
       }
@@ -217,7 +227,7 @@ export function useCampaignWizardPanelWorkspace({
     } else {
       const budgetMicro = usdInputToMicroQueryParam(budgetDraft.budget_usd);
       if (budgetMicro == null || budgetMicro <= 0) {
-        setActionError(new Error('Budget must be a positive USD amount.'));
+        setActionError(validationError('Budget must be a positive USD amount.', { field: 'budget_usd' }));
         return;
       }
       payload = {
@@ -239,7 +249,11 @@ export function useCampaignWizardPanelWorkspace({
         step,
         payload,
       });
-      load.onSessionUpdated(result as CampaignWizardSession);
+      if (!isCampaignWizardSession(result)) {
+        setActionError(new Error('Wizard update returned an unexpected response shape'));
+        return;
+      }
+      load.onSessionUpdated(result);
       toast.success('Step saved');
     } catch (err: unknown) {
       setActionError(err instanceof Error ? err : new Error(String(err)));
@@ -251,7 +265,7 @@ export function useCampaignWizardPanelWorkspace({
   const onCommitSession = useCallback(async () => {
     const id = load.sessionId.trim();
     if (!id) {
-      setActionError(new Error('Session is required to commit.'));
+      setActionError(validationError('Session is required to commit.', { field: 'session_id' }));
       return;
     }
     setCommitting(true);
@@ -263,10 +277,14 @@ export function useCampaignWizardPanelWorkspace({
         idempotency_key: newRandomUuid(),
         publish: publishOnCommit,
       });
-      setCommitResult(result as CampaignWizardCommitResult);
+      if (!isCampaignWizardCommitResult(result)) {
+        setActionError(new Error('Wizard commit returned an unexpected response shape'));
+        return;
+      }
+      setCommitResult(result);
       load.onSessionCommitted();
       toast.success('Campaign created from wizard');
-      if ('campaign' in result && result.campaign?.id) {
+      if (result.campaign.id) {
         onCampaignCreated?.(result.campaign.id);
       }
     } catch (err: unknown) {

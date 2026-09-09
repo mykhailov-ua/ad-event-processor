@@ -15,6 +15,7 @@ import {
   ValidityBadge,
 } from '@/domains/campaigns/editor/campaign_editor_shared';
 import { cn } from '@/lib/utils';
+import { adminTypography } from '@/lib/admin_kit';
 
 type CampaignEditorAdvancedPublishSectionProps = {
   checking: boolean;
@@ -58,9 +59,9 @@ export function CampaignEditorAdvancedPublishSection({
   onPublish,
 }: CampaignEditorAdvancedPublishSectionProps) {
   return (
-    <section >
-      <h2 >Publish gate</h2>
-      <div >
+    <section className="flex flex-col gap-4" >
+      <h2 className={adminTypography.sectionTitle}>Publish gate</h2>
+      <div className="flex flex-wrap gap-2" >
         <Button
           type="button"
           variant="secondary"
@@ -82,7 +83,7 @@ export function CampaignEditorAdvancedPublishSection({
         </Button>
       </div>
 
-      <div >
+      <div className="flex items-center gap-2" >
         <Checkbox
           checked={forcePublish}
           disabled={gateBusy || fetching}
@@ -109,9 +110,9 @@ export function CampaignEditorAdvancedPublishSection({
       {publishSuccess ? <Badge variant="secondary">Campaign published</Badge> : null}
 
       {publishCheck ? (
-        <div >
-          <div >
-            <p >Publish check</p>
+        <div className={cn(campaignEditorSectionClass, 'gap-3')} >
+          <div className="flex flex-wrap items-center gap-2" >
+            <p className={adminTypography.label}>Publish check</p>
             <ValidityBadge valid={publishCheck.valid} validLabel="Ready" invalidLabel="Blocked" />
           </div>
           <FieldErrorsPanel title="Field errors" fieldErrors={publishCheck.field_errors} />
@@ -120,9 +121,9 @@ export function CampaignEditorAdvancedPublishSection({
       ) : null}
 
       {validateResult ? (
-        <div >
-          <div >
-            <p >Patch validation</p>
+        <div className={cn(campaignEditorSectionClass, 'gap-3')} >
+          <div className="flex flex-wrap items-center gap-2" >
+            <p className={adminTypography.label}>Patch validation</p>
             <ValidityBadge valid={validateResult.valid} validLabel="Valid" invalidLabel="Invalid" />
           </div>
           <FieldErrorsPanel title="Field errors" fieldErrors={validateResult.field_errors} />
@@ -131,9 +132,9 @@ export function CampaignEditorAdvancedPublishSection({
       ) : null}
 
       {publishBlocked ? (
-        <div >
-          <div >
-            <p >Publish blocked</p>
+        <div className={cn(campaignEditorSectionClass, 'gap-3 border-destructive/50')} >
+          <div className="flex flex-wrap items-center gap-2" >
+            <p className={cn(adminTypography.label, "text-destructive")}>Publish blocked</p>
             <Badge variant="destructive">422</Badge>
           </div>
           <FieldErrorsPanel title="Field errors" fieldErrors={publishBlocked.field_errors} />

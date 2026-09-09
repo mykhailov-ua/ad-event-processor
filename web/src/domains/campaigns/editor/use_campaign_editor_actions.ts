@@ -35,6 +35,7 @@ import {
   type MacroPreviewFormState,
 } from '@/domains/campaigns/editor/campaign_editor';
 import { toError } from '@/lib/admin_error';
+import { validationError } from '@/lib/admin_validation_error';
 import { newRandomUuid } from '@/lib/uuid';
 
 export type UseCampaignEditorActionsArgs = {
@@ -110,7 +111,7 @@ export function useCampaignEditorActions({
 
     const patchResult = buildCampaignPatchBody(campaignSnapshot, form);
     if (!patchResult.ok) {
-      setSaveError(new Error(patchResult.error));
+      setSaveError(validationError(patchResult.error));
       return;
     }
     if (Object.keys(patchResult.body).length === 0) {
@@ -163,12 +164,12 @@ export function useCampaignEditorActions({
 
     const patchResult = buildCampaignPatchBody(campaignSnapshot, form);
     if (!patchResult.ok) {
-      setValidateError(new Error(patchResult.error));
+      setValidateError(validationError(patchResult.error));
       setValidateResult(undefined);
       return;
     }
     if (Object.keys(patchResult.body).length === 0) {
-      setValidateError(new Error('No unsaved changes to validate.'));
+      setValidateError(validationError('No unsaved changes to validate.'));
       setValidateResult(undefined);
       return;
     }
@@ -325,7 +326,7 @@ export function useCampaignEditorActions({
 
     const against = diffAgainstId.trim();
     if (against === '') {
-      setDiffError(new Error('Enter a campaign id to compare against.'));
+      setDiffError(validationError('Enter a campaign id to compare against.', { field: 'diff_against_id' }));
       setDiffResult(undefined);
       return;
     }
@@ -353,7 +354,7 @@ export function useCampaignEditorActions({
     }
     const userId = draftOwnerUserId.trim();
     if (!userId) {
-      setOwnerError(new Error('Owner user ID is required.'));
+      setOwnerError(validationError('Owner user ID is required.', { field: 'owner_user_id' }));
       return;
     }
     setTransferringOwner(true);

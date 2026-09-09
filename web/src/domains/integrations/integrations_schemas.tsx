@@ -1,14 +1,8 @@
+import { useMemo, useState } from 'react';
+
 import { EmptyState } from '@/shell/empty_state';
 import { PageSkeleton } from '@/shell/page_skeleton';
 import { Button } from '@/components/ui/button';
-import {
-  DirectoryTable,
-  DirectoryTableHead,
-  TableBody,
-  TableCell,
-  TableHeader,
-  TableRow,
-} from '@/shell/directory_table';
 import type {
   ApplyIntegrationSchemaResponse,
   IntegrationSchema,
@@ -23,8 +17,23 @@ import {
   IntegrationsPageWithLoad,
   integrationsPanelError,
 } from '@/domains/integrations/integrations_nav';
-import { JsonPayloadView } from '@/shell/json_payload_view';
+import { adminSpacing, customerDetailSectionClass } from '@/lib/admin_spacing';
+import { adminTypography } from '@/lib/admin_kit';
+import { shellChrome } from '@/shell/shell_chrome';
+import { cn } from '@/lib/utils';
+import { ErrorBlock } from '@/shell/error_block';
 import { displayTimestamp } from '@/lib/display';
+import type { AdminValidationError } from '@/lib/admin_validation_error';
+import type { DirectoryOverviewField } from '@/shell/directory_overview_dialog';
+import {
+  DirectorySelectOverviewTable,
+  directoryRecordMap,
+  directoryOperateRows,
+} from '@/shell/directory_select_overview_table';
+import { DirectoryRowActionsMenu } from '@/shell/directory_row_actions_menu';
+import { DropdownMenuItem } from '@/components/ui/dropdown-menu';
+import { JsonPayloadView } from '@/shell/json_payload_view';
+import { TableHost } from '@/shell/ui_bands';
 
 export type IntegrationsSchemasTab = 'schemas' | 'templates';
 
@@ -41,6 +50,7 @@ export type IntegrationsSchemasProps = {
   fetching: boolean;
   error: Error | undefined;
   hasSnapshot: boolean;
+  formValidationError?: AdminValidationError;
   createForm: {
     draftName: string;
     draftVersion: string;
@@ -83,6 +93,29 @@ export type IntegrationsSchemasProps = {
   };
 };
 
+function templateId(row: IntegrationTemplateCatalogEntry): string {
+  return `${row.name}-${row.file}`;
+}
+
+function buildSchemaOverviewFields(row: IntegrationSchema): DirectoryOverviewField[] {
+  return [
+    { label: 'Kind', value: row.kind },
+    { label: 'Version', value: row.version },
+    { label: 'Updated', value: displayTimestamp(row.updated_at) },
+    { label: 'Created', value: displayTimestamp(row.created_at) },
+    { label: 'ID', value: row.id },
+  ];
+}
+
+function buildTemplateOverviewFields(row: IntegrationTemplateCatalogEntry): DirectoryOverviewField[] {
+  return [
+    { label: 'Kind', value: row.kind },
+    { label: 'Category', value: row.category },
+    { label: 'Version', value: row.version },
+    { label: 'File', value: row.file },
+  ];
+}
+
 export function IntegrationsSchemas({
   tab,
   onTabChange,
@@ -91,18 +124,53 @@ export function IntegrationsSchemas({
   fetching,
   error,
   hasSnapshot,
+  formValidationError,
   createForm,
   applyForm,
   importForm,
   viewSchema,
 }: IntegrationsSchemasProps) {
+  const [selectedSchemaId, setSelectedSchemaId] = useState<string | null>(null);
+  const [selectedTemplateId, setSelectedTemplateId] = useState<string | null>(null);
+
+  const schemaRecordById = useMemo(
+    () => directoryRecordMap(schemas, (row) => row.id),
+    [schemas]
+  );
+  const schemaRows = useMemo(
+    () => directoryOperateRows(schemas, (row) => row.id, (row) => row.name ?? row.id),
+    [schemas]
+  );
+
+  const templateRecordById = useMemo(
+    () => directoryRecordMap(templates, templateId),
+    [templates]
+  );
+  const templateRows = useMemo(
+    () => directoryOperateRows(templates, templateId, (row) => row.name ?? templateId(row)),
+    [templates]
+  );
+
+  const handleSchemaSelectedIdChange = (id: string | null) => {
+    setSelectedSchemaId(id);
+    if (id) {
+      const record = schemaRecordById.get(id);
+      if (record) {
+        applyForm.onPrefillFromSchema(record);
+      }
+    }
+  };
+
   return (
     <IntegrationsPageWithLoad
       blockingErrorTitle="Could not load integration schemas"
       fetchState={{ error, fetching, hasSnapshot }}
       title="Schemas and templates"
     >
-      <div >
+      {formValidationError ? (
+        <ErrorBlock error={formValidationError} title="Check schema fields" />
+      ) : null}
+      <div className={adminSpacing.flex.buttonGroup}>
         {SCHEMAS_TABS.map((item) => (
           <Button
             key={item.id}
@@ -116,7 +184,7 @@ export function IntegrationsSchemas({
       </div>
 
       {tab === 'schemas' ? (
-        <section >
+        <section className={customerDetailSectionClass}>
           <IntegrationSchemaCreateForm
             draftName={createForm.draftName}
             draftVersion={createForm.draftVersion}
@@ -143,48 +211,38 @@ export function IntegrationsSchemas({
             onApply={applyForm.onApply}
           />
 
-          <div >
-            <h2 >Schemas</h2>
+          <div className={`grid ${adminSpacing.gap.md}`}>
+            <h2 className={adminTypography.sectionTitle}>Schemas</h2>
             {schemas.length === 0 ? (
               <EmptyState title="No schemas" description="Integration schema catalog is empty." />
             ) : (
-              <DirectoryTable>
-                <TableHeader>
-                  <TableRow>
-                    <DirectoryTableHead>Name</DirectoryTableHead>
-                    <DirectoryTableHead>Kind</DirectoryTableHead>
-                    <DirectoryTableHead>Version</DirectoryTableHead>
-                    <DirectoryTableHead>Updated</DirectoryTableHead>
-                    <DirectoryTableHead >Actions</DirectoryTableHead>
-                  </TableRow>
-                </TableHeader>
-                <TableBody>
-                  {schemas.map((row) => (
-                    <TableRow
-                      key={row.id}
-                     
-                      onClick={() => applyForm.onPrefillFromSchema(row)}
+              <TableHost>
+                <DirectorySelectOverviewTable
+                  buildOverviewFields={buildSchemaOverviewFields}
+                  disabled={fetching}
+                  overviewTitle={(row) => row.name ?? row.id}
+                  recordById={schemaRecordById}
+                  renderActions={(tableRow, record, openOverview) => (
+                    <DirectoryRowActionsMenu
+                      ariaLabel={`Actions for ${String(tableRow.label)}`}
+                      disabled={fetching}
+                      onOverview={openOverview}
                     >
-                      <TableCell>{row.name}</TableCell>
-                      <TableCell>{row.kind}</TableCell>
-                      <TableCell>{row.version}</TableCell>
-                      <TableCell>{displayTimestamp(row.updated_at)}</TableCell>
-                      <TableCell>
-                        <Button
-                          type="button"
-                          variant="outline"
-                          onClick={(event) => {
-                            event.stopPropagation();
-                            viewSchema.onView(row);
-                          }}
-                        >
-                          View
-                        </Button>
-                      </TableCell>
-                    </TableRow>
-                  ))}
-                </TableBody>
-              </DirectoryTable>
+                      <DropdownMenuItem
+                        onClick={() => applyForm.onPrefillFromSchema(record)}
+                      >
+                        Prefill apply form
+                      </DropdownMenuItem>
+                      <DropdownMenuItem onClick={() => viewSchema.onView(record)}>
+                        View JSON
+                      </DropdownMenuItem>
+                    </DirectoryRowActionsMenu>
+                  )}
+                  rows={schemaRows}
+                  selectedId={selectedSchemaId}
+                  onSelectedIdChange={handleSchemaSelectedIdChange}
+                />
+              </TableHost>
             )}
           </div>
 
@@ -193,16 +251,16 @@ export function IntegrationsSchemas({
             ? integrationsPanelError(viewSchema.error, 'Could not load schema')
             : null}
           {viewSchema.schema ? (
-            <section >
-              <div >
-                <h2 >
+            <section className={shellChrome.sectionPanelClass}>
+              <div className={cn('grid grid-cols-[1fr_auto] items-center', adminSpacing.gap.md)}>
+                <h2 className={adminTypography.sectionTitle}>
                   {viewSchema.schema.name ?? viewSchema.schema.id}
                 </h2>
                 <Button type="button" variant="ghost" onClick={viewSchema.onClose}>
                   Close
                 </Button>
               </div>
-              <pre >
+              <pre className={cn('overflow-x-auto bg-muted p-2', adminTypography.monoData)}>
                 {JSON.stringify(viewSchema.schema.schema, null, 2)}
               </pre>
               <JsonPayloadView payload={viewSchema.schema} />
@@ -212,7 +270,7 @@ export function IntegrationsSchemas({
       ) : null}
 
       {tab === 'templates' ? (
-        <section >
+        <section className={customerDetailSectionClass}>
           <IntegrationTemplateImportForm
             draftTemplateNames={importForm.draftTemplateNames}
             importing={importForm.importing}
@@ -223,39 +281,29 @@ export function IntegrationsSchemas({
             onImport={importForm.onImport}
           />
 
-          <div >
-            <h2 >Templates</h2>
+          <div className={`grid ${adminSpacing.gap.md}`}>
+            <h2 className={adminTypography.sectionTitle}>Templates</h2>
             {templates.length === 0 ? (
               <EmptyState
                 title="No templates"
                 description="Integration template catalog is empty."
               />
             ) : (
-              <DirectoryTable>
-                <TableHeader>
-                  <TableRow>
-                    <DirectoryTableHead>Name</DirectoryTableHead>
-                    <DirectoryTableHead>Kind</DirectoryTableHead>
-                    <DirectoryTableHead>Category</DirectoryTableHead>
-                    <DirectoryTableHead>Version</DirectoryTableHead>
-                  </TableRow>
-                </TableHeader>
-                <TableBody>
-                  {templates.map((row) => (
-                    <TableRow key={`${row.name}-${row.file}`}>
-                      <TableCell>{row.name}</TableCell>
-                      <TableCell>{row.kind}</TableCell>
-                      <TableCell>{row.category}</TableCell>
-                      <TableCell>{row.version}</TableCell>
-                    </TableRow>
-                  ))}
-                </TableBody>
-              </DirectoryTable>
+              <TableHost>
+                <DirectorySelectOverviewTable
+                  buildOverviewFields={buildTemplateOverviewFields}
+                  disabled={fetching}
+                  overviewTitle={(row) => row.name ?? templateId(row)}
+                  recordById={templateRecordById}
+                  rows={templateRows}
+                  selectedId={selectedTemplateId}
+                  onSelectedIdChange={setSelectedTemplateId}
+                />
+              </TableHost>
             )}
           </div>
         </section>
       ) : null}
-
     </IntegrationsPageWithLoad>
   );
 }

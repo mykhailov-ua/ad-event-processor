@@ -6,6 +6,7 @@ import { fetchOpsHomeSnapshot, getStackHealthSnapshot } from '@/api/ops_api';
 import { useResource } from '@/api/use_resource';
 import { useCoalescedBumpRefresh, useRefreshToken } from '@/hooks/use_coalesced_refresh_token';
 import { useCoalescedCallback } from '@/hooks/use_coalesced_callback';
+import { requireNonEmpty } from '@/lib/admin_validation_error';
 
 function skipLazyFetch(): Promise<never> {
   return Promise.reject(new DOMException('Skipped', 'AbortError'));
@@ -14,12 +15,16 @@ function skipLazyFetch(): Promise<never> {
 export function useOpsHealthPageWorkspace() {
   const { refreshToken, bumpRefresh } = useRefreshToken();
 
-  const stackHealthResource = useResource(
-    (signal) => getStackHealthSnapshot(signal),
+  const pageResource = useResource(
+    async (signal) => {
+      const [stackHealth, opsHome] = await Promise.all([
+        getStackHealthSnapshot(signal),
+        fetchOpsHomeSnapshot(signal),
+      ]);
+      return { stackHealth, doctor: opsHome.doctor };
+    },
     [refreshToken]
   );
-
-  const opsHomeResource = useResource((signal) => fetchOpsHomeSnapshot(signal), [refreshToken]);
 
   const [draftHostname, setDraftHostname] = useState('');
   const [probeHostname, setProbeHostname] = useState('');
@@ -36,18 +41,18 @@ export function useOpsHealthPageWorkspace() {
     [probeToken, probeHostname]
   );
 
-  const refreshing = stackHealthResource.fetching || opsHomeResource.fetching;
+  const refreshing = pageResource.fetching;
   const onRefresh = useCoalescedBumpRefresh(bumpRefresh, refreshing);
 
   const onRunProbe = useCoalescedCallback(
     () => {
-      const hostname = draftHostname.trim();
-      if (!hostname) {
-        setProbeValidationError(new Error('Hostname is required.'));
+      const hostnameResult = requireNonEmpty(draftHostname, 'Hostname', 'hostname');
+      if (!hostnameResult.ok) {
+        setProbeValidationError(hostnameResult.error);
         return;
       }
       setProbeValidationError(undefined);
-      setProbeHostname(hostname);
+      setProbeHostname(hostnameResult.value);
       setProbeToken((value) => value + 1);
     },
     {
@@ -57,14 +62,14 @@ export function useOpsHealthPageWorkspace() {
   );
 
   return {
-    stackHealth: stackHealthResource.data,
-    doctor: opsHomeResource.data?.doctor,
-    doctorFetching: opsHomeResource.fetching,
-    doctorError: opsHomeResource.error,
-    hasDoctorSnapshot: opsHomeResource.data?.doctor != null,
-    fetching: stackHealthResource.fetching,
-    error: stackHealthResource.error,
-    hasSnapshot: stackHealthResource.data != null,
+    stackHealth: pageResource.data?.stackHealth,
+    doctor: pageResource.data?.doctor,
+    doctorFetching: pageResource.fetching,
+    doctorError: undefined,
+    hasDoctorSnapshot: pageResource.data?.doctor != null,
+    fetching: pageResource.fetching,
+    error: pageResource.error,
+    hasSnapshot: pageResource.data?.stackHealth != null,
     refreshing,
     onRefresh,
     draftHostname,

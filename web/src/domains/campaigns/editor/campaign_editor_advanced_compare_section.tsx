@@ -11,6 +11,7 @@ import {
   TableHeader,
   TableRow,
 } from '@/shell/directory_table';
+import { adminTypography } from '@/lib/admin_kit';
 import {
   campaignEditorActionsRowClass,
   diffSeverityVariant,
@@ -40,9 +41,9 @@ export function CampaignEditorAdvancedCompareSection({
   onCompareDiff,
 }: CampaignEditorAdvancedCompareSectionProps) {
   return (
-    <section >
-      <h2 >Compare campaigns</h2>
-      <div >
+    <section className="flex flex-col gap-4">
+      <h2 className={adminTypography.sectionTitle}>Compare campaigns</h2>
+      <div className="grid gap-2">
         <Label htmlFor="campaign-diff-against-id">Against campaign ID</Label>
         <Input
           id="campaign-diff-against-id"
@@ -51,12 +52,12 @@ export function CampaignEditorAdvancedCompareSection({
           placeholder="Other campaign UUID"
           onChange={(event) => onDiffAgainstIdChange(event.target.value)}
         />
-        <p >
+        <p className={adminTypography.captionPlain}>
           Compare this campaign ({campaign.id}) against another campaign in the same customer.
         </p>
       </div>
 
-      <div >
+      <div className={campaignEditorActionsRowClass}>
         <Button
           type="button"
           variant="secondary"
@@ -72,12 +73,12 @@ export function CampaignEditorAdvancedCompareSection({
         : null}
 
       {diffResult ? (
-        <div >
+        <div className="grid gap-3">
           {diffResult.truncated ? (
             <Badge variant="outline">Diff truncated - showing first rows only</Badge>
           ) : null}
           {diffResult.rows.length === 0 ? (
-            <p >No differences found.</p>
+            <p className={adminTypography.bodyMuted}>No differences found.</p>
           ) : (
             <DirectoryTable>
               <TableHeader>
@@ -91,9 +92,13 @@ export function CampaignEditorAdvancedCompareSection({
               <TableBody>
                 {diffResult.rows.map((row) => (
                   <TableRow key={row.path}>
-                    <TableCell >{row.label}</TableCell>
-                    <TableCell >{formatReadonly(row.left_display)}</TableCell>
-                    <TableCell >{formatReadonly(row.right_display)}</TableCell>
+                    <TableCell className="font-medium">{row.label}</TableCell>
+                    <TableCell className={adminTypography.monoData}>
+                      {formatReadonly(row.left_display)}
+                    </TableCell>
+                    <TableCell className={adminTypography.monoData}>
+                      {formatReadonly(row.right_display)}
+                    </TableCell>
                     <TableCell>
                       <Badge variant={diffSeverityVariant(row.severity)}>{row.severity}</Badge>
                     </TableCell>

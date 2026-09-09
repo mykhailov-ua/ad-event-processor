@@ -19,7 +19,9 @@ import {
   TableRow,
 } from '@/shell/directory_table';
 import { displayTimestamp } from '@/lib/display';
+import type { Campaign } from '@/api/types';
 import type { CampaignOpsPanelWorkspace } from '@/domains/campaigns/editor/use_campaign_ops_panel_workspace';
+import { useCampaignOpsPanelWorkspace } from '@/domains/campaigns/editor/use_campaign_ops_panel_workspace';
 
 export type CampaignOpsPanelProps = {
   campaignId: string;
@@ -276,4 +278,15 @@ export function CampaignOpsPanel({ campaignId, workspace }: CampaignOpsPanelProp
       {actionError ? campaignPanelError(actionError, 'Campaign ops action failed') : null}
     </div>
   );
+}
+
+export function CampaignOpsPanelWithWorkspace({
+  campaignId,
+  campaign,
+}: {
+  campaignId: string;
+  campaign?: Campaign;
+}) {
+  const workspace = useCampaignOpsPanelWorkspace({ campaignId, campaign });
+  return <CampaignOpsPanel campaignId={campaignId} workspace={workspace} />;
 }

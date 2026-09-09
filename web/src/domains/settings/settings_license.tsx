@@ -2,12 +2,12 @@ import { Badge } from '@/components/ui/badge';
 import { LicenseApplyForm } from '@/domains/onboarding/license_apply_form';
 import type { LicenseApplyFormLoad } from '@/domains/onboarding/use_license_apply_form_load';
 import { licenseBadgeVariant } from '@/domains/settings/license_badge';
+import { ErrorBlock } from '@/shell/error_block';
 import { PageChrome } from '@/shell/page_chrome';
 import type { MetaResponse } from '@/api/types';
 import { displayTimestamp } from '@/lib/display';
 import { adminSpacing, adminTypography } from '@/lib/admin_spacing';
 import { cn } from '@/lib/utils';
-
 export type SettingsLicenseProps = {
   meta: MetaResponse | undefined;
   licenseLoad: LicenseApplyFormLoad;
@@ -53,6 +53,10 @@ export function SettingsLicense({
             </div>
           ) : null}
         </section>
+
+        {licenseLoad.statusError && !licenseLoad.licenseStatus ? (
+          <ErrorBlock title="Could not load license status" error={licenseLoad.statusError} />
+        ) : null}
 
         <section className={cn('grid', adminSpacing.gap.lg)}>
           <h2 className={adminTypography.sectionTitle}>Replace license</h2>

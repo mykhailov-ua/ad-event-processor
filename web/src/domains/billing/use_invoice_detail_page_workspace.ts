@@ -14,6 +14,7 @@ import type { BillingLedgerLine } from '@/api/types';
 import { useBreadcrumbSegmentLabel } from '@/shell/breadcrumb_context';
 import { useResource } from '@/api/use_resource';
 import { useSession } from '@/hooks/use_session';
+import { validationError } from '@/lib/admin_validation_error';
 import { triggerBlobDownload } from '@/lib/trigger_blob_download';
 import { newRandomUuid } from '@/lib/uuid';
 
@@ -43,7 +44,7 @@ export function useInvoiceDetailPageWorkspace() {
   const invoiceResource = useResource(
     (signal) => {
       if (!id) {
-        return Promise.reject(new Error('Invoice id is required'));
+        return Promise.reject(validationError('Invoice id is required.', { field: 'invoice_id' }));
       }
       return getInvoice(id, signal);
     },
@@ -53,7 +54,7 @@ export function useInvoiceDetailPageWorkspace() {
   const deliveriesResource = useResource(
     (signal) => {
       if (!id) {
-        return Promise.reject(new Error('Invoice id is required'));
+        return Promise.reject(validationError('Invoice id is required.', { field: 'invoice_id' }));
       }
       return listInvoiceDeliveries(id, signal);
     },
@@ -63,7 +64,7 @@ export function useInvoiceDetailPageWorkspace() {
   const ledgerResource = useResource(
     (signal) => {
       if (!id) {
-        return Promise.reject(new Error('Invoice id is required'));
+        return Promise.reject(validationError('Invoice id is required.', { field: 'invoice_id' }));
       }
       return listInvoiceLedgerLines(
         id,

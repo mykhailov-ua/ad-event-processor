@@ -13,6 +13,12 @@ import {
 } from '@/api/integrations_api';
 import type { PlatformCampaignLink, PlatformCampaignMutation } from '@/api/types';
 import { confirmDestructiveAction, mutationError as toMutationError } from '@/lib/mutation_audit';
+import {
+  type AdminValidationError,
+  requireInteger,
+  requireNonEmpty,
+  toastValidationError,
+} from '@/lib/admin_validation_error';
 import { newRandomUuid } from '@/lib/uuid';
 import { useCoalescedBumpRefresh, useRefreshToken } from '@/hooks/use_coalesced_refresh_token';
 import { useCustomerScope } from '@/hooks/use_customer_scope';
@@ -57,6 +63,56 @@ export function useIntegrationsPlatformCampaignsPage() {
   const [refreshSuccess, setRefreshSuccess] = useState(false);
   const [syncSuccess, setSyncSuccess] = useState(false);
   const [mutationResult, setMutationResult] = useState<PlatformCampaignMutation | undefined>();
+  const [formValidationError, setFormValidationError] = useState<AdminValidationError | undefined>();
+
+  const clearFormValidationError = useCallback(() => {
+    setFormValidationError(undefined);
+  }, []);
+
+  const reportFormValidationFailure = useCallback((error: AdminValidationError) => {
+    setFormValidationError(error);
+    toastValidationError(error);
+  }, []);
+
+  const onDraftCampaignIdChange = useCallback(
+    (value: string) => {
+      clearFormValidationError();
+      setDraftCampaignId(value);
+    },
+    [clearFormValidationError]
+  );
+
+  const onDraftNetworkChange = useCallback(
+    (value: string) => {
+      clearFormValidationError();
+      setDraftNetwork(value);
+    },
+    [clearFormValidationError]
+  );
+
+  const onDraftExternalCampaignIdChange = useCallback(
+    (value: string) => {
+      clearFormValidationError();
+      setDraftExternalCampaignId(value);
+    },
+    [clearFormValidationError]
+  );
+
+  const onDraftAccountIdChange = useCallback(
+    (value: string) => {
+      clearFormValidationError();
+      setDraftAccountId(value);
+    },
+    [clearFormValidationError]
+  );
+
+  const onDraftDailyBudgetMicroChange = useCallback(
+    (value: string) => {
+      clearFormValidationError();
+      setDraftDailyBudgetMicro(value);
+    },
+    [clearFormValidationError]
+  );
 
   const listBusy =
     fetching || saving || deleting || refreshing || syncing || pausing || resuming || settingBudget;
@@ -77,6 +133,7 @@ export function useIntegrationsPlatformCampaignsPage() {
 
   const onPrefillFromLink = useCallback(
     (row: PlatformCampaignLink) => {
+      clearFormValidationError();
       setDraftCampaignId(row.campaign_id ?? '');
       setDraftNetwork(row.network ?? '');
       setDraftExternalCampaignId(row.external_campaign_id ?? '');
@@ -86,24 +143,46 @@ export function useIntegrationsPlatformCampaignsPage() {
       );
       clearActionFeedback();
     },
-    [clearActionFeedback]
+    [clearActionFeedback, clearFormValidationError]
   );
 
   const onSave = useCallback(async () => {
     if (saving) {
       return;
     }
-    const campaignId = draftCampaignId.trim();
-    const network = draftNetwork.trim();
-    const externalCampaignId = draftExternalCampaignId.trim();
-    if (!campaignId || !network || !externalCampaignId || !appliedCustomerId) {
+    const campaignIdCheck = requireNonEmpty(draftCampaignId, 'Campaign ID', 'campaign_id');
+    if (!campaignIdCheck.ok) {
+      reportFormValidationFailure(campaignIdCheck.error);
       return;
     }
+    const networkCheck = requireNonEmpty(draftNetwork, 'Network', 'network');
+    if (!networkCheck.ok) {
+      reportFormValidationFailure(networkCheck.error);
+      return;
+    }
+    const externalCampaignIdCheck = requireNonEmpty(
+      draftExternalCampaignId,
+      'External campaign ID',
+      'external_campaign_id'
+    );
+    if (!externalCampaignIdCheck.ok) {
+      reportFormValidationFailure(externalCampaignIdCheck.error);
+      return;
+    }
+    const customerIdCheck = requireNonEmpty(appliedCustomerId, 'Customer ID', 'customer_id');
+    if (!customerIdCheck.ok) {
+      reportFormValidationFailure(customerIdCheck.error);
+      return;
+    }
+    const campaignId = campaignIdCheck.value;
+    const network = networkCheck.value;
+    const externalCampaignId = externalCampaignIdCheck.value;
+    clearFormValidationError();
     setSaving(true);
     clearActionFeedback();
     try {
       await upsertPlatformCampaignLink(campaignId, network, {
-        customer_id: appliedCustomerId,
+        customer_id: customerIdCheck.value,
         external_campaign_id: externalCampaignId,
         account_id: draftAccountId.trim() || undefined,
       });
@@ -122,6 +201,8 @@ export function useIntegrationsPlatformCampaignsPage() {
     draftCampaignId,
     draftExternalCampaignId,
     draftNetwork,
+    reportFormValidationFailure,
+    clearFormValidationError,
     saving,
   ]);
 
@@ -129,11 +210,18 @@ export function useIntegrationsPlatformCampaignsPage() {
     if (deleting) {
       return;
     }
-    const campaignId = draftCampaignId.trim();
-    const network = draftNetwork.trim();
-    if (!campaignId || !network) {
+    const campaignIdCheck = requireNonEmpty(draftCampaignId, 'Campaign ID', 'campaign_id');
+    if (!campaignIdCheck.ok) {
+      reportFormValidationFailure(campaignIdCheck.error);
       return;
     }
+    const networkCheck = requireNonEmpty(draftNetwork, 'Network', 'network');
+    if (!networkCheck.ok) {
+      reportFormValidationFailure(networkCheck.error);
+      return;
+    }
+    const campaignId = campaignIdCheck.value;
+    const network = networkCheck.value;
     if (!confirmDestructiveAction(`Delete platform link ${campaignId} / ${network}?`)) {
       return;
     }
@@ -148,17 +236,31 @@ export function useIntegrationsPlatformCampaignsPage() {
     } finally {
       setDeleting(false);
     }
-  }, [bumpRefreshCoalesced, clearActionFeedback, deleting, draftCampaignId, draftNetwork]);
+  }, [
+    bumpRefreshCoalesced,
+    clearActionFeedback,
+    deleting,
+    draftCampaignId,
+    draftNetwork,
+    reportFormValidationFailure,
+  ]);
 
   const onRefresh = useCallback(async () => {
     if (refreshing) {
       return;
     }
-    const campaignId = draftCampaignId.trim();
-    const network = draftNetwork.trim();
-    if (!campaignId || !network) {
+    const campaignIdCheck = requireNonEmpty(draftCampaignId, 'Campaign ID', 'campaign_id');
+    if (!campaignIdCheck.ok) {
+      reportFormValidationFailure(campaignIdCheck.error);
       return;
     }
+    const networkCheck = requireNonEmpty(draftNetwork, 'Network', 'network');
+    if (!networkCheck.ok) {
+      reportFormValidationFailure(networkCheck.error);
+      return;
+    }
+    const campaignId = campaignIdCheck.value;
+    const network = networkCheck.value;
     setRefreshing(true);
     clearActionFeedback();
     try {
@@ -170,16 +272,25 @@ export function useIntegrationsPlatformCampaignsPage() {
     } finally {
       setRefreshing(false);
     }
-  }, [bumpRefreshCoalesced, clearActionFeedback, draftCampaignId, draftNetwork, refreshing]);
+  }, [
+    bumpRefreshCoalesced,
+    clearActionFeedback,
+    draftCampaignId,
+    draftNetwork,
+    refreshing,
+    reportFormValidationFailure,
+  ]);
 
   const onSyncRun = useCallback(async () => {
     if (syncing) {
       return;
     }
-    const campaignId = draftCampaignId.trim();
-    if (!campaignId) {
+    const campaignIdCheck = requireNonEmpty(draftCampaignId, 'Campaign ID', 'campaign_id');
+    if (!campaignIdCheck.ok) {
+      reportFormValidationFailure(campaignIdCheck.error);
       return;
     }
+    const campaignId = campaignIdCheck.value;
     setSyncing(true);
     clearActionFeedback();
     try {
@@ -191,7 +302,7 @@ export function useIntegrationsPlatformCampaignsPage() {
     } finally {
       setSyncing(false);
     }
-  }, [bumpRefreshCoalesced, clearActionFeedback, draftCampaignId, syncing]);
+  }, [bumpRefreshCoalesced, clearActionFeedback, draftCampaignId, reportFormValidationFailure, syncing]);
 
   const runMutation = useCallback(
     async (
@@ -202,21 +313,36 @@ export function useIntegrationsPlatformCampaignsPage() {
       if (inFlight) {
         return;
       }
-      const campaignId = draftCampaignId.trim();
-      const network = draftNetwork.trim();
-      if (!campaignId || !network) {
+      const campaignIdCheck = requireNonEmpty(draftCampaignId, 'Campaign ID', 'campaign_id');
+      if (!campaignIdCheck.ok) {
+        reportFormValidationFailure(campaignIdCheck.error);
         return;
       }
-      const body = {
+      const networkCheck = requireNonEmpty(draftNetwork, 'Network', 'network');
+      if (!networkCheck.ok) {
+        reportFormValidationFailure(networkCheck.error);
+        return;
+      }
+      const campaignId = campaignIdCheck.value;
+      const network = networkCheck.value;
+      const body: {
+        network: string;
+        idempotency_key: string;
+        daily_budget_micro?: number;
+      } = {
         network,
         idempotency_key: newRandomUuid(),
-        ...(action === 'budget'
-          ? { daily_budget_micro: Number.parseInt(draftDailyBudgetMicro.trim(), 10) }
-          : {}),
       };
-      if (action === 'budget' && !Number.isFinite(body.daily_budget_micro)) {
-        setMutationError(new Error('Daily budget must be a valid integer'));
-        return;
+      if (action === 'budget') {
+        const budgetCheck = requireInteger(draftDailyBudgetMicro, 'Daily budget', {
+          min: 0,
+          field: 'daily_budget_micro',
+        });
+        if (!budgetCheck.ok) {
+          reportFormValidationFailure(budgetCheck.error);
+          return;
+        }
+        body.daily_budget_micro = budgetCheck.value;
       }
       setter(true);
       clearActionFeedback();
@@ -243,6 +369,7 @@ export function useIntegrationsPlatformCampaignsPage() {
       draftCampaignId,
       draftDailyBudgetMicro,
       draftNetwork,
+      reportFormValidationFailure,
     ]
   );
 
@@ -294,11 +421,12 @@ export function useIntegrationsPlatformCampaignsPage() {
       refreshSuccess,
       syncSuccess,
       mutationResult,
-      onDraftCampaignIdChange: setDraftCampaignId,
-      onDraftNetworkChange: setDraftNetwork,
-      onDraftExternalCampaignIdChange: setDraftExternalCampaignId,
-      onDraftAccountIdChange: setDraftAccountId,
-      onDraftDailyBudgetMicroChange: setDraftDailyBudgetMicro,
+      formValidationError,
+      onDraftCampaignIdChange,
+      onDraftNetworkChange,
+      onDraftExternalCampaignIdChange,
+      onDraftAccountIdChange,
+      onDraftDailyBudgetMicroChange,
       onSave: () => {
         void onSave();
       },

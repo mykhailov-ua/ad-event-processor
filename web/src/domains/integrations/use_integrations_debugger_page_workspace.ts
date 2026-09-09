@@ -7,6 +7,11 @@ import type {
   PostbackDryRunResult,
 } from '@/api/types';
 import { toError } from '@/lib/admin_error';
+import {
+  type AdminValidationError,
+  requireNonEmpty,
+  toastValidationError,
+} from '@/lib/admin_validation_error';
 
 import {
   runIntegrationSmokeTest,
@@ -20,6 +25,7 @@ export function useIntegrationsDebuggerPageWorkspace() {
   const [draftCampaignId, setDraftCampaignId] = useState(appliedCampaignId);
   const [loadingKey, setLoadingKey] = useState<string | undefined>();
   const [actionError, setActionError] = useState<Error | undefined>();
+  const [formValidationError, setFormValidationError] = useState<AdminValidationError | undefined>();
   const [smokeResult, setSmokeResult] = useState<CampaignSmokeResult | undefined>();
   const [flowResult, setFlowResult] = useState<CampaignFlowValidateResponse | undefined>();
   const [postbackResult, setPostbackResult] = useState<PostbackDryRunResult | undefined>();
@@ -30,7 +36,13 @@ export function useIntegrationsDebuggerPageWorkspace() {
     setFlowResult(undefined);
     setPostbackResult(undefined);
     setActionError(undefined);
+    setFormValidationError(undefined);
   }, [appliedCampaignId]);
+
+  const onDraftCampaignIdChange = useCallback((value: string) => {
+    setFormValidationError(undefined);
+    setDraftCampaignId(value);
+  }, []);
 
   const busy = loadingKey != null;
 
@@ -46,12 +58,13 @@ export function useIntegrationsDebuggerPageWorkspace() {
   }, [draftCampaignId, searchParams, setSearchParams]);
 
   const resolveCampaignId = useCallback((): string | undefined => {
-    const campaignId = draftCampaignId.trim();
-    if (!campaignId) {
-      setActionError(new Error('Campaign ID is required.'));
+    const campaignIdCheck = requireNonEmpty(draftCampaignId, 'Campaign ID', 'campaign_id');
+    if (!campaignIdCheck.ok) {
+      setFormValidationError(campaignIdCheck.error);
+      toastValidationError(campaignIdCheck.error);
       return undefined;
     }
-    return campaignId;
+    return campaignIdCheck.value;
   }, [draftCampaignId]);
 
   const runAction = useCallback(async (key: string, action: () => Promise<void>) => {
@@ -100,8 +113,9 @@ export function useIntegrationsDebuggerPageWorkspace() {
 
   return {
     draftCampaignId,
-    setDraftCampaignId,
+    onDraftCampaignIdChange,
     onApplyCampaignId,
+    formValidationError,
     loadingKey,
     busy,
     canRun,

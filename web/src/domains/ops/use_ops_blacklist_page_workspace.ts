@@ -3,6 +3,7 @@ import { useCallback, useState } from 'react';
 import { toast } from 'sonner';
 
 import { addOpsBlacklistEntry, listOpsBlacklist, removeOpsBlacklistEntry } from '@/api/ops_api';
+import { userErrorMessage } from '@/lib/admin_error';
 import { confirmDestructiveAction, mutationError } from '@/lib/mutation_audit';
 import { useCoalescedBumpRefresh, useRefreshToken } from '@/hooks/use_coalesced_refresh_token';
 import { useResource } from '@/api/use_resource';
@@ -67,7 +68,7 @@ export function useOpsBlacklistPageWorkspace() {
     } catch (err: unknown) {
       const nextError = mutationError(err);
       setActionError(nextError);
-      toast.error(nextError.message);
+      toast.error(userErrorMessage(nextError));
     } finally {
       setSaving(false);
     }
@@ -94,7 +95,7 @@ export function useOpsBlacklistPageWorkspace() {
     } catch (err: unknown) {
       const nextError = mutationError(err);
       setActionError(nextError);
-      toast.error(nextError.message);
+      toast.error(userErrorMessage(nextError));
     } finally {
       setSaving(false);
     }

@@ -5,18 +5,19 @@ import { toast } from 'sonner';
 import {
   applyCampaignTemplates,
   dryRunCampaignTemplates,
-  getCampaign,
   getCampaignIntegrationHealth,
 } from '@/api/campaigns_api';
 import type {
   ApplyCampaignTemplatesResult,
+  Campaign,
   CampaignIntegrationHealth,
   DryRunCampaignTemplatesResult,
 } from '@/api/types';
 
-import { useResource } from '@/api/use_resource';
-
-export function useCampaignIntegrationPanelWorkspace(campaignId: string) {
+export function useCampaignIntegrationPanelWorkspace(
+  campaignId: string,
+  campaign?: Campaign
+) {
   const [draftTrafficSource, setDraftTrafficSource] = useState('');
   const [draftAffiliateNetwork, setDraftAffiliateNetwork] = useState('');
   const [draftTrackingDomain, setDraftTrackingDomain] = useState('');
@@ -29,11 +30,6 @@ export function useCampaignIntegrationPanelWorkspace(campaignId: string) {
   const [health, setHealth] = useState<CampaignIntegrationHealth | undefined>();
   const [healthError, setHealthError] = useState<Error | undefined>();
   const [healthLoading, setHealthLoading] = useState(false);
-
-  const { data: campaignMeta } = useResource(
-    (signal) => getCampaign(campaignId, signal),
-    [campaignId]
-  );
 
   useEffect(() => {
     setApplyResult(undefined);
@@ -103,7 +99,7 @@ export function useCampaignIntegrationPanelWorkspace(campaignId: string) {
   const clickCopyURL =
     applyResult?.traffic_source?.target_url ??
     dryRunResult?.target_url ??
-    campaignMeta?.target_url ??
+    campaign?.target_url ??
     '';
   const postbackCopyURL =
     applyResult?.affiliate_postback?.panel_postback_url ??
@@ -130,7 +126,7 @@ export function useCampaignIntegrationPanelWorkspace(campaignId: string) {
     healthLoading,
     clickCopyURL,
     postbackCopyURL,
-    statusIntegrationSchemaName: campaignMeta?.status_integration_schema_name,
+    statusIntegrationSchemaName: campaign?.status_integration_schema_name,
     onLoadHealth,
     onApplyTemplates,
     onDryRunTemplates,

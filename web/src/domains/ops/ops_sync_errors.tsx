@@ -1,17 +1,19 @@
-import { useState } from 'react';
+import { useMemo, useState } from 'react';
 
-import { Button } from '@/components/ui/button';
+import { DropdownMenuItem } from '@/components/ui/dropdown-menu';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import type { PostbackDlqEntry } from '@/api/types';
+import { adminTypography } from '@/lib/admin_kit';
+import { cn } from '@/lib/utils';
 import { EmptyState } from '@/shell/empty_state';
+import type { DirectoryOverviewField } from '@/shell/directory_overview_dialog';
+import { DirectoryRowActionsMenu } from '@/shell/directory_row_actions_menu';
 import {
-  DirectoryTable,
-  DirectoryTableHead,
-  TableBody,
-  TableCell,
-  TableHeader,
-  TableRow,
-} from '@/shell/directory_table';
+  DirectorySelectOverviewTable,
+  directoryOperateRows,
+  directoryRecordMap,
+} from '@/shell/directory_select_overview_table';
+import { TableHost } from '@/shell/ui_bands';
 import { OpsDlqInbox } from '@/domains/ops/ops_dlq_inbox';
 import { OpsShardDlq } from '@/domains/ops/ops_shard_dlq';
 import { opsPanelError } from '@/domains/ops/ops_nav';
@@ -28,6 +30,126 @@ const SYNC_ERROR_TABS: { id: OpsSyncErrorsTab; label: string }[] = [
   { id: 'shards', label: 'Shard fan-out' },
   { id: 'postbacks', label: 'Postbacks' },
 ];
+
+function postbackDlqRowId(row: PostbackDlqEntry): string | undefined {
+  return row.id != null ? String(row.id) : undefined;
+}
+
+function postbackDlqRowLabel(row: PostbackDlqEntry): string {
+  if (row.id != null) {
+    return String(row.id);
+  }
+  if (row.event_type && row.campaign_id) {
+    return `${row.event_type} / ${row.campaign_id}`;
+  }
+  return row.event_type ?? row.campaign_id ?? 'Postback DLQ entry';
+}
+
+function buildPostbackDlqOverviewFields(row: PostbackDlqEntry): DirectoryOverviewField[] {
+  return [
+    {
+      label: 'ID',
+      value: (
+        <span className={cn(adminTypography.monoData, 'text-muted-foreground')}>
+          {row.id ?? '-'}
+        </span>
+      ),
+    },
+    {
+      label: 'Campaign ID',
+      value: (
+        <span className={cn(adminTypography.monoData, 'text-muted-foreground')}>
+          {row.campaign_id ?? '-'}
+        </span>
+      ),
+    },
+    {
+      label: 'Click ID',
+      value: (
+        <span className={cn(adminTypography.monoData, 'text-muted-foreground')}>
+          {row.click_id ?? '-'}
+        </span>
+      ),
+    },
+    { label: 'Event type', value: row.event_type ?? '-' },
+    { label: 'Status', value: row.status ?? '-' },
+    { label: 'Failures', value: row.failures_count ?? '-' },
+    { label: 'Last error', value: row.last_error ?? '-' },
+  ];
+}
+
+function PostbacksDlqPanel({
+  dlq,
+  fetching,
+  retryingId,
+  retryError,
+  onRetry,
+}: {
+  dlq: PostbackDlqEntry[];
+  fetching: boolean;
+  retryingId?: string;
+  retryError?: Error;
+  onRetry: (rowId: string) => void;
+}) {
+  const [selectedId, setSelectedId] = useState<string | null>(null);
+  const recordById = useMemo(() => directoryRecordMap(dlq, postbackDlqRowId), [dlq]);
+  const rows = useMemo(
+    () => directoryOperateRows(dlq, postbackDlqRowId, postbackDlqRowLabel),
+    [dlq]
+  );
+
+  return (
+    <>
+      {retryError ? opsPanelError(retryError, 'Postback retry failed') : null}
+      {dlq.length === 0 ? (
+        <EmptyState
+          description="No failed postback deliveries are queued."
+          title="Postbacks DLQ empty"
+        />
+      ) : (
+        <TableHost>
+          <DirectorySelectOverviewTable
+            buildOverviewFields={buildPostbackDlqOverviewFields}
+            disabled={fetching}
+            nameColumnLabel="Postback DLQ entry"
+            overviewTitle={(row) => postbackDlqRowLabel(row)}
+            recordById={recordById}
+            renderActions={(row, record, openOverview) => {
+              const rowId = record.id != null ? String(record.id) : '';
+              const canRetry = Boolean(rowId);
+              if (!canRetry) {
+                return (
+                  <DirectoryRowActionsMenu
+                    ariaLabel={`Postback DLQ entry ${row.label}`}
+                    disabled={fetching}
+                    onOverview={openOverview}
+                  />
+                );
+              }
+              return (
+                <DirectoryRowActionsMenu
+                  ariaLabel={`Postback DLQ entry ${row.label}`}
+                  disabled={fetching || retryingId === rowId}
+                  onOverview={openOverview}
+                >
+                  <DropdownMenuItem
+                    disabled={fetching || retryingId === rowId}
+                    onClick={() => onRetry(rowId)}
+                  >
+                    {retryingId === rowId ? 'Retrying...' : 'Retry'}
+                  </DropdownMenuItem>
+                </DirectoryRowActionsMenu>
+              );
+            }}
+            rows={rows}
+            selectedId={selectedId}
+            onSelectedIdChange={setSelectedId}
+          />
+        </TableHost>
+      )}
+    </>
+  );
+}
 
 export function OpsSyncErrors() {
   const [tab, setTab] = useState<OpsSyncErrorsTab>('inbox');
@@ -91,76 +213,5 @@ export function OpsSyncErrors() {
         </TabsContent>
       </Tabs>
     </OpsPageWithLoad>
-  );
-}
-
-function PostbacksDlqPanel({
-  dlq,
-  fetching,
-  retryingId,
-  retryError,
-  onRetry,
-}: {
-  dlq: PostbackDlqEntry[];
-  fetching: boolean;
-  retryingId?: string;
-  retryError?: Error;
-  onRetry: (rowId: string) => void;
-}) {
-  return (
-    <>
-      {retryError ? opsPanelError(retryError, 'Postback retry failed') : null}
-      {dlq.length === 0 ? (
-        <EmptyState
-          description="No failed postback deliveries are queued."
-          title="Postbacks DLQ empty"
-        />
-      ) : (
-        <DirectoryTable horizontalScroll>
-          <TableHeader>
-            <TableRow>
-              <DirectoryTableHead>ID</DirectoryTableHead>
-              <DirectoryTableHead>Campaign</DirectoryTableHead>
-              <DirectoryTableHead>Click ID</DirectoryTableHead>
-              <DirectoryTableHead>Event</DirectoryTableHead>
-              <DirectoryTableHead>Status</DirectoryTableHead>
-              <DirectoryTableHead>Failures</DirectoryTableHead>
-              <DirectoryTableHead>Last error</DirectoryTableHead>
-              <DirectoryTableHead>Actions</DirectoryTableHead>
-            </TableRow>
-          </TableHeader>
-          <TableBody>
-            {dlq.map((row) => {
-              const rowId = row.id != null ? String(row.id) : '';
-              return (
-                <TableRow key={rowId || row.campaign_id}>
-                  <TableCell>{row.id}</TableCell>
-                  <TableCell>{row.campaign_id ?? ''}</TableCell>
-                  <TableCell>{row.click_id ?? ''}</TableCell>
-                  <TableCell>{row.event_type ?? ''}</TableCell>
-                  <TableCell>{row.status ?? ''}</TableCell>
-                  <TableCell>{row.failures_count ?? ''}</TableCell>
-                  <TableCell>{row.last_error ?? ''}</TableCell>
-                  <TableCell>
-                    <Button
-                      disabled={!rowId || fetching || retryingId === rowId}
-                      onClick={() => {
-                        if (rowId) {
-                          onRetry(rowId);
-                        }
-                      }}
-                      type="button"
-                      variant="outline"
-                    >
-                      {retryingId === rowId ? 'Retrying...' : 'Retry'}
-                    </Button>
-                  </TableCell>
-                </TableRow>
-              );
-            })}
-          </TableBody>
-        </DirectoryTable>
-      )}
-    </>
   );
 }

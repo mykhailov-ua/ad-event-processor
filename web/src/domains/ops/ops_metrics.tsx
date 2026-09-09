@@ -1,6 +1,7 @@
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
-import { Label } from '@/components/ui/label';
+import { FilterField } from '@/shell/filter_panel';
+import { adminKit } from '@/lib/admin_kit';
 import { EmptyState } from '@/shell/empty_state';
 import type { DashboardMetrics, DashboardSummary } from '@/api/types';
 import { cn } from '@/lib/utils';
@@ -47,15 +48,14 @@ export function OpsMetrics({
       fetchState={{ fetching, error, hasSnapshot }}
       title="Dashboard metrics"
       filters={
-        <div >
-          <Label htmlFor="metrics-range">Range</Label>
+        <FilterField htmlFor="metrics-range" label="Range">
           <Input
             id="metrics-range"
             placeholder="1h"
             value={draftRange}
             onChange={(event) => onDraftRangeChange(event.target.value)}
           />
-        </div>
+        </FilterField>
       }
       actions={
         <>
@@ -66,7 +66,7 @@ export function OpsMetrics({
           </OpsActionGroup>
           <OpsActionGroup label="Live stream">
             <Button
-             
+              className={cn(liveEnabled && 'border-primary bg-primary text-primary-foreground')}
               type="button"
               variant="secondary"
               onClick={() => onLiveEnabledChange(!liveEnabled)}

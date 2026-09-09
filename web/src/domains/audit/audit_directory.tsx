@@ -18,7 +18,14 @@ import {
 import type { AuditLog } from '@/api/types';
 import type { AuditAuthSourceFilter } from '@/domains/audit/use_audit_page_workspace';
 import { AuditSelectionPanel } from '@/domains/audit/audit_selection_panel';
-import { ControlPlaneSelectTable } from '@/shell/control_plane_select_table';
+import type { DirectoryOverviewField } from '@/shell/directory_overview_dialog';
+import {
+  DirectorySelectOverviewTable,
+  directoryOperateRowsIndexed,
+  directoryRecordMapIndexed,
+} from '@/shell/directory_select_overview_table';
+import { DirectoryRowActionsMenu } from '@/shell/directory_row_actions_menu';
+import { displayTimestamp } from '@/lib/display';
 
 export type AuditDirectoryProps = {
   items?: AuditLog[];
@@ -51,13 +58,46 @@ export type AuditDirectoryProps = {
 };
 
 function auditRowId(row: AuditLog, index: number): string {
-  return row.id ?? `${row.created_at ?? 'row'}-${row.action ?? 'action'}-${index}`;
+  if (row.id != null) {
+    return String(row.id);
+  }
+  return `${row.created_at ?? 'row'}-${row.action ?? 'action'}-${index}`;
 }
 
 function auditRowLabel(row: AuditLog): string {
   const action = row.action ?? 'action';
   const target = row.target_type ?? 'target';
   return `${action} · ${target}`;
+}
+
+function auditMetadataFields(metadata: AuditLog['metadata']): {
+  authSource?: string;
+  apiKeyId?: string;
+} {
+  if (!metadata || typeof metadata !== 'object' || Array.isArray(metadata)) {
+    return {};
+  }
+  const record = metadata as Record<string, unknown>;
+  const authSource = typeof record.auth_source === 'string' ? record.auth_source : undefined;
+  const apiKeyId = typeof record.api_key_id === 'string' ? record.api_key_id : undefined;
+  return { authSource, apiKeyId };
+}
+
+function buildAuditOverviewFields(entry: AuditLog): DirectoryOverviewField[] {
+  const metadata = auditMetadataFields(entry.metadata);
+  return [
+    { label: 'Action', value: entry.action ?? '-' },
+    { label: 'Target type', value: entry.target_type ?? '-' },
+    { label: 'Target ID', value: entry.target_id ?? '-' },
+    { label: 'Admin ID', value: entry.admin_id ?? '-' },
+    {
+      label: 'Time',
+      value: displayTimestamp(entry.created_at, entry.created_at_display),
+    },
+    ...(metadata.authSource ? [{ label: 'Auth source', value: metadata.authSource }] : []),
+    ...(metadata.apiKeyId ? [{ label: 'API key ID', value: metadata.apiKeyId }] : []),
+    ...(entry.is_masked ? [{ label: 'Export', value: 'PII masked in export' }] : []),
+  ];
 }
 
 export function AuditDirectory({
@@ -95,10 +135,11 @@ export function AuditDirectory({
 
   const operateRows = useMemo(
     () =>
-      (items ?? []).map((row, index) => ({
-        id: auditRowId(row, index),
-        label: auditRowLabel(row),
-      })),
+      directoryOperateRowsIndexed(items, auditRowId, (row) => auditRowLabel(row)),
+    [items]
+  );
+  const recordById = useMemo(
+    () => directoryRecordMapIndexed(items, auditRowId),
     [items]
   );
 
@@ -228,14 +269,24 @@ export function AuditDirectory({
           onPrev={() => onPageChange(Math.max(0, offset - limit))}
         />
       }
-      skeletonColumns={2}
+      skeletonColumns={3}
       title="Audit"
     >
-      <ControlPlaneSelectTable
+      <DirectorySelectOverviewTable
+        buildOverviewFields={buildAuditOverviewFields}
         disabled={fetching}
         emptyMessage="Admin actions will appear here when recorded."
         nameColumnLabel="Entry"
+        overviewTitle={(entry) => auditRowLabel(entry)}
+        recordById={recordById}
         revalidating={listRevalidating}
+        renderActions={(row, _entry, openOverview) => (
+          <DirectoryRowActionsMenu
+            ariaLabel={`Audit entry actions ${row.id}`}
+            disabled={fetching}
+            onOverview={openOverview}
+          />
+        )}
         rows={operateRows}
         selectedId={selectedEntryId}
         onSelectedIdChange={setSelectedEntryId}

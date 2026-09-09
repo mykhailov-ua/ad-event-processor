@@ -1,11 +1,13 @@
 import type { OpsConsentProofsResponse } from '@/api/types';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
+import { PasswordInput } from '@/components/ui/password_input';
 import { Label } from '@/components/ui/label';
 import { opsPanelError } from '@/domains/ops/ops_nav';
 import { OpsPageWithLoad } from '@/domains/ops/ops_page_shell';
 import { FILTER_PANEL_NARROW_CLASS } from '@/shell/filter_panel';
 import { JsonPayloadView } from '@/shell/json_payload_view';
+import { adminTypography } from '@/lib/admin_kit';
 
 export type OpsConsentProps = {
   payload: OpsConsentProofsResponse | undefined;
@@ -60,13 +62,13 @@ export function OpsConsent({
       fetchState={{ fetching, error, hasSnapshot }}
       title="Consent proofs"
     >
-      <section >
-        <h2 >Record signed consent</h2>
-        <p >
+      <section>
+        <h2>Record signed consent</h2>
+        <p>
           POST /api/v1/consent with X-Consent-Signature. Use a local HMAC secret (test) or paste a
           precomputed signature hex.
         </p>
-        <div >
+        <div>
           <Label htmlFor="consent-user-id">User ID</Label>
           <Input
             id="consent-user-id"
@@ -74,7 +76,7 @@ export function OpsConsent({
             onChange={(event) => onDraftUserIdChange(event.target.value)}
           />
         </div>
-        <div >
+        <div>
           <Label htmlFor="consent-purposes">Purposes (int32 bitmask)</Label>
           <Input
             id="consent-purposes"
@@ -83,7 +85,7 @@ export function OpsConsent({
             onChange={(event) => onDraftPurposesChange(event.target.value)}
           />
         </div>
-        <div >
+        <div>
           <Label htmlFor="consent-source">Source</Label>
           <Input
             id="consent-source"
@@ -91,7 +93,7 @@ export function OpsConsent({
             onChange={(event) => onDraftSourceChange(event.target.value)}
           />
         </div>
-        <div >
+        <div>
           <Label htmlFor="consent-timestamp">Timestamp (optional, RFC3339)</Label>
           <Input
             id="consent-timestamp"
@@ -99,17 +101,16 @@ export function OpsConsent({
             onChange={(event) => onDraftTimestampChange(event.target.value)}
           />
         </div>
-        <div >
+        <div>
           <Label htmlFor="consent-hmac-secret">HMAC secret (local test)</Label>
-          <Input
+          <PasswordInput
             autoComplete="off"
             id="consent-hmac-secret"
-            type="password"
             value={draftSigningSecret}
             onChange={(event) => onDraftSigningSecretChange(event.target.value)}
           />
         </div>
-        <div >
+        <div>
           <Label htmlFor="consent-signature">Signature hex (optional if secret set)</Label>
           <Input
             id="consent-signature"
@@ -125,7 +126,7 @@ export function OpsConsent({
           {recording ? 'Recording...' : 'Record consent'}
         </Button>
         {recordSuccess ? (
-          <p >Consent accepted by server.</p>
+          <p>Consent accepted by server.</p>
         ) : null}
         {recordError ? opsPanelError(recordError, 'Record failed') : null}
       </section>
@@ -133,10 +134,10 @@ export function OpsConsent({
       {payload ? (
         <JsonPayloadView payload={payload} />
       ) : (
-        <p >No consent proof payload returned.</p>
+        <p className={adminTypography.bodyMuted} >No consent proof payload returned.</p>
       )}
       {listRevalidating ? (
-        <p >Refreshing proofs...</p>
+        <p>Refreshing proofs...</p>
       ) : null}
     </OpsPageWithLoad>
   );

@@ -16,7 +16,12 @@ import type {
   UpdatePostbackConfigRequest,
 } from '@/api/types';
 import { type IntegrationsPostbacksTab } from '@/domains/integrations/integrations_postbacks';
-import { toError } from '@/lib/admin_error.ts';
+import { toError, userErrorMessage } from '@/lib/admin_error.ts';
+import {
+  requireNonEmpty,
+  toastValidationError,
+  type AdminValidationError,
+} from '@/lib/admin_validation_error';
 import { mutationError } from '@/lib/mutation_audit';
 import { useCoalescedBumpRefresh, useRefreshToken } from '@/hooks/use_coalesced_refresh_token';
 import { useResource } from '@/api/use_resource';
@@ -49,6 +54,7 @@ export function useIntegrationsPostbacksPageWorkspace() {
   const [testing, setTesting] = useState(false);
   const [saveError, setSaveError] = useState<Error | undefined>();
   const [testError, setTestError] = useState<Error | undefined>();
+  const [formValidationError, setFormValidationError] = useState<AdminValidationError | undefined>();
   const [saveSuccess, setSaveSuccess] = useState(false);
   const [testResult, setTestResult] = useState<PostbackDryRunResult | undefined>();
   const [retryingId, setRetryingId] = useState<string | undefined>();
@@ -73,6 +79,7 @@ export function useIntegrationsPostbacksPageWorkspace() {
     setSaveSuccess(false);
     setSaveError(undefined);
     setTestError(undefined);
+    setFormValidationError(undefined);
     setTestResult(undefined);
   }, []);
 
@@ -80,17 +87,32 @@ export function useIntegrationsPostbacksPageWorkspace() {
     if (saving) {
       return;
     }
-    const campaignId = draftCampaignId.trim();
-    if (!campaignId) {
+    const campaignIdCheck = requireNonEmpty(draftCampaignId, 'Campaign ID', 'campaign_id');
+    if (!campaignIdCheck.ok) {
+      setFormValidationError(campaignIdCheck.error);
+      toastValidationError(campaignIdCheck.error);
+      return;
+    }
+    const providerCheck = requireNonEmpty(draftProvider, 'Provider', 'provider');
+    if (!providerCheck.ok) {
+      setFormValidationError(providerCheck.error);
+      toastValidationError(providerCheck.error);
+      return;
+    }
+    const urlCheck = requireNonEmpty(draftUrlTemplate, 'URL template', 'url_template');
+    if (!urlCheck.ok) {
+      setFormValidationError(urlCheck.error);
+      toastValidationError(urlCheck.error);
       return;
     }
     setSaving(true);
     setSaveError(undefined);
+    setFormValidationError(undefined);
     setSaveSuccess(false);
     try {
-      await updatePostbackConfig(campaignId, {
-        provider: draftProvider as UpdatePostbackConfigRequest['provider'],
-        url_template: draftUrlTemplate.trim(),
+      await updatePostbackConfig(campaignIdCheck.value, {
+        provider: providerCheck.value as UpdatePostbackConfigRequest['provider'],
+        url_template: urlCheck.value,
         api_token: draftApiToken.trim() || undefined,
         target_event: draftTargetEvent.trim() || undefined,
         test_event_code: draftTestEventCode.trim() || undefined,
@@ -117,15 +139,18 @@ export function useIntegrationsPostbacksPageWorkspace() {
     if (testing) {
       return;
     }
-    const campaignId = draftCampaignId.trim();
-    if (!campaignId) {
+    const campaignIdCheck = requireNonEmpty(draftCampaignId, 'Campaign ID', 'campaign_id');
+    if (!campaignIdCheck.ok) {
+      setFormValidationError(campaignIdCheck.error);
+      toastValidationError(campaignIdCheck.error);
       return;
     }
     setTesting(true);
     setTestError(undefined);
+    setFormValidationError(undefined);
     setTestResult(undefined);
     try {
-      const result = await testPostbackConfig(campaignId);
+      const result = await testPostbackConfig(campaignIdCheck.value);
       setTestResult(result);
     } catch (err: unknown) {
       setTestError(toError(err));
@@ -148,7 +173,7 @@ export function useIntegrationsPostbacksPageWorkspace() {
       } catch (err: unknown) {
         const nextError = mutationError(err);
         setRetryError(nextError);
-        toast.error(nextError.message);
+        toast.error(userErrorMessage(nextError));
       } finally {
         setRetryingId(undefined);
       }
@@ -182,14 +207,33 @@ export function useIntegrationsPostbacksPageWorkspace() {
       testing,
       saveError,
       testError,
+      formValidationError,
       saveSuccess,
       testResult,
-      onDraftCampaignIdChange: setDraftCampaignId,
-      onDraftProviderChange: setDraftProvider,
-      onDraftUrlTemplateChange: setDraftUrlTemplate,
-      onDraftTargetEventChange: setDraftTargetEvent,
-      onDraftApiTokenChange: setDraftApiToken,
-      onDraftTestEventCodeChange: setDraftTestEventCode,
+      onDraftCampaignIdChange: (value: string) => {
+        setFormValidationError(undefined);
+        setDraftCampaignId(value);
+      },
+      onDraftProviderChange: (value: string) => {
+        setFormValidationError(undefined);
+        setDraftProvider(value);
+      },
+      onDraftUrlTemplateChange: (value: string) => {
+        setFormValidationError(undefined);
+        setDraftUrlTemplate(value);
+      },
+      onDraftTargetEventChange: (value: string) => {
+        setFormValidationError(undefined);
+        setDraftTargetEvent(value);
+      },
+      onDraftApiTokenChange: (value: string) => {
+        setFormValidationError(undefined);
+        setDraftApiToken(value);
+      },
+      onDraftTestEventCodeChange: (value: string) => {
+        setFormValidationError(undefined);
+        setDraftTestEventCode(value);
+      },
       onSave: () => {
         void onSave();
       },

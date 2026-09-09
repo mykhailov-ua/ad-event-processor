@@ -15,7 +15,7 @@ import {
   campaignEditorSectionClass,
   editorApiErrorBlock,
 } from '@/domains/campaigns/editor/campaign_editor_shared';
-import { adminKit } from '@/lib/admin_kit';
+import { adminKit, adminTypography } from '@/lib/admin_kit';
 import { cn } from '@/lib/utils';
 
 type CampaignEditorAdvancedCloneSheetProps = {
@@ -59,13 +59,13 @@ export function CampaignEditorAdvancedCloneSheet({
 }: CampaignEditorAdvancedCloneSheetProps) {
   return (
     <Sheet onOpenChange={onCloneOpenChange} open={cloneOpen}>
-      <SheetContent >
-        <SheetHeader >
+      <SheetContent className="gap-0 p-0 sm:max-w-2xl" >
+        <SheetHeader className="border-b border-border py-4 text-left" >
           <SheetTitle>Clone campaign</SheetTitle>
         </SheetHeader>
-        <SheetBody >
-          <section >
-            <div >
+        <SheetBody className="grid gap-4 pb-8" >
+          <section className={cn(campaignEditorSectionClass, 'gap-3')} >
+            <div className={cn('grid', adminKit.fieldLabelGap)} >
               <Label htmlFor="campaign-clone-name-suffix">Clone name suffix</Label>
               <Input
                 id="campaign-clone-name-suffix"
@@ -74,24 +74,24 @@ export function CampaignEditorAdvancedCloneSheet({
                 placeholder=" (copy)"
                 onChange={(event) => onCloneNameSuffixChange(event.target.value)}
               />
-              <p >
+              <p className={adminTypography.captionPlain} >
                 Leave empty for the default &quot;{campaign.name} (copy)&quot;. Enter a suffix such
                 as &quot; - v2&quot; to append to the source name.
               </p>
             </div>
           </section>
 
-          <section >
-            <p >Clone options</p>
-            <div >
+          <section className={cn(campaignEditorSectionClass, 'gap-3')} >
+            <p className={cn("m-0", adminTypography.label)}>Clone options</p>
+            <div className="grid gap-3" >
               {CLONE_OPTION_FIELDS.map(({ field, label, description }) => {
                 const inputId = `campaign-clone-option-${field}`;
                 const defaultChecked = field === 'reset_spend' ? false : true;
                 const checked = cloneOptions[field] ?? defaultChecked;
 
                 return (
-                  <div key={field}>
-                    <div >
+                  <div className="grid gap-1" key={field}>
+                    <div className="flex items-center gap-2" >
                       <Checkbox
                         checked={checked}
                         disabled={clonePreviewing || cloning || fetching}
@@ -100,14 +100,14 @@ export function CampaignEditorAdvancedCloneSheet({
                       />
                       <Label htmlFor={inputId}>{label}</Label>
                     </div>
-                    <p >{description}</p>
+                    <p className={adminTypography.captionPlain} >{description}</p>
                   </div>
                 );
               })}
             </div>
           </section>
 
-          <div >
+          <div className={campaignEditorActionsRowClass} >
             <Button
               type="button"
               variant="secondary"
@@ -130,11 +130,11 @@ export function CampaignEditorAdvancedCloneSheet({
             : null}
 
           {cloneSuccess && clonedCampaignId ? (
-            <p >
+            <p className={adminTypography.bodyMuted} >
               Clone created.{' '}
               <Link
                
-                to={`/campaigns/${clonedCampaignId}/edit`}
+                className="text-primary hover:underline" to={`/campaigns/${clonedCampaignId}/edit`}
               >
                 Open cloned campaign
               </Link>

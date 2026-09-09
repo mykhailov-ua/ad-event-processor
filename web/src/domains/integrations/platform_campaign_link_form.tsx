@@ -1,9 +1,12 @@
 import { integrationsPanelError } from '@/domains/integrations/integrations_nav';
+import { ErrorBlock } from '@/shell/error_block';
 import { DirectoryFilterForm, FilterPanel } from '@/shell/filter_panel';
+import type { AdminValidationError } from '@/lib/admin_validation_error';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import type { PlatformCampaignMutation } from '@/api/types';
+import { adminTypography } from '@/lib/admin_kit';
 
 export type PlatformCampaignLinkFormProps = {
   disabled: boolean;
@@ -29,6 +32,7 @@ export type PlatformCampaignLinkFormProps = {
   refreshSuccess: boolean;
   syncSuccess: boolean;
   mutationResult: PlatformCampaignMutation | undefined;
+  formValidationError?: AdminValidationError;
   onDraftCampaignIdChange: (value: string) => void;
   onDraftNetworkChange: (value: string) => void;
   onDraftExternalCampaignIdChange: (value: string) => void;
@@ -67,6 +71,7 @@ export function PlatformCampaignLinkForm({
   refreshSuccess,
   syncSuccess,
   mutationResult,
+  formValidationError,
   onDraftCampaignIdChange,
   onDraftNetworkChange,
   onDraftExternalCampaignIdChange,
@@ -94,15 +99,18 @@ export function PlatformCampaignLinkForm({
 
   return (
     <FilterPanel>
-      <h2 >Manage platform campaign links</h2>
-      <p >
+      <h2 className={adminTypography.sectionTitle}>Manage platform campaign links</h2>
+      <p className={adminTypography.bodyMuted} >
         Upsert, refresh, or remove external platform links for the applied customer. Pause, resume,
         and budget mutations use a fresh idempotency key per request. Click a link row below to
         prefill campaign and network fields.
       </p>
 
+      {formValidationError ? (
+        <ErrorBlock error={formValidationError} title="Check link fields" />
+      ) : null}
       <DirectoryFilterForm layout="auto-fill" onSubmit={(event) => event.preventDefault()}>
-        <div >
+        <div>
           <Label htmlFor="platform-campaign-id">Campaign ID</Label>
           <Input
             id="platform-campaign-id"
@@ -111,7 +119,7 @@ export function PlatformCampaignLinkForm({
             onChange={(event) => onDraftCampaignIdChange(event.target.value)}
           />
         </div>
-        <div >
+        <div>
           <Label htmlFor="platform-network">Network</Label>
           <Input
             id="platform-network"
@@ -120,7 +128,7 @@ export function PlatformCampaignLinkForm({
             onChange={(event) => onDraftNetworkChange(event.target.value)}
           />
         </div>
-        <div >
+        <div>
           <Label htmlFor="platform-external-campaign-id">External campaign ID</Label>
           <Input
             id="platform-external-campaign-id"
@@ -129,7 +137,7 @@ export function PlatformCampaignLinkForm({
             onChange={(event) => onDraftExternalCampaignIdChange(event.target.value)}
           />
         </div>
-        <div >
+        <div>
           <Label htmlFor="platform-account-id">Account ID (optional)</Label>
           <Input
             id="platform-account-id"
@@ -138,7 +146,7 @@ export function PlatformCampaignLinkForm({
             onChange={(event) => onDraftAccountIdChange(event.target.value)}
           />
         </div>
-        <div >
+        <div>
           <Label htmlFor="platform-daily-budget-micro">Daily budget (micro)</Label>
           <Input
             id="platform-daily-budget-micro"
@@ -203,24 +211,24 @@ export function PlatformCampaignLinkForm({
       {syncError ? integrationsPanelError(syncError, 'Platform sync failed') : null}
       {mutationError ? integrationsPanelError(mutationError, 'Campaign mutation failed') : null}
       {saveSuccess ? (
-        <p >Link saved. List refreshed.</p>
+        <p>Link saved. List refreshed.</p>
       ) : null}
       {deleteSuccess ? (
-        <p >Link deleted. List refreshed.</p>
+        <p>Link deleted. List refreshed.</p>
       ) : null}
       {refreshSuccess ? (
-        <p >Link refreshed. List refreshed.</p>
+        <p>Link refreshed. List refreshed.</p>
       ) : null}
       {syncSuccess ? (
-        <p >Platform sync completed for campaign.</p>
+        <p>Platform sync completed for campaign.</p>
       ) : null}
       {mutationResult ? (
-        <div >
-          <p>
+        <div>
+          <p className={adminTypography.bodyMuted} >
             {mutationResult.action}: {mutationResult.status} ({mutationResult.network})
           </p>
           {mutationResult.error_message ? (
-            <p >{mutationResult.error_message}</p>
+            <p className={adminTypography.bodyMuted} >{mutationResult.error_message}</p>
           ) : null}
         </div>
       ) : null}

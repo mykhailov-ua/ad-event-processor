@@ -8,6 +8,7 @@ import { customerDetailRowValueClass } from '@/domains/customers/customer_detail
 import { PrimaryActionButton } from '@/shell/action_buttons';
 import { COMPACT_TOOLBAR_ROW_CLASS } from '@/shell/filter_panel';
 import { panelError } from '@/shell/panel_error';
+import { customerDetailSectionClass } from '@/lib/admin_kit';
 import { displayTimestamp } from '@/lib/display';
 
 export type CustomerDetailProfileTabProps = {
@@ -38,9 +39,9 @@ export function CustomerDetailProfileTab({
   return (
     <Card>
       <CardHeader>
-        <CardTitle >Customer profile</CardTitle>
+        <CardTitle>Customer profile</CardTitle>
       </CardHeader>
-      <CardContent >
+      <CardContent className={customerDetailSectionClass}>
         <CustomerDetailPanel>
           <CustomerDetailRow label="ID" value={customer.id} />
           <CustomerDetailRow label="Balance" value={customer.balance} />
@@ -59,7 +60,7 @@ export function CustomerDetailProfileTab({
 
         <form
          
-          onSubmit={(event) => {
+          className="grid gap-4" onSubmit={(event) => {
             event.preventDefault();
             onSaveProfile();
           }}
@@ -73,7 +74,7 @@ export function CustomerDetailProfileTab({
                   onChange={(event) => onDraftNameChange(event.target.value)}
                 />
               ) : (
-                <p >{customer.name}</p>
+                <p className={customerDetailRowValueClass} >{customer.name}</p>
               )}
             </CustomerDetailFieldRow>
             <CustomerDetailFieldRow htmlFor="customer-cost-center" label="Cost center">
@@ -84,12 +85,12 @@ export function CustomerDetailProfileTab({
                   onChange={(event) => onDraftCostCenterChange(event.target.value)}
                 />
               ) : (
-                <p >{customer.cost_center ?? '-'}</p>
+                <p className={customerDetailRowValueClass} >{customer.cost_center ?? '-'}</p>
               )}
             </CustomerDetailFieldRow>
           </CustomerDetailPanel>
           {canSaveProfile ? (
-            <div >
+            <div className={COMPACT_TOOLBAR_ROW_CLASS} >
               <PrimaryActionButton loading={savingProfile} type="submit">
                 Save profile
               </PrimaryActionButton>

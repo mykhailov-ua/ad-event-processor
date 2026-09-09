@@ -37,6 +37,8 @@ export type IntegrationsPageWithLoadProps = {
   fetchState: DirectoryFetchState;
   /** Chrome below nav (e.g. customer scope) on every non-loading phase. */
   header?: ReactNode;
+  /** Non-fetch errors (mutation, export) above main content. */
+  alerts?: ReactNode;
   children: ReactNode;
 };
 
@@ -46,6 +48,7 @@ export function IntegrationsPageWithLoad({
   refreshErrorTitle = 'Refresh failed',
   fetchState,
   header,
+  alerts,
   children,
 }: IntegrationsPageWithLoadProps) {
   const phase = resolveDirectoryLoadPhase(fetchState);
@@ -71,6 +74,7 @@ export function IntegrationsPageWithLoad({
       {shouldShowDirectoryRefreshError(fetchState) && fetchState.error
         ? integrationsPanelError(fetchState.error, refreshErrorTitle)
         : null}
+      {alerts}
       {children}
     </PageChrome>
   );

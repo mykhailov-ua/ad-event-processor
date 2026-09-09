@@ -27,8 +27,10 @@ import {
   ExportHubJobIdHint,
 } from '@/domains/exports/export_hub_field_hints';
 import { PageChrome } from '@/shell/page_chrome';
+import { ErrorBlock } from '@/shell/error_block';
 import { FieldLabelWithHint } from '@/shell/field_label_hint';
 import { DirectoryFilterForm, FilterField, FilterPanel } from '@/shell/filter_panel';
+import type { AdminValidationError } from '@/lib/admin_validation_error';
 
 export type ExportHubProps = {
   catalogEntries: ExportHubEntry[];
@@ -54,6 +56,7 @@ export type ExportHubProps = {
   cancelling: boolean;
   jobErrorMessage?: string;
   auditExportTruncated: boolean;
+  formValidationError?: AdminValidationError;
   onCatalogPickerChange: (value: string) => void;
   onDraftCustomerIdChange: (value: string) => void;
   onDraftReportKeyChange: (value: string) => void;
@@ -100,6 +103,7 @@ export function ExportHub({
   cancelling,
   jobErrorMessage,
   auditExportTruncated,
+  formValidationError,
   onCatalogPickerChange,
   onDraftCustomerIdChange,
   onDraftFromChange,
@@ -143,6 +147,9 @@ export function ExportHub({
       controlPanel={
         <div>
           <FilterPanel aria-label="Export form">
+            {formValidationError ? (
+              <ErrorBlock error={formValidationError} title="Check export fields" />
+            ) : null}
             <DirectoryFilterForm layout="auto-fill" onSubmit={(event) => event.preventDefault()}>
               <ExportHubCatalogPicker
                 disabled={exportBusy}

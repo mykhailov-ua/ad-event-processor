@@ -1,11 +1,14 @@
-import { Link } from 'react-router-dom';
 import type { OpsDomainRotationResponse, OpsTlsAllowedResponse } from '@/api/types';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
-import { Label } from '@/components/ui/label';
+import { FilterField } from '@/shell/filter_panel';
+import { adminSpacing } from '@/lib/admin_spacing';
+import { shellChrome } from '@/shell/shell_chrome';
+import { cn } from '@/lib/utils';
 import { opsPanelError } from '@/domains/ops/ops_nav';
 import { OpsActionGroup, OpsPageWithLoad } from '@/domains/ops/ops_page_shell';
+import { adminTypography } from '@/lib/admin_kit';
 
 type DomainRotationHostRow = {
   hostname: string;
@@ -75,14 +78,13 @@ export function OpsDomains({
       title="Domain ops"
       alerts={tlsHostError ? opsPanelError(tlsHostError, 'TLS allow check failed') : null}
       filters={
-        <div >
-          <Label htmlFor="ops-tls-hostname">Hostname</Label>
+        <FilterField htmlFor="ops-tls-hostname" label="Hostname">
           <Input
             id="ops-tls-hostname"
             value={draftHostname}
             onChange={(event) => onDraftHostnameChange(event.target.value)}
           />
-        </div>
+        </FilterField>
       }
       actions={
         <>
@@ -109,22 +111,19 @@ export function OpsDomains({
         </>
       }
     >
-      <p >
-        <Link  to="/domains">
-          Open domains directory
-        </Link>{' '}
-        for bulk import, SSL setup, wildcard certs, and burn workflows.
+      <p className={adminTypography.bodyMuted}>
+        Use the table below for bulk import, SSL setup, wildcard certs, and burn workflows.
       </p>
 
       {rotation ? (
-        <div >
-          <p >Domain rotation ({rotationHosts.length})</p>
+        <div className={shellChrome.sectionPanelClass}>
+          <p className={adminTypography.sectionTitle}>Domain rotation ({rotationHosts.length})</p>
           {rotationHosts.length > 0 ? (
-            <ul >
+            <ul className={cn('m-0 list-disc', adminSpacing.flex.columnMd, 'pl-5')}>
               {rotationHosts.map((row) => (
                 <li key={row.hostname}>
-                  <span >{row.hostname}</span>
-                  <span >
+                  <span className={adminTypography.label}>{row.hostname}</span>
+                  <span className={adminTypography.bodyMuted}>
                     {row.role ?? 'role n/a'}
                     {row.health_status ? ` | health ${row.health_status}` : ''}
                     {row.ssl_status ? ` | SSL ${row.ssl_status}` : ''}
@@ -138,14 +137,14 @@ export function OpsDomains({
               ))}
             </ul>
           ) : (
-            <p >No rotation hosts returned.</p>
+            <p className={adminTypography.bodyMuted}>No rotation hosts returned.</p>
           )}
         </div>
       ) : null}
       {tlsHost ? (
-        <div >
-          <span >
-            TLS allowed for <span >{draftHostname.trim() || 'hostname'}</span>
+        <div className={cn(adminSpacing.flex.buttonGroup, adminTypography.body)}>
+          <span>
+            TLS allowed for <span className={adminTypography.label}>{draftHostname.trim() || 'hostname'}</span>
           </span>
           <Badge variant="default">yes</Badge>
         </div>

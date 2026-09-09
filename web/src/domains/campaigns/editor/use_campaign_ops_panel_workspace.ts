@@ -3,7 +3,6 @@ import { useCallback, useEffect, useMemo, useState } from 'react';
 
 import {
   blockCampaignPlacement,
-  getCampaign,
   getCampaignMargin,
   getCampaignStats,
   getPlacementBlockSuggestions,
@@ -14,6 +13,7 @@ import {
 } from '@/api/campaigns_api';
 import { applyIntegrationSchema } from '@/api/integrations_api';
 import type {
+  Campaign,
   CampaignEventListResponse,
   CampaignMargin,
   CampaignStats,
@@ -22,7 +22,7 @@ import type {
   ConversionMappingListResponse,
   PlacementBlockSuggestion,
 } from '@/api/types';
-import { useResource } from '@/api/use_resource';
+import { requireInteger, requireNonEmpty, validationError } from '@/lib/admin_validation_error';
 import {
   buildCampaignStatsCacheKey,
   campaignStatsFromListMetrics,
@@ -53,11 +53,11 @@ function draftsToMappings(drafts: MappingDraft[]): ConversionMapping[] {
     };
     const payout = draft.payout_micro.trim();
     if (payout) {
-      const parsed = Number.parseInt(payout, 10);
-      if (!Number.isFinite(parsed)) {
-        throw new Error('Payout micro must be an integer.');
+      const payoutMicro = requireInteger(payout, 'Payout micro', { min: 0, field: 'payout_micro' });
+      if (!payoutMicro.ok) {
+        throw payoutMicro.error;
       }
-      mapping.payout_micro = parsed;
+      mapping.payout_micro = payoutMicro.value;
     }
     return mapping;
   });
@@ -65,6 +65,7 @@ function draftsToMappings(drafts: MappingDraft[]): ConversionMapping[] {
 
 type UseCampaignOpsPanelWorkspaceArgs = {
   campaignId: string;
+  campaign?: Campaign;
   listMetrics?: CampaignListMetrics;
   listMargin?: CampaignMargin;
   statsQuery?: CampaignStatsQuery;
@@ -72,6 +73,7 @@ type UseCampaignOpsPanelWorkspaceArgs = {
 
 export function useCampaignOpsPanelWorkspace({
   campaignId,
+  campaign,
   listMetrics,
   listMargin,
   statsQuery,
@@ -90,11 +92,6 @@ export function useCampaignOpsPanelWorkspace({
   const [mappingSaveSuccess, setMappingSaveSuccess] = useState(false);
   const [syncingPreset, setSyncingPreset] = useState(false);
   const [syncPresetMessage, setSyncPresetMessage] = useState<string | undefined>();
-
-  const { data: campaignMeta } = useResource(
-    (signal) => getCampaign(campaignId, signal),
-    [campaignId]
-  );
 
   const resolvedStatsQuery = useMemo(
     () => statsQuery ?? {},
@@ -211,15 +208,15 @@ export function useCampaignOpsPanelWorkspace({
   }, [campaignId, mappingDrafts]);
 
   const onBlockPlacement = useCallback(async () => {
-    const placementId = draftPlacementId.trim();
-    if (!placementId) {
-      setActionError(new Error('Placement ID is required.'));
+    const placement = requireNonEmpty(draftPlacementId, 'Placement ID', 'placement_id');
+    if (!placement.ok) {
+      setActionError(placement.error);
       return;
     }
     setBlocking(true);
     setActionError(undefined);
     try {
-      await blockCampaignPlacement(campaignId, { placement_id: placementId });
+      await blockCampaignPlacement(campaignId, { placement_id: placement.value });
       setDraftPlacementId('');
     } catch (err: unknown) {
       setActionError(err instanceof Error ? err : new Error(String(err)));
@@ -229,9 +226,13 @@ export function useCampaignOpsPanelWorkspace({
   }, [campaignId, draftPlacementId]);
 
   const onSyncFromPreset = useCallback(async () => {
-    const schemaId = campaignMeta?.status_integration_schema_id?.trim();
+    const schemaId = campaign?.status_integration_schema_id?.trim();
     if (!schemaId) {
-      setActionError(new Error('No status integration preset is linked to this campaign.'));
+      setActionError(
+        validationError('No status integration preset is linked to this campaign.', {
+          field: 'status_integration_schema_id',
+        })
+      );
       return;
     }
     setSyncingPreset(true);
@@ -249,7 +250,7 @@ export function useCampaignOpsPanelWorkspace({
     } finally {
       setSyncingPreset(false);
     }
-  }, [campaignId, campaignMeta?.status_integration_schema_id]);
+  }, [campaignId, campaign?.status_integration_schema_id]);
 
   const busy = loadingKey != null || blocking || savingMappings || syncingPreset;
 
@@ -267,8 +268,8 @@ export function useCampaignOpsPanelWorkspace({
     actionError,
     savingMappings,
     mappingSaveSuccess,
-    statusIntegrationSchemaName: campaignMeta?.status_integration_schema_name,
-    statusIntegrationSchemaId: campaignMeta?.status_integration_schema_id,
+    statusIntegrationSchemaName: campaign?.status_integration_schema_name,
+    statusIntegrationSchemaId: campaign?.status_integration_schema_id,
     syncingPreset,
     syncPresetMessage,
     blocking,

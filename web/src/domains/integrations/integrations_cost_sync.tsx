@@ -1,16 +1,10 @@
+import { useMemo, useState } from 'react';
+
 import { CustomerScopeBar } from '@/shell/customer_scope_bar';
 import { EmptyState } from '@/shell/empty_state';
 import { PageSkeleton } from '@/shell/page_skeleton';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
-import {
-  DirectoryTable,
-  DirectoryTableHead,
-  TableBody,
-  TableCell,
-  TableHeader,
-  TableRow,
-} from '@/shell/directory_table';
 import { DirectoryFilterForm, FilterPanel } from '@/shell/filter_panel';
 import { DatePicker } from '@/components/ui/datetime_picker';
 import { Input } from '@/components/ui/input';
@@ -29,6 +23,16 @@ import {
   integrationsPanelError,
 } from '@/domains/integrations/integrations_nav';
 import { displayMicro, displayTimestamp } from '@/lib/display';
+import type { AdminValidationError } from '@/lib/admin_validation_error';
+import { ValidationErrorBlock } from '@/shell/validation_error_block';
+import { adminTypography } from '@/lib/admin_kit';
+import type { DirectoryOverviewField } from '@/shell/directory_overview_dialog';
+import {
+  DirectorySelectOverviewTable,
+  directoryRecordMap,
+  directoryOperateRows,
+} from '@/shell/directory_select_overview_table';
+import { TableHost } from '@/shell/ui_bands';
 
 export type IntegrationsCostSyncPanel = 'networks' | 'credentials' | 'history';
 
@@ -60,6 +64,7 @@ export type IntegrationsCostSyncProps = {
     draftTo: string;
     running: boolean;
     runError: Error | undefined;
+    runValidationError?: AdminValidationError;
     runSuccess: boolean;
     onDraftNetworkChange: (value: string) => void;
     onDraftFromChange: (value: string) => void;
@@ -77,6 +82,7 @@ export type IntegrationsCostSyncProps = {
     deleting: boolean;
     saveError: Error | undefined;
     deleteError: Error | undefined;
+    credentialValidationError?: AdminValidationError;
     saveSuccess: boolean;
     deleteSuccess: boolean;
     onDraftNetworkChange: (value: string) => void;
@@ -90,6 +96,48 @@ export type IntegrationsCostSyncProps = {
     onPrefillFromCredential: (row: CostSyncCredential) => void;
   };
 };
+
+function costSyncCredentialId(row: CostSyncCredential): string {
+  return `${row.customer_id}-${row.network}`;
+}
+
+function buildNetworkOverviewFields(row: CostSyncNetworkSchema): DirectoryOverviewField[] {
+  return [
+    { label: 'Network', value: row.network },
+    { label: 'Label', value: row.label },
+    { label: 'Account field', value: row.account_id_label ?? '' },
+  ];
+}
+
+function buildCredentialOverviewFields(row: CostSyncCredential): DirectoryOverviewField[] {
+  return [
+    { label: 'Network', value: row.network },
+    { label: 'Account', value: row.account_id ?? '' },
+    { label: 'Interval (min)', value: row.sync_interval_minutes },
+    { label: 'Updated', value: displayTimestamp(row.updated_at) },
+    {
+      label: 'Customer',
+      value: <span className={adminTypography.monoData}>{row.customer_id}</span>,
+    },
+    {
+      label: 'Token expires',
+      value: row.token_expires_at ? displayTimestamp(row.token_expires_at) : '',
+    },
+  ];
+}
+
+function buildHistoryOverviewFields(row: CostSyncRun): DirectoryOverviewField[] {
+  return [
+    { label: 'Run', value: row.id },
+    { label: 'Network', value: row.network },
+    { label: 'Date', value: row.cost_date },
+    { label: 'Status', value: <Badge variant="outline">{row.status}</Badge> },
+    { label: 'Rows', value: row.rows_imported },
+    { label: 'Amount (USD micro)', value: displayMicro(row.total_amount_usd_micro) },
+    { label: 'Trigger', value: row.trigger_source },
+    { label: 'Error', value: row.error_message ?? '' },
+  ];
+}
 
 export function IntegrationsCostSync({
   panel,
@@ -110,6 +158,57 @@ export function IntegrationsCostSync({
   runSyncForm,
   credentialForm,
 }: IntegrationsCostSyncProps) {
+  const [selectedNetworkId, setSelectedNetworkId] = useState<string | null>(null);
+  const [selectedCredentialId, setSelectedCredentialId] = useState<string | null>(null);
+  const [selectedHistoryId, setSelectedHistoryId] = useState<string | null>(null);
+
+  const networkRecordById = useMemo(
+    () => directoryRecordMap(networks, (row) => row.network),
+    [networks]
+  );
+  const networkRows = useMemo(
+    () => directoryOperateRows(networks, (row) => row.network, (row) => row.label ?? row.network),
+    [networks]
+  );
+
+  const credentialRecordById = useMemo(
+    () => directoryRecordMap(credentials, costSyncCredentialId),
+    [credentials]
+  );
+  const credentialRows = useMemo(
+    () =>
+      directoryOperateRows(
+        credentials,
+        costSyncCredentialId,
+        (row) => row.network ?? costSyncCredentialId(row)
+      ),
+    [credentials]
+  );
+
+  const historyRecordById = useMemo(
+    () => directoryRecordMap(history, (row) => (row.id != null ? String(row.id) : null)),
+    [history]
+  );
+  const historyRows = useMemo(
+    () =>
+      directoryOperateRows(
+        history,
+        (row) => (row.id != null ? String(row.id) : null),
+        (row) => `${row.network} (${row.cost_date})`
+      ),
+    [history]
+  );
+
+  const handleCredentialSelectedIdChange = (id: string | null) => {
+    setSelectedCredentialId(id);
+    if (id) {
+      const record = credentialRecordById.get(id);
+      if (record) {
+        credentialForm.onPrefillFromCredential(record);
+      }
+    }
+  };
+
   const networksFetchState = {
     fetching: fetchingNetworks && panel === 'networks' && !hasNetworks && !networksError,
     error: panel === 'networks' ? networksError : undefined,
@@ -130,13 +229,13 @@ export function IntegrationsCostSync({
       />
 
       <FilterPanel>
-        <h2 >Run cost sync</h2>
-        <p >
+        <h2>Run cost sync</h2>
+        <p>
           Enqueue a manual sync for the applied customer. Network and date range are optional; dates
           default to yesterday UTC on the server.
         </p>
         <DirectoryFilterForm layout="auto-fill" onSubmit={(event) => event.preventDefault()}>
-          <div >
+          <div>
             <Label htmlFor="cost-sync-run-network">Network (optional)</Label>
             <Select
               value={runSyncForm.draftNetwork || '__all__'}
@@ -158,7 +257,7 @@ export function IntegrationsCostSync({
               </SelectContent>
             </Select>
           </div>
-          <div >
+          <div>
             <Label htmlFor="cost-sync-run-from">From (UTC)</Label>
             <DatePicker
               id="cost-sync-run-from"
@@ -167,7 +266,7 @@ export function IntegrationsCostSync({
               onChange={runSyncForm.onDraftFromChange}
             />
           </div>
-          <div >
+          <div>
             <Label htmlFor="cost-sync-run-to">To (UTC)</Label>
             <DatePicker
               id="cost-sync-run-to"
@@ -184,17 +283,18 @@ export function IntegrationsCostSync({
             {runSyncForm.running ? 'Running...' : 'Run sync'}
           </Button>
         </DirectoryFilterForm>
+        {runSyncForm.runValidationError ? (
+          <ValidationErrorBlock error={runSyncForm.runValidationError} title="Check run sync scope" />
+        ) : null}
         {runSyncForm.runError
           ? integrationsPanelError(runSyncForm.runError, 'Cost sync run failed')
           : null}
         {runSyncForm.runSuccess ? (
-          <p >
-            Sync accepted. Refresh history for results.
-          </p>
+          <p>Sync accepted. Refresh history for results.</p>
         ) : null}
       </FilterPanel>
 
-      <div >
+      <div>
         {COST_SYNC_PANELS.map((item) => (
           <Button
             key={item.id}
@@ -208,32 +308,25 @@ export function IntegrationsCostSync({
       </div>
 
       {panel === 'networks' ? (
-        <section >
-          <h2 >Networks</h2>
+        <section>
+          <h2>Networks</h2>
           {networks.length === 0 ? (
             <EmptyState
               title="No networks"
               description="Cost sync network schemas returned no entries."
             />
           ) : (
-            <DirectoryTable>
-              <TableHeader>
-                <TableRow>
-                  <DirectoryTableHead>Network</DirectoryTableHead>
-                  <DirectoryTableHead>Label</DirectoryTableHead>
-                  <DirectoryTableHead>Account field</DirectoryTableHead>
-                </TableRow>
-              </TableHeader>
-              <TableBody>
-                {networks.map((row) => (
-                  <TableRow key={row.network}>
-                    <TableCell >{row.network}</TableCell>
-                    <TableCell>{row.label}</TableCell>
-                    <TableCell>{row.account_id_label ?? ''}</TableCell>
-                  </TableRow>
-                ))}
-              </TableBody>
-            </DirectoryTable>
+            <TableHost>
+              <DirectorySelectOverviewTable
+                buildOverviewFields={buildNetworkOverviewFields}
+                disabled={fetchingNetworks}
+                overviewTitle={(row) => row.label ?? row.network}
+                recordById={networkRecordById}
+                rows={networkRows}
+                selectedId={selectedNetworkId}
+                onSelectedIdChange={setSelectedNetworkId}
+              />
+            </TableHost>
           )}
         </section>
       ) : null}
@@ -249,7 +342,7 @@ export function IntegrationsCostSync({
         ) : scopedError && !hasScopedData ? (
           integrationsPanelError(scopedError, 'Could not load cost sync credentials')
         ) : (
-          <section >
+          <section>
             <CostSyncCredentialForm
               networks={networks}
               disabled={!appliedCustomerId}
@@ -263,6 +356,7 @@ export function IntegrationsCostSync({
               deleting={credentialForm.deleting}
               saveError={credentialForm.saveError}
               deleteError={credentialForm.deleteError}
+              credentialValidationError={credentialForm.credentialValidationError}
               saveSuccess={credentialForm.saveSuccess}
               deleteSuccess={credentialForm.deleteSuccess}
               onDraftNetworkChange={credentialForm.onDraftNetworkChange}
@@ -275,38 +369,26 @@ export function IntegrationsCostSync({
               onDelete={credentialForm.onDelete}
             />
 
-            <div >
-              <h2 >Credentials</h2>
+            <div>
+              <h2>Credentials</h2>
               {credentials.length === 0 ? (
                 <EmptyState
                   title="No credentials"
                   description="No cost sync credentials are stored for this customer."
                 />
               ) : (
-                <DirectoryTable>
-                  <TableHeader>
-                    <TableRow>
-                      <DirectoryTableHead>Network</DirectoryTableHead>
-                      <DirectoryTableHead>Account</DirectoryTableHead>
-                      <DirectoryTableHead>Interval (min)</DirectoryTableHead>
-                      <DirectoryTableHead>Updated</DirectoryTableHead>
-                    </TableRow>
-                  </TableHeader>
-                  <TableBody>
-                    {credentials.map((row) => (
-                      <TableRow
-                        key={`${row.customer_id}-${row.network}`}
-                       
-                        onClick={() => credentialForm.onPrefillFromCredential(row)}
-                      >
-                        <TableCell >{row.network}</TableCell>
-                        <TableCell>{row.account_id ?? ''}</TableCell>
-                        <TableCell>{row.sync_interval_minutes}</TableCell>
-                        <TableCell>{displayTimestamp(row.updated_at)}</TableCell>
-                      </TableRow>
-                    ))}
-                  </TableBody>
-                </DirectoryTable>
+                <TableHost>
+                  <DirectorySelectOverviewTable
+                    buildOverviewFields={buildCredentialOverviewFields}
+                    disabled={fetchingScoped}
+                    overviewTitle={(row) => row.network ?? costSyncCredentialId(row)}
+                    recordById={credentialRecordById}
+                    revalidating={fetchingScoped && hasScopedData}
+                    rows={credentialRows}
+                    selectedId={selectedCredentialId}
+                    onSelectedIdChange={handleCredentialSelectedIdChange}
+                  />
+                </TableHost>
               )}
             </div>
           </section>
@@ -324,40 +406,26 @@ export function IntegrationsCostSync({
         ) : scopedError && !hasScopedData ? (
           integrationsPanelError(scopedError, 'Could not load cost sync history')
         ) : (
-          <section >
-            <h2 >Sync history</h2>
+          <section>
+            <h2>Sync history</h2>
             {history.length === 0 ? (
               <EmptyState
                 title="No sync runs"
                 description="No cost sync runs recorded for this customer."
               />
             ) : (
-              <DirectoryTable>
-                <TableHeader>
-                  <TableRow>
-                    <DirectoryTableHead>Run</DirectoryTableHead>
-                    <DirectoryTableHead>Network</DirectoryTableHead>
-                    <DirectoryTableHead>Date</DirectoryTableHead>
-                    <DirectoryTableHead>Status</DirectoryTableHead>
-                    <DirectoryTableHead>Rows</DirectoryTableHead>
-                    <DirectoryTableHead>Amount (USD micro)</DirectoryTableHead>
-                  </TableRow>
-                </TableHeader>
-                <TableBody>
-                  {history.map((row) => (
-                    <TableRow key={row.id}>
-                      <TableCell>{row.id}</TableCell>
-                      <TableCell >{row.network}</TableCell>
-                      <TableCell>{row.cost_date}</TableCell>
-                      <TableCell>
-                        <Badge variant="outline">{row.status}</Badge>
-                      </TableCell>
-                      <TableCell>{row.rows_imported}</TableCell>
-                      <TableCell>{displayMicro(row.total_amount_usd_micro)}</TableCell>
-                    </TableRow>
-                  ))}
-                </TableBody>
-              </DirectoryTable>
+              <TableHost>
+                <DirectorySelectOverviewTable
+                  buildOverviewFields={buildHistoryOverviewFields}
+                  disabled={fetchingScoped}
+                  overviewTitle={(row) => `${row.network} (${row.cost_date})`}
+                  recordById={historyRecordById}
+                  revalidating={fetchingScoped && hasScopedData}
+                  rows={historyRows}
+                  selectedId={selectedHistoryId}
+                  onSelectedIdChange={setSelectedHistoryId}
+                />
+              </TableHost>
             )}
           </section>
         )

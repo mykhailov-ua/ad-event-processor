@@ -14,7 +14,8 @@ import {
 import { refreshSession } from '@/api/auth_api';
 import type { TeamMemberEditDraft, TeamRosterTab } from '@/domains/team/team_overview';
 import { confirmDestructiveAction } from '@/lib/mutation_audit';
-import { toError } from '@/lib/admin_error';
+import { toError, userErrorMessage } from '@/lib/admin_error';
+import { requireNonNegativeInteger } from '@/lib/admin_validation_error';
 import { useCoalescedBumpRefresh, useRefreshToken } from '@/hooks/use_coalesced_refresh_token';
 import { useResource } from '@/api/use_resource';
 import { useSession } from '@/hooks/use_session';
@@ -26,7 +27,7 @@ export function useTeamPageWorkspace() {
     useTransitionSearchParams();
   const { session, user, refetchSession } = useSession();
   const [rosterTab, setRosterTab] = useState<TeamRosterTab>('members');
-  const { refreshToken: overviewRefreshToken } = useRefreshToken();
+  const { refreshToken: overviewRefreshToken, bumpRefresh: bumpOverviewRefresh } = useRefreshToken();
   const { refreshToken: rosterRefreshToken, bumpRefresh: bumpRosterRefresh } = useRefreshToken();
   const [actingId, setActingId] = useState<string | undefined>();
   const [memberUpdatingId, setMemberUpdatingId] = useState<string | undefined>();
@@ -50,6 +51,7 @@ export function useTeamPageWorkspace() {
     (signal) => getTeamOverview({ customer_id: appliedCustomerId || undefined }, signal),
     [appliedCustomerId, overviewRefreshToken]
   );
+  const bumpOverviewRefreshCoalesced = useCoalescedBumpRefresh(bumpOverviewRefresh, fetching);
 
   const shouldFetchMembers = Boolean(appliedCustomerId) && rosterTab === 'members';
 
@@ -141,6 +143,10 @@ export function useTeamPageWorkspace() {
     memberUpdatingId != null ||
     actingId != null;
   const bumpRosterRefreshCoalesced = useCoalescedBumpRefresh(bumpRosterRefresh, rosterRefreshBusy);
+  const bumpRosterLanesAfterMutation = useCallback(() => {
+    bumpRosterRefreshCoalesced();
+    bumpOverviewRefreshCoalesced();
+  }, [bumpOverviewRefreshCoalesced, bumpRosterRefreshCoalesced]);
 
   const updateTeamQuery = useCallback(
     (patch: {
@@ -225,11 +231,18 @@ export function useTeamPageWorkspace() {
       if (!customerId || !memberId || !draft) {
         return;
       }
-      const spendRaw = draft.spend_cap_micro.trim();
-      const spendCapMicro = spendRaw ? Number.parseInt(spendRaw, 10) : undefined;
-      if (spendRaw && (!Number.isFinite(spendCapMicro) || spendCapMicro! < 0)) {
-        setActionError(new Error('spend_cap_micro must be a non-negative integer'));
-        return;
+      let spendCapMicro: number | undefined;
+      if (draft.spend_cap_micro.trim() !== '') {
+        const spendResult = requireNonNegativeInteger(
+          draft.spend_cap_micro,
+          'spend_cap_micro',
+          'spend_cap_micro'
+        );
+        if (!spendResult.ok) {
+          setActionError(spendResult.error);
+          return;
+        }
+        spendCapMicro = spendResult.value;
       }
 
       setMemberUpdatingId(memberId);
@@ -245,16 +258,16 @@ export function useTeamPageWorkspace() {
           refetchSession();
         }
         toast.success('Member updated');
-        bumpRosterRefreshCoalesced();
+        bumpRosterLanesAfterMutation();
       } catch (err: unknown) {
         const nextError = toError(err);
         setActionError(nextError);
-        toast.error(nextError.message);
+        toast.error(userErrorMessage(nextError));
       } finally {
         setMemberUpdatingId(undefined);
       }
     },
-    [appliedCustomerId, bumpRosterRefreshCoalesced, memberDrafts, refetchSession, user?.id]
+    [appliedCustomerId, bumpRosterLanesAfterMutation, memberDrafts, refetchSession, user?.id]
   );
 
   const onInvite = useCallback(async () => {
@@ -275,15 +288,15 @@ export function useTeamPageWorkspace() {
       setInviteSuccess(true);
       setDraftInviteEmail('');
       toast.success('Invite sent');
-      bumpRosterRefreshCoalesced();
+      bumpRosterLanesAfterMutation();
     } catch (err: unknown) {
       const nextError = toError(err);
       setActionError(nextError);
-      toast.error(nextError.message);
+      toast.error(userErrorMessage(nextError));
     } finally {
       setInviting(false);
     }
-  }, [appliedCustomerId, bumpRosterRefreshCoalesced, draftInviteEmail, draftInviteRole, inviting]);
+  }, [appliedCustomerId, bumpRosterLanesAfterMutation, draftInviteEmail, draftInviteRole, inviting]);
 
   const runApprovalAction = useCallback(
     async (id: string, action: 'approve' | 'deny') => {
@@ -300,16 +313,16 @@ export function useTeamPageWorkspace() {
           await denyTeamBudgetApproval(id);
           toast.success('Budget approval denied');
         }
-        bumpRosterRefreshCoalesced();
+        bumpRosterLanesAfterMutation();
       } catch (err: unknown) {
         const nextError = toError(err);
         setActionError(nextError);
-        toast.error(nextError.message);
+        toast.error(userErrorMessage(nextError));
       } finally {
         setActingId(undefined);
       }
     },
-    [bumpRosterRefreshCoalesced]
+    [bumpRosterLanesAfterMutation]
   );
 
   return {

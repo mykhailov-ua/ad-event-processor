@@ -1,3 +1,4 @@
+import { adminTypography } from '@/lib/admin_kit';
 import {
   adminOpsCriticalClass,
   adminOpsHealthyClass,
@@ -25,7 +26,7 @@ export function OpsStatusChip({ status }: { status?: string }) {
     return null;
   }
   return (
-    <span >
+    <span className={cn(adminTypography.captionPlain, opsStatusTone(status))}>
       {formatAdminEnumLabel(status)}
     </span>
   );

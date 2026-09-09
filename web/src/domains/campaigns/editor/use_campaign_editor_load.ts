@@ -9,6 +9,7 @@ import { getFlow } from '@/api/flows_api';
 import type { Campaign, CampaignPublishCheck } from '@/api/types';
 import { useResource } from '@/api/use_resource';
 import { toError } from '@/lib/admin_error';
+import { validationError } from '@/lib/admin_validation_error';
 
 export type UseCampaignEditorLoadArgs = {
   syncFormFromCampaign: (campaign: Campaign) => void;
@@ -25,7 +26,7 @@ export function useCampaignEditorLoad({ syncFormFromCampaign }: UseCampaignEdito
   const { data, error, fetching } = useResource(
     (signal) => {
       if (!id) {
-        return Promise.reject(new Error('Campaign id is required'));
+        return Promise.reject(validationError('Campaign id is required.', { field: 'id' }));
       }
       return getCampaign(id, signal);
     },

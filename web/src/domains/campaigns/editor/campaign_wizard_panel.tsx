@@ -35,9 +35,10 @@ import {
 } from '@/domains/campaigns/editor/campaign_wizard_panel_shared';
 import type { CampaignWizardPanelWorkspace } from '@/domains/campaigns/editor/use_campaign_wizard_panel_workspace';
 import { microQueryParamToUsdInput } from '@/domains/campaigns/list/campaign_list_format';
-import { adminWizardStepDoneClass } from '@/lib/admin_metric_tone';
 import { ADMIN_MONO_CLASS, ADMIN_SLUG_CLASS } from '@/lib/admin_typography';
 import { cn } from '@/lib/utils';
+import { adminSpacing, adminTypography } from '@/lib/admin_kit';
+import { SearchableFilterSelect } from '@/shell/searchable_filter_select';
 
 export type CampaignWizardPanelProps = {
   workspace: CampaignWizardPanelWorkspace;
@@ -79,7 +80,7 @@ export function CampaignWizardPanel({ workspace }: CampaignWizardPanelProps) {
   } = workspace;
 
   return (
-    <div >
+    <div className={campaignEditorWizardRootClass} >
       {load.templatesError
         ? campaignPanelError(load.templatesError, 'Could not load onboarding templates')
         : null}
@@ -89,14 +90,14 @@ export function CampaignWizardPanel({ workspace }: CampaignWizardPanelProps) {
       {actionError ? campaignPanelError(actionError, 'Wizard action failed') : null}
 
       {commitResult?.campaign ? (
-        <section >
-          <h3 >Campaign created</h3>
-          <p >
+        <section className={campaignEditorSectionClass} >
+          <h3 className={adminTypography.sectionTitle} >Campaign created</h3>
+          <p className={adminTypography.bodyMuted} >
             {commitResult.campaign.name}{' '}
-            <span >({commitResult.campaign.id})</span>
+            <span className={cn(ADMIN_MONO_CLASS, adminTypography.captionPlain)} >({commitResult.campaign.id})</span>
           </p>
           {commitResult.published ? (
-            <p >Published after commit.</p>
+            <p className={adminTypography.bodyMuted} >Published after commit.</p>
           ) : null}
           {commitResult.publish_check && !commitResult.publish_check.valid ? (
             <ErrorBlock
@@ -104,7 +105,7 @@ export function CampaignWizardPanel({ workspace }: CampaignWizardPanelProps) {
               title="Publish check failed"
             />
           ) : null}
-          <div >
+          <div className="flex flex-wrap gap-2" >
             <Button asChild type="button">
               <Link to={`/campaigns/${commitResult.campaign.id}/edit`}>Open editor</Link>
             </Button>
@@ -116,23 +117,23 @@ export function CampaignWizardPanel({ workspace }: CampaignWizardPanelProps) {
       ) : null}
 
       {!activeSession && !load.templatesError ? (
-        <section >
-          <div >
-            <h3 >Setup</h3>
-            <p >
+        <section className={campaignEditorSectionClass} >
+          <div className="grid gap-1" >
+            <h3 className={adminTypography.sectionTitle} >Setup</h3>
+            <p className={adminTypography.bodyMuted} >
               Pick a customer and bundled onboarding template. The server stores a draft session for
               24 hours.
             </p>
           </div>
 
           {load.templatesFetching ? (
-            <p >Loading templates...</p>
+            <p className={adminTypography.bodyMuted} >Loading templates...</p>
           ) : templates == null ? null : templates.length === 0 ? (
-            <p >No onboarding templates configured.</p>
+            <p>No onboarding templates configured.</p>
           ) : (
             <>
-              <div >
-                <div >
+              <div className="grid gap-2" >
+                <div>
                   <Label htmlFor="wizard-customer">Customer</Label>
                   <Select
                     disabled={creating || customerOptions.length === 0}
@@ -158,7 +159,7 @@ export function CampaignWizardPanel({ workspace }: CampaignWizardPanelProps) {
                   </Select>
                 </div>
 
-                <div >
+                <div>
                   <Label htmlFor="wizard-template">Template</Label>
                   <Select
                     disabled={creating || templates.length === 0}
@@ -180,19 +181,19 @@ export function CampaignWizardPanel({ workspace }: CampaignWizardPanelProps) {
               </div>
 
               {selectedTemplate ? (
-                <div >
-                  <p >{selectedTemplate.title}</p>
-                  <p >{selectedTemplate.description}</p>
-                  <p >
+                <div>
+                  <p className="text-muted-foreground" >{selectedTemplate.title}</p>
+                  <p className="text-muted-foreground" >{selectedTemplate.description}</p>
+                  <p>
                     Traffic family:{' '}
-                    <span >
+                    <span>
                       {selectedTemplate.traffic_family}
                     </span>
                   </p>
                   {selectedTemplate.integration_schema_refs?.length ? (
-                    <p >
+                    <p>
                       Integration schemas:{' '}
-                      <span >
+                      <span>
                         {selectedTemplate.integration_schema_refs.join(', ')}
                       </span>
                     </p>
@@ -200,7 +201,7 @@ export function CampaignWizardPanel({ workspace }: CampaignWizardPanelProps) {
                 </div>
               ) : null}
 
-              <div >
+              <div>
                 <Button
                   disabled={creating || !draftCustomerId || !draftTemplateKey}
                   loading={creating}
@@ -215,21 +216,21 @@ export function CampaignWizardPanel({ workspace }: CampaignWizardPanelProps) {
         </section>
       ) : activeSession ? (
         <>
-          <section >
-            <div >
-              <div >
-                <h3 >Session</h3>
-                <p >
+          <section>
+            <div className="grid gap-1" >
+              <div>
+                <h3>Session</h3>
+                <p>
                   {activeSession.session_id}
                 </p>
               </div>
-              <div >
+              <div>
                 <p>Expires {formatTimestamp(activeSession.expires_at)}</p>
                 <p>Updated {formatTimestamp(activeSession.updated_at)}</p>
               </div>
             </div>
 
-            <ol >
+            <ol>
               {WIZARD_STEPS.map((step, index) => {
                 const done = completed.has(step.id) || index < activeStepIndex;
                 const active = step.id === currentStep;
@@ -246,10 +247,10 @@ export function CampaignWizardPanel({ workspace }: CampaignWizardPanelProps) {
           </section>
 
           {currentStep === 'traffic_source' ? (
-            <section >
-              <h3 >Traffic source</h3>
-              <div >
-                <div >
+            <section>
+              <h3>Traffic source</h3>
+              <div className={cn(adminTypography.label, 'sm:col-span-2 grid gap-2')} >
+                <div>
                   <Label>Campaign name</Label>
                   <Input
                     value={trafficDraft.name}
@@ -258,7 +259,7 @@ export function CampaignWizardPanel({ workspace }: CampaignWizardPanelProps) {
                     }
                   />
                 </div>
-                <div >
+                <div>
                   <Label>Traffic template ID</Label>
                   <Input
                     value={trafficDraft.traffic_template_id}
@@ -271,7 +272,7 @@ export function CampaignWizardPanel({ workspace }: CampaignWizardPanelProps) {
                   />
                 </div>
               </div>
-              <div >
+              <div>
                 <Label>Click query params (JSON)</Label>
                 <Textarea
                  
@@ -286,11 +287,11 @@ export function CampaignWizardPanel({ workspace }: CampaignWizardPanelProps) {
                     }))
                   }
                 />
-                <p >
+                <p>
                   {CAMPAIGN_CLICK_QUERY_PARAMS_FIELD_HINT}
                 </p>
               </div>
-              <div >
+              <div>
                 <Button
                   disabled={savingStep}
                   loading={savingStep}
@@ -304,23 +305,64 @@ export function CampaignWizardPanel({ workspace }: CampaignWizardPanelProps) {
           ) : null}
 
           {currentStep === 'integration_template' ? (
-            <section >
-              <h3 >Integration template</h3>
-              <div >
-                <div >
-                  <Label>Integration schema</Label>
-                  <Input
-                    list="wizard-integration-schemas"
-                    value={integrationDraft.integration_schema}
-                    onChange={(event) =>
-                      setIntegrationDraft((current) => ({
-                        ...current,
-                        integration_schema: event.target.value,
-                      }))
-                    }
-                  />
+            <section>
+              <h3>Integration template</h3>
+              <div className={cn(adminTypography.label, 'grid gap-2')} >
+                <div>
+                  <Label htmlFor="wizard-integration-schema">Integration schema</Label>
+                  {(selectedTemplate?.integration_schema_refs?.length ?? 0) === 0 ? (
+                    <Input
+                      id="wizard-integration-schema"
+                      value={integrationDraft.integration_schema}
+                      onChange={(event) =>
+                        setIntegrationDraft((current) => ({
+                          ...current,
+                          integration_schema: event.target.value,
+                        }))
+                      }
+                    />
+                  ) : (selectedTemplate?.integration_schema_refs?.length ?? 0) <= 6 ? (
+                    <Select
+                      value={integrationDraft.integration_schema || undefined}
+                      onValueChange={(next) =>
+                        setIntegrationDraft((current) => ({
+                          ...current,
+                          integration_schema: next,
+                        }))
+                      }
+                    >
+                      <SelectTrigger id="wizard-integration-schema">
+                        <SelectValue placeholder="Select integration schema" />
+                      </SelectTrigger>
+                      <SelectContent>
+                        {selectedTemplate?.integration_schema_refs?.map((ref) => (
+                          <SelectItem key={ref} value={ref}>
+                            {ref}
+                          </SelectItem>
+                        ))}
+                      </SelectContent>
+                    </Select>
+                  ) : (
+                    <SearchableFilterSelect
+                      allowFreeform
+                      aria-label="Integration schema"
+                      options={(selectedTemplate?.integration_schema_refs ?? []).map((ref) => ({
+                        value: ref,
+                        label: ref,
+                      }))}
+                      showSearch
+                      triggerId="wizard-integration-schema"
+                      value={integrationDraft.integration_schema}
+                      onValueChange={(next) =>
+                        setIntegrationDraft((current) => ({
+                          ...current,
+                          integration_schema: next,
+                        }))
+                      }
+                    />
+                  )}
                 </div>
-                <div >
+                <div>
                   <Label>Affiliate network (optional)</Label>
                   <Input
                     value={integrationDraft.affiliate_network}
@@ -332,7 +374,7 @@ export function CampaignWizardPanel({ workspace }: CampaignWizardPanelProps) {
                     }
                   />
                 </div>
-                <div >
+                <div>
                   <Label>Tracking domain (optional)</Label>
                   <Input
                     placeholder="track.example.com"
@@ -346,12 +388,7 @@ export function CampaignWizardPanel({ workspace }: CampaignWizardPanelProps) {
                   />
                 </div>
               </div>
-              <datalist id="wizard-integration-schemas">
-                {selectedTemplate?.integration_schema_refs?.map((ref) => (
-                  <option key={ref} value={ref} />
-                ))}
-              </datalist>
-              <div >
+              <div>
                 <Button
                   disabled={savingStep}
                   loading={savingStep}
@@ -365,16 +402,13 @@ export function CampaignWizardPanel({ workspace }: CampaignWizardPanelProps) {
           ) : null}
 
           {currentStep === 'flow_skeleton' ? (
-            <section >
-              <h3 >Flow skeleton</h3>
-              <p >
-                Create a single-path flow or{' '}
-                <Link  to="/flows">
-                  open the stream editor
-                </Link>{' '}
-                for split tests.
+            <section>
+              <h3>Flow skeleton</h3>
+              <p>
+                Create a single-path flow here, or use the campaign editor paths panel for split
+                tests.
               </p>
-              <div >
+              <div className={cn(adminTypography.label, 'grid gap-2')} >
                 <Label>Flow name</Label>
                 <Input
                   value={flowDraft.flow_name}
@@ -383,8 +417,8 @@ export function CampaignWizardPanel({ workspace }: CampaignWizardPanelProps) {
                   }
                 />
               </div>
-              <div >
-                <div >
+              <div className={campaignEditorFormColumnsClass} >
+                <div className={cn(adminTypography.label, 'grid gap-2')} >
                   <Label>Lander name</Label>
                   <Input
                     value={flowDraft.lander_name}
@@ -393,7 +427,7 @@ export function CampaignWizardPanel({ workspace }: CampaignWizardPanelProps) {
                     }
                   />
                 </div>
-                <div >
+                <div className={cn(adminTypography.label, 'grid gap-2')} >
                   <Label>Lander URL</Label>
                   <Input
                     value={flowDraft.lander_url}
@@ -402,7 +436,7 @@ export function CampaignWizardPanel({ workspace }: CampaignWizardPanelProps) {
                     }
                   />
                 </div>
-                <div >
+                <div className={cn(adminTypography.label, 'grid gap-2')} >
                   <Label>Offer name</Label>
                   <Input
                     value={flowDraft.offer_name}
@@ -411,7 +445,7 @@ export function CampaignWizardPanel({ workspace }: CampaignWizardPanelProps) {
                     }
                   />
                 </div>
-                <div >
+                <div className={cn(adminTypography.label, 'grid gap-2')} >
                   <Label>Offer URL</Label>
                   <Input
                     value={flowDraft.offer_url}
@@ -421,7 +455,7 @@ export function CampaignWizardPanel({ workspace }: CampaignWizardPanelProps) {
                   />
                 </div>
               </div>
-              <div >
+              <div className={campaignEditorActionsRowClass} >
                 <Button
                   disabled={savingStep}
                   loading={savingStep}
@@ -435,10 +469,10 @@ export function CampaignWizardPanel({ workspace }: CampaignWizardPanelProps) {
           ) : null}
 
           {currentStep === 'budget' ? (
-            <section >
-              <h3 >Budget</h3>
-              <div >
-                <div >
+            <section className={campaignEditorSectionClass} >
+              <h3 className={adminTypography.sectionTitle} >Budget</h3>
+              <div className={campaignEditorFormColumnsClass} >
+                <div className={cn(adminTypography.label, 'grid gap-2')} >
                   <Label>Budget limit ($)</Label>
                   <Input
                     inputMode="decimal"
@@ -448,7 +482,7 @@ export function CampaignWizardPanel({ workspace }: CampaignWizardPanelProps) {
                     }
                   />
                 </div>
-                <div >
+                <div className={cn(adminTypography.label, 'grid gap-2')} >
                   <Label>Timezone</Label>
                   <Input
                     value={budgetDraft.timezone}
@@ -457,7 +491,7 @@ export function CampaignWizardPanel({ workspace }: CampaignWizardPanelProps) {
                     }
                   />
                 </div>
-                <div >
+                <div className={cn(adminTypography.label, 'sm:col-span-2 grid gap-2')} >
                   <Label>Target countries (comma-separated)</Label>
                   <Input
                     placeholder="US, CA, GB"
@@ -471,7 +505,7 @@ export function CampaignWizardPanel({ workspace }: CampaignWizardPanelProps) {
                   />
                 </div>
               </div>
-              <div >
+              <div className={campaignEditorActionsRowClass} >
                 <Button
                   disabled={savingStep}
                   loading={savingStep}
@@ -485,69 +519,69 @@ export function CampaignWizardPanel({ workspace }: CampaignWizardPanelProps) {
           ) : null}
 
           {currentStep === 'review' ? (
-            <section >
-              <h3 >Review</h3>
+            <section className={campaignEditorSectionClass} >
+              <h3 className={adminTypography.sectionTitle} >Review</h3>
               {activeSession.review?.preview ? (
-                <dl >
+                <dl className={cn('grid gap-2 sm:grid-cols-2', adminTypography.body)} >
                   <div>
-                    <dt >Campaign name</dt>
+                    <dt className="text-muted-foreground" >Campaign name</dt>
                     <dd>{activeSession.review.preview.campaign_name ?? '-'}</dd>
                   </div>
                   <div>
-                    <dt >Traffic template</dt>
-                    <dd >
+                    <dt className="text-muted-foreground" >Traffic template</dt>
+                    <dd className={ADMIN_SLUG_CLASS} >
                       {activeSession.review.preview.traffic_template_id ?? '-'}
                     </dd>
                   </div>
                   <div>
-                    <dt >Integration schema</dt>
-                    <dd >
+                    <dt className="text-muted-foreground" >Integration schema</dt>
+                    <dd className={ADMIN_SLUG_CLASS} >
                       {activeSession.review.preview.integration_schema ?? '-'}
                     </dd>
                   </div>
                   <div>
-                    <dt >Flow</dt>
+                    <dt className="text-muted-foreground" >Flow</dt>
                     <dd>{activeSession.review.preview.flow_name ?? '-'}</dd>
                   </div>
                   <div>
-                    <dt >Budget</dt>
-                    <dd>
+                    <dt className="text-muted-foreground" >Budget</dt>
+                    <dd className="tabular-nums" >
                       $
                       {microQueryParamToUsdInput(
                         String(activeSession.review.preview.budget_limit_micro ?? '')
                       )}
                     </dd>
                   </div>
-                  <div >
-                    <dt >Target URL</dt>
-                    <dd >
+                  <div className="sm:col-span-2" >
+                    <dt className="text-muted-foreground" >Target URL</dt>
+                    <dd className={cn(ADMIN_MONO_CLASS, "break-all")} >
                       {activeSession.review.preview.target_url ?? '-'}
                     </dd>
                   </div>
                 </dl>
               ) : (
-                <p >
+                <p className={adminTypography.bodyMuted} >
                   Complete all steps to generate the commit preview.
                 </p>
               )}
               {activeSession.review?.warning_slugs?.length ? (
-                <div >
+                <div className={campaignEditorInsetPanelClass} >
                   Warnings: {activeSession.review.warning_slugs.join(', ')}
                 </div>
               ) : null}
 
-              <div >
+              <div className={cn(adminSpacing.flex.buttonGroup, adminTypography.body)} >
                 <Checkbox
                   checked={publishOnCommit}
                   id="wizard-publish-on-commit"
                   onCheckedChange={(checked) => setPublishOnCommit(checked === true)}
                 />
-                <Label  htmlFor="wizard-publish-on-commit">
+                <Label  className="font-normal" htmlFor="wizard-publish-on-commit">
                   Publish campaign after commit
                 </Label>
               </div>
 
-              <div >
+              <div className={campaignEditorActionsRowClass} >
                 <Button
                   disabled={committing || !activeSession.ready_to_commit}
                   loading={committing}

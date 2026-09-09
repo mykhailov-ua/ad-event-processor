@@ -7,7 +7,13 @@ import { postConsentBody } from '@/api/platform_api';
 import type { ConsentRecord } from '@/api/types';
 import { useResource } from '@/api/use_resource';
 import { buildConsentRecordJson, signConsentHmacHex } from '@/lib/consent_hmac';
+import { userErrorMessage } from '@/lib/admin_error';
 import { mutationError } from '@/lib/mutation_audit';
+import {
+  requireInteger,
+  requireNonEmpty,
+  validationError,
+} from '@/lib/admin_validation_error';
 
 export function useOpsConsentPageWorkspace() {
   const { data, error, fetching, revalidating } = useResource(
@@ -26,14 +32,27 @@ export function useOpsConsentPageWorkspace() {
   const [recordSuccess, setRecordSuccess] = useState(false);
 
   const onRecordConsent = useCallback(async () => {
-    const userId = draftUserId.trim();
-    const source = draftSource.trim();
-    const purposes = Number.parseInt(draftPurposes.trim(), 10);
-    if (!userId || !source || !Number.isFinite(purposes)) {
-      setRecordError(new Error('User ID, purposes, and source are required'));
+    const userIdResult = requireNonEmpty(draftUserId, 'User ID', 'user_id');
+    if (!userIdResult.ok) {
+      setRecordError(userIdResult.error);
       setRecordSuccess(false);
       return;
     }
+    const purposesResult = requireInteger(draftPurposes, 'Purposes', { field: 'purposes' });
+    if (!purposesResult.ok) {
+      setRecordError(purposesResult.error);
+      setRecordSuccess(false);
+      return;
+    }
+    const sourceResult = requireNonEmpty(draftSource, 'Source', 'source');
+    if (!sourceResult.ok) {
+      setRecordError(sourceResult.error);
+      setRecordSuccess(false);
+      return;
+    }
+    const userId = userIdResult.value;
+    const purposes = purposesResult.value;
+    const source = sourceResult.value;
 
     const body: ConsentRecord = {
       user_id: userId,
@@ -54,7 +73,10 @@ export function useOpsConsentPageWorkspace() {
         signature = await signConsentHmacHex(secret, bodyJson);
       }
       if (!signature) {
-        throw new Error('Provide an HMAC secret or X-Consent-Signature hex value');
+        throw validationError(
+          'Provide an HMAC secret or X-Consent-Signature hex value.',
+          { field: 'signature' }
+        );
       }
       await postConsentBody(bodyJson, signature);
       setRecordSuccess(true);
@@ -65,7 +87,7 @@ export function useOpsConsentPageWorkspace() {
     } catch (err: unknown) {
       const nextError = mutationError(err);
       setRecordError(nextError);
-      toast.error(nextError.message);
+      toast.error(userErrorMessage(nextError));
     } finally {
       setRecording(false);
     }

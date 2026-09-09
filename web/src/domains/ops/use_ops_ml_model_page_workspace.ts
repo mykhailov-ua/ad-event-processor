@@ -9,6 +9,7 @@ import {
 } from '@/api/ops_api';
 import { useResource } from '@/api/use_resource';
 import { toError } from '@/lib/admin_error.ts';
+import { requireInteger, requireNonEmpty } from '@/lib/admin_validation_error';
 import { useCoalescedBumpRefresh } from '@/hooks/use_coalesced_refresh_token';
 
 function skipLazyFetch(): Promise<never> {
@@ -72,17 +73,18 @@ export function useOpsMlModelPageWorkspace() {
     if (savingLabel) {
       return;
     }
-    const ipHash = draftIpHash.trim();
-    const labelRaw = draftLabel.trim();
-    if (!ipHash || !labelRaw) {
-      setSaveError(new Error('IP hash and label are required.'));
+    const ipHashResult = requireNonEmpty(draftIpHash, 'IP hash', 'ip_hash');
+    if (!ipHashResult.ok) {
+      setSaveError(ipHashResult.error);
       return;
     }
-    const label = Number.parseInt(labelRaw, 10);
-    if (!Number.isFinite(label)) {
-      setSaveError(new Error('Label must be an integer.'));
+    const labelResult = requireInteger(draftLabel, 'Label', { field: 'label' });
+    if (!labelResult.ok) {
+      setSaveError(labelResult.error);
       return;
     }
+    const ipHash = ipHashResult.value;
+    const label = labelResult.value;
     setSavingLabel(true);
     setSaveError(undefined);
     setSaveSuccess(false);

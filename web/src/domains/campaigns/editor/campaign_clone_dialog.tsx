@@ -20,7 +20,7 @@ import {
 } from '@/domains/campaigns/editor/campaign_editor_shared';
 import { useCampaignCloneDialogWorkspace } from '@/domains/campaigns/editor/use_campaign_clone_dialog_workspace';
 import { PrimaryActionButton, SecondaryActionButton } from '@/shell/action_buttons';
-import { adminKit } from '@/lib/admin_kit';
+import { adminKit, adminTypography } from '@/lib/admin_kit';
 import { cn } from '@/lib/utils';
 
 export type CampaignCloneDialogProps = {
@@ -55,8 +55,8 @@ export function CampaignCloneDialog({
 
   return (
     <Sheet open={open} onOpenChange={onOpenChange}>
-      <SheetContent >
-        <SheetHeader >
+      <SheetContent className="gap-0 p-0 sm:max-w-2xl" >
+        <SheetHeader className="border-b border-border py-4 text-left" >
           <SheetTitle>Clone campaign</SheetTitle>
           <SheetDescription>
             {campaignName ? (
@@ -69,9 +69,9 @@ export function CampaignCloneDialog({
           </SheetDescription>
         </SheetHeader>
 
-        <SheetBody >
-          <section >
-            <div >
+        <SheetBody className="grid gap-4 pb-8" >
+          <section className={cn(campaignEditorSectionClass, 'gap-3')} >
+            <div className={cn('grid', adminKit.fieldLabelGap)} >
               <Label htmlFor="clone-name-suffix">Name suffix</Label>
               <Input
                 id="clone-name-suffix"
@@ -79,22 +79,22 @@ export function CampaignCloneDialog({
                 value={nameSuffix}
                 onChange={(event) => setNameSuffix(event.target.value)}
               />
-              <p >
+              <p className={adminTypography.captionPlain} >
                 Appended to the source name. Leave empty for the default &quot; (copy)&quot;.
               </p>
             </div>
           </section>
 
-          <section >
-            <p >Clone options</p>
-            <div >
+          <section className={cn(campaignEditorSectionClass, 'gap-3')} >
+            <p className={cn("m-0", adminTypography.label)}>Clone options</p>
+            <div className="grid gap-3" >
               {CLONE_OPTION_FIELDS.map(({ field, label, description }) => {
                 const inputId = `clone-option-${field}`;
                 const checked = cloneOptions[field] ?? DEFAULT_CLONE_OPTIONS[field];
 
                 return (
-                  <div key={field}>
-                    <div >
+                  <div className="grid gap-1" key={field}>
+                    <div className="flex items-center gap-2" >
                       <Checkbox
                         checked={checked}
                         disabled={cloning || Boolean(clonedId)}
@@ -103,7 +103,7 @@ export function CampaignCloneDialog({
                       />
                       <Label htmlFor={inputId}>{label}</Label>
                     </div>
-                    <p >{description}</p>
+                    <p className={adminTypography.captionPlain} >{description}</p>
                   </div>
                 );
               })}
@@ -111,9 +111,9 @@ export function CampaignCloneDialog({
           </section>
 
           {preview ? (
-            <section >
-              <p >
-                Preview name: <strong >{preview.name}</strong>
+            <section className={cn(campaignEditorSectionClass, 'gap-2')} >
+              <p className={cn("m-0", adminTypography.bodyMuted)}>
+                Preview name: <strong className="text-foreground" >{preview.name}</strong>
               </p>
             </section>
           ) : null}
@@ -122,15 +122,15 @@ export function CampaignCloneDialog({
           {cloneError ? campaignPanelError(cloneError, 'Clone failed') : null}
 
           {clonedId ? (
-            <p >
+            <p className={adminTypography.bodyMuted} >
               Created{' '}
-              <Link  to={`/campaigns/${clonedId}/edit`}>
+              <Link  className="text-primary hover:underline" to={`/campaigns/${clonedId}/edit`}>
                 open cloned campaign
               </Link>
             </p>
           ) : null}
 
-          <div >
+          <div className={campaignEditorActionsRowClass}>
             <SecondaryActionButton
               disabled={!campaignId || previewing || cloning || Boolean(clonedId)}
               type="button"

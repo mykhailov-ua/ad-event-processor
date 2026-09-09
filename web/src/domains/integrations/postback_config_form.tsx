@@ -2,6 +2,7 @@ import { integrationsPanelError } from '@/domains/integrations/integrations_nav'
 import { DirectoryFilterForm, FilterPanel } from '@/shell/filter_panel';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
+import { PasswordInput } from '@/components/ui/password_input';
 import { Label } from '@/components/ui/label';
 import {
   Select,
@@ -11,6 +12,9 @@ import {
   SelectValue,
 } from '@/components/ui/select';
 import type { PostbackDryRunResult } from '@/api/types';
+import type { AdminValidationError } from '@/lib/admin_validation_error';
+import { ValidationErrorBlock } from '@/shell/validation_error_block';
+import { adminTypography } from '@/lib/admin_kit';
 
 const POSTBACK_PROVIDERS = [
   'webhook',
@@ -33,6 +37,7 @@ export type PostbackConfigFormProps = {
   testing: boolean;
   saveError: Error | undefined;
   testError: Error | undefined;
+  formValidationError?: AdminValidationError;
   saveSuccess: boolean;
   testResult: PostbackDryRunResult | undefined;
   onDraftCampaignIdChange: (value: string) => void;
@@ -56,6 +61,7 @@ export function PostbackConfigForm({
   testing,
   saveError,
   testError,
+  formValidationError,
   saveSuccess,
   testResult,
   onDraftCampaignIdChange,
@@ -82,14 +88,14 @@ export function PostbackConfigForm({
 
   return (
     <FilterPanel>
-      <h2 >Upsert postback config</h2>
-      <p >
+      <h2 className={adminTypography.sectionTitle}>Upsert postback config</h2>
+      <p className={adminTypography.bodyMuted} >
         API token is encrypted at rest. Leave token empty on update to keep the existing value.
         Click a config row below to prefill this form.
       </p>
 
       <DirectoryFilterForm layout="auto-fill" onSubmit={(event) => event.preventDefault()}>
-        <div >
+        <div className="grid gap-2 md:col-span-2" >
           <Label htmlFor="postback-campaign-id">Campaign ID</Label>
           <Input
             id="postback-campaign-id"
@@ -97,10 +103,10 @@ export function PostbackConfigForm({
             onChange={(event) => onDraftCampaignIdChange(event.target.value)}
           />
         </div>
-        <div >
+        <div className="grid gap-2" >
           <Label htmlFor="postback-provider">Provider</Label>
           <Select value={draftProvider} onValueChange={onDraftProviderChange}>
-            <SelectTrigger id="postback-provider">
+            <SelectTrigger className="w-full" id="postback-provider">
               <SelectValue placeholder="Select provider" />
             </SelectTrigger>
             <SelectContent>
@@ -112,7 +118,7 @@ export function PostbackConfigForm({
             </SelectContent>
           </Select>
         </div>
-        <div >
+        <div className="grid gap-2" >
           <Label htmlFor="postback-target-event">Target event</Label>
           <Input
             id="postback-target-event"
@@ -120,7 +126,7 @@ export function PostbackConfigForm({
             onChange={(event) => onDraftTargetEventChange(event.target.value)}
           />
         </div>
-        <div >
+        <div className="grid gap-2 md:col-span-2" >
           <Label htmlFor="postback-url-template">URL template</Label>
           <Input
             id="postback-url-template"
@@ -135,20 +141,19 @@ export function PostbackConfigForm({
             }
           />
           {urlTemplateHint ? (
-            <p >{urlTemplateHint}</p>
+            <p className={adminTypography.captionPlain} >{urlTemplateHint}</p>
           ) : null}
         </div>
-        <div >
+        <div className="grid gap-2 md:col-span-2" >
           <Label htmlFor="postback-api-token">API token</Label>
-          <Input
+          <PasswordInput
             id="postback-api-token"
-            type="password"
             autoComplete="off"
             value={draftApiToken}
             onChange={(event) => onDraftApiTokenChange(event.target.value)}
           />
         </div>
-        <div >
+        <div className="grid gap-2 md:col-span-2" >
           <Label htmlFor="postback-test-event-code">Test event code</Label>
           <Input
             id="postback-test-event-code"
@@ -164,20 +169,23 @@ export function PostbackConfigForm({
         </Button>
       </DirectoryFilterForm>
 
+      {formValidationError ? (
+        <ValidationErrorBlock error={formValidationError} title="Check postback fields" />
+      ) : null}
       {saveError ? integrationsPanelError(saveError, 'Save failed') : null}
       {testError ? integrationsPanelError(testError, 'Dry-run failed') : null}
       {saveSuccess ? (
-        <p >Config saved. List refreshed.</p>
+        <p>Config saved. List refreshed.</p>
       ) : null}
       {testResult ? (
-        <div >
+        <div>
           <p>
             Dry-run {testResult.ok ? 'succeeded' : 'failed'} ({testResult.provider})
           </p>
           {testResult.http_status != null ? <p>HTTP status: {testResult.http_status}</p> : null}
-          {testResult.error ? <p >{testResult.error}</p> : null}
+          {testResult.error ? <p>{testResult.error}</p> : null}
           {testResult.rendered_url ? (
-            <p >{testResult.rendered_url}</p>
+            <p className="text-destructive" >{testResult.rendered_url}</p>
           ) : null}
         </div>
       ) : null}

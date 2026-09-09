@@ -5,8 +5,9 @@ import { cn } from '@/lib/utils';
 
 export type CustomerDetailPanelProps = {
   children: ReactNode;
+  className?: string;
 };
 
-export function CustomerDetailPanel({ children, }: CustomerDetailPanelProps) {
-  return <div >{children}</div>;
+export function CustomerDetailPanel({ children, className }: CustomerDetailPanelProps) {
+  return <div className={cn(customerDetailPanelClass, className)}>{children}</div>;
 }

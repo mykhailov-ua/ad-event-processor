@@ -5,6 +5,7 @@ import { checkOpsTlsAllowed, getOpsDomainRotation } from '@/api/ops_api';
 import { useResource } from '@/api/use_resource';
 import { useCoalescedCallback } from '@/hooks/use_coalesced_callback';
 import { useCoalescedBumpRefresh } from '@/hooks/use_coalesced_refresh_token';
+import { requireNonEmpty } from '@/lib/admin_validation_error';
 
 function skipLazyFetch(): Promise<never> {
   return Promise.reject(new DOMException('Skipped', 'AbortError'));
@@ -43,13 +44,13 @@ export function useOpsDomainsPageWorkspace() {
 
   const onLookupTlsHost = useCoalescedCallback(
     () => {
-      const hostname = draftHostname.trim();
-      if (!hostname) {
-        setTlsHostValidationError(new Error('Hostname is required.'));
+      const hostnameResult = requireNonEmpty(draftHostname, 'Hostname', 'hostname');
+      if (!hostnameResult.ok) {
+        setTlsHostValidationError(hostnameResult.error);
         return;
       }
       setTlsHostValidationError(undefined);
-      setLookupHostname(hostname);
+      setLookupHostname(hostnameResult.value);
       setTlsHostLoadToken((value) => value + 1);
     },
     {

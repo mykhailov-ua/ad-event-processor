@@ -5,10 +5,12 @@ import { bootstrapPlatformSettings } from '@/api/settings_api';
 import type { PlatformBootstrapRequest } from '@/api/types';
 import { PrimaryActionButton } from '@/shell/action_buttons';
 import { ErrorBlock } from '@/shell/error_block';
-import { Input } from '@/components/ui/input';
+import { PasswordInput } from '@/components/ui/password_input';
 import { Label } from '@/components/ui/label';
 import { Textarea } from '@/components/ui/textarea';
 import { COLD_PATH_MAX_BODY_CHARS } from '@/lib/body_limits';
+import { requireJsonObject, requireNonEmpty } from '@/lib/admin_validation_error';
+import { toError } from '@/lib/admin_error';
 
 const DEFAULT_BOOTSTRAP_JSON = `{
   "admin_email": "ops@example.com",
@@ -30,44 +32,47 @@ export function PlatformBootstrapForm({ onComplete }: PlatformBootstrapFormProps
   const [success, setSuccess] = useState(false);
 
   const onSubmit = useCallback(async () => {
-    const token = installToken.trim();
-    const trimmed = bootstrapJson.trim();
-    if (!token || !trimmed) {
+    const tokenResult = requireNonEmpty(installToken, 'Setup token', 'install_token');
+    if (!tokenResult.ok) {
+      setError(tokenResult.error);
+      return;
+    }
+    const jsonResult = requireJsonObject(bootstrapJson, 'Setup configuration', 'bootstrap_json');
+    if (!jsonResult.ok) {
+      setError(jsonResult.error);
       return;
     }
     setSubmitting(true);
     setError(undefined);
     setSuccess(false);
     try {
-      const parsed: unknown = JSON.parse(trimmed);
-      if (parsed == null || typeof parsed !== 'object' || Array.isArray(parsed)) {
-        throw new Error('Setup configuration must be a JSON object');
-      }
-      await bootstrapPlatformSettings(token, parsed as PlatformBootstrapRequest);
+      await bootstrapPlatformSettings(
+        tokenResult.value,
+        jsonResult.value as PlatformBootstrapRequest
+      );
       setSuccess(true);
       toast.success('Platform setup complete');
       setInstallToken('');
       onComplete?.();
     } catch (err: unknown) {
-      setError(err instanceof Error ? err : new Error(String(err)));
+      setError(toError(err));
     } finally {
       setSubmitting(false);
     }
   }, [bootstrapJson, installToken, onComplete]);
 
   return (
-    <div >
-      <div >
+    <div>
+      <div className="grid gap-4" >
         <Label htmlFor="setup-install-token">Setup token</Label>
-        <Input
+        <PasswordInput
           id="setup-install-token"
-          type="password"
           autoComplete="off"
           value={installToken}
           onChange={(event) => setInstallToken(event.target.value)}
         />
       </div>
-      <div >
+      <div>
         <Label htmlFor="setup-bootstrap-json">Setup configuration</Label>
         <Textarea
           id="setup-bootstrap-json"
@@ -88,11 +93,11 @@ export function PlatformBootstrapForm({ onComplete }: PlatformBootstrapFormProps
         </PrimaryActionButton>
       </div>
       {success ? (
-        <p >
+        <p>
           Setup complete. Sign in with the admin account you configured.
         </p>
       ) : null}
-      {error ? <ErrorBlock title="Setup failed" message={error.message} /> : null}
+      {error ? <ErrorBlock title="Setup failed" error={error} /> : null}
     </div>
   );
 }

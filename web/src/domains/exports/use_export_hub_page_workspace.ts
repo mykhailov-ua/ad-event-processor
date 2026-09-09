@@ -46,6 +46,14 @@ import {
 import { fetchReportCatalogCached } from '@/lib/report_catalog_cache';
 import { resolveReportDisplayTitle } from '@/lib/report_paths';
 import { confirmDestructiveAction } from '@/lib/mutation_audit';
+import {
+  type AdminValidationError,
+  requireDateRange,
+  requireInteger,
+  requireNonEmpty,
+  toastValidationError,
+  validationError,
+} from '@/lib/admin_validation_error';
 import { triggerBlobDownload } from '@/lib/trigger_blob_download';
 
 export type ExportHubStatusPhase = 'idle' | 'pending';
@@ -191,6 +199,17 @@ export function useExportHubPageWorkspace() {
   const [pollToken, setPollToken] = useState(0);
   const [auditExportTruncated, setAuditExportTruncated] = useState(false);
   const [asyncStatusPhase, setAsyncStatusPhase] = useState<ExportHubStatusPhase>('idle');
+  const [formValidationError, setFormValidationError] = useState<AdminValidationError | undefined>();
+
+  const clearFormValidationError = useCallback(() => {
+    setFormValidationError(undefined);
+  }, []);
+
+  const reportFormValidationFailure = useCallback((error: AdminValidationError) => {
+    setFormValidationError(error);
+    toastValidationError(error);
+    setAsyncStatusPhase('idle');
+  }, []);
 
   useEffect(() => {
     if (selectedEntry) {
@@ -407,6 +426,7 @@ export function useExportHubPageWorkspace() {
 
   const onCatalogPickerChange = useCallback(
     (value: string) => {
+      clearFormValidationError();
       setCatalogPickerValue(value);
       const resolved = resolveExportHubCatalogValue(value, catalogEntries);
       const next = new URLSearchParams(searchParams);
@@ -425,7 +445,7 @@ export function useExportHubPageWorkspace() {
       }
       replaceSearchParams(next);
     },
-    [catalogEntries, replaceSearchParams, searchParams]
+    [catalogEntries, clearFormValidationError, replaceSearchParams, searchParams]
   );
 
   const notifyRowLimitWarning = useCallback((message: string) => {
@@ -436,9 +456,61 @@ export function useExportHubPageWorkspace() {
     toast.error(message, { duration: 3000 });
   }, []);
 
-  const onDraftRowLimitChange = useCallback((value: string) => {
-    setDraftRowLimit(value);
-  }, []);
+  const onDraftRowLimitChange = useCallback(
+    (value: string) => {
+      clearFormValidationError();
+      setDraftRowLimit(value);
+    },
+    [clearFormValidationError]
+  );
+
+  const onDraftCustomerIdChange = useCallback(
+    (value: string) => {
+      clearFormValidationError();
+      setDraftCustomerId(value);
+    },
+    [clearFormValidationError]
+  );
+
+  const onDraftReportKeyChange = useCallback(
+    (value: string) => {
+      clearFormValidationError();
+      setDraftReportKey(value);
+    },
+    [clearFormValidationError]
+  );
+
+  const onDraftFromChange = useCallback(
+    (value: string) => {
+      clearFormValidationError();
+      setDraftFrom(value);
+    },
+    [clearFormValidationError]
+  );
+
+  const onDraftToChange = useCallback(
+    (value: string) => {
+      clearFormValidationError();
+      setDraftTo(value);
+    },
+    [clearFormValidationError]
+  );
+
+  const onDraftReportFormatChange = useCallback(
+    (value: ReportFormat) => {
+      clearFormValidationError();
+      setDraftReportFormat(value);
+    },
+    [clearFormValidationError]
+  );
+
+  const onDraftBillingFormatChange = useCallback(
+    (value: BillingFormat) => {
+      clearFormValidationError();
+      setDraftBillingFormat(value);
+    },
+    [clearFormValidationError]
+  );
 
   const onDraftRowLimitBlur = useCallback(() => {
     if (!draftRowLimit.trim()) {
@@ -456,25 +528,6 @@ export function useExportHubPageWorkspace() {
       notifyRowLimitError('Invalid row limit');
       setDraftRowLimit('');
     }
-  }, [draftRowLimit, notifyRowLimitError, notifyRowLimitWarning, rowLimitBounds]);
-
-  const resolveRowLimitForSubmit = useCallback((): number | undefined => {
-    const normalized = normalizeExportHubRowLimitDraft(draftRowLimit, rowLimitBounds);
-    setDraftRowLimit(String(normalized.value));
-    if (normalized.wasClamped) {
-      notifyRowLimitWarning(
-        `Row limit adjusted to ${normalized.value.toLocaleString()} (tier maximum).`
-      );
-    } else if (normalized.wasInvalid) {
-      notifyRowLimitError('Invalid row limit');
-      setDraftRowLimit(String(rowLimitBounds.default));
-      return rowLimitBounds.default;
-    } else if (!draftRowLimit.trim()) {
-      notifyRowLimitWarning(
-        `Using default row limit of ${normalized.value.toLocaleString()}.`
-      );
-    }
-    return normalized.value;
   }, [draftRowLimit, notifyRowLimitError, notifyRowLimitWarning, rowLimitBounds]);
 
   const onRunExport = useCallback(async () => {
@@ -499,47 +552,60 @@ export function useExportHubPageWorkspace() {
       return;
     }
 
-    const customerId = draftCustomerId.trim();
-    if (!customerId) {
-      toast.error('Customer ID is required');
-      setAsyncStatusPhase('idle');
+    const customerIdCheck = requireNonEmpty(draftCustomerId, 'Customer ID', 'customer_id');
+    if (!customerIdCheck.ok) {
+      reportFormValidationFailure(customerIdCheck.error);
+      return;
+    }
+    const customerId = customerIdCheck.value;
+
+    const dateRangeCheck = requireDateRange(draftFrom, draftTo);
+    if (!dateRangeCheck.ok) {
+      reportFormValidationFailure(dateRangeCheck.error);
+      return;
+    }
+    const fromIso = fromDatetimeLocalValue(dateRangeCheck.value.from);
+    const toIso = fromDatetimeLocalValue(dateRangeCheck.value.to);
+    if (!fromIso || !toIso) {
+      reportFormValidationFailure(
+        validationError('From date and To date must be valid.', { field: 'from' })
+      );
       return;
     }
 
-    const fromIso = fromDatetimeLocalValue(draftFrom);
-    if (!fromIso) {
-      toast.error('From date is required');
-      setAsyncStatusPhase('idle');
+    const rowLimitCheck = requireNonEmpty(draftRowLimit, 'Row limit', 'row_limit');
+    if (!rowLimitCheck.ok) {
+      reportFormValidationFailure(rowLimitCheck.error);
       return;
     }
-    const toIso = fromDatetimeLocalValue(draftTo);
-    if (!toIso) {
-      toast.error('To date is required');
-      setAsyncStatusPhase('idle');
+    const rowLimitParsed = requireInteger(rowLimitCheck.value, 'Row limit', {
+      min: rowLimitBounds.min,
+      max: rowLimitBounds.max,
+      field: 'row_limit',
+    });
+    if (!rowLimitParsed.ok) {
+      reportFormValidationFailure(rowLimitParsed.error);
       return;
     }
-    if (new Date(fromIso).getTime() >= new Date(toIso).getTime()) {
-      toast.error('From must be before To');
-      setAsyncStatusPhase('idle');
-      return;
+    const effectiveRowLimit = rowLimitParsed.value;
+    setDraftRowLimit(String(effectiveRowLimit));
+
+    if (selectedKind === 'report') {
+      const formatCheck = requireNonEmpty(draftReportFormat, 'Format', 'format');
+      if (!formatCheck.ok) {
+        reportFormValidationFailure(formatCheck.error);
+        return;
+      }
     }
-    const effectiveRowLimit = resolveRowLimitForSubmit();
-    if (effectiveRowLimit == null) {
-      toast.error('Row limit is required');
-      setAsyncStatusPhase('idle');
-      return;
-    }
-    if (selectedKind === 'report' && !draftReportFormat) {
-      toast.error('Format is required');
-      setAsyncStatusPhase('idle');
-      return;
-    }
-    if (selectedKind === 'billing' && !draftBillingFormat) {
-      toast.error('Format is required');
-      setAsyncStatusPhase('idle');
-      return;
+    if (selectedKind === 'billing') {
+      const formatCheck = requireNonEmpty(draftBillingFormat, 'Format', 'format');
+      if (!formatCheck.ok) {
+        reportFormValidationFailure(formatCheck.error);
+        return;
+      }
     }
 
+    clearFormValidationError();
     setCreating(true);
     try {
       if (selectedKind === 'billing') {
@@ -552,7 +618,7 @@ export function useExportHubPageWorkspace() {
         });
         const nextId = created.job_id;
         if (!nextId) {
-          throw new Error('job_id missing in create response');
+          throw validationError('job_id missing in create response', { kind: 'action' });
         }
         const next = new URLSearchParams(searchParams);
         next.set('job_id', nextId);
@@ -572,10 +638,12 @@ export function useExportHubPageWorkspace() {
         return;
       }
 
-      const reportKey = draftReportKey.trim();
-      if (!reportKey) {
-        throw new Error('Report key is required');
+      const reportKeyCheck = requireNonEmpty(draftReportKey, 'Report key', 'report_key');
+      if (!reportKeyCheck.ok) {
+        reportFormValidationFailure(reportKeyCheck.error);
+        return;
       }
+      const reportKey = reportKeyCheck.value;
       const created = await createReportJob({
         customer_id: customerId,
         report_key: reportKey,
@@ -586,7 +654,7 @@ export function useExportHubPageWorkspace() {
       });
       const nextId = created.id ?? created.job_id;
       if (!nextId) {
-        throw new Error('job id missing in create response');
+        throw validationError('job_id missing in create response', { kind: 'action' });
       }
       const next = new URLSearchParams(searchParams);
       next.set('job_id', nextId);
@@ -620,7 +688,9 @@ export function useExportHubPageWorkspace() {
     draftTo,
     replaceSearchParams,
     recordRecentJob,
-    resolveRowLimitForSubmit,
+    clearFormValidationError,
+    reportFormValidationFailure,
+    rowLimitBounds,
     searchParams,
     selectedEntry?.id,
     selectedKind,
@@ -771,13 +841,14 @@ export function useExportHubPageWorkspace() {
     cancelling,
     jobErrorMessage,
     auditExportTruncated,
+    formValidationError,
     onCatalogPickerChange,
-    onDraftCustomerIdChange: setDraftCustomerId,
-    onDraftReportKeyChange: setDraftReportKey,
-    onDraftFromChange: setDraftFrom,
-    onDraftToChange: setDraftTo,
-    onDraftReportFormatChange: setDraftReportFormat,
-    onDraftBillingFormatChange: setDraftBillingFormat,
+    onDraftCustomerIdChange,
+    onDraftReportKeyChange,
+    onDraftFromChange,
+    onDraftToChange,
+    onDraftReportFormatChange,
+    onDraftBillingFormatChange,
     onDraftRedactPiiChange: setDraftRedactPii,
     onDraftRowLimitChange,
     onDraftRowLimitBlur,

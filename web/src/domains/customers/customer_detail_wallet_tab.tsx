@@ -26,7 +26,7 @@ export function CustomerDetailWalletTab({
       {wallet ? (
         <Card>
           <CardHeader>
-            <CardTitle >Wallet</CardTitle>
+            <CardTitle>Wallet</CardTitle>
           </CardHeader>
           <CardContent>
             <CustomerDetailPanel>

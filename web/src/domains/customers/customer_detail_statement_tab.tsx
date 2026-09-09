@@ -15,6 +15,7 @@ import {
 import { CustomerTabShell } from '@/shell/customer_tab_shell';
 import { INLINE_FILTER_ACTION_GRID_CLASS, FilterField } from '@/shell/filter_panel';
 import { displayMicro } from '@/lib/display';
+import { adminTypography } from '@/lib/admin_kit';
 
 export type CustomerDetailStatementTabProps = {
   statementMonth: string;
@@ -38,8 +39,8 @@ export function CustomerDetailStatementTab({
   const lines = statement?.lines ?? [];
 
   return (
-    <section >
-      <div >
+    <section className="grid gap-4" >
+      <div className={INLINE_FILTER_ACTION_GRID_CLASS} >
         <FilterField htmlFor="statement-month" label="Billing month">
           <MonthPicker
             id="statement-month"
@@ -62,10 +63,10 @@ export function CustomerDetailStatementTab({
         fetchState={{ fetching, error, hasSnapshot }}
       >
         {hasSnapshot && statement ? (
-          <section >
+          <section>
             <Card>
               <CardHeader>
-                <CardTitle >Statement summary</CardTitle>
+                <CardTitle>Statement summary</CardTitle>
               </CardHeader>
               <CardContent>
                 <CustomerDetailPanel>
@@ -102,11 +103,11 @@ export function CustomerDetailStatementTab({
 
             <Card>
               <CardHeader>
-                <CardTitle >Statement lines</CardTitle>
+                <CardTitle>Statement lines</CardTitle>
               </CardHeader>
-              <CardContent >
+              <CardContent className="overflow-x-auto" >
                 {lines.length === 0 ? (
-                  <p >No statement lines for this month.</p>
+                  <p className={adminTypography.bodyMuted} >No statement lines for this month.</p>
                 ) : (
                   <DirectoryTable nested>
                     <TableHeader>
@@ -120,10 +121,10 @@ export function CustomerDetailStatementTab({
                       {lines.map((line, index) => (
                         <TableRow key={`${line.ledger_type ?? 'line'}-${index}`}>
                           <TableCell>{line.ledger_type ?? ''}</TableCell>
-                          <TableCell >
+                          <TableCell className="text-right tabular-nums" >
                             {displayMicro(line.amount_micro)}
                           </TableCell>
-                          <TableCell >{line.entry_count ?? ''}</TableCell>
+                          <TableCell className="text-right tabular-nums" >{line.entry_count ?? ''}</TableCell>
                         </TableRow>
                       ))}
                     </TableBody>
@@ -135,7 +136,7 @@ export function CustomerDetailStatementTab({
         ) : null}
 
         {!hasSnapshot && !fetching && !error ? (
-          <p >Choose a month and click Load.</p>
+          <p className={adminTypography.bodyMuted} >Choose a month and click Load.</p>
         ) : null}
       </CustomerTabShell>
     </section>

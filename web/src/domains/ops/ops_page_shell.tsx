@@ -1,5 +1,6 @@
 import type { ReactNode } from 'react';
 
+import { adminSpacing, opsControlPanelClass } from '@/lib/admin_spacing';
 import { PageLayout } from '@/shell/page_layout';
 import { PageSkeleton } from '@/shell/page_skeleton';
 import { panelError } from '@/shell/panel_error';
@@ -33,14 +34,14 @@ export function OpsPageShell({
     <PageLayout
       badge={badge}
       controlPanel={
-        <div >
-          <div aria-label="Ops sections">
+        <div className={opsControlPanelClass}>
+          <div aria-label="Ops sections" className={adminSpacing.flex.buttonGroup}>
             <OpsNav variant="admin" />
           </div>
           {actions ? (
             <div
               aria-label="Ops actions"
-             
+              className={adminSpacing.flex.buttonGroup}
               role="toolbar"
             >
               {actions}
@@ -49,7 +50,7 @@ export function OpsPageShell({
           {filters ? (
             <div
               aria-label="Ops filters"
-             
+              className={adminSpacing.grid.filterMatrix}
               role="search"
             >
               {filters}
@@ -170,7 +171,7 @@ export function OpsPageWithLoad({
 /** Group action buttons the same way as campaigns_list_toolbar. */
 export function OpsActionGroup({ label, children }: { label: string; children: ReactNode }) {
   return (
-    <div aria-label={label}>
+    <div aria-label={label} className={adminSpacing.flex.buttonGroup}>
       {children}
     </div>
   );

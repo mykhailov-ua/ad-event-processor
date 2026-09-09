@@ -12,6 +12,13 @@ import {
 import type { ApplyIntegrationSchemaResponse, IntegrationSchema } from '@/api/types';
 import { type IntegrationsSchemasTab } from '@/domains/integrations/integrations_schemas';
 import { toError } from '@/lib/admin_error.ts';
+import {
+  type AdminValidationError,
+  requireJsonObject,
+  requireNonEmpty,
+  requirePositiveInteger,
+  toastValidationError,
+} from '@/lib/admin_validation_error';
 import { confirmDestructiveAction, mutationError } from '@/lib/mutation_audit';
 import { useCoalescedBumpRefresh, useRefreshToken } from '@/hooks/use_coalesced_refresh_token';
 import { useResource } from '@/api/use_resource';
@@ -48,6 +55,16 @@ export function useIntegrationsSchemasPageWorkspace() {
   const [viewedSchema, setViewedSchema] = useState<IntegrationSchema | undefined>();
   const [viewingSchema, setViewingSchema] = useState(false);
   const [viewSchemaError, setViewSchemaError] = useState<Error | undefined>();
+  const [formValidationError, setFormValidationError] = useState<AdminValidationError | undefined>();
+
+  const clearFormValidationError = useCallback(() => {
+    setFormValidationError(undefined);
+  }, []);
+
+  const reportFormValidationFailure = useCallback((error: AdminValidationError) => {
+    setFormValidationError(error);
+    toastValidationError(error);
+  }, []);
 
   const schemas = useMemo(() => data?.schemas ?? [], [data?.schemas]);
   const templates = useMemo(() => data?.templates ?? [], [data?.templates]);
@@ -55,12 +72,16 @@ export function useIntegrationsSchemasPageWorkspace() {
   const listBusy = fetching || creating || applying || importing;
   const bumpRefreshCoalesced = useCoalescedBumpRefresh(bumpRefresh, listBusy);
 
-  const onPrefillFromSchema = useCallback((row: IntegrationSchema) => {
-    setDraftSchemaId(row.id);
-    setApplyError(undefined);
-    setApplySuccess(false);
-    setApplyResult(undefined);
-  }, []);
+  const onPrefillFromSchema = useCallback(
+    (row: IntegrationSchema) => {
+      clearFormValidationError();
+      setDraftSchemaId(row.id);
+      setApplyError(undefined);
+      setApplySuccess(false);
+      setApplyResult(undefined);
+    },
+    [clearFormValidationError]
+  );
 
   const onViewSchema = useCallback((row: IntegrationSchema) => {
     setViewedSchema(undefined);
@@ -88,23 +109,31 @@ export function useIntegrationsSchemasPageWorkspace() {
     if (creating) {
       return;
     }
-    const name = draftName.trim();
-    const version = Number.parseInt(draftVersion.trim(), 10);
-    if (!name || !Number.isFinite(version)) {
+    const nameCheck = requireNonEmpty(draftName, 'Name', 'name');
+    if (!nameCheck.ok) {
+      reportFormValidationFailure(nameCheck.error);
       return;
     }
-    let schema: Record<string, unknown>;
-    try {
-      schema = JSON.parse(draftSchemaJson) as Record<string, unknown>;
-    } catch (err: unknown) {
-      setCreateError(err instanceof Error ? err : new Error('Schema JSON is invalid'));
+    const versionCheck = requirePositiveInteger(draftVersion, 'Version', 'version');
+    if (!versionCheck.ok) {
+      reportFormValidationFailure(versionCheck.error);
       return;
     }
+    const schemaCheck = requireJsonObject(draftSchemaJson, 'Schema JSON', 'schema_json');
+    if (!schemaCheck.ok) {
+      reportFormValidationFailure(schemaCheck.error);
+      return;
+    }
+    clearFormValidationError();
     setCreating(true);
     setCreateError(undefined);
     setCreateSuccess(false);
     try {
-      await createIntegrationSchema({ name, version, schema });
+      await createIntegrationSchema({
+        name: nameCheck.value,
+        version: versionCheck.value,
+        schema: schemaCheck.value,
+      });
       setCreateSuccess(true);
       toast.success('Integration schema created');
       bumpRefreshCoalesced();
@@ -113,17 +142,32 @@ export function useIntegrationsSchemasPageWorkspace() {
     } finally {
       setCreating(false);
     }
-  }, [draftName, draftSchemaJson, draftVersion, bumpRefreshCoalesced]);
+  }, [
+    bumpRefreshCoalesced,
+    clearFormValidationError,
+    creating,
+    draftName,
+    draftSchemaJson,
+    draftVersion,
+    reportFormValidationFailure,
+  ]);
 
   const onApply = useCallback(async () => {
     if (applying) {
       return;
     }
-    const schemaId = draftSchemaId.trim();
-    const campaignId = draftCampaignId.trim();
-    if (!schemaId || !campaignId) {
+    const schemaIdCheck = requireNonEmpty(draftSchemaId, 'Schema ID', 'schema_id');
+    if (!schemaIdCheck.ok) {
+      reportFormValidationFailure(schemaIdCheck.error);
       return;
     }
+    const campaignIdCheck = requireNonEmpty(draftCampaignId, 'Campaign ID', 'campaign_id');
+    if (!campaignIdCheck.ok) {
+      reportFormValidationFailure(campaignIdCheck.error);
+      return;
+    }
+    const schemaId = schemaIdCheck.value;
+    const campaignId = campaignIdCheck.value;
     if (
       !confirmDestructiveAction(`Apply integration schema ${schemaId} to campaign ${campaignId}?`)
     ) {
@@ -143,7 +187,7 @@ export function useIntegrationsSchemasPageWorkspace() {
     } finally {
       setApplying(false);
     }
-  }, [draftCampaignId, draftSchemaId]);
+  }, [applying, draftCampaignId, draftSchemaId, reportFormValidationFailure]);
 
   const onImport = useCallback(async () => {
     if (importing) {
@@ -177,6 +221,7 @@ export function useIntegrationsSchemasPageWorkspace() {
     fetching,
     error,
     hasSnapshot: data != null,
+    formValidationError,
     createForm: {
       draftName,
       draftVersion,
@@ -184,9 +229,18 @@ export function useIntegrationsSchemasPageWorkspace() {
       creating,
       createError,
       createSuccess,
-      onDraftNameChange: setDraftName,
-      onDraftVersionChange: setDraftVersion,
-      onDraftSchemaJsonChange: setDraftSchemaJson,
+      onDraftNameChange: (value: string) => {
+        clearFormValidationError();
+        setDraftName(value);
+      },
+      onDraftVersionChange: (value: string) => {
+        clearFormValidationError();
+        setDraftVersion(value);
+      },
+      onDraftSchemaJsonChange: (value: string) => {
+        clearFormValidationError();
+        setDraftSchemaJson(value);
+      },
       onCreate: () => {
         void onCreate();
       },
@@ -198,8 +252,14 @@ export function useIntegrationsSchemasPageWorkspace() {
       applyError,
       applySuccess,
       applyResult,
-      onDraftSchemaIdChange: setDraftSchemaId,
-      onDraftCampaignIdChange: setDraftCampaignId,
+      onDraftSchemaIdChange: (value: string) => {
+        clearFormValidationError();
+        setDraftSchemaId(value);
+      },
+      onDraftCampaignIdChange: (value: string) => {
+        clearFormValidationError();
+        setDraftCampaignId(value);
+      },
       onApply: () => {
         void onApply();
       },

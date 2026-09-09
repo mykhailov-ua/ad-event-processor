@@ -1,19 +1,23 @@
-import { EmptyState } from '@/shell/empty_state';
-import { RowActionsMenu } from '@/shell/row_actions_menu';
+import { useMemo, useState } from 'react';
+
 import { DropdownMenuItem } from '@/components/ui/dropdown-menu';
 import type { DLQInboxEntry } from '@/api/types';
 import { displayTimestamp } from '@/lib/display';
+import { adminTypography } from '@/lib/admin_kit';
+import { cn } from '@/lib/utils';
+import { EmptyState } from '@/shell/empty_state';
+import type { DirectoryOverviewField } from '@/shell/directory_overview_dialog';
+import { DirectoryRowActionsMenu } from '@/shell/directory_row_actions_menu';
+import {
+  DirectorySelectOverviewTable,
+  directoryOperateRows,
+  directoryRecordMap,
+} from '@/shell/directory_select_overview_table';
+import { TableHost } from '@/shell/ui_bands';
 import { opsPanelError } from '@/domains/ops/ops_nav';
 import { OpsListFooter } from '@/domains/ops/ops_list_footer';
-import { OpsPageWithLoad } from '@/domains/ops/ops_page_shell';
+import { OpsPageBlockingError, OpsPageLoading, OpsPageShell } from '@/domains/ops/ops_page_shell';
 import { OpsStatusChip } from '@/domains/ops/ops_status';
-import {
-  OpsTable,
-  OpsTableCell,
-  OpsTableHead,
-  OpsTableHeaderRow,
-  OpsTableRow,
-} from '@/domains/ops/ops_table';
 
 export type OpsDlqInboxProps = {
   items?: DLQInboxEntry[];
@@ -32,6 +36,117 @@ export type OpsDlqInboxProps = {
   embedded?: boolean;
 };
 
+function dlqInboxRowId(entry: DLQInboxEntry): string | undefined {
+  if (entry.id) {
+    return entry.id;
+  }
+  if (entry.source && entry.failed_at) {
+    return `${entry.source}-${entry.failed_at}`;
+  }
+  return entry.source ?? entry.failed_at ?? undefined;
+}
+
+function dlqInboxRowLabel(entry: DLQInboxEntry): string {
+  if (entry.source && entry.event_type) {
+    return `${entry.source} / ${entry.event_type}`;
+  }
+  return entry.id ?? entry.source ?? entry.event_type ?? 'DLQ entry';
+}
+
+function buildDlqInboxOverviewFields(entry: DLQInboxEntry): DirectoryOverviewField[] {
+  return [
+    {
+      label: 'ID',
+      value: (
+        <span className={cn(adminTypography.monoData, 'text-muted-foreground')}>
+          {entry.id ?? '-'}
+        </span>
+      ),
+    },
+    { label: 'Source', value: entry.source ?? '-' },
+    {
+      label: 'Status',
+      value: entry.status ? <OpsStatusChip status={entry.status} /> : '-',
+    },
+    {
+      label: 'Campaign ID',
+      value: (
+        <span className={cn(adminTypography.monoData, 'text-muted-foreground')}>
+          {entry.campaign_id ?? '-'}
+        </span>
+      ),
+    },
+    { label: 'Event type', value: entry.event_type ?? '-' },
+    { label: 'Error', value: entry.error ?? '-' },
+    {
+      label: 'Failed',
+      value: displayTimestamp(entry.failed_at, entry.failed_at_display) || '-',
+    },
+    { label: 'Retries', value: entry.retry_count ?? '-' },
+    { label: 'Shard ID', value: entry.shard_id ?? '-' },
+  ];
+}
+
+function DlqInboxTable({
+  items,
+  fetching,
+  retryingId,
+  onRetry,
+}: {
+  items: DLQInboxEntry[];
+  fetching: boolean;
+  retryingId?: string;
+  onRetry: (entry: DLQInboxEntry) => void;
+}) {
+  const [selectedId, setSelectedId] = useState<string | null>(null);
+  const recordById = useMemo(() => directoryRecordMap(items, dlqInboxRowId), [items]);
+  const rows = useMemo(
+    () => directoryOperateRows(items, dlqInboxRowId, dlqInboxRowLabel),
+    [items]
+  );
+
+  return (
+    <TableHost>
+      <DirectorySelectOverviewTable
+        buildOverviewFields={buildDlqInboxOverviewFields}
+        disabled={fetching}
+        nameColumnLabel="DLQ entry"
+        overviewTitle={(entry) => dlqInboxRowLabel(entry)}
+        recordById={recordById}
+        renderActions={(row, entry, openOverview) => {
+          const canRetry = Boolean(entry.id && entry.source);
+          if (!canRetry) {
+            return (
+              <DirectoryRowActionsMenu
+                ariaLabel={`DLQ entry ${row.label}`}
+                disabled={fetching}
+                onOverview={openOverview}
+              />
+            );
+          }
+          return (
+            <DirectoryRowActionsMenu
+              ariaLabel={`DLQ entry ${row.label}`}
+              disabled={fetching || retryingId === entry.id}
+              onOverview={openOverview}
+            >
+              <DropdownMenuItem
+                disabled={fetching || retryingId === entry.id}
+                onClick={() => onRetry(entry)}
+              >
+                {retryingId === entry.id ? 'Retrying...' : 'Retry'}
+              </DropdownMenuItem>
+            </DirectoryRowActionsMenu>
+          );
+        }}
+        rows={rows}
+        selectedId={selectedId}
+        onSelectedIdChange={setSelectedId}
+      />
+    </TableHost>
+  );
+}
+
 export function OpsDlqInbox({
   items,
   nextCursor,
@@ -47,105 +162,59 @@ export function OpsDlqInbox({
   onRetry,
   embedded = false,
 }: OpsDlqInboxProps) {
-  const body = (
-    <>
-      {(items ?? []).length === 0 ? (
-        <EmptyState description="No failed deliveries are queued." title="DLQ inbox empty" />
-      ) : (
-        <OpsTable
-          horizontalScroll
-          head={
-            <OpsTableHeaderRow>
-              <OpsTableHead>Source</OpsTableHead>
-              <OpsTableHead>Status</OpsTableHead>
-              <OpsTableHead>Campaign</OpsTableHead>
-              <OpsTableHead>Event</OpsTableHead>
-              <OpsTableHead>Error</OpsTableHead>
-              <OpsTableHead>Failed</OpsTableHead>
-              <OpsTableHead numeric>Retries</OpsTableHead>
-              <OpsTableHead />
-            </OpsTableHeaderRow>
-          }
-        >
-          {(items ?? []).map((entry) => {
-            const rowKey = entry.id ?? `${entry.source}-${entry.failed_at}`;
-            const canRetry = Boolean(entry.id && entry.source);
-            return (
-              <OpsTableRow key={rowKey}>
-                <OpsTableCell>{entry.source ?? ''}</OpsTableCell>
-                <OpsTableCell>
-                  {entry.status ? <OpsStatusChip status={entry.status} /> : ''}
-                </OpsTableCell>
-                <OpsTableCell >
-                  {entry.campaign_id ?? ''}
-                </OpsTableCell>
-                <OpsTableCell>{entry.event_type ?? ''}</OpsTableCell>
-                <OpsTableCell >
-                  {entry.error ?? ''}
-                </OpsTableCell>
-                <OpsTableCell>
-                  {displayTimestamp(entry.failed_at, entry.failed_at_display)}
-                </OpsTableCell>
-                <OpsTableCell numeric>{entry.retry_count ?? ''}</OpsTableCell>
-                <OpsTableCell >
-                  {canRetry ? (
-                    <RowActionsMenu
-                      ariaLabel="DLQ entry actions"
-                      disabled={fetching || retryingId === entry.id}
-                    >
-                      <DropdownMenuItem
-                        disabled={fetching || retryingId === entry.id}
-                        onClick={() => onRetry(entry)}
-                      >
-                        {retryingId === entry.id ? 'Retrying...' : 'Retry'}
-                      </DropdownMenuItem>
-                    </RowActionsMenu>
-                  ) : null}
-                </OpsTableCell>
-              </OpsTableRow>
-            );
-          })}
-        </OpsTable>
-      )}
-    </>
+  const list = items ?? [];
+  const footer = (
+    <OpsListFooter
+      canGoNext={Boolean(nextCursor)}
+      canGoPrev={canGoPrev}
+      disabled={fetching}
+      summary={`${list.length} entries on this page${nextCursor ? '  /  more pages available' : ''}`}
+      onNext={onNext}
+      onPrev={onPrev}
+    />
   );
+
+  const body =
+    list.length === 0 ? (
+      <EmptyState description="No failed deliveries are queued." title="DLQ inbox empty" />
+    ) : (
+      <DlqInboxTable
+        fetching={fetching}
+        items={list}
+        retryingId={retryingId}
+        onRetry={onRetry}
+      />
+    );
 
   if (embedded) {
     return (
       <>
-        {retryError ? opsPanelError(retryError, 'Retry failed') : null}
         {body}
-        <OpsListFooter
-          canGoNext={Boolean(nextCursor)}
-          canGoPrev={canGoPrev}
-          disabled={fetching}
-          summary={`${(items ?? []).length} entries on this page${nextCursor ? '  /  more pages available' : ''}`}
-          onNext={onNext}
-          onPrev={onPrev}
-        />
+        {footer}
+        {retryError ? opsPanelError(retryError, 'Retry failed') : null}
       </>
     );
   }
 
+  if (fetching && !hasSnapshot && !error) {
+    return <OpsPageLoading />;
+  }
+
+  if (error && !hasSnapshot) {
+    return (
+      <OpsPageBlockingError error={error} pageTitle="DLQ inbox" title="Could not load DLQ inbox" />
+    );
+  }
+
   return (
-    <OpsPageWithLoad
+    <OpsPageShell
       badge={partial ? <OpsStatusChip status="partial" /> : undefined}
-      blockingErrorTitle="Could not load DLQ inbox"
-      fetchState={{ fetching, error, hasSnapshot }}
+      footer={footer}
       title="DLQ inbox"
-      alerts={retryError ? opsPanelError(retryError, 'Retry failed') : null}
-      footer={
-        <OpsListFooter
-          canGoNext={Boolean(nextCursor)}
-          canGoPrev={canGoPrev}
-          disabled={fetching}
-          summary={`${(items ?? []).length} entries on this page${nextCursor ? '  /  more pages available' : ''}`}
-          onNext={onNext}
-          onPrev={onPrev}
-        />
-      }
     >
       {body}
-    </OpsPageWithLoad>
+      {retryError ? opsPanelError(retryError, 'Retry failed') : null}
+      {error && hasSnapshot ? opsPanelError(error, 'Refresh failed') : null}
+    </OpsPageShell>
   );
 }

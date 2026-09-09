@@ -1,7 +1,7 @@
 import type { ComponentProps, ReactNode } from 'react';
 
 import { TableCell, TableHead, TableRow } from '@/components/ui/table';
-import { adminSpacing } from '@/lib/admin_spacing';
+import { adminSpacing, adminTypography } from '@/lib/admin_kit';
 import { cn } from '@/lib/utils';
 import {
   DirectoryTable,
@@ -13,25 +13,28 @@ import {
 import { shellChrome } from '@/shell/shell_chrome';
 
 /** Ops matrix chrome: sticky headers, zebra rows, numeric column alignment. */
-export const OPS_DIRECTORY_TABLE_CLASS = cn(adminSpacing.opsDirectoryTable);
+export const OPS_DIRECTORY_TABLE_CLASS = adminSpacing.opsDirectoryTable;
 
 /** Ops directory table shell; delegates border/scroll to DirectoryTable. */
 export function OpsTable({
   head,
   children,
   foot,
+  className,
   horizontalScroll = false,
 }: {
   head: ReactNode;
   children: ReactNode;
   foot?: ReactNode;
+  className?: string;
   horizontalScroll?: boolean;
 }) {
   return (
     <DirectoryTable
-     
+      className={className}
       fixedLayout
       horizontalScroll={horizontalScroll}
+      tableClassName={OPS_DIRECTORY_TABLE_CLASS}
     >
       <TableHeader>{head}</TableHeader>
       <TableBody>{children}</TableBody>
@@ -50,16 +53,18 @@ export function OpsTableRow(props: ComponentProps<typeof TableRow>) {
 
 export function OpsTableHead({
   numeric,
+  className,
   ...props
 }: ComponentProps<typeof TableHead> & { numeric?: boolean }) {
-  return <TableHead  {...props} />;
+  return <TableHead className={cn(numeric && 'text-right', className)} {...props} />;
 }
 
 export function OpsTableCell({
   numeric,
+  className,
   ...props
 }: ComponentProps<typeof TableCell> & { numeric?: boolean }) {
-  return <TableCell  {...props} />;
+  return <TableCell className={cn(numeric && 'text-right', className)} {...props} />;
 }
 
 /** Section title above a table or block; no extra panel border. */
@@ -67,22 +72,24 @@ export function OpsBlock({
   title,
   meta,
   children,
+  className,
 }: {
-  title?: ReactNode;
+  title?: string;
   meta?: ReactNode;
   children: ReactNode;
+  className?: string;
 }) {
   if (!title && !meta) {
     return <>{children}</>;
   }
 
   return (
-    <section >
-      <header >
-        {title ? <h2 >{title}</h2> : null}
+    <section className={cn(shellChrome.sectionPanelClass, className)}>
+      <header className="grid grid-cols-[1fr_auto] items-center gap-2">
+        {title ? <h2 className={adminTypography.sectionTitle}>{title}</h2> : null}
         {meta}
       </header>
-      <div >{children}</div>
+      <div className={SECTION_TABLE_HOST_CLASS}>{children}</div>
     </section>
   );
 }
