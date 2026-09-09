@@ -3,22 +3,9 @@
   <head>
     <meta charset="UTF-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-    <title>Sign in - Ad Event Processor Admin</title>
-    <script>
-      (function () {
-        try {
-          if (localStorage.getItem('aed-admin-theme-light-default-v2') !== '1') {
-            localStorage.setItem('aed-admin-theme', 'light');
-            localStorage.setItem('aed-admin-theme-light-default-v2', '1');
-          }
-          var theme = localStorage.getItem('aed-admin-theme');
-          document.documentElement.classList.add(theme === 'dark' ? 'dark' : 'light');
-        } catch (e) {
-          document.documentElement.classList.add('light');
-        }
-      })();
-    </script>
-      <link rel="stylesheet" href="/src/styles/app.css?v=1788947325617" />
+    <title>Sign in - AEP Admin (Ad Event Processor - AEP)</title>
+    <script src="/src/static/theme_boot_login.js"></script>
+      <link rel="stylesheet" href="/src/styles/app.css?v=1788971545789" />
   </head>
   <body>
     <div id="root"></div>
