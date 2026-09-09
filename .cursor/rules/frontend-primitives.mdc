@@ -44,9 +44,14 @@ Extended control primitives beyond `Button` / `Input`. Paths are T3 (`components
 | Calendar / DateRange | `components/ui/calendar.tsx` (day grid), `components/ui/datetime_picker.tsx` (`CalendarPicker`) | `shell/toolbar_date_range_picker.tsx`, `shell/filter_date_range.tsx` | One popover field: `CalendarPicker` with `mode` (`date` / `datetime` / `month`) and `showTime` (hour/minute panel; default true when `mode="datetime"`). `DatePicker` = `mode="date"`. `DatetimePicker` accepts `showTime={false}` for day-only UI while keeping `YYYY-MM-DDTHH:mm` wire. Domains must not fork calendar markup. |
 | RadioGroup | `components/ui/radio-group.tsx` | `FilterField` wrapper in `shell/filter_panel.tsx` | directory filter rows and editor forms |
 | SearchableSelect | `Popover` + `Input` / `Command` in `components/ui` | `shell/searchable_filter_select.tsx` | filter combobox; country/customer pickers reuse same shell |
-| ControlPlaneSelectTable | — | `shell/control_plane_select_table.tsx` | Two-column CP list: Select button + name label; single selection |
+| ControlPlaneSelectTable | — | `shell/control_plane_select_table.tsx` | CP directory list: Select | Name | Actions (via `renderActions`); single selection |
+| DirectorySelectOverviewTable | — | `shell/directory_select_overview_table.tsx` | Select + Name + Actions + Overview dialog; pass `recordById`, `buildOverviewFields`, `directoryRecordMap` |
+| DirectoryOverviewDialog | — | `shell/directory_overview_dialog.tsx` | Row Overview modal: label/value fields, optional footer (export, deep links) |
+| DirectoryRowActionsMenu | — | `shell/directory_row_actions_menu.tsx` | Actions column menu; first item Overview when `onOverview` set |
 | ControlPlaneSelectionPanel | — | `shell/control_plane_selection_panel.tsx` | Aside control panel; actions disabled until row selected |
-| DirectoryColumnResizeHandle | — | `shell/directory_column_resize_handle.tsx` | Column resize grip for dashboard breakdown tables only (FREEZE) |
+| FileUploadField | — | `shell/file_upload_field.tsx` | Hidden native file input; outline trigger; selected name + Clear |
+| FieldGroup | — | `shell/field_group.tsx` | Bordered panel with label legend; not `<fieldset>` |
+| CollapsibleSection | — | `shell/collapsible_section.tsx` | Ghost button + chevron; `aria-expanded`; not `<details>` |
 
 ## Spacing and typography (canonical)
 

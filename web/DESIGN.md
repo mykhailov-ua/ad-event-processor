@@ -22,21 +22,215 @@ Implementation map:
 
 Agent rules (full tables, layout contract, error catalog IDs): `.cursor/rules/ui.mdc`, `.cursor/rules/frontend-primitives.mdc`, `.cursor/rules/frontend-slop.mdc`.
 
-## Colors
+## Color system: AEP Muted Cool
 
-Palette aligned with [pgAdmin standard theme](https://www.pgadmin.org/styleguide/themes/color_palettes/) (`#326690` primary, `#EBEEF3` hover, `#D6EFFC` selection).
+Visual anchor: dark auth card on VPS (Sign in button ~`#2b5278`, canvas ~`#141414`, card ~`#1c1c1c`, secondary link ~`#405d7e`). Palette is **desaturated, low-glare, operator-grade** -- not Material neon, not pgAdmin candy.
 
-| Role | Light token |
+**Rules**
+
+| Rule | Detail |
 | :--- | :--- |
-| Primary action | `--admin-brand` `#326690`, hover `--admin-brand-hover` |
-| Danger / success / warn | `--destructive`, `--admin-positive-fg`, `--admin-warn-fg` |
-| Focus ring | `--ring` (primary blue) |
-| Canvas | `--background` `#EBEEF3`, panels `--card` white |
-| Controls | `--input` border `#DDE0E6`, disabled `--admin-input-disabled` `#F3F5F9` |
-| Menu / tree selection | `--admin-selection` `#D6EFFC` |
-| Table header | `--admin-table-header-bg` `#F3F5F9` |
+| Default theme | Dark (`html.dark`); light is parity, not a separate brand |
+| Saturation cap | Brand hues stay below ~50% S; semantic hues below ~45% S |
+| Color = meaning | State, metric sign, chart series, status only -- never decoration |
+| No inline color | CSP: Tailwind tokens / `CHART_SWATCH_CLASS` only (`frontend-slop.mdc` **CSP-***) |
+| Gradients | Banned on chrome and data surfaces |
 
-Use color only to encode data or state. Decorative gradients and per-row random pill colors are banned.
+Implementation: HSL components in `web/src/styles/tailwind.css` (`:root` light, `.dark` dark). Hex below is reference for design review; **code uses CSS vars**.
+
+### Layer stack (surfaces)
+
+Dark (canonical):
+
+| Token | CSS var | Hex ref | Use |
+| :--- | :--- | :--- | :--- |
+| Canvas 0 | `--background` | `#141414` | Page shell, filter band backdrop |
+| Canvas 1 | `--card` | `#1e1e1e` | Cards, table host, auth card, dialogs |
+| Canvas 2 | `--popover` | `#222222` | Dropdowns, command palette, date popover |
+| Canvas 3 | `--admin-control-bg` | `#1a1a1a` | Inputs, selects, idle buttons on card |
+| Muted fill | `--muted` | `#333333` | Disabled chips, archived badge bg |
+| Filters band | `--admin-filters-bg` | `#141414` | Directory filter panel (same as canvas) |
+
+Light (muted cool parity):
+
+| Token | CSS var | Hex ref | Use |
+| :--- | :--- | :--- | :--- |
+| Canvas 0 | `--background` | `#ebeef3` | Cool gray page (pgAdmin lineage, desaturated) |
+| Canvas 1 | `--card` | `#ffffff` | Panels |
+| Canvas 3 | `--admin-control-bg` | `#fafafa` | Inputs on white card |
+| Muted fill | `--muted` | `#f3f5f9` | Subtle bands |
+
+Elevation: **border + 1 step lighter bg**, not drop shadow. Shadow allowed only on toasts (`adminKit.toastSurface`).
+
+### Borders and dividers
+
+| Role | Dark `--border` | Light | Use |
+| :--- | :--- | :--- | :--- |
+| Subtle | `#2a2a2a` (16% L) | `#dde0e6` | Control outline (`border-border/40`), table grid |
+| Default | same | same | Card outline, section split |
+| Strong | `#3a3a3a` (23% L) | `#c8ccd4` | Focus-adjacent, pinned column edge |
+| Scrollbar | `--scrollbar-thumb` | muted blue-gray | `.scrollbar-admin` |
+
+### Brand (primary blue)
+
+Muted navy -- the Sign in button family.
+
+| Step | Dark hex | HSL (dark target) | Use |
+| :--- | :--- | :--- | :--- |
+| Brand 700 | `#254a6e` | `206 52% 22%` | Primary hover, `--admin-brand-hover` |
+| Brand 600 | `#2b5278` | `206 52% 28%` | Primary button, `--primary`, `--admin-brand` |
+| Brand 500 | `#3a6288` | `206 46% 32%` | Link default, `--ring` focus |
+| Brand 400 | `#4d7399` | `206 40% 38%` | Link hover, ghost button hover text |
+| Brand tint | `#1e2f42` | `206 36% 19%` | Selection wash, `--admin-selection` (dark) |
+| Brand mist | `#2b5278` @ 10% | `primary/10` | Summary band, filter chip active bg |
+| On-brand text | `#ffffff` | `0 0% 100%` | `--primary-foreground`, `--admin-brand-fg` |
+
+Light brand center: `#326690` (`206 48% 38%`) -- same hue family, slightly more chroma for white backgrounds.
+
+### Text hierarchy
+
+| Role | Dark CSS | Dark hex | Light CSS | Use |
+| :--- | :--- | :--- | :--- | :--- |
+| Primary | `--foreground` | `#d4d4d4` | `#222222` | Body, table cells, control text |
+| Strong | `--admin-fg-strong` | `#ededed` | `#171717` | Page title, emphasized KPI |
+| Secondary | `--admin-fg-secondary` | `#b8b8b8` | `#5c6370` | Descriptions, meta links band |
+| Muted | `--muted-foreground` | `#8a8a8a` | `#6b7280` | Placeholders, captions, zero metrics |
+| Disabled | `--admin-muted` | `#666666` | `#9ca3af` | Disabled control text |
+| Link | `text-primary` | Brand 500 | Brand 600 | Inline links, activate license |
+| Link hover | underline + Brand 400 | | | Auth secondary actions |
+
+Numeric data: `tabular-nums` + `--foreground`; money/KPI never mono (`admin_typography.ts`).
+
+### Semantic (success, warning, error, info)
+
+All semantic colors are **muted** -- readable on dark without glowing.
+
+| Semantic | Dark fg token | Dark hex | Dark bg (alert/row) | Light fg | Use |
+| :--- | :--- | :--- | :--- | :--- | :--- |
+| Success | `--admin-positive-fg` | `#4a8f58` (`124 32% 42%`) | `success/10` + border `active/25` | `#2e7d3e` | Active status, positive ROI, ops healthy |
+| Warning | `--admin-warn-fg` | `#b8924a` (`38 42% 50%`) | `--admin-warn-bg` `#2a2418` | `#9a7340` | Paused, pacing, rate benchmarks |
+| Error | `--destructive` | `#c4706a` (`6 35% 58%`) | `--admin-row-critical-bg` | `#c0392b` | Destructive btn, errors, negative delta |
+| Info | `--admin-metric-conversion-fg` | `#5a85a8` (`206 38% 48%`) | `primary/10` | `#326690` | Hints, conversion metrics, stub banners |
+
+**Metric sign mapping** (`admin_metric_tone.ts`): positive -> `text-admin-positive`; negative -> `text-destructive`; zero -> `text-muted-foreground`; stale -> `text-muted-foreground`.
+
+### Status badges (entity state)
+
+| Tone | Token pair | Appearance |
+| :--- | :--- | :--- |
+| Active | `--admin-status-active` | Muted green fg + `bg-admin-status-active/10` |
+| Paused / scheduled | `--admin-status-paused` | Muted amber fg + `/10` wash |
+| Draft | `--admin-status-draft` | Neutral gray fg + `/10` wash |
+| Archived | `muted` | Border + muted bg |
+| Error | `destructive` | Muted red fg + `destructive/10` |
+
+Base chrome: `adminStatusBadgeBase` -- never per-row random hues.
+
+### Table and selection
+
+| State | Dark tokens | Use |
+| :--- | :--- | :--- |
+| Header | `--admin-table-header-bg` `#292929` | Column labels (caption typography) |
+| Row hover | `--admin-table-row-hover` `#333333` | Directory tbody |
+| Totals row | `--admin-table-totals-bg` | Footer aggregates |
+| Selected row | `--admin-row-selected-bg` + `--admin-row-selected-edge` | Brand tint + left rail |
+| Pinned col bg | `--admin-table-pin-bg` | Horizontal scroll pin |
+| Warning row | `--admin-row-warning-*` | Margin breach, soft alerts |
+| Critical row | `--admin-row-critical-*` | Hard failures in grid |
+
+Tree/sidebar selection: same wash as `--admin-selection` (brand tint, not saturated blue block).
+
+### Chart series (data viz)
+
+Five **muted** series for dark mode; share hue with brand/semantic but lower saturation:
+
+| Slot | CSS | Dark character | Typical metric |
+| :--- | :--- | :--- | :--- |
+| `--chart-1` | Brand navy | Volume, impressions, primary series |
+| `--chart-2` | Muted green | Conversions, approved, positive |
+| `--chart-3` | Muted amber | Rates, pacing, secondary |
+| `--chart-4` | Cool gray-blue | CPC, neutral money |
+| `--chart-5` | Deep slate | CPA, tertiary / compare |
+
+Swatches: `adminKpiAccent*Class` and `DASHBOARD_*_AXIS_COLOR` at 78-95% alpha -- never raw hex in TSX.
+
+Light charts: same slot order; `--chart-5` lifts to airy blue `#d6effc` for contrast on white.
+
+### UI components (color recipes)
+
+Use primitives + tokens only.
+
+| Component | Default | Hover / focus | Disabled | Error |
+| :--- | :--- | :--- | :--- | :--- |
+| **Primary button** | `bg-primary text-primary-foreground` | `--admin-brand-hover` | opacity 50%, `--admin-input-disabled` | n/a |
+| **Secondary button** | `bg-admin-control border-border/40` | `bg-accent` | muted text | n/a |
+| **Ghost / link button** | transparent | `text-primary`, `bg-primary/10` | muted | n/a |
+| **Destructive button** | `bg-destructive text-destructive-foreground` | darker destructive | opacity 50% | n/a |
+| **Input / textarea** | `bg-admin-control border-border/40` | `border-border`, ring `--ring` | `--admin-input-disabled` | `border-destructive/50` |
+| **Select / combobox** | same as input | popover `--popover` | same | same |
+| **Checkbox / switch** | border `--border`; checked `primary` | focus ring | muted | n/a |
+| **Card** | `bg-card border-border` | n/a | n/a | n/a |
+| **Dialog / sheet** | card + overlay `bg-black/60` | n/a | n/a | n/a |
+| **Tabs (segmented)** | idle `muted`; active `bg-card border-primary/20` | accent | muted | n/a |
+| **Filter chips** | idle border; active `border-primary/40 bg-primary/15` | hover `primary/10` | n/a | n/a |
+| **Toast** | `adminKit.toastSurface` | n/a | n/a | destructive tint for error toast |
+| **ErrorBlock** | `uiSurfaces.messageError` | n/a | n/a | always |
+| **StubBanner** | `messageMuted` or info tint | n/a | n/a | n/a |
+| **EmptyState** | muted fg, no fake chart colors | n/a | n/a | n/a |
+| **Pagination** | control chrome; current page `primary/10` | hover accent | disabled muted | n/a |
+| **Sidebar** | canvas 0; active `bg-admin-selection font-semibold` | hover `bg-accent` | n/a | n/a |
+| **Header** | fixed `bg-background border-border` | n/a | n/a | n/a |
+| **Metric card** | `.admin-metric-card`; accent top bar `adminKpiAccentTopBarClass` | n/a | n/a | n/a |
+| **Progress bar** | track `muted`; fill `primary` or semantic | n/a | n/a | n/a |
+| **Calendar** | range middle `--admin-selection`; endpoints `primary` | | | |
+| **Command palette** | popover bg; selection `--admin-selection` | | | |
+
+Auth card (login / activate): `Card` on canvas 0; primary full-width button Brand 600; secondary action `text-primary` centered (Brand 500).
+
+### Focus and interaction
+
+| Pattern | Token |
+| :--- | :--- |
+| Focus visible | `ring-0` policy + border shift; calendar/select use `--ring` |
+| Hover (controls) | `bg-accent` or `border-primary/40` -- never brighten saturation |
+| Active press | 1 step darker than hover (brand-700 family) |
+| Selected (not focus) | `--admin-selection` wash, not solid primary fill |
+
+### Opacity scale (Tailwind)
+
+| Alpha | Use |
+| :--- | :--- |
+| `/5` | Summary band bg |
+| `/10` | Badge wash, message bg, ghost hover |
+| `/15` | Active filter chip |
+| `/25` | Message border, status border |
+| `/40` | Control border default, chip hover border |
+| `/60` | Dialog overlay companion borders |
+| `/78` | Chart fill default |
+| `/95` | Chart axis lines |
+
+### Light/dark parity checklist
+
+When adding a new surface color:
+
+1. Define **both** `:root` and `.dark` HSL in `tailwind.css`.
+2. Wire `--admin-*` if used in domains via `admin_metric_tone` or `adminStatusBadgeClass`.
+3. Verify contrast: body text >= 4.5:1 on card; primary button text white on Brand 600.
+4. No new hue outside brand / semantic / chart slots without DESIGN.md update.
+
+### Quick reference: CSS var index
+
+| Family | Vars |
+| :--- | :--- |
+| shadcn core | `--background`, `--foreground`, `--card`, `--primary`, `--secondary`, `--muted`, `--accent`, `--destructive`, `--border`, `--input`, `--ring`, `--popover` |
+| Admin brand | `--admin-brand`, `--admin-brand-hover`, `--admin-brand-fg` |
+| Admin text | `--admin-fg`, `--admin-fg-strong`, `--admin-fg-secondary`, `--admin-muted` |
+| Admin metrics | `--admin-positive-fg`, `--admin-negative-fg`, `--admin-warn-*`, `--admin-metric-*` |
+| Admin status | `--admin-status-active`, `--admin-status-paused`, `--admin-status-draft`, `--admin-status-scheduled` |
+| Admin table | `--admin-table-*`, `--admin-row-*`, `--admin-selection` |
+| Charts | `--chart-1` .. `--chart-5` |
+
+Legacy note: pgAdmin hex names in old PRs map to this palette; canonical doc is **AEP Muted Cool** above.
 
 ## Spacing and typography (canonical)
 

@@ -149,7 +149,7 @@ export function buildHtmlShells({ cacheBust = Date.now() } = {}) {
   <head>
     <meta charset="UTF-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-    <title>Ad Event Processor Admin</title>
+    <title>AEP Admin (Ad Event Processor - AEP)</title>
   </head>
   <body>
     <div id="root"></div>
@@ -166,6 +166,19 @@ export function buildHtmlShells({ cacheBust = Date.now() } = {}) {
 
   writeFileSync(join(DIST, 'index.html'), buildHtmlShell('index.html', '/src/main.js'), 'utf8');
   writeFileSync(join(DIST, 'login.html'), buildHtmlShell('login.html', '/src/login.js'), 'utf8');
+}
+
+export function copyThemeBootScripts() {
+  const staticDir = join(SRC, 'static');
+  const distStatic = join(DIST, 'src', 'static');
+  mkdirSync(distStatic, { recursive: true });
+  for (const name of ['theme_boot.js', 'theme_boot_login.js']) {
+    const src = join(staticDir, name);
+    if (!existsSync(src)) {
+      throw new Error(`missing web/src/static/${name}`);
+    }
+    cpSync(src, join(distStatic, name));
+  }
 }
 
 export async function buildTrackPixel() {
@@ -254,6 +267,7 @@ export async function buildProduction() {
   await buildAppCss();
   copyCountryFlagSvgs();
   await buildJsBundle({ minify: true });
+  copyThemeBootScripts();
   await buildTrackPixel();
   buildHtmlShells();
 
@@ -268,6 +282,7 @@ export async function buildDevBootstrap() {
   mkdirSync(join(DIST, 'src'), { recursive: true });
   await buildAppCss();
   copyCountryFlagSvgs();
+  copyThemeBootScripts();
   await buildTrackPixel();
   buildHtmlShells();
 }

@@ -3,21 +3,8 @@
   <head>
     <meta charset="UTF-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-    <title>Ad Event Processor Admin</title>
-    <script>
-      (function () {
-        try {
-          if (localStorage.getItem('aed-admin-theme-dark-default-v3') !== '1') {
-            localStorage.setItem('aed-admin-theme', 'dark');
-            localStorage.setItem('aed-admin-theme-dark-default-v3', '1');
-          }
-          var theme = localStorage.getItem('aed-admin-theme');
-          document.documentElement.classList.add(theme === 'light' ? 'light' : 'dark');
-        } catch (e) {
-          document.documentElement.classList.add('dark');
-        }
-      })();
-    </script>
+    <title>AEP Admin (Ad Event Processor - AEP)</title>
+    <script src="/src/static/theme_boot.js"></script>
   </head>
   <body>
     <div id="root"></div>

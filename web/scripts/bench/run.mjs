@@ -1,6 +1,6 @@
 #!/usr/bin/env node
-import { runJsonParseColdPathBench } from '@/lib/perf/benches/json_parse.ts';
+import { runCampaignListExportColdPathBench } from '@/lib/perf/benches/campaign_list_export.ts';
 
-console.log('admin web bench: cold path (JSON parse / prefs)');
-runJsonParseColdPathBench();
+console.log('admin web bench: cold path (campaign list CSV export)');
+runCampaignListExportColdPathBench();
 console.log('admin web bench: cold path PASSED');
