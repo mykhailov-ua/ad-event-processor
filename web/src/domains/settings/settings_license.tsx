@@ -13,6 +13,7 @@ export type SettingsLicenseProps = {
   licenseLoad: LicenseApplyFormLoad;
   stateLabel: string;
   onLicenseApplied: () => void;
+  embedded?: boolean;
 };
 
 export function SettingsLicense({
@@ -20,20 +21,13 @@ export function SettingsLicense({
   licenseLoad,
   stateLabel,
   onLicenseApplied,
+  embedded = false,
 }: SettingsLicenseProps) {
   const license = meta?.license;
   const validUntil = license?.valid_until?.trim();
   const deploymentId = meta?.deployment_id?.trim();
 
-  return (
-    <PageChrome
-      title="Settings"
-      badge={
-        stateLabel ? (
-          <Badge variant={licenseBadgeVariant(stateLabel)}>{stateLabel}</Badge>
-        ) : undefined
-      }
-    >
+  const body = (
       <div className={cn('flex max-w-lg flex-col', adminSpacing.gap.xl)}>
         <section className={cn('grid', adminSpacing.gap.lg, adminTypography.body)}>
           <div className={adminSpacing.stack.titleBlock}>
@@ -68,6 +62,22 @@ export function SettingsLicense({
           />
         </section>
       </div>
+  );
+
+  if (embedded) {
+    return body;
+  }
+
+  return (
+    <PageChrome
+      title="Settings"
+      badge={
+        stateLabel ? (
+          <Badge variant={licenseBadgeVariant(stateLabel)}>{stateLabel}</Badge>
+        ) : undefined
+      }
+    >
+      {body}
     </PageChrome>
   );
 }

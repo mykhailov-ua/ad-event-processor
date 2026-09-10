@@ -8,18 +8,33 @@ import (
 )
 
 type rolesFile struct {
-	Roles map[string]roleEntry `yaml:"roles"`
+	Version int                    `yaml:"version"`
+	Roles   map[string]roleEntry   `yaml:"roles"`
 }
 
 type roleEntry struct {
-	Scope       string   `yaml:"scope"`
-	Permissions []string `yaml:"permissions"`
+	Scope        string   `yaml:"scope"`
+	Permissions  []string `yaml:"permissions"`
+	Capabilities []string `yaml:"capabilities"`
+}
+
+var rolesYAMLLoader func(path string, store *Store) error
+
+func SetRolesYAMLLoader(loader func(path string, store *Store) error) {
+	rolesYAMLLoader = loader
 }
 
 func LoadRolesYAML(path string, store *Store) error {
 	if store == nil {
 		return nil
 	}
+	if rolesYAMLLoader != nil {
+		return rolesYAMLLoader(path, store)
+	}
+	return loadRolesYAMLLegacy(path, store)
+}
+
+func loadRolesYAMLLegacy(path string, store *Store) error {
 	data, err := os.ReadFile(path)
 	if err != nil {
 		return err
@@ -35,7 +50,8 @@ func LoadRolesYAML(path string, store *Store) error {
 		default:
 			scope = ScopeCustomer
 		}
-		store.SetRole(strings.ToUpper(strings.TrimSpace(role)), scope, entry.Permissions)
+		perms := entry.Permissions
+		store.SetRole(strings.ToUpper(strings.TrimSpace(role)), scope, perms)
 	}
 	store.Reload()
 	return nil

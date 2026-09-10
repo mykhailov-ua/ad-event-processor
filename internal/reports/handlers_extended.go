@@ -6,6 +6,7 @@ import (
 	"net/http"
 	"time"
 
+	"ad-event-processor/internal/controlplane/authz"
 	"ad-event-processor/internal/database"
 	"ad-event-processor/pkg/coldpath"
 	"ad-event-processor/pkg/httpresponse"
@@ -69,6 +70,9 @@ func (h *ReportsHTTPHandlers) getTrueROIReport(w http.ResponseWriter, r *http.Re
 		return
 	}
 	out := trueROIRowsFromMaps(fetch.Rows)
+	if snap, ok := authz.SnapshotFromContext(r.Context()); ok && snap.Mask == authz.MaskMasked {
+		out = redactTrueROIRows(out)
+	}
 	if parseComparePrevious(r) {
 		prevRows, perr := h.loadClickHouseReportRowsPrevious(r, queryTrueROIRows)
 		if perr != nil {

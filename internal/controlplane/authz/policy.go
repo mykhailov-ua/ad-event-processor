@@ -33,6 +33,16 @@ const (
 	PermBillingRead         = "billing:read"
 	PermBillingWrite        = "billing:write"
 	PermSystemBlacklist     = "blacklist:write"
+	PermAccessRead          = "access:read"
+	PermAccessWrite         = "access:write"
+	PermPostbacksRead       = "postbacks:read"
+	PermPostbacksWrite      = "postbacks:write"
+	PermCampaignsArchive    = "campaigns:archive"
+	PermCampaignsDelete     = "campaigns:delete"
+	PermExportsRead         = "exports:read"
+	PermExportsRun          = "exports:run"
+	PermTeamRead            = "team:read"
+	PermTeamWrite           = "team:write"
 )
 
 type Snapshot struct {
@@ -192,4 +202,28 @@ func (st *Store) ScopeForRole(role string) Scope {
 		return s
 	}
 	return ScopeCustomer
+}
+
+func (st *Store) RoleExists(role string) bool {
+	if st == nil {
+		return false
+	}
+	st.mu.RLock()
+	_, ok := st.rolePerms[role]
+	st.mu.RUnlock()
+	return ok
+}
+
+func (st *Store) ListRoles() []string {
+	if st == nil {
+		return nil
+	}
+	st.mu.RLock()
+	out := make([]string, 0, len(st.rolePerms))
+	for role := range st.rolePerms {
+		out = append(out, role)
+	}
+	st.mu.RUnlock()
+	sort.Strings(out)
+	return out
 }

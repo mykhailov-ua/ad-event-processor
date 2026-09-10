@@ -151,6 +151,7 @@ func (h *Handler) wireAdminDomainRoutes(reg *RouteRegistry, e adminWireEnv) {
 		EncryptionKey:           encKey,
 		ApplyRateLimit:          limit,
 		RequirePermission:       perm,
+		RequireAnyPermission:    permAny,
 		AuthorizeCampaignAccess: authCampaign,
 		WriteServiceError:       writeErr,
 	}
@@ -248,6 +249,7 @@ func (h *Handler) wireAdminDomainRoutes(reg *RouteRegistry, e adminWireEnv) {
 		},
 	}
 	reg.TeamHTTP = &platformadmin.TeamHTTPHandlers{
+		Pool:                 pool,
 		Team:                 &platformadmin.TeamOverviewService{Pool: pool},
 		Governance:           svc,
 		ApplyRateLimit:       limit,

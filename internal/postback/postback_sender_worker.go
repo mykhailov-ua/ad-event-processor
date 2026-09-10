@@ -46,6 +46,8 @@ type PostbackWorker struct {
 
 	adapters map[string]PostbackAdapter
 
+	circuitBreaker *hostCircuitBreaker
+
 	onDispatchAttempt func()
 }
 
@@ -79,6 +81,7 @@ func NewPostbackWorker(pool *pgxpool.Pool, encryptionKey []byte) *PostbackWorker
 		limiters:           make(map[string]*rate.Limiter),
 		staleProcessingSec: 120,
 		batchSize:          50,
+		circuitBreaker:     newHostCircuitBreaker(),
 		adapters: map[string]PostbackAdapter{
 			"facebook":      &FacebookAdapter{},
 			"google":        &GoogleAdapter{},
@@ -284,6 +287,19 @@ func (w *PostbackWorker) ProcessEvent(ctx context.Context, ev db.OutboxEvent, pr
 		return fmt.Errorf("unsupported provider: %s", config.Provider)
 	}
 
+	if !w.circuitBreaker.allow(config.UrlTemplate) {
+		return fmt.Errorf("circuit_open: postback host unavailable")
+	}
+
+	var signingSecret []byte
+	if len(config.SigningSecretEncrypted) > 0 {
+		signingSecret, err = DecryptAESGCM(config.SigningSecretEncrypted, w.encryptionKey)
+		if err != nil {
+			return fmt.Errorf("failed to decrypt signing secret: %w", err)
+		}
+	}
+	payload.SigningSecret = signingSecret
+
 	if w.onDispatchAttempt != nil {
 		w.onDispatchAttempt()
 	}
@@ -294,6 +310,7 @@ func (w *PostbackWorker) ProcessEvent(ctx context.Context, ev db.OutboxEvent, pr
 	})
 	elapsed := time.Since(started).Seconds()
 	if err != nil {
+		w.circuitBreaker.recordFailure(config.UrlTemplate)
 		recordDispatch(provider, "fail", elapsed)
 		slog.Error("Postback dispatch failed completely, moving to DLQ", "error", err, "payload", payload)
 		failuresCount := int32(postbackMaxRetries)
@@ -310,6 +327,7 @@ func (w *PostbackWorker) ProcessEvent(ctx context.Context, ev db.OutboxEvent, pr
 			FailuresCount: failuresCount,
 			LastError:     pgtype.Text{String: err.Error(), Valid: true},
 			Status:        "FAILED",
+			NextRetryAt:   pgtype.Timestamptz{Time: time.Now().UTC().Add(5 * time.Minute), Valid: true},
 		})
 		if dlqErr != nil {
 			slog.Error("Failed to insert into DLQ", "error", dlqErr)
@@ -328,6 +346,7 @@ func (w *PostbackWorker) ProcessEvent(ctx context.Context, ev db.OutboxEvent, pr
 		return fmt.Errorf("dispatch failed (moved to DLQ): %w", err)
 	}
 
+	w.circuitBreaker.recordSuccess(config.UrlTemplate)
 	recordDispatch(provider, "success", elapsed)
 	setDispatchLatencyMs(ctx, w.pool, idempotencyHash, time.Duration(elapsed*float64(time.Second)))
 

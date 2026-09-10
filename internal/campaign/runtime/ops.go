@@ -10,7 +10,7 @@ import (
 	"time"
 
 	"ad-event-processor/internal/campaign"
-
+	"ad-event-processor/internal/campaign/mask"
 	"ad-event-processor/internal/controlplane/authz"
 	"ad-event-processor/internal/database"
 	"ad-event-processor/internal/domain"
@@ -233,7 +233,7 @@ func pauseCampaign(ctx context.Context, pool *pgxpool.Pool, fx campaign.Effects,
 		if err != nil {
 			return mapCampaignStoreError(err)
 		}
-		return pauseCampaignLocked(ctx, q, fx, camp, campaignID, reason, adminIDFromCtx(ctx))
+		return pauseCampaignLocked(ctx, pool, q, fx, camp, campaignID, reason, adminIDFromCtx(ctx))
 	})
 }
 
@@ -247,7 +247,7 @@ func resumeCampaign(ctx context.Context, pool *pgxpool.Pool, fx campaign.Effects
 		if err != nil {
 			return mapCampaignStoreError(err)
 		}
-		return resumeCampaignLocked(ctx, q, fx, camp, campaignID, reason, publishForce, adminIDFromCtx(ctx))
+		return resumeCampaignLocked(ctx, pool, q, fx, camp, campaignID, reason, publishForce, adminIDFromCtx(ctx))
 	})
 }
 
@@ -261,7 +261,7 @@ func archiveCampaign(ctx context.Context, pool *pgxpool.Pool, fx campaign.Effect
 		if err != nil {
 			return mapCampaignStoreError(err)
 		}
-		return archiveCampaignLocked(ctx, q, fx, camp, reason)
+		return archiveCampaignLocked(ctx, pool, q, fx, camp, reason)
 	})
 }
 
@@ -281,11 +281,9 @@ func listCampaigns(
 	}
 	q := db.New(pool)
 
-	ownerUserID := filter.OwnerUserID
-	if !ownerUserID.Valid {
-		ownerUserID = campaign.CampaignOwnerUserFilter(ctx)
+	if err := campaign.ApplyListScopeFilter(ctx, pool, &filter); err != nil {
+		return nil, 0, err
 	}
-	filter.OwnerUserID = ownerUserID
 
 	if campaign.IsCampaignListExtendedMetricSortField(filter.SortField) {
 		pageIDs, total, err := campaign.ListCampaignPageByExtendedMetricSort(ctx, pool, clickhouseQuery, filter)
@@ -341,11 +339,9 @@ func countCampaignStatusTotals(
 	}
 	dbq := db.New(pool)
 
-	ownerUserID := filter.OwnerUserID
-	if !ownerUserID.Valid {
-		ownerUserID = campaign.CampaignOwnerUserFilter(ctx)
+	if err := campaign.ApplyListScopeFilter(ctx, pool, &filter); err != nil {
+		return campaign.CampaignStatusTotalsDTO{}, err
 	}
-	filter.OwnerUserID = ownerUserID
 	filter.Status = ""
 	filter.SearchQuery = searchQuery
 	filter.PacingMode = pacingMode
@@ -453,6 +449,7 @@ func ScrubCampaignFields(c campaign.CampaignDTO, level authz.MaskLevel) campaign
 		out.DailyBudget = ""
 		out.DailyBudgetDisplay = RedactedMoneyDisplay()
 	}
+	out.MarginBreach = false
 	out.FieldsRedacted = redacted
 	return out
 }
@@ -644,8 +641,11 @@ func patchCampaign(ctx context.Context, pool *pgxpool.Pool, fx campaign.Effects,
 	if err != nil {
 		return campaign.CampaignDTO{}, err
 	}
-	if err := campaign.AssertMediaBuyerCampaignAccess(ctx, camp); err != nil {
+	if err := campaign.AssertCampaignAccess(ctx, pool, camp); err != nil {
 		return campaign.CampaignDTO{}, err
+	}
+	if authz.IsMaskedMutation(ctx) && mask.TouchesProtectedFields(req) {
+		return campaign.CampaignDTO{}, campaign.ErrForbidden
 	}
 	// Optimistic concurrency: If-Match revision is campaigns.updated_at as RFC3339 (CampaignRevision).
 	if req.ExpectedRevision != nil {

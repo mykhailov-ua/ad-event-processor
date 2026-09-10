@@ -34,6 +34,15 @@ func (w *PostbackWorker) resolveDispatchSlot(ctx context.Context, q *db.Queries,
 		return dispatchSlotDelivered, nil
 	case postbackDispatchStatusInFlight:
 		return dispatchSlotReady, nil
+	case postbackDispatchStatusFailed:
+		rows, err := q.ResetPostbackDispatchForRetry(ctx, hash)
+		if err != nil {
+			return dispatchSlotReady, fmt.Errorf("failed to reset dispatch for retry: %w", err)
+		}
+		if rows == 0 {
+			return dispatchSlotReady, fmt.Errorf("dispatch slot in unexpected status %q", existing.Status)
+		}
+		return dispatchSlotReady, nil
 	default:
 		return dispatchSlotReady, fmt.Errorf("dispatch slot in unexpected status %q", existing.Status)
 	}

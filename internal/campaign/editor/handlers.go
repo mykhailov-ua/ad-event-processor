@@ -936,13 +936,52 @@ func postCampaignBulkClone(h *campaign.CampaignsHTTPHandlers, w http.ResponseWri
 	}
 
 	ctx := r.Context()
-	for _, sourceID := range parsedIDs {
-		rawID := idByRaw[sourceID]
-		if rawID == "" {
-			continue
-		}
-		if scopeCustomerID != uuid.Nil {
+	lockCustomerID := scopeCustomerID
+	if lockCustomerID == uuid.Nil {
+		for _, sourceID := range parsedIDs {
+			if _, denied := authErrors[sourceID]; denied {
+				continue
+			}
 			camp, err := h.Campaigns.GetCampaign(ctx, sourceID)
+			if err != nil {
+				continue
+			}
+			if id, parseErr := uuid.Parse(camp.CustomerID); parseErr == nil {
+				lockCustomerID = id
+				break
+			}
+		}
+	}
+	cloneBatch := func() error {
+		for _, sourceID := range parsedIDs {
+			rawID := idByRaw[sourceID]
+			if rawID == "" {
+				continue
+			}
+			if scopeCustomerID != uuid.Nil {
+				camp, err := h.Campaigns.GetCampaign(ctx, sourceID)
+				if err != nil {
+					results = append(results, campaign.BulkCloneCampaignResultRow{
+						SourceID:  rawID,
+						ErrorCode: bulkCloneCampaignErrorCode(err),
+					})
+					continue
+				}
+				if camp.CustomerID != scopeCustomerID.String() {
+					results = append(results, campaign.BulkCloneCampaignResultRow{
+						SourceID:  rawID,
+						ErrorCode: "customer_mismatch",
+					})
+					continue
+				}
+			}
+			cloneResult, err := h.Campaigns.CloneCampaign(ctx, campaign.CloneCampaignSpec{
+				SourceID:       sourceID,
+				NamePrefix:     req.NamePrefix,
+				NameSuffix:     req.NameSuffix,
+				IdempotencyKey: campaign.BulkCloneIdempotencyKey(bulkKey, sourceID),
+				Options:        req.Options,
+			})
 			if err != nil {
 				results = append(results, campaign.BulkCloneCampaignResultRow{
 					SourceID:  rawID,
@@ -950,34 +989,18 @@ func postCampaignBulkClone(h *campaign.CampaignsHTTPHandlers, w http.ResponseWri
 				})
 				continue
 			}
-			if camp.CustomerID != scopeCustomerID.String() {
-				results = append(results, campaign.BulkCloneCampaignResultRow{
-					SourceID:  rawID,
-					ErrorCode: "customer_mismatch",
-				})
-				continue
-			}
-		}
-		cloneResult, err := h.Campaigns.CloneCampaign(ctx, campaign.CloneCampaignSpec{
-			SourceID:       sourceID,
-			NamePrefix:     req.NamePrefix,
-			NameSuffix:     req.NameSuffix,
-			IdempotencyKey: campaign.BulkCloneIdempotencyKey(bulkKey, sourceID),
-			Options:        req.Options,
-		})
-		if err != nil {
 			results = append(results, campaign.BulkCloneCampaignResultRow{
-				SourceID:  rawID,
-				ErrorCode: bulkCloneCampaignErrorCode(err),
+				SourceID: rawID,
+				ID:       cloneResult.ID,
+				Name:     cloneResult.Name,
+				OK:       true,
 			})
-			continue
 		}
-		results = append(results, campaign.BulkCloneCampaignResultRow{
-			SourceID: rawID,
-			ID:       cloneResult.ID,
-			Name:     cloneResult.Name,
-			OK:       true,
-		})
+		return nil
+	}
+	if err := campaign.WithBulkCloneCustomerLock(ctx, h.PostgresPool, lockCustomerID, cloneBatch); err != nil {
+		h.WriteHandlerError(w, err)
+		return
 	}
 
 	httpresponse.JSON(w, http.StatusOK, BulkCloneCampaignsResponseDTO{Results: results})

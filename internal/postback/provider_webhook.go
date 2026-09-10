@@ -6,6 +6,9 @@ import (
 	"net/http"
 	"sync"
 
+	"strings"
+
+	"ad-event-processor/internal/postback/signing"
 	"ad-event-processor/pkg/money"
 )
 
@@ -35,6 +38,15 @@ func (a *WebhookAdapter) Send(ctx context.Context, client *http.Client, payload 
 	evtCtx.SubIDs = payload.SubIDs()
 	var scratch [MaxRenderedURLLen]byte
 	renderedURL := string(mt.RenderStack(evtCtx, &scratch))
+	if len(payload.SigningSecret) > 0 && strings.Contains(urlTemplate, "{sig}") {
+		sig := signing.SignGETURL(payload.SigningSecret, renderedURL)
+		switch {
+		case strings.Contains(renderedURL, "{sig}"):
+			renderedURL = strings.Replace(renderedURL, "{sig}", sig, 1)
+		case strings.HasSuffix(renderedURL, "sig="):
+			renderedURL += sig
+		}
+	}
 
 	req, err := http.NewRequestWithContext(ctx, "GET", renderedURL, http.NoBody)
 	if err != nil {

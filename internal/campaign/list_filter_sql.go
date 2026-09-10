@@ -5,10 +5,15 @@ import (
 
 	"ad-event-processor/internal/domain"
 	db "ad-event-processor/internal/domain/db"
+	"ad-event-processor/internal/teamscope"
 
 	"github.com/google/uuid"
 	"github.com/jackc/pgx/v5/pgtype"
 )
+
+func ownerUserIDsSQLParam(ids []uuid.UUID) []pgtype.UUID {
+	return teamscope.OwnerUserIDsParam(ids)
+}
 
 func optionalCampaignSearchText(searchQuery string) pgtype.Text {
 	searchQuery = strings.TrimSpace(searchQuery)
@@ -63,6 +68,7 @@ func CampaignCountParamsFromFilter(filter ListCampaignsFilter) db.CountCampaigns
 		Status:         status,
 		WarningsOnly:   campaignListWarningsOnlyParam(filter),
 		OwnerUserID:    filter.OwnerUserID,
+		OwnerUserIds:   ownerUserIDsSQLParam(filter.OwnerUserIDs),
 		TargetCountry:  targetCountry,
 		BudgetMinMicro: filter.BudgetMinMicro,
 		BudgetMaxMicro: filter.BudgetMaxMicro,
@@ -83,6 +89,7 @@ func CampaignCountStatusTotalsParamsFromFilter(filter ListCampaignsFilter) db.Co
 	return db.CountCampaignsStatusTotalsParams{
 		CustomerID:     customerID,
 		OwnerUserID:    filter.OwnerUserID,
+		OwnerUserIds:   ownerUserIDsSQLParam(filter.OwnerUserIDs),
 		TargetCountry:  targetCountry,
 		BudgetMinMicro: filter.BudgetMinMicro,
 		BudgetMaxMicro: filter.BudgetMaxMicro,
@@ -109,6 +116,7 @@ func CampaignListKeysParamsFromFilter(filter ListCampaignsFilter) db.ListCampaig
 		Status:         status,
 		WarningsOnly:   campaignListWarningsOnlyParam(filter),
 		OwnerUserID:    filter.OwnerUserID,
+		OwnerUserIds:   ownerUserIDsSQLParam(filter.OwnerUserIDs),
 		TargetCountry:  targetCountry,
 		BudgetMinMicro: filter.BudgetMinMicro,
 		BudgetMaxMicro: filter.BudgetMaxMicro,
@@ -135,6 +143,7 @@ func CampaignCountFlowsParamsFromFilter(filter ListCampaignsFilter) db.CountCamp
 		Status:         status,
 		WarningsOnly:   campaignListWarningsOnlyParam(filter),
 		OwnerUserID:    filter.OwnerUserID,
+		OwnerUserIds:   ownerUserIDsSQLParam(filter.OwnerUserIDs),
 		TargetCountry:  targetCountry,
 		BudgetMinMicro: filter.BudgetMinMicro,
 		BudgetMaxMicro: filter.BudgetMaxMicro,
@@ -169,6 +178,7 @@ func CampaignListParamsFromFilter(filter ListCampaignsFilter) db.ListCampaignsPa
 		Status:         status,
 		WarningsOnly:   campaignListWarningsOnlyParam(filter),
 		OwnerUserID:    filter.OwnerUserID,
+		OwnerUserIds:   ownerUserIDsSQLParam(filter.OwnerUserIDs),
 		TargetCountry:  targetCountry,
 		BudgetMinMicro: filter.BudgetMinMicro,
 		BudgetMaxMicro: filter.BudgetMaxMicro,
@@ -191,6 +201,7 @@ func CampaignCountWarningsParamsFromFilter(filter ListCampaignsFilter) db.CountC
 	return db.CountCampaignWarningsParams{
 		CustomerID:     customerID,
 		OwnerUserID:    filter.OwnerUserID,
+		OwnerUserIds:   ownerUserIDsSQLParam(filter.OwnerUserIDs),
 		TargetCountry:  targetCountry,
 		BudgetMinMicro: filter.BudgetMinMicro,
 		BudgetMaxMicro: filter.BudgetMaxMicro,
@@ -208,6 +219,7 @@ func CampaignListSortedByStatsParamsFromFilter(filter ListCampaignsFilter) db.Li
 		Status:         status,
 		WarningsOnly:   campaignListWarningsOnlyParam(filter),
 		OwnerUserID:    filter.OwnerUserID,
+		OwnerUserIds:   ownerUserIDsSQLParam(filter.OwnerUserIDs),
 		TargetCountry:  targetCountry,
 		BudgetMinMicro: filter.BudgetMinMicro,
 		BudgetMaxMicro: filter.BudgetMaxMicro,

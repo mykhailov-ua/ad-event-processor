@@ -28,12 +28,12 @@ func errTeamServiceUnavailable() error {
 	return errors.New("team service unavailable")
 }
 
-func inviteTeamMember(ctx context.Context, host GovernanceHost, customerID uuid.UUID, email, role string) (TeamMemberDTO, error) {
+func inviteTeamMember(ctx context.Context, host GovernanceHost, customerID uuid.UUID, email, role string, teamID *uuid.UUID) (TeamMemberDTO, error) {
 	email = strings.TrimSpace(strings.ToLower(email))
 	if email == "" {
 		return TeamMemberDTO{}, host.ErrValidation("email required")
 	}
-	normalizedRole, err := host.NormalizeTeamRole(role)
+	normalizedRole, err := host.ValidateAssignableRole(role)
 	if err != nil {
 		return TeamMemberDTO{}, err
 	}
@@ -56,12 +56,28 @@ func inviteTeamMember(ctx context.Context, host GovernanceHost, customerID uuid.
 		return TeamMemberDTO{}, err
 	}
 
+	var teamPg pgtype.UUID
+	if teamID != nil && *teamID != uuid.Nil {
+		var teamCustomer uuid.UUID
+		err = pool.QueryRow(ctx, `SELECT customer_id FROM teams WHERE id = $1`, *teamID).Scan(&teamCustomer)
+		if err != nil {
+			if errors.Is(err, pgx.ErrNoRows) {
+				return TeamMemberDTO{}, host.ErrValidation("team_id not found")
+			}
+			return TeamMemberDTO{}, err
+		}
+		if teamCustomer != customerID {
+			return TeamMemberDTO{}, host.ErrValidation("team_id does not belong to customer")
+		}
+		teamPg = pgtype.UUID{Bytes: *teamID, Valid: true}
+	}
+
 	userID := uuid.New()
 	_, err = pool.Exec(ctx, `
-		INSERT INTO users (id, email, password_hash, role, customer_id, email_verified)
-		VALUES ($1, $2, $3, $4, $5, FALSE)
+		INSERT INTO users (id, email, password_hash, role, customer_id, team_id, email_verified)
+		VALUES ($1, $2, $3, $4, $5, $6, FALSE)
 		ON CONFLICT (email) DO NOTHING`,
-		userID, email, hash, normalizedRole, customerID)
+		userID, email, hash, normalizedRole, customerID, teamPg)
 	if err != nil {
 		return TeamMemberDTO{}, err
 	}
@@ -108,7 +124,7 @@ func updateTeamMember(ctx context.Context, host GovernanceHost, customerID, user
 		return TeamMemberDTO{}, err
 	}
 	if in.Role != nil {
-		role, err := host.NormalizeTeamRole(*in.Role)
+		role, err := host.ValidateAssignableRole(*in.Role)
 		if err != nil {
 			return TeamMemberDTO{}, err
 		}
@@ -134,7 +150,37 @@ func updateTeamMember(ctx context.Context, host GovernanceHost, customerID, user
 			return TeamMemberDTO{}, err
 		}
 	}
+	if in.TeamID != nil {
+		if err := updateMemberTeamID(ctx, host, pool, customerID, userID, *in.TeamID); err != nil {
+			return TeamMemberDTO{}, err
+		}
+	}
 	return teamMemberDTO(ctx, host, customerID, userID)
+}
+
+func updateMemberTeamID(ctx context.Context, host GovernanceHost, pool *pgxpool.Pool, customerID, userID uuid.UUID, rawTeamID string) error {
+	rawTeamID = strings.TrimSpace(rawTeamID)
+	if rawTeamID == "" {
+		_, err := pool.Exec(ctx, `UPDATE users SET team_id = NULL, updated_at = NOW() WHERE id = $1`, userID)
+		return err
+	}
+	teamID, err := uuid.Parse(rawTeamID)
+	if err != nil {
+		return host.ErrValidation("invalid team_id")
+	}
+	var teamCustomer uuid.UUID
+	err = pool.QueryRow(ctx, `SELECT customer_id FROM teams WHERE id = $1`, teamID).Scan(&teamCustomer)
+	if err != nil {
+		if errors.Is(err, pgx.ErrNoRows) {
+			return host.ErrValidation("team_id not found")
+		}
+		return err
+	}
+	if teamCustomer != customerID {
+		return host.ErrValidation("team_id does not belong to customer")
+	}
+	_, err = pool.Exec(ctx, `UPDATE users SET team_id = $1, updated_at = NOW() WHERE id = $2`, teamID, userID)
+	return err
 }
 
 func teamMemberDTO(ctx context.Context, host GovernanceHost, customerID, userID uuid.UUID) (TeamMemberDTO, error) {
@@ -142,8 +188,9 @@ func teamMemberDTO(ctx context.Context, host GovernanceHost, customerID, userID 
 	var m TeamMemberDTO
 	var created time.Time
 	var blocked bool
+	var teamID pgtype.UUID
 	err := pool.QueryRow(ctx, `
-		SELECT u.id, u.email, u.role, u.created_at, u.is_blocked,
+		SELECT u.id, u.email, u.role, u.team_id, u.created_at, u.is_blocked,
 			COALESCE(cc.campaigns_owned, 0),
 			COALESCE(l.spend_cap_micro, 0)
 		FROM users u
@@ -155,11 +202,14 @@ func teamMemberDTO(ctx context.Context, host GovernanceHost, customerID, userID 
 			GROUP BY owner_user_id
 		) cc ON cc.owner_user_id = u.id
 		WHERE u.id = $1 AND u.customer_id = $2`,
-		userID, customerID).Scan(&userID, &m.Email, &m.Role, &created, &blocked, &m.CampaignsOwned, &m.SpendCapMicro)
+		userID, customerID).Scan(&userID, &m.Email, &m.Role, &teamID, &created, &blocked, &m.CampaignsOwned, &m.SpendCapMicro)
 	if err != nil {
 		return TeamMemberDTO{}, err
 	}
 	m.UserID = userID.String()
+	if teamID.Valid {
+		m.TeamID = uuid.UUID(teamID.Bytes).String()
+	}
 	m.CreatedAt = created.UTC().Format(time.RFC3339)
 	m.CreatedAtDisplay = coldpath.RFC3339Display(m.CreatedAt)
 	m.IsBlocked = blocked

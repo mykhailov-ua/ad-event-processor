@@ -85,8 +85,8 @@ SELECT * FROM postback_dlq ORDER BY created_at DESC;
 SELECT * FROM postback_dlq WHERE id = $1;
 
 -- name: InsertPostbackDLQ :one
-INSERT INTO postback_dlq (outbox_event_id, campaign_id, click_id, event_type, payload, failures_count, last_error, status)
-VALUES ($1, $2, $3, $4, $5, $6, $7, $8)
+INSERT INTO postback_dlq (outbox_event_id, campaign_id, click_id, event_type, payload, failures_count, last_error, status, next_retry_at)
+VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9)
 RETURNING *;
 
 -- name: UpdatePostbackDLQ :exec

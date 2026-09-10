@@ -19,7 +19,7 @@ type teamGovStub struct {
 	invited bool
 }
 
-func (s *teamGovStub) InviteTeamMember(_ context.Context, _ uuid.UUID, _, _ string) (platformadmin.TeamMemberDTO, error) {
+func (s *teamGovStub) InviteTeamMember(_ context.Context, _ uuid.UUID, _, _ string, _ *uuid.UUID) (platformadmin.TeamMemberDTO, error) {
 	s.invited = true
 	return platformadmin.TeamMemberDTO{}, nil
 }

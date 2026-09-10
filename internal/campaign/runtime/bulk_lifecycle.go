@@ -73,11 +73,11 @@ func bulkCampaignLifecycle(
 			var opErr error
 			switch action {
 			case "pause":
-				opErr = pauseCampaignLocked(ctx, q, fx, camp, id, reason, adminID)
+				opErr = pauseCampaignLocked(ctx, pool, q, fx, camp, id, reason, adminID)
 			case "resume":
-				opErr = resumeCampaignLocked(ctx, q, fx, camp, id, reason, false, adminID)
+				opErr = resumeCampaignLocked(ctx, pool, q, fx, camp, id, reason, false, adminID)
 			case "archive":
-				opErr = archiveCampaignLocked(ctx, q, fx, camp, reason)
+				opErr = archiveCampaignLocked(ctx, pool, q, fx, camp, reason)
 			default:
 				return fmt.Errorf("unsupported bulk action %q", action)
 			}
@@ -125,6 +125,7 @@ func adminIDFromCtx(ctx context.Context) uuid.UUID {
 
 func pauseCampaignLocked(
 	ctx context.Context,
+	pool *pgxpool.Pool,
 	q *db.Queries,
 	fx campaign.Effects,
 	camp db.Campaign,
@@ -132,7 +133,7 @@ func pauseCampaignLocked(
 	reason string,
 	adminID uuid.UUID,
 ) error {
-	if err := campaign.AssertMediaBuyerCampaignAccess(ctx, camp); err != nil {
+	if err := campaign.AssertCampaignAccess(ctx, pool, camp); err != nil {
 		return err
 	}
 	if camp.Status == db.CampaignStatusTypePAUSED {
@@ -158,6 +159,7 @@ func pauseCampaignLocked(
 
 func resumeCampaignLocked(
 	ctx context.Context,
+	pool *pgxpool.Pool,
 	q *db.Queries,
 	fx campaign.Effects,
 	camp db.Campaign,
@@ -166,7 +168,7 @@ func resumeCampaignLocked(
 	publishForce bool,
 	adminID uuid.UUID,
 ) error {
-	if err := campaign.AssertMediaBuyerCampaignAccess(ctx, camp); err != nil {
+	if err := campaign.AssertCampaignAccess(ctx, pool, camp); err != nil {
 		return err
 	}
 	if camp.Status != db.CampaignStatusTypePAUSED {
@@ -203,12 +205,13 @@ func resumeCampaignLocked(
 
 func archiveCampaignLocked(
 	ctx context.Context,
+	pool *pgxpool.Pool,
 	q *db.Queries,
 	fx campaign.Effects,
 	camp db.Campaign,
 	reason string,
 ) error {
-	if err := campaign.AssertMediaBuyerCampaignAccess(ctx, camp); err != nil {
+	if err := campaign.AssertCampaignAccess(ctx, pool, camp); err != nil {
 		return err
 	}
 	return campaign.ArchiveCampaignStatus(ctx, fx, q, camp, reason)

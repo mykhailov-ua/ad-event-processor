@@ -29,6 +29,16 @@ var (
 		Name: "ad_postback_dlq_total",
 		Help: "Postback events moved to DLQ after retry exhaustion",
 	}, []string{"provider"})
+
+	dlqAutoReplayTotal = prometheus.NewCounter(prometheus.CounterOpts{
+		Name: "ad_postback_dlq_auto_replay_total",
+		Help: "Postback DLQ rows auto-replayed by the replay worker",
+	})
+
+	circuitOpenTotal = prometheus.NewCounter(prometheus.CounterOpts{
+		Name: "ad_postback_circuit_open_total",
+		Help: "Postback outbound circuit breaker opened after consecutive host failures",
+	})
 )
 
 func RegisterMetrics() {
@@ -38,6 +48,8 @@ func RegisterMetrics() {
 			dispatchDurationSeconds,
 			dispatchDuplicatesTotal,
 			dispatchDLQTotal,
+			dlqAutoReplayTotal,
+			circuitOpenTotal,
 		)
 	})
 }
@@ -56,6 +68,14 @@ func recordDuplicate() {
 
 func recordDLQ(provider string) {
 	dispatchDLQTotal.WithLabelValues(normalizeProviderLabel(provider)).Inc()
+}
+
+func RecordAutoReplay() {
+	dlqAutoReplayTotal.Inc()
+}
+
+func recordCircuitOpen() {
+	circuitOpenTotal.Inc()
 }
 
 func normalizeProviderLabel(provider string) string {

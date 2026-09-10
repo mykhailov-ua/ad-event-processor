@@ -80,6 +80,11 @@ func claimPostbackDispatchesInTx(ctx context.Context, q *db.Queries, events []db
 			claimed = append(claimed, claimedPostbackEvent{event: events[i], hash: hash})
 			continue
 		}
+		if existing.Status == postbackDispatchStatusFailed {
+			if _, err := q.ResetPostbackDispatchForRetry(ctx, hash); err != nil {
+				return nil, fmt.Errorf("failed to reset dispatch for retry: %w", err)
+			}
+		}
 		claimed = append(claimed, claimedPostbackEvent{event: events[i], hash: hash})
 	}
 	return claimed, nil

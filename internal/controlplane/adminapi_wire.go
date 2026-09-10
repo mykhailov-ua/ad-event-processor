@@ -10,6 +10,7 @@ import (
 	"path/filepath"
 	"time"
 
+	"ad-event-processor/internal/access"
 	"ad-event-processor/internal/billingadmin"
 	"ad-event-processor/internal/controlplane/authz"
 	"ad-event-processor/internal/costsync"
@@ -82,17 +83,6 @@ func (w supportBundleWriter) WriteSupportBundle(ctx context.Context, out io.Writ
 	})
 }
 
-type rolesReloader struct{ mw *AuthMiddleware }
-
-func (r rolesReloader) ReloadRoles() error {
-	if r.mw == nil {
-		return fmt.Errorf("policy store not configured")
-	}
-	return r.mw.ReloadRolesYAML()
-}
-
-func (r rolesReloader) RolesPath() string { return authz.DefaultRolesPath() }
-
 // BuildAdminAPIRegistry returns cold-path RouteRegistry for RegisterRoutes (register.go); no HTTP listen here.
 // Returns empty registry when pool or svc nil so RegisterRoutes is a no-op until serve.go wires Postgres.
 func (h *Handler) BuildAdminAPIRegistry(pool *pgxpool.Pool, redisShards []redis.UniversalClient) RouteRegistry {
@@ -117,6 +107,11 @@ func (h *Handler) BuildAdminAPIRegistry(pool *pgxpool.Pool, redisShards []redis.
 	}
 
 	svc := h.svc
+	rolesPath := authz.DefaultRolesPath()
+	policyStore := h.authMiddleware.PolicyStore()
+	rolesStore := wireAccessRolesStore(rolesPath, policyStore, pool)
+	svc.SetRolesDocumentSource(func() access.RolesDocument { return rolesStore.Current() })
+	rolesReloader := accessRolesReloader{store: rolesStore}
 	// CompositeReadService: Postgres ledger truth; ClickHouseQuery is readonly reporting conn (CH_READONLY_DSN).
 	composite := billingadmin.NewCompositeReadService(pool, h.cfg)
 	if composite != nil {
@@ -138,6 +133,7 @@ func (h *Handler) BuildAdminAPIRegistry(pool *pgxpool.Pool, redisShards []redis.
 			ExportChunkMaxBytes:     h.svc.ExportChunkMaxBytes,
 			ApplyRateLimit:          limit,
 			RequirePermission:       perm,
+			RequireAnyPermission:    permAny,
 			AuthorizeCustomerAccess: authCustomer,
 			WriteServiceError:       writeErr,
 		}
@@ -254,6 +250,20 @@ func (h *Handler) BuildAdminAPIRegistry(pool *pgxpool.Pool, redisShards []redis.
 			FraudPresets: fraudPresets,
 		},
 		ExportHTTP: exportHTTP,
+		AccessHTTP: &access.HTTPHandlers{
+			Store: rolesStore,
+			ApplyRateLimit: limit,
+			RequirePermission: perm,
+			RequireAnyPermission: permAny,
+			ActorUserID: func(r *http.Request) (uuid.UUID, bool) {
+				u, ok := GetUser(r.Context())
+				return u.UserID, ok
+			},
+			WriteServiceError: writeErr,
+			Audit: func(ctx context.Context, actorID uuid.UUID, changes, metadata any) {
+				svc.auditAccessApply(ctx, actorID, changes, metadata)
+			},
+		},
 		LicensingHTTP: &licensingadmin.HTTPHandlers{
 			Pool:                  pool,
 			LicenseService:        svc,

@@ -15,7 +15,7 @@ import (
 
 type GovernanceHost interface {
 	Pool() *pgxpool.Pool
-	NormalizeTeamRole(role string) (string, error)
+	ValidateAssignableRole(role string) (string, error)
 	ErrValidation(msg string) error
 	ErrTeamMemberNotFound() error
 	ErrCampaignNotFound() error
@@ -36,8 +36,8 @@ func NewGovernance(host GovernanceHost) *Governance {
 	return &Governance{host: host}
 }
 
-func (g *Governance) InviteTeamMember(ctx context.Context, customerID uuid.UUID, email, role string) (TeamMemberDTO, error) {
-	return inviteTeamMember(ctx, g.host, customerID, email, role)
+func (g *Governance) InviteTeamMember(ctx context.Context, customerID uuid.UUID, email, role string, teamID *uuid.UUID) (TeamMemberDTO, error) {
+	return inviteTeamMember(ctx, g.host, customerID, email, role, teamID)
 }
 
 func (g *Governance) UpdateTeamMember(ctx context.Context, customerID, userID uuid.UUID, in UpdateTeamMemberRequest) (TeamMemberDTO, error) {

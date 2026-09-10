@@ -73,6 +73,10 @@ func (m *Middleware) SessionPermissions(ctx context.Context, userID uuid.UUID, r
 	if len(perms) > 0 {
 		return perms
 	}
+	normalized := ctrlhttp.NormalizeRole(role)
+	if m.policy != nil && m.policy.RoleExists(normalized) {
+		return authz.PermissionsList(m.policy.EffectivePermissions(userID, normalized))
+	}
 	return ctrlhttp.GetPermissionsForRole(role)
 }
 
@@ -95,6 +99,13 @@ func (m *Middleware) ReloadRolesYAML() error {
 		return fmt.Errorf("policy store not configured")
 	}
 	return authz.LoadRolesYAML(authz.DefaultRolesPath(), m.policy)
+}
+
+func (m *Middleware) PolicyStore() *authz.Store {
+	if m == nil {
+		return nil
+	}
+	return m.policy
 }
 
 func (m *Middleware) SetPolicyStore(store *authz.Store) {

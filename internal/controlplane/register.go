@@ -3,6 +3,7 @@ package controlplane
 import (
 	"net/http"
 
+	"ad-event-processor/internal/access"
 	"ad-event-processor/internal/automation"
 	"ad-event-processor/internal/billingadmin"
 	"ad-event-processor/internal/brand"
@@ -38,6 +39,7 @@ type RouteRegistry struct {
 	OpsHTTP               *opsadmin.HTTPHandlers
 	DoctorHTTP            *doctor.DoctorHTTPHandlers
 	ExportHTTP            *billingadmin.ExportHTTPHandlers
+	AccessHTTP            *access.HTTPHandlers
 	LicensingHTTP         *licensingadmin.HTTPHandlers
 	ReportsHTTP           *reports.ReportsHTTPHandlers
 	ReportJobHTTP         *reportjob.HTTPHandlers
@@ -95,6 +97,9 @@ func RegisterRoutes(mux *http.ServeMux, routes RouteRegistry) {
 	}
 	if routes.ExportHTTP != nil {
 		routes.ExportHTTP.Register(mux)
+	}
+	if routes.AccessHTTP != nil {
+		routes.AccessHTTP.Register(mux)
 	}
 	if routes.LicensingHTTP != nil {
 		routes.LicensingHTTP.Register(mux)

@@ -18,6 +18,7 @@ const (
 	TokenMacroSubID1
 	TokenMacroParam10
 	TokenMacroEventType
+	TokenMacroSig
 	TokenMacroSubBase   TokenKind = 32
 	TokenMacroSubIDBase TokenKind = 62
 )
@@ -156,6 +157,10 @@ func parseMacroKind(name string) (TokenKind, bool) {
 		if eqFoldASCII(name, "click_id") {
 			return TokenMacroClickID, true
 		}
+	case 3:
+		if eqFoldASCII(name, "sig") {
+			return TokenMacroSig, true
+		}
 	case 10:
 		if eqFoldASCII(name, "event_type") {
 			return TokenMacroEventType, true
@@ -225,6 +230,8 @@ func (mt *MacroTemplate) RenderAppend(dst []byte, ctx *EventContext) []byte {
 			dst = appendStringInline(dst, ctx.SubIDs[9])
 		case TokenMacroEventType:
 			dst = appendStringInline(dst, ctx.EventType)
+		case TokenMacroSig:
+			// Filled after render when signing secret is configured.
 		default:
 			if kind >= TokenMacroSubBase && kind < TokenMacroSubBase+maxSubMacroSlots {
 				dst = appendStringInline(dst, ctx.SubIDs[kind-TokenMacroSubBase])

@@ -6,6 +6,7 @@ import (
 	"time"
 
 	"ad-event-processor/internal/campaign"
+	"ad-event-processor/internal/controlplane/authz"
 	"ad-event-processor/internal/domain"
 	db "ad-event-processor/internal/domain/db"
 	"ad-event-processor/internal/reports"
@@ -263,6 +264,9 @@ func (p *Portfolio) GetBuyerPortfolioRange(
 		resp.KPIs.CostMicro = resp.KPIs.SpendMicro
 	}
 	finalizeBuyerPortfolioKPIs(resp.KPIs, resp.Clicks7d)
+	if snap, ok := authz.SnapshotFromContext(ctx); ok && snap.Mask == authz.MaskMasked {
+		scrubBuyerPortfolioForMasked(&resp)
+	}
 	return resp, nil
 }
 

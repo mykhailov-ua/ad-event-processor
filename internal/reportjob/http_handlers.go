@@ -44,10 +44,22 @@ func (h *HTTPHandlers) registerReportJobs(mux *http.ServeMux) {
 	if perm == nil {
 		perm = func(_ string, next http.HandlerFunc) http.HandlerFunc { return next }
 	}
-	mux.HandleFunc("POST /api/v1/reports/jobs", limit(perm("customers:read", h.postReportJob)))
-	mux.HandleFunc("GET /api/v1/reports/jobs/{id}", limit(perm("customers:read", h.getReportJob)))
-	mux.HandleFunc("GET /api/v1/reports/jobs/{id}/download", limit(perm("customers:read", h.downloadReportJob)))
-	mux.HandleFunc("DELETE /api/v1/reports/jobs/{id}", limit(perm("customers:read", h.deleteReportJob)))
+	permAny := h.RequireAnyPermission
+	if permAny == nil {
+		permAny = func(perms []string, next http.HandlerFunc) http.HandlerFunc {
+			if len(perms) == 0 {
+				return next
+			}
+			return perm(perms[0], next)
+		}
+	}
+	readExports := []string{"exports:read", "customers:read", "campaigns:read"}
+	runExports := []string{"exports:run", "customers:read", "campaigns:write"}
+
+	mux.HandleFunc("POST /api/v1/reports/jobs", limit(permAny(runExports, h.postReportJob)))
+	mux.HandleFunc("GET /api/v1/reports/jobs/{id}", limit(permAny(readExports, h.getReportJob)))
+	mux.HandleFunc("GET /api/v1/reports/jobs/{id}/download", limit(permAny(readExports, h.downloadReportJob)))
+	mux.HandleFunc("DELETE /api/v1/reports/jobs/{id}", limit(permAny(runExports, h.deleteReportJob)))
 }
 
 func (h *HTTPHandlers) postReportJob(w http.ResponseWriter, r *http.Request) {

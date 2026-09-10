@@ -106,6 +106,16 @@ func campaignGeoDeviceRowsFromMaps(rows []map[string]any) []CampaignGeoDeviceRow
 	return out
 }
 
+func redactTrueROIRows(rows []TrueROIReportRowDTO) []TrueROIReportRowDTO {
+	for i := range rows {
+		rows[i].RevenueMicro = 0
+		rows[i].TrueProfitMicro = 0
+		rows[i].TrueRoiPct = 0
+		rows[i].TrueCpaMicro = 0
+	}
+	return rows
+}
+
 func trueROIRowsFromMaps(rows []map[string]any) []TrueROIReportRowDTO {
 	out := make([]TrueROIReportRowDTO, 0, len(rows))
 	for _, row := range rows {

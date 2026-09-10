@@ -1,0 +1,38 @@
+# Canonical permission catalog for RBAC role constructor CI gate.
+# Runtime enforcement uses internal/access/catalog.go; keep lists aligned.
+permissions:
+  - id: "*"
+    internal: true
+  - id: customers:read
+  - id: customers:write
+  - id: campaigns:read
+  - id: campaigns:read:masked
+  - id: campaigns:write
+  - id: campaigns:write:masked
+  - id: campaigns:pause
+  - id: campaigns:archive
+  - id: campaigns:delete
+  - id: postbacks:read
+  - id: postbacks:write
+  - id: exports:read
+  - id: exports:run
+  - id: team:read
+  - id: team:write
+  - id: brands:read
+  - id: brands:write
+  - id: billing:read
+  - id: billing:write
+  - id: settings:read
+  - id: settings:write
+  - id: blacklist:read
+  - id: blacklist:write
+  - id: audit:read
+  - id: users:write
+  - id: shards:read
+  - id: shards:write
+  - id: ops:write
+  - id: rtb:read
+  - id: rtb:write
+  - id: supply:read:scoped
+  - id: access:read
+  - id: access:write

@@ -21,6 +21,7 @@ import (
 	"ad-event-processor/internal/ingest/parser"
 	"ad-event-processor/internal/ingest/pb"
 	"ad-event-processor/internal/metrics"
+	"ad-event-processor/internal/postback/inbound"
 	"ad-event-processor/internal/telemetry"
 	"ad-event-processor/internal/track"
 	"ad-event-processor/pkg/branding"
@@ -169,7 +170,7 @@ type Pinger interface {
 	Ping(ctx context.Context) error
 }
 
-func NewRouter(cfg *config.Config, registry domain.CampaignRegistry, filterEngine *FilterEngine, pool Pinger, redisShards []redis.UniversalClient, sharder Sharder, fraudStream string, creativeStore *BrandCreativeStore, streamProducers []*StreamProducer, brokerProducers *BrokerProducerSet) http.Handler {
+func NewRouter(cfg *config.Config, registry domain.CampaignRegistry, filterEngine *FilterEngine, pool Pinger, redisShards []redis.UniversalClient, sharder Sharder, fraudStream string, creativeStore *BrandCreativeStore, streamProducers []*StreamProducer, brokerProducers *BrokerProducerSet, postbackInbound *inbound.Store) http.Handler {
 	mux := http.NewServeMux()
 	trackCORS := newTrackCORS(cfg.TrackCORSOrigins)
 
@@ -263,6 +264,7 @@ func NewRouter(cfg *config.Config, registry domain.CampaignRegistry, filterEngin
 		var jsonSerFlags uint8
 		var telemetrySet uint8
 		var telemetryEvents []domain.BehaviorTelemetryEvent
+		var trackBody []byte
 
 		contentType := ""
 		if ctSlice := r.Header["Content-Type"]; len(ctSlice) > 0 {
@@ -323,6 +325,7 @@ func NewRouter(cfg *config.Config, registry domain.CampaignRegistry, filterEngin
 				http.Error(w, "invalid body", status)
 				return
 			}
+			trackBody = bytes.Clone(buf.Bytes())
 
 			req := trackRequestPool.Get().(*TrackRequest)
 			req.Reset()
@@ -389,6 +392,20 @@ func NewRouter(cfg *config.Config, registry domain.CampaignRegistry, filterEngin
 
 		if ortbSlot != nil {
 			attachOpenRTB3Scratch(evt, ortbSlot)
+		}
+
+		if eventType == "conversion" && postbackInbound != nil && registry != nil && len(trackBody) > 0 {
+			if customerID, ok := registry.GetCustomerID(campaignID); ok {
+				authCfg := postbackInbound.Config(customerID)
+				if inbound.Configured(authCfg) {
+					if err := inbound.VerifyHTTP(authCfg, r, trackBody); err != nil {
+						domain.EventPool.Put(evt)
+						status = http.StatusForbidden
+						http.Error(w, "POSTBACK_AUTH_FAILED", status)
+						return
+					}
+				}
+			}
 		}
 
 		var landing string
@@ -676,10 +693,17 @@ type AdsPacketHandler struct {
 	campaignFlowTable       *CampaignFlowTable
 	crowdWaveGate           crowdWaveGate
 	clickProxyClient        *http.Client
+	postbackInbound         *inbound.Store
 }
 
 type crowdWaveGate interface {
 	PromotionBlocked(ctx context.Context, campaignID uuid.UUID) (bool, uint16)
+}
+
+func (h *AdsPacketHandler) ConfigurePostbackInbound(st *inbound.Store) {
+	if h != nil {
+		h.postbackInbound = st
+	}
 }
 
 func (h *AdsPacketHandler) ConfigureCIDR(table *CIDRTable) {

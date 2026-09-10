@@ -1,0 +1,62 @@
+paths:
+  /api/v1/access/catalog:
+    get:
+      tags: [access]
+      operationId: accessCatalog
+      summary: RBAC capability and permission catalog
+      x-permissions: [access:read]
+      responses:
+        '200':
+          description: Catalog payload
+  /api/v1/access/roles:
+    get:
+      tags: [access]
+      operationId: accessRolesList
+      summary: Role matrix JSON view
+      x-permissions: [access:read]
+      responses:
+        '200':
+          description: Roles with compiled permissions
+    put:
+      tags: [access]
+      operationId: accessRolesReplace
+      summary: Replace role matrix from JSON
+      x-permissions: [access:write, settings:write]
+      responses:
+        '200':
+          description: Applied revision
+  /api/v1/access/roles.yaml:
+    get:
+      tags: [access]
+      operationId: accessRolesYamlGet
+      summary: Raw roles YAML
+      x-permissions: [access:read]
+      responses:
+        '200':
+          description: YAML document
+    put:
+      tags: [access]
+      operationId: accessRolesYamlPut
+      summary: Replace roles YAML
+      x-permissions: [access:write, settings:write]
+      responses:
+        '200':
+          description: Applied revision
+  /api/v1/access/roles/validate:
+    post:
+      tags: [access]
+      operationId: accessRolesValidate
+      summary: Dry-run validate roles YAML
+      x-permissions: [access:read]
+      responses:
+        '200':
+          description: Validation result
+  /api/v1/access/roles/reload:
+    post:
+      tags: [access]
+      operationId: accessRolesReload
+      summary: Reload roles from disk
+      x-permissions: [access:write, settings:write]
+      responses:
+        '200':
+          description: Reloaded

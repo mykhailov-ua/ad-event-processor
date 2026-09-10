@@ -22,6 +22,7 @@ type TeamMemberDTO struct {
 	UserID           string `json:"user_id"`
 	Email            string `json:"email"`
 	Role             string `json:"role"`
+	TeamID           string `json:"team_id,omitempty"`
 	CampaignsOwned   int64  `json:"campaigns_owned"`
 	CreatedAt        string `json:"created_at,omitempty"`
 	CreatedAtDisplay string `json:"created_at_display,omitempty"`
@@ -68,12 +69,14 @@ func normalizeTeamMembersOffset(offset int) int {
 }
 
 type InviteTeamMemberRequest struct {
-	Email string `json:"email"`
-	Role  string `json:"role"`
+	Email  string  `json:"email"`
+	Role   string  `json:"role"`
+	TeamID *string `json:"team_id,omitempty"`
 }
 
 type UpdateTeamMemberRequest struct {
 	Role          *string `json:"role,omitempty"`
+	TeamID        *string `json:"team_id,omitempty"`
 	IsBlocked     *bool   `json:"is_blocked,omitempty"`
 	SpendCapMicro *int64  `json:"spend_cap_micro,omitempty"`
 }
@@ -104,6 +107,7 @@ type TeamOverviewReader interface {
 }
 
 type TeamHTTPHandlers struct {
+	Pool                 *pgxpool.Pool
 	Team                 TeamOverviewReader
 	Governance           TeamGovernance
 	ApplyRateLimit       func(http.HandlerFunc) http.HandlerFunc
@@ -129,10 +133,11 @@ func (h *TeamHTTPHandlers) Register(mux *http.ServeMux) {
 		perm = func(_ []string, next http.HandlerFunc) http.HandlerFunc { return next }
 	}
 	mux.HandleFunc("GET /api/v1/team/overview", limit(perm(
-		[]string{"campaigns:read", "billing:read"},
+		[]string{"team:read", "campaigns:read", "billing:read"},
 		h.getOverview,
 	)))
 	h.registerTeamGovernanceRoutes(mux, limit, perm)
+	h.registerTeamsRoutes(mux, limit, perm)
 }
 
 func (h *TeamHTTPHandlers) getOverview(w http.ResponseWriter, r *http.Request) {
@@ -249,7 +254,7 @@ func listTeamMembers(ctx context.Context, pool *pgxpool.Pool, customerID uuid.UU
 	}
 
 	rows, err := pool.Query(ctx, `
-		SELECT u.id, u.email, u.role, u.created_at, u.is_blocked,
+		SELECT u.id, u.email, u.role, u.team_id, u.created_at, u.is_blocked,
 			COALESCE(cc.campaigns_owned, 0) AS campaigns_owned,
 			COALESCE(l.spend_cap_micro, 0)
 		FROM users u
@@ -272,11 +277,15 @@ func listTeamMembers(ctx context.Context, pool *pgxpool.Pool, customerID uuid.UU
 	for rows.Next() {
 		var member TeamMemberDTO
 		var userID uuid.UUID
+		var teamID pgtype.UUID
 		var created time.Time
-		if err := rows.Scan(&userID, &member.Email, &member.Role, &created, &member.IsBlocked, &member.CampaignsOwned, &member.SpendCapMicro); err != nil {
+		if err := rows.Scan(&userID, &member.Email, &member.Role, &teamID, &created, &member.IsBlocked, &member.CampaignsOwned, &member.SpendCapMicro); err != nil {
 			return nil, 0, err
 		}
 		member.UserID = userID.String()
+		if teamID.Valid {
+			member.TeamID = uuid.UUID(teamID.Bytes).String()
+		}
 		member.CreatedAt = created.UTC().Format(time.RFC3339)
 		member.CreatedAtDisplay = coldpath.RFC3339Display(member.CreatedAt)
 		out = append(out, member)

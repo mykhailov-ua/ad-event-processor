@@ -22,6 +22,7 @@ import (
 	"ad-event-processor/internal/postback"
 	"ad-event-processor/internal/reportjob"
 	"ad-event-processor/internal/reports"
+	"ad-event-processor/internal/teamscope"
 	"ad-event-processor/pkg/coldpath"
 	"ad-event-processor/pkg/httpresponse"
 
@@ -659,6 +660,20 @@ func AssertMediaBuyerCampaignAccess(ctx context.Context, camp db.Campaign) error
 		return ErrForbidden
 	}
 	return nil
+}
+
+func AssertCampaignAccess(ctx context.Context, pool *pgxpool.Pool, camp db.Campaign) error {
+	if err := teamscope.AssertCampaignAccess(ctx, pool, camp); err != nil {
+		if errors.Is(err, teamscope.ErrForbidden) {
+			return ErrForbidden
+		}
+		return err
+	}
+	return nil
+}
+
+func allowOwnerQueryOverride(ctx context.Context) bool {
+	return teamscope.AllowOwnerQueryOverride(ctx)
 }
 
 func campaignOwnerUserFilter(ctx context.Context) pgtype.UUID {
@@ -1412,6 +1427,7 @@ type PostbackHTTPHandlers struct {
 	EncryptionKey           []byte
 	ApplyRateLimit          func(http.HandlerFunc) http.HandlerFunc
 	RequirePermission       func(string, http.HandlerFunc) http.HandlerFunc
+	RequireAnyPermission    func([]string, http.HandlerFunc) http.HandlerFunc
 	AuthorizeCampaignAccess func(*http.Request, uuid.UUID) error
 	WriteServiceError       func(http.ResponseWriter, error)
 }
@@ -1421,23 +1437,34 @@ func (h *PostbackHTTPHandlers) Register(mux *http.ServeMux) {
 		return
 	}
 	limit := h.ApplyRateLimit
-	perm := h.RequirePermission
+	permAny := h.RequireAnyPermission
 	if limit == nil {
 		limit = func(next http.HandlerFunc) http.HandlerFunc { return next }
 	}
-	if perm == nil {
-		perm = func(_ string, next http.HandlerFunc) http.HandlerFunc { return next }
+	if permAny == nil {
+		perm := h.RequirePermission
+		if perm == nil {
+			perm = func(_ string, next http.HandlerFunc) http.HandlerFunc { return next }
+		}
+		permAny = func(perms []string, next http.HandlerFunc) http.HandlerFunc {
+			if len(perms) == 0 {
+				return next
+			}
+			return perm(perms[0], next)
+		}
 	}
+	readPostbacks := []string{"postbacks:read", "campaigns:read"}
+	writePostbacks := []string{"postbacks:write", "campaigns:write"}
 
-	mux.HandleFunc("GET /api/v1/postbacks/config", limit(perm("campaigns:read", h.getPostbacksConfig)))
-	mux.HandleFunc("PUT /api/v1/postbacks/config/{campaign_id}", limit(perm("campaigns:write", h.updatePostbackConfig)))
-	mux.HandleFunc("GET /api/v1/postbacks/dlq", limit(perm("campaigns:read", h.getDLQ)))
-	mux.HandleFunc("POST /api/v1/postbacks/dlq/{id}/retry", limit(perm("campaigns:write", h.retryDLQ)))
-	mux.HandleFunc("GET /api/v1/postbacks/campaign-status", limit(perm("campaigns:read", h.getCampaignStatus)))
-	mux.HandleFunc("GET /api/v1/postbacks/snapshot", limit(perm("campaigns:read", h.getPostbacksSnapshot)))
-	mux.HandleFunc("GET /api/v1/postbacks/health", limit(perm("campaigns:read", h.getPostbackHealth)))
-	mux.HandleFunc("GET /api/v1/integrations/postbacks/health", limit(perm("campaigns:read", h.getPostbackHealth)))
-	mux.HandleFunc("POST /api/v1/postbacks/config/{campaign_id}/test", limit(perm("campaigns:write", h.testPostbackConfig)))
+	mux.HandleFunc("GET /api/v1/postbacks/config", limit(permAny(readPostbacks, h.getPostbacksConfig)))
+	mux.HandleFunc("PUT /api/v1/postbacks/config/{campaign_id}", limit(permAny(writePostbacks, h.updatePostbackConfig)))
+	mux.HandleFunc("GET /api/v1/postbacks/dlq", limit(permAny(readPostbacks, h.getDLQ)))
+	mux.HandleFunc("POST /api/v1/postbacks/dlq/{id}/retry", limit(permAny(writePostbacks, h.retryDLQ)))
+	mux.HandleFunc("GET /api/v1/postbacks/campaign-status", limit(permAny(readPostbacks, h.getCampaignStatus)))
+	mux.HandleFunc("GET /api/v1/postbacks/snapshot", limit(permAny(readPostbacks, h.getPostbacksSnapshot)))
+	mux.HandleFunc("GET /api/v1/postbacks/health", limit(permAny(readPostbacks, h.getPostbackHealth)))
+	mux.HandleFunc("GET /api/v1/integrations/postbacks/health", limit(permAny(readPostbacks, h.getPostbackHealth)))
+	mux.HandleFunc("POST /api/v1/postbacks/config/{campaign_id}/test", limit(permAny(writePostbacks, h.testPostbackConfig)))
 }
 
 type PostbackConfigDTO struct {

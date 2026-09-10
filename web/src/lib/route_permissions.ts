@@ -13,6 +13,7 @@ const EXTRA_ROUTE_RULES: RoutePermissionRule[] = [
   { prefix: '/billing/invoices', permission: 'customers:read' },
   { prefix: '/reports/jobs', permission: 'campaigns:read' },
   { prefix: '/billing/exports', permission: 'campaigns:read' },
+  { prefix: '/settings/access', permission: 'access:read' },
 ];
 
 function buildRouteRules(): RoutePermissionRule[] {

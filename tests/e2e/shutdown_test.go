@@ -89,7 +89,7 @@ func TestE2E_GracefulShutdown_NoDataLoss(t *testing.T) {
 	consumer.Start(ctx)
 
 	sharder := ingestion.NewJumpHashSharder(1)
-	router := ingestion.NewRouter(cfg, registry, filterEngine, pool, []redis.UniversalClient{rdb}, sharder, cfg.FraudStreamName, nil, nil, nil)
+	router := ingestion.NewRouter(cfg, registry, filterEngine, pool, []redis.UniversalClient{rdb}, sharder, cfg.FraudStreamName, nil, nil, nil, nil)
 	srv := httptest.NewServer(router)
 	defer srv.Close()
 

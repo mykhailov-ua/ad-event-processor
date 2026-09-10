@@ -720,6 +720,11 @@ func runTracker(cfg *config.Config) {
 	// Phase 7: gnet handler shell; optional Postgres failover swaps pool on background subscriber only.
 	// Producers attach in Phase 8 after handler exists so SetBrokerProducers/SetStreamProducers wire TryReserve sink.
 	gnetHandler := ingestion.NewAdsPacketHandler(cfg, registry, filterEngine, pool, redisShards, sharder, cfg.FraudStreamName, creativeStore)
+	if pool != nil {
+		inboundStore := ingestion.NewPostbackInboundStore(pool)
+		go inboundStore.Start(ctx)
+		gnetHandler.ConfigurePostbackInbound(inboundStore)
+	}
 
 	if cfg.PostgresFailoverEnabled {
 		ingestPgFailover := pgfailover.StartIngestSubscribers(ctx, redisShards, pgfailover.IngestSubscriberConfig{

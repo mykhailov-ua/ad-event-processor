@@ -6,6 +6,7 @@ import (
 	"sync/atomic"
 	"testing"
 
+	"ad-event-processor/internal/access"
 	"ad-event-processor/internal/brand"
 	"ad-event-processor/internal/campaign"
 	"ad-event-processor/internal/campaign/runtime"
@@ -88,6 +89,7 @@ type Service struct {
 	notifierAPI              notify.NotifierAPI
 	costSyncWorker           *costsync.Worker
 	migrationPullWG          sync.WaitGroup
+	rolesDocumentSource      func() access.RolesDocument
 }
 
 func (s *Service) SetRtbBidShadeSimulator(sim rtbadmin.BidShadeSimulator) {

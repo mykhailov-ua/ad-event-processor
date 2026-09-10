@@ -6,13 +6,10 @@ import (
 	"net/http"
 	"time"
 
-	"ad-event-processor/internal/controlplane/authz"
 	"ad-event-processor/internal/database"
-	"ad-event-processor/internal/domain"
+	"ad-event-processor/internal/teamscope"
 
 	"github.com/google/uuid"
-	"github.com/jackc/pgx/v5"
-	"github.com/jackc/pgx/v5/pgtype"
 	"github.com/jackc/pgx/v5/pgxpool"
 )
 
@@ -181,50 +178,7 @@ func ParseReportRange(r *http.Request) (from, to time.Time, err error) {
 }
 
 func listCustomerCampaignIDs(ctx context.Context, pool *pgxpool.Pool, customerID uuid.UUID) ([]uuid.UUID, error) {
-	if pool == nil || customerID == uuid.Nil {
-		return nil, nil
-	}
-	ownerFilter := reportOwnerUserFilter(ctx)
-	var (
-		rows pgx.Rows
-		err  error
-	)
-	if ownerFilter.Valid {
-		rows, err = pool.Query(ctx, `
-			SELECT id FROM campaigns
-			WHERE customer_id = $1 AND deleted_at IS NULL AND owner_user_id = $2`,
-			customerID, ownerFilter)
-	} else {
-		rows, err = pool.Query(ctx, `
-			SELECT id FROM campaigns
-			WHERE customer_id = $1 AND deleted_at IS NULL`,
-			customerID)
-	}
-	if err != nil {
-		return nil, err
-	}
-	defer rows.Close()
-
-	var ids []uuid.UUID
-	for rows.Next() {
-		var id uuid.UUID
-		if err := rows.Scan(&id); err != nil {
-			return nil, err
-		}
-		ids = append(ids, id)
-	}
-	return ids, rows.Err()
-}
-
-func reportOwnerUserFilter(ctx context.Context) pgtype.UUID {
-	u, ok := authz.GetUser(ctx)
-	if !ok || u.UserID == uuid.Nil {
-		return pgtype.UUID{}
-	}
-	if authz.NormalizeRole(u.Role) != authz.RoleMediaBuyer {
-		return pgtype.UUID{}
-	}
-	return domain.ToUUID(u.UserID)
+	return teamscope.ScopedCampaignIDsQuery(ctx, pool, customerID)
 }
 
 func ListCustomerCampaignIDs(ctx context.Context, pool *pgxpool.Pool, customerID uuid.UUID) ([]uuid.UUID, error) {

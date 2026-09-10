@@ -302,6 +302,11 @@ WHERE deleted_at IS NULL
     )
   )
   AND (sqlc.narg('owner_user_id')::uuid IS NULL OR owner_user_id = sqlc.narg('owner_user_id')::uuid)
+  AND (
+    sqlc.narg('owner_user_ids')::uuid[] IS NULL
+    OR cardinality(sqlc.narg('owner_user_ids')::uuid[]) = 0
+    OR owner_user_id = ANY(sqlc.narg('owner_user_ids')::uuid[])
+  )
   AND (sqlc.narg('target_country')::text IS NULL OR sqlc.narg('target_country')::text = ANY(target_countries))
   AND (sqlc.narg('budget_min_micro')::bigint IS NULL OR budget_limit >= sqlc.narg('budget_min_micro')::bigint)
   AND (sqlc.narg('budget_max_micro')::bigint IS NULL OR budget_limit <= sqlc.narg('budget_max_micro')::bigint)
@@ -341,6 +346,11 @@ FROM campaigns
 WHERE deleted_at IS NULL
   AND (sqlc.narg('customer_id')::uuid IS NULL OR customer_id = sqlc.narg('customer_id')::uuid)
   AND (sqlc.narg('owner_user_id')::uuid IS NULL OR owner_user_id = sqlc.narg('owner_user_id')::uuid)
+  AND (
+    sqlc.narg('owner_user_ids')::uuid[] IS NULL
+    OR cardinality(sqlc.narg('owner_user_ids')::uuid[]) = 0
+    OR owner_user_id = ANY(sqlc.narg('owner_user_ids')::uuid[])
+  )
   AND (sqlc.narg('target_country')::text IS NULL OR sqlc.narg('target_country')::text = ANY(target_countries))
   AND (sqlc.narg('budget_min_micro')::bigint IS NULL OR budget_limit >= sqlc.narg('budget_min_micro')::bigint)
   AND (sqlc.narg('budget_max_micro')::bigint IS NULL OR budget_limit <= sqlc.narg('budget_max_micro')::bigint)
@@ -365,6 +375,11 @@ WHERE deleted_at IS NULL
   AND current_spend >= (budget_limit * 9 / 10)
   AND (sqlc.narg('customer_id')::uuid IS NULL OR customer_id = sqlc.narg('customer_id')::uuid)
   AND (sqlc.narg('owner_user_id')::uuid IS NULL OR owner_user_id = sqlc.narg('owner_user_id')::uuid)
+  AND (
+    sqlc.narg('owner_user_ids')::uuid[] IS NULL
+    OR cardinality(sqlc.narg('owner_user_ids')::uuid[]) = 0
+    OR owner_user_id = ANY(sqlc.narg('owner_user_ids')::uuid[])
+  )
   AND (sqlc.narg('target_country')::text IS NULL OR sqlc.narg('target_country')::text = ANY(target_countries))
   AND (sqlc.narg('budget_min_micro')::bigint IS NULL OR budget_limit >= sqlc.narg('budget_min_micro')::bigint)
   AND (sqlc.narg('budget_max_micro')::bigint IS NULL OR budget_limit <= sqlc.narg('budget_max_micro')::bigint)
@@ -399,6 +414,11 @@ WHERE deleted_at IS NULL
     )
   )
   AND (sqlc.narg('owner_user_id')::uuid IS NULL OR owner_user_id = sqlc.narg('owner_user_id')::uuid)
+  AND (
+    sqlc.narg('owner_user_ids')::uuid[] IS NULL
+    OR cardinality(sqlc.narg('owner_user_ids')::uuid[]) = 0
+    OR owner_user_id = ANY(sqlc.narg('owner_user_ids')::uuid[])
+  )
   AND (sqlc.narg('target_country')::text IS NULL OR sqlc.narg('target_country')::text = ANY(target_countries))
   AND (sqlc.narg('budget_min_micro')::bigint IS NULL OR budget_limit >= sqlc.narg('budget_min_micro')::bigint)
   AND (sqlc.narg('budget_max_micro')::bigint IS NULL OR budget_limit <= sqlc.narg('budget_max_micro')::bigint)
@@ -432,6 +452,11 @@ WHERE deleted_at IS NULL
     )
   )
   AND (sqlc.narg('owner_user_id')::uuid IS NULL OR owner_user_id = sqlc.narg('owner_user_id')::uuid)
+  AND (
+    sqlc.narg('owner_user_ids')::uuid[] IS NULL
+    OR cardinality(sqlc.narg('owner_user_ids')::uuid[]) = 0
+    OR owner_user_id = ANY(sqlc.narg('owner_user_ids')::uuid[])
+  )
   AND (sqlc.narg('target_country')::text IS NULL OR sqlc.narg('target_country')::text = ANY(target_countries))
   AND (sqlc.narg('budget_min_micro')::bigint IS NULL OR budget_limit >= sqlc.narg('budget_min_micro')::bigint)
   AND (sqlc.narg('budget_max_micro')::bigint IS NULL OR budget_limit <= sqlc.narg('budget_max_micro')::bigint)
@@ -466,6 +491,11 @@ WHERE campaigns.deleted_at IS NULL
     )
   )
   AND (sqlc.narg('owner_user_id')::uuid IS NULL OR campaigns.owner_user_id = sqlc.narg('owner_user_id')::uuid)
+  AND (
+    sqlc.narg('owner_user_ids')::uuid[] IS NULL
+    OR cardinality(sqlc.narg('owner_user_ids')::uuid[]) = 0
+    OR campaigns.owner_user_id = ANY(sqlc.narg('owner_user_ids')::uuid[])
+  )
   AND (sqlc.narg('target_country')::text IS NULL OR sqlc.narg('target_country')::text = ANY(campaigns.target_countries))
   AND (sqlc.narg('budget_min_micro')::bigint IS NULL OR campaigns.budget_limit >= sqlc.narg('budget_min_micro')::bigint)
   AND (sqlc.narg('budget_max_micro')::bigint IS NULL OR campaigns.budget_limit <= sqlc.narg('budget_max_micro')::bigint)
@@ -535,6 +565,11 @@ LEFT JOIN (
         )
       )
       AND (sqlc.narg('owner_user_id')::uuid IS NULL OR owner_user_id = sqlc.narg('owner_user_id')::uuid)
+  AND (
+    sqlc.narg('owner_user_ids')::uuid[] IS NULL
+    OR cardinality(sqlc.narg('owner_user_ids')::uuid[]) = 0
+    OR owner_user_id = ANY(sqlc.narg('owner_user_ids')::uuid[])
+  )
       AND (sqlc.narg('target_country')::text IS NULL OR sqlc.narg('target_country')::text = ANY(target_countries))
       AND (sqlc.narg('budget_min_micro')::bigint IS NULL OR budget_limit >= sqlc.narg('budget_min_micro')::bigint)
       AND (sqlc.narg('budget_max_micro')::bigint IS NULL OR budget_limit <= sqlc.narg('budget_max_micro')::bigint)
@@ -570,6 +605,11 @@ WHERE deleted_at IS NULL
     )
   )
   AND (sqlc.narg('owner_user_id')::uuid IS NULL OR owner_user_id = sqlc.narg('owner_user_id')::uuid)
+  AND (
+    sqlc.narg('owner_user_ids')::uuid[] IS NULL
+    OR cardinality(sqlc.narg('owner_user_ids')::uuid[]) = 0
+    OR owner_user_id = ANY(sqlc.narg('owner_user_ids')::uuid[])
+  )
   AND (sqlc.narg('target_country')::text IS NULL OR sqlc.narg('target_country')::text = ANY(target_countries))
   AND (sqlc.narg('budget_min_micro')::bigint IS NULL OR budget_limit >= sqlc.narg('budget_min_micro')::bigint)
   AND (sqlc.narg('budget_max_micro')::bigint IS NULL OR budget_limit <= sqlc.narg('budget_max_micro')::bigint)

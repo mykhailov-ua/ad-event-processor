@@ -126,6 +126,10 @@ func (h *Handler) adminRequireTeamWrite() func(http.HandlerFunc) http.HandlerFun
 				writeServiceError(w, errForbidden)
 				return
 			}
+			if snap, ok := authz.SnapshotFromContext(r.Context()); ok && snap.Has(authz.PermTeamWrite) {
+				next(w, r)
+				return
+			}
 			if u.IsTeamLead() || ctrlhttp.HasPermission(u.Role, ctrlhttp.PermUsersWrite) {
 				next(w, r)
 				return

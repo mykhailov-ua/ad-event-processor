@@ -13,7 +13,7 @@ import (
 )
 
 type TeamGovernance interface {
-	InviteTeamMember(ctx context.Context, customerID uuid.UUID, email, role string) (TeamMemberDTO, error)
+	InviteTeamMember(ctx context.Context, customerID uuid.UUID, email, role string, teamID *uuid.UUID) (TeamMemberDTO, error)
 	UpdateTeamMember(ctx context.Context, customerID, userID uuid.UUID, req UpdateTeamMemberRequest) (TeamMemberDTO, error)
 	ListTeamBudgetApprovals(ctx context.Context, customerID uuid.UUID, limit, offset int) ([]TeamBudgetApprovalDTO, int64, error)
 	ResolveTeamBudgetApproval(ctx context.Context, customerID, approvalID, resolverID uuid.UUID, approve bool) error
@@ -28,13 +28,13 @@ func (h *TeamHTTPHandlers) registerTeamGovernanceRoutes(mux *http.ServeMux, limi
 		teamWrite = func(next http.HandlerFunc) http.HandlerFunc { return next }
 	}
 	mux.HandleFunc("GET /api/v1/team/members", limit(perm(
-		[]string{"campaigns:read", "billing:read"},
+		[]string{"team:read", "campaigns:read", "billing:read"},
 		h.listMembers,
 	)))
 	mux.HandleFunc("POST /api/v1/team/members", limit(teamWrite(h.inviteMember)))
 	mux.HandleFunc("PATCH /api/v1/team/members/{id}", limit(teamWrite(h.patchMember)))
 	mux.HandleFunc("GET /api/v1/team/budget-approvals", limit(perm(
-		[]string{"campaigns:read", "billing:read"},
+		[]string{"team:read", "campaigns:read", "billing:read"},
 		h.listBudgetApprovals,
 	)))
 	mux.HandleFunc("POST /api/v1/team/budget-approvals/{id}/approve", limit(teamWrite(h.approveBudget)))
@@ -104,7 +104,19 @@ func (h *TeamHTTPHandlers) inviteMember(w http.ResponseWriter, r *http.Request) 
 	if !ok {
 		return
 	}
-	member, err := h.Governance.InviteTeamMember(WithPanelRequest(r.Context(), r), customerID, req.Email, req.Role)
+	var teamID *uuid.UUID
+	if req.TeamID != nil {
+		raw := strings.TrimSpace(*req.TeamID)
+		if raw != "" {
+			parsed, parseErr := uuid.Parse(raw)
+			if parseErr != nil {
+				httpresponse.Error(w, http.StatusBadRequest, "BAD_REQUEST", "invalid team_id")
+				return
+			}
+			teamID = &parsed
+		}
+	}
+	member, err := h.Governance.InviteTeamMember(WithPanelRequest(r.Context(), r), customerID, req.Email, req.Role, teamID)
 	if err != nil {
 		h.writeServiceError(w, err)
 		return

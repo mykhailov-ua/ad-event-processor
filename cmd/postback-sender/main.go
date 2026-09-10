@@ -10,6 +10,7 @@ import (
 	"ad-event-processor/internal/config"
 	"ad-event-processor/internal/database"
 	"ad-event-processor/internal/postback"
+	"ad-event-processor/internal/postback/replay"
 	"ad-event-processor/pkg/lifecycle"
 )
 
@@ -54,6 +55,7 @@ func main() {
 		"stale_processing_sec", cfg.Postback.StaleProcessingSec,
 	)
 	go worker.Start(ctx, pollInterval)
+	go replay.Start(ctx, pool, 60*time.Second)
 
 	sig := lifecycle.WaitSignal()
 	slog.Info("received shutdown signal, shutting down postback-sender daemon", "signal", sig.String())

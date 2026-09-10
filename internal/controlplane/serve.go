@@ -8,10 +8,12 @@ import (
 	"os"
 	"time"
 
+	"ad-event-processor/internal/access"
 	"ad-event-processor/internal/billingadmin"
 	"ad-event-processor/internal/clickhouse/migrate"
 	"ad-event-processor/internal/config"
 	ctrlhttp "ad-event-processor/internal/control/http"
+	"ad-event-processor/internal/controlplane/authz"
 	"ad-event-processor/internal/database"
 	"ad-event-processor/internal/dedup"
 	"ad-event-processor/internal/domain"
@@ -78,6 +80,7 @@ func ServeWithOptions(ctx context.Context, cfg *config.Config, opts ServeOptions
 
 	authMiddleware := NewAuthMiddleware(tokenMaker, shardadmin.PickHealthyControlShard(redisShards), cfg, controlAuthClient)
 	authMiddleware.SetControlRedisShards(redisShards)
+	authz.SetRolesYAMLLoader(access.LoadRolesIntoPolicy)
 	policyStore := ctrlhttp.InitPolicyStore()
 	authMiddleware.SetPolicyStore(policyStore)
 	authMiddleware.SetPool(pool)

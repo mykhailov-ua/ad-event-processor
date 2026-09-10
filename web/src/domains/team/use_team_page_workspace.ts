@@ -2,6 +2,7 @@
 import { useCallback, useEffect, useState } from 'react';
 import { toast } from 'sonner';
 
+import { getAccessRoles } from '@/api/access_api';
 import {
   approveTeamBudgetApproval,
   denyTeamBudgetApproval,
@@ -46,6 +47,17 @@ export function useTeamPageWorkspace() {
   const [draftCustomerId, setDraftCustomerId] = useState(appliedCustomerId);
   const [draftInviteEmail, setDraftInviteEmail] = useState('');
   const [draftInviteRole, setDraftInviteRole] = useState('MB');
+
+  const { data: teamRolesData } = useResource(
+    (signal) => getAccessRoles({ scope: 'team' }, signal),
+    []
+  );
+  const teamRoleOptions = Object.values(teamRolesData?.roles ?? {})
+    .map((role) => ({
+      code: role.code,
+      label: role.label ?? role.code,
+    }))
+    .sort((left, right) => left.code.localeCompare(right.code));
 
   const { data, error, fetching } = useResource(
     (signal) => getTeamOverview({ customer_id: appliedCustomerId || undefined }, signal),
@@ -342,6 +354,7 @@ export function useTeamPageWorkspace() {
     draftCustomerId,
     draftInviteEmail,
     draftInviteRole,
+    teamRoleOptions,
     memberDrafts,
     fetching,
     membersFetching,

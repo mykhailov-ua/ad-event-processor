@@ -369,6 +369,7 @@ type ExportHTTPHandlers struct {
 	ExportChunkMaxBytes     func() int
 	ApplyRateLimit          func(http.HandlerFunc) http.HandlerFunc
 	RequirePermission       func(string, http.HandlerFunc) http.HandlerFunc
+	RequireAnyPermission    func([]string, http.HandlerFunc) http.HandlerFunc
 	AuthorizeCustomerAccess func(*http.Request, string) error
 	WriteServiceError       func(http.ResponseWriter, error)
 }
@@ -378,16 +379,28 @@ func (h *ExportHTTPHandlers) Register(mux *http.ServeMux) {
 		return
 	}
 	limit := h.ApplyRateLimit
-	perm := h.RequirePermission
+	permAny := h.RequireAnyPermission
 	if limit == nil {
 		limit = func(next http.HandlerFunc) http.HandlerFunc { return next }
 	}
-	if perm == nil {
-		perm = func(_ string, next http.HandlerFunc) http.HandlerFunc { return next }
+	if permAny == nil {
+		perm := h.RequirePermission
+		if perm == nil {
+			perm = func(_ string, next http.HandlerFunc) http.HandlerFunc { return next }
+		}
+		permAny = func(perms []string, next http.HandlerFunc) http.HandlerFunc {
+			if len(perms) == 0 {
+				return next
+			}
+			return perm(perms[0], next)
+		}
 	}
-	mux.HandleFunc("POST /api/v1/billing/exports", limit(perm("customers:read", h.createExport)))
-	mux.HandleFunc("GET /api/v1/billing/exports/{job_id}", limit(perm("customers:read", h.getExport)))
-	mux.HandleFunc("GET /api/v1/billing/exports/{job_id}/download", limit(perm("customers:read", h.downloadExport)))
+	readExports := []string{"exports:read", "customers:read", "campaigns:read"}
+	runExports := []string{"exports:run", "customers:read", "campaigns:write"}
+
+	mux.HandleFunc("POST /api/v1/billing/exports", limit(permAny(runExports, h.createExport)))
+	mux.HandleFunc("GET /api/v1/billing/exports/{job_id}", limit(permAny(readExports, h.getExport)))
+	mux.HandleFunc("GET /api/v1/billing/exports/{job_id}/download", limit(permAny(readExports, h.downloadExport)))
 }
 
 func (h *ExportHTTPHandlers) createExport(w http.ResponseWriter, r *http.Request) {

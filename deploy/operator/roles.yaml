@@ -1,6 +1,11 @@
+version: 1
+revision: 1
+
 roles:
   A:
     scope: global
+    builtin: true
+    label: Administrator
     permissions:
       - customers:write
       - customers:read
@@ -17,8 +22,20 @@ roles:
       - shards:write
       - shards:read
       - ops:write
+      - access:read
+      - access:write
+      - postbacks:read
+      - postbacks:write
+      - campaigns:archive
+      - campaigns:delete
+      - exports:read
+      - exports:run
+      - team:read
+      - team:write
   M:
     scope: customer
+    builtin: true
+    label: Manager
     permissions:
       - customers:write
       - customers:read
@@ -27,40 +44,75 @@ roles:
       - brands:write
       - brands:read
       - audit:read
+      - postbacks:read
+      - postbacks:write
+      - campaigns:archive
+      - exports:read
+      - exports:run
+      - team:read
+      - team:write
   U:
     scope: customer
+    builtin: true
+    label: User
     permissions:
       - campaigns:write
       - campaigns:read
       - customers:read
       - brands:write
       - brands:read
+      - postbacks:read
+      - postbacks:write
+      - exports:read
+      - exports:run
   B:
     scope: team
+    builtin: true
+    label: Buyer
     permissions:
       - campaigns:read:masked
       - campaigns:pause
+      - team:read
   TL:
     scope: team
+    builtin: true
+    label: Team lead
     permissions:
       - campaigns:read
       - campaigns:write
       - campaigns:pause
+      - campaigns:archive
       - customers:read
       - billing:read
+      - postbacks:read
+      - postbacks:write
+      - exports:read
+      - exports:run
+      - team:read
+      - team:write
   MB:
     scope: team
+    builtin: true
+    label: Media buyer
     permissions:
       - campaigns:read
       - campaigns:write
       - customers:read
+      - postbacks:read
+      - postbacks:write
+      - exports:read
+      - team:read
   S:
     scope: global
+    builtin: true
+    label: Support
     permissions:
       - campaigns:read:masked
       - audit:read
   P:
     scope: customer
+    builtin: true
+    label: Publisher
     permissions:
       - supply:read:scoped
       - customers:read

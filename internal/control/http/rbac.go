@@ -26,6 +26,16 @@ const (
 	PermRtbRead              = "rtb:read"
 	PermRtbWrite             = "rtb:write"
 	PermSupplyReadScoped     = "supply:read:scoped"
+	PermAccessRead           = "access:read"
+	PermAccessWrite          = "access:write"
+	PermPostbacksRead        = "postbacks:read"
+	PermPostbacksWrite       = "postbacks:write"
+	PermCampaignsArchive     = "campaigns:archive"
+	PermCampaignsDelete      = "campaigns:delete"
+	PermExportsRead          = "exports:read"
+	PermExportsRun           = "exports:run"
+	PermTeamRead             = "team:read"
+	PermTeamWrite            = "team:write"
 )
 
 const (
@@ -51,6 +61,7 @@ var rolePermissions = map[string][]string{
 		"users:write",
 		"shards:write", "shards:read",
 		"rtb:write", "rtb:read",
+		PermAccessRead, PermAccessWrite,
 	},
 	RoleManager: {
 		"customers:write", "customers:read",

@@ -9,6 +9,7 @@ import (
 )
 
 type PostbackPayload struct {
+	SigningSecret  []byte    `json:"-"`
 	CustomerID     uuid.UUID `json:"customer_id"`
 	CampaignID     uuid.UUID `json:"campaign_id"`
 	ClickID        string    `json:"click_id"`

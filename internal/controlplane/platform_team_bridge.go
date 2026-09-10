@@ -6,7 +6,6 @@ import (
 	"strings"
 	"time"
 
-	ctrlhttp "ad-event-processor/internal/control/http"
 	"ad-event-processor/internal/platformadmin"
 
 	"github.com/google/uuid"
@@ -115,12 +114,7 @@ func (s *Service) teamGovernance() *platformadmin.Governance {
 }
 
 func (s *Service) NormalizeTeamRole(role string) (string, error) {
-	switch ctrlhttp.NormalizeRole(role) {
-	case ctrlhttp.RoleTeamLead, ctrlhttp.RoleMediaBuyer, ctrlhttp.RoleBuyer:
-		return ctrlhttp.NormalizeRole(role), nil
-	default:
-		return "", errValidation("role must be TL, MB, or B")
-	}
+	return s.ValidateAssignableRole(role)
 }
 
 func (s *Service) ErrCustomerNotFound() error { return ErrCustomerNotFound }
@@ -141,8 +135,8 @@ func (s *Service) MapCampaignNotFound(err error) error {
 	return mapNotFound(err, ErrCampaignNotFound)
 }
 
-func (s *Service) InviteTeamMember(ctx context.Context, customerID uuid.UUID, email, role string) (platformadmin.TeamMemberDTO, error) {
-	return s.teamGovernance().InviteTeamMember(ctx, customerID, email, role)
+func (s *Service) InviteTeamMember(ctx context.Context, customerID uuid.UUID, email, role string, teamID *uuid.UUID) (platformadmin.TeamMemberDTO, error) {
+	return s.teamGovernance().InviteTeamMember(ctx, customerID, email, role, teamID)
 }
 
 func (s *Service) UpdateTeamMember(ctx context.Context, customerID, userID uuid.UUID, in platformadmin.UpdateTeamMemberRequest) (platformadmin.TeamMemberDTO, error) {

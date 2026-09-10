@@ -47,7 +47,9 @@ import { OpsPage } from '@/pages/ops_page';
 import { OpsReconPage } from '@/pages/ops_recon_page';
 import { OpsRumPage } from '@/pages/ops_rum_page';
 import { OpsShardsPage } from '@/pages/ops_shards_page';
+import { AccessRolesPage } from '@/domains/access/access_roles';
 import { SettingsPage } from '@/pages/settings_page';
+import { SettingsLicensePage } from '@/pages/settings_license_page';
 import { TeamPage } from '@/pages/team_page';
 import { RouteErrorPage } from '@/pages/route_error_page';
 
@@ -126,7 +128,10 @@ export function AppRoutes() {
           <Route element={<OpsConsentPage />} path="ops/consent" />
           <Route element={<OpsRumPage />} path="ops/rum" />
           <Route element={<OpsMetricsPage />} path="ops/metrics" />
-          <Route element={<SettingsPage />} path="settings" />
+          <Route element={<SettingsPage />} path="settings">
+            <Route element={<SettingsLicensePage />} index />
+            <Route element={<AccessRolesPage />} path="access" />
+          </Route>
           <Route element={<Navigate replace to="/settings" />} path="settings/license" />
           <Route element={<TeamPage />} path="team" />
           <Route element={<AuditPage />} path="audit" />

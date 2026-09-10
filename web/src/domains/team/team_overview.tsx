@@ -39,6 +39,13 @@ import {
 import { DropdownMenuItem } from '@/components/ui/dropdown-menu';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from '@/components/ui/select';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import type { TeamBudgetApproval, TeamMember, TeamOverview } from '@/api/types';
 import { displayTimestamp } from '@/lib/display';
@@ -55,6 +62,11 @@ const ROSTER_TABS: { id: TeamRosterTab; label: string }[] = [
   { id: 'members', label: 'Members' },
   { id: 'approvals', label: 'Budget approvals' },
 ];
+
+export type TeamRoleOption = {
+  code: string;
+  label: string;
+};
 
 export type TeamOverviewViewProps = {
   rosterTab: TeamRosterTab;
@@ -73,6 +85,7 @@ export type TeamOverviewViewProps = {
   draftCustomerId: string;
   draftInviteEmail: string;
   draftInviteRole: string;
+  teamRoleOptions: TeamRoleOption[];
   memberDrafts: Record<string, TeamMemberEditDraft>;
   fetching: boolean;
   membersFetching: boolean;
@@ -128,6 +141,7 @@ export function TeamOverviewView({
   draftCustomerId,
   draftInviteEmail,
   draftInviteRole,
+  teamRoleOptions,
   memberDrafts,
   fetching,
   membersFetching,
@@ -260,11 +274,18 @@ export function TeamOverviewView({
               />
             </FilterField>
             <FilterField htmlFor="team-invite-role" label="Role">
-              <Input
-                id="team-invite-role"
-                value={draftInviteRole}
-                onChange={(event) => onDraftInviteRoleChange(event.target.value)}
-              />
+              <Select onValueChange={onDraftInviteRoleChange} value={draftInviteRole}>
+                <SelectTrigger className="w-full" id="team-invite-role">
+                  <SelectValue placeholder="Select role" />
+                </SelectTrigger>
+                <SelectContent>
+                  {teamRoleOptions.map((option) => (
+                    <SelectItem key={option.code} value={option.code}>
+                      {option.label ? `${option.code} — ${option.label}` : option.code}
+                    </SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
             </FilterField>
           </DirectoryFilterForm>
           <DialogFooter>
@@ -324,14 +345,24 @@ export function TeamOverviewView({
                     <TableRow key={memberId || member.email}>
                       <TableCell>{member.email ?? ''}</TableCell>
                       <TableCell>
-                        <Input
-                          aria-label={`Role for ${member.email ?? memberId}`}
-                         
+                        <Select
+                          onValueChange={(value) => onMemberDraftChange(memberId, { role: value })}
                           value={draft.role}
-                          onChange={(event) =>
-                            onMemberDraftChange(memberId, { role: event.target.value })
-                          }
-                        />
+                        >
+                          <SelectTrigger
+                            aria-label={`Role for ${member.email ?? memberId}`}
+                            className="w-full"
+                          >
+                            <SelectValue placeholder="Role" />
+                          </SelectTrigger>
+                          <SelectContent>
+                            {teamRoleOptions.map((option) => (
+                              <SelectItem key={option.code} value={option.code}>
+                                {option.label ? `${option.code} — ${option.label}` : option.code}
+                              </SelectItem>
+                            ))}
+                          </SelectContent>
+                        </Select>
                       </TableCell>
                       <TableCell>{member.campaigns_owned ?? ''}</TableCell>
                       <TableCell>

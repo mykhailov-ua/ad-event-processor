@@ -77,6 +77,8 @@ tags:
     description: Scheduled report delivery cron jobs
   - name: settings
     description: Platform install configuration
+  - name: access
+    description: RBAC role constructor and capability catalog
   - name: support
     description: Operator feedback to vendor
   - name: team
@@ -640,6 +642,16 @@ paths:
     $ref: paths/platform.yaml#/paths/~1api~1v1~1report-schedules
   /api/v1/report-schedules/{id}:
     $ref: paths/platform.yaml#/paths/~1api~1v1~1report-schedules~1{id}
+  /api/v1/access/catalog:
+    $ref: paths/access.yaml#/paths/~1api~1v1~1access~1catalog
+  /api/v1/access/roles:
+    $ref: paths/access.yaml#/paths/~1api~1v1~1access~1roles
+  /api/v1/access/roles.yaml:
+    $ref: paths/access.yaml#/paths/~1api~1v1~1access~1roles.yaml
+  /api/v1/access/roles/validate:
+    $ref: paths/access.yaml#/paths/~1api~1v1~1access~1roles~1validate
+  /api/v1/access/roles/reload:
+    $ref: paths/access.yaml#/paths/~1api~1v1~1access~1roles~1reload
   /api/v1/settings/platform:
     $ref: paths/platform.yaml#/paths/~1api~1v1~1settings~1platform
   /api/v1/settings/platform/apply:
