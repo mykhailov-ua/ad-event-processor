@@ -2,10 +2,12 @@ package ingest
 
 import (
 	"context"
+	"path/filepath"
 	"testing"
 
 	"ad-event-processor/internal/domain"
 	"ad-event-processor/internal/licensing"
+	"ad-event-processor/internal/licensing/entitlements"
 
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
@@ -61,19 +63,22 @@ func TestLicenseRPSFilter_burstConsumesCredits(t *testing.T) {
 	assert.Equal(t, uint64(0), globalDeploymentRPSBurstRemainForTests())
 }
 
-func TestLicenseRPSFilter_pilotCap(t *testing.T) {
+func TestLicenseRPSFilter_pilotUnlimitedFromSKU(t *testing.T) {
 	resetGlobalDeploymentRPSForTests()
 
-	const pilotRPS = uint64(5000)
-	f := NewLicenseRPSFilter(&stubLicenseRPSRegistry{maxRPS: pilotRPS})
+	doc, err := entitlements.LoadSKUFile(filepath.Join("..", "..", "deploy", "vendor", "sku.yaml"))
+	require.NoError(t, err)
+	sku, err := doc.GetSKU(entitlements.SKUCodePilot)
+	require.NoError(t, err)
+	require.Zero(t, sku.Limits.MaxRPS, "pilot SKU must not cap ingest RPS")
+
+	f := NewLicenseRPSFilter(&stubLicenseRPSRegistry{maxRPS: sku.Limits.MaxRPS})
 	ctx := context.Background()
 	evt := &domain.Event{}
 
-	ceil := licenseRPSSoftCeil(pilotRPS)
-	for i := uint64(0); i < ceil; i++ {
-		require.NoError(t, f.Check(ctx, evt), "request %d", i+1)
+	for range 100 {
+		require.NoError(t, f.Check(ctx, evt), "max_rps=0 must not rate-limit ingest")
 	}
-	require.ErrorIs(t, f.Check(ctx, evt), ErrRateLimitExceeded)
 }
 
 func TestLicenseRPSFilter_zeroUnlimited(t *testing.T) {

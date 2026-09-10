@@ -160,7 +160,7 @@
     </table>
     <p>
       Перевірка ліцензії — offline Ed25519 JWT файл на диску; без регулярного phone-home для ingest tokens.
-      Feature flags і RPS caps закодовані в JWT per SKU.
+      Feature flags, host activations і export limits закодовані в JWT per SKU. Кампанії та обсяг подій не обмежуються ліцензією, коли в каталозі стоїть 0.
     </p>
 
     <h2 id="click-path">Що відбувається на кліку</h2>
@@ -279,7 +279,7 @@
       <li>Edge і XDP можуть дропати відомі bad IP; rotating proxies все одно можуть дійти до tracker — там працюють L7 rules.</li>
       <li><code>BROKER_SHADOW_MODE</code> shadow-ить лише processor CH ingest; tracker WAL writes live, коли увімкнено broker-primary.</li>
       <li><code>LOCAL_QUOTA_MODE=shadow</code> проганяє local quanta, але все одно виконує sync Redis Lua; лише <code>live</code> може його пропустити, коли eligible.</li>
-      <li>SKU JWT caps (RPS, hosts, tenants, features) застосовуються — див. <a href="index.html#pricing">тарифи</a> і <code>deploy/vendor/sku.yaml</code>.</li>
+      <li>Обмеження JWT SKU (хости, tenants, features, export chunk) застосовуються — див. <a href="index.html#pricing">тарифи</a> і <code>deploy/vendor/sku.yaml</code>.</li>
     </ul>
 
     <h2 id="ports">Порти (compose defaults)</h2>

@@ -1616,9 +1616,6 @@ html[data-theme="light"] .site-pricing-badge {
   color: var(--site-muted);
   font-size: 13px;
   line-height: 1.35;
-  white-space: nowrap;
-  overflow: hidden;
-  text-overflow: ellipsis;
 }
 
 .site-pricing-card__divider {

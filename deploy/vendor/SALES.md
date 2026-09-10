@@ -25,7 +25,7 @@ Billable dimensions in SKU schema:
 
 | Limit | Meaning |
 | :--- | :--- |
-| `max_rps` | Peak ingest RPS ceiling (tracker filter) |
+| `max_rps` | `0` = no license ingest cap; throughput is hardware-bound |
 | `max_activations` | Distinct host fingerprints allowed (`bind.mode: multi`) |
 | `max_regions` | Multi-region compose profile cap |
 | `max_tenants` | Workspace / team tenant cap |
@@ -35,7 +35,7 @@ Billable dimensions in SKU schema:
 | `max_events_per_month: 0` | No license cap on event volume |
 | `max_requests_per_day: 0` | No daily request cap in schema |
 
-Quote buyers on **peak RPS** and **host count** (activations). Campaign and event volume are not SKU-gated when limits are zero.
+Quote buyers on **feature tier** and **host count** (activations). Campaign, event volume, and ingest RPS are not SKU-gated when catalog limits are zero.
 
 ---
 
@@ -46,7 +46,7 @@ Quote buyers on **peak RPS** and **host count** (activations). Campaign and even
 | Solo affiliate, rules-only fraud | `starter` | No ClickHouse ML workers; `/track` + S2S postbacks |
 | Media buyer, CPA waste reduction | `pro` | IVT detector on buyer ClickHouse (`ivt_ml_detector`) |
 | OpenRTB + ML antifraud at scale | `network` | OpenRTB engine, ML boost, multi-region, intel feeds |
-| Slot migration + high RPS | `scale` | `slot_migration`, ML boost, residential/moderator intel |
+| Slot migration + ML intel | `scale` | `slot_migration`, ML boost, residential/moderator intel |
 | Multi-region footprint | `network` | `multi_region`, OpenRTB, 10 hosts |
 | Edge XDP + platform API sync | `enterprise` | `ebpf_xdp_edge`, `ad_platform_campaign_api` |
 
@@ -58,15 +58,15 @@ OpenRTB starts at **Scale**. Most buyers use click URL + S2S `/track` only.
 
 ## SKU table (price and capacity)
 
-| SKU | USDT/mo | Valid days | Grace days | Hosts (`max_activations`) | Peak RPS | Regions | Tenants | API keys |
-| :--- | ---: | ---: | ---: | ---: | ---: | ---: | ---: | ---: |
-| `starter` | 129 | 30 | 7 | 1 | 10k | 1 | 3 | 5 |
-| `pro` | 399 | 30 | 7 | 1 | 25k | 1 | 10 | 10 |
-| `scale` | 749 | 30 | 7 | 3 | 60k | 1 | 25 | 25 |
-| `network` | 1,399 | 30 | 7 | 10 | 120k | 3 | 50 | 50 |
-| `enterprise` | 2,999+ | 30 | 7 | 99 | custom | 99 | 999999 | 999 |
-| `pilot` | 0 | 14 | 7 | 1 | 5k | 1 | 1 | 3 |
-| `license` | internal | 30 | 7 | 999 | unlimited | 99 | 999999 | 999 |
+| SKU | USDT/mo | Valid days | Grace days | Hosts (`max_activations`) | Regions | Tenants | API keys |
+| :--- | ---: | ---: | ---: | ---: | ---: | ---: | ---: |
+| `starter` | 129 | 30 | 7 | 1 | 1 | 3 | 5 |
+| `pro` | 399 | 30 | 7 | 1 | 1 | 10 | 10 |
+| `scale` | 749 | 30 | 7 | 3 | 1 | 25 | 25 |
+| `network` | 1,399 | 30 | 7 | 10 | 3 | 50 | 50 |
+| `enterprise` | 2,999+ | 30 | 7 | 99 | 99 | 999999 | 999 |
+| `pilot` | 0 | 10 | 7 | 1 | 1 | 1 | 3 |
+| `license` | internal | 30 | 7 | 999 | 99 | 999999 | 999 |
 
 Export chunk limits (`max_export_chunk_bytes`):
 
@@ -197,7 +197,7 @@ go run ./cmd/license-issue \
 ```
 
 4. Buyer applies JWT (Admin Settings or `license-apply`). No restart; entitlements reload immediately.
-5. Pilot limits: 10 days, 5k RPS, 1 host, rules-only fraud (`margin_guard` only among ML/RTB flags).
+5. Pilot limits: 10 days, 1 host, rules-only fraud (`margin_guard` only among ML/RTB flags); no IVT/ML/OpenRTB.
 6. Conversion: on USDT payment, re-issue paid SKU with **same** `deployment_id`:
 
 ```bash
@@ -361,7 +361,7 @@ Module PU add-ons (when feature enabled): OpenRTB, eBPF XDP, IVT, ML boost coeff
 
 | Surface | Check |
 | :--- | :--- |
-| Tracker ingest | RPS limit, `IngestAllowed`, residential/moderator intel flags |
+| Tracker ingest | `IngestAllowed`, feature gates (residential/moderator intel, OpenRTB, etc.) |
 | OpenRTB `/openrtb/bid` | `OpenRTBAllowed(state, ent)` |
 | Edge XDP | `EbpfEdgeAllowed` at daemon start |
 | Processor ML | `MlFraudBoostEnabled` on deployment snapshot |

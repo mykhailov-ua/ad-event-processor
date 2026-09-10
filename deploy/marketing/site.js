@@ -157,7 +157,6 @@
       install_script_url: raw.install_script_url || "https://bidshard.com/get.sh",
       contacts: raw.contacts || null,
       pilot_days: raw.pilot_days || 10,
-      pilot_rps: raw.pilot_rps || 5000,
       tco: raw.tco || null,
       architecture: raw.architecture || null,
       offer: raw.offer || null,
@@ -579,15 +578,7 @@
           "</h3>" +
           priceLine +
           "</div>" +
-          '<div class="site-hardware-card__rps">' +
-          '<span class="site-hardware-card__rps-value">' +
-          escapeHtml(tier.rps_range || "") +
-          "</span>" +
-          '<span class="site-hardware-card__rps-label">' +
-          escapeHtml(labels.rps_range || "Expected RPS") +
-          "</span></div>" +
           '<dl class="site-hardware-card__specs">' +
-          renderHardwareSpecRow(labels.license_peak || "License peak", tier.license_peak) +
           renderHardwareSpecRow(labels.hosts || "Hosts", tier.hosts) +
           renderHardwareSpecRow(labels.cpu || "CPU", tier.cpu) +
           renderHardwareSpecRow(labels.ram || "RAM", tier.ram) +
@@ -824,7 +815,6 @@
 
   function wirePilotCopy(config) {
     var days = config.pilot_days || 10;
-    var rps = config.pilot_rps || 5000;
     var offerLinkText = uiText(config, "offer_link_text", "public offer");
     var offerHref = (config.offer && config.offer.url) || "offer.html";
     var badge = document.querySelector("[data-site-pilot-badge]");
@@ -855,13 +845,10 @@
       );
     }
     document.querySelectorAll(".KRps1ServerRulesOnlyAntifraudMessageUsOnTelegramWithExpectedTrafficVpsSpec").forEach(function (el) {
-      el.textContent = formatTemplate(
-        uiText(
-          config,
-          "pilot_cta_subline",
-          "{rps} peak RPS · 1 server · full click routing · message us on Telegram with expected traffic and VPS spec"
-        ),
-        { rps: rps.toLocaleString("en-US") }
+      el.textContent = uiText(
+        config,
+        "pilot_cta_subline",
+        "1 server · full click routing · message us on Telegram with expected traffic and VPS spec"
       );
     });
   }

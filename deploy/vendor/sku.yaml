@@ -23,7 +23,7 @@ skus:
       max_activations: 1
       max_regions: 1
       max_api_keys: 5
-      max_rps: 10000
+      max_rps: 0
       max_requests_per_day: 0
       max_active_campaigns: 0
       max_tenants: 3
@@ -54,7 +54,7 @@ skus:
       max_activations: 1
       max_regions: 1
       max_api_keys: 10
-      max_rps: 25000
+      max_rps: 0
       max_requests_per_day: 0
       max_active_campaigns: 0
       max_tenants: 10
@@ -85,7 +85,7 @@ skus:
       max_activations: 3
       max_regions: 1
       max_api_keys: 25
-      max_rps: 60000
+      max_rps: 0
       max_requests_per_day: 0
       max_active_campaigns: 0
       max_tenants: 25
@@ -116,7 +116,7 @@ skus:
       max_activations: 10
       max_regions: 3
       max_api_keys: 50
-      max_rps: 120000
+      max_rps: 0
       max_requests_per_day: 0
       max_active_campaigns: 0
       max_tenants: 50
@@ -147,7 +147,7 @@ skus:
       max_activations: 99
       max_regions: 99
       max_api_keys: 999
-      max_rps: 999999999
+      max_rps: 0
       max_requests_per_day: 0
       max_active_campaigns: 0
       max_tenants: 999999
@@ -179,7 +179,7 @@ skus:
       max_activations: 1
       max_regions: 1
       max_api_keys: 3
-      max_rps: 5000
+      max_rps: 0
       max_requests_per_day: 0
       max_active_campaigns: 0
       max_tenants: 1
@@ -209,7 +209,7 @@ skus:
       max_activations: 999
       max_regions: 99
       max_api_keys: 999
-      max_rps: 999999999
+      max_rps: 0
       max_requests_per_day: 0
       max_active_campaigns: 0
       max_tenants: 999999

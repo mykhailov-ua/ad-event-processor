@@ -160,7 +160,7 @@
     </table>
     <p>
       License verification uses an offline Ed25519 JWT file on disk — no recurring phone-home to issue ingest tokens.
-      Feature flags and RPS caps are encoded in the JWT per SKU.
+      Feature flags, host activations, and export limits are encoded in the JWT per SKU. Campaign and event volume are not license-capped when catalog values are zero.
     </p>
 
     <h2 id="click-path">What happens on a click</h2>
@@ -279,7 +279,7 @@
       <li>Edge and XDP can drop known bad IPs; rotating proxies may still reach the tracker — L7 rules apply there.</li>
       <li><code>BROKER_SHADOW_MODE</code> shadows processor CH ingest only; tracker WAL writes are live when broker-primary is enabled.</li>
       <li><code>LOCAL_QUOTA_MODE=shadow</code> exercises local quanta but still runs sync Redis Lua; only <code>live</code> can skip it when eligible.</li>
-      <li>SKU JWT caps (RPS, hosts, tenants, features) are enforced — see <a href="index.html#pricing">pricing</a> and <code>deploy/vendor/sku.yaml</code>.</li>
+      <li>SKU JWT limits (hosts, tenants, features, export chunk size) are enforced — see <a href="index.html#pricing">pricing</a> and <code>deploy/vendor/sku.yaml</code>.</li>
     </ul>
 
     <h2 id="ports">Ports (compose defaults)</h2>

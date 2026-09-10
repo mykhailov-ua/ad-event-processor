@@ -97,13 +97,13 @@ Telegram: [SUPPORT_TELEGRAM]
 
 ## 5. License tiers, limits, and features
 
-5.1. Current tiers, monthly fees, RPS ceilings, host activation limits, and feature flags are defined in the published price list and the canonical SKU catalog (`deploy/vendor/sku.yaml` in the product repository). Licensor may update list prices for **future** purchases by publishing a new price list; existing prepaid periods are governed by the invoice.
+5.1. Current tiers, monthly fees, host activation limits, and feature flags are defined in the published price list and the canonical SKU catalog (`deploy/vendor/sku.yaml` in the product repository). Licensor may update list prices for **future** purchases by publishing a new price list; existing prepaid periods are governed by the invoice.
 
-5.2. **Enforced limits** include, per SKU: peak ingest RPS, `max_activations` (host bindings), regions, tenants, API keys, export chunk size, and boolean feature gates (OpenRTB, ML fraud boost, IVT detector, eBPF edge, multi-region, etc.).
+5.2. **Enforced limits** include, per SKU: `max_activations` (host bindings), regions, tenants, API keys, export chunk size, and boolean feature gates (OpenRTB, ML fraud boost, IVT detector, eBPF edge, multi-region, etc.).
 
-5.3. **Unlimited dimensions** when catalog value is `0`: `max_active_campaigns` and `max_events_per_month` are not license-capped on self-hosted installs; practical limits are hardware and SKU RPS.
+5.3. **Unlimited dimensions** when catalog value is `0`: `max_active_campaigns`, `max_events_per_month` are not license-capped on self-hosted installs; practical ingest throughput is bounded by Licensee hardware and enabled feature set.
 
-5.4. Licensor may issue **pilot** licenses (`pilot` SKU): typically 14 calendar days, reduced RPS, rules-only fraud features unless otherwise agreed in writing.
+5.4. Licensor may issue **pilot** licenses (`pilot` SKU): typically 10 calendar days, rules-only fraud features (no IVT/ML/OpenRTB) unless otherwise agreed in writing.
 
 5.5. **Grace period:** after JWT `exp`, a default **7-day grace** (`grace_days`) may allow continued ingest before `EXPIRED` state blocks ingest. Exact behavior is encoded in the License Token and product licensing module.
 
@@ -188,7 +188,7 @@ Reverse engineering is prohibited **to the maximum extent permitted by applicabl
 
 10.2. Without limiting the foregoing, Licensor does **not** warrant:
 - that the Software will detect or prevent all fraud, bots, or invalid traffic;
-- hot-path latency or RPS on Licensee hardware;
+- hot-path latency on Licensee hardware;
 - compatibility with every ad network, CDN, or tracker integration;
 - error-free analytics or financial reconciliation;
 - that ML or IVT features operate in real time on every event (batch sidecars are documented in product materials).
@@ -378,13 +378,13 @@ Reverse engineering is prohibited **to the maximum extent permitted by applicabl
 
 ## 5. Тарифи, ліміти та функції
 
-5.1. Актуальні тарифи, RPS, кількість хостів та функції — у прайсі та `sku.yaml`. Зміна цін стосується **майбутніх** покупок.
+5.1. Актуальні тарифи, кількість хостів та функції — у прайсі та `sku.yaml`. Зміна цін стосується **майбутніх** покупок.
 
-5.2. Обмеження SKU: peak RPS, `max_activations`, регіони, тенанти, API-ключі, розмір експорту, прапорці функцій (OpenRTB, ML, IVT, eBPF, multi-region тощо).
+5.2. Обмеження SKU: `max_activations`, регіони, тенанти, API-ключі, розмір експорту, прапорці функцій (OpenRTB, ML, IVT, eBPF, multi-region тощо).
 
-5.3. При значенні `0` у каталозі: `max_active_campaigns` та `max_events_per_month` ліцензією не обмежуються; практичні межі — залізо та RPS.
+5.3. При значенні `0` у каталозі: `max_active_campaigns``max_events_per_month` ліцензією не обмежуються; практичний throughput — залізо та увімкнений feature set.
 
-5.4. **Пілот:** зазвичай 14 днів, знижений RPS, обмежений набір функцій.
+5.4. **Пілот:** зазвичай 10 днів, rules-only antifraud (без IVT/ML/OpenRTB), обмежений набір функцій.
 
 5.5. **Grace:** після `exp` JWT — типово **7 днів** grace перед блокуванням ingest.
 
@@ -449,7 +449,7 @@ bash scripts/install/ad-event-processor-install.sh up
 
 10.1. ПЗ надається **«ЯК Є»** та **«ЗА НАЯВНОСТІ»**, без будь-яких гарантій, включно з придатністю для мети, точністю та безперебійністю.
 
-10.2. Ліцензіар **не** гарантує: повне блокування фроду; latency/RPS на залізі Замовника; сумісність з усіма мережами; безпомилкову аналітику; real-time ML на кожній події.
+10.2. Ліцензіар **не** гарантує: повне блокування фроду; latency на залізі Замовника; сумісність з усіма мережами; безпомилкову аналітику; real-time ML на кожній події.
 
 10.3. Технічні SLA в документації — **цілі розробки**, не договірні гарантії, якщо не погоджено письмово.
 
@@ -540,7 +540,7 @@ bash scripts/install/ad-event-processor-install.sh up
 
 Before payment or pilot issuance, Licensee must be able to:
 1. Open this document in full.
-2. See SKU, price, period, and host/RPS limits.
+2. See SKU, price, period, host limits, and feature flags.
 3. Tick: "I have read and accept the Public Offer Agreement."
 4. For Consumers: receive statutory withdrawal notice where required.
 

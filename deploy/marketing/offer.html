@@ -117,10 +117,10 @@
     <p class="offer-clause">4.3. The Agreement is deemed concluded at the moment Licensor <strong>receives</strong> Acceptance (CCU Article 638), evidenced by payment confirmation, issuance log, or CRM timestamp.</p>
     <p class="offer-clause">4.4. Licensee warrants that the person Accepting has authority to bind the organization.</p>
     <h2>5. License tiers, limits, and features</h2>
-    <p class="offer-clause">5.1. Current tiers, monthly fees, RPS ceilings, host activation limits, and feature flags are defined in the published price list and the canonical SKU catalog (<code>deploy/vendor/sku.yaml</code> in the product repository). Licensor may update list prices for <strong>future</strong> purchases by publishing a new price list; existing prepaid periods are governed by the invoice.</p>
-    <p class="offer-clause">5.2. <strong>Enforced limits</strong> include, per SKU: peak ingest RPS, <code>max_activations</code> (host bindings), regions, tenants, API keys, export chunk size, and boolean feature gates (OpenRTB, ML fraud boost, IVT detector, eBPF edge, multi-region, etc.).</p>
-    <p class="offer-clause">5.3. <strong>Unlimited dimensions</strong> when catalog value is <code>0</code>: <code>max_active_campaigns</code> and <code>max_events_per_month</code> are not license-capped on self-hosted installs; practical limits are hardware and SKU RPS.</p>
-    <p class="offer-clause">5.4. Licensor may issue <strong>pilot</strong> licenses (<code>pilot</code> SKU): typically 14 calendar days, reduced RPS, rules-only fraud features unless otherwise agreed in writing.</p>
+    <p class="offer-clause">5.1. Current tiers, monthly fees, host activation limits, and feature flags are defined in the published price list and the canonical SKU catalog (<code>deploy/vendor/sku.yaml</code> in the product repository). Licensor may update list prices for <strong>future</strong> purchases by publishing a new price list; existing prepaid periods are governed by the invoice.</p>
+    <p class="offer-clause">5.2. <strong>Enforced limits</strong> include, per SKU: <code>max_activations</code> (host bindings), regions, tenants, API keys, export chunk size, and boolean feature gates (OpenRTB, ML fraud boost, IVT detector, eBPF edge, multi-region, etc.).</p>
+    <p class="offer-clause">5.3. <strong>Unlimited dimensions</strong> when catalog value is <code>0</code>: <code>max_active_campaigns</code>, <code>max_events_per_month</code> are not license-capped on self-hosted installs; practical ingest throughput is bounded by Licensee hardware and enabled feature set.</p>
+    <p class="offer-clause">5.4. Licensor may issue <strong>pilot</strong> licenses (<code>pilot</code> SKU): typically 10 calendar days, rules-only fraud features (no IVT/ML/OpenRTB) unless otherwise agreed in writing.</p>
     <p class="offer-clause">5.5. <strong>Grace period:</strong> after JWT <code>exp</code>, a default <strong>7-day grace</strong> (<code>grace_days</code>) may allow continued ingest before <code>EXPIRED</code> state blocks ingest. Exact behavior is encoded in the License Token and product licensing module.</p>
     <p class="offer-clause">5.6. <strong>Renewal</strong> is effected by Licensor issuing a new JWT with the <strong>same</strong> <code>deployment_id</code>. Failure to renew before expiry + grace results in ingest block (<code>EXPIRED</code> / <code>REVOKED</code>).</p>
     <h2>6. Delivery and installation</h2>
@@ -179,7 +179,7 @@
     <p class="offer-clause">10.2. Without limiting the foregoing, Licensor does <strong>not</strong> warrant:</p>
     <ul>
     <li>that the Software will detect or prevent all fraud, bots, or invalid traffic;</li>
-    <li>hot-path latency or RPS on Licensee hardware;</li>
+    <li>hot-path latency on Licensee hardware;</li>
     <li>compatibility with every ad network, CDN, or tracker integration;</li>
     <li>error-free analytics or financial reconciliation;</li>
     <li>that ML or IVT features operate in real time on every event (batch sidecars are documented in product materials).</li>

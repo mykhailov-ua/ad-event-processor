@@ -8,7 +8,7 @@
     "pilot_headline": "Try free for {days} days",
     "pilot_disclaimer": "No credit card. Free {days}-day pilot. By requesting a pilot you accept the {offer_link}.",
     "offer_link_text": "public offer",
-    "pilot_cta_subline": "{rps} peak RPS · 1 server · full click routing · message us on Telegram with expected traffic and VPS spec",
+    "pilot_cta_subline": "1 server · full click routing · message us on Telegram with expected traffic and VPS spec",
     "calc_stack_today": "Your stack today",
     "calc_savings": "Estimated savings",
     "calc_presets_aria": "Stack presets",
@@ -43,7 +43,7 @@
     "intro": "Before you request a pilot or contact sales, confirm you accept the public offer for BidShard self-hosted software.",
     "points": [
       "License runs on your VPS or dedicated server; vendor does not host your traffic by default.",
-      "Pilot and paid tiers have limits on RPS, hosts, and features as stated in the JWT.",
+      "Paid tiers differ by hosts, API keys, export limits, and feature flags in the JWT. Campaign and event volume are unlimited — scale on your hardware.",
       "Monthly USDT fees are non-refundable after JWT delivery except vendor failure to deliver within 5 business days.",
       "You are responsible for lawful use, VPS security, backups, and end-user privacy on your deployment."
     ],
@@ -84,7 +84,6 @@
     "cta": "Open @bidshardsupportbot"
   },
   "pilot_days": 10,
-  "pilot_rps": 5000,
   "hero": {
     "eyebrow": "$ Ad Event Processor · self-hosted"
   },
@@ -94,7 +93,7 @@
       "title": "Pause campaigns before profit turns red",
       "body": "Compares spend to payout in ClickHouse. When ROI drops below your threshold, campaigns pause automatically — not just a Telegram alert you read after the budget is gone.",
       "metric": "Checked every ~5 min",
-      "footnote": "Hot-path limits still block spend on rejected traffic while Margin Guard watches the full picture."
+      "footnote": "Margin Guard watches ROI in ClickHouse while hot-path filters block spend on rejected traffic."
     }
   },
   "killers": [
@@ -146,13 +145,6 @@
       "title": "Monetize inventory, not just buy traffic",
       "body": "Live OpenRTB bid endpoint on your metal — take programmatic demand without bolting on a separate ad server stack.",
       "icon": "layers"
-    },
-    {
-      "id": "burst",
-      "tier": "Scale+",
-      "title": "Peak-day traffic without throwing away clicks",
-      "body": "Volume overdraft billing covers burst RPS over your tier cap — you pay for the spike, not a hard stop that kills profitable hours.",
-      "icon": "evidence"
     }
   ],
   "capabilities_compact": [
@@ -213,12 +205,16 @@
       "price": "Free",
       "period": "",
       "tagline": "Free trial on your VPS.",
-      "specs_label": "Pilot limits",
+      "specs_label": "Pilot includes",
       "features": [
-        "5k peak RPS · 1 server",
-        "Full click routing — test margin on your VPS first",
-        "Rule antifraud + Margin Guard on pilot limits",
-        "Hard HWID bind · 3 API keys"
+        "10-day trial · 1 server · hard HWID bind",
+        "Full /track routing + landing bundles on your VPS",
+        "Rule antifraud: geo, schedule, device, consent filters",
+        "Silent reject + fraud blacklist (rule tier)",
+        "Margin Guard ROI auto-pause",
+        "S2S postbacks + cost sync from ad networks",
+        "Admin console · 3 API keys · 1 tenant",
+        "Not included: IVT ML, ML fraud boost, OpenRTB, slot migration"
       ],
       "cta": "Request pilot",
       "featured": false,
@@ -230,13 +226,18 @@
       "price": "$129",
       "period": "/ month",
       "tagline": "Solo affiliates off cloud trackers.",
-      "specs_label": "Starter specifications",
+      "specs_label": "Starter — ingest & margin",
       "features": [
-        "10k peak RPS · 1 server",
-        "Silent reject — junk traffic does not eat budget",
-        "Margin Guard + cost sync from ad networks",
-        "5 API keys · 3 team tenants",
-        "Postbacks, CAPI, Telegram Mini App flows"
+        "Unlimited campaigns & events on your metal",
+        "Click routing, flows, landers, offer walls",
+        "Silent reject — 202 decoy, budget not debited",
+        "Rule antifraud + geo/schedule/device filters",
+        "Margin Guard + cost sync (25 ad networks)",
+        "S2S postbacks, Meta/Google/TikTok CAPI",
+        "Telegram Mini App flows",
+        "Smart alerts to Slack or Telegram",
+        "1 host · 5 API keys · 3 tenants",
+        "Report exports up to 5 MiB per chunk"
       ],
       "cta": "Choose Starter",
       "featured": false
@@ -247,12 +248,16 @@
       "price": "$399",
       "period": "/ month",
       "tagline": "Find revenue leaks in your own data.",
-      "specs_label": "Includes everything in Starter",
+      "specs_label": "Pro — analytics & audit",
       "features": [
-        "25k peak RPS · flexible host bind",
-        "IVT detector — spot bad patterns before they scale",
-        "Postback trail when conversions disappear",
-        "10 API keys · 10 tenants"
+        "Everything in Starter",
+        "IVT ML detector sidecar (ClickHouse batch)",
+        "Postback trail — hop-by-hop conversion audit",
+        "Fraud stream + silent reject analytics in CH",
+        "Multi-host license bind (same deployment)",
+        "Team RBAC across tenants",
+        "10 API keys · 10 tenants",
+        "Report exports up to 10 MiB per chunk"
       ],
       "cta": "Choose Pro",
       "featured": true,
@@ -264,12 +269,17 @@
       "price": "$749",
       "period": "/ month",
       "tagline": "High volume, same margin discipline.",
-      "specs_label": "Includes everything in Pro",
+      "specs_label": "Scale — ML intel & migration",
       "features": [
-        "60k peak RPS · slot migration without idle days",
-        "ML fraud boost — cut bad spend before it scales",
-        "Moderator intel — less wasted spend on reviewers",
-        "Peak burst billing — profitable spikes, not hard stops"
+        "Everything in Pro",
+        "ML fraud boost snapshot on hot path",
+        "Moderator intel feed (reviewer traffic signals)",
+        "External residential proxy intel on hot read",
+        "Slot migration — move shards without idle days",
+        "Fraud dispute evidence export bundles",
+        "Optional mmap broker WAL ingest path",
+        "3 host activations · 25 tenants · 25 API keys",
+        "Report exports up to 50 MiB per chunk"
       ],
       "cta": "Choose Scale",
       "featured": false
@@ -280,12 +290,16 @@
       "price": "$1,399",
       "period": "/ month",
       "tagline": "Scale GEO and inventory revenue.",
-      "specs_label": "Includes everything in Scale",
+      "specs_label": "Network — programmatic & GEO",
       "features": [
-        "120k peak RPS · OpenRTB live on your metal",
-        "3 regions — lower latency, fewer lost conversions",
-        "Dispute export bundles · 50 API keys",
-        "10 activations · multi-node ingest"
+        "Everything in Scale",
+        "OpenRTB live bid endpoint on your metal",
+        "RTB catalog + programmatic revenue path",
+        "Multi-region stack (3 regions in license)",
+        "Multi-node ingest across host activations",
+        "All Scale intel feeds + dispute exports",
+        "10 host activations · 50 tenants · 50 API keys",
+        "Report exports up to 100 MiB per chunk"
       ],
       "cta": "Choose Network",
       "featured": false
@@ -295,13 +309,17 @@
       "name": "Enterprise",
       "price": "$2,999+",
       "period": "/ month",
-      "tagline": "Custom limits when margin is mission-critical.",
-      "specs_label": "Includes everything in Network",
+      "tagline": "Edge scale when margin is mission-critical.",
+      "specs_label": "Enterprise — edge & automation",
       "features": [
-        "Custom RPS · up to 99 regions",
-        "eBPF edge — stop junk flood before it costs bandwidth",
-        "Campaign API — automate scale without headcount",
-        "Fingerprint bind · vendor SLA channel"
+        "Everything in Network",
+        "eBPF XDP edge — L4 junk drop before bandwidth bill",
+        "Campaign API sync (ad platform automation)",
+        "Up to 99 regions · 99 host activations",
+        "Fingerprint HWID bind for compliance-heavy installs",
+        "Vendor SLA channel + custom export limits",
+        "999 API keys · unlimited tenants (schema cap)",
+        "Report exports up to 1 GiB per chunk"
       ],
       "cta": "Contact us",
       "featured": false,
@@ -310,12 +328,10 @@
   ],
   "hardware_sizing": {
     "eyebrow": "Hardware sizing",
-    "title": "Expected RPS and metal per tier",
-    "subtitle": "License peak is the enforced cap. Sustained /track throughput depends on filter depth, postbacks, and whether Redis, Postgres, and ClickHouse share one VPS or split nodes.",
-    "footnote": "Ranges assume amd64, NVMe, and single-vps install profile unless noted. Enable IVT, ML boost, OpenRTB, or eBPF edge with extra CPU/RAM headroom above the band.",
+    "title": "Recommended metal per tier",
+    "subtitle": "Throughput is bounded by your VPS or dedicated fleet, filter depth, and which optional sidecars you enable (IVT, ML boost, OpenRTB, eBPF). License does not cap campaigns, events, or ingest rate.",
+    "footnote": "amd64 + NVMe assumed. Split ClickHouse or Redis when sidecars and reporting load the box.",
     "labels": {
-      "rps_range": "Expected RPS",
-      "license_peak": "License peak",
       "hosts": "Hosts",
       "cpu": "CPU",
       "ram": "RAM",
@@ -326,68 +342,56 @@
       {
         "code": "pilot",
         "plan": "Pilot",
-        "rps_range": "1k–5k",
-        "license_peak": "5k peak",
         "hosts": "1 VPS",
         "cpu": "4 vCPU",
         "ram": "16 GB",
         "disk": "200 GB NVMe",
-        "profile": "single-vps: tracker + Redis + Postgres + ClickHouse"
+        "profile": "single-vps smoke test; full stack on one box"
       },
       {
         "code": "starter",
         "plan": "Starter",
-        "rps_range": "2k–10k",
-        "license_peak": "10k peak",
         "hosts": "1 VPS",
-        "cpu": "8 vCPU",
-        "ram": "32 GB",
-        "disk": "400 GB NVMe",
-        "profile": "single-vps; silent reject + postbacks on same box"
+        "cpu": "4 vCPU",
+        "ram": "16 GB",
+        "disk": "200 GB NVMe",
+        "profile": "solo link traffic; silent reject + postbacks"
       },
       {
         "code": "pro",
         "plan": "Pro",
-        "rps_range": "5k–25k",
-        "license_peak": "25k peak",
         "hosts": "1–2 nodes",
-        "cpu": "16 vCPU",
-        "ram": "64 GB",
-        "disk": "500 GB NVMe",
-        "profile": "IVT sidecar; split ClickHouse when sustained >15k"
+        "cpu": "8 vCPU",
+        "ram": "32 GB",
+        "disk": "400 GB NVMe",
+        "profile": "IVT sidecar; split ClickHouse under report load"
       },
       {
         "code": "scale",
         "plan": "Scale",
-        "rps_range": "15k–60k",
-        "license_peak": "60k peak",
         "hosts": "2–3 nodes",
         "cpu": "24 vCPU total",
         "ram": "128 GB total",
         "disk": "1 TB NVMe",
-        "profile": "Dedicated Redis; ML fraud boost; tracker/CH split"
+        "profile": "Dedicated Redis; ML boost; tracker/CH split"
       },
       {
         "code": "network",
         "plan": "Network",
-        "rps_range": "40k–120k",
-        "license_peak": "120k peak",
         "hosts": "3–10 nodes",
         "cpu": "32+ vCPU total",
         "ram": "256 GB total",
         "disk": "2 TB NVMe + regions",
-        "profile": "OpenRTB live; 3 regions; multi-node ingest"
+        "profile": "OpenRTB live; multi-region ingest"
       },
       {
         "code": "enterprise",
         "plan": "Enterprise",
-        "rps_range": "100k+",
-        "license_peak": "Custom cap",
-        "hosts": "Multi-region",
+        "hosts": "Multi-region fleet",
         "cpu": "Sized with vendor",
         "ram": "Sized with vendor",
         "disk": "Sized with vendor",
-        "profile": "eBPF edge, Campaign API, up to 99 regions"
+        "profile": "eBPF edge nodes + Campaign API; up to 99 regions"
       }
     ]
   },
@@ -425,7 +429,7 @@
     "NoCapOnCampaignCountOrEventVolumeYouScaleOnYourHardware": "No cap on campaign count or event volume — you scale on your hardware.",
     "PaidMonthlyInUsdtSelfHostedLicenseNotACloudSubscription": "Paid monthly in USDT. Self-hosted license you own.",
     "TryFreeFor10Days": "Try free for 10 days",
-    "KRps1ServerRulesOnlyAntifraudMessageUsOnTelegramWithExpectedTrafficVpsSpec": "5k RPS · 1 server · full click routing · message us on Telegram with expected traffic and VPS spec",
+    "KRps1ServerRulesOnlyAntifraudMessageUsOnTelegramWithExpectedTrafficVpsSpec": "1 server · full click routing · message us on Telegram with expected traffic and VPS spec",
     "OperationalInMinutes": "Operational in minutes",
     "Step1": "Step 1",
     "RequestPilot": "Request pilot",

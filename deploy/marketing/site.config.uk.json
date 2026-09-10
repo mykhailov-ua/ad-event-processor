@@ -8,7 +8,7 @@
     "pilot_headline": "Спробуйте {days} днів безкоштовно",
     "pilot_disclaimer": "Без банківської картки. Пілот на {days} днів без оплати. Запитуючи пілот, ви приймаєте {offer_link}.",
     "offer_link_text": "публічну оферту",
-    "pilot_cta_subline": "{rps} RPS пік · 1 сервер · повний click routing · напишіть у Telegram з очікуваним трафіком і характеристиками VPS",
+    "pilot_cta_subline": "1 сервер · повний click routing · напишіть у Telegram з очікуваним трафіком і характеристиками VPS",
     "calc_stack_today": "Ваш стек зараз",
     "calc_savings": "Орієнтовна економія",
     "calc_presets_aria": "Пресети витрат",
@@ -43,7 +43,7 @@
     "intro": "Перед запитом пілота або зверненням у продаж підтвердіть, що приймаєте публічну оферту на self-hosted ПЗ BidShard.",
     "points": [
       "Ліцензія працює на вашому VPS або dedicated-сервері; за замовчуванням вендор не хостить ваш трафік.",
-      "Пілот і платні тарифи мають обмеження RPS, хостів і функцій згідно з JWT.",
+      "Платні тарифи відрізняються хостами, API keys, export limits і feature flags у JWT. Обсяг обмежує ваше залізо, не ліцензія.",
       "Щомісячна оплата USDT не повертається після видачі JWT, окрім випадку, коли вендор не надав ліцензію протягом 5 робочих днів.",
       "Ви відповідаєте за законне використання, безпеку сервера, резервні копії та конфіденційність даних користувачів на своєму розгортанні."
     ],
@@ -84,7 +84,6 @@
     "cta": "Відкрити @bidshardsupportbot"
   },
   "pilot_days": 10,
-  "pilot_rps": 5000,
   "hero": {
     "eyebrow": "$ Ad Event Processor · self-hosted"
   },
@@ -146,13 +145,6 @@
       "title": "Монетизуйте inventory, а не лише купуйте трафік",
       "body": "OpenRTB bid endpoint live на вашому metal — programmatic demand без окремого ad server у стеку.",
       "icon": "layers"
-    },
-    {
-      "id": "burst",
-      "tier": "Scale+",
-      "title": "Піковий день без викинутих кліків",
-      "body": "Volume overdraft billing покриває burst RPS понад tier cap — платите за спайк, а не за hard stop, який вбиває прибуткові години.",
-      "icon": "evidence"
     }
   ],
   "capabilities_compact": [
@@ -212,13 +204,17 @@
       "name": "Pilot",
       "price": "Безкоштовно",
       "period": "",
-      "tagline": "Пілот на VPS перед оплатою.",
-      "specs_label": "Ліміти пілота",
+      "tagline": "Безкоштовний trial на вашому VPS.",
+      "specs_label": "Пілот включає",
       "features": [
-        "5k peak RPS · 1 сервер",
-        "Повний click routing — перевірте маржу на VPS",
-        "Rule antifraud + Margin Guard у лімітах пілота",
-        "Hard HWID bind · 3 API keys"
+        "10 днів trial · 1 сервер · жорсткий HWID bind",
+        "Повний /track routing + landing bundles на VPS",
+        "Rule antifraud: geo, schedule, device, consent filters",
+        "Silent reject + fraud blacklist (rule tier)",
+        "Margin Guard ROI auto-pause",
+        "S2S postbacks + cost sync з ad networks",
+        "Admin console · 3 API keys · 1 tenant",
+        "Не входить: IVT ML, ML fraud boost, OpenRTB, slot migration"
       ],
       "cta": "Запросити пілот",
       "featured": false,
@@ -230,13 +226,18 @@
       "price": "$129",
       "period": "/ міс",
       "tagline": "Solo affiliate без cloud-трекерів.",
-      "specs_label": "Характеристики Starter",
+      "specs_label": "Starter — ingest і маржа",
       "features": [
-        "10k peak RPS · 1 сервер",
-        "Silent reject — сміття не їсть бюджет",
-        "Margin Guard + cost sync з ad networks",
-        "5 API keys · 3 team tenants",
-        "Postbacks, CAPI, Telegram Mini App flows"
+        "Необмежені кампанії та події на вашому сервері",
+        "Click routing, flows, landers, offer walls",
+        "Silent reject — 202 decoy, бюджет не списується",
+        "Rule antifraud + geo/schedule/device filters",
+        "Margin Guard + cost sync (25 ad networks)",
+        "S2S postbacks, Meta/Google/TikTok CAPI",
+        "Telegram Mini App flows",
+        "Smart alerts у Slack або Telegram",
+        "1 host · 5 API keys · 3 tenants",
+        "Export звітів до 5 MiB на chunk"
       ],
       "cta": "Обрати Starter",
       "featured": false
@@ -247,12 +248,16 @@
       "price": "$399",
       "period": "/ міс",
       "tagline": "Знайдіть витоки revenue у своїх даних.",
-      "specs_label": "Усе з Starter",
+      "specs_label": "Pro — analytics і audit",
       "features": [
-        "25k peak RPS · flexible host bind",
-        "IVT detector — погані патерни до масштабу",
-        "Postback trail, коли зникають конверсії",
-        "10 API keys · 10 tenants"
+        "Усе з Starter",
+        "IVT ML detector sidecar (ClickHouse batch)",
+        "Postback trail — hop-by-hop conversion audit",
+        "Fraud stream + silent reject analytics у CH",
+        "Multi-host license bind (той самий deployment)",
+        "Team RBAC між tenants",
+        "10 API keys · 10 tenants",
+        "Export звітів до 10 MiB на chunk"
       ],
       "cta": "Обрати Pro",
       "featured": true,
@@ -264,12 +269,17 @@
       "price": "$749",
       "period": "/ міс",
       "tagline": "Великий обсяг — та сама дисципліна маржі.",
-      "specs_label": "Усе з Pro",
+      "specs_label": "Scale — ML intel і migration",
       "features": [
-        "60k peak RPS · slot migration без простою",
-        "ML fraud boost — ріжте поганий spend до масштабу",
-        "Moderator intel — менше зливу на ревʼюерів",
-        "Peak burst billing — прибуткові спайки, не hard stop"
+        "Усе з Pro",
+        "ML fraud boost snapshot на hot path",
+        "Moderator intel feed (сигнали reviewer traffic)",
+        "External residential proxy intel на hot read",
+        "Slot migration — перенос shards без простою",
+        "Fraud dispute evidence export bundles",
+        "Опційний mmap broker WAL ingest path",
+        "3 host activations · 25 tenants · 25 API keys",
+        "Export звітів до 50 MiB на chunk"
       ],
       "cta": "Обрати Scale",
       "featured": false
@@ -280,12 +290,16 @@
       "price": "$1 399",
       "period": "/ міс",
       "tagline": "Масштаб GEO і programmatic revenue.",
-      "specs_label": "Усе з Scale",
+      "specs_label": "Network — programmatic і GEO",
       "features": [
-        "120k peak RPS · OpenRTB live на вашому metal",
-        "3 regions — нижча latency, менше втрачених конверсій",
-        "Dispute export bundles · 50 API keys",
-        "10 activations · multi-node ingest"
+        "Усе з Scale",
+        "OpenRTB live bid endpoint на вашому metal",
+        "RTB catalog + programmatic revenue path",
+        "Multi-region stack (3 regions у ліцензії)",
+        "Multi-node ingest між host activations",
+        "Усі Scale intel feeds + dispute exports",
+        "10 host activations · 50 tenants · 50 API keys",
+        "Export звітів до 100 MiB на chunk"
       ],
       "cta": "Обрати Network",
       "featured": false
@@ -295,13 +309,17 @@
       "name": "Enterprise",
       "price": "$2 999+",
       "period": "/ міс",
-      "tagline": "Custom limits, коли маржа критична.",
-      "specs_label": "Усе з Network",
+      "tagline": "Edge-масштаб, коли маржа критична.",
+      "specs_label": "Enterprise — edge і automation",
       "features": [
-        "Custom RPS · до 99 regions",
-        "eBPF edge — стоп junk flood до рахунку за bandwidth",
-        "Campaign API — масштаб без лінійного росту штату",
-        "Fingerprint bind · vendor SLA channel"
+        "Усе з Network",
+        "eBPF XDP edge — L4 junk drop до bandwidth bill",
+        "Campaign API sync (automation ad platforms)",
+        "До 99 regions · 99 host activations",
+        "Fingerprint HWID bind для compliance-heavy installs",
+        "Vendor SLA channel + custom export limits",
+        "999 API keys · unlimited tenants (schema cap)",
+        "Export звітів до 1 GiB на chunk"
       ],
       "cta": "Звʼязатися з нами",
       "featured": false,
@@ -310,12 +328,10 @@
   ],
   "hardware_sizing": {
     "eyebrow": "Розмір сервера",
-    "title": "Очікуваний RPS і залізо під кожен тариф",
-    "subtitle": "License peak — жорстка верхня межа. Реальний /track throughput залежить від глибини фільтрів, postbacks і того, чи Redis, Postgres і ClickHouse на одному VPS чи на окремих нодах.",
-    "footnote": "Діапазони для amd64, NVMe і профілю single-vps, якщо не вказано інакше. IVT, ML boost, OpenRTB або eBPF edge — закладайте запас CPU/RAM над діапазоном.",
+    "title": "Рекомендоване залізо per tier",
+    "subtitle": "Throughput обмежує VPS або dedicated fleet, глибина фільтрів і які sidecars увімкнені (IVT, ML boost, OpenRTB, eBPF). Ліцензія не обмежує кампанії, події чи ingest rate.",
+    "footnote": "amd64 + NVMe. Розділяйте ClickHouse або Redis, коли sidecars і reporting навантажують машину.",
     "labels": {
-      "rps_range": "Очікуваний RPS",
-      "license_peak": "License peak",
       "hosts": "Хости",
       "cpu": "CPU",
       "ram": "RAM",
@@ -326,68 +342,56 @@
       {
         "code": "pilot",
         "plan": "Pilot",
-        "rps_range": "1k–5k",
-        "license_peak": "5k peak",
         "hosts": "1 VPS",
         "cpu": "4 vCPU",
         "ram": "16 GB",
         "disk": "200 GB NVMe",
-        "profile": "single-vps: tracker + Redis + Postgres + ClickHouse"
+        "profile": "single-vps smoke test; повний стек на одній машині"
       },
       {
         "code": "starter",
         "plan": "Starter",
-        "rps_range": "2k–10k",
-        "license_peak": "10k peak",
         "hosts": "1 VPS",
-        "cpu": "8 vCPU",
-        "ram": "32 GB",
-        "disk": "400 GB NVMe",
-        "profile": "single-vps; silent reject + postbacks на тій самій машині"
+        "cpu": "4 vCPU",
+        "ram": "16 GB",
+        "disk": "200 GB NVMe",
+        "profile": "solo link traffic; silent reject + postbacks"
       },
       {
         "code": "pro",
         "plan": "Pro",
-        "rps_range": "5k–25k",
-        "license_peak": "25k peak",
         "hosts": "1–2 ноди",
-        "cpu": "16 vCPU",
-        "ram": "64 GB",
-        "disk": "500 GB NVMe",
-        "profile": "IVT sidecar; окремий ClickHouse при sustained >15k"
+        "cpu": "8 vCPU",
+        "ram": "32 GB",
+        "disk": "400 GB NVMe",
+        "profile": "IVT sidecar; окремий ClickHouse під report load"
       },
       {
         "code": "scale",
         "plan": "Scale",
-        "rps_range": "15k–60k",
-        "license_peak": "60k peak",
         "hosts": "2–3 ноди",
         "cpu": "24 vCPU сумарно",
         "ram": "128 GB сумарно",
         "disk": "1 TB NVMe",
-        "profile": "Окремий Redis; ML fraud boost; tracker/CH split"
+        "profile": "Окремий Redis; ML boost; tracker/CH split"
       },
       {
         "code": "network",
         "plan": "Network",
-        "rps_range": "40k–120k",
-        "license_peak": "120k peak",
         "hosts": "3–10 нод",
         "cpu": "32+ vCPU сумарно",
         "ram": "256 GB сумарно",
         "disk": "2 TB NVMe + регіони",
-        "profile": "OpenRTB live; 3 регіони; multi-node ingest"
+        "profile": "OpenRTB live; multi-region ingest"
       },
       {
         "code": "enterprise",
         "plan": "Enterprise",
-        "rps_range": "100k+",
-        "license_peak": "Custom cap",
-        "hosts": "Multi-region",
+        "hosts": "Multi-region fleet",
         "cpu": "З вендором",
         "ram": "З вендором",
         "disk": "З вендором",
-        "profile": "eBPF edge, Campaign API, до 99 регіонів"
+        "profile": "eBPF edge nodes + Campaign API; до 99 регіонів"
       }
     ]
   },
@@ -425,7 +429,7 @@
     "NoCapOnCampaignCountOrEventVolumeYouScaleOnYourHardware": "Без ліміту на кількість кампаній і обсяг подій — масштабуєтесь на своєму сервері.",
     "PaidMonthlyInUsdtSelfHostedLicenseNotACloudSubscription": "Оплата щомісяця в USDT. Self-hosted ліцензія, яку ви володієте.",
     "TryFreeFor10Days": "Спробуйте 10 днів безкоштовно",
-    "KRps1ServerRulesOnlyAntifraudMessageUsOnTelegramWithExpectedTrafficVpsSpec": "5k RPS · 1 сервер · повний click routing · напишіть у Telegram з очікуваним трафіком і характеристиками VPS",
+    "KRps1ServerRulesOnlyAntifraudMessageUsOnTelegramWithExpectedTrafficVpsSpec": "1 сервер · повний click routing · напишіть у Telegram з очікуваним трафіком і характеристиками VPS",
     "OperationalInMinutes": "Запуск за хвилини",
     "Step1": "Крок 1",
     "RequestPilot": "Запросити пілот",

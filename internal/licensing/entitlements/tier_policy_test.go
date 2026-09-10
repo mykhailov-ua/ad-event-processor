@@ -36,7 +36,7 @@ func TestSanitizeFeaturesForSKU_proAllowsIVTBlocksOpenRTBAndXDP(t *testing.T) {
 }
 
 func TestLoadSKUFile_proTierFeatures(t *testing.T) {
-	doc, err := LoadSKUFile(filepath.Join("..", "..", "deploy", "vendor", "sku.yaml"))
+	doc, err := LoadSKUFile(filepath.Join("..", "..", "..", "deploy", "vendor", "sku.yaml"))
 	require.NoError(t, err)
 	sku, err := doc.GetSKU(SKUCodePro)
 	require.NoError(t, err)
@@ -76,7 +76,7 @@ func TestSanitizeFeaturesForSKU_scaleAllowsExternalResidentialIntel(t *testing.T
 }
 
 func TestLoadSKUFile_fraudDisputeEvidenceTierMatrix_holdout(t *testing.T) {
-	doc, err := LoadSKUFile(filepath.Join("..", "..", "deploy", "vendor", "sku.yaml"))
+	doc, err := LoadSKUFile(filepath.Join("..", "..", "..", "deploy", "vendor", "sku.yaml"))
 	require.NoError(t, err)
 	scale, err := doc.GetSKU(SKUCodeScale)
 	require.NoError(t, err)
@@ -87,12 +87,12 @@ func TestLoadSKUFile_fraudDisputeEvidenceTierMatrix_holdout(t *testing.T) {
 }
 
 func TestLoadSKUFile_pilotSmokeLimits(t *testing.T) {
-	doc, err := LoadSKUFile(filepath.Join("..", "..", "deploy", "vendor", "sku.yaml"))
+	doc, err := LoadSKUFile(filepath.Join("..", "..", "..", "deploy", "vendor", "sku.yaml"))
 	require.NoError(t, err)
 	sku, err := doc.GetSKU(SKUCodePilot)
 	require.NoError(t, err)
-	require.Equal(t, 14, sku.ValidDays)
-	require.Equal(t, uint64(5000), sku.Limits.MaxRPS)
+	require.Equal(t, 10, sku.ValidDays)
+	require.Equal(t, uint64(0), sku.Limits.MaxRPS)
 	require.Equal(t, uint64(3), sku.Limits.MaxAPIKeys)
 	require.Equal(t, uint64(1), sku.Limits.MaxTenants)
 	require.Equal(t, uint64(0), sku.Limits.MaxExportChunkBytes)
