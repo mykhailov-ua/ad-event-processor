@@ -308,6 +308,89 @@
       "enterprise": true
     }
   ],
+  "hardware_sizing": {
+    "eyebrow": "Hardware sizing",
+    "title": "Expected RPS and metal per tier",
+    "subtitle": "License peak is the enforced cap. Sustained /track throughput depends on filter depth, postbacks, and whether Redis, Postgres, and ClickHouse share one VPS or split nodes.",
+    "footnote": "Ranges assume amd64, NVMe, and single-vps install profile unless noted. Enable IVT, ML boost, OpenRTB, or eBPF edge with extra CPU/RAM headroom above the band.",
+    "labels": {
+      "rps_range": "Expected RPS",
+      "license_peak": "License peak",
+      "hosts": "Hosts",
+      "cpu": "CPU",
+      "ram": "RAM",
+      "disk": "Storage",
+      "profile": "Stack profile"
+    },
+    "tiers": [
+      {
+        "code": "pilot",
+        "plan": "Pilot",
+        "rps_range": "1k–5k",
+        "license_peak": "5k peak",
+        "hosts": "1 VPS",
+        "cpu": "4 vCPU",
+        "ram": "16 GB",
+        "disk": "200 GB NVMe",
+        "profile": "single-vps: tracker + Redis + Postgres + ClickHouse"
+      },
+      {
+        "code": "starter",
+        "plan": "Starter",
+        "rps_range": "2k–10k",
+        "license_peak": "10k peak",
+        "hosts": "1 VPS",
+        "cpu": "8 vCPU",
+        "ram": "32 GB",
+        "disk": "400 GB NVMe",
+        "profile": "single-vps; silent reject + postbacks on same box"
+      },
+      {
+        "code": "pro",
+        "plan": "Pro",
+        "rps_range": "5k–25k",
+        "license_peak": "25k peak",
+        "hosts": "1–2 nodes",
+        "cpu": "16 vCPU",
+        "ram": "64 GB",
+        "disk": "500 GB NVMe",
+        "profile": "IVT sidecar; split ClickHouse when sustained >15k"
+      },
+      {
+        "code": "scale",
+        "plan": "Scale",
+        "rps_range": "15k–60k",
+        "license_peak": "60k peak",
+        "hosts": "2–3 nodes",
+        "cpu": "24 vCPU total",
+        "ram": "128 GB total",
+        "disk": "1 TB NVMe",
+        "profile": "Dedicated Redis; ML fraud boost; tracker/CH split"
+      },
+      {
+        "code": "network",
+        "plan": "Network",
+        "rps_range": "40k–120k",
+        "license_peak": "120k peak",
+        "hosts": "3–10 nodes",
+        "cpu": "32+ vCPU total",
+        "ram": "256 GB total",
+        "disk": "2 TB NVMe + regions",
+        "profile": "OpenRTB live; 3 regions; multi-node ingest"
+      },
+      {
+        "code": "enterprise",
+        "plan": "Enterprise",
+        "rps_range": "100k+",
+        "license_peak": "Custom cap",
+        "hosts": "Multi-region",
+        "cpu": "Sized with vendor",
+        "ram": "Sized with vendor",
+        "disk": "Sized with vendor",
+        "profile": "eBPF edge, Campaign API, up to 99 regions"
+      }
+    ]
+  },
   "page": {
     "title": "BidShard — self-hosted ad tracking stack",
     "description": "BidShard — self-hosted ad tracking, filtering, and reporting. 10-day free pilot. Install on your VPS in minutes.",

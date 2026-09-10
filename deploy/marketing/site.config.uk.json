@@ -308,6 +308,89 @@
       "enterprise": true
     }
   ],
+  "hardware_sizing": {
+    "eyebrow": "Розмір сервера",
+    "title": "Очікуваний RPS і залізо під кожен тариф",
+    "subtitle": "License peak — жорстка верхня межа. Реальний /track throughput залежить від глибини фільтрів, postbacks і того, чи Redis, Postgres і ClickHouse на одному VPS чи на окремих нодах.",
+    "footnote": "Діапазони для amd64, NVMe і профілю single-vps, якщо не вказано інакше. IVT, ML boost, OpenRTB або eBPF edge — закладайте запас CPU/RAM над діапазоном.",
+    "labels": {
+      "rps_range": "Очікуваний RPS",
+      "license_peak": "License peak",
+      "hosts": "Хости",
+      "cpu": "CPU",
+      "ram": "RAM",
+      "disk": "Диск",
+      "profile": "Профіль стеку"
+    },
+    "tiers": [
+      {
+        "code": "pilot",
+        "plan": "Pilot",
+        "rps_range": "1k–5k",
+        "license_peak": "5k peak",
+        "hosts": "1 VPS",
+        "cpu": "4 vCPU",
+        "ram": "16 GB",
+        "disk": "200 GB NVMe",
+        "profile": "single-vps: tracker + Redis + Postgres + ClickHouse"
+      },
+      {
+        "code": "starter",
+        "plan": "Starter",
+        "rps_range": "2k–10k",
+        "license_peak": "10k peak",
+        "hosts": "1 VPS",
+        "cpu": "8 vCPU",
+        "ram": "32 GB",
+        "disk": "400 GB NVMe",
+        "profile": "single-vps; silent reject + postbacks на тій самій машині"
+      },
+      {
+        "code": "pro",
+        "plan": "Pro",
+        "rps_range": "5k–25k",
+        "license_peak": "25k peak",
+        "hosts": "1–2 ноди",
+        "cpu": "16 vCPU",
+        "ram": "64 GB",
+        "disk": "500 GB NVMe",
+        "profile": "IVT sidecar; окремий ClickHouse при sustained >15k"
+      },
+      {
+        "code": "scale",
+        "plan": "Scale",
+        "rps_range": "15k–60k",
+        "license_peak": "60k peak",
+        "hosts": "2–3 ноди",
+        "cpu": "24 vCPU сумарно",
+        "ram": "128 GB сумарно",
+        "disk": "1 TB NVMe",
+        "profile": "Окремий Redis; ML fraud boost; tracker/CH split"
+      },
+      {
+        "code": "network",
+        "plan": "Network",
+        "rps_range": "40k–120k",
+        "license_peak": "120k peak",
+        "hosts": "3–10 нод",
+        "cpu": "32+ vCPU сумарно",
+        "ram": "256 GB сумарно",
+        "disk": "2 TB NVMe + регіони",
+        "profile": "OpenRTB live; 3 регіони; multi-node ingest"
+      },
+      {
+        "code": "enterprise",
+        "plan": "Enterprise",
+        "rps_range": "100k+",
+        "license_peak": "Custom cap",
+        "hosts": "Multi-region",
+        "cpu": "З вендором",
+        "ram": "З вендором",
+        "disk": "З вендором",
+        "profile": "eBPF edge, Campaign API, до 99 регіонів"
+      }
+    ]
+  },
   "page": {
     "title": "BidShard — ad-трекінг на вашому сервері",
     "description": "BidShard — self-hosted ad tracking, filtering і reporting. 10-денний безкоштовний пілот. Встановлення на VPS за кілька хвилин.",

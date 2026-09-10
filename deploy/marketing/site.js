@@ -162,6 +162,7 @@
       architecture: raw.architecture || null,
       offer: raw.offer || null,
       plans: raw.plans || [],
+      hardware_sizing: raw.hardware_sizing || null,
       instant_sell: raw.instant_sell || null,
       killers: raw.killers || [],
       capabilities_compact: raw.capabilities_compact || [],
@@ -229,6 +230,7 @@
     renderKillers(config);
     renderApplianceProof(config);
     renderPricing(config);
+    renderHardwareSizing(config);
     renderTco(config);
     renderArchitecture(config);
     renderContacts(config);
@@ -506,6 +508,118 @@
     grid.innerHTML = config.plans.map(function (plan) {
       return renderPricingCard(plan, config);
     }).join("");
+  }
+
+  function planMetaByCode(config) {
+    var map = {};
+    (config.plans || []).forEach(function (plan) {
+      if (plan.code) {
+        map[plan.code] = plan;
+      }
+    });
+    return map;
+  }
+
+  function renderHardwareSpecRow(label, value) {
+    if (!value) {
+      return "";
+    }
+    return (
+      '<div class="site-hardware-card__spec-row">' +
+      '<dt class="site-hardware-card__spec-label">' +
+      escapeHtml(label) +
+      "</dt>" +
+      '<dd class="site-hardware-card__spec-value">' +
+      escapeHtml(value) +
+      "</dd></div>"
+    );
+  }
+
+  function renderHardwareSizing(config) {
+    var root = document.querySelector("[data-site-hardware-sizing]");
+    var block = config.hardware_sizing;
+    if (!root || !block || !block.tiers || !block.tiers.length) {
+      if (root) {
+        root.innerHTML = "";
+      }
+      return;
+    }
+
+    var labels = block.labels || {};
+    var planMeta = planMetaByCode(config);
+    var cards = block.tiers
+      .map(function (tier) {
+        var meta = planMeta[tier.code] || {};
+        var cardClass = "site-hardware-card";
+        if (meta.featured) {
+          cardClass += " site-hardware-card--featured";
+        }
+        if (meta.pilot) {
+          cardClass += " site-hardware-card--pilot";
+        }
+        if (meta.enterprise) {
+          cardClass += " site-hardware-card--enterprise";
+        }
+        var priceLine = meta.price
+          ? '<div class="site-hardware-card__price">' +
+            escapeHtml(meta.price) +
+            escapeHtml(meta.period || "") +
+            "</div>"
+          : "";
+
+        return (
+          '<article class="' +
+          cardClass +
+          '" data-site-hardware-tier="' +
+          escapeHtml(tier.code || "") +
+          '">' +
+          '<div class="site-hardware-card__head">' +
+          '<h3 class="site-hardware-card__plan">' +
+          escapeHtml(tier.plan || meta.name || "") +
+          "</h3>" +
+          priceLine +
+          "</div>" +
+          '<div class="site-hardware-card__rps">' +
+          '<span class="site-hardware-card__rps-value">' +
+          escapeHtml(tier.rps_range || "") +
+          "</span>" +
+          '<span class="site-hardware-card__rps-label">' +
+          escapeHtml(labels.rps_range || "Expected RPS") +
+          "</span></div>" +
+          '<dl class="site-hardware-card__specs">' +
+          renderHardwareSpecRow(labels.license_peak || "License peak", tier.license_peak) +
+          renderHardwareSpecRow(labels.hosts || "Hosts", tier.hosts) +
+          renderHardwareSpecRow(labels.cpu || "CPU", tier.cpu) +
+          renderHardwareSpecRow(labels.ram || "RAM", tier.ram) +
+          renderHardwareSpecRow(labels.disk || "Storage", tier.disk) +
+          "</dl>" +
+          (tier.profile
+            ? '<p class="site-hardware-card__profile">' + escapeHtml(tier.profile) + "</p>"
+            : "") +
+          "</article>"
+        );
+      })
+      .join("");
+
+    root.innerHTML =
+      '<div class="site-hardware-sizing__inner">' +
+      '<div class="site-hardware-sizing__head">' +
+      '<div class="site-hardware-sizing__eyebrow">' +
+      escapeHtml(block.eyebrow || "Hardware sizing") +
+      "</div>" +
+      '<h2 id="site-hardware-title" class="site-hardware-sizing__title">' +
+      escapeHtml(block.title || "") +
+      "</h2>" +
+      '<p class="site-hardware-sizing__subtitle">' +
+      escapeHtml(block.subtitle || "") +
+      "</p></div>" +
+      '<div class="site-hardware-sizing__grid">' +
+      cards +
+      "</div>" +
+      (block.footnote
+        ? '<p class="site-hardware-sizing__footnote">' + escapeHtml(block.footnote) + "</p>"
+        : "") +
+      "</div>";
   }
 
   function formatUsd(amount) {
@@ -1117,6 +1231,7 @@
     renderKillers(config);
     renderApplianceProof(config);
     renderPricing(config);
+    renderHardwareSizing(config);
     renderTco(config);
     renderArchitecture(config);
     renderContacts(config);

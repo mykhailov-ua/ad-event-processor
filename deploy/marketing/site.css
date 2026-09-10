@@ -1658,6 +1658,170 @@ html[data-theme="light"] .site-pricing-badge {
   color: var(--site-accent);
 }
 
+.site-hardware-sizing {
+  width: 100%;
+  max-width: var(--site-content-max);
+  margin: 0 auto;
+  align-self: stretch !important;
+}
+
+.site-hardware-sizing__inner {
+  display: flex;
+  flex-direction: column;
+  gap: 28px;
+  width: 100%;
+}
+
+.site-hardware-sizing__head {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 8px;
+  text-align: center;
+}
+
+.site-hardware-sizing__eyebrow {
+  color: var(--site-accent);
+  font-size: 12px;
+  font-weight: 700;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+}
+
+.site-hardware-sizing__title {
+  margin: 0;
+  color: var(--site-text);
+  font-size: 28px;
+  font-weight: 800;
+  line-height: 1.2;
+}
+
+.site-hardware-sizing__subtitle {
+  margin: 0;
+  max-width: 720px;
+  color: var(--site-muted);
+  font-size: 15px;
+  line-height: 1.55;
+}
+
+.site-hardware-sizing__grid {
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: 20px;
+  width: 100%;
+}
+
+.site-hardware-card {
+  display: flex;
+  flex-direction: column;
+  gap: 16px;
+  padding: 22px;
+  background: var(--site-surface);
+  border: 1px solid var(--site-border);
+  border-radius: var(--site-radius-card);
+  min-width: 0;
+}
+
+.site-hardware-card--featured {
+  background: var(--site-elevated);
+  border-color: var(--site-accent);
+}
+
+.site-hardware-card--pilot {
+  background: var(--site-surface-alt);
+}
+
+.site-hardware-card__head {
+  display: flex;
+  align-items: baseline;
+  justify-content: space-between;
+  gap: 12px;
+}
+
+.site-hardware-card__plan {
+  margin: 0;
+  color: var(--site-text);
+  font-size: 18px;
+  font-weight: 700;
+}
+
+.site-hardware-card__price {
+  color: var(--site-muted-2);
+  font-size: 13px;
+  font-weight: 600;
+  white-space: nowrap;
+}
+
+.site-hardware-card__rps {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+  padding: 14px 16px;
+  border-radius: 12px;
+  background: var(--site-accent-bg);
+  border: 1px solid var(--site-accent-border-soft);
+}
+
+.site-hardware-card__rps-value {
+  color: var(--site-text);
+  font-size: 26px;
+  font-weight: 800;
+  line-height: 1;
+  letter-spacing: -0.02em;
+}
+
+.site-hardware-card__rps-label {
+  color: var(--site-accent);
+  font-size: 11px;
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: 0.06em;
+}
+
+.site-hardware-card__specs {
+  display: grid;
+  grid-template-columns: minmax(88px, auto) 1fr;
+  gap: 10px 14px;
+  margin: 0;
+}
+
+.site-hardware-card__spec-row {
+  display: contents;
+}
+
+.site-hardware-card__spec-label {
+  margin: 0;
+  color: var(--site-muted-2);
+  font-size: 11px;
+  font-weight: 600;
+  text-transform: uppercase;
+  letter-spacing: 0.03em;
+}
+
+.site-hardware-card__spec-value {
+  margin: 0;
+  color: var(--site-text);
+  font-size: 13px;
+  line-height: 1.4;
+}
+
+.site-hardware-card__profile {
+  margin: 0;
+  padding-top: 12px;
+  border-top: 1px solid var(--site-border);
+  color: var(--site-muted);
+  font-size: 12px;
+  line-height: 1.5;
+}
+
+.site-hardware-sizing__footnote {
+  margin: 0;
+  color: var(--site-muted-2);
+  font-size: 13px;
+  line-height: 1.5;
+  text-align: center;
+}
+
 .site-pricing-cta {
   width: 100%;
   margin-top: auto;
@@ -1936,6 +2100,10 @@ html[data-theme="light"] .site-pricing-badge {
     grid-template-columns: repeat(2, minmax(0, 1fr));
   }
 
+  .site-hardware-sizing__grid {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+
   .Landing .Pillars > .Frame {
     grid-template-columns: repeat(2, minmax(0, 1fr));
   }
@@ -2011,6 +2179,10 @@ html[data-theme="light"] .site-pricing-badge {
   }
 
   .site-pricing-grid {
+    grid-template-columns: 1fr;
+  }
+
+  .site-hardware-sizing__grid {
     grid-template-columns: 1fr;
   }
 
@@ -2801,6 +2973,7 @@ html[data-theme="light"] .site-theme-toggle .site-theme-toggle__icon--moon {
 /* Light theme polish */
 html[data-theme="light"] .Landing .PillarCard,
 html[data-theme="light"] .site-pricing-card,
+html[data-theme="light"] .site-hardware-card,
 html[data-theme="light"] .site-tco-card,
 html[data-theme="light"] .site-doc-toc,
 html[data-theme="light"] .site-doc-card,
