@@ -328,70 +328,70 @@
   ],
   "hardware_sizing": {
     "eyebrow": "Hardware sizing",
-    "title": "Recommended metal per tier",
-    "subtitle": "Throughput is bounded by your VPS or dedicated fleet, filter depth, and which optional sidecars you enable (IVT, ML boost, OpenRTB, eBPF). License does not cap campaigns, events, or ingest rate.",
-    "footnote": "amd64 + NVMe assumed. Split ClickHouse or Redis when sidecars and reporting load the box.",
+    "title": "Starting points from repo docs",
+    "subtitle": "Not a throughput SLA. Numbers below come from compose profiles in docs/DEVELOPMENT.md and host/region limits in deploy/vendor/sku.yaml. Size up from your traffic, filter depth, and enabled sidecars (IVT, ML boost, OpenRTB, eBPF).",
+    "footnote": "amd64 + NVMe recommended. ClickHouse default compose cap is 4 GB RAM (1536M on minimal profile). Do not treat vCPU or disk sizes as license enforcement.",
     "labels": {
-      "hosts": "Hosts",
-      "cpu": "CPU",
-      "ram": "RAM",
+      "hosts": "License hosts",
+      "cpu": "Compose profile",
+      "ram": "Min RAM (comfortable)",
       "disk": "Storage",
-      "profile": "Stack profile"
+      "profile": "Scale-out notes"
     },
     "tiers": [
       {
         "code": "pilot",
         "plan": "Pilot",
-        "hosts": "1 VPS",
-        "cpu": "4 vCPU",
-        "ram": "16 GB",
-        "disk": "200 GB NVMe",
-        "profile": "single-vps smoke test; full stack on one box"
+        "hosts": "1 host",
+        "cpu": "single-vps / full",
+        "ram": "8 GB",
+        "disk": "NVMe; plan headroom for PG + logs",
+        "profile": "10-day smoke on one box; rules-only antifraud (no IVT/ML/OpenRTB). Tell us expected traffic on Telegram."
       },
       {
         "code": "starter",
         "plan": "Starter",
-        "hosts": "1 VPS",
-        "cpu": "4 vCPU",
-        "ram": "16 GB",
-        "disk": "200 GB NVMe",
-        "profile": "solo link traffic; silent reject + postbacks"
+        "hosts": "1 host",
+        "cpu": "ingest-only or full",
+        "ram": "4 GB ingest-only · 8 GB with ClickHouse reports",
+        "disk": "NVMe; grows with CH retention",
+        "profile": "Solo buyer on one VPS; silent reject + postbacks. Add RAM before heavy report exports."
       },
       {
         "code": "pro",
         "plan": "Pro",
-        "hosts": "1–2 nodes",
-        "cpu": "8 vCPU",
-        "ram": "32 GB",
-        "disk": "400 GB NVMe",
-        "profile": "IVT sidecar; split ClickHouse under report load"
+        "hosts": "1 host",
+        "cpu": "full + analytics-ml sidecars",
+        "ram": "12 GB+",
+        "disk": "NVMe; split ClickHouse when report load is sustained",
+        "profile": "IVT batch sidecar reads ClickHouse; still one licensed activation. Multi-host bind is same deployment, not extra license hosts."
       },
       {
         "code": "scale",
         "plan": "Scale",
-        "hosts": "2–3 nodes",
-        "cpu": "24 vCPU total",
-        "ram": "128 GB total",
-        "disk": "1 TB NVMe",
-        "profile": "Dedicated Redis; ML boost; tracker/CH split"
+        "hosts": "Up to 3 hosts",
+        "cpu": "Split tracker / Redis / CH",
+        "ram": "12 GB+ per busy node",
+        "disk": "NVMe per node; CH disk sized to retention",
+        "profile": "ML fraud boost + intel feeds on hot path; slot migration across activations. Optional broker WAL path."
       },
       {
         "code": "network",
         "plan": "Network",
-        "hosts": "3–10 nodes",
-        "cpu": "32+ vCPU total",
-        "ram": "256 GB total",
-        "disk": "2 TB NVMe + regions",
-        "profile": "OpenRTB live; multi-region ingest"
+        "hosts": "Up to 10 hosts",
+        "cpu": "Multi-node + OpenRTB live",
+        "ram": "8 GB+ ingest node baseline; size CH/RTB separately",
+        "disk": "NVMe per region; CH retention drives disk",
+        "profile": "Up to 3 licensed regions; OpenRTB bid endpoint + multi-node ingest."
       },
       {
         "code": "enterprise",
         "plan": "Enterprise",
-        "hosts": "Multi-region fleet",
-        "cpu": "Sized with vendor",
-        "ram": "Sized with vendor",
-        "disk": "Sized with vendor",
-        "profile": "eBPF edge nodes + Campaign API; up to 99 regions"
+        "hosts": "Up to 99 hosts",
+        "cpu": "Vendor sizing call",
+        "ram": "Vendor sizing call",
+        "disk": "Vendor sizing call",
+        "profile": "Up to 99 regions; eBPF XDP edge + Campaign API. Fleet layout agreed per install."
       }
     ]
   },

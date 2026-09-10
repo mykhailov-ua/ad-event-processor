@@ -1064,14 +1064,17 @@ body {
 .site-contacts__handle {
   display: inline-block;
   margin-top: 4px;
-  color: var(--site-accent-hover);
+  color: var(--site-accent-muted);
   font-size: 20px;
   font-weight: 700;
-  text-decoration: none;
+  text-decoration: underline;
+  text-underline-offset: 3px;
+  text-decoration-color: color-mix(in srgb, var(--site-accent-muted) 55%, transparent);
 }
 
 .site-contacts__handle:hover {
-  color: var(--site-accent-muted);
+  color: var(--site-ghost-hover-text);
+  text-decoration-color: currentColor;
 }
 
 .site-contacts__cta {
@@ -2051,7 +2054,7 @@ html[data-theme="light"] .site-pricing-badge {
   }
 
   .site-contacts__handle:hover {
-    color: var(--site-accent-muted);
+    color: var(--site-ghost-hover-text);
   }
 }
 
@@ -4661,7 +4664,6 @@ html[data-theme="light"] .site-pga-page > .Header {
 .site-pga-page > .Features,
 .site-pga-page > .Pricing,
 .site-pga-page > .Killers,
-.site-pga-page > .PilotCta,
 .site-pga-page > .Trust,
 .site-pga-page > .Faq,
 .site-pga-page > .Contacts,
@@ -4718,13 +4720,16 @@ html[data-theme="light"] .site-pga-page > .Pillars {
   flex-direction: column;
   align-items: flex-start !important;
   text-align: left;
-  width: 100%;
-  max-width: none;
-  margin: 0;
-  padding: 32px !important;
+  width: min(var(--site-content-max), calc(100% - 2 * var(--site-shell-inline))) !important;
+  max-width: var(--site-content-max);
+  margin-inline: auto !important;
+  margin-top: 0;
+  margin-bottom: 0;
+  padding: clamp(28px, 4vw, 40px) clamp(24px, 4vw, 40px) !important;
   background: var(--site-bg-subtle);
   border: 1px solid var(--site-border);
   border-radius: 8px;
+  box-sizing: border-box;
 }
 
 html[data-theme="light"] .site-pga-page > .PilotCta {
@@ -4811,7 +4816,6 @@ html[data-theme="light"] .site-pga-page > .PilotCta {
 .site-pga-page > .Features,
 .site-pga-page > .Pricing,
 .site-pga-page > .Tco,
-.site-pga-page > .PilotCta,
 .site-pga-page > .HowItWorks,
 .site-pga-page > .Trust,
 .site-pga-page > .Faq,

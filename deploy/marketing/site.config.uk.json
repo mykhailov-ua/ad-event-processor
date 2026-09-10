@@ -328,70 +328,70 @@
   ],
   "hardware_sizing": {
     "eyebrow": "Розмір сервера",
-    "title": "Рекомендоване залізо per tier",
-    "subtitle": "Throughput обмежує VPS або dedicated fleet, глибина фільтрів і які sidecars увімкнені (IVT, ML boost, OpenRTB, eBPF). Ліцензія не обмежує кампанії, події чи ingest rate.",
-    "footnote": "amd64 + NVMe. Розділяйте ClickHouse або Redis, коли sidecars і reporting навантажують машину.",
+    "title": "Стартові точки з repo docs",
+    "subtitle": "Це не SLA по throughput. Цифри нижче — з compose profiles у docs/DEVELOPMENT.md і лімітів host/region у deploy/vendor/sku.yaml. Масштабуйте від трафіку, глибини фільтрів і sidecars (IVT, ML boost, OpenRTB, eBPF).",
+    "footnote": "Рекомендовано amd64 + NVMe. ClickHouse у compose за замовчуванням до 4 GB RAM (1536M на minimal). vCPU і disk — не license enforcement.",
     "labels": {
-      "hosts": "Хости",
-      "cpu": "CPU",
-      "ram": "RAM",
-      "disk": "Диск",
-      "profile": "Профіль стеку"
+      "hosts": "Хости в ліцензії",
+      "cpu": "Compose profile",
+      "ram": "Min RAM (comfortable)",
+      "disk": "Сховище",
+      "profile": "Коли масштабувати"
     },
     "tiers": [
       {
         "code": "pilot",
         "plan": "Pilot",
-        "hosts": "1 VPS",
-        "cpu": "4 vCPU",
-        "ram": "16 GB",
-        "disk": "200 GB NVMe",
-        "profile": "single-vps smoke test; повний стек на одній машині"
+        "hosts": "1 host",
+        "cpu": "single-vps / full",
+        "ram": "8 GB",
+        "disk": "NVMe; запас під PG + logs",
+        "profile": "10-денний smoke на одній машині; rules-only antifraud (без IVT/ML/OpenRTB). Напишіть очікуваний трафік у Telegram."
       },
       {
         "code": "starter",
         "plan": "Starter",
-        "hosts": "1 VPS",
-        "cpu": "4 vCPU",
-        "ram": "16 GB",
-        "disk": "200 GB NVMe",
-        "profile": "solo link traffic; silent reject + postbacks"
+        "hosts": "1 host",
+        "cpu": "ingest-only або full",
+        "ram": "4 GB ingest-only · 8 GB з ClickHouse reports",
+        "disk": "NVMe; росте з CH retention",
+        "profile": "Solo buyer на одному VPS; silent reject + postbacks. Додавайте RAM перед важкими export звітів."
       },
       {
         "code": "pro",
         "plan": "Pro",
-        "hosts": "1–2 ноди",
-        "cpu": "8 vCPU",
-        "ram": "32 GB",
-        "disk": "400 GB NVMe",
-        "profile": "IVT sidecar; окремий ClickHouse під report load"
+        "hosts": "1 host",
+        "cpu": "full + analytics-ml sidecars",
+        "ram": "12 GB+",
+        "disk": "NVMe; окремий ClickHouse при sustained report load",
+        "profile": "IVT batch sidecar читає ClickHouse; одна licensed activation. Multi-host bind — той самий deployment, не додаткові хости в JWT."
       },
       {
         "code": "scale",
         "plan": "Scale",
-        "hosts": "2–3 ноди",
-        "cpu": "24 vCPU сумарно",
-        "ram": "128 GB сумарно",
-        "disk": "1 TB NVMe",
-        "profile": "Окремий Redis; ML boost; tracker/CH split"
+        "hosts": "До 3 hosts",
+        "cpu": "Split tracker / Redis / CH",
+        "ram": "12 GB+ на навантажену ноду",
+        "disk": "NVMe на ноду; CH disk під retention",
+        "profile": "ML fraud boost + intel feeds на hot path; slot migration між activations. Опційний broker WAL path."
       },
       {
         "code": "network",
         "plan": "Network",
-        "hosts": "3–10 нод",
-        "cpu": "32+ vCPU сумарно",
-        "ram": "256 GB сумарно",
-        "disk": "2 TB NVMe + регіони",
-        "profile": "OpenRTB live; multi-region ingest"
+        "hosts": "До 10 hosts",
+        "cpu": "Multi-node + OpenRTB live",
+        "ram": "8 GB+ baseline ingest node; CH/RTB окремо",
+        "disk": "NVMe per region; CH retention задає disk",
+        "profile": "До 3 licensed regions; OpenRTB bid endpoint + multi-node ingest."
       },
       {
         "code": "enterprise",
         "plan": "Enterprise",
-        "hosts": "Multi-region fleet",
-        "cpu": "З вендором",
-        "ram": "З вендором",
-        "disk": "З вендором",
-        "profile": "eBPF edge nodes + Campaign API; до 99 регіонів"
+        "hosts": "До 99 hosts",
+        "cpu": "Sizing з вендором",
+        "ram": "Sizing з вендором",
+        "disk": "Sizing з вендором",
+        "profile": "До 99 regions; eBPF XDP edge + Campaign API. Fleet layout — per install з вендором."
       }
     ]
   },
