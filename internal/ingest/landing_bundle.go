@@ -950,6 +950,62 @@ func (h *AdsPacketHandler) reactTrackVerify(req *Request, c gnet.Conn, ctx *Conn
 		return gnet.None
 	}
 
+	var verifyCamp *domain.Campaign
+	if camp, ok := h.registry.GetCampaign(campaignID); ok {
+		verifyCamp = camp
+	}
+	antifraudTelemetryEnabled := h.cfg != nil && h.cfg.AntifraudTelemetryEnabled
+	if track.RequiresSafePageAntifraudCrypto(verifyCamp, antifraudTelemetryEnabled) &&
+		h.cfg != nil && len(h.cfg.AttestationHMACSecret) > 0 {
+		secret := []byte(h.cfg.AttestationHMACSecret)
+		if len(verifyReq.Antifraud) == 0 {
+			landingURL, ok := resolveSafePageLanding(h.registry, campaignID)
+			if !ok {
+				h.writeGnetVerifyJSON(c, ctx, startMono, safePageVerifyResponse{Success: false, Code: "safe_page_disabled"}, http.StatusForbidden, "", 0)
+				return gnet.None
+			}
+			body := buildCampaignDecoyBody(h, campaignID, landingURL)
+			metrics.SafePageAttestDecoyTotal.WithLabelValues("antifraud_missing").Inc()
+			h.writeGnetVerifyJSON(c, ctx, startMono, safePageVerifyResponse{
+				Success:     true,
+				HTMLContent: string(body),
+				Code:        "antifraud_missing",
+			}, http.StatusOK, "", 0)
+			return gnet.None
+		}
+		snap, ok := track.ParseAntifraudSnapshotFromJSON(verifyReq.Antifraud)
+		if !ok {
+			landingURL, ok := resolveSafePageLanding(h.registry, campaignID)
+			if !ok {
+				h.writeGnetVerifyJSON(c, ctx, startMono, safePageVerifyResponse{Success: false, Code: "safe_page_disabled"}, http.StatusForbidden, "", 0)
+				return gnet.None
+			}
+			body := buildCampaignDecoyBody(h, campaignID, landingURL)
+			metrics.SafePageAttestDecoyTotal.WithLabelValues("antifraud_signature_invalid").Inc()
+			h.writeGnetVerifyJSON(c, ctx, startMono, safePageVerifyResponse{
+				Success:     true,
+				HTMLContent: string(body),
+				Code:        "antifraud_signature_invalid",
+			}, http.StatusOK, "", 0)
+			return gnet.None
+		}
+		if fail, code := track.EvaluateSafePageAntifraudCrypto(campaignID, snap, secret, time.Now().Unix()); fail {
+			landingURL, ok := resolveSafePageLanding(h.registry, campaignID)
+			if !ok {
+				h.writeGnetVerifyJSON(c, ctx, startMono, safePageVerifyResponse{Success: false, Code: "safe_page_disabled"}, http.StatusForbidden, "", 0)
+				return gnet.None
+			}
+			body := buildCampaignDecoyBody(h, campaignID, landingURL)
+			metrics.SafePageAttestDecoyTotal.WithLabelValues(code).Inc()
+			h.writeGnetVerifyJSON(c, ctx, startMono, safePageVerifyResponse{
+				Success:     true,
+				HTMLContent: string(body),
+				Code:        code,
+			}, http.StatusOK, "", 0)
+			return gnet.None
+		}
+	}
+
 	country := ""
 	ingestAnonymous := false
 	if h.trackProc.ingestGeo != nil {

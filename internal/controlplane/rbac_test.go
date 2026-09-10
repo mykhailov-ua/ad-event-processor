@@ -42,6 +42,7 @@ func TestGetPermissionsForRole(t *testing.T) {
 		"audit:read", "users:write",
 		"shards:write", "shards:read",
 		"rtb:write", "rtb:read",
+		"access:read", "access:write",
 	}
 	managerPerms := []string{
 		"customers:write", "customers:read",

@@ -14,8 +14,8 @@ import { toError, userErrorMessage } from '@/lib/admin_error';
 import { sessionHasPermission } from '@/lib/session_permissions';
 
 export function useAccessRolesWorkspace() {
-  const { session, refetchSession } = useSession();
-  const permissions = session?.user?.permissions;
+  const { user, refetchSession } = useSession();
+  const permissions = user?.permissions;
   const canRead = sessionHasPermission(permissions, 'access:read');
   const canWrite = sessionHasPermission(permissions, 'access:write');
 

@@ -47,7 +47,7 @@ func dlqRouteID(shardID int, entryID string) string {
 }
 
 func (r *Reader) listDLQEntries(ctx context.Context, cursor string, limit int) (FanOutResult[DLQEntryDTO], error) {
-	if r == nil || r.pool() == nil {
+	if r == nil {
 		return FanOutResult[DLQEntryDTO]{}, fmt.Errorf("ops reader not configured")
 	}
 	if limit <= 0 {
@@ -244,7 +244,7 @@ func parseRedisStreamIDMillis(id string) (int64, bool) {
 }
 
 func (r *Reader) enqueueDLQRetry(ctx context.Context, payload DLQRetryPayload, idempotencyKey string) error {
-	if r == nil || r.pool() == nil {
+	if r == nil {
 		return fmt.Errorf("ops reader not configured")
 	}
 	if payload.EntryID == "" {

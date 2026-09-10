@@ -1,6 +1,7 @@
 package main
 
 import (
+	"errors"
 	"fmt"
 	"net/http"
 	"strings"
@@ -318,15 +319,15 @@ func writeIssueErr(w http.ResponseWriter, err error) {
 
 func writeTrialErr(w http.ResponseWriter, err error) {
 	switch {
-	case err == trialregistry.ErrTrialTelegramUsed:
+	case errors.Is(err, trialregistry.ErrTrialTelegramUsed):
 		httpresponse.Error(w, http.StatusConflict, "TRIAL_TELEGRAM_USED", err.Error())
-	case err == trialregistry.ErrPendingNotFound:
+	case errors.Is(err, trialregistry.ErrPendingNotFound):
 		httpresponse.Error(w, http.StatusNotFound, "PENDING_NOT_FOUND", err.Error())
-	case err == trialregistry.ErrPendingNotOpen:
+	case errors.Is(err, trialregistry.ErrPendingNotOpen):
 		httpresponse.Error(w, http.StatusConflict, "PENDING_NOT_OPEN", err.Error())
-	case err == trialregistry.ErrOfferNotAccepted:
+	case errors.Is(err, trialregistry.ErrOfferNotAccepted):
 		httpresponse.Error(w, http.StatusBadRequest, "OFFER_NOT_ACCEPTED", err.Error())
-	case err == trialregistry.ErrOfferVersionMismatch:
+	case errors.Is(err, trialregistry.ErrOfferVersionMismatch):
 		httpresponse.Error(w, http.StatusBadRequest, "OFFER_VERSION_MISMATCH", err.Error())
 	default:
 		if strings.Contains(err.Error(), "required") {

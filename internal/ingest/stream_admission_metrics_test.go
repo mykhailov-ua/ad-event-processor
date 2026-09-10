@@ -28,12 +28,6 @@ func TestShardLabelString_holdoutSingleDigitNotStackArena(t *testing.T) {
 	}
 }
 
-// stackUnsafeShardLabel reproduces the pre-fix pattern (unsafeString over stack scratch).
-func stackUnsafeShardLabel(shard int) string {
-	var scratch [8]byte
-	return testUnsafeString(appendInt64(scratch[:0], int64(shard)))
-}
-
 func testUnsafeString(b []byte) string {
 	if len(b) == 0 {
 		return ""

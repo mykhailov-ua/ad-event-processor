@@ -15,13 +15,13 @@ import (
 )
 
 type HTTPHandlers struct {
-	Store                 *RolesStore
-	ApplyRateLimit        func(http.HandlerFunc) http.HandlerFunc
-	RequirePermission     func(string, http.HandlerFunc) http.HandlerFunc
-	RequireAnyPermission  func([]string, http.HandlerFunc) http.HandlerFunc
-	ActorUserID           func(*http.Request) (uuid.UUID, bool)
-	WriteServiceError     func(http.ResponseWriter, error)
-	Audit                 func(ctx context.Context, actorID uuid.UUID, changes, metadata any)
+	Store                *RolesStore
+	ApplyRateLimit       func(http.HandlerFunc) http.HandlerFunc
+	RequirePermission    func(string, http.HandlerFunc) http.HandlerFunc
+	RequireAnyPermission func([]string, http.HandlerFunc) http.HandlerFunc
+	ActorUserID          func(*http.Request) (uuid.UUID, bool)
+	WriteServiceError    func(http.ResponseWriter, error)
+	Audit                func(ctx context.Context, actorID uuid.UUID, changes, metadata any)
 }
 
 func (h *HTTPHandlers) Register(mux *http.ServeMux) {
@@ -173,12 +173,12 @@ func (h *HTTPHandlers) applyOpts(r *http.Request, expectedRevision int, allowWil
 		ExpectedRevision: expectedRevision,
 		ActorUserID:      actor,
 		AllowWildcard:    allowWildcard,
-		Audit: func(action string, changes, metadata any) {
+		Audit: func(ctx context.Context, action string, changes, metadata any) {
 			if h.Audit == nil {
 				return
 			}
 			if id, ok := h.ActorUserID(r); ok {
-				h.Audit(r.Context(), id, changes, metadata)
+				h.Audit(ctx, id, changes, metadata)
 			}
 		},
 	}
@@ -224,9 +224,7 @@ func parseIfMatchRevision(raw string) int {
 	if raw == "" {
 		return 0
 	}
-	if strings.HasPrefix(raw, "W/") {
-		raw = strings.TrimPrefix(raw, "W/")
-	}
+	raw = strings.TrimPrefix(raw, "W/")
 	n, err := strconv.Atoi(raw)
 	if err != nil {
 		return 0

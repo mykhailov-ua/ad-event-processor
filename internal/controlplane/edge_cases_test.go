@@ -4,6 +4,8 @@ import (
 	"context"
 	"encoding/json"
 	"errors"
+	"fmt"
+	"strings"
 	"testing"
 	"time"
 
@@ -123,6 +125,13 @@ func (p *failingPipeliner) Publish(ctx context.Context, channel string, message 
 	return p.Pipeliner.Publish(ctx, channel, message)
 }
 
+func (p *failingPipeliner) Set(ctx context.Context, key string, value interface{}, expiration time.Duration) *redis.StatusCmd {
+	if strings.Contains(key, p.failCampaignID) {
+		p.shouldFail = true
+	}
+	return p.Pipeliner.Set(ctx, key, value, expiration)
+}
+
 func TestEdge_OutboxPartialRedisFailure(t *testing.T) {
 	pool, cleanupDB := database.SetupTestDB(t)
 	defer cleanupDB()
@@ -145,6 +154,7 @@ func TestEdge_OutboxPartialRedisFailure(t *testing.T) {
 	queries := db.New(pool)
 
 	campaignIDs := []string{uuid.New().String(), failCampaignID, uuid.New().String()}
+	var failEventID int64
 	for _, cid := range campaignIDs {
 		payload := CampaignPayload{
 			CampaignID:  cid,
@@ -153,17 +163,20 @@ func TestEdge_OutboxPartialRedisFailure(t *testing.T) {
 		payloadBytes, err := json.Marshal(payload)
 		require.NoError(t, err)
 
-		_, err = queries.CreateOutboxEvent(ctx, db.CreateOutboxEventParams{
+		row, err := queries.CreateOutboxEvent(ctx, db.CreateOutboxEventParams{
 			EventType: "CREATE_CAMPAIGN",
 			Payload:   payloadBytes,
 		})
 		require.NoError(t, err)
+		if cid == failCampaignID {
+			failEventID = row.ID
+		}
 	}
 
 	worker := NewOutboxWorker(svc)
 	processed, err := worker.ProcessOutboxWithCount(ctx, 3)
 	require.Error(t, err)
-	assert.ErrorContains(t, err, "outbox event 2")
+	assert.ErrorContains(t, err, fmt.Sprintf("outbox event %d", failEventID))
 	assert.Equal(t, 1, processed)
 
 	rows, err := pool.Query(ctx, "SELECT id, status, payload FROM outbox_events ORDER BY id ASC")

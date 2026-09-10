@@ -152,10 +152,6 @@ func openRegistry(pathOverride string) *trialregistry.Registry {
 	return trialregistry.NewFromConfig(cfg)
 }
 
-func isPilotSKU(code string) bool {
-	return strings.EqualFold(strings.TrimSpace(code), licensing.SKUCodePilot)
-}
-
 func isPaidLicenseSKU(code string) bool {
 	switch strings.ToLower(strings.TrimSpace(code)) {
 	case "", licensing.SKUCodePilot, licensing.SKUCodeLicense:

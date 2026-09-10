@@ -1,6 +1,7 @@
 package platformadmin
 
 import (
+	"net/http"
 	"net/http/httptest"
 	"testing"
 
@@ -22,7 +23,7 @@ func TestParseAuditListFilter_parsesOptionalFields(t *testing.T) {
 			"&action=PATCH_CAMPAIGN"+
 			"&auth_source=api_key"+
 			"&api_key_id="+apiKeyID.String(),
-		nil,
+		http.NoBody,
 	)
 
 	got, err := ParseAuditListFilter(req)
@@ -38,7 +39,7 @@ func TestParseAuditListFilter_campaignIdAlias(t *testing.T) {
 	t.Parallel()
 
 	targetID := uuid.New()
-	req := httptest.NewRequest("GET", "/api/v1/audit?campaign_id="+targetID.String(), nil)
+	req := httptest.NewRequest("GET", "/api/v1/audit?campaign_id="+targetID.String(), http.NoBody)
 
 	got, err := ParseAuditListFilter(req)
 	require.NoError(t, err)
@@ -48,7 +49,7 @@ func TestParseAuditListFilter_campaignIdAlias(t *testing.T) {
 func TestParseAuditListFilter_holdoutInvalidAuthSource(t *testing.T) {
 	t.Parallel()
 
-	req := httptest.NewRequest("GET", "/api/v1/audit?auth_source=bearer", nil)
+	req := httptest.NewRequest("GET", "/api/v1/audit?auth_source=bearer", http.NoBody)
 
 	_, err := ParseAuditListFilter(req)
 	require.Error(t, err)
@@ -57,7 +58,7 @@ func TestParseAuditListFilter_holdoutInvalidAuthSource(t *testing.T) {
 func TestParseAuditListFilter_holdoutInvalidAdminID(t *testing.T) {
 	t.Parallel()
 
-	req := httptest.NewRequest("GET", "/api/v1/audit?admin_id=not-a-uuid", nil)
+	req := httptest.NewRequest("GET", "/api/v1/audit?admin_id=not-a-uuid", http.NoBody)
 
 	_, err := ParseAuditListFilter(req)
 	require.Error(t, err)

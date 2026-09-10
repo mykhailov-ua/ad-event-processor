@@ -1,6 +1,9 @@
 package access
 
-import "time"
+import (
+	"context"
+	"time"
+)
 
 const (
 	SchemaVersion    = 1
@@ -11,11 +14,11 @@ const (
 )
 
 type RolesDocument struct {
-	Version   int                        `json:"version" yaml:"version"`
-	Revision  int                        `json:"revision" yaml:"revision"`
-	UpdatedAt string                     `json:"updated_at,omitempty" yaml:"updated_at,omitempty"`
-	UpdatedBy string                     `json:"updated_by,omitempty" yaml:"updated_by,omitempty"`
-	Roles     map[string]RoleDefinition    `json:"roles" yaml:"roles"`
+	Version   int                       `json:"version" yaml:"version"`
+	Revision  int                       `json:"revision" yaml:"revision"`
+	UpdatedAt string                    `json:"updated_at,omitempty" yaml:"updated_at,omitempty"`
+	UpdatedBy string                    `json:"updated_by,omitempty" yaml:"updated_by,omitempty"`
+	Roles     map[string]RoleDefinition `json:"roles" yaml:"roles"`
 }
 
 type RoleDefinition struct {
@@ -27,14 +30,14 @@ type RoleDefinition struct {
 }
 
 type RoleView struct {
-	Code               string   `json:"code"`
-	Scope              string   `json:"scope"`
-	Builtin            bool     `json:"builtin"`
-	Label              string   `json:"label,omitempty"`
-	Capabilities       []string `json:"capabilities,omitempty"`
-	Permissions        []string `json:"permissions,omitempty"`
+	Code                string   `json:"code"`
+	Scope               string   `json:"scope"`
+	Builtin             bool     `json:"builtin"`
+	Label               string   `json:"label,omitempty"`
+	Capabilities        []string `json:"capabilities,omitempty"`
+	Permissions         []string `json:"permissions,omitempty"`
 	CompiledPermissions []string `json:"compiled_permissions"`
-	MemberCount        int64    `json:"member_count,omitempty"`
+	MemberCount         int64    `json:"member_count,omitempty"`
 }
 
 type CatalogResponse struct {
@@ -62,14 +65,14 @@ type ValidationDetail struct {
 }
 
 type ApplyResult struct {
-	Revision int                    `json:"revision"`
-	Roles    map[string]RoleView    `json:"roles"`
+	Revision int                 `json:"revision"`
+	Roles    map[string]RoleView `json:"roles"`
 }
 
 type ValidateResponse struct {
-	Valid   bool               `json:"valid"`
-	Errors  []ValidationDetail `json:"errors,omitempty"`
-	Roles   map[string]RoleView `json:"roles,omitempty"`
+	Valid  bool                `json:"valid"`
+	Errors []ValidationDetail  `json:"errors,omitempty"`
+	Roles  map[string]RoleView `json:"roles,omitempty"`
 }
 
 type ApplyOptions struct {
@@ -79,7 +82,7 @@ type ApplyOptions struct {
 	Audit            AuditWriter
 }
 
-type AuditWriter func(action string, changes, metadata any)
+type AuditWriter func(ctx context.Context, action string, changes, metadata any)
 
 func nowUTC() string {
 	return time.Now().UTC().Format(time.RFC3339)

@@ -36,14 +36,13 @@ func (r *Registry) EnqueuePending(in EnqueuePendingInput) (PendingRequest, error
 
 	acceptedAt := in.OfferAcceptedAt
 	source := strings.TrimSpace(in.AcceptSource)
-	if !acceptedAt.IsZero() {
+	switch {
+	case !acceptedAt.IsZero():
 		if source == "" {
 			source = AcceptSourceVendorAPI
 		}
 		upsertOfferAcceptanceLocked(snap, telegramID, offerVersion, source, acceptedAt.UTC())
-	} else if !hasOfferAcceptanceLocked(snap, telegramID, offerVersion) {
-		return PendingRequest{}, ErrOfferNotAccepted
-	} else {
+	case hasOfferAcceptanceLocked(snap, telegramID, offerVersion):
 		for i := range snap.OfferAcceptances {
 			if snap.OfferAcceptances[i].TelegramID == telegramID && snap.OfferAcceptances[i].OfferVersion == offerVersion {
 				acceptedAt = snap.OfferAcceptances[i].AcceptedAt
@@ -51,6 +50,8 @@ func (r *Registry) EnqueuePending(in EnqueuePendingInput) (PendingRequest, error
 				break
 			}
 		}
+	default:
+		return PendingRequest{}, ErrOfferNotAccepted
 	}
 
 	for i := range snap.Pending {

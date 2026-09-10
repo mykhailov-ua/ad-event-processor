@@ -97,11 +97,12 @@ func MapParsedToTargetingInto(hot *openrtb.OpenRTB26Hot, cold *openrtb.OpenRTB26
 	if cold != nil {
 		out.Input.BlockedCatMask = cold.BCatMask
 	}
-	if hot.Flags&openrtb26FlagGeoCountry != 0 && hot.GeoCountryLen > 0 {
+	switch {
+	case hot.Flags&openrtb26FlagGeoCountry != 0 && hot.GeoCountryLen > 0:
 		out.Input.GeoHash = rtb.GeoHashFromCountryBytes(hot.GeoCountry[:hot.GeoCountryLen])
-	} else if evt != nil && evt.GeoHash != 0 {
+	case evt != nil && evt.GeoHash != 0:
 		out.Input.GeoHash = evt.GeoHash
-	} else if geo != nil && evt != nil && evt.IP != "" {
+	case geo != nil && evt != nil && evt.IP != "":
 		ingestcold.EnsureIngestGeo(geo, evt)
 		out.Input.GeoHash = evt.GeoHash
 	}

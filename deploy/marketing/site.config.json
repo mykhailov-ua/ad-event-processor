@@ -27,10 +27,12 @@
     "theme_dark_label": "Switch to dark theme",
     "theme_light_title": "Light theme",
     "theme_dark_title": "Dark theme",
+    "offer_gate_version": "Offer version:",
+    "offer_gate_scroll_hint": "Scroll to the end to enable acceptance.",
     "appliance_screenshot_alt": "BidShard admin Settings page with license JWT field",
-    "docs_href": "docs.html",
-    "home_href": "index.html",
-    "offer_href": "offer.html"
+    "docs_href": "/docs.html",
+    "home_href": "/",
+    "offer_href": "/offer.html"
   },
   "product_name": "BidShard",
   "telegram_url": "https://t.me/bidshardsupportbot",
@@ -473,6 +475,9 @@
     "NoItIsLocalSoftwareYouInstallDirectlyOnYourVpsYouCanImportYourCurrentConfigurationsDirectlyFromKeitaroOrBinomViaJson": "No — it is local software you install directly on your VPS. You can import your current configurations directly from Keitaro or Binom via JSON.",
     "PayUsdtForYourMatchingTierWeGenerateAndSendANewLicenseFileYouLoadItIntoYourExistingDeploymentWithNoReinstallNeeded": "Pay USDT for your matching tier. We generate and send a new license file. You load it into your existing deployment with no reinstall needed.",
     "BeingComfortableWithBasicVpsOperationsAndDockerIsHighlyRecommendedTheProductIsApiFirstTodayWhileOurAdminUiContinuesToCatchUp": "The onboarding wizard walks you through the first campaign. Admin console and API cover day-to-day ops.",
-    "ReachOutOnTelegramToObtainAPilotLicenseExecuteTheSingleLineInstallScriptOnYourHostActivateTheLicenseInYourBrowserAndYouAreLive": "Reach out on Telegram to obtain a pilot license. Execute the single-line install script on your host, activate the license in your browser, and you are live."
+    "ReachOutOnTelegramToObtainAPilotLicenseExecuteTheSingleLineInstallScriptOnYourHostActivateTheLicenseInYourBrowserAndYouAreLive": "Reach out on Telegram to obtain a pilot license. Execute the single-line install script on your host, activate the license in your browser, and you are live.",
+    "MessageOnTelegram": "Message on Telegram",
+    "OperationIntegrity": "Operation integrity",
+    "SitePgaTerminalComment": "# one command on your VPS"
   }
 }

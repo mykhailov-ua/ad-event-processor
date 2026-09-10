@@ -259,6 +259,21 @@
         }
       }
     }
+    const bioFn = globalThis.trackBiometricsSnapshot;
+    if (typeof bioFn === 'function') {
+      const bio = bioFn();
+      if (bio && bio.events && bio.events.length) {
+        for (let i = 0; i < bio.events.length && out.length < maxEvents; i += 1) {
+          const e = bio.events[i];
+          out.push({
+            t: e.t,
+            ts: e.ts,
+            x: e.x | 0,
+            y: e.y | 0,
+          });
+        }
+      }
+    }
     return out;
   }
 

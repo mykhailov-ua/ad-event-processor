@@ -50,19 +50,18 @@ func main() {
 	}
 	safePtr := uintptr(unsafe.Pointer(unsafe.StringData(safe)))
 	if safePtr >= stackArenaLo {
-		fmt.Fprintf(os.Stderr, "FAIL: strconv single-digit label in stack arena %p\n", safePtr)
+		fmt.Fprintf(os.Stderr, "FAIL: strconv single-digit label in stack arena %#x\n", safePtr)
 		os.Exit(1)
 	}
 
-	var scratch [8]byte
-	buggy := unsafeString(appendInt64(scratch[:0], int64(shard)))
+	buggy := stackUnsafeLabel(shard)
 	if buggy != want {
 		fmt.Fprintf(os.Stderr, "FAIL: stack unsafe mismatch: got %q want %q\n", buggy, want)
 		os.Exit(1)
 	}
 	buggyPtr := uintptr(unsafe.Pointer(unsafe.StringData(buggy)))
 	if buggyPtr < stackArenaLo {
-		fmt.Fprintf(os.Stderr, "FAIL: holdout expected stack-arena backing for unsafe pattern, got %p\n", buggyPtr)
+		fmt.Fprintf(os.Stderr, "FAIL: holdout expected stack-arena backing for unsafe pattern, got %#x\n", buggyPtr)
 		os.Exit(1)
 	}
 	if unsafe.StringData(safe) == unsafe.StringData(buggy) {
@@ -70,5 +69,5 @@ func main() {
 		os.Exit(1)
 	}
 
-	fmt.Println("PASS: strconv.Itoa single-digit uses non-stack backing; stack unsafeString uses stack arena (P0-1 holdout)")
+	_, _ = fmt.Fprintf(os.Stdout, "PASS: strconv.Itoa single-digit uses non-stack backing; stack unsafeString uses stack arena (P0-1 holdout)\n")
 }

@@ -8,8 +8,8 @@ import (
 )
 
 type rolesFile struct {
-	Version int                    `yaml:"version"`
-	Roles   map[string]roleEntry   `yaml:"roles"`
+	Version int                  `yaml:"version"`
+	Roles   map[string]roleEntry `yaml:"roles"`
 }
 
 type roleEntry struct {

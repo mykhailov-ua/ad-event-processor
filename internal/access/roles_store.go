@@ -61,7 +61,7 @@ func (st *RolesStore) LoadFromDisk() error {
 	if err != nil {
 		return err
 	}
-	return st.applyParsed(doc, false)
+	return st.applyParsed(doc)
 }
 
 func ParseYAML(data []byte) (RolesDocument, error) {
@@ -126,11 +126,11 @@ func (st *RolesStore) ApplyBytes(ctx context.Context, data []byte, opts ApplyOpt
 	if err := st.writeAtomic(data, doc); err != nil {
 		return ApplyResult{}, err
 	}
-	if err := st.applyParsed(doc, true); err != nil {
+	if err := st.applyParsed(doc); err != nil {
 		return ApplyResult{}, err
 	}
 	if opts.Audit != nil {
-		opts.Audit("access_roles_apply", map[string]any{
+		opts.Audit(ctx, "access_roles_apply", map[string]any{
 			"revision": doc.Revision,
 			"path":     st.path,
 		}, map[string]any{"roles": len(doc.Roles)})
@@ -157,7 +157,7 @@ func (st *RolesStore) RawYAML() ([]byte, error) {
 	return os.ReadFile(path)
 }
 
-func (st *RolesStore) applyParsed(doc RolesDocument, bumpRevision bool) error {
+func (st *RolesStore) applyParsed(doc RolesDocument) error {
 	errs, compiled := ValidateDocument(doc, true)
 	if len(errs) > 0 {
 		return validationError(errs)
@@ -175,11 +175,7 @@ func (st *RolesStore) applyParsed(doc RolesDocument, bumpRevision bool) error {
 		st.policy.Reload()
 	}
 	st.mu.Lock()
-	if bumpRevision || st.doc.Revision == 0 {
-		st.doc = doc
-	} else {
-		st.doc = doc
-	}
+	st.doc = doc
 	st.mu.Unlock()
 	return nil
 }
@@ -309,20 +305,14 @@ func MarshalYAML(doc RolesDocument) ([]byte, error) {
 }
 
 type rolesYAML struct {
-	Version   int                            `yaml:"version,omitempty"`
-	Revision  int                            `yaml:"revision,omitempty"`
-	UpdatedAt string                         `yaml:"updated_at,omitempty"`
-	UpdatedBy string                         `yaml:"updated_by,omitempty"`
-	Roles     map[string]roleYAML            `yaml:"roles"`
+	Version   int                 `yaml:"version,omitempty"`
+	Revision  int                 `yaml:"revision,omitempty"`
+	UpdatedAt string              `yaml:"updated_at,omitempty"`
+	UpdatedBy string              `yaml:"updated_by,omitempty"`
+	Roles     map[string]roleYAML `yaml:"roles"`
 }
 
-type roleYAML struct {
-	Scope        string   `yaml:"scope"`
-	Builtin      bool     `yaml:"builtin,omitempty"`
-	Label        string   `yaml:"label,omitempty"`
-	Capabilities []string `yaml:"capabilities,omitempty"`
-	Permissions  []string `yaml:"permissions,omitempty"`
-}
+type roleYAML RoleDefinition
 
 func (r rolesYAML) toDocument() RolesDocument {
 	doc := RolesDocument{
@@ -333,13 +323,7 @@ func (r rolesYAML) toDocument() RolesDocument {
 		Roles:     make(map[string]RoleDefinition, len(r.Roles)),
 	}
 	for code, role := range r.Roles {
-		doc.Roles[normalizeRoleCode(code)] = RoleDefinition{
-			Scope:        role.Scope,
-			Builtin:      role.Builtin,
-			Label:        role.Label,
-			Capabilities: role.Capabilities,
-			Permissions:  role.Permissions,
-		}
+		doc.Roles[normalizeRoleCode(code)] = RoleDefinition(role)
 	}
 	return doc
 }
@@ -353,13 +337,7 @@ func rolesYAMLFromDocument(doc RolesDocument) rolesYAML {
 		Roles:     make(map[string]roleYAML, len(doc.Roles)),
 	}
 	for code, role := range doc.Roles {
-		out.Roles[code] = roleYAML{
-			Scope:        role.Scope,
-			Builtin:      role.Builtin,
-			Label:        role.Label,
-			Capabilities: role.Capabilities,
-			Permissions:  role.Permissions,
-		}
+		out.Roles[code] = roleYAML(role)
 	}
 	return out
 }
@@ -407,7 +385,8 @@ func IsValidationError(err error) ([]ValidationDetail, bool) {
 	if err == nil {
 		return nil, false
 	}
-	if ve, ok := err.(*validateErr); ok {
+	var ve *validateErr
+	if errors.As(err, &ve) {
 		return ve.details, true
 	}
 	return nil, false

@@ -7,8 +7,8 @@ import (
 )
 
 type TelegramDelivery struct {
-	Text      string             `json:"text"`
-	ParseMode string             `json:"parse_mode,omitempty"`
+	Text       string             `json:"text"`
+	ParseMode  string             `json:"parse_mode,omitempty"`
 	ButtonRows [][]TelegramButton `json:"button_rows,omitempty"`
 }
 

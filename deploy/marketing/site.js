@@ -64,6 +64,38 @@
     return lang === "uk" ? "uk" : "en";
   }
 
+  function localeHref(path) {
+    var target = String(path || "");
+    if (!target) {
+      return siteLocale() === "uk" ? "/uk/" : "/";
+    }
+    if (/^https?:\/\//i.test(target)) {
+      return target;
+    }
+    if (target.charAt(0) !== "/") {
+      target = "/" + target;
+    }
+    if (siteLocale() === "uk" && target.indexOf("/uk/") !== 0 && target !== "/uk") {
+      return "/uk" + target;
+    }
+    return target;
+  }
+
+  function offerPageHref(config) {
+    if (config && config.offer && config.offer.url) {
+      return config.offer.url;
+    }
+    return siteLocale() === "uk" ? "../offer.html" : "offer.html";
+  }
+
+  function docsPageHref(config) {
+    var ui = config && config.ui ? config.ui : {};
+    if (ui.docs_href) {
+      return ui.docs_href;
+    }
+    return siteLocale() === "uk" ? "/uk/docs.html" : "/docs.html";
+  }
+
   function formatTemplate(template, vars) {
     var out = String(template || "");
     if (!vars) {
@@ -145,6 +177,9 @@
   function langSwitchHref(config) {
     if (document.body.classList.contains("docs-page")) {
       return siteLocale() === "uk" ? "/docs.html" : "/uk/docs.html";
+    }
+    if (document.body.classList.contains("offer-page")) {
+      return siteLocale() === "uk" ? "/offer.html" : "/uk/";
     }
     var ui = config.ui || {};
     return ui.lang_switch_href || (siteLocale() === "uk" ? "/" : "/uk/");
@@ -242,6 +277,9 @@
     }
     wireMobileMenu(config);
     updateLangSwitch(config);
+    document.querySelectorAll(".NavArchitecture, .FooterArchitecture").forEach(function (link) {
+      link.setAttribute("href", docsPageHref(config));
+    });
     applyTheme(document.documentElement.getAttribute("data-theme") || "dark");
   }
 
@@ -400,7 +438,7 @@
       points +
       "</ul>" +
       '<a class="site-architecture__link" href="' +
-      escapeHtml(block.url || "docs.html") +
+      escapeHtml(localeHref(block.url || "/docs.html")) +
       '">' +
       escapeHtml(block.cta || "Read architecture docs") +
       " →</a>" +
@@ -741,7 +779,7 @@
     if (!root || !block) {
       return;
     }
-    var docsHref = siteLocale() === "uk" ? "/uk/docs.html" : "/docs.html";
+    var docsHref = docsPageHref(config);
     var primaryLabel = block.cta_primary || uiText(config, "cta_primary", "Get free pilot");
     var docsLabel = block.cta_docs || uiText(config, "cta_docs", "Architecture");
     var installLabel = block.cta_install || uiText(config, "cta_install", "Install command");
@@ -809,14 +847,14 @@
       eyebrow.textContent = block.eyebrow;
     }
     document.querySelectorAll(".site-pga-btn-link").forEach(function (link) {
-      link.setAttribute("href", siteLocale() === "uk" ? "/uk/docs.html" : "/docs.html");
+      link.setAttribute("href", docsPageHref(config));
     });
   }
 
   function wirePilotCopy(config) {
     var days = config.pilot_days || 10;
     var offerLinkText = uiText(config, "offer_link_text", "public offer");
-    var offerHref = (config.offer && config.offer.url) || "offer.html";
+    var offerHref = offerPageHref(config);
     var badge = document.querySelector("[data-site-pilot-badge]");
     if (badge) {
       badge.textContent = formatTemplate(uiText(config, "pilot_badge", "Self-hosted · Free {days}-day pilot"), {
@@ -913,8 +951,7 @@
       return;
     }
 
-    var ui = config.ui || {};
-    var docsHref = ui.docs_href || "docs.html";
+    var docsHref = docsPageHref(config);
     var nav = document.createElement("nav");
     nav.className = "site-mobile-nav";
     nav.setAttribute("aria-label", "Mobile");
@@ -1031,13 +1068,17 @@
       "</p></div>" +
       '<div class="site-offer-gate__body">' +
       '<div class="site-offer-gate__scroll" data-site-offer-scroll tabindex="0">' +
-      '<p class="site-offer-gate__version">Offer version: <strong>' +
+      '<p class="site-offer-gate__version">' +
+      escapeHtml(uiText(config, "offer_gate_version", "Offer version:")) +
+      " <strong>" +
       escapeHtml(version) +
       "</strong></p>" +
       "<ul class=\"site-offer-gate__list\">" +
       points +
       "</ul>" +
-      '<p class="site-offer-gate__hint">Scroll to the end to enable acceptance.</p>' +
+      '<p class="site-offer-gate__hint">' +
+      escapeHtml(uiText(config, "offer_gate_scroll_hint", "Scroll to the end to enable acceptance.")) +
+      "</p>" +
       "</div></div>" +
       '<div class="site-offer-gate__footer">' +
       '<label class="site-offer-gate__check is-locked">' +
@@ -1054,7 +1095,7 @@
       escapeHtml(offer.accept_cta || "I accept") +
       "</button>" +
       '<a class="site-offer-gate__read" href="' +
-      escapeHtml(offer.url || "offer.html") +
+      escapeHtml(offerPageHref(config)) +
       '" target="_blank" rel="noopener noreferrer">' +
       escapeHtml(offer.read_cta || "Read full public offer") +
       "</a>" +
@@ -1169,7 +1210,8 @@
       }
 
       if (event.target.closest('[data-site-link="offer"]')) {
-        window.location.href = "offer.html";
+        event.preventDefault();
+        window.location.href = offerPageHref(config);
       }
     });
   }
@@ -1199,7 +1241,7 @@
       if (!link) {
         return;
       }
-      if (document.body.classList.contains("docs-page")) {
+      if (document.body.classList.contains("docs-page") || document.body.classList.contains("offer-page")) {
         return;
       }
       event.preventDefault();
@@ -1234,10 +1276,24 @@
 
   function initDocs(config) {
     updateLangSwitch(config);
+    applyTheme(document.documentElement.getAttribute("data-theme") || "dark");
+    document.querySelectorAll(".site-doc-header a[href='index.html'], .site-doc-back").forEach(function (link) {
+      link.setAttribute("href", siteLocale() === "uk" ? "/uk/" : "/");
+    });
+    document.querySelectorAll(".site-doc-header__nav a[href='offer.html']").forEach(function (link) {
+      link.setAttribute("href", offerPageHref(config));
+    });
   }
 
   function initOffer(config) {
     updateLangSwitch(config);
+    applyTheme(document.documentElement.getAttribute("data-theme") || "dark");
+    document.querySelectorAll(".offer-header a[href='index.html'], .offer-back").forEach(function (link) {
+      link.setAttribute("href", siteLocale() === "uk" ? "/uk/" : "/");
+    });
+    document.querySelectorAll(".offer-header .site-doc-header__nav a[href='docs.html']").forEach(function (link) {
+      link.setAttribute("href", docsPageHref(config));
+    });
   }
 
   initTheme();

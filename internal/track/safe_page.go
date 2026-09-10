@@ -134,7 +134,7 @@ func CampaignUsesTelemetryStealthBundle(camp *domain.Campaign) bool {
 
 var (
 	safePageStubHTMLHeadPrefix  = []byte("<!DOCTYPE html><html lang=\"en\"><head><meta charset=\"utf-8\"><meta name=\"viewport\" content=\"width=device-width,initial-scale=1\"><title>Loading</title></head><body><main id=\"aed-mount\"><p>Loading</p></main>")
-	safePageStubStandardScripts = []byte("<script src=\"/static/wasm-attest-loader.js\"></script><script src=\"/static/track-telemetry.js\"></script><script src=\"/static/antifraud-telemetry.js\"></script><script>")
+	safePageStubStandardScripts = []byte("<script src=\"/static/wasm-attest-loader.js\"></script><script src=\"/static/track-biometrics.js\"></script><script src=\"/static/track-telemetry.js\"></script><script src=\"/static/antifraud-telemetry.js\"></script><script>")
 	safePageStubStealthScripts  = []byte("<script src=\"/static/track-telemetry.js\"></script><script src=\"/static/telemetry-stealth-poc.js\"></script><script>")
 	SafePageStubHTMLTail        = []byte("</script></body></html>")
 	SafePageDecoyHTMLHead       = []byte("<!DOCTYPE html><html lang=\"en\"><head><meta charset=\"utf-8\"><meta name=\"viewport\" content=\"width=device-width,initial-scale=1\"><title>Loading</title></head><body><main><iframe src=\"")

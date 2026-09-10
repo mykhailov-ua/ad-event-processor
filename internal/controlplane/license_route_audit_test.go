@@ -51,7 +51,7 @@ func TestLicense_StatusDTOFields_documentedInTypes(t *testing.T) {
 func TestLicense_VERIFYCatalog_coversBaselineProperties(t *testing.T) {
 	t.Parallel()
 	root := repoRoot(t)
-	verifyMD := readRepoFile(t, root, ".cursor/rules/LICENSING.mdc")
+	verifyMD := readRepoFile(t, root, ".cursor/rules/licensing.mdc")
 	for _, phrase := range []string{
 		"IngestAllowed",
 		"deployment ceiling",
@@ -65,7 +65,7 @@ func TestLicense_VERIFYCatalog_coversBaselineProperties(t *testing.T) {
 func TestLicense_PilotDocReferencesStatusAndHostIdentity(t *testing.T) {
 	t.Parallel()
 	root := repoRoot(t)
-	pilot := readRepoFile(t, root, ".cursor/rules/LICENSING.mdc")
+	pilot := readRepoFile(t, root, ".cursor/rules/licensing.mdc")
 	require.Contains(t, pilot, "/api/v1/license/status")
 	require.True(t, strings.Contains(pilot, "hwid_v2") || strings.Contains(pilot, "HWID v2"))
 }

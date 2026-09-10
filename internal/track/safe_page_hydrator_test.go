@@ -15,6 +15,7 @@ func TestSafePageStubBody_holdout_noCommercialURL(t *testing.T) {
 	require.NotContains(t, html, "<iframe")
 	require.NotContains(t, html, "safe.example")
 	require.Contains(t, html, `id="aed-mount"`)
+	require.Contains(t, html, "/static/track-biometrics.js")
 	require.Contains(t, html, "/static/track-telemetry.js")
 	require.Contains(t, html, "/static/antifraud-telemetry.js")
 	require.Contains(t, html, "/track/verify")

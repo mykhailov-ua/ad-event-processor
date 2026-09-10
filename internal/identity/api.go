@@ -344,7 +344,7 @@ func (h *Handler) revokeAPIKey(ctx context.Context, keyID string) error {
 }
 
 func (h *Handler) contextWithSessionBearer(ctx context.Context, bearerToken string) (context.Context, error) {
-	accessToken, ok := parseBearerToken("Bearer "+bearerToken)
+	accessToken, ok := parseBearerToken("Bearer " + bearerToken)
 	if !ok {
 		accessToken, ok = parseBearerToken(bearerToken)
 	}
