@@ -128,7 +128,7 @@ Describe each workflow file under this directory. Run merge gates locally with t
 
 **Trigger:** push tags `v*`; GitHub `release` published; `workflow_dispatch` with optional tag input.
 
-**Purpose:** Build and push `pilot` and `pilot-ingest` images to GHCR; garble and asset-seal salts; binary surface check; `make release-installer`.
+**Purpose:** Build and push `pilot` and `pilot-ingest` images to GHCR; garble and asset-seal salts; binary surface check; bundle installer tarball (garbled bins extracted from pilot image) and upload `ad-event-processor-installer.tar.gz` to GitHub Releases.
 
 **Secrets:** `GARBLE_SEED_SALT`, `ASSET_SEAL_SALT` (required). `GITHUB_TOKEN` for registry push.
 

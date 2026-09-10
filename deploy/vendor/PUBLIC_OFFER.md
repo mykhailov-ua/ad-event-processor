@@ -1,22 +1,18 @@
 # Public Offer Agreement / Договір публічної оферти
 
-**Product:** ad-event-processor (self-hosted HTTP traffic measurement, event ingestion, and campaign routing software)  
+**Product:** Ad Event Processor (self-hosted HTTP traffic measurement, event ingestion, and campaign routing software)  
 **Document version:** 1.0  
 **Effective date:** [EFFECTIVE_DATE]  
 **Last updated:** [LAST_UPDATED]
 
-> **Legal notice.** This document is a template for a public offer under the Civil Code of Ukraine (CCU), the Law of Ukraine "On Electronic Commerce", and applicable data-protection law including Regulation (EU) 2016/679 (GDPR) where relevant. **Have it reviewed by qualified counsel** before publication. Mandatory consumer-protection norms cannot be waived by contract.
-
-> **Civil law (offer).** Public offers are governed primarily by **CCU Articles 633, 638, 641, and 642** (public contract, moment of conclusion, offer, acceptance).
+> **Scope.** Software license terms for self-hosted **Ad Event Processor**. **Licensor** is **BidShard** (bidshard.com): vendor of installable software, not a hosted ad network or SaaS operator. Licenses are issued after crypto payment (typically USDT) unless otherwise agreed in writing. Crypto payments are final.
 >
-> **Dual-use technology.** The Software is **lawful, general-purpose infrastructure** for advertising operations (comparable to dual-use goods). It is **not** designed or supplied to commit offenses under **CC Article 361** et seq. Criminal liability for unlawful use rests **exclusively with the operator (Licensee)** who configures and runs the Deployment.
+> **Dual-use technology.** The Software is **lawful, general-purpose infrastructure** for advertising operations (comparable to dual-use goods). It is **not** designed or supplied to commit computer-crime offenses. Criminal liability for unlawful use rests **exclusively with the operator (Licensee)** who configures and runs the Deployment.
 
-**Offeror / Оферент:**  
-[VENDOR_LEGAL_NAME], [LEGAL_FORM]  
-Registered address: [VENDOR_ADDRESS], Ukraine  
-EDRPOU / company ID: [EDRPOU]  
+**Vendor contact**  
 Email: [VENDOR_CONTACT_EMAIL]  
-Website: [VENDOR_WEBSITE]
+Website: [VENDOR_WEBSITE]  
+Telegram: [SUPPORT_TELEGRAM]
 
 ---
 
@@ -40,8 +36,8 @@ Website: [VENDOR_WEBSITE]
 | Term | Meaning |
 | :--- | :--- |
 | **Agreement** | Contract formed by Acceptance of this Offer. |
-| **Software** | The ad-event-processor product: compiled binaries, container images, install scripts, bundled configuration templates, and documentation supplied by Licensor for on-premise deployment. |
-| **Licensor / we / us** | [VENDOR_LEGAL_NAME]. |
+| **Software** | The Ad Event Processor product: compiled binaries, container images, install scripts, bundled configuration templates, and documentation supplied by Licensor for on-premise deployment. |
+| **Licensor / we / us** | BidShard (operator of bidshard.com self-hosted software). |
 | **Licensee / you / Customer** | Person or entity that Accepts this Offer. |
 | **Business Customer** | Legal entity or sole proprietor acquiring the Software for business purposes and declaring business status at checkout. |
 | **Consumer** | Individual acquiring the Software primarily for personal, family, or household use outside trade or profession. |
@@ -321,8 +317,8 @@ Reverse engineering is prohibited **to the maximum extent permitted by applicabl
 | Термін | Значення |
 | :--- | :--- |
 | **Договір** | Договір, укладений шляхом Акцепту цієї Оферти. |
-| **ПЗ (Software)** | Продукт ad-event-processor: скомпільовані бінарники, образи контейнерів, інсталяційні скрипти, шаблони конфігурації та документація для on-premise розгортання. |
-| **Ліцензіар / ми** | [VENDOR_LEGAL_NAME]. |
+| **ПЗ (Software)** | Продукт Ad Event Processor: скомпільовані бінарники, образи контейнерів, інсталяційні скрипти, шаблони конфігурації та документація для on-premise розгортання. |
+| **Ліцензіар / ми** | BidShard (оператор self-hosted ПЗ bidshard.com). |
 | **Ліцензіат / ви / Замовник** | Особа або суб'єкт, що здійснив Акцепт. |
 | **Бізнес-замовник** | Юридична особа або ФОП, що придбає ПЗ для підприємницької діяльності та підтвердить це при оформленні. |
 | **Споживач** | Фізична особа, що придбає ПЗ для особистих потреб поза підприємницькою діяльністю. |
@@ -567,4 +563,4 @@ Store: timestamp, IP, document version, SKU, `deployment_id` (if known).
 
 ---
 
-*Internal codename note (not part of the offer): engineering repository may reference legacy internal names; the commercial product name is **ad-event-processor**.*
+*Internal codename note (not part of the offer): engineering repository may reference legacy internal names; the commercial product name is **Ad Event Processor**.*

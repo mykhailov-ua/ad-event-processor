@@ -134,4 +134,9 @@ func TestFeatureSeed_couplingGates(t *testing.T) {
 	SetMCKFeatureBitsForTest(MCKFeatureBitOpenRTB)
 	require.True(t, SeedGateOpenRTB(ent))
 	require.True(t, SeedGateRPS(1000))
+
+	entMl := Entitlements{}
+	entMl.Features.MlFraudBoost = true
+	SetMCKFeatureBitsForTest(MCKFeatureBitMlFraudBoost)
+	require.True(t, SeedGateMlFraudBoost(entMl))
 }

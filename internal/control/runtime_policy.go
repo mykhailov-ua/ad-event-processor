@@ -77,6 +77,13 @@ func sealedRuntimeBlob() ([]byte, error) {
 	return data, nil
 }
 
+// VerifyRuntimePolicySealed opens the sealed control runtime policy blob when present;
+// missing blob is OK (embedded policy fallback).
+func VerifyRuntimePolicySealed() error {
+	_, err := resolveRuntimePolicyBytes()
+	return err
+}
+
 func resolveRuntimePolicyBytes() ([]byte, error) {
 	if config.LicenseAssetsUnsealed() {
 		return controlRuntimePolicyEmbed, nil
@@ -84,7 +91,8 @@ func resolveRuntimePolicyBytes() ([]byte, error) {
 	sealed, err := sealedRuntimeBlob()
 	if err != nil {
 		if os.IsNotExist(err) {
-			return controlRuntimePolicyEmbed, nil
+			metrics.ControlRuntimeSealFailTotal.Inc()
+			return nil, fmt.Errorf("sealed control runtime blob: %w", err)
 		}
 		return nil, err
 	}

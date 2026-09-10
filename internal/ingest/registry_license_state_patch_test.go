@@ -30,5 +30,6 @@ func TestLicenseStatePatchInsufficient(t *testing.T) {
 	require.ErrorIs(t, err, ErrRateLimitExceeded)
 
 	licenseFilter := NewLicenseFilter(activeLicenseStaleSeedRegistry{})
-	require.NoError(t, licenseFilter.Check(context.Background(), &domain.Event{}))
+	err = licenseFilter.Check(context.Background(), &domain.Event{})
+	require.ErrorIs(t, err, ErrLicenseExpired)
 }

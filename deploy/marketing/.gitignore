@@ -1,0 +1,10 @@
+# Figma export drop (optional local staging)
+figma-export/
+.DS_Store
+
+# Generated on deploy (scripts/install/obfuscate_get.sh)
+get.sh
+releases/*.tar.gz
+
+# JetBrains Mono webfont; fetched by scripts/ops/bundle_marketing_jetbrains_mono.sh
+fonts/jetbrains-mono/*.woff2

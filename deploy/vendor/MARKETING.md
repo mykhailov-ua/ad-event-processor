@@ -1,6 +1,16 @@
 # Product specification (buyer-facing)
 
-Neutral description of **ad-event-processor** on a self-hosted install. Not a managed service. The operator runs all processes on their own servers. The vendor issues an offline license JWT (peak RPS and host limits). The vendor does not store operator campaign or event data in the default model.
+Neutral description of **BidShard** (self-hosted **Ad Event Processor** stack) on the buyer's own servers. Not a managed service. The vendor issues an offline license JWT (peak RPS and host limits). The vendor does not store operator campaign or event data in the default model.
+
+## Product naming
+
+| Surface | Buyer-facing name |
+| :--- | :--- |
+| Vendor / brand | **BidShard** |
+| Tracker | **Ad Event Processor** (`GET /click`, `POST /track`) |
+| Install / JWT product id | `ad-event-processor` (kebab-case; paths and env only) |
+
+Sales copy and outreach: [OUTREACH.md](./OUTREACH.md).
 
 **Admin UI:** HTTP API (`/api/v1/*` on port 8188) is the supported control surface. A React admin SPA exists in `web/`; a given release may ship API-only until `web/dist` is embedded. Do not represent a full browser console unless the release artifact includes it.
 
@@ -128,8 +138,8 @@ Source: [sku.yaml](./sku.yaml). Prices: [SALES.md](./SALES.md).
 | Starter | 129 | 10k | 1 | no | no | no | no |
 | Pro | 329 | 25k | 1 | yes | no | no | no |
 | Scale | 649 | 75k | 3 | yes | yes | yes | no |
-| Network | 1,199 | 150k | 10 | yes | yes | yes | yes |
-| Enterprise | 2,500+ | custom | 99 | yes | yes | yes | yes |
+| Network | 1,399 | 150k | 10 | yes | yes | yes | yes |
+| Enterprise | 2,999+ | custom | 99 | yes | yes | yes | yes |
 | Pilot | 0 | 5k | 1 | no | no | no | no |
 
 `max_active_campaigns: 0` and `max_events_per_month: 0` in SKU schema = no license cap on those fields.

@@ -46,6 +46,10 @@ func RunFromCLI(ctx context.Context, cfg *config.Config) error {
 		slog.Info("license file recheck enabled", "path", config.LicensePathFromEnv())
 	}
 
+	if err := licensing.VerifySealedAssetsReady(licensing.SealedAssetRoleControl); err != nil {
+		slog.Error("sealed asset gate failed", "role", "control", "error", err)
+		os.Exit(1)
+	}
 	if err := InitRuntimePolicy(); err != nil {
 		slog.Error("failed to load control runtime policy", "error", err)
 		if !config.LicenseAssetsUnsealed() {

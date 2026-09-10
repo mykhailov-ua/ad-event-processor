@@ -1,0 +1,255 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <meta name="description" content="Public offer for BidShard self-hosted software license.">
+  <title>Public offer — BidShard</title>
+  <script>
+    (function () {
+      try {
+        var theme = localStorage.getItem("bidshard_theme");
+        if (theme === "light" || theme === "dark") {
+          document.documentElement.setAttribute("data-theme", theme);
+        }
+      } catch (e) {}
+    })();
+  </script>
+  <link rel="stylesheet" href="site.css">
+  <script src="site.js" defer></script>
+</head>
+<body class="offer-page">
+  <div class="site-offer-gate" data-site-offer-gate hidden aria-hidden="true"></div>
+  <header class="offer-header">
+    <a href="index.html">BidShard</a>
+    <nav class="site-doc-header__nav" aria-label="Legal">
+      <a href="docs.html">Architecture</a>
+    </nav>
+    <div class="site-header-end">
+      <button type="button" class="site-theme-toggle" data-site-theme-toggle aria-label="Switch to light theme" title="Light theme">
+        <svg class="site-theme-toggle__icon site-theme-toggle__icon--sun" viewBox="0 0 24 24" fill="none" aria-hidden="true">
+          <circle cx="12" cy="12" r="4" stroke="currentColor" stroke-width="2"/>
+          <path d="M12 2v2M12 20v2M4.93 4.93l1.41 1.41M17.66 17.66l1.41 1.41M2 12h2M20 12h2M4.93 19.07l1.41-1.41M17.66 6.34l1.41-1.41" stroke="currentColor" stroke-width="2" stroke-linecap="round"/>
+        </svg>
+        <svg class="site-theme-toggle__icon site-theme-toggle__icon--moon" viewBox="0 0 24 24" fill="none" aria-hidden="true">
+          <path d="M12 3a6 6 0 0 0 9 9 9 9 0 1 1-9-9Z" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/>
+        </svg>
+      </button>
+    </div>
+  </header>
+
+  <main class="offer-doc">
+    <!-- offer-body:start -->
+    <a href="index.html" class="offer-back">Back to home</a>
+
+    <h1>Public Offer Agreement</h1>
+    <p><strong>Product:</strong> Ad Event Processor (self-hosted HTTP traffic measurement, event ingestion, and campaign routing software)</p>
+    <p><strong>Document version:</strong> 1.0</p>
+    <p><strong>Effective date:</strong> 2026-09-09</p>
+    <p><strong>Last updated:</strong> 2026-09-09</p>
+    <div class="offer-callout"><strong>Scope.</strong> Software license terms for self-hosted <strong>Ad Event Processor</strong>. <strong>Licensor</strong> is <strong>BidShard</strong> (bidshard.com): vendor of installable software, not a hosted ad network or SaaS operator. Licenses are issued after crypto payment (typically USDT) unless otherwise agreed in writing. Crypto payments are final.<br />
+    <strong>Dual-use technology.</strong> The Software is <strong>lawful, general-purpose infrastructure</strong> for advertising operations (comparable to dual-use goods). It is <strong>not</strong> designed or supplied to commit computer-crime offenses. Criminal liability for unlawful use rests <strong>exclusively with the operator (Licensee)</strong> who configures and runs the Deployment.</div>
+    <p><strong>Vendor contact</strong></p>
+    <p>Email: support@getbidshard.com</p>
+    <p>Website: https://bidshard.com</p>
+    <p>Telegram: @bidshardsupportbot</p>
+    <h2>1. Nature of this document</h2>
+    <p class="offer-clause">1.1. This document is a <strong>public offer</strong> (оферта) within the meaning of <strong>CCU Article 641</strong>: a proposal addressed to an indefinite circle of persons to conclude a <strong>Software License and Delivery Agreement</strong> on the terms set out below.</p>
+    <p class="offer-clause">1.2. Unless the context requires otherwise, advertising materials, landing pages, and price lists that do <strong>not</strong> contain all essential terms are an <strong>invitation to make offers</strong> (CCU Article 641(2)). This document, when published with essential terms and an acceptance mechanism, constitutes the binding offer.</p>
+    <p class="offer-clause">1.3. <strong>Essential terms</strong> of the Agreement:</p>
+    <ul>
+    <li>subject matter (non-exclusive license to self-hosted Software);</li>
+    <li>license tier (SKU) and fee;</li>
+    <li>license term and renewal model;</li>
+    <li>territory (worldwide deployment on Licensee infrastructure);</li>
+    <li>acceptance procedure (Section 4).</li>
+    </ul>
+    <h2>2. Definitions</h2>
+    <table class="offer-table">
+    <tr><th>Term</th><th>Meaning</th></tr>
+    <tbody>
+    <tr><td><strong>Agreement</strong></td><td>Contract formed by Acceptance of this Offer.</td></tr>
+    <tr><td><strong>Software</strong></td><td>The Ad Event Processor product: compiled binaries, container images, install scripts, bundled configuration templates, and documentation supplied by Licensor for on-premise deployment.</td></tr>
+    <tr><td><strong>Licensor / we / us</strong></td><td>BidShard (operator of bidshard.com self-hosted software).</td></tr>
+    <tr><td><strong>Licensee / you / Customer</strong></td><td>Person or entity that Accepts this Offer.</td></tr>
+    <tr><td><strong>Business Customer</strong></td><td>Legal entity or sole proprietor acquiring the Software for business purposes and declaring business status at checkout.</td></tr>
+    <tr><td><strong>Consumer</strong></td><td>Individual acquiring the Software primarily for personal, family, or household use outside trade or profession.</td></tr>
+    <tr><td><strong>SKU</strong></td><td>Commercial tier defined in the published price list and <code>sku.yaml</code> catalog (e.g. <code>starter</code>, <code>pro</code>, <code>scale</code>, <code>network</code>, <code>enterprise</code>, <code>pilot</code>).</td></tr>
+    <tr><td><strong>License Token / JWT</strong></td><td>Ed25519-signed JSON Web Token file (<code>license.jwt</code>) encoding tier limits, features, <code>deployment_id</code>, and validity period.</td></tr>
+    <tr><td><strong>Deployment</strong></td><td>Licensee's self-hosted installation of the Software on infrastructure under Licensee's control.</td></tr>
+    <tr><td><strong>Licensee Data</strong></td><td>All data processed, stored, or transmitted within Licensee's Deployment (campaigns, events, end-user identifiers, financial records, logs, backups).</td></tr>
+    <tr><td><strong>Licensor Data</strong></td><td>Data Licensor processes about Licensee for sales, billing, support, and trial-registry integrity (contact details, payment references, <code>deployment_id</code>, hardware binding hashes).</td></tr>
+    </tbody></table>
+    <h2>3. Subject matter — self-hosted license (not SaaS)</h2>
+    <p class="offer-clause">3.1. Licensor grants a <strong>non-exclusive, non-transferable, revocable</strong> license to install and run the Software on infrastructure controlled by Licensee, subject to the SKU limits and this Agreement.</p>
+    <p class="offer-clause">3.2. <strong>This is not a hosted service.</strong> Licensor does <strong>not</strong> operate Licensee's production environment, does <strong>not</strong> store Licensee Data on Licensor systems as part of normal product operation, and does <strong>not</strong> provide multi-tenant application hosting.</p>
+    <p class="offer-clause">3.3. Licensor delivers:</p>
+    <ul>
+    <li>Software artifacts (binaries/images/scripts);</li>
+    <li>a License Token for offline verification;</li>
+    <li>optional written deployment guidance within the scope of the purchased tier.</li>
+    </ul>
+    <p class="offer-clause">3.4. Licensee is solely responsible for:</p>
+    <ul>
+    <li>procuring and securing servers, networks, storage, and backups;</li>
+    <li>installing, configuring, operating, and patching the Deployment;</li>
+    <li>compliance with laws applicable to Licensee's advertising, tracking, and data processing;</li>
+    <li>all data entered into or generated by the Deployment.</li>
+    </ul>
+    <p class="offer-clause">3.5. <strong>No ownership transfer.</strong> Licensor retains all intellectual property rights in the Software. Licensee receives only the license rights expressly granted here.</p>
+    <p class="offer-clause">3.6. <strong>Dual-use character and absence of unlawful design (CC Art. 361).</strong></p>
+    <p class="offer-clause">3.6.1. The Software is <strong>dual-use technology</strong>: it has a <strong>manifest lawful purpose</strong> — measurement, routing, accounting, and quality control of advertising events on infrastructure and traffic relationships <strong>lawfully controlled or instructed by Licensee</strong> (click tracking, server postbacks, campaign budgets, reporting, rule-based and batch antifraud).</p>
+    <p class="offer-clause">3.6.2. <strong>Neutral instrument.</strong> As with general tools (e.g. server software, databases, network equipment), the Software <strong>does not itself form criminal intent</strong> (<em>mens rea</em>). Under general principles of criminal law, <strong>the person who unlawfully uses a neutral instrument</strong> — not the supplier of that instrument for lawful purposes — bears criminal and administrative liability.</p>
+    <p class="offer-clause">3.6.3. <strong>No functionality whose inherent purpose is unauthorized interference.</strong> Licensor does <strong>not</strong> design, market, or deliver features whose <strong>primary or inherent</strong> purpose is to commit <strong>CC Article 361</strong> offenses, including: obtaining unauthorized access to third-party accounts or systems; bypassing authentication or access controls of third parties; distributing malware; operating command-and-control for compromised hosts; or exploiting vulnerabilities in third-party systems without authorization. Documented capabilities (rate limits, geo filters, silent reject, edge blocking) serve <strong>traffic quality and spend control on Licensee's own ingest path</strong>, not unauthorized entry into foreign systems.</p>
+    <p class="offer-clause">3.6.4. <strong>No custody of operational data.</strong> Because Licensor does not host the Deployment and does not receive Licensee Data in the standard model, Licensor <strong>cannot</strong> perform — and does not perform — acts of interference in third-party information systems <strong>through</strong> the running Software. All technical acts in production are executed <strong>on Licensee's hardware</strong> under Licensee's configuration and legal responsibility.</p>
+    <p class="offer-clause">3.6.5. <strong>Licensee as operator.</strong> Licensee alone decides traffic sources, collection notices, integrations, retention, and jurisdictions. Any allegation that processing violates <strong>CC Articles 361, 361-1, 362, 363, or 363-1</strong> or foreign computer-crime law concerns <strong>Licensee's conduct and configuration</strong>, not the supply of dual-use Software for lawful advertising operations.</p>
+    <h2>4. Acceptance (акцепт)</h2>
+    <p class="offer-clause">4.1. Acceptance under <strong>CCU Article 642</strong> must be <strong>complete and unconditional</strong>. Any variant terms proposed by Licensee are a new offer, not Acceptance.</p>
+    <p class="offer-clause">4.2. Acceptance occurs when Licensee performs <strong>any one</strong> of the following (as indicated at checkout):</p>
+    <table class="offer-table">
+    <tr><th>Method</th><th>When Agreement is concluded</th></tr>
+    <tbody>
+    <tr><td><strong>Payment</strong></td><td>Successful transfer of the invoiced amount in USDT (or other method stated on the invoice) and Licensor's acknowledgment of receipt.</td></tr>
+    <tr><td><strong>Electronic assent</strong></td><td>Clicking &quot;I agree&quot; / &quot;Accept offer&quot; (or equivalent) <strong>after</strong> being able to read this document, <strong>and</strong> completing payment or receiving a License Token for a paid tier.</td></tr>
+    <tr><td><strong>Pilot token request</strong></td><td>Submitting a pilot request form with explicit checkbox acceptance <strong>and</strong> receiving a pilot License Token from Licensor.</td></tr>
+    <tr><td><strong>License application</strong></td><td>Applying a paid License Token received from Licensor after invoice settlement.</td></tr>
+    </tbody></table>
+    <p class="offer-clause">4.3. The Agreement is deemed concluded at the moment Licensor <strong>receives</strong> Acceptance (CCU Article 638), evidenced by payment confirmation, issuance log, or CRM timestamp.</p>
+    <p class="offer-clause">4.4. Licensee warrants that the person Accepting has authority to bind the organization.</p>
+    <h2>5. License tiers, limits, and features</h2>
+    <p class="offer-clause">5.1. Current tiers, monthly fees, RPS ceilings, host activation limits, and feature flags are defined in the published price list and the canonical SKU catalog (<code>deploy/vendor/sku.yaml</code> in the product repository). Licensor may update list prices for <strong>future</strong> purchases by publishing a new price list; existing prepaid periods are governed by the invoice.</p>
+    <p class="offer-clause">5.2. <strong>Enforced limits</strong> include, per SKU: peak ingest RPS, <code>max_activations</code> (host bindings), regions, tenants, API keys, export chunk size, and boolean feature gates (OpenRTB, ML fraud boost, IVT detector, eBPF edge, multi-region, etc.).</p>
+    <p class="offer-clause">5.3. <strong>Unlimited dimensions</strong> when catalog value is <code>0</code>: <code>max_active_campaigns</code> and <code>max_events_per_month</code> are not license-capped on self-hosted installs; practical limits are hardware and SKU RPS.</p>
+    <p class="offer-clause">5.4. Licensor may issue <strong>pilot</strong> licenses (<code>pilot</code> SKU): typically 14 calendar days, reduced RPS, rules-only fraud features unless otherwise agreed in writing.</p>
+    <p class="offer-clause">5.5. <strong>Grace period:</strong> after JWT <code>exp</code>, a default <strong>7-day grace</strong> (<code>grace_days</code>) may allow continued ingest before <code>EXPIRED</code> state blocks ingest. Exact behavior is encoded in the License Token and product licensing module.</p>
+    <p class="offer-clause">5.6. <strong>Renewal</strong> is effected by Licensor issuing a new JWT with the <strong>same</strong> <code>deployment_id</code>. Failure to renew before expiry + grace results in ingest block (<code>EXPIRED</code> / <code>REVOKED</code>).</p>
+    <h2>6. Delivery and installation</h2>
+    <p class="offer-clause">6.1. Delivery is <strong>electronic</strong>: download link, container registry credentials, or release archive, plus License Token delivery by secure channel (email, Telegram, or ticket).</p>
+    <p class="offer-clause">6.2. Primary install entrypoint on Licensee infrastructure:</p>
+    <pre><code>bash scripts/install/ad-event-processor-install.sh up</code></pre>
+    <p>Profiles (<code>ingest-only</code>, <code>full</code>, <code>single-vps</code>, etc.) and hardware requirements are documented in <code>deploy/DEPLOY.md</code> and tier-specific guides.</p>
+    <p class="offer-clause">6.3. License Token placement (default paths):</p>
+    <ul>
+    <li>development tree: <code>var/license.jwt</code>;</li>
+    <li>production appliance: <code>/etc/ad-event-processor/license.jwt</code> or path in <code>AD_EVENT_PROCESSOR_LICENSE_PATH</code>.</li>
+    </ul>
+    <p class="offer-clause">6.4. Apply without full restart: Admin API <code>POST /api/v1/license/apply</code>, Admin Settings UI, or <code>ad-event-processor-install.sh license-apply '&lt;JWT&gt;'</code>.</p>
+    <p class="offer-clause">6.5. <strong>Offline verification:</strong> the Software validates the JWT locally with Licensor's public key. <strong>No outbound license ping</strong> is required for normal operation. Default appliance installs set <code>TELEMETRY_ENABLED=false</code>.</p>
+    <p class="offer-clause">6.6. Licensor's delivery obligation is satisfied when Licensee can download the Software and receives a valid License Token for the paid SKU. Licensor is <strong>not</strong> obliged to achieve Licensee's business outcomes (ROI, fraud rates, uptime on Licensee networks).</p>
+    <h2>7. Fees and payment</h2>
+    <p class="offer-clause">7.1. Fees are stated in <strong>USDT</strong> unless the invoice specifies otherwise (TRC-20 / ERC-20 addresses on invoice).</p>
+    <p class="offer-clause">7.2. Invoices are due as stated on the invoice. Late payment may result in token non-delivery, <code>REVOKED</code> status, or suspension of support entitlements.</p>
+    <p class="offer-clause">7.3. Licensee bears all blockchain network fees, bank fees, and conversion costs.</p>
+    <p class="offer-clause">7.4. Taxes: prices are [exclusive / inclusive — choose one] of VAT. Business Customers provide valid tax identifiers where required.</p>
+    <p class="offer-clause">7.5. <strong>No automatic card chargeback right</strong> applies to crypto settlement; disputes follow Section 15.</p>
+    <h2>8. Support and professional services</h2>
+    <p class="offer-clause">8.1. Unless a separate <strong>Support Addendum</strong> is signed, support is <strong>best-effort</strong> and limited to:</p>
+    <ul>
+    <li>initial install guidance for the first paid month (as stated on invoice);</li>
+    <li>license issuance and renewal;</li>
+    <li>defect reports reproducible on a reference compose profile.</li>
+    </ul>
+    <p class="offer-clause">8.2. <strong>Excluded</strong> unless separately purchased:</p>
+    <ul>
+    <li>24/7 operations or incident response on Licensee infrastructure;</li>
+    <li>managed hosting;</li>
+    <li>custom feature development;</li>
+    <li>forensic analysis of Licensee traffic;</li>
+    <li>legal or GDPR compliance consulting.</li>
+    </ul>
+    <p class="offer-clause">8.3. Support channels: support@getbidshard.com / @bidshardsupportbot. Response targets are commercial courtesies, <strong>not SLAs</strong>, unless written in an enterprise addendum.</p>
+    <h2>9. License restrictions</h2>
+    <p>Licensee shall not:</p>
+    <ul>
+    <li>sublicense, sell, lease, or distribute the Software or License Token to third parties;</li>
+    <li>circumvent technical limits, host-binding, or feature gates;</li>
+    <li>remove proprietary notices or license verification;</li>
+    <li>use the Software to build a competing hosted multi-tenant service that reproduces Licensor's core product;</li>
+    <li>share one paid SKU across unrelated legal entities without written consent.</li>
+    </ul>
+    <p>Reverse engineering is prohibited <strong>to the maximum extent permitted by applicable law</strong> (business customers). Consumer mandatory rights remain reserved.</p>
+    <h3>9.1. Lawful use, dual-use misuse, and CC Art. 361</h3>
+    <p class="offer-clause">9.1.1. Licensee shall deploy and operate the Software <strong>for lawful advertising and analytics purposes</strong> and only where Licensee has a valid legal basis for processing (contract, consent, legitimate interest, or other grounds under applicable law).</p>
+    <p class="offer-clause">9.1.2. <strong>Exclusive criminal liability of Licensee.</strong> If Licensee uses the Software — as with any dual-use technology — to commit or facilitate offenses under <strong>CC Article 361</strong> or related Articles (<strong>361-1, 362, 363, 363-1</strong>), <strong>only Licensee</strong> (and its directors, employees, contractors, or accomplices, as determined by law) bears <strong>criminal and administrative liability</strong>. Licensor is not a participant, organizer, facilitator, or co-perpetrator of such acts by virtue of supplying the Software.</p>
+    <p class="offer-clause">9.1.3. <strong>No authorization of crime.</strong> Nothing in this Agreement or in technical documentation <strong>authorizes</strong> unauthorized interference with third-party systems. Misuse is <strong>outside the scope</strong> of the license granted here.</p>
+    <p class="offer-clause">9.1.4. Licensor does not monitor production traffic and has <strong>no practical ability</strong> to prevent or direct Licensee's unlawful misuse on Licensee's private infrastructure. Licensor may <strong>revoke</strong> a License Token upon credible notice of unlawful use, without admission of liability or joint guilt.</p>
+    <p class="offer-clause">9.1.5. <strong>Security research</strong> on Licensee's <strong>own</strong> Deployment under a written policy and, where applicable, <strong>CC Article 361(6)</strong> and authorized vulnerability-disclosure procedures is not misuse; unauthorized testing of third-party systems remains Licensee's sole risk and is not licensed.</p>
+    <h2>10. Warranty disclaimer</h2>
+    <p class="offer-clause">10.1. THE SOFTWARE IS PROVIDED <strong>&quot;AS IS&quot;</strong> AND <strong>&quot;AS AVAILABLE&quot;</strong>, WITHOUT WARRANTIES OF ANY KIND, WHETHER EXPRESS, IMPLIED, OR STATUTORY, INCLUDING MERCHANTABILITY, FITNESS FOR A PARTICULAR PURPOSE, NON-INFRINGEMENT, ACCURACY, OR UNINTERRUPTED OPERATION.</p>
+    <p class="offer-clause">10.2. Without limiting the foregoing, Licensor does <strong>not</strong> warrant:</p>
+    <ul>
+    <li>that the Software will detect or prevent all fraud, bots, or invalid traffic;</li>
+    <li>hot-path latency or RPS on Licensee hardware;</li>
+    <li>compatibility with every ad network, CDN, or tracker integration;</li>
+    <li>error-free analytics or financial reconciliation;</li>
+    <li>that ML or IVT features operate in real time on every event (batch sidecars are documented in product materials).</li>
+    </ul>
+    <p class="offer-clause">10.3. Any benchmark or SLA figures in technical documentation are <strong>engineering targets</strong>, not contractual warranties, unless expressly stated in a signed enterprise addendum.</p>
+    <h2>11. Limitation of liability</h2>
+    <p class="offer-clause">11.1. <strong>Business Customers.</strong> To the fullest extent permitted by Ukrainian law, Licensor's aggregate liability arising out of or related to the Agreement shall not exceed the <strong>fees paid by Licensee for the Software in the three (3) months</strong> preceding the event giving rise to the claim.</p>
+    <p class="offer-clause">11.2. <strong>Exclusion of indirect damages.</strong> Licensor shall not be liable for indirect, incidental, special, consequential, or punitive damages, including lost profits, lost revenue, lost ad spend, reputational harm, or data loss within Licensee's Deployment, even if advised of the possibility.</p>
+    <p class="offer-clause">11.3. <strong>Consumer Customers.</strong> Nothing in this Section limits mandatory rights under the Law of Ukraine &quot;On Consumer Protection&quot; where applicable. Where Ukrainian law imposes liability that cannot be limited, this Section applies to the maximum extent permitted.</p>
+    <p class="offer-clause">11.4. Licensee acknowledges that <strong>Licensee controls production data and configuration</strong>; Licensor cannot cause or remediate outages on infrastructure it does not operate.</p>
+    <p class="offer-clause">11.5. <strong>Criminal misuse — no Licensor liability.</strong> Licensor shall not be liable to Licensee or third parties for criminal offenses, prosecutions, or penalties arising from <strong>Licensee's misuse</strong> of dual-use Software, including alleged violations of <strong>CC Article 361</strong> et seq., where Licensor has supplied the Software for its <strong>lawful intended purpose</strong> and does not store or control Licensee Data.</p>
+    <h2>12. Indemnification</h2>
+    <p class="offer-clause">12.1. Licensee shall defend, indemnify, and hold harmless Licensor from claims, fines, penalties, investigations, and costs (including reasonable legal fees) arising from:</p>
+    <ul>
+    <li><strong>any criminal, administrative, or civil allegation</strong> that Licensee's operation or misuse of the Software violated <strong>CC Article 361</strong> et seq. or analogous laws, including claims that treat Licensor as vicariously liable for dual-use supply;</li>
+    <li>Licensee Data or Licensee's advertising/traffic practices;</li>
+    <li>violation of privacy, e-marketing, or consumer laws by Licensee;</li>
+    <li>infringement allegations related to Licensee creatives, landing pages, or data collection notices;</li>
+    <li>operation of the Deployment on Licensee infrastructure;</li>
+    <li>allegations or findings that Licensee violated <strong>CC Articles 361, 361-1, 362, 363, or 363-1</strong> or analogous foreign computer-crime laws through use or misuse of the Software;</li>
+    <li>third-party claims that Licensee's Deployment caused unauthorized access, data leakage, or service disruption.</li>
+    </ul>
+    <h2>13. Data protection and privacy roles</h2>
+    <p class="offer-clause">13.1. <strong>Licensee Data (end users, publishers, campaign stats):</strong> Licensee is the <strong>data controller</strong> (and, on its own servers, the <strong>processor</strong>) for personal data processed in the Deployment. Licensor is <strong>not</strong> a processor of Licensee Data in the standard self-hosted model because Licensor does not access, store, or process Licensee Data on Licensor systems as part of product operation.</p>
+    <p class="offer-clause">13.2. <strong>Licensor Data (buyer contact, billing, trial registry):</strong> Licensor acts as <strong>controller</strong> for its own sales and compliance records (name, email, Telegram id, USDT transaction reference, <code>deployment_id</code>, hardware binding hashes used for trial abuse prevention).</p>
+    <p class="offer-clause">13.3. <strong>GDPR (EU/EEA Licensees or when EU data subjects are in scope):</strong></p>
+    <ul>
+    <li>No Data Processing Agreement (DPA) under GDPR Article 28 is required <strong>solely</strong> for self-hosted Software operation where Licensor does not process personal data on behalf of Licensee.</li>
+    <li>If Licensor provides optional managed services that touch personal data, a separate DPA is required before those services start.</li>
+    <li>Licensee must implement appropriate technical and organizational measures on its Deployment (encryption, access control, retention, breach procedures).</li>
+    </ul>
+    <p class="offer-clause">13.4. <strong>Ukrainian Law &quot;On Personal Data Protection&quot;:</strong> Licensee is responsible for registering/processing personal data as required for its activities. Licensor processes Licensor Data under lawful bases of contract performance and legitimate interest (trial fraud prevention).</p>
+    <p class="offer-clause">13.5. <strong>Telemetry:</strong> production appliances default to <code>TELEMETRY_ENABLED=false</code>. If Licensee enables telemetry, Licensee is responsible for notice and consent to data subjects as applicable.</p>
+    <p class="offer-clause">13.6. <strong>Sub-processors:</strong> Licensee's hosting provider, CDN, email, and ad platforms are Licensee's processors. Licensor's payment and communication vendors (if any) are disclosed on request.</p>
+    <h2>14. Intellectual property and open-source</h2>
+    <p class="offer-clause">14.1. Software, documentation, and trademarks remain Licensor property.</p>
+    <p class="offer-clause">14.2. Third-party open-source components are licensed under their respective licenses (see <code>NOTICE</code> / <code>LICENSE</code> files in the distribution).</p>
+    <p class="offer-clause">14.3. Feedback may be used by Licensor without restriction or compensation.</p>
+    <h2>15. Refunds, withdrawal, and chargebacks</h2>
+    <p class="offer-clause">15.1. <strong>Business Customers:</strong> fees are <strong>non-refundable</strong> once the License Token for the billing period has been delivered, except where Licensor fails to deliver a valid Token within <strong>5 business days</strong> after confirmed payment.</p>
+    <p class="offer-clause">15.2. <strong>Consumers (Ukraine):</strong> rights under the Law of Ukraine &quot;On Consumer Protection&quot; and distance-contract rules apply where mandatory. For digital content delivered immediately with express consent, withdrawal rights may be limited after delivery begins — Licensor will provide the statutory notice at checkout.</p>
+    <p class="offer-clause">15.3. Pilot licenses are <strong>free</strong>; no refund applies.</p>
+    <p class="offer-clause">15.4. Crypto payments: refund, if required by law, may be made in USDT to the originating wallet or by mutual agreement.</p>
+    <h2>16. Term, suspension, and termination</h2>
+    <p class="offer-clause">16.1. Term runs for the validity period of the paid License Token plus any grace period.</p>
+    <p class="offer-clause">16.2. Licensor may <strong>revoke</strong> a License Token for material breach (resale, circumvention, chargeback abuse, illegal use) via <code>REVOKED</code> status.</p>
+    <p class="offer-clause">16.3. On termination, Licensee must stop using the Software and destroy copies, except archival backups required by law.</p>
+    <p class="offer-clause">16.4. Sections that by nature survive (liability limits, IP, indemnity, governing law) survive termination.</p>
+    <h2>17. Amendments and notices</h2>
+    <p class="offer-clause">17.1. Licensor may amend this Offer for <strong>future</strong> Acceptances by publishing a new version with a new effective date.</p>
+    <p class="offer-clause">17.2. Material changes to active prepaid periods require notice [14] days in advance when feasible.</p>
+    <p class="offer-clause">17.3. Notices to Licensor: support@getbidshard.com. Notices to Licensee: email provided at purchase.</p>
+    <h2>18. Governing law and disputes</h2>
+    <p class="offer-clause">18.1. <strong>Governing law:</strong> laws of <strong>Ukraine</strong>.</p>
+    <p class="offer-clause">18.2. <strong>Jurisdiction:</strong> courts at Licensor's registered place of business, unless mandatory consumer forum rules require otherwise.</p>
+    <p class="offer-clause">18.3. Parties will attempt good-faith negotiation for <strong>30 days</strong> before litigation.</p>
+    <p class="offer-clause">18.4. <strong>Language:</strong> Ukrainian text prevails in case of conflict with English translation in Part B.</p>
+    <h2>19. Miscellaneous</h2>
+    <p class="offer-clause">19.1. Entire agreement for the licensed Software supersedes prior oral statements, except signed enterprise addenda.</p>
+    <p class="offer-clause">19.2. Severability: invalid clauses are replaced by valid ones closest to intent.</p>
+    <p class="offer-clause">19.3. No waiver unless in writing.</p>
+    <p class="offer-clause">19.4. Force majeure: either party excused for events beyond reasonable control (war, mobilization, infrastructure blackout, regulatory ban).</p>
+    <p class="offer-clause">19.5. Export control: Licensee complies with sanctions and export laws.</p>
+    <hr />
+
+    <div class="offer-actions">
+      <a class="primary" data-site-cta="telegram" href="#">Request pilot via Telegram</a>
+      <a class="ghost" href="index.html">Back to home</a>
+    </div>
+    <!-- offer-body:end -->
+  </main>
+</body>
+</html>

@@ -2,8 +2,10 @@ package edge
 
 import (
 	"fmt"
+	"os"
 
 	"ad-event-processor/internal/config"
+	"ad-event-processor/internal/metrics"
 
 	"github.com/cilium/ebpf"
 )
@@ -14,8 +16,15 @@ import (
 // Verify:
 // go test ./internal/edge/ -short -run TestLoadEdge -count=1
 func LoadEdgeObjectsLenient(objs *EdgeObjects, opts *ebpf.CollectionOptions) error {
-	_, sealedErr := sealedEdgeBlob()
-	if sealedErr == nil && !config.LicenseAssetsUnsealed() {
+	if !config.LicenseAssetsUnsealed() {
+		_, sealedErr := sealedEdgeBlob()
+		if sealedErr != nil {
+			if os.IsNotExist(sealedErr) {
+				metrics.EdgeBPFSealFailTotal.Inc()
+				return fmt.Errorf("sealed bpf blob: %w", sealedErr)
+			}
+			return sealedErr
+		}
 		if err := loadEdgeObjectsFromSealed(objs, opts); err != nil {
 			return err
 		}

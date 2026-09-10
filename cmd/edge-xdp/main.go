@@ -9,7 +9,9 @@ import (
 	"os"
 	"time"
 
+	"ad-event-processor/internal/config"
 	"ad-event-processor/internal/edge"
+	"ad-event-processor/internal/licensing"
 	"ad-event-processor/internal/metrics"
 	"ad-event-processor/pkg/lifecycle"
 	"ad-event-processor/pkg/netaddr"
@@ -37,6 +39,11 @@ func main() {
 
 	if _, err := net.InterfaceByName(*iface); err != nil {
 		slog.Error("interface lookup failed", "iface", *iface, "error", err)
+		os.Exit(1)
+	}
+
+	if err := licensing.VerifySealedAssetsReady(licensing.SealedAssetRoleEdge); err != nil {
+		slog.Error("sealed asset gate failed", "role", "edge", "error", err)
 		os.Exit(1)
 	}
 
@@ -93,11 +100,17 @@ func main() {
 	slog.Info("received shutdown signal", "signal", sig.String(), "iface", *iface)
 }
 
-// ebpfEdgeAttachAllowed checks Redis license epoch when REDIS_ADDRS is set.
-// When unset, attach is allowed (dev convenience; production should set REDIS_ADDRS).
+// ebpfEdgeAttachAllowed checks file seed coupling when enterprise sealed assets are
+// active, then Redis entitlement:deployment when REDIS_ADDRS is set.
 func ebpfEdgeAttachAllowed() bool {
+	if !edge.EbpfEdgeSeedGateAllowed() {
+		return false
+	}
 	redisAddr := edge.FirstRedisAddr()
 	if redisAddr == "" {
+		if config.LicenseSeedCouplingEnabled() && !config.LicenseAssetsUnsealed() {
+			return true
+		}
 		slog.Warn("REDIS_ADDRS unset; ebpf_xdp_edge entitlement check skipped")
 		return true
 	}

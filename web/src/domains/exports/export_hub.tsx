@@ -29,8 +29,16 @@ import {
 import { PageChrome } from '@/shell/page_chrome';
 import { ErrorBlock } from '@/shell/error_block';
 import { FieldLabelWithHint } from '@/shell/field_label_hint';
-import { DirectoryFilterForm, FilterField, FilterPanel } from '@/shell/filter_panel';
+import {
+  DirectoryFilterForm,
+  FilterField,
+  FilterPanel,
+  INLINE_FILTER_ACTION_GRID_TWO_ACTIONS_CLASS,
+} from '@/shell/filter_panel';
+import { adminKit } from '@/lib/admin_kit';
+import { adminSpacing, opsControlPanelClass } from '@/lib/admin_spacing';
 import type { AdminValidationError } from '@/lib/admin_validation_error';
+import { cn } from '@/lib/utils';
 
 export type ExportHubProps = {
   catalogEntries: ExportHubEntry[];
@@ -145,7 +153,7 @@ export function ExportHub({
     <PageChrome
       title="Exports"
       controlPanel={
-        <div>
+        <div className={opsControlPanelClass}>
           <FilterPanel aria-label="Export form">
             {formValidationError ? (
               <ErrorBlock error={formValidationError} title="Check export fields" />
@@ -159,7 +167,7 @@ export function ExportHub({
               />
 
               {selectedKind !== 'audit' ? (
-                <div>
+                <div className={cn('grid min-w-0', adminKit.fieldLabelGap)}>
                   <FieldLabelWithHint htmlFor="export-hub-customer-id" label="Customer ID">
                     <ExportHubCustomerIdHint />
                   </FieldLabelWithHint>
@@ -254,7 +262,7 @@ export function ExportHub({
               ) : null}
 
               {selectedKind === 'audit' ? (
-                <div>
+                <div className={cn(adminSpacing.flex.buttonGroup, 'items-center self-end')}>
                   <Checkbox
                     checked={draftRedactPii}
                     id="export-hub-redact-pii"
@@ -272,8 +280,8 @@ export function ExportHub({
 
           {showAsyncJobPanel ? (
             <FilterPanel aria-label="Job controls">
-              <DirectoryFilterForm layout="auto-fill" onSubmit={(event) => event.preventDefault()}>
-                <div>
+              <div className={INLINE_FILTER_ACTION_GRID_TWO_ACTIONS_CLASS}>
+                <div className={cn('grid min-w-0', adminKit.fieldLabelGap)}>
                   <FieldLabelWithHint htmlFor="export-hub-job-id" label="Job ID">
                     <ExportHubJobIdHint />
                   </FieldLabelWithHint>
@@ -293,6 +301,7 @@ export function ExportHub({
                   errorMessage={jobErrorMessage ?? job?.error ?? undefined}
                   exportBusy={exportBusy}
                   jobId={draftJobId}
+                  polling={polling}
                   rowLimit={
                     job && 'row_limit' in job && typeof job.row_limit === 'number'
                       ? job.row_limit
@@ -302,23 +311,15 @@ export function ExportHub({
                   status={jobStatus}
                   onCancelJob={onCancelJob}
                   onDownloadJob={onDownloadJob}
+                  onPollJob={onPollJob}
                 />
-
-                <Button
-                  disabled={exportBusy || !draftJobId.trim()}
-                  type="button"
-                  variant="outline"
-                  onClick={onPollJob}
-                >
-                  {polling ? 'Polling...' : 'Refresh status'}
-                </Button>
-              </DirectoryFilterForm>
+              </div>
             </FilterPanel>
           ) : null}
         </div>
       }
     >
-      <div>
+      <div className={adminSpacing.flex.columnLg}>
         {auditExportTruncated ? (
           <p role="status">
             Audit export was truncated. Use audit list filters or request a smaller window if

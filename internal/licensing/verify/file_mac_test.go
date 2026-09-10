@@ -142,3 +142,27 @@ func TestInstallToken_writesLicenseMACInEnterpriseMode(t *testing.T) {
 	_, err = os.Stat(verify.LicenseMACPath(path))
 	require.NoError(t, err)
 }
+
+func TestInstallToken_writesClockAnchorInEnterpriseMode(t *testing.T) {
+	pub, priv, err := ed25519.GenerateKey(rand.Reader)
+	require.NoError(t, err)
+
+	claims := entitlements.LicenseClaims{
+		Issuer:       "ad-event-processor-license",
+		Subject:      uuid.NewString(),
+		DeploymentID: uuid.NewString(),
+		ValidFrom:    time.Now().Add(-time.Hour),
+		ValidUntil:   time.Now().Add(24 * time.Hour),
+	}
+	token, err := verify.SignJWT(claims, priv, verify.DefaultLicenseKeyID)
+	require.NoError(t, err)
+
+	dir := t.TempDir()
+	path := filepath.Join(dir, "license.jwt")
+	t.Setenv("AD_EVENT_PROCESSOR_LICENSE_MODE", "enterprise")
+
+	require.NoError(t, verify.InstallToken(path, token, pub))
+
+	_, err = os.Stat(verify.ClockAnchorPath(path))
+	require.NoError(t, err)
+}

@@ -58,10 +58,11 @@ type RecordInput struct {
 }
 
 type fileSnapshot struct {
-	Version   int              `json:"version"`
-	Anchors   []AnchorRecord   `json:"anchors"`
-	Overrides []OverrideRecord `json:"overrides"`
-	Pending   []PendingRequest `json:"pending,omitempty"`
+	Version          int                 `json:"version"`
+	Anchors          []AnchorRecord      `json:"anchors"`
+	Overrides        []OverrideRecord    `json:"overrides"`
+	Pending          []PendingRequest    `json:"pending,omitempty"`
+	OfferAcceptances []OfferAcceptRecord `json:"offer_acceptances,omitempty"`
 }
 
 type PendingStatus string
@@ -80,10 +81,16 @@ type PendingRequest struct {
 	RequestedAt      time.Time     `json:"requested_at"`
 	Status           PendingStatus `json:"status"`
 	Notes            string        `json:"notes,omitempty"`
+	OfferVersion     string        `json:"offer_version,omitempty"`
+	OfferAcceptedAt  time.Time     `json:"offer_accepted_at,omitempty"`
+	AcceptSource     string        `json:"accept_source,omitempty"`
 }
 
 type EnqueuePendingInput struct {
 	TelegramID       string
 	TelegramUsername string
 	Notes            string
+	OfferVersion     string
+	OfferAcceptedAt  time.Time
+	AcceptSource     string
 }

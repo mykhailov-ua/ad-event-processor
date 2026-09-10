@@ -33,8 +33,8 @@ skus:
       mode: hard
 
   - code: pro
-    display_name: Pro on-prem ($329)
-    price_usd_monthly: 329
+    display_name: Pro on-prem ($399)
+    price_usd_monthly: 399
     valid_days: 30
     grace_days: 7
     features:
@@ -64,18 +64,18 @@ skus:
       mode: multi
 
   - code: scale
-    display_name: Scale on-prem ($649)
-    price_usd_monthly: 649
+    display_name: Scale on-prem ($749)
+    price_usd_monthly: 749
     valid_days: 30
     grace_days: 7
     features:
-      rtb_live: true
-      openrtb_engine: true
+      rtb_live: false
+      openrtb_engine: false
       ebpf_xdp_edge: false
       ivt_ml_detector: true
       ml_fraud_boost: true
       multi_region: false
-      slot_migration: false
+      slot_migration: true
       margin_guard: true
       external_residential_intel: true
       moderator_intel_feed: true
@@ -85,7 +85,7 @@ skus:
       max_activations: 3
       max_regions: 1
       max_api_keys: 25
-      max_rps: 75000
+      max_rps: 60000
       max_requests_per_day: 0
       max_active_campaigns: 0
       max_tenants: 25
@@ -95,8 +95,8 @@ skus:
       mode: multi
 
   - code: network
-    display_name: Network on-prem ($1,199)
-    price_usd_monthly: 1199
+    display_name: Network on-prem ($1,399)
+    price_usd_monthly: 1399
     valid_days: 30
     grace_days: 7
     features:
@@ -116,7 +116,7 @@ skus:
       max_activations: 10
       max_regions: 3
       max_api_keys: 50
-      max_rps: 150000
+      max_rps: 120000
       max_requests_per_day: 0
       max_active_campaigns: 0
       max_tenants: 50
@@ -126,8 +126,8 @@ skus:
       mode: multi
 
   - code: enterprise
-    display_name: Enterprise on-prem ($2,500+)
-    price_usd_monthly: 2500
+    display_name: Enterprise on-prem ($2,999+)
+    price_usd_monthly: 2999
     valid_days: 30
     grace_days: 7
     features:
@@ -157,9 +157,9 @@ skus:
       mode: fingerprint
 
   - code: pilot
-    display_name: Pilot on-prem (14-day JWT)
+    display_name: Pilot on-prem (10-day JWT)
     price_usd_monthly: 0
-    valid_days: 14
+    valid_days: 10
     grace_days: 7
     offline_grace_days: 0
     features:

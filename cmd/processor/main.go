@@ -101,6 +101,10 @@ func main() {
 		slog.Info("license file recheck enabled", "path", config.LicensePathFromEnv())
 	}
 
+	if err := licensing.VerifySealedAssetsReady(licensing.SealedAssetRoleProcessor); err != nil {
+		slog.Error("sealed asset gate failed", "role", "processor", "error", err)
+		os.Exit(1)
+	}
 	if err := ingestion.InitProcessorClickHouseIngestPolicy(); err != nil {
 		slog.Error("failed to load processor ch ingest policy", "error", err)
 		if !config.LicenseAssetsUnsealed() {
@@ -298,7 +302,7 @@ func main() {
 	var fraudScorer fraud.Scorer
 	if cfg.FraudMicrobatchEnabled() {
 		snap, snapErr := licensing.LoadDeploymentSnapshot(ctx, pool)
-		if snapErr == nil && snap.ModuleAllowed(func(f licensing.FeatureSet) bool { return f.MlFraudBoostEnabled() }) {
+		if snapErr == nil && snap.ModuleAllowed(func(f licensing.FeatureSet) bool { return f.MlFraudBoostEnabled() }) && licensing.SeedGateMlFraudBoost(snap.Entitlements) {
 			var err error
 			fraudScorer, err = fraud.NewLGBMScorer(cfg.FraudScoring.ModelPath)
 			if err != nil {

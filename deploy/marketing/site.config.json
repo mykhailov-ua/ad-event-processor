@@ -1,0 +1,391 @@
+{
+  "locale": "en",
+  "ui": {
+    "lang_switch_label": "UA",
+    "lang_switch_href": "/uk/",
+    "lang_switch_title": "Ukrainian version",
+    "pilot_badge": "Self-hosted · Free {days}-day pilot",
+    "pilot_headline": "Try free for {days} days",
+    "pilot_disclaimer": "No credit card. Free {days}-day pilot. By requesting a pilot you accept the {offer_link}.",
+    "offer_link_text": "public offer",
+    "pilot_cta_subline": "{rps} peak RPS · 1 server · full click routing · message us on Telegram with expected traffic and VPS spec",
+    "calc_stack_today": "Your stack today",
+    "calc_savings": "Estimated savings",
+    "calc_presets_aria": "Stack presets",
+    "plan_specs_default": "Specifications",
+    "plan_cta_default": "Get started",
+    "plan_period_days": " / {days} days",
+    "recommended_badge": "RECOMMENDED",
+    "mobile_nav_features": "Features",
+    "mobile_nav_pricing": "Pricing",
+    "mobile_nav_architecture": "Architecture",
+    "mobile_nav_install": "Install",
+    "mobile_nav_faq": "FAQ",
+    "mobile_nav_contacts": "Contacts",
+    "mobile_nav_cta": "Get free pilot",
+    "theme_light_label": "Switch to light theme",
+    "theme_dark_label": "Switch to dark theme",
+    "theme_light_title": "Light theme",
+    "theme_dark_title": "Dark theme",
+    "appliance_screenshot_alt": "BidShard admin Settings page with license JWT field",
+    "docs_href": "docs.html",
+    "home_href": "index.html",
+    "offer_href": "offer.html"
+  },
+  "product_name": "BidShard",
+  "telegram_url": "https://t.me/bidshardsupportbot",
+  "telegram_handle": "@bidshardsupportbot",
+  "install_script_url": "https://bidshard.com/get.sh",
+  "offer": {
+    "version": "2026-09-09",
+    "url": "offer.html",
+    "title": "Accept the public offer",
+    "intro": "Before you request a pilot or contact sales, confirm you accept the public offer for BidShard self-hosted software.",
+    "points": [
+      "License runs on your VPS or dedicated server; vendor does not host your traffic by default.",
+      "Pilot and paid tiers have limits on RPS, hosts, and features as stated in the JWT.",
+      "Monthly USDT fees are non-refundable after JWT delivery except vendor failure to deliver within 5 business days.",
+      "You are responsible for lawful use, VPS security, backups, and end-user privacy on your deployment."
+    ],
+    "checkbox": "I have read the public offer and accept its terms.",
+    "accept_cta": "I accept — open Telegram",
+    "read_cta": "Read full public offer"
+  },
+  "architecture": {
+    "eyebrow": "Under the hood",
+    "title": "Built for operators, not slide decks",
+    "subtitle": "One install on your VPS — fast accept path, async reporting, admin under your control. No multi-tenant cloud in the default model.",
+    "points": [
+      "Clicks accepted in milliseconds — budget checks before bad traffic spends",
+      "Reports and IVT catch up async — funnel speed stays intact",
+      "Offline JWT license — your traffic never routes through our cloud"
+    ],
+    "highlights": [
+      {
+        "title": "Spend decisions first",
+        "body": "Accept or reject clicks before budget debits — margin protected on the ingest path."
+      },
+      {
+        "title": "Analytics catch up later",
+        "body": "Settlement and reporting run async — you get numbers without slowing the funnel."
+      },
+      {
+        "title": "Your stack, your rules",
+        "body": "Postgres, Redis, ClickHouse on your metal — we ship software, not a shared tenant."
+      }
+    ],
+    "cta": "Read full architecture",
+    "url": "docs.html"
+  },
+  "contacts": {
+    "eyebrow": "Contacts",
+    "title": "Support and sales on Telegram",
+    "subtitle": "Pilot license, paid tiers, HWID bind, and upgrades — message us directly. No ticket queue.",
+    "cta": "Open @bidshardsupportbot"
+  },
+  "pilot_days": 10,
+  "pilot_rps": 5000,
+  "hero": {
+    "eyebrow": "$ Ad Event Processor · self-hosted"
+  },
+  "instant_sell": {
+    "margin_guard": {
+      "eyebrow": "Margin Guard",
+      "title": "Pause campaigns before profit turns red",
+      "body": "Compares spend to payout in ClickHouse. When ROI drops below your threshold, campaigns pause automatically — not just a Telegram alert you read after the budget is gone.",
+      "metric": "Checked every ~5 min",
+      "footnote": "Hot-path limits still block spend on rejected traffic while Margin Guard watches the full picture."
+    }
+  },
+  "killers": [
+    {
+      "id": "wasm",
+      "tier": "Starter+",
+      "title": "Drop the cloaker bill",
+      "body": "Built-in funnel protection and safe-page checks — no $300–600/month third-party cloaker. Same protection on accepted traffic, more margin left after media spend.",
+      "icon": "shield"
+    },
+    {
+      "id": "silent",
+      "tier": "Starter+",
+      "title": "Bad traffic looks accepted — you do not pay",
+      "body": "Silent reject sends bots and reviewers a clean 202 while your budget stays intact. They see a normal funnel; you see every filtered hit in analytics.",
+      "icon": "shield"
+    },
+    {
+      "id": "postback",
+      "tier": "Pro+",
+      "title": "Where did 15 conversions go?",
+      "body": "Network says 100 leads, partner shows 85. Every postback hop is logged so you spot the gap — network, tracker, or affiliate — before the week closes in the red.",
+      "icon": "reconcile"
+    },
+    {
+      "id": "desync",
+      "tier": "Scale+",
+      "title": "Stop feeding moderators",
+      "body": "Reviewers browse from clean residential IPs that pass blocklists. Flag mismatched device signals before they reach your money page — less ban risk, less wasted spend.",
+      "icon": "layers"
+    },
+    {
+      "id": "dispute",
+      "tier": "Scale+",
+      "title": "Partner shave? Send proof, not screenshots",
+      "body": "Export clicks, postback receipts, and payout snapshots in one bundle — built for traffic refund disputes, not ticket ping-pong.",
+      "icon": "evidence"
+    },
+    {
+      "id": "migration",
+      "tier": "Scale+",
+      "title": "Change servers without losing revenue days",
+      "body": "Slot migration moves ingest to new hardware under the same license — no week-long reinstall freeze while campaigns sit idle.",
+      "icon": "reconcile"
+    },
+    {
+      "id": "openrtb",
+      "tier": "Network+",
+      "title": "Monetize inventory, not just buy traffic",
+      "body": "Live OpenRTB bid endpoint on your metal — take programmatic demand without bolting on a separate ad server stack.",
+      "icon": "layers"
+    },
+    {
+      "id": "burst",
+      "tier": "Scale+",
+      "title": "Peak-day traffic without throwing away clicks",
+      "body": "Volume overdraft billing covers burst RPS over your tier cap — you pay for the spike, not a hard stop that kills profitable hours.",
+      "icon": "evidence"
+    }
+  ],
+  "capabilities_compact": [
+    "Click routing and S2S postbacks — spend only on traffic you accept",
+    "Silent reject and rule filters — less budget burned on junk",
+    "Cost sync from 25 ad networks — ROI from real network numbers",
+    "Meta / Google / TikTok CAPI — networks bid on real conversions",
+    "Smart alerts to Slack or Telegram — act before the day ends red",
+    "Telegram Mini App flows — launch funnels without extra SaaS",
+    "Team RBAC and API keys — fewer costly operator mistakes",
+    "Export bundles for partner disputes and month-end reconciliation",
+    "OpenRTB bid endpoint — programmatic revenue on Network tier"
+  ],
+  "appliance": {
+    "eyebrow": "$ Ad Event Processor · admin /settings",
+    "title": "License in Settings",
+    "subtitle": "After install, open Admin and go to Settings. Paste or replace the license JWT from your vendor. Offline verification — no outbound license ping.",
+    "install_cli_title": "Install Ad Event Processor",
+    "cta_primary": "Get free pilot",
+    "cta_docs": "Architecture",
+    "cta_install": "Install command",
+    "screenshot_alt": "BidShard admin Settings page with license JWT field"
+  },
+  "tco": {
+    "eyebrow": "Total cost",
+    "title": "Count the full stack, not the license line",
+    "subtitle": "A tracker-only license looks cheap until you add VPS, bot filtering, IVT tooling, and the hours you spend keeping PHP stacks alive. BidShard is one install on your VPS or dedicated server — routing, budgets, antifraud, and reporting under your control.",
+    "columns": [
+      {
+        "label": "Typical self-hosted stack",
+        "items": [
+          "Tracker license ($50–130/mo)",
+          "VPS or dedicated sized for peak clicks ($40–150/mo)",
+          "Cloaker or bot-filter SaaS ($300–1,000/mo)",
+          "IVT / fraud analytics (extra service or infra)",
+          "Ops time: runtime tuning, patches, backups"
+        ],
+        "footnote": "Line items stack before your first optimized campaign."
+      },
+      {
+        "label": "BidShard on your metal",
+        "highlight": true,
+        "items": [
+          "One license from $129/mo — stop paying for cloaker + tracker",
+          "Go ingest: more revenue per GB RAM on the same box",
+          "Silent reject — less spend on traffic that never converts",
+          "IVT on your ClickHouse from Pro ($399/mo)",
+          "Software + JWT on your metal — margin stays yours"
+        ],
+        "footnote": "Often below the patched-together monthly total."
+      }
+    ]
+  },
+  "plans": [
+    {
+      "code": "pilot",
+      "name": "Pilot",
+      "price": "Free",
+      "period": "",
+      "tagline": "Free trial on your VPS.",
+      "specs_label": "Pilot limits",
+      "features": [
+        "5k peak RPS · 1 server",
+        "Full click routing — test margin on your VPS first",
+        "Rule antifraud + Margin Guard on pilot limits",
+        "Hard HWID bind · 3 API keys"
+      ],
+      "cta": "Request pilot",
+      "featured": false,
+      "pilot": true
+    },
+    {
+      "code": "starter",
+      "name": "Starter",
+      "price": "$129",
+      "period": "/ month",
+      "tagline": "Solo affiliates off cloud trackers.",
+      "specs_label": "Starter specifications",
+      "features": [
+        "10k peak RPS · 1 server",
+        "Silent reject — junk traffic does not eat budget",
+        "Margin Guard + cost sync from ad networks",
+        "5 API keys · 3 team tenants",
+        "Postbacks, CAPI, Telegram Mini App flows"
+      ],
+      "cta": "Choose Starter",
+      "featured": false
+    },
+    {
+      "code": "pro",
+      "name": "Pro",
+      "price": "$399",
+      "period": "/ month",
+      "tagline": "Find revenue leaks in your own data.",
+      "specs_label": "Includes everything in Starter",
+      "features": [
+        "25k peak RPS · flexible host bind",
+        "IVT detector — spot bad patterns before they scale",
+        "Postback trail when conversions disappear",
+        "10 API keys · 10 tenants"
+      ],
+      "cta": "Choose Pro",
+      "featured": true,
+      "badge": "RECOMMENDED"
+    },
+    {
+      "code": "scale",
+      "name": "Scale",
+      "price": "$749",
+      "period": "/ month",
+      "tagline": "High volume, same margin discipline.",
+      "specs_label": "Includes everything in Pro",
+      "features": [
+        "60k peak RPS · slot migration without idle days",
+        "ML fraud boost — cut bad spend before it scales",
+        "Moderator intel — less wasted spend on reviewers",
+        "Peak burst billing — profitable spikes, not hard stops"
+      ],
+      "cta": "Choose Scale",
+      "featured": false
+    },
+    {
+      "code": "network",
+      "name": "Network",
+      "price": "$1,399",
+      "period": "/ month",
+      "tagline": "Scale GEO and inventory revenue.",
+      "specs_label": "Includes everything in Scale",
+      "features": [
+        "120k peak RPS · OpenRTB live on your metal",
+        "3 regions — lower latency, fewer lost conversions",
+        "Dispute export bundles · 50 API keys",
+        "10 activations · multi-node ingest"
+      ],
+      "cta": "Choose Network",
+      "featured": false
+    },
+    {
+      "code": "enterprise",
+      "name": "Enterprise",
+      "price": "$2,999+",
+      "period": "/ month",
+      "tagline": "Custom limits when margin is mission-critical.",
+      "specs_label": "Includes everything in Network",
+      "features": [
+        "Custom RPS · up to 99 regions",
+        "eBPF edge — stop junk flood before it costs bandwidth",
+        "Campaign API — automate scale without headcount",
+        "Fingerprint bind · vendor SLA channel"
+      ],
+      "cta": "Contact us",
+      "featured": false,
+      "enterprise": true
+    }
+  ],
+  "page": {
+    "title": "BidShard — self-hosted ad tracking stack",
+    "description": "BidShard — self-hosted ad tracking, filtering, and reporting. 10-day free pilot. Install on your VPS in minutes.",
+    "menu_aria": "Open menu"
+  },
+  "copy": {
+    "NavFeatures": "Features",
+    "NavPricing": "Pricing",
+    "NavArchitecture": "Architecture",
+    "NavInstall": "Install",
+    "NavFaq": "FAQ",
+    "NavContacts": "Contacts",
+    "GetFreePilot": "Get free pilot",
+    "OwnYourTrackingStackStopRentingYourData": "The self-hosted ad tracking stack",
+    "AdEventProcessorIsSelfHostedSoftwareForClickRoutingConversionPostbacksCampaignBudgetsAdNetworkCostSyncAndLayeredAntifraudInstallOnYourVpsLicenseIsOfflineYourCampaignsNeverLeaveYourInfrastructure": "Click routing, conversion postbacks, campaign budgets, ad-network cost sync, and layered antifraud on your VPS. Offline JWT license. Your traffic stays on your metal.",
+    "GetFreePilotOnTelegram": "Get free pilot",
+    "SeeInstallCommand": "Install command",
+    "CompareStackCost": "Compare stack cost",
+    "NoCreditCardPilot10DaysRulesOnlyAntifraudTierByRequestingAPilotYouAcceptThePublicOffer": "No credit card. Free 10-day pilot. By requesting a pilot you accept the public offer.",
+    "YourDataStaysYours": "Your data stays yours",
+    "NoMultiTenantCloudPostgresRedisClickhouseOnYourMetalWeShipSoftwareAndALicenseFileWeDonTSeeYourTraffic": "No multi-tenant cloud. Postgres, Redis, ClickHouse — on your metal. We ship software and a license file. We don't see your traffic.",
+    "BudgetControlThatBites": "Spend stops before margin bleeds",
+    "CampaignSpendIsEnforcedOnTheHotPathBadTrafficCanBeRejectedOrShadowedBeforeItBurnsBudgetMarginGuardTiesSpendToRevenueCostSyncFrom25AdNetworksKeepsRoiHonest": "Bad traffic is rejected or silently accepted before it burns budget. Margin Guard pauses campaigns when ROI drops. Cost sync from 25 ad networks keeps profit math honest.",
+    "MigrateDonTRebuild": "Migrate, don't rebuild",
+    "ImportFromKeitaroOrBinom159ReadyMadeIntegrationTemplatesFlowsLandersPostbacksOperationalFromDayOneNotASixMonthMigrationProject": "Import from Keitaro or Binom. 159 ready-made integration templates. Flows, landers, postbacks — operational from day one, not a six-month migration project.",
+    "Killers__eyebrow": "Protect your margin",
+    "Killers__title": "What stops budget leaks",
+    "Capabilities": "Capabilities",
+    "DesignedForActiveMediaBuyers": "Every feature ties spend to revenue",
+    "PricingPlans": "Pricing Plans",
+    "SimplePricing": "Simple pricing",
+    "NoCapOnCampaignCountOrEventVolumeYouScaleOnYourHardware": "No cap on campaign count or event volume — you scale on your hardware.",
+    "PaidMonthlyInUsdtSelfHostedLicenseNotACloudSubscription": "Paid monthly in USDT. Self-hosted license you own.",
+    "TryFreeFor10Days": "Try free for 10 days",
+    "KRps1ServerRulesOnlyAntifraudMessageUsOnTelegramWithExpectedTrafficVpsSpec": "5k RPS · 1 server · full click routing · message us on Telegram with expected traffic and VPS spec",
+    "OperationalInMinutes": "Operational in minutes",
+    "Step1": "Step 1",
+    "RequestPilot": "Request pilot",
+    "TellUsOnTelegramWeSendALicenseFile": "Tell us on Telegram. We send a license file.",
+    "Step2": "Step 2",
+    "InstallOnYourVps": "Install on your VPS",
+    "OneCurlCommandActivateInTheBrowser": "One curl command. Activate in the browser.",
+    "Step3": "Step 3",
+    "PointTraffic": "Point traffic",
+    "ClickUrlsPostbacksCostSyncYouReLive": "Click URLs, postbacks, cost sync. You're live.",
+    "AdEventProcessorRunningOnPort8080OfflineJwtLicenseVerified": "✔ BidShard stack running on port 8080. Offline JWT license verified.",
+    "BuiltForOperatorsWhoHateSurprises": "Built for operators who scale with confidence",
+    "SelfHosted": "Self-hosted",
+    "YouAreTheDataControllerOnYourInfrastructureZeroSharedRecords": "You are the data controller on your infrastructure. Zero shared records — your metal only.",
+    "OfflineLicense": "Offline license",
+    "NoRecurringLicenseServerPingTelemetryIsStrictlyOffByDefault": "No recurring license server ping to vendor. Telemetry is strictly off by default.",
+    "HonestAntifraud": "Layered antifraud",
+    "DeterministicRulesExecuteOnHotPathMlIvtRunAsBackgroundBatchJobs": "Real-time rule filters on the ingest hot path. IVT and ML scoring on your analytics store.",
+    "NotSaas": "Your infrastructure",
+    "WeDoNotHostMonitorOrGuaranteeUptimeOnYourCustomVpsServer": "Runs on your VPS under your control. No shared tenant and no vendor lock-in.",
+    "NoRoiWarranty": "Built to scale",
+    "YourDirectTrafficYourSpecificFunnelsAndYourTargetingDictateTheRoiResults": "No per-event caps on your license tier. Grow volume on your hardware as campaigns scale.",
+    "FullStackLicense": "Full-stack license",
+    "RoutingBudgetsAntifraudReportingOneInstallWithoutCloakerIvtStack": "Routing, budgets, antifraud, and reporting in one install. No separate cloaker or IVT subscription stack.",
+    "CommonQuestions": "Common Questions",
+    "FrequentlyAskedQuestions": "Frequently Asked Questions",
+    "DoYouStoreMyCampaigns": "Do you store my campaigns?",
+    "IsThisLikeKeitaroInTheCloud": "Is this like Keitaro in the cloud?",
+    "WhatHappensAfterThePilot": "What happens after the pilot?",
+    "DoINeedToBeADeveloper": "Do I need to be a developer?",
+    "HowDoIStart": "How do I start?",
+    "SelfHostedLicenseSoftwareForModernMediaBuyers": "self-hosted license software for modern media buyers.",
+    "FooterArchitecture": "Architecture",
+    "PublicOffer": "Public offer",
+    "ContactsFooter": "Contacts",
+    "Telegram": "Telegram",
+    "FooterInstall": "Install",
+    "2026AdEventProcessorAllRightsReserved": "© 2026 BidShard. All rights reserved.",
+    "site-tco-jump": "Compare full-stack monthly cost",
+    "NoEverythingRunsExclusivelyOnYourServerWeHaveNoBackendApiThatCollectsTelemetryCampaignConfigurationsOrVisitorLogs": "No. Everything runs exclusively on your server. We have no backend API that collects telemetry, campaign configurations, or visitor logs.",
+    "NoItIsLocalSoftwareYouInstallDirectlyOnYourVpsYouCanImportYourCurrentConfigurationsDirectlyFromKeitaroOrBinomViaJson": "No — it is local software you install directly on your VPS. You can import your current configurations directly from Keitaro or Binom via JSON.",
+    "PayUsdtForYourMatchingTierWeGenerateAndSendANewLicenseFileYouLoadItIntoYourExistingDeploymentWithNoReinstallNeeded": "Pay USDT for your matching tier. We generate and send a new license file. You load it into your existing deployment with no reinstall needed.",
+    "BeingComfortableWithBasicVpsOperationsAndDockerIsHighlyRecommendedTheProductIsApiFirstTodayWhileOurAdminUiContinuesToCatchUp": "The onboarding wizard walks you through the first campaign. Admin console and API cover day-to-day ops.",
+    "ReachOutOnTelegramToObtainAPilotLicenseExecuteTheSingleLineInstallScriptOnYourHostActivateTheLicenseInYourBrowserAndYouAreLive": "Reach out on Telegram to obtain a pilot license. Execute the single-line install script on your host, activate the license in your browser, and you are live."
+  }
+}

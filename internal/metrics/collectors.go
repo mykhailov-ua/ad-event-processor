@@ -57,6 +57,11 @@ var (
 		Help: "License state forced expired due to wall clock vs monotonic skew",
 	})
 
+	LicenseClockAnchorTotal = promauto.NewCounter(prometheus.CounterOpts{
+		Name: "license_clock_anchor_total",
+		Help: "License state forced expired due to persistent clock anchor rewind or tamper",
+	})
+
 	LicenseGuardTripTotal = promauto.NewCounterVec(prometheus.CounterOpts{
 		Name: "license_guard_trip_total",
 		Help: "License guard detections (tracer, injected maps, text tamper)",

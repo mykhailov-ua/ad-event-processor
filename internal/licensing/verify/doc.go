@@ -10,6 +10,7 @@
 //   - guard*.go: optional ptrace/gdb watchdog on garbled control builds
 //     (AD_EVENT_PROCESSOR_LICENSE_GUARD*, licensing.mdc).
 //   - file_mac.go / mck_stretch.go: enterprise license file MAC and recheck stretch.
+//   - clock_anchor.go: HMAC-signed wall-clock anchor (.clock) to detect host time rewind across restarts.
 //
 // Topology:
 //   - licensingadmin Service.ApplyLicenseToken, cmd/license-issue, internal/licensing watcher reload.
@@ -26,7 +27,7 @@
 //
 // Verify:
 //
-//	go test ./internal/licensing/verify/ -short -run 'TestVerifyJWT|TestProperty_P_C|TestVerifyDeploymentBind|TestInstallToken' -count=1
+//	go test ./internal/licensing/verify/ -short -run 'TestVerifyJWT|TestProperty_P_C|TestVerifyDeploymentBind|TestInstallToken|TestClockAnchor' -count=1
 //	make license-red-team
 //	make license-verify
 package verify

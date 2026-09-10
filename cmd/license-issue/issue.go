@@ -9,10 +9,9 @@ import (
 	"strings"
 	"time"
 
+	"ad-event-processor/internal/licenseissue"
 	"ad-event-processor/internal/licensing"
 	"ad-event-processor/internal/trialregistry"
-
-	"github.com/google/uuid"
 )
 
 const exitUsage = 2
@@ -56,166 +55,61 @@ func runIssue(opts *issueOptions, stderr io.Writer) (res issueResult, code int) 
 	if opts.TrialMarkExpired {
 		return runTrialMarkExpired(opts, stderr)
 	}
-	if pendingID := strings.TrimSpace(opts.ApprovePendingID); pendingID != "" {
-		reg := openRegistry(opts.TrialRegistry)
-		pending, err := reg.PreparePendingIssue(pendingID, opts.DeploymentID)
-		if err != nil {
-			_, _ = fmt.Fprintf(stderr, "license-issue: approve pending: %v\n", err)
-			if errors.Is(err, trialregistry.ErrPendingNotFound) || errors.Is(err, trialregistry.ErrPendingNotOpen) {
-				return issueResult{}, exitUsage
-			}
-			return issueResult{}, 1
-		}
-		if strings.TrimSpace(opts.TelegramID) == "" {
-			opts.TelegramID = pending.TelegramID
-		}
-		if strings.TrimSpace(opts.DeploymentID) == "" {
-			opts.DeploymentID = pending.DeploymentID
-		}
-		if strings.TrimSpace(opts.Customer) == "" {
-			if user := strings.TrimSpace(pending.TelegramUsername); user != "" {
-				opts.Customer = "@" + strings.TrimPrefix(user, "@")
-			} else {
-				opts.Customer = "telegram:" + pending.TelegramID
-			}
-		}
-		if !isPilotSKU(opts.SKUCode) {
-			opts.SKUCode = licensing.SKUCodePilot
-		}
-	}
-
-	if strings.TrimSpace(opts.Customer) == "" && !opts.MarkConverted {
-		_, _ = fmt.Fprintln(stderr, "license-issue: --customer is required")
-		return issueResult{}, exitUsage
-	}
-
-	reg := openRegistry(opts.TrialRegistry)
-
-	if opts.MarkConverted && strings.TrimSpace(opts.Customer) == "" {
-		dep := strings.TrimSpace(opts.DeploymentID)
-		if dep == "" {
-			_, _ = fmt.Fprintln(stderr, "license-issue: --deployment-id is required with --mark-converted")
+	svc := licenseissue.New(licenseissue.Config{
+		SKUFile:        opts.SKUFile,
+		PrivateKeyFile: opts.PrivateKeyFile,
+		KeyID:          opts.KID,
+		TrialRegistry:  opts.TrialRegistry,
+		MarkConverted:  opts.MarkConverted,
+	})
+	issued, err := svc.Issue(licenseissue.IssueRequest{
+		SKUCode:          opts.SKUCode,
+		Customer:         opts.Customer,
+		DeploymentID:     opts.DeploymentID,
+		Fingerprint:      opts.Fingerprint,
+		HWIDV2:           opts.HWIDV2,
+		TelegramID:       opts.TelegramID,
+		USDTTx:           opts.USDTTx,
+		ValidDays:        opts.ValidDays,
+		Revoke:           opts.Revoke,
+		Force:            opts.Force,
+		ForceReason:      opts.ForceReason,
+		Operator:         opts.Operator,
+		ApprovePendingID: opts.ApprovePendingID,
+	})
+	if err != nil {
+		_, _ = fmt.Fprintf(stderr, "license-issue: %v\n", err)
+		if errors.Is(err, trialregistry.ErrPendingNotFound) || errors.Is(err, trialregistry.ErrPendingNotOpen) {
 			return issueResult{}, exitUsage
 		}
-		if err := reg.MarkConverted(dep); err != nil {
-			_, _ = fmt.Fprintf(stderr, "license-issue: mark converted: %v\n", err)
-			return issueResult{}, 1
+		if errors.Is(err, trialregistry.ErrTrialTelegramUsed) ||
+			errors.Is(err, trialregistry.ErrTrialHWIDUsed) ||
+			errors.Is(err, trialregistry.ErrTrialWalletUsed) ||
+			errors.Is(err, trialregistry.ErrOfferNotAccepted) ||
+			errors.Is(err, trialregistry.ErrOfferVersionMismatch) {
+			return issueResult{}, exitUsage
 		}
-		_, _ = fmt.Fprintf(stderr, "license-issue: marked converted deployment_id=%s\n", dep)
-		return issueResult{DeploymentID: dep}, 0
-	}
-
-	if err := trialregistry.ValidateForceOverride(opts.Force, opts.ForceReason); err != nil {
-		_, _ = fmt.Fprintf(stderr, "license-issue: %v\n", err)
-		return issueResult{}, 1
-	}
-
-	keyID := strings.TrimSpace(opts.KID)
-	if keyID == "" {
-		keyID = licensing.DefaultLicenseKeyID
-	}
-
-	privPath := licensing.ResolvePrivateKeyFileForKID(keyID, strings.TrimSpace(opts.PrivateKeyFile))
-	privBytes, err := os.ReadFile(privPath)
-	if err != nil {
-		_, _ = fmt.Fprintf(stderr, "license-issue: read private key %s: %v\n", privPath, err)
-		return issueResult{}, 1
-	}
-	priv, err := licensing.ParsePrivateKey(privBytes)
-	if err != nil {
-		_, _ = fmt.Fprintf(stderr, "license-issue: parse private key: %v\n", err)
-		return issueResult{}, 1
-	}
-
-	doc, err := licensing.LoadSKUFile(opts.SKUFile)
-	if err != nil {
-		_, _ = fmt.Fprintf(stderr, "license-issue: load SKU file: %v\n", err)
-		return issueResult{}, 1
-	}
-	sku, err := doc.GetSKU(opts.SKUCode)
-	if err != nil {
-		_, _ = fmt.Fprintf(stderr, "license-issue: %v\n", err)
-		return issueResult{}, 1
-	}
-	if opts.ValidDays > 0 {
-		sku.ValidDays = opts.ValidDays
-	}
-
-	depID := strings.TrimSpace(opts.DeploymentID)
-	if depID == "" {
-		depID = uuid.NewString()
-	}
-	licenseID := uuid.NewString()
-
-	hwid := strings.TrimSpace(opts.HWIDV2)
-	if isPilotSKU(opts.SKUCode) {
-		check := trialregistry.CheckInput{
-			TelegramID:   opts.TelegramID,
-			HWID:         hwid,
-			USDTTx:       opts.USDTTx,
-			DeploymentID: depID,
+		if strings.Contains(err.Error(), "required") {
+			return issueResult{}, exitUsage
 		}
-		if !opts.Force {
-			if err := reg.CheckPilotEligible(check); err != nil {
-				_, _ = fmt.Fprintf(stderr, "license-issue: pilot denied deployment_id=%s: %v\n", depID, err)
-				return issueResult{}, exitUsage
-			}
-		}
-	}
-
-	claims := sku.BuildClaims(licensing.IssueLicenseInput{
-		SKUCode:      sku.Code,
-		CustomerName: opts.Customer,
-		DeploymentID: depID,
-		LicenseID:    licenseID,
-		Fingerprint:  strings.TrimSpace(opts.Fingerprint),
-		HWIDHash:     hwid,
-		ValidFrom:    time.Now().UTC(),
-	})
-	if opts.Revoke {
-		claims.Revoked = true
-		claims.ValidUntil = time.Now().UTC().Add(-time.Hour)
-		claims.ValidFrom = claims.ValidUntil.Add(-24 * time.Hour)
-	}
-	token, err := licensing.SignJWT(claims, priv, keyID)
-	if err != nil {
-		_, _ = fmt.Fprintf(stderr, "license-issue: sign: %v\n", err)
 		return issueResult{}, 1
 	}
 
-	if isPilotSKU(opts.SKUCode) {
-		if err := reg.RecordPilotIssue(trialregistry.RecordInput{
-			TelegramID:   opts.TelegramID,
-			HWID:         hwid,
-			USDTTx:       opts.USDTTx,
-			DeploymentID: depID,
-			LicenseKey:   licenseKeyFromClaims(&claims),
-			ValidUntil:   claims.ValidUntil,
-			Force:        opts.Force,
-			ForceReason:  opts.ForceReason,
-			Operator:     opts.Operator,
-		}); err != nil {
-			_, _ = fmt.Fprintf(stderr, "license-issue: record pilot issue: %v\n", err)
-			return issueResult{}, 1
-		}
+	if opts.MarkConverted && strings.TrimSpace(opts.Customer) == "" && issued.Token == "" {
+		_, _ = fmt.Fprintf(stderr, "license-issue: marked converted deployment_id=%s\n", issued.DeploymentID)
+		return issueResult{DeploymentID: issued.DeploymentID}, 0
 	}
 
-	if !isPilotSKU(opts.SKUCode) && opts.MarkConverted {
-		if err := reg.MarkConverted(depID); err != nil {
-			_, _ = fmt.Fprintf(stderr, "license-issue: mark converted after issue: %v\n", err)
-			return issueResult{}, 1
-		}
-		_, _ = fmt.Fprintf(stderr, "license-issue: marked converted deployment_id=%s\n", depID)
-	} else if isPaidLicenseSKU(opts.SKUCode) && !opts.MarkConverted {
-		_, _ = fmt.Fprintf(stderr, "license-issue: warning: paid SKU %q issued without --mark-converted (deployment_id=%s)\n", opts.SKUCode, depID)
+	if isPaidLicenseSKU(opts.SKUCode) && !opts.MarkConverted && issued.Token != "" {
+		_, _ = fmt.Fprintf(stderr, "license-issue: warning: paid SKU %q issued without --mark-converted (deployment_id=%s)\n", opts.SKUCode, issued.DeploymentID)
 	}
 
 	return issueResult{
-		Token:        token,
-		DeploymentID: depID,
-		KeyID:        keyID,
-		ValidUntil:   claims.ValidUntil,
-		LicenseKey:   licenseKeyFromClaims(&claims),
+		Token:        issued.Token,
+		DeploymentID: issued.DeploymentID,
+		KeyID:        issued.KeyID,
+		ValidUntil:   issued.ValidUntil,
+		LicenseKey:   issued.LicenseKey,
 	}, 0
 }
 
@@ -269,13 +163,6 @@ func isPaidLicenseSKU(code string) bool {
 	default:
 		return true
 	}
-}
-
-func licenseKeyFromClaims(claims *licensing.LicenseClaims) string {
-	if sub := strings.TrimSpace(claims.Subject); sub != "" {
-		return sub
-	}
-	return strings.TrimSpace(claims.DeploymentID)
 }
 
 func writeIssueOutput(res *issueResult, outFile string, stderr io.Writer) error {

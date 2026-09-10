@@ -129,27 +129,66 @@ jobs:
     name: Build installer tarball
     needs: publish
     runs-on: ubuntu-latest
+    permissions:
+      contents: write
+      packages: read
     steps:
       - uses: actions/checkout@v4
+
       - name: Resolve image tag
         id: meta
         run: |
           if [ -n "${{ github.event.inputs.tag }}" ]; then
-            TAG="${{ github.event.inputs.tag }}"
+            FULL_TAG="${{ github.event.inputs.tag }}"
           elif [ "${{ github.event_name }}" = "release" ]; then
-            TAG="${{ github.event.release.tag_name }}"
+            FULL_TAG="${{ github.event.release.tag_name }}"
           else
-            TAG="${GITHUB_REF_NAME}"
+            FULL_TAG="${GITHUB_REF_NAME}"
           fi
-          TAG="${TAG#v}"
+          TAG="${FULL_TAG#v}"
           echo "tag=${TAG}" >> "$GITHUB_OUTPUT"
-      - run: make release-installer VERSION=${{ steps.meta.outputs.tag }}
+          echo "full_tag=${FULL_TAG}" >> "$GITHUB_OUTPUT"
+          echo "image=ghcr.io/${{ github.repository_owner }}/ad-event-processor:${FULL_TAG}" >> "$GITHUB_OUTPUT"
+
+      - uses: docker/login-action@v3
+        with:
+          registry: ghcr.io
+          username: ${{ github.actor }}
+          password: ${{ secrets.GITHUB_TOKEN }}
+
+      - name: Extract garbled binaries from pilot image
+        run: |
+          docker pull "${{ steps.meta.outputs.image }}"
+          bash scripts/install/extract_release_bins.sh "${{ steps.meta.outputs.image }}" "$RUNNER_TEMP/release-bins"
+
+      - name: Build installer tarball
+        env:
+          AD_EVENT_PROCESSOR_RELEASE_BIN_DIR: ${{ runner.temp }}/release-bins
+        run: make release-installer VERSION=${{ steps.meta.outputs.tag }}
+
+      - name: Publish installer assets to GitHub Release
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: |
+          FULL_TAG="${{ steps.meta.outputs.full_tag }}"
+          VERSION="${{ steps.meta.outputs.tag }}"
+          TARBALL="dist/ad-event-processor-installer-${VERSION}.tar.gz"
+          cp "$TARBALL" dist/ad-event-processor-installer.tar.gz
+          if ! gh release view "$FULL_TAG" >/dev/null 2>&1; then
+            gh release create "$FULL_TAG" --title "$FULL_TAG" --generate-notes
+          fi
+          gh release upload "$FULL_TAG" \
+            dist/ad-event-processor-installer.tar.gz \
+            "dist/ad-event-processor-installer-${VERSION}.tar.gz" \
+            --clobber
+
       - name: Summary
         run: |
           echo "Published pilot images:"
-          echo "  ghcr.io/${{ github.repository_owner }}/ad-event-processor:${{ github.ref_name }} (tracker, processor, control)"
-          echo "  ghcr.io/${{ github.repository_owner }}/ad-event-processor:${{ github.ref_name }}-ingest (tracker, processor)"
-          echo "  ghcr.io/${{ github.repository }}:${{ github.ref_name }} (legacy repo tag, one release)"
-          echo "Set in install.env:"
+          echo "  ghcr.io/${{ github.repository_owner }}/ad-event-processor:${{ steps.meta.outputs.full_tag }} (tracker, processor, control)"
+          echo "  ghcr.io/${{ github.repository_owner }}/ad-event-processor:${{ steps.meta.outputs.full_tag }}-ingest (tracker, processor)"
+          echo "Installer tarball:"
+          echo "  https://github.com/${{ github.repository }}/releases/download/${{ steps.meta.outputs.full_tag }}/ad-event-processor-installer.tar.gz"
+          echo "Docker install (install.env):"
           echo "  AD_EVENT_PROCESSOR_USE_RELEASE_IMAGES=1"
-          echo "  AD_EVENT_PROCESSOR_APP_IMAGE=ghcr.io/${{ github.repository_owner }}/ad-event-processor:${{ github.ref_name }}"
+          echo "  AD_EVENT_PROCESSOR_APP_IMAGE=ghcr.io/${{ github.repository_owner }}/ad-event-processor:${{ steps.meta.outputs.full_tag }}"

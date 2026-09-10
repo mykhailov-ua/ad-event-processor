@@ -22,6 +22,17 @@ func TestRuntimePolicy_devModeUsesEmbed(t *testing.T) {
 	require.Equal(t, controlRuntimePolicyEmbed, raw)
 }
 
+func TestRuntimePolicy_missingSealedBlob(t *testing.T) {
+	dir := t.TempDir()
+	missing := filepath.Join(dir, "missing-control_runtime_sealed.bin")
+	t.Setenv("AD_EVENT_PROCESSOR_CONTROL_RUNTIME_SEALED_BLOB", missing)
+	t.Setenv("AD_EVENT_PROCESSOR_LICENSE_MODE", "enterprise")
+
+	_, err := resolveRuntimePolicyBytes()
+	require.Error(t, err)
+	require.ErrorIs(t, err, os.ErrNotExist)
+}
+
 func TestRuntimePolicy_invalidMCK(t *testing.T) {
 	var mck [32]byte
 	mck[0] = 1

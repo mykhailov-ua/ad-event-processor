@@ -448,6 +448,10 @@ func runTracker(cfg *config.Config) {
 	}
 
 	// Phase 5: unified-filter Lua preload; stream key fcap:ignored when CH_INGEST_SOURCE=broker.
+	if err := licensing.VerifySealedAssetsReady(licensing.SealedAssetRoleTracker); err != nil {
+		slog.Error("sealed asset gate failed", "role", "tracker", "error", err)
+		exitWithCancel(cancel, 1)
+	}
 	if err := ingestion.InitUnifiedFilterLua(); err != nil {
 		slog.Error("unified-filter lua init failed", "error", err)
 		exitWithCancel(cancel, 1)

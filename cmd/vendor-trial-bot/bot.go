@@ -133,8 +133,22 @@ func handleMessage(ctx context.Context, client *http.Client, cfg botConfig, reg 
 
 	switch cmd {
 	case "start", "help":
-		reply := branding.ProductName() + " pilot signup.\n\nSend /trial to request a pilot license. A vendor operator will review and send your JWT."
+		reply := branding.ProductName() + " pilot signup.\n\n1) Send /accept to accept the public offer (" + trialregistry.CurrentOfferVersion() + ").\n2) Send /trial to request a pilot license.\n\nOffer summary: " + trialregistry.OfferSummaryURL()
 		sendBotMessage(ctx, client, cfg, chatID, reply)
+	case "accept":
+		if cfg.DryRun {
+			slog.Info("dry-run offer accept", "telegram_id", userID)
+			return
+		}
+		if err := reg.AcceptOffer(userID, trialregistry.CurrentOfferVersion(), trialregistry.AcceptSourceTelegram); err != nil {
+			slog.Error("offer accept failed", "telegram_id", userID, "error", err)
+			sendBotMessage(ctx, client, cfg, chatID, "Could not record offer acceptance. Try again or contact support.")
+			return
+		}
+		sendBotMessage(ctx, client, cfg, chatID, fmt.Sprintf(
+			"Public offer %s accepted. Send /trial to request a pilot license.",
+			trialregistry.CurrentOfferVersion(),
+		))
 	case "trial":
 		if cfg.DryRun {
 			slog.Info("dry-run trial request", "telegram_id", userID, "username", msg.From.Username)
@@ -147,8 +161,13 @@ func handleMessage(ctx context.Context, client *http.Client, cfg botConfig, reg 
 		if err != nil {
 			slog.Error("enqueue pending failed", "telegram_id", userID, "error", err)
 			text := "Could not queue your request. Contact vendor support."
-			if errors.Is(err, trialregistry.ErrTrialTelegramUsed) {
+			switch {
+			case errors.Is(err, trialregistry.ErrTrialTelegramUsed):
 				text = "A pilot was already issued for this Telegram account."
+			case errors.Is(err, trialregistry.ErrOfferNotAccepted):
+				text = "Accept the public offer first: send /accept\n\n" + trialregistry.OfferSummaryURL()
+			case errors.Is(err, trialregistry.ErrOfferVersionMismatch):
+				text = "Offer version changed. Send /accept again, then /trial."
 			}
 			sendBotMessage(ctx, client, cfg, chatID, text)
 			return
@@ -160,7 +179,7 @@ func handleMessage(ctx context.Context, client *http.Client, cfg botConfig, reg 
 		))
 	default:
 		if strings.TrimSpace(msg.Text) != "" {
-			sendBotMessage(ctx, client, cfg, chatID, "Unknown command. Send /trial to request a pilot.")
+			sendBotMessage(ctx, client, cfg, chatID, "Unknown command. Send /accept then /trial, or /help.")
 		}
 	}
 }

@@ -74,9 +74,22 @@ run_case "redteam10_skew_watch_unit" \
 run_case "redteam10_registry_skew_ingest" \
   go test ./internal/ingest/ -run 'Registry_licenseRecheck_clockSkew' -count=1
 
-log "Step 11: Binary patch lab catalog (PT-D04, PT-D07, PT-E08 proxies)"
-run_case "redteam11_binary_patch_lab" \
-  bash scripts/lab/binary_patch_lab.sh
+log "Step 11: Binary patch guard probes (PT-D07, PT-E08; PT-D04 via binary_patch_gate in license_red_team.sh)"
+if [[ "$(uname -s)" == "Linux" ]]; then
+  run_case "redteam11_guard_text_tamper" \
+    go test -tags=license_guard ./internal/licensing/ \
+    -run '^TestGuard_TextTamper$' -count=1 -short
+  run_case "redteam11_guard_tamper_stretch" \
+    go test -tags=license_guard ./internal/licensing/ \
+    -run '^TestGuard_TamperStretchBeforeTrip$' -count=1 -short
+  run_case "redteam11_guard_trip_without_verify" \
+    go test -tags=license_guard ./internal/licensing/ \
+    -run '^TestGuard_TripWithoutVerifyCall$' -count=1 -short
+else
+  skip_case "redteam11_guard_text_tamper" "linux only"
+  skip_case "redteam11_guard_tamper_stretch" "linux only"
+  skip_case "redteam11_guard_trip_without_verify" "linux only"
+fi
 
 echo ""
 log "summary: pass=$PASS fail=$FAIL skip=$SKIP"

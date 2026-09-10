@@ -15,6 +15,12 @@ func init() {
 }
 
 func unifiedFilterLuaForScript() string {
+	unifiedFilterLuaMu.RLock()
+	active := unifiedFilterLuaActive
+	unifiedFilterLuaMu.RUnlock()
+	if active != "" {
+		return active
+	}
 	return unifiedFilterLua
 }
 

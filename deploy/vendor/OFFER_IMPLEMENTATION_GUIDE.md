@@ -3,7 +3,7 @@
 **Audience:** sales managers, account managers, vendor ops.  
 **Not for customers.** Pair with [PUBLIC_OFFER.md](./PUBLIC_OFFER.md), [SALES.md](./SALES.md), [INVOICE.md](./INVOICE.md), [KEYS.md](./KEYS.md), [MARKETING.md](./MARKETING.md).
 
-**Product name in buyer comms:** **ad-event-processor**. Legacy engineering codenames are internal only.
+**Product naming (buyer comms):** **BidShard** (brand); **Ad Event Processor** (tracker); `ad-event-processor` (module, JWT `product_id`, install paths). Full table: [OUTREACH.md](./OUTREACH.md).
 
 ---
 
@@ -50,7 +50,7 @@ Do not promise "immunity from prosecution" — say **liability allocation** and 
 1. Collect: company/name, Telegram id (primary), expected RPS, VPS spec, use case.
 2. Check trial registry (Section 5).
 3. Send link to **PUBLIC_OFFER** + pilot checkbox: "I accept the Public Offer for pilot license."
-4. Issue `pilot` JWT (14 days, 5k RPS, rules-only ML/RTB).
+4. Issue `pilot` JWT (**10 days**, 5k RPS, 1 host, rules-only; no batch IVT/ML).
 5. Log: `deployment_id`, telegram, timestamp, offer version.
 
 ### 2.2 Paid conversion
@@ -76,13 +76,26 @@ Do not promise "immunity from prosecution" — say **liability allocation** and 
 | `deployment_id` | Renewal and support |
 | HWID / fingerprint | Host binding disputes |
 
+### 2.5 Outreach channel
+
+Standard funnel is **Telegram text only** — no calls, Calendly, or shared review folders for pilot/docs.
+
+| Step | Action |
+| :--- | :--- |
+| Cold email / site | Short facts; CTA: message `@bidshardsupportbot` with peak RPS + VPS spec |
+| Offer | https://bidshard.com/offer.html or bot `/accept` |
+| Pilot | `/trial` or sales enqueue; issue JWT in Telegram DM |
+| Paid | USDT + tx hash in Telegram; same `deployment_id` |
+
+Template and forbidden claims: [OUTREACH.md](./OUTREACH.md).
+
 ---
 
 ## 3. FAQ scripts (buyer questions)
 
 ### 3.1 "Do you store our data?"
 
-**Answer:** No. ad-event-processor is **self-hosted**. Campaigns, clicks, conversions, and reports live on **your** servers (Postgres, Redis, ClickHouse on your VPS). We deliver binaries and an offline license file. We do not operate your production database or see your traffic in the normal product model.
+**Answer:** No. BidShard / Ad Event Processor is **self-hosted**. Campaigns, clicks, conversions, and reports live on **your** servers (Postgres, Redis, ClickHouse on your VPS). We deliver binaries and an offline license file. We do not operate your production database or see your traffic in the normal product model.
 
 **Do not say:** "We are GDPR compliant for your users" — buyer remains controller.
 
@@ -138,7 +151,7 @@ Do not promise "immunity from prosecution" — say **liability allocation** and 
 
 **Answer (dual-use framing):**
 
-> ad-event-processor is **dual-use technology** with a clear lawful purpose: click tracking, postbacks, campaign budgets, and antifraud on **your** infrastructure. Like a knife or a database, it does not create criminal intent by itself.
+> BidShard (Ad Event Processor) is **dual-use technology** with a clear lawful purpose: click tracking, postbacks, campaign budgets, and antifraud on **your** infrastructure. Like a knife or a database, it does not create criminal intent by itself.
 >
 > We **do not store** your campaigns or traffic on our side. We **do not ship** features whose purpose is breaking into third-party systems (no exploit framework, no credential cracker, no botnet C2).
 >
@@ -160,14 +173,15 @@ Do not promise "immunity from prosecution" — say **liability allocation** and 
 | :--- | :--- | :--- |
 | Solo affiliate, rules-only | `starter` | $129, 10k RPS, 1 host |
 | Media buyer + IVT reports | `pro` | IVT on ClickHouse |
-| Network + OpenRTB + ML | `scale` | RTB, ML boost, intel feeds |
+| OpenRTB + multi-region | `network` | RTB, ML boost, multi-region, intel feeds |
 | Multi-region | `network` | `multi_region`, 10 hosts |
-| XDP edge + platform API sync | `enterprise` | Custom quote $2500+ |
+| XDP edge + platform API sync | `enterprise` | From $2,999+ |
 
 Full matrix: [SALES.md](./SALES.md) and [sku.yaml](./sku.yaml).
 
 **Upsell lines:**
-- Pro -> Scale: "OpenRTB and ML boost need Scale."
+- Pro -> Scale: "ML boost and slot migration need Scale."
+- Scale -> Network: "OpenRTB and multi-region need Network."
 - Scale -> Network: "Second region needs Network SKU."
 
 ---
@@ -355,6 +369,11 @@ From [MARKETING.md](./MARKETING.md) and engineering truth:
 | "GDPR compliant hosting" | Buyer is controller of traffic data |
 | "Use for account takeover / scraping protected sites" | CC Art. 361 criminal offense; license forbids |
 | "We take responsibility if buyer misuses antifraud" | Buyer indemnifies vendor (Offer Section 12) |
+| "0% event volume fee" | No per-event JWT cap when `max_events_per_month: 0`; bill peak RPS + hosts ([OUTREACH.md](./OUTREACH.md)) |
+| "3-5 ms ingest" / invented SLA ms | Do not quote ms in sales; see `core.mdc` for engineering targets only |
+| "200+ API endpoints" | Say OpenAPI `/api/v1`; do not invent counts |
+| "100% private" / "physically cannot see traffic" | Self-hosted + offline JWT + telemetry default off; no absolute guarantees |
+| "Schedule a call" / shared drive for docs | Telegram `@bidshardsupportbot` only for standard funnel ([OUTREACH.md](./OUTREACH.md)) |
 
 ---
 
@@ -397,6 +416,7 @@ bash scripts/install/ad-event-processor-install.sh doctor
 | [SALES.md](./SALES.md) | SKU math and enforcement map |
 | [INVOICE.md](./INVOICE.md) | USDT invoice template |
 | [KEYS.md](./KEYS.md) | Ed25519 keys, HWID v2 params |
+| [OUTREACH.md](./OUTREACH.md) | Naming, Telegram funnel, cold email template |
 | [MARKETING.md](./MARKETING.md) | Honest feature list for prospects |
 | [ENTERPRISE_DEPLOY.md](./ENTERPRISE_DEPLOY.md) | XDP / multi-region |
 | [VENDOR.md](./VENDOR.md) | Vendor tree index |

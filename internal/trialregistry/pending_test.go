@@ -10,15 +10,12 @@ import (
 func TestEnqueuePending_idempotentOpen(t *testing.T) {
 	reg := New(t.TempDir()+"/trial.json", 0)
 
-	first, err := reg.EnqueuePending(EnqueuePendingInput{
-		TelegramID:       "12345",
-		TelegramUsername: "buyer",
-	})
+	first, err := reg.EnqueuePending(testEnqueueInputUser("12345", "buyer"))
 	require.NoError(t, err)
 	require.NotEmpty(t, first.ID)
 	require.Equal(t, PendingStatusOpen, first.Status)
 
-	second, err := reg.EnqueuePending(EnqueuePendingInput{TelegramID: "12345"})
+	second, err := reg.EnqueuePending(testEnqueueInput("12345"))
 	require.NoError(t, err)
 	require.Equal(t, first.ID, second.ID)
 }
@@ -34,14 +31,14 @@ func TestEnqueuePending_deniesUsedTelegramAnchor(t *testing.T) {
 		ValidUntil:   time.Now().UTC().Add(24 * time.Hour),
 	}))
 
-	_, err := reg.EnqueuePending(EnqueuePendingInput{TelegramID: "777"})
+	_, err := reg.EnqueuePending(testEnqueueInput("777"))
 	require.ErrorIs(t, err, ErrTrialTelegramUsed)
 }
 
 func TestPreparePendingIssue_assignsDeploymentID(t *testing.T) {
 	reg := New(t.TempDir()+"/trial.json", 0)
 
-	req, err := reg.EnqueuePending(EnqueuePendingInput{TelegramID: "888"})
+	req, err := reg.EnqueuePending(testEnqueueInput("888"))
 	require.NoError(t, err)
 
 	approved, err := reg.PreparePendingIssue(req.ID, "")
@@ -57,7 +54,7 @@ func TestPreparePendingIssue_assignsDeploymentID(t *testing.T) {
 func TestRejectPending(t *testing.T) {
 	reg := New(t.TempDir()+"/trial.json", 0)
 
-	req, err := reg.EnqueuePending(EnqueuePendingInput{TelegramID: "999"})
+	req, err := reg.EnqueuePending(testEnqueueInput("999"))
 	require.NoError(t, err)
 
 	require.NoError(t, reg.RejectPending(req.ID, "spam"))
@@ -72,9 +69,9 @@ func TestRejectPending(t *testing.T) {
 func TestListPending_filtersClosed(t *testing.T) {
 	reg := New(t.TempDir()+"/trial.json", 0)
 
-	openReq, err := reg.EnqueuePending(EnqueuePendingInput{TelegramID: "100"})
+	openReq, err := reg.EnqueuePending(testEnqueueInput("100"))
 	require.NoError(t, err)
-	closedReq, err := reg.EnqueuePending(EnqueuePendingInput{TelegramID: "101"})
+	closedReq, err := reg.EnqueuePending(testEnqueueInput("101"))
 	require.NoError(t, err)
 	require.NoError(t, reg.RejectPending(closedReq.ID, "test"))
 

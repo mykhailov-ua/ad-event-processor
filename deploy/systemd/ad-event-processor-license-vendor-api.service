@@ -1,0 +1,15 @@
+[Unit]
+Description=ad-event-processor license vendor API
+After=network.target
+
+[Service]
+Type=simple
+EnvironmentFile=-/etc/ad-event-processor/license-vendor-api.env
+WorkingDirectory=/opt/platform/ad-event-processor
+ExecStart=/opt/platform/ad-event-processor/bin/license-vendor-api
+Restart=on-failure
+RestartSec=3
+NoNewPrivileges=true
+
+[Install]
+WantedBy=multi-user.target

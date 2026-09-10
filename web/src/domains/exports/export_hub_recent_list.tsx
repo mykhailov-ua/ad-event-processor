@@ -8,8 +8,8 @@ import type { ExportHubRecentJob } from '@/domains/exports/export_hub_recent';
 import {
   exportJobCanDownload,
   exportJobPhase,
+  exportJobStatusDisplayLabel,
   formatExportJobRecentSummary,
-  normalizeExportJobStatus,
   truncateExportJobInlineText,
 } from '@/domains/exports/export_hub_job_status';
 
@@ -76,7 +76,7 @@ export function ExportHubRecentList({
                   </p>
                 ) : null}
                 <p className={adminTypography.bodyMuted}>
-                  {normalizeExportJobStatus(job.status) || 'unknown'}
+                  {exportJobStatusDisplayLabel(job.status)}
                   {' · '}
                   {new Date(job.createdAt).toLocaleString()}
                   {summary ? ` · ${summary}` : null}

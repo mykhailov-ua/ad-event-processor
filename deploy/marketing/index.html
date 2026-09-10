@@ -1,0 +1,353 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>BidShard — Own your tracking stack</title>
+    <meta name="description" content="BidShard — self-hosted ad tracking, filtering, and reporting. 10-day free pilot. Install on your VPS in minutes." />
+    <script>
+      (function () {
+        try {
+          var theme = localStorage.getItem("bidshard_theme");
+          if (theme === "light" || theme === "dark") {
+            document.documentElement.setAttribute("data-theme", theme);
+          }
+        } catch (e) {}
+      })();
+    </script>
+    <link rel="preload" href="/fonts/jetbrains-mono/JetBrainsMono-Regular.woff2" as="font" type="font/woff2" crossorigin="anonymous" />
+    <link rel="stylesheet" href="site.css" />
+    <script src="site.js" defer></script>
+  </head>
+  <body>
+    <div class="site-offer-gate" data-site-offer-gate hidden aria-hidden="true"></div>
+    <div data-layer="landing" class="Landing site-pga-page">
+  <div data-layer="HEADER" class="Header">
+    <a href="index.html" class="site-logo" data-layer="logo-group">
+      <span class="site-logo__mark" aria-hidden="true">&gt;_</span>
+      <span class="site-logo__text">BidShard</span>
+    </a>
+    <div data-layer="nav-group" class="NavGroup">
+      <div data-site-nav="Features" class="NavFeatures">Features</div>
+      <div data-site-nav="Pricing" class="NavPricing">Pricing</div>
+      <a href="docs.html" class="NavArchitecture">Architecture</a>
+      <div data-site-nav="Install" class="NavInstall">Install</div>
+      <div data-site-nav="FAQ" class="NavFaq">FAQ</div>
+      <div data-site-nav="Contacts" class="NavContacts">Contacts</div>
+    </div>
+    <button type="button" class="Hamburger site-menu-toggle" aria-label="Open menu" aria-expanded="false">
+      <svg width="24" height="24" viewBox="0 0 40 34" fill="none" xmlns="http://www.w3.org/2000/svg" aria-hidden="true">
+        <path d="M14.0005 12.9163H25.9993M14.0005 17.0001H25.9993M14.0005 21.0839H25.9993" stroke="currentColor" stroke-width="2" stroke-linecap="round"/>
+      </svg>
+    </button>
+    <div class="site-header-end">
+      <a class="site-lang-switch" href="/uk/" hreflang="uk" title="Українська версія">UA</a>
+      <button type="button" class="site-theme-toggle" data-site-theme-toggle aria-label="Switch to light theme" title="Light theme">
+        <svg class="site-theme-toggle__icon site-theme-toggle__icon--sun" viewBox="0 0 24 24" fill="none" aria-hidden="true">
+          <circle cx="12" cy="12" r="4" stroke="currentColor" stroke-width="2"/>
+          <path d="M12 2v2M12 20v2M4.93 4.93l1.41 1.41M17.66 17.66l1.41 1.41M2 12h2M20 12h2M4.93 19.07l1.41-1.41M17.66 6.34l1.41-1.41" stroke="currentColor" stroke-width="2" stroke-linecap="round"/>
+        </svg>
+        <svg class="site-theme-toggle__icon site-theme-toggle__icon--moon" viewBox="0 0 24 24" fill="none" aria-hidden="true">
+          <path d="M12 3a6 6 0 0 0 9 9 9 9 0 1 1-9-9Z" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/>
+        </svg>
+      </button>
+      <div data-site-cta="telegram" data-layer="btn-primary" class="BtnPrimary">
+        <div data-layer="Get free pilot" class="GetFreePilot">Get free pilot</div>
+      </div>
+    </div>
+  </div>
+  <div data-layer="HERO" class="Hero">
+    <div class="site-pga-hero">
+      <p class="site-hero-eyebrow" data-site-hero-eyebrow>$ Ad Event Processor · self-hosted</p>
+      <div data-layer="hero-text" class="HeroText">
+        <h1 data-layer="Own your tracking stack. Stop renting your data." class="OwnYourTrackingStackStopRentingYourData">The self-hosted ad tracking stack</h1>
+        <p data-layer="ad-event-processor is self-hosted software for click routing, conversion postbacks, campaign budgets, ad-network cost sync, and layered antifraud. Install on your VPS. License is offline. Your campaigns never leave your infrastructure." class="AdEventProcessorIsSelfHostedSoftwareForClickRoutingConversionPostbacksCampaignBudgetsAdNetworkCostSyncAndLayeredAntifraudInstallOnYourVpsLicenseIsOfflineYourCampaignsNeverLeaveYourInfrastructure">Click routing, conversion postbacks, campaign budgets, ad-network cost sync, and layered antifraud on your VPS. Offline JWT license. Your traffic stays on your metal.</p>
+      </div>
+      <div data-layer="hero-actions" class="HeroActions">
+        <div data-layer="Frame" class="Frame site-pga-hero__actions">
+          <div data-site-cta="telegram" data-layer="btn-primary" class="BtnPrimary">
+            <div data-layer="Get free pilot on Telegram" class="GetFreePilotOnTelegram">Get free pilot</div>
+          </div>
+          <a href="docs.html" data-layer="btn-ghost" class="BtnGhost site-pga-btn-link">Architecture</a>
+          <div data-site-cta="install" data-layer="btn-ghost" class="BtnGhost">
+            <div data-layer="See install command" class="SeeInstallCommand">Install command</div>
+          </div>
+        </div>
+        <div data-layer="No credit card. Free 10-day pilot. By requesting a pilot you accept the public offer." class="NoCreditCardPilot10DaysRulesOnlyAntifraudTierByRequestingAPilotYouAcceptThePublicOffer" data-site-offer-disclaimer data-site-pilot-disclaimer>No credit card. Free 10-day pilot. By requesting a pilot you accept the public offer.</div>
+      </div>
+    </div>
+  </div>
+  <div data-layer="PILLARS" class="Pillars">
+    <div data-layer="Frame" class="Frame">
+      <div data-layer="pillar-card" class="PillarCard">
+        <div class="pillar-icon" aria-hidden="true">
+          <svg class="pillar-icon__svg" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
+            <path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/>
+            <path d="m9 12 2 2 4-4" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/>
+          </svg>
+        </div>
+        <div data-layer="Your data stays yours" class="YourDataStaysYours">Your data stays yours</div>
+        <div data-layer="No multi-tenant cloud. Postgres, Redis, ClickHouse — on your metal. We ship software and a license file. We don't see your traffic." class="NoMultiTenantCloudPostgresRedisClickhouseOnYourMetalWeShipSoftwareAndALicenseFileWeDonTSeeYourTraffic">No multi-tenant cloud. Postgres, Redis, ClickHouse — on your metal. We ship software and a license file. We don't see your traffic.</div>
+      </div>
+      <div data-layer="pillar-card" class="PillarCard">
+        <div class="pillar-icon" aria-hidden="true">
+          <svg class="pillar-icon__svg" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
+            <path d="M12 2v20" stroke="currentColor" stroke-width="2" stroke-linecap="round"/>
+            <path d="M17 5H9.5a3.5 3.5 0 1 0 0 7h5a3.5 3.5 0 1 1 0 7H6" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/>
+          </svg>
+        </div>
+        <div data-layer="Budget control that bites" class="BudgetControlThatBites">Spend stops before margin bleeds</div>
+        <div data-layer="Campaign spend is enforced on the hot path — bad traffic can be rejected or shadowed before it burns budget. Margin guard ties spend to revenue. Cost sync from 25 ad networks keeps ROI honest." class="CampaignSpendIsEnforcedOnTheHotPathBadTrafficCanBeRejectedOrShadowedBeforeItBurnsBudgetMarginGuardTiesSpendToRevenueCostSyncFrom25AdNetworksKeepsRoiHonest">Bad traffic is rejected or silently accepted before it burns budget. Margin Guard pauses campaigns when ROI drops. Cost sync from 25 ad networks keeps profit math honest.</div>
+      </div>
+      <div data-layer="pillar-card" class="PillarCard">
+        <div class="pillar-icon" aria-hidden="true">
+          <svg class="pillar-icon__svg" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
+            <path d="M4 7h11v10H4z" stroke="currentColor" stroke-width="2" stroke-linejoin="round"/>
+            <path d="M14 10h6v7h-6z" stroke="currentColor" stroke-width="2" stroke-linejoin="round"/>
+            <path d="M7 7V5a2 2 0 0 1 2-2h2" stroke="currentColor" stroke-width="2" stroke-linecap="round"/>
+            <path d="M7 17v2h6" stroke="currentColor" stroke-width="2" stroke-linecap="round"/>
+          </svg>
+        </div>
+        <div data-layer="Migrate, don't rebuild" class="MigrateDonTRebuild">Migrate, don't rebuild</div>
+        <div data-layer="Import from Keitaro or Binom. 159 ready-made integration templates. Flows, landers, postbacks — operational from day one, not a six-month migration project." class="ImportFromKeitaroOrBinom159ReadyMadeIntegrationTemplatesFlowsLandersPostbacksOperationalFromDayOneNotASixMonthMigrationProject">Import from Keitaro or Binom. 159 ready-made integration templates. Flows, landers, postbacks — operational from day one, not a six-month migration project.</div>
+      </div>
+    </div>
+  </div>
+  <section id="killers" data-layer="KILLERS" class="Killers">
+    <div class="Killers__head Frame">
+      <div class="Killers__eyebrow">Protect your margin</div>
+      <div class="Killers__title">What stops budget leaks</div>
+    </div>
+    <div data-site-killers-root aria-live="polite"></div>
+  </section>
+  <div id="features" data-layer="FEATURES" class="Features">
+    <div data-layer="Frame" class="Frame">
+      <div data-layer="Capabilities" class="Capabilities">Capabilities</div>
+      <div data-layer="Designed for active media buyers" class="DesignedForActiveMediaBuyers">Every feature ties spend to revenue</div>
+    </div>
+    <div class="site-features__grid">
+      <div class="site-features__spotlight" data-site-margin-guard-root aria-live="polite"></div>
+      <div data-site-capabilities-root class="site-capabilities" aria-live="polite"></div>
+    </div>
+  </div>
+  <div id="pricing" data-layer="PRICING" class="Pricing">
+    <div data-layer="Frame" class="Frame">
+      <div data-layer="Pricing Plans" class="PricingPlans">Pricing Plans</div>
+      <div data-layer="Simple pricing" class="SimplePricing">Simple pricing</div>
+    </div>
+    <div data-site-pricing-grid class="site-pricing-grid" aria-live="polite"></div>
+    <div data-layer="Frame" class="Frame">
+      <div data-layer="No cap on campaign count or event volume — you scale on your hardware." class="NoCapOnCampaignCountOrEventVolumeYouScaleOnYourHardware">No cap on campaign count or event volume — you scale on your hardware.</div>
+      <div data-layer="Paid monthly in USDT. Self-hosted license you own." class="PaidMonthlyInUsdtSelfHostedLicenseNotACloudSubscription">Paid monthly in USDT. Self-hosted license you own.</div>
+      <button type="button" class="site-tco-jump" data-site-scroll="TCO">Compare full-stack monthly cost</button>
+    </div>
+  </div>
+  <section id="tco" data-layer="TCO" class="Tco" data-site-tco aria-labelledby="site-tco-title"></section>
+  <div data-layer="PILOT-CTA" class="PilotCta">
+    <div data-layer="Frame" class="Frame">
+      <div data-layer="Try free for 10 days" class="TryFreeFor10Days" data-site-pilot-cta-headline>Try free for 10 days</div>
+      <div data-layer="5k RPS · 1 server · full click routing · message us on Telegram with expected traffic and VPS spec" class="KRps1ServerRulesOnlyAntifraudMessageUsOnTelegramWithExpectedTrafficVpsSpec">5k RPS · 1 server · full click routing · message us on Telegram with expected traffic and VPS spec</div>
+    </div>
+    <div data-site-cta="telegram" data-layer="btn-primary" class="BtnPrimary">
+      <div data-layer="Message on Telegram" class="MessageOnTelegram">Message on Telegram</div>
+    </div>
+  </div>
+  <div id="install" data-layer="HOW-IT-WORKS" class="HowItWorks site-pga-install-section">
+    <div class="site-pga-install">
+      <div data-site-appliance-proof class="site-pga-install__hero"></div>
+      <div id="install-cli" class="site-pga-install-cli">
+        <h3 class="site-pga-install-cli__title" data-site-install-cli-title>Install Ad Event Processor</h3>
+        <div class="site-pga-terminal-shell">
+          <div data-layer="terminal-block" class="TerminalBlock site-pga-terminal">
+            <div data-layer="Frame" class="Frame site-pga-terminal__tabbar">
+              <div data-layer="install.sh" class="InstallSh">install.sh</div>
+              <button type="button" class="site-pga-terminal-shell__copy" data-site-copy-install aria-label="Copy install command" title="Copy install command">
+                <svg width="16" height="16" viewBox="0 0 24 24" fill="none" aria-hidden="true">
+                  <rect x="9" y="9" width="12" height="12" rx="2" stroke="currentColor" stroke-width="2"/>
+                  <path d="M5 15V5a2 2 0 0 1 2-2h10" stroke="currentColor" stroke-width="2" stroke-linecap="round"/>
+                </svg>
+              </button>
+            </div>
+            <div data-layer="Frame" class="Frame site-pga-terminal__body">
+              <div data-layer="# one command on your VPS" class="SitePgaTerminalComment"># one command on your VPS</div>
+              <div data-layer="$ curl -fsSL https://bidshard.com/get.sh | bash" class="CurlFsslHttpsReleasesExampleComGetShBash">$ curl -fsSL https://bidshard.com/get.sh | bash</div>
+              <div data-layer="$ cd ad-event-processor && sudo bash install.sh systemd up" class="CdAdEventProcessorSudoBashInstallShSystemdUp">$ cd ad-event-processor && sudo bash install.sh systemd up</div>
+              <div data-layer="✔ BidShard stack running on port 8080. Offline JWT license verified." class="AdEventProcessorRunningOnPort8080OfflineJwtLicenseVerified">✔ BidShard stack running on port 8080. Offline JWT license verified.</div>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+  <div data-layer="TRUST" class="Trust">
+    <div data-layer="Frame" class="Frame">
+      <div data-layer="Operation Integrity" class="OperationIntegrity">Operation Integrity</div>
+      <div data-layer="Built for operators who scale with confidence" class="BuiltForOperatorsWhoHateSurprises">Built for operators who scale with confidence</div>
+    </div>
+    <div data-layer="Frame" class="Frame">
+      <div data-layer="Frame" class="Frame">
+        <div data-layer="trust-card" class="TrustCard">
+          <div data-svg-wrapper data-layer="Frame" class="Frame">
+            <svg width="100%" height="100%" viewBox="0 0 32 32" fill="none" xmlns="http://www.w3.org/2000/svg">
+            <rect width="32" height="32" rx="16" fill="#5A7863" fill-opacity="0.101961"/>
+            <path d="M21.3328 12L14.0002 19.3328L10.6672 15.9997" stroke="#5A7863" stroke-width="2" stroke-linecap="round"/>
+            </svg>
+          </div>
+          <div data-layer="Frame" class="Frame">
+            <div data-layer="Self-hosted" class="SelfHosted">Self-hosted</div>
+            <div data-layer="You are the data controller on your infrastructure. Zero shared records — your metal only." class="YouAreTheDataControllerOnYourInfrastructureZeroSharedRecords">You are the data controller on your infrastructure. Zero shared records — your metal only.</div>
+          </div>
+        </div>
+        <div data-layer="trust-card" class="TrustCard">
+          <div data-svg-wrapper data-layer="Frame" class="Frame">
+            <svg width="100%" height="100%" viewBox="0 0 32 32" fill="none" xmlns="http://www.w3.org/2000/svg">
+            <rect width="32" height="32" rx="16" fill="#5A7863" fill-opacity="0.101961"/>
+            <path d="M21.3328 12L14.0002 19.3328L10.6672 15.9997" stroke="#5A7863" stroke-width="2" stroke-linecap="round"/>
+            </svg>
+          </div>
+          <div data-layer="Frame" class="Frame">
+            <div data-layer="Offline license" class="OfflineLicense">Offline license</div>
+            <div data-layer="No recurring license server ping to vendor. Telemetry is strictly off by default." class="NoRecurringLicenseServerPingTelemetryIsStrictlyOffByDefault">No recurring license server ping to vendor. Telemetry is strictly off by default.</div>
+          </div>
+        </div>
+      </div>
+      <div data-layer="Frame" class="Frame">
+        <div data-layer="trust-card" class="TrustCard">
+          <div data-svg-wrapper data-layer="Frame" class="Frame">
+            <svg width="100%" height="100%" viewBox="0 0 32 32" fill="none" xmlns="http://www.w3.org/2000/svg">
+            <rect width="32" height="32" rx="16" fill="#5A7863" fill-opacity="0.101961"/>
+            <path d="M21.3328 12L14.0002 19.3328L10.6672 15.9997" stroke="#5A7863" stroke-width="2" stroke-linecap="round"/>
+            </svg>
+          </div>
+          <div data-layer="Frame" class="Frame">
+            <div data-layer="Layered antifraud" class="HonestAntifraud">Layered antifraud</div>
+            <div data-layer="Real-time rule filters on the ingest hot path. IVT and ML scoring on your analytics store." class="DeterministicRulesExecuteOnHotPathMlIvtRunAsBackgroundBatchJobs">Real-time rule filters on the ingest hot path. IVT and ML scoring on your analytics store.</div>
+          </div>
+        </div>
+        <div data-layer="trust-card" class="TrustCard">
+          <div data-svg-wrapper data-layer="Frame" class="Frame">
+            <svg width="100%" height="100%" viewBox="0 0 32 32" fill="none" xmlns="http://www.w3.org/2000/svg">
+            <rect width="32" height="32" rx="16" fill="#5A7863" fill-opacity="0.101961"/>
+            <path d="M21.3328 12L14.0002 19.3328L10.6672 15.9997" stroke="#5A7863" stroke-width="2" stroke-linecap="round"/>
+            </svg>
+          </div>
+          <div data-layer="Frame" class="Frame">
+            <div data-layer="Your infrastructure" class="NotSaas">Your infrastructure</div>
+            <div data-layer="Runs on your VPS under your control. No shared tenant and no vendor lock-in." class="WeDoNotHostMonitorOrGuaranteeUptimeOnYourCustomVpsServer">Runs on your VPS under your control. No shared tenant and no vendor lock-in.</div>
+          </div>
+        </div>
+      </div>
+      <div data-layer="Frame" class="Frame">
+        <div data-layer="trust-card" class="TrustCard">
+          <div data-svg-wrapper data-layer="Frame" class="Frame">
+            <svg width="100%" height="100%" viewBox="0 0 32 32" fill="none" xmlns="http://www.w3.org/2000/svg">
+            <rect width="32" height="32" rx="16" fill="#5A7863" fill-opacity="0.101961"/>
+            <path d="M21.3328 12L14.0002 19.3328L10.6672 15.9997" stroke="#5A7863" stroke-width="2" stroke-linecap="round"/>
+            </svg>
+          </div>
+          <div data-layer="Frame" class="Frame">
+            <div data-layer="Built to scale" class="NoRoiWarranty">Built to scale</div>
+            <div data-layer="No per-event caps on your license tier. Grow volume on your hardware as campaigns scale." class="YourDirectTrafficYourSpecificFunnelsAndYourTargetingDictateTheRoiResults">No per-event caps on your license tier. Grow volume on your hardware as campaigns scale.</div>
+          </div>
+        </div>
+        <div data-layer="trust-card" class="TrustCard">
+          <div data-svg-wrapper data-layer="Frame" class="Frame">
+            <svg width="100%" height="100%" viewBox="0 0 32 32" fill="none" xmlns="http://www.w3.org/2000/svg">
+            <rect width="32" height="32" rx="16" fill="#5A7863" fill-opacity="0.101961"/>
+            <path d="M21.3328 12L14.0002 19.3328L10.6672 15.9997" stroke="#5A7863" stroke-width="2" stroke-linecap="round"/>
+            </svg>
+          </div>
+          <div data-layer="Frame" class="Frame">
+            <div data-layer="Full-stack license" class="FullStackLicense">Full-stack license</div>
+            <div data-layer="Routing, budgets, antifraud, and reporting in one install. No separate cloaker or IVT subscription stack." class="RoutingBudgetsAntifraudReportingOneInstallWithoutCloakerIvtStack">Routing, budgets, antifraud, and reporting in one install. No separate cloaker or IVT subscription stack.</div>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+  <section id="architecture" data-layer="ARCHITECTURE" class="Architecture" data-site-architecture aria-labelledby="site-architecture-title"></section>
+  <div id="faq" data-layer="FAQ" class="Faq">
+    <div data-layer="Frame" class="Frame">
+      <div data-layer="Common Questions" class="CommonQuestions">Common Questions</div>
+      <div data-layer="Frequently Asked Questions" class="FrequentlyAskedQuestions">Frequently Asked Questions</div>
+    </div>
+    <div data-layer="Frame" class="Frame">
+      <div data-layer="accordion-item" class="AccordionItem">
+        <div data-layer="Frame" class="Frame">
+          <div data-layer="Do you store my campaigns?" class="DoYouStoreMyCampaigns">Do you store my campaigns?</div>
+          <div data-svg-wrapper data-layer="icon-container" class="IconContainer">
+            <svg width="100%" height="100%" viewBox="0 0 16 16" fill="none" xmlns="http://www.w3.org/2000/svg">
+            <path d="M4 6L8 10L12 6" stroke="#71717A" stroke-width="2" stroke-linecap="round"/>
+            </svg>
+          </div>
+        </div>
+        <div data-layer="No. Everything runs exclusively on your server. We have no backend API that collects telemetry, campaign configurations, or visitor logs." class="NoEverythingRunsExclusivelyOnYourServerWeHaveNoBackendApiThatCollectsTelemetryCampaignConfigurationsOrVisitorLogs">No. Everything runs exclusively on your server. We have no backend API that collects telemetry, campaign configurations, or visitor logs.</div>
+      </div>
+      <div data-layer="accordion-item" class="AccordionItem">
+        <div data-layer="Frame" class="Frame">
+          <div data-layer="Is this like Keitaro in the cloud?" class="IsThisLikeKeitaroInTheCloud">Is this like Keitaro in the cloud?</div>
+          <div data-svg-wrapper data-layer="icon-container" class="IconContainer">
+            <svg width="100%" height="100%" viewBox="0 0 16 16" fill="none" xmlns="http://www.w3.org/2000/svg">
+            <path d="M4 6L8 10L12 6" stroke="#71717A" stroke-width="2" stroke-linecap="round"/>
+            </svg>
+          </div>
+        </div>
+        <div data-layer="No — it is local software you install directly on your VPS. You can import your current configurations directly from Keitaro or Binom via JSON." class="NoItIsLocalSoftwareYouInstallDirectlyOnYourVpsYouCanImportYourCurrentConfigurationsDirectlyFromKeitaroOrBinomViaJson">No — it is local software you install directly on your VPS. You can import your current configurations directly from Keitaro or Binom via JSON.</div>
+      </div>
+      <div data-layer="accordion-item" class="AccordionItem">
+        <div data-layer="Frame" class="Frame">
+          <div data-layer="What happens after the pilot?" class="WhatHappensAfterThePilot">What happens after the pilot?</div>
+          <div data-svg-wrapper data-layer="icon-container" class="IconContainer">
+            <svg width="100%" height="100%" viewBox="0 0 16 16" fill="none" xmlns="http://www.w3.org/2000/svg">
+            <path d="M4 6L8 10L12 6" stroke="#71717A" stroke-width="2" stroke-linecap="round"/>
+            </svg>
+          </div>
+        </div>
+        <div data-layer="Pay USDT for your matching tier. We generate and send a new license file. You load it into your existing deployment with no reinstall needed." class="PayUsdtForYourMatchingTierWeGenerateAndSendANewLicenseFileYouLoadItIntoYourExistingDeploymentWithNoReinstallNeeded">Pay USDT for your matching tier. We generate and send a new license file. You load it into your existing deployment with no reinstall needed.</div>
+      </div>
+      <div data-layer="accordion-item" class="AccordionItem">
+        <div data-layer="Frame" class="Frame">
+          <div data-layer="Do I need to be a developer?" class="DoINeedToBeADeveloper">Do I need to be a developer?</div>
+          <div data-svg-wrapper data-layer="icon-container" class="IconContainer">
+            <svg width="100%" height="100%" viewBox="0 0 16 16" fill="none" xmlns="http://www.w3.org/2000/svg">
+            <path d="M4 6L8 10L12 6" stroke="#71717A" stroke-width="2" stroke-linecap="round"/>
+            </svg>
+          </div>
+        </div>
+        <div data-layer="The onboarding wizard walks you through the first campaign. Admin console and API cover day-to-day ops." class="BeingComfortableWithBasicVpsOperationsAndDockerIsHighlyRecommendedTheProductIsApiFirstTodayWhileOurAdminUiContinuesToCatchUp">The onboarding wizard walks you through the first campaign. Admin console and API cover day-to-day ops.</div>
+      </div>
+      <div data-layer="accordion-item" class="AccordionItem">
+        <div data-layer="Frame" class="Frame">
+          <div data-layer="How do I start?" class="HowDoIStart">How do I start?</div>
+          <div data-svg-wrapper data-layer="icon-container" class="IconContainer">
+            <svg width="100%" height="100%" viewBox="0 0 16 16" fill="none" xmlns="http://www.w3.org/2000/svg">
+            <path d="M4 6L8 10L12 6" stroke="#71717A" stroke-width="2" stroke-linecap="round"/>
+            </svg>
+          </div>
+        </div>
+        <div data-layer="Reach out on Telegram to obtain a pilot license. Execute the single-line install script on your host, activate the license in your browser, and you are live." class="ReachOutOnTelegramToObtainAPilotLicenseExecuteTheSingleLineInstallScriptOnYourHostActivateTheLicenseInYourBrowserAndYouAreLive">Reach out on Telegram to obtain a pilot license. Execute the single-line install script on your host, activate the license in your browser, and you are live.</div>
+      </div>
+    </div>
+  </div>
+  <section id="contacts" data-layer="CONTACTS" class="Contacts" data-site-contacts aria-labelledby="site-contacts-title"></section>
+  <div data-layer="FOOTER" class="Footer">
+    <div data-layer="Frame" class="Frame">
+      <div data-layer="Frame" class="Frame">
+        <div data-layer="BidShard" class="AdEventProcessor">BidShard</div>
+        <div data-layer="self-hosted license software for modern media buyers." class="SelfHostedLicenseSoftwareForModernMediaBuyers">self-hosted license software for modern media buyers.</div>
+      </div>
+      <div data-layer="Frame" class="Frame">
+        <a href="docs.html" class="FooterArchitecture">Architecture</a>
+        <div data-site-link="offer" class="PublicOffer">Public offer</div>
+        <div data-site-nav="Contacts" class="ContactsFooter">Contacts</div>
+        <div data-site-cta="telegram" class="Telegram">Telegram</div>
+        <div data-site-nav="Install" class="FooterInstall">Install</div>
+      </div>
+    </div>
+    <div data-layer="Frame" class="Frame">
+      <div data-layer="© 2026 BidShard. All rights reserved." class="2026AdEventProcessorAllRightsReserved">© 2026 BidShard. All rights reserved.</div>
+    </div>
+  </div>
+</div>
+  </body>
+</html>

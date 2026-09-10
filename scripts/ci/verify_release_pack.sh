@@ -98,6 +98,27 @@ if ! echo "$LIST" | grep -q 'bin/broker'; then
   exit 1
 fi
 
+if echo "$LIST" | grep -q 'ad-event-processor/bin/control'; then
+  for bin in control tracker processor; do
+    if ! echo "$LIST" | grep -q "ad-event-processor/bin/${bin}"; then
+      echo "verify_release_pack: partial garbled bundle: missing bin/${bin} in $TARBALL" >&2
+      exit 1
+    fi
+  done
+  if ! echo "$LIST" | grep -q 'internal/ingestion/unified_filter_sealed.bin'; then
+    echo "verify_release_pack: warning: garbled bundle has no unified_filter_sealed.bin; LICENSE_MODE=file needs sealed blobs on target host (install.env.example, cmd/license-asset-seal)" >&2
+  fi
+  if ! echo "$LIST" | grep -q 'internal/edge/edge_sealed.bin'; then
+    echo "verify_release_pack: warning: garbled bundle has no edge_sealed.bin; LICENSE_MODE=file needs sealed blobs on target host (install.env.example, cmd/license-asset-seal)" >&2
+  fi
+  if ! echo "$LIST" | grep -q 'internal/ingestion/processor_ch_ingest_sealed.bin'; then
+    echo "verify_release_pack: warning: garbled bundle has no processor_ch_ingest_sealed.bin; LICENSE_MODE=file needs sealed blobs on target host (install.env.example, cmd/license-asset-seal)" >&2
+  fi
+  if ! echo "$LIST" | grep -q 'internal/control/control_runtime_sealed.bin'; then
+    echo "verify_release_pack: warning: garbled bundle has no control_runtime_sealed.bin; LICENSE_MODE=file needs sealed blobs on target host (install.env.example, cmd/license-asset-seal)" >&2
+  fi
+fi
+
 if ! echo "$LIST" | grep -q 'scripts/lib/ci_artifacts.sh'; then
   echo "verify_release_pack: missing scripts/lib/ci_artifacts.sh in $TARBALL" >&2
   exit 1

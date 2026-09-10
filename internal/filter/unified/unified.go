@@ -1039,7 +1039,11 @@ func InitUnifiedFilterLua() error {
 	if err != nil {
 		return err
 	}
-	activateUnifiedFilterLuaSource(src)
+	activated, err := applyRedisScriptNoncePrefix(src)
+	if err != nil {
+		return err
+	}
+	activateUnifiedFilterLuaSource(activated)
 	return nil
 }
 
@@ -1073,7 +1077,8 @@ func resolveUnifiedFilterLuaSource() (string, error) {
 	sealed, err := sealedUnifiedFilterBlob()
 	if err != nil {
 		if os.IsNotExist(err) {
-			return unifiedFilterLua, nil
+			metrics.LicenseLuaSealFailTotal.Inc()
+			return "", fmt.Errorf("sealed lua blob: %w", err)
 		}
 		return "", err
 	}

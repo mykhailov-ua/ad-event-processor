@@ -48,3 +48,24 @@ func TestLicenseFilter_offlineGraceAllowsIngest(t *testing.T) {
 	err := f.Check(context.Background(), &domain.Event{})
 	assert.NoError(t, err)
 }
+
+func TestLicenseFilter_seedCouplingBlocksIngest(t *testing.T) {
+	licensing.ResetFeatureSeedForTest()
+	t.Cleanup(licensing.ResetFeatureSeedForTest)
+	licensing.SetSeedCouplingRequired(true)
+	licensing.PublishFeatureSeed(0, false)
+
+	f := NewLicenseFilter(&stubLicenseRegistry{state: licensing.StateActive})
+	err := f.Check(context.Background(), &domain.Event{})
+	require.ErrorIs(t, err, ErrLicenseExpired)
+}
+
+func TestLicenseFilter_activeStaleSeedAllowsWhenCouplingOff(t *testing.T) {
+	licensing.ResetFeatureSeedForTest()
+	t.Cleanup(licensing.ResetFeatureSeedForTest)
+	licensing.PublishFeatureSeed(0, false)
+
+	f := NewLicenseFilter(&stubLicenseRegistry{state: licensing.StateActive})
+	err := f.Check(context.Background(), &domain.Event{})
+	assert.NoError(t, err)
+}

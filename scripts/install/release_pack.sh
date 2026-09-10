@@ -96,6 +96,20 @@ CGO_ENABLED=0 GOOS=linux GOARCH=amd64 go build -o "$STAGE/ad-event-processor/bin
 chmod +x "$STAGE/ad-event-processor/bin/broker"
 
 BIN_SRC="${AD_EVENT_PROCESSOR_RELEASE_BIN_DIR:-}"
+SEALED_SRC_BASE="${AD_EVENT_PROCESSOR_RELEASE_SEALED_DIR:-$ROOT}"
+
+bundle_sealed_blob() {
+  local stage_rel="$1"
+  local src="$2"
+  local hint="$3"
+  if [[ -s "$src" ]]; then
+    mkdir -p "$STAGE/ad-event-processor/$(dirname "$stage_rel")"
+    install -m 0640 "$src" "$STAGE/ad-event-processor/$stage_rel"
+  else
+    echo "release_pack: warning: garbled release missing ${src}; ${hint}" >&2
+  fi
+}
+
 if [[ -n "$BIN_SRC" ]]; then
   echo "release_pack: bundling garbled binaries from ${BIN_SRC}..."
   for bin in control tracker processor broker; do
@@ -104,6 +118,29 @@ if [[ -n "$BIN_SRC" ]]; then
     else
       echo "release_pack: warning: missing ${BIN_SRC}/${bin}" >&2
     fi
+  done
+  bundle_sealed_blob "internal/ingestion/unified_filter_sealed.bin" \
+    "${SEALED_SRC_BASE}/internal/ingestion/unified_filter_sealed.bin" \
+    "LICENSE_MODE=file installs need sealed blobs (cmd/license-asset-seal)"
+  bundle_sealed_blob "internal/edge/edge_sealed.bin" \
+    "${SEALED_SRC_BASE}/internal/edge/edge_sealed.bin" \
+    "LICENSE_MODE=file installs need edge sealed blob (cmd/license-asset-seal)"
+  bundle_sealed_blob "internal/ingestion/processor_ch_ingest_sealed.bin" \
+    "${SEALED_SRC_BASE}/internal/ingestion/processor_ch_ingest_sealed.bin" \
+    "LICENSE_MODE=file installs need processor CH ingest sealed blob (cmd/license-asset-seal)"
+  bundle_sealed_blob "internal/control/control_runtime_sealed.bin" \
+    "${SEALED_SRC_BASE}/internal/control/control_runtime_sealed.bin" \
+    "LICENSE_MODE=file installs need control runtime sealed blob (cmd/license-asset-seal)"
+  LICENSE_PUBLIC_KEY="$ROOT/deploy/vendor/license_public.key"
+  if [[ ! -f "$LICENSE_PUBLIC_KEY" ]]; then
+    echo "release_pack: warning: garbled release missing ${LICENSE_PUBLIC_KEY}; appliance JWT verify needs license_public.key" >&2
+  fi
+elif [[ "${RELEASE_PACK_BUILD_PLAIN_BINS:-0}" == "1" ]]; then
+  echo "release_pack: building plain linux/amd64 control tracker processor (pre-GA pilot channel only)..."
+  for bin in control tracker processor; do
+    CGO_ENABLED=0 GOOS=linux GOARCH=amd64 go build -trimpath -ldflags="-s -w" \
+      -o "$STAGE/ad-event-processor/bin/${bin}" "./cmd/${bin}"
+    chmod +x "$STAGE/ad-event-processor/bin/${bin}"
   done
 fi
 

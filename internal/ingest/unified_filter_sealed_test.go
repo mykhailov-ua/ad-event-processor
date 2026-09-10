@@ -22,6 +22,17 @@ func TestResolveUnifiedFilterLua_devModeUsesEmbed(t *testing.T) {
 	require.Equal(t, unifiedFilterLua, src)
 }
 
+func TestResolveUnifiedFilterLua_missingSealedBlob(t *testing.T) {
+	dir := t.TempDir()
+	missing := filepath.Join(dir, "missing-unified_filter_sealed.bin")
+	t.Setenv("AD_EVENT_PROCESSOR_UNIFIED_FILTER_SEALED_BLOB", missing)
+	t.Setenv("AD_EVENT_PROCESSOR_LICENSE_MODE", "enterprise")
+
+	_, err := resolveUnifiedFilterLuaSource()
+	require.Error(t, err)
+	require.ErrorIs(t, err, os.ErrNotExist)
+}
+
 func TestResolveUnifiedFilterLua_invalidMCK(t *testing.T) {
 	var mck [32]byte
 	mck[0] = 1

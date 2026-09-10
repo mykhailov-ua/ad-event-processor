@@ -113,6 +113,12 @@ func RecheckLicenseFile(ctx context.Context, cfg FileLicenseRecheckConfig) (File
 			err = macErr
 		}
 	}
+	if err == nil && config.LicenseClockAnchorEnabled() {
+		if anchorErr := verify.CheckClockAnchor(cfg.Path, cfg.PubKey, hostFP, now, config.LicenseSkewWatchThreshold()); anchorErr != nil {
+			metrics.LicenseClockAnchorTotal.Inc()
+			err = anchorErr
+		}
+	}
 
 	seed, mckBits, seedValid := featureSeedFromRecheck(cfg.Path, cfg.PubKey, hostFP, err)
 	PublishFeatureSeed(seed, seedValid)
@@ -123,6 +129,15 @@ func RecheckLicenseFile(ctx context.Context, cfg FileLicenseRecheckConfig) (File
 	if err != nil {
 		slog.Warn("deployment credential refresh failed", "error", err, "path", cfg.Path)
 		return snap, err
+	}
+
+	if config.LicenseClockAnchorEnabled() {
+		if anchorErr := verify.UpdateClockAnchor(cfg.Path, cfg.PubKey, hostFP, now, 0); anchorErr != nil {
+			metrics.LicenseClockAnchorTotal.Inc()
+			slog.Warn("license clock anchor update failed", "error", anchorErr, "path", cfg.Path)
+			PublishFeatureSeed(0, false)
+			return snap, anchorErr
+		}
 	}
 
 	snap = FileLicenseRecheckSnapshot{

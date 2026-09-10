@@ -19,6 +19,9 @@ func TestRunListPending(t *testing.T) {
 	_, err := reg.EnqueuePending(trialregistry.EnqueuePendingInput{
 		TelegramID:       "7007",
 		TelegramUsername: "pending_user",
+		OfferVersion:     trialregistry.CurrentOfferVersion(),
+		OfferAcceptedAt:  time.Now().UTC(),
+		AcceptSource:     trialregistry.AcceptSourceTelegram,
 	})
 	require.NoError(t, err)
 
@@ -29,7 +32,12 @@ func TestRunListPending(t *testing.T) {
 func TestRunRejectPending(t *testing.T) {
 	regPath := t.TempDir() + "/trial.json"
 	reg := trialregistry.New(regPath, 0)
-	req, err := reg.EnqueuePending(trialregistry.EnqueuePendingInput{TelegramID: "8008"})
+	req, err := reg.EnqueuePending(trialregistry.EnqueuePendingInput{
+		TelegramID:      "8008",
+		OfferVersion:    trialregistry.CurrentOfferVersion(),
+		OfferAcceptedAt: time.Now().UTC(),
+		AcceptSource:    trialregistry.AcceptSourceTelegram,
+	})
 	require.NoError(t, err)
 
 	code := runRejectPending([]string{"--id", req.ID, "--reason", "test", "--trial-registry", regPath})

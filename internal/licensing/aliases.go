@@ -57,6 +57,7 @@ var (
 	DecoyLicensed                          = verify.DecoyLicensed
 	DefaultLicenseKeyID                    = verify.DefaultLicenseKeyID
 	DefaultMCKInfoLabel                    = verify.DefaultMCKInfoLabel
+	DefaultRedisScriptNonceInfoLabel       = verify.DefaultRedisScriptNonceInfoLabel
 	DefaultMaxJSONBytes                    = verify.DefaultMaxJSONBytes
 	DeploymentCredentialRefresh            = verify.DeploymentCredentialRefresh
 	DeriveMCK                              = verify.DeriveMCK
@@ -102,6 +103,7 @@ var (
 	ResolvePrivateKeyFileForKID            = verify.ResolvePrivateKeyFileForKID
 	ResolvePublicKey                       = verify.ResolvePublicKey
 	ResolvePublicKeyForKID                 = verify.ResolvePublicKeyForKID
+	RedisScriptNonceFromMCKWork            = verify.RedisScriptNonceFromMCKWork
 	RunGuardProbeForTest                   = verify.RunGuardProbeForTest
 	RuntimeEntitlementSnapshot             = verify.RuntimeEntitlementSnapshot
 	SetHWIDCollectForTest                  = verify.SetHWIDCollectForTest
@@ -180,7 +182,10 @@ var (
 	SKUCodeStarter                         = entitlements.SKUCodeStarter
 	SanitizeFeaturesForSKU                 = entitlements.SanitizeFeaturesForSKU
 	SeedCouplingRequired                   = entitlements.SeedCouplingRequired
+	SeedGateIngest                         = entitlements.SeedGateIngest
 	SeedGateOpenRTB                        = entitlements.SeedGateOpenRTB
+	SeedGateMlFraudBoost                   = entitlements.SeedGateMlFraudBoost
+	SeedGateEbpfEdge                       = entitlements.SeedGateEbpfEdge
 	SeedGateRPS                            = entitlements.SeedGateRPS
 	SetClockSampleHookForTest              = entitlements.SetClockSampleHookForTest
 	SetGuardTrippedHook                    = entitlements.SetGuardTrippedHook

@@ -24,6 +24,8 @@ func main() {
 		os.Exit(runListPending(os.Args[2:]))
 	case "reject-pending":
 		os.Exit(runRejectPending(os.Args[2:]))
+	case "accept-offer":
+		os.Exit(runAcceptOffer(os.Args[2:]))
 	case "help", "-h", "--help":
 		printUsage(os.Stdout)
 	default:
@@ -40,6 +42,7 @@ commands:
  expire-stale mark active anchors expired when valid_until < now
  list-pending print open pending trial requests
  reject-pending reject an open pending request by id
+ accept-offer    record public-offer acceptance for a telegram id
 
 `)
 }
@@ -104,13 +107,51 @@ func runListPending(args []string) int {
 		return 0
 	}
 	for _, req := range pending {
-		_, _ = fmt.Fprintf(os.Stdout, "%s\ttelegram=%s\tuser=%s\trequested=%s\n",
+		acceptedAt := ""
+		if !req.OfferAcceptedAt.IsZero() {
+			acceptedAt = req.OfferAcceptedAt.Format(time.RFC3339)
+		}
+		_, _ = fmt.Fprintf(os.Stdout, "%s\ttelegram=%s\tuser=%s\trequested=%s\toffer=%s\taccepted_at=%s\tsource=%s\n",
 			req.ID,
 			req.TelegramID,
 			req.TelegramUsername,
 			req.RequestedAt.Format(time.RFC3339),
+			req.OfferVersion,
+			acceptedAt,
+			req.AcceptSource,
 		)
 	}
+	return 0
+}
+
+func runAcceptOffer(args []string) int {
+	fs := flag.NewFlagSet("accept-offer", flag.ContinueOnError)
+	fs.SetOutput(os.Stderr)
+
+	registryPath := fs.String("trial-registry", "", "trial registry file path override")
+	telegramID := fs.String("telegram-id", "", "telegram user id")
+	offerVersion := fs.String("offer-version", "", "offer version (default: current)")
+	source := fs.String("source", trialregistry.AcceptSourceTelegram, "acceptance source audit tag")
+
+	if err := fs.Parse(args); err != nil {
+		return 2
+	}
+	if strings.TrimSpace(*telegramID) == "" {
+		fmt.Fprintln(os.Stderr, "trial-registry: accept-offer requires --telegram-id")
+		return 2
+	}
+
+	reg := openRegistry(*registryPath)
+	version := strings.TrimSpace(*offerVersion)
+	if version == "" {
+		version = trialregistry.CurrentOfferVersion()
+	}
+	if err := reg.AcceptOffer(*telegramID, version, *source); err != nil {
+		fmt.Fprintf(os.Stderr, "trial-registry: accept-offer: %v\n", err)
+		return 1
+	}
+	fmt.Fprintf(os.Stderr, "trial-registry: recorded offer acceptance telegram=%s version=%s source=%s\n",
+		strings.TrimSpace(*telegramID), version, strings.TrimSpace(*source))
 	return 0
 }
 

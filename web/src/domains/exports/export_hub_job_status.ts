@@ -12,6 +12,29 @@ export function normalizeExportJobStatus(status: string | undefined): string {
   return (status ?? '').trim().toLowerCase();
 }
 
+export function exportJobStatusDisplayLabel(status: string | undefined): string {
+  const normalized = normalizeExportJobStatus(status);
+  if (!normalized) {
+    return 'No status yet';
+  }
+
+  const phase = exportJobPhase(status);
+  if (phase === 'pending') {
+    return 'Running';
+  }
+  if (phase === 'completed') {
+    return 'Completed';
+  }
+  if (phase === 'failed') {
+    return 'Failed';
+  }
+  if (phase === 'cancelled') {
+    return 'Cancelled';
+  }
+
+  return normalized;
+}
+
 export function exportJobAdminStatusTone(status: string | undefined): AdminStatusTone {
   const phase = exportJobPhase(status);
   if (phase === 'completed') {

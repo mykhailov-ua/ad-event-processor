@@ -25,6 +25,9 @@ func TestRunIssue_approvePending(t *testing.T) {
 	pending, err := reg.EnqueuePending(trialregistry.EnqueuePendingInput{
 		TelegramID:       "9009",
 		TelegramUsername: "buyer9009",
+		OfferVersion:     trialregistry.CurrentOfferVersion(),
+		OfferAcceptedAt:  time.Now().UTC(),
+		AcceptSource:     trialregistry.AcceptSourceTelegram,
 	})
 	require.NoError(t, err)
 
@@ -43,10 +46,29 @@ func TestRunIssue_approvePending(t *testing.T) {
 	require.Equal(t, exitUsage, code)
 }
 
+func TestRunIssue_pilot_withoutOfferAcceptance_holdout(t *testing.T) {
+	privPath := writeTestPrivateKey(t)
+	regPath := filepath.Join(t.TempDir(), "trial.json")
+	t.Setenv(trialregistry.EnvRegistryPath, regPath)
+
+	opts := issueOptions{
+		SKUFile:        filepath.Join("..", "..", "deploy", "vendor", "sku.yaml"),
+		SKUCode:        licensing.SKUCodePilot,
+		Customer:       "Buyer A",
+		TelegramID:     "1000",
+		PrivateKeyFile: privPath,
+	}
+	_, code := runIssue(&opts, &bytes.Buffer{})
+	require.Equal(t, exitUsage, code)
+}
+
 func TestRunIssue_pilotDenyRepeatTelegram(t *testing.T) {
 	privPath := writeTestPrivateKey(t)
 	regPath := filepath.Join(t.TempDir(), "trial.json")
 	t.Setenv(trialregistry.EnvRegistryPath, regPath)
+
+	reg := trialregistry.New(regPath, 0)
+	require.NoError(t, reg.AcceptOffer("1001", trialregistry.CurrentOfferVersion(), trialregistry.AcceptSourceTelegram))
 
 	opts := issueOptions{
 		SKUFile:        filepath.Join("..", "..", "deploy", "vendor", "sku.yaml"),
@@ -68,6 +90,9 @@ func TestRunIssue_pilotForceOverride(t *testing.T) {
 	regPath := filepath.Join(t.TempDir(), "trial.json")
 	t.Setenv(trialregistry.EnvRegistryPath, regPath)
 	t.Setenv(trialregistry.EnvForceEnabled, "1")
+
+	reg := trialregistry.New(regPath, 0)
+	require.NoError(t, reg.AcceptOffer("2002", trialregistry.CurrentOfferVersion(), trialregistry.AcceptSourceTelegram))
 
 	opts := issueOptions{
 		SKUFile:        filepath.Join("..", "..", "deploy", "vendor", "sku.yaml"),
@@ -121,6 +146,9 @@ func TestRunIssue_starterMarkConvertedDeniesPilot(t *testing.T) {
 	privPath := writeTestPrivateKey(t)
 	regPath := filepath.Join(t.TempDir(), "trial.json")
 	t.Setenv(trialregistry.EnvRegistryPath, regPath)
+
+	reg := trialregistry.New(regPath, 0)
+	require.NoError(t, reg.AcceptOffer("4004", trialregistry.CurrentOfferVersion(), trialregistry.AcceptSourceTelegram))
 
 	dep := "550e8400-e29b-41d4-a716-446655440000"
 	pilot := issueOptions{

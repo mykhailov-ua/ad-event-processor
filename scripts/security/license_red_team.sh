@@ -55,8 +55,8 @@ run_case "license_rps_filter" \
 run_case "sync_entitlements_expired_default" \
   go test ./internal/ingest/ -run 'SyncEntitlements' -count=1
 
-run_case "license_seed_coupling_rps" \
-  go test ./internal/ingest/ -run 'LicenseRPSFilter_seedCoupling' -count=1
+run_case "binary_patch_gate" \
+  bash scripts/ci/static/binary_patch_gate.sh
 
 run_case "mck_seed_coupling_release_gate" \
   bash scripts/ci/static/mck_seed_coupling_release.sh

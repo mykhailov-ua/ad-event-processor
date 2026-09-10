@@ -27,6 +27,42 @@ if grep -Eiq 'AD_EVENT_PROCESSOR_LICENSE_MODE=(dev|development)' deploy/installe
   fail "install.env.example must not ship dev license mode"
 fi
 
+grep -q 'AD_EVENT_PROCESSOR_ASSET_SEAL_SALT' deploy/installer/install.env.example \
+  || fail "install.env.example must document AD_EVENT_PROCESSOR_ASSET_SEAL_SALT"
+
+grep -qi 'seed coupling' deploy/installer/install.env.example \
+  || fail "install.env.example must note LICENSE_MODE=file seed coupling"
+
+grep -q 'AD_EVENT_PROCESSOR_ASSET_SEAL_SALT' .env.example \
+  || fail ".env.example must document AD_EVENT_PROCESSOR_ASSET_SEAL_SALT"
+
+grep -q 'AD_EVENT_PROCESSOR_UNIFIED_FILTER_SEALED_BLOB' .env.example \
+  || fail ".env.example must document AD_EVENT_PROCESSOR_UNIFIED_FILTER_SEALED_BLOB"
+
+grep -q 'unified_filter_sealed.bin' scripts/ci/verify_release_pack.sh \
+  || fail "verify_release_pack must check sealed blob requirement for garbled releases"
+
+grep -q 'edge_sealed.bin' scripts/ci/verify_release_pack.sh \
+  || fail "verify_release_pack must warn on missing edge sealed blob for garbled releases"
+
+grep -q 'processor_ch_ingest_sealed.bin' scripts/ci/verify_release_pack.sh \
+  || fail "verify_release_pack must warn on missing processor CH ingest sealed blob for garbled releases"
+
+grep -q 'control_runtime_sealed.bin' scripts/ci/verify_release_pack.sh \
+  || fail "verify_release_pack must warn on missing control runtime sealed blob for garbled releases"
+
+[[ -f scripts/ops/bundle_enterprise_release.sh ]] \
+  || fail "scripts/ops/bundle_enterprise_release.sh must exist for enterprise release packs"
+
+grep -q 'AD_EVENT_PROCESSOR_EDGE_SEALED_BLOB' deploy/installer/install.env.example \
+  || fail "install.env.example must document AD_EVENT_PROCESSOR_EDGE_SEALED_BLOB"
+
+grep -q 'AD_EVENT_PROCESSOR_PROCESSOR_CH_INGEST_SEALED_BLOB' deploy/installer/install.env.example \
+  || fail "install.env.example must document AD_EVENT_PROCESSOR_PROCESSOR_CH_INGEST_SEALED_BLOB"
+
+grep -q 'AD_EVENT_PROCESSOR_CONTROL_RUNTIME_SEALED_BLOB' deploy/installer/install.env.example \
+  || fail "install.env.example must document AD_EVENT_PROCESSOR_CONTROL_RUNTIME_SEALED_BLOB"
+
 go test ./internal/config/ -run 'LicenseSeedCoupling|LicenseAssetsUnsealed' -count=1
 
 echo "mck_seed_coupling_release_gate: OK"

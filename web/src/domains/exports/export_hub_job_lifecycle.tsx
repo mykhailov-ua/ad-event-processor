@@ -8,8 +8,10 @@ import {
 } from '@/domains/exports/export_hub_job_status';
 import { exportHubJobErrorMessage } from '@/domains/exports/export_hub_errors';
 import { useExportJobElapsed } from '@/domains/exports/use_export_job_elapsed';
+import { adminSpacing, adminTypography } from '@/lib/admin_spacing';
 import { Button } from '@/components/ui/button';
 import { ErrorBlock } from '@/shell/error_block';
+import { cn } from '@/lib/utils';
 
 export type ExportHubJobLifecycleProps = {
   jobId: string;
@@ -22,9 +24,11 @@ export type ExportHubJobLifecycleProps = {
   autoPolling: boolean;
   cancelling: boolean;
   downloading: boolean;
+  polling: boolean;
   canCancelKind: boolean;
   onCancelJob: () => void;
   onDownloadJob: () => void;
+  onPollJob: () => void;
 };
 
 export function ExportJobStatusBadge({
@@ -34,8 +38,12 @@ export function ExportJobStatusBadge({
   status: string | undefined;
   elapsed: string;
 }) {
+  const normalized = normalizeExportJobStatus(status);
+  if (!normalized) {
+    return null;
+  }
+
   const phase = exportJobPhase(status);
-  const label = normalizeExportJobStatus(status) || 'unknown';
 
   if (phase === 'pending') {
     return (
@@ -57,7 +65,7 @@ export function ExportJobStatusBadge({
     return <Badge variant="outline">Cancelled</Badge>;
   }
 
-  return <Badge variant="outline">{label}</Badge>;
+  return <Badge variant="outline">{normalized}</Badge>;
 }
 
 export function ExportHubJobLifecycle({
@@ -71,9 +79,11 @@ export function ExportHubJobLifecycle({
   autoPolling,
   cancelling,
   downloading,
+  polling,
   canCancelKind,
   onCancelJob,
   onDownloadJob,
+  onPollJob,
 }: ExportHubJobLifecycleProps) {
   const phase = exportJobPhase(status);
   const elapsed = useExportJobElapsed(phase === 'pending', startedAtMs);
@@ -82,22 +92,29 @@ export function ExportHubJobLifecycle({
   const sizeSummary =
     phase === 'completed' ? formatExportJobRowSummary(rowLimit, bytes) : undefined;
   const failedJobMessage = exportHubJobErrorMessage(errorMessage);
+  const hasStatus = Boolean(normalizeExportJobStatus(status));
+  const trimmedJobId = jobId.trim();
 
   return (
-    <div>
-      <div>
-        <ExportJobStatusBadge elapsed={elapsed} status={status} />
-        {autoPolling && phase === 'pending' ? <span>Auto-refreshing every 3s</span> : null}
-      </div>
+    <div className={cn('grid min-w-0', adminSpacing.gap.md)}>
+      {hasStatus ? (
+        <div className={adminSpacing.flex.buttonGroup}>
+          <ExportJobStatusBadge elapsed={elapsed} status={status} />
+          {autoPolling && phase === 'pending' ? (
+            <span className={adminTypography.bodyMuted}>Auto-refreshing every 3s</span>
+          ) : null}
+          {sizeSummary ? <span className={adminTypography.bodyMuted}>{sizeSummary}</span> : null}
+        </div>
+      ) : null}
 
       {phase === 'failed' && failedJobMessage ? (
         <ErrorBlock message={failedJobMessage} title="Export failed" />
       ) : null}
 
-      <div>
+      <div className={adminSpacing.flex.buttonGroup}>
         {canCancel ? (
           <Button
-            disabled={exportBusy || !jobId.trim()}
+            disabled={exportBusy || !trimmedJobId}
             type="button"
             variant="destructive"
             onClick={onCancelJob}
@@ -106,7 +123,7 @@ export function ExportHubJobLifecycle({
           </Button>
         ) : null}
         <Button
-          disabled={exportBusy || !canDownload || !jobId.trim()}
+          disabled={exportBusy || !canDownload || !trimmedJobId}
           title={
             canDownload
               ? sizeSummary
@@ -119,7 +136,14 @@ export function ExportHubJobLifecycle({
         >
           {downloading ? 'Downloading...' : 'Download'}
         </Button>
-        {sizeSummary ? <span>{sizeSummary}</span> : null}
+        <Button
+          disabled={exportBusy || !trimmedJobId}
+          type="button"
+          variant="outline"
+          onClick={onPollJob}
+        >
+          {polling ? 'Polling...' : 'Refresh status'}
+        </Button>
       </div>
     </div>
   );

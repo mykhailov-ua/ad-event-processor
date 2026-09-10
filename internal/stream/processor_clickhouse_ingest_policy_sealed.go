@@ -84,6 +84,13 @@ func sealedProcessorClickHouseIngestBlob() ([]byte, error) {
 	return data, nil
 }
 
+// VerifyProcessorClickHouseIngestPolicySealed opens the sealed processor CH ingest
+// policy blob when present; missing blob is OK (embedded policy fallback).
+func VerifyProcessorClickHouseIngestPolicySealed() error {
+	_, err := resolveProcessorClickHouseIngestPolicyBytes()
+	return err
+}
+
 func resolveProcessorClickHouseIngestPolicyBytes() ([]byte, error) {
 	if config.LicenseAssetsUnsealed() {
 		return processorClickHouseIngestPolicyEmbed, nil
@@ -91,7 +98,8 @@ func resolveProcessorClickHouseIngestPolicyBytes() ([]byte, error) {
 	sealed, err := sealedProcessorClickHouseIngestBlob()
 	if err != nil {
 		if os.IsNotExist(err) {
-			return processorClickHouseIngestPolicyEmbed, nil
+			metrics.ProcessorClickHouseIngestSealFailTotal.Inc()
+			return nil, fmt.Errorf("sealed processor ch ingest blob: %w", err)
 		}
 		return nil, err
 	}

@@ -1,0 +1,157 @@
+openapi: 3.0.3
+info:
+  title: BidShard License Vendor API
+  version: 1.0.0
+  description: |
+    HTTP API for Telegram bots and vendor operators to queue pilot trials and issue JWT licenses.
+    Bind localhost (127.0.0.1:8199) on vendor VPS; authenticate every request except /health.
+
+servers:
+  - url: http://127.0.0.1:8199
+    description: Vendor VPS (same host as bot)
+
+security:
+  - bearerAuth: []
+
+paths:
+  /health:
+    get:
+      summary: Health check
+      security: []
+      responses:
+        "200":
+          description: OK
+
+  /api/v1/vendor/catalog:
+    get:
+      summary: SKU catalog with Telegram callback_data
+      responses:
+        "200":
+          description: Catalog
+
+  /api/v1/vendor/plans/buttons:
+    get:
+      summary: Inline keyboard rows for plan picker
+      responses:
+        "200":
+          description: Button matrix
+
+
+  /api/v1/vendor/offer-acceptances:
+    post:
+      summary: Record public-offer acceptance for a Telegram user
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [telegram_id]
+              properties:
+                telegram_id:
+                  type: string
+                offer_version:
+                  type: string
+                source:
+                  type: string
+      responses:
+        "200":
+          description: Acceptance recorded
+        "400":
+          description: Invalid input or offer version mismatch
+
+  /api/v1/vendor/trial-requests:
+    get:
+      summary: Open pilot queue with admin approve/reject button rows
+      responses:
+        "200":
+          description: Pending list
+    post:
+      summary: Enqueue pilot request from Telegram user
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [telegram_id]
+              properties:
+                telegram_id:
+                  type: string
+                telegram_username:
+                  type: string
+                notes:
+                  type: string
+      responses:
+        "200":
+          description: Queued
+
+  /api/v1/vendor/trial-requests/{id}/issue:
+    post:
+      summary: Approve pending request and issue pilot JWT
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: string
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [hwid_v2]
+              properties:
+                hwid_v2:
+                  type: string
+                deployment_id:
+                  type: string
+                operator:
+                  type: string
+                customer:
+                  type: string
+      responses:
+        "200":
+          description: Issued license
+
+  /api/v1/vendor/trial-requests/{id}/reject:
+    post:
+      summary: Reject pending pilot request
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: string
+      responses:
+        "200":
+          description: Rejected
+
+  /api/v1/vendor/licenses:
+    post:
+      summary: Issue license directly
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              properties:
+                sku_code:
+                  type: string
+                customer:
+                  type: string
+                hwid_v2:
+                  type: string
+                telegram_id:
+                  type: string
+      responses:
+        "200":
+          description: Issued license
+
+components:
+  securitySchemes:
+    bearerAuth:
+      type: http
+      scheme: bearer

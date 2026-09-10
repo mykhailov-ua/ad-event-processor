@@ -2,6 +2,8 @@
 
 Internal. Not shipped to customers. Canonical limits and feature matrix: [sku.yaml](./sku.yaml). Issue JWT: `go run ./cmd/license-issue --sku <code> ...`.
 
+**Naming (buyer comms):** **BidShard** = brand; **Ad Event Processor** = tracker; `ad-event-processor` = module/JWT id. See [OUTREACH.md](./OUTREACH.md).
+
 Self-hosted appliance: buyer runs the stack on their VPS; license is an Ed25519 JWT applied locally (Admin Settings, `license-apply`, or `POST /api/v1/license/apply`). No outbound license ping. No vendor-hosted tenants.
 
 ---
@@ -43,8 +45,9 @@ Quote buyers on **peak RPS** and **host count** (activations). Campaign and even
 | :--- | :--- | :--- |
 | Solo affiliate, rules-only fraud | `starter` | No ClickHouse ML workers; `/track` + S2S postbacks |
 | Media buyer, CPA waste reduction | `pro` | IVT detector on buyer ClickHouse (`ivt_ml_detector`) |
-| Network, OpenRTB + ML antifraud | `scale` | OpenRTB engine, ML boost, residential/moderator intel |
-| Multi-region footprint | `network` | `multi_region`, `slot_migration`, 10 hosts |
+| OpenRTB + ML antifraud at scale | `network` | OpenRTB engine, ML boost, multi-region, intel feeds |
+| Slot migration + high RPS | `scale` | `slot_migration`, ML boost, residential/moderator intel |
+| Multi-region footprint | `network` | `multi_region`, OpenRTB, 10 hosts |
 | Edge XDP + platform API sync | `enterprise` | `ebpf_xdp_edge`, `ad_platform_campaign_api` |
 
 OpenRTB starts at **Scale**. Most buyers use click URL + S2S `/track` only.
@@ -58,10 +61,10 @@ OpenRTB starts at **Scale**. Most buyers use click URL + S2S `/track` only.
 | SKU | USDT/mo | Valid days | Grace days | Hosts (`max_activations`) | Peak RPS | Regions | Tenants | API keys |
 | :--- | ---: | ---: | ---: | ---: | ---: | ---: | ---: | ---: |
 | `starter` | 129 | 30 | 7 | 1 | 10k | 1 | 3 | 5 |
-| `pro` | 329 | 30 | 7 | 1 | 25k | 1 | 10 | 10 |
-| `scale` | 649 | 30 | 7 | 3 | 75k | 1 | 25 | 25 |
-| `network` | 1,199 | 30 | 7 | 10 | 150k | 3 | 50 | 50 |
-| `enterprise` | 2,500+ | 30 | 7 | 99 | custom | 99 | 999999 | 999 |
+| `pro` | 399 | 30 | 7 | 1 | 25k | 1 | 10 | 10 |
+| `scale` | 749 | 30 | 7 | 3 | 60k | 1 | 25 | 25 |
+| `network` | 1,399 | 30 | 7 | 10 | 120k | 3 | 50 | 50 |
+| `enterprise` | 2,999+ | 30 | 7 | 99 | custom | 99 | 999999 | 999 |
 | `pilot` | 0 | 14 | 7 | 1 | 5k | 1 | 1 | 3 |
 | `license` | internal | 30 | 7 | 999 | unlimited | 99 | 999999 | 999 |
 
@@ -194,7 +197,7 @@ go run ./cmd/license-issue \
 ```
 
 4. Buyer applies JWT (Admin Settings or `license-apply`). No restart; entitlements reload immediately.
-5. Pilot limits: 14 days, 5k RPS, 1 host, rules-only fraud (`margin_guard` only among ML/RTB flags).
+5. Pilot limits: 10 days, 5k RPS, 1 host, rules-only fraud (`margin_guard` only among ML/RTB flags).
 6. Conversion: on USDT payment, re-issue paid SKU with **same** `deployment_id`:
 
 ```bash
@@ -310,7 +313,7 @@ No process restart required after apply; `internal/licensing` watcher reloads sn
 | Tier downgrade | Re-issue lower SKU; `SanitizeFeaturesForSKU` disables features on next reload |
 | Host add (multi bind) | Within `max_activations`; new host apply triggers `CheckHostActivation` |
 | Host add over cap | Upgrade SKU or retire old fingerprint in vendor DB |
-| OpenRTB enable | Minimum `scale`; set `rtb_live` + `openrtb_engine` in catalog |
+| OpenRTB enable | Minimum `network`; set `rtb_live` + `openrtb_engine` in catalog |
 | XDP enable | `enterprise` only; deploy edge binaries separately |
 | Pilot to paid | New JWT, same `deployment_id`, `--mark-converted` |
 
@@ -336,7 +339,7 @@ Support SLA (JWT delivery after USDT confirm):
 | Pro, Scale | 12 h |
 | Starter, Network, Enterprise | 24 h |
 
-Onboarding call included with first paid month per [INVOICE.md](./INVOICE.md).
+Telegram install guidance included with first paid month per [INVOICE.md](./INVOICE.md) (no calls for Starter/Pro/Scale).
 
 ---
 

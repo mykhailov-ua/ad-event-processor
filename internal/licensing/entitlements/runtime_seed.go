@@ -54,35 +54,72 @@ func SeedCouplingRequired() bool {
 	return seedCouplingForce.Load() == 1
 }
 
-func SeedGateOpenRTB(ent Entitlements) bool {
+func seedGateFeature(ent Entitlements, bit uint8, featureEnabled func(FeatureSet) bool, seedCheck func(uint32) bool) bool {
 	if !SeedCouplingRequired() {
 		return true
 	}
 	if !FeatureSeedValid() {
 		return false
 	}
-	if !ent.Features.OpenRTBEnabled() {
+	if !featureEnabled(ent.Features) {
 		return false
 	}
-	if MCKFeatureBits()&0x01 == 0 {
+	if MCKFeatureBits()&bit == 0 {
 		return false
 	}
-	seed := FeatureSeed()
-	return openRTBSeedCheck(seed)
+	return seedCheck(FeatureSeed())
+}
+
+func SeedGateOpenRTB(ent Entitlements) bool {
+	return seedGateFeature(ent, MCKFeatureBitOpenRTB, func(f FeatureSet) bool { return f.OpenRTBEnabled() }, openRTBSeedCheck)
+}
+
+func SeedGateMlFraudBoost(ent Entitlements) bool {
+	return seedGateFeature(ent, MCKFeatureBitMlFraudBoost, func(f FeatureSet) bool { return f.MlFraudBoostEnabled() }, mlFraudBoostSeedCheck)
+}
+
+func SeedGateEbpfEdge(ent Entitlements) bool {
+	return seedGateFeature(ent, MCKFeatureBitEbpfEdge, func(f FeatureSet) bool { return f.EbpfEdgeEnabled() }, ebpfEdgeSeedCheck)
 }
 
 func SeedGateRPS(maxRPS uint64) bool {
-	if !SeedCouplingRequired() || maxRPS == 0 {
+	if !SeedCouplingRequired() {
 		return true
 	}
 	if !FeatureSeedValid() {
 		return false
 	}
+	if LicenseEpochInvalid() {
+		return false
+	}
+	if maxRPS == 0 {
+		return true
+	}
 	return rpsSeedCheck(FeatureSeed(), maxRPS)
+}
+
+func SeedGateIngest() bool {
+	if !SeedCouplingRequired() {
+		return true
+	}
+	if !FeatureSeedValid() {
+		return false
+	}
+	return !LicenseEpochInvalid()
 }
 
 func openRTBSeedCheck(seed uint32) bool {
 	mix := seed ^ 0x5a5a_3c3c
+	return mix&0x00ff_ffff != 0
+}
+
+func mlFraudBoostSeedCheck(seed uint32) bool {
+	mix := seed ^ 0x7f3a_1b2c
+	return mix&0x00ff_ffff != 0
+}
+
+func ebpfEdgeSeedCheck(seed uint32) bool {
+	mix := seed ^ 0x3c91_4e5f
 	return mix&0x00ff_ffff != 0
 }
 

@@ -71,9 +71,16 @@ func LicenseFileRecheckInterval() string {
 	return "5m"
 }
 
+func licenseProductionHardened() bool {
+	return ProfileFromEnv() == "production" && LicenseRequiredFromEnv()
+}
+
 func LicenseSkewWatchEnabled() bool {
 	if LicenseMode() == "dev" || LicenseMode() == "development" {
 		return false
+	}
+	if licenseProductionHardened() {
+		return true
 	}
 	if v := LicenseEnv("SKEW_WATCH"); v != "" {
 		return parseBoolEnv(v)
@@ -86,6 +93,9 @@ func LicenseSkewWatchInterval() time.Duration {
 		if d, err := time.ParseDuration(v); err == nil && d > 0 {
 			return d
 		}
+	}
+	if licenseProductionHardened() {
+		return 5 * time.Minute
 	}
 	return time.Hour
 }
@@ -114,10 +124,23 @@ func LicensePublicKeyProductionEmbeddedOnly() bool {
 }
 
 func LicenseGuardEnvEnabled() bool {
+	if licenseProductionHardened() {
+		return true
+	}
 	if v := LicenseEnv("GUARD"); v != "" {
 		return parseBoolEnv(v)
 	}
 	return true
+}
+
+func LicenseClockAnchorEnabled() bool {
+	if LicenseMode() == "dev" || LicenseMode() == "development" {
+		return false
+	}
+	if v := LicenseEnv("CLOCK_ANCHOR"); v != "" {
+		return parseBoolEnv(v)
+	}
+	return licenseProductionHardened() || LicenseSeedCouplingEnabled()
 }
 
 func LicenseGuardPtraceWatchdogEnabled() bool {

@@ -1,0 +1,312 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <meta name="description" content="How BidShard is built: hot-path ingest, cold-path admin, and what runs on your VPS.">
+  <title>Architecture — BidShard</title>
+  <script>
+    (function () {
+      try {
+        var theme = localStorage.getItem("bidshard_theme");
+        if (theme === "light" || theme === "dark") {
+          document.documentElement.setAttribute("data-theme", theme);
+        }
+      } catch (e) {}
+    })();
+  </script>
+  <link rel="stylesheet" href="site.css">
+  <script src="site.js" defer></script>
+</head>
+<body class="docs-page">
+  <div class="site-offer-gate" data-site-offer-gate hidden aria-hidden="true"></div>
+  <header class="site-doc-header">
+    <a href="index.html">BidShard</a>
+    <nav class="site-doc-header__nav" aria-label="Docs">
+      <a href="index.html">Home</a>
+      <a href="offer.html">Public offer</a>
+    </nav>
+    <div class="site-header-end">
+      <a class="site-lang-switch" href="/uk/docs.html" hreflang="uk" title="Українська версія">UA</a>
+      <button type="button" class="site-theme-toggle" data-site-theme-toggle aria-label="Switch to light theme" title="Light theme">
+        <svg class="site-theme-toggle__icon site-theme-toggle__icon--sun" viewBox="0 0 24 24" fill="none" aria-hidden="true">
+          <circle cx="12" cy="12" r="4" stroke="currentColor" stroke-width="2"/>
+          <path d="M12 2v2M12 20v2M4.93 4.93l1.41 1.41M17.66 17.66l1.41 1.41M2 12h2M20 12h2M4.93 19.07l1.41-1.41M17.66 6.34l1.41-1.41" stroke="currentColor" stroke-width="2" stroke-linecap="round"/>
+        </svg>
+        <svg class="site-theme-toggle__icon site-theme-toggle__icon--moon" viewBox="0 0 24 24" fill="none" aria-hidden="true">
+          <path d="M12 3a6 6 0 0 0 9 9 9 9 0 1 1-9-9Z" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/>
+        </svg>
+      </button>
+    </div>
+  </header>
+
+  <main class="site-doc">
+    <a href="index.html" class="site-doc-back">Back to home</a>
+
+    <p class="site-doc-eyebrow">Technical overview</p>
+    <h1>Architecture</h1>
+    <p class="site-doc-lead">
+      BidShard ships as self-hosted software you install on your VPS or dedicated server.
+      This page describes what actually runs on your metal — not a cloud SaaS control plane.
+      Engineering detail for contributors lives in the vendor tree (<code>docs/ARCHITECTURE.md</code>).
+    </p>
+
+    <nav class="site-doc-toc" aria-label="On this page">
+      <div class="site-doc-toc__title">On this page</div>
+      <ol>
+        <li><a href="#overview">Overview</a></li>
+        <li><a href="#default-stack">Default stack on your server</a></li>
+        <li><a href="#click-path">What happens on a click</a></li>
+        <li><a href="#admin-path">Admin, billing, and reports</a></li>
+        <li><a href="#data-stores">Data stores</a></li>
+        <li><a href="#optional">Optional components</a></li>
+        <li><a href="#limits">Honest limits</a></li>
+        <li><a href="#ports">Ports</a></li>
+      </ol>
+    </nav>
+
+    <h2 id="overview">Overview</h2>
+    <p>
+      The system splits into a <strong>hot path</strong> (accept or reject clicks and impressions under millisecond budgets)
+      and a <strong>cold path</strong> (campaign CRUD, billing, reports, ML batch jobs, outbox workers).
+      Your traffic never passes through BidShard's servers in the default delivery model — only the license JWT
+      and support chat are vendor-side.
+    </p>
+    <div class="site-flow" role="img" aria-label="Traffic flow diagram">
+      <div class="site-flow__lane">
+        <div class="site-flow__label">Hot path</div>
+        <div class="site-flow__track">
+          <span class="site-flow__node">Visitor</span>
+          <span class="site-flow__arrow" aria-hidden="true">→</span>
+          <span class="site-flow__node site-flow__node--edge">Nginx edge</span>
+          <span class="site-flow__arrow" aria-hidden="true">→</span>
+          <span class="site-flow__node site-flow__node--hot">Tracker</span>
+          <span class="site-flow__arrow" aria-hidden="true">→</span>
+          <span class="site-flow__node site-flow__node--hot">Filter + debit</span>
+          <span class="site-flow__arrow" aria-hidden="true">→</span>
+          <span class="site-flow__node">Redis / broker</span>
+        </div>
+      </div>
+      <div class="site-flow__lane site-flow__lane--cold">
+        <div class="site-flow__label">Async</div>
+        <div class="site-flow__track">
+          <span class="site-flow__node site-flow__node--cold">Processor</span>
+          <span class="site-flow__arrow" aria-hidden="true">→</span>
+          <span class="site-flow__node site-flow__node--cold">Postgres</span>
+          <span class="site-flow__arrow site-flow__arrow--plus" aria-hidden="true">+</span>
+          <span class="site-flow__node site-flow__node--cold">ClickHouse</span>
+        </div>
+      </div>
+      <div class="site-flow__lane site-flow__lane--admin">
+        <div class="site-flow__label">Admin</div>
+        <div class="site-flow__track site-flow__track--note">
+          <span class="site-flow__node site-flow__node--admin">Control :8188</span>
+          <span class="site-flow__note">API, outbox, billing — not on the ingest thread</span>
+        </div>
+      </div>
+    </div>
+    <p class="site-doc-callout">
+      <strong>HTTP 202 on <code>/track</code></strong> means the tracker accepted and validated the event on the ingest path.
+      It does <em>not</em> mean Postgres or ClickHouse already committed the row — that happens asynchronously via the processor.
+    </p>
+
+    <h2 id="default-stack">Default stack on your server</h2>
+    <p>A typical single-VPS install runs these processes (systemd units from the installer):</p>
+    <table class="site-doc-table">
+      <thead>
+        <tr>
+          <th>Process</th>
+          <th>Role</th>
+          <th>Default port</th>
+        </tr>
+      </thead>
+      <tbody>
+        <tr>
+          <td>Nginx (OpenResty)</td>
+          <td>TLS, rate limits, early blacklist, shard routing to tracker pool</td>
+          <td>8180 / 443</td>
+        </tr>
+        <tr>
+          <td><code>tracker</code></td>
+          <td>Click/impression ingest, filter chain, budget enforcement, async event enqueue</td>
+          <td>8181–8184</td>
+        </tr>
+        <tr>
+          <td><code>control</code></td>
+          <td>Admin API, campaign mutations, outbox workers, payment webhooks</td>
+          <td>8188</td>
+        </tr>
+        <tr>
+          <td><code>processor</code></td>
+          <td>Consumes Redis streams (or broker WAL) → settles Postgres + batches ClickHouse</td>
+          <td>8186</td>
+        </tr>
+        <tr>
+          <td>PostgreSQL</td>
+          <td>Financial truth: campaigns, budgets, ledger, outbox</td>
+          <td>5430 (compose default)</td>
+        </tr>
+        <tr>
+          <td>Redis</td>
+          <td>Hot-path debit/dedup, streams, pub/sub config reload</td>
+          <td>6479+ (sharded)</td>
+        </tr>
+        <tr>
+          <td>ClickHouse</td>
+          <td>Analytics, fraud/IVT reports, ML feature reads (cold path)</td>
+          <td>9000</td>
+        </tr>
+      </tbody>
+    </table>
+    <p>
+      License verification uses an offline Ed25519 JWT file on disk — no recurring phone-home to issue ingest tokens.
+      Feature flags and RPS caps are encoded in the JWT per SKU.
+    </p>
+
+    <h2 id="click-path">What happens on a click</h2>
+    <ol class="site-doc-steps">
+      <li>
+        <strong>Edge (nginx)</strong> — optional early reject: per-campaign rate limit, circuit breaker, IP blacklist,
+        ASN policy. Config is mirrored into worker memory on a timer; access phase does not call Redis per request.
+      </li>
+      <li>
+        <strong>Tracker parse</strong> — HTTP/1 handled by gnet (not <code>net/http</code> on the hot path).
+        <code>/track</code> requires <code>Content-Length</code>; chunked bodies are rejected (parity with edge policy).
+      </li>
+      <li>
+        <strong>Local filters</strong> — license, geo, schedule, device signals, consent, and rule-based fraud checks
+        run in-process. ML model inference does <em>not</em> run here; the tracker may read a precomputed fraud-boost
+        snapshot from Redis when your tier includes it.
+      </li>
+      <li>
+        <strong>Redis unified filter</strong> — at most one synchronous Lua script per accepted event for budget debit
+        and dedup (zero scripts when local-quota full-skip mode is eligible). Campaign keys use a Redis hash tag so
+        multi-key atomicity stays on one shard master.
+      </li>
+      <li>
+        <strong>Async enqueue</strong> — accepted events go to a Redis stream or optional mmap broker WAL via a
+        reserved slot in the producer queue. If enqueue fails after debit, the budget is rolled back.
+      </li>
+      <li>
+        <strong>Processor</strong> — background workers batch into Postgres (settlement) and ClickHouse (analytics).
+      </li>
+    </ol>
+    <p>
+      <code>/click</code> runs the same filter chain and returns a redirect.
+      <code>/openrtb/bid</code> runs an in-process RTB auction only — not the full filter chain (Network tier, live mode).
+    </p>
+
+    <h3>Antifraud semantics (no marketing shortcuts)</h3>
+    <ul>
+      <li><strong>Hard reject</strong> — HTTP 403; event is not debited.</li>
+      <li><strong>Silent reject</strong> — HTTP 202 to the visitor (decoy accept); flagged in analytics so funnels stay clean. Does not auto-flip campaign settings in Postgres.</li>
+      <li><strong>IVT detector</strong> (Pro+) — batch rules on ClickHouse; can enqueue blacklist/boost actions via the admin outbox.</li>
+      <li><strong>ML fraud scorer</strong> (Scale+) — batch LightGBM in a sidecar; writes boost keys Redis syncs to the tracker snapshot. Not per-click inference on ingest.</li>
+    </ul>
+
+    <h2 id="admin-path">Admin, billing, and reports</h2>
+    <p>
+      <code>control</code> is a modular monolith: one process exposes <code>/api/v1/*</code> and runs in-process workers.
+      When you PATCH a campaign, the mutation and an <code>outbox_events</code> row are written in the same Postgres
+      transaction. An outbox worker (poll ~20 ms) applies Redis side effects and triggers tracker registry reload via pub/sub.
+    </p>
+    <p>
+      The tracker does <em>not</em> poll Postgres on each request — it reads an in-memory snapshot refreshed from Redis.
+      Payment webhooks and ledger entries are cold-path only; the processor does not insert <code>balance_ledger</code> rows.
+    </p>
+
+    <h2 id="data-stores">Data stores</h2>
+    <div class="site-doc-cards">
+      <article class="site-doc-card">
+        <h3>PostgreSQL</h3>
+        <p>Campaigns, budgets, team RBAC, payment state, transactional outbox. Source of financial truth after processor settlement.</p>
+      </article>
+      <article class="site-doc-card">
+        <h3>Redis</h3>
+        <p>Per-shard budgets, dedup locks, ingest streams, fraud blacklists, ML boost snapshots. Standalone masters + Sentinel — not Redis Cluster on the hot path.</p>
+      </article>
+      <article class="site-doc-card">
+        <h3>ClickHouse</h3>
+        <p>Event analytics, report aggregates, IVT/ML feature reads. Not consulted synchronously on <code>/track</code> accept.</p>
+      </article>
+    </div>
+    <p>
+      Campaigns are sharded: <code>slot = CRC32C(campaign_id) &amp; 1023</code> maps to a Redis shard and tracker listener.
+      Edge slot map and Go must stay in sync (installer publishes the map).
+    </p>
+
+    <h2 id="optional">Optional components</h2>
+    <table class="site-doc-table">
+      <thead>
+        <tr>
+          <th>Component</th>
+          <th>When</th>
+          <th>What it does</th>
+        </tr>
+      </thead>
+      <tbody>
+        <tr>
+          <td><code>broker</code></td>
+          <td><code>CH_INGEST_SOURCE=broker</code></td>
+          <td>mmap WAL instead of Redis stream as authoritative ingest log</td>
+        </tr>
+        <tr>
+          <td><code>fraud-scorer</code></td>
+          <td>Scale SKU</td>
+          <td>Batch ML scores → Redis boost keys</td>
+        </tr>
+        <tr>
+          <td><code>ivt-detector</code></td>
+          <td>Pro SKU</td>
+          <td>CH rule batches → outbox actions</td>
+        </tr>
+        <tr>
+          <td><code>edge-xdp</code> + <code>edge-bpf-sync</code></td>
+          <td>Enterprise (<code>ebpf_xdp_edge</code>)</td>
+          <td>L4 drop for listed IPs on NIC; does not replace L7 tracker filters</td>
+        </tr>
+        <tr>
+          <td><code>region-proxy</code></td>
+          <td>Network+ (<code>multi_region</code>)</td>
+          <td>Multi-cell WAL ingress and global coordinator</td>
+        </tr>
+      </tbody>
+    </table>
+
+    <h2 id="limits">Honest limits</h2>
+    <ul class="site-doc-honest">
+      <li>We do not host your traffic or guarantee uptime on your VPS — you operate the box.</li>
+      <li>Edge and XDP can drop known bad IPs; rotating proxies may still reach the tracker — L7 rules apply there.</li>
+      <li><code>BROKER_SHADOW_MODE</code> shadows processor CH ingest only; tracker WAL writes are live when broker-primary is enabled.</li>
+      <li><code>LOCAL_QUOTA_MODE=shadow</code> exercises local quanta but still runs sync Redis Lua; only <code>live</code> can skip it when eligible.</li>
+      <li>SKU JWT caps (RPS, hosts, tenants, features) are enforced — see <a href="index.html#pricing">pricing</a> and <code>deploy/vendor/sku.yaml</code>.</li>
+    </ul>
+
+    <h2 id="ports">Ports (compose defaults)</h2>
+    <table class="site-doc-table site-doc-table--compact">
+      <thead>
+        <tr><th>Service</th><th>Port</th></tr>
+      </thead>
+      <tbody>
+        <tr><td>nginx edge</td><td>8180, 443</td></tr>
+        <tr><td>tracker</td><td>8181–8184</td></tr>
+        <tr><td>control (admin API)</td><td>8188</td></tr>
+        <tr><td>payment webhooks</td><td>8187</td></tr>
+        <tr><td>processor</td><td>8186</td></tr>
+        <tr><td>broker (optional)</td><td>9092</td></tr>
+        <tr><td>tracker metrics sidecar</td><td>9101–9104</td></tr>
+      </tbody>
+    </table>
+
+    <p class="site-doc-meta site-doc-meta--spaced">
+      Last updated for marketing site: 2026-09-09. For installer steps see the home page install block.
+      For legal terms see <a href="offer.html">public offer</a>.
+    </p>
+
+    <div class="site-doc-actions">
+      <a class="primary" data-site-cta="telegram" href="#">Request pilot via Telegram</a>
+      <a class="ghost" href="index.html">Back to home</a>
+    </div>
+  </main>
+</body>
+</html>

@@ -22,6 +22,17 @@ func TestProcessorClickHouseIngestPolicy_devModeUsesEmbed(t *testing.T) {
 	require.Equal(t, processorClickHouseIngestPolicyEmbed, raw)
 }
 
+func TestProcessorClickHouseIngestPolicy_missingSealedBlob(t *testing.T) {
+	dir := t.TempDir()
+	missing := filepath.Join(dir, "missing-processor_ch_ingest_sealed.bin")
+	t.Setenv("AD_EVENT_PROCESSOR_PROCESSOR_CH_INGEST_SEALED_BLOB", missing)
+	t.Setenv("AD_EVENT_PROCESSOR_LICENSE_MODE", "enterprise")
+
+	_, err := resolveProcessorClickHouseIngestPolicyBytes()
+	require.Error(t, err)
+	require.ErrorIs(t, err, os.ErrNotExist)
+}
+
 func TestProcessorClickHouseIngestPolicy_invalidMCK(t *testing.T) {
 	var mck [32]byte
 	mck[0] = 1

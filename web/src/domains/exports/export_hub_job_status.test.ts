@@ -4,11 +4,18 @@ import test from 'node:test';
 import {
   exportJobCanDownload,
   exportJobPhase,
+  exportJobStatusDisplayLabel,
   formatExportJobBytes,
   formatExportJobRecentSummary,
   formatExportJobRowSummary,
   truncateExportJobInlineText,
 } from '@/domains/exports/export_hub_job_status';
+
+test('exportJobStatusDisplayLabel avoids unknown placeholder for empty status', () => {
+  assert.equal(exportJobStatusDisplayLabel(undefined), 'No status yet');
+  assert.equal(exportJobStatusDisplayLabel(''), 'No status yet');
+  assert.equal(exportJobStatusDisplayLabel('completed'), 'Completed');
+});
 
 test('exportJobPhase maps running states to pending', () => {
   assert.equal(exportJobPhase('RUNNING'), 'pending');

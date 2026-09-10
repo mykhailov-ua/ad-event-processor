@@ -1,0 +1,21 @@
+# Marketing static site bind mounts for ingress (Caddy).
+# Use with ingress profile:
+#   docker compose -f deploy/compose/docker-compose.yaml \
+#     -f deploy/compose/docker-compose.marketing-ingress.yaml \
+#     --profile ingress up -d ingress
+
+services:
+  ingress:
+    volumes:
+      - type: bind
+        source: ../../deploy/marketing
+        target: /srv/marketing
+        read_only: true
+        bind:
+          create_host_path: true
+      - type: bind
+        source: ../../deploy/ingress/caddy/generated/marketing.caddy
+        target: /etc/caddy/snippets/marketing.caddy
+        read_only: true
+        bind:
+          create_host_path: false

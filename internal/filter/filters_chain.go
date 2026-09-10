@@ -529,12 +529,12 @@ func (f *LicenseRPSFilter) Check(_ context.Context, _ *domain.Event) error {
 	}
 	_, ent := f.registry.GetLicenseState()
 	maxRPS := ent.Limits.MaxRPS
-	if maxRPS == 0 {
-		return nil
-	}
 	if !licensing.SeedGateRPS(maxRPS) {
 		metrics.LicenseRPSExceededTotal.Inc()
 		return ErrRateLimitExceeded
+	}
+	if maxRPS == 0 {
+		return nil
 	}
 	if !globalDeploymentRPS.allow(maxRPS) {
 		metrics.LicenseRPSExceededTotal.Inc()

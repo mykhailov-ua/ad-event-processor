@@ -6,8 +6,8 @@ import {
   SelectItem,
   SelectTrigger,
 } from '@/components/ui/select';
-import { Label } from '@/components/ui/label';
 import { EXPORT_HUB_SEARCH_THRESHOLD } from '@/domains/exports/export_hub_limits';
+import { FilterField } from '@/shell/filter_panel';
 import {
   type ExportHubEntry,
   exportHubCatalogOptions,
@@ -44,8 +44,7 @@ export function ExportHubCatalogPicker({
 
   if (showSearch) {
     return (
-      <div>
-        <Label htmlFor="export-hub-catalog">Export</Label>
+      <FilterField htmlFor="export-hub-catalog" label="Export">
         <SearchableFilterSelect
           aria-label="Choose export target"
           disabled={disabled}
@@ -57,13 +56,12 @@ export function ExportHubCatalogPicker({
           value={value}
           onValueChange={onValueChange}
         />
-      </div>
+      </FilterField>
     );
   }
 
   return (
-    <div>
-      <Label htmlFor="export-hub-catalog">Export</Label>
+    <FilterField htmlFor="export-hub-catalog" label="Export">
       <Select
         disabled={disabled}
         value={value || undefined}
@@ -80,6 +78,6 @@ export function ExportHubCatalogPicker({
           ))}
         </SelectContent>
       </Select>
-    </div>
+    </FilterField>
   );
 }

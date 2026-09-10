@@ -26,6 +26,33 @@ func (r *Registry) EnqueuePending(in EnqueuePendingInput) (PendingRequest, error
 		return PendingRequest{}, err
 	}
 
+	offerVersion := strings.TrimSpace(in.OfferVersion)
+	if offerVersion == "" {
+		offerVersion = CurrentOfferVersion()
+	}
+	if offerVersion != CurrentOfferVersion() {
+		return PendingRequest{}, ErrOfferVersionMismatch
+	}
+
+	acceptedAt := in.OfferAcceptedAt
+	source := strings.TrimSpace(in.AcceptSource)
+	if !acceptedAt.IsZero() {
+		if source == "" {
+			source = AcceptSourceVendorAPI
+		}
+		upsertOfferAcceptanceLocked(snap, telegramID, offerVersion, source, acceptedAt.UTC())
+	} else if !hasOfferAcceptanceLocked(snap, telegramID, offerVersion) {
+		return PendingRequest{}, ErrOfferNotAccepted
+	} else {
+		for i := range snap.OfferAcceptances {
+			if snap.OfferAcceptances[i].TelegramID == telegramID && snap.OfferAcceptances[i].OfferVersion == offerVersion {
+				acceptedAt = snap.OfferAcceptances[i].AcceptedAt
+				source = snap.OfferAcceptances[i].Source
+				break
+			}
+		}
+	}
+
 	for i := range snap.Pending {
 		if snap.Pending[i].Status != PendingStatusOpen {
 			continue
@@ -43,6 +70,9 @@ func (r *Registry) EnqueuePending(in EnqueuePendingInput) (PendingRequest, error
 		RequestedAt:      now,
 		Status:           PendingStatusOpen,
 		Notes:            strings.TrimSpace(in.Notes),
+		OfferVersion:     offerVersion,
+		OfferAcceptedAt:  acceptedAt,
+		AcceptSource:     source,
 	}
 	snap.Pending = append(snap.Pending, req)
 	if err := r.saveLocked(snap); err != nil {

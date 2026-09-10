@@ -141,8 +141,25 @@ release-garble-all-platforms: gen fmt
 release-installer:
 	bash scripts/install/release_pack.sh $(if $(VERSION),$(VERSION),)
 
+.PHONY: publish-installer-release
+publish-installer-release:
+	bash scripts/ops/publish_installer_release.sh $(if $(VERSION),$(VERSION),)
+
 license-issue:
 	go run ./cmd/license-issue $(ARGS)
+
+.PHONY: deploy-license-vendor-api deploy-license-vendor-api-check deploy-vendor-trial-bot deploy-vendor-trial-bot-check
+deploy-license-vendor-api:
+	bash scripts/ops/deploy_license_vendor_api.sh
+
+deploy-license-vendor-api-check:
+	bash scripts/ops/deploy_license_vendor_api.sh --check
+
+deploy-vendor-trial-bot:
+	bash scripts/ops/deploy_vendor_trial_bot.sh
+
+deploy-vendor-trial-bot-check:
+	bash scripts/ops/deploy_vendor_trial_bot.sh --check
 
 license-red-team:
 	bash scripts/security/license_red_team.sh
@@ -279,7 +296,7 @@ telegram-hotpath-gate:
 edge-preflight:
 	bash scripts/ops/edge_preflight.sh
 
-.PHONY: deploy-appliance deploy-appliance-check deploy-appliance-fast
+.PHONY: deploy-appliance deploy-appliance-check deploy-appliance-fast deploy-marketing deploy-marketing-check
 
 deploy-appliance:
 	bash scripts/ops/deploy_appliance.sh
@@ -289,6 +306,12 @@ deploy-appliance-check:
 
 deploy-appliance-fast:
 	SKIP_BUILD=1 SKIP_SEED=1 SKIP_PG_MIGRATE=1 bash scripts/ops/deploy_appliance.sh
+
+deploy-marketing:
+	bash scripts/ops/deploy_marketing.sh
+
+deploy-marketing-check:
+	bash scripts/ops/deploy_marketing.sh --check
 
 proto:
 	bash scripts/ci/gen.sh --proto

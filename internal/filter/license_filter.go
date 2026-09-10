@@ -23,5 +23,8 @@ func (f *LicenseFilter) Check(_ context.Context, _ *domain.Event) error {
 	if state == licensing.StateExpired || state == licensing.StateRevoked {
 		return ErrLicenseExpired
 	}
+	if !licensing.SeedGateIngest() {
+		return ErrLicenseExpired
+	}
 	return nil
 }

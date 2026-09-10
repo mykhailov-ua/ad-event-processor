@@ -1,0 +1,15 @@
+[Unit]
+Description=ad-event-processor vendor trial Telegram bot
+After=network.target
+
+[Service]
+Type=simple
+EnvironmentFile=-/etc/ad-event-processor/vendor-trial-bot.env
+WorkingDirectory=/opt/platform/ad-event-processor
+ExecStart=/opt/platform/ad-event-processor/bin/vendor-trial-bot
+Restart=on-failure
+RestartSec=3
+NoNewPrivileges=true
+
+[Install]
+WantedBy=multi-user.target

@@ -6,10 +6,12 @@ Vendor-only files. Do not ship in customer packages.
 | :--- | :--- |
 | [PUBLIC_OFFER.md](./PUBLIC_OFFER.md) | Public offer agreement (EN + UK) — customer-facing template |
 | [OFFER_IMPLEMENTATION_GUIDE.md](./OFFER_IMPLEMENTATION_GUIDE.md) | Internal sales/ops: FAQ scripts, acceptance, license issuance, deploy checklist |
+| [OUTREACH.md](./OUTREACH.md) | Naming, Telegram sales, cold email, forbidden outreach claims |
 | [MARKETING.md](./MARKETING.md) | Product specification (buyer-facing, neutral) |
 | [SALES.md](./SALES.md) | Internal tier positioning and SKU table |
 | [ENTERPRISE_DEPLOY.md](./ENTERPRISE_DEPLOY.md) | XDP edge and multi-region deploy, limits, verification |
 | [ANTIFRAUD.md](./ANTIFRAUD.md) | Operator fraud reference |
+| [WASM_PIXEL.md](./WASM_PIXEL.md) | Browser pixel, WASM attest module, safe-page PoW flow |
 | [sku.yaml](./sku.yaml) | License limits and feature flags |
 | [KEYS.md](./KEYS.md) | Ed25519 public keys and HWID notes |
 | [INVOICE.md](./INVOICE.md) | USDT invoice template |
@@ -17,3 +19,5 @@ Vendor-only files. Do not ship in customer packages.
 | [fixtures/](./fixtures/) | Pentest lab fixtures |
 
 Issue license: `go run ./cmd/license-issue --sku <code> ...`
+
+| Network / Enterprise sales | [NETWORK_ENTERPRISE_RUNBOOK.md](./NETWORK_ENTERPRISE_RUNBOOK.md) |

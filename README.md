@@ -109,7 +109,7 @@
 
     ### OpenRTB
 
-    In-memory catalog; `RunAuction` on hot path. Modes: `RTB_MODE=off|shadow|live`. OpenRTB 3.0 and multi-imp auctions with `imp` count > 1 are not implemented. License: Scale tier and above (`openrtb_engine` / `rtb_live`).
+    In-memory catalog; `RunAuction` on hot path. Modes: `RTB_MODE=off|shadow|live`. OpenRTB 3.0 and multi-imp auctions with `imp` count > 1 are not implemented. License: Network tier and above (`openrtb_engine` / `rtb_live`).
 
     ### Control plane
 
@@ -123,7 +123,7 @@
 
     ### Multi-region (license-gated)
 
-    `region-proxy`, regional WAL, slot migration: Network / Enterprise SKUs (`multi_region`, `slot_migration`).
+    `region-proxy`, regional WAL, slot migration: Scale adds `slot_migration`; Network / Enterprise add `multi_region` (and keep slot migration).
 
     ---
 
@@ -175,8 +175,8 @@
     | :--- | ---: | ---: | ---: | :---: | :---: | :---: | :---: | :---: |
     | Starter | 129 | 10k | 1 | no | no | no | no | no |
     | Pro | 329 | 25k | 1 | yes | no | no | no | no |
-    | Scale | 649 | 75k | 3 | yes | yes | yes | no | no |
-    | Network | 1,199 | 150k | 10 | yes | yes | yes | yes | no |
+    | Scale | 649 | 60k | 3 | yes | yes | no | no | no |
+    | Network | 1,199 | 120k | 10 | yes | yes | yes | yes | no |
     | Enterprise | 2,500+ | custom | 99 | yes | yes | yes | yes | yes |
     | Pilot | 0 | 5k | 1 | no | no | no | no | no |
 

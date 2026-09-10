@@ -82,9 +82,33 @@ func TestLicenseSkewWatch_devModeDisabled(t *testing.T) {
 }
 
 func TestLicenseGuardEnv_killSwitch(t *testing.T) {
+	t.Setenv("AD_EVENT_PROCESSOR_PROFILE", "")
+	t.Setenv("AD_EVENT_PROCESSOR_LICENSE_REQUIRED", "")
 	t.Setenv("AD_EVENT_PROCESSOR_LICENSE_GUARD", "0")
 	assert.False(t, config.LicenseGuardEnvEnabled())
 	assert.False(t, config.LicenseGuardPtraceWatchdogEnabled())
+}
+
+func TestLicenseGuardEnv_productionIgnoresKillSwitch(t *testing.T) {
+	t.Setenv("AD_EVENT_PROCESSOR_PROFILE", "production")
+	t.Setenv("AD_EVENT_PROCESSOR_LICENSE_REQUIRED", "1")
+	t.Setenv("AD_EVENT_PROCESSOR_LICENSE_GUARD", "0")
+	assert.True(t, config.LicenseGuardEnvEnabled())
+}
+
+func TestLicenseSkewWatch_productionIgnoresDisable(t *testing.T) {
+	t.Setenv("AD_EVENT_PROCESSOR_PROFILE", "production")
+	t.Setenv("AD_EVENT_PROCESSOR_LICENSE_REQUIRED", "1")
+	t.Setenv("AD_EVENT_PROCESSOR_LICENSE_MODE", "file")
+	t.Setenv("AD_EVENT_PROCESSOR_LICENSE_SKEW_WATCH", "0")
+	assert.True(t, config.LicenseSkewWatchEnabled())
+	assert.Equal(t, 5*time.Minute, config.LicenseSkewWatchInterval())
+}
+
+func TestLicenseClockAnchor_enterpriseMode(t *testing.T) {
+	t.Setenv("AD_EVENT_PROCESSOR_LICENSE_MODE", "enterprise")
+	t.Setenv("AD_EVENT_PROCESSOR_PROFILE", "")
+	assert.True(t, config.LicenseClockAnchorEnabled())
 }
 
 func TestLicenseGuardPtrace_killSwitch(t *testing.T) {

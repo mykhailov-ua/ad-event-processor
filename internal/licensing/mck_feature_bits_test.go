@@ -56,3 +56,58 @@ func TestMCKFeatureBits_FromStretchedGoldenVector(t *testing.T) {
 	PublishMCKFeatureBits(bits &^ MCKFeatureBitOpenRTB)
 	require.False(t, SeedGateOpenRTB(ent))
 }
+
+func TestMCKFeatureBits_constantsAndHelpers(t *testing.T) {
+	require.Equal(t, uint8(0x01), MCKFeatureBitOpenRTB)
+	require.Equal(t, uint8(0x02), MCKFeatureBitMlFraudBoost)
+	require.Equal(t, uint8(0x04), MCKFeatureBitEbpfEdge)
+
+	require.True(t, MCKHasOpenRTB(MCKFeatureBitOpenRTB))
+	require.False(t, MCKHasMlFraudBoost(MCKFeatureBitOpenRTB))
+	require.True(t, MCKHasMlFraudBoost(MCKFeatureBitMlFraudBoost))
+	require.True(t, MCKHasEbpfEdge(MCKFeatureBitEbpfEdge))
+}
+
+func TestSeedGateMlFraudBoost_couplingAndMCKBit(t *testing.T) {
+	ResetFeatureSeedForTest()
+	t.Cleanup(ResetFeatureSeedForTest)
+
+	ent := Entitlements{}
+	ent.Features.MlFraudBoost = true
+
+	require.True(t, SeedGateMlFraudBoost(ent))
+
+	SetSeedCouplingRequired(true)
+	require.False(t, SeedGateMlFraudBoost(ent))
+
+	PublishFeatureSeed(0x1234_5678, true)
+	SetMCKFeatureBitsForTest(MCKFeatureBitMlFraudBoost)
+	require.True(t, SeedGateMlFraudBoost(ent))
+
+	SetMCKFeatureBitsForTest(0)
+	require.False(t, SeedGateMlFraudBoost(ent))
+
+	ent.Features.MlFraudBoost = false
+	SetMCKFeatureBitsForTest(MCKFeatureBitMlFraudBoost)
+	require.False(t, SeedGateMlFraudBoost(ent))
+}
+
+func TestSeedGateEbpfEdge_couplingAndMCKBit(t *testing.T) {
+	ResetFeatureSeedForTest()
+	t.Cleanup(ResetFeatureSeedForTest)
+
+	ent := Entitlements{}
+	ent.Features.EbpfXDPEdge = true
+
+	require.True(t, SeedGateEbpfEdge(ent))
+
+	SetSeedCouplingRequired(true)
+	require.False(t, SeedGateEbpfEdge(ent))
+
+	PublishFeatureSeed(0x1234_5678, true)
+	SetMCKFeatureBitsForTest(MCKFeatureBitEbpfEdge)
+	require.True(t, SeedGateEbpfEdge(ent))
+
+	SetMCKFeatureBitsForTest(MCKFeatureBitOpenRTB)
+	require.False(t, SeedGateEbpfEdge(ent))
+}

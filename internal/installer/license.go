@@ -4,7 +4,7 @@ import (
 	"context"
 	"fmt"
 	"os"
-	"path/filepath"
+	"strings"
 	"time"
 
 	"ad-event-processor/internal/licensing"
@@ -45,10 +45,11 @@ func installLicenseFromEnv() error {
 		return err
 	}
 
-	if err := os.MkdirAll(filepath.Dir(licensePath()), 0o755); err != nil {
-		return err
+	token := strings.TrimSpace(string(data))
+	if token == "" {
+		return fmt.Errorf("license file is empty")
 	}
-	if err := os.WriteFile(licensePath(), data, 0o600); err != nil {
+	if err := licensing.InstallToken(licensePath(), token, nil); err != nil {
 		return err
 	}
 
@@ -78,10 +79,7 @@ func activateLicense() error {
 		return err
 	}
 
-	if err := os.MkdirAll(filepath.Dir(licensePath()), 0o755); err != nil {
-		return err
-	}
-	if err := os.WriteFile(licensePath(), []byte(token), 0o600); err != nil {
+	if err := licensing.InstallToken(licensePath(), token, nil); err != nil {
 		return err
 	}
 

@@ -5,6 +5,7 @@
 //   - aliases.go type and func aliases to verify/, entitlements/, and trial/ subpackages.
 //   - hooks.go, watcher.go, file_watcher_seed.go: control inline snapshot reload and vendor revoke.
 //   - asset_cipher.go / asset_seal_salt.go: sealed asset decryption keyed from license MCK.
+//   - sealed_startup.go: VerifySealedAssetsReady gate per binary role before traffic.
 //   - embedkey/ holds build-time masked Ed25519 public key material (separate package).
 //
 // Topology:
@@ -30,5 +31,6 @@
 //	go test ./internal/licensing/verify/... -short -run TestProperty_P_C3_03_IngestAllowedStates -count=1
 //	go test ./internal/licensing/verify/... -short -run TestVerifyJWT -count=1
 //	go test ./internal/licensing/entitlements/... -short -run TestIngestAllowed -count=1
+//	go test ./internal/licensing/ -short -run TestVerifySealedAssetsReady -count=1
 //	make license-verify
 package licensing
