@@ -69,6 +69,9 @@ func (m *Middleware) RefreshUserPolicy(userID uuid.UUID, role string) {
 }
 
 func (m *Middleware) SessionPermissions(ctx context.Context, userID uuid.UUID, role string) []string {
+	if m == nil {
+		return ctrlhttp.GetPermissionsForRole(role)
+	}
 	perms := authz.SessionPermissionsList(ctx, m.policy, m.pool, userID, role)
 	if len(perms) > 0 {
 		return perms

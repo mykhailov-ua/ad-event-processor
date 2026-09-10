@@ -3,7 +3,6 @@ package controlplane
 import (
 	"context"
 	"errors"
-	"fmt"
 	"io"
 	"net/http"
 	"os"
@@ -233,7 +232,7 @@ func (h *Handler) BuildAdminAPIRegistry(pool *pgxpool.Pool, redisShards []redis.
 			ConsentRecorder:         svc,
 			ConsentVerifier:         consentVerifierAdapter{secret: []byte(h.cfg.ConsentHMACSecret)},
 			AuditLister:             svc,
-			RolesReloader:           rolesReloader{mw: h.authMiddleware},
+			RolesReloader:           rolesReloader,
 			Blacklist:               svc,
 			Shard0Catchup:           svc,
 			FraudThreat:             svc,
@@ -251,9 +250,9 @@ func (h *Handler) BuildAdminAPIRegistry(pool *pgxpool.Pool, redisShards []redis.
 		},
 		ExportHTTP: exportHTTP,
 		AccessHTTP: &access.HTTPHandlers{
-			Store: rolesStore,
-			ApplyRateLimit: limit,
-			RequirePermission: perm,
+			Store:                rolesStore,
+			ApplyRateLimit:       limit,
+			RequirePermission:    perm,
 			RequireAnyPermission: permAny,
 			ActorUserID: func(r *http.Request) (uuid.UUID, bool) {
 				u, ok := GetUser(r.Context())

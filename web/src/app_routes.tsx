@@ -132,7 +132,7 @@ export function AppRoutes() {
             <Route element={<SettingsLicensePage />} index />
             <Route element={<AccessRolesPage />} path="access" />
           </Route>
-          <Route element={<Navigate replace to="/settings" />} path="settings/license" />
+          <Route element={<Navigate replace to="/settings" />} path="/settings/license" />
           <Route element={<TeamPage />} path="team" />
           <Route element={<AuditPage />} path="audit" />
           <Route element={<ExportsPage />} path="exports" />
