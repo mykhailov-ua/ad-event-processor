@@ -26,7 +26,7 @@
     <a href="index.html">BidShard</a>
     <nav class="site-doc-header__nav" aria-label="Документація">
       <a href="index.html">Головна</a>
-      <a href="../offer.html">Публічна оферта</a>
+      <a href="../offer.html">Оферта</a>
     </nav>
     <div class="site-header-end">
       <a class="site-lang-switch" href="/docs.html" hreflang="en" title="English version">EN</a>
@@ -194,14 +194,14 @@
       </li>
     </ol>
     <p>
-      <code>/click</code> прогоняє ту саму filter chain і повертає redirect.
+      <code>/click</code> проганяє ту саму filter chain і повертає redirect.
       <code>/openrtb/bid</code> запускає in-process RTB auction — без повної filter chain (тариф Network, live mode).
     </p>
 
     <h3>Antifraud semantics (без маркетингових скорочень)</h3>
     <ul>
       <li><strong>Hard reject</strong> — HTTP 403; бюджет не списується.</li>
-      <li><strong>Silent reject</strong> — HTTP 202 відвідувачу (decoy accept); прапорець у analytics, щоб воронки залишались чистими. Не змінює campaign settings у Postgres автоматично.</li>
+      <li><strong>Silent reject</strong> — HTTP 202 відвідувачу (decoy accept); прапорець у analytics, щоб воронки залишалися чистими. Не змінює campaign settings у Postgres автоматично.</li>
       <li><strong>IVT detector</strong> (Pro+) — batch rules на ClickHouse; може enqueue blacklist/boost actions через admin outbox.</li>
       <li><strong>ML fraud scorer</strong> (Scale+) — batch LightGBM у sidecar; пише boost keys, які Redis синхронізує в tracker snapshot. Не per-click inference на ingest.</li>
     </ul>
@@ -281,7 +281,7 @@
       <li>Edge і XDP можуть дропати відомі bad IP; rotating proxies все одно можуть дійти до tracker — там працюють L7 rules.</li>
       <li><code>BROKER_SHADOW_MODE</code> shadow-ить лише processor CH ingest; tracker WAL writes live, коли увімкнено broker-primary.</li>
       <li><code>LOCAL_QUOTA_MODE=shadow</code> проганяє local quanta, але все одно виконує sync Redis Lua; лише <code>live</code> може його пропустити, коли eligible.</li>
-      <li>Обмеження JWT SKU (хости, tenants, features, export chunk) застосовуються — див. <a href="index.html#pricing">тарифи</a> і <code>deploy/vendor/sku.yaml</code>.</li>
+      <li>Обмеження ліцензії (хости, tenants, features, export chunk) застосовуються за тарифом — див. <a href="index.html#pricing">тарифи</a>.</li>
     </ul>
 
     <h2 id="ports">Порти (compose defaults)</h2>

@@ -19,6 +19,7 @@
     <link rel="alternate" hreflang="uk" href="/uk/" />
     <link rel="preload" href="/fonts/jetbrains-mono/JetBrainsMono-Regular.woff2" as="font" type="font/woff2" crossorigin="anonymous" />
     <link rel="stylesheet" href="site.css" />
+    <script src="vendor/lucide.min.js" defer></script>
     <script src="site.js" defer></script>
   </head>
   <body>
@@ -38,20 +39,13 @@
       <div data-site-nav="Contacts" class="NavContacts">Contacts</div>
     </div>
     <button type="button" class="Hamburger site-menu-toggle" aria-label="Open menu" aria-expanded="false">
-      <svg width="24" height="24" viewBox="0 0 40 34" fill="none" xmlns="http://www.w3.org/2000/svg" aria-hidden="true">
-        <path d="M14.0005 12.9163H25.9993M14.0005 17.0001H25.9993M14.0005 21.0839H25.9993" stroke="currentColor" stroke-width="2" stroke-linecap="round"/>
-      </svg>
+      <i data-lucide="menu" class="site-icon site-icon--menu" aria-hidden="true"></i>
     </button>
     <div class="site-header-end">
       <a class="site-lang-switch" href="/uk/" hreflang="uk" title="Українська версія">UA</a>
       <button type="button" class="site-theme-toggle" data-site-theme-toggle aria-label="Switch to light theme" title="Light theme">
-        <svg class="site-theme-toggle__icon site-theme-toggle__icon--sun" viewBox="0 0 24 24" fill="none" aria-hidden="true">
-          <circle cx="12" cy="12" r="4" stroke="currentColor" stroke-width="2"/>
-          <path d="M12 2v2M12 20v2M4.93 4.93l1.41 1.41M17.66 17.66l1.41 1.41M2 12h2M20 12h2M4.93 19.07l1.41-1.41M17.66 6.34l1.41-1.41" stroke="currentColor" stroke-width="2" stroke-linecap="round"/>
-        </svg>
-        <svg class="site-theme-toggle__icon site-theme-toggle__icon--moon" viewBox="0 0 24 24" fill="none" aria-hidden="true">
-          <path d="M12 3a6 6 0 0 0 9 9 9 9 0 1 1-9-9Z" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/>
-        </svg>
+        <span class="site-theme-toggle__icon site-theme-toggle__icon--sun" aria-hidden="true"><i data-lucide="sun"></i></span>
+        <span class="site-theme-toggle__icon site-theme-toggle__icon--moon" aria-hidden="true"><i data-lucide="moon"></i></span>
       </button>
       <div data-site-cta="telegram" data-layer="btn-primary" class="BtnPrimary">
         <div data-layer="Get free pilot" class="GetFreePilot">Get free pilot</div>
@@ -83,32 +77,21 @@
     <div data-layer="Frame" class="Frame">
       <div data-layer="pillar-card" class="PillarCard">
         <div class="pillar-icon" aria-hidden="true">
-          <svg class="pillar-icon__svg" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
-            <path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/>
-            <path d="m9 12 2 2 4-4" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/>
-          </svg>
+          <i data-lucide="shield-check" class="site-icon"></i>
         </div>
         <div data-layer="Your data stays yours" class="YourDataStaysYours">Your data stays yours</div>
         <div data-layer="No multi-tenant cloud. Postgres, Redis, ClickHouse — on your metal. We ship software and a license file. We don't see your traffic." class="NoMultiTenantCloudPostgresRedisClickhouseOnYourMetalWeShipSoftwareAndALicenseFileWeDonTSeeYourTraffic">No multi-tenant cloud. Postgres, Redis, ClickHouse — on your metal. We ship software and a license file. We don't see your traffic.</div>
       </div>
       <div data-layer="pillar-card" class="PillarCard">
         <div class="pillar-icon" aria-hidden="true">
-          <svg class="pillar-icon__svg" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
-            <path d="M12 2v20" stroke="currentColor" stroke-width="2" stroke-linecap="round"/>
-            <path d="M17 5H9.5a3.5 3.5 0 1 0 0 7h5a3.5 3.5 0 1 1 0 7H6" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/>
-          </svg>
+          <i data-lucide="circle-dollar-sign" class="site-icon"></i>
         </div>
         <div data-layer="Budget control that bites" class="BudgetControlThatBites">Spend stops before margin bleeds</div>
         <div data-layer="Campaign spend is enforced on the hot path — bad traffic can be rejected or shadowed before it burns budget. Margin guard ties spend to revenue. Cost sync from 25 ad networks keeps ROI honest." class="CampaignSpendIsEnforcedOnTheHotPathBadTrafficCanBeRejectedOrShadowedBeforeItBurnsBudgetMarginGuardTiesSpendToRevenueCostSyncFrom25AdNetworksKeepsRoiHonest">Bad traffic is rejected or silently accepted before it burns budget. Margin Guard pauses campaigns when ROI drops. Cost sync from 25 ad networks keeps profit math honest.</div>
       </div>
       <div data-layer="pillar-card" class="PillarCard">
         <div class="pillar-icon" aria-hidden="true">
-          <svg class="pillar-icon__svg" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
-            <path d="M4 7h11v10H4z" stroke="currentColor" stroke-width="2" stroke-linejoin="round"/>
-            <path d="M14 10h6v7h-6z" stroke="currentColor" stroke-width="2" stroke-linejoin="round"/>
-            <path d="M7 7V5a2 2 0 0 1 2-2h2" stroke="currentColor" stroke-width="2" stroke-linecap="round"/>
-            <path d="M7 17v2h6" stroke="currentColor" stroke-width="2" stroke-linecap="round"/>
-          </svg>
+          <i data-lucide="folder-input" class="site-icon"></i>
         </div>
         <div data-layer="Migrate, don't rebuild" class="MigrateDonTRebuild">Migrate, don't rebuild</div>
         <div data-layer="Import from Keitaro or Binom. 159 ready-made integration templates. Flows, landers, postbacks — operational from day one, not a six-month migration project." class="ImportFromKeitaroOrBinom159ReadyMadeIntegrationTemplatesFlowsLandersPostbacksOperationalFromDayOneNotASixMonthMigrationProject">Import from Keitaro or Binom. 159 ready-made integration templates. Flows, landers, postbacks — operational from day one, not a six-month migration project.</div>
@@ -132,6 +115,75 @@
       <div data-site-capabilities-root class="site-capabilities" aria-live="polite"></div>
     </div>
   </div>
+  <section id="architecture" data-layer="ARCHITECTURE" class="Architecture" data-site-architecture aria-labelledby="site-architecture-title"></section>
+  <div data-layer="TRUST" class="Trust">
+    <div data-layer="Frame" class="Frame">
+      <div data-layer="Operation Integrity" class="OperationIntegrity">Operation Integrity</div>
+      <div data-layer="Built for operators who scale with confidence" class="BuiltForOperatorsWhoHateSurprises">Built for operators who scale with confidence</div>
+    </div>
+    <div data-layer="Frame" class="Frame">
+      <div data-layer="Frame" class="Frame">
+        <div data-layer="trust-card" class="TrustCard">
+          <div class="trust-card__icon" aria-hidden="true">
+            <i data-lucide="server" class="site-icon site-icon--trust"></i>
+          </div>
+          <div data-layer="Frame" class="Frame">
+            <div data-layer="Self-hosted" class="SelfHosted">Self-hosted</div>
+            <div data-layer="You are the data controller on your infrastructure. Zero shared records — your metal only." class="YouAreTheDataControllerOnYourInfrastructureZeroSharedRecords">You are the data controller on your infrastructure. Zero shared records — your metal only.</div>
+          </div>
+        </div>
+        <div data-layer="trust-card" class="TrustCard">
+          <div class="trust-card__icon" aria-hidden="true">
+            <i data-lucide="badge-check" class="site-icon site-icon--trust"></i>
+          </div>
+          <div data-layer="Frame" class="Frame">
+            <div data-layer="Offline license" class="OfflineLicense">Offline license</div>
+            <div data-layer="No recurring license server ping to vendor. Telemetry is strictly off by default." class="NoRecurringLicenseServerPingTelemetryIsStrictlyOffByDefault">No recurring license server ping to vendor. Telemetry is strictly off by default.</div>
+          </div>
+        </div>
+      </div>
+      <div data-layer="Frame" class="Frame">
+        <div data-layer="trust-card" class="TrustCard">
+          <div class="trust-card__icon" aria-hidden="true">
+            <i data-lucide="shield" class="site-icon site-icon--trust"></i>
+          </div>
+          <div data-layer="Frame" class="Frame">
+            <div data-layer="Layered antifraud" class="HonestAntifraud">Layered antifraud</div>
+            <div data-layer="Real-time rule filters on the ingest hot path. IVT and ML scoring on your analytics store." class="DeterministicRulesExecuteOnHotPathMlIvtRunAsBackgroundBatchJobs">Real-time rule filters on the ingest hot path. IVT and ML scoring on your analytics store.</div>
+          </div>
+        </div>
+        <div data-layer="trust-card" class="TrustCard">
+          <div class="trust-card__icon" aria-hidden="true">
+            <i data-lucide="cloud-off" class="site-icon site-icon--trust"></i>
+          </div>
+          <div data-layer="Frame" class="Frame">
+            <div data-layer="Your infrastructure" class="NotSaas">Your infrastructure</div>
+            <div data-layer="Runs on your VPS under your control. No shared tenant and no vendor lock-in." class="WeDoNotHostMonitorOrGuaranteeUptimeOnYourCustomVpsServer">Runs on your VPS under your control. No shared tenant and no vendor lock-in.</div>
+          </div>
+        </div>
+      </div>
+      <div data-layer="Frame" class="Frame">
+        <div data-layer="trust-card" class="TrustCard">
+          <div class="trust-card__icon" aria-hidden="true">
+            <i data-lucide="replace" class="site-icon site-icon--trust"></i>
+          </div>
+          <div data-layer="Frame" class="Frame">
+            <div data-layer="Host loss & relocation" class="NoRoiWarranty">Host loss & relocation</div>
+            <div data-layer="Provider ban, dead VPS, or emergency region move — we know it happens. For documented force majeure we review each case and can grant extra license activations so you recover on new metal." class="YourDirectTrafficYourSpecificFunnelsAndYourTargetingDictateTheRoiResults">Provider ban, dead VPS, or emergency region move — we know it happens. For documented force majeure we review each case and can grant extra license activations so you recover on new metal.</div>
+          </div>
+        </div>
+        <div data-layer="trust-card" class="TrustCard">
+          <div class="trust-card__icon" aria-hidden="true">
+            <i data-lucide="layers" class="site-icon site-icon--trust"></i>
+          </div>
+          <div data-layer="Frame" class="Frame">
+            <div data-layer="Full-stack license" class="FullStackLicense">Full-stack license</div>
+            <div data-layer="Routing, budgets, antifraud, and reporting in one install. No separate cloaker or IVT subscription stack." class="RoutingBudgetsAntifraudReportingOneInstallWithoutCloakerIvtStack">Routing, budgets, antifraud, and reporting in one install. No separate cloaker or IVT subscription stack.</div>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
   <div id="pricing" data-layer="PRICING" class="Pricing">
     <div data-layer="Frame" class="Frame">
       <div data-layer="Pricing Plans" class="PricingPlans">Pricing Plans</div>
@@ -142,19 +194,11 @@
     <div data-layer="Frame" class="Frame">
       <div data-layer="No cap on campaign count or event volume — you scale on your hardware." class="NoCapOnCampaignCountOrEventVolumeYouScaleOnYourHardware">No cap on campaign count or event volume — you scale on your hardware.</div>
       <div data-layer="Paid monthly in USDT. Self-hosted license you own." class="PaidMonthlyInUsdtSelfHostedLicenseNotACloudSubscription">Paid monthly in USDT. Self-hosted license you own.</div>
+      <div data-layer="Lost a host or relocating under force majeure? Extra license activations are possible — see FAQ or message us on Telegram." class="PricingRelocationPolicy">Lost a host or relocating under force majeure? Extra license activations are possible — see FAQ or message us on Telegram.</div>
       <button type="button" class="site-tco-jump" data-site-scroll="TCO">Compare full-stack monthly cost</button>
     </div>
   </div>
   <section id="tco" data-layer="TCO" class="Tco" data-site-tco aria-labelledby="site-tco-title"></section>
-  <div data-layer="PILOT-CTA" class="PilotCta">
-    <div data-layer="Frame" class="Frame">
-      <div data-layer="Try free for 10 days" class="TryFreeFor10Days" data-site-pilot-cta-headline>Try free for 10 days</div>
-      <div data-layer="Pilot CTA subline" class="KRps1ServerRulesOnlyAntifraudMessageUsOnTelegramWithExpectedTrafficVpsSpec">1 server · full click routing · message us on Telegram with expected traffic and VPS spec</div>
-    </div>
-    <div data-site-cta="telegram" data-layer="btn-primary" class="BtnPrimary">
-      <div data-layer="Message on Telegram" class="MessageOnTelegram">Message on Telegram</div>
-    </div>
-  </div>
   <div id="install" data-layer="HOW-IT-WORKS" class="HowItWorks site-pga-install-section">
     <div class="site-pga-install">
       <div data-site-appliance-proof class="site-pga-install__hero"></div>
@@ -165,10 +209,7 @@
             <div data-layer="Frame" class="Frame site-pga-terminal__tabbar">
               <div data-layer="install.sh" class="InstallSh">install.sh</div>
               <button type="button" class="site-pga-terminal-shell__copy" data-site-copy-install aria-label="Copy install command" title="Copy install command">
-                <svg width="16" height="16" viewBox="0 0 24 24" fill="none" aria-hidden="true">
-                  <rect x="9" y="9" width="12" height="12" rx="2" stroke="currentColor" stroke-width="2"/>
-                  <path d="M5 15V5a2 2 0 0 1 2-2h10" stroke="currentColor" stroke-width="2" stroke-linecap="round"/>
-                </svg>
+                <i data-lucide="copy" class="site-icon site-icon--sm" aria-hidden="true"></i>
               </button>
             </div>
             <div data-layer="Frame" class="Frame site-pga-terminal__body">
@@ -182,93 +223,15 @@
       </div>
     </div>
   </div>
-  <div data-layer="TRUST" class="Trust">
+  <div data-layer="PILOT-CTA" class="PilotCta">
     <div data-layer="Frame" class="Frame">
-      <div data-layer="Operation Integrity" class="OperationIntegrity">Operation Integrity</div>
-      <div data-layer="Built for operators who scale with confidence" class="BuiltForOperatorsWhoHateSurprises">Built for operators who scale with confidence</div>
+      <div data-layer="Try free for 10 days" class="TryFreeFor10Days" data-site-pilot-cta-headline>Try free for 10 days</div>
+      <div data-layer="Pilot CTA subline" class="KRps1ServerRulesOnlyAntifraudMessageUsOnTelegramWithExpectedTrafficVpsSpec">1 server · full click routing · message us on Telegram with expected traffic and VPS spec</div>
     </div>
-    <div data-layer="Frame" class="Frame">
-      <div data-layer="Frame" class="Frame">
-        <div data-layer="trust-card" class="TrustCard">
-          <div data-svg-wrapper data-layer="Frame" class="Frame">
-            <svg width="100%" height="100%" viewBox="0 0 32 32" fill="none" xmlns="http://www.w3.org/2000/svg">
-            <rect width="32" height="32" rx="16" fill="#5A7863" fill-opacity="0.101961"/>
-            <path d="M21.3328 12L14.0002 19.3328L10.6672 15.9997" stroke="#5A7863" stroke-width="2" stroke-linecap="round"/>
-            </svg>
-          </div>
-          <div data-layer="Frame" class="Frame">
-            <div data-layer="Self-hosted" class="SelfHosted">Self-hosted</div>
-            <div data-layer="You are the data controller on your infrastructure. Zero shared records — your metal only." class="YouAreTheDataControllerOnYourInfrastructureZeroSharedRecords">You are the data controller on your infrastructure. Zero shared records — your metal only.</div>
-          </div>
-        </div>
-        <div data-layer="trust-card" class="TrustCard">
-          <div data-svg-wrapper data-layer="Frame" class="Frame">
-            <svg width="100%" height="100%" viewBox="0 0 32 32" fill="none" xmlns="http://www.w3.org/2000/svg">
-            <rect width="32" height="32" rx="16" fill="#5A7863" fill-opacity="0.101961"/>
-            <path d="M21.3328 12L14.0002 19.3328L10.6672 15.9997" stroke="#5A7863" stroke-width="2" stroke-linecap="round"/>
-            </svg>
-          </div>
-          <div data-layer="Frame" class="Frame">
-            <div data-layer="Offline license" class="OfflineLicense">Offline license</div>
-            <div data-layer="No recurring license server ping to vendor. Telemetry is strictly off by default." class="NoRecurringLicenseServerPingTelemetryIsStrictlyOffByDefault">No recurring license server ping to vendor. Telemetry is strictly off by default.</div>
-          </div>
-        </div>
-      </div>
-      <div data-layer="Frame" class="Frame">
-        <div data-layer="trust-card" class="TrustCard">
-          <div data-svg-wrapper data-layer="Frame" class="Frame">
-            <svg width="100%" height="100%" viewBox="0 0 32 32" fill="none" xmlns="http://www.w3.org/2000/svg">
-            <rect width="32" height="32" rx="16" fill="#5A7863" fill-opacity="0.101961"/>
-            <path d="M21.3328 12L14.0002 19.3328L10.6672 15.9997" stroke="#5A7863" stroke-width="2" stroke-linecap="round"/>
-            </svg>
-          </div>
-          <div data-layer="Frame" class="Frame">
-            <div data-layer="Layered antifraud" class="HonestAntifraud">Layered antifraud</div>
-            <div data-layer="Real-time rule filters on the ingest hot path. IVT and ML scoring on your analytics store." class="DeterministicRulesExecuteOnHotPathMlIvtRunAsBackgroundBatchJobs">Real-time rule filters on the ingest hot path. IVT and ML scoring on your analytics store.</div>
-          </div>
-        </div>
-        <div data-layer="trust-card" class="TrustCard">
-          <div data-svg-wrapper data-layer="Frame" class="Frame">
-            <svg width="100%" height="100%" viewBox="0 0 32 32" fill="none" xmlns="http://www.w3.org/2000/svg">
-            <rect width="32" height="32" rx="16" fill="#5A7863" fill-opacity="0.101961"/>
-            <path d="M21.3328 12L14.0002 19.3328L10.6672 15.9997" stroke="#5A7863" stroke-width="2" stroke-linecap="round"/>
-            </svg>
-          </div>
-          <div data-layer="Frame" class="Frame">
-            <div data-layer="Your infrastructure" class="NotSaas">Your infrastructure</div>
-            <div data-layer="Runs on your VPS under your control. No shared tenant and no vendor lock-in." class="WeDoNotHostMonitorOrGuaranteeUptimeOnYourCustomVpsServer">Runs on your VPS under your control. No shared tenant and no vendor lock-in.</div>
-          </div>
-        </div>
-      </div>
-      <div data-layer="Frame" class="Frame">
-        <div data-layer="trust-card" class="TrustCard">
-          <div data-svg-wrapper data-layer="Frame" class="Frame">
-            <svg width="100%" height="100%" viewBox="0 0 32 32" fill="none" xmlns="http://www.w3.org/2000/svg">
-            <rect width="32" height="32" rx="16" fill="#5A7863" fill-opacity="0.101961"/>
-            <path d="M21.3328 12L14.0002 19.3328L10.6672 15.9997" stroke="#5A7863" stroke-width="2" stroke-linecap="round"/>
-            </svg>
-          </div>
-          <div data-layer="Frame" class="Frame">
-            <div data-layer="Built to scale" class="NoRoiWarranty">Built to scale</div>
-            <div data-layer="No per-event caps on your license tier. Grow volume on your hardware as campaigns scale." class="YourDirectTrafficYourSpecificFunnelsAndYourTargetingDictateTheRoiResults">No per-event caps on your license tier. Grow volume on your hardware as campaigns scale.</div>
-          </div>
-        </div>
-        <div data-layer="trust-card" class="TrustCard">
-          <div data-svg-wrapper data-layer="Frame" class="Frame">
-            <svg width="100%" height="100%" viewBox="0 0 32 32" fill="none" xmlns="http://www.w3.org/2000/svg">
-            <rect width="32" height="32" rx="16" fill="#5A7863" fill-opacity="0.101961"/>
-            <path d="M21.3328 12L14.0002 19.3328L10.6672 15.9997" stroke="#5A7863" stroke-width="2" stroke-linecap="round"/>
-            </svg>
-          </div>
-          <div data-layer="Frame" class="Frame">
-            <div data-layer="Full-stack license" class="FullStackLicense">Full-stack license</div>
-            <div data-layer="Routing, budgets, antifraud, and reporting in one install. No separate cloaker or IVT subscription stack." class="RoutingBudgetsAntifraudReportingOneInstallWithoutCloakerIvtStack">Routing, budgets, antifraud, and reporting in one install. No separate cloaker or IVT subscription stack.</div>
-          </div>
-        </div>
-      </div>
+    <div data-site-cta="telegram" data-layer="btn-primary" class="BtnPrimary">
+      <div data-layer="Message on Telegram" class="MessageOnTelegram">Message on Telegram</div>
     </div>
   </div>
-  <section id="architecture" data-layer="ARCHITECTURE" class="Architecture" data-site-architecture aria-labelledby="site-architecture-title"></section>
   <div id="faq" data-layer="FAQ" class="Faq">
     <div data-layer="Frame" class="Frame">
       <div data-layer="Common Questions" class="CommonQuestions">Common Questions</div>
@@ -278,10 +241,8 @@
       <div data-layer="accordion-item" class="AccordionItem">
         <div data-layer="Frame" class="Frame">
           <div data-layer="Do you store my campaigns?" class="DoYouStoreMyCampaigns">Do you store my campaigns?</div>
-          <div data-svg-wrapper data-layer="icon-container" class="IconContainer">
-            <svg width="100%" height="100%" viewBox="0 0 16 16" fill="none" xmlns="http://www.w3.org/2000/svg">
-            <path d="M4 6L8 10L12 6" stroke="#71717A" stroke-width="2" stroke-linecap="round"/>
-            </svg>
+          <div data-layer="icon-container" class="IconContainer">
+            <i data-lucide="chevron-down" class="site-icon site-icon--accordion" aria-hidden="true"></i>
           </div>
         </div>
         <div data-layer="No. Everything runs exclusively on your server. We have no backend API that collects telemetry, campaign configurations, or visitor logs." class="NoEverythingRunsExclusivelyOnYourServerWeHaveNoBackendApiThatCollectsTelemetryCampaignConfigurationsOrVisitorLogs">No. Everything runs exclusively on your server. We have no backend API that collects telemetry, campaign configurations, or visitor logs.</div>
@@ -289,10 +250,8 @@
       <div data-layer="accordion-item" class="AccordionItem">
         <div data-layer="Frame" class="Frame">
           <div data-layer="Is this like Keitaro in the cloud?" class="IsThisLikeKeitaroInTheCloud">Is this like Keitaro in the cloud?</div>
-          <div data-svg-wrapper data-layer="icon-container" class="IconContainer">
-            <svg width="100%" height="100%" viewBox="0 0 16 16" fill="none" xmlns="http://www.w3.org/2000/svg">
-            <path d="M4 6L8 10L12 6" stroke="#71717A" stroke-width="2" stroke-linecap="round"/>
-            </svg>
+          <div data-layer="icon-container" class="IconContainer">
+            <i data-lucide="chevron-down" class="site-icon site-icon--accordion" aria-hidden="true"></i>
           </div>
         </div>
         <div data-layer="No — it is local software you install directly on your VPS. You can import your current configurations directly from Keitaro or Binom via JSON." class="NoItIsLocalSoftwareYouInstallDirectlyOnYourVpsYouCanImportYourCurrentConfigurationsDirectlyFromKeitaroOrBinomViaJson">No — it is local software you install directly on your VPS. You can import your current configurations directly from Keitaro or Binom via JSON.</div>
@@ -300,21 +259,26 @@
       <div data-layer="accordion-item" class="AccordionItem">
         <div data-layer="Frame" class="Frame">
           <div data-layer="What happens after the pilot?" class="WhatHappensAfterThePilot">What happens after the pilot?</div>
-          <div data-svg-wrapper data-layer="icon-container" class="IconContainer">
-            <svg width="100%" height="100%" viewBox="0 0 16 16" fill="none" xmlns="http://www.w3.org/2000/svg">
-            <path d="M4 6L8 10L12 6" stroke="#71717A" stroke-width="2" stroke-linecap="round"/>
-            </svg>
+          <div data-layer="icon-container" class="IconContainer">
+            <i data-lucide="chevron-down" class="site-icon site-icon--accordion" aria-hidden="true"></i>
           </div>
         </div>
         <div data-layer="Pay USDT for your matching tier. We generate and send a new license file. You load it into your existing deployment with no reinstall needed." class="PayUsdtForYourMatchingTierWeGenerateAndSendANewLicenseFileYouLoadItIntoYourExistingDeploymentWithNoReinstallNeeded">Pay USDT for your matching tier. We generate and send a new license file. You load it into your existing deployment with no reinstall needed.</div>
       </div>
       <div data-layer="accordion-item" class="AccordionItem">
         <div data-layer="Frame" class="Frame">
+          <div data-layer="What if I lose a server or need to relocate?" class="WhatIfILoseAServerOrNeedToRelocate">What if I lose a server or need to relocate?</div>
+          <div data-layer="icon-container" class="IconContainer">
+            <i data-lucide="chevron-down" class="site-icon site-icon--accordion" aria-hidden="true"></i>
+          </div>
+        </div>
+        <div data-layer="We know buyers lose hosts — provider bans, datacenter issues, war-zone moves, emergency migrations. Your license binds to hardware fingerprints, not a single IP forever. For documented force majeure (host loss, provider shutdown, sanctioned-region relocation), contact @bidshardsupportbot or @bidshard_manager with your deployment_id and what happened. We can issue additional activations or reset bindings case by case — we do not treat ops emergencies like license abuse." class="WeKnowBuyersLoseHostsProviderBansDatacenterIssuesWarZoneMovesEmergencyMigrationsYourLicenseBindsToHardwareFingerprintsNotASingleIpForeverForDocumentedForceMajeureHostLossProviderShutdownSanctionedRegionRelocationContactBidshardsupportbotOrBidshardManagerWithYourDeploymentIdAndWhatHappenedWeCanIssueAdditionalActivationsOrResetBindingsCaseByCaseWeDoNotTreatOpsEmergenciesLikeLicenseAbuse">We know buyers lose hosts — provider bans, datacenter issues, war-zone moves, emergency migrations. Your license binds to hardware fingerprints, not a single IP forever. For documented force majeure (host loss, provider shutdown, sanctioned-region relocation), contact @bidshardsupportbot or @bidshard_manager with your deployment_id and what happened. We can issue additional activations or reset bindings case by case — we do not treat ops emergencies like license abuse.</div>
+      </div>
+      <div data-layer="accordion-item" class="AccordionItem">
+        <div data-layer="Frame" class="Frame">
           <div data-layer="Do I need to be a developer?" class="DoINeedToBeADeveloper">Do I need to be a developer?</div>
-          <div data-svg-wrapper data-layer="icon-container" class="IconContainer">
-            <svg width="100%" height="100%" viewBox="0 0 16 16" fill="none" xmlns="http://www.w3.org/2000/svg">
-            <path d="M4 6L8 10L12 6" stroke="#71717A" stroke-width="2" stroke-linecap="round"/>
-            </svg>
+          <div data-layer="icon-container" class="IconContainer">
+            <i data-lucide="chevron-down" class="site-icon site-icon--accordion" aria-hidden="true"></i>
           </div>
         </div>
         <div data-layer="The onboarding wizard walks you through the first campaign. Admin console and API cover day-to-day ops." class="BeingComfortableWithBasicVpsOperationsAndDockerIsHighlyRecommendedTheProductIsApiFirstTodayWhileOurAdminUiContinuesToCatchUp">The onboarding wizard walks you through the first campaign. Admin console and API cover day-to-day ops.</div>
@@ -322,10 +286,8 @@
       <div data-layer="accordion-item" class="AccordionItem">
         <div data-layer="Frame" class="Frame">
           <div data-layer="How do I start?" class="HowDoIStart">How do I start?</div>
-          <div data-svg-wrapper data-layer="icon-container" class="IconContainer">
-            <svg width="100%" height="100%" viewBox="0 0 16 16" fill="none" xmlns="http://www.w3.org/2000/svg">
-            <path d="M4 6L8 10L12 6" stroke="#71717A" stroke-width="2" stroke-linecap="round"/>
-            </svg>
+          <div data-layer="icon-container" class="IconContainer">
+            <i data-lucide="chevron-down" class="site-icon site-icon--accordion" aria-hidden="true"></i>
           </div>
         </div>
         <div data-layer="Reach out on Telegram to obtain a pilot license. Execute the single-line install script on your host, activate the license in your browser, and you are live." class="ReachOutOnTelegramToObtainAPilotLicenseExecuteTheSingleLineInstallScriptOnYourHostActivateTheLicenseInYourBrowserAndYouAreLive">Reach out on Telegram to obtain a pilot license. Execute the single-line install script on your host, activate the license in your browser, and you are live.</div>

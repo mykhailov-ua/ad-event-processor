@@ -19,6 +19,7 @@
     <link rel="alternate" hreflang="uk" href="/uk/" />
     <link rel="preload" href="/fonts/jetbrains-mono/JetBrainsMono-Regular.woff2" as="font" type="font/woff2" crossorigin="anonymous" />
     <link rel="stylesheet" href="/site.css" />
+    <script src="/vendor/lucide.min.js" defer></script>
     <script src="/site.js" defer></script>
   </head>
   <body>
@@ -33,28 +34,21 @@
       <div data-site-nav="Features" class="NavFeatures">Можливості</div>
       <div data-site-nav="Pricing" class="NavPricing">Тарифи</div>
       <a href="docs.html" class="NavArchitecture">Архітектура</a>
-      <div data-site-nav="Install" class="NavInstall">Встановлення</div>
+      <div data-site-nav="Install" class="NavInstall">Install</div>
       <div data-site-nav="FAQ" class="NavFaq">FAQ</div>
       <div data-site-nav="Contacts" class="NavContacts">Контакти</div>
     </div>
     <button type="button" class="Hamburger site-menu-toggle" aria-label="Відкрити меню" aria-expanded="false">
-      <svg width="24" height="24" viewBox="0 0 40 34" fill="none" xmlns="http://www.w3.org/2000/svg" aria-hidden="true">
-        <path d="M14.0005 12.9163H25.9993M14.0005 17.0001H25.9993M14.0005 21.0839H25.9993" stroke="currentColor" stroke-width="2" stroke-linecap="round"/>
-      </svg>
+      <i data-lucide="menu" class="site-icon site-icon--menu" aria-hidden="true"></i>
     </button>
     <div class="site-header-end">
       <a class="site-lang-switch" href="/" hreflang="en" title="English version">EN</a>
       <button type="button" class="site-theme-toggle" data-site-theme-toggle aria-label="Увімкнути світлу тему" title="Світла тема">
-        <svg class="site-theme-toggle__icon site-theme-toggle__icon--sun" viewBox="0 0 24 24" fill="none" aria-hidden="true">
-          <circle cx="12" cy="12" r="4" stroke="currentColor" stroke-width="2"/>
-          <path d="M12 2v2M12 20v2M4.93 4.93l1.41 1.41M17.66 17.66l1.41 1.41M2 12h2M20 12h2M4.93 19.07l1.41-1.41M17.66 6.34l1.41-1.41" stroke="currentColor" stroke-width="2" stroke-linecap="round"/>
-        </svg>
-        <svg class="site-theme-toggle__icon site-theme-toggle__icon--moon" viewBox="0 0 24 24" fill="none" aria-hidden="true">
-          <path d="M12 3a6 6 0 0 0 9 9 9 9 0 1 1-9-9Z" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/>
-        </svg>
+        <span class="site-theme-toggle__icon site-theme-toggle__icon--sun" aria-hidden="true"><i data-lucide="sun"></i></span>
+        <span class="site-theme-toggle__icon site-theme-toggle__icon--moon" aria-hidden="true"><i data-lucide="moon"></i></span>
       </button>
       <div data-site-cta="telegram" data-layer="btn-primary" class="BtnPrimary">
-        <div data-layer="Get free pilot" class="GetFreePilot">Отримати пілот</div>
+        <div data-layer="Get free pilot" class="GetFreePilot">Пілот</div>
       </div>
     </div>
   </div>
@@ -68,11 +62,11 @@
       <div data-layer="hero-actions" class="HeroActions">
         <div data-layer="Frame" class="Frame site-pga-hero__actions">
           <div data-site-cta="telegram" data-layer="btn-primary" class="BtnPrimary">
-            <div data-layer="Get free pilot on Telegram" class="GetFreePilotOnTelegram">Отримати пілот</div>
+            <div data-layer="Get free pilot on Telegram" class="GetFreePilotOnTelegram">Пілот</div>
           </div>
           <a href="docs.html" data-layer="btn-ghost" class="BtnGhost site-pga-btn-link">Архітектура</a>
           <div data-site-cta="install" data-layer="btn-ghost" class="BtnGhost">
-            <div data-layer="See install command" class="SeeInstallCommand">Команда встановлення</div>
+            <div data-layer="See install command" class="SeeInstallCommand">Install-команда</div>
           </div>
         </div>
         <div data-layer="No credit card. Free 10-day pilot. By requesting a pilot you accept the public offer." class="NoCreditCardPilot10DaysRulesOnlyAntifraudTierByRequestingAPilotYouAcceptThePublicOffer" data-site-offer-disclaimer data-site-pilot-disclaimer>Без банківської картки. Пілот на 10 днів без оплати. Запитуючи пілот, ви приймаєте публічну оферту.</div>
@@ -83,34 +77,23 @@
     <div data-layer="Frame" class="Frame">
       <div data-layer="pillar-card" class="PillarCard">
         <div class="pillar-icon" aria-hidden="true">
-          <svg class="pillar-icon__svg" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
-            <path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/>
-            <path d="m9 12 2 2 4-4" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/>
-          </svg>
+          <i data-lucide="shield-check" class="site-icon"></i>
         </div>
-        <div data-layer="Your data stays yours" class="YourDataStaysYours">Дані — лише ваші</div>
+        <div data-layer="Your data stays yours" class="YourDataStaysYours">Дані — ваші</div>
         <div data-layer="No multi-tenant cloud. Postgres, Redis, ClickHouse — on your metal. We ship software and a license file. We don't see your traffic." class="NoMultiTenantCloudPostgresRedisClickhouseOnYourMetalWeShipSoftwareAndALicenseFileWeDonTSeeYourTraffic">Без multi-tenant хмари. Postgres, Redis і ClickHouse — на вашому сервері. Ми постачаємо ПЗ і файл ліцензії. Ваш трафік нам недоступний.</div>
       </div>
       <div data-layer="pillar-card" class="PillarCard">
         <div class="pillar-icon" aria-hidden="true">
-          <svg class="pillar-icon__svg" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
-            <path d="M12 2v20" stroke="currentColor" stroke-width="2" stroke-linecap="round"/>
-            <path d="M17 5H9.5a3.5 3.5 0 1 0 0 7h5a3.5 3.5 0 1 1 0 7H6" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/>
-          </svg>
+          <i data-lucide="circle-dollar-sign" class="site-icon"></i>
         </div>
-        <div data-layer="Budget control that bites" class="BudgetControlThatBites">Spend стримується, поки маржа не пішла в мінус</div>
-        <div data-layer="Campaign spend is enforced on the hot path — bad traffic can be rejected or shadowed before it burns budget. Margin guard ties spend to revenue. Cost sync from 25 ad networks keeps ROI honest." class="CampaignSpendIsEnforcedOnTheHotPathBadTrafficCanBeRejectedOrShadowedBeforeItBurnsBudgetMarginGuardTiesSpendToRevenueCostSyncFrom25AdNetworksKeepsRoiHonest">Поганий трафік відсікається або приймається в shadow mode до зливу бюджету. Margin Guard ставить кампанії на паузу, коли ROI падає. Cost sync з 25 ad networks тримає математику профіту чесною.</div>
+        <div data-layer="Budget control that bites" class="BudgetControlThatBites">Контроль бюджету</div>
+        <div data-layer="Campaign spend is enforced on the hot path — bad traffic can be rejected or shadowed before it burns budget. Margin guard ties spend to revenue. Cost sync from 25 ad networks keeps ROI honest." class="CampaignSpendIsEnforcedOnTheHotPathBadTrafficCanBeRejectedOrShadowedBeforeItBurnsBudgetMarginGuardTiesSpendToRevenueCostSyncFrom25AdNetworksKeepsRoiHonest">Сміттєвий трафік відсікається або приймається в shadow mode до зливу бюджету. Margin Guard зупиняє кампанії при падінні ROI. Синхронізація витрат із 25 рекламними мережами гарантує чесну математику прибутку.</div>
       </div>
       <div data-layer="pillar-card" class="PillarCard">
         <div class="pillar-icon" aria-hidden="true">
-          <svg class="pillar-icon__svg" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
-            <path d="M4 7h11v10H4z" stroke="currentColor" stroke-width="2" stroke-linejoin="round"/>
-            <path d="M14 10h6v7h-6z" stroke="currentColor" stroke-width="2" stroke-linejoin="round"/>
-            <path d="M7 7V5a2 2 0 0 1 2-2h2" stroke="currentColor" stroke-width="2" stroke-linecap="round"/>
-            <path d="M7 17v2h6" stroke="currentColor" stroke-width="2" stroke-linecap="round"/>
-          </svg>
+          <i data-lucide="folder-input" class="site-icon"></i>
         </div>
-        <div data-layer="Migrate, don't rebuild" class="MigrateDonTRebuild">Міграція замість перебудови</div>
+        <div data-layer="Migrate, don't rebuild" class="MigrateDonTRebuild">Міграція</div>
         <div data-layer="Import from Keitaro or Binom. 159 ready-made integration templates. Flows, landers, postbacks — operational from day one, not a six-month migration project." class="ImportFromKeitaroOrBinom159ReadyMadeIntegrationTemplatesFlowsLandersPostbacksOperationalFromDayOneNotASixMonthMigrationProject">Імпорт з Keitaro або Binom. 159 готових шаблонів інтеграцій. Flows, landers і postbacks — готові з першого дня, без піврічного проєкту міграції.</div>
       </div>
     </div>
@@ -125,11 +108,80 @@
   <div id="features" data-layer="FEATURES" class="Features">
     <div data-layer="Frame" class="Frame">
       <div data-layer="Capabilities" class="Capabilities">Можливості</div>
-      <div data-layer="Designed for active media buyers" class="DesignedForActiveMediaBuyers">Кожна функція привʼязує spend до revenue</div>
+      <div data-layer="Designed for active media buyers" class="DesignedForActiveMediaBuyers">Кожна функція захищає прибутковість</div>
     </div>
     <div class="site-features__grid">
       <div class="site-features__spotlight" data-site-margin-guard-root aria-live="polite"></div>
       <div data-site-capabilities-root class="site-capabilities" aria-live="polite"></div>
+    </div>
+  </div>
+  <section id="architecture" data-layer="ARCHITECTURE" class="Architecture" data-site-architecture aria-labelledby="site-architecture-title"></section>
+  <div data-layer="TRUST" class="Trust">
+    <div data-layer="Frame" class="Frame">
+      <div data-layer="Operation Integrity" class="OperationIntegrity">Ops-надійність</div>
+      <div data-layer="Built for operators who scale with confidence" class="BuiltForOperatorsWhoHateSurprises">Без сюрпризів</div>
+    </div>
+    <div data-layer="Frame" class="Frame">
+      <div data-layer="Frame" class="Frame">
+        <div data-layer="trust-card" class="TrustCard">
+          <div class="trust-card__icon" aria-hidden="true">
+            <i data-lucide="server" class="site-icon site-icon--trust"></i>
+          </div>
+          <div data-layer="Frame" class="Frame">
+            <div data-layer="Self-hosted" class="SelfHosted">Self-hosted</div>
+            <div data-layer="You are the data controller on your infrastructure. Zero shared records — your metal only." class="YouAreTheDataControllerOnYourInfrastructureZeroSharedRecords">Ви єдиний володілець даних на власній інфраструктурі. Жодних спільних записів — лише ваше залізо.</div>
+          </div>
+        </div>
+        <div data-layer="trust-card" class="TrustCard">
+          <div class="trust-card__icon" aria-hidden="true">
+            <i data-lucide="badge-check" class="site-icon site-icon--trust"></i>
+          </div>
+          <div data-layer="Frame" class="Frame">
+            <div data-layer="Offline license" class="OfflineLicense">Офлайн-ліцензія</div>
+            <div data-layer="No recurring license server ping. Telemetry is strictly off by default." class="NoRecurringLicenseServerPingTelemetryIsStrictlyOffByDefault">Без регулярних запитів до сервера ліцензій. Телеметрію вимкнено за замовчуванням.</div>
+          </div>
+        </div>
+      </div>
+      <div data-layer="Frame" class="Frame">
+        <div data-layer="trust-card" class="TrustCard">
+          <div class="trust-card__icon" aria-hidden="true">
+            <i data-lucide="shield" class="site-icon site-icon--trust"></i>
+          </div>
+          <div data-layer="Frame" class="Frame">
+            <div data-layer="Layered antifraud" class="HonestAntifraud">Antifraud</div>
+            <div data-layer="Real-time rule filters on the ingest hot path. IVT and ML scoring on your analytics store." class="DeterministicRulesExecuteOnHotPathMlIvtRunAsBackgroundBatchJobs">Rule filters на hot path у реальному часі. IVT і ML scoring на вашому analytics store.</div>
+          </div>
+        </div>
+        <div data-layer="trust-card" class="TrustCard">
+          <div class="trust-card__icon" aria-hidden="true">
+            <i data-lucide="cloud-off" class="site-icon site-icon--trust"></i>
+          </div>
+          <div data-layer="Frame" class="Frame">
+            <div data-layer="Your infrastructure" class="NotSaas">Ваша інфраструктура</div>
+            <div data-layer="Runs on your VPS under your control. No shared tenant, no vendor lock-in." class="WeDoNotHostMonitorOrGuaranteeUptimeOnYourCustomVpsServer">Працює на вашому VPS під вашим контролем. Без shared tenant і vendor lock-in.</div>
+          </div>
+        </div>
+      </div>
+      <div data-layer="Frame" class="Frame">
+        <div data-layer="trust-card" class="TrustCard">
+          <div class="trust-card__icon" aria-hidden="true">
+            <i data-lucide="replace" class="site-icon site-icon--trust"></i>
+          </div>
+          <div data-layer="Frame" class="Frame">
+            <div data-layer="Host loss & relocation" class="NoRoiWarranty">Релокація</div>
+            <div data-layer="Provider ban, dead VPS, or emergency region move — we know it happens. For documented force majeure we review each case and can grant extra license activations so you recover on new metal." class="YourDirectTrafficYourSpecificFunnelsAndYourTargetingDictateTheRoiResults">Бан провайдера, мертвий VPS або екстрений переїзд у інший регіон — ми це розуміємо. При задокументованому форс-мажорі розглядаємо кожен випадок і можемо видати додаткові активації ліцензії на нове залізо.</div>
+          </div>
+        </div>
+        <div data-layer="trust-card" class="TrustCard">
+          <div class="trust-card__icon" aria-hidden="true">
+            <i data-lucide="layers" class="site-icon site-icon--trust"></i>
+          </div>
+          <div data-layer="Frame" class="Frame">
+            <div data-layer="Full-stack license" class="FullStackLicense">Full-stack ліцензія</div>
+            <div data-layer="Routing, budgets, antifraud, and reporting in one install. No separate cloaker or IVT subscription stack." class="RoutingBudgetsAntifraudReportingOneInstallWithoutCloakerIvtStack">Routing, budgets, antifraud і reporting в одному інсталі. Без окремих підписок на cloaker і IVT.</div>
+          </div>
+        </div>
+      </div>
     </div>
   </div>
   <div id="pricing" data-layer="PRICING" class="Pricing">
@@ -140,21 +192,13 @@
     <div data-site-pricing-grid class="site-pricing-grid" aria-live="polite"></div>
     <section id="hardware" class="site-hardware-sizing" data-site-hardware-sizing aria-labelledby="site-hardware-title"></section>
     <div data-layer="Frame" class="Frame">
-      <div data-layer="No cap on campaign count or event volume — you scale on your hardware." class="NoCapOnCampaignCountOrEventVolumeYouScaleOnYourHardware">Без ліміту на кількість кампаній і обсяг подій — масштабуєтесь на своєму сервері.</div>
-      <div data-layer="Paid monthly in USDT. Self-hosted license you own." class="PaidMonthlyInUsdtSelfHostedLicenseNotACloudSubscription">Оплата щомісяця в USDT. Self-hosted ліцензія, яку ви володієте.</div>
-      <button type="button" class="site-tco-jump" data-site-scroll="TCO">Порівняти повну місячну вартість стеку</button>
+      <div data-layer="No cap on campaign count or event volume — you scale on your hardware." class="NoCapOnCampaignCountOrEventVolumeYouScaleOnYourHardware">Без лімітів на кількість кампаній та обсяг подій — масштабуйтеся на власному сервері.</div>
+      <div data-layer="Paid monthly in USDT. Self-hosted license you own." class="PaidMonthlyInUsdtSelfHostedLicenseNotACloudSubscription">Оплата щомісяця в USDT. Self-hosted ліцензія у вашій власності.</div>
+      <div data-layer="Lost a host or relocating under force majeure? Extra license activations are possible — see FAQ or message us on Telegram." class="PricingRelocationPolicy">Втратили хост або переїжджаєте через форс-мажор? Додаткові активації можливі — див. FAQ або напишіть у Telegram.</div>
+      <button type="button" class="site-tco-jump" data-site-scroll="TCO">Порівняти TCO</button>
     </div>
   </div>
   <section id="tco" data-layer="TCO" class="Tco" data-site-tco aria-labelledby="site-tco-title"></section>
-  <div data-layer="PILOT-CTA" class="PilotCta">
-    <div data-layer="Frame" class="Frame">
-      <div data-layer="Try free for 10 days" class="TryFreeFor10Days" data-site-pilot-cta-headline>Спробуйте 10 днів безкоштовно</div>
-      <div data-layer="Pilot CTA subline" class="KRps1ServerRulesOnlyAntifraudMessageUsOnTelegramWithExpectedTrafficVpsSpec">1 сервер · повний click routing · напишіть у Telegram з очікуваним трафіком і характеристиками VPS</div>
-    </div>
-    <div data-site-cta="telegram" data-layer="btn-primary" class="BtnPrimary">
-      <div data-layer="Message on Telegram" class="MessageOnTelegram">Написати в Telegram</div>
-    </div>
-  </div>
   <div id="install" data-layer="HOW-IT-WORKS" class="HowItWorks site-pga-install-section">
     <div class="site-pga-install">
       <div data-site-appliance-proof class="site-pga-install__hero"></div>
@@ -165,10 +209,7 @@
             <div data-layer="Frame" class="Frame site-pga-terminal__tabbar">
               <div data-layer="install.sh" class="InstallSh">install.sh</div>
               <button type="button" class="site-pga-terminal-shell__copy" data-site-copy-install aria-label="Скопіювати команду install" title="Скопіювати команду install">
-                <svg width="16" height="16" viewBox="0 0 24 24" fill="none" aria-hidden="true">
-                  <rect x="9" y="9" width="12" height="12" rx="2" stroke="currentColor" stroke-width="2"/>
-                  <path d="M5 15V5a2 2 0 0 1 2-2h10" stroke="currentColor" stroke-width="2" stroke-linecap="round"/>
-                </svg>
+                <i data-lucide="copy" class="site-icon site-icon--sm" aria-hidden="true"></i>
               </button>
             </div>
             <div data-layer="Frame" class="Frame site-pga-terminal__body">
@@ -182,93 +223,15 @@
       </div>
     </div>
   </div>
-  <div data-layer="TRUST" class="Trust">
+  <div data-layer="PILOT-CTA" class="PilotCta">
     <div data-layer="Frame" class="Frame">
-      <div data-layer="Operation Integrity" class="OperationIntegrity">Надійність експлуатації</div>
-      <div data-layer="Built for operators who scale with confidence" class="BuiltForOperatorsWhoHateSurprises">Для операторів, які масштабуються без сюрпризів</div>
+      <div data-layer="Try free for 10 days" class="TryFreeFor10Days" data-site-pilot-cta-headline>Спробуйте 10 днів безкоштовно</div>
+      <div data-layer="Pilot CTA subline" class="KRps1ServerRulesOnlyAntifraudMessageUsOnTelegramWithExpectedTrafficVpsSpec">1 VPS · routing · Telegram з трафіком і spec</div>
     </div>
-    <div data-layer="Frame" class="Frame">
-      <div data-layer="Frame" class="Frame">
-        <div data-layer="trust-card" class="TrustCard">
-          <div data-svg-wrapper data-layer="Frame" class="Frame">
-            <svg width="100%" height="100%" viewBox="0 0 32 32" fill="none" xmlns="http://www.w3.org/2000/svg">
-            <rect width="32" height="32" rx="16" fill="#5A7863" fill-opacity="0.101961"/>
-            <path d="M21.3328 12L14.0002 19.3328L10.6672 15.9997" stroke="#5A7863" stroke-width="2" stroke-linecap="round"/>
-            </svg>
-          </div>
-          <div data-layer="Frame" class="Frame">
-            <div data-layer="Self-hosted" class="SelfHosted">Self-hosted</div>
-            <div data-layer="You are the data controller on your infrastructure. Zero shared records — your metal only." class="YouAreTheDataControllerOnYourInfrastructureZeroSharedRecords">Ви контролер даних на своїй інфраструктурі. Жодних shared records — лише ваші сервери.</div>
-          </div>
-        </div>
-        <div data-layer="trust-card" class="TrustCard">
-          <div data-svg-wrapper data-layer="Frame" class="Frame">
-            <svg width="100%" height="100%" viewBox="0 0 32 32" fill="none" xmlns="http://www.w3.org/2000/svg">
-            <rect width="32" height="32" rx="16" fill="#5A7863" fill-opacity="0.101961"/>
-            <path d="M21.3328 12L14.0002 19.3328L10.6672 15.9997" stroke="#5A7863" stroke-width="2" stroke-linecap="round"/>
-            </svg>
-          </div>
-          <div data-layer="Frame" class="Frame">
-            <div data-layer="Offline license" class="OfflineLicense">Offline-ліцензія</div>
-            <div data-layer="No recurring license server ping. Telemetry is strictly off by default." class="NoRecurringLicenseServerPingTelemetryIsStrictlyOffByDefault">Без регулярного ping на license server. Телеметрія вимкнена за замовчуванням.</div>
-          </div>
-        </div>
-      </div>
-      <div data-layer="Frame" class="Frame">
-        <div data-layer="trust-card" class="TrustCard">
-          <div data-svg-wrapper data-layer="Frame" class="Frame">
-            <svg width="100%" height="100%" viewBox="0 0 32 32" fill="none" xmlns="http://www.w3.org/2000/svg">
-            <rect width="32" height="32" rx="16" fill="#5A7863" fill-opacity="0.101961"/>
-            <path d="M21.3328 12L14.0002 19.3328L10.6672 15.9997" stroke="#5A7863" stroke-width="2" stroke-linecap="round"/>
-            </svg>
-          </div>
-          <div data-layer="Frame" class="Frame">
-            <div data-layer="Layered antifraud" class="HonestAntifraud">Багатошаровий antifraud</div>
-            <div data-layer="Real-time rule filters on the ingest hot path. IVT and ML scoring on your analytics store." class="DeterministicRulesExecuteOnHotPathMlIvtRunAsBackgroundBatchJobs">Rule filters на hot path у реальному часі. IVT і ML scoring на вашому analytics store.</div>
-          </div>
-        </div>
-        <div data-layer="trust-card" class="TrustCard">
-          <div data-svg-wrapper data-layer="Frame" class="Frame">
-            <svg width="100%" height="100%" viewBox="0 0 32 32" fill="none" xmlns="http://www.w3.org/2000/svg">
-            <rect width="32" height="32" rx="16" fill="#5A7863" fill-opacity="0.101961"/>
-            <path d="M21.3328 12L14.0002 19.3328L10.6672 15.9997" stroke="#5A7863" stroke-width="2" stroke-linecap="round"/>
-            </svg>
-          </div>
-          <div data-layer="Frame" class="Frame">
-            <div data-layer="Your infrastructure" class="NotSaas">Ваша інфраструктура</div>
-            <div data-layer="Runs on your VPS under your control. No shared tenant, no vendor lock-in." class="WeDoNotHostMonitorOrGuaranteeUptimeOnYourCustomVpsServer">Працює на вашому VPS під вашим контролем. Без shared tenant і vendor lock-in.</div>
-          </div>
-        </div>
-      </div>
-      <div data-layer="Frame" class="Frame">
-        <div data-layer="trust-card" class="TrustCard">
-          <div data-svg-wrapper data-layer="Frame" class="Frame">
-            <svg width="100%" height="100%" viewBox="0 0 32 32" fill="none" xmlns="http://www.w3.org/2000/svg">
-            <rect width="32" height="32" rx="16" fill="#5A7863" fill-opacity="0.101961"/>
-            <path d="M21.3328 12L14.0002 19.3328L10.6672 15.9997" stroke="#5A7863" stroke-width="2" stroke-linecap="round"/>
-            </svg>
-          </div>
-          <div data-layer="Frame" class="Frame">
-            <div data-layer="Built to scale" class="NoRoiWarranty">Масштаб без обмежень</div>
-            <div data-layer="No per-event caps on your license tier. Grow volume on your hardware as campaigns scale." class="YourDirectTrafficYourSpecificFunnelsAndYourTargetingDictateTheRoiResults">Без лімітів на події в ліцензії. Нарощуйте обсяг на своєму сервері разом із кампаніями.</div>
-          </div>
-        </div>
-        <div data-layer="trust-card" class="TrustCard">
-          <div data-svg-wrapper data-layer="Frame" class="Frame">
-            <svg width="100%" height="100%" viewBox="0 0 32 32" fill="none" xmlns="http://www.w3.org/2000/svg">
-            <rect width="32" height="32" rx="16" fill="#5A7863" fill-opacity="0.101961"/>
-            <path d="M21.3328 12L14.0002 19.3328L10.6672 15.9997" stroke="#5A7863" stroke-width="2" stroke-linecap="round"/>
-            </svg>
-          </div>
-          <div data-layer="Frame" class="Frame">
-            <div data-layer="Full-stack license" class="FullStackLicense">Full-stack ліцензія</div>
-            <div data-layer="Routing, budgets, antifraud, and reporting in one install. No separate cloaker or IVT subscription stack." class="RoutingBudgetsAntifraudReportingOneInstallWithoutCloakerIvtStack">Routing, budgets, antifraud і reporting в одному інсталі. Без окремих підписок на cloaker і IVT.</div>
-          </div>
-        </div>
-      </div>
+    <div data-site-cta="telegram" data-layer="btn-primary" class="BtnPrimary">
+      <div data-layer="Message on Telegram" class="MessageOnTelegram">Telegram</div>
     </div>
   </div>
-  <section id="architecture" data-layer="ARCHITECTURE" class="Architecture" data-site-architecture aria-labelledby="site-architecture-title"></section>
   <div id="faq" data-layer="FAQ" class="Faq">
     <div data-layer="Frame" class="Frame">
       <div data-layer="Common Questions" class="CommonQuestions">Поширені питання</div>
@@ -278,10 +241,8 @@
       <div data-layer="accordion-item" class="AccordionItem">
         <div data-layer="Frame" class="Frame">
           <div data-layer="Do you store my campaigns?" class="DoYouStoreMyCampaigns">Ви зберігаєте мої кампанії?</div>
-          <div data-svg-wrapper data-layer="icon-container" class="IconContainer">
-            <svg width="100%" height="100%" viewBox="0 0 16 16" fill="none" xmlns="http://www.w3.org/2000/svg">
-            <path d="M4 6L8 10L12 6" stroke="#71717A" stroke-width="2" stroke-linecap="round"/>
-            </svg>
+          <div data-layer="icon-container" class="IconContainer">
+            <i data-lucide="chevron-down" class="site-icon site-icon--accordion" aria-hidden="true"></i>
           </div>
         </div>
         <div data-layer="No. Everything runs exclusively on your server. We have no backend API that collects telemetry, campaign configurations, or visitor logs." class="NoEverythingRunsExclusivelyOnYourServerWeHaveNoBackendApiThatCollectsTelemetryCampaignConfigurationsOrVisitorLogs">Ні. Усе працює виключно на вашому сервері. У нас немає backend API, який збирає телеметрію, конфігурації кампаній чи логи відвідувачів.</div>
@@ -289,10 +250,8 @@
       <div data-layer="accordion-item" class="AccordionItem">
         <div data-layer="Frame" class="Frame">
           <div data-layer="Is this like Keitaro in the cloud?" class="IsThisLikeKeitaroInTheCloud">Це як Keitaro в хмарі?</div>
-          <div data-svg-wrapper data-layer="icon-container" class="IconContainer">
-            <svg width="100%" height="100%" viewBox="0 0 16 16" fill="none" xmlns="http://www.w3.org/2000/svg">
-            <path d="M4 6L8 10L12 6" stroke="#71717A" stroke-width="2" stroke-linecap="round"/>
-            </svg>
+          <div data-layer="icon-container" class="IconContainer">
+            <i data-lucide="chevron-down" class="site-icon site-icon--accordion" aria-hidden="true"></i>
           </div>
         </div>
         <div data-layer="No — it is local software you install directly on your VPS. You can import your current configurations directly from Keitaro or Binom via JSON." class="NoItIsLocalSoftwareYouInstallDirectlyOnYourVpsYouCanImportYourCurrentConfigurationsDirectlyFromKeitaroOrBinomViaJson">Ні — це локальне ПЗ, яке встановлюється прямо на ваш VPS. Поточні конфігурації можна імпортувати з Keitaro або Binom через JSON.</div>
@@ -300,21 +259,26 @@
       <div data-layer="accordion-item" class="AccordionItem">
         <div data-layer="Frame" class="Frame">
           <div data-layer="What happens after the pilot?" class="WhatHappensAfterThePilot">Що після пілота?</div>
-          <div data-svg-wrapper data-layer="icon-container" class="IconContainer">
-            <svg width="100%" height="100%" viewBox="0 0 16 16" fill="none" xmlns="http://www.w3.org/2000/svg">
-            <path d="M4 6L8 10L12 6" stroke="#71717A" stroke-width="2" stroke-linecap="round"/>
-            </svg>
+          <div data-layer="icon-container" class="IconContainer">
+            <i data-lucide="chevron-down" class="site-icon site-icon--accordion" aria-hidden="true"></i>
           </div>
         </div>
         <div data-layer="Pay USDT for your matching tier. We generate and send a new license file. You load it into your existing deployment with no reinstall needed." class="PayUsdtForYourMatchingTierWeGenerateAndSendANewLicenseFileYouLoadItIntoYourExistingDeploymentWithNoReinstallNeeded">Оплачуєте USDT за відповідний тариф. Ми генеруємо і надсилаємо новий файл ліцензії. Завантажуєте його в існуюче розгортання — без перевстановлення.</div>
       </div>
       <div data-layer="accordion-item" class="AccordionItem">
         <div data-layer="Frame" class="Frame">
+          <div data-layer="What if I lose a server or need to relocate?" class="WhatIfILoseAServerOrNeedToRelocate">Що, якщо я втратив сервер або треба релокуватися?</div>
+          <div data-layer="icon-container" class="IconContainer">
+            <i data-lucide="chevron-down" class="site-icon site-icon--accordion" aria-hidden="true"></i>
+          </div>
+        </div>
+        <div data-layer="We know buyers lose hosts — provider bans, datacenter issues, war-zone moves, emergency migrations. Your license binds to hardware fingerprints, not a single IP forever. For documented force majeure (host loss, provider shutdown, sanctioned-region relocation), contact @bidshardsupportbot or @bidshard_manager with your deployment_id and what happened. We can issue additional activations or reset bindings case by case — we do not treat ops emergencies like license abuse." class="WeKnowBuyersLoseHostsProviderBansDatacenterIssuesWarZoneMovesEmergencyMigrationsYourLicenseBindsToHardwareFingerprintsNotASingleIpForeverForDocumentedForceMajeureHostLossProviderShutdownSanctionedRegionRelocationContactBidshardsupportbotOrBidshardManagerWithYourDeploymentIdAndWhatHappenedWeCanIssueAdditionalActivationsOrResetBindingsCaseByCaseWeDoNotTreatOpsEmergenciesLikeLicenseAbuse">Ми знаємо, що хости губляться — бан провайдера, проблеми з ДЦ, переїзд із небезпечного регіону, екстрені міграції. Ліцензія привʼязана до відбитків заліза, а не до одного IP назавжди. При задокументованому форс-мажорі (втрата хоста, зупинка провайдера, релокація з санкційного регіону) напишіть @bidshardsupportbot або @bidshard_manager із deployment_id і коротким описом. Можемо видати додаткові активації або скинути привʼязки — екстрені ops-ситуації не трактуємо як зловживання ліцензією.</div>
+      </div>
+      <div data-layer="accordion-item" class="AccordionItem">
+        <div data-layer="Frame" class="Frame">
           <div data-layer="Do I need to be a developer?" class="DoINeedToBeADeveloper">Чи потрібно бути розробником?</div>
-          <div data-svg-wrapper data-layer="icon-container" class="IconContainer">
-            <svg width="100%" height="100%" viewBox="0 0 16 16" fill="none" xmlns="http://www.w3.org/2000/svg">
-            <path d="M4 6L8 10L12 6" stroke="#71717A" stroke-width="2" stroke-linecap="round"/>
-            </svg>
+          <div data-layer="icon-container" class="IconContainer">
+            <i data-lucide="chevron-down" class="site-icon site-icon--accordion" aria-hidden="true"></i>
           </div>
         </div>
         <div data-layer="The onboarding wizard walks you through the first campaign. Admin console and API cover day-to-day ops." class="BeingComfortableWithBasicVpsOperationsAndDockerIsHighlyRecommendedTheProductIsApiFirstTodayWhileOurAdminUiContinuesToCatchUp">Onboarding wizard проведе через першу кампанію. Admin console і API закривають щоденні операційні задачі.</div>
@@ -322,10 +286,8 @@
       <div data-layer="accordion-item" class="AccordionItem">
         <div data-layer="Frame" class="Frame">
           <div data-layer="How do I start?" class="HowDoIStart">Як почати?</div>
-          <div data-svg-wrapper data-layer="icon-container" class="IconContainer">
-            <svg width="100%" height="100%" viewBox="0 0 16 16" fill="none" xmlns="http://www.w3.org/2000/svg">
-            <path d="M4 6L8 10L12 6" stroke="#71717A" stroke-width="2" stroke-linecap="round"/>
-            </svg>
+          <div data-layer="icon-container" class="IconContainer">
+            <i data-lucide="chevron-down" class="site-icon site-icon--accordion" aria-hidden="true"></i>
           </div>
         </div>
         <div data-layer="Reach out on Telegram to obtain a pilot license. Execute the single-line install script on your host, activate the license in your browser, and you are live." class="ReachOutOnTelegramToObtainAPilotLicenseExecuteTheSingleLineInstallScriptOnYourHostActivateTheLicenseInYourBrowserAndYouAreLive">Напишіть у Telegram, щоб отримати пілотну ліцензію. Запустіть однорядковий install script на сервері, активуйте ліцензію в браузері — і можна лити трафік.</div>
@@ -341,10 +303,10 @@
       </div>
       <div data-layer="Frame" class="Frame">
         <a href="docs.html" class="FooterArchitecture">Архітектура</a>
-        <div data-site-link="offer" class="PublicOffer">Публічна оферта</div>
+        <div data-site-link="offer" class="PublicOffer">Оферта</div>
         <div data-site-nav="Contacts" class="ContactsFooter">Контакти</div>
         <div data-site-cta="telegram" class="Telegram">Telegram</div>
-        <div data-site-nav="Install" class="FooterInstall">Встановлення</div>
+        <div data-site-nav="Install" class="FooterInstall">Install</div>
       </div>
     </div>
     <div data-layer="Frame" class="Frame">

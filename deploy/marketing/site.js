@@ -12,10 +12,30 @@
 
   var THEME_STORAGE_KEY = "bidshard_theme";
 
-  var CHECK_ICON =
-    '<svg width="16" height="16" viewBox="0 0 16 16" fill="none" xmlns="http://www.w3.org/2000/svg" aria-hidden="true">' +
-    '<path d="M13.3328 4L6.00024 11.3328L2.66724 7.99971" stroke="currentColor" stroke-width="2" stroke-linecap="round"/>' +
-    "</svg>";
+  var KILLER_LUCIDE = {
+    shield: "shield-check",
+    funnel: "filter",
+    ghost: "ghost",
+    route: "route",
+    scan: "scan-line",
+    evidence: "file-check",
+    migrate: "replace",
+    auction: "gavel",
+    gauge: "trending-up",
+    layers: "layers",
+    reconcile: "refresh-cw",
+  };
+
+  function siteIcon(lucideName, extraClass) {
+    var cls = "site-icon" + (extraClass ? " " + extraClass : "");
+    return '<i data-lucide="' + lucideName + '" class="' + cls + '" aria-hidden="true"></i>';
+  }
+
+  function refreshSiteIcons() {
+    if (window.lucide && typeof window.lucide.createIcons === "function") {
+      window.lucide.createIcons();
+    }
+  }
 
   function applyTheme(theme) {
     var next = theme === "light" ? "light" : "dark";
@@ -51,11 +71,15 @@
 
   function wireThemeToggle() {
     document.addEventListener("click", function (event) {
-      if (!event.target.closest("[data-site-theme-toggle]")) {
+      var btn = event.target.closest("[data-site-theme-toggle]");
+      if (!btn) {
         return;
       }
       var current = document.documentElement.getAttribute("data-theme") || "dark";
       applyTheme(current === "light" ? "dark" : "light");
+      if (typeof btn.blur === "function") {
+        btn.blur();
+      }
     });
   }
 
@@ -94,6 +118,14 @@
       return ui.docs_href;
     }
     return siteLocale() === "uk" ? "/uk/docs.html" : "/docs.html";
+  }
+
+  function demoPageHref(config) {
+    var ui = config && config.ui ? config.ui : {};
+    if (ui.demo_href) {
+      return ui.demo_href;
+    }
+    return siteLocale() === "uk" ? "/uk/demo.html" : "/demo.html";
   }
 
   function formatTemplate(template, vars) {
@@ -175,6 +207,9 @@
   }
 
   function langSwitchHref(config) {
+    if (document.body.classList.contains("demo-page")) {
+      return siteLocale() === "uk" ? "/demo.html" : "/uk/demo.html";
+    }
     if (document.body.classList.contains("docs-page")) {
       return siteLocale() === "uk" ? "/docs.html" : "/uk/docs.html";
     }
@@ -189,6 +224,8 @@
     return {
       telegram_url: raw.telegram_url || "https://t.me/bidshardsupportbot",
       telegram_handle: raw.telegram_handle || "@bidshardsupportbot",
+      telegram_manager_url: raw.telegram_manager_url || "https://t.me/bidshard_manager",
+      telegram_manager_handle: raw.telegram_manager_handle || "@bidshard_manager",
       install_script_url: raw.install_script_url || "https://bidshard.com/get.sh",
       contacts: raw.contacts || null,
       pilot_days: raw.pilot_days || 10,
@@ -281,6 +318,7 @@
       link.setAttribute("href", docsPageHref(config));
     });
     applyTheme(document.documentElement.getAttribute("data-theme") || "dark");
+    refreshSiteIcons();
   }
 
   function switchLocale(href) {
@@ -342,7 +380,7 @@
         return (
           '<div class="site-pricing-feature">' +
           '<span class="site-pricing-feature__icon">' +
-          CHECK_ICON +
+          siteIcon("check", "site-icon--sm") +
           "</span><span>" +
           escapeHtml(line) +
           "</span></div>"
@@ -385,6 +423,47 @@
       '">' +
       escapeHtml(plan.cta || uiText(config, "plan_cta_default", "Get started")) +
       "</button></article>"
+    );
+  }
+
+  function architectureFlowLevels(flow) {
+    if (!flow) {
+      return [];
+    }
+    if (flow.levels && flow.levels.length) {
+      return flow.levels;
+    }
+    if (!flow.lanes || !flow.lanes.length) {
+      return [];
+    }
+    var flat = [];
+    flow.lanes.forEach(function (lane) {
+      (lane.nodes || []).forEach(function (node) {
+        flat.push(node);
+      });
+    });
+    return flat;
+  }
+
+  function renderArchitectureFlow(flow) {
+    var levels = architectureFlowLevels(flow);
+    if (!levels.length) {
+      return "";
+    }
+    var steps = [];
+    levels.forEach(function (level, index) {
+      steps.push('<span class="site-architecture__flow-step">' + escapeHtml(level) + "</span>");
+      if (index < levels.length - 1) {
+        steps.push('<span class="site-architecture__divider" aria-hidden="true">→</span>');
+      }
+    });
+    return (
+      '<div class="site-architecture__flow-strip" role="img" aria-label="' +
+      escapeHtml(flow.aria_label || "Architecture flow") +
+      '">' +
+      '<p class="site-architecture__flow-line">' +
+      steps.join("") +
+      "</p></div>"
     );
   }
 
@@ -444,7 +523,8 @@
       " →</a>" +
       "</div>" +
       aside +
-      "</div>";
+      "</div>" +
+      renderArchitectureFlow(block.flow);
   }
 
   function renderContacts(config) {
@@ -455,6 +535,8 @@
     var block = config.contacts || {};
     var handle = config.telegram_handle || "@bidshardsupportbot";
     var url = config.telegram_url || "https://t.me/bidshardsupportbot";
+    var managerHandle = config.telegram_manager_handle || "@bidshard_manager";
+    var managerUrl = config.telegram_manager_url || "https://t.me/bidshard_manager";
     root.innerHTML =
       '<div class="site-contacts__inner">' +
       '<div class="site-contacts__copy">' +
@@ -467,11 +549,24 @@
       '<p class="site-contacts__subtitle">' +
       escapeHtml(block.subtitle || "") +
       "</p>" +
-      '<a class="site-contacts__handle" href="#" data-site-cta="telegram">' +
+      (block.relocation_note
+        ? '<p class="site-contacts__relocation">' + escapeHtml(block.relocation_note) + "</p>"
+        : "") +
+      '<div class="site-contacts__handles">' +
+      '<a class="site-contacts__handle" href="#" data-site-cta="telegram" data-site-telegram-url="' +
+      escapeHtml(url) +
+      '">' +
       escapeHtml(handle) +
       "</a>" +
-      "</div>" +
-      '<a class="site-contacts__cta BtnPrimary" href="#" data-site-cta="telegram">' +
+      '<span class="site-contacts__handle-sep" aria-hidden="true">·</span>' +
+      '<a class="site-contacts__handle" href="#" data-site-cta="telegram" data-site-telegram-url="' +
+      escapeHtml(managerUrl) +
+      '">' +
+      escapeHtml(managerHandle) +
+      "</a></div></div>" +
+      '<a class="site-contacts__cta BtnPrimary" href="#" data-site-cta="telegram" data-site-telegram-url="' +
+      escapeHtml(url) +
+      '">' +
       escapeHtml(block.cta || "Message on Telegram") +
       "</a>" +
       "</div>";
@@ -655,35 +750,8 @@
     return "$" + Math.round(Number(amount) || 0).toLocaleString("en-US");
   }
 
-  var KILLER_ICONS = {
-    shield:
-      '<svg class="site-killer-card__icon-svg" viewBox="0 0 24 24" fill="none" aria-hidden="true">' +
-      '<path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/>' +
-      '<path d="m9 12 2 2 4-4" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/></svg>',
-    layers:
-      '<svg class="site-killer-card__icon-svg" viewBox="0 0 24 24" fill="none" aria-hidden="true">' +
-      '<path d="M12 2 2 7l10 5 10-5-10-5z" stroke="currentColor" stroke-width="2" stroke-linejoin="round"/>' +
-      '<path d="M2 17l10 5 10-5" stroke="currentColor" stroke-width="2" stroke-linejoin="round"/>' +
-      '<path d="M2 12l10 5 10-5" stroke="currentColor" stroke-width="2" stroke-linejoin="round"/></svg>',
-    reconcile:
-      '<svg class="site-killer-card__icon-svg" viewBox="0 0 24 24" fill="none" aria-hidden="true">' +
-      '<path d="M16 3h5v5" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/>' +
-      '<path d="M8 3H3v5" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/>' +
-      '<path d="M21 16v5h-5" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/>' +
-      '<path d="M3 16v5h5" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/>' +
-      '<path d="M21 8A9 9 0 0 0 6 5.3L3 8" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/>' +
-      '<path d="M3 16a9 9 0 0 0 15 2.7l3-2.7" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/></svg>',
-    evidence:
-      '<svg class="site-killer-card__icon-svg" viewBox="0 0 24 24" fill="none" aria-hidden="true">' +
-      '<path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z" stroke="currentColor" stroke-width="2" stroke-linejoin="round"/>' +
-      '<path d="M14 2v6h6" stroke="currentColor" stroke-width="2" stroke-linejoin="round"/>' +
-      '<path d="M16 13H8" stroke="currentColor" stroke-width="2" stroke-linecap="round"/>' +
-      '<path d="M16 17H8" stroke="currentColor" stroke-width="2" stroke-linecap="round"/>' +
-      '<path d="M10 9H8" stroke="currentColor" stroke-width="2" stroke-linecap="round"/></svg>',
-  };
-
   function killerIcon(name) {
-    return KILLER_ICONS[name] || KILLER_ICONS.shield;
+    return siteIcon(KILLER_LUCIDE[name] || KILLER_LUCIDE.shield, "site-icon--killer");
   }
 
   function renderMarginGuard(block) {
@@ -763,7 +831,7 @@
           return (
             '<li class="site-capabilities-compact__item">' +
             '<span class="site-capabilities-compact__icon">' +
-            CHECK_ICON +
+            siteIcon("check", "site-icon--sm") +
             '</span><span class="site-capabilities-compact__text">' +
             escapeHtml(line) +
             "</span></li>"
@@ -779,10 +847,6 @@
     if (!root || !block) {
       return;
     }
-    var docsHref = docsPageHref(config);
-    var primaryLabel = block.cta_primary || uiText(config, "cta_primary", "Get free pilot");
-    var docsLabel = block.cta_docs || uiText(config, "cta_docs", "Architecture");
-    var installLabel = block.cta_install || uiText(config, "cta_install", "Install command");
     root.innerHTML =
       '<div class="site-appliance-proof__copy">' +
       (block.eyebrow
@@ -793,19 +857,7 @@
       "</h2>" +
       '<p class="site-appliance-proof__subtitle">' +
       escapeHtml(block.subtitle || "") +
-      "</p>" +
-      '<div class="site-appliance-proof__actions">' +
-      '<a class="site-pga-btn site-pga-btn--primary" href="#" data-site-cta="telegram">' +
-      escapeHtml(primaryLabel) +
-      "</a>" +
-      '<a class="site-pga-btn site-pga-btn--ghost" href="' +
-      escapeHtml(docsHref) +
-      '">' +
-      escapeHtml(docsLabel) +
-      "</a>" +
-      '<button type="button" class="site-pga-btn site-pga-btn--ghost" data-site-scroll="install-cli">' +
-      escapeHtml(installLabel) +
-      "</button></div></div>";
+      "</p></div>";
     var installTitle = document.querySelector("[data-site-install-cli-title]");
     if (installTitle && block.install_cli_title) {
       installTitle.textContent = block.install_cli_title;
@@ -846,8 +898,15 @@
     if (eyebrow && block.eyebrow) {
       eyebrow.textContent = block.eyebrow;
     }
-    document.querySelectorAll(".site-pga-btn-link").forEach(function (link) {
+    document.querySelectorAll("[data-site-hero-docs]").forEach(function (link) {
       link.setAttribute("href", docsPageHref(config));
+    });
+    document.querySelectorAll("[data-site-hero-demo]").forEach(function (link) {
+      link.setAttribute("href", demoPageHref(config));
+      var demoLabel = uiText(config, "hero_demo_cta", "View demo");
+      if (demoLabel) {
+        link.textContent = demoLabel;
+      }
     });
   }
 
@@ -1028,8 +1087,9 @@
     );
   }
 
-  function openTelegram(config) {
-    window.open(config.telegram_url, "_blank", "noopener,noreferrer");
+  function openTelegram(config, url) {
+    var target = url || config.telegram_url || "https://t.me/bidshardsupportbot";
+    window.open(target, "_blank", "noopener,noreferrer");
   }
 
   function ensureOfferAccepted(config, onAllowed) {
@@ -1084,9 +1144,8 @@
       '<label class="site-offer-gate__check is-locked">' +
       '<input type="checkbox" class="site-offer-gate__checkbox-input" disabled data-site-offer-checkbox />' +
       '<span class="site-offer-gate__check-ui" aria-hidden="true">' +
-      '<svg width="12" height="12" viewBox="0 0 12 12" fill="none" xmlns="http://www.w3.org/2000/svg">' +
-      '<path d="M2.5 6L5 8.5L9.5 3.5" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/>' +
-      "</svg></span>" +
+      siteIcon("check", "site-icon--xs") +
+      "</span>" +
       '<span class="site-offer-gate__check-text">' +
       escapeHtml(offer.checkbox || "I accept the public offer.") +
       "</span></label>" +
@@ -1104,6 +1163,7 @@
     root.hidden = false;
     root.setAttribute("aria-hidden", "false");
     document.body.classList.add("site-offer-gate-open");
+    refreshSiteIcons();
 
     var scrollBox = root.querySelector("[data-site-offer-scroll]");
     var checkbox = root.querySelector("[data-site-offer-checkbox]");
@@ -1197,8 +1257,10 @@
 
       if (event.target.closest('[data-site-cta="telegram"]')) {
         event.preventDefault();
+        var telegramEl = event.target.closest('[data-site-cta="telegram"]');
+        var telegramUrl = telegramEl ? telegramEl.getAttribute("data-site-telegram-url") : "";
         ensureOfferAccepted(config, function () {
-          openTelegram(config);
+          openTelegram(config, telegramUrl || undefined);
         });
         return;
       }
@@ -1272,6 +1334,7 @@
     wireMobileMenu(config);
     wireScrollTargets();
     updateLangSwitch(config);
+    refreshSiteIcons();
   }
 
   function initDocs(config) {
@@ -1282,6 +1345,12 @@
     });
     document.querySelectorAll(".site-doc-header__nav a[href='offer.html']").forEach(function (link) {
       link.setAttribute("href", offerPageHref(config));
+    });
+    document.querySelectorAll(".site-doc-header__nav a[href='docs.html']").forEach(function (link) {
+      link.setAttribute("href", docsPageHref(config));
+    });
+    document.querySelectorAll(".site-doc-actions a[href='docs.html']").forEach(function (link) {
+      link.setAttribute("href", docsPageHref(config));
     });
   }
 

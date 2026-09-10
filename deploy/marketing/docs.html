@@ -281,7 +281,7 @@
       <li>Edge and XDP can drop known bad IPs; rotating proxies may still reach the tracker — L7 rules apply there.</li>
       <li><code>BROKER_SHADOW_MODE</code> shadows processor CH ingest only; tracker WAL writes are live when broker-primary is enabled.</li>
       <li><code>LOCAL_QUOTA_MODE=shadow</code> exercises local quanta but still runs sync Redis Lua; only <code>live</code> can skip it when eligible.</li>
-      <li>SKU JWT limits (hosts, tenants, features, export chunk size) are enforced — see <a href="index.html#pricing">pricing</a> and <code>deploy/vendor/sku.yaml</code>.</li>
+      <li>License limits (hosts, tenants, features, export chunk size) are enforced per tier — see <a href="index.html#pricing">pricing</a>.</li>
     </ul>
 
     <h2 id="ports">Ports (compose defaults)</h2>

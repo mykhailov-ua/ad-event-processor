@@ -1,0 +1,69 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <meta name="description" content="BidShard interactive product demo — preview coming soon.">
+  <title>Demo — BidShard</title>
+  <script>
+    (function () {
+      try {
+        var theme = localStorage.getItem("bidshard_theme");
+        if (theme === "light" || theme === "dark") {
+          document.documentElement.setAttribute("data-theme", theme);
+        }
+      } catch (e) {}
+    })();
+  </script>
+  <link rel="alternate" hreflang="en" href="/demo.html" />
+  <link rel="alternate" hreflang="uk" href="/uk/demo.html" />
+  <link rel="stylesheet" href="site.css">
+  <script src="site.js" defer></script>
+</head>
+<body class="docs-page demo-page">
+  <div class="site-offer-gate" data-site-offer-gate hidden aria-hidden="true"></div>
+  <header class="site-doc-header">
+    <a href="index.html">BidShard</a>
+    <nav class="site-doc-header__nav" aria-label="Demo">
+      <a href="docs.html">Architecture</a>
+      <a href="offer.html">Public offer</a>
+    </nav>
+    <div class="site-header-end">
+      <a class="site-lang-switch" href="/uk/demo.html" hreflang="uk" title="Ukrainian version">UA</a>
+      <button type="button" class="site-theme-toggle" data-site-theme-toggle aria-label="Switch to light theme" title="Light theme">
+        <svg class="site-theme-toggle__icon site-theme-toggle__icon--sun" viewBox="0 0 24 24" fill="none" aria-hidden="true">
+          <circle cx="12" cy="12" r="4" stroke="currentColor" stroke-width="2"/>
+          <path d="M12 2v2M12 20v2M4.93 4.93l1.41 1.41M17.66 17.66l1.41 1.41M2 12h2M20 12h2M4.93 19.07l1.41-1.41M17.66 6.34l1.41-1.41" stroke="currentColor" stroke-width="2" stroke-linecap="round"/>
+        </svg>
+        <svg class="site-theme-toggle__icon site-theme-toggle__icon--moon" viewBox="0 0 24 24" fill="none" aria-hidden="true">
+          <path d="M12 3a6 6 0 0 0 9 9 9 9 0 1 1-9-9Z" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/>
+        </svg>
+      </button>
+    </div>
+  </header>
+
+  <main class="site-doc site-demo-stub">
+    <a href="index.html" class="site-doc-back">Back to home</a>
+
+    <p class="site-doc-eyebrow">Preview</p>
+    <h1>Interactive demo</h1>
+
+    <div class="site-demo-stub__card">
+      <span class="site-demo-stub__badge">Coming soon</span>
+      <p class="site-demo-stub__lead">
+        The live admin demo is being prepared. You will be able to browse campaigns, reports, and antifraud
+        settings without installing on your VPS.
+      </p>
+      <p class="site-demo-stub__hint">
+        Until then, read the architecture overview or request a free 10-day pilot on your own server.
+      </p>
+    </div>
+
+    <div class="site-doc-actions">
+      <a class="primary" data-site-cta="telegram" href="#">Get free pilot</a>
+      <a class="ghost" href="docs.html">Architecture</a>
+      <a class="ghost" href="index.html">Back to home</a>
+    </div>
+  </main>
+</body>
+</html>

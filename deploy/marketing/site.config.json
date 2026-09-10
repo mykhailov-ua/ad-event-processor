@@ -31,12 +31,16 @@
     "offer_gate_scroll_hint": "Scroll to the end to enable acceptance.",
     "appliance_screenshot_alt": "BidShard admin Settings page with license JWT field",
     "docs_href": "/docs.html",
+    "demo_href": "/demo.html",
     "home_href": "/",
-    "offer_href": "/offer.html"
+    "offer_href": "/offer.html",
+    "hero_demo_cta": "View demo"
   },
   "product_name": "BidShard",
   "telegram_url": "https://t.me/bidshardsupportbot",
   "telegram_handle": "@bidshardsupportbot",
+  "telegram_manager_url": "https://t.me/bidshard_manager",
+  "telegram_manager_handle": "@bidshard_manager",
   "install_script_url": "https://bidshard.com/get.sh",
   "offer": {
     "version": "2026-09-09",
@@ -47,7 +51,8 @@
       "License runs on your VPS or dedicated server; vendor does not host your traffic by default.",
       "Paid tiers differ by hosts, API keys, export limits, and feature flags in the JWT. Campaign and event volume are unlimited — scale on your hardware.",
       "Monthly USDT fees are non-refundable after JWT delivery except vendor failure to deliver within 5 business days.",
-      "You are responsible for lawful use, VPS security, backups, and end-user privacy on your deployment."
+      "You are responsible for lawful use, VPS security, backups, and end-user privacy on your deployment.",
+      "Documented force majeure (host loss, provider shutdown, emergency relocation) may qualify for additional license activations at vendor discretion — contact support before rebinding hardware."
     ],
     "checkbox": "I have read the public offer and accept its terms.",
     "accept_cta": "I accept — open Telegram",
@@ -55,25 +60,51 @@
   },
   "architecture": {
     "eyebrow": "Under the hood",
-    "title": "Built for operators, not slide decks",
-    "subtitle": "One install on your VPS — fast accept path, async reporting, admin under your control. No multi-tenant cloud in the default model.",
+    "title": "Hot path in milliseconds, cold path on your schedule",
+    "subtitle": "Default appliance on your VPS: Nginx perimeter, tracker pool, Redis-backed filters, async processor. Campaign rules load from in-memory snapshots — admin writes never sit on the /track thread.",
     "points": [
-      "Clicks accepted in milliseconds — budget checks before bad traffic spends",
-      "Reports and IVT catch up async — funnel speed stays intact",
-      "Offline JWT license — your traffic never routes through our cloud"
+      "Ingest budget: filter chain and budget debit before async enqueue (sub-100ms target on /track)",
+      "At most one Redis script per accepted event — or zero when local quanta covers the shard",
+      "Processor worker settles Postgres spend and batches ClickHouse; HTTP 202 means accepted, not yet stored",
+      "Control API (:8188) drives RBAC, outbox, and billing; ML scoring runs in batch sidecars, not on ingest"
     ],
+    "flow": {
+      "aria_label": "Traffic flow diagram",
+      "levels": [
+        "Visitor",
+        "Nginx edge",
+        "Tracker",
+        "Filter + debit",
+        "Redis stream",
+        "Processor",
+        "Postgres + ClickHouse",
+        "Control :8188"
+      ]
+    },
     "highlights": [
       {
-        "title": "Spend decisions first",
-        "body": "Accept or reject clicks before budget debits — margin protected on the ingest path."
+        "title": "Spend gate on ingest",
+        "body": "Unified filter debits campaign budget and deduplicates clicks synchronously — rejected traffic does not spend."
       },
       {
-        "title": "Analytics catch up later",
-        "body": "Settlement and reporting run async — you get numbers without slowing the funnel."
+        "title": "Snapshots, not live Postgres on /track",
+        "body": "Tracker reads atomic campaign registry and fraud boost maps; config reloads via Redis pub/sub after admin mutations."
       },
       {
-        "title": "Your stack, your rules",
-        "body": "Postgres, Redis, ClickHouse on your metal — we ship software, not a shared tenant."
+        "title": "Fail-closed budget pairing",
+        "body": "Stream admission reserves capacity before Lua debit; if async enqueue fails, spend rolls back. current_spend never drifts above budget_limit."
+      },
+      {
+        "title": "Outbox after every admin write",
+        "body": "Campaign edits, RBAC, and billing mutations land in Postgres first, then propagate through outbox workers — ingest never waits on SQL."
+      },
+      {
+        "title": "Postback hops you can audit",
+        "body": "Conversion /track verifies inbound postback signatures; failed partner deliveries sit in DLQ with replay — disputes backed by event IDs, not screenshots."
+      },
+      {
+        "title": "Optional depth when licensed",
+        "body": "Broker WAL, eBPF edge drops, OpenRTB auction, fraud-scorer sidecar — add when you need them, not required for a pilot."
       }
     ],
     "cta": "Read full architecture",
@@ -82,8 +113,9 @@
   "contacts": {
     "eyebrow": "Contacts",
     "title": "Support and sales on Telegram",
-    "subtitle": "Pilot license, paid tiers, HWID bind, and upgrades — message us directly. No ticket queue.",
-    "cta": "Open @bidshardsupportbot"
+    "subtitle": "Pilot license, paid tiers, HWID bind, and upgrades — message the support bot or manager directly. No ticket queue.",
+    "relocation_note": "Lost a host or moving regions under force majeure? We understand media-buying ops — provider bans, seized DC, war-zone relocations. Message us with your deployment_id; we can grant extra license activations case by case.",
+    "cta": "Open support bot"
   },
   "pilot_days": 10,
   "hero": {
@@ -104,28 +136,35 @@
       "tier": "Starter+",
       "title": "Drop the cloaker bill",
       "body": "Built-in funnel protection and safe-page checks — no $300–600/month third-party cloaker. Same protection on accepted traffic, more margin left after media spend.",
-      "icon": "shield"
+      "icon": "funnel"
     },
     {
       "id": "silent",
       "tier": "Starter+",
       "title": "Bad traffic looks accepted — you do not pay",
       "body": "Silent reject sends bots and reviewers a clean 202 while your budget stays intact. They see a normal funnel; you see every filtered hit in analytics.",
-      "icon": "shield"
+      "icon": "ghost"
     },
     {
       "id": "postback",
       "tier": "Pro+",
       "title": "Where did 15 conversions go?",
       "body": "Network says 100 leads, partner shows 85. Every postback hop is logged so you spot the gap — network, tracker, or affiliate — before the week closes in the red.",
-      "icon": "reconcile"
+      "icon": "route"
+    },
+    {
+      "id": "margin_guard",
+      "tier": "Pro+",
+      "title": "ROI turned red? Campaign pauses, not just an alert",
+      "body": "Margin Guard compares spend to payout in ClickHouse every few minutes. Below your threshold the campaign pauses automatically — while hot-path filters still block junk spend.",
+      "icon": "gauge"
     },
     {
       "id": "desync",
       "tier": "Scale+",
       "title": "Stop feeding moderators",
       "body": "Reviewers browse from clean residential IPs that pass blocklists. Flag mismatched device signals before they reach your money page — less ban risk, less wasted spend.",
-      "icon": "layers"
+      "icon": "scan"
     },
     {
       "id": "dispute",
@@ -139,14 +178,14 @@
       "tier": "Scale+",
       "title": "Change servers without losing revenue days",
       "body": "Slot migration moves ingest to new hardware under the same license — no week-long reinstall freeze while campaigns sit idle.",
-      "icon": "reconcile"
+      "icon": "migrate"
     },
     {
       "id": "openrtb",
       "tier": "Network+",
       "title": "Monetize inventory, not just buy traffic",
       "body": "Live OpenRTB bid endpoint on your metal — take programmatic demand without bolting on a separate ad server stack.",
-      "icon": "layers"
+      "icon": "auction"
     }
   ],
   "capabilities_compact": [
@@ -330,61 +369,61 @@
   ],
   "hardware_sizing": {
     "eyebrow": "Hardware sizing",
-    "title": "Starting points from repo docs",
-    "subtitle": "Not a throughput SLA. Numbers below come from compose profiles in docs/DEVELOPMENT.md and host/region limits in deploy/vendor/sku.yaml. Size up from your traffic, filter depth, and enabled sidecars (IVT, ML boost, OpenRTB, eBPF).",
-    "footnote": "amd64 + NVMe recommended. ClickHouse default compose cap is 4 GB RAM (1536M on minimal profile). Do not treat vCPU or disk sizes as license enforcement.",
+    "title": "Recommended server sizing",
+    "subtitle": "Planning guide only — not a throughput guarantee. Start here, then scale with your traffic, antifraud depth, and whether reporting and bidding run on the same box or separate hosts.",
+    "footnote": "x86_64 and NVMe recommended. RAM and disk figures are sizing guidance. Your license caps hosts, regions, and features — not the vCPU labels on this page. If a node is lost, see FAQ — extra activations are available for documented force majeure and emergency relocation.",
     "labels": {
-      "hosts": "License hosts",
-      "cpu": "Compose profile",
-      "ram": "Min RAM (comfortable)",
+      "hosts": "Licensed hosts",
+      "cpu": "Typical layout",
+      "ram": "Min RAM (per node)",
       "disk": "Storage",
-      "profile": "Scale-out notes"
+      "profile": "When to scale up"
     },
     "tiers": [
       {
         "code": "pilot",
         "plan": "Pilot",
         "hosts": "1 host",
-        "cpu": "single-vps / full",
+        "cpu": "All-in-one VPS",
         "ram": "8 GB",
-        "disk": "NVMe; plan headroom for PG + logs",
-        "profile": "10-day smoke on one box; rules-only antifraud (no IVT/ML/OpenRTB). Tell us expected traffic on Telegram."
+        "disk": "80 GB+ NVMe",
+        "profile": "10-day pilot on one server. Rule-based antifraud only. Message us on Telegram with expected traffic and VPS spec."
       },
       {
         "code": "starter",
         "plan": "Starter",
         "hosts": "1 host",
-        "cpu": "ingest-only or full",
-        "ram": "4 GB ingest-only · 8 GB with ClickHouse reports",
-        "disk": "NVMe; grows with CH retention",
+        "cpu": "Single VPS",
+        "ram": "4 GB routing-only · 8 GB with reporting DB",
+        "disk": "80 GB+ NVMe",
         "profile": "Solo buyer on one VPS; silent reject + postbacks. Add RAM before heavy report exports."
       },
       {
         "code": "pro",
         "plan": "Pro",
         "hosts": "1 host",
-        "cpu": "full + analytics-ml sidecars",
+        "cpu": "Single VPS + ML analytics",
         "ram": "12 GB+",
-        "disk": "NVMe; split ClickHouse when report load is sustained",
-        "profile": "IVT batch sidecar reads ClickHouse; still one licensed activation. Multi-host bind is same deployment, not extra license hosts."
+        "disk": "160 GB+ NVMe",
+        "profile": "IVT scoring runs as background jobs on your reporting store. One deployment — extra host slots bind the same install."
       },
       {
         "code": "scale",
         "plan": "Scale",
         "hosts": "Up to 3 hosts",
-        "cpu": "Split tracker / Redis / CH",
-        "ram": "12 GB+ per busy node",
-        "disk": "NVMe per node; CH disk sized to retention",
-        "profile": "ML fraud boost + intel feeds on hot path; slot migration across activations. Optional broker WAL path."
+        "cpu": "Split: tracker, cache, reporting",
+        "ram": "16 GB+ per busy node",
+        "disk": "160 GB+ NVMe per node",
+        "profile": "ML fraud signals on the hot path. Move shards between hosts without a full reinstall freeze."
       },
       {
         "code": "network",
         "plan": "Network",
         "hosts": "Up to 10 hosts",
-        "cpu": "Multi-node + OpenRTB live",
-        "ram": "8 GB+ ingest node baseline; size CH/RTB separately",
-        "disk": "NVMe per region; CH retention drives disk",
-        "profile": "Up to 3 licensed regions; OpenRTB bid endpoint + multi-node ingest."
+        "cpu": "Multi-region + programmatic bidding",
+        "ram": "16 GB+ routing · 32 GB+ reporting · bidder separate",
+        "disk": "320 GB+ NVMe per role per region",
+        "profile": "Up to 3 regions in the license. Live bid endpoint and multi-node routing — size each role on its own hardware."
       },
       {
         "code": "enterprise",
@@ -393,7 +432,7 @@
         "cpu": "Vendor sizing call",
         "ram": "Vendor sizing call",
         "disk": "Vendor sizing call",
-        "profile": "Up to 99 regions; eBPF XDP edge + Campaign API. Fleet layout agreed per install."
+        "profile": "Up to 99 regions. Edge packet filtering and campaign API automation — fleet layout agreed per install."
       }
     ]
   },
@@ -452,8 +491,11 @@
     "DeterministicRulesExecuteOnHotPathMlIvtRunAsBackgroundBatchJobs": "Real-time rule filters on the ingest hot path. IVT and ML scoring on your analytics store.",
     "NotSaas": "Your infrastructure",
     "WeDoNotHostMonitorOrGuaranteeUptimeOnYourCustomVpsServer": "Runs on your VPS under your control. No shared tenant and no vendor lock-in.",
-    "NoRoiWarranty": "Built to scale",
-    "YourDirectTrafficYourSpecificFunnelsAndYourTargetingDictateTheRoiResults": "No per-event caps on your license tier. Grow volume on your hardware as campaigns scale.",
+    "NoRoiWarranty": "Host loss & relocation",
+    "YourDirectTrafficYourSpecificFunnelsAndYourTargetingDictateTheRoiResults": "Provider ban, dead VPS, or emergency region move — we know it happens. For documented force majeure we review each case and can grant extra license activations so you recover on new metal.",
+    "WhatIfILoseAServerOrNeedToRelocate": "What if I lose a server or need to relocate?",
+    "WeKnowBuyersLoseHostsProviderBansDatacenterIssuesWarZoneMovesEmergencyMigrationsYourLicenseBindsToHardwareFingerprintsNotASingleIpForeverForDocumentedForceMajeureHostLossProviderShutdownSanctionedRegionRelocationContactBidshardsupportbotOrBidshardManagerWithYourDeploymentIdAndWhatHappenedWeCanIssueAdditionalActivationsOrResetBindingsCaseByCaseWeDoNotTreatOpsEmergenciesLikeLicenseAbuse": "We know buyers lose hosts — provider bans, datacenter issues, war-zone moves, emergency migrations. Your license binds to hardware fingerprints, not a single IP forever. For documented force majeure (host loss, provider shutdown, sanctioned-region relocation), contact @bidshardsupportbot or @bidshard_manager with your deployment_id and what happened. We can issue additional activations or reset bindings case by case — we do not treat ops emergencies like license abuse.",
+    "PricingRelocationPolicy": "Lost a host or relocating under force majeure? Extra license activations are possible — see FAQ or message us on Telegram.",
     "FullStackLicense": "Full-stack license",
     "RoutingBudgetsAntifraudReportingOneInstallWithoutCloakerIvtStack": "Routing, budgets, antifraud, and reporting in one install. No separate cloaker or IVT subscription stack.",
     "CommonQuestions": "Common Questions",
