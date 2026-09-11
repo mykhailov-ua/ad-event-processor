@@ -20,6 +20,7 @@ export const INTEGRATIONS_NAV_ITEMS: SectionNavItem[] = [
   { path: '/integrations/schemas', label: 'Schemas' },
   { path: '/integrations/platform-campaigns', label: 'Platform links' },
   { path: '/integrations/affiliate-presets', label: 'Affiliate presets' },
+  { path: '/integrations/google-sheets', label: 'Google Sheets' },
 ];
 
 export function IntegrationsNav() {

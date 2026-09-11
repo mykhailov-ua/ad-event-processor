@@ -26,6 +26,13 @@ func TestSanitizeExportJobError_keepsValidation(t *testing.T) {
 	}
 }
 
+func TestSanitizeExportJobError_keepsGoogleSheetsValidation(t *testing.T) {
+	got := SanitizeExportJobError("google sheets is not connected for this operator")
+	if got != "google sheets is not connected for this operator" {
+		t.Fatalf("got %q", got)
+	}
+}
+
 func TestSanitizeExportJobError_genericInternal(t *testing.T) {
 	got := SanitizeExportJobError("pq: unexpected connection reset")
 	if got != exportErrGenericPublic {

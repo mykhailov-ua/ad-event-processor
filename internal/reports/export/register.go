@@ -17,6 +17,9 @@ func Write(ctx context.Context, deps reports.ReportExportDeps, path string, spec
 	case "fraud-evidence-pack-bulk":
 		return reportfraud.WriteFraudEvidencePackBulkZip(ctx, deps, path, spec)
 	default:
+		if spec.Format == "xlsx" {
+			return writeReportXLSX(ctx, deps, path, spec)
+		}
 		return writeReportCSV(ctx, deps, path, spec)
 	}
 }

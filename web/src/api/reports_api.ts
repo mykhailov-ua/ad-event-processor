@@ -15,6 +15,9 @@ import type {
   FraudReasonsReportKey,
   ReportCatalogResponse,
   ReportJobSpec,
+  ReportJobCreateSpec,
+  ReportExportNotification,
+  ReportExportNotificationList,
   ReportJobStatus,
   PostbackReconReportResponse,
   PlacementReportResponse,
@@ -632,7 +635,7 @@ export async function getFraudEvidencePackReport(
 }
 
 export async function createReportJob(
-  spec: ReportJobSpec,
+  spec: ReportJobCreateSpec,
   signal?: AbortSignal
 ): Promise<ReportJobStatus> {
   return apiJson<ReportJobStatus>('/api/v1/reports/jobs', {
@@ -661,6 +664,35 @@ export async function downloadReportJob(id: string, signal?: AbortSignal): Promi
     throw await parseApiError(response);
   }
   return response.blob();
+}
+
+export async function rerunReportJob(id: string, signal?: AbortSignal): Promise<ReportJobStatus> {
+  return apiJson<ReportJobStatus>(`/api/v1/reports/jobs/${encodeURIComponent(id)}/rerun`, {
+    method: 'POST',
+    headers: {
+      'Idempotency-Key': `rerun-${id}`,
+    },
+    signal,
+  });
+}
+
+export async function listReportExportNotifications(
+  signal?: AbortSignal
+): Promise<ReportExportNotificationList> {
+  return apiJson<ReportExportNotificationList>('/api/v1/reports/notifications', { signal });
+}
+
+export async function ackReportExportNotification(
+  id: string,
+  signal?: AbortSignal
+): Promise<ReportExportNotification> {
+  return apiJson<ReportExportNotification>(
+    `/api/v1/reports/notifications/${encodeURIComponent(id)}/ack`,
+    {
+      method: 'POST',
+      signal,
+    }
+  );
 }
 
 export async function exportTelegramReport(

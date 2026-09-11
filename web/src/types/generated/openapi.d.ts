@@ -6793,9 +6793,22 @@ export interface components {
             /** Format: date-time */
             to: string;
             /** @enum {string} */
-            format?: "csv" | "json";
+            format?: "csv" | "json" | "zip" | "xlsx";
             /** @description Max data rows in the export file. Server clamps to deployment tier. */
             row_limit?: number;
+            /** @description Report-specific export parameters (campaign-toggle-cohort, layer-desync-drilldown, etc.). */
+            import_payload?: {
+                [key: string]: unknown;
+            };
+            /** @enum {string} */
+            destination?: "download" | "google_sheet";
+            google_sheet?: components["schemas"]["ReportJobGoogleSheetSpec"];
+        };
+        ReportJobGoogleSheetSpec: {
+            /** @enum {string} */
+            mode?: "create" | "append";
+            spreadsheet_id?: string;
+            sheet_title?: string;
         };
         ReportJobStatus: {
             id?: string;
@@ -6804,12 +6817,22 @@ export interface components {
             customer_id?: string;
             report_key?: string;
             format?: string;
+            /** @enum {string} */
+            destination?: "download" | "google_sheet";
             status?: string;
             /** Format: int64 */
             bytes?: number;
             error?: string;
+            /** Format: uri */
+            spreadsheet_url?: string;
+            spreadsheet_id?: string;
             /** Format: date-time */
             created_at?: string;
+        };
+        GoogleSheetsIntegrationStatus: {
+            connected?: boolean;
+            account_email?: string;
+            message?: string;
         };
         ReportMapEnvelope: {
             rows: components["schemas"]["ReportMapRow"][];
@@ -7715,6 +7738,14 @@ export interface components {
             /** Format: double */
             roi_pct?: number;
             cpm_usd?: string;
+            /** Format: double */
+            budget_burn_pct?: number;
+            pacing_mode?: string;
+            /** @enum {string} */
+            pacing_health?: "ok" | "drift" | "exhausted";
+            metrics_stale?: boolean;
+            /** Format: date-time */
+            metrics_as_of?: string;
         };
         CampaignListMetricsBatchResponse: {
             items: {
@@ -16783,7 +16814,7 @@ export interface operations {
         };
         responses: {
             /** @description Job accepted */
-            202: {
+            201: {
                 headers: {
                     [name: string]: unknown;
                 };

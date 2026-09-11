@@ -32,6 +32,8 @@ import { buildExportHubHref } from '@/lib/export_hub_paths';
 import { rememberExportHubReturnPath } from '@/lib/export_hub_return';
 import { listPageRange } from '@/lib/list_page_stats';
 import { InAppLink } from '@/shell/in_app_link';
+import { CampaignListNameWithSignals } from '@/domains/campaigns/list/campaign_list_operational_signals';
+import type { CampaignListMetrics } from '@/api/campaigns_api';
 import type { Campaign } from '@/api/types';
 import {
   actionGuardError,
@@ -42,9 +44,10 @@ import { ValidationErrorBlock } from '@/shell/validation_error_block';
 
 function buildCampaignOverviewFields(
   campaign: Campaign,
-  customerNameById: Record<string, string>
+  customerNameById: Record<string, string>,
+  metrics?: CampaignListMetrics
 ): DirectoryOverviewField[] {
-  return [
+  const fields: DirectoryOverviewField[] = [
     { label: 'Name', value: campaign.name ?? campaign.id },
     { label: 'ID', value: campaign.id ?? '-' },
     {
@@ -62,8 +65,21 @@ function buildCampaignOverviewFields(
         customerNameById[campaign.customer_id ?? ''] ?? campaign.customer_id ?? '-',
     },
     { label: 'Budget limit', value: campaign.budget_limit ?? '-' },
-    { label: 'Pacing', value: campaign.pacing_mode ?? '-' },
+    { label: 'Pacing', value: metrics?.pacing_mode ?? campaign.pacing_mode ?? '-' },
   ];
+  if (metrics?.budget_burn_pct != null && Number.isFinite(metrics.budget_burn_pct)) {
+    fields.push({ label: 'Budget burn', value: `${metrics.budget_burn_pct.toFixed(1)}%` });
+  }
+  if (metrics?.pacing_health) {
+    fields.push({ label: 'Pacing health', value: metrics.pacing_health });
+  }
+  if (metrics?.metrics_stale) {
+    fields.push({ label: 'Metrics freshness', value: 'Stale' });
+  }
+  if (metrics?.metrics_as_of) {
+    fields.push({ label: 'Metrics as of', value: metrics.metrics_as_of });
+  }
+  return fields;
 }
 
 export type {
@@ -256,16 +272,15 @@ export function CampaignsDirectory({
   );
   const operateRows = useMemo(
     () =>
-      directoryOperateRows(
-        items,
-        (campaign) => campaign.id,
-        (campaign) => campaign.name ?? campaign.id ?? ''
-      ),
-    [items]
+      directoryOperateRows(items, (campaign) => campaign.id, (campaign) => (
+        <CampaignListNameWithSignals campaign={campaign} metrics={metricsById[campaign.id]} />
+      )),
+    [items, metricsById]
   );
   const buildOverviewFields = useCallback(
-    (campaign: Campaign) => buildCampaignOverviewFields(campaign, customerNameById),
-    [customerNameById]
+    (campaign: Campaign) =>
+      buildCampaignOverviewFields(campaign, customerNameById, metricsById[campaign.id]),
+    [customerNameById, metricsById]
   );
 
   return (

@@ -1,4 +1,4 @@
-import { Bug, Key, Link2, Plug, ScrollText, Share2, Tags } from 'lucide-react';
+import { Bug, FileSpreadsheet, Key, Link2, Plug, ScrollText, Share2, Tags } from 'lucide-react';
 
 import { BentoSection } from '@/shell/bento_card';
 import { HubLinkCard, HubLinkGrid } from '@/shell/hub_link_card';
@@ -54,6 +54,13 @@ const INTEGRATION_LINKS = [
     description: 'Named affiliate conversion status mapping presets.',
     icon: Tags,
     meta: 'Status mapping',
+  },
+  {
+    path: '/integrations/google-sheets',
+    title: 'Google Sheets',
+    description: 'Connect Google OAuth to push report exports into spreadsheets from Export Hub.',
+    icon: FileSpreadsheet,
+    meta: 'Export destination',
   },
 ];
 

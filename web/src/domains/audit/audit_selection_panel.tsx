@@ -27,7 +27,7 @@ export function AuditSelectionPanel({
 }: AuditSelectionPanelProps) {
   const metadata = selectedEntry ? auditMetadataFields(selectedEntry.metadata) : {};
   const selectedTitle = selectedEntry
-    ? `${selectedEntry.action ?? 'action'} · ${selectedEntry.target_type ?? 'target'}`
+    ? `${selectedEntry.action ?? 'action'} / ${selectedEntry.target_type ?? 'target'}`
     : undefined;
 
   return (

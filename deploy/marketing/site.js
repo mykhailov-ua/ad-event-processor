@@ -24,6 +24,7 @@
     gauge: "trending-up",
     layers: "layers",
     reconcile: "refresh-cw",
+    capi: "share-2",
   };
 
   function siteIcon(lucideName, extraClass) {
@@ -55,6 +56,9 @@
       btn.setAttribute("aria-label", label);
       btn.setAttribute("title", title);
     });
+    if (document.body.classList.contains("docs-page")) {
+      renderDocsMermaid();
+    }
   }
 
   function initTheme() {
@@ -128,6 +132,14 @@
     return siteLocale() === "uk" ? "/uk/demo.html" : "/demo.html";
   }
 
+  function operatorsPageHref(config) {
+    var ui = config && config.ui ? config.ui : {};
+    if (ui.operators_href) {
+      return ui.operators_href;
+    }
+    return siteLocale() === "uk" ? "/uk/operators.html" : "/operators.html";
+  }
+
   function formatTemplate(template, vars) {
     var out = String(template || "");
     if (!vars) {
@@ -175,6 +187,19 @@
       .replace(/"/g, "&quot;");
   }
 
+  function copyLineMeta(line) {
+    if (line == null) {
+      return { text: "", highlight: false };
+    }
+    if (typeof line === "object") {
+      return {
+        text: line.text != null ? String(line.text) : "",
+        highlight: line.highlight === true,
+      };
+    }
+    return { text: String(line), highlight: false };
+  }
+
   var LAYER_TO_ID = {
     FEATURES: "features",
     PRICING: "pricing",
@@ -209,6 +234,9 @@
   function langSwitchHref(config) {
     if (document.body.classList.contains("demo-page")) {
       return siteLocale() === "uk" ? "/demo.html" : "/uk/demo.html";
+    }
+    if (document.body.classList.contains("operators-page")) {
+      return siteLocale() === "uk" ? "/operators.html" : "/uk/operators.html";
     }
     if (document.body.classList.contains("docs-page")) {
       return siteLocale() === "uk" ? "/docs.html" : "/uk/docs.html";
@@ -377,12 +405,19 @@
 
     var features = (plan.features || [])
       .map(function (line) {
+        var meta = copyLineMeta(line);
+        var rowClass = "site-pricing-feature";
+        if (meta.highlight) {
+          rowClass += " site-pricing-feature--highlight";
+        }
         return (
-          '<div class="site-pricing-feature">' +
+          '<div class="' +
+          rowClass +
+          '">' +
           '<span class="site-pricing-feature__icon">' +
           siteIcon("check", "site-icon--sm") +
           "</span><span>" +
-          escapeHtml(line) +
+          escapeHtml(meta.text) +
           "</span></div>"
         );
       })
@@ -479,7 +514,7 @@
           '<li class="site-architecture__point">' +
           '<span class="site-architecture__bullet" aria-hidden="true"></span>' +
           "<span>" +
-          escapeHtml(line) +
+          escapeHtml(copyLineMeta(line).text) +
           "</span></li>"
         );
       })
@@ -572,6 +607,357 @@
       "</div>";
   }
 
+  function formatUsd(amount) {
+    return "$" + Math.round(amount).toLocaleString("en-US");
+  }
+
+  function formatMillions(value, unit) {
+    return String(value) + (unit || "M") + " events/mo";
+  }
+
+  function formatTcoCpc(cents) {
+    var n = Math.round(Number(cents) || 0);
+    return "$0." + String(n).padStart(2, "0");
+  }
+
+  function formatTcoJunkPct(pct) {
+    return String(Math.round(Number(pct) || 0)) + "%";
+  }
+
+  function renderTcoSilentFields(calc, labels) {
+    var silentCfg = calc.silent_reject || {};
+    var junk = silentCfg.junk_pct || {};
+    var cpc = silentCfg.avg_cpc || {};
+    if (!junk.min && junk.min !== 0) {
+      return "";
+    }
+    return (
+      '<div class="site-tco-calculator__silent-fields">' +
+      '<div class="site-tco-calculator__field site-tco-calculator__field--silent" data-tco-field="silent_junk">' +
+      '<div class="site-tco-calculator__label-row">' +
+      "<span>" +
+      escapeHtml(labels.silent_junk_label || "Assumed junk share of events") +
+      "</span>" +
+      '<span data-tco-value="silent_junk"></span>' +
+      "</div>" +
+      '<input type="range" data-tco-input="silent_junk" data-tco-silent="1" min="' +
+      escapeHtml(String(junk.min)) +
+      '" max="' +
+      escapeHtml(String(junk.max)) +
+      '" step="' +
+      escapeHtml(String(junk.step || 1)) +
+      '" value="' +
+      escapeHtml(String(junk.default)) +
+      '" />' +
+      "</div>" +
+      '<div class="site-tco-calculator__field site-tco-calculator__field--silent" data-tco-field="silent_cpc">' +
+      '<div class="site-tco-calculator__label-row">' +
+      "<span>" +
+      escapeHtml(labels.silent_cpc_label || "Assumed avg cost per paid click") +
+      "</span>" +
+      '<span data-tco-value="silent_cpc"></span>' +
+      "</div>" +
+      '<input type="range" data-tco-input="silent_cpc" data-tco-silent="1" min="' +
+      escapeHtml(String(cpc.min)) +
+      '" max="' +
+      escapeHtml(String(cpc.max)) +
+      '" step="' +
+      escapeHtml(String(cpc.step || 1)) +
+      '" value="' +
+      escapeHtml(String(cpc.default)) +
+      '" />' +
+      "</div></div>"
+    );
+  }
+
+  function deriveTcoComponent(scale, millions) {
+    if (!scale) {
+      return 0;
+    }
+    if (scale.starts_at_m && millions < scale.starts_at_m) {
+      return scale.min || 0;
+    }
+    var raw = (scale.base || 0) + (scale.per_million || 0) * millions;
+    var step = scale.step || 1;
+    var clamped = Math.min(scale.max, Math.max(scale.min || 0, raw));
+    return Math.round(clamped / step) * step;
+  }
+
+  function renderTcoCalculator(config) {
+    var calc = config.tco && config.tco.calculator;
+    if (!calc || !calc.fields || !calc.fields.length) {
+      return "";
+    }
+    var labels = calc.labels || {};
+    var silentCfg = calc.silent_reject || {};
+    var volume = calc.volume || {};
+    var volumeHtml = volume.id
+      ? '<div class="site-tco-calculator__field site-tco-calculator__field--volume" data-tco-field="' +
+        escapeHtml(volume.id) +
+        '">' +
+        '<div class="site-tco-calculator__label-row">' +
+        "<span>" +
+        escapeHtml(volume.label || "Your monthly clicks / events") +
+        "</span>" +
+        '<span data-tco-value="' +
+        escapeHtml(volume.id) +
+        '"></span>' +
+        "</div>" +
+        '<input type="range" data-tco-input="' +
+        escapeHtml(volume.id) +
+        '" data-tco-volume="1" min="' +
+        escapeHtml(String(volume.min || 1)) +
+        '" max="' +
+        escapeHtml(String(volume.max || 100)) +
+        '" step="' +
+        escapeHtml(String(volume.step || 1)) +
+        '" value="' +
+        escapeHtml(String(volume.default || 10)) +
+        '" aria-valuemin="' +
+        escapeHtml(String(volume.min || 1)) +
+        '" aria-valuemax="' +
+        escapeHtml(String(volume.max || 100)) +
+        '" aria-valuenow="' +
+        escapeHtml(String(volume.default || 10)) +
+        '" />' +
+        "</div>"
+      : "";
+
+    var fieldsHtml = calc.fields
+      .map(function (field) {
+        return (
+          '<div class="site-tco-calculator__field' +
+          (field.derived ? " site-tco-calculator__field--derived" : "") +
+          '" data-tco-field="' +
+          escapeHtml(field.id) +
+          '">' +
+          '<div class="site-tco-calculator__label-row">' +
+          "<span>" +
+          escapeHtml(field.label || field.id) +
+          "</span>" +
+          '<span data-tco-value="' +
+          escapeHtml(field.id) +
+          '"></span>' +
+          "</div>" +
+          '<input type="range" data-tco-input="' +
+          escapeHtml(field.id) +
+          '" min="' +
+          escapeHtml(String(field.min)) +
+          '" max="' +
+          escapeHtml(String(field.max)) +
+          '" step="' +
+          escapeHtml(String(field.step || 1)) +
+          '" value="' +
+          escapeHtml(String(field.default)) +
+          '" aria-valuemin="' +
+          escapeHtml(String(field.min)) +
+          '" aria-valuemax="' +
+          escapeHtml(String(field.max)) +
+          '" aria-valuenow="' +
+          escapeHtml(String(field.default)) +
+          '" />' +
+          (field.hint
+            ? '<p class="site-tco-calculator__field-hint">' + escapeHtml(field.hint) + "</p>"
+            : "") +
+          "</div>"
+        );
+      })
+      .join("");
+
+    return (
+      '<div class="site-tco__calculator">' +
+      '<div class="site-tco-calculator" data-site-tco-calculator>' +
+      '<h3 class="site-tco-calculator__title">' +
+      escapeHtml(calc.title || uiText(config, "calc_stack_today", "Stack cost estimate")) +
+      "</h3>" +
+      '<div class="site-tco-calculator__fields">' +
+      volumeHtml +
+      fieldsHtml +
+      "</div>" +
+      '<div class="site-tco-calculator__totals">' +
+      '<div class="site-tco-calculator__row">' +
+      "<span>" +
+      escapeHtml(labels.stack_today || uiText(config, "calc_stack_today", "Patchwork stack/mo")) +
+      "</span>" +
+      '<span data-tco-total="patchwork"></span>' +
+      "</div>" +
+      '<div class="site-tco-calculator__row">' +
+      '<span data-tco-label="bidshard"></span>' +
+      '<span data-tco-total="bidshard"></span>' +
+      "</div>" +
+      '<div class="site-tco-calculator__row site-tco-calculator__row--savings">' +
+      "<span>" +
+      escapeHtml(labels.savings || uiText(config, "calc_savings", "Illustrative stack difference/mo")) +
+      "</span>" +
+      '<span data-tco-total="savings"></span>' +
+      "</div>" +
+      (labels.stack_savings_note
+        ? '<p class="site-tco-calculator__stack-note">' + escapeHtml(labels.stack_savings_note) + "</p>"
+        : "") +
+      "</div>" +
+      '<div class="site-tco-calculator__silent" data-tco-silent>' +
+      (silentCfg.not_in_stack
+        ? '<p class="site-tco-calculator__silent-not-in-stack">' + escapeHtml(silentCfg.not_in_stack) + "</p>"
+        : "") +
+      '<p class="site-tco-calculator__silent-label">' +
+      escapeHtml((calc.silent_reject && calc.silent_reject.label) || "") +
+      "</p>" +
+      renderTcoSilentFields(calc, labels) +
+      '<p class="site-tco-calculator__silent-value" data-tco-total="silent"></p>' +
+      '<p class="site-tco-calculator__silent-hint">' +
+      escapeHtml((calc.silent_reject && calc.silent_reject.hint) || "") +
+      "</p>" +
+      "</div>" +
+      '<p class="site-tco-calculator__disclaimer">' +
+      escapeHtml(labels.disclaimer || "") +
+      "</p>" +
+      "</div></div>"
+    );
+  }
+
+  function wireTcoCalculator(config) {
+    var root = document.querySelector("[data-site-tco-calculator]");
+    if (!root) {
+      return;
+    }
+    var calc = config.tco && config.tco.calculator;
+    if (!calc) {
+      return;
+    }
+    var labels = calc.labels || {};
+    var licenses = calc.licenses || {};
+    var starterPrice = Number(licenses.starter && licenses.starter.price) || 129;
+    var proPrice = Number(licenses.pro && licenses.pro.price) || 399;
+    var derive = calc.derive || {};
+    var silentCfg = calc.silent_reject || {};
+
+    function fieldInput(id) {
+      return root.querySelector('[data-tco-input="' + id + '"]');
+    }
+
+    function fieldValue(id) {
+      var input = fieldInput(id);
+      if (!input) {
+        return 0;
+      }
+      return Number(input.value) || 0;
+    }
+
+    function setFieldValue(id, value) {
+      var input = fieldInput(id);
+      if (!input) {
+        return;
+      }
+      input.value = String(value);
+      input.setAttribute("aria-valuenow", String(value));
+    }
+
+    function setDisplay(id, text) {
+      var node = root.querySelector('[data-tco-value="' + id + '"]');
+      if (node) {
+        node.textContent = text;
+      }
+    }
+
+    function syncDerivedFromVolume() {
+      if (!calc.volume || !calc.volume.id) {
+        return;
+      }
+      var millions = fieldValue(calc.volume.id);
+      calc.fields.forEach(function (field) {
+        if (!field.derived || !derive[field.id]) {
+          return;
+        }
+        setFieldValue(field.id, deriveTcoComponent(derive[field.id], millions));
+      });
+      setDisplay(calc.volume.id, formatMillions(millions, calc.volume.unit || "M"));
+    }
+
+    function resolveLicense(ivtSpend) {
+      if (ivtSpend > 0) {
+        return {
+          price: proPrice,
+          label: labels.bidshard_stack_pro || "BidShard license (Pro, IVT included) + same VPS/mo",
+        };
+      }
+      return {
+        price: starterPrice,
+        label: labels.bidshard_stack_starter || "BidShard license (Starter) + same VPS/mo",
+      };
+    }
+
+    function refresh() {
+      var tracker = fieldValue("tracker");
+      var cloaker = fieldValue("cloaker");
+      var ivt = fieldValue("ivt");
+      var vps = fieldValue("vps");
+      var patchwork = tracker + cloaker + ivt + vps;
+      var license = resolveLicense(ivt);
+      var bidshard = license.price + vps;
+      var savings = patchwork - bidshard;
+
+      setDisplay("tracker", formatUsd(tracker));
+      setDisplay("cloaker", formatUsd(cloaker));
+      setDisplay("ivt", formatUsd(ivt));
+      setDisplay("vps", formatUsd(vps));
+
+      var bidLabel = root.querySelector('[data-tco-label="bidshard"]');
+      if (bidLabel) {
+        bidLabel.textContent = license.label;
+      }
+
+      var patchNode = root.querySelector('[data-tco-total="patchwork"]');
+      var bidNode = root.querySelector('[data-tco-total="bidshard"]');
+      var saveNode = root.querySelector('[data-tco-total="savings"]');
+      if (patchNode) {
+        patchNode.textContent = formatUsd(patchwork);
+      }
+      if (bidNode) {
+        bidNode.textContent = formatUsd(bidshard);
+      }
+      if (saveNode) {
+        if (savings >= 0) {
+          saveNode.textContent =
+            (labels.savings_positive || "Lower than patchwork by") + " " + formatUsd(savings);
+        } else {
+          saveNode.textContent =
+            (labels.savings_negative || "Higher than patchwork by") + " " + formatUsd(Math.abs(savings));
+        }
+      }
+
+      var millions = calc.volume && calc.volume.id ? fieldValue(calc.volume.id) : 10;
+      var junkPct = fieldValue("silent_junk") / 100;
+      if (!fieldInput("silent_junk")) {
+        junkPct = Number(silentCfg.junk_pct && silentCfg.junk_pct.default) / 100 || 0.12;
+      }
+      var avgCpcCents = fieldValue("silent_cpc");
+      if (!fieldInput("silent_cpc")) {
+        avgCpcCents = Number(silentCfg.avg_cpc && silentCfg.avg_cpc.default) || 4;
+      }
+      var avgCpc = avgCpcCents / 100;
+      var silentSaved = millions * 1000000 * junkPct * avgCpc;
+      setDisplay("silent_junk", formatTcoJunkPct(fieldValue("silent_junk") || (silentCfg.junk_pct && silentCfg.junk_pct.default) || 12));
+      setDisplay("silent_cpc", formatTcoCpc(avgCpcCents));
+      var silentWrap = root.querySelector("[data-tco-silent]");
+      var silentNode = root.querySelector('[data-tco-total="silent"]');
+      if (silentWrap && silentNode) {
+        silentNode.textContent = formatUsd(silentSaved);
+      }
+    }
+
+    root.querySelectorAll("input[type='range']").forEach(function (input) {
+      input.addEventListener("input", function () {
+        if (input.getAttribute("data-tco-volume") === "1") {
+          syncDerivedFromVolume();
+        }
+        refresh();
+      });
+    });
+
+    syncDerivedFromVolume();
+    refresh();
+  }
+
   function renderTco(config) {
     var root = document.querySelector("[data-site-tco]");
     if (!root || !config.tco) {
@@ -586,7 +972,7 @@
               '<li class="site-tco-card__item">' +
               '<span class="site-tco-card__bullet" aria-hidden="true"></span>' +
               "<span>" +
-              escapeHtml(line) +
+              escapeHtml(copyLineMeta(line).text) +
               "</span></li>"
             );
           })
@@ -605,6 +991,9 @@
           '<ul class="site-tco-card__list">' +
           items +
           "</ul>" +
+          (col.summary
+            ? '<p class="site-tco-card__summary">' + escapeHtml(col.summary) + "</p>"
+            : "") +
           (col.footnote
             ? '<p class="site-tco-card__footnote">' + escapeHtml(col.footnote) + "</p>"
             : "") +
@@ -629,7 +1018,9 @@
       '<div class="site-tco__grid">' +
       columns +
       "</div>" +
+      renderTcoCalculator(config) +
       "</div>";
+    wireTcoCalculator(config);
   }
 
   function renderPricing(config) {
@@ -833,7 +1224,7 @@
             '<span class="site-capabilities-compact__icon">' +
             siteIcon("check", "site-icon--sm") +
             '</span><span class="site-capabilities-compact__text">' +
-            escapeHtml(line) +
+            escapeHtml(copyLineMeta(line).text) +
             "</span></li>"
           );
         })
@@ -1112,7 +1503,7 @@
     var version = offer.version || "2026-09-09";
     var points = (offer.points || [])
       .map(function (line) {
-        return "<li>" + escapeHtml(line) + "</li>";
+        return "<li>" + escapeHtml(copyLineMeta(line).text) + "</li>";
       })
       .join("");
 
@@ -1340,8 +1731,9 @@
   function initDocs(config) {
     updateLangSwitch(config);
     applyTheme(document.documentElement.getAttribute("data-theme") || "dark");
+    var homeHref = siteLocale() === "uk" ? "/uk/" : "/";
     document.querySelectorAll(".site-doc-header a[href='index.html'], .site-doc-back").forEach(function (link) {
-      link.setAttribute("href", siteLocale() === "uk" ? "/uk/" : "/");
+      link.setAttribute("href", homeHref);
     });
     document.querySelectorAll(".site-doc-header__nav a[href='offer.html']").forEach(function (link) {
       link.setAttribute("href", offerPageHref(config));
@@ -1349,9 +1741,81 @@
     document.querySelectorAll(".site-doc-header__nav a[href='docs.html']").forEach(function (link) {
       link.setAttribute("href", docsPageHref(config));
     });
+    document.querySelectorAll("a[href='operators.html']").forEach(function (link) {
+      link.setAttribute("href", operatorsPageHref(config));
+    });
     document.querySelectorAll(".site-doc-actions a[href='docs.html']").forEach(function (link) {
       link.setAttribute("href", docsPageHref(config));
     });
+    document.querySelectorAll("a[href='index.html#pricing'], a[href='index.html#tco']").forEach(function (link) {
+      var hash = link.getAttribute("href").split("#")[1] || "";
+      link.setAttribute("href", homeHref + "#" + hash);
+    });
+  }
+
+  function mermaidThemeVariables(isLight) {
+    if (isLight) {
+      return {
+        background: "transparent",
+        primaryColor: "#ffffff",
+        primaryTextColor: "#2c2c2c",
+        primaryBorderColor: "#c8cacf",
+        secondaryColor: "#fafbfc",
+        tertiaryColor: "#ebeef3",
+        lineColor: "#6b7280",
+        textColor: "#2c2c2c",
+        mainBkg: "#ffffff",
+        nodeBorder: "#c8cacf",
+        clusterBkg: "#fafbfc",
+        clusterBorder: "#d1d5db",
+        titleColor: "#234d6e",
+        edgeLabelBackground: "#ffffff",
+        nodeTextColor: "#2c2c2c",
+        fontFamily: "Google Sans, system-ui, sans-serif",
+      };
+    }
+    return {
+      darkMode: true,
+      background: "transparent",
+      primaryColor: "#333333",
+      primaryTextColor: "#d4d4d4",
+      primaryBorderColor: "#616161",
+      secondaryColor: "#2e2e2e",
+      tertiaryColor: "#282828",
+      lineColor: "#8a8a8a",
+      textColor: "#d4d4d4",
+      mainBkg: "#333333",
+      nodeBorder: "#616161",
+      clusterBkg: "#282828",
+      clusterBorder: "#4a4a4a",
+      titleColor: "#8ec8f0",
+      edgeLabelBackground: "#333333",
+      nodeTextColor: "#d4d4d4",
+      fontFamily: "Google Sans, system-ui, sans-serif",
+    };
+  }
+
+  function renderDocsMermaid() {
+    var blocks = document.querySelectorAll(".site-doc-mermaid");
+    if (!blocks.length || typeof mermaid === "undefined") {
+      return;
+    }
+    var isLight = document.documentElement.getAttribute("data-theme") === "light";
+    mermaid.initialize({
+      startOnLoad: false,
+      theme: "base",
+      themeVariables: mermaidThemeVariables(isLight),
+      securityLevel: "strict",
+      flowchart: { curve: "basis", htmlLabels: true, padding: 14 },
+    });
+    blocks.forEach(function (el) {
+      if (!el.dataset.mermaidSource) {
+        el.dataset.mermaidSource = el.textContent.trim();
+      }
+      el.removeAttribute("data-processed");
+      el.innerHTML = el.dataset.mermaidSource;
+    });
+    mermaid.run({ nodes: Array.from(blocks) }).catch(function () {});
   }
 
   function initOffer(config) {

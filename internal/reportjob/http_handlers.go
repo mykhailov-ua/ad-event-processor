@@ -3,6 +3,7 @@ package reportjob
 import (
 	"context"
 	"encoding/json"
+	"errors"
 	"fmt"
 	"net/http"
 	"time"
@@ -60,6 +61,9 @@ func (h *HTTPHandlers) registerReportJobs(mux *http.ServeMux) {
 	mux.HandleFunc("GET /api/v1/reports/jobs/{id}", limit(permAny(readExports, h.getReportJob)))
 	mux.HandleFunc("GET /api/v1/reports/jobs/{id}/download", limit(permAny(readExports, h.downloadReportJob)))
 	mux.HandleFunc("DELETE /api/v1/reports/jobs/{id}", limit(permAny(runExports, h.deleteReportJob)))
+	mux.HandleFunc("POST /api/v1/reports/jobs/{id}/rerun", limit(permAny(runExports, h.rerunReportJob)))
+	mux.HandleFunc("GET /api/v1/reports/notifications", limit(perm("exports:read", h.listReportExportNotifications)))
+	mux.HandleFunc("POST /api/v1/reports/notifications/{id}/ack", limit(perm("exports:read", h.ackReportExportNotification)))
 }
 
 func (h *HTTPHandlers) postReportJob(w http.ResponseWriter, r *http.Request) {
@@ -140,6 +144,10 @@ func (h *HTTPHandlers) downloadReportJob(w http.ResponseWriter, r *http.Request)
 			httpresponse.Error(w, http.StatusNotFound, "NOT_FOUND", "job not found")
 			return
 		}
+		if errors.Is(err, ErrUseSpreadsheetURL) {
+			httpresponse.Error(w, http.StatusConflict, "USE_SPREADSHEET_URL", "open spreadsheet_url from job status")
+			return
+		}
 		httpresponse.Error(w, http.StatusConflict, "NOT_READY", SanitizeExportJobError(err.Error()))
 		return
 	}
@@ -162,6 +170,8 @@ func reportJobDownloadContentType(status ReportJobStatusDTO) string {
 		return "application/zip"
 	case status.Format == "json" || status.ReportKey == CampaignImportValidationReportKey:
 		return "application/json"
+	case status.Format == "xlsx":
+		return "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet"
 	default:
 		return "text/csv"
 	}
@@ -174,8 +184,77 @@ func reportJobDownloadFilename(status ReportJobStatusDTO) string {
 		ext = "zip"
 	case status.Format == "json" || status.ReportKey == CampaignImportValidationReportKey:
 		ext = "json"
+	case status.Format == "xlsx":
+		ext = "xlsx"
 	}
 	return status.ReportKey + "." + ext
+}
+
+func (h *HTTPHandlers) rerunReportJob(w http.ResponseWriter, r *http.Request) {
+	jobID := r.PathValue("id")
+	status, ok := h.Runner.GetJob(r.Context(), jobID)
+	if !ok {
+		httpresponse.Error(w, http.StatusNotFound, "NOT_FOUND", "job not found")
+		return
+	}
+	if h.AuthorizeCustomerAccess != nil {
+		if err := h.AuthorizeCustomerAccess(r, status.CustomerID); err != nil {
+			h.writeServiceError(w, err)
+			return
+		}
+	}
+	idemKey := r.Header.Get("Idempotency-Key")
+	if idemKey == "" {
+		idemKey = "rerun-" + jobID
+	}
+	newJobID, err := h.Runner.RerunJob(r.Context(), jobID, idemKey)
+	if err != nil {
+		msg := err.Error()
+		if msg == "job not found" {
+			httpresponse.Error(w, http.StatusNotFound, "NOT_FOUND", msg)
+			return
+		}
+		if !isSafeExportValidationMessage(msg) {
+			msg = SanitizeExportJobError(msg)
+		}
+		httpresponse.Error(w, http.StatusBadRequest, "BAD_REQUEST", msg)
+		return
+	}
+	newStatus, _ := h.Runner.GetJob(r.Context(), newJobID)
+	httpresponse.JSON(w, http.StatusCreated, newStatus)
+}
+
+func (h *HTTPHandlers) listReportExportNotifications(w http.ResponseWriter, r *http.Request) {
+	userID := exportActorLabel(r.Context())
+	if userID == "" {
+		httpresponse.Error(w, http.StatusUnauthorized, "UNAUTHORIZED", "operator session required")
+		return
+	}
+	list, err := h.Runner.ListExportNotifications(r.Context(), userID, 20)
+	if err != nil {
+		httpresponse.Error(w, http.StatusBadRequest, "BAD_REQUEST", err.Error())
+		return
+	}
+	httpresponse.JSON(w, http.StatusOK, list)
+}
+
+func (h *HTTPHandlers) ackReportExportNotification(w http.ResponseWriter, r *http.Request) {
+	userID := exportActorLabel(r.Context())
+	if userID == "" {
+		httpresponse.Error(w, http.StatusUnauthorized, "UNAUTHORIZED", "operator session required")
+		return
+	}
+	notificationID := r.PathValue("id")
+	dto, ok, err := h.Runner.AckExportNotification(r.Context(), userID, notificationID)
+	if err != nil {
+		httpresponse.Error(w, http.StatusBadRequest, "BAD_REQUEST", err.Error())
+		return
+	}
+	if !ok {
+		httpresponse.Error(w, http.StatusNotFound, "NOT_FOUND", "notification not found")
+		return
+	}
+	httpresponse.JSON(w, http.StatusOK, dto)
 }
 
 func (h *HTTPHandlers) writeServiceError(w http.ResponseWriter, err error) {

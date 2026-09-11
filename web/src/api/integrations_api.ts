@@ -34,6 +34,12 @@ import type {
   UpsertPlatformCampaignLinkRequest,
 } from './types.js';
 
+export type GoogleSheetsIntegrationStatus = {
+  connected?: boolean;
+  account_email?: string;
+  message?: string;
+};
+
 export async function listCostSyncNetworks(signal?: AbortSignal): Promise<CostSyncNetworkSchema[]> {
   return apiJsonArray<CostSyncNetworkSchema>('/api/v1/cost-sync/networks', { signal });
 }
@@ -383,4 +389,21 @@ export async function setPlatformCampaignBudget(
       signal,
     }
   );
+}
+
+export async function getGoogleSheetsStatus(
+  signal?: AbortSignal
+): Promise<GoogleSheetsIntegrationStatus> {
+  return apiJson<GoogleSheetsIntegrationStatus>('/api/v1/integrations/google-sheets/status', {
+    signal,
+  });
+}
+
+export const GOOGLE_SHEETS_CONNECT_PATH = '/api/v1/integrations/google-sheets/connect';
+
+export async function disconnectGoogleSheets(signal?: AbortSignal): Promise<StatusOKResponse> {
+  return apiJson<StatusOKResponse>('/api/v1/integrations/google-sheets', {
+    method: 'DELETE',
+    signal,
+  });
 }

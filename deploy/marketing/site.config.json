@@ -32,6 +32,7 @@
     "appliance_screenshot_alt": "BidShard admin Settings page with license JWT field",
     "docs_href": "/docs.html",
     "demo_href": "/demo.html",
+    "operators_href": "/operators.html",
     "home_href": "/",
     "offer_href": "/offer.html",
     "hero_demo_cta": "View demo"
@@ -66,7 +67,7 @@
       "Ingest budget: filter chain and budget debit before async enqueue (sub-100ms target on /track)",
       "At most one Redis script per accepted event — or zero when local quanta covers the shard",
       "Processor worker settles Postgres spend and batches ClickHouse; HTTP 202 means accepted, not yet stored",
-      "Control API (:8188) drives RBAC, outbox, and billing; ML scoring runs in batch sidecars, not on ingest"
+      "Control API (:8188): RBAC, outbox, billing. IVT detector and fraud-scorer are cold-path sidecars — batch jobs on ClickHouse, never synchronous model inference on /track"
     ],
     "flow": {
       "aria_label": "Traffic flow diagram",
@@ -103,8 +104,12 @@
         "body": "Conversion /track verifies inbound postback signatures; failed partner deliveries sit in DLQ with replay — disputes backed by event IDs, not screenshots."
       },
       {
+        "title": "LightGBM batch scorer, not LLM on ingest",
+        "body": "fraud-scorer (Scale+) runs gradient-boosting (LightGBM) on scheduled ClickHouse batches. Scores land in Redis boost keys; the tracker hot path does snapshot lookup only — no chat API, no per-click external inference."
+      },
+      {
         "title": "Optional depth when licensed",
-        "body": "Broker WAL, eBPF edge drops, OpenRTB auction, fraud-scorer sidecar — add when you need them, not required for a pilot."
+        "body": "Broker WAL, eBPF edge drops, OpenRTB live auction — add when you need them, not required for a pilot."
       }
     ],
     "cta": "Read full architecture",
@@ -186,15 +191,30 @@
       "title": "Monetize inventory, not just buy traffic",
       "body": "Live OpenRTB bid endpoint on your metal — take programmatic demand without bolting on a separate ad server stack.",
       "icon": "auction"
+    },
+    {
+      "id": "xdp",
+      "tier": "Enterprise",
+      "title": "L4 junk hits your wire bill first",
+      "body": "eBPF XDP edge drops flood traffic before it reaches your tracker or bandwidth invoice — for installs under heavy bot waves or DDoS.",
+      "icon": "shield"
+    },
+    {
+      "id": "capi",
+      "tier": "Starter+",
+      "title": "Conversions networks can optimize on",
+      "body": "Meta, Google, and TikTok CAPI run on your VPS — real postback signal to the ad stack, not a Zapier relay or half-synced browser pixel.",
+      "icon": "capi"
     }
   ],
   "capabilities_compact": [
+    "Meta / Google / TikTok CAPI — networks bid on real conversions (Starter+)",
+    "Telegram Mini App flows — launch funnels without a second SaaS bill (Starter+)",
     "Click routing and S2S postbacks — spend only on traffic you accept",
     "Silent reject and rule filters — less budget burned on junk",
+    "Fraud scoring on your data in the background — not chat AI on every click, no token API bills",
     "Cost sync from 25 ad networks — ROI from real network numbers",
-    "Meta / Google / TikTok CAPI — networks bid on real conversions",
     "Smart alerts to Slack or Telegram — act before the day ends red",
-    "Telegram Mini App flows — launch funnels without extra SaaS",
     "Team RBAC and API keys — fewer costly operator mistakes",
     "Export bundles for partner disputes and month-end reconciliation",
     "OpenRTB bid endpoint — programmatic revenue on Network tier"
@@ -215,29 +235,79 @@
     "subtitle": "A tracker-only license looks cheap until you add VPS, bot filtering, IVT tooling, and the hours you spend keeping PHP stacks alive. BidShard is one install on your VPS or dedicated server — routing, budgets, antifraud, and reporting under your control.",
     "columns": [
       {
-        "label": "Typical self-hosted stack",
+        "label": "Patchwork stack",
         "items": [
           "Tracker license ($50–130/mo)",
-          "VPS or dedicated sized for peak clicks ($40–150/mo)",
           "Cloaker or bot-filter SaaS ($300–1,000/mo)",
-          "IVT / fraud analytics (extra service or infra)",
-          "Ops time: runtime tuning, patches, backups"
+          "IVT / fraud analytics ($0–200/mo extra)",
+          "VPS sized for peak clicks ($40–150/mo)",
+          "Ops time: PHP/runtime tuning, patches, backups, postback fires"
         ],
-        "footnote": "Line items stack before your first optimized campaign."
+        "summary": "Example total: often ~$700–1,200+/mo (illustrative, before ad spend)",
+        "footnote": "Your vendors and hours vary — this is a planning scenario, not a quote."
       },
       {
-        "label": "BidShard on your metal",
+        "label": "BidShard stack",
         "highlight": true,
         "items": [
-          "One license from $129/mo — stop paying for cloaker + tracker",
-          "Go ingest: more revenue per GB RAM on the same box",
-          "Silent reject — less spend on traffic that never converts",
-          "IVT on your ClickHouse from Pro ($399/mo)",
-          "Software + JWT on your metal — margin stays yours"
+          "License from $129/mo (Starter) — cloaker-class protection built in",
+          "Same VPS you already pay for — not included in the license",
+          "Go ingest (gnet): higher peak RPS per GB RAM on the same box — sizing varies",
+          "One-line install (get.sh); offline JWT in Settings — no license-server ping",
+          "IVT from Pro ($399/mo) when you need ML invalid-traffic detection"
         ],
-        "footnote": "Often below the patched-together monthly total."
+        "summary": "License + VPS — often one vendor instead of four",
+        "footnote": "Compare tiers on Pricing. You still own VPS patches and backups."
       }
-    ]
+    ],
+    "calculator": {
+      "title": "Stack cost estimate (illustrative)",
+      "volume": {
+        "id": "volume",
+        "label": "Your monthly clicks / events",
+        "min": 1,
+        "max": 100,
+        "default": 10,
+        "step": 1,
+        "unit": "M"
+      },
+      "licenses": {
+        "starter": { "price": 129, "name": "Starter" },
+        "pro": { "price": 399, "name": "Pro" }
+      },
+      "derive": {
+        "tracker": { "base": 79, "per_million": 2, "min": 50, "max": 150, "step": 5 },
+        "cloaker": { "base": 300, "per_million": 15, "min": 0, "max": 1000, "step": 25 },
+        "ivt": { "base": 0, "per_million": 10, "min": 0, "max": 300, "step": 25, "starts_at_m": 2 },
+        "vps": { "base": 40, "per_million": 4, "min": 40, "max": 200, "step": 10 }
+      },
+      "fields": [
+        { "id": "tracker", "label": "Tracker license (patchwork)", "min": 50, "max": 150, "default": 99, "step": 5, "derived": true },
+        { "id": "cloaker", "label": "Cloaker / bot-filter SaaS", "min": 0, "max": 1000, "default": 450, "step": 25, "derived": true, "hint": "Volume-derived floor starts ~$300/mo (mid-market cloaker). Set to $0 if you run tracker-only with no cloaker SaaS." },
+        { "id": "ivt", "label": "IVT / fraud tooling (3rd party)", "min": 0, "max": 300, "default": 100, "step": 25, "derived": true },
+        { "id": "vps", "label": "VPS / dedicated", "min": 40, "max": 200, "default": 80, "step": 10, "derived": true }
+      ],
+      "silent_reject": {
+        "junk_pct": { "min": 0, "max": 30, "default": 12, "step": 1 },
+        "avg_cpc": { "min": 1, "max": 20, "default": 4, "step": 1 },
+        "label": "Saved on junk traffic handled by Silent Reject (illustrative)",
+        "hint": "Junk share × avg paid click cost — budget not debited on 202 decoy. Not a performance guarantee.",
+        "not_in_stack": "Not included in the stack difference above — separate media-budget model."
+      },
+      "labels": {
+        "stack_today": "Patchwork stack/mo",
+        "bidshard_stack": "BidShard license + same VPS/mo",
+        "bidshard_stack_pro": "BidShard license (Pro, IVT included) + same VPS/mo",
+        "bidshard_stack_starter": "BidShard license (Starter) + same VPS/mo",
+        "savings": "Illustrative stack difference/mo",
+        "savings_positive": "Lower than patchwork by",
+        "savings_negative": "Higher than patchwork by",
+        "stack_savings_note": "Stack savings assume you replace cloaker SaaS. Tracker-only patchwork (cloaker $0) can be cheaper than BidShard Starter.",
+        "silent_junk_label": "Assumed junk share of events",
+        "silent_cpc_label": "Assumed avg cost per paid click",
+        "disclaimer": "Estimate only — not a quote. VPS priced separately on both sides. BidShard license switches to Pro ($399) when IVT tooling is in your stack; IVT is included in Pro — no separate IVT line on the BidShard side."
+      }
+    }
   },
   "plans": [
     {
@@ -248,11 +318,10 @@
       "tagline": "Free trial on your VPS.",
       "specs_label": "Pilot includes",
       "features": [
-        "10-day trial · 1 server · hard HWID bind",
-        "Full /track routing + landing bundles on your VPS",
+        { "text": "10-day trial · 1 server · full click routing on your VPS", "highlight": true },
+        { "text": "Silent reject + rule antifraud — test budget protection free", "highlight": true },
+        { "text": "Margin Guard ROI auto-pause", "highlight": true },
         "Rule antifraud: geo, schedule, device, consent filters",
-        "Silent reject + fraud blacklist (rule tier)",
-        "Margin Guard ROI auto-pause",
         "S2S postbacks + cost sync from ad networks",
         "Admin console · 3 API keys · 1 tenant",
         "Not included: IVT ML, ML fraud boost, OpenRTB, slot migration"
@@ -266,16 +335,17 @@
       "name": "Starter",
       "price": "$129",
       "period": "/ month",
-      "tagline": "Solo affiliates off cloud trackers.",
-      "specs_label": "Starter — ingest & margin",
+      "tagline": "Keitaro-class routing — plus CAPI and Telegram Mini Apps in one license.",
+      "specs_label": "Starter — CAPI, Mini Apps & margin",
       "features": [
+        { "text": "Meta / Google / TikTok CAPI — networks bid on real conversions", "highlight": true },
+        { "text": "Telegram Mini App flows — funnels in Telegram without a second SaaS bill", "highlight": true },
+        { "text": "Silent reject — 202 decoy, budget not debited", "highlight": true },
         "Unlimited campaigns & events on your metal",
         "Click routing, flows, landers, offer walls",
-        "Silent reject — 202 decoy, budget not debited",
         "Rule antifraud + geo/schedule/device filters",
         "Margin Guard + cost sync (25 ad networks)",
-        "S2S postbacks, Meta/Google/TikTok CAPI",
-        "Telegram Mini App flows",
+        "S2S postbacks",
         "Smart alerts to Slack or Telegram",
         "1 host · 5 API keys · 3 tenants",
         "Report exports up to 5 MiB per chunk"
@@ -288,13 +358,13 @@
       "name": "Pro",
       "price": "$399",
       "period": "/ month",
-      "tagline": "Find revenue leaks in your own data.",
-      "specs_label": "Pro — analytics & audit",
+      "tagline": "Stop paying for bot traffic and stolen conversions.",
+      "specs_label": "Pro — IVT + conversion audit",
       "features": [
         "Everything in Starter",
-        "IVT ML detector sidecar (ClickHouse batch)",
-        "Postback trail — hop-by-hop conversion audit",
-        "Fraud stream + silent reject analytics in CH",
+        { "text": "IVT on your data — catch invalid traffic before it eats budget", "highlight": true },
+        { "text": "Postback trail — see where conversions disappear (network, tracker, affiliate)", "highlight": true },
+        { "text": "Fraud stream + silent reject analytics in ClickHouse", "highlight": true },
         "Multi-host license bind (same deployment)",
         "Team RBAC across tenants",
         "10 API keys · 10 tenants",
@@ -313,11 +383,11 @@
       "specs_label": "Scale — ML intel & migration",
       "features": [
         "Everything in Pro",
-        "ML fraud boost snapshot on hot path",
+        { "text": "Precomputed fraud risk before each click — ML boost snapshot", "highlight": true },
+        { "text": "Slot migration — move shards without idle revenue days", "highlight": true },
+        { "text": "Fraud dispute evidence export bundles", "highlight": true },
         "Moderator intel feed (reviewer traffic signals)",
         "External residential proxy intel on hot read",
-        "Slot migration — move shards without idle days",
-        "Fraud dispute evidence export bundles",
         "Optional mmap broker WAL ingest path",
         "3 host activations · 25 tenants · 25 API keys",
         "Report exports up to 50 MiB per chunk"
@@ -334,10 +404,10 @@
       "specs_label": "Network — programmatic & GEO",
       "features": [
         "Everything in Scale",
-        "OpenRTB live bid endpoint on your metal",
+        { "text": "OpenRTB live bid endpoint on your metal", "highlight": true },
+        { "text": "Multi-region stack — 3 regions in one license", "highlight": true },
+        { "text": "Multi-node ingest across host activations", "highlight": true },
         "RTB catalog + programmatic revenue path",
-        "Multi-region stack (3 regions in license)",
-        "Multi-node ingest across host activations",
         "All Scale intel feeds + dispute exports",
         "10 host activations · 50 tenants · 50 API keys",
         "Report exports up to 100 MiB per chunk"
@@ -350,13 +420,13 @@
       "name": "Enterprise",
       "price": "$2,999+",
       "period": "/ month",
-      "tagline": "Edge scale when margin is mission-critical.",
+      "tagline": "Drop L4 junk before your host bills you for bandwidth.",
       "specs_label": "Enterprise — edge & automation",
       "features": [
         "Everything in Network",
-        "eBPF XDP edge — L4 junk drop before bandwidth bill",
-        "Campaign API sync (ad platform automation)",
-        "Up to 99 regions · 99 host activations",
+        { "text": "eBPF XDP edge — drop L4 flood before it hits tracker or your bandwidth invoice", "highlight": true },
+        { "text": "Campaign API sync — ad platform automation", "highlight": true },
+        { "text": "Up to 99 regions · 99 host activations", "highlight": true },
         "Fingerprint HWID bind for compliance-heavy installs",
         "Vendor SLA channel + custom export limits",
         "999 API keys · unlimited tenants (schema cap)",
@@ -405,7 +475,7 @@
         "cpu": "Single VPS + ML analytics",
         "ram": "12 GB+",
         "disk": "160 GB+ NVMe",
-        "profile": "IVT scoring runs as background jobs on your reporting store. One deployment — extra host slots bind the same install."
+        "profile": "Invalid-traffic scoring as background jobs on your reporting store. One deployment — extra host slots bind the same install."
       },
       {
         "code": "scale",
@@ -414,7 +484,7 @@
         "cpu": "Split: tracker, cache, reporting",
         "ram": "16 GB+ per busy node",
         "disk": "160 GB+ NVMe per node",
-        "profile": "ML fraud signals on the hot path. Move shards between hosts without a full reinstall freeze."
+        "profile": "Precomputed fraud signals at click time. Move shards between hosts without a full reinstall freeze."
       },
       {
         "code": "network",
@@ -482,13 +552,16 @@
     "PointTraffic": "Point traffic",
     "ClickUrlsPostbacksCostSyncYouReLive": "Click URLs, postbacks, cost sync. You're live.",
     "AdEventProcessorRunningOnPort8080OfflineJwtLicenseVerified": "✔ BidShard stack running on port 8080. Offline JWT license verified.",
-    "BuiltForOperatorsWhoHateSurprises": "Built for operators who scale with confidence",
+    "BuiltForOperatorsWhoHateSurprises": "Built for operators who've been burned before",
+    "OperatorsEmpathyTeaser": {
+      "html": "Recognize the patchwork stack and the 3am VPS alert? <a href=\"operators.html\">Read the operator guide</a>."
+    },
     "SelfHosted": "Self-hosted",
     "YouAreTheDataControllerOnYourInfrastructureZeroSharedRecords": "You are the data controller on your infrastructure. Zero shared records — your metal only.",
     "OfflineLicense": "Offline license",
     "NoRecurringLicenseServerPingTelemetryIsStrictlyOffByDefault": "No recurring license server ping to vendor. Telemetry is strictly off by default.",
     "HonestAntifraud": "Layered antifraud",
-    "DeterministicRulesExecuteOnHotPathMlIvtRunAsBackgroundBatchJobs": "Real-time rule filters on the ingest hot path. IVT and ML scoring on your analytics store.",
+    "DeterministicRulesExecuteOnHotPathMlIvtRunAsBackgroundBatchJobs": "Real-time rules on every click. Scale+ reads a precomputed fraud-boost snapshot from Redis — lookup only, no ML inference on /track. Batch IVT/ML runs on ClickHouse in the background.",
     "NotSaas": "Your infrastructure",
     "WeDoNotHostMonitorOrGuaranteeUptimeOnYourCustomVpsServer": "Runs on your VPS under your control. No shared tenant and no vendor lock-in.",
     "NoRoiWarranty": "Host loss & relocation",
@@ -507,6 +580,7 @@
     "HowDoIStart": "How do I start?",
     "SelfHostedLicenseSoftwareForModernMediaBuyers": "self-hosted license software for modern media buyers.",
     "FooterArchitecture": "Architecture",
+    "FooterOperators": "For operators",
     "PublicOffer": "Public offer",
     "ContactsFooter": "Contacts",
     "Telegram": "Telegram",

@@ -61,7 +61,13 @@ func isSafeExportValidationMessage(msg string) bool {
 		strings.Contains(lower, "invalid to timestamp"),
 		strings.Contains(lower, "from must be before to"),
 		strings.Contains(lower, "range exceeds"),
-		strings.Contains(lower, "format must be"):
+		strings.Contains(lower, "format must be"),
+		strings.Contains(lower, "google sheets"),
+		strings.Contains(lower, "google_sheet"),
+		strings.Contains(lower, "spreadsheet_id"),
+		strings.Contains(lower, "compare_from"),
+		strings.Contains(lower, "compare_to"),
+		strings.Contains(lower, "notify."):
 		return true
 	default:
 		return false

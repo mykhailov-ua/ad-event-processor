@@ -492,6 +492,8 @@ type Config struct {
 	TCPTrackerAddrs                     []string
 	ManagementURL                       string
 	AdminPublicURL                      string
+	GoogleSheetsClientID                string
+	GoogleSheetsClientSecret            Secret
 
 	LuaFastPathEnabled bool
 
@@ -924,6 +926,8 @@ func Load() (*Config, error) {
 	if cfg.AdminPublicURL == "" {
 		cfg.AdminPublicURL = cfg.ManagementURL
 	}
+	cfg.GoogleSheetsClientID = os.Getenv("GOOGLE_SHEETS_CLIENT_ID")
+	cfg.GoogleSheetsClientSecret = Secret(os.Getenv("GOOGLE_SHEETS_CLIENT_SECRET"))
 
 	loadControlplaneModules(cfg)
 	loadManagementModules(cfg)

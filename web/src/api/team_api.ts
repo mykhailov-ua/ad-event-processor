@@ -2,10 +2,13 @@ import { apiJson } from './client.js';
 import type {
   InviteTeamMemberRequest,
   TeamBudgetApprovalsListResponse,
+  TeamBudgetApprovalsMineQuery,
   TeamBudgetApprovalsQuery,
   TeamMember,
   TeamMembersListResponse,
   TeamMembersQuery,
+  TeamMetricsQuery,
+  TeamMetricsResponse,
   TeamOverview,
   TeamOverviewQuery,
   UpdateTeamMemberRequest,
@@ -24,6 +27,37 @@ export async function getTeamOverview(
   signal?: AbortSignal
 ): Promise<TeamOverview> {
   return apiJson<TeamOverview>(buildTeamOverviewPath(params), { signal });
+}
+
+export async function getTeamMetrics(
+  params: TeamMetricsQuery,
+  signal?: AbortSignal
+): Promise<TeamMetricsResponse> {
+  const search = new URLSearchParams({ customer_id: params.customer_id });
+  if (params.from) {
+    search.set('from', params.from);
+  }
+  if (params.to) {
+    search.set('to', params.to);
+  }
+  return apiJson<TeamMetricsResponse>(`/api/v1/team/metrics?${search.toString()}`, { signal });
+}
+
+export async function listMyTeamBudgetApprovals(
+  params: TeamBudgetApprovalsMineQuery,
+  signal?: AbortSignal
+): Promise<TeamBudgetApprovalsListResponse> {
+  const search = new URLSearchParams({ customer_id: params.customer_id });
+  if (params.limit != null) {
+    search.set('limit', String(params.limit));
+  }
+  if (params.offset != null) {
+    search.set('offset', String(params.offset));
+  }
+  return apiJson<TeamBudgetApprovalsListResponse>(
+    `/api/v1/team/budget-approvals/mine?${search.toString()}`,
+    { signal }
+  );
 }
 
 export async function listTeamMembers(

@@ -97,9 +97,12 @@ for ch_file in config.yaml config.unix.yaml users.yaml init.sql recon_materializ
   upload "$ROOT/deploy/clickhouse/${ch_file}" "${INSTALL_ROOT}/deploy/clickhouse/${ch_file}"
 done
 
-log "sync postgres migrations"
-remote "mkdir -p '${INSTALL_ROOT}/internal/ingest/migrations'"
-scp "${scp_base[@]}" -r "$ROOT/internal/ingest/migrations/." "${TARGET}:${INSTALL_ROOT}/internal/ingest/migrations/"
+log "sync postgres migrations (ingest, identity, ledger)"
+for migrate_pkg in ingest identity ledger; do
+  remote "mkdir -p '${INSTALL_ROOT}/internal/${migrate_pkg}/migrations'"
+  scp "${scp_base[@]}" -r "$ROOT/internal/${migrate_pkg}/migrations/." \
+    "${TARGET}:${INSTALL_ROOT}/internal/${migrate_pkg}/migrations/"
+done
 
 log "install on target"
 remote "set -euo pipefail

@@ -58,15 +58,20 @@ func (w *ReportScheduleWorker) ProcessOnce(ctx context.Context) (int, error) {
 		spec, idem, err := buildReportJobSpecFromSchedule(row)
 		if err != nil {
 			slog.Warn("report schedule spec invalid", "schedule_id", row.id.String(), "err", err)
+			_ = markReportScheduleEnqueueFailed(ctx, w.pool, row.id.String(), SanitizeExportJobError(err.Error()))
 			continue
 		}
-		// idem from buildReportJobSpecFromSchedule dedupes enqueue per schedule slot minute.
+		if err := w.runner.validateScheduleSheetsOAuth(ctx, row.destination, row.ownerUserID, true); err != nil {
+			slog.Warn("report schedule sheets oauth invalid", "schedule_id", row.id.String(), "err", err)
+			_ = markReportScheduleEnqueueFailed(ctx, w.pool, row.id.String(), SanitizeExportJobError(err.Error()))
+			continue
+		}
 		jobID, err := w.runner.CreateJob(ctx, spec, idem)
 		if err != nil {
 			slog.Warn("report schedule enqueue failed", "schedule_id", row.id.String(), "err", err)
+			_ = markReportScheduleEnqueueFailed(ctx, w.pool, row.id.String(), SanitizeExportJobError(err.Error()))
 			continue
 		}
-		// Best-effort last_job_id; next_run_at already advanced in claimDueReportSchedules txn.
 		if err := markReportScheduleJob(ctx, w.pool, row.id.String(), jobID); err != nil {
 			slog.Warn("report schedule job mark failed", "schedule_id", row.id.String(), "err", err)
 		}

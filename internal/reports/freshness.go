@@ -3,14 +3,29 @@ package reports
 import (
 	"context"
 	"encoding/csv"
+	"fmt"
 	"time"
 
 	"ad-event-processor/internal/database"
 	"ad-event-processor/pkg/coldpath"
 )
 
+func dataFreshnessLabel(dto DataFreshnessDTO) string {
+	if dto.Stale {
+		if dto.CHLagSeconds > 0 {
+			return fmt.Sprintf("Analytics stale (%ds lag)", dto.CHLagSeconds)
+		}
+		return "Analytics stale"
+	}
+	if display := dto.AsOfDisplay; display != "" {
+		return "Updated " + display
+	}
+	return "Live"
+}
+
 func finalizeDataFreshness(dto DataFreshnessDTO) DataFreshnessDTO {
 	dto.AsOfDisplay = coldpath.RFC3339Display(dto.AsOf)
+	dto.FreshnessLabel = dataFreshnessLabel(dto)
 	return dto
 }
 

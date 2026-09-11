@@ -296,6 +296,16 @@ func queryClickLogBrowseCH(
 	return out, total, rows.Err()
 }
 
+func QueryClickLogBrowseRows(
+	ctx context.Context,
+	clickhouseQuery *database.ClickHouseQuery,
+	campaignIDs []uuid.UUID,
+	from, to time.Time,
+	limit, offset int,
+) ([]ClickLogEventDTO, int64, error) {
+	return queryClickLogBrowseCH(ctx, clickhouseQuery, campaignIDs, from, to, limit, offset)
+}
+
 func QueryClickLogTimelineCH(
 	ctx context.Context,
 	clickhouseQuery *database.ClickHouseQuery,

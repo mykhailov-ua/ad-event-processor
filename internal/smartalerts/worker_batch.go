@@ -47,7 +47,10 @@ func (w *Worker) evaluateRulesBatch(ctx context.Context, clickhouseQuery *databa
 			return err
 		}
 		ruleCampaigns[i] = ids
-		if len(ids) == 0 {
+		if len(ids) == 0 && !isTemplateMetric(rule.Metric) {
+			continue
+		}
+		if isTemplateMetric(rule.Metric) {
 			continue
 		}
 		windowStart, windowEnd := alertWindowBounds(now, rule.WindowMinutes)
@@ -94,13 +97,31 @@ func (w *Worker) evaluateRulesBatch(ctx context.Context, clickhouseQuery *databa
 
 	for i, rule := range rules {
 		campaignIDs := ruleCampaigns[i]
-		if len(campaignIDs) == 0 {
+		if !isTemplateMetric(rule.Metric) && len(campaignIDs) == 0 {
 			continue
 		}
 		windowStart, windowEnd := alertWindowBounds(now, rule.WindowMinutes)
 		key := alertMetricWindowKey{metric: rule.Metric, start: windowStart, end: windowEnd}
 		perCampaign := metricsByKey[key]
-		observed := aggregateAlertMetric(rule.Metric, campaignIDs, perCampaign)
+		var observed float64
+		if isTemplateMetric(rule.Metric) {
+			var err error
+			observed, err = queryTemplateMetricObserved(
+				ctx,
+				w,
+				rule.Metric,
+				rule.CustomerID,
+				rule.CampaignID,
+				rule.HasCampaign,
+				windowStart,
+				windowEnd,
+			)
+			if err != nil {
+				return err
+			}
+		} else {
+			observed = aggregateAlertMetric(rule.Metric, campaignIDs, perCampaign)
+		}
 		if !alertThresholdBreached(rule.Operator, observed, rule.Threshold) {
 			continue
 		}
@@ -225,6 +246,9 @@ func (w *Worker) fireAlertRule(ctx context.Context, rule smartAlertRuleRow, wind
 		"observed_value": observed,
 		"window_start":   windowStart.Format(time.RFC3339),
 		"window_end":     windowEnd.Format(time.RFC3339),
+	}
+	if template, ok := parseTemplateFromMetric(rule.Metric); ok {
+		payload["template"] = template
 	}
 	if rule.HasCampaign {
 		payload["campaign_id"] = rule.CampaignID.String()

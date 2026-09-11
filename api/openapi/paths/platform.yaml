@@ -567,7 +567,7 @@ paths:
       tags: [report-schedules]
       operationId: reportSchedulesCreate
       summary: Create report schedule
-      x-permissions: [campaigns:write]
+      x-permissions: [exports:run]
       requestBody:
         required: true
         content:
@@ -605,7 +605,7 @@ paths:
       tags: [report-schedules]
       operationId: reportSchedulesUpdate
       summary: Update report schedule
-      x-permissions: [campaigns:write]
+      x-permissions: [exports:run]
       parameters:
         - $ref: '../openapi.yaml#/components/parameters/UuidPathId'
       requestBody:
@@ -627,12 +627,30 @@ paths:
       tags: [report-schedules]
       operationId: reportSchedulesDelete
       summary: Delete report schedule
-      x-permissions: [campaigns:write]
+      x-permissions: [exports:run]
       parameters:
         - $ref: '../openapi.yaml#/components/parameters/UuidPathId'
       responses:
         '204':
           description: Deleted
+        default:
+          $ref: '../openapi.yaml#/components/responses/Error'
+
+  /api/v1/report-schedules/{id}/run:
+    post:
+      tags: [report-schedules]
+      operationId: reportSchedulesRunNow
+      summary: Enqueue report schedule immediately
+      x-permissions: [exports:run]
+      parameters:
+        - $ref: '../openapi.yaml#/components/parameters/UuidPathId'
+      responses:
+        '202':
+          description: Job enqueued from schedule
+          content:
+            application/json:
+              schema:
+                $ref: '../components/schemas/platform.yaml#/ReportScheduleRunResponse'
         default:
           $ref: '../openapi.yaml#/components/responses/Error'
 
@@ -890,5 +908,53 @@ paths:
             application/json:
               schema:
                 $ref: '../components/schemas/integrations.yaml#/StatusOKResponse'
+        default:
+          $ref: '../openapi.yaml#/components/responses/Error'
+
+  /api/v1/team/metrics:
+    get:
+      tags: [team]
+      operationId: teamMetrics
+      summary: Team aggregate KPIs and owner leaderboard
+      x-permissions: [team:read]
+      parameters:
+        - $ref: '../openapi.yaml#/components/parameters/CustomerIdQueryRequired'
+        - name: from
+          in: query
+          schema:
+            type: string
+            format: date-time
+        - name: to
+          in: query
+          schema:
+            type: string
+            format: date-time
+      responses:
+        '200':
+          description: Team metrics
+          content:
+            application/json:
+              schema:
+                $ref: '../components/schemas/platform.yaml#/TeamMetricsResponse'
+        default:
+          $ref: '../openapi.yaml#/components/responses/Error'
+
+  /api/v1/team/budget-approvals/mine:
+    get:
+      tags: [team]
+      operationId: teamBudgetApprovalsMine
+      summary: Budget approval requests for the authenticated member
+      description: Returns all statuses for the current user; requires membership in the customer.
+      parameters:
+        - $ref: '../openapi.yaml#/components/parameters/CustomerIdQueryRequired'
+        - $ref: '../openapi.yaml#/components/parameters/LimitQuery'
+        - $ref: '../openapi.yaml#/components/parameters/OffsetQuery'
+      responses:
+        '200':
+          description: My approvals page
+          content:
+            application/json:
+              schema:
+                $ref: '../components/schemas/platform.yaml#/TeamBudgetApprovalsListResponse'
         default:
           $ref: '../openapi.yaml#/components/responses/Error'

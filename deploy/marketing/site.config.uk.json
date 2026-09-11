@@ -32,6 +32,7 @@
     "appliance_screenshot_alt": "Сторінка Settings в адмінці BidShard з полем JWT-ліцензії",
     "docs_href": "/uk/docs.html",
     "demo_href": "/uk/demo.html",
+    "operators_href": "/uk/operators.html",
     "home_href": "/uk/",
     "offer_href": "/offer.html",
     "hero_demo_cta": "Переглянути демо"
@@ -66,7 +67,7 @@
       "Бюджет обробки (Ingest budget): ланцюг фільтрів та списання бюджету до асинхронного enqueue (ціль <100ms на /track)",
       "Максимум один Redis-скрипт на прийняту подію — або нуль, коли локальна квота повністю покриває шард",
       "Processor worker фіксує витрати у Postgres та пачками (batch) пише в ClickHouse; HTTP 202 = прийнято в чергу, але ще не збережено в БД",
-      "Control API (:8188) відповідає за RBAC, outbox та білінг; ML-оцінка працює в фонових sidecars, а не на ingest"
+      "Control API (:8188): RBAC, outbox, billing. IVT detector і fraud-scorer — cold-path sidecars: batch jobs на ClickHouse, без синхронного model inference на /track"
     ],
     "flow": {
       "aria_label": "Схема потоку трафіку",
@@ -103,8 +104,12 @@
         "body": "Конверсійний /track перевіряє вхідні підписи постбеків; невдалі доставки партнерам потрапляють у DLQ з можливістю повтору. Спори вирішуються за event ID, а не скріншотами."
       },
       {
+        "title": "LightGBM batch scorer, не LLM на ingest",
+        "body": "fraud-scorer (Scale+) запускає gradient-boosting (LightGBM) у scheduled batch jobs на ClickHouse. Оцінки потрапляють у Redis boost keys; tracker на hot path робить лише snapshot lookup — без chat API та без external inference на кожен клік."
+      },
+      {
         "title": "Гнучкі опції за ліцензією",
-        "body": "Broker WAL, eBPF edge drops, OpenRTB auction, fraud-scorer sidecar — підключайте за потреби, для пілоту вони не обовʼязкові."
+        "body": "Broker WAL, eBPF edge drops, OpenRTB live auction — підключайте за потреби, для пілоту не обовʼязкові."
       }
     ],
     "cta": "Детальніше",
@@ -186,15 +191,30 @@
       "title": "Монетизуйте інвентар, а не лише купуйте трафік",
       "body": "Вбудований OpenRTB bid endpoint прямо на вашому VPS — programmatic demand без додавання окремого ad server у стек.",
       "icon": "auction"
+    },
+    {
+      "id": "xdp",
+      "tier": "Enterprise",
+      "title": "L4-сміття б'є по рахунку за трафік",
+      "body": "eBPF XDP edge відсікає flood до tracker і bandwidth invoice — для інсталів під bot waves або DDoS.",
+      "icon": "shield"
+    },
+    {
+      "id": "capi",
+      "tier": "Starter+",
+      "title": "Конверсії, на яких мережі реально оптимізують",
+      "body": "Meta, Google і TikTok CAPI на вашому VPS — справжній postback-сигнал у ad stack, а не Zapier-проксі чи напівсинхронний browser pixel.",
+      "icon": "capi"
     }
   ],
   "capabilities_compact": [
+    "Meta / Google / TikTok CAPI — оптимізація мереж на реальних конверсіях (Starter+)",
+    "Telegram Mini App flows — воронки в Telegram без другого SaaS (Starter+)",
     "Маршрутизація кліків і S2S postbacks — витрати лише на прийнятий трафік",
     "Silent reject і правилові фільтри — без зливу бюджету на сміттєві візити",
+    "Fraud scoring по ваших даних у фоні — не chat AI на кожен клік і без оплати за API-запити",
     "Синхронізація витрат із 25 рекламними мережами — чесний розрахунок ROI",
-    "Meta / Google / TikTok CAPI — оптимізація мереж на реальних конверсіях",
     "Smart alerts у Slack або Telegram — реагуйте до появи збитків за день",
-    "Telegram Mini App flows — запускайте воронки без сторонніх SaaS",
     "Командний RBAC та API-ключі — захист від дорогих помилок операторів",
     "Export bundles — готова звітність для спорів із партнерками та звірок",
     "OpenRTB bid endpoint — programmatic-доходи на тарифі Network"
@@ -215,29 +235,79 @@
     "subtitle": "Ліцензія трекера здається дешевою, доки ви не додасте VPS, bot filtering, IVT-інструменти та десятки годин на підтримку PHP-стеку. BidShard — це один інстал на ваш VPS: routing, бюджети, antifraud та аналітика повністю під вашим контролем.",
     "columns": [
       {
-        "label": "Типовий self-hosted стек",
+        "label": "Patchwork-стек",
         "items": [
           "Ліцензія трекера ($50–130/міс)",
-          "VPS або dedicated під пікові навантаження ($40–150/міс)",
           "Cloaker або bot-filter SaaS ($300–1 000/міс)",
-          "IVT / fraud-аналітика (окремий сервіс або інфраструктура)",
-          "Ops: налаштування runtime, патчі, бекапи"
+          "IVT / fraud-аналітика ($0–200/міс додатково)",
+          "VPS під пікове навантаження ($40–150/міс)",
+          "Ops: PHP/runtime tuning, патчі, бекапи, postback вночі"
         ],
-        "footnote": "Витрати підсумовуються ще до запуску першої прибуткової кампанії."
+        "summary": "Приклад суми: часто ~$700–1 200+/міс (орієнтир, до ad spend)",
+        "footnote": "Ваші вендори та години різняться — це сценарій планування, не оферта."
       },
       {
-        "label": "BidShard на вашому сервері",
+        "label": "Стек BidShard",
         "highlight": true,
         "items": [
-          "Єдина ліцензія від $129/міс — без окремої оплати cloaker + tracker",
-          "Go ingest: у рази більше обробленого трафіку на 1 GB RAM",
-          "Silent reject — нуль витрат на трафік без конверсій",
-          "IVT на вашому ClickHouse починаючи з Pro ($399/міс)",
-          "ПЗ + JWT на вашому залізі — уся маржа залишається у вас"
+          "Ліцензія від $129/міс (Starter) — захист рівня cloaker у комплекті",
+          "Той самий VPS, який ви вже оплачуєте — не входить у ліцензію",
+          "Go ingest (gnet): вищий peak RPS на 1 GB RAM на тому ж VPS — sizing залежить від трафіку",
+          "Install однією командою (get.sh); offline JWT у Settings — без ping до сервера ліцензій",
+          "IVT з Pro ($399/міс), коли потрібен ML invalid-traffic detection"
         ],
-        "footnote": "Підсумковий чек зазвичай нижчий за суму розрізнених підписок."
+        "summary": "Ліцензія + VPS — часто один вендор замість чотирьох",
+        "footnote": "Порівняйте тарифи в Pricing. VPS patches і backups — на вас."
       }
-    ]
+    ],
+    "calculator": {
+      "title": "Орієнтовна вартість стеку",
+      "volume": {
+        "id": "volume",
+        "label": "Кліків / events на місяць",
+        "min": 1,
+        "max": 100,
+        "default": 10,
+        "step": 1,
+        "unit": "M"
+      },
+      "licenses": {
+        "starter": { "price": 129, "name": "Starter" },
+        "pro": { "price": 399, "name": "Pro" }
+      },
+      "derive": {
+        "tracker": { "base": 79, "per_million": 2, "min": 50, "max": 150, "step": 5 },
+        "cloaker": { "base": 300, "per_million": 15, "min": 0, "max": 1000, "step": 25 },
+        "ivt": { "base": 0, "per_million": 10, "min": 0, "max": 300, "step": 25, "starts_at_m": 2 },
+        "vps": { "base": 40, "per_million": 4, "min": 40, "max": 200, "step": 10 }
+      },
+      "fields": [
+        { "id": "tracker", "label": "Ліцензія трекера (patchwork)", "min": 50, "max": 150, "default": 99, "step": 5, "derived": true },
+        { "id": "cloaker", "label": "Cloaker / bot-filter SaaS", "min": 0, "max": 1000, "default": 450, "step": 25, "derived": true, "hint": "Floor від обсягу ~$300/міс (mid-market cloaker). Поставте $0, якщо tracker-only без cloaker SaaS." },
+        { "id": "ivt", "label": "IVT / fraud tooling (сторонній)", "min": 0, "max": 300, "default": 100, "step": 25, "derived": true },
+        { "id": "vps", "label": "VPS / dedicated", "min": 40, "max": 200, "default": 80, "step": 10, "derived": true }
+      ],
+      "silent_reject": {
+        "junk_pct": { "min": 0, "max": 30, "default": 12, "step": 1 },
+        "avg_cpc": { "min": 1, "max": 20, "default": 4, "step": 1 },
+        "label": "Збережено на junk-трафіку через Silent Reject (орієнтир)",
+        "hint": "Частка junk × avg cost кліку — бюджет не списується на 202 decoy. Не guarantee результату.",
+        "not_in_stack": "Не входить у різницю стеків вище — окрема модель media budget."
+      },
+      "labels": {
+        "stack_today": "Patchwork-стек/міс",
+        "bidshard_stack": "Ліцензія BidShard + той самий VPS/міс",
+        "bidshard_stack_pro": "Ліцензія BidShard (Pro, IVT включено) + той самий VPS/міс",
+        "bidshard_stack_starter": "Ліцензія BidShard (Starter) + той самий VPS/міс",
+        "savings": "Орієнтовна різниця стеків/міс",
+        "savings_positive": "Дешевше за patchwork на",
+        "savings_negative": "Дорожче за patchwork на",
+        "stack_savings_note": "Економія стеку передбачає заміну cloaker SaaS. Tracker-only patchwork (cloaker $0) може бути дешевшим за BidShard Starter.",
+        "silent_junk_label": "Припущена частка junk від events",
+        "silent_cpc_label": "Припущений avg cost платного кліку",
+        "disclaimer": "Лише estimate — не quote. VPS окремо з обох боків. Ліцензія BidShard перемикається на Pro ($399), коли IVT у вашому стеку; на Pro IVT уже в ліцензії — без окремого рядка IVT."
+      }
+    }
   },
   "plans": [
     {
@@ -248,11 +318,10 @@
       "tagline": "Безкоштовний тест на вашому VPS.",
       "specs_label": "Пілот включає",
       "features": [
-        "10 днів trial · 1 сервер · прив'язка до HWID",
-        "Повний /track routing + landing bundles на VPS",
+        { "text": "10 днів trial · 1 сервер · повний click routing на VPS", "highlight": true },
+        { "text": "Silent reject + rule antifraud — тест захисту бюджету безкоштовно", "highlight": true },
+        { "text": "Margin Guard — автопауза при падінні ROI", "highlight": true },
         "Rule antifraud: geo, schedule, device, consent фільтри",
-        "Silent reject + fraud blacklist (правиловий рівень)",
-        "Margin Guard — автопауза при падінні ROI",
         "S2S postbacks + cost sync з рекламними мережами",
         "Admin console · 3 API-ключі · 1 tenant",
         "Не входить: IVT ML, ML fraud boost, OpenRTB, slot migration"
@@ -266,16 +335,17 @@
       "name": "Starter",
       "price": "$129",
       "period": "/ міс",
-      "tagline": "Для соло-баєрів без хмарних трекерів.",
-      "specs_label": "Starter — ingest та маржа",
+      "tagline": "Routing як у Keitaro — плюс CAPI і Telegram Mini Apps в одній ліцензії.",
+      "specs_label": "Starter — CAPI, Mini Apps і маржа",
       "features": [
+        { "text": "Meta / Google / TikTok CAPI — оптимізація мереж на реальних конверсіях", "highlight": true },
+        { "text": "Telegram Mini App flows — воронки в Telegram без другого SaaS", "highlight": true },
+        { "text": "Silent reject — 202 decoy, бюджет не списується", "highlight": true },
         "Необмежені кампанії та події на вашому сервері",
         "Click routing, flows, landers, offer walls",
-        "Silent reject — 202 decoy, бюджет не списується",
         "Rule antifraud + geo/schedule/device фільтри",
         "Margin Guard + cost sync (25 рекламних мереж)",
-        "S2S postbacks, Meta/Google/TikTok CAPI",
-        "Telegram Mini App flows",
+        "S2S postbacks",
         "Smart alerts у Slack або Telegram",
         "1 host · 5 API-ключів · 3 tenants",
         "Експорт звітів до 5 MiB на chunk"
@@ -288,13 +358,13 @@
       "name": "Pro",
       "price": "$399",
       "period": "/ міс",
-      "tagline": "Знаходьте витоки прибутку у власних даних.",
-      "specs_label": "Pro — аналітика та аудит",
+      "tagline": "Перестаньте платити за ботів і «зниклі» конверсії.",
+      "specs_label": "Pro — IVT + аудит конверсій",
       "features": [
         "Усе з тарифу Starter",
-        "IVT ML detector sidecar (ClickHouse batch)",
-        "Postback trail — покроковий аудит кожної конверсії",
-        "Fraud stream + аналітика silent reject у CH",
+        { "text": "IVT на ваших даних — invalid traffic до зливу бюджету", "highlight": true },
+        { "text": "Postback trail — де зникають конверсії (мережа, трекер, affiliate)", "highlight": true },
+        { "text": "Fraud stream + аналітика silent reject у ClickHouse", "highlight": true },
         "Multi-host прив'язка ліцензії (в межах одного розгортання)",
         "Командний RBAC між tenants",
         "10 API-ключів · 10 tenants",
@@ -313,11 +383,11 @@
       "specs_label": "Scale — ML intel та міграція",
       "features": [
         "Усе з тарифу Pro",
-        "ML fraud boost snapshot на гарячому шляху (hot path)",
+        { "text": "Готові fraud-сигнали до кліку — ML boost snapshot", "highlight": true },
+        { "text": "Slot migration — перенос шардів без простою в revenue days", "highlight": true },
+        { "text": "Пакетний експорт доказів для спорів щодо фроду", "highlight": true },
         "Moderator intel feed (сигнали модераторського трафіку)",
         "External residential proxy intel при гарячих зчитуваннях",
-        "Slot migration — перенос шардових вузлів без простою",
-        "Пакетний експорт доказів для спорів щодо фроду",
         "Опційний шлях ingest через mmap broker WAL",
         "3 активації хостів · 25 tenants · 25 API-ключів",
         "Експорт звітів до 50 MiB на chunk"
@@ -334,10 +404,10 @@
       "specs_label": "Network — programmatic та GEO",
       "features": [
         "Усе з тарифу Scale",
-        "Live OpenRTB bid endpoint на вашому залізі",
+        { "text": "Live OpenRTB bid endpoint на вашому залізі", "highlight": true },
+        { "text": "Multi-region стек — 3 регіони в одній ліцензії", "highlight": true },
+        { "text": "Multi-node ingest між активаціями хостів", "highlight": true },
         "Каталог RTB + потік programmatic-виручки",
-        "Multi-region стек (3 регіони в ліцензії)",
-        "Multi-node ingest між активаціями хостів",
         "Усі фрод-фіди Scale + експорт доказів для спорів",
         "10 активацій хостів · 50 tenants · 50 API-ключів",
         "Експорт звітів до 100 MiB на chunk"
@@ -350,13 +420,13 @@
       "name": "Enterprise",
       "price": "$2 999+",
       "period": "/ міс",
-      "tagline": "Edge-масштаб, коли маржа критична.",
+      "tagline": "L4-сміття — до рахунку за bandwidth, не до tracker.",
       "specs_label": "Enterprise — edge та автоматизація",
       "features": [
         "Усе з тарифу Network",
-        "eBPF XDP edge — відсікання L4-сміття до рахунку за трафік",
-        "Campaign API sync (автоматизація ad-платформ)",
-        "До 99 регіонів · 99 активацій хостів",
+        { "text": "eBPF XDP edge — L4 flood до tracker і bandwidth invoice", "highlight": true },
+        { "text": "Campaign API sync — автоматизація ad-платформ", "highlight": true },
+        { "text": "До 99 регіонів · 99 активацій хостів", "highlight": true },
         "Fingerprint HWID bind для суворих compliance-вимог",
         "Прямий SLA-канал з вендором + кастомні ліміти експорту",
         "999 API-ключів · необмежені tenants (schema cap)",
@@ -414,7 +484,7 @@
         "cpu": "Розділення: tracker, cache, reporting",
         "ram": "16 GB+ на навантажений вузол",
         "disk": "160 GB+ NVMe на вузол",
-        "profile": "ML antifraud сигнали на гарячому шляху. Перенос шардових вузлів між серверами без зупинки роботи."
+        "profile": "Готові fraud-сигнали на момент кліку. Перенос шардових вузлів між серверами без зупинки роботи."
       },
       {
         "code": "network",
@@ -482,13 +552,16 @@
     "PointTraffic": "Спрямувати трафік",
     "ClickUrlsPostbacksCostSyncYouReLive": "Click URL, postbacks, cost sync — і ви в роботі.",
     "AdEventProcessorRunningOnPort8080OfflineJwtLicenseVerified": "✔ Стек BidShard працює на порту 8080. Офлайн JWT-ліцензію підтверджено.",
-    "BuiltForOperatorsWhoHateSurprises": "Без сюрпризів",
+    "BuiltForOperatorsWhoHateSurprises": "Коли стек уже підводив",
+    "OperatorsEmpathyTeaser": {
+      "html": "Знайомий patchwork-стек і VPS о 3 ночі? <a href=\"operators.html\">Гід для операторів</a>."
+    },
     "SelfHosted": "Self-hosted",
     "YouAreTheDataControllerOnYourInfrastructureZeroSharedRecords": "Ви єдиний володілець даних на власній інфраструктурі. Жодних спільних записів — лише ваше залізо.",
     "OfflineLicense": "Офлайн-ліцензія",
     "NoRecurringLicenseServerPingTelemetryIsStrictlyOffByDefault": "Без регулярних запитів до сервера ліцензій. Телеметрію вимкнено за замовчуванням.",
     "HonestAntifraud": "Antifraud",
-    "DeterministicRulesExecuteOnHotPathMlIvtRunAsBackgroundBatchJobs": "Правилові фільтри працюють на hot path у реальному часі. IVT та ML scoring — на вашому аналітичному сховищі.",
+    "DeterministicRulesExecuteOnHotPathMlIvtRunAsBackgroundBatchJobs": "Правила перевіряють кожен клік одразу. Scale+ читає precomputed fraud-boost snapshot з Redis — лише lookup, без ML inference на /track. Batch IVT/ML працює на ClickHouse у фоні.",
     "NotSaas": "Ваша інфраструктура",
     "WeDoNotHostMonitorOrGuaranteeUptimeOnYourCustomVpsServer": "Працює на вашому VPS під вашим повним контролем. Без спільних тенантів та прив'язки до вендора.",
     "NoRoiWarranty": "Релокація",
@@ -507,6 +580,7 @@
     "HowDoIStart": "Як розпочати?",
     "SelfHostedLicenseSoftwareForModernMediaBuyers": "self-hosted ліцензійне ПЗ для сучасних media buyers.",
     "FooterArchitecture": "Архітектура",
+    "FooterOperators": "Для операторів",
     "PublicOffer": "Оферта",
     "ContactsFooter": "Контакти",
     "Telegram": "Telegram",

@@ -18,6 +18,7 @@ import (
 	"ad-event-processor/internal/doctor"
 	"ad-event-processor/internal/flow"
 	"ad-event-processor/internal/fraudadmin"
+	"ad-event-processor/internal/integrations/googlesheets"
 	"ad-event-processor/internal/licensingadmin"
 	"ad-event-processor/internal/marginguard"
 	"ad-event-processor/internal/opsadmin"
@@ -47,6 +48,7 @@ type RouteRegistry struct {
 	ViewsHTTP             *reports.ViewsHTTPHandlers
 	SelfServeHTTP         *selfserve.SelfServeHTTPHandlers
 	PostbackHTTP          *campaign.PostbackHTTPHandlers
+	GoogleSheetsHTTP      *googlesheets.HTTPHandlers
 	CostSyncHTTP          *billingadmin.CostSyncHTTPHandlers
 	PlatformCampaignHTTP  *platformadmin.PlatformCampaignHTTPHandlers
 	MarginGuardHTTP       *marginguard.HTTPHandlers
@@ -121,6 +123,9 @@ func RegisterRoutes(mux *http.ServeMux, routes RouteRegistry) {
 	}
 	if routes.PostbackHTTP != nil {
 		routes.PostbackHTTP.Register(mux)
+	}
+	if routes.GoogleSheetsHTTP != nil {
+		routes.GoogleSheetsHTTP.Register(mux)
 	}
 	if routes.CostSyncHTTP != nil {
 		routes.CostSyncHTTP.Register(mux)

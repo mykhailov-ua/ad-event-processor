@@ -3,6 +3,7 @@ package reports
 import (
 	"context"
 	"net/http"
+	"slices"
 
 	"ad-event-processor/internal/controlplane/authz"
 	"ad-event-processor/pkg/httpresponse"
@@ -29,10 +30,10 @@ var ReportCatalogEntries = []ReportCatalogRowDTO{
 	{Key: "customer-fraud-by-type", Title: "Fraud by type", Description: "Customer-facing fraud categories and shares", Category: "fraud", RequiredPermissions: ReportPermsFraudCustomer(), DefaultRange: "7d", ExportFormats: []string{"csv"}},
 	{Key: "customer-fraud-by-dimension", Title: "Fraud by dimension", Description: "Fraud concentration by placement, geo, or sub", Category: "fraud", RequiredPermissions: ReportPermsFraudCustomer(), DefaultRange: "7d"},
 	{Key: "customer-fraud-evidence", Title: "Dispute evidence", Description: "Signed redacted evidence bundle for CPA disputes", Category: "fraud", RequiredPermissions: ReportPermsCustomerFraudEvidence(), DefaultRange: "7d"},
-	{Key: "signal-effectiveness", Title: "Signal effectiveness", Description: "Wire signal block and silent-reject rates", Category: "fraud", RequiredPermissions: ReportPermsFraudCustomer(), DefaultRange: "7d"},
-	{Key: "rtt-split-tunnel", Title: "RTT split tunnel", Description: "RTT split-tunnel distribution by campaign and country", Category: "fraud", RequiredPermissions: reportPermsFraudOperator, DefaultRange: "7d"},
-	{Key: "campaign-toggle-cohort", Title: "Campaign toggle cohort", Description: "Before/after metrics around fraud toggle changes", Category: "fraud", RequiredPermissions: []string{"audit:read", "campaigns:read"}, DefaultRange: "7d"},
-	{Key: "layer-desync-drilldown", Title: "Layer desync drilldown", Description: "Layer desync fraud reasons and hourly trend", Category: "fraud", RequiredPermissions: reportPermsFraudOperator, DefaultRange: "7d"},
+	{Key: "signal-effectiveness", Title: "Signal effectiveness", Description: "Wire signal block and silent-reject rates", Category: "fraud", RequiredPermissions: ReportPermsFraudCustomer(), DefaultRange: "7d", ExportFormats: []string{"csv"}},
+	{Key: "rtt-split-tunnel", Title: "RTT split tunnel", Description: "RTT split-tunnel distribution by campaign and country", Category: "fraud", RequiredPermissions: reportPermsFraudOperator, DefaultRange: "7d", ExportFormats: []string{"csv"}},
+	{Key: "campaign-toggle-cohort", Title: "Campaign toggle cohort", Description: "Before/after metrics around fraud toggle changes", Category: "fraud", RequiredPermissions: []string{"audit:read", "campaigns:read"}, DefaultRange: "7d", ExportFormats: []string{"csv"}},
+	{Key: "layer-desync-drilldown", Title: "Layer desync drilldown", Description: "Layer desync fraud reasons and hourly trend", Category: "fraud", RequiredPermissions: reportPermsFraudOperator, DefaultRange: "7d", ExportFormats: []string{"csv"}},
 	{Key: "layer-desync-summary", Title: "Layer desync summary", Description: "Cross-layer desync fraud counts by campaign", Category: "fraud", RequiredPermissions: reportPermsFraudOperator, DefaultRange: "7d"},
 	{Key: "wire-signal-breakdown", Title: "Wire signal breakdown", Description: "L7/TLS/H2 wire fraud signals", Category: "fraud", RequiredPermissions: ReportPermsFraudCustomer(), DefaultRange: "7d", ExportFormats: []string{"csv"}},
 	{Key: "ml/feature-spikes", Title: "ML feature spikes", Description: "ML feature spike detection", Category: "fraud", RequiredPermissions: []string{"shards:read"}, DefaultRange: "7d"},
@@ -55,7 +56,7 @@ var ReportCatalogEntries = []ReportCatalogRowDTO{
 	{Key: "geo-roi", Title: "Geo ROI", Description: "ROI by country", Category: "traffic", RequiredPermissions: []string{"campaigns:read"}, DefaultRange: "7d", ExportFormats: []string{"csv"}},
 	{Key: "true-roi", Title: "True ROI", Description: "True ROI after cost sync", Category: "traffic", RequiredPermissions: reportPermsCampaignRead, DefaultRange: "7d"},
 	{Key: "pacing-drift", Title: "Pacing drift", Description: "Budget pacing drift", Category: "traffic", RequiredPermissions: reportPermsCampaignRead, DefaultRange: "7d"},
-	{Key: "click-log", Title: "Click log", Description: "Click log timeline", Category: "traffic", RequiredPermissions: []string{"audit:read", "campaigns:read"}, DefaultRange: "7d"},
+	{Key: "click-log", Title: "Click log", Description: "Click log timeline", Category: "traffic", RequiredPermissions: []string{"audit:read", "campaigns:read"}, DefaultRange: "7d", ExportFormats: []string{"csv"}},
 	{Key: "cost-sync-coverage", Title: "Cost sync coverage", Description: "Cost sync coverage by network", Category: "billing", RequiredPermissions: reportPermsCampaignRead, DefaultRange: "30d"},
 	{Key: "conversion-type-payout", Title: "Conversion type payout", Description: "Conversion type payout rollup", Category: "billing", RequiredPermissions: []string{"audit:read", "campaigns:read"}, DefaultRange: "7d", ExportFormats: []string{"csv"}},
 	{Key: "customer-portfolio", Title: "Customer portfolio", Description: "Customer portfolio KPIs", Category: "billing", RequiredPermissions: []string{"customers:read"}, DefaultRange: "30d"},
@@ -72,6 +73,21 @@ var ReportCatalogEntries = []ReportCatalogRowDTO{
 	{Key: "telegram/bots", Title: "Telegram bot performance", Description: "Telegram bot performance", Category: "telegram", RequiredPermissions: reportPermsCampaignRead, DefaultRange: "7d"},
 	{Key: "telegram/premium", Title: "Telegram premium users", Description: "Telegram premium users", Category: "telegram", RequiredPermissions: reportPermsCampaignRead, DefaultRange: "7d"},
 	{Key: "telegram/fraud", Title: "Telegram fraud signals", Description: "Telegram fraud signals", Category: "telegram", RequiredPermissions: reportPermsCampaignRead, DefaultRange: "7d"},
+}
+
+func init() {
+	for i := range ReportCatalogEntries {
+		entry := &ReportCatalogEntries[i]
+		if len(entry.ExportFormats) == 0 {
+			continue
+		}
+		if len(entry.ExportFormats) == 1 && entry.ExportFormats[0] == "zip" {
+			continue
+		}
+		if !slices.Contains(entry.ExportFormats, "xlsx") {
+			entry.ExportFormats = append(entry.ExportFormats, "xlsx")
+		}
+	}
 }
 
 func ReportCatalogLicenseGated(reportKey string) bool {

@@ -15,4 +15,6 @@ type ExportDeps struct {
 	// Cold-path writers: reports package queries ClickHouse/Postgres and writes local path (OS boundary).
 	WriteReport                   func(ctx context.Context, path string, spec ReportJobSpec) error
 	WriteCampaignImportValidation func(ctx context.Context, path string, spec ReportJobSpec) error
+	WriteGoogleSheet              func(ctx context.Context, spec ReportJobSpec) (GoogleSheetExportResult, error)
+	ValidateGoogleSheetsOAuth     func(ctx context.Context, operatorUserID string) error
 }

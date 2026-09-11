@@ -144,3 +144,13 @@ func queryConversionTypePayoutCHRows(ctx context.Context, clickhouseQuery *datab
 	}
 	return out, total, nil
 }
+
+func QueryConversionTypePayoutRows(
+	ctx context.Context,
+	clickhouseQuery *database.ClickHouseQuery,
+	campaignIDs []uuid.UUID,
+	from, to time.Time,
+	limit, offset int,
+) ([]ConversionTypePayoutRowDTO, int64, error) {
+	return queryConversionTypePayoutCHRows(ctx, clickhouseQuery, campaignIDs, from, to, limit, offset)
+}

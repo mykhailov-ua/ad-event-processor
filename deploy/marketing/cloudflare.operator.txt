@@ -1,0 +1,27 @@
+Cloudflare setup for bidshard.com (server-side ingress is ready)
+
+Origin IPv4 (A record content): 45.94.158.106
+
+1) Cloudflare dashboard -> Add site -> bidshard.com -> Free plan
+2) At registrar (Namecheap): set nameservers to Cloudflare (Custom DNS)
+3) Cloudflare DNS -> Records (orange cloud = Proxied):
+
+   Type   Name   Content            Proxy
+   A      @      45.94.158.106       Proxied
+   A      www    45.94.158.106       Proxied
+
+4) SSL/TLS -> Overview -> Full (strict)
+
+5) Security -> Settings: Bot Fight Mode ON; Security Level Medium
+   (Under Attack Mode only while actively DDoSed)
+
+Optional origin hide (ONLY after every hostname on this IP uses Cloudflare):
+   ssh to server, then:
+   MARKETING_CF_LOCK_HTTP=1 bash /opt/platform/ad-event-processor/scripts/ops/marketing_cloudflare_firewall.sh
+
+Shared ingress note: this host also serves other vhosts on :443.
+Do not lock 80/443 until tracker/admin hostnames are behind Cloudflare too.
+
+Verify:
+   dig +short A bidshard.com     # Cloudflare anycast IP, not 45.94.158.106
+   curl -sI https://bidshard.com | grep -i server   # cloudflare

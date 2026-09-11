@@ -71,12 +71,12 @@ export function AccessRolesView({
           <h2 className={adminTypography.sectionTitle}>Roles YAML</h2>
           <Textarea
             aria-label="Roles YAML"
-            className="min-h-[24rem] font-mono text-xs"
+            className={cn('min-h-[24rem]', adminTypography.monoData)}
             disabled={!canWrite || yamlFetching}
             onChange={(event) => onDraftYamlChange(event.target.value)}
             value={draftYaml}
           />
-          <div className="flex flex-wrap gap-2">
+          <div className={adminSpacing.flex.buttonGroup}>
             <SecondaryActionButton
               disabled={yamlFetching}
               onClick={syncDraftFromServer}

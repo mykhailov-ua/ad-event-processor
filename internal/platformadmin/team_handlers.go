@@ -4,11 +4,14 @@ import (
 	"context"
 	"errors"
 	"net/http"
+	"strconv"
 	"strings"
 	"time"
 
 	ctrlhttp "ad-event-processor/internal/control/http"
 	"ad-event-processor/internal/controlplane/authz"
+	"ad-event-processor/internal/database"
+	"ad-event-processor/internal/reports"
 	"ad-event-processor/pkg/coldpath"
 	"ad-event-processor/pkg/httpresponse"
 
@@ -92,18 +95,21 @@ type TeamLicenseDTO struct {
 }
 
 type TeamOverviewDTO struct {
-	CustomerID   string          `json:"customer_id"`
-	CustomerName string          `json:"customer_name"`
-	CostCenter   string          `json:"cost_center,omitempty"`
-	BalanceMicro int64           `json:"balance_micro,omitempty"`
-	Currency     string          `json:"currency,omitempty"`
-	License      *TeamLicenseDTO `json:"license,omitempty"`
-	Members      []TeamMemberDTO `json:"members"`
+	CustomerID            string          `json:"customer_id"`
+	CustomerName          string          `json:"customer_name"`
+	CostCenter            string          `json:"cost_center,omitempty"`
+	BalanceMicro          int64           `json:"balance_micro,omitempty"`
+	Currency              string          `json:"currency,omitempty"`
+	License               *TeamLicenseDTO `json:"license,omitempty"`
+	Members               []TeamMemberDTO `json:"members"`
+	PendingApprovalsCount int64           `json:"pending_approvals_count,omitempty"`
+	PendingForMeCount     int64           `json:"pending_for_me_count,omitempty"`
 }
 
 type TeamOverviewReader interface {
-	GetTeamOverview(ctx context.Context, customerID uuid.UUID, includeBalance, includeLicense bool) (TeamOverviewDTO, error)
+	GetTeamOverview(ctx context.Context, customerID uuid.UUID, includeBalance, includeLicense bool, actorUserID uuid.UUID) (TeamOverviewDTO, error)
 	ListTeamMembers(ctx context.Context, customerID uuid.UUID, limit, offset int) ([]TeamMemberDTO, int64, error)
+	GetTeamMetrics(ctx context.Context, customerID uuid.UUID, from, to time.Time) (TeamMetricsResponse, error)
 }
 
 type TeamHTTPHandlers struct {
@@ -136,6 +142,11 @@ func (h *TeamHTTPHandlers) Register(mux *http.ServeMux) {
 		[]string{"team:read", "campaigns:read", "billing:read"},
 		h.getOverview,
 	)))
+	mux.HandleFunc("GET /api/v1/team/metrics", limit(perm(
+		[]string{"team:read"},
+		h.getTeamMetrics,
+	)))
+	mux.HandleFunc("GET /api/v1/team/budget-approvals/mine", limit(h.listMyBudgetApprovals))
 	h.registerTeamGovernanceRoutes(mux, limit, perm)
 	h.registerTeamsRoutes(mux, limit, perm)
 }
@@ -167,7 +178,14 @@ func (h *TeamHTTPHandlers) getOverview(w http.ResponseWriter, r *http.Request) {
 		includeLicense = snap.Has(authz.PermBillingRead) || snap.Has("customers:read")
 	}
 
-	out, err := h.Team.GetTeamOverview(r.Context(), customerID, includeBalance, includeLicense)
+	actorUserID := uuid.Nil
+	if h.ActorUserID != nil {
+		if id, ok := h.ActorUserID(r); ok {
+			actorUserID = id
+		}
+	}
+
+	out, err := h.Team.GetTeamOverview(r.Context(), customerID, includeBalance, includeLicense, actorUserID)
 	if err != nil {
 		if errors.Is(err, pgx.ErrNoRows) {
 			httpresponse.Error(w, http.StatusNotFound, "NOT_FOUND", "customer not found")
@@ -191,10 +209,13 @@ func (h *TeamHTTPHandlers) writeServiceError(w http.ResponseWriter, err error) {
 }
 
 type TeamOverviewService struct {
-	Pool *pgxpool.Pool
+	Pool            *pgxpool.Pool
+	ClickHouseQuery *database.ClickHouseQuery
+	ReportCHTimeout func() time.Duration
+	CHIngestionLag  func(context.Context) (time.Duration, error)
 }
 
-func (s *TeamOverviewService) GetTeamOverview(ctx context.Context, customerID uuid.UUID, includeBalance, includeLicense bool) (TeamOverviewDTO, error) {
+func (s *TeamOverviewService) GetTeamOverview(ctx context.Context, customerID uuid.UUID, includeBalance, includeLicense bool, actorUserID uuid.UUID) (TeamOverviewDTO, error) {
 	if s == nil || s.Pool == nil {
 		return TeamOverviewDTO{}, errors.New("team service unavailable")
 	}
@@ -234,7 +255,143 @@ func (s *TeamOverviewService) GetTeamOverview(ctx context.Context, customerID uu
 	}
 
 	out.Members = []TeamMemberDTO{}
+	pendingTotal, pendingForActor, countErr := countTeamBudgetApprovals(ctx, s.Pool, customerID, actorUserID)
+	if countErr != nil {
+		return TeamOverviewDTO{}, countErr
+	}
+	out.PendingApprovalsCount = pendingTotal
+	out.PendingForMeCount = pendingForActor
 	return out, nil
+}
+
+func (h *TeamHTTPHandlers) getTeamMetrics(w http.ResponseWriter, r *http.Request) {
+	if h.Team == nil {
+		httpresponse.Error(w, http.StatusServiceUnavailable, "UNAVAILABLE", "team service unavailable")
+		return
+	}
+	var queryCustomerID *uuid.UUID
+	if raw := strings.TrimSpace(r.URL.Query().Get("customer_id")); raw != "" {
+		id, err := uuid.Parse(raw)
+		if err != nil {
+			httpresponse.Error(w, http.StatusBadRequest, "BAD_REQUEST", "invalid customer_id")
+			return
+		}
+		queryCustomerID = &id
+	}
+	customerID, err := h.ResolveCustomerID(r, queryCustomerID)
+	if err != nil {
+		h.writeServiceError(w, err)
+		return
+	}
+	if customerID == uuid.Nil {
+		httpresponse.Error(w, http.StatusBadRequest, "BAD_REQUEST", "customer_id required")
+		return
+	}
+	from, to, err := parseTeamMetricsRange(r)
+	if err != nil {
+		httpresponse.Error(w, http.StatusBadRequest, "BAD_REQUEST", err.Error())
+		return
+	}
+	out, err := h.Team.GetTeamMetrics(r.Context(), customerID, from, to)
+	if err != nil {
+		h.writeServiceError(w, err)
+		return
+	}
+	httpresponse.JSON(w, http.StatusOK, out)
+}
+
+func parseTeamMetricsRange(r *http.Request) (time.Time, time.Time, error) {
+	from, to, err := reports.ParseReportRange(r)
+	if err != nil {
+		return time.Time{}, time.Time{}, err
+	}
+	if err := reports.ValidateChartRange(from, to); err != nil {
+		return time.Time{}, time.Time{}, err
+	}
+	return from, to, nil
+}
+
+func (h *TeamHTTPHandlers) listMyBudgetApprovals(w http.ResponseWriter, r *http.Request) {
+	if h.Pool == nil {
+		httpresponse.Error(w, http.StatusServiceUnavailable, "UNAVAILABLE", "team service unavailable")
+		return
+	}
+	actorUserID := uuid.Nil
+	if h.ActorUserID != nil {
+		if id, ok := h.ActorUserID(r); ok {
+			actorUserID = id
+		}
+	}
+	if actorUserID == uuid.Nil {
+		httpresponse.Error(w, http.StatusUnauthorized, "UNAUTHORIZED", "authentication required")
+		return
+	}
+	customerID, err := h.ResolveCustomerID(r, nil)
+	if err != nil {
+		h.writeServiceError(w, err)
+		return
+	}
+	if customerID == uuid.Nil {
+		httpresponse.Error(w, http.StatusBadRequest, "BAD_REQUEST", "customer_id required")
+		return
+	}
+	if err := verifyTeamMember(r.Context(), h.Pool, customerID, actorUserID); err != nil {
+		if errors.Is(err, errTeamMemberForbidden) {
+			httpresponse.Error(w, http.StatusForbidden, "FORBIDDEN", "forbidden")
+			return
+		}
+		h.writeServiceError(w, err)
+		return
+	}
+	limit := TeamBudgetApprovalsDefaultLimit
+	if raw := strings.TrimSpace(r.URL.Query().Get("limit")); raw != "" {
+		parsed, parseErr := strconv.Atoi(raw)
+		if parseErr != nil || parsed <= 0 {
+			httpresponse.Error(w, http.StatusBadRequest, "BAD_REQUEST", "invalid limit")
+			return
+		}
+		limit = parsed
+	}
+	offset := 0
+	if raw := strings.TrimSpace(r.URL.Query().Get("offset")); raw != "" {
+		parsed, parseErr := strconv.Atoi(raw)
+		if parseErr != nil || parsed < 0 {
+			httpresponse.Error(w, http.StatusBadRequest, "BAD_REQUEST", "invalid offset")
+			return
+		}
+		offset = parsed
+	}
+	items, total, err := listTeamBudgetApprovalsForUser(r.Context(), h.Pool, customerID, actorUserID, limit, offset)
+	if err != nil {
+		h.writeServiceError(w, err)
+		return
+	}
+	if items == nil {
+		items = []TeamBudgetApprovalDTO{}
+	}
+	httpresponse.JSON(w, http.StatusOK, TeamBudgetApprovalsListResponse{
+		Items:  items,
+		Total:  total,
+		Limit:  normalizeTeamBudgetApprovalsLimit(limit),
+		Offset: normalizeTeamBudgetApprovalsOffset(offset),
+	})
+}
+
+var errTeamMemberForbidden = errors.New("team member forbidden")
+
+func verifyTeamMember(ctx context.Context, pool *pgxpool.Pool, customerID, userID uuid.UUID) error {
+	var exists bool
+	err := pool.QueryRow(ctx, `
+		SELECT EXISTS(
+			SELECT 1 FROM users WHERE id = $1 AND customer_id = $2
+		)`, userID, customerID).Scan(&exists)
+	if err != nil {
+		return err
+	}
+	if !exists {
+		return errTeamMemberForbidden
+	}
+	return nil
 }
 
 func (s *TeamOverviewService) ListTeamMembers(ctx context.Context, customerID uuid.UUID, limit, offset int) ([]TeamMemberDTO, int64, error) {

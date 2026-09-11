@@ -38,6 +38,7 @@ type SmartAlertRuleDTO struct {
 	CustomerID    string    `json:"customer_id"`
 	CampaignID    string    `json:"campaign_id,omitempty"`
 	Name          string    `json:"name"`
+	Template      string    `json:"template,omitempty"`
 	Metric        string    `json:"metric"`
 	Operator      string    `json:"operator"`
 	Threshold     float64   `json:"threshold"`
@@ -70,6 +71,7 @@ type UpsertSmartAlertRuleRequest struct {
 	CustomerID    string  `json:"customer_id"`
 	CampaignID    string  `json:"campaign_id,omitempty"`
 	Name          string  `json:"name"`
+	Template      string  `json:"template,omitempty"`
 	Metric        string  `json:"metric"`
 	Operator      string  `json:"operator"`
 	Threshold     float64 `json:"threshold"`

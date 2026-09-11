@@ -9,6 +9,7 @@ import (
 	"time"
 
 	"ad-event-processor/internal/controlplane/authz"
+	"ad-event-processor/internal/reportjob"
 	"ad-event-processor/pkg/coldpath"
 	"ad-event-processor/pkg/httpresponse"
 
@@ -42,6 +43,11 @@ type UpdateViewRequest struct {
 	ReportKey string          `json:"report_key"`
 	Spec      json.RawMessage `json:"spec"`
 	IsShared  bool            `json:"is_shared"`
+}
+
+type SavedViewExportResponse struct {
+	JobID string       `json:"job_id"`
+	View  SavedViewDTO `json:"view"`
 }
 
 var ErrViewNotFound = errors.New("view not found")
@@ -157,6 +163,7 @@ func (s *ViewsStore) DeleteView(ctx context.Context, id string) error {
 
 type ViewsHTTPHandlers struct {
 	Store                   *ViewsStore
+	ReportJobRunner         *reportjob.ReportJobRunner
 	ApplyRateLimit          func(http.HandlerFunc) http.HandlerFunc
 	RequirePermission       func(string, http.HandlerFunc) http.HandlerFunc
 	RequireAnyPermission    func([]string, http.HandlerFunc) http.HandlerFunc
@@ -203,11 +210,13 @@ func (h *ViewsHTTPHandlers) Register(mux *http.ServeMux) {
 	}
 
 	readPerms := []string{"campaigns:read", "campaigns:read:masked"}
+	runExports := []string{"exports:run"}
 	mux.HandleFunc("GET /api/v1/views", limit(permAny(readPerms, h.listViews)))
 	mux.HandleFunc("GET /api/v1/views/{id}", limit(permAny(readPerms, h.getView)))
 	mux.HandleFunc("POST /api/v1/views", limit(perm("campaigns:write", h.createView)))
 	mux.HandleFunc("PUT /api/v1/views/{id}", limit(perm("campaigns:write", h.updateView)))
 	mux.HandleFunc("DELETE /api/v1/views/{id}", limit(perm("campaigns:write", h.deleteView)))
+	mux.HandleFunc("POST /api/v1/views/{id}/export", limit(permAny(runExports, h.exportView)))
 }
 
 func (h *ViewsHTTPHandlers) createView(w http.ResponseWriter, r *http.Request) {
@@ -394,4 +403,64 @@ func (h *ViewsHTTPHandlers) deleteView(w http.ResponseWriter, r *http.Request) {
 	}
 
 	w.WriteHeader(http.StatusNoContent)
+}
+
+func (h *ViewsHTTPHandlers) exportView(w http.ResponseWriter, r *http.Request) {
+	id := r.PathValue("id")
+	if id == "" {
+		httpresponse.Error(w, http.StatusBadRequest, "BAD_REQUEST", "missing view id")
+		return
+	}
+	if h.Store == nil {
+		httpresponse.Error(w, http.StatusServiceUnavailable, "UNAVAILABLE", "views service not configured")
+		return
+	}
+	if h.ReportJobRunner == nil {
+		httpresponse.Error(w, http.StatusServiceUnavailable, "UNAVAILABLE", "report export runner not configured")
+		return
+	}
+
+	view, err := h.Store.GetView(r.Context(), id)
+	if err != nil {
+		if errors.Is(err, ErrViewNotFound) {
+			httpresponse.Error(w, http.StatusNotFound, "NOT_FOUND", "view not found")
+			return
+		}
+		httpresponse.Error(w, http.StatusInternalServerError, "INTERNAL_ERROR", err.Error())
+		return
+	}
+	if !h.authorizeViewCustomer(w, r, view.CustomerID) {
+		return
+	}
+	if err := validateSharedSavedViewForActor(r.Context(), view); err != nil {
+		httpresponse.Error(w, http.StatusForbidden, "FORBIDDEN", err.Error())
+		return
+	}
+	if err := validateSavedViewActorPolicy(r.Context(), view.ReportKey, view.Spec); err != nil {
+		httpresponse.Error(w, http.StatusForbidden, "FORBIDDEN", err.Error())
+		return
+	}
+
+	ownerID := ""
+	if u, ok := authz.GetUser(r.Context()); ok && u.UserID != uuid.Nil {
+		ownerID = u.UserID.String()
+	}
+	jobID, err := h.ReportJobRunner.ExportSavedView(
+		r.Context(),
+		view.CustomerID,
+		view.ReportKey,
+		ownerID,
+		view.Spec,
+		view.ID,
+	)
+	if err != nil {
+		msg := err.Error()
+		httpresponse.Error(w, http.StatusBadRequest, "BAD_REQUEST", msg)
+		return
+	}
+
+	httpresponse.JSON(w, http.StatusCreated, SavedViewExportResponse{
+		JobID: jobID,
+		View:  view,
+	})
 }

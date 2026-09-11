@@ -89,7 +89,27 @@ export function exportJobPhase(status: string | undefined): ExportHubJobPhase {
 }
 
 export function exportJobCanDownload(status: string | undefined): boolean {
+  return exportJobCanDownloadFile(status);
+}
+
+export function exportJobCanDownloadFile(
+  status: string | undefined,
+  options?: { destination?: string; spreadsheetUrl?: string }
+): boolean {
+  if (options?.spreadsheetUrl?.trim()) {
+    return false;
+  }
+  if (options?.destination === 'google_sheet') {
+    return false;
+  }
   return exportJobPhase(status) === 'completed';
+}
+
+export function exportJobSpreadsheetUrl(
+  job: { spreadsheet_url?: string } | undefined
+): string | undefined {
+  const url = job?.spreadsheet_url?.trim();
+  return url || undefined;
 }
 
 export function exportJobCanCancel(status: string | undefined): boolean {

@@ -18,9 +18,9 @@
     <link rel="alternate" hreflang="en" href="/" />
     <link rel="alternate" hreflang="uk" href="/uk/" />
     <link rel="preload" href="/fonts/jetbrains-mono/JetBrainsMono-Regular.woff2" as="font" type="font/woff2" crossorigin="anonymous" />
-    <link rel="stylesheet" href="/site.css" />
+    <link rel="stylesheet" href="/site.css?v=20260911" />
     <script src="/vendor/lucide.min.js" defer></script>
-    <script src="/site.js" defer></script>
+    <script src="/site.js?v=20260911" defer></script>
   </head>
   <body>
     <div class="site-offer-gate" data-site-offer-gate hidden aria-hidden="true"></div>
@@ -119,7 +119,8 @@
   <div data-layer="TRUST" class="Trust">
     <div data-layer="Frame" class="Frame">
       <div data-layer="Operation Integrity" class="OperationIntegrity">Ops-надійність</div>
-      <div data-layer="Built for operators who scale with confidence" class="BuiltForOperatorsWhoHateSurprises">Без сюрпризів</div>
+      <div data-layer="Built for operators who scale with confidence" class="BuiltForOperatorsWhoHateSurprises">Коли стек уже підводив</div>
+      <p class="OperatorsEmpathyTeaser">Знайомий patchwork-стек і VPS о 3 ночі? <a href="operators.html">Гід для операторів</a>.</p>
     </div>
     <div data-layer="Frame" class="Frame">
       <div data-layer="Frame" class="Frame">
@@ -149,7 +150,7 @@
           </div>
           <div data-layer="Frame" class="Frame">
             <div data-layer="Layered antifraud" class="HonestAntifraud">Antifraud</div>
-            <div data-layer="Real-time rule filters on the ingest hot path. IVT and ML scoring on your analytics store." class="DeterministicRulesExecuteOnHotPathMlIvtRunAsBackgroundBatchJobs">Rule filters на hot path у реальному часі. IVT і ML scoring на вашому analytics store.</div>
+            <div data-layer="Real-time rule filters on the ingest hot path. Scale+ reads a precomputed fraud-boost snapshot from Redis; batch IVT/ML on ClickHouse." class="DeterministicRulesExecuteOnHotPathMlIvtRunAsBackgroundBatchJobs">Правила перевіряють кожен клік одразу. Scale+ читає precomputed fraud-boost snapshot з Redis — лише lookup, без ML inference на /track. Batch IVT/ML працює на ClickHouse у фоні.</div>
           </div>
         </div>
         <div data-layer="trust-card" class="TrustCard">
@@ -303,6 +304,7 @@
       </div>
       <div data-layer="Frame" class="Frame">
         <a href="docs.html" class="FooterArchitecture">Архітектура</a>
+        <a href="operators.html" class="FooterOperators">Для операторів</a>
         <div data-site-link="offer" class="PublicOffer">Оферта</div>
         <div data-site-nav="Contacts" class="ContactsFooter">Контакти</div>
         <div data-site-cta="telegram" class="Telegram">Telegram</div>

@@ -32,6 +32,9 @@
 //   - Status chip totals: CountCampaignsStatusTotals (single GROUP BY status query).
 //   - Metric list sort (clicks, impressions, conversions) uses ListCampaignsSortedByStats (hash join on pre-aggregated campaign_stats).
 //   - Extended metric sort aggregates customer-scoped Postgres stats/margin in one query each, then ClickHouse sort metrics in one query per chunk.
+//   - List metrics batch (list_metrics.go, list_metrics_operational.go): attachCampaignListOperationalSignals
+//     adds budget_burn_pct, pacing_mode, pacing_health, metrics_stale, metrics_as_of from Postgres meta and
+//     optional ClickHouse today spend for EVEN pacing drift.
 //   - Filename convention: no campaign_ prefix on files inside this directory (naming.mdc).
 //
 // Forbidden:
@@ -42,6 +45,7 @@
 //
 //	go list -e ./internal/campaign/...
 //	go test ./internal/campaign/ -short -run 'TestApplyCampaignStatusCount|TestCampaignListExtendedSortMaxKeys' -count=1
+//	go test ./internal/campaign/ -short -run 'TestDeriveCampaignPacingHealth|TestCampaignBudgetBurnPct|TestOperationalPacingExpectedRatio' -count=1
 //	go test ./internal/campaign/editor/ -short -run TestValidateCampaignPatch -count=1
 //	go test ./internal/campaign/worker/ -short -count=1
 package campaign

@@ -3,6 +3,7 @@ package controlplane
 
 import (
 	"context"
+	"fmt"
 	"log/slog"
 	"net/http"
 	"time"
@@ -13,8 +14,10 @@ import (
 	"ad-event-processor/internal/controlplane/authz"
 	"ad-event-processor/internal/dashboardadmin"
 	"ad-event-processor/internal/database"
+	"ad-event-processor/internal/integrations/googlesheets"
 	"ad-event-processor/internal/reportjob"
 	"ad-event-processor/internal/reports"
+	"ad-event-processor/internal/reports/export"
 
 	"github.com/google/uuid"
 	"github.com/jackc/pgx/v5/pgxpool"
@@ -143,6 +146,19 @@ func buyerPortfolioToReports(p dashboardadmin.BuyerPortfolioDTO) reports.BuyerPo
 	return out
 }
 
+func (s *Service) reportExportDeps() reports.ReportExportDeps {
+	var packSecret []byte
+	if s != nil && s.cfg != nil {
+		packSecret = []byte(s.cfg.FraudEvidencePackHMACSecret)
+	}
+	return reports.ReportExportDeps{
+		Pool:                        s.pool,
+		ClickHouseQuery:             s.clickhouseQuery,
+		BuyerPortfolio:              buyerPortfolioAdapter{svc: s},
+		FraudEvidencePackHMACSecret: packSecret,
+	}
+}
+
 func (s *Service) InitReportJobRunner(exportDir string) *reportjob.ReportJobRunner {
 	if s == nil {
 		return nil
@@ -163,6 +179,14 @@ func (s *Service) InitReportJobRunner(exportDir string) *reportjob.ReportJobRunn
 			BuyerPortfolio:              buyerPortfolioAdapter{svc: s},
 			FraudEvidencePackHMACSecret: packSecret,
 		}
+		var sheetsClient *googlesheets.Client
+		var sheetsStore *googlesheets.Store
+		encKey := googleSheetsEncKey(s)
+		if len(encKey) >= 32 && s.pool != nil {
+			sheetsCfg := googleSheetsConfig(s, encKey)
+			sheetsStore = googlesheets.NewStore(s.pool, encKey)
+			sheetsClient = googlesheets.NewClient(sheetsCfg, sheetsStore)
+		}
 		s.reportJobRunner = reportjob.NewReportJobRunner(exportDir, reportjob.ExportDeps{
 			Pool: s.pool,
 			ExportChunkMaxBytes: func(ctx context.Context) int {
@@ -173,6 +197,26 @@ func (s *Service) InitReportJobRunner(exportDir string) *reportjob.ReportJobRunn
 				return reports.WriteReportExport(ctx, exportDeps, path, spec)
 			},
 			WriteCampaignImportValidation: importexport.WriteCampaignImportValidationJSON,
+			WriteGoogleSheet: func(ctx context.Context, spec reportjob.ReportJobSpec) (reportjob.GoogleSheetExportResult, error) {
+				return export.WriteGoogleSheet(ctx, exportDeps, sheetsClient, spec)
+			},
+			ValidateGoogleSheetsOAuth: func(ctx context.Context, operatorUserID string) error {
+				if sheetsStore == nil {
+					return fmt.Errorf("google sheets export not configured")
+				}
+				userID, err := uuid.Parse(operatorUserID)
+				if err != nil {
+					return fmt.Errorf("google sheets export requires connected operator")
+				}
+				connected, err := sheetsStore.HasConnection(ctx, userID)
+				if err != nil {
+					return err
+				}
+				if !connected {
+					return googlesheets.ErrNotConnected
+				}
+				return nil
+			},
 		})
 	}
 	return s.reportJobRunner

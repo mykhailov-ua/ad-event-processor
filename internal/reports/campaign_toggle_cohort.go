@@ -3,6 +3,7 @@ package reports
 import (
 	"context"
 	"encoding/json"
+	"fmt"
 	"net/http"
 	"strconv"
 	"strings"
@@ -269,4 +270,116 @@ func formatToggleDelta(beforeRejects, afterRejects int64) (string, string) {
 		return label, "positive"
 	}
 	return label, "neutral"
+}
+
+type CampaignToggleCohortExportParams struct {
+	CampaignID  uuid.UUID
+	ToggleField string
+	ToggleAt    string
+	WindowHours int
+}
+
+func ParseCampaignToggleCohortExportParams(payload json.RawMessage) (CampaignToggleCohortExportParams, error) {
+	var out CampaignToggleCohortExportParams
+	out.WindowHours = 72
+	if len(payload) == 0 {
+		return out, fmt.Errorf("import_payload required for campaign-toggle-cohort export")
+	}
+	var raw struct {
+		CampaignID  string `json:"campaign_id"`
+		ToggleField string `json:"toggle_field"`
+		ToggleAt    string `json:"toggle_at"`
+		WindowHours int    `json:"window_hours"`
+	}
+	if err := json.Unmarshal(payload, &raw); err != nil {
+		return out, fmt.Errorf("invalid import_payload")
+	}
+	campaignID, err := uuid.Parse(strings.TrimSpace(raw.CampaignID))
+	if err != nil {
+		return out, fmt.Errorf("invalid campaign_id in import_payload")
+	}
+	toggleField := strings.TrimSpace(raw.ToggleField)
+	if toggleField == "" {
+		return out, fmt.Errorf("toggle_field required in import_payload")
+	}
+	if _, ok := allowedCampaignToggleFields[toggleField]; !ok {
+		return out, fmt.Errorf("invalid toggle_field in import_payload")
+	}
+	if raw.WindowHours > 0 {
+		if raw.WindowHours > 168 {
+			return out, fmt.Errorf("invalid window_hours in import_payload")
+		}
+		out.WindowHours = raw.WindowHours
+	}
+	out.CampaignID = campaignID
+	out.ToggleField = toggleField
+	out.ToggleAt = strings.TrimSpace(raw.ToggleAt)
+	return out, nil
+}
+
+func QueryCampaignToggleCohortExport(
+	ctx context.Context,
+	pool *pgxpool.Pool,
+	clickhouseQuery *database.ClickHouseQuery,
+	customerCampaignIDs []uuid.UUID,
+	params CampaignToggleCohortExportParams,
+) (CampaignToggleCohortReportResponse, error) {
+	var out CampaignToggleCohortReportResponse
+	if pool == nil {
+		return out, fmt.Errorf("report export dependencies not configured")
+	}
+	allowed := false
+	for _, id := range customerCampaignIDs {
+		if id == params.CampaignID {
+			allowed = true
+			break
+		}
+	}
+	if !allowed {
+		return out, fmt.Errorf("campaign_id not in customer scope")
+	}
+	toggleAt, _, err := resolveCampaignToggleAt(ctx, pool, params.CampaignID, params.ToggleField, params.ToggleAt)
+	if err != nil {
+		return out, err
+	}
+	window := time.Duration(params.WindowHours) * time.Hour
+	beforeFrom := toggleAt.Add(-window)
+	beforeTo := toggleAt
+	afterFrom := toggleAt
+	afterTo := toggleAt.Add(window)
+	before, err := queryCampaignToggleWindowMetrics(ctx, pool, clickhouseQuery, params.CampaignID, beforeFrom, beforeTo)
+	if err != nil {
+		return out, err
+	}
+	after, err := queryCampaignToggleWindowMetrics(ctx, pool, clickhouseQuery, params.CampaignID, afterFrom, afterTo)
+	if err != nil {
+		return out, err
+	}
+	out = CampaignToggleCohortReportResponse{
+		CampaignID:  params.CampaignID.String(),
+		ToggleField: params.ToggleField,
+		ToggleAt:    toggleAt.UTC().Format(time.RFC3339),
+		WindowHours: params.WindowHours,
+	}
+	if before.impressions == 0 {
+		out.Insufficient = true
+		return out, nil
+	}
+	beforeRow := CampaignToggleCohortKPIDTO{
+		Window:      "before",
+		Impressions: before.impressions,
+		Rejects:     before.rejects,
+		Conversions: before.conversions,
+		ROIPct:      before.roiPct,
+	}
+	afterRow := CampaignToggleCohortKPIDTO{
+		Window:      "after",
+		Impressions: after.impressions,
+		Rejects:     after.rejects,
+		Conversions: after.conversions,
+		ROIPct:      after.roiPct,
+	}
+	afterRow.DeltaLabel, afterRow.DeltaTone = formatToggleDelta(before.rejects, after.rejects)
+	out.Rows = []CampaignToggleCohortKPIDTO{beforeRow, afterRow}
+	return out, nil
 }

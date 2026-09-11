@@ -17,8 +17,9 @@
   </script>
   <link rel="alternate" hreflang="en" href="/docs.html" />
   <link rel="alternate" hreflang="uk" href="/uk/docs.html" />
-  <link rel="stylesheet" href="site.css">
-  <script src="site.js" defer></script>
+  <link rel="stylesheet" href="site.css?v=20260911">
+  <script src="https://cdn.jsdelivr.net/npm/mermaid@11.4.0/dist/mermaid.min.js" defer></script>
+  <script src="site.js?v=20260911" defer></script>
 </head>
 <body class="docs-page">
   <div class="site-offer-gate" data-site-offer-gate hidden aria-hidden="true"></div>
@@ -26,6 +27,7 @@
     <a href="index.html">BidShard</a>
     <nav class="site-doc-header__nav" aria-label="Docs">
       <a href="index.html">Home</a>
+      <a href="operators.html">For operators</a>
       <a href="offer.html">Public offer</a>
     </nav>
     <div class="site-header-end">
@@ -74,39 +76,36 @@
       Your traffic never passes through BidShard's servers in the default delivery model — only the license JWT
       and support chat are vendor-side.
     </p>
-    <div class="site-flow" role="img" aria-label="Traffic flow diagram">
-      <div class="site-flow__lane">
-        <div class="site-flow__label">Hot path</div>
-        <div class="site-flow__track">
-          <span class="site-flow__node">Visitor</span>
-          <span class="site-flow__arrow" aria-hidden="true">→</span>
-          <span class="site-flow__node site-flow__node--edge">Nginx edge</span>
-          <span class="site-flow__arrow" aria-hidden="true">→</span>
-          <span class="site-flow__node site-flow__node--hot">Tracker</span>
-          <span class="site-flow__arrow" aria-hidden="true">→</span>
-          <span class="site-flow__node site-flow__node--hot">Filter + debit</span>
-          <span class="site-flow__arrow" aria-hidden="true">→</span>
-          <span class="site-flow__node">Redis / broker</span>
-        </div>
-      </div>
-      <div class="site-flow__lane site-flow__lane--cold">
-        <div class="site-flow__label">Async</div>
-        <div class="site-flow__track">
-          <span class="site-flow__node site-flow__node--cold">Processor</span>
-          <span class="site-flow__arrow" aria-hidden="true">→</span>
-          <span class="site-flow__node site-flow__node--cold">Postgres</span>
-          <span class="site-flow__arrow site-flow__arrow--plus" aria-hidden="true">+</span>
-          <span class="site-flow__node site-flow__node--cold">ClickHouse</span>
-        </div>
-      </div>
-      <div class="site-flow__lane site-flow__lane--admin">
-        <div class="site-flow__label">Admin</div>
-        <div class="site-flow__track site-flow__track--note">
-          <span class="site-flow__node site-flow__node--admin">Control :8188</span>
-          <span class="site-flow__note">API, outbox, billing — not on the ingest thread</span>
-        </div>
-      </div>
-    </div>
+    <figure class="site-doc-mermaid-wrap" aria-label="Traffic flow diagram">
+      <pre class="site-doc-mermaid mermaid">flowchart TB
+  subgraph HP["Hot path — synchronous /track"]
+    direction LR
+    V[Visitor] --&gt; N[Nginx edge]
+    N --&gt; T[Tracker gnet]
+    T --&gt; F[Filters + fraud-boost lookup]
+    F --&gt; U[Redis unified filter + debit]
+    U --&gt; S[Redis stream / broker WAL]
+  end
+
+  subgraph AS["Async settlement"]
+    direction LR
+    S --&gt; P[Processor]
+    P --&gt; PG[(Postgres spend)]
+    P --&gt; CH[(ClickHouse events)]
+  end
+
+  subgraph CP["Cold path — background"]
+    direction TB
+    CTL[Control :8188] --&gt; PG
+    CTL --&gt; OB[Outbox workers]
+    CH --&gt; ML[fraud-scorer / IVT batch]
+    ML --&gt; RS[(Redis snapshots)]
+    OB --&gt; RS
+  end
+
+  RS -. "snapshot lookup only, no ML inference" .-&gt; F</pre>
+      <figcaption class="site-doc-mermaid__caption">Solid arrows: click accept path. Dotted: precomputed fraud-boost snapshot read on ingest.</figcaption>
+    </figure>
     <p class="site-doc-callout">
       <strong>HTTP 202 on <code>/track</code></strong> means the tracker accepted and validated the event on the ingest path.
       It does <em>not</em> mean Postgres or ClickHouse already committed the row — that happens asynchronously via the processor.
@@ -160,6 +159,12 @@
         </tr>
       </tbody>
     </table>
+    <p class="site-doc-callout site-doc-callout--hardware">
+      <strong>Sizing note:</strong> ClickHouse is RAM-hungry on a single VPS. For a comfortable all-in-one install
+      (ClickHouse + Redis + Postgres + tracker pool), plan at least <strong>4 vCPU and 8 GB RAM</strong> plus NVMe disk.
+      Routing-only pilots can start smaller; an undersized budget VPS often hits ClickHouse OOM — that is an ops sizing
+      issue, not a license defect. See <a href="index.html#pricing">hardware sizing</a> on the home page.
+    </p>
     <p>
       License verification uses an offline Ed25519 JWT file on disk — no recurring phone-home to issue ingest tokens.
       Feature flags, host activations, and export limits are encoded in the JWT per SKU. Campaign and event volume are not license-capped when catalog values are zero.
@@ -203,7 +208,7 @@
       <li><strong>Hard reject</strong> — HTTP 403; event is not debited.</li>
       <li><strong>Silent reject</strong> — HTTP 202 to the visitor (decoy accept); flagged in analytics so funnels stay clean. Does not auto-flip campaign settings in Postgres.</li>
       <li><strong>IVT detector</strong> (Pro+) — batch rules on ClickHouse; can enqueue blacklist/boost actions via the admin outbox.</li>
-      <li><strong>ML fraud scorer</strong> (Scale+) — batch LightGBM in a sidecar; writes boost keys Redis syncs to the tracker snapshot. Not per-click inference on ingest.</li>
+      <li><strong>ML fraud scorer</strong> (Scale+) — batch LightGBM in a sidecar writes boost keys to Redis; the tracker reads a <strong>precomputed fraud-boost snapshot</strong> on ingest (map lookup only — no model inference on <code>/track</code>).</li>
     </ul>
 
     <h2 id="admin-path">Admin, billing, and reports</h2>

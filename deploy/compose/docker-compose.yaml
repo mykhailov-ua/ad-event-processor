@@ -614,6 +614,9 @@ services:
       - ENV=${ENV:-development}
       - MANAGEMENT_PORT=8188
       - AD_EVENT_PROCESSOR_LICENSE_PATH=/etc/ad-event-processor/license.jwt
+      # Dev compose defaults: skip sealed-asset gate when operator .env sets file/required mode.
+      - AD_EVENT_PROCESSOR_LICENSE_MODE=${AD_EVENT_PROCESSOR_LICENSE_COMPOSE_MODE:-dev}
+      - AD_EVENT_PROCESSOR_LICENSE_REQUIRED=${AD_EVENT_PROCESSOR_LICENSE_COMPOSE_REQUIRED:-0}
       - CONTROL_UNIX_SOCKET=/run/ad-event-processor/control/http.sock
       - PAYMENT_WEBHOOK_PORT=8187
       - DB_DSN=${DB_DSN}
@@ -636,6 +639,8 @@ services:
       - CRYPTO_MIN_PAYMENT_MICRO=${CRYPTO_MIN_PAYMENT_MICRO:-10000000}
       - CRYPTO_CONFIRMATION_DEPTH=${CRYPTO_CONFIRMATION_DEPTH:-12}
       - CH_ENABLED=${CH_ENABLED:-0}
+      # Container path only; do not inherit host REPORT_EXPORT_DIR from .env (nonroot cannot mkdir operator $HOME).
+      - REPORT_EXPORT_DIR=/run/ad-event-processor/report-exports
       - MULTI_REGION_ENABLED=${MULTI_REGION_ENABLED:-0}
       - AD_EVENT_PROCESSOR_REGION_CODE=${AD_EVENT_PROCESSOR_REGION_CODE:-0}
       - CADDY_TLS_ASK_TOKEN=${CADDY_TLS_ASK_TOKEN:-}

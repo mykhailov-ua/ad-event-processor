@@ -15,6 +15,7 @@ import { adminChrome } from '@/lib/admin_chrome';
 import { cn } from '@/lib/utils';
 import type { NavGroup } from '@/lib/nav_config';
 import { isSectionNavActive } from '@/lib/nav_config';
+import { Badge } from '@/components/ui/badge';
 
 export type HeaderNavMenuProps = {
   navGroups: NavGroup[];
@@ -76,7 +77,12 @@ export function HeaderNavMenu({ navGroups, onOpenMobileNav }: HeaderNavMenuProps
                   className={active ? 'bg-accent text-accent-foreground' : undefined}
                   onSelect={() => navigate(item.path)}
                 >
-                  {item.label}
+                  <span>{item.label}</span>
+                  {item.badgeCount != null && item.badgeCount > 0 ? (
+                    <Badge className="ml-auto" variant="secondary">
+                      {item.badgeCount}
+                    </Badge>
+                  ) : null}
                 </DropdownMenuItem>
               );
             })}

@@ -544,6 +544,12 @@ paths:
     $ref: paths/ops_reports.yaml#/paths/~1api~1v1~1reports~1jobs~1{id}
   /api/v1/reports/jobs/{id}/download:
     $ref: paths/ops_reports.yaml#/paths/~1api~1v1~1reports~1jobs~1{id}~1download
+  /api/v1/reports/jobs/{id}/rerun:
+    $ref: paths/ops_reports.yaml#/paths/~1api~1v1~1reports~1jobs~1{id}~1rerun
+  /api/v1/reports/notifications:
+    $ref: paths/ops_reports.yaml#/paths/~1api~1v1~1reports~1notifications
+  /api/v1/reports/notifications/{id}/ack:
+    $ref: paths/ops_reports.yaml#/paths/~1api~1v1~1reports~1notifications~1{id}~1ack
   /api/v1/reports/keywords:
     $ref: paths/ops_reports.yaml#/paths/~1api~1v1~1reports~1keywords
   /api/v1/reports/layer-desync-summary:
@@ -598,6 +604,8 @@ paths:
     $ref: paths/ops_reports.yaml#/paths/~1api~1v1~1views
   /api/v1/views/{id}:
     $ref: paths/ops_reports.yaml#/paths/~1api~1v1~1views~1{id}
+  /api/v1/views/{id}/export:
+    $ref: paths/ops_reports.yaml#/paths/~1api~1v1~1views~1{id}~1export
   /api/v1/audit:
     $ref: paths/platform.yaml#/paths/~1api~1v1~1audit
   /api/v1/audit/export:
@@ -642,6 +650,8 @@ paths:
     $ref: paths/platform.yaml#/paths/~1api~1v1~1report-schedules
   /api/v1/report-schedules/{id}:
     $ref: paths/platform.yaml#/paths/~1api~1v1~1report-schedules~1{id}
+  /api/v1/report-schedules/{id}/run:
+    $ref: paths/platform.yaml#/paths/~1api~1v1~1report-schedules~1{id}~1run
   /api/v1/access/catalog:
     $ref: paths/access.yaml#/paths/~1api~1v1~1access~1catalog
   /api/v1/access/roles:
@@ -674,6 +684,10 @@ paths:
     $ref: paths/platform.yaml#/paths/~1api~1v1~1team~1budget-approvals~1{id}~1approve
   /api/v1/team/budget-approvals/{id}/deny:
     $ref: paths/platform.yaml#/paths/~1api~1v1~1team~1budget-approvals~1{id}~1deny
+  /api/v1/team/metrics:
+    $ref: paths/platform.yaml#/paths/~1api~1v1~1team~1metrics
+  /api/v1/team/budget-approvals/mine:
+    $ref: paths/platform.yaml#/paths/~1api~1v1~1team~1budget-approvals~1mine
   /api/v1/rtb/deals:
     $ref: paths/rtb.yaml#/paths/~1api~1v1~1rtb~1deals
   /api/v1/rtb/deals/{id}:

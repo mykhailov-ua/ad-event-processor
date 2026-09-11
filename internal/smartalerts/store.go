@@ -122,26 +122,11 @@ func (st *Store) CreateSmartAlertRule(ctx context.Context, req UpsertSmartAlertR
 	if err != nil {
 		return SmartAlertRuleDTO{}, fmt.Errorf("invalid customer_id")
 	}
-	metric, err := normalizeAlertMetric(req.Metric)
+	metric, operator, name, template, window, err := resolveUpsertSmartAlertRule(req)
 	if err != nil {
 		return SmartAlertRuleDTO{}, err
-	}
-	operator, err := normalizeAlertOperator(req.Operator)
-	if err != nil {
-		return SmartAlertRuleDTO{}, err
-	}
-	name := strings.TrimSpace(req.Name)
-	if name == "" {
-		return SmartAlertRuleDTO{}, fmt.Errorf("name is required")
 	}
 	webhookURL := strings.TrimSpace(req.WebhookURL)
-	if webhookURL == "" || !strings.HasPrefix(webhookURL, "http") {
-		return SmartAlertRuleDTO{}, fmt.Errorf("webhook_url must be an http(s) URL")
-	}
-	window := clampAlertWindowMinutes(req.WindowMinutes)
-	if req.WindowMinutes == 0 {
-		window = 60
-	}
 
 	var campParam pgtype.UUID
 	if strings.TrimSpace(req.CampaignID) != "" {
@@ -162,33 +147,23 @@ func (st *Store) CreateSmartAlertRule(ctx context.Context, req UpsertSmartAlertR
 		domain.ToUUID(customerID), campParam, name, metric, operator, req.Threshold,
 		window, webhookURL, req.Enabled,
 	)
-	return scanSmartAlertRule(row)
+	dto, err := scanSmartAlertRule(row)
+	if err != nil {
+		return SmartAlertRuleDTO{}, err
+	}
+	dto.Template = template
+	return dto, nil
 }
 
 func (st *Store) UpdateSmartAlertRule(ctx context.Context, ruleID uuid.UUID, req UpsertSmartAlertRuleRequest) (SmartAlertRuleDTO, error) {
 	if st == nil || st.host == nil || st.host.Pool() == nil {
 		return SmartAlertRuleDTO{}, fmt.Errorf("service unavailable")
 	}
-	metric, err := normalizeAlertMetric(req.Metric)
+	metric, operator, name, template, window, err := resolveUpsertSmartAlertRule(req)
 	if err != nil {
 		return SmartAlertRuleDTO{}, err
-	}
-	operator, err := normalizeAlertOperator(req.Operator)
-	if err != nil {
-		return SmartAlertRuleDTO{}, err
-	}
-	name := strings.TrimSpace(req.Name)
-	if name == "" {
-		return SmartAlertRuleDTO{}, fmt.Errorf("name is required")
 	}
 	webhookURL := strings.TrimSpace(req.WebhookURL)
-	if webhookURL == "" || !strings.HasPrefix(webhookURL, "http") {
-		return SmartAlertRuleDTO{}, fmt.Errorf("webhook_url must be an http(s) URL")
-	}
-	window := clampAlertWindowMinutes(req.WindowMinutes)
-	if req.WindowMinutes == 0 {
-		window = 60
-	}
 
 	var campParam pgtype.UUID
 	if strings.TrimSpace(req.CampaignID) != "" {
@@ -216,7 +191,48 @@ func (st *Store) UpdateSmartAlertRule(ctx context.Context, ruleID uuid.UUID, req
 		}
 		return SmartAlertRuleDTO{}, err
 	}
+	dto.Template = template
 	return dto, nil
+}
+
+func resolveUpsertSmartAlertRule(req UpsertSmartAlertRuleRequest) (metric, operator, name, template string, window int, err error) {
+	webhookURL := strings.TrimSpace(req.WebhookURL)
+	if webhookURL == "" || !strings.HasPrefix(webhookURL, "http") {
+		return "", "", "", "", 0, fmt.Errorf("webhook_url must be an http(s) URL")
+	}
+	template = strings.TrimSpace(req.Template)
+	if template != "" {
+		spec, specErr := resolveTemplateRuleSpec(template)
+		if specErr != nil {
+			return "", "", "", "", 0, specErr
+		}
+		metric = spec.Metric
+		operator = spec.Operator
+		window = spec.WindowMinutes
+		template, _ = normalizeAlertTemplate(template)
+		name = strings.TrimSpace(req.Name)
+		if name == "" {
+			name = defaultTemplateRuleName(template)
+		}
+		return metric, operator, name, template, window, nil
+	}
+	metric, err = normalizeAlertMetric(req.Metric)
+	if err != nil {
+		return "", "", "", "", 0, err
+	}
+	operator, err = normalizeAlertOperator(req.Operator)
+	if err != nil {
+		return "", "", "", "", 0, err
+	}
+	name = strings.TrimSpace(req.Name)
+	if name == "" {
+		return "", "", "", "", 0, fmt.Errorf("name is required")
+	}
+	window = clampAlertWindowMinutes(req.WindowMinutes)
+	if req.WindowMinutes == 0 {
+		window = 60
+	}
+	return metric, operator, name, "", window, nil
 }
 
 func (st *Store) DeleteSmartAlertRule(ctx context.Context, ruleID uuid.UUID) error {
@@ -433,6 +449,9 @@ func scanSmartAlertRule(row smartAlertRowScanner) (SmartAlertRuleDTO, error) {
 	dto.ID = id.String()
 	dto.CustomerID = customerID.String()
 	dto.CampaignID = formatOptionalUUID(campID)
+	if template, ok := parseTemplateFromMetric(dto.Metric); ok {
+		dto.Template = template
+	}
 	return dto, nil
 }
 

@@ -1,7 +1,7 @@
 import { Badge } from '@/components/ui/badge';
 import {
   exportJobCanCancel,
-  exportJobCanDownload,
+  exportJobCanDownloadFile,
   exportJobPhase,
   formatExportJobRowSummary,
   normalizeExportJobStatus,
@@ -11,7 +11,7 @@ import { useExportJobElapsed } from '@/domains/exports/use_export_job_elapsed';
 import { adminSpacing, adminTypography } from '@/lib/admin_spacing';
 import { Button } from '@/components/ui/button';
 import { ErrorBlock } from '@/shell/error_block';
-import { cn } from '@/lib/utils';
+import { BentoSection } from '@/shell/bento_card';
 
 export type ExportHubJobLifecycleProps = {
   jobId: string;
@@ -20,6 +20,8 @@ export type ExportHubJobLifecycleProps = {
   bytes?: number;
   rowLimit?: number;
   startedAtMs?: number;
+  destination?: 'download' | 'google_sheet';
+  spreadsheetUrl?: string;
   exportBusy: boolean;
   autoPolling: boolean;
   cancelling: boolean;
@@ -48,7 +50,7 @@ export function ExportJobStatusBadge({
   if (phase === 'pending') {
     return (
       <Badge variant="outline">
-        Running{elapsed ? ` · ${elapsed}` : '...'}
+        Running{elapsed ? ` / ${elapsed}` : '...'}
       </Badge>
     );
   }
@@ -75,6 +77,8 @@ export function ExportHubJobLifecycle({
   bytes,
   rowLimit,
   startedAtMs,
+  destination,
+  spreadsheetUrl,
   exportBusy,
   autoPolling,
   cancelling,
@@ -87,7 +91,9 @@ export function ExportHubJobLifecycle({
 }: ExportHubJobLifecycleProps) {
   const phase = exportJobPhase(status);
   const elapsed = useExportJobElapsed(phase === 'pending', startedAtMs);
-  const canDownload = exportJobCanDownload(status);
+  const canDownload = exportJobCanDownloadFile(status, { destination, spreadsheetUrl });
+  const canOpenSpreadsheet =
+    phase === 'completed' && Boolean(spreadsheetUrl?.trim());
   const canCancel = canCancelKind && exportJobCanCancel(status);
   const sizeSummary =
     phase === 'completed' ? formatExportJobRowSummary(rowLimit, bytes) : undefined;
@@ -96,14 +102,24 @@ export function ExportHubJobLifecycle({
   const trimmedJobId = jobId.trim();
 
   return (
-    <div className={cn('grid min-w-0', adminSpacing.gap.md)}>
+    <BentoSection data-testid="export-job-lifecycle" title="Job status">
       {hasStatus ? (
-        <div className={adminSpacing.flex.buttonGroup}>
+        <div
+          aria-label="Export job status"
+          className={adminSpacing.flex.buttonGroup}
+          data-testid="export-job-status"
+        >
           <ExportJobStatusBadge elapsed={elapsed} status={status} />
           {autoPolling && phase === 'pending' ? (
-            <span className={adminTypography.bodyMuted}>Auto-refreshing every 3s</span>
+            <span className={adminTypography.bodyMuted} data-role="auto-polling-hint">
+              Auto-refreshing every 3s
+            </span>
           ) : null}
-          {sizeSummary ? <span className={adminTypography.bodyMuted}>{sizeSummary}</span> : null}
+          {sizeSummary ? (
+            <span className={adminTypography.bodyMuted} data-role="size-summary">
+              {sizeSummary}
+            </span>
+          ) : null}
         </div>
       ) : null}
 
@@ -111,9 +127,14 @@ export function ExportHubJobLifecycle({
         <ErrorBlock message={failedJobMessage} title="Export failed" />
       ) : null}
 
-      <div className={adminSpacing.flex.buttonGroup}>
+      <div
+        aria-label="Export job actions"
+        className={adminSpacing.flex.buttonGroup}
+        data-testid="export-job-actions"
+      >
         {canCancel ? (
           <Button
+            data-testid="export-job-cancel"
             disabled={exportBusy || !trimmedJobId}
             type="button"
             variant="destructive"
@@ -122,21 +143,30 @@ export function ExportHubJobLifecycle({
             {cancelling ? 'Cancelling...' : 'Cancel job'}
           </Button>
         ) : null}
-        <Button
-          disabled={exportBusy || !canDownload || !trimmedJobId}
-          title={
-            canDownload
-              ? sizeSummary
+        {canOpenSpreadsheet ? (
+          <Button asChild data-testid="export-job-open-sheet" type="button">
+            <a href={spreadsheetUrl} rel="noopener noreferrer" target="_blank">
+              Open in Google Sheets
+            </a>
+          </Button>
+        ) : null}
+        {canDownload ? (
+          <Button
+            data-testid="export-job-download"
+            disabled={exportBusy || !trimmedJobId}
+            title={
+              sizeSummary
                 ? `Download ${sizeSummary}`
                 : 'Download completed export'
-              : 'Download unlocks when the job completes'
-          }
-          type="button"
-          onClick={onDownloadJob}
-        >
-          {downloading ? 'Downloading...' : 'Download'}
-        </Button>
+            }
+            type="button"
+            onClick={onDownloadJob}
+          >
+            {downloading ? 'Downloading...' : 'Download'}
+          </Button>
+        ) : null}
         <Button
+          data-testid="export-job-refresh"
           disabled={exportBusy || !trimmedJobId}
           type="button"
           variant="outline"
@@ -145,6 +175,6 @@ export function ExportHubJobLifecycle({
           {polling ? 'Polling...' : 'Refresh status'}
         </Button>
       </div>
-    </div>
+    </BentoSection>
   );
 }

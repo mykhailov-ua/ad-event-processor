@@ -107,3 +107,85 @@ func QuerySilentRejectImpressionFunnelRows(
 ) ([]reports.SilentRejectImpressionFunnelRowDTO, int64, error) {
 	return querySilentRejectImpressionFunnelRows(ctx, clickhouseQuery, campaignIDs, from, to, limit, offset)
 }
+
+func QueryWireSignalBreakdownRows(
+	ctx context.Context,
+	clickhouseQuery *database.ClickHouseQuery,
+	campaignIDs []uuid.UUID,
+	from, to time.Time,
+	limit, offset int,
+	scrubCtx context.Context,
+) ([]reports.WireSignalBreakdownRowDTO, int64, error) {
+	return queryWireSignalBreakdownRows(ctx, clickhouseQuery, campaignIDs, from, to, limit, offset, scrubCtx)
+}
+
+func QuerySignalEffectivenessRows(
+	ctx context.Context,
+	clickhouseQuery *database.ClickHouseQuery,
+	campaignIDs []uuid.UUID,
+	from, to time.Time,
+	limit, offset int,
+	scrubCtx context.Context,
+) ([]reports.SignalEffectivenessRowDTO, int64, error) {
+	if clickhouseQuery == nil || len(campaignIDs) == 0 {
+		return nil, 0, nil
+	}
+	rawRows, _, err := queryFraudBreakdownRows(ctx, clickhouseQuery, campaignIDs, from, to, 10_000, 0)
+	if err != nil {
+		return nil, 0, err
+	}
+	rows := aggregateSignalEffectiveness(rawRows, scrubCtx)
+	total := int64(len(rows))
+	if offset >= len(rows) {
+		return nil, total, nil
+	}
+	end := offset + limit
+	if end > len(rows) {
+		end = len(rows)
+	}
+	return rows[offset:end], total, nil
+}
+
+func QueryLayerDesyncDrilldownRows(
+	ctx context.Context,
+	clickhouseQuery *database.ClickHouseQuery,
+	campaignIDs []uuid.UUID,
+	from, to time.Time,
+	minDesync uint8,
+	limit, offset int,
+	scrubCtx context.Context,
+) ([]reports.LayerDesyncDrilldownRowDTO, int64, error) {
+	rows, total, _, err := queryLayerDesyncDrilldown(ctx, clickhouseQuery, campaignIDs, from, to, minDesync, limit, offset, scrubCtx)
+	return rows, total, err
+}
+
+func QueryLayerDesyncDrilldownSeries(
+	ctx context.Context,
+	clickhouseQuery *database.ClickHouseQuery,
+	campaignIDs []uuid.UUID,
+	from, to time.Time,
+	minDesync uint8,
+) ([]reports.LayerDesyncDrilldownSeriesPointDTO, error) {
+	if clickhouseQuery == nil || len(campaignIDs) == 0 {
+		return nil, nil
+	}
+	seriesRows, err := clickhouseQuery.Query(ctx, layerDesyncDrilldownSeriesQuery, campaignIDs, from, to, minDesync, reports.MaxChartSeriesPoints)
+	if err != nil {
+		return nil, err
+	}
+	defer func() { _ = seriesRows.Close() }()
+	series := make([]reports.LayerDesyncDrilldownSeriesPointDTO, 0, 48)
+	for seriesRows.Next() {
+		var bucket time.Time
+		var events, silent int64
+		if err := seriesRows.Scan(&bucket, &events, &silent); err != nil {
+			return nil, err
+		}
+		series = append(series, reports.LayerDesyncDrilldownSeriesPointDTO{
+			Label:             bucket.UTC().Format(time.RFC3339),
+			EventCount:        events,
+			SilentRejectCount: silent,
+		})
+	}
+	return series, seriesRows.Err()
+}

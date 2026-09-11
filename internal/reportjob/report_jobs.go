@@ -7,6 +7,7 @@ import (
 	"os"
 	"path/filepath"
 	"sort"
+	"strings"
 	"sync"
 	"time"
 
@@ -17,32 +18,50 @@ const (
 	// In-memory dev fallback caps; Postgres-backed runner uses report_jobs rows instead.
 	reportJobMaxRecords = 512
 	reportJobTTL        = 24 * time.Hour
-	reportJobRunTimeout = 2 * time.Minute // bounds WriteReport/CH query per job goroutine
 )
 
+type ReportJobGoogleSheetSpec struct {
+	Mode          string `json:"mode,omitempty"`
+	SpreadsheetID string `json:"spreadsheet_id,omitempty"`
+	SheetTitle    string `json:"sheet_title,omitempty"`
+}
+
 type ReportJobSpec struct {
-	CustomerID       string          `json:"customer_id"`
-	ReportKey        string          `json:"report_key"`
-	From             string          `json:"from"`
-	To               string          `json:"to"`
-	Format           string          `json:"format"`
-	RedactionProfile string          `json:"redaction_profile,omitempty"`
-	ExportedBy       string          `json:"exported_by,omitempty"`
-	ImportSourceKind string          `json:"import_source_kind,omitempty"`
-	ImportPayload    json.RawMessage `json:"import_payload,omitempty"`
-	RowLimit         int             `json:"row_limit,omitempty"`
+	CustomerID       string                   `json:"customer_id"`
+	ReportKey        string                   `json:"report_key"`
+	From             string                   `json:"from"`
+	To               string                   `json:"to"`
+	CompareFrom      string                   `json:"compare_from,omitempty"`
+	CompareTo        string                   `json:"compare_to,omitempty"`
+	Format           string                   `json:"format"`
+	Destination      string                   `json:"destination,omitempty"`
+	GoogleSheet      ReportJobGoogleSheetSpec `json:"google_sheet,omitempty"`
+	Notify           ReportJobNotifySpec      `json:"notify,omitempty"`
+	RedactionProfile string                   `json:"redaction_profile,omitempty"`
+	ExportedBy       string                   `json:"exported_by,omitempty"`
+	ImportSourceKind string                   `json:"import_source_kind,omitempty"`
+	ImportPayload    json.RawMessage          `json:"import_payload,omitempty"`
+	RowLimit         int                      `json:"row_limit,omitempty"`
 }
 
 type ReportJobStatusDTO struct {
-	ID         string `json:"id"`
-	JobID      string `json:"job_id"`
-	CustomerID string `json:"customer_id"`
-	ReportKey  string `json:"report_key"`
-	Format     string `json:"format"`
-	Status     string `json:"status"`
-	Bytes      int64  `json:"bytes,omitempty"`
-	Error      string `json:"error,omitempty"`
-	CreatedAt  string `json:"created_at"`
+	ID             string `json:"id"`
+	JobID          string `json:"job_id"`
+	CustomerID     string `json:"customer_id"`
+	ReportKey      string `json:"report_key"`
+	Format         string `json:"format"`
+	Destination    string `json:"destination,omitempty"`
+	Status         string `json:"status"`
+	Bytes          int64  `json:"bytes,omitempty"`
+	Error          string `json:"error,omitempty"`
+	SpreadsheetURL string `json:"spreadsheet_url,omitempty"`
+	SpreadsheetID  string `json:"spreadsheet_id,omitempty"`
+	CreatedAt      string `json:"created_at"`
+}
+
+type GoogleSheetExportResult struct {
+	SpreadsheetID  string
+	SpreadsheetURL string
 }
 
 type reportJobRecord struct {
@@ -52,15 +71,20 @@ type reportJobRecord struct {
 	bytes          int64
 	errMsg         string
 	filePath       string
+	spreadsheetID  string
+	spreadsheetURL string
 	createdAt      time.Time
 }
 
 type ReportJobRunner struct {
-	exportDir string
-	deps      ExportDeps
-	mu        sync.RWMutex
-	jobs      map[string]*reportJobRecord
-	byIdem    map[string]string
+	exportDir      string
+	deps           ExportDeps
+	mu             sync.RWMutex
+	jobs           map[string]*reportJobRecord
+	byIdem         map[string]string
+	notifMu        sync.RWMutex
+	notifs         []exportNotificationRecord
+	notifByJobUser map[string]string
 }
 
 func NewReportJobRunner(exportDir string, deps ExportDeps) *ReportJobRunner {
@@ -68,10 +92,11 @@ func NewReportJobRunner(exportDir string, deps ExportDeps) *ReportJobRunner {
 		exportDir = DefaultReportExportDirPath()
 	}
 	return &ReportJobRunner{
-		exportDir: exportDir,
-		deps:      deps,
-		jobs:      make(map[string]*reportJobRecord),
-		byIdem:    make(map[string]string),
+		exportDir:      exportDir,
+		deps:           deps,
+		jobs:           make(map[string]*reportJobRecord),
+		byIdem:         make(map[string]string),
+		notifByJobUser: make(map[string]string),
 	}
 }
 
@@ -91,14 +116,52 @@ func (r *ReportJobRunner) CreateJob(ctx context.Context, spec ReportJobSpec, ide
 		}
 	}
 	spec.Format = format
-	if format != "csv" && format != "json" && format != "zip" {
-		return "", fmt.Errorf("format must be csv, json, or zip")
+	if format != "csv" && format != "json" && format != "zip" && format != "xlsx" {
+		return "", fmt.Errorf("format must be csv, json, zip, or xlsx")
+	}
+	if spec.ReportKey == "fraud-evidence-pack-bulk" && format != "zip" {
+		return "", fmt.Errorf("format must be zip for fraud-evidence-pack-bulk")
+	}
+	destination := strings.TrimSpace(spec.Destination)
+	if destination == "" {
+		destination = "download"
+	}
+	spec.Destination = destination
+	if destination == "google_sheet" {
+		if format != "csv" && format != "xlsx" {
+			return "", fmt.Errorf("format must be csv or xlsx for google_sheet destination")
+		}
+		mode := strings.TrimSpace(spec.GoogleSheet.Mode)
+		if mode == "" {
+			spec.GoogleSheet.Mode = "create"
+		} else if mode != "create" && mode != "append" {
+			return "", fmt.Errorf("google_sheet.mode must be create or append")
+		}
+		if spec.GoogleSheet.Mode == "append" && strings.TrimSpace(spec.GoogleSheet.SpreadsheetID) == "" {
+			return "", fmt.Errorf("google_sheet.spreadsheet_id required for append mode")
+		}
+		operatorID := strings.TrimSpace(spec.ExportedBy)
+		if operatorID == "" {
+			return "", fmt.Errorf("google sheets export requires connected operator")
+		}
+		if r.deps.ValidateGoogleSheetsOAuth == nil {
+			return "", fmt.Errorf("google sheets export not configured")
+		}
+		if err := r.deps.ValidateGoogleSheetsOAuth(ctx, operatorID); err != nil {
+			return "", err
+		}
 	}
 	spec.RowLimit = r.normalizeExportRowLimit(ctx, spec.ReportKey, spec.RowLimit)
 	if _, _, err := ParseReportRangeFromStrings(spec.From, spec.To); err != nil {
 		if spec.ReportKey != CampaignImportValidationReportKey {
 			return "", err
 		}
+	}
+	if err := validateReportJobCompareSpec(spec); err != nil {
+		return "", err
+	}
+	if err := normalizeReportJobNotify(&spec); err != nil {
+		return "", err
 	}
 
 	if r.pgEnabled() {
@@ -224,6 +287,9 @@ func (r *ReportJobRunner) OpenDownload(ctx context.Context, jobID string) (*os.F
 		return nil, ReportJobStatusDTO{}, fmt.Errorf("job not found")
 	}
 	dto := r.toDTO(jobID, rec)
+	if rec.spec.Destination == "google_sheet" || rec.spreadsheetURL != "" {
+		return nil, dto, ErrUseSpreadsheetURL
+	}
 	if rec.status != JobStatusCompleted || rec.filePath == "" {
 		return nil, dto, fmt.Errorf("export not ready")
 	}
@@ -251,16 +317,23 @@ func (r *ReportJobRunner) reportLicenseGated(reportKey string) bool {
 }
 
 func (r *ReportJobRunner) toDTO(jobID string, rec *reportJobRecord) ReportJobStatusDTO {
+	destination := rec.spec.Destination
+	if destination == "" {
+		destination = "download"
+	}
 	return ReportJobStatusDTO{
-		ID:         jobID,
-		JobID:      jobID,
-		CustomerID: rec.spec.CustomerID,
-		ReportKey:  rec.spec.ReportKey,
-		Format:     rec.spec.Format,
-		Status:     rec.status,
-		Bytes:      rec.bytes,
-		Error:      SanitizeExportJobError(rec.errMsg),
-		CreatedAt:  rec.createdAt.Format(time.RFC3339),
+		ID:             jobID,
+		JobID:          jobID,
+		CustomerID:     rec.spec.CustomerID,
+		ReportKey:      rec.spec.ReportKey,
+		Format:         rec.spec.Format,
+		Destination:    destination,
+		Status:         rec.status,
+		Bytes:          rec.bytes,
+		Error:          SanitizeExportJobError(rec.errMsg),
+		SpreadsheetURL: rec.spreadsheetURL,
+		SpreadsheetID:  rec.spreadsheetID,
+		CreatedAt:      rec.createdAt.Format(time.RFC3339),
 	}
 }
 
@@ -281,7 +354,7 @@ func (r *ReportJobRunner) evictLocked(now time.Time) {
 }
 
 func (r *ReportJobRunner) runJob(parent context.Context, jobID string, spec ReportJobSpec) {
-	jobCtx, cancel := context.WithTimeout(parent, reportJobRunTimeout)
+	jobCtx, cancel := context.WithTimeout(parent, reportJobRunTimeoutForSpec(spec))
 	defer cancel()
 
 	if !r.pgEnabled() {
@@ -296,16 +369,46 @@ func (r *ReportJobRunner) runJob(parent context.Context, jobID string, spec Repo
 		r.mu.Unlock()
 	}
 
-	if err := os.MkdirAll(r.exportDir, 0o750); err != nil {
-		r.failJob(jobCtx, jobID, err)
+	exportStart := time.Now()
+	if spec.Destination == "google_sheet" {
+		if r.deps.WriteGoogleSheet == nil {
+			r.failJob(jobCtx, jobID, spec, fmt.Errorf("google sheets export not configured"))
+			return
+		}
+		result, exportErr := r.deps.WriteGoogleSheet(jobCtx, spec)
+		if exportErr != nil {
+			observeReportQuery(spec.ReportKey, exportStart, exportErr)
+			r.failJob(jobCtx, jobID, spec, exportErr)
+			return
+		}
+		observeReportQuery(spec.ReportKey, exportStart, nil)
+		if r.pgEnabled() {
+			if err := completeReportJobGoogleSheetPG(jobCtx, r.deps.Pool, jobID, result.SpreadsheetID, result.SpreadsheetURL); err != nil {
+				r.failJob(jobCtx, jobID, spec, err)
+			} else {
+				r.notifyJobTerminal(jobCtx, jobID, spec, JobStatusCompleted, "")
+			}
+			return
+		}
+		r.mu.Lock()
+		if rec, ok := r.jobs[jobID]; ok {
+			rec.status = JobStatusCompleted
+			rec.spreadsheetID = result.SpreadsheetID
+			rec.spreadsheetURL = result.SpreadsheetURL
+		}
+		r.mu.Unlock()
+		r.notifyJobTerminal(jobCtx, jobID, spec, JobStatusCompleted, "")
 		return
 	}
-	path := filepath.Join(r.exportDir, jobID+".csv")
-	exportStart := time.Now()
+
+	if err := os.MkdirAll(r.exportDir, 0o750); err != nil {
+		r.failJob(jobCtx, jobID, spec, err)
+		return
+	}
+	path := filepath.Join(r.exportDir, jobID+"."+ReportJobArtifactExt(spec))
 	var exportErr error
 	switch spec.ReportKey {
 	case CampaignImportValidationReportKey:
-		path = filepath.Join(r.exportDir, jobID+".json")
 		if r.deps.WriteCampaignImportValidation == nil {
 			exportErr = fmt.Errorf("campaign import validation export not configured")
 		} else {
@@ -315,26 +418,25 @@ func (r *ReportJobRunner) runJob(parent context.Context, jobID string, spec Repo
 		if r.deps.WriteReport == nil {
 			exportErr = fmt.Errorf("report export not configured")
 		} else {
-			if spec.ReportKey == "fraud-evidence-pack-bulk" {
-				path = filepath.Join(r.exportDir, jobID+".zip")
-			}
 			exportErr = r.deps.WriteReport(jobCtx, path, spec)
 		}
 	}
 	if exportErr != nil {
 		observeReportQuery(spec.ReportKey, exportStart, exportErr)
-		r.failJob(jobCtx, jobID, exportErr)
+		r.failJob(jobCtx, jobID, spec, exportErr)
 		return
 	}
 	observeReportQuery(spec.ReportKey, exportStart, nil)
 	info, err := os.Stat(path)
 	if err != nil {
-		r.failJob(jobCtx, jobID, err)
+		r.failJob(jobCtx, jobID, spec, err)
 		return
 	}
 	if r.pgEnabled() {
 		if err := completeReportJobPG(jobCtx, r.deps.Pool, jobID, path, info.Size()); err != nil {
-			r.failJob(jobCtx, jobID, err)
+			r.failJob(jobCtx, jobID, spec, err)
+		} else {
+			r.notifyJobTerminal(jobCtx, jobID, spec, JobStatusCompleted, "")
 		}
 		return
 	}
@@ -345,11 +447,14 @@ func (r *ReportJobRunner) runJob(parent context.Context, jobID string, spec Repo
 		rec.bytes = info.Size()
 	}
 	r.mu.Unlock()
+	r.notifyJobTerminal(jobCtx, jobID, spec, JobStatusCompleted, "")
 }
 
-func (r *ReportJobRunner) failJob(ctx context.Context, jobID string, err error) {
+func (r *ReportJobRunner) failJob(ctx context.Context, jobID string, spec ReportJobSpec, err error) {
+	publicErr := SanitizeExportJobErrorFromErr(err)
 	if r.pgEnabled() {
 		_ = failReportJobPG(ctx, r.deps.Pool, jobID, err.Error())
+		r.notifyJobTerminal(ctx, jobID, spec, JobStatusFailed, publicErr)
 		return
 	}
 	r.mu.Lock()
@@ -357,6 +462,26 @@ func (r *ReportJobRunner) failJob(ctx context.Context, jobID string, err error) 
 	if rec, ok := r.jobs[jobID]; ok {
 		rec.status = JobStatusFailed
 		rec.errMsg = err.Error()
+	}
+	r.notifyJobTerminal(ctx, jobID, spec, JobStatusFailed, publicErr)
+}
+
+func ReportJobArtifactExt(spec ReportJobSpec) string {
+	if spec.ReportKey == CampaignImportValidationReportKey {
+		return "json"
+	}
+	if spec.ReportKey == "fraud-evidence-pack-bulk" {
+		return "zip"
+	}
+	switch spec.Format {
+	case "json":
+		return "json"
+	case "xlsx":
+		return "xlsx"
+	case "zip":
+		return "zip"
+	default:
+		return "csv"
 	}
 }
 

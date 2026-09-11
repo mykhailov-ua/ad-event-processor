@@ -19,11 +19,23 @@ var allowedSavedViewSpecKeys = map[string]struct{}{
 	"from":             {},
 	"to":               {},
 	"compare":          {},
+	"compare_from":     {},
+	"compare_to":       {},
 	"campaign_id":      {},
 	"limit":            {},
+	"row_limit":        {},
 	"columns":          {},
 	"from_offset_days": {},
 	"to_offset_days":   {},
+	"format":           {},
+	"destination":      {},
+	"notify":           {},
+	"google_sheet":     {},
+	"import_payload":   {},
+	"kind":             {},
+	"entry":            {},
+	"billing_format":   {},
+	"redact_pii":       {},
 }
 
 func allowedSavedViewReportKeys() map[string]struct{} {
@@ -35,6 +47,8 @@ func allowedSavedViewReportKeys() map[string]struct{} {
 	for _, key := range keysFn() {
 		keys[key] = struct{}{}
 	}
+	keys[reportjob.SavedViewReportKeyBilling] = struct{}{}
+	keys[reportjob.SavedViewReportKeyAudit] = struct{}{}
 	return keys
 }
 
@@ -51,6 +65,11 @@ func validateSavedViewInputForActor(ctx context.Context, name, reportKey string,
 		return err
 	}
 	return validateSavedViewActorPolicy(ctx, reportKey, spec)
+}
+
+// ValidateReportViewForActor validates saved view input for the authenticated actor.
+func ValidateReportViewForActor(ctx context.Context, name, reportKey string, spec json.RawMessage) error {
+	return validateSavedViewInputForActor(ctx, name, reportKey, spec)
 }
 
 func validateSavedViewActorPolicy(ctx context.Context, reportKey string, spec json.RawMessage) error {
@@ -176,6 +195,20 @@ func validateSavedViewSpec(spec json.RawMessage) error {
 			}
 		}
 	}
+	if compareFromRaw, ok := raw["compare_from"]; ok {
+		if compareToRaw, hasCompareTo := raw["compare_to"]; hasCompareTo {
+			var compareFrom, compareTo string
+			if err := json.Unmarshal(compareFromRaw, &compareFrom); err != nil {
+				return validationErr("invalid spec.compare_from")
+			}
+			if err := json.Unmarshal(compareToRaw, &compareTo); err != nil {
+				return validationErr("invalid spec.compare_to")
+			}
+			if err := reportjob.ValidateReportJobCompareStrings(compareFrom, compareTo); err != nil {
+				return validationErr(err.Error())
+			}
+		}
+	}
 	return nil
 }
 
@@ -278,13 +311,117 @@ func validateSavedViewSpecValue(key string, value json.RawMessage) error {
 			return validationErr("invalid spec.campaign_id")
 		}
 		return nil
-	case "limit", "from_offset_days", "to_offset_days":
+	case "limit", "from_offset_days", "to_offset_days", "row_limit":
 		var n int
 		if err := json.Unmarshal(value, &n); err != nil {
 			return validationErr(fmt.Sprintf("invalid spec.%s", key))
 		}
 		if n < 0 {
 			return validationErr(fmt.Sprintf("spec.%s must be non-negative", key))
+		}
+		if key == "row_limit" && n > reportjob.ExportRowLimitMax {
+			return validationErr(fmt.Sprintf("spec.row_limit exceeds %d", reportjob.ExportRowLimitMax))
+		}
+		return nil
+	case "compare_from", "compare_to":
+		var ts string
+		if err := json.Unmarshal(value, &ts); err != nil {
+			return validationErr(fmt.Sprintf("invalid spec.%s", key))
+		}
+		ts = strings.TrimSpace(ts)
+		if ts == "" {
+			return validationErr(fmt.Sprintf("spec.%s is required", key))
+		}
+		if _, err := time.Parse(time.RFC3339, ts); err != nil {
+			return validationErr(fmt.Sprintf("invalid spec.%s timestamp", key))
+		}
+		return nil
+	case "format":
+		var format string
+		if err := json.Unmarshal(value, &format); err != nil {
+			return validationErr("invalid spec.format")
+		}
+		switch strings.TrimSpace(format) {
+		case "csv", "json", "xlsx", "zip", "ndjson":
+			return nil
+		default:
+			return validationErr("unsupported spec.format")
+		}
+	case "destination":
+		var destination string
+		if err := json.Unmarshal(value, &destination); err != nil {
+			return validationErr("invalid spec.destination")
+		}
+		switch strings.TrimSpace(destination) {
+		case "download", "google_sheet", "":
+			return nil
+		default:
+			return validationErr("unsupported spec.destination")
+		}
+	case "kind":
+		var kind string
+		if err := json.Unmarshal(value, &kind); err != nil {
+			return validationErr("invalid spec.kind")
+		}
+		switch strings.TrimSpace(kind) {
+		case "report", "billing", "audit":
+			return nil
+		default:
+			return validationErr("unsupported spec.kind")
+		}
+	case "billing_format":
+		var format string
+		if err := json.Unmarshal(value, &format); err != nil {
+			return validationErr("invalid spec.billing_format")
+		}
+		switch strings.TrimSpace(format) {
+		case "csv", "ndjson":
+			return nil
+		default:
+			return validationErr("unsupported spec.billing_format")
+		}
+	case "entry":
+		var entry string
+		if err := json.Unmarshal(value, &entry); err != nil {
+			return validationErr("invalid spec.entry")
+		}
+		if len(strings.TrimSpace(entry)) > 128 {
+			return validationErr("spec.entry must be at most 128 characters")
+		}
+		return nil
+	case "redact_pii":
+		var enabled bool
+		if err := json.Unmarshal(value, &enabled); err != nil {
+			return validationErr("invalid spec.redact_pii")
+		}
+		return nil
+	case "notify":
+		var notify reportjob.ReportJobNotifySpec
+		if err := json.Unmarshal(value, &notify); err != nil {
+			return validationErr("invalid spec.notify")
+		}
+		spec := reportjob.ReportJobSpec{Notify: notify}
+		return reportjob.ValidateReportJobNotifySpec(&spec)
+	case "google_sheet":
+		var sheet reportjob.ReportJobGoogleSheetSpec
+		if err := json.Unmarshal(value, &sheet); err != nil {
+			return validationErr("invalid spec.google_sheet")
+		}
+		mode := strings.TrimSpace(sheet.Mode)
+		if mode != "" && mode != "create" && mode != "append" {
+			return validationErr("unsupported spec.google_sheet.mode")
+		}
+		if len(sheet.SpreadsheetID) > 128 || len(sheet.SheetTitle) > 128 {
+			return validationErr("spec.google_sheet fields exceed 128 characters")
+		}
+		return nil
+	case "import_payload":
+		if len(value) > 4096 {
+			return validationErr("spec.import_payload exceeds 4096 bytes")
+		}
+		var payload map[string]json.RawMessage
+		if err := json.Unmarshal(value, &payload); err != nil {
+			return validationErr("spec.import_payload must be a JSON object")
 		}
 		return nil
 	case "columns":

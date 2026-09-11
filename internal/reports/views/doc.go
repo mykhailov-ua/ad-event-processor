@@ -1,7 +1,8 @@
 // Package views provides saved report view CRUD and schedule validation for admin reporting.
 //
 // Role:
-//   - ViewsHTTPHandlers: GET/POST/PUT/DELETE /api/v1/views; registered from controlplane adminapi_wire_domains.go.
+//   - ViewsHTTPHandlers: GET/POST/PUT/DELETE /api/v1/views; POST /api/v1/views/{id}/export;
+//     registered from controlplane adminapi_wire_domains.go.
 //   - ViewsStore persists to Postgres report_saved_views (store_pg.go); in-memory map when pool nil (tests).
 //   - ValidateReportScheduleForActor validates reportjob schedule specs (RBAC, license, customer binding).
 //   - validate.go enforces report_key against reports.LiveReportExportKeys via SetLiveReportExportKeys (reports/views_bridge.go init).
@@ -11,7 +12,8 @@
 //   - reportjob schedule worker calls ValidateReportScheduleForActor before enqueue.
 //
 // Invariants:
-//   - Saved view spec JSON max 8 KiB; allowed keys: from, to, compare, campaign_id, limit, columns, from_offset_days, to_offset_days.
+//   - Saved view spec JSON max 8 KiB; allowed keys include export hub preset fields
+//     (format, destination, row_limit, compare_from/to, notify, google_sheet, import_payload, kind, entry).
 //   - authz.MaskMasked buyers blocked from ops-only report keys (filter-rejects, fraud-evidence-pack, layer-desync-summary).
 //   - Masked buyers capped to 7-day range on saved views and schedules.
 //   - Bound customer actors cannot save views or schedules for a different customer_id (ErrForbidden).
@@ -19,7 +21,7 @@
 //
 // Forbidden:
 //   - ClickHouse queries or report math in this package.
-//   - Import internal/reportjob (validation only; no runner coupling).
+//   - Report job execution without injected ReportJobRunner on export shortcut.
 //
 // Verify:
 // go list -e ./internal/reports/views/

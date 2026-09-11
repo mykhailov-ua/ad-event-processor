@@ -56,6 +56,11 @@ type CampaignListMetricsRowDTO struct {
 	BotPct               float64 `json:"bot_pct,omitempty"`
 	RoiPct               float64 `json:"roi_pct,omitempty"`
 	CpmUsd               string  `json:"cpm_usd,omitempty"`
+	BudgetBurnPct        float64 `json:"budget_burn_pct,omitempty"`
+	PacingMode           string  `json:"pacing_mode,omitempty"`
+	PacingHealth         string  `json:"pacing_health,omitempty"`
+	MetricsStale         bool    `json:"metrics_stale,omitempty"`
+	MetricsAsOf          string  `json:"metrics_as_of,omitempty"`
 }
 
 type CampaignListMetricsBatchResponse struct {
@@ -245,11 +250,16 @@ func BatchCampaignListMetrics(
 		items[id] = entry
 	}
 
+	metricsAsOf, batchStale := campaignListMetricsAsOf(ctx, clickhouseQuery, stale)
+	if err := attachCampaignListOperationalSignals(ctx, pool, clickhouseQuery, campaignIDs, items, batchStale, metricsAsOf); err != nil {
+		return CampaignListMetricsBatchResponse{}, err
+	}
+
 	return CampaignListMetricsBatchResponse{
 		Items: items,
 		From:  from.UTC().Format(time.RFC3339),
 		To:    to.UTC().Format(time.RFC3339),
-		Stale: stale,
+		Stale: batchStale,
 	}, nil
 }
 

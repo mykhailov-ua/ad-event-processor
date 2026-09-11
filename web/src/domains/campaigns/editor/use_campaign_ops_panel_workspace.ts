@@ -88,6 +88,7 @@ export function useCampaignOpsPanelWorkspace({
   const [mappingDrafts, setMappingDrafts] = useState<MappingDraft[]>([]);
   const [suggestions, setSuggestions] = useState<PlacementBlockSuggestion[]>([]);
   const [actionError, setActionError] = useState<Error | undefined>();
+  const [statsError, setStatsError] = useState<Error | undefined>();
   const [savingMappings, setSavingMappings] = useState(false);
   const [mappingSaveSuccess, setMappingSaveSuccess] = useState(false);
   const [syncingPreset, setSyncingPreset] = useState(false);
@@ -107,6 +108,7 @@ export function useCampaignOpsPanelWorkspace({
     setMappingDrafts([]);
     setSuggestions([]);
     setActionError(undefined);
+    setStatsError(undefined);
     setMappingSaveSuccess(false);
     setSyncPresetMessage(undefined);
   }, [campaignId]);
@@ -132,6 +134,7 @@ export function useCampaignOpsPanelWorkspace({
 
   const onLoadStats = useCallback(() => {
     void runAction('stats', async () => {
+      setStatsError(undefined);
       const editorCacheKey = buildCampaignStatsCacheKey(
         campaignId,
         resolvedStatsQuery,
@@ -156,11 +159,19 @@ export function useCampaignOpsPanelWorkspace({
         setStats(seeded);
       }
 
-      const fetched = await getCampaignStats(campaignId, resolvedStatsQuery);
-      writeCachedCampaignStats(editorCacheKey, fetched);
-      setStats(fetched);
+      try {
+        const fetched = await getCampaignStats(campaignId, resolvedStatsQuery);
+        writeCachedCampaignStats(editorCacheKey, fetched);
+        setStats(fetched);
+      } catch (err: unknown) {
+        setStatsError(err instanceof Error ? err : new Error(String(err)));
+      }
     });
   }, [campaignId, listMetrics, resolvedStatsQuery, runAction, stats, statsCacheRevision]);
+
+  useEffect(() => {
+    onLoadStats();
+  }, [campaignId, onLoadStats]);
 
   const onLoadEvents = useCallback(() => {
     void runAction('events', async () => {
@@ -259,6 +270,8 @@ export function useCampaignOpsPanelWorkspace({
     setDraftPlacementId,
     loadingKey,
     stats,
+    statsError,
+    statsQuery: resolvedStatsQuery,
     events,
     margin,
     mappings,
@@ -270,6 +283,7 @@ export function useCampaignOpsPanelWorkspace({
     mappingSaveSuccess,
     statusIntegrationSchemaName: campaign?.status_integration_schema_name,
     statusIntegrationSchemaId: campaign?.status_integration_schema_id,
+    campaign,
     syncingPreset,
     syncPresetMessage,
     blocking,

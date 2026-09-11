@@ -170,6 +170,67 @@ paths:
         default:
           $ref: '../openapi.yaml#/components/responses/Error'
 
+  /api/v1/integrations/google-sheets/connect:
+    get:
+      tags: [integrations]
+      operationId: googleSheetsConnect
+      summary: Start Google Sheets OAuth connect flow
+      description: Redirects to Google OAuth consent; requires settings:write or integrations:write.
+      x-permissions: [settings:write, integrations:write]
+      responses:
+        '302':
+          description: Redirect to Google OAuth
+        '503':
+          description: Integration not configured
+        default:
+          $ref: '../openapi.yaml#/components/responses/Error'
+
+  /api/v1/integrations/google-sheets/callback:
+    get:
+      tags: [integrations]
+      operationId: googleSheetsCallback
+      summary: Google Sheets OAuth callback
+      description: Validates CSRF state and stores encrypted refresh token for the signed-in operator.
+      responses:
+        '302':
+          description: Redirect to admin integrations page
+        default:
+          $ref: '../openapi.yaml#/components/responses/Error'
+
+  /api/v1/integrations/google-sheets/status:
+    get:
+      tags: [integrations]
+      operationId: googleSheetsStatus
+      summary: Google Sheets connection status for current operator
+      x-permissions: [settings:read, integrations:read]
+      responses:
+        '200':
+          description: Connection status
+          content:
+            application/json:
+              schema:
+                $ref: '../components/schemas/integrations.yaml#/GoogleSheetsIntegrationStatus'
+        default:
+          $ref: '../openapi.yaml#/components/responses/Error'
+
+  /api/v1/integrations/google-sheets:
+    delete:
+      tags: [integrations]
+      operationId: googleSheetsDisconnect
+      summary: Disconnect Google Sheets OAuth for current operator
+      x-permissions: [settings:write, integrations:write]
+      responses:
+        '200':
+          description: Disconnected
+          content:
+            application/json:
+              schema:
+                $ref: '../components/schemas/integrations.yaml#/StatusOKResponse'
+        '404':
+          description: Not connected
+        default:
+          $ref: '../openapi.yaml#/components/responses/Error'
+
   /api/v1/integration/schemas:
     get:
       tags: [integration]

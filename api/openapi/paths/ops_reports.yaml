@@ -1879,7 +1879,7 @@ paths:
               $ref: ../components/schemas/ops_reports.yaml#/ReportJobSpec
         required: true
       responses:
-        '202':
+        '201':
           content:
             application/json:
               schema:
@@ -1939,15 +1939,35 @@ paths:
       responses:
         '200':
           content:
-            application/json:
-              schema:
-                additionalProperties: true
-                type: object
             text/csv:
               schema:
                 format: binary
                 type: string
+            application/json:
+              schema:
+                format: binary
+                type: string
+            application/zip:
+              schema:
+                format: binary
+                type: string
+            application/vnd.openxmlformats-officedocument.spreadsheetml.sheet:
+              schema:
+                format: binary
+                type: string
           description: Export file
+        '409':
+          description: Google Sheet destination has no file artifact
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  code:
+                    type: string
+                    enum: [USE_SPREADSHEET_URL]
+                  message:
+                    type: string
         default:
           $ref: ../openapi.yaml#/components/responses/Error
       summary: Download completed report export
@@ -1955,6 +1975,61 @@ paths:
       - reports
       x-permissions:
       - customers:read
+  /api/v1/reports/jobs/{id}/rerun:
+    post:
+      operationId: reportRerunJob
+      parameters:
+      - $ref: ../openapi.yaml#/components/parameters/UuidPathId
+      responses:
+        '201':
+          content:
+            application/json:
+              schema:
+                $ref: ../components/schemas/ops_reports.yaml#/ReportJobStatus
+          description: Cloned export job accepted
+        default:
+          $ref: ../openapi.yaml#/components/responses/Error
+      summary: Re-run report export job with the same spec
+      tags:
+      - reports
+      x-permissions:
+      - exports:run
+  /api/v1/reports/notifications:
+    get:
+      operationId: reportListExportNotifications
+      responses:
+        '200':
+          content:
+            application/json:
+              schema:
+                $ref: ../components/schemas/ops_reports.yaml#/ReportExportNotificationList
+          description: In-app export notifications for the current operator
+        default:
+          $ref: ../openapi.yaml#/components/responses/Error
+      summary: List in-app report export notifications
+      tags:
+      - reports
+      x-permissions:
+      - exports:read
+  /api/v1/reports/notifications/{id}/ack:
+    post:
+      operationId: reportAckExportNotification
+      parameters:
+      - $ref: ../openapi.yaml#/components/parameters/UuidPathId
+      responses:
+        '200':
+          content:
+            application/json:
+              schema:
+                $ref: ../components/schemas/ops_reports.yaml#/ReportExportNotification
+          description: Acknowledged notification
+        default:
+          $ref: ../openapi.yaml#/components/responses/Error
+      summary: Acknowledge an in-app report export notification
+      tags:
+      - reports
+      x-permissions:
+      - exports:read
   /api/v1/reports/keywords:
     get:
       description: Returns rows plus freshness metadata; stale=true when ClickHouse lag exceeds SLA.
@@ -2658,3 +2733,22 @@ paths:
       - views
       x-permissions:
       - campaigns:write
+  /api/v1/views/{id}/export:
+    post:
+      operationId: exportSavedView
+      parameters:
+      - $ref: ../openapi.yaml#/components/parameters/UuidPathId
+      responses:
+        '201':
+          content:
+            application/json:
+              schema:
+                $ref: ../components/schemas/ops_reports.yaml#/SavedViewExportResponse
+          description: Enqueued export job from saved view
+        default:
+          $ref: ../openapi.yaml#/components/responses/Error
+      summary: Enqueue report export job from saved view
+      tags:
+      - views
+      x-permissions:
+      - exports:run

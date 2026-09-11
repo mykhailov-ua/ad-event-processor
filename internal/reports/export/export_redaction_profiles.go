@@ -71,6 +71,8 @@ func exportDeniedColumns(reportKey, profile string) []string {
 			return []string{"fraud_reason", "placement_id", "dimension_value"}
 		case "filter-rejects":
 			return []string{"country", "placement_id"}
+		case "click-log":
+			return []string{"click_id", "placement_id", "sub1", "country"}
 		}
 	case exportProfileSupportMasked:
 		switch reportKey {
@@ -95,6 +97,8 @@ func exportAllColumns(reportKey string) []string {
 		return []string{"dimension_value", "campaign_id", "impressions", "clicks", "ivt_events", "blocked_events", "ivt_rate", "top_fraud_category", "top_fraud_category_label"}
 	case "filter-rejects":
 		return []string{"reject_kind", "reject_count", "country", "placement_id"}
+	case "click-log":
+		return []string{"event_type", "click_id", "campaign_id", "placement_id", "created_at", "attributed_cost_micro", "cost_source", "revenue_micro", "inbound_status", "goal_name", "sub1", "country"}
 	default:
 		return nil
 	}

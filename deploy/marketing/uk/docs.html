@@ -17,8 +17,9 @@
   </script>
   <link rel="alternate" hreflang="en" href="/docs.html" />
   <link rel="alternate" hreflang="uk" href="/uk/docs.html" />
-  <link rel="stylesheet" href="/site.css">
-  <script src="/site.js" defer></script>
+  <link rel="stylesheet" href="/site.css?v=20260911">
+  <script src="https://cdn.jsdelivr.net/npm/mermaid@11.4.0/dist/mermaid.min.js" defer></script>
+  <script src="/site.js?v=20260911" defer></script>
 </head>
 <body class="docs-page">
   <div class="site-offer-gate" data-site-offer-gate hidden aria-hidden="true"></div>
@@ -26,6 +27,7 @@
     <a href="index.html">BidShard</a>
     <nav class="site-doc-header__nav" aria-label="Документація">
       <a href="index.html">Головна</a>
+      <a href="operators.html">Для операторів</a>
       <a href="../offer.html">Оферта</a>
     </nav>
     <div class="site-header-end">
@@ -74,39 +76,36 @@
       У дефолтній моделі доставки ваш трафік не проходить через сервери BidShard — лише license JWT
       і support chat залишаються на стороні вендора.
     </p>
-    <div class="site-flow" role="img" aria-label="Схема потоку трафіку">
-      <div class="site-flow__lane">
-        <div class="site-flow__label">Hot path</div>
-        <div class="site-flow__track">
-          <span class="site-flow__node">Відвідувач</span>
-          <span class="site-flow__arrow" aria-hidden="true">→</span>
-          <span class="site-flow__node site-flow__node--edge">Nginx edge</span>
-          <span class="site-flow__arrow" aria-hidden="true">→</span>
-          <span class="site-flow__node site-flow__node--hot">tracker</span>
-          <span class="site-flow__arrow" aria-hidden="true">→</span>
-          <span class="site-flow__node site-flow__node--hot">Filter + debit</span>
-          <span class="site-flow__arrow" aria-hidden="true">→</span>
-          <span class="site-flow__node">Redis / broker</span>
-        </div>
-      </div>
-      <div class="site-flow__lane site-flow__lane--cold">
-        <div class="site-flow__label">Async</div>
-        <div class="site-flow__track">
-          <span class="site-flow__node site-flow__node--cold">processor</span>
-          <span class="site-flow__arrow" aria-hidden="true">→</span>
-          <span class="site-flow__node site-flow__node--cold">Postgres</span>
-          <span class="site-flow__arrow site-flow__arrow--plus" aria-hidden="true">+</span>
-          <span class="site-flow__node site-flow__node--cold">ClickHouse</span>
-        </div>
-      </div>
-      <div class="site-flow__lane site-flow__lane--admin">
-        <div class="site-flow__label">Admin</div>
-        <div class="site-flow__track site-flow__track--note">
-          <span class="site-flow__node site-flow__node--admin">control :8188</span>
-          <span class="site-flow__note">API, outbox, billing — не на ingest-потоці</span>
-        </div>
-      </div>
-    </div>
+    <figure class="site-doc-mermaid-wrap" aria-label="Схема потоку трафіку">
+      <pre class="site-doc-mermaid mermaid">flowchart TB
+  subgraph HP["Hot path — синхронний /track"]
+    direction LR
+    V[Відвідувач] --&gt; N[Nginx edge]
+    N --&gt; T[Tracker gnet]
+    T --&gt; F[Filters + fraud-boost lookup]
+    F --&gt; U[Redis unified filter + debit]
+    U --&gt; S[Redis stream / broker WAL]
+  end
+
+  subgraph AS["Async settlement"]
+    direction LR
+    S --&gt; P[Processor]
+    P --&gt; PG[(Postgres spend)]
+    P --&gt; CH[(ClickHouse events)]
+  end
+
+  subgraph CP["Cold path — фоновий"]
+    direction TB
+    CTL[Control :8188] --&gt; PG
+    CTL --&gt; OB[Outbox workers]
+    CH --&gt; ML[fraud-scorer / IVT batch]
+    ML --&gt; RS[(Redis snapshots)]
+    OB --&gt; RS
+  end
+
+  RS -. "лише snapshot lookup, без ML inference" .-&gt; F</pre>
+      <figcaption class="site-doc-mermaid__caption">Суцільні стрілки: шлях прийняття кліку. Пунктир: precomputed fraud-boost snapshot на ingest.</figcaption>
+    </figure>
     <p class="site-doc-callout">
       <strong>HTTP 202 на <code>/track</code></strong> означає, що tracker прийняв і провалідував подію на ingest path.
       Це <em>не</em> означає, що Postgres або ClickHouse уже записали рядок — це відбувається асинхронно через processor.
@@ -160,6 +159,12 @@
         </tr>
       </tbody>
     </table>
+    <p class="site-doc-callout site-doc-callout--hardware">
+      <strong>Рекомендація по залізу:</strong> ClickHouse на одному VPS дуже прожорливий до RAM. Для комфортного all-in-one
+      (ClickHouse + Redis + Postgres + tracker pool) закладайте мінімум <strong>4 vCPU і 8 GB RAM</strong> плюс NVMe диск.
+      Routing-only pilot можна стартувати менше; дешевий VPS часто впереться в ClickHouse OOM — це питання sizing, а не дефект ліцензії.
+      Див. <a href="index.html#pricing">hardware sizing</a> на головній.
+    </p>
     <p>
       Перевірка ліцензії — offline Ed25519 JWT файл на диску; без регулярного phone-home для ingest tokens.
       Feature flags, host activations і export limits закодовані в JWT per SKU. Кампанії та обсяг подій не обмежуються ліцензією, коли в каталозі стоїть 0.
@@ -203,7 +208,7 @@
       <li><strong>Hard reject</strong> — HTTP 403; бюджет не списується.</li>
       <li><strong>Silent reject</strong> — HTTP 202 відвідувачу (decoy accept); прапорець у analytics, щоб воронки залишалися чистими. Не змінює campaign settings у Postgres автоматично.</li>
       <li><strong>IVT detector</strong> (Pro+) — batch rules на ClickHouse; може enqueue blacklist/boost actions через admin outbox.</li>
-      <li><strong>ML fraud scorer</strong> (Scale+) — batch LightGBM у sidecar; пише boost keys, які Redis синхронізує в tracker snapshot. Не per-click inference на ingest.</li>
+      <li><strong>ML fraud scorer</strong> (Scale+) — batch LightGBM у sidecar пише boost keys у Redis; tracker читає <strong>precomputed fraud-boost snapshot</strong> на ingest (лише map lookup — без model inference на <code>/track</code>).</li>
     </ul>
 
     <h2 id="admin-path">Admin, billing і звіти</h2>

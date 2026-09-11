@@ -6,6 +6,7 @@ import (
 	"fmt"
 	"os"
 	"strings"
+	"time"
 
 	"ad-event-processor/internal/reports"
 
@@ -54,6 +55,11 @@ func writeReportCSV(ctx context.Context, deps reports.ReportExportDeps, path str
 	if err := writeExportMetaHeader(w, exportedBy, exportDeploymentID()); err != nil {
 		return err
 	}
+	compareFrom := strings.TrimSpace(spec.CompareFrom)
+	compareTo := strings.TrimSpace(spec.CompareTo)
+	if err := writeCompareMetaHeader(w, compareFrom, compareTo); err != nil {
+		return err
+	}
 	maxRows := spec.RowLimit
 	if maxRows <= 0 {
 		maxRows = reportjob.ExportRowLimitDefault
@@ -71,7 +77,30 @@ func writeReportCSV(ctx context.Context, deps reports.ReportExportDeps, path str
 		if ierr != nil {
 			return ierr
 		}
-		if err := w.Write([]string{"placement_id", "campaign_id", "impressions", "clicks", "conversions", "spend_micro", "revenue_micro", "profit_micro", "roi_pct", "ctr", "ivt_rate"}); err != nil {
+		compareEnabled := compareFrom != "" && compareTo != ""
+		var prevByKey map[string]reports.ReportMetricsCHRow
+		if compareEnabled {
+			compareFromTime, compareToTime, enabled, cerr := parseCompareRangeFromSpec(spec)
+			if cerr != nil {
+				return cerr
+			}
+			if enabled {
+				prevByKey, cerr = buildReportMetricsPrevMap(
+					ctx, deps, campaignIDs, compareFromTime, compareToTime, maxRows,
+					func(ctx context.Context, deps reports.ReportExportDeps, ids []uuid.UUID, cf, ct time.Time, limit, offset int) ([]reports.ReportMetricsCHRow, int64, error) {
+						return reports.QueryPlacementReportRows(ctx, deps.ClickHouseQuery, ids, cf, ct, limit, offset)
+					},
+				)
+				if cerr != nil {
+					return cerr
+				}
+			}
+		}
+		header := []string{"placement_id", "campaign_id", "impressions", "clicks", "conversions", "spend_micro", "revenue_micro", "profit_micro", "roi_pct", "ctr", "ivt_rate"}
+		if compareEnabled {
+			header = append(header, "spend_micro_delta", "clicks_delta", "conversions_delta", "impressions_delta")
+		}
+		if err := w.Write(header); err != nil {
 			return err
 		}
 		err = paginateCHExport(reportExportPageSize, maxRows,
@@ -80,12 +109,22 @@ func writeReportCSV(ctx context.Context, deps reports.ReportExportDeps, path str
 			},
 			func(row reports.ReportMetricsCHRow) error {
 				dto := reports.ToPlacementReportRowDTO(row, ivtRates[reports.ReportMetricsKey(row.Dimension, row.CampaignID)])
-				return w.Write([]string{
+				cells := []string{
 					dto.PlacementID, dto.CampaignID,
 					fmt.Sprintf("%d", dto.Impressions), fmt.Sprintf("%d", dto.Clicks), fmt.Sprintf("%d", dto.Conversions),
 					fmt.Sprintf("%d", dto.SpendMicro), fmt.Sprintf("%d", dto.RevenueMicro), fmt.Sprintf("%d", dto.ProfitMicro),
 					fmt.Sprintf("%.4f", dto.ROIPct), fmt.Sprintf("%.6f", dto.CTR), fmt.Sprintf("%.6f", dto.IVTRate),
-				})
+				}
+				if compareEnabled {
+					prev := prevByKey[reports.ReportMetricsKey(row.Dimension, row.CampaignID)]
+					cells = append(cells,
+						formatCompareDelta(dto.SpendMicro, prev.SpendMicro),
+						formatCompareDelta(dto.Clicks, prev.Clicks),
+						formatCompareDelta(dto.Conversions, prev.Conversions),
+						formatCompareDelta(dto.Impressions, prev.Impressions),
+					)
+				}
+				return w.Write(cells)
 			},
 		)
 	case "keywords":
@@ -433,6 +472,168 @@ func writeReportCSV(ctx context.Context, deps reports.ReportExportDeps, path str
 			return qerr
 		}
 		err = writeCustomerFraudByDimensionExport(w, profile, dimRows)
+	case "wire-signal-breakdown":
+		fullHeader := []string{"campaign_id", "fraud_reason", "fraud_category", "fraud_category_label", "event_count", "silent_reject_count", "silent_reject_ratio", "signals_degraded"}
+		header := []string{"campaign_id", "fraud_reason", "event_count", "silent_reject_count", "silent_reject_ratio"}
+		if profile != ExportProfileOperatorFull {
+			header = []string{"campaign_id", "fraud_category", "fraud_category_label", "event_count", "silent_reject_count", "silent_reject_ratio"}
+		}
+		if err := w.Write(header); err != nil {
+			return err
+		}
+		err = paginateCHExport(reportExportPageSize, maxRows,
+			func(offset, limit int) ([]reports.WireSignalBreakdownRowDTO, int64, error) {
+				return reportfraud.QueryWireSignalBreakdownRows(ctx, deps.ClickHouseQuery, campaignIDs, from, to, limit, offset, ctx)
+			},
+			func(row reports.WireSignalBreakdownRowDTO) error {
+				fullRow := []string{
+					row.CampaignID, row.FraudReason, row.FraudCategory, row.FraudCategoryLabel,
+					fmt.Sprintf("%d", row.EventCount), fmt.Sprintf("%d", row.SilentRejectCount),
+					fmt.Sprintf("%.6f", row.SilentRejectRatio), fmt.Sprintf("%t", row.SignalsDegraded),
+				}
+				return w.Write(projectExportRow(fullHeader, fullRow, header))
+			},
+		)
+	case "signal-effectiveness":
+		fullHeader := []string{"signal_code", "fraud_category", "fraud_category_label", "event_volume", "block_rate", "silent_reject_rate", "suggested_weight_tier"}
+		header := fullHeader
+		if profile != ExportProfileOperatorFull {
+			header = []string{"fraud_category", "fraud_category_label", "event_volume", "block_rate", "silent_reject_rate", "suggested_weight_tier"}
+		}
+		if err := w.Write(header); err != nil {
+			return err
+		}
+		err = paginateCHExport(reportExportPageSize, maxRows,
+			func(offset, limit int) ([]reports.SignalEffectivenessRowDTO, int64, error) {
+				return reportfraud.QuerySignalEffectivenessRows(ctx, deps.ClickHouseQuery, campaignIDs, from, to, limit, offset, ctx)
+			},
+			func(row reports.SignalEffectivenessRowDTO) error {
+				fullRow := []string{
+					row.SignalCode, row.FraudCategory, row.FraudCategoryLabel,
+					fmt.Sprintf("%d", row.EventVolume),
+					fmt.Sprintf("%.6f", row.BlockRate),
+					fmt.Sprintf("%.6f", row.SilentRejectRate),
+					row.SuggestedWeightTier,
+				}
+				return w.Write(projectExportRow(fullHeader, fullRow, header))
+			},
+		)
+	case "rtt-split-tunnel":
+		if err := w.Write([]string{"campaign_id", "country", "event_count", "split_tunnel_count", "split_tunnel_share", "coverage_pct"}); err != nil {
+			return err
+		}
+		err = paginateCHExport(reportExportPageSize, maxRows,
+			func(offset, limit int) ([]reports.RTTSplitTunnelRowDTO, int64, error) {
+				return reports.QueryRTTSplitTunnelRows(ctx, deps.ClickHouseQuery, campaignIDs, from, to, limit, offset)
+			},
+			func(row reports.RTTSplitTunnelRowDTO) error {
+				return w.Write([]string{
+					row.CampaignID, row.Country,
+					fmt.Sprintf("%d", row.EventCount), fmt.Sprintf("%d", row.SplitTunnelCount),
+					fmt.Sprintf("%.6f", row.SplitTunnelShare), fmt.Sprintf("%.6f", row.CoveragePct),
+				})
+			},
+		)
+	case "layer-desync-drilldown":
+		minDesync := parseLayerDesyncMinCount(spec.ImportPayload)
+		if err := w.Write([]string{"section", "fraud_reason", "fraud_category", "fraud_category_label", "event_count", "silent_reject_count", "signals_degraded", "bucket"}); err != nil {
+			return err
+		}
+		err = paginateCHExport(reportExportPageSize, maxRows,
+			func(offset, limit int) ([]reports.LayerDesyncDrilldownRowDTO, int64, error) {
+				return reportfraud.QueryLayerDesyncDrilldownRows(ctx, deps.ClickHouseQuery, campaignIDs, from, to, minDesync, limit, offset, ctx)
+			},
+			func(row reports.LayerDesyncDrilldownRowDTO) error {
+				return w.Write([]string{
+					"reason", row.FraudReason, row.FraudCategory, row.FraudCategoryLabel,
+					fmt.Sprintf("%d", row.EventCount), fmt.Sprintf("%d", row.SilentRejectCount),
+					fmt.Sprintf("%t", row.SignalsDegraded), "",
+				})
+			},
+		)
+		if err != nil {
+			return err
+		}
+		series, serr := reportfraud.QueryLayerDesyncDrilldownSeries(ctx, deps.ClickHouseQuery, campaignIDs, from, to, minDesync)
+		if serr != nil {
+			return serr
+		}
+		for _, point := range series {
+			if err := w.Write([]string{
+				"series", "", "", "",
+				fmt.Sprintf("%d", point.EventCount), fmt.Sprintf("%d", point.SilentRejectCount), "", point.Label,
+			}); err != nil {
+				return err
+			}
+		}
+	case "campaign-toggle-cohort":
+		params, perr := reports.ParseCampaignToggleCohortExportParams(spec.ImportPayload)
+		if perr != nil {
+			return perr
+		}
+		resp, qerr := reports.QueryCampaignToggleCohortExport(ctx, deps.Pool, deps.ClickHouseQuery, campaignIDs, params)
+		if qerr != nil {
+			return qerr
+		}
+		if err := w.Write([]string{"campaign_id", "toggle_field", "toggle_at", "window_hours", "insufficient_data"}); err != nil {
+			return err
+		}
+		if err := w.Write([]string{
+			resp.CampaignID, resp.ToggleField, resp.ToggleAt,
+			fmt.Sprintf("%d", resp.WindowHours), fmt.Sprintf("%t", resp.Insufficient),
+		}); err != nil {
+			return err
+		}
+		if err := w.Write([]string{"window", "impressions", "rejects", "conversions", "roi_pct", "delta_label", "delta_tone"}); err != nil {
+			return err
+		}
+		for _, row := range resp.Rows {
+			if err := w.Write([]string{
+				row.Window,
+				fmt.Sprintf("%d", row.Impressions), fmt.Sprintf("%d", row.Rejects),
+				fmt.Sprintf("%d", row.Conversions), fmt.Sprintf("%.6f", row.ROIPct),
+				row.DeltaLabel, row.DeltaTone,
+			}); err != nil {
+				return err
+			}
+		}
+	case "conversion-type-payout":
+		if err := w.Write([]string{"campaign_id", "goal_name", "conversions", "payout_micro"}); err != nil {
+			return err
+		}
+		err = paginateCHExport(reportExportPageSize, maxRows,
+			func(offset, limit int) ([]reports.ConversionTypePayoutRowDTO, int64, error) {
+				return reports.QueryConversionTypePayoutRows(ctx, deps.ClickHouseQuery, campaignIDs, from, to, limit, offset)
+			},
+			func(row reports.ConversionTypePayoutRowDTO) error {
+				return w.Write([]string{
+					row.CampaignID, row.GoalName,
+					fmt.Sprintf("%d", row.Conversions), fmt.Sprintf("%d", row.PayoutMicro),
+				})
+			},
+		)
+	case "click-log":
+		fullHeader := []string{"event_type", "click_id", "campaign_id", "placement_id", "created_at", "attributed_cost_micro", "cost_source", "revenue_micro", "inbound_status", "goal_name", "sub1", "country"}
+		header := ExportColumnsForReport("click-log", profile)
+		if len(header) == 0 {
+			header = fullHeader
+		}
+		if err := w.Write(header); err != nil {
+			return err
+		}
+		err = paginateCHExport(reportExportPageSize, maxRows,
+			func(offset, limit int) ([]reports.ClickLogEventDTO, int64, error) {
+				return reports.QueryClickLogBrowseRows(ctx, deps.ClickHouseQuery, campaignIDs, from, to, limit, offset)
+			},
+			func(row reports.ClickLogEventDTO) error {
+				fullRow := []string{
+					row.EventType, row.ClickID, row.CampaignID, row.PlacementID, row.CreatedAt,
+					fmt.Sprintf("%d", row.AttributedCostMicro), row.CostSource,
+					fmt.Sprintf("%d", row.RevenueMicro), row.InboundStatus, row.GoalName, row.Sub1, row.Country,
+				}
+				return w.Write(projectExportRow(fullHeader, fullRow, header))
+			},
+		)
 	default:
 		return fmt.Errorf("unsupported report_key %q", spec.ReportKey)
 	}

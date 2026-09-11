@@ -5,6 +5,7 @@ export type NavItem = {
   label: string;
   permission?: string;
   permissionAny?: string[];
+  badgeCount?: number;
 };
 
 export type NavGroup = {
@@ -25,7 +26,13 @@ const CORE_NAV: NavItem[] = [
 ];
 
 const OPERATIONS_NAV: NavItem[] = [
+  {
+    path: '/dashboards/buyer',
+    label: 'Dashboard',
+    permissionAny: ['campaigns:read', 'campaigns:read:masked'],
+  },
   { path: '/exports', label: 'Exports', permission: 'campaigns:read' },
+  { path: '/alerts', label: 'Alerts', permission: 'campaigns:read' },
   { path: '/ops', label: 'Ops', permission: 'shards:read' },
   { path: '/audit', label: 'Audit', permission: 'audit:read' },
   { path: '/integrations', label: 'Integrations', permission: 'campaigns:read' },

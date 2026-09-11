@@ -22,7 +22,7 @@ export function CustomersSelectionPanel({
         selectedCustomer ? (
           <>
             {selectedCustomer.balance != null ? `Balance: ${selectedCustomer.balance}` : null}
-            {selectedCustomer.currency ? ` · ${selectedCustomer.currency}` : null}
+            {selectedCustomer.currency ? ` / ${selectedCustomer.currency}` : null}
           </>
         ) : null
       }

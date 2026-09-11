@@ -19,6 +19,7 @@ import { SetupPage } from '@/pages/setup_page';
 import { NotFoundPage } from '@/pages/not_found_page';
 import { AuditPage } from '@/pages/audit_page';
 import { ExportsPage } from '@/pages/exports_page';
+import { ExportSchedulesPage } from '@/pages/export_schedules_page';
 import { CampaignIdRedirect } from '@/shell/campaign_id_redirect';
 import {
   BillingExportsRoute,
@@ -27,6 +28,7 @@ import {
 } from '@/shell/export_hub_legacy_redirect';
 import { ReportIndexLegacyRedirect, ReportLegacyRedirect } from '@/shell/report_legacy_redirect';
 import { IntegrationsAffiliatePresetsPage } from '@/pages/integrations_affiliate_presets_page';
+import { IntegrationsGoogleSheetsPage } from '@/pages/integrations_google_sheets_page';
 import { IntegrationsCostSyncPage } from '@/pages/integrations_cost_sync_page';
 import { IntegrationsHubPage } from '@/pages/integrations_hub_page';
 import { IntegrationsPlatformCampaignsPage } from '@/pages/integrations_platform_campaigns_page';
@@ -51,6 +53,9 @@ import { AccessRolesPage } from '@/domains/access/access_roles';
 import { SettingsPage } from '@/pages/settings_page';
 import { SettingsLicensePage } from '@/pages/settings_license_page';
 import { TeamPage } from '@/pages/team_page';
+import { DashboardAdopsRoutePage } from '@/pages/dashboard_adops_page';
+import { DashboardBuyerRoutePage } from '@/pages/dashboard_buyer_page';
+import { AlertsPage } from '@/pages/alerts_page';
 import { RouteErrorPage } from '@/pages/route_error_page';
 
 function ProtectedLayout() {
@@ -136,6 +141,11 @@ export function AppRoutes() {
           <Route element={<TeamPage />} path="team" />
           <Route element={<AuditPage />} path="audit" />
           <Route element={<ExportsPage />} path="exports" />
+          <Route element={<ExportSchedulesPage />} path="exports/schedules" />
+          <Route element={<AlertsPage />} path="alerts" />
+          <Route element={<DashboardBuyerRoutePage />} path="dashboards/buyer" />
+          <Route element={<DashboardAdopsRoutePage />} path="dashboards/adops" />
+          <Route element={<Navigate replace to="/dashboards/buyer" />} path="dashboards" />
           <Route element={<ReportJobsRoute />} path="reports/jobs" />
           <Route element={<BillingExportsRoute />} path="billing/exports" />
           <Route element={<IntegrationsHubPage />} path="integrations" />
@@ -152,8 +162,9 @@ export function AppRoutes() {
             element={<IntegrationsAffiliatePresetsPage />}
             path="integrations/affiliate-presets"
           />
+          <Route element={<IntegrationsGoogleSheetsPage />} path="integrations/google-sheets" />
           <Route element={<PreserveSearchRedirect to="/exports" />} path="integrations/automation" />
-          <Route element={<PreserveSearchRedirect to="/exports" />} path="integrations/smart-alerts" />
+          <Route element={<PreserveSearchRedirect to="/alerts" />} path="integrations/smart-alerts" />
           <Route element={<PreserveSearchRedirect to="/exports" />} path="integrations/margin-guard" />
           <Route
             element={<PreserveSearchRedirect to="/exports" />}
@@ -169,7 +180,6 @@ export function AppRoutes() {
           />
           <Route element={<ReportIndexLegacyRedirect />} path="reports" />
           <Route element={<ReportLegacyRedirect />} path="reports/*" />
-          <Route element={<Navigate replace to="/exports" />} path="dashboards/*" />
           <Route element={<PreserveSearchRedirect to="/exports" />} path="rtb" />
           <Route element={<Navigate replace to="/exports" />} path="rtb/*" />
           <Route element={<Navigate replace to="/exports" />} path="fraud/*" />
@@ -184,13 +194,13 @@ export function AppRoutes() {
           <Route element={<Navigate replace to="/ops/domains" />} path="domains" />
           <Route element={<Navigate replace to="/exports" />} path="automation/*" />
           <Route element={<Navigate replace to="/exports" />} path="traffic-optimizer/*" />
-          <Route element={<Navigate replace to="/exports" />} path="smart-alerts/*" />
+          <Route element={<Navigate replace to="/alerts" />} path="smart-alerts/*" />
           <Route element={<Navigate replace to="/exports" />} path="margin-guard/*" />
           <Route element={<Navigate replace to="/exports" />} path="portals" />
           <Route element={<Navigate replace to="/exports" />} path="selfserve" />
           <Route element={<Navigate replace to="/exports" />} path="publisher/*" />
           <Route element={<Navigate replace to="/exports" />} path="telegram/*" />
-          <Route element={<Navigate replace to="/exports" />} path="report-schedules" />
+          <Route element={<Navigate replace to="/exports/schedules" />} path="report-schedules" />
           <Route element={<Navigate replace to="/exports" />} path="views" />
           <Route element={<Navigate replace to="/exports" />} path="forecast/*" />
           <Route element={<Navigate replace to="/exports" />} path="docs/*" />

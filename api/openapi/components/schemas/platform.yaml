@@ -389,6 +389,19 @@ ReportSchedule:
       type: string
     format:
       type: string
+      enum: [csv, json, xlsx, zip]
+    destination:
+      type: string
+      enum: [download, google_sheet]
+      default: download
+    owner_user_id:
+      type: string
+      format: uuid
+      description: OAuth actor for scheduled Google Sheets exports.
+    google_sheet:
+      $ref: '../schemas/ops_reports.yaml#/ReportJobGoogleSheetSpec'
+    notify:
+      $ref: '../schemas/ops_reports.yaml#/ReportJobNotifySpec'
     cron_expr:
       type: string
     spec:
@@ -403,6 +416,10 @@ ReportSchedule:
       type: string
       format: date-time
     last_job_id:
+      type: string
+    last_run_status:
+      type: string
+    last_run_error_public:
       type: string
     created_at:
       type: string
@@ -422,6 +439,18 @@ CreateReportScheduleRequest:
       type: string
     format:
       type: string
+      enum: [csv, json, xlsx, zip]
+    destination:
+      type: string
+      enum: [download, google_sheet]
+      default: download
+    owner_user_id:
+      type: string
+      format: uuid
+    google_sheet:
+      $ref: '../schemas/ops_reports.yaml#/ReportJobGoogleSheetSpec'
+    notify:
+      $ref: '../schemas/ops_reports.yaml#/ReportJobNotifySpec'
     cron_expr:
       type: string
     spec:
@@ -437,6 +466,17 @@ UpdateReportScheduleRequest:
       type: string
     format:
       type: string
+      enum: [csv, json, xlsx, zip]
+    destination:
+      type: string
+      enum: [download, google_sheet]
+    owner_user_id:
+      type: string
+      format: uuid
+    google_sheet:
+      $ref: '../schemas/ops_reports.yaml#/ReportJobGoogleSheetSpec'
+    notify:
+      $ref: '../schemas/ops_reports.yaml#/ReportJobNotifySpec'
     cron_expr:
       type: string
     spec:
@@ -444,6 +484,15 @@ UpdateReportScheduleRequest:
       additionalProperties: true
     enabled:
       type: boolean
+
+ReportScheduleRunResponse:
+  type: object
+  properties:
+    job_id:
+      type: string
+      format: uuid
+    schedule:
+      $ref: '#/ReportSchedule'
 
 PlatformSettingsView:
   type: object
@@ -791,6 +840,84 @@ TeamOverview:
       type: array
       items:
         $ref: '#/TeamMember'
+    pending_approvals_count:
+      type: integer
+      format: int64
+    pending_for_me_count:
+      type: integer
+      format: int64
+
+TeamMetricsBlock:
+  type: object
+  properties:
+    spend_micro:
+      type: integer
+      format: int64
+    cost_micro:
+      type: integer
+      format: int64
+    revenue_micro:
+      type: integer
+      format: int64
+    profit_micro:
+      type: integer
+      format: int64
+    conversions:
+      type: integer
+      format: int64
+    unique_clicks:
+      type: integer
+      format: int64
+    cpc_micro:
+      type: integer
+      format: int64
+    cpa_micro:
+      type: integer
+      format: int64
+    epc_micro:
+      type: integer
+      format: int64
+    cr_pct:
+      type: number
+      format: double
+    roi_pct:
+      type: number
+      format: double
+    freshness:
+      $ref: '../ops_reports.yaml#/DataFreshness'
+
+TeamOwnerMetrics:
+  type: object
+  properties:
+    user_id:
+      type: string
+      format: uuid
+    email:
+      type: string
+    kpis:
+      $ref: '#/TeamMetricsBlock'
+
+TeamMetricsResponse:
+  type: object
+  properties:
+    customer_id:
+      type: string
+      format: uuid
+    period:
+      type: object
+      properties:
+        from:
+          type: string
+          format: date-time
+        to:
+          type: string
+          format: date-time
+    aggregate:
+      $ref: '#/TeamMetricsBlock'
+    by_owner:
+      type: array
+      items:
+        $ref: '#/TeamOwnerMetrics'
 
 InviteTeamMemberRequest:
   type: object

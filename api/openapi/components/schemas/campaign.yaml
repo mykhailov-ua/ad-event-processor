@@ -515,6 +515,19 @@ CampaignListMetricsRow:
       format: double
     cpm_usd:
       type: string
+    budget_burn_pct:
+      type: number
+      format: double
+    pacing_mode:
+      type: string
+    pacing_health:
+      type: string
+      enum: [ok, drift, exhausted]
+    metrics_stale:
+      type: boolean
+    metrics_as_of:
+      type: string
+      format: date-time
 
 CampaignListFacetOwner:
   type: object

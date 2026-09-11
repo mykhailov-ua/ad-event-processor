@@ -1,13 +1,23 @@
 import { ExportHubCatalogPicker } from '@/domains/exports/export_hub_catalog_picker';
+import { ExportsNav } from '@/domains/exports/exports_nav';
 import type { ExportHubEntry } from '@/domains/exports/export_hub_catalog';
+import { ExportHubCompareFields } from '@/domains/exports/export_hub_compare_fields';
 import { ExportHubJobLifecycle } from '@/domains/exports/export_hub_job_lifecycle';
+import { ExportHubNotifyFields, type ExportHubNotifyChannel } from '@/domains/exports/export_hub_notify_fields';
+import { ExportHubNotifications } from '@/domains/exports/export_hub_notifications';
 import { ExportHubRecentList } from '@/domains/exports/export_hub_recent_list';
-import type { ExportHubRecentJob } from '@/domains/exports/export_hub_recent';
+import { ExportHubSavedViews } from '@/domains/exports/export_hub_saved_views';
+import type { SavedView } from '@/api/types';
+import type { ExportHubRecentJob, ExportHubDestination } from '@/domains/exports/export_hub_recent';
 import {
   EXPORT_HUB_ROW_LIMIT_DEFAULT,
   type ExportHubRowLimitBounds,
 } from '@/domains/exports/export_hub_limits';
-import { exportJobCanDownload } from '@/domains/exports/export_hub_job_status';
+import {
+  exportJobCanDownloadFile,
+} from '@/domains/exports/export_hub_job_status';
+import type { ExportHubReportFormat } from '@/domains/exports/export_hub_report_formats';
+import type { GoogleSheetsIntegrationStatus } from '@/api/integrations_api';
 import type { BillingExportJob } from '@/api/types';
 import type { ReportJobStatus } from '@/api/types';
 import { Button } from '@/components/ui/button';
@@ -27,7 +37,9 @@ import {
   ExportHubJobIdHint,
 } from '@/domains/exports/export_hub_field_hints';
 import { PageChrome } from '@/shell/page_chrome';
+import { PageSectionStack } from '@/shell/page_layout';
 import { ErrorBlock } from '@/shell/error_block';
+import { StubBanner } from '@/shell/stub_banner';
 import { FieldLabelWithHint } from '@/shell/field_label_hint';
 import {
   DirectoryFilterForm,
@@ -36,9 +48,22 @@ import {
   INLINE_FILTER_ACTION_GRID_TWO_ACTIONS_CLASS,
 } from '@/shell/filter_panel';
 import { adminKit } from '@/lib/admin_kit';
-import { adminSpacing, opsControlPanelClass } from '@/lib/admin_spacing';
+import { adminSpacing, adminTypography, opsControlPanelClass } from '@/lib/admin_spacing';
 import type { AdminValidationError } from '@/lib/admin_validation_error';
 import { cn } from '@/lib/utils';
+import { Link } from 'react-router-dom';
+
+const REPORT_FORMAT_LABELS: Record<ExportHubReportFormat, string> = {
+  csv: 'CSV',
+  xlsx: 'Excel (XLSX)',
+  json: 'JSON',
+  zip: 'ZIP',
+};
+
+export type ExportHubCampaignToggleField =
+  | 'silent_reject_enabled'
+  | 'accept_lang_geo_enabled'
+  | 'json_serialization_enabled';
 
 export type ExportHubProps = {
   catalogEntries: ExportHubEntry[];
@@ -48,7 +73,25 @@ export type ExportHubProps = {
   draftReportKey: string;
   draftFrom: string;
   draftTo: string;
-  draftReportFormat: 'csv' | 'json' | '';
+  draftCompareFrom: string;
+  draftCompareTo: string;
+  draftNotifyChannel: ExportHubNotifyChannel;
+  draftNotifyEmail: string;
+  draftNotifyWebhookUrl: string;
+  draftReportFormat: ExportHubReportFormat | '';
+  reportFormatOptions: ExportHubReportFormat[];
+  draftDestination: ExportHubDestination;
+  draftCampaignToggleCampaignId: string;
+  draftCampaignToggleField: ExportHubCampaignToggleField | '';
+  draftCampaignToggleAt: string;
+  draftCampaignToggleWindowHours: string;
+  draftLayerDesyncCount: string;
+  draftSpreadsheetId: string;
+  draftSheetTitle: string;
+  googleSheetsStatus: GoogleSheetsIntegrationStatus | undefined;
+  googleSheetsStatusError: Error | undefined;
+  googleSheetsStatusFetching: boolean;
+  jobSpreadsheetUrl?: string;
   draftBillingFormat: 'csv' | 'ndjson' | '';
   draftRedactPii: boolean;
   draftRowLimit: string;
@@ -59,6 +102,7 @@ export type ExportHubProps = {
   jobStartedAtMs?: number;
   recentJobs: ExportHubRecentJob[];
   creating: boolean;
+  rerunningJobId?: string;
   polling: boolean;
   downloading: boolean;
   cancelling: boolean;
@@ -70,7 +114,20 @@ export type ExportHubProps = {
   onDraftReportKeyChange: (value: string) => void;
   onDraftFromChange: (value: string) => void;
   onDraftToChange: (value: string) => void;
-  onDraftReportFormatChange: (value: 'csv' | 'json') => void;
+  onDraftCompareFromChange: (value: string) => void;
+  onDraftCompareToChange: (value: string) => void;
+  onDraftNotifyChannelChange: (value: ExportHubNotifyChannel) => void;
+  onDraftNotifyEmailChange: (value: string) => void;
+  onDraftNotifyWebhookUrlChange: (value: string) => void;
+  onDraftReportFormatChange: (value: ExportHubReportFormat) => void;
+  onDraftDestinationChange: (value: ExportHubDestination) => void;
+  onDraftCampaignToggleCampaignIdChange: (value: string) => void;
+  onDraftCampaignToggleFieldChange: (value: ExportHubCampaignToggleField) => void;
+  onDraftCampaignToggleAtChange: (value: string) => void;
+  onDraftCampaignToggleWindowHoursChange: (value: string) => void;
+  onDraftLayerDesyncCountChange: (value: string) => void;
+  onDraftSpreadsheetIdChange: (value: string) => void;
+  onDraftSheetTitleChange: (value: string) => void;
   onDraftBillingFormatChange: (value: 'csv' | 'ndjson') => void;
   onDraftRedactPiiChange: (value: boolean) => void;
   onDraftRowLimitChange: (value: string) => void;
@@ -82,6 +139,22 @@ export type ExportHubProps = {
   onDownloadJob: () => void;
   onSelectRecentJob: (jobId: string) => void;
   onDownloadRecentJob: (job: ExportHubRecentJob) => void;
+  onRerunRecentJob: (job: ExportHubRecentJob) => void;
+  savedViews: SavedView[];
+  savedViewsError?: Error;
+  savedViewsFetching: boolean;
+  canManagePresets: boolean;
+  canExportPreset: boolean;
+  presetName: string;
+  selectedViewId: string;
+  savingPreset: boolean;
+  exportingViewId?: string;
+  onPresetNameChange: (value: string) => void;
+  onSelectedViewIdChange: (value: string) => void;
+  onLoadSavedView: () => void;
+  onSaveSavedView: () => void;
+  onDeleteSavedView: () => void;
+  onExportSavedView: () => void;
 };
 
 function jobStatusLabel(job: ReportJobStatus | BillingExportJob | undefined): string {
@@ -93,9 +166,28 @@ export function ExportHub({
   catalogPickerValue,
   selectedKind,
   draftCustomerId,
+  draftReportKey,
   draftFrom,
   draftTo,
+  draftCompareFrom,
+  draftCompareTo,
+  draftNotifyChannel,
+  draftNotifyEmail,
+  draftNotifyWebhookUrl,
   draftReportFormat,
+  reportFormatOptions,
+  draftDestination,
+  draftCampaignToggleCampaignId,
+  draftCampaignToggleField,
+  draftCampaignToggleAt,
+  draftCampaignToggleWindowHours,
+  draftLayerDesyncCount,
+  draftSpreadsheetId,
+  draftSheetTitle,
+  googleSheetsStatus,
+  googleSheetsStatusError,
+  googleSheetsStatusFetching,
+  jobSpreadsheetUrl,
   draftBillingFormat,
   draftRedactPii,
   draftRowLimit,
@@ -106,6 +198,7 @@ export function ExportHub({
   jobStartedAtMs,
   recentJobs,
   creating,
+  rerunningJobId,
   polling,
   downloading,
   cancelling,
@@ -116,7 +209,20 @@ export function ExportHub({
   onDraftCustomerIdChange,
   onDraftFromChange,
   onDraftToChange,
+  onDraftCompareFromChange,
+  onDraftCompareToChange,
+  onDraftNotifyChannelChange,
+  onDraftNotifyEmailChange,
+  onDraftNotifyWebhookUrlChange,
   onDraftReportFormatChange,
+  onDraftDestinationChange,
+  onDraftCampaignToggleCampaignIdChange,
+  onDraftCampaignToggleFieldChange,
+  onDraftCampaignToggleAtChange,
+  onDraftCampaignToggleWindowHoursChange,
+  onDraftLayerDesyncCountChange,
+  onDraftSpreadsheetIdChange,
+  onDraftSheetTitleChange,
   onDraftBillingFormatChange,
   onDraftRedactPiiChange,
   onDraftRowLimitChange,
@@ -128,9 +234,35 @@ export function ExportHub({
   onDownloadJob,
   onSelectRecentJob,
   onDownloadRecentJob,
+  onRerunRecentJob,
+  savedViews,
+  savedViewsError,
+  savedViewsFetching,
+  canManagePresets,
+  canExportPreset,
+  presetName,
+  selectedViewId,
+  savingPreset,
+  exportingViewId,
+  onPresetNameChange,
+  onSelectedViewIdChange,
+  onLoadSavedView,
+  onSaveSavedView,
+  onDeleteSavedView,
+  onExportSavedView,
 }: ExportHubProps) {
   const jobStatus = jobStatusLabel(job);
-  const canDownload = exportJobCanDownload(jobStatus);
+  const jobDestination =
+    job && 'destination' in job && job.destination === 'google_sheet'
+      ? 'google_sheet'
+      : draftDestination;
+  const spreadsheetUrl =
+    jobSpreadsheetUrl ??
+    (job && 'spreadsheet_url' in job ? job.spreadsheet_url?.trim() : undefined);
+  const canDownload = exportJobCanDownloadFile(jobStatus, {
+    destination: jobDestination,
+    spreadsheetUrl,
+  });
   const exportBusy = creating || downloading || cancelling || (polling && !canDownload);
   const showAsyncJobPanel = selectedKind !== 'audit';
   const showRowLimit = selectedKind !== 'audit';
@@ -151,9 +283,12 @@ export function ExportHub({
 
   return (
     <PageChrome
+      description="Async report and billing exports. Full tabular reports run as jobs; download when complete."
+      actions={<ExportHubNotifications onOpenJob={onSelectRecentJob} />}
       title="Exports"
       controlPanel={
         <div className={opsControlPanelClass}>
+          <ExportsNav />
           <FilterPanel aria-label="Export form">
             {formValidationError ? (
               <ErrorBlock error={formValidationError} title="Check export fields" />
@@ -196,6 +331,15 @@ export function ExportHub({
                     value={draftTo}
                     onChange={onDraftToChange}
                   />
+                  {selectedKind === 'report' ? (
+                    <ExportHubCompareFields
+                      compareFrom={draftCompareFrom}
+                      compareTo={draftCompareTo}
+                      disabled={exportBusy}
+                      onCompareFromChange={onDraftCompareFromChange}
+                      onCompareToChange={onDraftCompareToChange}
+                    />
+                  ) : null}
                 </>
               ) : null}
 
@@ -222,23 +366,184 @@ export function ExportHub({
               ) : null}
 
               {selectedKind === 'report' ? (
-                <FilterField htmlFor="export-hub-report-format" label="Format">
-                  <Select
+                <>
+                  <FilterField htmlFor="export-hub-report-format" label="Format">
+                    <Select
+                      disabled={exportBusy}
+                      value={draftReportFormat || undefined}
+                      onValueChange={(value) =>
+                        onDraftReportFormatChange(value as ExportHubReportFormat)
+                      }
+                    >
+                      <SelectTrigger id="export-hub-report-format">
+                        <SelectValue placeholder="Select format" />
+                      </SelectTrigger>
+                      <SelectContent>
+                        {reportFormatOptions.map((format) => (
+                          <SelectItem key={format} value={format}>
+                            {REPORT_FORMAT_LABELS[format]}
+                          </SelectItem>
+                        ))}
+                      </SelectContent>
+                    </Select>
+                  </FilterField>
+
+                  <FilterField htmlFor="export-hub-destination" label="Destination">
+                    <Select
+                      disabled={exportBusy}
+                      value={draftDestination}
+                      onValueChange={(value) =>
+                        onDraftDestinationChange(value as ExportHubDestination)
+                      }
+                    >
+                      <SelectTrigger id="export-hub-destination">
+                        <SelectValue placeholder="Select destination" />
+                      </SelectTrigger>
+                      <SelectContent>
+                        <SelectItem value="download">Download file</SelectItem>
+                        <SelectItem value="google_sheet">Google Sheet</SelectItem>
+                      </SelectContent>
+                    </Select>
+                  </FilterField>
+                  <ExportHubNotifyFields
+                    channel={draftNotifyChannel}
                     disabled={exportBusy}
-                    value={draftReportFormat || undefined}
-                    onValueChange={(value) =>
-                      onDraftReportFormatChange(value as 'csv' | 'json')
-                    }
-                  >
-                    <SelectTrigger id="export-hub-report-format">
-                      <SelectValue placeholder="Select format" />
-                    </SelectTrigger>
-                    <SelectContent>
-                      <SelectItem value="csv">CSV</SelectItem>
-                      <SelectItem value="json">JSON</SelectItem>
-                    </SelectContent>
-                  </Select>
+                    email={draftNotifyEmail}
+                    webhookUrl={draftNotifyWebhookUrl}
+                    onChannelChange={onDraftNotifyChannelChange}
+                    onEmailChange={onDraftNotifyEmailChange}
+                    onWebhookUrlChange={onDraftNotifyWebhookUrlChange}
+                  />
+                </>
+              ) : null}
+
+              {selectedKind === 'report' && draftReportKey === 'campaign-toggle-cohort' ? (
+                <>
+                  <FilterField htmlFor="export-hub-toggle-campaign-id" label="Campaign ID">
+                    <Input
+                      disabled={exportBusy}
+                      id="export-hub-toggle-campaign-id"
+                      value={draftCampaignToggleCampaignId}
+                      onChange={(event) =>
+                        onDraftCampaignToggleCampaignIdChange(event.target.value)
+                      }
+                    />
+                  </FilterField>
+                  <FilterField htmlFor="export-hub-toggle-field" label="Toggle field">
+                    <Select
+                      disabled={exportBusy}
+                      value={draftCampaignToggleField || undefined}
+                      onValueChange={(value) =>
+                        onDraftCampaignToggleFieldChange(value as ExportHubCampaignToggleField)
+                      }
+                    >
+                      <SelectTrigger id="export-hub-toggle-field">
+                        <SelectValue placeholder="Select toggle field" />
+                      </SelectTrigger>
+                      <SelectContent>
+                        <SelectItem value="silent_reject_enabled">
+                          silent_reject_enabled
+                        </SelectItem>
+                        <SelectItem value="accept_lang_geo_enabled">
+                          accept_lang_geo_enabled
+                        </SelectItem>
+                        <SelectItem value="json_serialization_enabled">
+                          json_serialization_enabled
+                        </SelectItem>
+                      </SelectContent>
+                    </Select>
+                  </FilterField>
+                  <DatetimePicker
+                    disabled={exportBusy}
+                    id="export-hub-toggle-at"
+                    label="Toggle at"
+                    value={draftCampaignToggleAt}
+                    onChange={onDraftCampaignToggleAtChange}
+                  />
+                  <FilterField htmlFor="export-hub-toggle-window-hours" label="Window hours">
+                    <Input
+                      disabled={exportBusy}
+                      id="export-hub-toggle-window-hours"
+                      inputMode="numeric"
+                      max={168}
+                      min={1}
+                      placeholder="Default 72"
+                      type="number"
+                      value={draftCampaignToggleWindowHours}
+                      onChange={(event) =>
+                        onDraftCampaignToggleWindowHoursChange(event.target.value)
+                      }
+                    />
+                  </FilterField>
+                </>
+              ) : null}
+
+              {selectedKind === 'report' && draftReportKey === 'layer-desync-drilldown' ? (
+                <FilterField htmlFor="export-hub-layer-desync-count" label="Layer desync count">
+                  <Input
+                    disabled={exportBusy}
+                    id="export-hub-layer-desync-count"
+                    inputMode="numeric"
+                    max={255}
+                    min={1}
+                    placeholder="Default 2"
+                    type="number"
+                    value={draftLayerDesyncCount}
+                    onChange={(event) => onDraftLayerDesyncCountChange(event.target.value)}
+                  />
                 </FilterField>
+              ) : null}
+
+              {selectedKind === 'report' && draftDestination === 'google_sheet' ? (
+                <>
+                  {googleSheetsStatusError ? (
+                    <ErrorBlock
+                      error={googleSheetsStatusError}
+                      title="Google Sheets status unavailable"
+                    />
+                  ) : null}
+                  {!googleSheetsStatusFetching && !googleSheetsStatus?.connected ? (
+                    <div className={cn('grid min-w-0', adminSpacing.gap.sm)}>
+                      <StubBanner
+                        message="Connect your Google account to push export rows into a spreadsheet."
+                        title="Google Sheets not connected"
+                      />
+                      <Link className="text-primary underline" to="/integrations/google-sheets">
+                        Connect Google Sheets
+                      </Link>
+                    </div>
+                  ) : null}
+                  {googleSheetsStatus?.connected ? (
+                    <p className={adminTypography.bodyMuted}>
+                      Connected
+                      {googleSheetsStatus.account_email
+                        ? ` as ${googleSheetsStatus.account_email}`
+                        : ''}
+                      .
+                    </p>
+                  ) : null}
+                  <FilterField
+                    htmlFor="export-hub-spreadsheet-id"
+                    label="Spreadsheet ID (append)"
+                  >
+                    <Input
+                      disabled={exportBusy}
+                      id="export-hub-spreadsheet-id"
+                      placeholder="Optional for append mode"
+                      value={draftSpreadsheetId}
+                      onChange={(event) => onDraftSpreadsheetIdChange(event.target.value)}
+                    />
+                  </FilterField>
+                  <FilterField htmlFor="export-hub-sheet-title" label="Sheet title">
+                    <Input
+                      disabled={exportBusy}
+                      id="export-hub-sheet-title"
+                      placeholder="Optional"
+                      value={draftSheetTitle}
+                      onChange={(event) => onDraftSheetTitleChange(event.target.value)}
+                    />
+                  </FilterField>
+                </>
               ) : null}
 
               {selectedKind === 'billing' ? (
@@ -297,6 +602,7 @@ export function ExportHub({
                   bytes={job?.bytes}
                   canCancelKind={selectedKind === 'report'}
                   cancelling={cancelling}
+                  destination={jobDestination}
                   downloading={downloading}
                   errorMessage={jobErrorMessage ?? job?.error ?? undefined}
                   exportBusy={exportBusy}
@@ -307,6 +613,7 @@ export function ExportHub({
                       ? job.row_limit
                       : undefined
                   }
+                  spreadsheetUrl={spreadsheetUrl}
                   startedAtMs={jobStartedAtMs}
                   status={jobStatus}
                   onCancelJob={onCancelJob}
@@ -319,22 +626,42 @@ export function ExportHub({
         </div>
       }
     >
-      <div className={adminSpacing.flex.columnLg}>
+      <PageSectionStack>
         {auditExportTruncated ? (
-          <p role="status">
+          <p className={adminTypography.bodyMuted} role="status">
             Audit export was truncated. Use audit list filters or request a smaller window if
             needed.
           </p>
         ) : null}
 
+        <ExportHubSavedViews
+          canExport={canExportPreset}
+          canManage={canManagePresets}
+          exportingViewId={exportingViewId}
+          presetName={presetName}
+          saving={savingPreset}
+          selectedViewId={selectedViewId}
+          views={savedViews}
+          viewsError={savedViewsError}
+          viewsFetching={savedViewsFetching}
+          onDeleteView={onDeleteSavedView}
+          onExportView={onExportSavedView}
+          onLoadView={onLoadSavedView}
+          onPresetNameChange={onPresetNameChange}
+          onSaveView={onSaveSavedView}
+          onSelectedViewIdChange={onSelectedViewIdChange}
+        />
+
         <ExportHubRecentList
           activeJobId={activeJobId}
           downloadingJobId={downloading ? activeJobId : undefined}
           jobs={recentJobs}
+          rerunningJobId={rerunningJobId}
           onDownloadJob={onDownloadRecentJob}
+          onRerunJob={onRerunRecentJob}
           onSelectJob={onSelectRecentJob}
         />
-      </div>
+      </PageSectionStack>
     </PageChrome>
   );
 }

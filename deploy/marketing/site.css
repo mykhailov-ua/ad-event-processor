@@ -289,6 +289,29 @@ body {
   color: var(--site-text);
 }
 
+.Landing > .Trust > .Frame:first-child {
+  display: grid;
+  gap: 12px;
+}
+
+.OperatorsEmpathyTeaser {
+  margin: 0;
+  max-width: 52ch;
+  color: var(--site-muted);
+  font-size: 16px;
+  line-height: 1.55;
+}
+
+.OperatorsEmpathyTeaser a {
+  color: var(--site-accent);
+  text-decoration: underline;
+  text-underline-offset: 3px;
+}
+
+.OperatorsEmpathyTeaser a:hover {
+  color: var(--site-text);
+}
+
 .Landing .Footer a.FooterArchitecture,
 .Landing .Footer a {
   color: var(--site-muted);
@@ -2059,6 +2082,122 @@ html[data-theme="light"] .site-pricing-badge {
   line-height: 1.5;
 }
 
+.site-tco-card__summary {
+  margin: 16px 0 0;
+  padding: 12px 14px;
+  border-radius: 6px;
+  background: var(--site-surface-alt);
+  border: 1px solid var(--site-border);
+  color: var(--site-text);
+  font-size: 15px;
+  font-weight: 700;
+  line-height: 1.4;
+  font-variant-numeric: tabular-nums;
+}
+
+.site-tco-card--highlight .site-tco-card__summary {
+  border-color: var(--site-accent-border, var(--site-border));
+  background: var(--site-accent-bg-subtle);
+}
+
+.site-tco-calculator__field--volume {
+  padding-bottom: 16px;
+  margin-bottom: 8px;
+  border-bottom: 1px solid var(--site-border);
+}
+
+.site-tco-calculator__field--volume .site-tco-calculator__label-row span:first-child {
+  font-size: 15px;
+  font-weight: 700;
+}
+
+.site-tco-calculator__field--derived .site-tco-calculator__label-row span:first-child {
+  color: var(--site-muted);
+  font-size: 13px;
+}
+
+.site-tco-calculator__field-hint {
+  margin: 0;
+  font-size: 12px;
+  line-height: 1.45;
+  color: var(--site-muted);
+}
+
+.site-tco-calculator__stack-note {
+  margin: 12px 0 0;
+  padding-top: 12px;
+  border-top: 1px solid var(--site-border-subtle);
+  font-size: 13px;
+  line-height: 1.5;
+  color: var(--site-muted);
+}
+
+.site-tco-calculator__silent {
+  margin-top: 16px;
+  padding: 14px 16px;
+  border-radius: 8px;
+  border: 1px solid var(--site-accent-border, var(--site-border));
+  background: var(--site-accent-bg-subtle);
+}
+
+.site-tco-calculator__silent-not-in-stack {
+  margin: 0 0 10px;
+  font-size: 12px;
+  font-weight: 600;
+  letter-spacing: 0.02em;
+  text-transform: uppercase;
+  color: var(--site-accent-text);
+}
+
+.site-tco-calculator__silent-fields {
+  display: grid;
+  gap: 12px;
+  margin: 12px 0 14px;
+}
+
+.site-tco-calculator__field--silent {
+  gap: 8px;
+}
+
+.site-tco-calculator__silent-label {
+  margin: 0 0 6px;
+  color: var(--site-muted);
+  font-size: 13px;
+  line-height: 1.45;
+}
+
+.site-tco-calculator__silent-value {
+  margin: 0;
+  color: var(--site-text);
+  font-size: 22px;
+  font-weight: 800;
+  font-variant-numeric: tabular-nums;
+  line-height: 1.2;
+}
+
+.site-tco-calculator__silent-hint {
+  margin: 8px 0 0;
+  color: var(--site-muted-2);
+  font-size: 12px;
+  line-height: 1.45;
+}
+
+.site-tco-calculator__row span:first-child {
+  max-width: 62%;
+}
+
+.site-tco-calculator__disclaimer {
+  margin: 0;
+  color: var(--site-muted);
+  font-size: 12px;
+  line-height: 1.5;
+}
+
+.site-pricing-feature--highlight > span:last-child {
+  color: var(--site-text);
+  font-weight: 700;
+}
+
 .site-tco-card--highlight .site-tco-card__footnote {
   color: var(--site-muted);
 }
@@ -2858,6 +2997,84 @@ body.docs-page {
   gap: 10px;
 }
 
+.site-doc-mermaid-wrap {
+  margin: 1.5rem 0;
+  border: 1px solid var(--site-border);
+  border-radius: var(--site-radius-card);
+  background: var(--site-bg-subtle);
+  padding: 12px 12px 10px;
+  overflow-x: auto;
+}
+
+.site-doc-mermaid {
+  margin: 0;
+  padding: 0;
+  background: transparent;
+  border: 0;
+  font-family: inherit;
+  text-align: center;
+}
+
+.site-doc-mermaid svg {
+  max-width: 100%;
+  height: auto;
+}
+
+html:not([data-theme="light"]) .site-doc-mermaid svg {
+  background: transparent;
+}
+
+html:not([data-theme="light"]) .site-doc-mermaid svg .cluster rect {
+  fill: #282828 !important;
+  stroke: #4a4a4a !important;
+}
+
+html:not([data-theme="light"]) .site-doc-mermaid svg .cluster .cluster-label span,
+html:not([data-theme="light"]) .site-doc-mermaid svg .cluster .cluster-label foreignObject div {
+  color: #8ec8f0 !important;
+}
+
+html:not([data-theme="light"]) .site-doc-mermaid svg .node rect,
+html:not([data-theme="light"]) .site-doc-mermaid svg .node polygon,
+html:not([data-theme="light"]) .site-doc-mermaid svg .node circle,
+html:not([data-theme="light"]) .site-doc-mermaid svg .node path {
+  fill: #333333 !important;
+  stroke: #616161 !important;
+}
+
+html:not([data-theme="light"]) .site-doc-mermaid svg .node .label,
+html:not([data-theme="light"]) .site-doc-mermaid svg .nodeLabel,
+html:not([data-theme="light"]) .site-doc-mermaid svg .edgeLabel p,
+html:not([data-theme="light"]) .site-doc-mermaid svg .edgeLabel span {
+  color: #d4d4d4 !important;
+  fill: #d4d4d4 !important;
+}
+
+html:not([data-theme="light"]) .site-doc-mermaid svg .edgeLabel rect {
+  fill: #333333 !important;
+  stroke: #4a4a4a !important;
+}
+
+html:not([data-theme="light"]) .site-doc-mermaid svg .flowchart-link {
+  stroke: #8a8a8a !important;
+}
+
+html:not([data-theme="light"]) .site-doc-mermaid svg marker path {
+  fill: #8a8a8a !important;
+  stroke: #8a8a8a !important;
+}
+
+.site-doc-mermaid__caption {
+  margin: 10px 4px 0;
+  font-size: 13px;
+  color: var(--site-muted);
+  text-align: center;
+}
+
+.site-doc-callout--hardware {
+  margin-top: 1rem;
+}
+
 .site-flow {
   border: 1px solid var(--site-border);
   border-radius: var(--site-radius-card);
@@ -3065,15 +3282,26 @@ body.docs-page {
   box-sizing: border-box;
 }
 
-.site-header-end .site-lang-switch {
-  width: auto;
+.site-header-end .site-lang-switch,
+.site-header-end .site-theme-toggle {
+  width: var(--site-control-height);
   min-width: var(--site-control-height);
-  padding: 0 12px;
+  max-width: var(--site-control-height);
+  height: var(--site-control-height);
+  min-height: var(--site-control-height);
+  padding: 0;
+  line-height: 1;
+}
+
+.site-header-end .site-lang-switch {
+  font-size: 12px;
+  font-weight: 700;
+  letter-spacing: 0.04em;
 }
 
 .site-header-end .site-theme-toggle {
-  width: var(--site-control-height);
-  padding: 0;
+  display: inline-grid;
+  place-items: center;
 }
 
 .site-header-end > .BtnPrimary {
@@ -3094,8 +3322,10 @@ body.docs-page {
 .site-theme-toggle {
   display: inline-grid;
   place-items: center;
-  width: 36px;
-  height: 36px;
+  width: var(--site-control-height);
+  height: var(--site-control-height);
+  min-width: var(--site-control-height);
+  min-height: var(--site-control-height);
   margin: 0;
   padding: 0;
   border: 1px solid var(--site-border-strong);
@@ -3136,11 +3366,21 @@ body.docs-page {
   grid-area: 1 / 1;
   align-items: center;
   justify-content: center;
+  width: 14px;
+  height: 14px;
+  flex-shrink: 0;
+  pointer-events: none;
 }
 
-.site-theme-toggle__icon .lucide {
-  width: 18px;
-  height: 18px;
+.site-theme-toggle__icon svg,
+.site-theme-toggle__icon .lucide,
+.site-theme-toggle svg.lucide {
+  display: block;
+  width: 14px !important;
+  height: 14px !important;
+  max-width: 14px;
+  max-height: 14px;
+  stroke-width: 2;
 }
 
 .site-theme-toggle .site-theme-toggle__icon--moon {
@@ -3278,6 +3518,7 @@ html[data-theme="light"] .site-flow__note {
   .Landing > .Header,
   .Landing > .Hero,
   .Landing > .Pillars,
+  .Landing > .Killers,
   .Landing > .Features,
   .Landing > .Pricing,
   .Landing > .Tco,
@@ -4759,9 +5000,11 @@ html[data-theme="light"] .site-instant-sell__card--calculator .site-hero-calcula
   display: inline-flex;
   align-items: center;
   justify-content: center;
-  min-width: 36px;
-  height: 36px;
-  padding: 0 10px;
+  width: var(--site-control-height);
+  min-width: var(--site-control-height);
+  height: var(--site-control-height);
+  min-height: var(--site-control-height);
+  padding: 0;
   border-radius: var(--site-radius-btn);
   border: 1px solid var(--site-border-strong);
   background: var(--site-surface);
@@ -5391,16 +5634,18 @@ html[data-theme="light"] .Landing .AccordionItem__trigger .IconContainer {
     display: none !important;
   }
 
-  .site-lang-switch {
-    min-width: 34px;
-    height: 34px;
-    padding: 0 8px;
-    font-size: 11px;
+  .site-header-end .site-lang-switch,
+  .site-header-end .site-theme-toggle {
+    width: 36px;
+    min-width: 36px;
+    max-width: 36px;
+    height: 36px;
+    min-height: 36px;
+    padding: 0;
   }
 
-  .site-theme-toggle {
-    width: 34px;
-    height: 34px;
+  .site-header-end .site-lang-switch {
+    font-size: 11px;
   }
 
   .Hamburger.site-menu-toggle {
@@ -5409,7 +5654,15 @@ html[data-theme="light"] .Landing .AccordionItem__trigger .IconContainer {
     padding: 0;
   }
 
-  .site-theme-toggle .lucide,
+  .site-theme-toggle__icon,
+  .site-theme-toggle__icon svg,
+  .site-theme-toggle svg.lucide {
+    width: 12px !important;
+    height: 12px !important;
+    max-width: 12px;
+    max-height: 12px;
+  }
+
   .site-menu-toggle .lucide,
   .site-pga-terminal-shell__copy .lucide {
     display: block;
@@ -5914,5 +6167,271 @@ html[lang="uk"] .site-hardware-card__profile {
   .YourDirectTrafficYourSpecificFunnelsAndYourTargetingDictateTheRoiResults,
   .RoutingBudgetsAntifraudReportingOneInstallWithoutCloakerIvtStack {
     min-height: 0;
+  }
+}
+
+/* Mobile gaps: sections missing responsive polish */
+@media (max-width: 960px) {
+  .Landing > .Killers,
+  .Landing > .ApplianceProof {
+    padding-top: var(--site-section-y) !important;
+    padding-bottom: var(--site-section-y) !important;
+  }
+
+  .Landing > .HowItWorks.site-pga-install-section {
+    padding-top: 40px !important;
+    padding-bottom: 48px !important;
+  }
+
+  .site-pga-install {
+    gap: 28px;
+  }
+
+  .site-appliance-proof__title {
+    font-size: clamp(24px, 6.5vw, 34px);
+  }
+
+  .site-hardware-sizing__title {
+    font-size: clamp(22px, 6vw, 28px);
+  }
+
+  .site-hardware-sizing__grid {
+    gap: 16px;
+  }
+
+  .site-hardware-card {
+    padding: 18px;
+  }
+
+  .site-hardware-card__head {
+    flex-wrap: wrap;
+    align-items: flex-start;
+    gap: 8px;
+  }
+
+  .site-hardware-card__price {
+    white-space: normal;
+  }
+
+  .site-tco__calculator {
+    margin-top: 28px;
+  }
+
+  .site-tco-calculator {
+    padding: 20px 16px;
+  }
+
+  .site-tco-calculator__label-row,
+  .site-tco-calculator__row {
+    flex-wrap: wrap;
+    align-items: flex-start;
+    gap: 6px 12px;
+  }
+
+  .site-tco-calculator__label-row span:last-child,
+  .site-tco-calculator__row span:last-child {
+    white-space: normal;
+    text-align: right;
+    margin-left: auto;
+  }
+
+  .site-calc__presets {
+    flex-direction: column;
+    align-items: stretch;
+  }
+
+  .site-calc__preset {
+    width: 100%;
+    justify-content: center;
+    text-align: center;
+  }
+
+  .Landing > .Pricing > .Frame:last-child {
+    align-items: stretch;
+    text-align: left;
+    gap: 8px;
+    width: 100%;
+    max-width: none;
+    padding: 0;
+  }
+
+  .PricingRelocationPolicy,
+  .NoCapOnCampaignCountOrEventVolumeYouScaleOnYourHardware,
+  .PaidMonthlyInUsdtSelfHostedLicenseNotACloudSubscription {
+    text-align: left;
+    text-wrap: pretty;
+  }
+
+  .site-tco-jump {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    width: 100%;
+    min-height: var(--site-control-height);
+    margin-top: 12px;
+    padding: 0 16px;
+    box-sizing: border-box;
+    border: 1px solid var(--site-border-strong);
+    border-radius: var(--site-radius-btn);
+    background: var(--site-surface);
+    text-align: center;
+    text-decoration: none;
+  }
+
+  .site-pga-page .HeroActions .Frame,
+  .site-pga-page .site-pga-hero__actions {
+    align-items: stretch !important;
+  }
+
+  .site-pga-page > .PilotCta {
+    width: calc(100% - 2 * var(--site-gutter)) !important;
+    margin-inline: auto !important;
+    padding: 24px 20px !important;
+    box-sizing: border-box;
+  }
+
+  .Landing > .PilotCta .BtnPrimary {
+    width: 100%;
+    max-width: none;
+  }
+
+  .OperatorsEmpathyTeaser {
+    font-size: 14px;
+    line-height: 1.5;
+    text-align: left;
+  }
+
+  .site-architecture__highlights {
+    gap: 10px;
+  }
+
+  .site-architecture__highlight {
+    padding: 14px 16px;
+  }
+
+  .site-features__grid {
+    gap: 16px;
+  }
+
+  .site-features__spotlight {
+    padding: 20px 16px 20px 22px;
+  }
+
+  .site-capabilities-compact {
+    padding: 18px 16px;
+  }
+
+  .site-margin-guard__title,
+  .site-instant-sell__card-title {
+    font-size: 17px;
+  }
+
+  .Killers__title {
+    font-size: clamp(22px, 6vw, 30px);
+  }
+
+  .Landing > .Footer {
+    padding-bottom: max(var(--site-footer-y), env(safe-area-inset-bottom, 0px)) !important;
+  }
+
+  .operators-page .site-doc-cards,
+  .operators-page .site-doc-card {
+    min-width: 0;
+  }
+}
+
+@media (max-width: 640px) {
+  .site-pga-page {
+    --site-shell-inline: var(--site-gutter);
+  }
+
+  .site-pga-page > .Hero {
+    padding-top: 28px !important;
+    padding-bottom: 28px !important;
+  }
+
+  .site-pga-page .site-hero-eyebrow {
+    font-size: 12px;
+    line-height: 1.45;
+    overflow-wrap: anywhere;
+  }
+
+  .site-architecture__flow-strip {
+    margin-top: 20px;
+    overflow-x: visible;
+  }
+
+  .site-architecture__flow-line {
+    flex-direction: column;
+    align-items: stretch;
+    flex-wrap: nowrap;
+    white-space: normal;
+    min-width: 0;
+    gap: 0;
+  }
+
+  .site-architecture__flow-step {
+    padding: 10px 12px;
+    border: 1px solid var(--site-border);
+    border-radius: 6px;
+    background: var(--site-surface);
+    text-align: center;
+    font-size: 12px;
+    line-height: 1.35;
+  }
+
+  .site-architecture__divider {
+    align-self: center;
+    margin: 4px 0;
+    transform: rotate(90deg);
+    line-height: 1;
+  }
+
+  .site-killer-card__title {
+    font-size: 17px;
+  }
+
+  .site-killer-card__text {
+    font-size: 13px;
+  }
+
+  .site-hardware-card__specs {
+    grid-template-columns: 1fr;
+    gap: 10px;
+  }
+
+  .site-hardware-card__spec-row {
+    display: flex;
+    flex-direction: column;
+    gap: 2px;
+  }
+
+  .site-hardware-sizing__footnote {
+    font-size: 13px;
+    line-height: 1.5;
+    text-align: left;
+  }
+
+  .site-tco-calculator {
+    padding: 18px 14px;
+    gap: 16px;
+  }
+
+  .site-pga-install-cli__title {
+    font-size: 20px;
+    line-height: 1.25;
+  }
+
+  .site-appliance-proof__subtitle {
+    font-size: 15px;
+  }
+
+  .demo-page .site-demo-stub__card {
+    padding: 22px 16px;
+    margin: 1.25rem 0 1.5rem;
+  }
+
+  .demo-page .site-demo-stub__lead {
+    font-size: 1rem;
   }
 }

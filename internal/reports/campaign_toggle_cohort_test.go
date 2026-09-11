@@ -38,3 +38,13 @@ func TestToggleFieldChanged_detectsSilentReject(t *testing.T) {
 		auditCampaignFraudChange{SilentRejectEnabled: false},
 	))
 }
+
+func TestParseCampaignToggleCohortExportParams_requiresFields_holdout(t *testing.T) {
+	t.Parallel()
+	_, err := ParseCampaignToggleCohortExportParams(nil)
+	require.Error(t, err)
+
+	_, err = ParseCampaignToggleCohortExportParams([]byte(`{"campaign_id":"` + uuid.New().String() + `"}`))
+	require.Error(t, err)
+	require.Contains(t, err.Error(), "toggle_field")
+}

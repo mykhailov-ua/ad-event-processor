@@ -47,8 +47,10 @@ import {
   SelectValue,
 } from '@/components/ui/select';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
-import type { TeamBudgetApproval, TeamMember, TeamOverview } from '@/api/types';
+import type { TeamBudgetApproval, TeamMember, TeamOverview, TeamMetricsResponse } from '@/api/types';
 import { displayTimestamp } from '@/lib/display';
+import { TeamMetricsPanel } from '@/domains/team/team_metrics_panel';
+import { TeamMyApprovalsPanel } from '@/domains/team/team_my_approvals_panel';
 
 export type TeamMemberEditDraft = {
   role: string;
@@ -72,6 +74,16 @@ export type TeamOverviewViewProps = {
   rosterTab: TeamRosterTab;
   onRosterTabChange: (tab: TeamRosterTab) => void;
   overview: TeamOverview | undefined;
+  canViewTeamMetrics: boolean;
+  showMyApprovalsPanel: boolean;
+  teamMetrics: TeamMetricsResponse | undefined;
+  metricsFetching: boolean;
+  metricsError: Error | undefined;
+  hasMetricsSnapshot: boolean;
+  myApprovals: TeamBudgetApproval[];
+  myApprovalsFetching: boolean;
+  myApprovalsError: Error | undefined;
+  hasMyApprovalsSnapshot: boolean;
   members: TeamMember[];
   membersTotal: number;
   membersLimit: number;
@@ -128,6 +140,16 @@ export function TeamOverviewView({
   rosterTab,
   onRosterTabChange,
   overview,
+  canViewTeamMetrics,
+  showMyApprovalsPanel,
+  teamMetrics,
+  metricsFetching,
+  metricsError,
+  hasMetricsSnapshot,
+  myApprovals,
+  myApprovalsFetching,
+  myApprovalsError,
+  hasMyApprovalsSnapshot,
   members,
   membersTotal,
   membersLimit,
@@ -235,6 +257,11 @@ export function TeamOverviewView({
       fetchState={{ fetching, error, hasSnapshot }}
       skeletonColumns={5}
       title="Team"
+      badge={
+        overview?.pending_approvals_count != null && overview.pending_approvals_count > 0 ? (
+          <Badge variant="secondary">{overview.pending_approvals_count} pending</Badge>
+        ) : undefined
+      }
       alerts={<DirectoryMutationError error={actionError} />}
     >
       {overview ? (
@@ -259,6 +286,24 @@ export function TeamOverviewView({
         </div>
       ) : null}
 
+      {canViewTeamMetrics ? (
+        <TeamMetricsPanel
+          error={metricsError}
+          fetching={metricsFetching}
+          hasSnapshot={hasMetricsSnapshot}
+          metrics={teamMetrics}
+        />
+      ) : null}
+
+      {showMyApprovalsPanel ? (
+        <TeamMyApprovalsPanel
+          error={myApprovalsError}
+          fetching={myApprovalsFetching}
+          hasSnapshot={hasMyApprovalsSnapshot}
+          items={myApprovals}
+        />
+      ) : null}
+
       <Dialog onOpenChange={setInviteOpen} open={inviteOpen}>
         <DialogContent >
           <DialogHeader>
@@ -281,7 +326,7 @@ export function TeamOverviewView({
                 <SelectContent>
                   {teamRoleOptions.map((option) => (
                     <SelectItem key={option.code} value={option.code}>
-                      {option.label ? `${option.code} — ${option.label}` : option.code}
+                      {option.label ? `${option.code} - ${option.label}` : option.code}
                     </SelectItem>
                   ))}
                 </SelectContent>
@@ -358,7 +403,7 @@ export function TeamOverviewView({
                           <SelectContent>
                             {teamRoleOptions.map((option) => (
                               <SelectItem key={option.code} value={option.code}>
-                                {option.label ? `${option.code} — ${option.label}` : option.code}
+                                {option.label ? `${option.code} - ${option.label}` : option.code}
                               </SelectItem>
                             ))}
                           </SelectContent>

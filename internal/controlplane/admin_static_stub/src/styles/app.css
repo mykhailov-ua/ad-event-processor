@@ -2113,6 +2113,9 @@ video {
 .ml-auto {
   margin-left: auto;
 }
+.mt-0\.5 {
+  margin-top: 0.125rem;
+}
 .mt-1 {
   margin-top: 0.25rem;
 }
@@ -2292,6 +2295,9 @@ video {
 }
 .min-h-\[18px\] {
   min-height: 18px;
+}
+.min-h-\[24rem\] {
+  min-height: 24rem;
 }
 .min-h-\[4\.5rem\] {
   min-height: 4.5rem;
@@ -3155,6 +3161,9 @@ video {
 }
 .pb-2 {
   padding-bottom: 0.5rem;
+}
+.pb-3 {
+  padding-bottom: 0.75rem;
 }
 .pb-4 {
   padding-bottom: 1rem;

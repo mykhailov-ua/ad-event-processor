@@ -6,8 +6,10 @@ import { getAccessRoles } from '@/api/access_api';
 import {
   approveTeamBudgetApproval,
   denyTeamBudgetApproval,
+  getTeamMetrics,
   getTeamOverview,
   inviteTeamMember,
+  listMyTeamBudgetApprovals,
   listTeamBudgetApprovals,
   listTeamMembers,
   updateTeamMember,
@@ -17,6 +19,8 @@ import type { TeamMemberEditDraft, TeamRosterTab } from '@/domains/team/team_ove
 import { confirmDestructiveAction } from '@/lib/mutation_audit';
 import { toError, userErrorMessage } from '@/lib/admin_error';
 import { requireNonNegativeInteger } from '@/lib/admin_validation_error';
+import { dashboardPresetRange } from '@/lib/dashboard_range';
+import { sessionHasPermission } from '@/lib/session_permissions';
 import { useCoalescedBumpRefresh, useRefreshToken } from '@/hooks/use_coalesced_refresh_token';
 import { useResource } from '@/api/use_resource';
 import { useSession } from '@/hooks/use_session';
@@ -38,6 +42,9 @@ export function useTeamPageWorkspace() {
   const [memberDrafts, setMemberDrafts] = useState<Record<string, TeamMemberEditDraft>>({});
 
   const appliedCustomerId = searchParams.get('customer_id') ?? session?.default_customer_id ?? '';
+  const metricsRange = dashboardPresetRange('7d');
+  const canViewTeamMetrics = sessionHasPermission(user?.permissions, 'team:read');
+  const showMyApprovalsPanel = !sessionHasPermission(user?.permissions, 'team:write');
   const appliedMembersLimit = parseListLimit(searchParams.get('member_limit'), 100);
   const appliedMembersOffset = parseListOffset(searchParams.get('member_offset'));
   const appliedApprovalsLimit = parseListLimit(searchParams.get('approval_limit'), 100);
@@ -63,7 +70,48 @@ export function useTeamPageWorkspace() {
     (signal) => getTeamOverview({ customer_id: appliedCustomerId || undefined }, signal),
     [appliedCustomerId, overviewRefreshToken]
   );
-  const bumpOverviewRefreshCoalesced = useCoalescedBumpRefresh(bumpOverviewRefresh, fetching);
+
+  const shouldFetchMetrics = Boolean(appliedCustomerId) && canViewTeamMetrics;
+  const {
+    data: metricsData,
+    error: metricsError,
+    fetching: metricsFetching,
+  } = useResource(
+    (signal) => {
+      if (!shouldFetchMetrics) {
+        return Promise.resolve(undefined);
+      }
+      return getTeamMetrics(
+        {
+          customer_id: appliedCustomerId,
+          from: metricsRange.from,
+          to: metricsRange.to,
+        },
+        signal
+      );
+    },
+    [appliedCustomerId, metricsRange.from, metricsRange.to, overviewRefreshToken, shouldFetchMetrics]
+  );
+
+  const shouldFetchMyApprovals = Boolean(appliedCustomerId) && showMyApprovalsPanel;
+  const {
+    data: myApprovalsData,
+    error: myApprovalsError,
+    fetching: myApprovalsFetching,
+  } = useResource(
+    (signal) => {
+      if (!shouldFetchMyApprovals) {
+        return Promise.resolve(undefined);
+      }
+      return listMyTeamBudgetApprovals({ customer_id: appliedCustomerId, limit: 25, offset: 0 }, signal);
+    },
+    [appliedCustomerId, overviewRefreshToken, shouldFetchMyApprovals]
+  );
+
+  const bumpOverviewRefreshCoalesced = useCoalescedBumpRefresh(
+    bumpOverviewRefresh,
+    fetching || metricsFetching || myApprovalsFetching
+  );
 
   const shouldFetchMembers = Boolean(appliedCustomerId) && rosterTab === 'members';
 
@@ -341,6 +389,16 @@ export function useTeamPageWorkspace() {
     rosterTab,
     onRosterTabChange: setRosterTab,
     overview: data,
+    canViewTeamMetrics,
+    showMyApprovalsPanel,
+    teamMetrics: metricsData,
+    metricsFetching,
+    metricsError,
+    hasMetricsSnapshot: !shouldFetchMetrics || metricsData != null,
+    myApprovals: myApprovalsData?.items ?? [],
+    myApprovalsFetching,
+    myApprovalsError,
+    hasMyApprovalsSnapshot: !shouldFetchMyApprovals || myApprovalsData != null,
     members: membersData?.items ?? [],
     membersTotal: membersData?.total ?? 0,
     membersLimit: membersData?.limit ?? appliedMembersLimit,

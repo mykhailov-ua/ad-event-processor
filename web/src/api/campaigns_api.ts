@@ -726,6 +726,11 @@ export async function fetchCampaignListMetricsBatch(
         bot_pct: row.bot_pct,
         roi_pct: row.roi_pct,
         cpm_usd: row.cpm_usd,
+        budget_burn_pct: row.budget_burn_pct,
+        pacing_mode: row.pacing_mode,
+        pacing_health: row.pacing_health,
+        metrics_stale: row.metrics_stale ?? batch.stale,
+        metrics_as_of: row.metrics_as_of,
       };
       marginsById[campaignId] = marginFromMetricsRow({ ...row, campaign_id: campaignId });
     }

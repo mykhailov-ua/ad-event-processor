@@ -13,7 +13,8 @@
 //   - One-way import of reports/export for write callbacks; reports must not import reportjob.
 //
 // Invariants:
-//   - Job TTL 24 h; run timeout 2 min; max 512 records per job spec guard (reportJobMaxRecords).
+//   - Job TTL 24 h; run timeout 2 min for csv/json/zip/download, 10 min for xlsx/google_sheet
+//     (REPORT_JOB_RUN_TIMEOUT_SEC overrides extended timeout, default 600); max 512 records per job spec guard (reportJobMaxRecords).
 //   - Idempotency-Key header replays existing job id without duplicate export.
 //   - Completed jobs expose download on GET .../download with AuthorizeCustomerAccess.
 //   - Schedule cron validation via ValidateReportCronExpr; actor policy via reports/views.ValidateReportScheduleForActor.
@@ -25,7 +26,9 @@
 // Verify:
 //
 //	go test ./internal/reportjob/ -short -count=1
+//	go test ./internal/reportjob/ -short -run TestReportJobRunTimeout_ -count=1
 //	go test ./internal/reportjob/ -short -run TestReportJobRunner_cancelPending_holdout -count=1
-//	go test ./internal/reportjob/ -short -run TestReportJob_idempotencyReplay -count=1
+//	go test ./internal/reportjob/ -short -run TestReportJobNotify_ -count=1
+//	go test ./internal/reportjob/ -short -run TestRerunJob_ -count=1
 //	go test ./internal/reportjob/ -short -run TestValidateReportCronExpr -count=1
 package reportjob

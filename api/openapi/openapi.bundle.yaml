@@ -401,6 +401,16 @@ info:
     version: 0.6.0
 openapi: 3.0.3
 paths:
+    /api/v1/access/catalog:
+        $ref: paths/access.yaml#/paths/~1api~1v1~1access~1catalog
+    /api/v1/access/roles:
+        $ref: paths/access.yaml#/paths/~1api~1v1~1access~1roles
+    /api/v1/access/roles.yaml:
+        $ref: paths/access.yaml#/paths/~1api~1v1~1access~1roles.yaml
+    /api/v1/access/roles/reload:
+        $ref: paths/access.yaml#/paths/~1api~1v1~1access~1roles~1reload
+    /api/v1/access/roles/validate:
+        $ref: paths/access.yaml#/paths/~1api~1v1~1access~1roles~1validate
     /api/v1/audit:
         $ref: paths/platform.yaml#/paths/~1api~1v1~1audit
     /api/v1/audit/export:
@@ -669,6 +679,54 @@ paths:
         $ref: paths/integrations.yaml#/paths/~1api~1v1~1integration~1templates
     /api/v1/integration/templates/import:
         $ref: paths/integrations.yaml#/paths/~1api~1v1~1integration~1templates~1import
+    /api/v1/integrations/google-sheets:
+        delete:
+            description: Route stub; schema not yet documented
+            operationId: deleteIntegrationsGoogleSheets
+            responses:
+                "200":
+                    description: OK
+                default:
+                    $ref: openapi.yaml#/components/responses/Error
+            summary: Route stub; schema not yet documented
+            tags:
+                - integrations
+    /api/v1/integrations/google-sheets/callback:
+        get:
+            description: Route stub; schema not yet documented
+            operationId: getIntegrationsGoogleSheetsCallback
+            responses:
+                "200":
+                    description: OK
+                default:
+                    $ref: openapi.yaml#/components/responses/Error
+            summary: Route stub; schema not yet documented
+            tags:
+                - integrations
+    /api/v1/integrations/google-sheets/connect:
+        get:
+            description: Route stub; schema not yet documented
+            operationId: getIntegrationsGoogleSheetsConnect
+            responses:
+                "200":
+                    description: OK
+                default:
+                    $ref: openapi.yaml#/components/responses/Error
+            summary: Route stub; schema not yet documented
+            tags:
+                - integrations
+    /api/v1/integrations/google-sheets/status:
+        get:
+            description: Route stub; schema not yet documented
+            operationId: getIntegrationsGoogleSheetsStatus
+            responses:
+                "200":
+                    description: OK
+                default:
+                    $ref: openapi.yaml#/components/responses/Error
+            summary: Route stub; schema not yet documented
+            tags:
+                - integrations
     /api/v1/integrations/postbacks/health:
         $ref: paths/integrations.yaml#/paths/~1api~1v1~1integrations~1postbacks~1health
     /api/v1/landers:
@@ -1093,6 +1151,8 @@ tags:
       name: report-schedules
     - description: Platform install configuration
       name: settings
+    - description: RBAC role constructor and capability catalog
+      name: access
     - description: Operator feedback to vendor
       name: support
     - description: Team members and budget approvals

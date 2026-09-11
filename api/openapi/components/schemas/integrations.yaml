@@ -6,6 +6,17 @@ StatusOKResponse:
       type: string
       enum: [ok]
 
+GoogleSheetsIntegrationStatus:
+  type: object
+  required: [connected]
+  properties:
+    connected:
+      type: boolean
+    account_email:
+      type: string
+    message:
+      type: string
+
 PostbackConfig:
   type: object
   required: [campaign_id, provider, url_template, target_event, has_api_token]
@@ -532,6 +543,8 @@ SmartAlertRule:
       format: uuid
     name:
       type: string
+    template:
+      $ref: '#/SmartAlertRuleTemplate'
     metric:
       type: string
     operator:
@@ -554,7 +567,7 @@ SmartAlertRule:
 
 UpsertSmartAlertRuleRequest:
   type: object
-  required: [customer_id, name, metric, operator, threshold, window_minutes, webhook_url, enabled]
+  required: [customer_id, webhook_url, enabled]
   properties:
     customer_id:
       type: string
@@ -564,6 +577,8 @@ UpsertSmartAlertRuleRequest:
       format: uuid
     name:
       type: string
+    template:
+      $ref: '#/SmartAlertRuleTemplate'
     metric:
       type: string
     operator:
@@ -577,6 +592,15 @@ UpsertSmartAlertRuleRequest:
       type: string
     enabled:
       type: boolean
+
+SmartAlertRuleTemplate:
+  type: string
+  enum:
+    - budget_burn_pct
+    - roi_below
+    - pacing_drift
+    - export_job_failed
+    - margin_breach
 
 SmartAlertEvent:
   type: object

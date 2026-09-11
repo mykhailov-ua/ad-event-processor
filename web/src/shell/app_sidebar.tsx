@@ -6,6 +6,7 @@ import { adminKit, adminSpacing, adminTypography } from '@/lib/admin_kit';
 import { productDisplayName } from '@/lib/product_display_name';
 import { AdminMark } from '@/shell/admin_mark';
 import type { TrackerNavGroup, TrackerNavItem } from '@/lib/tracker_nav';
+import { Badge } from '@/components/ui/badge';
 import { cn } from '@/lib/utils';
 
 /** Baseline sidebar width and nav link chrome (pgAdmin tree selection palette). */
@@ -76,6 +77,11 @@ function AppSidebarNavLink({
     >
       <Icon aria-hidden className="h-4 w-4 shrink-0 opacity-80" />
       <span className="whitespace-nowrap">{item.label}</span>
+      {item.badgeCount != null && item.badgeCount > 0 ? (
+        <Badge className="ml-auto" variant="secondary">
+          {item.badgeCount}
+        </Badge>
+      ) : null}
     </NavLink>
   );
 }

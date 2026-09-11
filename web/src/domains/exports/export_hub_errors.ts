@@ -2,7 +2,7 @@ import { ApiError } from '@/api/api_error';
 import { userErrorMessage } from '@/lib/admin_error';
 
 const EXPORT_TIMEOUT_MESSAGE =
-  'The export request timed out. The job may still be running on the server — poll the job ID or narrow the date range and try again.';
+  'The export request timed out. The job may still be running on the server - poll the job ID or narrow the date range and try again.';
 const EXPORT_SOURCE_MESSAGE =
   'The report data source failed. Try a smaller date range, lower the row limit, or contact support if this persists.';
 const EXPORT_SERVER_MESSAGE =

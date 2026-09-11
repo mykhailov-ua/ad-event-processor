@@ -46,6 +46,8 @@ for match in re.finditer(
         continue
     if suffix == "catalog":
         continue
+    if suffix == "notifications" or suffix.startswith("notifications/"):
+        continue
     if suffix == "clicks":
         path_to_key[suffix] = "click-log"
         continue

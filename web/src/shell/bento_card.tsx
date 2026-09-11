@@ -28,13 +28,15 @@ export function BentoSection({
   title,
   children,
   className,
+  'data-testid': testId,
 }: {
   title: string;
   children: ReactNode;
   className?: string;
+  'data-testid'?: string;
 }) {
   return (
-    <section className={cn('grid gap-4', className)}>
+    <section className={cn('grid gap-4', className)} data-testid={testId}>
       <h2 className="text-sm font-medium text-muted-foreground">{title}</h2>
       {children}
     </section>

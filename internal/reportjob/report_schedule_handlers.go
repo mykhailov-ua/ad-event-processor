@@ -16,21 +16,21 @@ func (h *HTTPHandlers) registerReportSchedules(mux *http.ServeMux) {
 		return
 	}
 	limit := h.ApplyRateLimit
-	perm := h.RequirePermission
 	permAny := h.RequireAnyPermission
 	if permAny == nil {
 		permAny = func(_ []string, next http.HandlerFunc) http.HandlerFunc { return next }
 	}
-	readPerms := []string{"campaigns:read", "campaigns:read:masked"}
+	readPerms := []string{"exports:read", "campaigns:read", "campaigns:read:masked"}
+	runExports := []string{"exports:run", "customers:read", "campaigns:write"}
 	mux.HandleFunc("GET /api/v1/report-schedules", limit(permAny(readPerms, h.listReportSchedules)))
 	mux.HandleFunc("GET /api/v1/report-schedules/{id}", limit(permAny(readPerms, h.getReportSchedule)))
-	mux.HandleFunc("POST /api/v1/report-schedules", limit(perm("campaigns:write", h.createReportSchedule)))
-	mux.HandleFunc("PUT /api/v1/report-schedules/{id}", limit(perm("campaigns:write", h.updateReportSchedule)))
-	mux.HandleFunc("DELETE /api/v1/report-schedules/{id}", limit(perm("campaigns:write", h.deleteReportSchedule)))
+	mux.HandleFunc("POST /api/v1/report-schedules", limit(permAny(runExports, h.createReportSchedule)))
+	mux.HandleFunc("PUT /api/v1/report-schedules/{id}", limit(permAny(runExports, h.updateReportSchedule)))
+	mux.HandleFunc("DELETE /api/v1/report-schedules/{id}", limit(permAny(runExports, h.deleteReportSchedule)))
+	mux.HandleFunc("POST /api/v1/report-schedules/{id}/run", limit(permAny(runExports, h.runReportScheduleNow)))
 }
 
 func (h *HTTPHandlers) createReportSchedule(w http.ResponseWriter, r *http.Request) {
-	// 64KiB body cap (coldpath.DefaultMaxBody); schedule spec JSON only, no export payload.
 	req, err := coldpath.DecodeRequest[CreateReportScheduleRequest](w, r, coldpath.DefaultMaxBody)
 	if err != nil {
 		return
@@ -55,6 +55,16 @@ func (h *HTTPHandlers) createReportSchedule(w http.ResponseWriter, r *http.Reque
 				httpresponse.Error(w, http.StatusForbidden, "FORBIDDEN", err.Error())
 				return
 			}
+			httpresponse.Error(w, http.StatusBadRequest, "BAD_REQUEST", err.Error())
+			return
+		}
+	}
+	enabled := true
+	if req.Enabled != nil {
+		enabled = *req.Enabled
+	}
+	if h.Runner != nil {
+		if err := h.Runner.validateScheduleSheetsOAuth(r.Context(), req.Destination, req.OwnerUserID, enabled); err != nil {
 			httpresponse.Error(w, http.StatusBadRequest, "BAD_REQUEST", err.Error())
 			return
 		}
@@ -117,7 +127,6 @@ func (h *HTTPHandlers) getReportSchedule(w http.ResponseWriter, r *http.Request)
 
 func (h *HTTPHandlers) updateReportSchedule(w http.ResponseWriter, r *http.Request) {
 	id := r.PathValue("id")
-	// Same 64KiB limit as create; full schedule replace, not partial patch.
 	req, err := coldpath.DecodeRequest[UpdateReportScheduleRequest](w, r, coldpath.DefaultMaxBody)
 	if err != nil {
 		return
@@ -147,6 +156,24 @@ func (h *HTTPHandlers) updateReportSchedule(w http.ResponseWriter, r *http.Reque
 				httpresponse.Error(w, http.StatusForbidden, "FORBIDDEN", err.Error())
 				return
 			}
+			httpresponse.Error(w, http.StatusBadRequest, "BAD_REQUEST", err.Error())
+			return
+		}
+	}
+	enabled := existing.Enabled
+	if req.Enabled != nil {
+		enabled = *req.Enabled
+	}
+	destination := existing.Destination
+	if req.Destination != "" {
+		destination = normalizeReportScheduleDestination(req.Destination)
+	}
+	ownerUserID := req.OwnerUserID
+	if ownerUserID == "" {
+		ownerUserID = existing.OwnerUserID
+	}
+	if h.Runner != nil {
+		if err := h.Runner.validateScheduleSheetsOAuth(r.Context(), destination, ownerUserID, enabled); err != nil {
 			httpresponse.Error(w, http.StatusBadRequest, "BAD_REQUEST", err.Error())
 			return
 		}
@@ -189,4 +216,40 @@ func (h *HTTPHandlers) deleteReportSchedule(w http.ResponseWriter, r *http.Reque
 		return
 	}
 	w.WriteHeader(http.StatusNoContent)
+}
+
+func (h *HTTPHandlers) runReportScheduleNow(w http.ResponseWriter, r *http.Request) {
+	if h.Runner == nil {
+		httpresponse.Error(w, http.StatusServiceUnavailable, "NOT_CONFIGURED", "report jobs unavailable")
+		return
+	}
+	id := r.PathValue("id")
+	existing, err := getReportSchedule(r.Context(), h.Pool, id)
+	if err != nil {
+		if errors.Is(err, pgx.ErrNoRows) {
+			httpresponse.Error(w, http.StatusNotFound, "NOT_FOUND", "schedule not found")
+			return
+		}
+		h.writeServiceError(w, err)
+		return
+	}
+	if h.AuthorizeCustomerAccess != nil {
+		if err := h.AuthorizeCustomerAccess(r, existing.CustomerID); err != nil {
+			h.writeServiceError(w, err)
+			return
+		}
+	}
+	jobID, dto, err := h.Runner.RunReportScheduleNow(r.Context(), id)
+	if err != nil {
+		msg := err.Error()
+		if !isSafeExportValidationMessage(msg) {
+			msg = SanitizeExportJobError(msg)
+		}
+		httpresponse.Error(w, http.StatusBadRequest, "BAD_REQUEST", msg)
+		return
+	}
+	httpresponse.JSON(w, http.StatusAccepted, map[string]any{
+		"job_id":   jobID,
+		"schedule": dto,
+	})
 }

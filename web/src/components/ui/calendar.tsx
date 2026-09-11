@@ -6,7 +6,7 @@ import {
   buildCalendarClassNames,
   calendarDayButtonClass,
   calendarRootClass,
-} from '@/lib/calendar_class_names';
+} from '@/components/ui/calendar_class_names';
 import { cn } from '@/lib/utils';
 
 export type CalendarProps = React.ComponentProps<typeof DayPicker> & {

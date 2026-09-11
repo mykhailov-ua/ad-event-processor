@@ -139,12 +139,13 @@ type EdgeMetricsPanelDTO struct {
 }
 
 type DataFreshnessDTO struct {
-	AsOf         string                   `json:"as_of"`
-	AsOfDisplay  string                   `json:"as_of_display,omitempty"`
-	Consistency  string                   `json:"consistency"`
-	Stale        bool                     `json:"stale"`
-	CHLagSeconds int                      `json:"ch_lag_seconds,omitempty"`
-	Sources      []DataSourceFreshnessDTO `json:"sources,omitempty"`
+	AsOf           string                   `json:"as_of"`
+	AsOfDisplay    string                   `json:"as_of_display,omitempty"`
+	Consistency    string                   `json:"consistency"`
+	Stale          bool                     `json:"stale"`
+	FreshnessLabel string                   `json:"freshness_label,omitempty"`
+	CHLagSeconds   int                      `json:"ch_lag_seconds,omitempty"`
+	Sources        []DataSourceFreshnessDTO `json:"sources,omitempty"`
 }
 
 type BuyerAttentionDTO struct {

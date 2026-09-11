@@ -67,7 +67,7 @@ function auditRowId(row: AuditLog, index: number): string {
 function auditRowLabel(row: AuditLog): string {
   const action = row.action ?? 'action';
   const target = row.target_type ?? 'target';
-  return `${action} · ${target}`;
+  return `${action} / ${target}`;
 }
 
 function auditMetadataFields(metadata: AuditLog['metadata']): {

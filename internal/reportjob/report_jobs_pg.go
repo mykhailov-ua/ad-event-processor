@@ -5,6 +5,7 @@ import (
 	"encoding/json"
 	"errors"
 	"fmt"
+	"strings"
 	"time"
 
 	"github.com/google/uuid"
@@ -78,12 +79,15 @@ func (r *ReportJobRunner) getJobPG(ctx context.Context, jobID string) (ReportJob
 	var customerID uuid.UUID
 	var specJSON []byte
 	var errMsg *string
+	var spreadsheetID, spreadsheetURL *string
 	var createdAt time.Time
 	err = r.deps.Pool.QueryRow(ctx, `
-SELECT id, customer_id, report_key, spec, status, COALESCE(bytes, 0), error_message, created_at
+SELECT id, customer_id, report_key, spec, status, COALESCE(bytes, 0), error_message, created_at,
+       spreadsheet_id, spreadsheet_url
 FROM report_jobs
 WHERE id = $1`, parsed).Scan(
 		&parsed, &customerID, &dto.ReportKey, &specJSON, &dto.Status, &dto.Bytes, &errMsg, &createdAt,
+		&spreadsheetID, &spreadsheetURL,
 	)
 	if err != nil {
 		if errors.Is(err, pgx.ErrNoRows) {
@@ -98,7 +102,7 @@ WHERE id = $1`, parsed).Scan(
 	dto.ID = parsed.String()
 	dto.JobID = dto.ID
 	dto.CustomerID = customerID.String()
-	dto.Format = spec.Format
+	populateReportJobStatusFromSpec(&dto, spec, spreadsheetID, spreadsheetURL)
 	if errMsg != nil {
 		dto.Error = SanitizeExportJobError(*errMsg)
 	}
@@ -112,7 +116,8 @@ func (r *ReportJobRunner) listJobsByCustomerPG(ctx context.Context, customerID s
 		return nil, fmt.Errorf("invalid customer_id")
 	}
 	rows, err := r.deps.Pool.Query(ctx, `
-SELECT id, customer_id, report_key, spec, status, COALESCE(bytes, 0), error_message, created_at
+SELECT id, customer_id, report_key, spec, status, COALESCE(bytes, 0), error_message, created_at,
+       spreadsheet_id, spreadsheet_url
 FROM report_jobs
 WHERE customer_id = $1
 ORDER BY created_at DESC
@@ -129,7 +134,8 @@ LIMIT $2`, cid, limit)
 		var dto ReportJobStatusDTO
 		var errMsg *string
 		var createdAt time.Time
-		if err := rows.Scan(&jobID, &rowCustomerID, &dto.ReportKey, &specJSON, &dto.Status, &dto.Bytes, &errMsg, &createdAt); err != nil {
+		var spreadsheetID, spreadsheetURL *string
+		if err := rows.Scan(&jobID, &rowCustomerID, &dto.ReportKey, &specJSON, &dto.Status, &dto.Bytes, &errMsg, &createdAt, &spreadsheetID, &spreadsheetURL); err != nil {
 			return nil, err
 		}
 		var spec ReportJobSpec
@@ -139,7 +145,7 @@ LIMIT $2`, cid, limit)
 		dto.ID = jobID.String()
 		dto.JobID = dto.ID
 		dto.CustomerID = rowCustomerID.String()
-		dto.Format = spec.Format
+		populateReportJobStatusFromSpec(&dto, spec, spreadsheetID, spreadsheetURL)
 		if errMsg != nil {
 			dto.Error = SanitizeExportJobError(*errMsg)
 		}
@@ -156,6 +162,9 @@ func (r *ReportJobRunner) openDownloadPG(ctx context.Context, jobID string) (str
 	}
 	if !ok {
 		return "", ReportJobStatusDTO{}, fmt.Errorf("job not found")
+	}
+	if dto.Destination == "google_sheet" || dto.SpreadsheetURL != "" {
+		return "", dto, ErrUseSpreadsheetURL
 	}
 	if dto.Status != JobStatusCompleted {
 		return "", dto, fmt.Errorf("export not ready")
@@ -226,6 +235,37 @@ WHERE id = $1 AND status = $3`, row.id, JobStatusRunning, JobStatusPending)
 		return nil
 	})
 	return claimed, err
+}
+
+func populateReportJobStatusFromSpec(dto *ReportJobStatusDTO, spec ReportJobSpec, spreadsheetID, spreadsheetURL *string) {
+	if dto == nil {
+		return
+	}
+	dto.Format = spec.Format
+	destination := strings.TrimSpace(spec.Destination)
+	if destination == "" {
+		destination = "download"
+	}
+	dto.Destination = destination
+	if spreadsheetID != nil {
+		dto.SpreadsheetID = *spreadsheetID
+	}
+	if spreadsheetURL != nil {
+		dto.SpreadsheetURL = *spreadsheetURL
+	}
+}
+
+func completeReportJobGoogleSheetPG(ctx context.Context, pool *pgxpool.Pool, jobID, spreadsheetID, spreadsheetURL string) error {
+	parsed, err := uuid.Parse(jobID)
+	if err != nil {
+		return err
+	}
+	_, err = pool.Exec(ctx, `
+UPDATE report_jobs
+SET status = $2, spreadsheet_id = $3, spreadsheet_url = $4, file_path = NULL, bytes = 0,
+    error_message = NULL, updated_at = NOW()
+WHERE id = $1`, parsed, JobStatusCompleted, spreadsheetID, spreadsheetURL)
+	return err
 }
 
 func completeReportJobPG(ctx context.Context, pool *pgxpool.Pool, jobID, filePath string, bytes int64) error {

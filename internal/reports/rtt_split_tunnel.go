@@ -29,6 +29,16 @@ type RTTSplitTunnelReportResponse struct {
 	NextCursor string                 `json:"next_cursor,omitempty"`
 }
 
+const rttSplitTunnelCountQuery = `
+SELECT count() FROM (
+ SELECT campaign_id, country
+ FROM impressions
+ WHERE campaign_id IN (?)
+  AND created_at >= ?
+  AND created_at < ?
+ GROUP BY campaign_id, country
+)`
+
 const rttSplitTunnelQuery = `
 SELECT
  campaign_id,
@@ -113,6 +123,10 @@ func queryRTTSplitTunnelRows(
 	if clickhouseQuery == nil || len(campaignIDs) == 0 {
 		return nil, 0, nil
 	}
+	var total int64
+	if err := clickhouseQuery.QueryRow(ctx, rttSplitTunnelCountQuery, campaignIDs, from, to).Scan(&total); err != nil {
+		return nil, 0, err
+	}
 	clickhouseRows, err := clickhouseQuery.Query(ctx, rttSplitTunnelQuery, campaignIDs, from, to, limit, offset)
 	if err != nil {
 		return nil, 0, err
@@ -133,5 +147,15 @@ func queryRTTSplitTunnelRows(
 		row.CoverageLabel = formatRateDisplay(row.CoveragePct)
 		out = append(out, row)
 	}
-	return out, int64(len(out)), clickhouseRows.Err()
+	return out, total, clickhouseRows.Err()
+}
+
+func QueryRTTSplitTunnelRows(
+	ctx context.Context,
+	clickhouseQuery *database.ClickHouseQuery,
+	campaignIDs []uuid.UUID,
+	from, to time.Time,
+	limit, offset int,
+) ([]RTTSplitTunnelRowDTO, int64, error) {
+	return queryRTTSplitTunnelRows(ctx, clickhouseQuery, campaignIDs, from, to, limit, offset)
 }

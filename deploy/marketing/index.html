@@ -18,9 +18,9 @@
     <link rel="alternate" hreflang="en" href="/" />
     <link rel="alternate" hreflang="uk" href="/uk/" />
     <link rel="preload" href="/fonts/jetbrains-mono/JetBrainsMono-Regular.woff2" as="font" type="font/woff2" crossorigin="anonymous" />
-    <link rel="stylesheet" href="site.css" />
+    <link rel="stylesheet" href="site.css?v=20260911" />
     <script src="vendor/lucide.min.js" defer></script>
-    <script src="site.js" defer></script>
+    <script src="site.js?v=20260911" defer></script>
   </head>
   <body>
     <div class="site-offer-gate" data-site-offer-gate hidden aria-hidden="true"></div>
@@ -119,7 +119,8 @@
   <div data-layer="TRUST" class="Trust">
     <div data-layer="Frame" class="Frame">
       <div data-layer="Operation Integrity" class="OperationIntegrity">Operation Integrity</div>
-      <div data-layer="Built for operators who scale with confidence" class="BuiltForOperatorsWhoHateSurprises">Built for operators who scale with confidence</div>
+      <div data-layer="Built for operators who scale with confidence" class="BuiltForOperatorsWhoHateSurprises">Built for operators who&apos;ve been burned before</div>
+      <p class="OperatorsEmpathyTeaser">Recognize the patchwork stack and the 3am VPS alert? <a href="operators.html">Read the operator guide</a>.</p>
     </div>
     <div data-layer="Frame" class="Frame">
       <div data-layer="Frame" class="Frame">
@@ -149,7 +150,7 @@
           </div>
           <div data-layer="Frame" class="Frame">
             <div data-layer="Layered antifraud" class="HonestAntifraud">Layered antifraud</div>
-            <div data-layer="Real-time rule filters on the ingest hot path. IVT and ML scoring on your analytics store." class="DeterministicRulesExecuteOnHotPathMlIvtRunAsBackgroundBatchJobs">Real-time rule filters on the ingest hot path. IVT and ML scoring on your analytics store.</div>
+            <div data-layer="Real-time rule filters on the ingest hot path. Scale+ reads a precomputed fraud-boost snapshot from Redis; batch IVT/ML on ClickHouse." class="DeterministicRulesExecuteOnHotPathMlIvtRunAsBackgroundBatchJobs">Real-time rules on every click. Scale+ reads a precomputed fraud-boost snapshot from Redis — lookup only, no ML inference on /track. Batch IVT/ML runs on ClickHouse in the background.</div>
           </div>
         </div>
         <div data-layer="trust-card" class="TrustCard">
@@ -303,6 +304,7 @@
       </div>
       <div data-layer="Frame" class="Frame">
         <a href="docs.html" class="FooterArchitecture">Architecture</a>
+        <a href="operators.html" class="FooterOperators">For operators</a>
         <div data-site-link="offer" class="PublicOffer">Public offer</div>
         <div data-site-nav="Contacts" class="ContactsFooter">Contacts</div>
         <div data-site-cta="telegram" class="Telegram">Telegram</div>

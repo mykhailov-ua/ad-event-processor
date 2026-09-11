@@ -1,6 +1,7 @@
 import { Link } from 'react-router-dom';
 
 import { campaignPanelError } from '@/domains/campaigns/editor/campaign_editor_shared';
+import { CampaignStatsPanel } from '@/domains/campaigns/editor/campaign_stats_panel';
 import { buildIntegrationsDebuggerHref } from '@/domains/integrations/integration_debug_api';
 import {
   DirectoryFilterForm,
@@ -34,6 +35,8 @@ export function CampaignOpsPanel({ campaignId, workspace }: CampaignOpsPanelProp
     setDraftPlacementId,
     loadingKey,
     stats,
+    statsError,
+    statsQuery,
     events,
     margin,
     mappings,
@@ -57,14 +60,12 @@ export function CampaignOpsPanel({ campaignId, workspace }: CampaignOpsPanelProp
     statusIntegrationSchemaId,
     syncingPreset,
     syncPresetMessage,
+    campaign,
   } = workspace;
 
   return (
     <div >
       <div >
-        <Button disabled={busy} onClick={onLoadStats} type="button" variant="outline">
-          {loadingKey === 'stats' ? 'Loading...' : 'Stats'}
-        </Button>
         <Button disabled={busy} onClick={onLoadEvents} type="button" variant="outline">
           {loadingKey === 'events' ? 'Loading...' : 'Events'}
         </Button>
@@ -99,29 +100,15 @@ export function CampaignOpsPanel({ campaignId, workspace }: CampaignOpsPanelProp
         </FilterPanel>
       ) : null}
 
-      {stats ? (
-        <FilterPanel >
-          <h3 >Campaign stats</h3>
-          <div >
-            <div>
-              <span >Current spend</span>
-              <p>{stats.current_spend ?? ''}</p>
-            </div>
-            <div>
-              <span >Clicks</span>
-              <p>{stats.metrics?.clicks ?? 0}</p>
-            </div>
-            <div>
-              <span >Conversions</span>
-              <p>{stats.metrics?.conversions ?? 0}</p>
-            </div>
-            <div>
-              <span >Impressions</span>
-              <p>{stats.metrics?.impressions ?? 0}</p>
-            </div>
-          </div>
-        </FilterPanel>
-      ) : null}
+      <CampaignStatsPanel
+        campaignId={campaignId}
+        customerId={campaign?.customer_id}
+        error={statsError}
+        loading={loadingKey === 'stats'}
+        stats={stats}
+        statsQuery={statsQuery}
+        onReload={onLoadStats}
+      />
 
       {margin ? (
         <FilterPanel >

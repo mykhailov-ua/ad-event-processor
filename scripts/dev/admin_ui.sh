@@ -66,6 +66,32 @@ load_dotenv() {
   set +a
 }
 
+apply_local_report_export_dir() {
+  local export_dir="${REPORT_EXPORT_DIR:-}"
+  if [[ -z "$export_dir" || ! -d "$(dirname "$export_dir")" || ! -w "$(dirname "$export_dir")" ]]; then
+    export_dir="$VAR_DIR/report-exports"
+  fi
+  mkdir -p "$export_dir"
+  export REPORT_EXPORT_DIR="$export_dir"
+}
+
+apply_host_control_env() {
+  local pg_sock="/run/ad-event-processor/postgresql/.s.PGSQL.${DB_PORT:-5430}"
+  if [[ ! -S "$pg_sock" ]]; then
+    export DB_DSN="postgres://${DB_USER:-ad_event_processor_user}:${DB_PASSWORD:-secure_pass_123}@127.0.0.1:${DB_PORT:-5430}/${DB_NAME:-ad_event_processor}?sslmode=disable"
+  fi
+  if [[ "${REDIS_ADDRS:-}" == *"/run/ad-event-processor/"* ]]; then
+    export REDIS_ADDRS="127.0.0.1:${REDIS_PORT:-6479}"
+  fi
+  if [[ "${CH_DSN:-}" == *"/run/ad-event-processor/"* ]] || [[ "${CH_USE_UDS:-}" == "1" ]]; then
+    export CH_USE_UDS=0
+    export CH_DSN="${CH_DSN:-clickhouse://default:secure_ch_pass@127.0.0.1:${CH_PORT:-9000}/ad_event_processor}"
+  fi
+  export AD_EVENT_PROCESSOR_LICENSE_MODE="${AD_EVENT_PROCESSOR_LICENSE_MODE:-dev}"
+  export AD_EVENT_PROCESSOR_LICENSE_REQUIRED="${AD_EVENT_PROCESSOR_LICENSE_REQUIRED:-0}"
+  apply_local_report_export_dir
+}
+
 pid_alive() {
   local pid_file="$1"
   local pid=""
@@ -190,6 +216,7 @@ start_local_control() {
   load_dotenv
   stop_docker_control
   mkdir -p "$VAR_DIR"
+  apply_host_control_env
   : > "$CONTROL_LOG"
   (
     cd "$ROOT"
@@ -376,8 +403,11 @@ case "$CMD" in
   control)
     load_dotenv
     stop_docker_control
+    apply_host_control_env
     cd "$ROOT"
-    exec aed_go_run ./cmd/control
+    local go_bin
+    go_bin="$(aed_go_bin)" || die "go not found"
+    exec "$go_bin" run ./cmd/control
     ;;
   web)
     load_dotenv

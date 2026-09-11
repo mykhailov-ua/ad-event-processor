@@ -83,6 +83,11 @@ export type CampaignListMetrics = Pick<
   | 'bot_pct'
   | 'roi_pct'
   | 'cpm_usd'
+  | 'budget_burn_pct'
+  | 'pacing_mode'
+  | 'pacing_health'
+  | 'metrics_stale'
+  | 'metrics_as_of'
 >;
 
 export type CampaignExportBatchResponse = {

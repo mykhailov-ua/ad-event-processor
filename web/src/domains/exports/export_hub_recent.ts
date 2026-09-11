@@ -1,11 +1,16 @@
 import type { ExportHubKind } from '@/domains/exports/export_hub_catalog';
 
+export type ExportHubDestination = 'download' | 'google_sheet';
+
 export type ExportHubRecentJob = {
   jobId: string;
   kind: ExportHubKind;
   label: string;
   customerId?: string;
   rowLimit?: number;
+  format?: string;
+  destination?: ExportHubDestination;
+  spreadsheetUrl?: string;
   status: string;
   bytes?: number;
   error?: string;

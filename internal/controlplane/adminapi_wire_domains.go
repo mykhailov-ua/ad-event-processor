@@ -19,6 +19,7 @@ import (
 	"ad-event-processor/internal/edge"
 	"ad-event-processor/internal/flow"
 	"ad-event-processor/internal/fraudadmin"
+	"ad-event-processor/internal/integrations/googlesheets"
 	"ad-event-processor/internal/licensingadmin"
 	"ad-event-processor/internal/marginguard"
 	"ad-event-processor/internal/openrtb"
@@ -123,6 +124,7 @@ func (h *Handler) wireAdminDomainRoutes(reg *RouteRegistry, e adminWireEnv) {
 	}
 	reg.ViewsHTTP = &reports.ViewsHTTPHandlers{
 		Store:                   reports.NewViewsStore(pool),
+		ReportJobRunner:         reportJobs,
 		ApplyRateLimit:          limit,
 		RequirePermission:       perm,
 		RequireAnyPermission:    permAny,
@@ -155,6 +157,24 @@ func (h *Handler) wireAdminDomainRoutes(reg *RouteRegistry, e adminWireEnv) {
 		AuthorizeCampaignAccess: authCampaign,
 		WriteServiceError:       writeErr,
 	}
+	gsHandlers := &googlesheets.HTTPHandlers{
+		Config:               googleSheetsConfig(svc, encKey),
+		ApplyRateLimit:       limit,
+		RequirePermission:    perm,
+		RequireAnyPermission: permAny,
+		ActorUserID: func(r *http.Request) (uuid.UUID, bool) {
+			u, ok := GetUser(r.Context())
+			return u.UserID, ok
+		},
+		WriteServiceError: writeErr,
+	}
+	if len(encKey) >= 32 {
+		gsHandlers.Store = googlesheets.NewStore(pool, encKey)
+		gsHandlers.Audit = func(ctx context.Context, actorID uuid.UUID, action string, metadata any) {
+			svc.AuditLog(ctx, nil, actorID, action, "integration", nil, nil, metadata)
+		}
+	}
+	reg.GoogleSheetsHTTP = gsHandlers
 	reg.CostSyncHTTP = &billingadmin.CostSyncHTTPHandlers{
 		Pool:              pool,
 		EncryptionKey:     encKey,
@@ -249,8 +269,13 @@ func (h *Handler) wireAdminDomainRoutes(reg *RouteRegistry, e adminWireEnv) {
 		},
 	}
 	reg.TeamHTTP = &platformadmin.TeamHTTPHandlers{
-		Pool:                 pool,
-		Team:                 &platformadmin.TeamOverviewService{Pool: pool},
+		Pool: pool,
+		Team: &platformadmin.TeamOverviewService{
+			Pool:            pool,
+			ClickHouseQuery: svc.ClickHouseQuery(),
+			ReportCHTimeout: ReportClickHouseQueryTimeout,
+			CHIngestionLag:  svc.ClickHouseIngestionLag,
+		},
 		Governance:           svc,
 		ApplyRateLimit:       limit,
 		RequireAnyPermission: permAny,

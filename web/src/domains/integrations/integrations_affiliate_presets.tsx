@@ -47,7 +47,7 @@ function buildAffiliatePresetOverviewFields(row: AffiliateStatusPreset): Directo
       value: statuses.length === 0
         ? '0'
         : statuses
-            .map((entry) => `${entry.inbound_status ?? ''} → ${entry.goal_name ?? ''}`)
+            .map((entry) => `${entry.inbound_status ?? ''} -> ${entry.goal_name ?? ''}`)
             .join(', '),
     },
   ];

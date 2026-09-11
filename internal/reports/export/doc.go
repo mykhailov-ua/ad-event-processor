@@ -1,8 +1,9 @@
-// Package export writes async report job artifacts (CSV and fraud bulk ZIP) for reportjob runner.
+// Package export writes async report job artifacts (CSV, XLSX, and fraud bulk ZIP) for reportjob runner.
 //
 // Role:
 //   - init in register.go sets reports.SetReportExportWrite(Write); blank import from controlplane/register.go.
 //   - writeReportCSV dispatches on reportjob.ReportJobSpec.ReportKey to ClickHouse/Postgres-backed row writers (page size 1000).
+//   - writeReportXLSX reuses writeReportCSV into a temp file, then convertCSVFileToXLSX (excelize StreamWriter).
 //   - fraud-evidence-pack-bulk delegates ZIP layout to reports/fraud.WriteFraudEvidencePackBulkZip.
 //   - export_redaction_profiles.go: operator_full vs buyer_summary column projection per report key.
 //
@@ -27,4 +28,5 @@
 // go test ./internal/reports/export/ -short -run TestWriteReportCSV_supportsAllLiveReportKeys -count=1
 // go test ./internal/reports/export/ -short -run TestExportColumnsForReport_buyerOmitsClickID_holdout -count=1
 // go test ./internal/reports/export/ -short -run TestWriteCustomerFraudByTypeExport_buyerProfileOmitsRawReason_holdout -count=1
+// go test ./internal/reports/export/ -short -run TestConvertCSVFileToXLSX_rowCountMatchesCSV_holdout -count=1
 package export
