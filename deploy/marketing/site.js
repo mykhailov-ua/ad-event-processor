@@ -265,6 +265,7 @@
       hardware_sizing: raw.hardware_sizing || null,
       instant_sell: raw.instant_sell || null,
       killers: raw.killers || [],
+      empathy: raw.empathy || null,
       empathy_cards: raw.empathy_cards || [],
       outcomes_compact: raw.outcomes_compact || raw.capabilities_compact || [],
       capabilities_compact: raw.capabilities_compact || [],
@@ -348,6 +349,9 @@
     wireMobileMenu(config);
     updateLangSwitch(config);
     document.querySelectorAll(".NavArchitecture, .FooterArchitecture").forEach(function (link) {
+      link.setAttribute("href", docsPageHref(config));
+    });
+    document.querySelectorAll("[data-site-tco-architecture]").forEach(function (link) {
       link.setAttribute("href", docsPageHref(config));
     });
     applyTheme(document.documentElement.getAttribute("data-theme") || "dark");
@@ -660,6 +664,11 @@
         "</div>" +
         (impacts.total.body
           ? '<p class="site-tco-impact__total-body">' + escapeHtml(impacts.total.body) + "</p>"
+          : "") +
+        (impacts.total.architecture_link
+          ? '<p class="site-tco-impact__total-body"><a href="#" data-site-tco-architecture>' +
+            escapeHtml(impacts.total.architecture_link) +
+            "</a></p>"
           : "") +
         "</div>"
       : "";
@@ -1530,6 +1539,12 @@
     document.querySelectorAll("a[href='index.html#pricing'], a[href='index.html#tco']").forEach(function (link) {
       var hash = link.getAttribute("href").split("#")[1] || "";
       link.setAttribute("href", homeHref + "#" + hash);
+    });
+    document.querySelectorAll("a[href='index.html#hardware-sizing']").forEach(function (link) {
+      link.setAttribute("href", docsPageHref(config) + "#hardware-sizing");
+    });
+    document.querySelectorAll("[data-site-hardware-sizing]").forEach(function (root) {
+      renderHardwareSizing(config);
     });
   }
 
