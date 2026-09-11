@@ -1031,6 +1031,10 @@
     if (installTitle && block.install_cli_title) {
       installTitle.textContent = block.install_cli_title;
     }
+    var installSummary = document.querySelector("[data-site-install-cli-summary]");
+    if (installSummary && block.install_cli_summary) {
+      installSummary.textContent = block.install_cli_summary;
+    }
   }
 
   function wireInstallCopy() {

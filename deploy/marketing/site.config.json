@@ -260,7 +260,6 @@
     "OpenRTB bid endpoint — programmatic revenue on Network tier"
   ],
   "appliance": {
-    "eyebrow": "Start in 10 days",
     "title": "Pilot without breaking production",
     "subtitle": "Most teams run a test VPS in parallel first — not a full GEO swap on day one. We send a license file; you point one test campaign and compare numbers.",
     "install_cli_title": "Install command (for your DevOps)",
