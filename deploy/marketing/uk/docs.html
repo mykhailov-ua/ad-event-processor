@@ -17,9 +17,9 @@
   </script>
   <link rel="alternate" hreflang="en" href="/docs.html" />
   <link rel="alternate" hreflang="uk" href="/uk/docs.html" />
-  <link rel="stylesheet" href="/site.css?v=20260911">
+  <link rel="stylesheet" href="/site.css?v=20260912">
   <script src="https://cdn.jsdelivr.net/npm/mermaid@11.4.0/dist/mermaid.min.js" defer></script>
-  <script src="/site.js?v=20260911" defer></script>
+  <script src="/site.js?v=20260912" defer></script>
 </head>
 <body class="docs-page">
   <div class="site-offer-gate" data-site-offer-gate hidden aria-hidden="true"></div>
@@ -64,6 +64,7 @@
         <li><a href="#admin-path">Admin, billing і звіти</a></li>
         <li><a href="#data-stores">Сховища даних</a></li>
         <li><a href="#optional">Опційні компоненти</a></li>
+        <li><a href="#hardware-sizing">Розмір сервера</a></li>
         <li><a href="#limits">Чесні обмеження</a></li>
         <li><a href="#ports">Порти</a></li>
       </ol>
@@ -163,7 +164,7 @@
       <strong>Рекомендація по залізу:</strong> ClickHouse на одному VPS дуже прожорливий до RAM. Для комфортного all-in-one
       (ClickHouse + Redis + Postgres + tracker pool) закладайте мінімум <strong>4 vCPU і 8 GB RAM</strong> плюс NVMe диск.
       Routing-only pilot можна стартувати менше; дешевий VPS часто впереться в ClickHouse OOM — це питання sizing, а не дефект ліцензії.
-      Див. <a href="index.html#pricing">hardware sizing</a> на головній.
+      Див. <a href="#hardware-sizing">розмір сервера</a> нижче.
     </p>
     <p>
       Перевірка ліцензії — offline Ed25519 JWT файл на диску; без регулярного phone-home для ingest tokens.
@@ -280,6 +281,13 @@
       </tbody>
     </table>
 
+    <h2 id="hardware-sizing">Розмір сервера</h2>
+    <p>
+      Орієнтир для планування — не гарантія throughput. Стартуйте тут, потім масштабуйтеся залежно від трафіку, глибини antifraud
+      і того, чи звіти та bidding працюють на одному VPS чи окремих хостах.
+    </p>
+    <section class="site-hardware-sizing" data-site-hardware-sizing aria-labelledby="site-hardware-title"></section>
+
     <h2 id="limits">Чесні обмеження</h2>
     <ul class="site-doc-honest">
       <li>Ми не хостимо ваш трафік і не гарантуємо uptime на вашому VPS — сервером керуєте ви.</li>
@@ -306,7 +314,7 @@
     </table>
 
     <p class="site-doc-meta site-doc-meta--spaced">
-      Оновлено для marketing site: 2026-09-09. Кроки installer — у install-блоці на головній.
+      Оновлено для marketing site: 2026-09-12. Кроки installer — у install-блоці на головній.
       Юридичні умови — у <a href="../offer.html">публічній оферті</a>.
     </p>
 
