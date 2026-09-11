@@ -4,7 +4,7 @@ import { Button } from '@/components/ui/button';
 import { Sheet, SheetContent, SheetTitle } from '@/components/ui/sheet';
 import { adminKit, adminSpacing, adminTypography } from '@/lib/admin_kit';
 import { productDisplayName } from '@/lib/product_display_name';
-import { AdminMark } from '@/shell/admin_mark';
+import { ProductAvatar } from '@/shell/product_avatar';
 import type { TrackerNavGroup, TrackerNavItem } from '@/lib/tracker_nav';
 import { Badge } from '@/components/ui/badge';
 import { cn } from '@/lib/utils';
@@ -42,15 +42,7 @@ export type AppMobileNavSheetProps = {
 function AppSidebarBrand() {
   return (
     <div className={cn('flex shrink-0 items-center border-b border-border', adminSpacing.gap.sm, adminSpacing.inset.bandLg)}>
-      <span
-        aria-hidden
-        className={cn(
-          'inline-flex h-8 w-8 shrink-0 items-center justify-center bg-primary text-primary-foreground',
-          adminKit.controlRadius
-        )}
-      >
-        <AdminMark className="h-4 w-4" />
-      </span>
+      <ProductAvatar framed size="md" />
       <span className={cn('whitespace-nowrap tracking-tight', adminTypography.sectionTitle)}>
         {productDisplayName}
       </span>

@@ -77,6 +77,9 @@ MARKETING_DOMAIN="$MARKETING_DOMAIN" bash "$ROOT/scripts/install/obfuscate_get.s
 log "bundle JetBrains Mono webfont for marketing monospace"
 bash "$ROOT/scripts/ops/bundle_marketing_jetbrains_mono.sh"
 
+log "bundle marketing logo assets (product_avatar.svg)"
+bash "$ROOT/scripts/ops/bundle_marketing_assets.sh"
+
 log "sync marketing files"
 remote "mkdir -p '${INSTALL_ROOT}/deploy/marketing' '${INSTALL_ROOT}/deploy/marketing/releases' '${INSTALL_ROOT}/deploy/ingress/caddy/generated'"
 rsync "${rsync_base[@]}" \

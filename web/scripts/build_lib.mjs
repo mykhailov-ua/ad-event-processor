@@ -137,6 +137,19 @@ export function copyCountryFlagSvgs() {
   cpSync(flagsSrc, flagsDest, { recursive: true });
 }
 
+export function copyProductAvatarAssets() {
+  const assetsSrc = join(ROOT, '..', 'deploy', 'marketing', 'assets');
+  const assetsDest = join(DIST, 'src', 'assets');
+  mkdirSync(assetsDest, { recursive: true });
+  for (const name of ['product_avatar.svg', 'product_avatar.jpg']) {
+    const src = join(assetsSrc, name);
+    if (!existsSync(src)) {
+      throw new Error(`missing deploy/marketing/assets/${name}`);
+    }
+    cpSync(src, join(assetsDest, name));
+  }
+}
+
 export function buildHtmlShells({ cacheBust = Date.now() } = {}) {
   const fontLinks = `    <link rel="stylesheet" href="/src/styles/app.css?v=${cacheBust}" />\n`;
 
@@ -266,6 +279,7 @@ export async function buildProduction() {
 
   await buildAppCss();
   copyCountryFlagSvgs();
+  copyProductAvatarAssets();
   await buildJsBundle({ minify: true });
   copyThemeBootScripts();
   await buildTrackPixel();
@@ -282,6 +296,7 @@ export async function buildDevBootstrap() {
   mkdirSync(join(DIST, 'src'), { recursive: true });
   await buildAppCss();
   copyCountryFlagSvgs();
+  copyProductAvatarAssets();
   copyThemeBootScripts();
   await buildTrackPixel();
   buildHtmlShells();

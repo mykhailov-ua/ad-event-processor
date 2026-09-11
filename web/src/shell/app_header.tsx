@@ -5,6 +5,7 @@ import type { NavGroup } from '@/lib/nav_config';
 import { HeaderAccountMenu } from '@/shell/header_account_menu';
 import { HeaderNavMenu } from '@/shell/header_nav_menu';
 import { HeaderSearch } from '@/shell/header_search';
+import { ProductAvatar } from '@/shell/product_avatar';
 import { ThemeToggle } from '@/shell/theme_toggle';
 import { cn } from '@/lib/utils';
 
@@ -30,6 +31,7 @@ export function AppHeader({
     >
       <div className={cn(adminSpacing.flex.headerBar, adminSpacing.inset.headerX)}>
         <div className={adminSpacing.flex.headerStart}>
+          <ProductAvatar className="hidden md:inline-flex" framed size="sm" />
           <HeaderNavMenu navGroups={navGroups} onOpenMobileNav={onOpenMobileNav} />
         </div>
         <div className={adminSpacing.flex.headerEnd}>

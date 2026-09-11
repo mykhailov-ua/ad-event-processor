@@ -1500,6 +1500,28 @@ body.site-offer-gate-open {
   font-weight: 500;
 }
 
+.site-logo__avatar {
+  display: block;
+  flex: 0 0 auto;
+  border-radius: 4px;
+  object-fit: cover;
+}
+
+.site-logo__avatar--sm {
+  width: 24px;
+  height: 24px;
+}
+
+.site-logo__avatar--md {
+  width: 32px;
+  height: 32px;
+}
+
+.site-logo__avatar--lg {
+  width: 48px;
+  height: 48px;
+}
+
 .site-badge {
   display: inline-flex;
   align-items: center;
@@ -2098,6 +2120,143 @@ html[data-theme="light"] .site-pricing-badge {
 .site-tco-card--highlight .site-tco-card__summary {
   border-color: var(--site-accent-border, var(--site-border));
   background: var(--site-accent-bg-subtle);
+}
+
+.site-tco__impacts {
+  margin-top: 40px;
+  display: flex;
+  flex-direction: column;
+  gap: 24px;
+}
+
+.site-tco-impact__head {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+
+.site-tco-impact__title {
+  margin: 0;
+  color: var(--site-text);
+  font-size: 24px;
+  font-weight: 800;
+  line-height: 1.2;
+}
+
+.site-tco-impact__subtitle {
+  margin: 0;
+  color: var(--site-muted);
+  font-size: 16px;
+  line-height: 1.5;
+  max-width: 72ch;
+}
+
+.site-tco-impact__table-wrap {
+  overflow-x: auto;
+  border: 1px solid var(--site-border);
+  border-radius: 8px;
+  background: var(--site-surface);
+}
+
+.site-tco-impact__table {
+  width: 100%;
+  min-width: 720px;
+  border-collapse: collapse;
+  font-size: 14px;
+  line-height: 1.45;
+}
+
+.site-tco-impact__table th,
+.site-tco-impact__table td {
+  padding: 14px 16px;
+  border-bottom: 1px solid var(--site-border-subtle);
+  vertical-align: top;
+  text-align: left;
+}
+
+.site-tco-impact__table thead th {
+  color: var(--site-muted-2);
+  font-size: 12px;
+  font-weight: 700;
+  letter-spacing: 0.04em;
+  text-transform: uppercase;
+  background: var(--site-surface-alt);
+}
+
+.site-tco-impact__table tbody tr:last-child td,
+.site-tco-impact__table tbody tr:last-child th {
+  border-bottom: none;
+}
+
+.site-tco-impact__label {
+  width: 14%;
+  min-width: 108px;
+  color: var(--site-text);
+  font-weight: 700;
+}
+
+.site-tco-impact__patchwork {
+  width: 30%;
+  color: var(--site-muted);
+}
+
+.site-tco-impact__bidshard {
+  width: 30%;
+  color: var(--site-text);
+}
+
+.site-tco-impact__delta {
+  width: 18%;
+  min-width: 140px;
+}
+
+.site-tco-impact__delta-value {
+  display: block;
+  color: var(--site-accent-text, var(--site-text));
+  font-size: 18px;
+  font-weight: 800;
+  font-variant-numeric: tabular-nums;
+  line-height: 1.2;
+}
+
+.site-tco-impact__delta-note {
+  display: block;
+  margin-top: 4px;
+  color: var(--site-muted-2);
+  font-size: 12px;
+  line-height: 1.4;
+}
+
+.site-tco-impact__total {
+  padding: 20px 22px;
+  border-radius: 8px;
+  border: 1px solid var(--site-accent-border, var(--site-border));
+  background: var(--site-accent-bg-subtle);
+}
+
+.site-tco-impact__total-value {
+  color: var(--site-text);
+  font-size: 32px;
+  font-weight: 800;
+  font-variant-numeric: tabular-nums;
+  line-height: 1.1;
+}
+
+.site-tco-impact__total-label {
+  margin-top: 6px;
+  color: var(--site-muted);
+  font-size: 14px;
+  font-weight: 700;
+  letter-spacing: 0.02em;
+  text-transform: uppercase;
+}
+
+.site-tco-impact__total-body {
+  margin: 12px 0 0;
+  color: var(--site-text);
+  font-size: 15px;
+  line-height: 1.55;
+  max-width: 72ch;
 }
 
 .site-tco-calculator__field--volume {
@@ -5037,8 +5196,8 @@ html[data-theme="light"] .site-instant-sell__card--calculator .site-hero-calcula
 /* pgAdmin-style landing page layout */
 
 .site-pga-page {
-  background: var(--site-bg);
   --site-shell-inline: max(var(--site-gutter), calc((100% - var(--site-content-max)) / 2));
+  background: var(--site-bg);
 }
 
 .site-pga-page > .Header {
@@ -5740,6 +5899,11 @@ html[data-theme="light"] .Landing .AccordionItem__trigger .IconContainer {
 @media (max-width: 380px) {
   .site-logo__text {
     display: none;
+  }
+
+  .site-logo__avatar--md {
+    width: 24px;
+    height: 24px;
   }
 
   .OwnYourTrackingStackStopRentingYourData {
