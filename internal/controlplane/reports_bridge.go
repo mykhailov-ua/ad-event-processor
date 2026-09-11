@@ -169,16 +169,7 @@ func (s *Service) InitReportJobRunner(exportDir string) *reportjob.ReportJobRunn
 	s.workerMutex.Lock()
 	defer s.workerMutex.Unlock()
 	if s.reportJobRunner == nil {
-		var packSecret []byte
-		if s.cfg != nil {
-			packSecret = []byte(s.cfg.FraudEvidencePackHMACSecret)
-		}
-		exportDeps := reports.ReportExportDeps{
-			Pool:                        s.pool,
-			ClickHouseQuery:             s.clickhouseQuery,
-			BuyerPortfolio:              buyerPortfolioAdapter{svc: s},
-			FraudEvidencePackHMACSecret: packSecret,
-		}
+		exportDeps := s.reportExportDeps()
 		var sheetsClient *googlesheets.Client
 		var sheetsStore *googlesheets.Store
 		encKey := googleSheetsEncKey(s)

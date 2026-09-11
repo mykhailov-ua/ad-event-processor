@@ -58,7 +58,7 @@ func TestHTTPHandlers_listHistory_passesOffset_holdout(t *testing.T) {
 	req := httptest.NewRequest(
 		http.MethodGet,
 		"/api/v1/smart-alerts/history?customer_id="+customerID.String()+"&limit=25&offset=50",
-		nil,
+		http.NoBody,
 	)
 	rec := httptest.NewRecorder()
 	h.listHistory(rec, req)

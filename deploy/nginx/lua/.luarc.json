@@ -1,0 +1,33 @@
+{
+  "$schema": "https://raw.githubusercontent.com/sumneko/vscode-lua/master/setting/schema.json",
+  "runtime.version": "LuaJIT",
+  "runtime.path": [
+    "?.lua",
+    "?/init.lua"
+  ],
+  "workspace.library": [
+    "../../../internal/ingest/types",
+    "${3rd}/OpenResty/library"
+  ],
+  "workspace.checkThirdParty": true,
+  "diagnostics.globals": [
+    "ngx",
+    "redis",
+    "KEYS",
+    "ARGV",
+    "bit",
+    "arg",
+    "wrk",
+    "request",
+    "response",
+    "setup",
+    "thread",
+    "done"
+  ],
+  "diagnostics.disable": [
+    "need-check-nil",
+    "undefined-field",
+    "param-type-mismatch",
+    "cast-local-type"
+  ]
+}

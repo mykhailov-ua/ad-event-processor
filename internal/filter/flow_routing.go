@@ -736,10 +736,6 @@ func selectWeightedLander(landers []FlowLanderEntry, bucket uint32) (int, FlowLa
 	return last, landers[last]
 }
 
-func selectWeightedOffer(offers []FlowOfferEntry, bucket uint32) (int, FlowOfferEntry) {
-	return selectWeightedOfferExcluding(offers, bucket, nil)
-}
-
 func selectWeightedOfferExcluding(offers []FlowOfferEntry, bucket uint32, exclude map[uuid.UUID]struct{}) (int, FlowOfferEntry) {
 	if len(offers) == 0 {
 		return -1, FlowOfferEntry{}

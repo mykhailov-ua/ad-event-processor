@@ -105,8 +105,8 @@ func ValidateReportJobNotifySpec(spec *ReportJobSpec) error {
 	if spec == nil {
 		return fmt.Errorf("report job spec required")
 	}
-	copy := *spec
-	return normalizeReportJobNotify(&copy)
+	specCopy := *spec
+	return normalizeReportJobNotify(&specCopy)
 }
 
 func exportTerminalNotificationContent(jobID string, spec ReportJobSpec, terminalStatus, publicErr string) (kind, title, body string) {

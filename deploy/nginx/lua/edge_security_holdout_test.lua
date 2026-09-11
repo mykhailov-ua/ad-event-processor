@@ -600,6 +600,7 @@ assert_case("http_get_json_body_cap", "http_get_json_no_body_cap", function()
     expect_true(edge_net.MAX_HTTP_BODY_BYTES ~= nil, "http_get_json_body_cap", "MAX_HTTP_BODY_BYTES exported")
     expect_true(edge_net.MAX_HTTP_RESPONSE_BYTES ~= nil, "http_get_json_body_cap", "MAX_HTTP_RESPONSE_BYTES exported")
     local src = io.open(arg[1] .. "/edge-net.lua", "r")
+    expect_true(src ~= nil, "http_get_json_body_cap", "edge-net.lua readable")
     local body = src:read "*a"
     src:close()
     expect_false(

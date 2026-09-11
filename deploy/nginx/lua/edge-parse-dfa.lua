@@ -460,14 +460,15 @@ local function scan_json_dfa(data, scan_limit)
 
         local kid = json_key_id(key)
         if kid == "campaign_id" then
-            local raw
-            raw, pos, err = read_json_string(data, pos, scan_limit)
+            local raw, next_pos, parse_err
+            raw, next_pos, parse_err = read_json_string(data, pos, scan_limit)
             if not raw then
-                if err then
-                    return nil, err
+                if parse_err then
+                    return nil, parse_err
                 end
                 return last_cid, nil
             end
+            pos = next_pos
             last_cid = raw
         else
             local next_pos
@@ -543,14 +544,15 @@ local function scan_item_object(data, pos, scan_limit, depth)
             pos = pos + 1
         end
         if json_key_id(key) == "id" and item_id == nil then
-            local raw
-            raw, pos, err = read_json_string(data, pos, scan_limit)
+            local raw, next_pos, parse_err
+            raw, next_pos, parse_err = read_json_string(data, pos, scan_limit)
             if not raw then
-                if err then
-                    return nil, nil, err
+                if parse_err then
+                    return nil, nil, parse_err
                 end
                 return item_id, nil, nil
             end
+            pos = next_pos
             item_id = raw
         else
             local next_pos

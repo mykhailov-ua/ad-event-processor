@@ -211,13 +211,13 @@
   };
 
   var HASH_TO_LAYER = {
+    familiar: "FAMILIAR",
     features: "FEATURES",
     pricing: "PRICING",
     install: "HOW-IT-WORKS",
     faq: "FAQ",
     contacts: "CONTACTS",
     tco: "TCO",
-    architecture: "ARCHITECTURE",
   };
 
   function scrollToLayer(layer, behavior) {
@@ -265,7 +265,10 @@
       hardware_sizing: raw.hardware_sizing || null,
       instant_sell: raw.instant_sell || null,
       killers: raw.killers || [],
+      empathy_cards: raw.empathy_cards || [],
+      outcomes_compact: raw.outcomes_compact || raw.capabilities_compact || [],
       capabilities_compact: raw.capabilities_compact || [],
+      start_steps: raw.start_steps || null,
       appliance: raw.appliance || null,
       ui: raw.ui || null,
       locale: raw.locale || "en",
@@ -326,6 +329,7 @@
 
   function refreshLanding(config) {
     applySiteCopy(config);
+    renderEmpathyCards(config);
     renderFeatures(config);
     renderKillers(config);
     renderApplianceProof(config);
@@ -914,12 +918,13 @@
 
   function renderKillers(config) {
     var root = document.querySelector("[data-site-killers-root]");
-    if (!root || !config.killers || !config.killers.length) {
+    var items = landingKillers(config);
+    if (!root || !items.length) {
       return;
     }
     root.innerHTML =
       '<div class="site-killers__grid">' +
-      config.killers
+      items
         .map(function (item) {
           return (
             '<article class="site-killer-card" data-site-killer="' +
@@ -928,10 +933,39 @@
             '<div class="site-killer-card__head">' +
             '<div class="site-killer-card__icon">' +
             killerIcon(item.icon) +
-            "</div>" +
-            '<span class="site-killer-tier">' +
-            escapeHtml(item.tier || "") +
-            "</span></div>" +
+            "</div></div>" +
+            '<h3 class="site-killer-card__title">' +
+            escapeHtml(item.title || "") +
+            "</h3>" +
+            '<p class="site-killer-card__text">' +
+            escapeHtml(item.body || "") +
+            "</p></article>"
+          );
+        })
+        .join("") +
+      "</div>";
+  }
+
+  function landingKillers(config) {
+    return (config.killers || []).filter(function (item) {
+      return item.landing !== false;
+    });
+  }
+
+  function renderEmpathyCards(config) {
+    var root = document.querySelector("[data-site-empathy-root]");
+    var cards = config.empathy_cards || [];
+    if (!root || !cards.length) {
+      return;
+    }
+    root.innerHTML =
+      '<div class="site-killers__grid">' +
+      cards
+        .map(function (item) {
+          return (
+            '<article class="site-killer-card" data-site-empathy="' +
+            escapeHtml(item.id || "") +
+            '">' +
             '<h3 class="site-killer-card__title">' +
             escapeHtml(item.title || "") +
             "</h3>" +
@@ -946,12 +980,13 @@
 
   function renderCapabilitiesCompact(config) {
     var root = document.querySelector("[data-site-capabilities-root]");
-    if (!root || !config.capabilities_compact || !config.capabilities_compact.length) {
+    var lines = config.outcomes_compact || config.capabilities_compact || [];
+    if (!root || !lines.length) {
       return;
     }
     root.innerHTML =
       '<ul class="site-capabilities-compact">' +
-      config.capabilities_compact
+      lines
         .map(function (line) {
           return (
             '<li class="site-capabilities-compact__item">' +
@@ -1032,6 +1067,15 @@
       if (demoLabel) {
         link.textContent = demoLabel;
       }
+    });
+    document.querySelectorAll("[data-site-hero-operators]").forEach(function (link) {
+      link.setAttribute("href", operatorsPageHref(config));
+    });
+    document.querySelectorAll("[data-site-empathy-guide]").forEach(function (link) {
+      link.setAttribute("href", operatorsPageHref(config));
+    });
+    document.querySelectorAll("[data-site-tco-architecture]").forEach(function (link) {
+      link.setAttribute("href", docsPageHref(config));
     });
   }
 
@@ -1443,6 +1487,7 @@
   function initLanding(config) {
     wireAccordions();
     applySiteCopy(config);
+    renderEmpathyCards(config);
     renderFeatures(config);
     renderKillers(config);
     renderApplianceProof(config);
@@ -1463,6 +1508,7 @@
   }
 
   function initDocs(config) {
+    renderHardwareSizing(config);
     updateLangSwitch(config);
     applyTheme(document.documentElement.getAttribute("data-theme") || "dark");
     var homeHref = siteLocale() === "uk" ? "/uk/" : "/";

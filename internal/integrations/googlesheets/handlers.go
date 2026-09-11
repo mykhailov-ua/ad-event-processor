@@ -2,6 +2,7 @@ package googlesheets
 
 import (
 	"context"
+	"errors"
 	"net/http"
 	"strings"
 	"time"
@@ -163,7 +164,7 @@ func (h *HTTPHandlers) deleteConnection(w http.ResponseWriter, r *http.Request) 
 		return
 	}
 	if err := h.Store.DeleteConnection(r.Context(), userID); err != nil {
-		if err == ErrNotConnected {
+		if errors.Is(err, ErrNotConnected) {
 			httpresponse.Error(w, http.StatusNotFound, "NOT_FOUND", "google sheets is not connected")
 			return
 		}

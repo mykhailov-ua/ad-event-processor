@@ -44,7 +44,7 @@ func BuildReportJobSpecFromSavedView(customerID, reportKey, exportedBy string, s
 	rangeSpec := parseReportScheduleSpec(specJSON)
 	now := time.Now().UTC()
 	to := now
-	from := now.Add(-7 * 24 * time.Hour)
+	var from time.Time
 	if rangeSpec.ToOffsetDays != 0 {
 		to = now.Add(time.Duration(rangeSpec.ToOffsetDays) * 24 * time.Hour)
 	}

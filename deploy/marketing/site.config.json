@@ -125,15 +125,42 @@
   },
   "pilot_days": 10,
   "hero": {
-    "eyebrow": "$ Ad Event Processor · self-hosted"
+    "eyebrow": "Self-hosted · 10-day free pilot"
   },
+  "empathy": {
+    "eyebrow": "Sound familiar?",
+    "title": "If this feels like your week",
+    "guide_label": "Full operator guide"
+  },
+  "empathy_cards": [
+    {
+      "id": "cloud_risk",
+      "title": "Cloud tracker, cloud risk",
+      "body": "Your funnels live in someone else's tenant. Account limits and policy bans land on the worst day of the month. Self-hosted keeps campaigns and visitor logs on your server — we ship software, not a shared database."
+    },
+    {
+      "id": "cloaker_bill",
+      "title": "Another cloaker invoice, ROI already red",
+      "body": "Tracker $99, cloaker $499, IVT \"next quarter\" — while junk traffic still burns budget tonight. One license covers routing, rule antifraud, silent reject, and reporting."
+    },
+    {
+      "id": "missing_leads",
+      "title": "\"Where did 15 conversions go?\"",
+      "body": "Network shows 100 leads, partner shows 85, support sends screenshots. Postback trail logs every hop so you see whether the gap is network, tracker, or affiliate — before the week closes red."
+    },
+    {
+      "id": "vps_down",
+      "title": "Friday night, VPS is down",
+      "body": "Campaigns still spin in the ad manager while ingest is dead. For documented force majeure — provider ban, seized DC, emergency relocation — we review extra license activations case by case."
+    }
+  ],
   "instant_sell": {
     "margin_guard": {
       "eyebrow": "Margin Guard",
       "title": "Pause campaigns before profit turns red",
-      "body": "Compares spend to payout in ClickHouse. When ROI drops below your threshold, campaigns pause automatically — not just a Telegram alert you read after the budget is gone.",
-      "metric": "Checked every ~5 min",
-      "footnote": "Margin Guard watches ROI in ClickHouse while hot-path filters block spend on rejected traffic."
+      "body": "Compares spend to payout every few minutes. When ROI drops below your threshold, campaigns pause automatically — not just a Telegram alert you read after the budget is gone.",
+      "metric": "Checked every few minutes",
+      "footnote": "Example: +12% at lunch, -8% by 6pm — paused before the overnight bleed."
     }
   },
   "killers": [
@@ -147,8 +174,8 @@
     {
       "id": "silent",
       "tier": "Starter+",
-      "title": "Bad traffic looks accepted — you do not pay",
-      "body": "Silent reject sends bots and reviewers a clean 202 while your budget stays intact. They see a normal funnel; you see every filtered hit in analytics.",
+      "title": "Bots see OK — your budget does not move",
+      "body": "Junk traffic gets a clean accept response while your campaign budget stays intact. Reviewers and bots see a normal funnel; you see every filtered hit in analytics.",
       "icon": "ghost"
     },
     {
@@ -162,8 +189,15 @@
       "id": "margin_guard",
       "tier": "Pro+",
       "title": "ROI turned red? Campaign pauses, not just an alert",
-      "body": "Margin Guard compares spend to payout in ClickHouse every few minutes. Below your threshold the campaign pauses automatically — while hot-path filters still block junk spend.",
+      "body": "Margin Guard compares spend to payout every few minutes. Below your threshold the campaign pauses automatically — while filters still block junk spend on every click.",
       "icon": "gauge"
+    },
+    {
+      "id": "capi",
+      "tier": "Starter+",
+      "title": "Conversions networks can optimize on",
+      "body": "Meta, Google, and TikTok conversion APIs on your server — real postback signal to the ad stack, not a half-synced browser pixel.",
+      "icon": "capi"
     },
     {
       "id": "desync",
@@ -183,12 +217,13 @@
       "id": "migration",
       "tier": "Scale+",
       "title": "Change servers without losing revenue days",
-      "body": "Slot migration moves ingest to new hardware under the same license — no week-long reinstall freeze while campaigns sit idle.",
+      "body": "Move ingest to new hardware under the same license — no week-long reinstall freeze while campaigns sit idle.",
       "icon": "migrate"
     },
     {
       "id": "openrtb",
       "tier": "Network+",
+      "landing": false,
       "title": "Monetize inventory, not just buy traffic",
       "body": "Live OpenRTB bid endpoint on your metal — take programmatic demand without bolting on a separate ad server stack.",
       "icon": "auction"
@@ -196,17 +231,21 @@
     {
       "id": "xdp",
       "tier": "Enterprise",
+      "landing": false,
       "title": "L4 junk hits your wire bill first",
-      "body": "eBPF XDP edge drops flood traffic before it reaches your tracker or bandwidth invoice — for installs under heavy bot waves or DDoS.",
+      "body": "Edge packet filtering drops flood traffic before it reaches your tracker or bandwidth invoice — for installs under heavy bot waves.",
       "icon": "shield"
-    },
-    {
-      "id": "capi",
-      "tier": "Starter+",
-      "title": "Conversions networks can optimize on",
-      "body": "Meta, Google, and TikTok CAPI run on your VPS — real postback signal to the ad stack, not a Zapier relay or half-synced browser pixel.",
-      "icon": "capi"
     }
+  ],
+  "outcomes_compact": [
+    "Ad networks get real conversion signal — Meta, Google, TikTok — so bidding improves",
+    "Junk traffic does not debit your campaign budget",
+    "Spend numbers match ad networks — no end-of-day CSV panic",
+    "See where conversions disappeared before the week closes red",
+    "One install replaces tracker + cloaker + separate IVT bill",
+    "Team permissions so juniors do not kill production campaigns",
+    "Import from Keitaro or Binom — test in parallel, switch when numbers match",
+    "Alerts to Telegram before the day ends in the red"
   ],
   "capabilities_compact": [
     "Meta / Google / TikTok CAPI — networks bid on real conversions (Starter+)",
@@ -221,14 +260,15 @@
     "OpenRTB bid endpoint — programmatic revenue on Network tier"
   ],
   "appliance": {
-    "eyebrow": "$ Ad Event Processor · admin /settings",
-    "title": "License in Settings",
-    "subtitle": "After install, open Admin and go to Settings. Paste or replace the license JWT from your vendor. Offline verification — no outbound license ping.",
-    "install_cli_title": "Install Ad Event Processor",
+    "eyebrow": "Start in 10 days",
+    "title": "Pilot without breaking production",
+    "subtitle": "Most teams run a test VPS in parallel first — not a full GEO swap on day one. We send a license file; you point one test campaign and compare numbers.",
+    "install_cli_title": "Install command (for your DevOps)",
+    "install_cli_summary": "Show install command",
     "cta_primary": "Get free pilot",
     "cta_docs": "Architecture",
     "cta_install": "Install command",
-    "screenshot_alt": "BidShard admin Settings page with license JWT field"
+    "screenshot_alt": "BidShard admin Settings page with license field"
   },
   "tco": {
     "eyebrow": "Total cost",
@@ -241,9 +281,9 @@
           "Tracker license ($99–130/mo)",
           "Cloaker / bot-filter SaaS ($300–600/mo)",
           "IVT tooling bought separately ($100–200/mo)",
-          "VPS sized for PHP peaks — 32–64 GB RAM to survive funnel spikes",
-          "PHP-FPM worker pool — memory spikes under load, cold starts after every deploy",
-          "PostgreSQL or MySQL for reporting — 3–4× the RAM ClickHouse needs at the same event volume"
+          "VPS oversized for traffic spikes — 32–64 GB RAM to survive funnel peaks",
+          "Legacy tracker chokes under load — memory spikes, cold starts after every deploy",
+          "Row-store reporting DB — more RAM per billion events than columnar analytics"
         ],
         "summary": "Industry benchmark: $900–1,400/mo in SaaS alone, before ad spend"
       },
@@ -252,11 +292,11 @@
         "highlight": true,
         "items": [
           "License from $129/mo — cloaker-class protection, CAPI, Mini Apps in one line item",
-          "Compiled Go binary — static memory footprint, zero PHP runtime dependencies",
-          "ClickHouse for analytics — columnar store, less RAM per billion events",
-          "Higher peak RPS per GB RAM on the same box — right-size the VPS, not overprovision for PHP",
+          "Built for high-volume click workloads — stable memory under spikes",
+          "Columnar analytics store — less RAM per billion events on the same box",
+          "Right-size the VPS for your volume — not overprovisioned for legacy runtime peaks",
           "Margin Guard pauses campaigns when ROI drops — not a Telegram alert after the bleed",
-          "Silent Reject — bot traffic sees 202, your budget does not move"
+          "Junk traffic sees a clean accept — your budget does not move"
         ],
         "summary": "$400–550/mo license + right-sized VPS for the same 10M events/mo workload"
       }
@@ -273,10 +313,10 @@
       "rows": [
         {
           "label": "Infrastructure",
-          "patchwork": "32–64 GB VPS — PHP-FPM spikes, row-store DB for reporting at event scale",
-          "bidshard": "16–24 GB — compiled Go ingest, ClickHouse columnar analytics",
+          "patchwork": "32–64 GB VPS — legacy tracker spikes, row-store DB for reporting at event scale",
+          "bidshard": "16–24 GB — high-volume ingest, columnar analytics on the same box",
           "delta": "$800–1,600/mo",
-          "delta_note": "smaller box, same peak RPS"
+          "delta_note": "smaller box, same peak throughput"
         },
         {
           "label": "SaaS stack",
@@ -294,8 +334,8 @@
         },
         {
           "label": "Spike downtime",
-          "patchwork": "20 min DB lock or PHP OOM during funnel spike",
-          "bidshard": "gnet ingest + stream admission — hot path keeps accepting",
+          "patchwork": "20 min DB lock or tracker OOM during funnel spike",
+          "bidshard": "Keeps accepting clicks when traffic spikes — less lost revenue per incident",
           "delta": "$1k–5k",
           "delta_note": "per incident — lost revenue, not license fees"
         }
@@ -303,7 +343,8 @@
       "total": {
         "label": "Typical TCO gap vs patchwork at this volume",
         "value": "$4,500–16,000/mo",
-        "body": "Keitaro does not fall over because the license is expensive. It falls over because PHP eats RAM on spikes and row databases buckle under event volume. BidShard is built for that workload."
+        "body": "Trackers do not fail because the license is expensive. They fail because legacy stacks eat RAM on spikes and reporting buckles under event volume. BidShard is built for that workload. Technical detail: Architecture.",
+        "architecture_link": "How it is built"
       }
     }
   },

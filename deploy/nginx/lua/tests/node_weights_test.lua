@@ -87,6 +87,7 @@ local trials = 10000
 for i = 1, trials do
     ngx.var.request_id = "req-" .. i
     local idx = node_weights.pick_peer_index()
+    assert(idx ~= nil, "pick_peer_index returned nil")
     counts[idx] = (counts[idx] or 0) + 1
 end
 
@@ -104,6 +105,7 @@ counts = { [0] = 0, [1] = 0 }
 for i = 1, trials do
     ngx.var.request_id = "stale-" .. i
     local idx = node_weights.pick_peer_index()
+    assert(idx ~= nil, "pick_peer_index returned nil")
     counts[idx] = (counts[idx] or 0) + 1
 end
 ratio0 = counts[0] / trials
@@ -148,6 +150,7 @@ counts = { [0] = 0, [1] = 0 }
 for i = 1, trials do
     ngx.var.request_id = "fo-" .. i
     local idx = node_weights_fo.pick_peer_index()
+    assert(idx ~= nil, "pick_peer_index returned nil")
     counts[idx] = (counts[idx] or 0) + 1
 end
 ratio0 = counts[0] / trials

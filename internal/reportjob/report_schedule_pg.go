@@ -534,14 +534,14 @@ func (r *ReportJobRunner) RunReportScheduleNow(ctx context.Context, scheduleID s
 	if err != nil {
 		return "", ReportScheduleDTO{}, err
 	}
-	spec, idem, err := buildReportJobSpecFromSchedule(row)
+	spec, _, err := buildReportJobSpecFromSchedule(row)
 	if err != nil {
 		return "", ReportScheduleDTO{}, err
 	}
 	if err := r.validateScheduleSheetsOAuth(ctx, row.destination, row.ownerUserID, true); err != nil {
 		return "", ReportScheduleDTO{}, err
 	}
-	idem = fmt.Sprintf("schedule-run-now:%s:%s", row.id.String(), time.Now().UTC().Format("2006-01-02T15:04"))
+	idem := fmt.Sprintf("schedule-run-now:%s:%s", row.id.String(), time.Now().UTC().Format("2006-01-02T15:04"))
 	jobID, err := r.CreateJob(ctx, spec, idem)
 	if err != nil {
 		_ = markReportScheduleEnqueueFailed(ctx, r.deps.Pool, scheduleID, SanitizeExportJobError(err.Error()))

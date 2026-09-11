@@ -117,7 +117,7 @@ end
 
 local function load_env()
     REDIS_HOST = getenv "REDIS_HOST" or REDIS_HOST
-    REDIS_PORT = getenv "REDIS_PORT" or REDIS_PORT
+    REDIS_PORT = tonumber(getenv "REDIS_PORT" or "") or REDIS_PORT
     REDIS_PASS = getenv "REDIS_PASS" or ""
     REDIS_ADDRS = getenv "REDIS_ADDRS" or ""
     REDIS_SENTINEL_ADDRS = getenv "REDIS_SENTINEL_ADDRS" or ""
