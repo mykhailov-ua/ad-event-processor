@@ -343,7 +343,7 @@
       "total": {
         "label": "Typical TCO gap vs patchwork at this volume",
         "value": "$4,500–16,000/mo",
-        "body": "Trackers do not fail because the license is expensive. They fail because legacy stacks eat RAM on spikes and reporting buckles under event volume. BidShard is built for that workload. Technical detail: Architecture.",
+        "body": "Trackers do not fail because the license is expensive. They fail because legacy stacks eat RAM on spikes and reporting buckles under event volume. BidShard is built for that workload.",
         "architecture_link": "How it is built"
       }
     }

@@ -17,9 +17,9 @@
   </script>
   <link rel="alternate" hreflang="en" href="/docs.html" />
   <link rel="alternate" hreflang="uk" href="/uk/docs.html" />
-  <link rel="stylesheet" href="site.css?v=20260911">
+  <link rel="stylesheet" href="site.css?v=20260912">
   <script src="https://cdn.jsdelivr.net/npm/mermaid@11.4.0/dist/mermaid.min.js" defer></script>
-  <script src="site.js?v=20260911" defer></script>
+  <script src="site.js?v=20260912" defer></script>
 </head>
 <body class="docs-page">
   <div class="site-offer-gate" data-site-offer-gate hidden aria-hidden="true"></div>
@@ -64,6 +64,7 @@
         <li><a href="#admin-path">Admin, billing, and reports</a></li>
         <li><a href="#data-stores">Data stores</a></li>
         <li><a href="#optional">Optional components</a></li>
+        <li><a href="#hardware-sizing">Hardware sizing</a></li>
         <li><a href="#limits">Honest limits</a></li>
         <li><a href="#ports">Ports</a></li>
       </ol>
@@ -163,7 +164,7 @@
       <strong>Sizing note:</strong> ClickHouse is RAM-hungry on a single VPS. For a comfortable all-in-one install
       (ClickHouse + Redis + Postgres + tracker pool), plan at least <strong>4 vCPU and 8 GB RAM</strong> plus NVMe disk.
       Routing-only pilots can start smaller; an undersized budget VPS often hits ClickHouse OOM — that is an ops sizing
-      issue, not a license defect. See <a href="index.html#pricing">hardware sizing</a> on the home page.
+      issue, not a license defect. See <a href="#hardware-sizing">hardware sizing</a> below.
     </p>
     <p>
       License verification uses an offline Ed25519 JWT file on disk — no recurring phone-home to issue ingest tokens.
@@ -279,6 +280,13 @@
         </tr>
       </tbody>
     </table>
+
+    <h2 id="hardware-sizing">Hardware sizing</h2>
+    <p>
+      Planning guide only — not a throughput guarantee. Start here, then scale with traffic, antifraud depth,
+      and whether reporting and bidding run on the same box or separate hosts.
+    </p>
+    <section class="site-hardware-sizing" data-site-hardware-sizing aria-labelledby="site-hardware-title"></section>
 
     <h2 id="limits">Honest limits</h2>
     <ul class="site-doc-honest">
