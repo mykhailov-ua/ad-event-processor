@@ -590,6 +590,7 @@
     "PointTraffic": "Point one test campaign",
     "ClickUrlsPostbacksCostSyncYouReLive": "Compare numbers with your current stack. Scale when ROI math checks out.",
     "InstallCliSummary": "Show install command",
+    "AdEventProcessorRunningOnPort8080OfflineJwtLicenseVerified": "✔ BidShard stack running. License verified.",
     "AdEventProcessorRunningOnPort8080OfflineJwtLicenseVerified": "✔ BidShard stack running on port 8080. Offline JWT license verified.",
     "BuiltForOperatorsWhoHateSurprises": "Why teams switch",
     "SelfHosted": "Your data stays yours",

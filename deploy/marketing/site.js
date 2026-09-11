@@ -201,13 +201,13 @@
   }
 
   var LAYER_TO_ID = {
+    FAMILIAR: "familiar",
     FEATURES: "features",
     PRICING: "pricing",
     "HOW-IT-WORKS": "install",
     FAQ: "faq",
     CONTACTS: "contacts",
     TCO: "tco",
-    ARCHITECTURE: "architecture",
   };
 
   var HASH_TO_LAYER = {
@@ -1513,6 +1513,12 @@
     wireMobileMenu(config);
     wireScrollTargets();
     updateLangSwitch(config);
+    document.querySelectorAll(".NavArchitecture, .FooterArchitecture").forEach(function (link) {
+      link.setAttribute("href", docsPageHref(config));
+    });
+    document.querySelectorAll("[data-site-tco-architecture]").forEach(function (link) {
+      link.setAttribute("href", docsPageHref(config));
+    });
     refreshSiteIcons();
   }
 
@@ -1542,9 +1548,6 @@
     });
     document.querySelectorAll("a[href='index.html#hardware-sizing']").forEach(function (link) {
       link.setAttribute("href", docsPageHref(config) + "#hardware-sizing");
-    });
-    document.querySelectorAll("[data-site-hardware-sizing]").forEach(function (root) {
-      renderHardwareSizing(config);
     });
   }
 
