@@ -456,6 +456,8 @@ export type TeamMembersListResponse = components['schemas']['TeamMembersListResp
 export type OpsBlacklistListQuery = OperationQuery<'opsListBlacklist'>;
 
 export type PlatformSettingsView = components['schemas']['PlatformSettingsView'];
+export type PlatformConfig = components['schemas']['PlatformConfig'];
+export type PlatformMaskedSecrets = components['schemas']['PlatformMaskedSecrets'];
 export type PlatformSettingsPatch = components['schemas']['PlatformSettingsPatch'];
 export type PlatformBootstrapRequest = components['schemas']['PlatformBootstrapRequest'];
 export type PlatformApplyRequest = components['schemas']['PlatformApplyRequest'];
