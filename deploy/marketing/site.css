@@ -830,9 +830,11 @@ body {
   display: flex;
   flex-direction: column;
   gap: 4px;
+  flex: 1;
+  min-width: 0;
 }
 
-.SelfHosted, .OfflineLicense, .HonestAntifraud, .NotSaas, .NoRoiWarranty, .FullStackLicense {
+.SelfHosted, .OfflineLicense, .HonestAntifraud, .NotSaas, .NoRoiWarranty, .FullStackLicense, .TelegramSupport {
   color: var(--site-text);
   font-size: 16px;
   font-weight: 700;
@@ -843,11 +845,11 @@ body {
 .DeterministicRulesExecuteOnHotPathMlIvtRunAsBackgroundBatchJobs,
 .WeDoNotHostMonitorOrGuaranteeUptimeOnYourCustomVpsServer,
 .YourDirectTrafficYourSpecificFunnelsAndYourTargetingDictateTheRoiResults,
-.RoutingBudgetsAntifraudReportingOneInstallWithoutCloakerIvtStack {
+.RoutingBudgetsAntifraudReportingOneInstallWithoutCloakerIvtStack,
+.PostbacksDoNotWaitForTicketQueues {
   color: var(--site-muted);
   font-size: 14px;
   line-height: 1.5;
-  min-height: calc(2 * 1.5em);
 }
 
 .Landing > .Faq {
