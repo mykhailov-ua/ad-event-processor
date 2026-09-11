@@ -42,6 +42,7 @@
   "telegram_handle": "@bidshardsupportbot",
   "telegram_manager_url": "https://t.me/bidshard_manager",
   "telegram_manager_handle": "@bidshard_manager",
+  "support_email": "support@bidshard.pro",
   "install_script_url": "https://bidshard.com/get.sh",
   "offer": {
     "version": "2026-09-09",
@@ -231,81 +232,78 @@
   },
   "tco": {
     "eyebrow": "Повна вартість",
-    "title": "Рахуйте весь стек, а не лише ліцензію трекера",
-    "subtitle": "Ліцензія трекера здається дешевою, доки ви не додасте VPS, bot filtering, IVT-інструменти та десятки годин на підтримку PHP-стеку. BidShard — це один інстал на ваш VPS: routing, бюджети, antifraud та аналітика повністю під вашим контролем.",
+    "title": "Один стек на вашому залізі — не чотири вендори щомісяця",
+    "subtitle": "Типовий mid-sized setup: 10M events/міс, multi-GEO воронки, один ops lead. Industry benchmark для команд, що переросли PHP-трекери.",
     "columns": [
       {
         "label": "Patchwork-стек",
         "items": [
-          "Ліцензія трекера ($50–130/міс)",
-          "Cloaker або bot-filter SaaS ($300–1 000/міс)",
-          "IVT / fraud-аналітика ($0–200/міс додатково)",
-          "VPS під пікове навантаження ($40–150/міс)",
-          "Ops: PHP/runtime tuning, патчі, бекапи, postback вночі"
+          "Ліцензія трекера ($99–130/міс)",
+          "Cloaker / bot-filter SaaS ($300–600/міс)",
+          "IVT tooling окремо ($100–200/міс)",
+          "VPS під PHP peaks — 32–64 GB RAM, щоб пережити спайки воронок",
+          "PHP-FPM worker pool — memory spikes під навантаженням, cold start після кожного deploy",
+          "PostgreSQL або MySQL для звітів — у 3–4 рази більше RAM, ніж ClickHouse на тому ж обсязі подій"
         ],
-        "summary": "Приклад суми: часто ~$700–1 200+/міс (орієнтир, до ad spend)",
-        "footnote": "Ваші вендори та години різняться — це сценарій планування, не оферта."
+        "summary": "Industry benchmark: $900–1 400/міс лише SaaS, до ad spend"
       },
       {
-        "label": "Стек BidShard",
+        "label": "BidShard на вашому VPS",
         "highlight": true,
         "items": [
-          "Ліцензія від $129/міс (Starter) — захист рівня cloaker у комплекті",
-          "Той самий VPS, який ви вже оплачуєте — не входить у ліцензію",
-          "Go ingest (gnet): вищий peak RPS на 1 GB RAM на тому ж VPS — sizing залежить від трафіку",
-          "Install однією командою (get.sh); offline JWT у Settings — без ping до сервера ліцензій",
-          "IVT з Pro ($399/міс), коли потрібен ML invalid-traffic detection"
+          "Ліцензія від $129/міс — cloaker-class захист, CAPI, Mini Apps в одному рядку",
+          "Compiled Go binary — статичний memory footprint, нуль PHP runtime dependencies",
+          "ClickHouse для аналітики — columnar store, менше RAM на мільярд подій",
+          "Вищий peak RPS на 1 GB RAM на тому ж VPS — sizing під трафік, не під PHP",
+          "Margin Guard зупиняє кампанії при падінні ROI — не Telegram-alert після зливу",
+          "Silent Reject — боти бачать 202, бюджет не рухається"
         ],
-        "summary": "Ліцензія + VPS — часто один вендор замість чотирьох",
-        "footnote": "Порівняйте тарифи в Pricing. VPS patches і backups — на вас."
+        "summary": "$400–550/міс ліцензія + right-sized VPS на ті ж 10M events/міс"
       }
     ],
-    "calculator": {
-      "title": "Орієнтовна вартість стеку",
-      "volume": {
-        "id": "volume",
-        "label": "Кліків / events на місяць",
-        "min": 1,
-        "max": 100,
-        "default": 10,
-        "step": 1,
-        "unit": "M"
+    "impacts": {
+      "title": "Куди йдуть гроші на 10M events/міс",
+      "subtitle": "Різниця в підписках — шум. Інфраструктура, bot budget і uptime на обсязі — ось migration case.",
+      "headers": {
+        "driver": "Драйвер",
+        "patchwork": "Patchwork",
+        "bidshard": "BidShard",
+        "impact": "TCO impact"
       },
-      "licenses": {
-        "starter": { "price": 129, "name": "Starter" },
-        "pro": { "price": 399, "name": "Pro" }
-      },
-      "derive": {
-        "tracker": { "base": 79, "per_million": 2, "min": 50, "max": 150, "step": 5 },
-        "cloaker": { "base": 300, "per_million": 15, "min": 0, "max": 1000, "step": 25 },
-        "ivt": { "base": 0, "per_million": 10, "min": 0, "max": 300, "step": 25, "starts_at_m": 2 },
-        "vps": { "base": 40, "per_million": 4, "min": 40, "max": 200, "step": 10 }
-      },
-      "fields": [
-        { "id": "tracker", "label": "Ліцензія трекера (patchwork)", "min": 50, "max": 150, "default": 99, "step": 5, "derived": true },
-        { "id": "cloaker", "label": "Cloaker / bot-filter SaaS", "min": 0, "max": 1000, "default": 450, "step": 25, "derived": true, "hint": "Floor від обсягу ~$300/міс (mid-market cloaker). Поставте $0, якщо tracker-only без cloaker SaaS." },
-        { "id": "ivt", "label": "IVT / fraud tooling (сторонній)", "min": 0, "max": 300, "default": 100, "step": 25, "derived": true },
-        { "id": "vps", "label": "VPS / dedicated", "min": 40, "max": 200, "default": 80, "step": 10, "derived": true }
+      "rows": [
+        {
+          "label": "Інфраструктура",
+          "patchwork": "32–64 GB VPS — PHP-FPM spikes, row-store DB для звітів на event scale",
+          "bidshard": "16–24 GB — compiled Go ingest, ClickHouse columnar analytics",
+          "delta": "$800–1 600/міс",
+          "delta_note": "менший VPS, той самий peak RPS"
+        },
+        {
+          "label": "SaaS-стек",
+          "patchwork": "Tracker + cloaker + IVT — три інвойси, три renewals",
+          "bidshard": "Одна ліцензія — routing, antifraud, reporting",
+          "delta": "$300–600/міс",
+          "delta_note": "cloaker-class захист у Starter"
+        },
+        {
+          "label": "Retained ad spend",
+          "patchwork": "Боти й junk все одно списують бюджет — алерти після червоного дня",
+          "bidshard": "Silent Reject + Margin Guard — бюджет лишається на реальних кліках",
+          "delta": "$2 400–8 000/міс",
+          "delta_note": "12% junk × $0.04 CPC на 10M кліків"
+        },
+        {
+          "label": "Downtime на спайку",
+          "patchwork": "20 хв DB lock або PHP OOM під час funnel spike",
+          "bidshard": "gnet ingest + stream admission — hot path приймає далі",
+          "delta": "$1k–5k",
+          "delta_note": "за інцидент — втрачений revenue, не ліцензія"
+        }
       ],
-      "silent_reject": {
-        "junk_pct": { "min": 0, "max": 30, "default": 12, "step": 1 },
-        "avg_cpc": { "min": 1, "max": 20, "default": 4, "step": 1 },
-        "label": "Збережено на junk-трафіку через Silent Reject (орієнтир)",
-        "hint": "Частка junk × avg cost кліку — бюджет не списується на 202 decoy. Не guarantee результату.",
-        "not_in_stack": "Не входить у різницю стеків вище — окрема модель media budget."
-      },
-      "labels": {
-        "stack_today": "Patchwork-стек/міс",
-        "bidshard_stack": "Ліцензія BidShard + той самий VPS/міс",
-        "bidshard_stack_pro": "Ліцензія BidShard (Pro, IVT включено) + той самий VPS/міс",
-        "bidshard_stack_starter": "Ліцензія BidShard (Starter) + той самий VPS/міс",
-        "savings": "Орієнтовна різниця стеків/міс",
-        "savings_positive": "Дешевше за patchwork на",
-        "savings_negative": "Дорожче за patchwork на",
-        "stack_savings_note": "Економія стеку передбачає заміну cloaker SaaS. Tracker-only patchwork (cloaker $0) може бути дешевшим за BidShard Starter.",
-        "silent_junk_label": "Припущена частка junk від events",
-        "silent_cpc_label": "Припущений avg cost платного кліку",
-        "disclaimer": "Лише estimate — не quote. VPS окремо з обох боків. Ліцензія BidShard перемикається на Pro ($399), коли IVT у вашому стеку; на Pro IVT уже в ліцензії — без окремого рядка IVT."
+      "total": {
+        "label": "Типовий TCO gap vs patchwork на цьому обсязі",
+        "value": "$4 500–16 000/міс",
+        "body": "Keitaro падає не через дорогу ліцензію. Він падає, бо PHP з'їдає RAM на спайках, а row DB не тягне event volume. BidShard зібраний під це навантаження."
       }
     }
   },
@@ -523,7 +521,7 @@
     "AdEventProcessorIsSelfHostedSoftwareForClickRoutingConversionPostbacksCampaignBudgetsAdNetworkCostSyncAndLayeredAntifraudInstallOnYourVpsLicenseIsOfflineYourCampaignsNeverLeaveYourInfrastructure": "Маршрутизація кліків, S2S-постбеки, бюджети кампаній, синхронізація витрат з рекламних мереж та багаторівневий antifraud — на вашому VPS. Офлайн JWT-ліцензія. Ваші дані ніколи не залишають вашу інфраструктуру.",
     "GetFreePilotOnTelegram": "Пілот",
     "SeeInstallCommand": "Install-команда",
-    "CompareStackCost": "Порівняти вартість стеку",
+    "CompareStackCost": "Повне порівняння",
     "NoCreditCardPilot10DaysRulesOnlyAntifraudTierByRequestingAPilotYouAcceptThePublicOffer": "Без банківської картки. Безкоштовний пілот на 10 днів. Запитуючи пілот, ви приймаєте умови публічної оферти.",
     "YourDataStaysYours": "Дані — ваші",
     "NoMultiTenantCloudPostgresRedisClickhouseOnYourMetalWeShipSoftwareAndALicenseFileWeDonTSeeYourTraffic": "Жодних хмарних multi-tenant сервісів. Postgres, Redis та ClickHouse — на вашому залізі. Ми постачаємо ПЗ та файл ліцензії. Ми не бачимо вашого трафіку.",
@@ -586,7 +584,7 @@
     "Telegram": "Telegram",
     "FooterInstall": "Install",
     "2026AdEventProcessorAllRightsReserved": "© 2026 BidShard. Усі права захищені.",
-    "site-tco-jump": "Порівняти TCO",
+    "site-tco-jump": "Куди йдуть гроші на обсязі",
     "MessageOnTelegram": "Telegram",
     "OperationIntegrity": "Ops-надійність",
     "NoEverythingRunsExclusivelyOnYourServerWeHaveNoBackendApiThatCollectsTelemetryCampaignConfigurationsOrVisitorLogs": "Ні. Усе працює виключно на вашому сервері. У нас немає backend API, який збирав би телеметрію, конфігурації кампаній чи логи відвідувачів.",

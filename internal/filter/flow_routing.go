@@ -4,6 +4,7 @@ import (
 	"context"
 	"encoding/json"
 	"log/slog"
+	"sort"
 	"strings"
 	"sync/atomic"
 	"time"
@@ -61,7 +62,22 @@ func (t *CampaignFlowTable) Select(campaignID uuid.UUID, userID []byte, ctx Flow
 }
 
 func (t *CampaignFlowTable) SelectForEvent(campaignID uuid.UUID, userID []byte, evt *domain.Event) (sel FlowSelection, landerURL []byte, ok bool) {
-	return t.Select(campaignID, userID, flowSelectContextFromEvent(evt))
+	return t.SelectForEventExcluding(campaignID, userID, evt, nil)
+}
+
+func (t *CampaignFlowTable) SelectForEventExcluding(campaignID uuid.UUID, userID []byte, evt *domain.Event, exclude map[uuid.UUID]struct{}) (sel FlowSelection, landerURL []byte, ok bool) {
+	if t == nil || campaignID == uuid.Nil || len(userID) == 0 {
+		return FlowSelection{}, nil, false
+	}
+	snap := t.active.Load()
+	if snap == nil {
+		return FlowSelection{}, nil, false
+	}
+	flow, ok := snap.byCampaign[campaignID]
+	if !ok {
+		return FlowSelection{}, nil, false
+	}
+	return SelectSnapshotExcluding(&flow, userID, flowSelectContextFromEvent(evt), exclude)
 }
 
 type flowPathJSON struct {
@@ -165,8 +181,14 @@ func (s *campaignFlowSync) reloadOnce(ctx context.Context) {
 		slog.Warn("campaign flow sync offer caps", "error", err)
 		offerCounts = map[uuid.UUID]offerConversionCounts{}
 	}
+	offerMeta, err := loadOfferMetaMap(ctx, s.pool)
+	if err != nil {
+		slog.Warn("campaign flow sync offer meta", "error", err)
+		offerMeta = map[uuid.UUID]offerTableMeta{}
+	}
+	offerClickCounts := loadOfferClickCounts(ctx, s.redisShard, collectOfferIDsFromMeta(offerMeta), time.Now())
 	rows, err := s.pool.Query(ctx, `
-		SELECT c.id, f.paths
+		SELECT c.id, f.paths, COALESCE(f.flow_routing_mode, 'weighted')
 		FROM campaigns c
 		JOIN flows f ON f.id = c.flow_id
 		WHERE c.flow_id IS NOT NULL AND c.deleted_at IS NULL`)
@@ -180,11 +202,12 @@ func (s *campaignFlowSync) reloadOnce(ctx context.Context) {
 	for rows.Next() {
 		var campaignID uuid.UUID
 		var raw []byte
-		if err := rows.Scan(&campaignID, &raw); err != nil {
+		var routingMode string
+		if err := rows.Scan(&campaignID, &raw, &routingMode); err != nil {
 			slog.Warn("campaign flow sync scan", "error", err)
 			return
 		}
-		snap, ok := buildFlowSnapshot(raw, landerURLs, offerURLs, offerCounts)
+		snap, ok := buildFlowSnapshot(raw, landerURLs, offerURLs, offerCounts, offerClickCounts, offerMeta, routingMode)
 		if !ok {
 			continue
 		}
@@ -247,12 +270,61 @@ func (s *campaignFlowSync) loadOfferURLMap(ctx context.Context) (map[uuid.UUID][
 	return out, rows.Err()
 }
 
-func buildFlowSnapshot(raw []byte, landerURLs, offerURLs map[uuid.UUID][]byte, offerCounts map[uuid.UUID]offerConversionCounts) (FlowPathSnapshot, bool) {
+type offerTableMeta struct {
+	priority       int32
+	capClicksDaily int32
+	capClicksTotal int32
+}
+
+func loadOfferMetaMap(ctx context.Context, pool *pgxpool.Pool) (map[uuid.UUID]offerTableMeta, error) {
+	out := make(map[uuid.UUID]offerTableMeta)
+	if pool == nil {
+		return out, nil
+	}
+	rows, err := pool.Query(ctx, `
+		SELECT id, COALESCE(offer_priority, 0), COALESCE(cap_clicks_daily, 0), COALESCE(cap_clicks_total, 0)
+		FROM offers`)
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+	for rows.Next() {
+		var id uuid.UUID
+		var meta offerTableMeta
+		if err := rows.Scan(&id, &meta.priority, &meta.capClicksDaily, &meta.capClicksTotal); err != nil {
+			return nil, err
+		}
+		out[id] = meta
+	}
+	return out, rows.Err()
+}
+
+func collectOfferIDsFromMeta(meta map[uuid.UUID]offerTableMeta) []uuid.UUID {
+	out := make([]uuid.UUID, 0, len(meta))
+	for id := range meta {
+		if id != uuid.Nil {
+			out = append(out, id)
+		}
+	}
+	return out
+}
+
+func buildFlowSnapshot(
+	raw []byte,
+	landerURLs, offerURLs map[uuid.UUID][]byte,
+	offerCounts map[uuid.UUID]offerConversionCounts,
+	offerClickCounts map[uuid.UUID]offerClickCounts,
+	offerMeta map[uuid.UUID]offerTableMeta,
+	routingMode string,
+) (FlowPathSnapshot, bool) {
 	var paths []flowPathJSON
 	if err := json.Unmarshal(raw, &paths); err != nil || len(paths) == 0 {
 		return FlowPathSnapshot{}, false
 	}
-	out := FlowPathSnapshot{Paths: make([]FlowPath, 0, len(paths))}
+	out := FlowPathSnapshot{
+		RoutingMode: domain.NormalizeFlowRoutingMode(routingMode),
+		Paths:       make([]FlowPath, 0, len(paths)),
+	}
 	for _, p := range paths {
 		if p.Weight <= 0 || len(p.Landers) == 0 {
 			continue
@@ -270,11 +342,18 @@ func buildFlowSnapshot(raw []byte, landerURLs, offerURLs map[uuid.UUID][]byte, o
 			if o.Weight <= 0 {
 				continue
 			}
+			meta := offerMeta[o.OfferID]
 			fp.Offers = append(fp.Offers, FlowOfferEntry{
-				OfferID: o.OfferID,
-				Weight:  o.Weight,
-				URL:     url,
-				Capped:  offerIsCapped(o.OfferID, o.CapDaily, o.CapTotal, offerCounts),
+				OfferID:        o.OfferID,
+				Weight:         o.Weight,
+				Priority:       meta.priority,
+				CapClicksDaily: meta.capClicksDaily,
+				CapClicksTotal: meta.capClicksTotal,
+				URL:            url,
+				Capped: offerFullyCapped(
+					o.OfferID, o.CapDaily, o.CapTotal, offerCounts,
+					meta.capClicksDaily, meta.capClicksTotal, offerClickCounts,
+				),
 			})
 		}
 		if len(fp.Landers) == 0 {
@@ -495,10 +574,13 @@ type FlowLanderEntry struct {
 }
 
 type FlowOfferEntry struct {
-	OfferID uuid.UUID
-	Weight  int32
-	URL     []byte
-	Capped  bool
+	OfferID        uuid.UUID
+	Weight         int32
+	Priority       int32
+	CapClicksDaily int32
+	CapClicksTotal int32
+	URL            []byte
+	Capped         bool
 }
 
 type FlowPath struct {
@@ -509,7 +591,8 @@ type FlowPath struct {
 }
 
 type FlowPathSnapshot struct {
-	Paths []FlowPath
+	RoutingMode domain.FlowRoutingMode
+	Paths       []FlowPath
 }
 
 type FlowRouter struct {
@@ -529,11 +612,13 @@ func (r *FlowRouter) Ready() bool {
 }
 
 type FlowSelection struct {
-	PathIdx   int
-	LanderIdx int
-	OfferIdx  int
-	LanderID  uuid.UUID
-	OfferID   uuid.UUID
+	PathIdx        int
+	LanderIdx      int
+	OfferIdx       int
+	LanderID       uuid.UUID
+	OfferID        uuid.UUID
+	CapClicksDaily int32
+	CapClicksTotal int32
 }
 
 func (r *FlowRouter) Select(userID []byte) (sel FlowSelection, ok bool) {
@@ -551,6 +636,10 @@ func (r *FlowRouter) BanditSelect(userID []byte) (sel FlowSelection, landerURL [
 }
 
 func SelectSnapshot(snap *FlowPathSnapshot, userID []byte, ctx FlowSelectContext) (sel FlowSelection, landerURL []byte, ok bool) {
+	return SelectSnapshotExcluding(snap, userID, ctx, nil)
+}
+
+func SelectSnapshotExcluding(snap *FlowPathSnapshot, userID []byte, ctx FlowSelectContext, exclude map[uuid.UUID]struct{}) (sel FlowSelection, landerURL []byte, ok bool) {
 	if snap == nil || len(snap.Paths) == 0 {
 		return FlowSelection{}, nil, false
 	}
@@ -562,16 +651,32 @@ func SelectSnapshot(snap *FlowPathSnapshot, userID []byte, ctx FlowSelectContext
 	if landerIdx < 0 || len(lander.URL) == 0 {
 		return FlowSelection{}, nil, false
 	}
-	offerIdx, offer := selectWeightedOffer(path.Offers, fnv1a32Salted(userID, 'o'))
+	var offerIdx int
+	var offer FlowOfferEntry
+	if snap.RoutingMode == domain.FlowRoutingModeWaterfall ||
+		snap.RoutingMode == domain.FlowRoutingModeWaterfallThenLanding {
+		offerIdx, offer = selectWaterfallOffer(path.Offers, exclude)
+	} else {
+		offerIdx, offer = selectWeightedOfferExcluding(path.Offers, fnv1a32Salted(userID, 'o'), exclude)
+	}
 	if offerIdx < 0 {
+		if snap.RoutingMode == domain.FlowRoutingModeWaterfallThenLanding {
+			return FlowSelection{
+				PathIdx:   pathIdx,
+				LanderIdx: landerIdx,
+				LanderID:  lander.LanderID,
+			}, lander.URL, true
+		}
 		return FlowSelection{}, nil, false
 	}
 	return FlowSelection{
-		PathIdx:   pathIdx,
-		LanderIdx: landerIdx,
-		OfferIdx:  offerIdx,
-		LanderID:  lander.LanderID,
-		OfferID:   offer.OfferID,
+		PathIdx:        pathIdx,
+		LanderIdx:      landerIdx,
+		OfferIdx:       offerIdx,
+		LanderID:       lander.LanderID,
+		OfferID:        offer.OfferID,
+		CapClicksDaily: offer.CapClicksDaily,
+		CapClicksTotal: offer.CapClicksTotal,
 	}, lander.URL, true
 }
 
@@ -632,13 +737,17 @@ func selectWeightedLander(landers []FlowLanderEntry, bucket uint32) (int, FlowLa
 }
 
 func selectWeightedOffer(offers []FlowOfferEntry, bucket uint32) (int, FlowOfferEntry) {
+	return selectWeightedOfferExcluding(offers, bucket, nil)
+}
+
+func selectWeightedOfferExcluding(offers []FlowOfferEntry, bucket uint32, exclude map[uuid.UUID]struct{}) (int, FlowOfferEntry) {
 	if len(offers) == 0 {
 		return -1, FlowOfferEntry{}
 	}
 	var total int32
 	eligible := 0
 	for i := range offers {
-		if offers[i].Capped || offers[i].Weight <= 0 {
+		if offers[i].Capped || offers[i].Weight <= 0 || offerExcluded(offers[i].OfferID, exclude) {
 			continue
 		}
 		total += offers[i].Weight
@@ -649,14 +758,14 @@ func selectWeightedOffer(offers []FlowOfferEntry, bucket uint32) (int, FlowOffer
 	}
 	if eligible == 1 {
 		for i := range offers {
-			if !offers[i].Capped && offers[i].Weight > 0 {
+			if !offers[i].Capped && offers[i].Weight > 0 && !offerExcluded(offers[i].OfferID, exclude) {
 				return i, offers[i]
 			}
 		}
 	}
 	if total <= 0 {
 		for i := range offers {
-			if !offers[i].Capped && offers[i].Weight > 0 {
+			if !offers[i].Capped && offers[i].Weight > 0 && !offerExcluded(offers[i].OfferID, exclude) {
 				return i, offers[i]
 			}
 		}
@@ -664,7 +773,7 @@ func selectWeightedOffer(offers []FlowOfferEntry, bucket uint32) (int, FlowOffer
 	target := int32(bucket % uint32(total))
 	var acc int32
 	for i := range offers {
-		if offers[i].Capped || offers[i].Weight <= 0 {
+		if offers[i].Capped || offers[i].Weight <= 0 || offerExcluded(offers[i].OfferID, exclude) {
 			continue
 		}
 		acc += offers[i].Weight
@@ -673,11 +782,40 @@ func selectWeightedOffer(offers []FlowOfferEntry, bucket uint32) (int, FlowOffer
 		}
 	}
 	for i := len(offers) - 1; i >= 0; i-- {
-		if !offers[i].Capped && offers[i].Weight > 0 {
+		if !offers[i].Capped && offers[i].Weight > 0 && !offerExcluded(offers[i].OfferID, exclude) {
 			return i, offers[i]
 		}
 	}
 	return -1, FlowOfferEntry{}
+}
+
+func selectWaterfallOffer(offers []FlowOfferEntry, exclude map[uuid.UUID]struct{}) (int, FlowOfferEntry) {
+	if len(offers) == 0 {
+		return -1, FlowOfferEntry{}
+	}
+	order := make([]int, 0, len(offers))
+	for i := range offers {
+		order = append(order, i)
+	}
+	sort.Slice(order, func(i, j int) bool {
+		return offers[order[i]].Priority < offers[order[j]].Priority
+	})
+	for _, idx := range order {
+		o := offers[idx]
+		if o.Capped || o.Weight <= 0 || offerExcluded(o.OfferID, exclude) {
+			continue
+		}
+		return idx, o
+	}
+	return -1, FlowOfferEntry{}
+}
+
+func offerExcluded(offerID uuid.UUID, exclude map[uuid.UUID]struct{}) bool {
+	if offerID == uuid.Nil || exclude == nil {
+		return false
+	}
+	_, ok := exclude[offerID]
+	return ok
 }
 
 func fnv1a32(b []byte) uint32 {

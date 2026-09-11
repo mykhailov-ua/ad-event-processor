@@ -130,6 +130,9 @@ type Campaign struct {
 
 	ClickDelivery                string
 	ClickFilterTier              string
+	FallbackClickURL             string
+	BudgetFailoverMode           string
+	ClickFilterBudgetPolicy      string
 	ProxyUpstreamURL             string
 	ProxyRewriteAssets           bool
 	ProxyTimeoutFallbackEnabled  bool

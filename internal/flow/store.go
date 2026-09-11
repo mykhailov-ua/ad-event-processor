@@ -7,6 +7,7 @@ import (
 	"fmt"
 	"strings"
 
+	"ad-event-processor/internal/domain"
 	"ad-event-processor/pkg/landerhost"
 
 	"github.com/google/uuid"
@@ -68,7 +69,8 @@ func (st *Store) CreateOffer(ctx context.Context, req CreateOfferRequest) (Offer
 	var dto OfferDTO
 	err := st.poolOrNil().QueryRow(ctx, `
 		INSERT INTO offers (name, url) VALUES ($1, $2)
-		RETURNING id, name, url, created_at`, name, url).Scan(&dto.ID, &dto.Name, &dto.URL, &dto.CreatedAt)
+		RETURNING id, name, url, COALESCE(offer_priority, 0), COALESCE(cap_clicks_daily, 0), COALESCE(cap_clicks_total, 0), created_at`,
+		name, url).Scan(&dto.ID, &dto.Name, &dto.URL, &dto.OfferPriority, &dto.CapClicksDaily, &dto.CapClicksTotal, &dto.CreatedAt)
 	if err != nil {
 		return OfferDTO{}, err
 	}
@@ -79,7 +81,9 @@ func (st *Store) ListOffers(ctx context.Context) ([]OfferDTO, error) {
 	if st.poolOrNil() == nil {
 		return nil, fmt.Errorf("service unavailable")
 	}
-	rows, err := st.poolOrNil().Query(ctx, `SELECT id, name, url, created_at FROM offers ORDER BY created_at DESC`)
+	rows, err := st.poolOrNil().Query(ctx, `
+		SELECT id, name, url, COALESCE(offer_priority, 0), COALESCE(cap_clicks_daily, 0), COALESCE(cap_clicks_total, 0), created_at
+		FROM offers ORDER BY created_at DESC`)
 	if err != nil {
 		return nil, err
 	}
@@ -87,7 +91,7 @@ func (st *Store) ListOffers(ctx context.Context) ([]OfferDTO, error) {
 	var out []OfferDTO
 	for rows.Next() {
 		var dto OfferDTO
-		if err := rows.Scan(&dto.ID, &dto.Name, &dto.URL, &dto.CreatedAt); err != nil {
+		if err := rows.Scan(&dto.ID, &dto.Name, &dto.URL, &dto.OfferPriority, &dto.CapClicksDaily, &dto.CapClicksTotal, &dto.CreatedAt); err != nil {
 			return nil, err
 		}
 		out = append(out, dto)
@@ -113,10 +117,12 @@ func (st *Store) CreateFlow(ctx context.Context, req CreateFlowRequest) (DTO, er
 	if err != nil {
 		return DTO{}, err
 	}
+	routingMode := string(domain.NormalizeFlowRoutingMode(req.FlowRoutingMode))
 	var dto DTO
 	err = st.poolOrNil().QueryRow(ctx, `
-		INSERT INTO flows (name, paths) VALUES ($1, $2::jsonb)
-		RETURNING id, name, paths, created_at`, name, raw).Scan(&dto.ID, &dto.Name, &dto.Paths, &dto.CreatedAt)
+		INSERT INTO flows (name, paths, flow_routing_mode) VALUES ($1, $2::jsonb, $3)
+		RETURNING id, name, paths, COALESCE(flow_routing_mode, 'weighted'), created_at`,
+		name, raw, routingMode).Scan(&dto.ID, &dto.Name, &dto.Paths, &dto.FlowRoutingMode, &dto.CreatedAt)
 	if err != nil {
 		return DTO{}, err
 	}
@@ -127,7 +133,8 @@ func (st *Store) ListFlows(ctx context.Context) ([]DTO, error) {
 	if st.poolOrNil() == nil {
 		return nil, fmt.Errorf("service unavailable")
 	}
-	rows, err := st.poolOrNil().Query(ctx, `SELECT id, name, paths, created_at FROM flows ORDER BY created_at DESC`)
+	rows, err := st.poolOrNil().Query(ctx, `
+		SELECT id, name, paths, COALESCE(flow_routing_mode, 'weighted'), created_at FROM flows ORDER BY created_at DESC`)
 	if err != nil {
 		return nil, err
 	}
@@ -135,7 +142,7 @@ func (st *Store) ListFlows(ctx context.Context) ([]DTO, error) {
 	var out []DTO
 	for rows.Next() {
 		var dto DTO
-		if err := rows.Scan(&dto.ID, &dto.Name, &dto.Paths, &dto.CreatedAt); err != nil {
+		if err := rows.Scan(&dto.ID, &dto.Name, &dto.Paths, &dto.FlowRoutingMode, &dto.CreatedAt); err != nil {
 			return nil, err
 		}
 		out = append(out, dto)
@@ -152,8 +159,8 @@ func (st *Store) GetFlow(ctx context.Context, flowID uuid.UUID) (DTO, error) {
 	}
 	var dto DTO
 	err := st.poolOrNil().QueryRow(ctx, `
-		SELECT id, name, paths, created_at FROM flows WHERE id = $1`,
-		flowID).Scan(&dto.ID, &dto.Name, &dto.Paths, &dto.CreatedAt)
+		SELECT id, name, paths, COALESCE(flow_routing_mode, 'weighted'), created_at FROM flows WHERE id = $1`,
+		flowID).Scan(&dto.ID, &dto.Name, &dto.Paths, &dto.FlowRoutingMode, &dto.CreatedAt)
 	if err != nil {
 		if errors.Is(err, pgx.ErrNoRows) {
 			return DTO{}, fmt.Errorf("flow not found")
@@ -184,12 +191,22 @@ func (st *Store) UpdateFlow(ctx context.Context, flowID uuid.UUID, req UpdateFlo
 	if err != nil {
 		return DTO{}, err
 	}
+	routingMode := req.FlowRoutingMode
+	if strings.TrimSpace(routingMode) == "" {
+		current, getErr := st.GetFlow(ctx, flowID)
+		if getErr != nil {
+			return DTO{}, getErr
+		}
+		routingMode = current.FlowRoutingMode
+	}
+	routingMode = string(domain.NormalizeFlowRoutingMode(routingMode))
 	var dto DTO
 	err = st.poolOrNil().QueryRow(ctx, `
-		UPDATE flows SET name = $2, paths = $3::jsonb, updated_at = now()
+		UPDATE flows SET name = $2, paths = $3::jsonb, flow_routing_mode = $4, updated_at = now()
 		WHERE id = $1
-		RETURNING id, name, paths, created_at`, flowID, name, raw).Scan(
-		&dto.ID, &dto.Name, &dto.Paths, &dto.CreatedAt)
+		RETURNING id, name, paths, COALESCE(flow_routing_mode, 'weighted'), created_at`,
+		flowID, name, raw, routingMode).Scan(
+		&dto.ID, &dto.Name, &dto.Paths, &dto.FlowRoutingMode, &dto.CreatedAt)
 	if err != nil {
 		if errors.Is(err, pgx.ErrNoRows) {
 			return DTO{}, fmt.Errorf("flow not found")

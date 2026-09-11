@@ -13,6 +13,10 @@ deploy/**/nic-tune.env
 
 # Root runtime scratch (reports belong in var/)
 /*.txt
+/*.jpeg
+/*.jpg
+/*.png
+/*.webp
 
 # Rendered load-test configs (sources are *.load-test.*.in)
 deploy/nginx/nginx.load-test.conf

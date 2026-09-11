@@ -11,8 +11,11 @@ import (
 )
 
 type UpdateOfferRequest struct {
-	Name string `json:"name"`
-	URL  string `json:"url"`
+	Name           string `json:"name"`
+	URL            string `json:"url"`
+	OfferPriority  *int32 `json:"offer_priority,omitempty"`
+	CapClicksDaily *int32 `json:"cap_clicks_daily,omitempty"`
+	CapClicksTotal *int32 `json:"cap_clicks_total,omitempty"`
 }
 
 func (st *Store) GetOffer(ctx context.Context, offerID uuid.UUID) (OfferDTO, error) {
@@ -24,8 +27,9 @@ func (st *Store) GetOffer(ctx context.Context, offerID uuid.UUID) (OfferDTO, err
 	}
 	var dto OfferDTO
 	err := st.poolOrNil().QueryRow(ctx, `
-		SELECT id, name, url, created_at FROM offers WHERE id = $1`, offerID).Scan(
-		&dto.ID, &dto.Name, &dto.URL, &dto.CreatedAt)
+		SELECT id, name, url, COALESCE(offer_priority, 0), COALESCE(cap_clicks_daily, 0), COALESCE(cap_clicks_total, 0), created_at
+		FROM offers WHERE id = $1`, offerID).Scan(
+		&dto.ID, &dto.Name, &dto.URL, &dto.OfferPriority, &dto.CapClicksDaily, &dto.CapClicksTotal, &dto.CreatedAt)
 	if err != nil {
 		if errors.Is(err, pgx.ErrNoRows) {
 			return OfferDTO{}, fmt.Errorf("offer not found")
@@ -47,8 +51,29 @@ func (st *Store) UpdateOffer(ctx context.Context, offerID uuid.UUID, req UpdateO
 	if name == "" || url == "" {
 		return OfferDTO{}, fmt.Errorf("name and url are required")
 	}
+	offerPriority := int32(0)
+	capClicksDaily := int32(0)
+	capClicksTotal := int32(0)
+	current, err := st.GetOffer(ctx, offerID)
+	if err != nil {
+		return OfferDTO{}, err
+	}
+	offerPriority = current.OfferPriority
+	capClicksDaily = current.CapClicksDaily
+	capClicksTotal = current.CapClicksTotal
+	if req.OfferPriority != nil {
+		offerPriority = *req.OfferPriority
+	}
+	if req.CapClicksDaily != nil {
+		capClicksDaily = *req.CapClicksDaily
+	}
+	if req.CapClicksTotal != nil {
+		capClicksTotal = *req.CapClicksTotal
+	}
 	tag, err := st.poolOrNil().Exec(ctx, `
-		UPDATE offers SET name = $2, url = $3 WHERE id = $1`, offerID, name, url)
+		UPDATE offers
+		SET name = $2, url = $3, offer_priority = $4, cap_clicks_daily = $5, cap_clicks_total = $6
+		WHERE id = $1`, offerID, name, url, offerPriority, capClicksDaily, capClicksTotal)
 	if err != nil {
 		return OfferDTO{}, err
 	}

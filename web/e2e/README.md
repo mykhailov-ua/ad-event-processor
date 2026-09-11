@@ -86,7 +86,7 @@ Mutation specs carry `{ tag: '@write' }` on each test:
 | `fraud_labels_write.spec.js` | POST `/api/v1/fraud/labels` |
 | `fraud_overrides_write.spec.js` | POST `/api/v1/fraud/overrides` |
 | `integrations_actions.spec.js` | cost-sync run, platform sync, DLQ retry |
-| `settings_patch.spec.js` | PATCH `/api/v1/settings/platform` |
+| `settings_platform_patch.spec.js` | PATCH `/api/v1/settings/platform` |
 | `settings_apply.spec.js` | POST `/api/v1/settings/platform/apply` |
 | `team_invite.spec.js` | POST `/api/v1/team/members` |
 

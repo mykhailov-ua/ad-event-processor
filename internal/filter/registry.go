@@ -80,6 +80,9 @@ type campaignReplicaDTO struct {
 	LinkSigningTTLSec            int32  `json:"link_signing_ttl_sec"`
 	ClickDelivery                string `json:"click_delivery,omitempty"`
 	ClickFilterTier              string `json:"click_filter_tier,omitempty"`
+	FallbackClickURL             string `json:"fallback_click_url,omitempty"`
+	BudgetFailoverMode           string `json:"budget_failover_mode,omitempty"`
+	ClickFilterBudgetPolicy      string `json:"click_filter_budget_policy,omitempty"`
 	ProxyUpstreamURL             string `json:"proxy_upstream_url,omitempty"`
 	ProxyRewriteAssets           bool   `json:"proxy_rewrite_assets"`
 	ProxyTimeoutFallbackEnabled  bool   `json:"proxy_timeout_fallback_enabled"`
@@ -465,6 +468,9 @@ func (r *Registry) saveReplica(m map[uuid.UUID]campaignInfo) error {
 			LinkSigningTTLSec:            info.campaign.LinkSigningTTLSec,
 			ClickDelivery:                info.campaign.ClickDelivery,
 			ClickFilterTier:              info.campaign.ClickFilterTier,
+			FallbackClickURL:             info.campaign.FallbackClickURL,
+			BudgetFailoverMode:           info.campaign.BudgetFailoverMode,
+			ClickFilterBudgetPolicy:      info.campaign.ClickFilterBudgetPolicy,
 			ProxyUpstreamURL:             info.campaign.ProxyUpstreamURL,
 			ProxyRewriteAssets:           info.campaign.ProxyRewriteAssets,
 			ProxyTimeoutFallbackEnabled:  info.campaign.ProxyTimeoutFallbackEnabled,
@@ -598,6 +604,9 @@ func (r *Registry) loadReplica() (*campaignMapSnapshot, error) {
 				LinkSigningTTLSec:            dto.LinkSigningTTLSec,
 				ClickDelivery:                dto.ClickDelivery,
 				ClickFilterTier:              dto.ClickFilterTier,
+				FallbackClickURL:             dto.FallbackClickURL,
+				BudgetFailoverMode:           dto.BudgetFailoverMode,
+				ClickFilterBudgetPolicy:      dto.ClickFilterBudgetPolicy,
 				ProxyUpstreamURL:             dto.ProxyUpstreamURL,
 				ProxyRewriteAssets:           dto.ProxyRewriteAssets,
 				ProxyTimeoutFallbackEnabled:  dto.ProxyTimeoutFallbackEnabled,

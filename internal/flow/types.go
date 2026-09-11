@@ -20,10 +20,13 @@ type LanderDTO struct {
 }
 
 type OfferDTO struct {
-	ID        uuid.UUID `json:"id"`
-	Name      string    `json:"name"`
-	URL       string    `json:"url"`
-	CreatedAt time.Time `json:"created_at"`
+	ID             uuid.UUID `json:"id"`
+	Name           string    `json:"name"`
+	URL            string    `json:"url"`
+	OfferPriority  int32     `json:"offer_priority"`
+	CapClicksDaily int32     `json:"cap_clicks_daily"`
+	CapClicksTotal int32     `json:"cap_clicks_total"`
+	CreatedAt      time.Time `json:"created_at"`
 }
 
 type CreateLanderRequest struct {
@@ -37,20 +40,23 @@ type CreateOfferRequest struct {
 }
 
 type CreateFlowRequest struct {
-	Name  string    `json:"name"`
-	Paths []PathDTO `json:"paths"`
+	Name            string    `json:"name"`
+	Paths           []PathDTO `json:"paths"`
+	FlowRoutingMode string    `json:"flow_routing_mode,omitempty"`
 }
 
 type UpdateFlowRequest struct {
-	Name  string    `json:"name"`
-	Paths []PathDTO `json:"paths"`
+	Name            string    `json:"name"`
+	Paths           []PathDTO `json:"paths"`
+	FlowRoutingMode string    `json:"flow_routing_mode,omitempty"`
 }
 
 type DTO struct {
-	ID        uuid.UUID       `json:"id"`
-	Name      string          `json:"name"`
-	Paths     json.RawMessage `json:"paths"`
-	CreatedAt time.Time       `json:"created_at"`
+	ID              uuid.UUID       `json:"id"`
+	Name            string          `json:"name"`
+	Paths           json.RawMessage `json:"paths"`
+	FlowRoutingMode string          `json:"flow_routing_mode,omitempty"`
+	CreatedAt       time.Time       `json:"created_at"`
 }
 
 type PathLanderRef struct {

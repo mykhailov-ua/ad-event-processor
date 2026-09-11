@@ -496,6 +496,9 @@ func scrubCampaignDTO(ctx context.Context, c db.Campaign) campaign.CampaignDTO {
 		LinkSigningTTLSec:            c.LinkSigningTtlSec,
 		ClickDelivery:                c.ClickDelivery,
 		ClickFilterTier:              c.ClickFilterTier,
+		FallbackClickURL:             domain.PgTextValue(c.FallbackClickUrl),
+		BudgetFailoverMode:           c.BudgetFailoverMode,
+		ClickFilterBudgetPolicy:      c.ClickFilterBudgetPolicy,
 		ProxyUpstreamURL:             c.ProxyUpstreamUrl,
 		ProxyRewriteAssets:           c.ProxyRewriteAssets,
 		ProxyTimeoutFallbackEnabled:  c.ProxyTimeoutFallbackEnabled,
@@ -708,7 +711,8 @@ func patchCampaign(ctx context.Context, pool *pgxpool.Pool, fx campaign.Effects,
 		req.ClickDelivery != nil || req.ProxyUpstreamURL != nil || req.ProxyRewriteAssets != nil ||
 		req.ProxyTimeoutFallbackEnabled != nil ||
 		req.MobileBiometricsClickEnabled != nil ||
-		req.ClickFilterTier != nil
+		req.ClickFilterTier != nil ||
+		req.FallbackClickURL != nil || req.BudgetFailoverMode != nil || req.ClickFilterBudgetPolicy != nil
 	if !adminPatch && budgetMicro == nil && !statusSet && !schedulePatch && !clickPresetPatch {
 		return getCampaign(ctx, pool, fx, campaignID)
 	}
@@ -944,6 +948,28 @@ func patchCampaign(ctx context.Context, pool *pgxpool.Pool, fx campaign.Effects,
 			}
 			clickFilterTier = string(domain.NormalizeClickFilterTier(clickFilterTier))
 
+			fallbackClickURL := domain.PgTextValue(locked.FallbackClickUrl)
+			if req.FallbackClickURL != nil {
+				fallbackClickURL = strings.TrimSpace(*req.FallbackClickURL)
+				if fallbackClickURL != "" && !domain.ValidHTTPSRedirectURL(fallbackClickURL) {
+					return fmt.Errorf("fallback_click_url must be https")
+				}
+			}
+			budgetFailoverMode := locked.BudgetFailoverMode
+			if req.BudgetFailoverMode != nil {
+				budgetFailoverMode = string(domain.NormalizeBudgetFailoverMode(*req.BudgetFailoverMode))
+			}
+			if budgetFailoverMode == "" {
+				budgetFailoverMode = string(domain.BudgetFailoverModeNone)
+			}
+			clickFilterBudgetPolicy := locked.ClickFilterBudgetPolicy
+			if req.ClickFilterBudgetPolicy != nil {
+				clickFilterBudgetPolicy = string(domain.NormalizeClickFilterBudgetPolicy(*req.ClickFilterBudgetPolicy))
+			}
+			if clickFilterBudgetPolicy == "" {
+				clickFilterBudgetPolicy = string(domain.ClickFilterBudgetPolicyInherit)
+			}
+
 			locked, err = q.UpdateCampaignAdmin(ctx, db.UpdateCampaignAdminParams{
 				ID:                           domain.ToUUID(campaignID),
 				Name:                         name,
@@ -977,6 +1003,9 @@ func patchCampaign(ctx context.Context, pool *pgxpool.Pool, fx campaign.Effects,
 				ProxyTimeoutFallbackEnabled:  proxyTimeoutFallback,
 				MobileBiometricsClickEnabled: mobileBiometricsClick,
 				DecoyLanderID:                decoyLanderID,
+				FallbackClickUrl:             domain.PgTextFromString(fallbackClickURL),
+				BudgetFailoverMode:           budgetFailoverMode,
+				ClickFilterBudgetPolicy:      clickFilterBudgetPolicy,
 			})
 			if err != nil {
 				return err

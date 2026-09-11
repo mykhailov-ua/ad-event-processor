@@ -5,6 +5,7 @@ import (
 	"encoding/json"
 	"errors"
 	"strconv"
+	"strings"
 	"sync/atomic"
 	"time"
 
@@ -25,6 +26,25 @@ func applyCampaignAttestation(camp *Campaign, mode string, enabled bool, ttl int
 	camp.AttestationEnabled = enabled
 	camp.AttestationTTLSec = ttl
 	camp.AttestationMode = ResolveAttestationMode(ParseAttestationMode(mode), enabled)
+}
+
+func pgTextString(v pgtype.Text) string {
+	if !v.Valid {
+		return ""
+	}
+	return v.String
+}
+
+func PgTextValue(v pgtype.Text) string {
+	return pgTextString(v)
+}
+
+func PgTextFromString(s string) pgtype.Text {
+	s = strings.TrimSpace(s)
+	if s == "" {
+		return pgtype.Text{}
+	}
+	return pgtype.Text{String: s, Valid: true}
 }
 
 func CampaignFromDBRow(row db.Campaign) *Campaign {
@@ -102,6 +122,9 @@ func CampaignFromDBRow(row db.Campaign) *Campaign {
 		SocialInAppEnabled:           row.SocialInAppEnabled,
 		ClickDelivery:                row.ClickDelivery,
 		ClickFilterTier:              row.ClickFilterTier,
+		FallbackClickURL:             pgTextString(row.FallbackClickUrl),
+		BudgetFailoverMode:           row.BudgetFailoverMode,
+		ClickFilterBudgetPolicy:      row.ClickFilterBudgetPolicy,
 		ProxyUpstreamURL:             row.ProxyUpstreamUrl,
 		ProxyRewriteAssets:           row.ProxyRewriteAssets,
 		ProxyTimeoutFallbackEnabled:  row.ProxyTimeoutFallbackEnabled,
@@ -192,6 +215,9 @@ func CampaignFromGetCampaignFullRow(row db.GetCampaignFullRow) *Campaign {
 		SocialInAppEnabled:           row.SocialInAppEnabled,
 		ClickDelivery:                row.ClickDelivery,
 		ClickFilterTier:              row.ClickFilterTier,
+		FallbackClickURL:             pgTextString(row.FallbackClickUrl),
+		BudgetFailoverMode:           row.BudgetFailoverMode,
+		ClickFilterBudgetPolicy:      row.ClickFilterBudgetPolicy,
 		ProxyUpstreamURL:             row.ProxyUpstreamUrl,
 		ProxyRewriteAssets:           row.ProxyRewriteAssets,
 		ProxyTimeoutFallbackEnabled:  row.ProxyTimeoutFallbackEnabled,
@@ -296,6 +322,9 @@ func CampaignFromListActiveCampaignsRow(row db.ListActiveCampaignsRow) *Campaign
 		SocialInAppEnabled:           row.SocialInAppEnabled,
 		ClickDelivery:                row.ClickDelivery,
 		ClickFilterTier:              row.ClickFilterTier,
+		FallbackClickURL:             pgTextString(row.FallbackClickUrl),
+		BudgetFailoverMode:           row.BudgetFailoverMode,
+		ClickFilterBudgetPolicy:      row.ClickFilterBudgetPolicy,
 		ProxyUpstreamURL:             row.ProxyUpstreamUrl,
 		ProxyRewriteAssets:           row.ProxyRewriteAssets,
 		ProxyTimeoutFallbackEnabled:  row.ProxyTimeoutFallbackEnabled,

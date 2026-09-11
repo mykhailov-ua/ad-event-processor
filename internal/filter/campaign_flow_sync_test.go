@@ -23,7 +23,7 @@ func TestBuildFlowSnapshot_hostedLanderURL(t *testing.T) {
 	offerURLs := map[uuid.UUID][]byte{
 		offerID: []byte("https://offer.example/"),
 	}
-	snap, ok := buildFlowSnapshot(paths, landerURLs, offerURLs, nil)
+	snap, ok := buildFlowSnapshot(paths, landerURLs, offerURLs, nil, nil, nil, "weighted")
 	require.True(t, ok)
 	require.Len(t, snap.Paths, 1)
 	require.Len(t, snap.Paths[0].Landers, 1)
@@ -43,6 +43,6 @@ func TestBuildFlowSnapshot_skipsLanderWithoutURL(t *testing.T) {
 		},
 	})
 	require.NoError(t, err)
-	_, ok := buildFlowSnapshot(paths, map[uuid.UUID][]byte{}, map[uuid.UUID][]byte{}, nil)
+	_, ok := buildFlowSnapshot(paths, map[uuid.UUID][]byte{}, map[uuid.UUID][]byte{}, nil, nil, nil, "weighted")
 	assert.False(t, ok)
 }

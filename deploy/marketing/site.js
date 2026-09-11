@@ -254,6 +254,7 @@
       telegram_handle: raw.telegram_handle || "@bidshardsupportbot",
       telegram_manager_url: raw.telegram_manager_url || "https://t.me/bidshard_manager",
       telegram_manager_handle: raw.telegram_manager_handle || "@bidshard_manager",
+      support_email: raw.support_email || "support@bidshard.pro",
       install_script_url: raw.install_script_url || "https://bidshard.com/get.sh",
       contacts: raw.contacts || null,
       pilot_days: raw.pilot_days || 10,
@@ -572,6 +573,7 @@
     var url = config.telegram_url || "https://t.me/bidshardsupportbot";
     var managerHandle = config.telegram_manager_handle || "@bidshard_manager";
     var managerUrl = config.telegram_manager_url || "https://t.me/bidshard_manager";
+    var supportEmail = config.support_email || "support@bidshard.pro";
     root.innerHTML =
       '<div class="site-contacts__inner">' +
       '<div class="site-contacts__copy">' +
@@ -598,6 +600,12 @@
       escapeHtml(managerUrl) +
       '">' +
       escapeHtml(managerHandle) +
+      "</a>" +
+      '<span class="site-contacts__handle-sep" aria-hidden="true">·</span>' +
+      '<a class="site-contacts__handle" href="mailto:' +
+      escapeHtml(supportEmail) +
+      '">' +
+      escapeHtml(supportEmail) +
       "</a></div></div>" +
       '<a class="site-contacts__cta BtnPrimary" href="#" data-site-cta="telegram" data-site-telegram-url="' +
       escapeHtml(url) +
@@ -607,355 +615,82 @@
       "</div>";
   }
 
-  function formatUsd(amount) {
-    return "$" + Math.round(amount).toLocaleString("en-US");
-  }
-
-  function formatMillions(value, unit) {
-    return String(value) + (unit || "M") + " events/mo";
-  }
-
-  function formatTcoCpc(cents) {
-    var n = Math.round(Number(cents) || 0);
-    return "$0." + String(n).padStart(2, "0");
-  }
-
-  function formatTcoJunkPct(pct) {
-    return String(Math.round(Number(pct) || 0)) + "%";
-  }
-
-  function renderTcoSilentFields(calc, labels) {
-    var silentCfg = calc.silent_reject || {};
-    var junk = silentCfg.junk_pct || {};
-    var cpc = silentCfg.avg_cpc || {};
-    if (!junk.min && junk.min !== 0) {
+  function renderTcoImpacts(tco) {
+    var impacts = tco.impacts;
+    if (!impacts || !impacts.rows || !impacts.rows.length) {
       return "";
     }
-    return (
-      '<div class="site-tco-calculator__silent-fields">' +
-      '<div class="site-tco-calculator__field site-tco-calculator__field--silent" data-tco-field="silent_junk">' +
-      '<div class="site-tco-calculator__label-row">' +
-      "<span>" +
-      escapeHtml(labels.silent_junk_label || "Assumed junk share of events") +
-      "</span>" +
-      '<span data-tco-value="silent_junk"></span>' +
-      "</div>" +
-      '<input type="range" data-tco-input="silent_junk" data-tco-silent="1" min="' +
-      escapeHtml(String(junk.min)) +
-      '" max="' +
-      escapeHtml(String(junk.max)) +
-      '" step="' +
-      escapeHtml(String(junk.step || 1)) +
-      '" value="' +
-      escapeHtml(String(junk.default)) +
-      '" />' +
-      "</div>" +
-      '<div class="site-tco-calculator__field site-tco-calculator__field--silent" data-tco-field="silent_cpc">' +
-      '<div class="site-tco-calculator__label-row">' +
-      "<span>" +
-      escapeHtml(labels.silent_cpc_label || "Assumed avg cost per paid click") +
-      "</span>" +
-      '<span data-tco-value="silent_cpc"></span>' +
-      "</div>" +
-      '<input type="range" data-tco-input="silent_cpc" data-tco-silent="1" min="' +
-      escapeHtml(String(cpc.min)) +
-      '" max="' +
-      escapeHtml(String(cpc.max)) +
-      '" step="' +
-      escapeHtml(String(cpc.step || 1)) +
-      '" value="' +
-      escapeHtml(String(cpc.default)) +
-      '" />' +
-      "</div></div>"
-    );
-  }
-
-  function deriveTcoComponent(scale, millions) {
-    if (!scale) {
-      return 0;
-    }
-    if (scale.starts_at_m && millions < scale.starts_at_m) {
-      return scale.min || 0;
-    }
-    var raw = (scale.base || 0) + (scale.per_million || 0) * millions;
-    var step = scale.step || 1;
-    var clamped = Math.min(scale.max, Math.max(scale.min || 0, raw));
-    return Math.round(clamped / step) * step;
-  }
-
-  function renderTcoCalculator(config) {
-    var calc = config.tco && config.tco.calculator;
-    if (!calc || !calc.fields || !calc.fields.length) {
-      return "";
-    }
-    var labels = calc.labels || {};
-    var silentCfg = calc.silent_reject || {};
-    var volume = calc.volume || {};
-    var volumeHtml = volume.id
-      ? '<div class="site-tco-calculator__field site-tco-calculator__field--volume" data-tco-field="' +
-        escapeHtml(volume.id) +
-        '">' +
-        '<div class="site-tco-calculator__label-row">' +
-        "<span>" +
-        escapeHtml(volume.label || "Your monthly clicks / events") +
-        "</span>" +
-        '<span data-tco-value="' +
-        escapeHtml(volume.id) +
-        '"></span>' +
-        "</div>" +
-        '<input type="range" data-tco-input="' +
-        escapeHtml(volume.id) +
-        '" data-tco-volume="1" min="' +
-        escapeHtml(String(volume.min || 1)) +
-        '" max="' +
-        escapeHtml(String(volume.max || 100)) +
-        '" step="' +
-        escapeHtml(String(volume.step || 1)) +
-        '" value="' +
-        escapeHtml(String(volume.default || 10)) +
-        '" aria-valuemin="' +
-        escapeHtml(String(volume.min || 1)) +
-        '" aria-valuemax="' +
-        escapeHtml(String(volume.max || 100)) +
-        '" aria-valuenow="' +
-        escapeHtml(String(volume.default || 10)) +
-        '" />' +
-        "</div>"
-      : "";
-
-    var fieldsHtml = calc.fields
-      .map(function (field) {
+    var headers = impacts.headers || {};
+    var rowsHtml = impacts.rows
+      .map(function (row) {
         return (
-          '<div class="site-tco-calculator__field' +
-          (field.derived ? " site-tco-calculator__field--derived" : "") +
-          '" data-tco-field="' +
-          escapeHtml(field.id) +
-          '">' +
-          '<div class="site-tco-calculator__label-row">' +
-          "<span>" +
-          escapeHtml(field.label || field.id) +
+          '<tr class="site-tco-impact__row">' +
+          '<th scope="row" class="site-tco-impact__label">' +
+          escapeHtml(row.label || "") +
+          "</th>" +
+          '<td class="site-tco-impact__patchwork">' +
+          escapeHtml(row.patchwork || "") +
+          "</td>" +
+          '<td class="site-tco-impact__bidshard">' +
+          escapeHtml(row.bidshard || "") +
+          "</td>" +
+          '<td class="site-tco-impact__delta">' +
+          '<span class="site-tco-impact__delta-value">' +
+          escapeHtml(row.delta || "") +
           "</span>" +
-          '<span data-tco-value="' +
-          escapeHtml(field.id) +
-          '"></span>' +
-          "</div>" +
-          '<input type="range" data-tco-input="' +
-          escapeHtml(field.id) +
-          '" min="' +
-          escapeHtml(String(field.min)) +
-          '" max="' +
-          escapeHtml(String(field.max)) +
-          '" step="' +
-          escapeHtml(String(field.step || 1)) +
-          '" value="' +
-          escapeHtml(String(field.default)) +
-          '" aria-valuemin="' +
-          escapeHtml(String(field.min)) +
-          '" aria-valuemax="' +
-          escapeHtml(String(field.max)) +
-          '" aria-valuenow="' +
-          escapeHtml(String(field.default)) +
-          '" />' +
-          (field.hint
-            ? '<p class="site-tco-calculator__field-hint">' + escapeHtml(field.hint) + "</p>"
+          (row.delta_note
+            ? '<span class="site-tco-impact__delta-note">' + escapeHtml(row.delta_note) + "</span>"
             : "") +
-          "</div>"
+          "</td></tr>"
         );
       })
       .join("");
 
+    var totalHtml = impacts.total
+      ? '<div class="site-tco-impact__total">' +
+        '<div class="site-tco-impact__total-value">' +
+        escapeHtml(impacts.total.value || "") +
+        "</div>" +
+        '<div class="site-tco-impact__total-label">' +
+        escapeHtml(impacts.total.label || "") +
+        "</div>" +
+        (impacts.total.body
+          ? '<p class="site-tco-impact__total-body">' + escapeHtml(impacts.total.body) + "</p>"
+          : "") +
+        "</div>"
+      : "";
+
     return (
-      '<div class="site-tco__calculator">' +
-      '<div class="site-tco-calculator" data-site-tco-calculator>' +
-      '<h3 class="site-tco-calculator__title">' +
-      escapeHtml(calc.title || uiText(config, "calc_stack_today", "Stack cost estimate")) +
+      '<div class="site-tco__impacts">' +
+      '<div class="site-tco-impact__head">' +
+      '<h3 class="site-tco-impact__title">' +
+      escapeHtml(impacts.title || "") +
       "</h3>" +
-      '<div class="site-tco-calculator__fields">' +
-      volumeHtml +
-      fieldsHtml +
-      "</div>" +
-      '<div class="site-tco-calculator__totals">' +
-      '<div class="site-tco-calculator__row">' +
-      "<span>" +
-      escapeHtml(labels.stack_today || uiText(config, "calc_stack_today", "Patchwork stack/mo")) +
-      "</span>" +
-      '<span data-tco-total="patchwork"></span>' +
-      "</div>" +
-      '<div class="site-tco-calculator__row">' +
-      '<span data-tco-label="bidshard"></span>' +
-      '<span data-tco-total="bidshard"></span>' +
-      "</div>" +
-      '<div class="site-tco-calculator__row site-tco-calculator__row--savings">' +
-      "<span>" +
-      escapeHtml(labels.savings || uiText(config, "calc_savings", "Illustrative stack difference/mo")) +
-      "</span>" +
-      '<span data-tco-total="savings"></span>' +
-      "</div>" +
-      (labels.stack_savings_note
-        ? '<p class="site-tco-calculator__stack-note">' + escapeHtml(labels.stack_savings_note) + "</p>"
+      (impacts.subtitle
+        ? '<p class="site-tco-impact__subtitle">' + escapeHtml(impacts.subtitle) + "</p>"
         : "") +
       "</div>" +
-      '<div class="site-tco-calculator__silent" data-tco-silent>' +
-      (silentCfg.not_in_stack
-        ? '<p class="site-tco-calculator__silent-not-in-stack">' + escapeHtml(silentCfg.not_in_stack) + "</p>"
-        : "") +
-      '<p class="site-tco-calculator__silent-label">' +
-      escapeHtml((calc.silent_reject && calc.silent_reject.label) || "") +
-      "</p>" +
-      renderTcoSilentFields(calc, labels) +
-      '<p class="site-tco-calculator__silent-value" data-tco-total="silent"></p>' +
-      '<p class="site-tco-calculator__silent-hint">' +
-      escapeHtml((calc.silent_reject && calc.silent_reject.hint) || "") +
-      "</p>" +
-      "</div>" +
-      '<p class="site-tco-calculator__disclaimer">' +
-      escapeHtml(labels.disclaimer || "") +
-      "</p>" +
-      "</div></div>"
+      '<div class="site-tco-impact__table-wrap">' +
+      '<table class="site-tco-impact__table">' +
+      "<thead><tr>" +
+      '<th scope="col">' +
+      escapeHtml(headers.driver || "Driver") +
+      "</th>" +
+      '<th scope="col">' +
+      escapeHtml(headers.patchwork || "Patchwork") +
+      "</th>" +
+      '<th scope="col">' +
+      escapeHtml(headers.bidshard || "BidShard") +
+      "</th>" +
+      '<th scope="col">' +
+      escapeHtml(headers.impact || "TCO impact") +
+      "</th>" +
+      "</tr></thead><tbody>" +
+      rowsHtml +
+      "</tbody></table></div>" +
+      totalHtml +
+      "</div>"
     );
-  }
-
-  function wireTcoCalculator(config) {
-    var root = document.querySelector("[data-site-tco-calculator]");
-    if (!root) {
-      return;
-    }
-    var calc = config.tco && config.tco.calculator;
-    if (!calc) {
-      return;
-    }
-    var labels = calc.labels || {};
-    var licenses = calc.licenses || {};
-    var starterPrice = Number(licenses.starter && licenses.starter.price) || 129;
-    var proPrice = Number(licenses.pro && licenses.pro.price) || 399;
-    var derive = calc.derive || {};
-    var silentCfg = calc.silent_reject || {};
-
-    function fieldInput(id) {
-      return root.querySelector('[data-tco-input="' + id + '"]');
-    }
-
-    function fieldValue(id) {
-      var input = fieldInput(id);
-      if (!input) {
-        return 0;
-      }
-      return Number(input.value) || 0;
-    }
-
-    function setFieldValue(id, value) {
-      var input = fieldInput(id);
-      if (!input) {
-        return;
-      }
-      input.value = String(value);
-      input.setAttribute("aria-valuenow", String(value));
-    }
-
-    function setDisplay(id, text) {
-      var node = root.querySelector('[data-tco-value="' + id + '"]');
-      if (node) {
-        node.textContent = text;
-      }
-    }
-
-    function syncDerivedFromVolume() {
-      if (!calc.volume || !calc.volume.id) {
-        return;
-      }
-      var millions = fieldValue(calc.volume.id);
-      calc.fields.forEach(function (field) {
-        if (!field.derived || !derive[field.id]) {
-          return;
-        }
-        setFieldValue(field.id, deriveTcoComponent(derive[field.id], millions));
-      });
-      setDisplay(calc.volume.id, formatMillions(millions, calc.volume.unit || "M"));
-    }
-
-    function resolveLicense(ivtSpend) {
-      if (ivtSpend > 0) {
-        return {
-          price: proPrice,
-          label: labels.bidshard_stack_pro || "BidShard license (Pro, IVT included) + same VPS/mo",
-        };
-      }
-      return {
-        price: starterPrice,
-        label: labels.bidshard_stack_starter || "BidShard license (Starter) + same VPS/mo",
-      };
-    }
-
-    function refresh() {
-      var tracker = fieldValue("tracker");
-      var cloaker = fieldValue("cloaker");
-      var ivt = fieldValue("ivt");
-      var vps = fieldValue("vps");
-      var patchwork = tracker + cloaker + ivt + vps;
-      var license = resolveLicense(ivt);
-      var bidshard = license.price + vps;
-      var savings = patchwork - bidshard;
-
-      setDisplay("tracker", formatUsd(tracker));
-      setDisplay("cloaker", formatUsd(cloaker));
-      setDisplay("ivt", formatUsd(ivt));
-      setDisplay("vps", formatUsd(vps));
-
-      var bidLabel = root.querySelector('[data-tco-label="bidshard"]');
-      if (bidLabel) {
-        bidLabel.textContent = license.label;
-      }
-
-      var patchNode = root.querySelector('[data-tco-total="patchwork"]');
-      var bidNode = root.querySelector('[data-tco-total="bidshard"]');
-      var saveNode = root.querySelector('[data-tco-total="savings"]');
-      if (patchNode) {
-        patchNode.textContent = formatUsd(patchwork);
-      }
-      if (bidNode) {
-        bidNode.textContent = formatUsd(bidshard);
-      }
-      if (saveNode) {
-        if (savings >= 0) {
-          saveNode.textContent =
-            (labels.savings_positive || "Lower than patchwork by") + " " + formatUsd(savings);
-        } else {
-          saveNode.textContent =
-            (labels.savings_negative || "Higher than patchwork by") + " " + formatUsd(Math.abs(savings));
-        }
-      }
-
-      var millions = calc.volume && calc.volume.id ? fieldValue(calc.volume.id) : 10;
-      var junkPct = fieldValue("silent_junk") / 100;
-      if (!fieldInput("silent_junk")) {
-        junkPct = Number(silentCfg.junk_pct && silentCfg.junk_pct.default) / 100 || 0.12;
-      }
-      var avgCpcCents = fieldValue("silent_cpc");
-      if (!fieldInput("silent_cpc")) {
-        avgCpcCents = Number(silentCfg.avg_cpc && silentCfg.avg_cpc.default) || 4;
-      }
-      var avgCpc = avgCpcCents / 100;
-      var silentSaved = millions * 1000000 * junkPct * avgCpc;
-      setDisplay("silent_junk", formatTcoJunkPct(fieldValue("silent_junk") || (silentCfg.junk_pct && silentCfg.junk_pct.default) || 12));
-      setDisplay("silent_cpc", formatTcoCpc(avgCpcCents));
-      var silentWrap = root.querySelector("[data-tco-silent]");
-      var silentNode = root.querySelector('[data-tco-total="silent"]');
-      if (silentWrap && silentNode) {
-        silentNode.textContent = formatUsd(silentSaved);
-      }
-    }
-
-    root.querySelectorAll("input[type='range']").forEach(function (input) {
-      input.addEventListener("input", function () {
-        if (input.getAttribute("data-tco-volume") === "1") {
-          syncDerivedFromVolume();
-        }
-        refresh();
-      });
-    });
-
-    syncDerivedFromVolume();
-    refresh();
   }
 
   function renderTco(config) {
@@ -1018,9 +753,8 @@
       '<div class="site-tco__grid">' +
       columns +
       "</div>" +
-      renderTcoCalculator(config) +
+      renderTcoImpacts(tco) +
       "</div>";
-    wireTcoCalculator(config);
   }
 
   function renderPricing(config) {

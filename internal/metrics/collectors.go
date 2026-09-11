@@ -1741,6 +1741,11 @@ var (
 		Name: "ad_ch_single_row_inserts_total",
 		Help: "ClickHouse store attempts narrowed to a single event during poison-pill binary split",
 	})
+	CHIngestLagSeconds = promauto.NewHistogram(prometheus.HistogramOpts{
+		Name:    "ad_ch_ingest_lag_seconds",
+		Help:    "Lag from event CreatedAt to successful ClickHouse batch insert",
+		Buckets: []float64{0.05, 0.1, 0.25, 0.5, 1, 2, 5, 10, 30, 60, 120, 300},
+	})
 
 	SlotMigrationLagMessages = promauto.NewGaugeVec(prometheus.GaugeOpts{
 		Name: "ad_slot_migration_lag_messages",

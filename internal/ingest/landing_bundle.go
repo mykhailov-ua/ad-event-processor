@@ -596,6 +596,12 @@ func (h *AdsPacketHandler) reactClickRedirect(req *Request, c gnet.Conn, ctx *Co
 				releaseAdmission()
 				return gnet.None
 			case trackStatusRejected:
+				if outcome.RejectKind == filterRejectBudget {
+					if h.tryBudgetFailoverClick(c, ctx, camp, evt, parsed, clickID, startMono) {
+						releaseAdmission()
+						return gnet.None
+					}
+				}
 				spec := filterRejectSpecs[outcome.RejectKind]
 				h.recordTrackReject(ctx, evt, outcome.RejectKind)
 				if outcome.RejectKind == filterRejectFraudBlocked {
@@ -1291,6 +1297,11 @@ func (h *AdsPacketHandler) resolveClickFilterTier(campaignID uuid.UUID) domain.C
 		envDefault = h.cfg.ClickFilterTierDefault
 	}
 	resolved := domain.ResolveClickFilterTier(camp, envDefault, redirectOnlyLicensed)
+	policy := domain.ClickFilterBudgetPolicyInherit
+	if camp != nil {
+		policy = domain.NormalizeClickFilterBudgetPolicy(camp.ClickFilterBudgetPolicy)
+	}
+	resolved = domain.ApplyClickFilterBudgetPolicy(resolved, policy)
 	if resolved != requested {
 		metrics.ClickFilterTierEscalatedTotal.WithLabelValues(string(requested)).Inc()
 	}

@@ -529,3 +529,42 @@ Documented gaps (do not close in docs alone):
 - `moderator_ip` exists in `fraudReasonRegistry` and campaign JSON `moderator_intel_enabled`, but **no** production filter calls `addFraudSignal(FraudReasonModeratorIP)`. Moderator intel table loads in `internal/filter/netintel` for future use.
 - Per-IP silent HTTP decoy requires campaign `silent_reject_enabled`; ML cannot replace that flag for hot-path response mapping.
 - IVT `BlockIP` default path and `EnqueueFraudThreatBatch` path coexist; operators should trace outbox event types per rule when auditing enforcement.
+
+---
+
+## postback_inbound_hmac
+
+Inbound affiliate conversion auth on POST `/track` (`event_type=conversion`). Package: `internal/postback/inbound/verify.go`. Config: `customers.postback_inbound_ip_allowlist`, `customers.postback_inbound_secret_encrypted` (migration `00142_team_scope.sql`).
+
+When a secret is configured, the affiliate must send HMAC-SHA256 over the raw request body:
+
+| Input | Rule |
+| :--- | :--- |
+| Header | `X-Postback-Signature: sha256=<hex>` (prefix optional on query fallback) |
+| Query fallback | `sig=<hex>` if header absent |
+| Canonical | `METHOD|PATH|sorted_query|body_sha256_hex` |
+| `METHOD` | Uppercase HTTP verb |
+| `PATH` | `r.URL.Path` only (no host) |
+| `sorted_query` | All query keys except `sig`, sorted `key=value` pairs joined with `&` (multi-value keys sorted among pairs) |
+| `body_sha256_hex` | Lowercase hex SHA-256 of request body bytes |
+
+Failure: HTTP `403`, body `POSTBACK_AUTH_FAILED`. Dev kill-switch: `POSTBACK_INBOUND_AUTH_DISABLED=1` skips verification.
+
+Ops runbook: [VENDOR_OPS_RUNBOOK.md](VENDOR_OPS_RUNBOOK.md) (Postback inbound auth).
+
+---
+
+## postback_outbound_signing
+
+Outbound postback GET URLs may include macro `{sig}` when `postback_configs.signing_secret_encrypted` is set (migration `00144_postback_signing_secret.sql`). Signing: `internal/postback/signing.SignGETURL`.
+
+| Step | Rule |
+| :--- | :--- |
+| Render | Expand macros in `url_template` to a GET URL (may still contain `{sig}`) |
+| Canonical string | Full URL with `sig` query param removed (`url.Parse`, `q.Del("sig")`, re-encode query) |
+| Signature | `HMAC-SHA256(secret, canonical_string)` as lowercase hex |
+| Wire | Replace `{sig}` in URL, or append hex when URL ends with `sig=` |
+
+Receiver verifies by recomputing HMAC on the URL with `sig` stripped. Independent of inbound `X-Postback-Signature` format.
+
+Ops runbook: [VENDOR_OPS_RUNBOOK.md](VENDOR_OPS_RUNBOOK.md) (Postback outbound HMAC signing).

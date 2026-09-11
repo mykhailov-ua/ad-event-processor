@@ -2542,6 +2542,9 @@ type CampaignDTO struct {
 	LinkSigningTTLSec            int32                 `json:"link_signing_ttl_sec"`
 	ClickDelivery                string                `json:"click_delivery,omitempty"`
 	ClickFilterTier              string                `json:"click_filter_tier,omitempty"`
+	FallbackClickURL             string                `json:"fallback_click_url,omitempty"`
+	BudgetFailoverMode           string                `json:"budget_failover_mode,omitempty"`
+	ClickFilterBudgetPolicy      string                `json:"click_filter_budget_policy,omitempty"`
 	ProxyUpstreamURL             string                `json:"proxy_upstream_url,omitempty"`
 	ProxyRewriteAssets           bool                  `json:"proxy_rewrite_assets"`
 	ProxyTimeoutFallbackEnabled  bool                  `json:"proxy_timeout_fallback_enabled"`
@@ -2743,6 +2746,9 @@ type PatchCampaignRequest struct {
 	ReferrerFilter               *string               `json:"referrer_filter,omitempty"`
 	ClickDelivery                *string               `json:"click_delivery,omitempty"`
 	ClickFilterTier              *string               `json:"click_filter_tier,omitempty"`
+	FallbackClickURL             *string               `json:"fallback_click_url,omitempty"`
+	BudgetFailoverMode           *string               `json:"budget_failover_mode,omitempty"`
+	ClickFilterBudgetPolicy      *string               `json:"click_filter_budget_policy,omitempty"`
 	ProxyUpstreamURL             *string               `json:"proxy_upstream_url,omitempty"`
 	ProxyRewriteAssets           *bool                 `json:"proxy_rewrite_assets,omitempty"`
 	ProxyTimeoutFallbackEnabled  *bool                 `json:"proxy_timeout_fallback_enabled,omitempty"`

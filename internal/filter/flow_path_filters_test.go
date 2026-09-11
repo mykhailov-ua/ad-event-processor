@@ -69,7 +69,7 @@ func TestBuildFlowSnapshot_compilesPathFilters(t *testing.T) {
 	landerID := uuid.New()
 	offerID := uuid.New()
 	raw := []byte(`[{"weight":100,"filters":{"countries":["US"],"devices":["mobile"],"os":["android"],"languages":["en"]},"landers":[{"lander_id":"` + landerID.String() + `","weight":100}],"offers":[{"offer_id":"` + offerID.String() + `","weight":100}]}]`)
-	snap, ok := buildFlowSnapshot(raw, map[uuid.UUID][]byte{landerID: []byte("https://lander.test/")}, map[uuid.UUID][]byte{offerID: []byte("https://offer.test/")}, nil)
+	snap, ok := buildFlowSnapshot(raw, map[uuid.UUID][]byte{landerID: []byte("https://lander.test/")}, map[uuid.UUID][]byte{offerID: []byte("https://offer.test/")}, nil, nil, nil, "weighted")
 	require.True(t, ok)
 	require.Len(t, snap.Paths, 1)
 	assert.Equal(t, [2]byte{'U', 'S'}, snap.Paths[0].Filters.Countries[0])

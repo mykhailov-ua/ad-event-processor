@@ -1,6 +1,12 @@
-import { SettingsLicense } from '@/domains/settings/settings_license';
-import { useSettingsLicensePageWorkspace } from '@/domains/settings/use_settings_license_page_workspace';
+import { SettingsMain } from '@/domains/settings/settings_main';
+import { useSettingsPageWorkspace } from '@/domains/settings/use_settings_page_workspace';
+import { PermissionGate } from '@/shell/permission_gate';
 
 export function SettingsLicensePage() {
-  return <SettingsLicense embedded {...useSettingsLicensePageWorkspace()} />;
+  const workspace = useSettingsPageWorkspace();
+  return (
+    <PermissionGate permission="settings:read">
+      <SettingsMain {...workspace} />
+    </PermissionGate>
+  );
 }

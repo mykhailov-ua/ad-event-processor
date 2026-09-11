@@ -640,8 +640,23 @@ func (st *ClickHouseStore) insertToClickHouse(ctx context.Context, events []*dom
 
 	duration := time.Since(start).Seconds()
 	metrics.DBWriteDuration.WithLabelValues("clickhouse").Observe(duration)
+	observeCHIngestLag(events, start)
 
 	return nil
+}
+
+func observeCHIngestLag(events []*domain.Event, insertedAt time.Time) {
+	for i := range events {
+		e := events[i]
+		if e == nil || e.CreatedAt.IsZero() {
+			continue
+		}
+		lag := insertedAt.Sub(e.CreatedAt).Seconds()
+		if lag < 0 {
+			lag = 0
+		}
+		metrics.CHIngestLagSeconds.Observe(lag)
+	}
 }
 
 func (st *ClickHouseStore) Close() error {

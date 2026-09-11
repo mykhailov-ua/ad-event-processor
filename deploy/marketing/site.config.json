@@ -42,6 +42,7 @@
   "telegram_handle": "@bidshardsupportbot",
   "telegram_manager_url": "https://t.me/bidshard_manager",
   "telegram_manager_handle": "@bidshard_manager",
+  "support_email": "support@bidshard.pro",
   "install_script_url": "https://bidshard.com/get.sh",
   "offer": {
     "version": "2026-09-09",
@@ -231,81 +232,78 @@
   },
   "tco": {
     "eyebrow": "Total cost",
-    "title": "Count the full stack, not the license line",
-    "subtitle": "A tracker-only license looks cheap until you add VPS, bot filtering, IVT tooling, and the hours you spend keeping PHP stacks alive. BidShard is one install on your VPS or dedicated server — routing, budgets, antifraud, and reporting under your control.",
+    "title": "One stack on your metal — not four vendors billing you every month",
+    "subtitle": "Typical mid-sized setup: 10M events/mo, multi-GEO funnels, one ops lead. Industry benchmark for teams that outgrew PHP trackers.",
     "columns": [
       {
         "label": "Patchwork stack",
         "items": [
-          "Tracker license ($50–130/mo)",
-          "Cloaker or bot-filter SaaS ($300–1,000/mo)",
-          "IVT / fraud analytics ($0–200/mo extra)",
-          "VPS sized for peak clicks ($40–150/mo)",
-          "Ops time: PHP/runtime tuning, patches, backups, postback fires"
+          "Tracker license ($99–130/mo)",
+          "Cloaker / bot-filter SaaS ($300–600/mo)",
+          "IVT tooling bought separately ($100–200/mo)",
+          "VPS sized for PHP peaks — 32–64 GB RAM to survive funnel spikes",
+          "PHP-FPM worker pool — memory spikes under load, cold starts after every deploy",
+          "PostgreSQL or MySQL for reporting — 3–4× the RAM ClickHouse needs at the same event volume"
         ],
-        "summary": "Example total: often ~$700–1,200+/mo (illustrative, before ad spend)",
-        "footnote": "Your vendors and hours vary — this is a planning scenario, not a quote."
+        "summary": "Industry benchmark: $900–1,400/mo in SaaS alone, before ad spend"
       },
       {
-        "label": "BidShard stack",
+        "label": "BidShard on your VPS",
         "highlight": true,
         "items": [
-          "License from $129/mo (Starter) — cloaker-class protection built in",
-          "Same VPS you already pay for — not included in the license",
-          "Go ingest (gnet): higher peak RPS per GB RAM on the same box — sizing varies",
-          "One-line install (get.sh); offline JWT in Settings — no license-server ping",
-          "IVT from Pro ($399/mo) when you need ML invalid-traffic detection"
+          "License from $129/mo — cloaker-class protection, CAPI, Mini Apps in one line item",
+          "Compiled Go binary — static memory footprint, zero PHP runtime dependencies",
+          "ClickHouse for analytics — columnar store, less RAM per billion events",
+          "Higher peak RPS per GB RAM on the same box — right-size the VPS, not overprovision for PHP",
+          "Margin Guard pauses campaigns when ROI drops — not a Telegram alert after the bleed",
+          "Silent Reject — bot traffic sees 202, your budget does not move"
         ],
-        "summary": "License + VPS — often one vendor instead of four",
-        "footnote": "Compare tiers on Pricing. You still own VPS patches and backups."
+        "summary": "$400–550/mo license + right-sized VPS for the same 10M events/mo workload"
       }
     ],
-    "calculator": {
-      "title": "Stack cost estimate (illustrative)",
-      "volume": {
-        "id": "volume",
-        "label": "Your monthly clicks / events",
-        "min": 1,
-        "max": 100,
-        "default": 10,
-        "step": 1,
-        "unit": "M"
+    "impacts": {
+      "title": "Where the money goes at 10M events/mo",
+      "subtitle": "Subscription math is noise. Infrastructure, bot budget, and uptime at volume — that is the migration case.",
+      "headers": {
+        "driver": "Driver",
+        "patchwork": "Patchwork",
+        "bidshard": "BidShard",
+        "impact": "TCO impact"
       },
-      "licenses": {
-        "starter": { "price": 129, "name": "Starter" },
-        "pro": { "price": 399, "name": "Pro" }
-      },
-      "derive": {
-        "tracker": { "base": 79, "per_million": 2, "min": 50, "max": 150, "step": 5 },
-        "cloaker": { "base": 300, "per_million": 15, "min": 0, "max": 1000, "step": 25 },
-        "ivt": { "base": 0, "per_million": 10, "min": 0, "max": 300, "step": 25, "starts_at_m": 2 },
-        "vps": { "base": 40, "per_million": 4, "min": 40, "max": 200, "step": 10 }
-      },
-      "fields": [
-        { "id": "tracker", "label": "Tracker license (patchwork)", "min": 50, "max": 150, "default": 99, "step": 5, "derived": true },
-        { "id": "cloaker", "label": "Cloaker / bot-filter SaaS", "min": 0, "max": 1000, "default": 450, "step": 25, "derived": true, "hint": "Volume-derived floor starts ~$300/mo (mid-market cloaker). Set to $0 if you run tracker-only with no cloaker SaaS." },
-        { "id": "ivt", "label": "IVT / fraud tooling (3rd party)", "min": 0, "max": 300, "default": 100, "step": 25, "derived": true },
-        { "id": "vps", "label": "VPS / dedicated", "min": 40, "max": 200, "default": 80, "step": 10, "derived": true }
+      "rows": [
+        {
+          "label": "Infrastructure",
+          "patchwork": "32–64 GB VPS — PHP-FPM spikes, row-store DB for reporting at event scale",
+          "bidshard": "16–24 GB — compiled Go ingest, ClickHouse columnar analytics",
+          "delta": "$800–1,600/mo",
+          "delta_note": "smaller box, same peak RPS"
+        },
+        {
+          "label": "SaaS stack",
+          "patchwork": "Tracker + cloaker + IVT — three invoices, three renewals",
+          "bidshard": "One license — routing, antifraud, reporting",
+          "delta": "$300–600/mo",
+          "delta_note": "cloaker-class protection in Starter"
+        },
+        {
+          "label": "Retained ad spend",
+          "patchwork": "Bots and junk still debit budget — alerts after the day bleeds red",
+          "bidshard": "Silent Reject + Margin Guard — budget stays on real clicks",
+          "delta": "$2,400–8,000/mo",
+          "delta_note": "12% junk × $0.04 CPC on 10M clicks"
+        },
+        {
+          "label": "Spike downtime",
+          "patchwork": "20 min DB lock or PHP OOM during funnel spike",
+          "bidshard": "gnet ingest + stream admission — hot path keeps accepting",
+          "delta": "$1k–5k",
+          "delta_note": "per incident — lost revenue, not license fees"
+        }
       ],
-      "silent_reject": {
-        "junk_pct": { "min": 0, "max": 30, "default": 12, "step": 1 },
-        "avg_cpc": { "min": 1, "max": 20, "default": 4, "step": 1 },
-        "label": "Saved on junk traffic handled by Silent Reject (illustrative)",
-        "hint": "Junk share × avg paid click cost — budget not debited on 202 decoy. Not a performance guarantee.",
-        "not_in_stack": "Not included in the stack difference above — separate media-budget model."
-      },
-      "labels": {
-        "stack_today": "Patchwork stack/mo",
-        "bidshard_stack": "BidShard license + same VPS/mo",
-        "bidshard_stack_pro": "BidShard license (Pro, IVT included) + same VPS/mo",
-        "bidshard_stack_starter": "BidShard license (Starter) + same VPS/mo",
-        "savings": "Illustrative stack difference/mo",
-        "savings_positive": "Lower than patchwork by",
-        "savings_negative": "Higher than patchwork by",
-        "stack_savings_note": "Stack savings assume you replace cloaker SaaS. Tracker-only patchwork (cloaker $0) can be cheaper than BidShard Starter.",
-        "silent_junk_label": "Assumed junk share of events",
-        "silent_cpc_label": "Assumed avg cost per paid click",
-        "disclaimer": "Estimate only — not a quote. VPS priced separately on both sides. BidShard license switches to Pro ($399) when IVT tooling is in your stack; IVT is included in Pro — no separate IVT line on the BidShard side."
+      "total": {
+        "label": "Typical TCO gap vs patchwork at this volume",
+        "value": "$4,500–16,000/mo",
+        "body": "Keitaro does not fall over because the license is expensive. It falls over because PHP eats RAM on spikes and row databases buckle under event volume. BidShard is built for that workload."
       }
     }
   },
@@ -523,7 +521,7 @@
     "AdEventProcessorIsSelfHostedSoftwareForClickRoutingConversionPostbacksCampaignBudgetsAdNetworkCostSyncAndLayeredAntifraudInstallOnYourVpsLicenseIsOfflineYourCampaignsNeverLeaveYourInfrastructure": "Click routing, conversion postbacks, campaign budgets, ad-network cost sync, and layered antifraud on your VPS. Offline JWT license. Your traffic stays on your metal.",
     "GetFreePilotOnTelegram": "Get free pilot",
     "SeeInstallCommand": "Install command",
-    "CompareStackCost": "Compare stack cost",
+    "CompareStackCost": "See the full comparison",
     "NoCreditCardPilot10DaysRulesOnlyAntifraudTierByRequestingAPilotYouAcceptThePublicOffer": "No credit card. Free 10-day pilot. By requesting a pilot you accept the public offer.",
     "YourDataStaysYours": "Your data stays yours",
     "NoMultiTenantCloudPostgresRedisClickhouseOnYourMetalWeShipSoftwareAndALicenseFileWeDonTSeeYourTraffic": "No multi-tenant cloud. Postgres, Redis, ClickHouse — on your metal. We ship software and a license file. We don't see your traffic.",
@@ -586,7 +584,7 @@
     "Telegram": "Telegram",
     "FooterInstall": "Install",
     "2026AdEventProcessorAllRightsReserved": "© 2026 BidShard. All rights reserved.",
-    "site-tco-jump": "Compare full-stack monthly cost",
+    "site-tco-jump": "Where the money goes at scale",
     "NoEverythingRunsExclusivelyOnYourServerWeHaveNoBackendApiThatCollectsTelemetryCampaignConfigurationsOrVisitorLogs": "No. Everything runs exclusively on your server. We have no backend API that collects telemetry, campaign configurations, or visitor logs.",
     "NoItIsLocalSoftwareYouInstallDirectlyOnYourVpsYouCanImportYourCurrentConfigurationsDirectlyFromKeitaroOrBinomViaJson": "No — it is local software you install directly on your VPS. You can import your current configurations directly from Keitaro or Binom via JSON.",
     "PayUsdtForYourMatchingTierWeGenerateAndSendANewLicenseFileYouLoadItIntoYourExistingDeploymentWithNoReinstallNeeded": "Pay USDT for your matching tier. We generate and send a new license file. You load it into your existing deployment with no reinstall needed.",

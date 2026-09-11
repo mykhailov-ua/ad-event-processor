@@ -29,6 +29,8 @@ const MIME = {
   '.map': 'application/json',
   '.json': 'application/json',
   '.svg': 'image/svg+xml',
+  '.jpg': 'image/jpeg',
+  '.jpeg': 'image/jpeg',
 };
 
 const reloadClients = new Set();

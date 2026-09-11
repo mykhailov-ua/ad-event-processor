@@ -51,6 +51,21 @@ func TestSelectSnapshot_skipsCappedOffer(t *testing.T) {
 	}
 }
 
+func TestOfferClickCapExceeded_holdout(t *testing.T) {
+	t.Parallel()
+	assert.True(t, offerClickCapExceeded(offerClickCounts{daily: 5, total: 1}, 5, 0))
+	assert.False(t, offerClickCapExceeded(offerClickCounts{daily: 4, total: 1}, 5, 0))
+	assert.True(t, offerClickCapExceeded(offerClickCounts{daily: 1, total: 100}, 0, 100))
+}
+
+func TestOfferFullyCapped_clickCap_holdout(t *testing.T) {
+	t.Parallel()
+	offerID := uuid.New()
+	assert.True(t, offerFullyCapped(offerID, nil, nil, nil, 10, 0, map[uuid.UUID]offerClickCounts{
+		offerID: {daily: 10, total: 1},
+	}))
+}
+
 func TestBuildFlowSnapshot_offerCapFromCounts(t *testing.T) {
 	t.Parallel()
 	offerID := uuid.MustParse("00000000-0000-4000-8000-000000000022")
@@ -62,7 +77,9 @@ func TestBuildFlowSnapshot_offerCapFromCounts(t *testing.T) {
 		offerID: []byte("https://offer.test/"),
 	}, map[uuid.UUID]offerConversionCounts{
 		offerID: {daily: 5, total: 5},
-	})
+	}, nil, map[uuid.UUID]offerTableMeta{
+		offerID: {priority: 0},
+	}, "weighted")
 	require.True(t, ok)
 	require.Len(t, snap.Paths[0].Offers, 1)
 	assert.True(t, snap.Paths[0].Offers[0].Capped)

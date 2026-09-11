@@ -318,6 +318,9 @@ type CampaignExportCampaign struct {
 	LinkSigningEnabled           bool                  `json:"link_signing_enabled,omitempty"`
 	LinkSigningTTLSec            int32                 `json:"link_signing_ttl_sec,omitempty"`
 	ClickDelivery                string                `json:"click_delivery,omitempty"`
+	FallbackClickURL             string                `json:"fallback_click_url,omitempty"`
+	BudgetFailoverMode           string                `json:"budget_failover_mode,omitempty"`
+	ClickFilterBudgetPolicy      string                `json:"click_filter_budget_policy,omitempty"`
 	ProxyUpstreamURL             string                `json:"proxy_upstream_url,omitempty"`
 	ProxyRewriteAssets           bool                  `json:"proxy_rewrite_assets,omitempty"`
 	ProxyTimeoutFallbackEnabled  bool                  `json:"proxy_timeout_fallback_enabled,omitempty"`
@@ -344,14 +347,18 @@ type CampaignExportLander struct {
 }
 
 type CampaignExportOffer struct {
-	Ref  string `json:"ref"`
-	Name string `json:"name"`
-	URL  string `json:"url"`
+	Ref            string `json:"ref"`
+	Name           string `json:"name"`
+	URL            string `json:"url"`
+	OfferPriority  int32  `json:"offer_priority,omitempty"`
+	CapClicksDaily int32  `json:"cap_clicks_daily,omitempty"`
+	CapClicksTotal int32  `json:"cap_clicks_total,omitempty"`
 }
 
 type CampaignExportFlow struct {
-	Name  string                   `json:"name"`
-	Paths []CampaignExportFlowPath `json:"paths"`
+	Name            string                   `json:"name"`
+	FlowRoutingMode string                   `json:"flow_routing_mode,omitempty"`
+	Paths           []CampaignExportFlowPath `json:"paths"`
 }
 
 type CampaignExportFlowPath struct {

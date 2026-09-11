@@ -128,6 +128,17 @@ Campaign:
       type: string
       enum: [full, light, redirect_only]
       description: GET /click filter depth. redirect_only requires CLICK_FILTER_REDIRECT_ONLY_LICENSED on tracker.
+    fallback_click_url:
+      type: string
+      description: HTTPS redirect target when budget_failover_mode is fallback_url.
+    budget_failover_mode:
+      type: string
+      enum: [none, fallback_url, flow_next]
+      description: Policy when unified budget filter rejects a click.
+    click_filter_budget_policy:
+      type: string
+      enum: [inherit, full, light_skip_debit, redirect_skip_debit]
+      description: Per-campaign override for click filter budget debit behavior.
     proxy_upstream_url:
       type: string
     proxy_rewrite_assets:
@@ -337,6 +348,17 @@ PatchCampaignRequest:
       type: string
       enum: [full, light, redirect_only]
       description: GET /click filter depth. redirect_only requires CLICK_FILTER_REDIRECT_ONLY_LICENSED on tracker.
+    fallback_click_url:
+      type: string
+      description: HTTPS redirect target when budget_failover_mode is fallback_url.
+    budget_failover_mode:
+      type: string
+      enum: [none, fallback_url, flow_next]
+      description: Policy when unified budget filter rejects a click.
+    click_filter_budget_policy:
+      type: string
+      enum: [inherit, full, light_skip_debit, redirect_skip_debit]
+      description: Per-campaign override for click filter budget debit behavior.
     proxy_upstream_url:
       type: string
     proxy_rewrite_assets:
@@ -1216,6 +1238,15 @@ Offer:
       type: string
     url:
       type: string
+    offer_priority:
+      type: integer
+      format: int32
+    cap_clicks_daily:
+      type: integer
+      format: int32
+    cap_clicks_total:
+      type: integer
+      format: int32
     created_at:
       type: string
       format: date-time
@@ -1237,6 +1268,15 @@ UpdateOfferRequest:
       type: string
     url:
       type: string
+    offer_priority:
+      type: integer
+      format: int32
+    cap_clicks_daily:
+      type: integer
+      format: int32
+    cap_clicks_total:
+      type: integer
+      format: int32
 
 FlowPathLanderRef:
   type: object
@@ -1285,6 +1325,9 @@ Flow:
       format: uuid
     name:
       type: string
+    flow_routing_mode:
+      type: string
+      enum: [weighted, waterfall, waterfall_then_landing]
     paths:
       oneOf:
         - type: array
@@ -1301,6 +1344,9 @@ CreateFlowRequest:
   properties:
     name:
       type: string
+    flow_routing_mode:
+      type: string
+      enum: [weighted, waterfall, waterfall_then_landing]
     paths:
       type: array
       items:
@@ -1312,6 +1358,9 @@ UpdateFlowRequest:
   properties:
     name:
       type: string
+    flow_routing_mode:
+      type: string
+      enum: [weighted, waterfall, waterfall_then_landing]
     paths:
       type: array
       items:

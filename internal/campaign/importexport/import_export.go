@@ -202,8 +202,9 @@ func ImportCampaign(ctx context.Context, host campaign.ImportExportHost, spec ca
 			if err != nil {
 				return err
 			}
-			if _, err := tx.Exec(ctx, `INSERT INTO flows (id, name, paths) VALUES ($1, $2, $3::jsonb)`,
-				flowUUID, strings.TrimSpace(spec.Bundle.Flow.Name), rawPaths); err != nil {
+			flowRoutingMode := string(domain.NormalizeFlowRoutingMode(spec.Bundle.Flow.FlowRoutingMode))
+			if _, err := tx.Exec(ctx, `INSERT INTO flows (id, name, paths, flow_routing_mode) VALUES ($1, $2, $3::jsonb, $4)`,
+				flowUUID, strings.TrimSpace(spec.Bundle.Flow.Name), rawPaths, flowRoutingMode); err != nil {
 				return fmt.Errorf("insert flow: %w", err)
 			}
 			flowID = domain.ToUUID(flowUUID)
@@ -278,6 +279,9 @@ func ImportCampaign(ctx context.Context, host campaign.ImportExportHost, spec ca
 			ModeratorIntelEnabled:        camp.ModeratorIntelEnabled,
 			ReviewTrafficAction:          camp.ReviewTrafficAction,
 			ClickFilterTier:              string(domain.ClickFilterTierFull),
+			FallbackClickUrl:             domain.PgTextFromString(strings.TrimSpace(camp.FallbackClickURL)),
+			BudgetFailoverMode:           string(domain.NormalizeBudgetFailoverMode(camp.BudgetFailoverMode)),
+			ClickFilterBudgetPolicy:      string(domain.NormalizeClickFilterBudgetPolicy(camp.ClickFilterBudgetPolicy)),
 		}); err != nil {
 			return err
 		}
@@ -420,6 +424,9 @@ func campaignRowToExport(row db.Campaign) campaign.CampaignExportCampaign {
 		LinkSigningEnabled:           row.LinkSigningEnabled,
 		LinkSigningTTLSec:            row.LinkSigningTtlSec,
 		ClickDelivery:                row.ClickDelivery,
+		FallbackClickURL:             domain.PgTextValue(row.FallbackClickUrl),
+		BudgetFailoverMode:           row.BudgetFailoverMode,
+		ClickFilterBudgetPolicy:      row.ClickFilterBudgetPolicy,
 		ProxyUpstreamURL:             row.ProxyUpstreamUrl,
 		ProxyRewriteAssets:           row.ProxyRewriteAssets,
 		ProxyTimeoutFallbackEnabled:  row.ProxyTimeoutFallbackEnabled,
@@ -482,7 +489,11 @@ func exportFlowBundle(flow campaign.FlowDTO) (*campaign.CampaignExportFlow, map[
 		}
 		exportPaths = append(exportPaths, ep)
 	}
-	return &campaign.CampaignExportFlow{Name: flow.Name, Paths: exportPaths}, landerByID, offerByID, nil
+	return &campaign.CampaignExportFlow{
+		Name:            flow.Name,
+		FlowRoutingMode: flow.FlowRoutingMode,
+		Paths:           exportPaths,
+	}, landerByID, offerByID, nil
 }
 
 func enrichExportFlowAssets(ctx context.Context, pool *pgxpool.Pool, bundle *campaign.CampaignExportBundle, landerRefs map[uuid.UUID]campaign.CampaignExportLander, offerRefs map[uuid.UUID]campaign.CampaignExportOffer) error {
@@ -519,7 +530,9 @@ func enrichExportFlowAssets(ctx context.Context, pool *pgxpool.Pool, bundle *cam
 		offerIDs = append(offerIDs, id)
 	}
 	if len(offerIDs) > 0 {
-		rows, err := pool.Query(ctx, `SELECT id, name, url FROM offers WHERE id = ANY($1)`, offerIDs)
+		rows, err := pool.Query(ctx, `
+			SELECT id, name, url, COALESCE(offer_priority, 0), COALESCE(cap_clicks_daily, 0), COALESCE(cap_clicks_total, 0)
+			FROM offers WHERE id = ANY($1)`, offerIDs)
 		if err != nil {
 			return err
 		}
@@ -527,12 +540,16 @@ func enrichExportFlowAssets(ctx context.Context, pool *pgxpool.Pool, bundle *cam
 		for rows.Next() {
 			var id uuid.UUID
 			var name, url string
-			if err := rows.Scan(&id, &name, &url); err != nil {
+			var priority, capDaily, capTotal int32
+			if err := rows.Scan(&id, &name, &url, &priority, &capDaily, &capTotal); err != nil {
 				return err
 			}
 			ref := offerRefs[id]
 			ref.Name = name
 			ref.URL = url
+			ref.OfferPriority = priority
+			ref.CapClicksDaily = capDaily
+			ref.CapClicksTotal = capTotal
 			offerRefs[id] = ref
 		}
 		if err := rows.Err(); err != nil {
@@ -769,9 +786,12 @@ func batchUpsertOffersByNameURL(ctx context.Context, tx pgx.Tx, byRef map[string
 		return nil, nil
 	}
 	type offerPair struct {
-		ref  string
-		name string
-		url  string
+		ref            string
+		name           string
+		url            string
+		offerPriority  int32
+		capClicksDaily int32
+		capClicksTotal int32
 	}
 	pairs := make([]offerPair, 0, len(byRef))
 	names := make([]string, 0, len(byRef))
@@ -782,7 +802,14 @@ func batchUpsertOffersByNameURL(ctx context.Context, tx pgx.Tx, byRef map[string
 		if name == "" || url == "" {
 			return nil, campaign.ErrValidationf("offer name and url are required")
 		}
-		pairs = append(pairs, offerPair{ref: ref, name: name, url: url})
+		pairs = append(pairs, offerPair{
+			ref:            ref,
+			name:           name,
+			url:            url,
+			offerPriority:  row.OfferPriority,
+			capClicksDaily: row.CapClicksDaily,
+			capClicksTotal: row.CapClicksTotal,
+		})
 		names = append(names, name)
 		urls = append(urls, url)
 	}
@@ -824,11 +851,25 @@ INNER JOIN unnest($1::text[], $2::text[]) AS q(name, url)
 		missingURLs = append(missingURLs, pair.url)
 	}
 	if len(missingRefs) > 0 {
+		missingPriority := make([]int32, 0, len(missingRefs))
+		missingCapDaily := make([]int32, 0, len(missingRefs))
+		missingCapTotal := make([]int32, 0, len(missingRefs))
+		for _, ref := range missingRefs {
+			for _, pair := range pairs {
+				if pair.ref != ref {
+					continue
+				}
+				missingPriority = append(missingPriority, pair.offerPriority)
+				missingCapDaily = append(missingCapDaily, pair.capClicksDaily)
+				missingCapTotal = append(missingCapTotal, pair.capClicksTotal)
+				break
+			}
+		}
 		insertRows, err := tx.Query(ctx, `
-INSERT INTO offers (name, url)
-SELECT name, url
-FROM unnest($1::text[], $2::text[]) AS q(name, url)
-RETURNING id, name, url`, missingNames, missingURLs)
+INSERT INTO offers (name, url, offer_priority, cap_clicks_daily, cap_clicks_total)
+SELECT name, url, offer_priority, cap_clicks_daily, cap_clicks_total
+FROM unnest($1::text[], $2::text[], $3::int[], $4::int[], $5::int[]) AS q(name, url, offer_priority, cap_clicks_daily, cap_clicks_total)
+RETURNING id, name, url`, missingNames, missingURLs, missingPriority, missingCapDaily, missingCapTotal)
 		if err != nil {
 			return nil, err
 		}
@@ -858,6 +899,13 @@ RETURNING id, name, url`, missingNames, missingURLs)
 	for _, pair := range pairs {
 		if _, ok := found[pair.ref]; !ok {
 			return nil, fmt.Errorf("offer upsert incomplete for ref %q", pair.ref)
+		}
+		id := found[pair.ref]
+		if _, err := tx.Exec(ctx, `
+			UPDATE offers
+			SET offer_priority = $2, cap_clicks_daily = $3, cap_clicks_total = $4
+			WHERE id = $1`, id, pair.offerPriority, pair.capClicksDaily, pair.capClicksTotal); err != nil {
+			return nil, err
 		}
 	}
 	return found, nil
