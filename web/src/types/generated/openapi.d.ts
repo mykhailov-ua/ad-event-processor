@@ -4,6 +4,93 @@
  */
 
 export interface paths {
+    "/api/v1/access/catalog": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** RBAC capability and permission catalog */
+        get: operations["accessCatalog"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/access/roles": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** Role matrix JSON view */
+        get: operations["accessRolesList"];
+        /** Replace role matrix from JSON */
+        put: operations["accessRolesReplace"];
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/access/roles.yaml": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** Raw roles YAML */
+        get: operations["accessRolesYamlGet"];
+        /** Replace roles YAML */
+        put: operations["accessRolesYamlPut"];
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/access/roles/reload": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /** Reload roles from disk */
+        post: operations["accessRolesReload"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/access/roles/validate": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /** Dry-run validate roles YAML */
+        post: operations["accessRolesValidate"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/api/v1/audit": {
         parameters: {
             query?: never;
@@ -2394,6 +2481,86 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/api/v1/integrations/google-sheets": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        post?: never;
+        /**
+         * Route stub; schema not yet documented
+         * @description Route stub; schema not yet documented
+         */
+        delete: operations["deleteIntegrationsGoogleSheets"];
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/integrations/google-sheets/callback": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * Route stub; schema not yet documented
+         * @description Route stub; schema not yet documented
+         */
+        get: operations["getIntegrationsGoogleSheetsCallback"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/integrations/google-sheets/connect": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * Route stub; schema not yet documented
+         * @description Route stub; schema not yet documented
+         */
+        get: operations["getIntegrationsGoogleSheetsConnect"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/integrations/google-sheets/status": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * Route stub; schema not yet documented
+         * @description Route stub; schema not yet documented
+         */
+        get: operations["getIntegrationsGoogleSheetsStatus"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/api/v1/integrations/postbacks/health": {
         parameters: {
             query?: never;
@@ -3551,6 +3718,23 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/api/v1/report-schedules/{id}/run": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /** Enqueue report schedule immediately */
+        post: operations["reportSchedulesRunNow"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/api/v1/reports/campaign-geo-device": {
         parameters: {
             query?: never;
@@ -4008,6 +4192,23 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/api/v1/reports/jobs/{id}/rerun": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /** Re-run report export job with the same spec */
+        post: operations["reportRerunJob"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/api/v1/reports/keywords": {
         parameters: {
             query?: never;
@@ -4119,6 +4320,40 @@ export interface paths {
         get: operations["reportMlShadowDelta"];
         put?: never;
         post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/reports/notifications": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** List in-app report export notifications */
+        get: operations["reportListExportNotifications"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/reports/notifications/{id}/ack": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /** Acknowledge an in-app report export notification */
+        post: operations["reportAckExportNotification"];
         delete?: never;
         options?: never;
         head?: never;
@@ -5187,6 +5422,26 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/api/v1/team/budget-approvals/mine": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * Budget approval requests for the authenticated member
+         * @description Returns all statuses for the current user; requires membership in the customer.
+         */
+        get: operations["teamBudgetApprovalsMine"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/api/v1/team/members": {
         parameters: {
             query?: never;
@@ -5223,6 +5478,23 @@ export interface paths {
         head?: never;
         /** Update team member role or caps */
         patch: operations["teamUpdateMember"];
+        trace?: never;
+    };
+    "/api/v1/team/metrics": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** Team aggregate KPIs and owner leaderboard */
+        get: operations["teamMetrics"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
         trace?: never;
     };
     "/api/v1/team/overview": {
@@ -5523,6 +5795,23 @@ export interface paths {
         post?: never;
         /** Delete saved report view */
         delete: operations["deleteSavedView"];
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/views/{id}/export": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /** Enqueue report export job from saved view */
+        post: operations["exportSavedView"];
+        delete?: never;
         options?: never;
         head?: never;
         patch?: never;
@@ -6138,6 +6427,8 @@ export interface components {
             consistency: string;
             /** @description true when ClickHouse lag exceeds operator SLA window */
             stale: boolean;
+            /** @description Operator-facing freshness summary for dashboard chips and banners */
+            freshness_label?: string;
             /** Format: int32 */
             ch_lag_seconds?: number;
             sources?: components["schemas"]["DataSourceFreshness"][];
@@ -6794,21 +7085,29 @@ export interface components {
             to: string;
             /** @enum {string} */
             format?: "csv" | "json" | "zip" | "xlsx";
-            /** @description Max data rows in the export file. Server clamps to deployment tier. */
+            /**
+             * @default download
+             * @enum {string}
+             */
+            destination: "download" | "google_sheet";
+            google_sheet?: components["schemas"]["ReportJobGoogleSheetSpec"];
+            /** @description Max data rows in the export file. Server clamps to deployment tier (hard cap 5M). */
             row_limit?: number;
             /** @description Report-specific export parameters (campaign-toggle-cohort, layer-desync-drilldown, etc.). */
             import_payload?: {
                 [key: string]: unknown;
             };
-            /** @enum {string} */
-            destination?: "download" | "google_sheet";
-            google_sheet?: components["schemas"]["ReportJobGoogleSheetSpec"];
-        };
-        ReportJobGoogleSheetSpec: {
-            /** @enum {string} */
-            mode?: "create" | "append";
-            spreadsheet_id?: string;
-            sheet_title?: string;
+            /**
+             * Format: date-time
+             * @description Optional comparison period start; requires compare_to.
+             */
+            compare_from?: string;
+            /**
+             * Format: date-time
+             * @description Optional comparison period end; requires compare_from.
+             */
+            compare_to?: string;
+            notify?: components["schemas"]["ReportJobNotifySpec"];
         };
         ReportJobStatus: {
             id?: string;
@@ -6828,11 +7127,6 @@ export interface components {
             spreadsheet_id?: string;
             /** Format: date-time */
             created_at?: string;
-        };
-        GoogleSheetsIntegrationStatus: {
-            connected?: boolean;
-            account_email?: string;
-            message?: string;
         };
         ReportMapEnvelope: {
             rows: components["schemas"]["ReportMapRow"][];
@@ -6931,6 +7225,7 @@ export interface components {
             /** Format: uuid */
             campaign_id?: string;
             name: string;
+            template?: components["schemas"]["SmartAlertRuleTemplate"];
             metric: string;
             operator: string;
             /** Format: double */
@@ -7076,12 +7371,13 @@ export interface components {
             customer_id: string;
             /** Format: uuid */
             campaign_id?: string;
-            name: string;
-            metric: string;
-            operator: string;
+            name?: string;
+            template?: components["schemas"]["SmartAlertRuleTemplate"];
+            metric?: string;
+            operator?: string;
             /** Format: double */
-            threshold: number;
-            window_minutes: number;
+            threshold?: number;
+            window_minutes?: number;
             webhook_url: string;
             enabled: boolean;
         };
@@ -7236,7 +7532,7 @@ export interface components {
              * @enum {string}
              */
             format: "csv" | "ndjson";
-            /** @description Max ledger lines exported. Server clamps to deployment tier. */
+            /** @description Max ledger lines exported. Server clamps to deployment tier (hard cap 5M). */
             row_limit?: number;
         };
         BillingExportJobCreatedResponse: {
@@ -8133,6 +8429,100 @@ export interface components {
         RoleDashboard: {
             [key: string]: unknown;
         };
+        DashboardPeriod: {
+            /** Format: date-time */
+            from?: string;
+            /** Format: date-time */
+            to?: string;
+            timezone?: string;
+        };
+        DashboardMetricsBlock: {
+            /** Format: int64 */
+            spend_micro?: number;
+            /** Format: int64 */
+            cost_micro?: number;
+            /** Format: int64 */
+            revenue_micro?: number;
+            /** Format: int64 */
+            profit_micro?: number;
+            /** Format: int64 */
+            conversions?: number;
+            /** Format: int64 */
+            unique_clicks?: number;
+            /** Format: int64 */
+            cpc_micro?: number;
+            /** Format: int64 */
+            cpa_micro?: number;
+            /** Format: int64 */
+            epc_micro?: number;
+            /** Format: double */
+            cr_pct?: number;
+            /** Format: double */
+            roi_pct?: number;
+            freshness?: components["schemas"]["DataFreshness"];
+        };
+        DashboardCampaignRow: {
+            /** Format: uuid */
+            id?: string;
+            name?: string;
+            status?: string;
+            /** Format: int64 */
+            spend_micro?: number;
+            /** Format: int64 */
+            budget_micro?: number;
+            /** Format: double */
+            utilization_pct?: number;
+            /** Format: double */
+            roi_pct?: number;
+            /** Format: double */
+            pacing_drift_pct?: number;
+            overspend_risk?: boolean;
+        };
+        DashboardSourceRow: {
+            /** Format: uuid */
+            campaign_id?: string;
+            sub1?: string;
+            sub2?: string;
+            country?: string;
+            /** Format: int64 */
+            impressions?: number;
+            /** Format: int64 */
+            clicks?: number;
+            /** Format: int64 */
+            conversions?: number;
+            /** Format: int64 */
+            spend_micro?: number;
+            /** Format: int64 */
+            revenue_micro?: number;
+            /** Format: int64 */
+            profit_micro?: number;
+            /** Format: int64 */
+            cpa_micro?: number;
+            /** Format: double */
+            roi_pct?: number;
+            /** Format: double */
+            ctr?: number;
+            /** Format: double */
+            ivt_rate?: number;
+            /** Format: double */
+            quality_score?: number;
+        };
+        DashboardTableSectionMeta: {
+            truncated?: boolean;
+            total?: number;
+        };
+        DashboardTableSectionsMeta: {
+            [key: string]: components["schemas"]["DashboardTableSectionMeta"];
+        };
+        AdOpsDashboard: {
+            /** Format: uuid */
+            customer_id: string;
+            period: components["schemas"]["DashboardPeriod"];
+            kpis: components["schemas"]["DashboardMetricsBlock"];
+            campaigns: components["schemas"]["DashboardCampaignRow"][];
+            worst_sources: components["schemas"]["DashboardSourceRow"][];
+            table_sections_meta?: components["schemas"]["DashboardTableSectionsMeta"];
+        };
         DisputeRow: {
             intent_id?: string;
             /** Format: uuid */
@@ -8783,13 +9173,54 @@ export interface components {
             /** Format: date-time */
             completed_at?: string;
         };
+        ReportJobGoogleSheetSpec: {
+            /**
+             * @default create
+             * @enum {string}
+             */
+            mode: "create" | "append";
+            /** @description Required when mode is append. */
+            spreadsheet_id?: string;
+            /** @description Tab title; server generates a default when omitted. */
+            sheet_title?: string;
+        };
+        ReportJobNotifySpec: {
+            /**
+             * @default none
+             * @enum {string}
+             */
+            channel: "none" | "in_app" | "email" | "slack_webhook";
+            /**
+             * Format: email
+             * @description Required when channel is email.
+             */
+            email?: string;
+            /**
+             * Format: uri
+             * @description Required when channel is slack_webhook.
+             */
+            webhook_url?: string;
+        };
         ReportSchedule: {
             /** Format: uuid */
             id?: string;
             /** Format: uuid */
             customer_id?: string;
             report_key?: string;
-            format?: string;
+            /** @enum {string} */
+            format?: "csv" | "json" | "xlsx" | "zip";
+            /**
+             * @default download
+             * @enum {string}
+             */
+            destination: "download" | "google_sheet";
+            /**
+             * Format: uuid
+             * @description OAuth actor for scheduled Google Sheets exports.
+             */
+            owner_user_id?: string;
+            google_sheet?: components["schemas"]["ReportJobGoogleSheetSpec"];
+            notify?: components["schemas"]["ReportJobNotifySpec"];
             cron_expr?: string;
             spec?: {
                 [key: string]: unknown;
@@ -8800,6 +9231,8 @@ export interface components {
             /** Format: date-time */
             last_run_at?: string;
             last_job_id?: string;
+            last_run_status?: string;
+            last_run_error_public?: string;
             /** Format: date-time */
             created_at?: string;
             /** Format: date-time */
@@ -8809,7 +9242,17 @@ export interface components {
             /** Format: uuid */
             customer_id: string;
             report_key: string;
-            format?: string;
+            /** @enum {string} */
+            format?: "csv" | "json" | "xlsx" | "zip";
+            /**
+             * @default download
+             * @enum {string}
+             */
+            destination: "download" | "google_sheet";
+            /** Format: uuid */
+            owner_user_id?: string;
+            google_sheet?: components["schemas"]["ReportJobGoogleSheetSpec"];
+            notify?: components["schemas"]["ReportJobNotifySpec"];
             cron_expr: string;
             spec?: {
                 [key: string]: unknown;
@@ -8818,12 +9261,24 @@ export interface components {
         };
         UpdateReportScheduleRequest: {
             report_key?: string;
-            format?: string;
+            /** @enum {string} */
+            format?: "csv" | "json" | "xlsx" | "zip";
+            /** @enum {string} */
+            destination?: "download" | "google_sheet";
+            /** Format: uuid */
+            owner_user_id?: string;
+            google_sheet?: components["schemas"]["ReportJobGoogleSheetSpec"];
+            notify?: components["schemas"]["ReportJobNotifySpec"];
             cron_expr?: string;
             spec?: {
                 [key: string]: unknown;
             };
             enabled?: boolean;
+        };
+        ReportScheduleRunResponse: {
+            /** Format: uuid */
+            job_id?: string;
+            schedule?: components["schemas"]["ReportSchedule"];
         };
         CampaignGeoDeviceRow: {
             country?: string;
@@ -9317,6 +9772,26 @@ export interface components {
             rows: components["schemas"]["MLShadowDeltaRow"][];
             freshness: components["schemas"]["DataFreshness"];
             next_cursor?: string;
+        };
+        ReportExportNotification: {
+            /** Format: uuid */
+            id?: string;
+            /** Format: uuid */
+            job_id?: string;
+            /** Format: uuid */
+            customer_id?: string;
+            report_key?: string;
+            /** @enum {string} */
+            kind?: "completed" | "failed";
+            title?: string;
+            body?: string;
+            read?: boolean;
+            /** Format: date-time */
+            created_at?: string;
+        };
+        ReportExportNotificationList: {
+            rows?: components["schemas"]["ReportExportNotification"][];
+            unread_count?: number;
         };
         PacingDriftRow: {
             /** Format: uuid */
@@ -9922,6 +10397,8 @@ export interface components {
             deployment_id?: string;
             eula_version?: string;
         };
+        /** @enum {string} */
+        SmartAlertRuleTemplate: "budget_burn_pct" | "roi_below" | "pacing_drift" | "export_job_failed" | "margin_breach";
         SupportFeedbackRequest: {
             type: string;
             contact_email?: string;
@@ -9990,6 +10467,49 @@ export interface components {
             /** Format: int64 */
             spend_cap_micro?: number;
         };
+        TeamMetricsBlock: {
+            /** Format: int64 */
+            spend_micro?: number;
+            /** Format: int64 */
+            cost_micro?: number;
+            /** Format: int64 */
+            revenue_micro?: number;
+            /** Format: int64 */
+            profit_micro?: number;
+            /** Format: int64 */
+            conversions?: number;
+            /** Format: int64 */
+            unique_clicks?: number;
+            /** Format: int64 */
+            cpc_micro?: number;
+            /** Format: int64 */
+            cpa_micro?: number;
+            /** Format: int64 */
+            epc_micro?: number;
+            /** Format: double */
+            cr_pct?: number;
+            /** Format: double */
+            roi_pct?: number;
+            freshness?: components["schemas"]["DataFreshness"];
+        };
+        TeamOwnerMetrics: {
+            /** Format: uuid */
+            user_id?: string;
+            email?: string;
+            kpis?: components["schemas"]["TeamMetricsBlock"];
+        };
+        TeamMetricsResponse: {
+            /** Format: uuid */
+            customer_id?: string;
+            period?: {
+                /** Format: date-time */
+                from?: string;
+                /** Format: date-time */
+                to?: string;
+            };
+            aggregate?: components["schemas"]["TeamMetricsBlock"];
+            by_owner?: components["schemas"]["TeamOwnerMetrics"][];
+        };
         TeamLicense: {
             state?: string;
             /** Format: date-time */
@@ -10006,6 +10526,10 @@ export interface components {
             currency?: string;
             license?: components["schemas"]["TeamLicense"];
             members?: components["schemas"]["TeamMember"][];
+            /** Format: int64 */
+            pending_approvals_count?: number;
+            /** Format: int64 */
+            pending_for_me_count?: number;
         };
         TelegramBot: {
             /** Format: uuid */
@@ -10182,6 +10706,11 @@ export interface components {
             };
             is_shared?: boolean;
         };
+        SavedViewExportResponse: {
+            /** Format: uuid */
+            job_id?: string;
+            view?: components["schemas"]["SavedView"];
+        };
         ReportMapRow: {
             [key: string]: unknown;
         };
@@ -10227,12 +10756,139 @@ export interface components {
 }
 export type $defs = Record<string, never>;
 export interface operations {
+    accessCatalog: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Catalog payload */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+        };
+    };
+    accessRolesList: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Roles with compiled permissions */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+        };
+    };
+    accessRolesReplace: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Applied revision */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+        };
+    };
+    accessRolesYamlGet: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description YAML document */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+        };
+    };
+    accessRolesYamlPut: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Applied revision */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+        };
+    };
+    accessRolesReload: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Reloaded */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+        };
+    };
+    accessRolesValidate: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Validation result */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+        };
+    };
     auditList: {
         parameters: {
             query?: {
                 limit?: components["parameters"]["LimitQuery"];
                 offset?: components["parameters"]["OffsetQuery"];
                 admin_id?: string;
+                /** @description Filter audit rows by target UUID (e.g. campaign id). */
                 target_id?: string;
                 action?: string;
                 auth_source?: "session" | "api_key";
@@ -13091,7 +13747,7 @@ export interface operations {
                     [name: string]: unknown;
                 };
                 content: {
-                    "application/json": components["schemas"]["RoleDashboard"];
+                    "application/json": components["schemas"]["AdOpsDashboard"];
                 };
             };
             default: components["responses"]["Error"];
@@ -14159,6 +14815,82 @@ export interface operations {
                 content: {
                     "application/json": components["schemas"]["IntegrationSchema"][];
                 };
+            };
+            default: components["responses"]["Error"];
+        };
+    };
+    deleteIntegrationsGoogleSheets: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description OK */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            default: components["responses"]["Error"];
+        };
+    };
+    getIntegrationsGoogleSheetsCallback: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description OK */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            default: components["responses"]["Error"];
+        };
+    };
+    getIntegrationsGoogleSheetsConnect: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description OK */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            default: components["responses"]["Error"];
+        };
+    };
+    getIntegrationsGoogleSheetsStatus: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description OK */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
             };
             default: components["responses"]["Error"];
         };
@@ -16127,6 +16859,29 @@ export interface operations {
             default: components["responses"]["Error"];
         };
     };
+    reportSchedulesRunNow: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                id: components["parameters"]["UuidPathId"];
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Job enqueued from schedule */
+            202: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ReportScheduleRunResponse"];
+                };
+            };
+            default: components["responses"]["Error"];
+        };
+    };
     reportCampaignGeoDevice: {
         parameters: {
             query: {
@@ -16895,10 +17650,46 @@ export interface operations {
                     [name: string]: unknown;
                 };
                 content: {
-                    "application/json": {
-                        [key: string]: unknown;
-                    };
                     "text/csv": string;
+                    "application/json": string;
+                    "application/zip": string;
+                    "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet": string;
+                };
+            };
+            /** @description Google Sheet destination has no file artifact */
+            409: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": {
+                        /** @enum {string} */
+                        code?: "USE_SPREADSHEET_URL";
+                        message?: string;
+                    };
+                };
+            };
+            default: components["responses"]["Error"];
+        };
+    };
+    reportRerunJob: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                id: components["parameters"]["UuidPathId"];
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Cloned export job accepted */
+            201: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ReportJobStatus"];
                 };
             };
             default: components["responses"]["Error"];
@@ -17099,6 +17890,50 @@ export interface operations {
                 };
                 content: {
                     "application/json": components["schemas"]["MLShadowDeltaReportResponse"];
+                };
+            };
+            default: components["responses"]["Error"];
+        };
+    };
+    reportListExportNotifications: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description In-app export notifications for the current operator */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ReportExportNotificationList"];
+                };
+            };
+            default: components["responses"]["Error"];
+        };
+    };
+    reportAckExportNotification: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                id: components["parameters"]["UuidPathId"];
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Acknowledged notification */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ReportExportNotification"];
                 };
             };
             default: components["responses"]["Error"];
@@ -18420,6 +19255,7 @@ export interface operations {
             query: {
                 customer_id: components["parameters"]["CustomerIdQueryRequired"];
                 limit?: components["parameters"]["LimitQuery"];
+                offset?: components["parameters"]["OffsetQuery"];
             };
             header?: never;
             path?: never;
@@ -18927,6 +19763,31 @@ export interface operations {
             default: components["responses"]["Error"];
         };
     };
+    teamBudgetApprovalsMine: {
+        parameters: {
+            query: {
+                customer_id: components["parameters"]["CustomerIdQueryRequired"];
+                limit?: components["parameters"]["LimitQuery"];
+                offset?: components["parameters"]["OffsetQuery"];
+            };
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description My approvals page */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["TeamBudgetApprovalsListResponse"];
+                };
+            };
+            default: components["responses"]["Error"];
+        };
+    };
     teamMembersList: {
         parameters: {
             query: {
@@ -18999,6 +19860,31 @@ export interface operations {
                 };
                 content: {
                     "application/json": components["schemas"]["TeamMember"];
+                };
+            };
+            default: components["responses"]["Error"];
+        };
+    };
+    teamMetrics: {
+        parameters: {
+            query: {
+                customer_id: components["parameters"]["CustomerIdQueryRequired"];
+                from?: string;
+                to?: string;
+            };
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Team metrics */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["TeamMetricsResponse"];
                 };
             };
             default: components["responses"]["Error"];
@@ -19619,6 +20505,29 @@ export interface operations {
                     [name: string]: unknown;
                 };
                 content?: never;
+            };
+            default: components["responses"]["Error"];
+        };
+    };
+    exportSavedView: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                id: components["parameters"]["UuidPathId"];
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Enqueued export job from saved view */
+            201: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["SavedViewExportResponse"];
+                };
             };
             default: components["responses"]["Error"];
         };

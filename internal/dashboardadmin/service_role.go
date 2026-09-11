@@ -48,8 +48,14 @@ func statementFeeMicro(lines []ledger.InvoiceLineDTO) int64 {
 	return fee
 }
 
-func (st *RoleService) GetAdOpsDashboard(ctx context.Context, customerID uuid.UUID) (AdOpsDashboardDTO, error) {
-	portfolio, err := st.host.GetBuyerPortfolio(ctx, customerID)
+func (st *RoleService) GetAdOpsDashboard(ctx context.Context, customerID uuid.UUID, from, to time.Time) (AdOpsDashboardDTO, error) {
+	if customerID == uuid.Nil {
+		return AdOpsDashboardDTO{}, st.host.ErrValidation("customer_id is required")
+	}
+	if err := reports.ValidateChartRange(from, to); err != nil {
+		return AdOpsDashboardDTO{}, err
+	}
+	portfolio, err := st.host.GetBuyerPortfolioRange(ctx, customerID, nil, from, to, reports.ChartGranularityDay)
 	if err != nil {
 		return AdOpsDashboardDTO{}, err
 	}

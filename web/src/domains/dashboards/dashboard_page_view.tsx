@@ -6,6 +6,7 @@ import { DashboardBreakdownList } from '@/domains/dashboards/dashboard_breakdown
 import { DashboardKpiBlocks } from '@/domains/dashboards/dashboard_kpi_blocks';
 import { DashboardNav } from '@/domains/dashboards/dashboard_nav';
 import { DashboardStaleBanner } from '@/domains/dashboards/dashboard_stale_banner';
+import { DashboardAdopsCampaignsList } from '@/domains/dashboards/dashboard_adops_campaigns_list';
 import { DashboardWorstSourcesList } from '@/domains/dashboards/dashboard_worst_sources_list';
 import type { DashboardPageWorkspace } from '@/domains/dashboards/use_dashboard_page_workspace';
 import { DASHBOARD_RANGE_PRESETS } from '@/domains/dashboards/use_dashboard_page_workspace';
@@ -187,7 +188,15 @@ export function DashboardPageView({
             </>
           ) : null}
           {role === 'adops' && adopsData ? (
-            <DashboardWorstSourcesList rows={adopsData.worst_sources} />
+            <>
+              <DashboardAdopsCampaignsList
+                exportHref={exportCampaignOverviewHref}
+                rows={adopsData.campaigns}
+                stale={stale}
+                tableMeta={adopsData.table_sections_meta?.campaigns}
+              />
+              <DashboardWorstSourcesList rows={adopsData.worst_sources} />
+            </>
           ) : null}
         </PageSectionStack>
       ) : null}

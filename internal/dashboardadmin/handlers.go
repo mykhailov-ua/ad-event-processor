@@ -122,7 +122,7 @@ type CampaignDashboardReader interface {
 }
 
 type RoleDashboardReader interface {
-	GetAdOpsDashboard(ctx context.Context, customerID uuid.UUID) (AdOpsDashboardDTO, error)
+	GetAdOpsDashboard(ctx context.Context, customerID uuid.UUID, from, to time.Time) (AdOpsDashboardDTO, error)
 	GetCFODashboard(ctx context.Context, customerID uuid.UUID) (CFODashboardDTO, error)
 	GetAccountantDashboard(ctx context.Context, customerID uuid.UUID) (AccountantDashboardDTO, error)
 	GetFraudDashboard(ctx context.Context, customerID uuid.UUID) (FraudDashboardDTO, error)
@@ -610,7 +610,12 @@ func (h *HTTPHandlers) getAdOpsDashboard(w http.ResponseWriter, r *http.Request)
 	if !ok {
 		return
 	}
-	resp, err := h.RoleDashboards.GetAdOpsDashboard(r.Context(), customerID)
+	from, to, err := parseDashboardRange(r)
+	if err != nil {
+		h.writeServiceError(w, err)
+		return
+	}
+	resp, err := h.RoleDashboards.GetAdOpsDashboard(r.Context(), customerID, from, to)
 	if err != nil {
 		h.writeServiceError(w, err)
 		return

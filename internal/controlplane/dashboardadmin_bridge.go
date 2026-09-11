@@ -148,8 +148,8 @@ func (s *Service) GetCampaignDashboard(ctx context.Context, req dashboardadmin.C
 	return s.campaignDashboard().GetCampaignDashboard(ctx, req)
 }
 
-func (s *Service) GetAdOpsDashboard(ctx context.Context, customerID uuid.UUID) (dashboardadmin.AdOpsDashboardDTO, error) {
-	return s.roleDashboard().GetAdOpsDashboard(ctx, customerID)
+func (s *Service) GetAdOpsDashboard(ctx context.Context, customerID uuid.UUID, from, to time.Time) (dashboardadmin.AdOpsDashboardDTO, error) {
+	return s.roleDashboard().GetAdOpsDashboard(ctx, customerID, from, to)
 }
 
 func (s *Service) GetCFODashboard(ctx context.Context, customerID uuid.UUID) (dashboardadmin.CFODashboardDTO, error) {

@@ -16,7 +16,7 @@ type Service interface {
 	CreateSmartAlertRule(ctx context.Context, req UpsertRuleRequest) (RuleDTO, error)
 	UpdateSmartAlertRule(ctx context.Context, ruleID uuid.UUID, req UpsertRuleRequest) (RuleDTO, error)
 	DeleteSmartAlertRule(ctx context.Context, ruleID uuid.UUID) error
-	ListSmartAlertHistory(ctx context.Context, customerID uuid.UUID, limit int) ([]EventDTO, error)
+	ListSmartAlertHistory(ctx context.Context, customerID uuid.UUID, limit, offset int) ([]EventDTO, error)
 	AckSmartAlertEvent(ctx context.Context, eventID, actorID uuid.UUID) error
 }
 
@@ -169,9 +169,10 @@ func (h *HTTPHandlers) listHistory(w http.ResponseWriter, r *http.Request) {
 		httpresponse.Error(w, http.StatusBadRequest, "BAD_REQUEST", "invalid customer_id")
 		return
 	}
-	limit32, _ := coldpath.ParseAPIPaginationWith(r, 50, 200)
+	limit32, offset32 := coldpath.ParseAPIPaginationWith(r, 50, 200)
 	limit := int(limit32)
-	events, err := h.Service.ListSmartAlertHistory(r.Context(), custID, limit)
+	offset := int(offset32)
+	events, err := h.Service.ListSmartAlertHistory(r.Context(), custID, limit, offset)
 	if err != nil {
 		httpresponse.Error(w, http.StatusInternalServerError, "INTERNAL", err.Error())
 		return

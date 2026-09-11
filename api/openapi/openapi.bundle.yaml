@@ -859,6 +859,8 @@ paths:
         $ref: paths/platform.yaml#/paths/~1api~1v1~1report-schedules
     /api/v1/report-schedules/{id}:
         $ref: paths/platform.yaml#/paths/~1api~1v1~1report-schedules~1{id}
+    /api/v1/report-schedules/{id}/run:
+        $ref: paths/platform.yaml#/paths/~1api~1v1~1report-schedules~1{id}~1run
     /api/v1/reports/campaign-geo-device:
         $ref: paths/ops_reports.yaml#/paths/~1api~1v1~1reports~1campaign-geo-device
     /api/v1/reports/campaign-overview:
@@ -907,6 +909,8 @@ paths:
         $ref: paths/ops_reports.yaml#/paths/~1api~1v1~1reports~1jobs~1{id}
     /api/v1/reports/jobs/{id}/download:
         $ref: paths/ops_reports.yaml#/paths/~1api~1v1~1reports~1jobs~1{id}~1download
+    /api/v1/reports/jobs/{id}/rerun:
+        $ref: paths/ops_reports.yaml#/paths/~1api~1v1~1reports~1jobs~1{id}~1rerun
     /api/v1/reports/keywords:
         $ref: paths/ops_reports.yaml#/paths/~1api~1v1~1reports~1keywords
     /api/v1/reports/layer-desync-drilldown:
@@ -919,6 +923,10 @@ paths:
         $ref: paths/ops_reports.yaml#/paths/~1api~1v1~1reports~1ml~1score-distribution
     /api/v1/reports/ml/shadow-delta:
         $ref: paths/ops_reports.yaml#/paths/~1api~1v1~1reports~1ml~1shadow-delta
+    /api/v1/reports/notifications:
+        $ref: paths/ops_reports.yaml#/paths/~1api~1v1~1reports~1notifications
+    /api/v1/reports/notifications/{id}/ack:
+        $ref: paths/ops_reports.yaml#/paths/~1api~1v1~1reports~1notifications~1{id}~1ack
     /api/v1/reports/pacing-drift:
         $ref: paths/ops_reports.yaml#/paths/~1api~1v1~1reports~1pacing-drift
     /api/v1/reports/placements:
@@ -1037,10 +1045,14 @@ paths:
         $ref: paths/platform.yaml#/paths/~1api~1v1~1team~1budget-approvals~1{id}~1approve
     /api/v1/team/budget-approvals/{id}/deny:
         $ref: paths/platform.yaml#/paths/~1api~1v1~1team~1budget-approvals~1{id}~1deny
+    /api/v1/team/budget-approvals/mine:
+        $ref: paths/platform.yaml#/paths/~1api~1v1~1team~1budget-approvals~1mine
     /api/v1/team/members:
         $ref: paths/platform.yaml#/paths/~1api~1v1~1team~1members
     /api/v1/team/members/{id}:
         $ref: paths/platform.yaml#/paths/~1api~1v1~1team~1members~1{id}
+    /api/v1/team/metrics:
+        $ref: paths/platform.yaml#/paths/~1api~1v1~1team~1metrics
     /api/v1/team/overview:
         $ref: paths/platform.yaml#/paths/~1api~1v1~1team~1overview
     /api/v1/telegram/bots:
@@ -1075,6 +1087,8 @@ paths:
         $ref: paths/ops_reports.yaml#/paths/~1api~1v1~1views
     /api/v1/views/{id}:
         $ref: paths/ops_reports.yaml#/paths/~1api~1v1~1views~1{id}
+    /api/v1/views/{id}/export:
+        $ref: paths/ops_reports.yaml#/paths/~1api~1v1~1views~1{id}~1export
     /lp-preview/{lander_id}/{path...}:
         $ref: paths/campaigns.yaml#/paths/~1lp-preview~1{lander_id}~1{path...}
     /lp/{lander_id}/{path...}:

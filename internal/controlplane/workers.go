@@ -394,6 +394,26 @@ func (s *Service) EnqueueInviteEmail(ctx context.Context, email, url string) {
 	slog.Info("invite email dry-run", "email", email, "url", url)
 }
 
+func (s *Service) sendExportJobNotify(ctx context.Context, n reportjob.ReportJobNotifySpec, title, body string) error {
+	if s == nil || s.notifierAPI == nil {
+		return fmt.Errorf("notifier unavailable")
+	}
+	switch strings.TrimSpace(n.Channel) {
+	case "email":
+		provider := "SMTP"
+		if s.cfg != nil && strings.TrimSpace(s.cfg.Notifier.InvoiceProvider) != "" {
+			provider = s.cfg.Notifier.InvoiceProvider
+		}
+		_, err := s.notifierAPI.SendNotification(ctx, provider, n.Email, title, body)
+		return err
+	case "slack_webhook":
+		_, err := s.notifierAPI.SendNotification(ctx, "slack", n.WebhookURL, title, body)
+		return err
+	default:
+		return nil
+	}
+}
+
 func (s *Service) AuditOwnerActivation(ctx context.Context, deploymentID, customerID, ownerUserID uuid.UUID) {
 	if s == nil {
 		return

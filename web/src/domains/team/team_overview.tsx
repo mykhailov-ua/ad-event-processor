@@ -37,6 +37,7 @@ import {
   DialogTitle,
 } from '@/components/ui/dialog';
 import { DropdownMenuItem } from '@/components/ui/dropdown-menu';
+import { DatetimePicker } from '@/components/ui/datetime_picker';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import {
@@ -49,6 +50,7 @@ import {
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import type { TeamBudgetApproval, TeamMember, TeamOverview, TeamMetricsResponse } from '@/api/types';
 import { displayTimestamp } from '@/lib/display';
+import { DASHBOARD_RANGE_PRESETS, type DashboardRangePreset } from '@/lib/dashboard_range';
 import { TeamMetricsPanel } from '@/domains/team/team_metrics_panel';
 import { TeamMyApprovalsPanel } from '@/domains/team/team_my_approvals_panel';
 
@@ -80,6 +82,10 @@ export type TeamOverviewViewProps = {
   metricsFetching: boolean;
   metricsError: Error | undefined;
   hasMetricsSnapshot: boolean;
+  metricsRangeLabel: string;
+  draftMetricsFrom: string;
+  draftMetricsTo: string;
+  draftMetricsPreset: DashboardRangePreset;
   myApprovals: TeamBudgetApproval[];
   myApprovalsFetching: boolean;
   myApprovalsError: Error | undefined;
@@ -116,6 +122,9 @@ export type TeamOverviewViewProps = {
   actingId?: string;
   memberUpdatingId?: string;
   onDraftCustomerIdChange: (value: string) => void;
+  onDraftMetricsFromChange: (value: string) => void;
+  onDraftMetricsToChange: (value: string) => void;
+  onDraftMetricsPresetChange: (preset: DashboardRangePreset) => void;
   onDraftInviteEmailChange: (value: string) => void;
   onDraftInviteRoleChange: (value: string) => void;
   onMemberDraftChange: (memberId: string, patch: Partial<TeamMemberEditDraft>) => void;
@@ -146,6 +155,10 @@ export function TeamOverviewView({
   metricsFetching,
   metricsError,
   hasMetricsSnapshot,
+  metricsRangeLabel,
+  draftMetricsFrom,
+  draftMetricsTo,
+  draftMetricsPreset,
   myApprovals,
   myApprovalsFetching,
   myApprovalsError,
@@ -182,6 +195,9 @@ export function TeamOverviewView({
   actingId,
   memberUpdatingId,
   onDraftCustomerIdChange,
+  onDraftMetricsFromChange,
+  onDraftMetricsToChange,
+  onDraftMetricsPresetChange,
   onDraftInviteEmailChange,
   onDraftInviteRoleChange,
   onMemberDraftChange,
@@ -231,6 +247,43 @@ export function TeamOverviewView({
                 onChange={(event) => onDraftCustomerIdChange(event.target.value)}
               />
             </FilterField>
+            {canViewTeamMetrics ? (
+              <>
+                <FilterField htmlFor="team-metrics-preset" label="Metrics range">
+                  <Select
+                    value={draftMetricsPreset}
+                    onValueChange={(value) =>
+                      onDraftMetricsPresetChange(value as DashboardRangePreset)
+                    }
+                  >
+                    <SelectTrigger id="team-metrics-preset">
+                      <SelectValue placeholder="Range preset" />
+                    </SelectTrigger>
+                    <SelectContent>
+                      {DASHBOARD_RANGE_PRESETS.map((preset) => (
+                        <SelectItem key={preset.id} value={preset.id}>
+                          {preset.label}
+                        </SelectItem>
+                      ))}
+                    </SelectContent>
+                  </Select>
+                </FilterField>
+                <FilterField htmlFor="team-metrics-from" label="From">
+                  <DatetimePicker
+                    id="team-metrics-from"
+                    value={draftMetricsFrom}
+                    onChange={onDraftMetricsFromChange}
+                  />
+                </FilterField>
+                <FilterField htmlFor="team-metrics-to" label="To">
+                  <DatetimePicker
+                    id="team-metrics-to"
+                    value={draftMetricsTo}
+                    onChange={onDraftMetricsToChange}
+                  />
+                </FilterField>
+              </>
+            ) : null}
             <SecondaryActionButton type="submit">Load</SecondaryActionButton>
           </DirectoryFilterForm>
         </FilterPanel>
@@ -292,6 +345,7 @@ export function TeamOverviewView({
           fetching={metricsFetching}
           hasSnapshot={hasMetricsSnapshot}
           metrics={teamMetrics}
+          rangeLabel={metricsRangeLabel}
         />
       ) : null}
 

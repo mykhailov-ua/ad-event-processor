@@ -21,14 +21,21 @@ type TeamMetricsPanelProps = {
   fetching: boolean;
   error: Error | undefined;
   hasSnapshot: boolean;
+  rangeLabel: string;
 };
 
-export function TeamMetricsPanel({ metrics, fetching, error, hasSnapshot }: TeamMetricsPanelProps) {
+export function TeamMetricsPanel({
+  metrics,
+  fetching,
+  error,
+  hasSnapshot,
+  rangeLabel,
+}: TeamMetricsPanelProps) {
   const stale = metrics?.aggregate?.freshness?.stale ?? false;
   const leaderboard = (metrics?.by_owner ?? []).slice(0, TEAM_LEADERBOARD_UI_CAP);
 
   return (
-    <BentoSection title="Team KPIs (7d)">
+    <BentoSection title={`Team KPIs (${rangeLabel})`}>
       {error ? (
         <DirectoryFetchError
           error={error}

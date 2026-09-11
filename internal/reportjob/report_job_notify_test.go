@@ -112,3 +112,64 @@ func TestNormalizeReportJobNotify_inApp_holdout(t *testing.T) {
 	require.NoError(t, normalizeReportJobNotify(&spec))
 	assert.Equal(t, "in_app", spec.Notify.Channel)
 }
+
+func TestReportJobNotify_emailChannel_callsSendExportNotify_holdout(t *testing.T) {
+	t.Parallel()
+	var gotTitle, gotBody, gotEmail string
+	runner := NewReportJobRunner(t.TempDir(), ExportDeps{
+		WriteReport: func(ctx context.Context, path string, spec ReportJobSpec) error {
+			return os.WriteFile(path, []byte("ok"), 0o640)
+		},
+		SendExportNotify: func(ctx context.Context, notify ReportJobNotifySpec, title, body string) error {
+			gotTitle = title
+			gotBody = body
+			gotEmail = notify.Email
+			return nil
+		},
+	})
+	jobID, err := runner.CreateJob(context.Background(), ReportJobSpec{
+		CustomerID: uuid.New().String(),
+		ReportKey:  "placements",
+		From:       time.Now().UTC().Add(-24 * time.Hour).Format(time.RFC3339),
+		To:         time.Now().UTC().Format(time.RFC3339),
+		Format:     "csv",
+		Notify:     ReportJobNotifySpec{Channel: "email", Email: "ops@example.com"},
+	}, "")
+	require.NoError(t, err)
+	require.Eventually(t, func() bool {
+		status, ok := runner.GetJob(context.Background(), jobID)
+		return ok && status.Status == JobStatusCompleted
+	}, time.Second, 10*time.Millisecond)
+	assert.Contains(t, gotTitle, "Export ready")
+	assert.Contains(t, gotBody, jobID)
+	assert.Equal(t, "ops@example.com", gotEmail)
+}
+
+func TestReportJobNotify_slackWebhook_callsSendExportNotify_holdout(t *testing.T) {
+	t.Parallel()
+	var gotWebhookURL string
+	runner := NewReportJobRunner(t.TempDir(), ExportDeps{
+		WriteReport: func(ctx context.Context, path string, spec ReportJobSpec) error {
+			return assert.AnError
+		},
+		SendExportNotify: func(ctx context.Context, notify ReportJobNotifySpec, title, body string) error {
+			gotWebhookURL = notify.WebhookURL
+			return nil
+		},
+	})
+	webhook := "https://hooks.slack.com/services/T00/B00/xx"
+	jobID, err := runner.CreateJob(context.Background(), ReportJobSpec{
+		CustomerID: uuid.New().String(),
+		ReportKey:  "placements",
+		From:       time.Now().UTC().Add(-24 * time.Hour).Format(time.RFC3339),
+		To:         time.Now().UTC().Format(time.RFC3339),
+		Format:     "csv",
+		Notify:     ReportJobNotifySpec{Channel: "slack_webhook", WebhookURL: webhook},
+	}, "")
+	require.NoError(t, err)
+	require.Eventually(t, func() bool {
+		status, ok := runner.GetJob(context.Background(), jobID)
+		return ok && status.Status == JobStatusFailed
+	}, time.Second, 10*time.Millisecond)
+	assert.Equal(t, webhook, gotWebhookURL)
+}

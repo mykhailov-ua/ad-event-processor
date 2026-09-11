@@ -109,6 +109,22 @@ func ValidateReportJobNotifySpec(spec *ReportJobSpec) error {
 	return normalizeReportJobNotify(&copy)
 }
 
+func exportTerminalNotificationContent(jobID string, spec ReportJobSpec, terminalStatus, publicErr string) (kind, title, body string) {
+	kind = exportNotificationKindCompleted
+	title = fmt.Sprintf("Export ready: %s", spec.ReportKey)
+	body = fmt.Sprintf("Report export job %s completed.", jobID)
+	if terminalStatus == JobStatusFailed {
+		kind = exportNotificationKindFailed
+		title = fmt.Sprintf("Export failed: %s", spec.ReportKey)
+		if publicErr != "" {
+			body = publicErr
+		} else {
+			body = fmt.Sprintf("Report export job %s failed.", jobID)
+		}
+	}
+	return kind, title, body
+}
+
 func (r *ReportJobRunner) notifyJobTerminal(ctx context.Context, jobID string, spec ReportJobSpec, terminalStatus, publicErr string) {
 	if r == nil {
 		return
@@ -120,27 +136,22 @@ func (r *ReportJobRunner) notifyJobTerminal(ctx context.Context, jobID string, s
 	if channel == "none" {
 		return
 	}
-	userID := strings.TrimSpace(spec.ExportedBy)
-	if userID == "" {
-		return
-	}
-	if _, err := uuid.Parse(userID); err != nil {
-		return
-	}
-	if channel == "in_app" {
-		kind := exportNotificationKindCompleted
-		title := fmt.Sprintf("Export ready: %s", spec.ReportKey)
-		body := fmt.Sprintf("Report export job %s completed.", jobID)
-		if terminalStatus == JobStatusFailed {
-			kind = exportNotificationKindFailed
-			title = fmt.Sprintf("Export failed: %s", spec.ReportKey)
-			if publicErr != "" {
-				body = publicErr
-			} else {
-				body = fmt.Sprintf("Report export job %s failed.", jobID)
-			}
+	kind, title, body := exportTerminalNotificationContent(jobID, spec, terminalStatus, publicErr)
+	switch channel {
+	case "in_app":
+		userID := strings.TrimSpace(spec.ExportedBy)
+		if userID == "" {
+			return
+		}
+		if _, err := uuid.Parse(userID); err != nil {
+			return
 		}
 		_ = r.insertExportNotification(ctx, jobID, userID, spec.CustomerID, spec.ReportKey, kind, title, body)
+	case "email", "slack_webhook":
+		if r.deps.SendExportNotify == nil {
+			return
+		}
+		_ = r.deps.SendExportNotify(ctx, spec.Notify, title, body)
 	}
 }
 

@@ -217,6 +217,7 @@ func (s *Service) InitReportJobRunner(exportDir string) *reportjob.ReportJobRunn
 				}
 				return nil
 			},
+			SendExportNotify: s.sendExportJobNotify,
 		})
 	}
 	return s.reportJobRunner

@@ -1,5 +1,5 @@
 // team admin: roster tab + budget approvals; separate refresh tokens per lane.
-import { useCallback, useEffect, useState } from 'react';
+import { useCallback, useEffect, useMemo, useState } from 'react';
 import { toast } from 'sonner';
 
 import { getAccessRoles } from '@/api/access_api';
@@ -18,8 +18,14 @@ import { refreshSession } from '@/api/auth_api';
 import type { TeamMemberEditDraft, TeamRosterTab } from '@/domains/team/team_overview';
 import { confirmDestructiveAction } from '@/lib/mutation_audit';
 import { toError, userErrorMessage } from '@/lib/admin_error';
-import { requireNonNegativeInteger } from '@/lib/admin_validation_error';
-import { dashboardPresetRange } from '@/lib/dashboard_range';
+import {
+  requireNonNegativeInteger,
+  toastValidationError,
+  validationError,
+} from '@/lib/admin_validation_error';
+import { dashboardPresetRange, type DashboardRangePreset } from '@/lib/dashboard_range';
+import { fromDatetimeLocalValue, toDatetimeLocalValue } from '@/lib/datetime_range';
+import { displayTimestamp } from '@/lib/display';
 import { sessionHasPermission } from '@/lib/session_permissions';
 import { useCoalescedBumpRefresh, useRefreshToken } from '@/hooks/use_coalesced_refresh_token';
 import { useResource } from '@/api/use_resource';
@@ -41,8 +47,10 @@ export function useTeamPageWorkspace() {
   const [inviteSuccess, setInviteSuccess] = useState(false);
   const [memberDrafts, setMemberDrafts] = useState<Record<string, TeamMemberEditDraft>>({});
 
+  const defaultMetricsRange = useMemo(() => dashboardPresetRange('7d'), []);
   const appliedCustomerId = searchParams.get('customer_id') ?? session?.default_customer_id ?? '';
-  const metricsRange = dashboardPresetRange('7d');
+  const appliedMetricsFrom = searchParams.get('from') ?? defaultMetricsRange.from;
+  const appliedMetricsTo = searchParams.get('to') ?? defaultMetricsRange.to;
   const canViewTeamMetrics = sessionHasPermission(user?.permissions, 'team:read');
   const showMyApprovalsPanel = !sessionHasPermission(user?.permissions, 'team:write');
   const appliedMembersLimit = parseListLimit(searchParams.get('member_limit'), 100);
@@ -52,8 +60,19 @@ export function useTeamPageWorkspace() {
 
   // draftCustomerId: useState(appliedCustomerId) on mount; sync trimmed value only on Apply (not on URL drift).
   const [draftCustomerId, setDraftCustomerId] = useState(appliedCustomerId);
+  const [draftMetricsFrom, setDraftMetricsFrom] = useState(() =>
+    toDatetimeLocalValue(appliedMetricsFrom)
+  );
+  const [draftMetricsTo, setDraftMetricsTo] = useState(() => toDatetimeLocalValue(appliedMetricsTo));
+  const [draftMetricsPreset, setDraftMetricsPreset] = useState<DashboardRangePreset>('custom');
   const [draftInviteEmail, setDraftInviteEmail] = useState('');
   const [draftInviteRole, setDraftInviteRole] = useState('MB');
+
+  useEffect(() => {
+    setDraftCustomerId(appliedCustomerId);
+    setDraftMetricsFrom(toDatetimeLocalValue(appliedMetricsFrom));
+    setDraftMetricsTo(toDatetimeLocalValue(appliedMetricsTo));
+  }, [appliedCustomerId, appliedMetricsFrom, appliedMetricsTo]);
 
   const { data: teamRolesData } = useResource(
     (signal) => getAccessRoles({ scope: 'team' }, signal),
@@ -84,13 +103,19 @@ export function useTeamPageWorkspace() {
       return getTeamMetrics(
         {
           customer_id: appliedCustomerId,
-          from: metricsRange.from,
-          to: metricsRange.to,
+          from: appliedMetricsFrom,
+          to: appliedMetricsTo,
         },
         signal
       );
     },
-    [appliedCustomerId, metricsRange.from, metricsRange.to, overviewRefreshToken, shouldFetchMetrics]
+    [
+      appliedCustomerId,
+      appliedMetricsFrom,
+      appliedMetricsTo,
+      overviewRefreshToken,
+      shouldFetchMetrics,
+    ]
   );
 
   const shouldFetchMyApprovals = Boolean(appliedCustomerId) && showMyApprovalsPanel;
@@ -211,6 +236,8 @@ export function useTeamPageWorkspace() {
   const updateTeamQuery = useCallback(
     (patch: {
       customer_id?: string;
+      from?: string;
+      to?: string;
       member_limit?: number;
       member_offset?: number;
       approval_limit?: number;
@@ -222,11 +249,23 @@ export function useTeamPageWorkspace() {
       const memberOffset = patch.member_offset ?? appliedMembersOffset;
       const approvalLimit = patch.approval_limit ?? appliedApprovalsLimit;
       const approvalOffset = patch.approval_offset ?? appliedApprovalsOffset;
+      const from = patch.from ?? appliedMetricsFrom;
+      const to = patch.to ?? appliedMetricsTo;
 
       if (customerId) {
         next.set('customer_id', customerId);
       } else {
         next.delete('customer_id');
+      }
+      if (from) {
+        next.set('from', from);
+      } else {
+        next.delete('from');
+      }
+      if (to) {
+        next.set('to', to);
+      } else {
+        next.delete('to');
       }
       next.set('member_limit', String(memberLimit));
       next.set('member_offset', String(Math.max(0, memberOffset)));
@@ -238,6 +277,8 @@ export function useTeamPageWorkspace() {
       appliedApprovalsLimit,
       appliedApprovalsOffset,
       appliedCustomerId,
+      appliedMetricsFrom,
+      appliedMetricsTo,
       appliedMembersLimit,
       appliedMembersOffset,
       replaceSearchParams,
@@ -245,15 +286,59 @@ export function useTeamPageWorkspace() {
     ]
   );
 
+  const onDraftMetricsPresetChange = useCallback((preset: DashboardRangePreset) => {
+    setDraftMetricsPreset(preset);
+    if (preset === 'custom') {
+      return;
+    }
+    const range = dashboardPresetRange(preset);
+    setDraftMetricsFrom(toDatetimeLocalValue(range.from));
+    setDraftMetricsTo(toDatetimeLocalValue(range.to));
+  }, []);
+
   const onApplyCustomer = useCallback(() => {
     const trimmed = draftCustomerId.trim();
-    updateTeamQuery({
+    const patch: {
+      customer_id: string;
+      member_offset: number;
+      approval_offset: number;
+      from?: string;
+      to?: string;
+    } = {
       customer_id: trimmed,
       member_offset: 0,
       approval_offset: 0,
-    });
+    };
+    if (canViewTeamMetrics) {
+      const fromIso = fromDatetimeLocalValue(draftMetricsFrom);
+      const toIso = fromDatetimeLocalValue(draftMetricsTo);
+      if (!fromIso || !toIso) {
+        toastValidationError(
+          validationError('Enter valid from and to timestamps', { field: 'from' })
+        );
+        return;
+      }
+      patch.from = fromIso;
+      patch.to = toIso;
+    }
+    updateTeamQuery(patch);
     setDraftCustomerId(trimmed);
-  }, [draftCustomerId, updateTeamQuery]);
+  }, [
+    canViewTeamMetrics,
+    draftCustomerId,
+    draftMetricsFrom,
+    draftMetricsTo,
+    updateTeamQuery,
+  ]);
+
+  const metricsRangeLabel = useMemo(() => {
+    const fromLabel = displayTimestamp(appliedMetricsFrom);
+    const toLabel = displayTimestamp(appliedMetricsTo);
+    if (fromLabel && toLabel) {
+      return `${fromLabel} – ${toLabel}`;
+    }
+    return fromLabel || toLabel || 'Last 7 days';
+  }, [appliedMetricsFrom, appliedMetricsTo]);
 
   const onMembersPageChange = useCallback(
     (nextOffset: number) => {
@@ -410,6 +495,10 @@ export function useTeamPageWorkspace() {
     approvalsOffset: approvalsData?.offset ?? appliedApprovalsOffset,
     approvalsCustomerId: appliedCustomerId,
     draftCustomerId,
+    draftMetricsFrom,
+    draftMetricsTo,
+    draftMetricsPreset,
+    metricsRangeLabel,
     draftInviteEmail,
     draftInviteRole,
     teamRoleOptions,
@@ -431,6 +520,9 @@ export function useTeamPageWorkspace() {
     actingId,
     memberUpdatingId,
     onDraftCustomerIdChange: setDraftCustomerId,
+    onDraftMetricsFromChange: setDraftMetricsFrom,
+    onDraftMetricsToChange: setDraftMetricsTo,
+    onDraftMetricsPresetChange,
     onDraftInviteEmailChange: setDraftInviteEmail,
     onDraftInviteRoleChange: setDraftInviteRole,
     onMemberDraftChange,

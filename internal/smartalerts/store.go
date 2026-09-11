@@ -249,12 +249,15 @@ func (st *Store) DeleteSmartAlertRule(ctx context.Context, ruleID uuid.UUID) err
 	return nil
 }
 
-func (st *Store) ListSmartAlertHistory(ctx context.Context, customerID uuid.UUID, limit int) ([]SmartAlertEventDTO, error) {
+func (st *Store) ListSmartAlertHistory(ctx context.Context, customerID uuid.UUID, limit, offset int) ([]SmartAlertEventDTO, error) {
 	if st == nil || st.host == nil || st.host.Pool() == nil {
 		return nil, fmt.Errorf("service unavailable")
 	}
 	if limit <= 0 || limit > 200 {
 		limit = 50
+	}
+	if offset < 0 {
+		offset = 0
 	}
 	rows, err := st.host.Pool().Query(ctx, `
 		SELECT id, rule_id, customer_id, campaign_id, window_start, window_end,
@@ -263,7 +266,7 @@ func (st *Store) ListSmartAlertHistory(ctx context.Context, customerID uuid.UUID
 		FROM alert_rule_events
 		WHERE customer_id = $1
 		ORDER BY fired_at DESC
-		LIMIT $2`, domain.ToUUID(customerID), limit)
+		LIMIT $2 OFFSET $3`, domain.ToUUID(customerID), limit, offset)
 	if err != nil {
 		return nil, err
 	}

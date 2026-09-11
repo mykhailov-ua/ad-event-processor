@@ -805,6 +805,7 @@ paths:
       parameters:
         - $ref: '../openapi.yaml#/components/parameters/CustomerIdQueryRequired'
         - $ref: '../openapi.yaml#/components/parameters/LimitQuery'
+        - $ref: '../openapi.yaml#/components/parameters/OffsetQuery'
       responses:
         '200':
           description: Alert events

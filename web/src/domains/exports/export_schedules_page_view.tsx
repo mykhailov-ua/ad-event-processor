@@ -143,10 +143,32 @@ export function ExportSchedulesPageView({
               <Input
                 id="export-schedules-owner-user-id"
                 disabled={!canManage || saving}
+                placeholder={draft.destination === 'google_sheet' ? 'Defaults to signed-in user' : undefined}
                 value={draft.ownerUserId}
                 onChange={(event) => onDraftChange({ ownerUserId: event.target.value })}
               />
             </FilterField>
+            {draft.destination === 'google_sheet' ? (
+              <>
+                <FilterField htmlFor="export-schedules-spreadsheet-id" label="Spreadsheet ID (append)">
+                  <Input
+                    id="export-schedules-spreadsheet-id"
+                    disabled={!canManage || saving}
+                    placeholder="Optional for append mode"
+                    value={draft.spreadsheetId}
+                    onChange={(event) => onDraftChange({ spreadsheetId: event.target.value })}
+                  />
+                </FilterField>
+                <FilterField htmlFor="export-schedules-sheet-title" label="Sheet title">
+                  <Input
+                    id="export-schedules-sheet-title"
+                    disabled={!canManage || saving}
+                    value={draft.sheetTitle}
+                    onChange={(event) => onDraftChange({ sheetTitle: event.target.value })}
+                  />
+                </FilterField>
+              </>
+            ) : null}
             <FilterField htmlFor="export-schedules-lookback" label="Lookback days">
               <Input
                 id="export-schedules-lookback"

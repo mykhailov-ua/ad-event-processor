@@ -884,7 +884,7 @@ TeamMetricsBlock:
       type: number
       format: double
     freshness:
-      $ref: '../ops_reports.yaml#/DataFreshness'
+      $ref: './ops_reports.yaml#/DataFreshness'
 
 TeamOwnerMetrics:
   type: object

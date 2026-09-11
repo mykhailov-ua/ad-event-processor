@@ -52,6 +52,7 @@ There is no in-browser mock API tier. Chart preview (`?chart_mock=1`) is dashboa
 | `flow_stream.spec.js` | `/api/v1/flows/validate` 400; visual weight ErrorBlock; L2 flow -> campaign -> `/click` redirect |
 | `customer_detail_billing.spec.js` | `/api/v1/customers`, `/api/v1/customers/:id` |
 | `dashboards.spec.js` | `/api/v1/dashboards/buyer` on Apply |
+| `dashboards_adops.spec.js` | `/api/v1/dashboards/adops` campaigns[] DOM bind |
 | `fraud_labels.spec.js` | `/api/v1/fraud/labels` |
 | `fraud_decision.spec.js` | `/api/v1/fraud/decisions` on Explain |
 | `fraud_integrations.spec.js` | `/api/v1/fraud/integrations` on Load |

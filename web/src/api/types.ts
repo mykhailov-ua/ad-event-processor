@@ -275,36 +275,12 @@ export function fraudReasonSignalsDegraded(row: FraudReasonRow): boolean {
   return 'signals_degraded' in row ? Boolean(row.signals_degraded) : false;
 }
 export type ReportJobSpec = components['schemas']['ReportJobSpec'];
-export type ReportJobNotifySpec = {
-  channel?: 'none' | 'in_app' | 'email' | 'slack_webhook';
-  email?: string;
-  webhook_url?: string;
-};
-export type ReportJobGoogleSheetSpec = {
-  mode?: 'create' | 'append';
-  spreadsheet_id?: string;
-  sheet_title?: string;
-};
-export type ReportJobCreateSpec = ReportJobSpec & {
-  compare_from?: string;
-  compare_to?: string;
-  notify?: ReportJobNotifySpec;
-};
-export type ReportExportNotification = {
-  id: string;
-  job_id: string;
-  customer_id: string;
-  report_key?: string;
-  kind: 'completed' | 'failed';
-  title: string;
-  body: string;
-  read: boolean;
-  created_at: string;
-};
-export type ReportExportNotificationList = {
-  rows: ReportExportNotification[];
-  unread_count: number;
-};
+export type ReportJobNotifySpec = components['schemas']['ReportJobNotifySpec'];
+export type ReportJobGoogleSheetSpec = components['schemas']['ReportJobGoogleSheetSpec'];
+/** Alias kept for create-job call sites; fields live on ReportJobSpec after OpenAPI regen. */
+export type ReportJobCreateSpec = ReportJobSpec;
+export type ReportExportNotification = components['schemas']['ReportExportNotification'];
+export type ReportExportNotificationList = components['schemas']['ReportExportNotificationList'];
 export type TelegramReportExportRequest = components['schemas']['TelegramReportExportRequest'];
 export type ReportJobStatus = components['schemas']['ReportJobStatus'];
 export type DLQInboxEntry = components['schemas']['DLQInboxEntry'];
@@ -453,6 +429,7 @@ export type ModeratorCorpusPreviewResponse = {
 };
 export type FraudOverrideRequest = components['schemas']['FraudOverrideRequest'];
 export type RoleDashboard = components['schemas']['RoleDashboard'];
+export type AdOpsDashboard = components['schemas']['AdOpsDashboard'];
 export type DashboardRole = 'buyer' | 'adops' | 'cfo' | 'accountant' | 'fraud' | 'operator';
 
 export type DashboardQuery = OperationQuery<'dashboardBuyer'>;
@@ -485,33 +462,11 @@ export type PlatformApplyRequest = components['schemas']['PlatformApplyRequest']
 export type PlatformApplyResponse = components['schemas']['PlatformApplyResponse'];
 export type InviteTeamMemberRequest = components['schemas']['InviteTeamMemberRequest'];
 export type UpdateTeamMemberRequest = components['schemas']['UpdateTeamMemberRequest'];
-export type TeamOverview = components['schemas']['TeamOverview'] & {
-  pending_approvals_count?: number;
-};
+export type TeamOverview = components['schemas']['TeamOverview'];
 
-export type TeamMetricsBlock = {
-  spend_micro?: number;
-  cost_micro?: number;
-  revenue_micro?: number;
-  profit_micro?: number;
-  conversions?: number;
-  unique_clicks?: number;
-  roi_pct?: number;
-  freshness?: DataFreshness;
-};
-
-export type TeamOwnerMetrics = {
-  user_id?: string;
-  email?: string;
-  kpis?: TeamMetricsBlock;
-};
-
-export type TeamMetricsResponse = {
-  customer_id?: string;
-  period?: { from?: string; to?: string };
-  aggregate?: TeamMetricsBlock;
-  by_owner?: TeamOwnerMetrics[];
-};
+export type TeamMetricsBlock = components['schemas']['TeamMetricsBlock'];
+export type TeamOwnerMetrics = components['schemas']['TeamOwnerMetrics'];
+export type TeamMetricsResponse = components['schemas']['TeamMetricsResponse'];
 
 export type TeamMetricsQuery = {
   customer_id: string;
@@ -804,27 +759,17 @@ export type UpsertTrafficOptimizerRuleRequest =
   components['schemas']['UpsertTrafficOptimizerRuleRequest'];
 export type TrafficOptimizerListRulesQuery = OperationQuery<'trafficOptimizerListRules'>;
 
-export type SmartAlertRule = components['schemas']['SmartAlertRule'] & {
-  template?: SmartAlertRuleTemplate;
-};
+export type SmartAlertRule = components['schemas']['SmartAlertRule'];
 export type SmartAlertEvent = components['schemas']['SmartAlertEvent'];
 export type UpsertSmartAlertRuleRequest = Omit<
   components['schemas']['UpsertSmartAlertRuleRequest'],
   'name'
 > & {
-  template?: SmartAlertRuleTemplate;
   name?: string;
 };
-export type SmartAlertRuleTemplate =
-  | 'budget_burn_pct'
-  | 'roi_below'
-  | 'pacing_drift'
-  | 'export_job_failed'
-  | 'margin_breach';
+export type SmartAlertRuleTemplate = components['schemas']['SmartAlertRuleTemplate'];
 export type SmartAlertsListRulesQuery = OperationQuery<'smartAlertsListRules'>;
-export type SmartAlertsListHistoryQuery = OperationQuery<'smartAlertsListHistory'> & {
-  offset?: number;
-};
+export type SmartAlertsListHistoryQuery = OperationQuery<'smartAlertsListHistory'>;
 
 export type MarginGuardPolicy = components['schemas']['MarginGuardPolicy'];
 export type MarginGuardActivity = components['schemas']['MarginGuardActivity'];
@@ -838,30 +783,10 @@ export type PublisherStatementListResponse =
   components['schemas']['PublisherStatementListResponse'];
 export type PublisherStatementsQuery = OperationQuery<'publisherStatements'>;
 
-export type ReportSchedule = components['schemas']['ReportSchedule'] & {
-  destination?: 'download' | 'google_sheet';
-  owner_user_id?: string;
-  google_sheet?: ReportJobGoogleSheetSpec;
-  notify?: ReportJobNotifySpec;
-  last_run_status?: string;
-  last_run_error_public?: string;
-};
-export type CreateReportScheduleRequest = components['schemas']['CreateReportScheduleRequest'] & {
-  destination?: 'download' | 'google_sheet';
-  owner_user_id?: string;
-  google_sheet?: ReportJobGoogleSheetSpec;
-  notify?: ReportJobNotifySpec;
-};
-export type UpdateReportScheduleRequest = components['schemas']['UpdateReportScheduleRequest'] & {
-  destination?: 'download' | 'google_sheet';
-  owner_user_id?: string;
-  google_sheet?: ReportJobGoogleSheetSpec;
-  notify?: ReportJobNotifySpec;
-};
-export type ReportScheduleRunResponse = {
-  job_id?: string;
-  schedule?: ReportSchedule;
-};
+export type ReportSchedule = components['schemas']['ReportSchedule'];
+export type CreateReportScheduleRequest = components['schemas']['CreateReportScheduleRequest'];
+export type UpdateReportScheduleRequest = components['schemas']['UpdateReportScheduleRequest'];
+export type ReportScheduleRunResponse = components['schemas']['ReportScheduleRunResponse'];
 export type ReportSchedulesListQuery = OperationQuery<'reportSchedulesList'>;
 
 export type SavedView = components['schemas']['SavedView'];

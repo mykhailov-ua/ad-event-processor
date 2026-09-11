@@ -44,6 +44,7 @@ type RoleHost interface {
 	ClickHouseQuery() *database.ClickHouseQuery
 	ReportCHTimeout() time.Duration
 	GetBuyerPortfolio(ctx context.Context, customerID uuid.UUID) (BuyerPortfolioDTO, error)
+	GetBuyerPortfolioRange(ctx context.Context, customerID uuid.UUID, campaignFilter *uuid.UUID, from, to time.Time, seriesGranularity reports.ChartGranularity) (BuyerPortfolioDTO, error)
 	BuildStatement(ctx context.Context, customerID uuid.UUID, from, to time.Time) (BillingStatement, error)
 	GetInvariant(ctx context.Context, customerID *uuid.UUID) (BillingInvariant, error)
 	SumDisputeExposure(ctx context.Context, customerID uuid.UUID) int64

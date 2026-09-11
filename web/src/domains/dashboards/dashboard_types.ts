@@ -1,4 +1,4 @@
-import type { DataFreshness, RoleDashboard } from '@/api/types';
+import type { AdOpsDashboard, DataFreshness, RoleDashboard } from '@/api/types';
 
 export type DashboardFreshness = DataFreshness & {
   freshness_label?: string;
@@ -53,26 +53,13 @@ export type BuyerDashboardPayload = RoleDashboard & {
   };
 };
 
-export type AdopsDashboardPayload = RoleDashboard & {
-  customer_id?: string;
-  period?: { from?: string; to?: string };
-  kpis?: DashboardMetricsBlock;
-  campaigns?: Array<{
-    id?: string;
-    name?: string;
-    status?: string;
-    spend_micro?: number;
-    utilization_pct?: number;
-    pacing_drift_pct?: number;
-    overspend_risk?: boolean;
-  }>;
-  worst_sources?: Array<{
-    campaign_id?: string;
-    sub1?: string;
-    ivt_rate?: number;
-    clicks?: number;
-  }>;
-};
+export type AdopsDashboardCampaignRow = NonNullable<AdOpsDashboard['campaigns']>[number];
+
+export type AdopsDashboardTableMeta = NonNullable<
+  NonNullable<AdOpsDashboard['table_sections_meta']>[string]
+>;
+
+export type AdopsDashboardPayload = AdOpsDashboard;
 
 export const DASHBOARD_BREAKDOWN_UI_CAP = 10;
 export const DASHBOARD_ATTENTION_UI_CAP = 8;

@@ -17,4 +17,6 @@ type ExportDeps struct {
 	WriteCampaignImportValidation func(ctx context.Context, path string, spec ReportJobSpec) error
 	WriteGoogleSheet              func(ctx context.Context, spec ReportJobSpec) (GoogleSheetExportResult, error)
 	ValidateGoogleSheetsOAuth     func(ctx context.Context, operatorUserID string) error
+	// Optional terminal notify for email and slack_webhook channels.
+	SendExportNotify func(ctx context.Context, notify ReportJobNotifySpec, title, body string) error
 }

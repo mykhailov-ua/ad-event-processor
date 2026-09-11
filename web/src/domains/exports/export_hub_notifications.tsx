@@ -4,10 +4,13 @@ import { toast } from 'sonner';
 import { ackReportExportNotification, listReportExportNotifications } from '@/api/reports_api';
 import type { ReportExportNotification } from '@/api/types';
 import { useResource } from '@/api/use_resource';
+import { useSession } from '@/hooks/use_session';
 import { Button } from '@/components/ui/button';
 import { exportHubErrorMessage } from '@/domains/exports/export_hub_errors';
 import { adminTypography } from '@/lib/admin_kit';
+import { sessionHasPermission } from '@/lib/session_permissions';
 import { BentoSection } from '@/shell/bento_card';
+import { ErrorBlock } from '@/shell/error_block';
 
 const NOTIFICATION_POLL_MS = 15000;
 
@@ -16,28 +19,41 @@ export type ExportHubNotificationsProps = {
 };
 
 export function ExportHubNotifications({ onOpenJob }: ExportHubNotificationsProps) {
+  const { user } = useSession();
+  const canViewNotifications = sessionHasPermission(user?.permissions, 'exports:read');
   const [open, setOpen] = useState(false);
   const [pollToken, setPollToken] = useState(0);
 
   useEffect(() => {
+    if (!canViewNotifications) {
+      return;
+    }
     const timer = window.setInterval(() => {
       setPollToken((value) => value + 1);
     }, NOTIFICATION_POLL_MS);
     return () => {
       window.clearInterval(timer);
     };
-  }, []);
+  }, [canViewNotifications]);
 
   const { data, error, revalidating } = useResource(
-    (signal) => listReportExportNotifications(signal),
-    [pollToken, open]
+    (signal) => {
+      if (!canViewNotifications) {
+        return Promise.resolve(undefined);
+      }
+      return listReportExportNotifications(signal);
+    },
+    [pollToken, open, canViewNotifications]
   );
 
   const onAck = useCallback(
     async (notification: ReportExportNotification) => {
+      if (!notification.id) {
+        return;
+      }
       try {
         await ackReportExportNotification(notification.id);
-        if (onOpenJob) {
+        if (onOpenJob && notification.job_id) {
           onOpenJob(notification.job_id);
         }
         setOpen(false);
@@ -48,6 +64,10 @@ export function ExportHubNotifications({ onOpenJob }: ExportHubNotificationsProp
     },
     [onOpenJob]
   );
+
+  if (!canViewNotifications) {
+    return null;
+  }
 
   const unreadCount = data?.unread_count ?? 0;
   const rows = data?.rows ?? [];
@@ -70,12 +90,12 @@ export function ExportHubNotifications({ onOpenJob }: ExportHubNotificationsProp
             title="Export notifications"
           >
             {error ? (
-              <p className={adminTypography.bodyMuted}>{exportHubErrorMessage(error)}</p>
+              <ErrorBlock error={error} title="Could not load export notifications" />
             ) : null}
-            {revalidating && rows.length === 0 ? (
+            {revalidating && rows.length === 0 && !error ? (
               <p className={adminTypography.bodyMuted}>Loading notifications...</p>
             ) : null}
-            {!error && rows.length === 0 ? (
+            {!error && rows.length === 0 && !revalidating ? (
               <p className={adminTypography.bodyMuted}>No export notifications yet.</p>
             ) : null}
             <ul data-role="notification-list">

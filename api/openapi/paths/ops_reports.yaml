@@ -30,7 +30,7 @@ paths:
           content:
             application/json:
               schema:
-                $ref: ../components/schemas/ops_reports.yaml#/RoleDashboard
+                $ref: ../components/schemas/ops_reports.yaml#/AdOpsDashboard
           description: Dashboard payload
         default:
           $ref: ../openapi.yaml#/components/responses/Error

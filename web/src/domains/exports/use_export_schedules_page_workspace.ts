@@ -29,6 +29,8 @@ export type ExportSchedulesDraft = {
   format: 'csv' | 'xlsx' | 'json';
   destination: ExportHubDestination;
   ownerUserId: string;
+  spreadsheetId: string;
+  sheetTitle: string;
   fromOffsetDays: string;
   notifyChannel: ExportHubNotifyChannel;
   notifyEmail: string;
@@ -42,12 +44,26 @@ const DEFAULT_DRAFT: ExportSchedulesDraft = {
   format: 'csv',
   destination: 'download',
   ownerUserId: '',
+  spreadsheetId: '',
+  sheetTitle: '',
   fromOffsetDays: '7',
   notifyChannel: 'in_app',
   notifyEmail: '',
   notifyWebhookUrl: '',
   enabled: true,
 };
+
+function buildScheduleGoogleSheetBody(draft: ExportSchedulesDraft) {
+  if (draft.destination !== 'google_sheet') {
+    return undefined;
+  }
+  const spreadsheetId = draft.spreadsheetId.trim();
+  return {
+    mode: spreadsheetId ? ('append' as const) : ('create' as const),
+    spreadsheet_id: spreadsheetId || undefined,
+    sheet_title: draft.sheetTitle.trim() || undefined,
+  };
+}
 
 export function useExportSchedulesPageWorkspace() {
   const { session, user } = useSession();
@@ -92,6 +108,8 @@ export function useExportSchedulesPageWorkspace() {
       format: (schedule.format as ExportSchedulesDraft['format']) || 'csv',
       destination: schedule.destination === 'google_sheet' ? 'google_sheet' : 'download',
       ownerUserId: schedule.owner_user_id ?? '',
+      spreadsheetId: schedule.google_sheet?.spreadsheet_id ?? '',
+      sheetTitle: schedule.google_sheet?.sheet_title ?? '',
       fromOffsetDays: offset,
       notifyChannel: schedule.notify?.channel ?? 'none',
       notifyEmail: schedule.notify?.email ?? '',
@@ -138,7 +156,11 @@ export function useExportSchedulesPageWorkspace() {
       toastValidationError(error);
       return;
     }
-    if (draft.destination === 'google_sheet' && !draft.ownerUserId.trim()) {
+    const ownerUserId =
+      draft.destination === 'google_sheet'
+        ? draft.ownerUserId.trim() || user?.id?.trim() || ''
+        : draft.ownerUserId.trim();
+    if (draft.destination === 'google_sheet' && !ownerUserId) {
       const error = validationError('Owner user ID is required for Google Sheet schedules.', {
         field: 'owner_user_id',
       });
@@ -155,7 +177,8 @@ export function useExportSchedulesPageWorkspace() {
         cron_expr: cronCheck.value,
         format: draft.format,
         destination: draft.destination,
-        owner_user_id: draft.ownerUserId.trim() || undefined,
+        owner_user_id: ownerUserId || undefined,
+        google_sheet: buildScheduleGoogleSheetBody(draft),
         enabled: draft.enabled,
         spec: { from_offset_days: offsetDays },
         notify:
@@ -181,7 +204,7 @@ export function useExportSchedulesPageWorkspace() {
     } finally {
       setSaving(false);
     }
-  }, [canManage, draft, refreshSchedules, selectedScheduleId, trimmedCustomerId]);
+  }, [canManage, draft, refreshSchedules, selectedScheduleId, trimmedCustomerId, user?.id]);
 
   const onDeleteSchedule = useCallback(
     async (schedule: ReportSchedule) => {
@@ -218,6 +241,7 @@ export function useExportSchedulesPageWorkspace() {
           format: schedule.format,
           destination: schedule.destination,
           owner_user_id: schedule.owner_user_id,
+          google_sheet: schedule.google_sheet,
           notify: schedule.notify,
           spec: schedule.spec,
           enabled: !schedule.enabled,
