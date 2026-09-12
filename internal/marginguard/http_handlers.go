@@ -6,6 +6,7 @@ import (
 	"net/http"
 
 	"ad-event-processor/internal/ledger"
+	"ad-event-processor/internal/licensingadmin"
 	"ad-event-processor/pkg/coldpath"
 	"ad-event-processor/pkg/httpresponse"
 
@@ -20,9 +21,10 @@ type Service interface {
 }
 
 type HTTPHandlers struct {
-	Service           Service
-	ApplyRateLimit    func(http.HandlerFunc) http.HandlerFunc
-	RequirePermission func(string, http.HandlerFunc) http.HandlerFunc
+	Service               Service
+	ApplyRateLimit        func(http.HandlerFunc) http.HandlerFunc
+	RequirePermission     func(string, http.HandlerFunc) http.HandlerFunc
+	RequireLicenseFeature licensingadmin.FeatureChecker
 }
 
 func (h *HTTPHandlers) Register(mux *http.ServeMux) {
@@ -37,10 +39,25 @@ func (h *HTTPHandlers) Register(mux *http.ServeMux) {
 	if perm == nil {
 		perm = func(_ string, next http.HandlerFunc) http.HandlerFunc { return next }
 	}
-	mux.HandleFunc("GET /api/v1/margin-guard/policies", limit(perm("campaigns:read", h.listPolicies)))
-	mux.HandleFunc("POST /api/v1/margin-guard/policies", limit(perm("campaigns:write", h.createPolicy)))
-	mux.HandleFunc("GET /api/v1/margin-guard/activity", limit(perm("campaigns:read", h.listActivity)))
-	mux.HandleFunc("POST /api/v1/margin-guard/overrides", limit(perm("campaigns:write", h.removeOverride)))
+	read := func(next http.HandlerFunc) http.HandlerFunc {
+		return limit(perm("campaigns:read", h.licenseGate("margin_guard", next)))
+	}
+	write := func(next http.HandlerFunc) http.HandlerFunc {
+		return limit(perm("campaigns:write", h.licenseGate("margin_guard", next)))
+	}
+	mux.HandleFunc("GET /api/v1/margin-guard/policies", read(h.listPolicies))
+	mux.HandleFunc("POST /api/v1/margin-guard/policies", write(h.createPolicy))
+	mux.HandleFunc("GET /api/v1/margin-guard/activity", read(h.listActivity))
+	mux.HandleFunc("POST /api/v1/margin-guard/overrides", write(h.removeOverride))
+}
+
+func (h *HTTPHandlers) licenseGate(featureKey string, next http.HandlerFunc) http.HandlerFunc {
+	return func(w http.ResponseWriter, r *http.Request) {
+		if !licensingadmin.RequireLicenseFeature(w, h.RequireLicenseFeature, featureKey) {
+			return
+		}
+		next(w, r)
+	}
 }
 
 func (h *HTTPHandlers) listPolicies(w http.ResponseWriter, r *http.Request) {

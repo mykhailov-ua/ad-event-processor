@@ -455,7 +455,7 @@ collect_config() {
   local tracking_domain="${TRACKING_DOMAIN:-}"
   local currency="${DEFAULT_CURRENCY:-USD}"
   local timezone="${TIMEZONE:-UTC}"
-  local telemetry="${TELEMETRY_ENABLED:-true}"
+  local telemetry="${TELEMETRY_ENABLED:-false}"
   local stripe_enabled="${STRIPE_ENABLED:-false}"
   local stripe_secret="${STRIPE_SECRET_KEY:-}"
   local stripe_webhook="${STRIPE_WEBHOOK_SECRET:-}"
@@ -475,11 +475,11 @@ collect_config() {
     prompt_default currency "Default currency" "$currency"
     prompt_default timezone "Timezone" "$timezone"
 
-    read -r -p "Enable telemetry? (Y/n) [Y]: " telemetry_yn
-    telemetry_yn="${telemetry_yn:-Y}"
-    telemetry="true"
-    if [[ "${telemetry_yn,,}" == "n" ]]; then
-      telemetry="false"
+    read -r -p "Enable telemetry? (y/N) [N]: " telemetry_yn
+    telemetry_yn="${telemetry_yn:-N}"
+    telemetry="false"
+    if [[ "${telemetry_yn,,}" == "y" ]]; then
+      telemetry="true"
     fi
 
     stripe_enabled="false"

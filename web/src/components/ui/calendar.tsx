@@ -52,9 +52,7 @@ function Calendar({
           }
           return <ChevronDown className={iconClass} {...chevronProps} />;
         },
-        DayButton: (dayButtonProps) => (
-          <CalendarDayButton {...dayButtonProps} />
-        ),
+        DayButton: (dayButtonProps) => <CalendarDayButton {...dayButtonProps} />,
         WeekNumber: ({ children, ...weekProps }) => (
           <td {...weekProps}>
             <div className="flex size-[var(--cell-size)] items-center justify-center text-center">

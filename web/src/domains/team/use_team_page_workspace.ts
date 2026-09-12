@@ -39,7 +39,8 @@ export function useTeamPageWorkspace() {
     useTransitionSearchParams();
   const { session, user, refetchSession } = useSession();
   const [rosterTab, setRosterTab] = useState<TeamRosterTab>('members');
-  const { refreshToken: overviewRefreshToken, bumpRefresh: bumpOverviewRefresh } = useRefreshToken();
+  const { refreshToken: overviewRefreshToken, bumpRefresh: bumpOverviewRefresh } =
+    useRefreshToken();
   const { refreshToken: rosterRefreshToken, bumpRefresh: bumpRosterRefresh } = useRefreshToken();
   const [actingId, setActingId] = useState<string | undefined>();
   const [memberUpdatingId, setMemberUpdatingId] = useState<string | undefined>();
@@ -64,7 +65,9 @@ export function useTeamPageWorkspace() {
   const [draftMetricsFrom, setDraftMetricsFrom] = useState(() =>
     toDatetimeLocalValue(appliedMetricsFrom)
   );
-  const [draftMetricsTo, setDraftMetricsTo] = useState(() => toDatetimeLocalValue(appliedMetricsTo));
+  const [draftMetricsTo, setDraftMetricsTo] = useState(() =>
+    toDatetimeLocalValue(appliedMetricsTo)
+  );
   const [draftMetricsPreset, setDraftMetricsPreset] = useState<DashboardRangePreset>('custom');
   const [draftInviteEmail, setDraftInviteEmail] = useState('');
   const [draftInviteRole, setDraftInviteRole] = useState('MB');
@@ -129,7 +132,10 @@ export function useTeamPageWorkspace() {
       if (!shouldFetchMyApprovals) {
         return Promise.resolve(undefined);
       }
-      return listMyTeamBudgetApprovals({ customer_id: appliedCustomerId, limit: 25, offset: 0 }, signal);
+      return listMyTeamBudgetApprovals(
+        { customer_id: appliedCustomerId, limit: 25, offset: 0 },
+        signal
+      );
     },
     [appliedCustomerId, overviewRefreshToken, shouldFetchMyApprovals]
   );
@@ -328,19 +334,13 @@ export function useTeamPageWorkspace() {
     }
     updateTeamQuery(patch);
     setDraftCustomerId(trimmed);
-  }, [
-    canViewTeamMetrics,
-    draftCustomerId,
-    draftMetricsFrom,
-    draftMetricsTo,
-    updateTeamQuery,
-  ]);
+  }, [canViewTeamMetrics, draftCustomerId, draftMetricsFrom, draftMetricsTo, updateTeamQuery]);
 
   const metricsRangeLabel = useMemo(() => {
     const fromLabel = displayTimestamp(appliedMetricsFrom);
     const toLabel = displayTimestamp(appliedMetricsTo);
     if (fromLabel && toLabel) {
-      return `${fromLabel} – ${toLabel}`;
+      return `${fromLabel} - ${toLabel}`;
     }
     return fromLabel || toLabel || 'Last 7 days';
   }, [appliedMetricsFrom, appliedMetricsTo]);

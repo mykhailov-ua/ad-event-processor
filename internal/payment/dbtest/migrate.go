@@ -8,8 +8,8 @@ import (
 	"sort"
 	"strings"
 	"testing"
-	"time"
 
+	"ad-event-processor/internal/database"
 	"ad-event-processor/internal/testutil"
 
 	"github.com/jackc/pgx/v5/pgxpool"
@@ -17,7 +17,6 @@ import (
 	"github.com/testcontainers/testcontainers-go"
 	"github.com/testcontainers/testcontainers-go/modules/postgres"
 	rediscontainer "github.com/testcontainers/testcontainers-go/modules/redis"
-	"github.com/testcontainers/testcontainers-go/wait"
 )
 
 func repoRoot() string {
@@ -38,10 +37,7 @@ func SetupTestDB(t testing.TB) (pool *pgxpool.Pool, cleanup func()) {
 		postgres.WithDatabase("payment_test_db"),
 		postgres.WithUsername("postgres"),
 		postgres.WithPassword("secure_password"),
-		testcontainers.WithWaitStrategy(
-			wait.ForLog("database system is ready to accept connections").
-				WithOccurrence(2).
-				WithStartupTimeout(20*time.Second)),
+		testcontainers.WithWaitStrategy(database.PostgresContainerWaitStrategy()),
 	)
 	if err != nil {
 		t.Fatalf("failed to start postgres container: %s", err)

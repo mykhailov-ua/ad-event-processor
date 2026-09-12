@@ -1,8 +1,5 @@
 import type { CampaignStatusFilter } from '@/domains/campaigns/list/campaigns_list_types';
-import {
-  FilterChipGroup,
-  type FilterChipTone,
-} from '@/shell/filter_chip_group';
+import { FilterChipGroup, type FilterChipTone } from '@/shell/filter_chip_group';
 
 export type CampaignListStatusChipOption = {
   value: CampaignStatusFilter;

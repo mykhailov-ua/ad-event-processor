@@ -59,9 +59,9 @@ export function CampaignEditorAdvancedPublishSection({
   onPublish,
 }: CampaignEditorAdvancedPublishSectionProps) {
   return (
-    <section className="flex flex-col gap-4" >
+    <section className="flex flex-col gap-4">
       <h2 className={adminTypography.sectionTitle}>Publish gate</h2>
-      <div className="flex flex-wrap gap-2" >
+      <div className="flex flex-wrap gap-2">
         <Button
           type="button"
           variant="secondary"
@@ -83,7 +83,7 @@ export function CampaignEditorAdvancedPublishSection({
         </Button>
       </div>
 
-      <div className="flex items-center gap-2" >
+      <div className="flex items-center gap-2">
         <Checkbox
           checked={forcePublish}
           disabled={gateBusy || fetching}
@@ -110,8 +110,8 @@ export function CampaignEditorAdvancedPublishSection({
       {publishSuccess ? <Badge variant="secondary">Campaign published</Badge> : null}
 
       {publishCheck ? (
-        <div className={cn(campaignEditorSectionClass, 'gap-3')} >
-          <div className="flex flex-wrap items-center gap-2" >
+        <div className={cn(campaignEditorSectionClass, 'gap-3')}>
+          <div className="flex flex-wrap items-center gap-2">
             <p className={adminTypography.label}>Publish check</p>
             <ValidityBadge valid={publishCheck.valid} validLabel="Ready" invalidLabel="Blocked" />
           </div>
@@ -121,8 +121,8 @@ export function CampaignEditorAdvancedPublishSection({
       ) : null}
 
       {validateResult ? (
-        <div className={cn(campaignEditorSectionClass, 'gap-3')} >
-          <div className="flex flex-wrap items-center gap-2" >
+        <div className={cn(campaignEditorSectionClass, 'gap-3')}>
+          <div className="flex flex-wrap items-center gap-2">
             <p className={adminTypography.label}>Patch validation</p>
             <ValidityBadge valid={validateResult.valid} validLabel="Valid" invalidLabel="Invalid" />
           </div>
@@ -132,9 +132,9 @@ export function CampaignEditorAdvancedPublishSection({
       ) : null}
 
       {publishBlocked ? (
-        <div className={cn(campaignEditorSectionClass, 'gap-3 border-destructive/50')} >
-          <div className="flex flex-wrap items-center gap-2" >
-            <p className={cn(adminTypography.label, "text-destructive")}>Publish blocked</p>
+        <div className={cn(campaignEditorSectionClass, 'gap-3 border-destructive/50')}>
+          <div className="flex flex-wrap items-center gap-2">
+            <p className={cn(adminTypography.label, 'text-destructive')}>Publish blocked</p>
             <Badge variant="destructive">422</Badge>
           </div>
           <FieldErrorsPanel title="Field errors" fieldErrors={publishBlocked.field_errors} />

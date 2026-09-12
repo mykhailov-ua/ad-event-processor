@@ -113,6 +113,8 @@ type ClickHouseStore struct {
 	clickhouseGate   *ProcessorClickHouseGate
 	piiHasher        *piihash.Hasher
 	conversionPayout *ConversionPayoutApplier
+	conversionLedger *ConversionLedgerApplier
+	statusScheme     *StatusSchemeApplier
 	conversionReject conversionRejectFunc
 	ctx              context.Context
 	cancel           context.CancelFunc
@@ -157,6 +159,12 @@ func (st *ClickHouseStore) StoreBatch(ctx context.Context, events []*domain.Even
 	}
 	if st.conversionPayout != nil {
 		st.conversionPayout.ApplyBatch(ctx, events)
+	}
+	if st.conversionLedger != nil {
+		st.conversionLedger.ApplyBatch(ctx, events)
+	}
+	if st.statusScheme != nil {
+		st.statusScheme.ApplyBatch(ctx, events)
 	}
 
 	if st.clickhouseGate != nil {
@@ -677,6 +685,18 @@ func (st *ClickHouseStore) SetPIIHasher(h *piihash.Hasher) {
 func (st *ClickHouseStore) SetConversionPayoutApplier(a *ConversionPayoutApplier) {
 	if st != nil {
 		st.conversionPayout = a
+	}
+}
+
+func (st *ClickHouseStore) SetConversionLedgerApplier(a *ConversionLedgerApplier) {
+	if st != nil {
+		st.conversionLedger = a
+	}
+}
+
+func (st *ClickHouseStore) SetStatusSchemeApplier(a *StatusSchemeApplier) {
+	if st != nil {
+		st.statusScheme = a
 	}
 }
 

@@ -17,9 +17,9 @@
   </script>
   <link rel="alternate" hreflang="en" href="/docs.html" />
   <link rel="alternate" hreflang="uk" href="/uk/docs.html" />
-  <link rel="stylesheet" href="/site.css?v=20260912">
+  <link rel="stylesheet" href="/site.css?v=20260918">
   <script src="https://cdn.jsdelivr.net/npm/mermaid@11.4.0/dist/mermaid.min.js" defer></script>
-  <script src="/site.js?v=20260912" defer></script>
+  <script src="/site.js?v=20260917" defer></script>
 </head>
 <body class="docs-page">
   <div class="site-offer-gate" data-site-offer-gate hidden aria-hidden="true"></div>
@@ -162,7 +162,7 @@
     </table>
     <p class="site-doc-callout site-doc-callout--hardware">
       <strong>Рекомендація по залізу:</strong> ClickHouse на одному VPS дуже прожорливий до RAM. Для комфортного all-in-one
-      (ClickHouse + Redis + Postgres + tracker pool) закладайте мінімум <strong>4 vCPU і 8 GB RAM</strong> плюс NVMe диск.
+      (ClickHouse + Redis + Postgres + tracker pool) закладайте мінімум <strong>4–6 vCPU і 12 GB RAM</strong> плюс NVMe диск.
       Routing-only pilot можна стартувати менше; дешевий VPS часто впереться в ClickHouse OOM — це питання sizing, а не дефект ліцензії.
       Див. <a href="#hardware-sizing">розмір сервера</a> нижче.
     </p>
@@ -210,6 +210,7 @@
       <li><strong>Silent reject</strong> — HTTP 202 відвідувачу (decoy accept); прапорець у analytics, щоб воронки залишалися чистими. Не змінює campaign settings у Postgres автоматично.</li>
       <li><strong>IVT detector</strong> (Pro+) — batch rules на ClickHouse; може enqueue blacklist/boost actions через admin outbox.</li>
       <li><strong>ML fraud scorer</strong> (Scale+) — batch LightGBM у sidecar пише boost keys у Redis; tracker читає <strong>precomputed fraud-boost snapshot</strong> на ingest (лише map lookup — без model inference на <code>/track</code>).</li>
+      <li><strong>Margin Guard</strong> (Starter+) — таймерний воркер (за замовчуванням 5 хв) по Postgres ledger і ClickHouse placement stats; порушення ставить внутрішню паузу маршрутизації (видалення budget key у Redis або блок placement). Не пауза в кабінеті рекламної мережі, доки не ліцензовано Enterprise platform sync. Пропуск при lag ClickHouse &gt; 5 хв.</li>
     </ul>
 
     <h2 id="admin-path">Admin, billing і звіти</h2>
@@ -271,7 +272,7 @@
         <tr>
           <td><code>edge-xdp</code> + <code>edge-bpf-sync</code></td>
           <td>Enterprise (<code>ebpf_xdp_edge</code>)</td>
-          <td>L4 drop для listed IPs на NIC; не замінює L7 tracker filters</td>
+          <td>L4 drop для listed IPs і rate limits на NIC; не замінює CDN/DDoS scrubbing і L7 tracker filters</td>
         </tr>
         <tr>
           <td><code>region-proxy</code></td>
@@ -286,7 +287,7 @@
       Орієнтир для планування — не гарантія throughput. Стартуйте тут, потім масштабуйтеся залежно від трафіку, глибини antifraud
       і того, чи звіти та bidding працюють на одному VPS чи окремих хостах.
     </p>
-    <section class="site-hardware-sizing" data-site-hardware-sizing aria-labelledby="site-hardware-title"></section>
+    <section class="site-hardware-sizing" data-site-hardware-sizing aria-labelledby="hardware-sizing"></section>
 
     <h2 id="limits">Чесні обмеження</h2>
     <ul class="site-doc-honest">

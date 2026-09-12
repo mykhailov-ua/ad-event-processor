@@ -148,14 +148,19 @@ export function ExportSchedulesPageView({
               <Input
                 id="export-schedules-owner-user-id"
                 disabled={!canManage || saving}
-                placeholder={draft.destination === 'google_sheet' ? 'Defaults to signed-in user' : undefined}
+                placeholder={
+                  draft.destination === 'google_sheet' ? 'Defaults to signed-in user' : undefined
+                }
                 value={draft.ownerUserId}
                 onChange={(event) => onDraftChange({ ownerUserId: event.target.value })}
               />
             </FilterField>
             {draft.destination === 'google_sheet' ? (
               <>
-                <FilterField htmlFor="export-schedules-spreadsheet-id" label="Spreadsheet ID (append)">
+                <FilterField
+                  htmlFor="export-schedules-spreadsheet-id"
+                  label="Spreadsheet ID (append)"
+                >
                   <Input
                     id="export-schedules-spreadsheet-id"
                     disabled={!canManage || saving}
@@ -193,10 +198,19 @@ export function ExportSchedulesPageView({
               onWebhookUrlChange={(value) => onDraftChange({ notifyWebhookUrl: value })}
             />
             <div aria-label="Schedule form actions" className={adminSpacing.flex.buttonGroup}>
-              <Button disabled={!canManage || saving} type="button" onClick={() => void onSaveSchedule()}>
+              <Button
+                disabled={!canManage || saving}
+                type="button"
+                onClick={() => void onSaveSchedule()}
+              >
                 {saving ? 'Saving...' : 'Save schedule'}
               </Button>
-              <Button disabled={!canManage || saving} type="button" variant="outline" onClick={onResetDraft}>
+              <Button
+                disabled={!canManage || saving}
+                type="button"
+                variant="outline"
+                onClick={onResetDraft}
+              >
                 New schedule
               </Button>
             </div>
@@ -222,97 +236,101 @@ export function ExportSchedulesPageView({
             refreshErrorTitle="Schedules refresh failed"
             title=""
           >
-          {schedulesHasSnapshot && !schedulesFetching && schedules.length === 0 ? (
-            <EmptyState
-              description="No recurring export schedules exist for this customer yet."
-              title="No schedules"
-            />
-          ) : null}
-          {schedules.length > 0 ? (
-            <DashboardPanelSection tableAriaLabel="Report schedules" title="Schedules">
-            <TableHeader>
-              <TableRow>
-                <DirectoryTableHead>Report</DirectoryTableHead>
-                <DirectoryTableHead>Cron</DirectoryTableHead>
-                <DirectoryTableHead>Destination</DirectoryTableHead>
-                <DirectoryTableHead>Enabled</DirectoryTableHead>
-                <DirectoryTableHead>Next run</DirectoryTableHead>
-                <DirectoryTableHead>Last status</DirectoryTableHead>
-                <DirectoryTableHead>Actions</DirectoryTableHead>
-              </TableRow>
-            </TableHeader>
-            <TableBody>
-              {schedules.map((schedule) => {
-                const jobHref = lastJobHref(schedule);
-                return (
-                  <TableRow key={schedule.id}>
-                    <TableCell>{schedule.report_key ?? ''}</TableCell>
-                    <TableCell>{schedule.cron_expr ?? ''}</TableCell>
-                    <TableCell>{schedule.destination ?? 'download'}</TableCell>
-                    <TableCell>{schedule.enabled ? 'yes' : 'no'}</TableCell>
-                    <TableCell>
-                      {schedule.next_run_at
-                        ? new Date(schedule.next_run_at).toLocaleString()
-                        : ''}
-                    </TableCell>
-                    <TableCell>
-                      {schedule.last_run_status
-                        ? `${schedule.last_run_status}${
-                            schedule.last_run_error_public
-                              ? `: ${schedule.last_run_error_public}`
-                              : ''
-                          }`
-                        : ''}
-                    </TableCell>
-                    <TableCell>
-                      <div
-                        aria-label={`Actions for ${schedule.id}`}
-                        className={adminSpacing.flex.buttonGroup}
-                      >
-                        <Button type="button" variant="outline" onClick={() => onSelectSchedule(schedule)}>
-                          Edit
-                        </Button>
-                        {canManage ? (
-                          <Button
-                            disabled={runningScheduleId === schedule.id}
-                            type="button"
-                            variant="outline"
-                            onClick={() => void onRunScheduleNow(schedule)}
-                          >
-                            {runningScheduleId === schedule.id ? 'Running...' : 'Run now'}
-                          </Button>
-                        ) : null}
-                        {canManage ? (
-                          <Button
-                            type="button"
-                            variant="outline"
-                            onClick={() => void onToggleSchedule(schedule)}
-                          >
-                            {schedule.enabled ? 'Disable' : 'Enable'}
-                          </Button>
-                        ) : null}
-                        {canManage ? (
-                          <Button
-                            type="button"
-                            variant="outline"
-                            onClick={() => void onDeleteSchedule(schedule)}
-                          >
-                            Delete
-                          </Button>
-                        ) : null}
-                        {jobHref ? (
-                          <Button asChild type="button" variant="outline">
-                            <Link to={jobHref}>View last job</Link>
-                          </Button>
-                        ) : null}
-                      </div>
-                    </TableCell>
+            {schedulesHasSnapshot && !schedulesFetching && schedules.length === 0 ? (
+              <EmptyState
+                description="No recurring export schedules exist for this customer yet."
+                title="No schedules"
+              />
+            ) : null}
+            {schedules.length > 0 ? (
+              <DashboardPanelSection tableAriaLabel="Report schedules" title="Schedules">
+                <TableHeader>
+                  <TableRow>
+                    <DirectoryTableHead>Report</DirectoryTableHead>
+                    <DirectoryTableHead>Cron</DirectoryTableHead>
+                    <DirectoryTableHead>Destination</DirectoryTableHead>
+                    <DirectoryTableHead>Enabled</DirectoryTableHead>
+                    <DirectoryTableHead>Next run</DirectoryTableHead>
+                    <DirectoryTableHead>Last status</DirectoryTableHead>
+                    <DirectoryTableHead>Actions</DirectoryTableHead>
                   </TableRow>
-                );
-              })}
-            </TableBody>
-            </DashboardPanelSection>
-          ) : null}
+                </TableHeader>
+                <TableBody>
+                  {schedules.map((schedule) => {
+                    const jobHref = lastJobHref(schedule);
+                    return (
+                      <TableRow key={schedule.id}>
+                        <TableCell>{schedule.report_key ?? ''}</TableCell>
+                        <TableCell>{schedule.cron_expr ?? ''}</TableCell>
+                        <TableCell>{schedule.destination ?? 'download'}</TableCell>
+                        <TableCell>{schedule.enabled ? 'yes' : 'no'}</TableCell>
+                        <TableCell>
+                          {schedule.next_run_at
+                            ? new Date(schedule.next_run_at).toLocaleString()
+                            : ''}
+                        </TableCell>
+                        <TableCell>
+                          {schedule.last_run_status
+                            ? `${schedule.last_run_status}${
+                                schedule.last_run_error_public
+                                  ? `: ${schedule.last_run_error_public}`
+                                  : ''
+                              }`
+                            : ''}
+                        </TableCell>
+                        <TableCell>
+                          <div
+                            aria-label={`Actions for ${schedule.id}`}
+                            className={adminSpacing.flex.buttonGroup}
+                          >
+                            <Button
+                              type="button"
+                              variant="outline"
+                              onClick={() => onSelectSchedule(schedule)}
+                            >
+                              Edit
+                            </Button>
+                            {canManage ? (
+                              <Button
+                                disabled={runningScheduleId === schedule.id}
+                                type="button"
+                                variant="outline"
+                                onClick={() => void onRunScheduleNow(schedule)}
+                              >
+                                {runningScheduleId === schedule.id ? 'Running...' : 'Run now'}
+                              </Button>
+                            ) : null}
+                            {canManage ? (
+                              <Button
+                                type="button"
+                                variant="outline"
+                                onClick={() => void onToggleSchedule(schedule)}
+                              >
+                                {schedule.enabled ? 'Disable' : 'Enable'}
+                              </Button>
+                            ) : null}
+                            {canManage ? (
+                              <Button
+                                type="button"
+                                variant="outline"
+                                onClick={() => void onDeleteSchedule(schedule)}
+                              >
+                                Delete
+                              </Button>
+                            ) : null}
+                            {jobHref ? (
+                              <Button asChild type="button" variant="outline">
+                                <Link to={jobHref}>View last job</Link>
+                              </Button>
+                            ) : null}
+                          </div>
+                        </TableCell>
+                      </TableRow>
+                    );
+                  })}
+                </TableBody>
+              </DashboardPanelSection>
+            ) : null}
           </DirectoryPageShell>
         </CustomerScopeGate>
       </PageSectionStack>

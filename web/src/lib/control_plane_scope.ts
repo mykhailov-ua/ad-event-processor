@@ -53,8 +53,6 @@ function controlPlaneOperationsNavItems(): NavItem[] {
   ];
 }
 
-export function filterControlPlaneNavGroups(
-  permissions: string[] | undefined
-): NavGroup[] {
+export function filterControlPlaneNavGroups(permissions: string[] | undefined): NavGroup[] {
   return filterNavGroups(controlPlaneNavGroupsForSidebar(), permissions);
 }

@@ -38,13 +38,7 @@ export function FilterDateRange({
         />
       </FilterField>
       <FilterField htmlFor={idTo} label={toLabel}>
-        <DatetimePicker
-          id={idTo}
-          label=""
-          showTime={showTime}
-          value={to}
-          onChange={onToChange}
-        />
+        <DatetimePicker id={idTo} label="" showTime={showTime} value={to} onChange={onToChange} />
       </FilterField>
     </>
   );

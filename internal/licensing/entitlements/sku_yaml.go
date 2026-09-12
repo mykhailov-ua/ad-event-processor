@@ -119,5 +119,8 @@ func (s SKUDefinition) BuildClaims(in IssueLicenseInput) LicenseClaims {
 	}
 	claims.Bind.Fingerprint = in.Fingerprint
 	claims.HWIDHash = strings.TrimSpace(in.HWIDHash)
+	claims.OfflineGraceDays = s.OfflineGraceDays
+	claims.HeartbeatIntervalHrs = s.HeartbeatIntervalHrs
+	claims.PreRenewalWarnDays = s.PreRenewalWarnDays
 	return claims
 }

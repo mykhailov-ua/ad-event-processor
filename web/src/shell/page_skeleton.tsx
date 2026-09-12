@@ -12,9 +12,9 @@ export function PageSkeleton({ variant = 'page', columns = 4, rows = 6 }: PageSk
   }
 
   return (
-    <div  aria-busy="true" aria-label="Loading">
-      <div  />
-      <div  />
+    <div aria-busy="true" aria-label="Loading">
+      <div />
+      <div />
     </div>
   );
 }

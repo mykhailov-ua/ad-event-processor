@@ -57,6 +57,10 @@ func (h campaignImportExportHost) Pool() *pgxpool.Pool {
 	return h.svc.GetPool()
 }
 
+func (h campaignImportExportHost) PostbackEncryptionKey() []byte {
+	return h.svc.PostbackEncryptionKey()
+}
+
 func (h campaignImportExportHost) AssertMediaBuyerCampaignAccess(ctx context.Context, row db.Campaign) error {
 	return campaign.AssertMediaBuyerCampaignAccess(ctx, row)
 }

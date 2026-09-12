@@ -11,7 +11,6 @@ import (
 	"ad-event-processor/internal/domain"
 	"ad-event-processor/internal/ingest/pb"
 	"ad-event-processor/internal/metrics"
-	"ad-event-processor/internal/telemetry"
 	"ad-event-processor/pkg/broker/client"
 	"ad-event-processor/pkg/iogate"
 
@@ -174,7 +173,6 @@ func (bp *BrokerProducer) Enqueue(evt *domain.Event) error {
 			// Worker has not drained slot; ring physically full despite prior TryReserve (race or miswire).
 			bp.dropped.Add(1)
 			metrics.EventsDropped.Inc()
-			telemetry.RecordRejected()
 			return ErrRingBufferFull
 		}
 	}
@@ -282,7 +280,6 @@ func (bp *BrokerProducer) EnqueueStreamEvent(evt *pb.AdStreamEvent) error {
 		} else if diff < 0 {
 			bp.dropped.Add(1)
 			metrics.EventsDropped.Inc()
-			telemetry.RecordRejected()
 			return ErrRingBufferFull
 		}
 	}
@@ -477,7 +474,6 @@ func (bp *BrokerProducer) dispatchBatch(events []pb.AdStreamEvent, bufPtr *[]byt
 	} else {
 		metrics.BrokerProducedEventsTotal.WithLabelValues("ok").Add(float64(len(events)))
 		metrics.EventsProcessed.Add(float64(len(events)))
-		telemetry.RecordAccepted()
 	}
 }
 

@@ -72,9 +72,19 @@ func NewMetaEnricher(host MetaEnrichHost) MetaEnricher {
 		if err := pool.QueryRow(ctx, `SELECT COUNT(*) FROM campaigns WHERE status = 'ACTIVE'`).Scan(&activeCampaigns); err != nil {
 			return out, err
 		}
-		policy := licensing.LoadHeartbeatPolicyFromEnv()
+		var tenantCount int64
+		if err := pool.QueryRow(ctx, `SELECT COUNT(*) FROM customers`).Scan(&tenantCount); err != nil {
+			return out, err
+		}
+		var apiKeyCount int64
+		if err := pool.QueryRow(ctx, `SELECT COUNT(*) FROM api_keys`).Scan(&apiKeyCount); err != nil {
+			return out, err
+		}
+		claims := licensing.LicenseClaims{Limits: ent.Limits, Plan: licRow.PlanCode}
+		policy := licensing.HeartbeatPolicyFromClaims(&claims, licensing.LoadHeartbeatPolicyFromEnv())
 		warnings := licensing.TierUsageWarnings(
 			ent.Limits,
+			licensing.TierUsageCounts{Tenants: uint64(tenantCount), APIKeys: uint64(apiKeyCount)},
 			int(activeCampaigns),
 			licensing.LicenseState(licRow.State),
 			validUntil,

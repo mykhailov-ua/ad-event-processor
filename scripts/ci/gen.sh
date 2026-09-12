@@ -30,6 +30,9 @@ done
 echo "gen: sqlc..."
 go run github.com/sqlc-dev/sqlc/cmd/sqlc@v1.28.0 generate
 
+echo "gen: domain db extensions..."
+cp "$ROOT/internal/ingest/codegen/db/campaign_outbound_postback.go" "$ROOT/internal/domain/db/campaign_outbound_postback.go"
+
 echo "gen: traffic source templates..."
 go run ./cmd/codegen-traffic-templates
 

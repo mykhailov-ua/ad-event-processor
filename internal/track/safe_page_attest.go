@@ -676,8 +676,17 @@ type SafePageRuntimeProbes struct {
 type SafePageVerifyRequest struct {
 	CampaignID  string                    `json:"campaign_id"`
 	Events      []SafePageVerifyEvent     `json:"events"`
-	Fingerprint SafePageVerifyFingerprint `json:"fingerprint"`
-	Antifraud   json.RawMessage           `json:"antifraud,omitempty"`
+	Fingerprint SafePageVerifyFingerprint `json:"fp"`
+	Antifraud   json.RawMessage           `json:"ctx,omitempty"`
+}
+
+type safePageVerifyWire struct {
+	CampaignID        string                    `json:"campaign_id"`
+	Events            []SafePageVerifyEvent     `json:"events"`
+	Fingerprint       SafePageVerifyFingerprint `json:"fp"`
+	FingerprintLegacy SafePageVerifyFingerprint `json:"fingerprint"`
+	Antifraud         json.RawMessage           `json:"ctx"`
+	AntifraudLegacy   json.RawMessage           `json:"antifraud"`
 }
 
 type SafePageVerifyResponse struct {
@@ -722,14 +731,27 @@ func ParseSafePageVerifyRequest(body []byte) (SafePageVerifyRequest, bool) {
 	if len(body) == 0 || len(body) > safePageVerifyMaxBody {
 		return SafePageVerifyRequest{}, false
 	}
-	var req SafePageVerifyRequest
-	if err := json.Unmarshal(body, &req); err != nil {
+	var wire safePageVerifyWire
+	if err := json.Unmarshal(body, &wire); err != nil {
 		return SafePageVerifyRequest{}, false
 	}
-	if req.CampaignID == "" || len(req.Events) == 0 {
+	if wire.CampaignID == "" || len(wire.Events) == 0 {
 		return SafePageVerifyRequest{}, false
 	}
-	return req, true
+	fp := wire.Fingerprint
+	if fp.UA == "" && wire.FingerprintLegacy.UA != "" {
+		fp = wire.FingerprintLegacy
+	}
+	ctx := wire.Antifraud
+	if len(ctx) == 0 {
+		ctx = wire.AntifraudLegacy
+	}
+	return SafePageVerifyRequest{
+		CampaignID:  wire.CampaignID,
+		Events:      wire.Events,
+		Fingerprint: fp,
+		Antifraud:   ctx,
+	}, true
 }
 
 func ScoreSafePageBehavior(events []SafePageVerifyEvent) int {

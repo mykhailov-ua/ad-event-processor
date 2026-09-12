@@ -70,7 +70,7 @@ rsync "${rsync_base[@]}" \
 remote "chmod +x '${INSTALL_ROOT}/scripts/ops/marketing_cloudflare_firewall.sh' '${INSTALL_ROOT}/scripts/ops/marketing_cloudflare_autolock.sh'"
 
 OPERATOR_CARD="${ROOT}/deploy/marketing/cloudflare.operator.txt"
-cat >"$OPERATOR_CARD" <<EOF
+cat > "$OPERATOR_CARD" << EOF
 Cloudflare setup for ${MARKETING_DOMAIN} (server-side ingress is ready)
 
 Origin IPv4 (A record content): ${ORIGIN_IP}

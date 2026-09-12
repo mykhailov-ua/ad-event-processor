@@ -7,7 +7,7 @@ import (
 	"github.com/panjf2000/gnet/v2"
 )
 
-const antifraudRTTPath = "/track/antifraud/rtt"
+const clientCtxRTTPath = "/track/m/rtt"
 
 func (h *AdsPacketHandler) reactAntifraudRTT(req *Request, c gnet.Conn, ctx *ConnContext) gnet.Action {
 	startMono := monotonicNano()

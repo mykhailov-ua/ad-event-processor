@@ -100,10 +100,7 @@ function DlqInboxTable({
 }) {
   const [selectedId, setSelectedId] = useState<string | null>(null);
   const recordById = useMemo(() => directoryRecordMap(items, dlqInboxRowId), [items]);
-  const rows = useMemo(
-    () => directoryOperateRows(items, dlqInboxRowId, dlqInboxRowLabel),
-    [items]
-  );
+  const rows = useMemo(() => directoryOperateRows(items, dlqInboxRowId, dlqInboxRowLabel), [items]);
 
   return (
     <TableHost>
@@ -178,12 +175,7 @@ export function OpsDlqInbox({
     list.length === 0 ? (
       <EmptyState description="No failed deliveries are queued." title="DLQ inbox empty" />
     ) : (
-      <DlqInboxTable
-        fetching={fetching}
-        items={list}
-        retryingId={retryingId}
-        onRetry={onRetry}
-      />
+      <DlqInboxTable fetching={fetching} items={list} retryingId={retryingId} onRetry={onRetry} />
     );
 
   if (embedded) {

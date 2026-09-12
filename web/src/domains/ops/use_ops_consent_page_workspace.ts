@@ -9,11 +9,7 @@ import { useResource } from '@/api/use_resource';
 import { buildConsentRecordJson, signConsentHmacHex } from '@/lib/consent_hmac';
 import { userErrorMessage } from '@/lib/admin_error';
 import { mutationError } from '@/lib/mutation_audit';
-import {
-  requireInteger,
-  requireNonEmpty,
-  validationError,
-} from '@/lib/admin_validation_error';
+import { requireInteger, requireNonEmpty, validationError } from '@/lib/admin_validation_error';
 
 export function useOpsConsentPageWorkspace() {
   const { data, error, fetching, revalidating } = useResource(
@@ -73,10 +69,9 @@ export function useOpsConsentPageWorkspace() {
         signature = await signConsentHmacHex(secret, bodyJson);
       }
       if (!signature) {
-        throw validationError(
-          'Provide an HMAC secret or X-Consent-Signature hex value.',
-          { field: 'signature' }
-        );
+        throw validationError('Provide an HMAC secret or X-Consent-Signature hex value.', {
+          field: 'signature',
+        });
       }
       await postConsentBody(bodyJson, signature);
       setRecordSuccess(true);

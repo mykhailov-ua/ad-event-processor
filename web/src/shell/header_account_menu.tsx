@@ -30,10 +30,7 @@ export function HeaderAccountMenu({ signingOut = false, onSignOut }: HeaderAccou
           <span>Account</span>
         </Button>
       </DropdownMenuTrigger>
-      <DropdownMenuContent
-        align="end"
-        className={cn(adminChrome.floating, 'z-[10001] min-w-44')}
-      >
+      <DropdownMenuContent align="end" className={cn(adminChrome.floating, 'z-[10001] min-w-44')}>
         <DropdownMenuItem className={accountMenuItemClass} onSelect={() => navigate('/settings')}>
           <Settings aria-hidden className="h-4 w-4 shrink-0 opacity-80" />
           Settings

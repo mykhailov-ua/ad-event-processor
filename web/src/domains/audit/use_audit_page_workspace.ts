@@ -145,14 +145,7 @@ export function useAuditPageWorkspace() {
       api_key_id: draftApiKeyId.trim() || undefined,
       offset: 0,
     });
-  }, [
-    draftAction,
-    draftAdminId,
-    draftApiKeyId,
-    draftAuthSource,
-    draftTargetId,
-    updateQuery,
-  ]);
+  }, [draftAction, draftAdminId, draftApiKeyId, draftAuthSource, draftTargetId, updateQuery]);
 
   const onExportCsv = useCallback(async () => {
     setExporting(true);

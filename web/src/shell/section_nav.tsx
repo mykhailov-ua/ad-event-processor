@@ -45,14 +45,14 @@ export function SectionNav({ items, label, className, variant = 'pill' }: Sectio
           <Link
             key={item.path}
             to={item.path}
-              className={cn(
-                'inline-flex min-h-7 items-center border border-border bg-background py-1 text-[13px] leading-[18px] transition-colors',
-                adminKit.controlPaddingX,
-                adminKit.controlRadius,
-                active
-                  ? 'border-primary bg-primary font-medium text-primary-foreground'
-                  : 'text-muted-foreground hover:bg-muted/50 hover:text-foreground'
-              )}
+            className={cn(
+              'inline-flex min-h-7 items-center border border-border bg-background py-1 text-[13px] leading-[18px] transition-colors',
+              adminKit.controlPaddingX,
+              adminKit.controlRadius,
+              active
+                ? 'border-primary bg-primary font-medium text-primary-foreground'
+                : 'text-muted-foreground hover:bg-muted/50 hover:text-foreground'
+            )}
           >
             {item.label}
           </Link>

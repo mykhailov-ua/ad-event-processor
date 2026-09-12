@@ -193,12 +193,7 @@ export function OpsHealth({
       actions={
         <>
           <OpsActionGroup label="Snapshot">
-            <Button
-              disabled={refreshing}
-              loading={refreshing}
-              type="button"
-              onClick={onRefresh}
-            >
+            <Button disabled={refreshing} loading={refreshing} type="button" onClick={onRefresh}>
               Refresh
             </Button>
           </OpsActionGroup>

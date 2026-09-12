@@ -108,7 +108,9 @@ export function exportHubCatalogOptions(entries: ExportHubEntry[]): ExportHubCat
       value: exportHubCatalogOptionValue(entry),
       label: exportHubCatalogItemLabel(entry),
     }))
-    .sort((left, right) => left.label.localeCompare(right.label, undefined, { sensitivity: 'base' }));
+    .sort((left, right) =>
+      left.label.localeCompare(right.label, undefined, { sensitivity: 'base' })
+    );
 }
 
 export function resolveExportHubCatalogValue(

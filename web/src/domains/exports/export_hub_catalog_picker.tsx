@@ -1,17 +1,9 @@
 import { useMemo } from 'react';
 
-import {
-  Select,
-  SelectContent,
-  SelectItem,
-  SelectTrigger,
-} from '@/components/ui/select';
+import { Select, SelectContent, SelectItem, SelectTrigger } from '@/components/ui/select';
 import { EXPORT_HUB_SEARCH_THRESHOLD } from '@/domains/exports/export_hub_limits';
 import { FilterField } from '@/shell/filter_panel';
-import {
-  type ExportHubEntry,
-  exportHubCatalogOptions,
-} from '@/domains/exports/export_hub_catalog';
+import { type ExportHubEntry, exportHubCatalogOptions } from '@/domains/exports/export_hub_catalog';
 import { SearchableFilterSelect } from '@/shell/searchable_filter_select';
 
 export type ExportHubCatalogPickerOption = {
@@ -62,11 +54,7 @@ export function ExportHubCatalogPicker({
 
   return (
     <FilterField htmlFor="export-hub-catalog" label="Export">
-      <Select
-        disabled={disabled}
-        value={value || undefined}
-        onValueChange={onValueChange}
-      >
+      <Select disabled={disabled} value={value || undefined} onValueChange={onValueChange}>
         <SelectTrigger id="export-hub-catalog">
           <span>{selectedLabel ?? 'Select export'}</span>
         </SelectTrigger>

@@ -15,6 +15,7 @@ import (
 	db "ad-event-processor/internal/domain/db"
 	"ad-event-processor/internal/ingest"
 	"ad-event-processor/internal/ledger"
+	"ad-event-processor/internal/licensing"
 	"ad-event-processor/internal/notify"
 	"ad-event-processor/internal/platformsync"
 )
@@ -67,7 +68,12 @@ func Run(ctx context.Context, cfg *config.Config, opts Options) error {
 		start("cost-sync", func(runCtx context.Context) error { return serveCostSync(runCtx, cfg) })
 	}
 	if opts.PlatformCampaignSync {
-		start("platform-campaign-sync", func(runCtx context.Context) error { return servePlatformCampaignSync(runCtx, cfg) })
+		start("platform-campaign-sync", func(runCtx context.Context) error {
+			if err := enforcePlatformCampaignSyncLicense(ctx, cfg); err != nil {
+				return err
+			}
+			return servePlatformCampaignSync(runCtx, cfg)
+		})
 	}
 
 	if opts.Management {
@@ -207,6 +213,17 @@ func serveCostSync(ctx context.Context, cfg *config.Config) error {
 	worker := costsync.NewWorker(pool, key, workerOpts...)
 	worker.Start(ctx)
 	return ctx.Err()
+}
+
+func enforcePlatformCampaignSyncLicense(ctx context.Context, cfg *config.Config) error {
+	pool, err := database.Connect(ctx, string(cfg.DBDSN), cfg.DBTrackerMaxConns, cfg.DBMinConns)
+	if err != nil {
+		return err
+	}
+	defer pool.Close()
+	return licensing.EnsureDeploymentModule(ctx, pool, "platform_campaign_sync", func(f licensing.FeatureSet) bool {
+		return f.AdPlatformCampaignAPIEnabled()
+	})
 }
 
 func servePlatformCampaignSync(ctx context.Context, cfg *config.Config) error {

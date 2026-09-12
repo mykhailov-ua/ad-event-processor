@@ -36,7 +36,9 @@ export function useIntegrationsApiKeysPageWorkspace() {
   const [draftScopes, setDraftScopes] = useState<string[]>(['campaigns:read']);
   const [creating, setCreating] = useState(false);
   const [createError, setCreateError] = useState<Error | undefined>();
-  const [formValidationError, setFormValidationError] = useState<AdminValidationError | undefined>();
+  const [formValidationError, setFormValidationError] = useState<
+    AdminValidationError | undefined
+  >();
   const [createdKey, setCreatedKey] = useState<APIKeyCreatedResponse | undefined>();
   const [revokingId, setRevokingId] = useState<string | undefined>();
   const [revokeError, setRevokeError] = useState<Error | undefined>();

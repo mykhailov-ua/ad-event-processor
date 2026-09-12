@@ -40,7 +40,6 @@ export function CampaignListCountrySelect({
   return (
     <SearchableFilterSelect
       aria-label={ariaLabel}
-     
       disabled={disabled}
       formatOptionLabel={campaignCountryOptionLabel}
       options={options}

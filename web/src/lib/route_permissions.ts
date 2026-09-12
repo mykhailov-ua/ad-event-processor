@@ -46,9 +46,7 @@ export function resolveRoutePermission(pathname: string): RoutePermission | null
   return null;
 }
 
-export function formatRoutePermissionRequirement(
-  rule: RoutePermission | null
-): string | undefined {
+export function formatRoutePermissionRequirement(rule: RoutePermission | null): string | undefined {
   if (!rule) {
     return undefined;
   }

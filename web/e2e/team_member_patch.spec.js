@@ -74,6 +74,8 @@ test('team member PATCH 500 shows mutation error', { tag: '@L3' }, async ({ page
 
   await expect(mainContent(page).getByRole('alert')).toBeVisible({ timeout: 15_000 });
   await expect(
-    mainContent(page).getByText('The server encountered an error. Try again later.', { exact: true })
+    mainContent(page).getByText('The server encountered an error. Try again later.', {
+      exact: true,
+    })
   ).toBeVisible();
 });

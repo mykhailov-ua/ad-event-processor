@@ -85,10 +85,7 @@ export function ExportHubNotifications({ onOpenJob }: ExportHubNotificationsProp
       </Button>
       {open ? (
         <div className="absolute right-0 top-full z-20 mt-2 w-[min(28rem,calc(100vw-2rem))] border bg-background p-3 shadow-md">
-          <BentoSection
-            data-testid="export-hub-notifications"
-            title="Export notifications"
-          >
+          <BentoSection data-testid="export-hub-notifications" title="Export notifications">
             {error ? (
               <ErrorBlock error={error} title="Could not load export notifications" />
             ) : null}

@@ -59,7 +59,9 @@ test('campaigns directory toolbar and filters are visible', async ({ page }) => 
 test('campaigns status chip filter updates query string', async ({ page }) => {
   await gotoCampaigns(page);
 
-  await statusFiltersBand(page).getByRole('button', { name: /^Paused/ }).click();
+  await statusFiltersBand(page)
+    .getByRole('button', { name: /^Paused/ })
+    .click();
   await applyCampaignFilters(page);
   await expect(page).toHaveURL(/status=PAUSED/);
 
@@ -77,7 +79,9 @@ test('campaigns paused status chip applies PAUSED filter', async ({ page }) => {
     await expect(page).not.toHaveURL(/status=PAUSED/);
   }
 
-  await statusFiltersBand(page).getByRole('button', { name: /^Paused/ }).click();
+  await statusFiltersBand(page)
+    .getByRole('button', { name: /^Paused/ })
+    .click();
   await applyCampaignFilters(page);
   await expect(page).toHaveURL(/status=PAUSED/);
   await expect(statusFiltersBand(page).getByRole('button', { name: /^Paused/ })).toHaveAttribute(
@@ -183,7 +187,9 @@ test('campaigns selection clears when status filter changes', async ({ page }) =
   await rowCheckbox.click();
   await expect(page.getByRole('button', { name: 'Clone' })).toBeVisible();
 
-  await statusFiltersBand(page).getByRole('button', { name: /^Paused/ }).click();
+  await statusFiltersBand(page)
+    .getByRole('button', { name: /^Paused/ })
+    .click();
   await applyCampaignFilters(page);
   await expect(page).toHaveURL(/status=PAUSED/);
   await expect(page.getByRole('button', { name: 'Clone' })).toHaveCount(0);
@@ -208,23 +214,25 @@ test('campaigns pagination next updates offset when available', async ({ page })
   expect(Number(offset)).toBeGreaterThan(0);
 });
 
-test('campaigns list GET 500 shows ErrorBlock without empty table', { tag: '@L3' }, async ({
-  page,
-}) => {
-  await ensureLoggedIn(page);
-  await stubApiGetError(page, '/api/v1/campaigns', 500, 'campaign list unavailable');
+test(
+  'campaigns list GET 500 shows ErrorBlock without empty table',
+  { tag: '@L3' },
+  async ({ page }) => {
+    await ensureLoggedIn(page);
+    await stubApiGetError(page, '/api/v1/campaigns', 500, 'campaign list unavailable');
 
-  const failedList = page.waitForResponse(
-    (response) => isCampaignsListResponse(response) && response.status() === 500,
-    { timeout: 20_000 }
-  );
-  await gotoCampaignsLive(page);
-  await failedList;
+    const failedList = page.waitForResponse(
+      (response) => isCampaignsListResponse(response) && response.status() === 500,
+      { timeout: 20_000 }
+    );
+    await gotoCampaignsLive(page);
+    await failedList;
 
-  await expectErrorBlockVisible(page, 'Could not load campaigns');
-  await expect(
-    page.getByText('No campaigns yet. Create one to start tracking spend and delivery.', {
-      exact: true,
-    })
-  ).not.toBeVisible();
-});
+    await expectErrorBlockVisible(page, 'Could not load campaigns');
+    await expect(
+      page.getByText('No campaigns yet. Create one to start tracking spend and delivery.', {
+        exact: true,
+      })
+    ).not.toBeVisible();
+  }
+);

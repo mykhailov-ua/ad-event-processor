@@ -2,6 +2,12 @@ import { apiFetch, apiJson, apiJsonArray, apiJsonValidated, parseApiError } from
 import {
   type BulkCloneCampaignsRequest,
   type BulkCloneCampaignsResponse,
+  type CampaignBulkPatchRequest,
+  type CampaignBulkPatchResponse,
+  type OutboundPostbackListResponse,
+  type ReplaceOutboundPostbacksRequest,
+  type ReplaceStatusSchemeRequest,
+  type StatusSchemeListResponse,
   type CampaignExportBatchResponse,
   type CampaignListFacetsResponse,
   type CampaignListMetrics,
@@ -11,6 +17,7 @@ import {
 import {
   parseCampaign,
   parseCampaignBulkActionResponse,
+  parseCampaignBulkPatchResponse,
   parseCampaignFlowValidateResponse,
   parseCampaignListMetricsBatchResponse,
   parseCampaignListMetricsTotalsResponse,
@@ -87,6 +94,10 @@ export type {
   CampaignBulkActionRequest,
   CampaignBulkActionResponse,
   CampaignBulkActionResultRow,
+  CampaignBulkPatchFields,
+  CampaignBulkPatchRequest,
+  CampaignBulkPatchResponse,
+  CampaignBulkPatchResultRow,
   CampaignDiffResponse,
   CampaignDiffRow,
   CampaignExportBatchResponse,
@@ -230,11 +241,7 @@ export async function fetchCampaignListMetricsTotals(
 }
 
 export async function getCampaign(id: string, signal?: AbortSignal): Promise<Campaign> {
-  return apiJsonValidated(
-    `/api/v1/campaigns/${encodeURIComponent(id)}`,
-    { signal },
-    parseCampaign
-  );
+  return apiJsonValidated(`/api/v1/campaigns/${encodeURIComponent(id)}`, { signal }, parseCampaign);
 }
 
 export async function patchCampaign(
@@ -388,6 +395,52 @@ export async function bulkCampaignAction(
       signal,
     },
     parseCampaignBulkActionResponse
+  );
+}
+
+export type ManualCampaignCostRequest = {
+  cost_date: string;
+  amount_micro: number;
+  currency?: string;
+  placement_id?: string;
+};
+
+export type ManualCampaignCostResponse = {
+  campaign_id: string;
+  cost_date: string;
+  amount_micro: number;
+  currency: string;
+  placement_id: string;
+};
+
+export async function putManualCampaignCost(
+  campaignId: string,
+  body: ManualCampaignCostRequest,
+  signal?: AbortSignal
+): Promise<ManualCampaignCostResponse> {
+  return apiJsonValidated(
+    `/api/v1/campaigns/${encodeURIComponent(campaignId)}/manual-cost`,
+    {
+      method: 'PUT',
+      body: JSON.stringify(body),
+      signal,
+    },
+    (payload) => payload as ManualCampaignCostResponse
+  );
+}
+
+export async function bulkCampaignPatch(
+  body: CampaignBulkPatchRequest,
+  signal?: AbortSignal
+): Promise<CampaignBulkPatchResponse> {
+  return apiJsonValidated(
+    '/api/v1/campaigns/bulk-patch',
+    {
+      method: 'POST',
+      body: JSON.stringify(body),
+      signal,
+    },
+    parseCampaignBulkPatchResponse
   );
 }
 
@@ -803,6 +856,67 @@ export async function replaceCampaignConversionMappings(
     `/api/v1/campaigns/${encodeURIComponent(campaignId)}/conversion-mappings`,
     {
       method: 'PUT',
+      body: JSON.stringify(body),
+      signal,
+    }
+  );
+}
+
+export async function listCampaignStatusSchemes(
+  campaignId: string,
+  signal?: AbortSignal
+): Promise<StatusSchemeListResponse> {
+  return apiJson<StatusSchemeListResponse>(
+    `/api/v1/campaigns/${encodeURIComponent(campaignId)}/status-schemes`,
+    { signal }
+  );
+}
+
+export async function listCampaignOutboundPostbacks(
+  campaignId: string,
+  signal?: AbortSignal
+): Promise<OutboundPostbackListResponse> {
+  return apiJson<OutboundPostbackListResponse>(
+    `/api/v1/campaigns/${encodeURIComponent(campaignId)}/outbound-postbacks`,
+    { signal }
+  );
+}
+
+export async function replaceCampaignOutboundPostbacks(
+  campaignId: string,
+  body: ReplaceOutboundPostbacksRequest,
+  signal?: AbortSignal
+): Promise<OutboundPostbackListResponse> {
+  return apiJson<OutboundPostbackListResponse>(
+    `/api/v1/campaigns/${encodeURIComponent(campaignId)}/outbound-postbacks`,
+    {
+      method: 'POST',
+      body: JSON.stringify(body),
+      signal,
+    }
+  );
+}
+
+export async function testCampaignOutboundPostback(
+  campaignId: string,
+  postbackId: string,
+  signal?: AbortSignal
+): Promise<{ ok: boolean; rendered_url?: string; error?: string }> {
+  return apiJson<{ ok: boolean; rendered_url?: string; error?: string }>(
+    `/api/v1/campaigns/${encodeURIComponent(campaignId)}/outbound-postbacks/${encodeURIComponent(postbackId)}/test`,
+    { method: 'POST', signal }
+  );
+}
+
+export async function replaceCampaignStatusSchemes(
+  campaignId: string,
+  body: ReplaceStatusSchemeRequest,
+  signal?: AbortSignal
+): Promise<StatusSchemeListResponse> {
+  return apiJson<StatusSchemeListResponse>(
+    `/api/v1/campaigns/${encodeURIComponent(campaignId)}/status-schemes`,
+    {
+      method: 'POST',
       body: JSON.stringify(body),
       signal,
     }

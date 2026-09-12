@@ -33,21 +33,23 @@ test('ops metrics page shows live toggle', async ({ page }) => {
   await expect(page.getByRole('button', { name: 'Live', exact: true })).toBeVisible();
 });
 
-test('ops home shows ErrorBlock when GET /api/v1/ops/home returns 500', { tag: '@L3' }, async ({
-  page,
-}) => {
-  await loginAsAdmin(page);
-  await stubApiRoute(page, '/api/v1/ops/home', 500, {
-    error: { code: 'INTERNAL_ERROR', message: 'ops home unavailable' },
-  });
-  const homeResponse = page.waitForResponse(isApiGet('/api/v1/ops/home', 500), {
-    timeout: 20_000,
-  });
-  await gotoLive(page, '/ops');
-  await homeResponse;
-  await expect(mainHeading(page, 'Ops')).toBeVisible();
-  await expectErrorBlockVisible(page, 'Could not load ops snapshot');
-});
+test(
+  'ops home shows ErrorBlock when GET /api/v1/ops/home returns 500',
+  { tag: '@L3' },
+  async ({ page }) => {
+    await loginAsAdmin(page);
+    await stubApiRoute(page, '/api/v1/ops/home', 500, {
+      error: { code: 'INTERNAL_ERROR', message: 'ops home unavailable' },
+    });
+    const homeResponse = page.waitForResponse(isApiGet('/api/v1/ops/home', 500), {
+      timeout: 20_000,
+    });
+    await gotoLive(page, '/ops');
+    await homeResponse;
+    await expect(mainHeading(page, 'Ops')).toBeVisible();
+    await expectErrorBlockVisible(page, 'Could not load ops snapshot');
+  }
+);
 
 test('ops home shows reload roles control', async ({ page }) => {
   await loginAsAdmin(page);

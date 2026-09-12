@@ -54,10 +54,7 @@ export function CustomerDetailPaymentsTab({
             </Card>
           ) : (
             <>
-              <form
-               
-                onSubmit={(event) => event.preventDefault()}
-              >
+              <form onSubmit={(event) => event.preventDefault()}>
                 <DirectoryPaginationFooter
                   canGoNext={offset + (items ?? []).length < total}
                   canGoPrev={offset > 0}
@@ -87,11 +84,13 @@ export function CustomerDetailPaymentsTab({
                       {(items ?? []).map((row) => (
                         <TableRow key={`${row.intent_id ?? 'payment'}-${row.created_at ?? ''}`}>
                           <TableCell>{row.intent_id ?? ''}</TableCell>
-                          <TableCell>
-                            {displayMicro(row.amount_micro)}
+                          <TableCell>{displayMicro(row.amount_micro)}</TableCell>
+                          <TableCell className={adminTypography.monoData}>
+                            {row.currency ?? ''}
                           </TableCell>
-                          <TableCell className={adminTypography.monoData} >{row.currency ?? ''}</TableCell>
-                          <TableCell className="text-right tabular-nums" >{row.status ?? ''}</TableCell>
+                          <TableCell className="text-right tabular-nums">
+                            {row.status ?? ''}
+                          </TableCell>
                           <TableCell>{row.provider ?? ''}</TableCell>
                           <TableCell>{displayTimestamp(row.created_at)}</TableCell>
                         </TableRow>

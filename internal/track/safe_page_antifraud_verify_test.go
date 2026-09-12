@@ -43,7 +43,7 @@ func TestEvaluateSafePageAntifraudCrypto_roundTrip_holdout(t *testing.T) {
 	raw, err := json.Marshal(map[string]interface{}{
 		"challenge_token":  token,
 		"pow_nonce":        nonce,
-		"telemetry_mac":    string(macHex[:]),
+		"ctx_mac":          string(macHex[:]),
 		"dwell_ms":         dwellMs,
 		"pointer_cv_milli": pointerCV,
 		"raf_cv_milli":     rafCV,
@@ -92,6 +92,6 @@ func TestRequiresSafePageAntifraudCrypto_strictBundle_holdout(t *testing.T) {
 
 func TestSafePageHydrator_holdout_mergesBiometricsEvents(t *testing.T) {
 	src := string(safePageHydratorJS)
-	require.Contains(t, src, "trackBiometricsSnapshot")
-	require.Contains(t, src, "trackBiometricsArm")
+	require.Contains(t, src, "tagInSnapshot")
+	require.Contains(t, src, "tagInArm")
 }

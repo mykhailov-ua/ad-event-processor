@@ -8,7 +8,7 @@ HOT=(
   "${ROOT}/internal/track/track_biometrics.js"
   "${ROOT}/web/src/static/track.js"
 )
-FORBIDDEN='attest\.wasm|wasm-attest-loader|aedWasmAttest|WebAssembly'
+FORBIDDEN='tag\.wasm|tag-w\.js|tagW|WebAssembly'
 
 for f in "${HOT[@]}"; do
   if [[ ! -f "${f}" ]]; then

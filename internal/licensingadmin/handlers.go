@@ -31,6 +31,7 @@ type LicenseStatusResponse struct {
 	DaysToExpiry      int                         `json:"days_to_expiry,omitempty"`
 	PlanCode          string                      `json:"plan_code,omitempty"`
 	MaxRPS            uint64                      `json:"max_rps,omitempty"`
+	LimitUsage        DeploymentLimitUsage        `json:"limit_usage,omitempty"`
 	UpgradePlanCode   string                      `json:"upgrade_plan_code,omitempty"`
 	TrialSelfServeURL string                      `json:"trial_self_serve_url,omitempty"`
 	PilotValidDays    int                         `json:"pilot_valid_days,omitempty"`
@@ -43,6 +44,7 @@ type ApplyLicenseRequest struct {
 
 type LicenseService interface {
 	ApplyLicenseToken(ctx context.Context, token string) error
+	DeploymentLimitUsage(ctx context.Context) (DeploymentLimitUsage, error)
 }
 
 type LicenseDiagnosticsProvider func() (licensing.LicenseDiagnostics, bool)
@@ -101,7 +103,7 @@ func (h *HTTPHandlers) getLicenseStatus(w http.ResponseWriter, r *http.Request) 
 		licRow.ValidUntil.Valid,
 		h.LicenseDiagnostics,
 	)
-	resp = enrichLicenseStatusFromRow(resp, licRow)
+	resp = enrichLicenseStatusFromRow(r.Context(), resp, licRow, h)
 	httpresponse.JSON(w, http.StatusOK, resp)
 }
 
@@ -142,7 +144,7 @@ func (h *HTTPHandlers) postLicenseApply(w http.ResponseWriter, r *http.Request) 
 		licRow.ValidUntil.Valid,
 		h.LicenseDiagnostics,
 	)
-	resp = enrichLicenseStatusFromRow(resp, licRow)
+	resp = enrichLicenseStatusFromRow(r.Context(), resp, licRow, h)
 	httpresponse.JSON(w, http.StatusOK, resp)
 }
 
@@ -183,12 +185,17 @@ func toLicenseStatusResponse(deploymentID, state string, validUntil time.Time, v
 	return resp
 }
 
-func enrichLicenseStatusFromRow(resp LicenseStatusResponse, row db.BillingLicenseStatus) LicenseStatusResponse {
+func enrichLicenseStatusFromRow(ctx context.Context, resp LicenseStatusResponse, row db.BillingLicenseStatus, h *HTTPHandlers) LicenseStatusResponse {
 	resp.PlanCode = row.PlanCode
 	if len(row.EntitlementsJson) > 0 {
 		var ent licensing.Entitlements
 		if err := json.Unmarshal(row.EntitlementsJson, &ent); err == nil {
 			resp.MaxRPS = ent.Limits.MaxRPS
+		}
+	}
+	if h != nil && h.LicenseService != nil {
+		if usage, err := h.LicenseService.DeploymentLimitUsage(ctx); err == nil {
+			resp.LimitUsage = usage
 		}
 	}
 	return enrichLicenseStatusTrialSurface(resp)

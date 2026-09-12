@@ -68,6 +68,7 @@ type MigrationHost interface {
 
 type ImportExportHost interface {
 	Pool() *pgxpool.Pool
+	PostbackEncryptionKey() []byte
 	AssertMediaBuyerCampaignAccess(ctx context.Context, row db.Campaign) error
 	GetFlow(ctx context.Context, flowID uuid.UUID) (FlowDTO, error)
 	AuditImportCampaign(ctx context.Context, q *db.Queries, campaignID uuid.UUID, change ImportCampaignAuditChange, meta ImportCampaignIdempotencyMeta) error

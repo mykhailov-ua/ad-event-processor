@@ -161,6 +161,12 @@ func CloneCampaign(ctx context.Context, fx Effects, pool *pgxpool.Pool, spec Clo
 		if err := cloneConversionMappings(ctx, tx, newCampaignID, spec.SourceID); err != nil {
 			return fmt.Errorf("clone conversion mappings: %w", err)
 		}
+		if err := CloneCampaignStatusSchemeRules(ctx, tx, newCampaignID, spec.SourceID); err != nil {
+			return fmt.Errorf("clone status scheme rules: %w", err)
+		}
+		if err := CloneCampaignOutboundPostbacks(ctx, tx, newCampaignID, spec.SourceID); err != nil {
+			return fmt.Errorf("clone outbound postbacks: %w", err)
+		}
 
 		_, err = q.CreateLedgerEntry(ctx, db.CreateLedgerEntryParams{
 			CustomerID:      src.CustomerID,

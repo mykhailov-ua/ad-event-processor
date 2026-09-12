@@ -20,7 +20,8 @@ export type ToggleChipGroupProps<T extends string> = {
 
 const CHIP_IDLE =
   'border-border bg-card text-foreground hover:border-foreground/35 hover:bg-accent hover:text-foreground';
-const CHIP_ACTIVE = 'border-primary bg-primary text-primary-foreground hover:border-primary hover:bg-primary';
+const CHIP_ACTIVE =
+  'border-primary bg-primary text-primary-foreground hover:border-primary hover:bg-primary';
 
 export function ToggleChipGroup<T extends string>({
   options,

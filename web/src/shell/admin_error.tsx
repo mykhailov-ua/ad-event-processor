@@ -9,20 +9,11 @@ export type AdminErrorProps = {
   options?: PanelErrorOptions;
 };
 
-export function AdminError({
-  error,
-  title,
-  variant = 'inline',
-  options,
-}: AdminErrorProps) {
+export function AdminError({ error, title, variant = 'inline', options }: AdminErrorProps) {
   void variant;
   return panelError(error, title, options);
 }
 
-export function AdminMutationError({
-  error,
-  title,
-  options,
-}: Omit<AdminErrorProps, 'variant'>) {
+export function AdminMutationError({ error, title, options }: Omit<AdminErrorProps, 'variant'>) {
   return <AdminError error={error} title={title} variant="mutation" options={options} />;
 }

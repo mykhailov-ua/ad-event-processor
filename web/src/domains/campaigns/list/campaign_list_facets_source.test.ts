@@ -18,7 +18,10 @@ test('isCampaignListFacetsDegraded is false while facets fetch is in flight', ()
 
 test('isCampaignListFacetsDegraded is false when list-facets API returns data', () => {
   assert.equal(isCampaignListFacetsDegraded(sampleFacets, false, undefined), false);
-  assert.equal(isCampaignListFacetsDegraded({ countries: [], owners: [] }, false, undefined), false);
+  assert.equal(
+    isCampaignListFacetsDegraded({ countries: [], owners: [] }, false, undefined),
+    false
+  );
 });
 
 test('isCampaignListFacetsDegraded_holdout is true when fetch settled without API facets', () => {

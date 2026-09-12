@@ -10,10 +10,7 @@ import {
   type LucideIcon,
 } from 'lucide-react';
 
-import {
-  CONTROL_PLANE_NAV_ENABLED,
-  filterControlPlaneNavGroups,
-} from '@/lib/control_plane_scope';
+import { CONTROL_PLANE_NAV_ENABLED, filterControlPlaneNavGroups } from '@/lib/control_plane_scope';
 import { filterNavItems, NAV_GROUPS, type NavItem } from '@/lib/nav_config';
 
 export type TrackerNavItem = NavItem & {
@@ -73,7 +70,10 @@ export function listTrackerNavGroups(permissions: string[] | undefined): Tracker
     }));
   }
 
-  const flat = filterNavItems(NAV_GROUPS.flatMap((group) => group.items), permissions);
+  const flat = filterNavItems(
+    NAV_GROUPS.flatMap((group) => group.items),
+    permissions
+  );
   const byPath = new Map<string, TrackerNavItem>();
   for (const item of flat) {
     if (!byPath.has(item.path)) {

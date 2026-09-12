@@ -48,7 +48,7 @@ load_vps_credentials() {
   e2e_email="${ADMIN_E2E_VPS_BOOTSTRAP_EMAIL:-e2e-admin@test.local}"
   e2e_password="${ADMIN_E2E_VPS_BOOTSTRAP_PASSWORD:-Password123!}"
   if remote_out="$(
-    ssh -o BatchMode=yes -o ConnectTimeout=20 -p "$SSH_PORT" "$SSH_TARGET" bash -s <<EOF
+    ssh -o BatchMode=yes -o ConnectTimeout=20 -p "$SSH_PORT" "$SSH_TARGET" bash -s << EOF
 set -euo pipefail
 cd /opt/platform/ad-event-processor
 email="${e2e_email}"
@@ -89,7 +89,7 @@ EOF
     email="$(printf '%s\n' "$remote_out" | sed -n 's/^EMAIL=//p' | tail -n 1)"
     password_b64="$(printf '%s\n' "$remote_out" | sed -n 's/^PASSWORD_B64=//p' | tail -n 1)"
     if [[ -n "$email" && -n "$password_b64" ]]; then
-      password="$(printf '%s' "$password_b64" | base64 -d 2>/dev/null || true)"
+      password="$(printf '%s' "$password_b64" | base64 -d 2> /dev/null || true)"
     fi
     if [[ -n "$email" && -n "$password" ]]; then
       export ADMIN_E2E_EMAIL="$email"

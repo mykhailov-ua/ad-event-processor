@@ -31,7 +31,10 @@ export function CustomerDetailWalletTab({
           </CardHeader>
           <CardContent>
             <CustomerDetailPanel>
-              <CustomerDetailRow label="Balance (micro)" value={displayMicro(wallet.balance_micro)} />
+              <CustomerDetailRow
+                label="Balance (micro)"
+                value={displayMicro(wallet.balance_micro)}
+              />
               <CustomerDetailRow label="Currency" value={wallet.currency} />
               <CustomerDetailRow
                 label="Allowed overdraft (micro)"

@@ -117,9 +117,13 @@ export function HeaderSearch({ inputRef: externalInputRef }: HeaderSearchProps) 
                 </p>
               ) : null}
               {activeLoading ? (
-                <p className={cn(adminSpacing.inset.listMessage, adminTypography.bodyMuted)}>Loading...</p>
+                <p className={cn(adminSpacing.inset.listMessage, adminTypography.bodyMuted)}>
+                  Loading...
+                </p>
               ) : items.length === 0 ? (
-                <p className={cn(adminSpacing.inset.listMessage, adminTypography.bodyMuted)}>No matches.</p>
+                <p className={cn(adminSpacing.inset.listMessage, adminTypography.bodyMuted)}>
+                  No matches.
+                </p>
               ) : (
                 <>
                   {routes.length > 0 ? (
@@ -138,7 +142,13 @@ export function HeaderSearch({ inputRef: externalInputRef }: HeaderSearchProps) 
                         >
                           <span className="block font-medium">{item.label}</span>
                           {item.meta ? (
-                            <span className={cn('block', adminTypography.tooltip, 'text-muted-foreground')}>
+                            <span
+                              className={cn(
+                                'block',
+                                adminTypography.tooltip,
+                                'text-muted-foreground'
+                              )}
+                            >
                               {item.meta}
                             </span>
                           ) : null}
@@ -162,7 +172,13 @@ export function HeaderSearch({ inputRef: externalInputRef }: HeaderSearchProps) 
                         >
                           <span className="block font-medium">{item.label}</span>
                           {item.meta ? (
-                            <span className={cn('block', adminTypography.tooltip, 'text-muted-foreground')}>
+                            <span
+                              className={cn(
+                                'block',
+                                adminTypography.tooltip,
+                                'text-muted-foreground'
+                              )}
+                            >
                               {item.meta}
                             </span>
                           ) : null}

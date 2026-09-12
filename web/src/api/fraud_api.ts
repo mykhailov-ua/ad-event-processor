@@ -176,18 +176,16 @@ export async function getProbeClusterSummary(
   signal?: AbortSignal
 ): Promise<ProbeClusterSummary> {
   const id = clusterId.trim();
-  return apiJson<ProbeClusterSummary>(
-    `/api/v1/fraud/probe-clusters/${encodeURIComponent(id)}`,
-    { signal }
-  );
+  return apiJson<ProbeClusterSummary>(`/api/v1/fraud/probe-clusters/${encodeURIComponent(id)}`, {
+    signal,
+  });
 }
 
 export async function getCrowdWaveSummary(
   campaignId: string,
   signal?: AbortSignal
 ): Promise<CrowdWaveSummary> {
-  return apiJson<CrowdWaveSummary>(
-    `/api/v1/fraud/crowd-waves/${encodeURIComponent(campaignId)}`,
-    { signal }
-  );
+  return apiJson<CrowdWaveSummary>(`/api/v1/fraud/crowd-waves/${encodeURIComponent(campaignId)}`, {
+    signal,
+  });
 }

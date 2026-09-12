@@ -63,6 +63,15 @@ func (h *Handler) adminRequireAnyPermission() func([]string, http.HandlerFunc) h
 	}
 }
 
+func (h *Handler) adminRequireAnyPermissionOrAPIKey() func([]string, http.HandlerFunc) http.HandlerFunc {
+	return func(permissions []string, next http.HandlerFunc) http.HandlerFunc {
+		if h.authMiddleware != nil {
+			return h.authMiddleware.RequireAnyPermissionOrAPIKey(permissions...)(next)
+		}
+		return h.authFallback(next)
+	}
+}
+
 func (h *Handler) adminSelfServePermission() func(string, http.HandlerFunc) http.HandlerFunc {
 	return func(permission string, next http.HandlerFunc) http.HandlerFunc {
 		return h.selfServePerm(next, permission)
@@ -169,6 +178,7 @@ type adminWireEnv struct {
 	limit                      func(http.HandlerFunc) http.HandlerFunc
 	perm                       func(string, http.HandlerFunc) http.HandlerFunc
 	permAny                    func([]string, http.HandlerFunc) http.HandlerFunc
+	permAnyOrAPIKey            func([]string, http.HandlerFunc) http.HandlerFunc
 	selfServePerm              func(string, http.HandlerFunc) http.HandlerFunc
 	writeErr                   func(http.ResponseWriter, error)
 	authCustomer               func(*http.Request, string) error

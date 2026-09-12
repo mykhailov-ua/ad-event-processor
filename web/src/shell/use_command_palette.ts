@@ -133,12 +133,10 @@ export function useCommandPalette({
   const degraded = searchResource.data?.degraded === true;
   const catalogError = routesResource.error ?? recentsResource.error;
   const searchError = searchResource.error;
-  const catalogLoading =
-    routesResource.fetching || (customerId ? recentsResource.fetching : false);
+  const catalogLoading = routesResource.fetching || (customerId ? recentsResource.fetching : false);
   const searchLoading = searchResource.fetching;
 
-  const catalogForbidden =
-    catalogError instanceof ApiError && catalogError.status === 403;
+  const catalogForbidden = catalogError instanceof ApiError && catalogError.status === 403;
   const searchForbidden = searchError instanceof ApiError && searchError.status === 403;
   const activeError = isSearching ? searchError : catalogError;
   const activeLoading = isSearching ? searchLoading : catalogLoading;

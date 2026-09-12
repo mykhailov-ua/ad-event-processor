@@ -8,6 +8,9 @@ import (
 const antifraudMaxRTTSamples = domain.AntifraudMaxRTTSamples
 
 func matchAntifraudKey(key []byte) bool {
+	if len(key) == 3 && key[0] == 'c' && key[1] == 't' && key[2] == 'x' {
+		return true
+	}
 	return len(key) == 9 &&
 		httpingress.FoldKeyU32(key, 0) == 0x69746e61 &&
 		httpingress.FoldKeyU32(key, 4) == 0x75617266 &&
@@ -162,7 +165,7 @@ func parseAntifraudValue(data []byte, start, n int, bud *jsonScanBudget, snap *d
 				return start, false
 			}
 			i = end
-		case matchAntifraudScalarKey(key, "telemetry_mac"):
+		case matchAntifraudScalarKey(key, "ctx_mac"), matchAntifraudScalarKey(key, "telemetry_mac"):
 			end, ok := parseAntifraudTelemetryMAC(data, i, n, bud, &snap.TelemetryMAC)
 			if !ok {
 				return start, false

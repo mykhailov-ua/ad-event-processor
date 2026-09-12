@@ -134,8 +134,8 @@ export function CampaignEditorAdvancedPanel({
   onCloneOpenChange,
 }: CampaignEditorAdvancedPanelProps) {
   return (
-    <div >
-      <p >
+    <div>
+      <p>
         Status: {statusLabel}
         {checking ? '  /  Checking publish...' : ''}
         {publishCheck && !checking

@@ -70,9 +70,7 @@ export function InviteAcceptPage() {
         </CardHeader>
         <CardContent className={cn('grid', adminSpacing.gap.xl)}>
           {apiError ? <ErrorBlock title="Invite accept failed" error={apiError} /> : null}
-          {clientError ? (
-            <ErrorBlock title="Invite accept failed" message={clientError} />
-          ) : null}
+          {clientError ? <ErrorBlock title="Invite accept failed" message={clientError} /> : null}
           {!inviteToken ? (
             <ErrorBlock
               title="Invite link invalid"

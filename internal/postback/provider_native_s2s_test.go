@@ -150,7 +150,7 @@ func TestBuildPostbackPayloadFromEvent_NativeClickIDs(t *testing.T) {
 		ClearingPriceMicro: 1_000_000,
 		Payload:            []byte(`{"tblci":"t1","ob_click_id":"o1","msclkid":"m1"}`),
 	}
-	pb := buildPostbackPayloadFromEvent(evt, cust)
+	pb := buildPostbackPayloadFromEvent(evt, cust, uuid.Nil)
 	if pb.TBLCI != "t1" || pb.OBClickID != "o1" || pb.MSCLKID != "m1" {
 		t.Fatalf("payload %+v", pb)
 	}

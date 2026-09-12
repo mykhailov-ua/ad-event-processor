@@ -1,7 +1,10 @@
 import { Link } from 'react-router-dom';
 
 import { DashboardPanelSection } from '@/domains/dashboards/dashboard_panel_section';
-import type { DashboardBreakdownRow, DashboardBreakdownTable } from '@/domains/dashboards/dashboard_types';
+import type {
+  DashboardBreakdownRow,
+  DashboardBreakdownTable,
+} from '@/domains/dashboards/dashboard_types';
 import { DASHBOARD_BREAKDOWN_UI_CAP } from '@/domains/dashboards/dashboard_types';
 import { formatDashboardRoiPct } from '@/lib/display_metrics';
 import { displayCount, displayMicro } from '@/lib/display';

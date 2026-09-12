@@ -26,8 +26,8 @@ if [[ "$LOCK_HTTP" != "1" ]]; then
   die "refusing to lock 80/443 without MARKETING_CF_LOCK_HTTP=1 (shared ingress may break direct access)"
 fi
 
-command -v ufw >/dev/null 2>&1 || die "ufw not installed"
-command -v curl >/dev/null 2>&1 || die "curl not installed"
+command -v ufw > /dev/null 2>&1 || die "ufw not installed"
+command -v curl > /dev/null 2>&1 || die "curl not installed"
 
 run() {
   if [[ "$DRY_RUN" == "1" ]]; then
@@ -64,7 +64,7 @@ run ufw deny 443/tcp comment 'aed-cf-lock-https'
 
 if [[ "$DRY_RUN" != "1" ]]; then
   mkdir -p "$STATE_DIR"
-  date -u +%Y-%m-%dT%H:%M:%SZ >"$STATE_FILE"
+  date -u +%Y-%m-%dT%H:%M:%SZ > "$STATE_FILE"
   ufw status numbered | head -n 40 || true
   log "locked; verify bidshard.com resolves to Cloudflare before dropping direct IP tests"
 fi

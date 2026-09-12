@@ -22,6 +22,7 @@ import (
 	"ad-event-processor/internal/rtbadmin"
 	"ad-event-processor/internal/shardadmin"
 	"ad-event-processor/internal/supply"
+	"ad-event-processor/internal/teamscope"
 	"ad-event-processor/pkg/httpresponse"
 
 	"github.com/jackc/pgx/v5"
@@ -145,15 +146,9 @@ func licenseFeatureAllowed(featureKey string) (allowed bool, planCode string) {
 		return state == licensing.StateActive || state == licensing.StateGrace || state == licensing.StateOfflineWarn, ""
 	}
 	planCode = claims.Plan
-	ent := licensing.Entitlements{Features: claims.Features}
-	switch featureKey {
-	case "openrtb":
-		return licensing.OpenRTBAllowed(state, ent), planCode
-	case "fraud_dispute_evidence":
-		return licensing.FraudDisputeEvidenceAllowed(state, ent), planCode
-	default:
-		return true, planCode
-	}
+	features := licensing.SanitizeFeaturesForSKU(claims.SKU, claims.Features)
+	ent := licensing.Entitlements{Features: features}
+	return licensing.FeatureAllowedByKey(state, ent, featureKey), planCode
 }
 
 func writeLicenseFeatureRequired(w http.ResponseWriter, featureKey, planCode string) {
@@ -203,12 +198,17 @@ var (
 	ErrInvalidTimeRange                 = campaign.ErrInvalidTimeRange
 	ErrInvalidServiceFilter             = errors.New("invalid service filter")
 
-	ErrSelfServeActiveCampaignLimit = platformadmin.ErrSelfServeActiveCampaignLimit
-	ErrSelfServeDailyCreateLimit    = platformadmin.ErrSelfServeDailyCreateLimit
-	ErrSelfServeBudgetOutOfRange    = platformadmin.ErrSelfServeBudgetOutOfRange
-	ErrDeploymentCampaignLimit      = errors.New("deployment active campaign limit reached for license tier")
-	ErrDeploymentTenantLimit        = billingadmin.ErrDeploymentTenantLimit
-	ErrForbidden                    = billingadmin.ErrForbidden
+	ErrSelfServeActiveCampaignLimit   = platformadmin.ErrSelfServeActiveCampaignLimit
+	ErrSelfServeDailyCreateLimit      = platformadmin.ErrSelfServeDailyCreateLimit
+	ErrSelfServeBudgetOutOfRange      = platformadmin.ErrSelfServeBudgetOutOfRange
+	ErrDeploymentCampaignLimit        = licensingadmin.ErrDeploymentCampaignLimit
+	ErrDeploymentTenantLimit          = billingadmin.ErrDeploymentTenantLimit
+	ErrDeploymentAPIKeyLimit          = billingadmin.ErrDeploymentAPIKeyLimit
+	ErrDeploymentRegionLimit          = billingadmin.ErrDeploymentRegionLimit
+	ErrDeploymentExportDisabled       = billingadmin.ErrDeploymentExportDisabled
+	ErrDeploymentMonthlyEventsLimit   = billingadmin.ErrDeploymentMonthlyEventsLimit
+	ErrDeploymentCostSyncNetworkLimit = billingadmin.ErrDeploymentCostSyncNetworkLimit
+	ErrForbidden                      = billingadmin.ErrForbidden
 
 	ErrFeedbackInvalidType  = platformadmin.ErrFeedbackInvalidType
 	ErrFeedbackInvalidEmail = platformadmin.ErrFeedbackInvalidEmail
@@ -241,7 +241,9 @@ func mapServiceError(err error) (status int, code, message string) {
 	if err == nil {
 		return http.StatusOK, "", ""
 	}
-	if errors.Is(err, errForbidden) {
+	if errors.Is(err, errForbidden) ||
+		errors.Is(err, campaign.ErrForbidden) ||
+		errors.Is(err, teamscope.ErrForbidden) {
 		return http.StatusForbidden, "FORBIDDEN", "forbidden"
 	}
 	if errors.Is(err, platformadmin.ErrInstallTokenInvalid) {
@@ -254,8 +256,14 @@ func mapServiceError(err error) (status int, code, message string) {
 		return http.StatusBadRequest, "BAD_REQUEST", platformadmin.ErrInviteInvalid.Error()
 	}
 
-	if errors.Is(err, ErrSelfServeActiveCampaignLimit) || errors.Is(err, ErrSelfServeDailyCreateLimit) || errors.Is(err, ErrDeploymentCampaignLimit) || errors.Is(err, ErrDeploymentTenantLimit) {
+	if errors.Is(err, ErrSelfServeActiveCampaignLimit) || errors.Is(err, ErrSelfServeDailyCreateLimit) ||
+		errors.Is(err, ErrDeploymentCampaignLimit) || errors.Is(err, ErrDeploymentTenantLimit) ||
+		errors.Is(err, ErrDeploymentAPIKeyLimit) || errors.Is(err, ErrDeploymentRegionLimit) ||
+		errors.Is(err, ErrDeploymentMonthlyEventsLimit) || errors.Is(err, ErrDeploymentCostSyncNetworkLimit) {
 		return http.StatusTooManyRequests, "LIMIT_EXCEEDED", err.Error()
+	}
+	if errors.Is(err, ErrDeploymentExportDisabled) {
+		return http.StatusForbidden, "DEPLOYMENT_EXPORT_DISABLED", err.Error()
 	}
 
 	var q invalidQueryError

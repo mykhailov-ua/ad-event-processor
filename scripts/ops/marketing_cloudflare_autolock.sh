@@ -19,14 +19,14 @@ if [[ "$AUTOLOCK" != "1" ]]; then
 fi
 
 MARKETING_DOMAIN="${MARKETING_DOMAIN:-bidshard.com}"
-ORIGIN_IP="${MARKETING_ORIGIN_IPV4:-$(curl -4 -fsSL --max-time 10 ifconfig.me 2>/dev/null || true)}"
+ORIGIN_IP="${MARKETING_ORIGIN_IPV4:-$(curl -4 -fsSL --max-time 10 ifconfig.me 2> /dev/null || true)}"
 if [[ -z "$ORIGIN_IP" ]]; then
   log "skip: origin IPv4 unknown"
   exit 0
 fi
 
 resolve_v4() {
-  dig +short A "$1" 2>/dev/null | sed '/\./!d' | head -n 1
+  dig +short A "$1" 2> /dev/null | sed '/\./!d' | head -n 1
 }
 
 resolved="$(resolve_v4 "$MARKETING_DOMAIN")"

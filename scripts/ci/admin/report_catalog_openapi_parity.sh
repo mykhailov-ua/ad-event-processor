@@ -46,6 +46,8 @@ for match in re.finditer(
         continue
     if suffix == "catalog":
         continue
+    if suffix == "rules" or suffix.startswith("rules/"):
+        continue
     if suffix == "notifications" or suffix.startswith("notifications/"):
         continue
     if suffix == "clicks":

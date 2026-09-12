@@ -9,6 +9,7 @@ import (
 
 	db "ad-event-processor/internal/domain/db"
 
+	"github.com/google/uuid"
 	"github.com/jackc/pgx/v5/pgtype"
 )
 
@@ -28,7 +29,12 @@ const (
 )
 
 func postbackIdempotencyHash(payload PostbackPayload) string {
-	idempotencyStr := fmt.Sprintf("%s|%s|%s", payload.CustomerID, payload.ClickID, payload.EventType)
+	var idempotencyStr string
+	if payload.OutboundPostbackID != uuid.Nil {
+		idempotencyStr = fmt.Sprintf("%s|%s|%s|%s", payload.CustomerID, payload.ClickID, payload.EventType, payload.OutboundPostbackID)
+	} else {
+		idempotencyStr = fmt.Sprintf("%s|%s|%s", payload.CustomerID, payload.ClickID, payload.EventType)
+	}
 	hashBytes := sha256.Sum256([]byte(idempotencyStr))
 	return hex.EncodeToString(hashBytes[:])
 }

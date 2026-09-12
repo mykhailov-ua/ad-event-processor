@@ -40,7 +40,7 @@ done
 ssh_base=(-o BatchMode=yes -o ConnectTimeout=30 -p "$SSH_PORT")
 
 run_remote_pipeline() {
-  ssh "${ssh_base[@]}" "$TARGET" "bash -s" <<EOF
+  ssh "${ssh_base[@]}" "$TARGET" "bash -s" << EOF
 set -euo pipefail
 mkdir -p '${VERIFY_ROOT}/var'
 nohup bash '${VERIFY_ROOT}/scripts/ops/vps_verify_pipeline.sh' --remote >>'${LOG_PATH}' 2>&1 &
@@ -56,7 +56,7 @@ remote_pipeline() {
   LOG="${LOG_PATH}"
   mkdir -p "${ROOT}/var"
 
-  exec >>"${LOG}" 2>&1
+  exec >> "${LOG}" 2>&1
 
   failures=0
   log() { printf 'vps-pipeline: %s\n' "$*"; }
@@ -80,7 +80,7 @@ remote_pipeline() {
   }
 
   ensure_go() {
-    if command -v go >/dev/null 2>&1; then
+    if command -v go > /dev/null 2>&1; then
       go version
       return 0
     fi
@@ -102,9 +102,12 @@ remote_pipeline() {
 
   ensure_node22() {
     local ver
-    ver="$(node -v 2>/dev/null || true)"
+    ver="$(node -v 2> /dev/null || true)"
     case "${ver}" in
-      v22.* | v23.* | v24.*) log "node ok: ${ver}"; return 0 ;;
+      v22.* | v23.* | v24.*)
+        log "node ok: ${ver}"
+        return 0
+        ;;
     esac
     log "install Node.js 22"
     curl -fsSL https://deb.nodesource.com/setup_22.x | bash -
@@ -128,15 +131,15 @@ remote_pipeline() {
       -H 'Content-Type: application/json' \
       -d "{\"email\":\"${email}\",\"password\":\"${password}\"}")"
     if [[ "${login_code}" != "200" ]]; then
-      ./bin/admin --env-path .env user delete "${email}" >/dev/null 2>&1 || true
-      ./bin/admin --env-path .env user create --email "${email}" --password "${password}" --role A >/dev/null
+      ./bin/admin --env-path .env user delete "${email}" > /dev/null 2>&1 || true
+      ./bin/admin --env-path .env user create --email "${email}" --password "${password}" --role A > /dev/null
       set -a
       # shellcheck disable=SC1091
       source .env
       set +a
       db_container="$(docker ps --format '{{.Names}}' | grep -E '(-db-1|^ad-event-processor-db$)' | head -n 1)"
       docker exec "${db_container}" psql -h localhost -p "${DB_PORT:-5430}" -U "${DB_USER:-ad_event_processor_user}" -d "${DB_NAME:-ad_event_processor}" \
-        -c "UPDATE users SET email_verified = TRUE WHERE email = '${email}';" >/dev/null
+        -c "UPDATE users SET email_verified = TRUE WHERE email = '${email}';" > /dev/null
     fi
   }
 
@@ -204,7 +207,7 @@ remote_pipeline() {
   step "go build control" env CGO_ENABLED=0 go build -o "${INSTALL}/bin/control.new" ./cmd/control
   step "go build admin" env CGO_ENABLED=0 go build -o "${INSTALL}/bin/admin.new" ./cmd/admin
 
-  rsync -a "${ROOT}/internal/control/" "${INSTALL}/internal/control/" 2>/dev/null || true
+  rsync -a "${ROOT}/internal/control/" "${INSTALL}/internal/control/" 2> /dev/null || true
   step "deploy control" deploy_control_if_ready
 
   step "playwright deps" ensure_playwright_deps

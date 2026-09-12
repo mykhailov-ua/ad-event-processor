@@ -1103,6 +1103,8 @@ paths:
         $ref: ../openapi.yaml#/components/parameters/ReportCompareQuery
       - &id005
         $ref: ../openapi.yaml#/components/parameters/CampaignIdQuery
+      - &id009
+        $ref: ../openapi.yaml#/components/parameters/CampaignGroupIdQuery
       - &id006
         $ref: ../openapi.yaml#/components/parameters/LimitQuery
       - &id007
@@ -1161,6 +1163,7 @@ paths:
       - *id002
       - *id003
       - *id005
+      - *id009
       - *id008
       - name: click_id
         in: query
@@ -1191,6 +1194,7 @@ paths:
       - *id002
       - *id003
       - *id005
+      - *id009
       - *id008
       - name: click_id
         in: query
@@ -2634,6 +2638,29 @@ paths:
       x-permissions:
       - campaigns:read
       - campaigns:read:masked
+  /api/v1/reports/rules:
+    post:
+      operationId: createReportAutomationRule
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: ../components/schemas/ops_reports.yaml#/CreateReportRuleRequest
+      responses:
+        '201':
+          content:
+            application/json:
+              schema:
+                $ref: ../components/schemas/integrations.yaml#/AutomationRule
+          description: Automation rule created from report snapshot
+        default:
+          $ref: ../openapi.yaml#/components/responses/Error
+      summary: Create automation rule from report filter snapshot
+      tags:
+      - reports
+      x-permissions:
+      - campaigns:write
   /api/v1/views:
     get:
       operationId: listSavedViews

@@ -16,7 +16,9 @@ test.beforeEach(async ({}, testInfo) => {
   await skipUnlessIntegrationReady(testInfo);
 });
 
-test('settings page loads platform settings from GET /api/v1/settings/platform', async ({ page }) => {
+test('settings page loads platform settings from GET /api/v1/settings/platform', async ({
+  page,
+}) => {
   await loginAsAdmin(page);
   const settingsResponse = page.waitForResponse(isApiGet('/api/v1/settings/platform'), {
     timeout: 20_000,
@@ -37,19 +39,21 @@ test('settings page loads platform settings from GET /api/v1/settings/platform',
   }
 });
 
-test('settings shows ErrorBlock when GET /api/v1/meta returns 500', { tag: '@L3' }, async ({
-  page,
-}) => {
-  await loginAsAdmin(page);
-  await stubApiRoute(page, '/api/v1/meta', 500, {
-    error: { code: 'INTERNAL_ERROR', message: 'meta unavailable' },
-  });
-  const metaResponse = page.waitForResponse(isApiGet('/api/v1/meta', 500), { timeout: 20_000 });
-  await gotoLive(page, '/settings');
-  await metaResponse;
-  await expect(mainHeading(page, 'Settings')).toBeVisible();
-  await expectErrorBlockVisible(page, 'Could not load deployment metadata');
-});
+test(
+  'settings shows ErrorBlock when GET /api/v1/meta returns 500',
+  { tag: '@L3' },
+  async ({ page }) => {
+    await loginAsAdmin(page);
+    await stubApiRoute(page, '/api/v1/meta', 500, {
+      error: { code: 'INTERNAL_ERROR', message: 'meta unavailable' },
+    });
+    const metaResponse = page.waitForResponse(isApiGet('/api/v1/meta', 500), { timeout: 20_000 });
+    await gotoLive(page, '/settings');
+    await metaResponse;
+    await expect(mainHeading(page, 'Settings')).toBeVisible();
+    await expectErrorBlockVisible(page, 'Could not load deployment metadata');
+  }
+);
 
 test('settings PATCH 409 shows platform save error', { tag: '@L3' }, async ({ page }) => {
   await loginAsAdmin(page);

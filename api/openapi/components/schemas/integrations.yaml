@@ -1098,3 +1098,15 @@ TrafficOptimizerDryRunResult:
           observed_value:
             type: number
             format: double
+
+TrafficOptimizerApplyResult:
+  type: object
+  required: [applied]
+  properties:
+    applied:
+      type: boolean
+    campaign_ids:
+      type: array
+      items:
+        type: string
+        format: uuid

@@ -79,6 +79,16 @@ func ExportCampaign(ctx context.Context, host campaign.ImportExportHost, campaig
 		bundle.ConversionMappings = append(bundle.ConversionMappings, campaign.ConversionMappingToDTO(&mappings[i]))
 	}
 
+	outboundRows, err := q.ListOutboundPostbacksByCampaign(ctx, domain.ToUUID(campaignID))
+	if err != nil {
+		return campaign.CampaignExportBundle{}, err
+	}
+	outboundRecords := make([]db.CampaignOutboundPostback, 0, len(outboundRows))
+	for i := range outboundRows {
+		outboundRecords = append(outboundRecords, db.CampaignOutboundPostbackFromList(outboundRows[i]))
+	}
+	bundle.OutboundPostbacks = campaign.ExportOutboundPostbacksFromRows(outboundRecords)
+
 	if row.IntegrationSchemaID.Valid {
 		bundle.IntegrationSchemaName, _ = integrationSchemaName(ctx, host.Pool(), uuid.UUID(row.IntegrationSchemaID.Bytes))
 	}
@@ -360,6 +370,16 @@ WHERE id = $1`, newCampaignID, integrationID, statusIntegrationID, flowIDOrNil(u
 				PayoutMicro:   row.PayoutMicro,
 			}); err != nil {
 				return err
+			}
+		}
+
+		if len(spec.Bundle.OutboundPostbacks) > 0 {
+			outboundWrites, err := campaign.OutboundPostbackWritesFromExport(spec.Bundle.OutboundPostbacks)
+			if err != nil {
+				return campaign.ErrValidationf(err.Error())
+			}
+			if _, err := campaign.ReplaceCampaignOutboundPostbacksTx(ctx, q, host.PostbackEncryptionKey(), newCampaignID, outboundWrites); err != nil {
+				return fmt.Errorf("import outbound postbacks: %w", err)
 			}
 		}
 

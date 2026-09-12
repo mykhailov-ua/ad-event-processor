@@ -4,7 +4,7 @@ const (
 	telegramPathClick      = "/tg/click"
 	telegramPathImpression = "/tg/impression"
 	safePageVerifyPath     = "/track/verify"
-	antifraudChallengePath = "/track/antifraud/challenge"
+	clientCtxChallengePath = "/track/m/challenge"
 
 	safePageVerifyMinEvents  = 15
 	safePageVerifyMaxBody    = 8192

@@ -51,7 +51,7 @@
     "intro": "Перед оформленням пілота або купівлею ліцензії підтвердіть згоду з правилами використання self-hosted ПЗ BidShard.",
     "points": [
       "Ліцензія працює виключно на вашому VPS або dedicated-сервері. Ми не пропускаємо ваш трафік через свої сервери.",
-      "Тарифи відрізняються кількістю хостів, API-ключів, лімітами експорту та функціоналом у JWT. Обсяг кліків та кампаній обмежений лише потужністю вашого заліза.",
+      "Тарифи відрізняються кількістю licensed hosts, client workspaces, лімітами експорту та функціоналом у JWT. Обсяг подій і кампаній необмежений — лише потужність вашого заліза.",
       "Оплата в USDT є остаточною після видачі JWT-ключа. Повернення можливе лише у разі затримки видачі ліцензії понад 5 робочих днів з нашої вини.",
       "Ви самостійно відповідаєте за безпеку сервера, бекапи, легітимність джерел трафіку та приватність даних відвідувачів.",
       "У разі форс-мажору (падіння хостингу, вилучення ДЦ, терміновий переїзд) надаємо додаткові активації за запитом до підтримки."
@@ -110,7 +110,7 @@
       },
       {
         "title": "Модульні розширення",
-        "body": "Broker WAL, eBPF XDP відсікання пакетів, OpenRTB аукціон — підключаються за потреби і не вимагаються для стартів."
+        "body": "Опційний broker WAL (CH_INGEST_SOURCE=broker), Enterprise eBPF XDP (лише відомі L4-цілі), OpenRTB — за ліцензією та після sizing."
       }
     ],
     "cta": "Повна архітектура",
@@ -157,10 +157,10 @@
   "instant_sell": {
     "margin_guard": {
       "eyebrow": "Margin Guard",
-      "title": "Автоматичний стоп кампаній до появи збитків",
-      "body": "Система регулярно зіставляє витрати з рекламних мереж та виплати з трекера. Якщо ROI падає нижче вашого ліміту — кампанія автоматично стає на паузу, а не просто надсилає сповіщення, яке ви прочитаєте після зливу бюджету.",
-      "metric": "Перевірка щокілька хвилин",
-      "footnote": "Приклад: +12% вдень, -8% увечері — Margin Guard зупинить злив до того, як ви заснули."
+      "title": "Автопауза маршрутизації при порушенні правил маржі",
+      "body": "Фоновий воркер (за замовчуванням кожні 5 хв) порівнює суми в Postgres ledger і placement stats у ClickHouse з вашою політикою. При порушенні ставить внутрішню паузу — видалення budget key у Redis або блок placement. Це не виклик API Meta/Google, доки ви окремо не підключите Enterprise platform sync.",
+      "metric": "Інтервал за замовчуванням: 5 хв",
+      "footnote": "Пропускає цикл, якщо lag ClickHouse > 5 хв. Затримка postback або cost sync може виглядати як падіння ROI — налаштуйте пороги до продакшену."
     }
   },
   "killers": [
@@ -187,9 +187,9 @@
     },
     {
       "id": "margin_guard",
-      "tier": "Pro+",
-      "title": "ROI пішов у мінус? Стоп кампанії, а не сповіщення",
-      "body": "Margin Guard регулярно порівнює spend і payout. Нижче вашої межі — кампанія стає на паузу, поки фільтри блокують сміття на кожному кліку.",
+      "tier": "Starter+",
+      "title": "Порушення ROI? Пауза маршрутизації всередині стеку",
+      "body": "Перевірки за таймером по ledger і ClickHouse — не live-опит 25 мереж. Пауза внутрішня; кампанії в Meta/Google крутяться, доки ви їх не зміните там або не увімкнете Enterprise platform sync.",
       "icon": "gauge"
     },
     {
@@ -232,15 +232,15 @@
       "id": "xdp",
       "tier": "Enterprise",
       "landing": false,
-      "title": "L4-флуд забиває канал і гаманець",
-      "body": "Апаратне відсікання пакетів eBPF/XDP дропає паразитний трафік до того, як він дійде до трекера чи створив перевитрати за смугу.",
+      "title": "Опційний L4 edge-фільтр на bare metal",
+      "body": "Enterprise eBPF XDP дропає відомі bad IP і rate-limited SYN на NIC. Не замінює CDN/DDoS-скрабінг; ротаційні проксі все одно доходять до nginx і L7-фільтрів.",
       "icon": "shield"
     }
   ],
   "outcomes_compact": [
     "Meta, Google та TikTok отримують точні CAPI-сигнали — автоставки працюють ефективніше",
     "Сміттєвий та ботовий трафік не списує кошти з бюджетів кампаній",
-    "Цифри витрат збігаються з рекламними мережами — без вечірнього хаосу в CSV",
+    "Cost sync імпортує витрати мереж за розкладом — звіряйте, не очікуйте real-time паритету",
     "Бачте, де губляться конверсії, до того як тиждень закриється зі збитками",
     "Один інстал замінює трекер, клоаку та окремий аналізатор фроду",
     "Розмежування прав (RBAC) захищає від помилок нових байєрів",
@@ -253,9 +253,9 @@
     "Маршрутизація кліків та S2S-постбеки — витрати лише на прийнятий трафік",
     "Silent reject та правилові фільтри — нуль злитого бюджету на ботів",
     "Фонова аналітика фроду на власній БД — без платних токенів та затримок на кліку",
-    "Автосинхронізація витрат із 25 рекламних мереж — чесний розрахунок ROI",
+    "Cost sync із налаштованих мереж — годинні та 15-хв імпорти, окремо від Margin Guard",
     "Smart-сповіщення в Slack та Telegram — реагуйте до появи збитків",
-    "Командний RBAC та API-ключі — захист від людського фактора",
+    "Командний RBAC — захист від людського фактора",
     "Експорт звітів для спорів із партнерками та підсумкових звірок",
     "OpenRTB bid endpoint — programmatic-виручка на тарифі Network"
   ],
@@ -264,6 +264,7 @@
     "subtitle": "Більшість команд спочатку підключають тестовий VPS паралельно. Ми надаємо ліцензію, ви пускаєте один тестовий потік і порівнюєте цифри.",
     "install_cli_title": "Команда встановлення (для DevOps)",
     "install_cli_summary": "Показати команду інсталяції",
+    "install_cli_summary_close": "Закрити команду інсталяції",
     "cta_primary": "Запросити пілот",
     "cta_docs": "Архітектура",
     "cta_install": "Команда інсталяції",
@@ -291,58 +292,58 @@
         "highlight": true,
         "items": [
           "Ліцензія від $129/міс — клоака, CAPI та Mini Apps в одному чеку",
-          "Створено під високі навантаження — стабільна пам'ять на піках кліків",
-          "Колонкова аналітична БД — у рази менше вимог до RAM при мільярдах подій",
-          "Оптимальний VPS під ваш обсяг — без переплати за роздуті сервери",
-          "Margin Guard ставить на паузу при падінні ROI — забудьте про нічні зливи",
-          "Ботовий трафік бачить 202 OK — ваш бюджет не рухається"
+          "ClickHouse для аналітики — закладайте RAM під звіти та merge, не лише ingest",
+          "Starter/Pro: один VPS (типово 12–16 GB). Scale+: розділення tracker, Redis, reporting",
+          "При перевантаженні трекер повертає 503 fail-closed — sizing і split ролей важливі",
+          "Margin Guard паузить маршрутизацію всередині інсталу — окремо від cost-sync API",
+          "Silent reject: сміття отримує 202 decoy — бюджет кампанії не списується"
         ],
-        "summary": "$400–550/міс за ліцензію + адекватний VPS на ті самі 10 млн подій"
+        "summary": "Ліцензія від $129/міс + VPS за hardware guide — throughput на одній машині не гарантується"
       }
     ],
     "impacts": {
       "title": "Куди ідуть гроші при 10 млн подій/міс",
-      "subtitle": "Вартість ліцензії — це дрібниці. Серверні потужності, злив на ботів та стабільність на піках — ось де реальна економія.",
+      "subtitle": "Ілюстративне порівняння при ~10 млн подій/міс у середньому — не калькулятор гарантованої економії. Форма піків і layout VPS визначають реальну вартість.",
       "headers": {
-        "driver": "Стаття витрат",
+        "driver": "Стаття",
         "patchwork": "Розрізнений стек",
         "bidshard": "BidShard",
-        "impact": "Економія / ефект"
+        "impact": "Примітки"
       },
       "rows": [
         {
           "label": "Інфраструктура",
-          "patchwork": "32–64 GB VPS через піки старого трекера та рядкову БД",
-          "bidshard": "16–24 GB — швидкий ingest та колонкова аналітика на одній машині",
-          "delta": "$800–1,600/міс",
-          "delta_note": "менше залізо при тому ж піковому Throughput"
+          "patchwork": "Часто 32–64 GB VPS через піки legacy runtime і рядкову БД звітів",
+          "bidshard": "Starter/Pro: 12–16 GB один VPS для помірного обсягу. Scale+: split tracker, Redis, ClickHouse. Спільний диск: merge CH конкурує з ingest на піках",
+          "delta": "Залежить від sizing",
+          "delta_note": "див. hardware sizing — без фіксованої RAM-обіцянки"
         },
         {
           "label": "SaaS-підписки",
-          "patchwork": "Трекер + клоака + антифрод — три рахунки, три продовжування",
-          "bidshard": "Єдина ліцензія — маршрутизація, захист, звітність",
-          "delta": "$300–600/міс",
-          "delta_note": "повноцінна клоака вже в Starter"
+          "patchwork": "Трекер + клоака + антифрод — три рахунки",
+          "bidshard": "Одна ліцензія — маршрутизація, rule antifraud, звітність, опційні ML sidecars",
+          "delta": "Менше renewals",
+          "delta_note": "консолідація ліцензії — головний SaaS-ефект"
         },
         {
-          "label": "Збережений бюджет",
-          "patchwork": "Боти та сміття списують кошти — сповіщення вже після зливу",
-          "bidshard": "Silent Reject + Margin Guard — бюджет іде лише на реальні кліки",
-          "delta": "$2,400–8,000/міс",
-          "delta_note": "12% ботів × $0.04 CPC на 10 млн кліків"
+          "label": "Злив на сміття",
+          "patchwork": "Боти можуть списувати бюджет — алерти після зливу",
+          "bidshard": "Silent reject не списує бюджет на відфільтрований трафік; Margin Guard — окрема таймерна пауза маршрутизації",
+          "delta": "Залежить від політики",
+          "delta_note": "без гарантованого % економії"
         },
         {
-          "label": "Простої на піках",
-          "patchwork": "Блокування БД або брак пам'яті під час сплеску трафіку",
-          "bidshard": "Впевнено обробляє пікові сплески без падінь",
-          "delta": "$1k–5k",
-          "delta_note": "за кожен інцидент — збережена виручка"
+          "label": "Перевантаження на піку",
+          "patchwork": "OOM або lock БД — жорсткий downtime",
+          "bidshard": "503 fail-closed при overload; звіти CH на тому ж хості можуть дати OOM, якщо RAM замала",
+          "delta": "Ops-дисципліна",
+          "delta_note": "не SLA throughput на одному VPS"
         }
       ],
       "total": {
-        "label": "Середня різниця TCO порівняно з розрізненим стеком",
-        "value": "$4,500–16,000/міс",
-        "body": "Трекери змінюють не через вартість передплати. Їх змінюють тому, що старі стеки їдять RAM на піках, а звітність лягає під обсягом подій. BidShard спроектований саме для цього.",
+        "label": "Що реально відрізняється",
+        "value": "Одна ліцензія, ваш metal",
+        "body": "Трекер, rule antifraud і звітність в одному self-hosted інсталі. Вартість інфраструктури та поведінка на піках залежать від sizing і split ролей — див. architecture docs і hardware sizing.",
         "architecture_link": "Як це влаштовано"
       }
     }
@@ -357,11 +358,17 @@
       "specs_label": "У пілот входить",
       "features": [
         { "text": "10 днів тесту · 1 сервер · повний routing кліків на VPS", "highlight": true },
-        { "text": "Silent reject + правиловий антифрод — перевірте захист безкоштовно", "highlight": true },
-        { "text": "Margin Guard — автопауза при падінні ROI", "highlight": true },
+        {
+          "text": "Silent reject + правиловий антифрод — перевірте захист безкоштовно",
+          "highlight": true
+        },
+        {
+          "text": "Margin Guard — внутрішня автопауза маршрутизації (за таймером)",
+          "highlight": true
+        },
         "Правиловий антифрод: гео, розклад, пристрої, consent-фільтри",
-        "S2S postbacks + синхронізація витрат з рекламних мереж",
-        "Панель адміністрування · 3 API-ключі · 1 тенант",
+        "S2S postbacks + cost sync за розкладом (коли налаштовані credentials)",
+        "Панель адміністрування · 1 client workspace",
         "Не входить: IVT ML, ML fraud boost, OpenRTB, slot migration"
       ],
       "cta": "Запросити пілот",
@@ -376,16 +383,22 @@
       "tagline": "Рівень Keitaro + CAPI та Telegram Mini Apps в одній ліцензії.",
       "specs_label": "Starter — CAPI, Mini Apps та маржа",
       "features": [
-        { "text": "Meta / Google / TikTok CAPI — точне навчання автоставок мереж", "highlight": true },
-        { "text": "Telegram Mini App flows — воронки в Telegram без других SaaS-рахунків", "highlight": true },
+        {
+          "text": "Meta / Google / TikTok CAPI — точне навчання автоставок мереж",
+          "highlight": true
+        },
+        {
+          "text": "Telegram Mini App flows — воронки в Telegram без других SaaS-рахунків",
+          "highlight": true
+        },
         { "text": "Silent reject — 202 decoy, бюджет не списується", "highlight": true },
-        "Необмежені кампанії та події на вашому залізі",
-        "Click routing, flows, landers, offer walls",
+        "Click routing, flows, landers, multi-offer flows",
         "Правиловий антифрод + гео/розклад/пристрої",
-        "Margin Guard + синхронізація витрат (25 мереж)",
+        "Margin Guard (ledger + ClickHouse stats, за замовчуванням 5 хв)",
+        "Cost sync — імпорт за розкладом із налаштованих мереж",
         "S2S postbacks",
         "Smart-сповіщення у Slack або Telegram",
-        "1 host · 5 API-ключів · 3 тенанти",
+        "1 licensed host · до 3 client workspaces",
         "Експорт звітів до 5 MiB на чанк"
       ],
       "cta": "Обрати Starter",
@@ -400,12 +413,14 @@
       "specs_label": "Pro — IVT + аудит конверсій",
       "features": [
         "Усе з тарифу Starter",
-        { "text": "IVT на власних даних — ловіть склейки та ботів до зливу бюджету", "highlight": true },
+        {
+          "text": "IVT на власних даних — ловіть склейки та ботів до зливу бюджету",
+          "highlight": true
+        },
         { "text": "Postback trail — повний аудит (мережа, трекер, ПП)", "highlight": true },
         { "text": "Fraud stream + аналітика silent reject у ClickHouse", "highlight": true },
         "Прив'язка кількох хостів (одне розгортання)",
-        "Командний RBAC між тенантами",
-        "10 API-ключів · 10 тенантів",
+        "Командний RBAC · до 10 client workspaces",
         "Експорт звітів до 10 MiB на чанк"
       ],
       "cta": "Обрати Pro",
@@ -422,12 +437,15 @@
       "features": [
         "Усе з тарифу Pro",
         { "text": "Оцінка ризику фроду до кожного кліка — ML boost snapshot", "highlight": true },
-        { "text": "Slot migration — перенос шардів без простою та паузи в прибутках", "highlight": true },
+        {
+          "text": "Slot migration — перенос шардів без простою та паузи в прибутках",
+          "highlight": true
+        },
         { "text": "Готові доказові пакети для спорів щодо шейву", "highlight": true },
         "Фід сигналів модераторського трафіку",
         "Аналіз residential-проксі на гарячому зчитуванні",
-        "Опційний шлях ingest через mmap broker WAL",
-        "3 активації хостів · 25 тенантів · 25 API-ключів",
+        "Broker WAL ingest (JWT broker_wal; CH_INGEST_SOURCE=broker; за замовчуванням Redis streams)",
+        "До 3 licensed hosts · 25 client workspaces",
         "Експорт звітів до 50 MiB на чанк"
       ],
       "cta": "Обрати Scale",
@@ -447,7 +465,7 @@
         { "text": "Multi-node ingest між активаціями хостів", "highlight": true },
         "Каталог RTB + потік programmatic-виручки",
         "Усі фрод-фіди Scale + пакети для спорів",
-        "10 активацій хостів · 50 тенантів · 50 API-ключів",
+        "До 10 licensed hosts · 50 client workspaces",
         "Експорт звітів до 100 MiB на чанк"
       ],
       "cta": "Обрати Network",
@@ -458,16 +476,22 @@
       "name": "Enterprise",
       "price": "$2 999+",
       "period": "/ міс",
-      "tagline": "Відсікання L4-сміття до того як хостинг виставить рахунок за трафік.",
+      "tagline": "Великі флоти, опційний L4 edge, автоматизація platform API.",
       "specs_label": "Enterprise — edge та автоматизація",
       "features": [
         "Усе з тарифу Network",
-        { "text": "eBPF XDP edge — дроп L4-флуду до трекера чи рахунку за смугу", "highlight": true },
-        { "text": "Campaign API sync — автоматизація рекламних платформ", "highlight": true },
+        {
+          "text": "eBPF XDP edge — L4 blocklist і flood limits на NIC (не заміна CDN)",
+          "highlight": true
+        },
+        {
+          "text": "Campaign API sync — pause/resume зв'язаних ads через platform APIs",
+          "highlight": true
+        },
         { "text": "До 99 регіонів · 99 активацій хостів", "highlight": true },
         "Fingerprint HWID bind для суворих compliance-вимог",
         "Прямий SLA-канал з вендором + кастомні ліміти",
-        "999 API-ключів · необмежені тенанти",
+        "До 99 licensed hosts · необмежені client workspaces",
         "Експорт звітів до 1 GiB на чанк"
       ],
       "cta": "Зв'язатися з нами",
@@ -479,7 +503,7 @@
     "eyebrow": "Залізо та ресурси",
     "title": "Рекомендовані конфігурації серверів",
     "subtitle": "Орієнтир для планування — не гарантія Throughput. Стартуйте з цього заліза та масштабуйтеся залежно від трафіку, глибини перевірок і того, чи працює аналітика на тому ж VPS.",
-    "footnote": "Рекомендовано x86_64 та NVMe. Значення RAM та диска є орієнтирами. Ліцензія обмежує хости, регіони та функції, а не мітки vCPU. При втраті сервера див. FAQ: безкоштовна перевидача при задокументованому форс-мажорі.",
+    "footnote": "Рекомендовано x86_64 та NVMe. RAM, vCPU і диск включають запас під ОС, merge ClickHouse і помірні піки — лише орієнтир, не гарантія throughput. Ліцензія обмежує хости, регіони та функції, а не мітки vCPU. При втраті сервера див. FAQ: безкоштовна перевидача при задокументованому форс-мажорі.",
     "labels": {
       "hosts": "Хости в ліцензії",
       "cpu": "Конфігурація",
@@ -492,45 +516,45 @@
         "code": "pilot",
         "plan": "Pilot",
         "hosts": "1 host",
-        "cpu": "Усе на одному VPS",
-        "ram": "8 GB",
-        "disk": "80 GB+ NVMe",
+        "cpu": "4 vCPU · усе на одному VPS",
+        "ram": "12 GB",
+        "disk": "100 GB+ NVMe",
         "profile": "10-денний пілот на одному сервері. Правиловий антифрод. Напишіть у Telegram очікуваний трафік та конфігурацію VPS."
       },
       {
         "code": "starter",
         "plan": "Starter",
         "hosts": "1 host",
-        "cpu": "Один VPS",
-        "ram": "4 GB лише routing · 8 GB з БД звітів",
-        "disk": "80 GB+ NVMe",
+        "cpu": "4 vCPU · один VPS",
+        "ram": "6 GB лише routing · 12 GB з БД звітів",
+        "disk": "100 GB+ NVMe",
         "profile": "Соло-баєр на одному VPS; silent reject + postbacks. Додайте RAM перед експортом великих звітів."
       },
       {
         "code": "pro",
         "plan": "Pro",
         "hosts": "1 host",
-        "cpu": "Один VPS + ML-аналітика",
-        "ram": "12 GB+",
-        "disk": "160 GB+ NVMe",
+        "cpu": "6 vCPU · один VPS + ML sidecars",
+        "ram": "16 GB+",
+        "disk": "200 GB+ NVMe",
         "profile": "IVT-оцінка — фонові задачі на аналітичному сховищі. Один інстал; додаткові слоти хостів прив'язуються до того самого розгортання."
       },
       {
         "code": "scale",
         "plan": "Scale",
         "hosts": "До 3 hosts",
-        "cpu": "Розділення: tracker, cache, reporting",
-        "ram": "16 GB+ на навантажений вузол",
-        "disk": "160 GB+ NVMe на вузол",
+        "cpu": "6–8 vCPU · розділення: tracker, cache, reporting",
+        "ram": "24 GB+ на навантажений вузол",
+        "disk": "200 GB+ NVMe на вузол",
         "profile": "ML-сигнали антифроду на гарячому шляху. Перенос шардових вузлів між серверами без зупинки роботи."
       },
       {
         "code": "network",
         "plan": "Network",
         "hosts": "До 10 hosts",
-        "cpu": "Multi-region + programmatic bidding",
-        "ram": "16 GB+ routing · 32 GB+ reporting · bidder окремо",
-        "disk": "320 GB+ NVMe на роль у регіоні",
+        "cpu": "8 vCPU routing · 16 vCPU reporting · bidder окремо",
+        "ram": "24 GB+ routing · 48 GB+ reporting · bidder окремо",
+        "disk": "400 GB+ NVMe на роль у регіоні",
         "profile": "До 3 регіонів у ліцензії. Live bid endpoint та multi-node routing — кожна роль на окремому залізі."
       },
       {
@@ -574,7 +598,7 @@
     "DesignedForActiveMediaBuyers": "Результати, які захищають прибуток",
     "PricingPlans": "Тарифи",
     "SimplePricing": "Прості та прозорі ціни",
-    "NoCapOnCampaignCountOrEventVolumeYouScaleOnYourHardware": "Без лімітів на кількість кампаній та обсяг подій — масштабуйтеся на власному залізі.",
+    "NoCapOnCampaignCountOrEventVolumeYouScaleOnYourHardware": "Необмежені події та кампанії. Командні місця та client workspaces — за тарифом для агентств.",
     "PaidMonthlyInUsdtSelfHostedLicenseNotACloudSubscription": "Оплата щомісяця в USDT. Self-hosted ліцензія у вашій власності.",
     "TryFreeFor10Days": "Спробуйте 10 днів безкоштовно",
     "KRps1ServerRulesOnlyAntifraudMessageUsOnTelegramWithExpectedTrafficVpsSpec": "1 сервер · повний routing кліків · напишіть у Telegram ваш трафік та конфігурацію VPS",
@@ -589,6 +613,7 @@
     "PointTraffic": "Спрямувати один тестовий потік",
     "ClickUrlsPostbacksCostSyncYouReLive": "Зрівняйте цифри з поточним трекером. Переходьте повністю, коли переконаєтеся в математиці прибутку.",
     "InstallCliSummary": "Показати команду інсталяції",
+    "InstallCliSummaryClose": "Закрити команду інсталяції",
     "AdEventProcessorRunningOnPort8080OfflineJwtLicenseVerified": "✔ Стек BidShard працює на порту 8080. Офлайн-ліцензію підтверджено.",
     "BuiltForOperatorsWhoHateSurprises": "Чому команди обирають BidShard",
     "SelfHosted": "Ваші дані належать лише вам",
@@ -611,7 +636,7 @@
     "CommonQuestions": "Поширені питання",
     "FrequentlyAskedQuestions": "Часті запитання",
     "DoYouStoreMyCampaigns": "Ви зберігаєте мої кампанії?",
-    "IsThisLikeKeitaroInTheCloud": "Це як Keitaro в хмарі?",
+    "IsThisLikeKeitaroInTheCloud": "Чим це відрізняється від Keitaro чи Binom?",
     "WhatHappensAfterThePilot": "Що відбувається після пілоту?",
     "DoINeedToBeADeveloper": "Чи потрібно бути розробником?",
     "HowDoIStart": "Як розпочати?",
@@ -625,7 +650,7 @@
     "2026AdEventProcessorAllRightsReserved": "© 2026 BidShard. Усі права захищені.",
     "site-tco-jump": "Куди ідуть гроші при масштабуванні",
     "NoEverythingRunsExclusivelyOnYourServerWeHaveNoBackendApiThatCollectsTelemetryCampaignConfigurationsOrVisitorLogs": "Ні. Усе працює виключно на вашому сервері. У нас немає backend API, який брав би телеметрію, конфігурації кампаній чи логи відвідувачів.",
-    "NoItIsLocalSoftwareYouInstallDirectlyOnYourVpsYouCanImportYourCurrentConfigurationsDirectlyFromKeitaroOrBinomViaJson": "Ні — це локальне ПЗ, яке встановлюється безпосередньо на ваш VPS. Ви можете імпортувати свої поточні конфігурації з Keitaro або Binom через JSON.",
+    "NoItIsLocalSoftwareYouInstallDirectlyOnYourVpsYouCanImportYourCurrentConfigurationsDirectlyFromKeitaroOrBinomViaJson": "Той самий підхід — self-hosted на вашому VPS, трафік не йде в чужу хмару. Різниця в одному стеку: маршрутизація, захист воронки, IVT, cost sync і CAPI без окремих рахунків за трекер, клоаку та антифрод. Імпортуйте JSON з Keitaro або Binom і протестуйте паралельно.",
     "PayUsdtForYourMatchingTierWeGenerateAndSendANewLicenseFileYouLoadItIntoYourExistingDeploymentWithNoReinstallNeeded": "Оплачуєте USDT за відповідний тариф. Ми генеруємо та надсилаємо новий файл ліцензії. Ви завантажуєте його в існуючий сервіс — без перевстановлення.",
     "BeingComfortableWithBasicVpsOperationsAndDockerIsHighlyRecommendedTheProductIsApiFirstTodayWhileOurAdminUiContinuesToCatchUp": "Потрібен sysadmin або DevOps, який тримає VPS — full-time developer не обов'язковий. Onboarding wizard у адмінці проведе через першу кампанію; щоденні ops — у панелі.",
     "ReachOutOnTelegramToObtainAPilotLicenseExecuteTheSingleLineInstallScriptOnYourHostActivateTheLicenseInYourBrowserAndYouAreLive": "Напишіть у Telegram для отримання пілотної ліцензії. Запустіть інсталяційний скрипт на сервері, активуйте ліцензію в браузері — і можна запускати трафік.",

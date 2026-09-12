@@ -93,6 +93,7 @@ func (h *Handler) BuildAdminAPIRegistry(pool *pgxpool.Pool, redisShards []redis.
 	limit := h.limit
 	perm := h.adminRequirePermission()
 	permAny := h.adminRequireAnyPermission()
+	permAnyOrAPIKey := h.adminRequireAnyPermissionOrAPIKey()
 	selfServePerm := h.adminSelfServePermission()
 	writeErr := func(w http.ResponseWriter, err error) {
 		writeServiceError(w, err)
@@ -287,6 +288,7 @@ func (h *Handler) BuildAdminAPIRegistry(pool *pgxpool.Pool, redisShards []redis.
 		limit:                      limit,
 		perm:                       perm,
 		permAny:                    permAny,
+		permAnyOrAPIKey:            permAnyOrAPIKey,
 		selfServePerm:              selfServePerm,
 		writeErr:                   writeErr,
 		authCustomer:               authCustomer,

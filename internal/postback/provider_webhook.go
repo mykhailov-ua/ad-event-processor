@@ -4,9 +4,8 @@ import (
 	"context"
 	"fmt"
 	"net/http"
-	"sync"
-
 	"strings"
+	"sync"
 
 	"ad-event-processor/internal/postback/signing"
 	"ad-event-processor/pkg/money"

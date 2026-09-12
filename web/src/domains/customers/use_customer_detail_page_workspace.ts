@@ -75,7 +75,9 @@ export function useCustomerDetailPageWorkspace() {
   const customerResource = useResource(
     (signal) => {
       if (!id) {
-        return Promise.reject(validationError('Customer id is required.', { field: 'customer_id' }));
+        return Promise.reject(
+          validationError('Customer id is required.', { field: 'customer_id' })
+        );
       }
       return getCustomer(id, signal);
     },

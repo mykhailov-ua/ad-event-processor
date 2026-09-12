@@ -28,13 +28,13 @@ var WasmAttestLoaderJS []byte
 var AttestWasm []byte
 
 const (
-	TrackPixelPath          = "/static/track.js"
-	TrackTelemetryPath      = "/static/track-telemetry.js"
-	TrackBiometricsPath     = "/static/track-biometrics.js"
-	AntifraudTelemetryPath  = "/static/antifraud-telemetry.js"
-	TelemetryStealthPocPath = "/static/telemetry-stealth-poc.js"
-	WasmAttestLoaderPath    = "/static/wasm-attest-loader.js"
-	AttestWasmPath          = "/static/attest.wasm"
+	TrackPixelPath          = "/static/tag.js"
+	TrackTelemetryPath      = "/static/tag-ev.js"
+	TrackBiometricsPath     = "/static/tag-in.js"
+	AntifraudTelemetryPath  = "/static/tag-ctx.js"
+	TelemetryStealthPocPath = "/static/tag-lite.js"
+	WasmAttestLoaderPath    = "/static/tag-w.js"
+	AttestWasmPath          = "/static/tag.wasm"
 )
 
 var (

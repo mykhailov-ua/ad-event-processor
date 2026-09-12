@@ -203,9 +203,7 @@ export function OpsMlModel({
         ? opsPanelError(statusError, 'ML status refresh failed')
         : null}
       {evalError && !hasEvalSnapshot ? opsPanelError(evalError, 'Could not load ML eval') : null}
-      {evalError && hasEvalSnapshot
-        ? opsPanelError(evalError, 'ML eval refresh failed')
-        : null}
+      {evalError && hasEvalSnapshot ? opsPanelError(evalError, 'ML eval refresh failed') : null}
       {labelsError && !hasLabelsSnapshot
         ? opsPanelError(labelsError, 'Could not load ML labels')
         : null}

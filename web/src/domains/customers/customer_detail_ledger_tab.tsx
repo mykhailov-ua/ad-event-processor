@@ -84,8 +84,8 @@ export function CustomerDetailLedgerTab({
         {exportError ? <ErrorBlock title="Export failed" message={exportError.message} /> : null}
 
         <p className={adminTypography.bodyMuted}>
-          Export CSV downloads a balance snapshot for this customer. For a date-range ledger export job,
-          use{' '}
+          Export CSV downloads a balance snapshot for this customer. For a date-range ledger export
+          job, use{' '}
           <Link className="text-primary underline" to={billingLedgerExportHref}>
             Export Hub (Billing ledger)
           </Link>
@@ -93,7 +93,10 @@ export function CustomerDetailLedgerTab({
         </p>
 
         {(items ?? []).length === 0 ? (
-          <EmptyState title="No ledger entries" description="This customer has no ledger rows yet." />
+          <EmptyState
+            title="No ledger entries"
+            description="This customer has no ledger rows yet."
+          />
         ) : (
           <Card>
             <CardContent className="overflow-x-auto">

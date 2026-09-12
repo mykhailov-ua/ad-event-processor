@@ -66,6 +66,7 @@ func TestManagementAPI_DeliveryRoutes(t *testing.T) {
 		campID, err = svc.CreateCampaignFromTemplate(ctx, templateID, custID, "From Template HTTP", nil, "from-template-http")
 		require.NoError(t, err)
 		require.NotEqual(t, uuid.Nil, campID)
+		attachPublishableFlowFixture(t, ctx, pool, svc, campID)
 	})
 
 	t.Run("SaveCampaignAsTemplate", func(t *testing.T) {

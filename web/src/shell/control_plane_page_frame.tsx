@@ -27,11 +27,7 @@ export function ControlPlanePageFrame({
         {toolbar ? <div role="toolbar">{toolbar}</div> : null}
       </header>
 
-      {filters ? (
-        <section aria-label="Filters">
-          {filters}
-        </section>
-      ) : null}
+      {filters ? <section aria-label="Filters">{filters}</section> : null}
 
       <div>
         <main>{children}</main>
@@ -63,17 +59,10 @@ export function ControlPlaneDirectoryFrame({
   status,
 }: ControlPlaneDirectoryFrameProps) {
   return (
-    <ControlPlanePageFrame
-      filters={filters}
-      footer={footer}
-      title={title}
-      toolbar={toolbar}
-    >
+    <ControlPlanePageFrame filters={filters} footer={footer} title={title} toolbar={toolbar}>
       {status}
       {error}
-      <section aria-label="Results">
-        {table}
-      </section>
+      <section aria-label="Results">{table}</section>
     </ControlPlanePageFrame>
   );
 }

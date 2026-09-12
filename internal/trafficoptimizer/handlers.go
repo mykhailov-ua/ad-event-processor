@@ -17,6 +17,7 @@ type RulesAdmin interface {
 	UpdateRule(ctx context.Context, ruleID uuid.UUID, req UpsertRuleRequest) (RuleDTO, error)
 	DeleteRule(ctx context.Context, ruleID uuid.UUID) error
 	DryRunRule(ctx context.Context, ruleID uuid.UUID) (DryRunResponse, error)
+	ApplyRule(ctx context.Context, ruleID uuid.UUID) (ApplyRuleResult, error)
 }
 
 type HTTPHandlers struct {
@@ -43,6 +44,7 @@ func (h *HTTPHandlers) Register(mux *http.ServeMux) {
 	mux.HandleFunc("PUT /api/v1/traffic-optimizer/rules/{id}", limit(perm("campaigns:write", h.updateRule)))
 	mux.HandleFunc("DELETE /api/v1/traffic-optimizer/rules/{id}", limit(perm("campaigns:write", h.deleteRule)))
 	mux.HandleFunc("POST /api/v1/traffic-optimizer/rules/{id}/dry-run", limit(perm("campaigns:read", h.dryRun)))
+	mux.HandleFunc("POST /api/v1/traffic-optimizer/rules/{id}/apply", limit(perm("campaigns:write", h.applyRule)))
 }
 
 func (h *HTTPHandlers) listPresets(w http.ResponseWriter, _ *http.Request) {
@@ -113,6 +115,20 @@ func (h *HTTPHandlers) deleteRule(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 	w.WriteHeader(http.StatusNoContent)
+}
+
+func (h *HTTPHandlers) applyRule(w http.ResponseWriter, r *http.Request) {
+	ruleID, err := uuid.Parse(r.PathValue("id"))
+	if err != nil {
+		httpresponse.Error(w, http.StatusBadRequest, "BAD_REQUEST", "invalid rule id")
+		return
+	}
+	resp, err := h.Rules.ApplyRule(r.Context(), ruleID)
+	if err != nil {
+		writeRuleServiceError(w, err)
+		return
+	}
+	httpresponse.JSON(w, http.StatusOK, resp)
 }
 
 func (h *HTTPHandlers) dryRun(w http.ResponseWriter, r *http.Request) {

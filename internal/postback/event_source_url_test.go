@@ -37,7 +37,7 @@ func TestBuildPostbackPayloadFromEvent_EventSourceURL(t *testing.T) {
 		Type:       "conversion",
 		Payload:    []byte(`{"gclid":"GCLID99","sub1":"px"}`),
 	}
-	pb := buildPostbackPayloadFromEvent(evt, cust)
+	pb := buildPostbackPayloadFromEvent(evt, cust, uuid.Nil)
 	require.Equal(t, "GCLID99", pb.GCLID)
 	require.Contains(t, pb.EventSourceURL, "/click?")
 	require.Contains(t, pb.EventSourceURL, "click_id=clk-proxy")

@@ -16,6 +16,7 @@ import (
 	"ad-event-processor/internal/config"
 	"ad-event-processor/internal/database"
 	"ad-event-processor/internal/domain"
+	"ad-event-processor/pkg/piihash"
 
 	"github.com/google/uuid"
 	"github.com/redis/go-redis/v9"
@@ -170,10 +171,11 @@ func TestAPI_GetCampaignStats_ClickHouseStaleOK(t *testing.T) {
 	require.NoError(t, err)
 
 	staleHour := time.Now().UTC().Add(-2 * time.Hour).Truncate(time.Hour)
+	chPII := piihash.TestHasher()
 	require.NoError(t, conn.Exec(ctx, `
-		INSERT INTO impressions (click_id, campaign_id, ip_address, user_agent, payload, created_at)
-		VALUES (?, ?, '1.1.1.1', 'ua', '{}', ?)`,
-		"stale-click-1", campID, staleHour.Add(5*time.Minute)))
+		INSERT INTO impressions (click_id, campaign_id, ip_hash, ua_hash, pii_salt_version, payload, created_at)
+		VALUES (?, ?, ?, ?, ?, '{}', ?)`,
+		"stale-click-1", campID, piihash.FixedString16(chPII.HashIP("1.1.1.1")), piihash.FixedString16(chPII.HashUA("ua")), chPII.Version(), staleHour.Add(5*time.Minute)))
 
 	from := staleHour.Add(-time.Hour).Format(time.RFC3339)
 	to := staleHour.Add(2 * time.Hour).Format(time.RFC3339)

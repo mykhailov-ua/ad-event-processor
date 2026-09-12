@@ -182,6 +182,14 @@ components:
             $ref: components/schemas/campaign.yaml#/CampaignBulkActionResponse
         CampaignBulkActionResultRow:
             $ref: components/schemas/campaign.yaml#/CampaignBulkActionResultRow
+        CampaignBulkPatchFields:
+            $ref: components/schemas/campaign.yaml#/CampaignBulkPatchFields
+        CampaignBulkPatchRequest:
+            $ref: components/schemas/campaign.yaml#/CampaignBulkPatchRequest
+        CampaignBulkPatchResponse:
+            $ref: components/schemas/campaign.yaml#/CampaignBulkPatchResponse
+        CampaignBulkPatchResultRow:
+            $ref: components/schemas/campaign.yaml#/CampaignBulkPatchResultRow
         CampaignDiffResponse:
             $ref: components/schemas/campaign.yaml#/CampaignDiffResponse
         CampaignDiffRow:
@@ -326,6 +334,10 @@ components:
             $ref: components/schemas/integrations.yaml#/PostbackDryRunResult
         PostbackHealthResponse:
             $ref: components/schemas/integrations.yaml#/PostbackHealthResponse
+        ProgrammaticClickMintRequest:
+            $ref: components/schemas/campaign.yaml#/ProgrammaticClickMintRequest
+        ProgrammaticClickMintResponse:
+            $ref: components/schemas/campaign.yaml#/ProgrammaticClickMintResponse
         PublicAcceptInviteRequest:
             $ref: components/schemas/platform.yaml#/PublicAcceptInviteRequest
         PublicActivateRequest:
@@ -507,6 +519,12 @@ paths:
         $ref: paths/campaigns.yaml#/paths/~1api~1v1~1campaigns~1{id}~1macro-preview
     /api/v1/campaigns/{id}/margin:
         $ref: paths/campaigns.yaml#/paths/~1api~1v1~1campaigns~1{id}~1margin
+    /api/v1/campaigns/{id}/outbound-postbacks:
+        $ref: paths/campaigns.yaml#/paths/~1api~1v1~1campaigns~1{id}~1outbound-postbacks
+    /api/v1/campaigns/{id}/outbound-postbacks/{postback_id}:
+        $ref: paths/campaigns.yaml#/paths/~1api~1v1~1campaigns~1{id}~1outbound-postbacks~1{postback_id}
+    /api/v1/campaigns/{id}/outbound-postbacks/{postback_id}/test:
+        $ref: paths/campaigns.yaml#/paths/~1api~1v1~1campaigns~1{id}~1outbound-postbacks~1{postback_id}~1test
     /api/v1/campaigns/{id}/owner:
         $ref: paths/campaigns.yaml#/paths/~1api~1v1~1campaigns~1{id}~1owner
     /api/v1/campaigns/{id}/placement-block-suggestions:
@@ -521,6 +539,10 @@ paths:
         $ref: paths/campaigns.yaml#/paths/~1api~1v1~1campaigns~1{id}~1smoke
     /api/v1/campaigns/{id}/stats:
         $ref: paths/campaigns.yaml#/paths/~1api~1v1~1campaigns~1{id}~1stats
+    /api/v1/campaigns/{id}/status-schemes:
+        $ref: paths/campaigns.yaml#/paths/~1api~1v1~1campaigns~1{id}~1status-schemes
+    /api/v1/campaigns/{id}/status-schemes/{rule_id}:
+        $ref: paths/campaigns.yaml#/paths/~1api~1v1~1campaigns~1{id}~1status-schemes~1{rule_id}
     /api/v1/campaigns/{id}/validate:
         $ref: paths/campaigns.yaml#/paths/~1api~1v1~1campaigns~1{id}~1validate
     /api/v1/campaigns/bulk:
@@ -941,6 +963,8 @@ paths:
         $ref: paths/ops_reports.yaml#/paths/~1api~1v1~1reports~1rtb~1overview
     /api/v1/reports/rtt-split-tunnel:
         $ref: paths/ops_reports.yaml#/paths/~1api~1v1~1reports~1rtt-split-tunnel
+    /api/v1/reports/rules:
+        $ref: paths/ops_reports.yaml#/paths/~1api~1v1~1reports~1rules
     /api/v1/reports/signal-effectiveness:
         $ref: paths/ops_reports.yaml#/paths/~1api~1v1~1reports~1signal-effectiveness
     /api/v1/reports/silent-reject-impression-funnel:
@@ -1081,6 +1105,8 @@ paths:
         $ref: paths/traffic_optimizer.yaml#/paths/~1api~1v1~1traffic-optimizer~1rules
     /api/v1/traffic-optimizer/rules/{id}:
         $ref: paths/traffic_optimizer.yaml#/paths/~1api~1v1~1traffic-optimizer~1rules~1{id}
+    /api/v1/traffic-optimizer/rules/{id}/apply:
+        $ref: paths/traffic_optimizer.yaml#/paths/~1api~1v1~1traffic-optimizer~1rules~1{id}~1apply
     /api/v1/traffic-optimizer/rules/{id}/dry-run:
         $ref: paths/traffic_optimizer.yaml#/paths/~1api~1v1~1traffic-optimizer~1rules~1{id}~1dry-run
     /api/v1/views:

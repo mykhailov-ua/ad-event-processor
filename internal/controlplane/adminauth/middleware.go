@@ -200,6 +200,35 @@ func (m *Middleware) RequireAnyPermission(permissions ...string) func(http.Handl
 	}
 }
 
+func (m *Middleware) RequireAnyPermissionOrAPIKey(permissions ...string) func(http.HandlerFunc) http.HandlerFunc {
+	return func(next http.HandlerFunc) http.HandlerFunc {
+		return func(w http.ResponseWriter, r *http.Request) {
+			if key := strings.TrimSpace(r.Header.Get("X-API-Key")); key != "" {
+				user, ok := m.authenticateAPIKey(w, r, key)
+				if !ok {
+					return
+				}
+				user.Scope = authz.ScopeCustomer
+				ctx := m.attachAuthz(r.Context(), user)
+				allowed := false
+				for _, p := range permissions {
+					if m.checkPermission(ctx, user, p) {
+						allowed = true
+						break
+					}
+				}
+				if !allowed {
+					httpresponse.Error(w, http.StatusForbidden, "FORBIDDEN", "forbidden: insufficient permissions")
+					return
+				}
+				next(w, r.WithContext(ctx))
+				return
+			}
+			m.RequireAnyPermission(permissions...)(next)(w, r)
+		}
+	}
+}
+
 func (m *Middleware) RequireSelfServe(permission string) func(http.HandlerFunc) http.HandlerFunc {
 	return func(next http.HandlerFunc) http.HandlerFunc {
 		return func(w http.ResponseWriter, r *http.Request) {

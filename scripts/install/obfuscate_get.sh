@@ -29,7 +29,7 @@ trap 'rm -f "$tmp"' EXIT
   tail -n +2 "$SRC"
 } > "$tmp"
 
-payload="$(gzip -c -9 "$tmp" | base64 -w0 2>/dev/null || gzip -c -9 "$tmp" | base64)"
+payload="$(gzip -c -9 "$tmp" | base64 -w0 2> /dev/null || gzip -c -9 "$tmp" | base64)"
 
 mkdir -p "$(dirname "$OUT")"
 {

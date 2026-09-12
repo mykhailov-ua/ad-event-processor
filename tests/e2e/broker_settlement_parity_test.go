@@ -45,6 +45,8 @@ func TestE2E_BrokerPGSettlementParity(t *testing.T) {
 	ctx, cancel := context.WithCancel(context.Background())
 	defer cancel()
 
+	wireSettlementSeedForE2E(t)
+
 	queries := db.New(pool)
 	partManager := database.NewPartitionManager(pool, 7, 2)
 	require.NoError(t, partManager.Run(ctx))
@@ -76,13 +78,13 @@ func TestE2E_BrokerPGSettlementParity(t *testing.T) {
 	const streamName = "ad:events:stream"
 	const baseGroup = "ad:processor:group"
 
-	pgStore := ingestion.NewPostgresStore(queries, time.Second)
+	pgStore := ingestion.NewPostgresStore(queries, 10*time.Second)
 	settleStore := ingestion.NewSettlementStore(pgStore, true)
 
 	settleW := ingestion.NewSettlementWorker(
 		settleStore, rdb, streamName, baseGroup+"_pg", "e2e-redis",
 		1, len(eventMix),
-		50*time.Millisecond, time.Second,
+		50*time.Millisecond, 10*time.Second,
 		50*time.Millisecond, time.Second,
 		3,
 		5*time.Second, 5*time.Second,
@@ -92,11 +94,6 @@ func TestE2E_BrokerPGSettlementParity(t *testing.T) {
 		settleW.Close()
 		_ = settleW.Wait(context.Background())
 	}()
-
-	for _, e := range eventMix {
-		clickID := "redis-" + e.suffix
-		require.NoError(t, xaddAdStreamEvent(ctx, rdb, streamName, campaignRedis, clickID, e.eventType))
-	}
 
 	srv := bserver.NewServer("127.0.0.1:0", t.TempDir(), 8*1024*1024, 4096)
 	require.NoError(t, srv.Start())
@@ -109,15 +106,23 @@ func TestE2E_BrokerPGSettlementParity(t *testing.T) {
 		BatchSize:  len(eventMix),
 		FlushInt:   50 * time.Millisecond,
 		MaxBytes:   1024 * 1024,
-		Timeout:    2 * time.Second,
+		Timeout:    5 * time.Second,
 		IdleWait:   20 * time.Millisecond,
 		ShadowMode: false,
 	}
-	brokerConsumer := ingestion.NewBrokerStreamConsumer(pgStore, brokerCfg, time.Second, 50*time.Millisecond, time.Second, 3)
+	brokerConsumer := ingestion.NewBrokerStreamConsumer(pgStore, brokerCfg, 10*time.Second, 50*time.Millisecond, time.Second, 3)
 	brokerConsumer.Start(ctx)
-	defer brokerConsumer.Close()
+	defer func() {
+		brokerConsumer.Close()
+		_ = brokerConsumer.Wait(context.Background())
+	}()
 
-	producer := client.NewClient(srv.Addr(), 2*time.Second)
+	for _, e := range eventMix {
+		clickID := "redis-" + e.suffix
+		require.NoError(t, xaddAdStreamEvent(ctx, rdb, streamName, campaignRedis, clickID, e.eventType))
+	}
+
+	producer := client.NewClient(srv.Addr(), 5*time.Second)
 	require.NoError(t, producer.Connect())
 	for _, e := range eventMix {
 		clickID := "broker-" + e.suffix
@@ -164,7 +169,7 @@ func readSettlementSnapshot(ctx context.Context, pool *pgxpool.Pool, campaignID 
 func marshalAdStreamEvent(campaignID uuid.UUID, clickID, eventType string) ([]byte, error) {
 	rec := &pb.AdStreamEvent{
 		CreatedAtUnix: time.Now().Unix(),
-		CampaignId:    campaignID[:],
+		CampaignId:    []byte(campaignID.String()),
 		ClickId:       []byte(clickID),
 		EventType:     []byte(eventType),
 		Ip:            []byte("203.0.113.42"),

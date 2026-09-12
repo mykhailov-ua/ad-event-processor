@@ -40,33 +40,78 @@ const subs = [
   [/className="text-base font-semibold"\s*>/g, 'className={adminTypography.sectionTitle}>'],
   [/className="text-base font-semibold"\s+/g, 'className={adminTypography.sectionTitle} '],
   [/className="text-base">/g, 'className={adminTypography.sectionTitle}>'],
-  [/className="m-0 text-sm font-semibold text-foreground"\s*>/g, 'className={cn("m-0", adminTypography.sectionTitle)}>'],
-  [/className="text-sm font-semibold text-foreground"\s*>/g, 'className={adminTypography.sectionTitle}>'],
-  [/className="text-sm font-semibold text-foreground"\s+/g, 'className={adminTypography.sectionTitle} '],
+  [
+    /className="m-0 text-sm font-semibold text-foreground"\s*>/g,
+    'className={cn("m-0", adminTypography.sectionTitle)}>',
+  ],
+  [
+    /className="text-sm font-semibold text-foreground"\s*>/g,
+    'className={adminTypography.sectionTitle}>',
+  ],
+  [
+    /className="text-sm font-semibold text-foreground"\s+/g,
+    'className={adminTypography.sectionTitle} ',
+  ],
   [/className="m-0 text-sm font-medium"\s*>/g, 'className={cn("m-0", adminTypography.label)}>'],
   [/className="m-0 text-sm font-medium"\s+/g, 'className={cn("m-0", adminTypography.label)} '],
-  [/className="text-sm font-medium text-destructive"\s*>/g, 'className={cn(adminTypography.label, "text-destructive")}>'],
+  [
+    /className="text-sm font-medium text-destructive"\s*>/g,
+    'className={cn(adminTypography.label, "text-destructive")}>',
+  ],
   [/className="text-sm font-medium"\s*>/g, 'className={adminTypography.label}>'],
   [/className="text-sm font-medium"\s+/g, 'className={adminTypography.label} '],
-  [/className="m-0 text-sm text-muted-foreground"\s*>/g, 'className={cn("m-0", adminTypography.bodyMuted)}>'],
-  [/className="m-0 text-sm text-muted-foreground"\s+/g, 'className={cn("m-0", adminTypography.bodyMuted)} '],
+  [
+    /className="m-0 text-sm text-muted-foreground"\s*>/g,
+    'className={cn("m-0", adminTypography.bodyMuted)}>',
+  ],
+  [
+    /className="m-0 text-sm text-muted-foreground"\s+/g,
+    'className={cn("m-0", adminTypography.bodyMuted)} ',
+  ],
   [/className="text-sm text-muted-foreground"/g, 'className={adminTypography.bodyMuted}'],
   [/className="shrink-0 text-sm"/g, 'className={cn("shrink-0", adminTypography.body)}'],
-  [/className="ui-surface grid gap-1 p-3 text-sm"/g, 'className={cn("ui-surface grid gap-1 p-3", adminTypography.body)}'],
-  [/className="font-mono text-xs text-muted-foreground"/g, 'className={cn(adminTypography.monoData, "text-muted-foreground")}'],
-  [/className="break-all font-mono text-xs text-muted-foreground"/g, 'className={cn("break-all", adminTypography.monoData, "text-muted-foreground")}'],
-  [/className="break-all font-mono text-xs"/g, 'className={cn("break-all", adminTypography.monoData)}'],
+  [
+    /className="ui-surface grid gap-1 p-3 text-sm"/g,
+    'className={cn("ui-surface grid gap-1 p-3", adminTypography.body)}',
+  ],
+  [
+    /className="font-mono text-xs text-muted-foreground"/g,
+    'className={cn(adminTypography.monoData, "text-muted-foreground")}',
+  ],
+  [
+    /className="break-all font-mono text-xs text-muted-foreground"/g,
+    'className={cn("break-all", adminTypography.monoData, "text-muted-foreground")}',
+  ],
+  [
+    /className="break-all font-mono text-xs"/g,
+    'className={cn("break-all", adminTypography.monoData)}',
+  ],
   [/className="font-mono text-xs"/g, 'className={adminTypography.monoData}'],
-  [/className="text-xs text-muted-foreground font-mono"/g, 'className={cn(adminTypography.monoData, "text-muted-foreground")}'],
+  [
+    /className="text-xs text-muted-foreground font-mono"/g,
+    'className={cn(adminTypography.monoData, "text-muted-foreground")}',
+  ],
   [/className="text-xs text-muted-foreground"/g, 'className={adminTypography.captionPlain}'],
-  [/className="text-xs text-amber-700 dark:text-amber-400"/g, 'className={cn(adminTypography.captionPlain, "text-amber-700 dark:text-amber-400")}'],
-  [/className="min-h-32 font-mono text-xs"/g, 'className={cn("min-h-32", adminTypography.monoData)}'],
-  [/className="min-w-\[6rem\] font-mono text-xs"/g, 'className={cn("min-w-[6rem]", adminTypography.monoData)}'],
+  [
+    /className="text-xs text-amber-700 dark:text-amber-400"/g,
+    'className={cn(adminTypography.captionPlain, "text-amber-700 dark:text-amber-400")}',
+  ],
+  [
+    /className="min-h-32 font-mono text-xs"/g,
+    'className={cn("min-h-32", adminTypography.monoData)}',
+  ],
+  [
+    /className="min-w-\[6rem\] font-mono text-xs"/g,
+    'className={cn("min-w-[6rem]", adminTypography.monoData)}',
+  ],
   [
     /className=\{cn\('flex flex-col gap-1 text-sm font-medium text-foreground', className\)\}/g,
     "className={cn('flex flex-col gap-1', adminTypography.label, className)}",
   ],
-  [/className="text-\[13px\] font-semibold leading-\[18px\]"/g, 'className={adminTypography.sectionTitle}'],
+  [
+    /className="text-\[13px\] font-semibold leading-\[18px\]"/g,
+    'className={adminTypography.sectionTitle}',
+  ],
 ];
 
 let changed = 0;

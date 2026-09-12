@@ -240,6 +240,13 @@ func (h *IntegrationSchemaHTTPHandlers) applySchema(w http.ResponseWriter, r *ht
 			httpresponse.Error(w, http.StatusInternalServerError, "INTERNAL_ERROR", err.Error())
 			return
 		}
+		if _, err := tx.Exec(r.Context(), `
+			UPDATE campaigns
+			SET integration_schema_id = $2, updated_at = NOW()
+			WHERE id = $1`, campaignID, schemaID); err != nil {
+			httpresponse.Error(w, http.StatusInternalServerError, "INTERNAL_ERROR", err.Error())
+			return
+		}
 		applied["url_template"] = tpl
 	case integrationschema.KindAffiliateReceivePostback:
 		parsedKind, parsed, err := integrationschema.ParseDocument(schemaBody)

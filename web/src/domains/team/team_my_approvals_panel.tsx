@@ -19,7 +19,9 @@ type TeamMyApprovalsPanelProps = {
   hasSnapshot: boolean;
 };
 
-function approvalStatusVariant(status: string | undefined): 'default' | 'secondary' | 'destructive' | 'outline' {
+function approvalStatusVariant(
+  status: string | undefined
+): 'default' | 'secondary' | 'destructive' | 'outline' {
   switch ((status ?? '').toUpperCase()) {
     case 'PENDING':
       return 'secondary';
@@ -51,7 +53,10 @@ export function TeamMyApprovalsPanel({
         <p className={adminTypography.bodyMuted}>No budget approval requests yet.</p>
       ) : null}
       {!error && hasSnapshot && items.length > 0 ? (
-        <DashboardPanelSection title="My budget requests" tableAriaLabel="My budget approval requests">
+        <DashboardPanelSection
+          title="My budget requests"
+          tableAriaLabel="My budget approval requests"
+        >
           <TableHeader>
             <TableRow>
               <DirectoryTableHead>Campaign</DirectoryTableHead>

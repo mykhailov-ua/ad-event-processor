@@ -47,5 +47,7 @@
 //	go test ./internal/campaign/ -short -run 'TestApplyCampaignStatusCount|TestCampaignListExtendedSortMaxKeys' -count=1
 //	go test ./internal/campaign/ -short -run 'TestDeriveCampaignPacingHealth|TestCampaignBudgetBurnPct|TestOperationalPacingExpectedRatio' -count=1
 //	go test ./internal/campaign/editor/ -short -run TestValidateCampaignPatch -count=1
+//	go test ./internal/campaign/editor/ -short -run TestPostCampaignBulkPatch -count=1
+//	go test ./internal/campaign/editor/ -short -run 'TestMintProgrammaticClick|TestPostMintProgrammaticClick' -count=1
 //	go test ./internal/campaign/worker/ -short -count=1
 package campaign

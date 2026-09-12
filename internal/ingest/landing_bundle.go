@@ -11,7 +11,6 @@ import (
 
 	"ad-event-processor/internal/domain"
 	"ad-event-processor/internal/metrics"
-	"ad-event-processor/internal/telemetry"
 	"ad-event-processor/internal/track"
 	"ad-event-processor/pkg/branding"
 	"ad-event-processor/pkg/moderatorintel"
@@ -403,7 +402,6 @@ func (h *AdsPacketHandler) writeGnetClickRedirect(ctx *ConnContext, c gnet.Conn,
 
 func (h *AdsPacketHandler) reactClickRedirect(req *Request, c gnet.Conn, ctx *ConnContext) gnet.Action {
 	startMono := monotonicNano()
-	telemetry.RecordTrack()
 
 	scratch := parseClickQuery(req.Path, ctx.WCamp.Buf[:0], &ctx.ClickParsed)
 	ctx.WCamp.Buf = scratch
@@ -1136,10 +1134,10 @@ func (h *AdsPacketHandler) reactTelemetryStealthHydrate(req *Request, c gnet.Con
 		h.writeTelemetryStealthHydrateJSON(c, ctx, startMono, track.TelemetryStealthHydrateResponse{}, http.StatusBadRequest)
 		return gnet.None
 	}
-	fp := track.StealthHydrateFingerprint(hydrateReq.Telemetry)
+	fp := track.StealthHydrateFingerprint(hydrateReq.SensorPack())
 	sid := uuid.New().String()
 	campaignID := ""
-	if v, ok := hydrateReq.Telemetry["campaign_id"].(string); ok {
+	if v, ok := hydrateReq.SensorPack()["campaign_id"].(string); ok {
 		campaignID = v
 	}
 	html := track.DefaultStealthHydrateHTML(campaignID)

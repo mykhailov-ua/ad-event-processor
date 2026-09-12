@@ -64,20 +64,10 @@ func RunCampaignSmoke(ctx context.Context, host SmokeHost, campaignID uuid.UUID)
 }
 
 func buildCampaignSmokeClickURL(base string, campaignID uuid.UUID, clickID string) (string, error) {
-	base = strings.TrimRight(strings.TrimSpace(base), "/")
-	if base == "" {
+	if strings.TrimSpace(base) == "" {
 		return "", errCampaignSmokeTrackerBaseMissing
 	}
-	u, err := url.Parse(base + "/click")
-	if err != nil {
-		return "", err
-	}
-	q := u.Query()
-	q.Set("campaign_id", campaignID.String())
-	q.Set("click_id", clickID)
-	q.Set("smoke", "1")
-	u.RawQuery = q.Encode()
-	return u.String(), nil
+	return BuildCampaignClickURL(base, campaignID, clickID, map[string]string{"smoke": "1"})
 }
 
 func resolveCampaignSmokeRedirect(current, location string) (string, error) {

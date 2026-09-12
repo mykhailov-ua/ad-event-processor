@@ -32,6 +32,16 @@ var (
 		Help: "Hot-path rejects when deployment JWT max_rps is exceeded",
 	})
 
+	LicenseCapRejectedTotal = promauto.NewCounterVec(prometheus.CounterOpts{
+		Name: "ad_license_cap_rejected_total",
+		Help: "Cold-path rejects when a deployment JWT numeric cap is reached",
+	}, []string{"limit"})
+
+	LicenseMonthlyEventsExceededTotal = promauto.NewCounter(prometheus.CounterOpts{
+		Name: "ad_license_monthly_events_exceeded_total",
+		Help: "Hot-path rejects when deployment JWT max_events_per_month is exceeded or meter snapshot is stale",
+	})
+
 	EdgeBPFSealFailTotal = promauto.NewCounter(prometheus.CounterOpts{
 		Name: "edge_bpf_seal_fail_total",
 		Help: "Sealed edge BPF decrypt or collection load failures",
@@ -180,6 +190,16 @@ var (
 	ConversionPostbackDeferredTotal = promauto.NewCounter(prometheus.CounterOpts{
 		Name: "ad_conversion_postback_deferred_total",
 		Help: "Outbound conversion postbacks held until validation completes",
+	})
+
+	PostbackSampledSkippedTotal = promauto.NewCounter(prometheus.CounterOpts{
+		Name: "ad_postback_sampled_skipped_total",
+		Help: "Outbound postbacks skipped by deterministic sample_percent gate",
+	})
+
+	OfferClickCapExhaustedTotal = promauto.NewCounter(prometheus.CounterOpts{
+		Name: "ad_offer_click_cap_exhausted_total",
+		Help: "Flow click selections that skipped an offer because click cap was exhausted",
 	})
 
 	ConversionBrowserMissingTotal = promauto.NewCounter(prometheus.CounterOpts{

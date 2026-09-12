@@ -16,7 +16,6 @@ import (
 	"ad-event-processor/internal/licensing"
 	"ad-event-processor/internal/metrics"
 	"ad-event-processor/internal/stream"
-	"ad-event-processor/internal/telemetry"
 
 	"github.com/google/uuid"
 	"github.com/redis/go-redis/v9"
@@ -538,7 +537,6 @@ func (f *UnifiedFilter) enqueueLocalQuantaFullSkip(shard int, evt *domain.Event,
 	}
 	f.metricLocalQuotaFullSkip.Inc()
 	f.metricEventsProcessed.Inc()
-	telemetry.RecordAccepted()
 	return nil
 }
 
@@ -597,7 +595,6 @@ func (f *UnifiedFilter) acceptLocalQuantaFullSkipIface(ctx context.Context, evt 
 	f.metricLocalQuotaFullSkip.Inc()
 	f.metricRedisLuaSkipped.Inc()
 	f.metricEventsProcessed.Inc()
-	telemetry.RecordAccepted()
 	return nil
 }
 

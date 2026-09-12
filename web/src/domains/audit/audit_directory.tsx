@@ -134,14 +134,10 @@ export function AuditDirectory({
   const canGoNext = offset + limit < total;
 
   const operateRows = useMemo(
-    () =>
-      directoryOperateRowsIndexed(items, auditRowId, (row) => auditRowLabel(row)),
+    () => directoryOperateRowsIndexed(items, auditRowId, (row) => auditRowLabel(row)),
     [items]
   );
-  const recordById = useMemo(
-    () => directoryRecordMapIndexed(items, auditRowId),
-    [items]
-  );
+  const recordById = useMemo(() => directoryRecordMapIndexed(items, auditRowId), [items]);
 
   const selectedEntry = useMemo(() => {
     if (!selectedEntryId) {
@@ -177,7 +173,10 @@ export function AuditDirectory({
         </>
       }
       aside={
-        <AuditSelectionPanel selectedEntry={selectedEntry} onClearSelection={handleClearSelection} />
+        <AuditSelectionPanel
+          selectedEntry={selectedEntry}
+          onClearSelection={handleClearSelection}
+        />
       }
       blockingErrorTitle="Could not load audit log"
       controlPanel={

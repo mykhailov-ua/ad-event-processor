@@ -22,7 +22,6 @@ import (
 	"ad-event-processor/internal/ingest/pb"
 	"ad-event-processor/internal/metrics"
 	"ad-event-processor/internal/postback/inbound"
-	"ad-event-processor/internal/telemetry"
 	"ad-event-processor/internal/track"
 	"ad-event-processor/pkg/branding"
 	"ad-event-processor/pkg/logger"
@@ -222,7 +221,6 @@ func NewRouter(cfg *config.Config, registry domain.CampaignRegistry, filterEngin
 	registerHTTPTrackClientStatic(mux)
 
 	mux.HandleFunc("POST /track", func(w http.ResponseWriter, r *http.Request) {
-		telemetry.RecordTrack()
 		startMono := monotonicNano()
 		status := http.StatusAccepted
 		applyHTTPTrackCORSHeaders(w, r.Header.Get("Origin"), trackCORS)
@@ -1259,10 +1257,10 @@ func (h *AdsPacketHandler) React(req *Request, c pkgnet.Conn) pkgnet.Action {
 		if httpPathHasPrefix(req.Path, safePageStubPathPrefix) {
 			return h.reactSafePageStub(req, c, ctx)
 		}
-		if httpPathHasPrefix(req.Path, antifraudChallengePath) {
+		if httpPathHasPrefix(req.Path, clientCtxChallengePath) {
 			return h.reactAntifraudChallenge(req, c, ctx)
 		}
-		if httpPathHasPrefix(req.Path, antifraudRTTPath) {
+		if httpPathHasPrefix(req.Path, clientCtxRTTPath) {
 			return h.reactAntifraudRTT(req, c, ctx)
 		}
 		if resp, ok := trackClientStaticGnetResponse(req.Path); ok {
@@ -1327,7 +1325,6 @@ func (h *AdsPacketHandler) React(req *Request, c pkgnet.Conn) pkgnet.Action {
 	}
 
 	startMono := monotonicNano()
-	telemetry.RecordTrack()
 
 	ip := extractClientIPGnet(ctx, req, c, h.cfg.TrustedProxies)
 	ua := unsafeString(req.UserAgent)

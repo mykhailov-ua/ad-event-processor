@@ -63,7 +63,7 @@ func TestSanitizeFeaturesForSKU_pilotBlocksOpenRTB(t *testing.T) {
 	require.False(t, out.MultiRegionEnabled())
 	require.False(t, out.SlotMigration)
 	require.False(t, out.IvtMLEnabled())
-	require.True(t, out.MarginGuard)
+	require.False(t, out.MarginGuard)
 }
 
 func TestSanitizeFeaturesForSKU_scaleAllowsExternalResidentialIntel(t *testing.T) {
@@ -73,6 +73,34 @@ func TestSanitizeFeaturesForSKU_scaleAllowsExternalResidentialIntel(t *testing.T
 
 	outPro := SanitizeFeaturesForSKU(SKUCodePro, in)
 	require.False(t, outPro.ExternalResidentialIntelEnabled())
+}
+
+func TestLoadSKUFile_brokerWalTierMatrix_holdout(t *testing.T) {
+	doc, err := LoadSKUFile(filepath.Join("..", "..", "..", "deploy", "vendor", "sku.yaml"))
+	require.NoError(t, err)
+	scale, err := doc.GetSKU(SKUCodeScale)
+	require.NoError(t, err)
+	require.True(t, scale.Features.BrokerWal)
+	pro, err := doc.GetSKU(SKUCodePro)
+	require.NoError(t, err)
+	require.False(t, pro.Features.BrokerWal)
+}
+
+func TestLoadSKUFile_costSyncNetworkTierMatrix_holdout(t *testing.T) {
+	doc, err := LoadSKUFile(filepath.Join("..", "..", "..", "deploy", "vendor", "sku.yaml"))
+	require.NoError(t, err)
+	pilot, err := doc.GetSKU(SKUCodePilot)
+	require.NoError(t, err)
+	require.Equal(t, uint64(0), pilot.Limits.MaxCostSyncNetworks)
+	starter, err := doc.GetSKU(SKUCodeStarter)
+	require.NoError(t, err)
+	require.Equal(t, uint64(3), starter.Limits.MaxCostSyncNetworks)
+	pro, err := doc.GetSKU(SKUCodePro)
+	require.NoError(t, err)
+	require.Equal(t, uint64(15), pro.Limits.MaxCostSyncNetworks)
+	scale, err := doc.GetSKU(SKUCodeScale)
+	require.NoError(t, err)
+	require.Equal(t, uint64(999999), scale.Limits.MaxCostSyncNetworks)
 }
 
 func TestLoadSKUFile_fraudDisputeEvidenceTierMatrix_holdout(t *testing.T) {
@@ -98,7 +126,8 @@ func TestLoadSKUFile_pilotSmokeLimits(t *testing.T) {
 	require.Equal(t, uint64(0), sku.Limits.MaxExportChunkBytes)
 	require.False(t, sku.Features.RtbLive)
 	require.False(t, sku.Features.OpenRTBEngine)
-	require.True(t, sku.Features.MarginGuard)
+	require.False(t, sku.Features.MarginGuard)
+	require.Equal(t, uint64(0), sku.Limits.MaxCostSyncNetworks)
 
 	claims := sku.BuildClaims(IssueLicenseInput{
 		CustomerName: "Trial",

@@ -50,6 +50,10 @@ func ErrValidationf(msg string) error {
 	return errValidation(msg)
 }
 
+func IsValidationError(err error) bool {
+	return errors.Is(err, ErrValidation)
+}
+
 func IsPgUniqueViolation(err error) bool {
 	return isPgUniqueViolation(err)
 }

@@ -70,8 +70,24 @@ func ValidatePathShape(paths []PathDTO) error {
 		if err := validatePathFilters(i, path.Filters); err != nil {
 			return err
 		}
+		if err := validatePathRotationMode(i, path.RotationMode); err != nil {
+			return err
+		}
 	}
 	return nil
+}
+
+func validatePathRotationMode(pathIndex int, raw string) error {
+	mode := strings.TrimSpace(strings.ToLower(raw))
+	if mode == "" || mode == "weighted" {
+		return nil
+	}
+	switch mode {
+	case "unseen", "fix_on", "fix-on", "fixon", "sequential", "top_to_bottom", "top-to-bottom":
+		return nil
+	default:
+		return fmt.Errorf("path %d invalid rotation_mode %q", pathIndex+1, raw)
+	}
 }
 
 func ValidatePathWeightSum(paths []PathDTO) error {

@@ -278,16 +278,17 @@ type CampaignWizardStored struct {
 }
 
 type CampaignExportBundle struct {
-	ExportVersion               int                     `json:"export_version"`
-	ExportedAt                  string                  `json:"exported_at"`
-	Campaign                    CampaignExportCampaign  `json:"campaign"`
-	Flow                        *CampaignExportFlow     `json:"flow,omitempty"`
-	Landers                     []CampaignExportLander  `json:"landers,omitempty"`
-	Offers                      []CampaignExportOffer   `json:"offers,omitempty"`
-	PostbackConfig              *CampaignExportPostback `json:"postback_config,omitempty"`
-	ConversionMappings          []ConversionMappingDTO  `json:"conversion_mappings,omitempty"`
-	IntegrationSchemaName       string                  `json:"integration_schema_name,omitempty"`
-	StatusIntegrationSchemaName string                  `json:"status_integration_schema_name,omitempty"`
+	ExportVersion               int                              `json:"export_version"`
+	ExportedAt                  string                           `json:"exported_at"`
+	Campaign                    CampaignExportCampaign           `json:"campaign"`
+	Flow                        *CampaignExportFlow              `json:"flow,omitempty"`
+	Landers                     []CampaignExportLander           `json:"landers,omitempty"`
+	Offers                      []CampaignExportOffer            `json:"offers,omitempty"`
+	PostbackConfig              *CampaignExportPostback          `json:"postback_config,omitempty"`
+	OutboundPostbacks           []CampaignExportOutboundPostback `json:"outbound_postbacks,omitempty"`
+	ConversionMappings          []ConversionMappingDTO           `json:"conversion_mappings,omitempty"`
+	IntegrationSchemaName       string                           `json:"integration_schema_name,omitempty"`
+	StatusIntegrationSchemaName string                           `json:"status_integration_schema_name,omitempty"`
 }
 
 type CampaignExportCampaign struct {
@@ -385,6 +386,20 @@ type CampaignExportPostback struct {
 	URLTemplate   string `json:"url_template"`
 	TargetEvent   string `json:"target_event,omitempty"`
 	TestEventCode string `json:"test_event_code,omitempty"`
+}
+
+type CampaignExportOutboundPostback struct {
+	Name          string `json:"name,omitempty"`
+	Priority      int32  `json:"priority"`
+	Enabled       bool   `json:"enabled"`
+	Provider      string `json:"provider"`
+	URLTemplate   string `json:"url_template"`
+	TargetEvent   string `json:"target_event,omitempty"`
+	TriggerKind   string `json:"trigger_kind"`
+	TriggerValue  string `json:"trigger_value,omitempty"`
+	TestEventCode string `json:"test_event_code,omitempty"`
+	SamplePercent int32  `json:"sample_percent,omitempty"`
+	DelaySeconds  int32  `json:"delay_seconds,omitempty"`
 }
 
 type ImportCampaignSpec struct {

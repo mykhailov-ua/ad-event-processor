@@ -25,9 +25,7 @@ export function flowVisualRowsFromSnapshot(paths: unknown): FlowPathVisualRow[] 
 export function buildFlowBodyFromVisual(
   draftName: string,
   rows: FlowPathVisualRow[]
-):
-  | { ok: true; body: { name: string; paths: FlowPath[] } }
-  | { ok: false; error: string } {
+): { ok: true; body: { name: string; paths: FlowPath[] } } | { ok: false; error: string } {
   const name = draftName.trim();
   if (!name) {
     return { ok: false, error: 'Flow name is required.' };

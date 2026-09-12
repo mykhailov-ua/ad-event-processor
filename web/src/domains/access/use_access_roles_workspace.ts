@@ -19,7 +19,11 @@ export function useAccessRolesWorkspace() {
   const canRead = sessionHasPermission(permissions, 'access:read');
   const canWrite = sessionHasPermission(permissions, 'access:write');
 
-  const { data: catalog, error: catalogError, fetching: catalogFetching } = useResource(
+  const {
+    data: catalog,
+    error: catalogError,
+    fetching: catalogFetching,
+  } = useResource(
     (signal) => (canRead ? getAccessCatalog(signal) : Promise.resolve(undefined)),
     [canRead]
   );
@@ -30,10 +34,10 @@ export function useAccessRolesWorkspace() {
     error: yamlError,
     fetching: yamlFetching,
     revalidating: yamlRevalidating,
-  } = useResource((signal) => (canRead ? getAccessRolesYaml(signal) : Promise.resolve('')), [
-    canRead,
-    yamlRefreshToken,
-  ]);
+  } = useResource(
+    (signal) => (canRead ? getAccessRolesYaml(signal) : Promise.resolve('')),
+    [canRead, yamlRefreshToken]
+  );
 
   const [draftYaml, setDraftYaml] = useState('');
   const [draftRevision, setDraftRevision] = useState(0);
@@ -65,7 +69,9 @@ export function useAccessRolesWorkspace() {
     try {
       const result = await validateAccessRolesYaml(draftYaml);
       if (!result.valid) {
-        setValidationError(new Error(result.errors?.map((row) => row.code).join(', ') || 'invalid'));
+        setValidationError(
+          new Error(result.errors?.map((row) => row.code).join(', ') || 'invalid')
+        );
         return;
       }
       toast.success('Validation passed');

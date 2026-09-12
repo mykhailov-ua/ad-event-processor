@@ -49,11 +49,7 @@ function Popover({
     [isOpen, setIsOpen]
   );
 
-  return (
-    <PopoverContext.Provider value={contextValue}>
-      {children}
-    </PopoverContext.Provider>
-  );
+  return <PopoverContext.Provider value={contextValue}>{children}</PopoverContext.Provider>;
 }
 
 const PopoverTrigger = React.forwardRef<

@@ -184,7 +184,9 @@ export function HourlyTrendChart({
         className={cn('h-[var(--hourly-chart-shell-height)] bg-muted/25', adminKit.panelRadius)}
         style={{ '--hourly-chart-shell-height': `${shellHeight}px` } as CSSProperties}
       >
-        <div className={cn('flex h-full items-center justify-center', adminTypography.captionPlain)}>
+        <div
+          className={cn('flex h-full items-center justify-center', adminTypography.captionPlain)}
+        >
           Loading chart...
         </div>
       </div>

@@ -18,8 +18,10 @@ import (
 	"ad-event-processor/internal/privacyadmin"
 	"ad-event-processor/internal/rtb"
 	"ad-event-processor/internal/rtbadmin"
+	"ad-event-processor/internal/shardadmin"
 
 	"github.com/jackc/pgx/v5/pgxpool"
+	redis "github.com/redis/go-redis/v9"
 )
 
 type InProcessPaymentModule interface {
@@ -66,6 +68,7 @@ func startControlWorkers(
 	pool *pgxpool.Pool,
 	postgresPools *database.PostgresPools,
 	syncWorkers []*domain.SyncWorker,
+	redisShards []redis.UniversalClient,
 ) {
 	reconInterval := time.Duration(cfg.Management.ReconIntervalMs) * time.Millisecond
 	svc.StartReconWorker(reconInterval)
@@ -80,11 +83,15 @@ func startControlWorkers(
 	if os.Getenv("VOLUME_METER_ENABLED") != "0" {
 		meterSource := cfg.VolumeMeterSource
 		var clickhouseQuery *database.ClickHouseQuery
-		if meterSource == "ch" {
+		if meterSource == billingadmin.VolumeMeterSourceCH || meterSource == "ch" {
 			clickhouseQuery = svc.ClickHouseQuery()
 		}
+		redisClient := shardadmin.PickHealthyControlShard(redisShards)
+		if err := billingadmin.RefreshDeploymentMonthlyEventsSnapshot(ctx, postgresPools.Settle, redisClient, ""); err != nil {
+			slog.Warn("initial monthly events snapshot refresh failed", "err", err)
+		}
 		svc.StartBackgroundWorker(func() {
-			billingadmin.NewVolumeMeterWorker(postgresPools.Settle, clickhouseQuery, meterSource, volumeInterval, svc.PostgresGate()).Start(ctx)
+			billingadmin.NewVolumeMeterWorker(postgresPools.Settle, clickhouseQuery, redisClient, meterSource, volumeInterval, svc.PostgresGate()).Start(ctx)
 		})
 		slog.Info("started volume meter worker", "interval", volumeInterval, "source", meterSource)
 	}

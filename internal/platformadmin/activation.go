@@ -24,6 +24,7 @@ type ActivationHost interface {
 	Pool() *pgxpool.Pool
 	ApplyLicenseToken(ctx context.Context, token string) error
 	BootstrapPlatformOnActivation(ctx context.Context, adminEmail string) error
+	EnforceDeploymentTenantCap(ctx context.Context) error
 	ErrValidation(msg string) error
 	AuditOwnerActivation(ctx context.Context, deploymentID, customerID, ownerUserID uuid.UUID)
 }
@@ -101,6 +102,10 @@ func ActivateOwner(ctx context.Context, host ActivationHost, req ActivateOwnerRe
 	}
 	hash, err := hasher.HashPassword(req.Password)
 	if err != nil {
+		return ActivatedOwner{}, err
+	}
+
+	if err := host.EnforceDeploymentTenantCap(ctx); err != nil {
 		return ActivatedOwner{}, err
 	}
 

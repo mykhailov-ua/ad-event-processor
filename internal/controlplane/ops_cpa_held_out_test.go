@@ -60,16 +60,18 @@ func TestCPA_HeldOut_ListDLQInbox_capiVsPostbackFilter(t *testing.T) {
 	require.NoError(t, err)
 
 	require.NoError(t, q.UpsertPostbackConfig(ctx, db.UpsertPostbackConfigParams{
-		CampaignID:  pgtype.UUID{Bytes: campWebhook, Valid: true},
-		Provider:    "webhook",
-		UrlTemplate: "https://example.com/pb",
-		TargetEvent: "conversion",
+		CampaignID:        pgtype.UUID{Bytes: campWebhook, Valid: true},
+		Provider:          "webhook",
+		UrlTemplate:       "https://example.com/pb",
+		ApiTokenEncrypted: []byte("heldout-webhook-token"),
+		TargetEvent:       "conversion",
 	}))
 	require.NoError(t, q.UpsertPostbackConfig(ctx, db.UpsertPostbackConfigParams{
-		CampaignID:  pgtype.UUID{Bytes: campCAPI, Valid: true},
-		Provider:    "facebook",
-		UrlTemplate: "https://graph.facebook.com/events",
-		TargetEvent: "conversion",
+		CampaignID:        pgtype.UUID{Bytes: campCAPI, Valid: true},
+		Provider:          "facebook",
+		UrlTemplate:       "https://graph.facebook.com/events",
+		ApiTokenEncrypted: []byte("heldout-capi-token"),
+		TargetEvent:       "conversion",
 	}))
 
 	webhookDLQ, err := q.InsertPostbackDLQ(ctx, db.InsertPostbackDLQParams{

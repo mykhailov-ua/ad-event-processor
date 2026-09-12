@@ -2,7 +2,7 @@ import assert from 'node:assert/strict';
 import test from 'node:test';
 
 import { seedDeterministicUuid } from '../lib/uuid.ts';
-import { trackEvent } from './track.js';
+import { sendEvent } from './track.js';
 
 const CAMPAIGN_1 = seedDeterministicUuid('campaign', 1);
 const CAMPAIGN_2 = seedDeterministicUuid('campaign', 2);
@@ -43,12 +43,12 @@ async function withMockWindow(run, { search = '?msclkid=ms-1&ob_click_id=ob-9' }
       configurable: true,
       value: previousCrypto,
     });
-    delete globalThis.trackTelemetrySnapshot;
-    delete globalThis.trackBiometricsSnapshot;
+    delete globalThis.tagEvSnapshot;
+    delete globalThis.tagInSnapshot;
   }
 }
 
-test('trackEvent honors minDwellMs before fetch', async () => {
+test('sendEvent honors minDwellMs before fetch', async () => {
   const previousWindow = globalThis.window;
   const previousFetch = globalThis.fetch;
   let capturedBody;
@@ -59,7 +59,7 @@ test('trackEvent honors minDwellMs before fetch', async () => {
   };
   try {
     const started = performance.now();
-    await trackEvent({
+    await sendEvent({
       endpoint: 'https://track.example/track',
       campaignId: CAMPAIGN_DWELL,
       type: 'conversion',
@@ -73,9 +73,9 @@ test('trackEvent honors minDwellMs before fetch', async () => {
   }
 });
 
-test('trackEvent maps core fields and query attribution', async () => {
+test('sendEvent maps core fields and query attribution', async () => {
   await withMockWindow(async (readBody) => {
-    await trackEvent({
+    await sendEvent({
       endpoint: 'https://track.example/track',
       campaignId: CAMPAIGN_1,
       type: 'conversion',
@@ -99,10 +99,10 @@ test('trackEvent maps core fields and query attribution', async () => {
   });
 });
 
-test('trackEvent maps full query attribution and obclid alias', async () => {
+test('sendEvent maps full query attribution and obclid alias', async () => {
   await withMockWindow(
     async (readBody) => {
-      await trackEvent({
+      await sendEvent({
         endpoint: 'https://track.example/track',
         campaignId: CAMPAIGN_ATTRIB,
         type: 'click',
@@ -122,14 +122,14 @@ test('trackEvent maps full query attribution and obclid alias', async () => {
   );
 });
 
-test('trackEvent maps subs sub1 through sub30', async () => {
+test('sendEvent maps subs sub1 through sub30', async () => {
   await withMockWindow(async (readBody) => {
     const subs = {};
     for (let index = 1; index <= 30; index += 1) {
       subs[`sub${index}`] = `value-${index}`;
     }
 
-    await trackEvent({
+    await sendEvent({
       endpoint: 'https://track.example/track',
       campaignId: CAMPAIGN_SUBS,
       type: 'click',
@@ -145,12 +145,12 @@ test('trackEvent maps subs sub1 through sub30', async () => {
   });
 });
 
-test('trackEvent auto event_id and telemetry snapshots', async () => {
+test('sendEvent auto event_id and telemetry snapshots', async () => {
   await withMockWindow(async (readBody) => {
-    globalThis.trackTelemetrySnapshot = () => ({ events: [{ kind: 'telemetry' }] });
-    globalThis.trackBiometricsSnapshot = () => ({ events: [{ kind: 'bio' }] });
+    globalThis.tagEvSnapshot = () => ({ events: [{ kind: 'telemetry' }] });
+    globalThis.tagInSnapshot = () => ({ events: [{ kind: 'bio' }] });
 
-    await trackEvent({
+    await sendEvent({
       endpoint: 'https://track.example/track',
       campaignId: CAMPAIGN_2,
       type: 'impression',
@@ -158,7 +158,7 @@ test('trackEvent auto event_id and telemetry snapshots', async () => {
 
     const body = readBody();
     assert.equal(body.event_id, '11111111-1111-4111-8111-111111111111');
-    assert.deepEqual(body.telemetry, {
+    assert.deepEqual(body.ev, {
       events: [{ kind: 'telemetry' }, { kind: 'bio' }],
     });
   });

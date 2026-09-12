@@ -32,7 +32,10 @@ async function expectMediaBuyerDeepLinkDenied(page, row) {
 
   const content = mainContent(page);
   await expect(
-    content.getByRole('alert').or(content.getByText('403', { exact: true })).first()
+    content
+      .getByRole('alert')
+      .or(content.getByText('403', { exact: true }))
+      .first()
   ).toBeVisible({ timeout: 15_000 });
   await expect(content.getByText(row.permissionSlug, { exact: true })).toBeVisible();
 

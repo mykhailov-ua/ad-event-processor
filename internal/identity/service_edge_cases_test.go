@@ -19,7 +19,7 @@ import (
 func TestChangePassword_EdgeCases(t *testing.T) {
 	repo := &mockRepo{}
 	hasher, _ := NewPasswordHasher(32768, 2, 2)
-	service := NewService(repo, nil, hasher, nil, nil)
+	service := NewService(repo, nil, hasher, nil, nil, nil)
 
 	goodPwd := "InitialPass123!"
 	newPwd := "NewPass456!"
@@ -52,7 +52,7 @@ func TestChangePassword_EdgeCases(t *testing.T) {
 func TestCreateAPIKey_Secrecy(t *testing.T) {
 	repo := &mockRepo{}
 	hasher, _ := NewPasswordHasher(32768, 2, 2)
-	service := NewService(repo, nil, hasher, nil, nil)
+	service := NewService(repo, nil, hasher, nil, nil, nil)
 
 	userID := uuid.New()
 	repo.err = nil
@@ -75,7 +75,7 @@ func TestCreateAPIKey_Secrecy(t *testing.T) {
 func TestAuditLog_NeverFailsCaller(t *testing.T) {
 	repo := &mockRepo{}
 	hasher, _ := NewPasswordHasher(32768, 2, 2)
-	service := NewService(repo, nil, hasher, nil, nil)
+	service := NewService(repo, nil, hasher, nil, nil, nil)
 
 	repo.err = errors.New("db down for audit")
 
@@ -113,7 +113,7 @@ func TestEmailVerification_ReplayAndConcurrency(t *testing.T) {
 		return cmd
 	}
 
-	service := NewService(repo, nil, hasher, nil, mRedis)
+	service := NewService(repo, nil, hasher, nil, mRedis, nil)
 
 	uid := uuid.New()
 	repo.getUserByID = db.User{
@@ -136,7 +136,7 @@ func TestEmailVerification_ReplayAndConcurrency(t *testing.T) {
 func TestConcurrentPasswordChange(t *testing.T) {
 	repo := &mockRepo{}
 	hasher, _ := NewPasswordHasher(32768, 2, 2)
-	service := NewService(repo, nil, hasher, nil, nil)
+	service := NewService(repo, nil, hasher, nil, nil, nil)
 
 	oldPwd := "OldPass123!"
 	newPwd1 := "NewOne456!"

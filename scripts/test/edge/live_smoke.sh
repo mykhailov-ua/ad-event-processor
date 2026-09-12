@@ -68,7 +68,7 @@ start_local_tracker() {
     nohup ./bin/tracker-live > /tmp/pixel-tracker-live.log 2>&1 &
   )
   for _ in $(seq 1 30); do
-    code="$(curl -s -o /dev/null -w '%{http_code}' "http://127.0.0.1:${LOCAL_TRACKER_PORT}/static/track.js" 2> /dev/null || true)"
+    code="$(curl -s -o /dev/null -w '%{http_code}' "http://127.0.0.1:${LOCAL_TRACKER_PORT}/static/tag.js" 2> /dev/null || true)"
     [[ "$code" == "200" ]] && return 0
     sleep 1
   done
@@ -83,7 +83,7 @@ deploy_compose_trackers() {
     pkill -f "bin/tracker-live" || true
     sleep 1
   fi
-  log "building static tracker for compose (embed /static/track.js)"
+  log "building static tracker for compose (embed /static/tag.js)"
   (cd "$ROOT" && CGO_ENABLED=0 go build -o bin/tracker ./cmd/tracker)
   log "restarting tracker shards + nginx with local binary"
   docker compose -f docker-compose.yaml -f deploy/compose/docker-compose.tracker-local.yaml \
@@ -102,7 +102,7 @@ deploy_compose_trackers() {
 }
 
 if [[ "$REBUILD_TRACKER" == "1" ]]; then
-  log "rebuilding tracker-0 (embed /static/track.js)"
+  log "rebuilding tracker-0 (embed /static/tag.js)"
   docker compose --project-directory "$ROOT" build tracker-0
   docker compose --project-directory "$ROOT" up -d tracker-0 nginx
   sleep 3
@@ -113,19 +113,19 @@ deploy_compose_trackers
 start_local_tracker
 
 if [[ "$USE_LOCAL_TRACKER" == "1" ]]; then
-  log "step 1: GET /static/track.js on local tracker :${LOCAL_TRACKER_PORT}"
-  TRACK_HEAD="$(curl -sS -D - -o /tmp/pixel_track_live.js "http://127.0.0.1:${LOCAL_TRACKER_PORT}/static/track.js" 2>&1 | head -1)"
+  log "step 1: GET /static/tag.js on local tracker :${LOCAL_TRACKER_PORT}"
+  TRACK_HEAD="$(curl -sS -D - -o /tmp/pixel_track_live.js "http://127.0.0.1:${LOCAL_TRACKER_PORT}/static/tag.js" 2>&1 | head -1)"
   printf '%s\n' "$TRACK_HEAD"
-  [[ "$TRACK_HEAD" == *"200"* ]] || die "local track.js GET: $TRACK_HEAD"
-  grep -q trackEvent /tmp/pixel_track_live.js || die "track.js body missing trackEvent"
-  pass "local track.js 200 + trackEvent"
+  [[ "$TRACK_HEAD" == *"200"* ]] || die "local tag.js GET: $TRACK_HEAD"
+  grep -q sendEvent /tmp/pixel_track_live.js || die "tag.js body missing sendEvent"
+  pass "local tag.js 200 + sendEvent"
 else
-  log "step 1: GET /static/track.js via edge ${TRACK_URL}"
-  TRACK_HEAD="$(curl -sk -D - -o /tmp/pixel_track_live.js "${TRACK_URL}/static/track.js" 2>&1 | head -1)"
+  log "step 1: GET /static/tag.js via edge ${TRACK_URL}"
+  TRACK_HEAD="$(curl -sk -D - -o /tmp/pixel_track_live.js "${TRACK_URL}/static/tag.js" 2>&1 | head -1)"
   printf '%s\n' "$TRACK_HEAD"
-  [[ "$TRACK_HEAD" == *"200"* ]] || die "edge track.js GET: $TRACK_HEAD"
-  grep -q trackEvent /tmp/pixel_track_live.js || die "track.js body missing trackEvent"
-  pass "edge track.js 200 + trackEvent"
+  [[ "$TRACK_HEAD" == *"200"* ]] || die "edge tag.js GET: $TRACK_HEAD"
+  grep -q sendEvent /tmp/pixel_track_live.js || die "tag.js body missing sendEvent"
+  pass "edge tag.js 200 + sendEvent"
 fi
 
 CAMPAIGN_ID="$(
@@ -182,10 +182,10 @@ else
 fi
 
 if [[ "$USE_LOCAL_TRACKER" == "1" ]]; then
-  log "step 4: GET /static/track.js via edge ${TRACK_URL}"
-  EDGE_CODE="$(curl -sk --max-time 10 -o /dev/null -w '%{http_code}' "${TRACK_URL}/static/track.js" || true)"
-  log "edge GET /static/track.js -> HTTP ${EDGE_CODE}"
-  [[ "$EDGE_CODE" == "200" ]] || die "edge static track.js HTTP ${EDGE_CODE}"
+  log "step 4: GET /static/tag.js via edge ${TRACK_URL}"
+  EDGE_CODE="$(curl -sk --max-time 10 -o /dev/null -w '%{http_code}' "${TRACK_URL}/static/tag.js" || true)"
+  log "edge GET /static/tag.js -> HTTP ${EDGE_CODE}"
+  [[ "$EDGE_CODE" == "200" ]] || die "edge static tag.js HTTP ${EDGE_CODE}"
 
   log "step 5: POST /track via edge"
   EDGE_TRACK="$(curl -sk --max-time 15 -o /dev/null -w '%{http_code}' \

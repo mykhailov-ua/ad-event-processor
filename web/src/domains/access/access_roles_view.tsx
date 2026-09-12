@@ -47,61 +47,61 @@ export function AccessRolesView({
   }
 
   return (
-      <div className={cn('flex max-w-3xl flex-col', adminSpacing.gap.xl)}>
-        {catalogError ? (
-          <ErrorBlock title="Could not load capability catalog" error={catalogError} />
-        ) : null}
-        {yamlError ? <ErrorBlock title="Could not load roles YAML" error={yamlError} /> : null}
-        {validationError ? <ErrorBlock title="Validation failed" error={validationError} /> : null}
-        {actionError ? <ErrorBlock title="Apply failed" error={actionError} /> : null}
+    <div className={cn('flex max-w-3xl flex-col', adminSpacing.gap.xl)}>
+      {catalogError ? (
+        <ErrorBlock title="Could not load capability catalog" error={catalogError} />
+      ) : null}
+      {yamlError ? <ErrorBlock title="Could not load roles YAML" error={yamlError} /> : null}
+      {validationError ? <ErrorBlock title="Validation failed" error={validationError} /> : null}
+      {actionError ? <ErrorBlock title="Apply failed" error={actionError} /> : null}
 
-        <section className={cn('grid', adminSpacing.gap.md)}>
-          <h2 className={adminTypography.sectionTitle}>Capability catalog</h2>
-          {catalogFetching && !catalog ? (
-            <p>Loading catalog...</p>
-          ) : (
-            <p className={adminTypography.bodyMuted}>
-              {catalog?.capabilities.length ?? 0} capabilities,{' '}
-              {catalog?.permissions.length ?? 0} permissions (server-owned).
-            </p>
-          )}
-        </section>
+      <section className={cn('grid', adminSpacing.gap.md)}>
+        <h2 className={adminTypography.sectionTitle}>Capability catalog</h2>
+        {catalogFetching && !catalog ? (
+          <p>Loading catalog...</p>
+        ) : (
+          <p className={adminTypography.bodyMuted}>
+            {catalog?.capabilities.length ?? 0} capabilities, {catalog?.permissions.length ?? 0}{' '}
+            permissions (server-owned).
+          </p>
+        )}
+      </section>
 
-        <section className={cn('grid', adminSpacing.gap.md)}>
-          <h2 className={adminTypography.sectionTitle}>Roles YAML</h2>
-          <Textarea
-            aria-label="Roles YAML"
-            className={cn('min-h-[24rem]', adminTypography.monoData)}
-            disabled={!canWrite || yamlFetching}
-            onChange={(event) => onDraftYamlChange(event.target.value)}
-            value={draftYaml}
-          />
-          <div className={adminSpacing.flex.buttonGroup}>
-            <SecondaryActionButton
-              disabled={yamlFetching}
-              onClick={syncDraftFromServer}
-              type="button"
-            >
-              Reload from server
-            </SecondaryActionButton>
-            <SecondaryActionButton
-              disabled={!canWrite || validating || !draftYaml.trim()}
-              loading={validating}
-              onClick={onValidate}
-              type="button"
-            >
-              Validate
-            </SecondaryActionButton>
-            <PrimaryActionButton
-              disabled={!canWrite || applying || !draftYaml.trim()}
-              loading={applying}
-              onClick={onApply}
-              type="button"
-            >
-              Apply
-            </PrimaryActionButton>
-          </div>
-        </section>
-      </div>
+      <section className={cn('grid', adminSpacing.gap.md)}>
+        <h2 className={adminTypography.sectionTitle}>Roles YAML</h2>
+        <Textarea
+          aria-label="Roles YAML"
+          className={cn('min-h-[24rem]', adminTypography.monoData)}
+          disabled={!canWrite || yamlFetching}
+          onChange={(event) => onDraftYamlChange(event.target.value)}
+          value={draftYaml}
+        />
+        <div className={adminSpacing.flex.buttonGroup}>
+          <SecondaryActionButton
+            disabled={yamlFetching}
+            onClick={syncDraftFromServer}
+            type="button"
+          >
+            Reload from server
+          </SecondaryActionButton>
+          <SecondaryActionButton
+            disabled={!canWrite || validating || !draftYaml.trim()}
+            loading={validating}
+            onClick={onValidate}
+            type="button"
+          >
+            Validate
+          </SecondaryActionButton>
+          <PrimaryActionButton
+            disabled={!canWrite || applying || !draftYaml.trim()}
+            loading={applying}
+            onClick={onApply}
+            type="button"
+          >
+            Apply
+          </PrimaryActionButton>
+        </div>
+      </section>
+    </div>
   );
 }

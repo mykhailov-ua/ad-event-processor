@@ -1,12 +1,5 @@
 'use strict';
 
-/**
- * Minimal browser loader for wasm/attest C module (wasm32-unknown-unknown, no imports).
- * Lazy-load only on attestation strict tier; not used on /track hot pixel.
- *
- * Verify:
- * go test ./internal/track/ -short -run WasmAttestLoader -count=1
- */
 (() => {
   const ABI_VERSION = 1;
   const MEM_SIZE = 4096;
@@ -74,7 +67,7 @@
     return inst.exports.aad_bench_mul(rounds | 0) >>> 0;
   }
 
-  globalThis.aedWasmAttest = {
+  globalThis.tagW = {
     ABI_VERSION,
     MEM_SIZE,
     loadModule,

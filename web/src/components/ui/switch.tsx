@@ -12,7 +12,6 @@ const Switch = React.forwardRef<HTMLButtonElement, SwitchProps>(
     <button
       ref={ref}
       aria-checked={checked}
-     
       disabled={disabled}
       onClick={() => {
         if (!disabled) {
@@ -23,9 +22,7 @@ const Switch = React.forwardRef<HTMLButtonElement, SwitchProps>(
       type="button"
       {...props}
     >
-      <span
-       
-      />
+      <span />
     </button>
   )
 );

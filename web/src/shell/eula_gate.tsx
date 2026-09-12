@@ -55,9 +55,7 @@ export function EulaGate({ children }: EulaGateProps) {
               {eulaText?.trim() ? eulaText : 'EULA text unavailable from server.'}
             </div>
 
-            {acceptError ? (
-              <ErrorBlock title="Accept failed" error={acceptError} />
-            ) : null}
+            {acceptError ? <ErrorBlock title="Accept failed" error={acceptError} /> : null}
           </DialogBody>
 
           <DialogFooter>
@@ -73,8 +71,8 @@ export function EulaGate({ children }: EulaGateProps) {
             ) : (
               <div className={cn('grid w-full', adminTypography.bodyMuted, 'gap-3')}>
                 <p>
-                  Your session lacks settings:write permission required to accept the EULA. Sign
-                  out and ask an administrator to accept, or use an account with settings access.
+                  Your session lacks settings:write permission required to accept the EULA. Sign out
+                  and ask an administrator to accept, or use an account with settings access.
                 </p>
                 <SecondaryActionButton
                   type="button"

@@ -3045,3 +3045,39 @@ FraudEvidencePack:
       type: string
     signature:
       type: string
+
+CreateReportRuleRequest:
+  type: object
+  required:
+    - customer_id
+    - campaign_id
+    - report_key
+    - action
+    - filter_snapshot
+  properties:
+    customer_id:
+      type: string
+      format: uuid
+    campaign_id:
+      type: string
+      format: uuid
+    report_key:
+      type: string
+    name:
+      type: string
+    action:
+      type: string
+      description: pause_campaign or blacklist_placement
+    metric:
+      type: string
+    operator:
+      type: string
+    threshold:
+      type: number
+      format: double
+    window_minutes:
+      type: integer
+    filter_snapshot:
+      type: object
+      additionalProperties:
+        type: string

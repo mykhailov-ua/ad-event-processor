@@ -63,7 +63,7 @@ export function PlatformBootstrapForm({ onComplete }: PlatformBootstrapFormProps
 
   return (
     <div>
-      <div className="grid gap-4" >
+      <div className="grid gap-4">
         <Label htmlFor="setup-install-token">Setup token</Label>
         <PasswordInput
           id="setup-install-token"
@@ -83,7 +83,6 @@ export function PlatformBootstrapForm({ onComplete }: PlatformBootstrapFormProps
       </div>
       <div>
         <PrimaryActionButton
-         
           disabled={!installToken.trim() || !bootstrapJson.trim()}
           loading={submitting}
           onClick={() => void onSubmit()}
@@ -92,11 +91,7 @@ export function PlatformBootstrapForm({ onComplete }: PlatformBootstrapFormProps
           Complete setup
         </PrimaryActionButton>
       </div>
-      {success ? (
-        <p>
-          Setup complete. Sign in with the admin account you configured.
-        </p>
-      ) : null}
+      {success ? <p>Setup complete. Sign in with the admin account you configured.</p> : null}
       {error ? <ErrorBlock title="Setup failed" error={error} /> : null}
     </div>
   );

@@ -203,10 +203,7 @@ export function IntegrationsPostbacks({
   const [selectedStatusId, setSelectedStatusId] = useState<string | null>(null);
   const [selectedHealthId, setSelectedHealthId] = useState<string | null>(null);
 
-  const configRecordById = useMemo(
-    () => directoryRecordMap(configs, postbackConfigId),
-    [configs]
-  );
+  const configRecordById = useMemo(() => directoryRecordMap(configs, postbackConfigId), [configs]);
   const configRows = useMemo(
     () =>
       directoryOperateRows(
@@ -219,12 +216,7 @@ export function IntegrationsPostbacks({
 
   const dlqRecordById = useMemo(() => directoryRecordMap(dlq, postbackDlqId), [dlq]);
   const dlqRows = useMemo(
-    () =>
-      directoryOperateRows(
-        dlq,
-        postbackDlqId,
-        (row) => row.click_id ?? String(row.id ?? '')
-      ),
+    () => directoryOperateRows(dlq, postbackDlqId, (row) => row.click_id ?? String(row.id ?? '')),
     [dlq]
   );
 
@@ -407,13 +399,9 @@ export function IntegrationsPostbacks({
           <div>
             <h2>Delivery health (24h)</h2>
             <span>Alert when success rate drops below {healthAlertThreshold}%</span>
-            {healthRunbookPath ? (
-              <a href={healthRunbookPath}>Runbook</a>
-            ) : null}
+            {healthRunbookPath ? <a href={healthRunbookPath}>Runbook</a> : null}
           </div>
-          {healthFetching && !hasHealthSnapshot ? (
-            <p>Loading health metrics...</p>
-          ) : null}
+          {healthFetching && !hasHealthSnapshot ? <p>Loading health metrics...</p> : null}
           {healthError ? integrationsPanelError(healthError, 'Health load failed') : null}
           {healthRows.length === 0 && hasHealthSnapshot ? (
             <EmptyState title="No health rows" description="No postback configs to aggregate." />

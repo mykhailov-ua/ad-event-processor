@@ -5,6 +5,7 @@ import (
 	"encoding/json"
 	"log/slog"
 	"strings"
+	"time"
 
 	"ad-event-processor/internal/domain"
 	db "ad-event-processor/internal/domain/db"
@@ -18,8 +19,9 @@ const outboxEventSendPostback = "SEND_POSTBACK"
 
 type conversionPostbackStore interface {
 	ListPostbackConfigsByCampaignIDs(ctx context.Context, ids []pgtype.UUID) ([]db.PostbackConfig, error)
+	ListOutboundPostbacksByCampaignIDs(ctx context.Context, ids []pgtype.UUID) ([]db.CampaignOutboundPostback, error)
 	ListCampaignsByIDs(ctx context.Context, ids []pgtype.UUID) ([]db.Campaign, error)
-	CreateOutboxEventsBatch(ctx context.Context, arg db.CreateOutboxEventsBatchParams) error
+	CreatePostbackOutboxEventsBatch(ctx context.Context, arg db.CreatePostbackOutboxEventsBatchParams) error
 }
 
 type ConversionPostbackEnqueuer struct {
@@ -27,11 +29,18 @@ type ConversionPostbackEnqueuer struct {
 	clickStore ConversionClickStore
 }
 
-func NewConversionPostbackEnqueuer(queries conversionPostbackStore) *ConversionPostbackEnqueuer {
+func NewConversionPostbackEnqueuer(queries any) *ConversionPostbackEnqueuer {
 	if queries == nil {
 		return nil
 	}
-	return &ConversionPostbackEnqueuer{queries: queries}
+	switch q := queries.(type) {
+	case *db.Queries:
+		return &ConversionPostbackEnqueuer{queries: &conversionPostbackQueries{inner: q}}
+	case conversionPostbackStore:
+		return &ConversionPostbackEnqueuer{queries: q}
+	default:
+		panic("postback: unsupported conversion postback store type")
+	}
 }
 
 func (e *ConversionPostbackEnqueuer) SetClickStore(clicks ConversionClickStore) {
@@ -40,9 +49,17 @@ func (e *ConversionPostbackEnqueuer) SetClickStore(clicks ConversionClickStore) 
 	}
 }
 
-func (e *ConversionPostbackEnqueuer) SetStore(queries conversionPostbackStore) {
-	if e != nil && queries != nil {
-		e.queries = queries
+func (e *ConversionPostbackEnqueuer) SetStore(queries any) {
+	if e == nil || queries == nil {
+		return
+	}
+	switch q := queries.(type) {
+	case *db.Queries:
+		e.queries = &conversionPostbackQueries{inner: q}
+	case conversionPostbackStore:
+		e.queries = q
+	default:
+		panic("postback: unsupported conversion postback store type")
 	}
 }
 
@@ -63,6 +80,9 @@ func (e *ConversionPostbackEnqueuer) OnBatchStored(ctx context.Context, events [
 		}
 		if domain.ConversionValidationPending(evt.Payload) {
 			metrics.ConversionPostbackDeferredTotal.Inc()
+			continue
+		}
+		if domain.ConversionSkipsOutboundPostback(evt.Payload) {
 			continue
 		}
 		if evt.CampaignID == uuid.Nil || evt.ClickID == "" || evt.Type == "" {
@@ -90,6 +110,21 @@ func (e *ConversionPostbackEnqueuer) OnBatchStored(ctx context.Context, events [
 		configByCampaign[uuid.UUID(configs[i].CampaignID.Bytes)] = configs[i]
 	}
 
+	outboundRows, err := e.queries.ListOutboundPostbacksByCampaignIDs(ctx, campaignIDs)
+	if err != nil {
+		slog.Warn("conversion postback batch outbound load failed", "error", err)
+		return
+	}
+	outboundByCampaign := make(map[uuid.UUID][]db.CampaignOutboundPostback, len(campaignSet))
+	for i := range outboundRows {
+		row := outboundRows[i]
+		if !row.CampaignID.Valid {
+			continue
+		}
+		campID := uuid.UUID(row.CampaignID.Bytes)
+		outboundByCampaign[campID] = append(outboundByCampaign[campID], row)
+	}
+
 	campaigns, err := e.queries.ListCampaignsByIDs(ctx, campaignIDs)
 	if err != nil {
 		slog.Warn("conversion postback batch campaign load failed", "error", err)
@@ -102,18 +137,13 @@ func (e *ConversionPostbackEnqueuer) OnBatchStored(ctx context.Context, events [
 
 	reviewRoutedByClick := e.loadReviewRoutedClicks(ctx, pending)
 
+	enqueueAt := time.Now().UTC()
 	eventTypes := make([]string, 0, len(pending))
 	payloads := make([][]byte, 0, len(pending))
+	notBefore := make([]pgtype.Timestamptz, 0, len(pending))
 	for i := range pending {
 		item := &pending[i]
 		if reviewRoutedByClick[item.event.ClickID] {
-			continue
-		}
-		cfg, ok := configByCampaign[item.campaignID]
-		if !ok {
-			continue
-		}
-		if !eventTypeMatches(item.event.Type, cfg.TargetEvent) {
 			continue
 		}
 		camp, ok := campaignByID[item.campaignID]
@@ -129,28 +159,19 @@ func (e *ConversionPostbackEnqueuer) OnBatchStored(ctx context.Context, events [
 			)
 			continue
 		}
-		payload := buildPostbackPayloadFromEvent(item.event, customerID)
-		if capiPostbackProvider(cfg.Provider) && strings.TrimSpace(payload.EventID) == "" {
-			metrics.ConversionBrowserMissingTotal.Inc()
+		var legacyCfg *db.PostbackConfig
+		if cfg, ok := configByCampaign[item.campaignID]; ok {
+			legacyCfg = &cfg
 		}
-		raw, err := json.Marshal(payload)
-		if err != nil {
-			slog.Warn("conversion postback enqueue failed",
-				"campaign_id", item.campaignID,
-				"click_id", item.event.ClickID,
-				"error", err,
-			)
-			continue
-		}
-		eventTypes = append(eventTypes, outboxEventSendPostback)
-		payloads = append(payloads, raw)
+		e.enqueueMatchedPostbacks(ctx, item, customerID, legacyCfg, outboundByCampaign[item.campaignID], enqueueAt, &eventTypes, &payloads, &notBefore)
 	}
 	if len(eventTypes) == 0 {
 		return
 	}
-	if err := e.queries.CreateOutboxEventsBatch(ctx, db.CreateOutboxEventsBatchParams{
+	if err := e.queries.CreatePostbackOutboxEventsBatch(ctx, db.CreatePostbackOutboxEventsBatchParams{
 		EventTypes: eventTypes,
 		Payloads:   payloads,
+		NotBefore:  notBefore,
 	}); err != nil {
 		slog.Warn("conversion postback batch insert failed", "count", len(eventTypes), "error", err)
 	}
@@ -198,24 +219,6 @@ func eventTypeMatches(got, want string) bool {
 		want = "conversion"
 	}
 	return got == want
-}
-
-func buildPostbackPayloadFromEvent(evt *domain.Event, customerID uuid.UUID) PostbackPayload {
-	pb := PostbackPayload{
-		CustomerID:  customerID,
-		CampaignID:  evt.CampaignID,
-		ClickID:     evt.ClickID,
-		EventType:   evt.Type,
-		PayoutMicro: evt.ClearingPriceMicro,
-	}
-	mergeEventPayloadInto(&pb, evt.Payload)
-	if pb.TxID == "" {
-		pb.TxID = evt.ClickID
-	}
-	if pb.EventSourceURL == "" {
-		pb.EventSourceURL = synthesizeEventSourceURL(pb, "")
-	}
-	return pb
 }
 
 func mergeEventPayloadInto(pb *PostbackPayload, raw []byte) {

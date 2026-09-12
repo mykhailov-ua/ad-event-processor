@@ -16,6 +16,7 @@
 //   - Read routes accept campaigns:read or campaigns:read:masked; writes require campaigns:write.
 //   - POST /validate unmarshals PatchCampaignRequest and runs validateCampaignPatch only (no Postgres write).
 //   - POST /campaigns/bulk-action supports pause, resume, and archive; one Postgres txn via BulkCampaignAction; per-id errors in response body.
+//   - POST /campaigns/bulk-patch applies allowlisted PatchCampaign fields to up to 50 campaigns; per-id errors in response body.
 //   - Margin advisories on validate are read-only (no budget mutation).
 //
 // Forbidden:

@@ -10,7 +10,6 @@ import (
 	"ad-event-processor/pkg/coldpath"
 
 	"github.com/google/uuid"
-	"github.com/jackc/pgx/v5"
 	"github.com/jackc/pgx/v5/pgtype"
 	"github.com/jackc/pgx/v5/pgxpool"
 )
@@ -143,41 +142,12 @@ func (w *Worker) ruleOnCooldown(ctx context.Context, rule Rule, now time.Time) (
 }
 
 func (w *Worker) applyRule(ctx context.Context, rule Rule, now time.Time) error {
-	var publishCampaigns []uuid.UUID
-	var applied bool
-	err := pgx.BeginFunc(ctx, w.pool, func(tx pgx.Tx) error {
-		if rule.Scope == ScopeCreative {
-			_, creativeApplied, err := ApplyCreativeRuleTx(ctx, tx, w.host, rule, now)
-			if err != nil {
-				return err
-			}
-			applied = creativeApplied
-			return nil
-		}
-		campaigns, flowApplied, err := ApplyRuleTx(ctx, tx, w.host, rule, now)
-		if err != nil {
-			return err
-		}
-		if flowApplied {
-			publishCampaigns = uniqueUUIDs(campaigns)
-			applied = true
-		}
-		return nil
-	})
+	applied, _, err := applyRuleNow(ctx, w.pool, w.host, w.pub, rule, now)
 	if err != nil {
 		return err
 	}
 	if !applied {
 		return nil
-	}
-	WeightUpdatesTotal.WithLabelValues(rule.Scope).Inc()
-	if rule.Scope == ScopeCreative {
-		return nil
-	}
-	if w.pub != nil {
-		for _, campID := range publishCampaigns {
-			w.pub.PublishCampaignUpdate(ctx, campID.String())
-		}
 	}
 	return nil
 }

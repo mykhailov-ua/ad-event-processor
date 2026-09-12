@@ -15,6 +15,7 @@ import (
 	"ad-event-processor/internal/config"
 	"ad-event-processor/internal/database"
 	"ad-event-processor/internal/domain/db"
+	"ad-event-processor/internal/domain/shard"
 	ingestion "ad-event-processor/internal/ingest"
 
 	"github.com/google/uuid"
@@ -69,7 +70,10 @@ func TestE2E_Idempotency(t *testing.T) {
 	require.NoError(t, err)
 
 	_, err = pool.Exec(ctx,
-		"INSERT INTO campaigns (id, name, status, customer_id, budget_limit) VALUES ($1, $2, $3, $4, $5)",
+		`INSERT INTO campaigns (
+			id, name, status, customer_id, budget_limit,
+			tls_fingerprint_block_enabled, proxy_vpn_block_enabled, cidr_block_enabled, moderator_intel_enabled
+		) VALUES ($1, $2, $3, $4, $5, false, false, false, false)`,
 		campaignID, "Idempotency Campaign", "ACTIVE", customerID, budgetLimitMicro,
 	)
 	require.NoError(t, err)
@@ -82,7 +86,9 @@ func TestE2E_Idempotency(t *testing.T) {
 	_, err = budgetWarmer.WarmFromRegistry(ctx, registry)
 	require.NoError(t, err)
 
-	budgetKey := "budget:campaign:" + campaignID.String()
+	camp, ok := registry.GetCampaign(campaignID)
+	require.True(t, ok)
+	budgetKey := camp.BudgetCampaignKey
 	initialBudget, err := rdb.Get(ctx, budgetKey).Int64()
 	require.NoError(t, err)
 	require.Equal(t, int64(budgetLimitMicro), initialBudget)
@@ -123,6 +129,7 @@ func TestE2E_Idempotency(t *testing.T) {
 	}()
 
 	handler := ingestion.NewAdsPacketHandler(cfg, registry, filterEngine, pool, []redis.UniversalClient{rdb}, sharder, cfg.FraudStreamName, nil)
+	wireTrackIngestLuaStreamForE2E(t, ctx, registry, handler, unifiedFilter)
 	defer handler.Stop(ctx)
 
 	payload := map[string]any{
@@ -152,7 +159,7 @@ func TestE2E_Idempotency(t *testing.T) {
 	require.NoError(t, err)
 	assert.Equal(t, int64(1), xlen, "only one stream entry for duplicate click_id")
 
-	idemKey := "idempotency:click:" + clickID
+	idemKey := shard.CampaignHashTag(campaignID) + "idempotency:click:" + clickID
 	exists, err := rdb.Exists(ctx, idemKey).Result()
 	require.NoError(t, err)
 	assert.Equal(t, int64(1), exists)

@@ -167,7 +167,12 @@ export function IntegrationsCostSync({
     [networks]
   );
   const networkRows = useMemo(
-    () => directoryOperateRows(networks, (row) => row.network, (row) => row.label ?? row.network),
+    () =>
+      directoryOperateRows(
+        networks,
+        (row) => row.network,
+        (row) => row.label ?? row.network
+      ),
     [networks]
   );
 
@@ -284,14 +289,15 @@ export function IntegrationsCostSync({
           </Button>
         </DirectoryFilterForm>
         {runSyncForm.runValidationError ? (
-          <ValidationErrorBlock error={runSyncForm.runValidationError} title="Check run sync scope" />
+          <ValidationErrorBlock
+            error={runSyncForm.runValidationError}
+            title="Check run sync scope"
+          />
         ) : null}
         {runSyncForm.runError
           ? integrationsPanelError(runSyncForm.runError, 'Cost sync run failed')
           : null}
-        {runSyncForm.runSuccess ? (
-          <p>Sync accepted. Refresh history for results.</p>
-        ) : null}
+        {runSyncForm.runSuccess ? <p>Sync accepted. Refresh history for results.</p> : null}
       </FilterPanel>
 
       <div>
@@ -431,9 +437,7 @@ export function IntegrationsCostSync({
         )
       ) : null}
 
-      {scopedError && hasScopedData
-        ? integrationsPanelError(scopedError, 'Refresh failed')
-        : null}
+      {scopedError && hasScopedData ? integrationsPanelError(scopedError, 'Refresh failed') : null}
     </IntegrationsPageWithLoad>
   );
 }

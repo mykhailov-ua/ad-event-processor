@@ -55,41 +55,49 @@ export function HeaderNavMenu({ navGroups, onOpenMobileNav }: HeaderNavMenuProps
       </Button>
       <DropdownMenu>
         <DropdownMenuTrigger asChild>
-          <Button aria-haspopup="menu" className="hidden md:inline-flex" type="button" variant="outline">
+          <Button
+            aria-haspopup="menu"
+            className="hidden md:inline-flex"
+            type="button"
+            variant="outline"
+          >
             <Menu aria-hidden className="h-4 w-4" />
             <span>{currentLabel}</span>
           </Button>
         </DropdownMenuTrigger>
-      <DropdownMenuContent
-        align="start"
-        className={cn(adminChrome.floating, 'z-[10001] min-w-56 max-h-[min(28rem,calc(100vh-4rem))] overflow-auto')}
-      >
-        {navGroups.map((group, groupIndex) => (
-          <div key={group.id}>
-            {groupIndex > 0 ? <DropdownMenuSeparator /> : null}
-            <DropdownMenuLabel>{group.label}</DropdownMenuLabel>
-            {group.items.map((item) => {
-              const active = isSectionNavActive(location.pathname, item);
-              return (
-                <DropdownMenuItem
-                  key={item.path}
-                  aria-current={active ? 'page' : undefined}
-                  className={active ? 'bg-accent text-accent-foreground' : undefined}
-                  onSelect={() => navigate(item.path)}
-                >
-                  <span>{item.label}</span>
-                  {item.badgeCount != null && item.badgeCount > 0 ? (
-                    <Badge className="ml-auto" variant="secondary">
-                      {item.badgeCount}
-                    </Badge>
-                  ) : null}
-                </DropdownMenuItem>
-              );
-            })}
-          </div>
-        ))}
-      </DropdownMenuContent>
-    </DropdownMenu>
+        <DropdownMenuContent
+          align="start"
+          className={cn(
+            adminChrome.floating,
+            'z-[10001] min-w-56 max-h-[min(28rem,calc(100vh-4rem))] overflow-auto'
+          )}
+        >
+          {navGroups.map((group, groupIndex) => (
+            <div key={group.id}>
+              {groupIndex > 0 ? <DropdownMenuSeparator /> : null}
+              <DropdownMenuLabel>{group.label}</DropdownMenuLabel>
+              {group.items.map((item) => {
+                const active = isSectionNavActive(location.pathname, item);
+                return (
+                  <DropdownMenuItem
+                    key={item.path}
+                    aria-current={active ? 'page' : undefined}
+                    className={active ? 'bg-accent text-accent-foreground' : undefined}
+                    onSelect={() => navigate(item.path)}
+                  >
+                    <span>{item.label}</span>
+                    {item.badgeCount != null && item.badgeCount > 0 ? (
+                      <Badge className="ml-auto" variant="secondary">
+                        {item.badgeCount}
+                      </Badge>
+                    ) : null}
+                  </DropdownMenuItem>
+                );
+              })}
+            </div>
+          ))}
+        </DropdownMenuContent>
+      </DropdownMenu>
     </>
   );
 }

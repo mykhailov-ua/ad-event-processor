@@ -9,6 +9,7 @@ import (
 	"testing"
 	"time"
 
+	"ad-event-processor/internal/database"
 	ingestdb "ad-event-processor/internal/domain/db"
 	ingestion "ad-event-processor/internal/ingest"
 	"ad-event-processor/internal/testutil"
@@ -19,7 +20,6 @@ import (
 	"github.com/stretchr/testify/require"
 	"github.com/testcontainers/testcontainers-go"
 	"github.com/testcontainers/testcontainers-go/modules/postgres"
-	"github.com/testcontainers/testcontainers-go/wait"
 )
 
 func setupBillingTestDB(t testing.TB) (pool *pgxpool.Pool, cleanup func()) {
@@ -31,10 +31,7 @@ func setupBillingTestDB(t testing.TB) (pool *pgxpool.Pool, cleanup func()) {
 		postgres.WithDatabase("billing_test_db"),
 		postgres.WithUsername("postgres"),
 		postgres.WithPassword("secure_password"),
-		testcontainers.WithWaitStrategy(
-			wait.ForLog("database system is ready to accept connections").
-				WithOccurrence(2).
-				WithStartupTimeout(20*time.Second)),
+		testcontainers.WithWaitStrategy(database.PostgresContainerWaitStrategy()),
 	)
 	require.NoError(t, err)
 

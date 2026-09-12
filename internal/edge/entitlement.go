@@ -58,7 +58,7 @@ func EbpfEdgeLicensed(ctx context.Context, redisClient redis.Cmdable) bool {
 	}
 	enabled, err := redisClient.HGet(ctx, entitlementDeploymentKey, entitlementEbpfXDPEdge).Int()
 	if err != nil {
-		return true
+		return false
 	}
 	return enabled == 1
 }

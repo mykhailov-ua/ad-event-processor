@@ -8,8 +8,10 @@ import (
 	"ad-event-processor/pkg/coldpath"
 )
 
-const landerListDefaultLimit = 25
-const landerListMaxLimit = 1000
+const (
+	landerListDefaultLimit = 25
+	landerListMaxLimit     = 1000
+)
 
 type ListLandersFilter struct {
 	Search  string

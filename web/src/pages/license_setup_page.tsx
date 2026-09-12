@@ -37,8 +37,8 @@ export function LicenseSetupPage() {
   }
 
   return (
-    <div className="flex min-h-screen items-center justify-center bg-background p-4" >
-      <Card className="w-full max-w-lg" >
+    <div className="flex min-h-screen items-center justify-center bg-background p-4">
+      <Card className="w-full max-w-lg">
         <CardHeader>
           <CardTitle>Apply license</CardTitle>
           <CardDescription>
@@ -46,7 +46,7 @@ export function LicenseSetupPage() {
             {stateLabel}.
           </CardDescription>
         </CardHeader>
-        <CardContent className="grid gap-4" >
+        <CardContent className="grid gap-4">
           <LicenseApplyForm
             load={licenseLoad}
             onApplied={() => {
@@ -54,7 +54,7 @@ export function LicenseSetupPage() {
               window.location.replace('/');
             }}
           />
-          <p className={adminTypography.bodyMuted} >
+          <p className={adminTypography.bodyMuted}>
             License management remains available later under{' '}
             <Link className="text-foreground underline" to="/settings">
               Settings

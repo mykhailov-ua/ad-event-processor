@@ -71,11 +71,7 @@ function buildPostbackReconOverviewFields(row: PostbackReconRow): DirectoryOverv
     { label: 'Postback', value: row.postback_status ?? '-' },
     {
       label: 'Reconcile',
-      value: row.reconcile_status ? (
-        <Badge variant="outline">{row.reconcile_status}</Badge>
-      ) : (
-        '-'
-      ),
+      value: row.reconcile_status ? <Badge variant="outline">{row.reconcile_status}</Badge> : '-',
     },
     { label: 'Error', value: row.error_message ?? '-' },
   ];

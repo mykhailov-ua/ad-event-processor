@@ -102,9 +102,7 @@ export function SupportFeedbackForm(workspace: SupportFeedbackFormProps) {
       </DirectoryFilterForm>
 
       {submitError ? <ErrorBlock error={submitError} title="Could not submit feedback" /> : null}
-      {submittedId ? (
-        <p role="status">Feedback recorded. Reference ID: {submittedId}</p>
-      ) : null}
+      {submittedId ? <p role="status">Feedback recorded. Reference ID: {submittedId}</p> : null}
     </PageChrome>
   );
 }

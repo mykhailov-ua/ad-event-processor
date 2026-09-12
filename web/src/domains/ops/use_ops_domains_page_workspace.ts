@@ -13,7 +13,8 @@ function readSslSetupError(rotation: OpsDomainRotationResponse | undefined): Err
   if (rotation == null || typeof rotation !== 'object') {
     return undefined;
   }
-  const sslSetup = (rotation as { ssl_setup?: { available?: boolean; message?: string } }).ssl_setup;
+  const sslSetup = (rotation as { ssl_setup?: { available?: boolean; message?: string } })
+    .ssl_setup;
   if (!sslSetup || sslSetup.available !== false) {
     return undefined;
   }

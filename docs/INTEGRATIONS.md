@@ -1,6 +1,6 @@
 # Integrations
 
-Operator-facing wiring for traffic ingest, spend import, conversion export, and supply metadata. Configuration surfaces on the control plane (`:8188`, `/api/v1/*`). REST shapes are in `api/openapi/`. OpenAPI gate: `bash scripts/ci/admin/openapi.sh`.
+Operator-facing wiring for traffic ingest, spend import, conversion export, and supply metadata. Configuration surfaces on the control plane (`:8188`, `/api/v1/*`). REST shapes are in `api/openapi/` and the live bundle at `/api/v1/openapi.yaml`. OpenAPI gate: `bash scripts/ci/admin/openapi.sh`; mutation coverage checklist: `bash scripts/ci/admin/openapi_mutation_coverage.sh`.
 
 The React admin UI (`web/`) is not shipped in this tree — use the HTTP API directly. Routes below describe the intended UI surface when the SPA returns.
 
@@ -43,6 +43,20 @@ External tracker payloads (Keitaro JSON, Binom JSON, native v1) map through `int
 
 Async jobs use report key `campaign-import-validation` and return `MigrationPreviewResult` JSON (mapped campaigns, warnings, errors) without a Postgres TX. Failed validation leaves `campaigns` unchanged. Pull adapters (`keitaro_admin_api`, `binom_report_api`) use cold-path HTTP timeouts from `migration_handlers.go`.
 
+### Keitaro streams to campaign groups
+
+Keitaro **streams** group campaigns that share traffic distribution settings. In ad-event-processor, map each stream to a **`campaign_group`** (not a 1:1 UI clone):
+
+| Keitaro | ad-event-processor |
+| :--- | :--- |
+| Stream name | `POST /api/v1/campaign-groups` `name` |
+| Stream default flow / filters | Optional `default_flow_id` on the group (reference for import wizard; per-campaign `flow_id` still wins on `/click`) |
+| Campaigns in stream | `POST /api/v1/campaign-groups/{id}/assign-campaigns` with `campaign_ids[]` |
+| Stream-level reports | Reports `group_id` query param (e.g. `GET /api/v1/reports/click-log?group_id=...`) |
+| Campaign directory filter | `GET /api/v1/campaigns?campaign_group_id=...` |
+
+Import preview does not auto-create groups today; after commit, create the group and bulk-assign member campaign IDs from the Keitaro export.
+
 ---
 
 ## Inbound traffic (tracker)
@@ -65,6 +79,31 @@ See [Browser pixel and CAPI setup](#browser-pixel-and-capi-setup) below.
 **Bundled click-token schemas:** 82 YAML files under `deploy/schemas/traffic_*.v1.yaml`, registered in `internal/integrationschema/catalog.go` (100 catalog entries total, including affiliate templates). Import via admin **Integration templates** or `POST /api/v1/integration/templates/import`; apply per campaign with `POST /api/v1/campaigns/{id}/apply-templates`.
 
 Schemas map network-specific query keys to internal tokens. They do **not** pull spend from the network; use Cost Sync or pass cost macros on the click URL when the source supports it.
+
+### Flow rotation (`rotation_mode`)
+
+Per-path rotation is configured on flow paths (`PUT /api/v1/flows/{id}`, field `paths[].rotation_mode`). The tracker reads the campaign flow snapshot on `/click`; no Postgres round-trip on the hot path.
+
+| `rotation_mode` | Behavior on `/click` |
+| :--- | :--- |
+| `weighted` (default) | Weighted random lander/offer per `user_id` hash bucket |
+| `unseen` | Skip landers/offers already served to this visitor until the pool is exhausted, then reset |
+| `fix_on` | Pin the first lander/offer chosen for the visitor; later clicks reuse the same entities |
+
+**Visitor key** (`internal/ingest/flow_click.go`, `flowVisitorKey`): first non-empty of `click_id`, `user_id`, then `ip|ua`. Pass a stable `click_id` or `user_id` on the click URL when you need session stickiness. IP+UA fallback is best-effort and can collide on shared NAT.
+
+**Redis state:** key `{campaign_id}:rot:seen:{visitor_key}` (SET members `l:{lander_uuid}`, `o:{offer_uuid}`), TTL 30 days (`internal/filter/rotation_seen.go`). State Redis shard 0 on the tracker (`flowRedisClient`).
+
+**Offer click caps:** when `paths[].offers[].cap_clicks_daily` or `cap_clicks_total` is set, `/click` runs `ReserveOfferClick` (Redis `INCR` per offer) before redirect. Exhausted offers are skipped in favor of the next weighted candidate; metric `ad_offer_click_cap_exhausted_total`.
+
+Verify:
+
+```bash
+go test ./internal/ingest/ -short -run TestClickRedirect_unseenRotation -count=1
+go test ./internal/ingest/ -short -run TestClickRedirect_fixOn -count=1
+go test ./internal/ingest/ -short -run TestClickRedirect_offerClickCap -count=1
+go test ./internal/filter/ -short -run TestSelectSnapshot_unseenRotation -count=1
+```
 
 ---
 
@@ -193,6 +232,12 @@ Worker: `cmd/postback-sender` or in-process in control.
 | `microsoft_ads` | Microsoft Ads ApplyOfflineConversions (`msclkid`) |
 | `webhook` | Generic HTTP POST |
 
+### Delayed outbound S2S
+
+Per outbound row, `delay_seconds` (0-604800) schedules `SEND_POSTBACK` outbox dispatch via `outbox_events.not_before`. The postback sender worker claims rows only when `not_before IS NULL OR not_before <= NOW()`. Retries use the same idempotency hash; delay applies once at enqueue.
+
+If the click record is no longer available when dispatch runs (TTL / retention), the worker may skip delivery; operators should set delay below click retention window.
+
 DLQ and test dispatch: `/api/v1/postbacks/dlq`, `/api/v1/postbacks/config/{campaign_id}/test`. Fraud integration health: `/api/v1/fraud/integrations`.
 
 ### Postback health
@@ -269,9 +314,15 @@ Meta verification: Events Manager test events (`test_event_code` on postback con
 
 Optional snippet fires `type: "impression"` on `DOMContentLoaded` (Integration tab). Does not replace conversion postback; use for funnel diagnostics only.
 
+### Conversion payout accumulation (Binom cnv_status2 parity)
+
+Processor cold path (`internal/stream/conversion_ledger.go`) upserts `click_conversion_ledger` per `(campaign_id, click_id)` and sets `conversion_payout_micro` / `revenue_micro` on each conversion row before status-scheme apply. Status scheme `payout_mode: accumulate_payout` emits the running ledger total on the matched rule.
+
 ### 5. Hosted lander editor
 
-Route `/campaigns/landers/{id}/editor?campaign_id={uuid}` pre-fills campaign id. **Insert before `</body>`** adds tracker (+ optional browser tag) to the open HTML draft.
+Route `/campaigns/landers/{id}/hosted-editor?campaign_id={uuid}` pre-fills campaign id. Use **Insert tracker snippet** in the hosted editor toolbar to append a CSP-safe external `tag.js` script (`data-campaign-id`, `data-track-endpoint`) before `</body>`.
+
+**Local / self-hosted deploy:** After publish, live HTML is served at `/lp/{id}/` on the lander host (`internal/flow/list_landers.go` filters `hosting=hosted`). List draft files via `GET /api/v1/landers/{id}/hosted-editor`; fetch each asset with `GET /api/v1/landers/{id}/hosted-files/{path}` for offline nginx/CDN packaging. Cache: `Cache-Control: public, max-age=300` on controlplane `/lp/`; edge alias uses `deploy/nginx/snippets/edge_optional_locations.conf`. Custom domain: point DNS to lander host and set `LANDER_PUBLIC_BASE_URL` on controlplane.
 
 **Production zone DOM integrity (client-edge T14):** hosted publish and ZIP upload run a static lint before `live` cutover. Banned patterns: `meta http-equiv=refresh`, full-viewport `display:none` overlays, `opacity:0` positioned click traps, and chained `window.location` redirects in lander HTML/CSS/JS. Production landers must not rely on server-hidden redirects that appear only after `/click` routing; wire offer links directly in the published asset graph.
 

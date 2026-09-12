@@ -23,6 +23,8 @@ func SanitizeFeaturesForSKU(sku string, features FeatureSet) FeatureSet {
 		out.MlFraudBoost = false
 		out.MultiRegion = false
 		out.SlotMigration = false
+		out.BrokerWal = false
+		out.MarginGuard = false
 		out.ExternalResidentialIntel = false
 		out.ModeratorIntelFeed = false
 		out.AdPlatformCampaignAPI = false
@@ -32,6 +34,7 @@ func SanitizeFeaturesForSKU(sku string, features FeatureSet) FeatureSet {
 		out.IvtMLDetector = true
 		out.MlFraudBoost = false
 		out.EbpfXDPEdge = false
+		out.BrokerWal = false
 		out.ExternalResidentialIntel = false
 		out.ModeratorIntelFeed = false
 		out.AdPlatformCampaignAPI = false

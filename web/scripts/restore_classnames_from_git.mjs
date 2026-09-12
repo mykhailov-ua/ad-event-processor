@@ -75,8 +75,15 @@ function collectRemovedClassBlock(removedLines, startIdx) {
       break;
     }
     i += 1;
-    if (i < removedLines.length && !isClassNameContinuation(removedLines[i]) && !isClassNameLine(removedLines[i])) {
-      if (removedLines[i].trim().startsWith('onClick') || removedLines[i].trim().startsWith('type=')) {
+    if (
+      i < removedLines.length &&
+      !isClassNameContinuation(removedLines[i]) &&
+      !isClassNameLine(removedLines[i])
+    ) {
+      if (
+        removedLines[i].trim().startsWith('onClick') ||
+        removedLines[i].trim().startsWith('type=')
+      ) {
         break;
       }
     }
@@ -128,7 +135,10 @@ function restoreFile(relPath) {
 
   const filePath = join(REPO, relPath);
   let content = readFileSync(filePath, 'utf8');
-  if (!/<[A-Za-z][A-Za-z0-9]*\s[^>]*>\s*$/.test(content) && !/<[A-Za-z][A-Za-z0-9]*\s+>/.test(content)) {
+  if (
+    !/<[A-Za-z][A-Za-z0-9]*\s[^>]*>\s*$/.test(content) &&
+    !/<[A-Za-z][A-Za-z0-9]*\s+>/.test(content)
+  ) {
     return false;
   }
 
@@ -178,7 +188,10 @@ function restoreFile(relPath) {
     }
   }
 
-  content = content.replace(/\n\s+\n(\s+(?:onClick|type=|key=|aria-|role=|disabled|value=|id=))/g, '\n$1');
+  content = content.replace(
+    /\n\s+\n(\s+(?:onClick|type=|key=|aria-|role=|disabled|value=|id=))/g,
+    '\n$1'
+  );
   content = content.replace(/(<[A-Za-z][A-Za-z0-9]*)\s+>/g, '$1>');
 
   if (changed) {

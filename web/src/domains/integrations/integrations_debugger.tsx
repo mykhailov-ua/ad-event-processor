@@ -77,7 +77,12 @@ export function IntegrationsDebugger({
         <Button disabled={busy || !canRun} onClick={onRunSmoke} type="button" variant="secondary">
           {loadingKey === 'smoke' ? 'Running smoke test...' : 'Run smoke test'}
         </Button>
-        <Button disabled={busy || !canRun} onClick={onValidateFlow} type="button" variant="secondary">
+        <Button
+          disabled={busy || !canRun}
+          onClick={onValidateFlow}
+          type="button"
+          variant="secondary"
+        >
           {loadingKey === 'flow' ? 'Validating campaign...' : 'Validate campaign'}
         </Button>
         <Button
@@ -170,16 +175,14 @@ export function IntegrationsDebugger({
             </Badge>{' '}
             ({postbackResult.provider})
           </p>
-          {postbackResult.http_status != null ? <p>HTTP status: {postbackResult.http_status}</p> : null}
+          {postbackResult.http_status != null ? (
+            <p>HTTP status: {postbackResult.http_status}</p>
+          ) : null}
           {postbackResult.target_event ? <p>Target event: {postbackResult.target_event}</p> : null}
           {postbackResult.error ? <p>{postbackResult.error}</p> : null}
           {postbackResult.rendered_url ? <p>{postbackResult.rendered_url}</p> : null}
           {(postbackResult.warnings?.length ?? 0) > 0 ? (
-            <ul>
-              {postbackResult.warnings?.map((warning) => (
-                <li key={warning}>{warning}</li>
-              ))}
-            </ul>
+            <ul>{postbackResult.warnings?.map((warning) => <li key={warning}>{warning}</li>)}</ul>
           ) : null}
         </FilterPanel>
       ) : null}

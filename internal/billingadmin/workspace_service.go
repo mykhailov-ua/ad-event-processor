@@ -11,22 +11,23 @@ import (
 	"time"
 
 	"ad-event-processor/internal/domain"
-	"ad-event-processor/internal/licensing"
+	"ad-event-processor/internal/licensingadmin"
 
 	"github.com/google/uuid"
 	"github.com/jackc/pgx/v5/pgconn"
 	"github.com/jackc/pgx/v5/pgxpool"
 )
 
-type TenantCapHost interface {
-	Pool() *pgxpool.Pool
-	DeploymentLimits() (licensing.Limits, licensing.LicenseState, bool)
-	ErrValidation(msg string) error
+type TenantCapHost = licensingadmin.CapHost
+
+func EnforceDeploymentTenantCap(ctx context.Context, host TenantCapHost) error {
+	return licensingadmin.EnforceDeploymentTenantCap(ctx, host)
 }
 
 type UsageExportHost interface {
 	Pool() *pgxpool.Pool
 	ExportChunkMaxBytes() int
+	DeploymentCapHost() licensingadmin.CapHost
 }
 
 const usageExportBatchLimit = 500
@@ -40,34 +41,14 @@ type usageDailyExportRow struct {
 	Value        int64
 }
 
-func EnforceDeploymentTenantCap(ctx context.Context, host TenantCapHost) error {
-	if host == nil || host.Pool() == nil {
-		return nil
-	}
-	limits, state, ok := host.DeploymentLimits()
-	if !ok {
-		return nil
-	}
-	if state == licensing.StateExpired || state == licensing.StateRevoked {
-		return host.ErrValidation("license not active")
-	}
-	maxTenants := limits.MaxTenants
-	if maxTenants == 0 || maxTenants >= 999999 {
-		return nil
-	}
-	var count int64
-	if err := host.Pool().QueryRow(ctx, `SELECT COUNT(*) FROM customers`).Scan(&count); err != nil {
-		return fmt.Errorf("count customers: %w", err)
-	}
-	if uint64(count) >= maxTenants {
-		return ErrDeploymentTenantLimit
-	}
-	return nil
-}
-
 func ExportUsageDailyCSV(ctx context.Context, host UsageExportHost, spec UsageExportSpec, w io.Writer) (UsageExportResult, error) {
 	if host == nil || host.Pool() == nil {
 		return UsageExportResult{}, fmt.Errorf("service unavailable")
+	}
+	if capHost := host.DeploymentCapHost(); capHost != nil {
+		if err := licensingadmin.EnforceDeploymentExportAllowed(capHost); err != nil {
+			return UsageExportResult{}, err
+		}
 	}
 	if spec.ToDate.Before(spec.FromDate) {
 		return UsageExportResult{}, ErrInvalidTimeRange

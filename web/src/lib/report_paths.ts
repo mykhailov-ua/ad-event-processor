@@ -210,17 +210,10 @@ export function reportTitleFromKey(reportKey: string): string {
   if (override) {
     return override;
   }
-  return normalized
-    .split(/[/-]/)
-    .filter(Boolean)
-    .map(humanizeReportKeyPart)
-    .join(' ');
+  return normalized.split(/[/-]/).filter(Boolean).map(humanizeReportKeyPart).join(' ');
 }
 
-export function resolveReportDisplayTitle(
-  reportKey: string,
-  catalogTitle?: string | null
-): string {
+export function resolveReportDisplayTitle(reportKey: string, catalogTitle?: string | null): string {
   const fromCatalog = catalogTitle?.trim();
   if (fromCatalog && fromCatalog !== reportKey) {
     return fromCatalog;

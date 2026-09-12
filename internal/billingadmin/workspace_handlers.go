@@ -28,11 +28,7 @@ func (h *HTTPHandlers) registerUsageExportRoutes(mux *http.ServeMux) {
 	}
 	limit := h.ApplyRateLimit
 	perm := h.RequirePermission
-	exportLimit := h.LimitExportByCustomer
-	if exportLimit == nil {
-		exportLimit = limit
-	}
-	mux.HandleFunc("GET /api/v1/billing/usage/export", limit(exportLimit(perm("customers:read", h.exportUsageDaily))))
+	mux.HandleFunc("GET /api/v1/billing/usage/export", limit(perm("customers:read", h.exportUsageDaily)))
 }
 
 func (h *HTTPHandlers) exportUsageDaily(w http.ResponseWriter, r *http.Request) {

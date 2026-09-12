@@ -73,7 +73,9 @@ export async function loginWithCredentials(page, email, password) {
       return;
     }
 
-    const loginError = page.getByRole('alert').getByText(/Sign in failed|session expired|permission/i);
+    const loginError = page
+      .getByRole('alert')
+      .getByText(/Sign in failed|session expired|permission/i);
     const errorText = (await loginError.textContent().catch(() => null))?.trim();
     if (attempt === 1) {
       throw new Error(errorText ? `login failed: ${errorText}` : 'login failed: still on /login');
@@ -435,8 +437,7 @@ export async function gotoLiveAwaitResponse(page, path, predicate) {
  * @param {string} [message='request failed']
  */
 export async function stubApiGetError(page, apiPathPart, status = 500, message = 'request failed') {
-  const code =
-    status === 403 ? 'FORBIDDEN' : status === 501 ? 'NOT_IMPLEMENTED' : 'INTERNAL_ERROR';
+  const code = status === 403 ? 'FORBIDDEN' : status === 501 ? 'NOT_IMPLEMENTED' : 'INTERNAL_ERROR';
   await page.route(`**${apiPathPart}**`, async (route) => {
     if (route.request().method() !== 'GET') {
       await route.continue();

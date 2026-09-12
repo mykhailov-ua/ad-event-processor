@@ -35,13 +35,7 @@ export type SettingsPlatformFormProps = {
   onDiscard: () => void;
 };
 
-function PlatformSection({
-  title,
-  children,
-}: {
-  title: string;
-  children: ReactNode;
-}) {
+function PlatformSection({ title, children }: { title: string; children: ReactNode }) {
   return (
     <section className={cn('grid', adminSpacing.gap.lg)}>
       <h2 className={adminTypography.sectionTitle}>{title}</h2>
@@ -71,7 +65,9 @@ export function SettingsPlatformForm({
 
   return (
     <div className={cn('grid', adminSpacing.gap.xl)}>
-      {patchError ? <ErrorBlock error={patchError} title="Could not save platform settings" /> : null}
+      {patchError ? (
+        <ErrorBlock error={patchError} title="Could not save platform settings" />
+      ) : null}
 
       <PlatformSection title="Tracker endpoints">
         <FilterPanel className={FILTER_PANEL_FLAT}>
@@ -113,9 +109,7 @@ export function SettingsPlatformForm({
               <Checkbox
                 checked={draft.edgeExposeClick}
                 disabled={!canWrite || patching}
-                onCheckedChange={(checked) =>
-                  onDraftChange({ edgeExposeClick: checked === true })
-                }
+                onCheckedChange={(checked) => onDraftChange({ edgeExposeClick: checked === true })}
               />
               <span>Expose click endpoint on edge</span>
             </label>
@@ -175,9 +169,7 @@ export function SettingsPlatformForm({
               <Checkbox
                 checked={draft.stripeEnabled}
                 disabled={!canWrite || patching}
-                onCheckedChange={(checked) =>
-                  onDraftChange({ stripeEnabled: checked === true })
-                }
+                onCheckedChange={(checked) => onDraftChange({ stripeEnabled: checked === true })}
               />
               <span>Enable Stripe checkout</span>
             </label>
@@ -206,7 +198,9 @@ export function SettingsPlatformForm({
                 <PasswordInput
                   disabled={!canWrite || patching}
                   id="settings-stripe-secret-key"
-                  placeholder={maskedSecrets?.stripe_secret_key?.trim() || 'Leave empty to keep current'}
+                  placeholder={
+                    maskedSecrets?.stripe_secret_key?.trim() || 'Leave empty to keep current'
+                  }
                   value={draft.stripeSecretKey}
                   onChange={(event) => onDraftChange({ stripeSecretKey: event.target.value })}
                 />

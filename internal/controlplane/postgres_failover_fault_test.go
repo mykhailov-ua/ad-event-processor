@@ -13,6 +13,7 @@ import (
 
 	bserver "ad-event-processor/internal/broker"
 	"ad-event-processor/internal/config"
+	"ad-event-processor/internal/database"
 	"ad-event-processor/internal/pgfailover"
 	"ad-event-processor/internal/testutil"
 
@@ -23,7 +24,6 @@ import (
 	"github.com/testcontainers/testcontainers-go"
 	"github.com/testcontainers/testcontainers-go/modules/postgres"
 	rediscontainer "github.com/testcontainers/testcontainers-go/modules/redis"
-	"github.com/testcontainers/testcontainers-go/wait"
 )
 
 type postgresFailoverFaultInfra struct {
@@ -46,10 +46,7 @@ func setupPgFailoverFaultInfra(t *testing.T) (*postgresFailoverFaultInfra, func(
 		postgres.WithDatabase("pg_failover_primary"),
 		postgres.WithUsername("user"),
 		postgres.WithPassword("pass"),
-		testcontainers.WithWaitStrategy(
-			wait.ForLog("database system is ready to accept connections").
-				WithOccurrence(2).
-				WithStartupTimeout(20*time.Second)),
+		testcontainers.WithWaitStrategy(database.PostgresContainerWaitStrategy()),
 	)
 	require.NoError(t, err)
 
@@ -58,10 +55,7 @@ func setupPgFailoverFaultInfra(t *testing.T) (*postgresFailoverFaultInfra, func(
 		postgres.WithDatabase("pg_failover_standby"),
 		postgres.WithUsername("user"),
 		postgres.WithPassword("pass"),
-		testcontainers.WithWaitStrategy(
-			wait.ForLog("database system is ready to accept connections").
-				WithOccurrence(2).
-				WithStartupTimeout(20*time.Second)),
+		testcontainers.WithWaitStrategy(database.PostgresContainerWaitStrategy()),
 	)
 	require.NoError(t, err)
 

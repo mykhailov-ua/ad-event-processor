@@ -90,6 +90,14 @@ tags:
 paths:
   /api/v1/campaigns:
     $ref: paths/campaigns.yaml#/paths/~1api~1v1~1campaigns
+  /api/v1/campaign-groups:
+    $ref: paths/campaigns.yaml#/paths/~1api~1v1~1campaign-groups
+  /api/v1/campaign-groups/{id}:
+    $ref: paths/campaigns.yaml#/paths/~1api~1v1~1campaign-groups~1{id}
+  /api/v1/campaign-groups/{id}/assign-campaigns:
+    $ref: paths/campaigns.yaml#/paths/~1api~1v1~1campaign-groups~1{id}~1assign-campaigns
+  /api/v1/campaign-groups/{id}/unassign-campaigns:
+    $ref: paths/campaigns.yaml#/paths/~1api~1v1~1campaign-groups~1{id}~1unassign-campaigns
   /api/v1/campaigns/metrics:
     $ref: paths/campaigns.yaml#/paths/~1api~1v1~1campaigns~1metrics
   /api/v1/campaigns/metrics-totals:
@@ -312,6 +320,8 @@ paths:
     $ref: paths/traffic_optimizer.yaml#/paths/~1api~1v1~1traffic-optimizer~1rules~1{id}
   /api/v1/traffic-optimizer/rules/{id}/dry-run:
     $ref: paths/traffic_optimizer.yaml#/paths/~1api~1v1~1traffic-optimizer~1rules~1{id}~1dry-run
+  /api/v1/traffic-optimizer/rules/{id}/apply:
+    $ref: paths/traffic_optimizer.yaml#/paths/~1api~1v1~1traffic-optimizer~1rules~1{id}~1apply
   /api/v1/command-palette/search:
     $ref: paths/command_palette.yaml#/paths/~1api~1v1~1command-palette~1search
   /api/v1/command-palette/routes:
@@ -600,6 +610,8 @@ paths:
     $ref: paths/ops_reports.yaml#/paths/~1api~1v1~1reports~1wire-signal-breakdown
   /api/v1/reports/true-roi:
     $ref: paths/ops_reports.yaml#/paths/~1api~1v1~1reports~1true-roi
+  /api/v1/reports/rules:
+    $ref: paths/ops_reports.yaml#/paths/~1api~1v1~1reports~1rules
   /api/v1/views:
     $ref: paths/ops_reports.yaml#/paths/~1api~1v1~1views
   /api/v1/views/{id}:
@@ -722,6 +734,16 @@ paths:
     $ref: paths/telegram_ops.yaml#/paths/~1api~1v1~1telegram~1postbacks~1{id}
   /api/v1/telegram/postbacks/{id}/test:
     $ref: paths/telegram_ops.yaml#/paths/~1api~1v1~1telegram~1postbacks~1{id}~1test
+  /api/v1/campaigns/{id}/outbound-postbacks:
+    $ref: paths/campaigns.yaml#/paths/~1api~1v1~1campaigns~1{id}~1outbound-postbacks
+  /api/v1/campaigns/{id}/outbound-postbacks/{postback_id}:
+    $ref: paths/campaigns.yaml#/paths/~1api~1v1~1campaigns~1{id}~1outbound-postbacks~1{postback_id}
+  /api/v1/campaigns/{id}/outbound-postbacks/{postback_id}/test:
+    $ref: paths/campaigns.yaml#/paths/~1api~1v1~1campaigns~1{id}~1outbound-postbacks~1{postback_id}~1test
+  /api/v1/campaigns/{id}/status-schemes:
+    $ref: paths/campaigns.yaml#/paths/~1api~1v1~1campaigns~1{id}~1status-schemes
+  /api/v1/campaigns/{id}/status-schemes/{rule_id}:
+    $ref: paths/campaigns.yaml#/paths/~1api~1v1~1campaigns~1{id}~1status-schemes~1{rule_id}
   /api/v1/campaigns/{id}/conversion-mappings:
     $ref: paths/campaigns.yaml#/paths/~1api~1v1~1campaigns~1{id}~1conversion-mappings
   /lp/{lander_id}/{path...}:
@@ -856,6 +878,18 @@ components:
       $ref: components/schemas/campaign.yaml#/CampaignBulkActionResultRow
     CampaignBulkActionResponse:
       $ref: components/schemas/campaign.yaml#/CampaignBulkActionResponse
+    CampaignBulkPatchFields:
+      $ref: components/schemas/campaign.yaml#/CampaignBulkPatchFields
+    CampaignBulkPatchRequest:
+      $ref: components/schemas/campaign.yaml#/CampaignBulkPatchRequest
+    CampaignBulkPatchResultRow:
+      $ref: components/schemas/campaign.yaml#/CampaignBulkPatchResultRow
+    CampaignBulkPatchResponse:
+      $ref: components/schemas/campaign.yaml#/CampaignBulkPatchResponse
+    ProgrammaticClickMintRequest:
+      $ref: components/schemas/campaign.yaml#/ProgrammaticClickMintRequest
+    ProgrammaticClickMintResponse:
+      $ref: components/schemas/campaign.yaml#/ProgrammaticClickMintResponse
     CampaignGeoSummary:
       $ref: components/schemas/campaign.yaml#/CampaignGeoSummary
     CampaignFraudEditorSummary:
@@ -990,6 +1024,14 @@ components:
       schema:
         type: string
         format: uuid
+    CampaignGroupIdQuery:
+      name: group_id
+      in: query
+      required: false
+      schema:
+        type: string
+        format: uuid
+      description: Filter report rows to campaigns in this group.
     CampaignIdQueryRequired:
       name: campaign_id
       in: query

@@ -125,20 +125,16 @@ export function OpsConsent({
         >
           {recording ? 'Recording...' : 'Record consent'}
         </Button>
-        {recordSuccess ? (
-          <p>Consent accepted by server.</p>
-        ) : null}
+        {recordSuccess ? <p>Consent accepted by server.</p> : null}
         {recordError ? opsPanelError(recordError, 'Record failed') : null}
       </section>
 
       {payload ? (
         <JsonPayloadView payload={payload} />
       ) : (
-        <p className={adminTypography.bodyMuted} >No consent proof payload returned.</p>
+        <p className={adminTypography.bodyMuted}>No consent proof payload returned.</p>
       )}
-      {listRevalidating ? (
-        <p>Refreshing proofs...</p>
-      ) : null}
+      {listRevalidating ? <p>Refreshing proofs...</p> : null}
     </OpsPageWithLoad>
   );
 }

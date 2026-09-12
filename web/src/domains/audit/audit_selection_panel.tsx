@@ -21,10 +21,7 @@ function auditMetadataFields(metadata: AuditLog['metadata']): {
   return { authSource, apiKeyId };
 }
 
-export function AuditSelectionPanel({
-  selectedEntry,
-  onClearSelection,
-}: AuditSelectionPanelProps) {
+export function AuditSelectionPanel({ selectedEntry, onClearSelection }: AuditSelectionPanelProps) {
   const metadata = selectedEntry ? auditMetadataFields(selectedEntry.metadata) : {};
   const selectedTitle = selectedEntry
     ? `${selectedEntry.action ?? 'action'} / ${selectedEntry.target_type ?? 'target'}`
@@ -39,8 +36,7 @@ export function AuditSelectionPanel({
             <div>Admin: {selectedEntry.admin_id ?? ''}</div>
             <div>Target ID: {selectedEntry.target_id ?? ''}</div>
             <div>
-              Time:{' '}
-              {displayTimestamp(selectedEntry.created_at, selectedEntry.created_at_display)}
+              Time: {displayTimestamp(selectedEntry.created_at, selectedEntry.created_at_display)}
             </div>
             {metadata.authSource ? <div>Auth: {metadata.authSource}</div> : null}
             {metadata.apiKeyId ? <div>API key: {metadata.apiKeyId}</div> : null}

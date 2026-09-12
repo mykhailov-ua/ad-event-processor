@@ -48,3 +48,15 @@ func (f FeatureSet) AdPlatformCampaignAPIEnabled() bool {
 func (f FeatureSet) FraudDisputeEvidenceEnabled() bool {
 	return f.Normalized().FraudDisputeEvidence
 }
+
+func (f FeatureSet) MarginGuardEnabled() bool {
+	return f.Normalized().MarginGuard
+}
+
+func (f FeatureSet) SlotMigrationEnabled() bool {
+	return f.Normalized().SlotMigration
+}
+
+func (f FeatureSet) BrokerWalEnabled() bool {
+	return f.Normalized().BrokerWal
+}

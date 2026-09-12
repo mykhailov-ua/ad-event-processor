@@ -25,6 +25,9 @@ func MergeLimits(dst *Limits, src Limits) {
 	if src.MaxExportChunkBytes != 0 {
 		dst.MaxExportChunkBytes = src.MaxExportChunkBytes
 	}
+	if src.MaxCostSyncNetworks != 0 {
+		dst.MaxCostSyncNetworks = src.MaxCostSyncNetworks
+	}
 	if src.MaxActivations != 0 {
 		dst.MaxActivations = src.MaxActivations
 	}
@@ -42,8 +45,10 @@ func MergeFeatures(dst *FeatureSet, src FeatureSet) {
 	dst.MlFraudBoost = src.MlFraudBoost
 	dst.MultiRegion = src.MultiRegion
 	dst.SlotMigration = src.SlotMigration
+	dst.BrokerWal = src.BrokerWal
 	dst.MarginGuard = src.MarginGuard
 	dst.ExternalResidentialIntel = src.ExternalResidentialIntel
 	dst.ModeratorIntelFeed = src.ModeratorIntelFeed
 	dst.AdPlatformCampaignAPI = src.AdPlatformCampaignAPI
+	dst.FraudDisputeEvidence = src.FraudDisputeEvidence
 }

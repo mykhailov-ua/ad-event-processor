@@ -59,8 +59,8 @@ export function IntegrationsGoogleSheets({
             </div>
           </div>
           <p className={adminTypography.bodyMuted}>
-            Connect your Google account to push report export rows into a spreadsheet from Export Hub.
-            OAuth is per operator; refresh tokens are stored encrypted on the server.
+            Connect your Google account to push report export rows into a spreadsheet from Export
+            Hub. OAuth is per operator; refresh tokens are stored encrypted on the server.
           </p>
           {connected && status?.account_email ? (
             <p className={adminTypography.bodyMuted}>Signed in as {status.account_email}.</p>

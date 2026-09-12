@@ -92,10 +92,7 @@ export function OpsShardDlq({
   const [selectedId, setSelectedId] = useState<string | null>(null);
   const list = items ?? [];
   const recordById = useMemo(() => directoryRecordMap(list, shardDlqRowId), [list]);
-  const rows = useMemo(
-    () => directoryOperateRows(list, shardDlqRowId, shardDlqRowLabel),
-    [list]
-  );
+  const rows = useMemo(() => directoryOperateRows(list, shardDlqRowId, shardDlqRowLabel), [list]);
 
   return (
     <>

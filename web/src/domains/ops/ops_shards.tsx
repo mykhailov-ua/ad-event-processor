@@ -66,10 +66,7 @@ export function OpsShards({
   const [selectedId, setSelectedId] = useState<string | null>(null);
   const shards = snapshot?.shards ?? [];
   const recordById = useMemo(() => directoryRecordMap(shards, shardRowId), [shards]);
-  const rows = useMemo(
-    () => directoryOperateRows(shards, shardRowId, shardRowLabel),
-    [shards]
-  );
+  const rows = useMemo(() => directoryOperateRows(shards, shardRowId, shardRowLabel), [shards]);
 
   return (
     <OpsPageWithLoad
@@ -83,9 +80,7 @@ export function OpsShards({
       title="Shards"
       alerts={
         <>
-          {catchupStatus ? (
-            <p role="status">Catch-up status: {catchupStatus}</p>
-          ) : null}
+          {catchupStatus ? <p role="status">Catch-up status: {catchupStatus}</p> : null}
           {catchupError ? opsPanelError(catchupError, 'Catch-up failed') : null}
         </>
       }

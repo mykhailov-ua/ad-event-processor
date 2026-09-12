@@ -179,9 +179,7 @@ export function OpsHome({
           >
             {downloadingBundle ? 'Downloading...' : 'Download support bundle'}
           </Button>
-          {rolesReloadMessage ? (
-            <span role="status">{rolesReloadMessage}</span>
-          ) : null}
+          {rolesReloadMessage ? <span role="status">{rolesReloadMessage}</span> : null}
         </OpsActionGroup>
       }
     >

@@ -196,6 +196,133 @@ func TestPostCampaignBulk_archive(t *testing.T) {
 	assert.Equal(t, 1, stub.bulkCalls, "bulk archive must use BulkCampaignAction once")
 }
 
+func TestPostCampaignBulkPatch_rejectsEmptyPatch_holdout(t *testing.T) {
+	t.Parallel()
+	h := &campaign.CampaignsHTTPHandlers{Campaigns: &diffCampaignStub{}}
+	mux := http.NewServeMux()
+	RegisterRoutes(h, mux, func(next http.HandlerFunc) http.HandlerFunc { return next }, func(_ []string, next http.HandlerFunc) http.HandlerFunc { return next })
+	payload, err := json.Marshal(campaign.BulkPatchCampaignRequest{
+		CampaignIDs: []string{uuid.New().String()},
+		Patch:       campaign.BulkPatchFields{},
+	})
+	require.NoError(t, err)
+	req := httptest.NewRequest(http.MethodPost, "/api/v1/campaigns/bulk-patch", bytes.NewReader(payload))
+	req.Header.Set("Content-Type", "application/json")
+	rec := httptest.NewRecorder()
+	mux.ServeHTTP(rec, req)
+	assert.Equal(t, http.StatusBadRequest, rec.Code)
+}
+
+func TestPostCampaignBulkPatch_appliesPatch(t *testing.T) {
+	t.Parallel()
+	campID := uuid.New()
+	stub := &bulkPatchCampaignStub{}
+	h := &campaign.CampaignsHTTPHandlers{Campaigns: stub}
+	mux := http.NewServeMux()
+	RegisterRoutes(h, mux, func(next http.HandlerFunc) http.HandlerFunc { return next }, func(_ []string, next http.HandlerFunc) http.HandlerFunc { return next })
+	url := "https://offer.example/click"
+	payload, err := json.Marshal(campaign.BulkPatchCampaignRequest{
+		CampaignIDs: []string{campID.String()},
+		Patch:       campaign.BulkPatchFields{TargetURL: &url},
+	})
+	require.NoError(t, err)
+	req := httptest.NewRequest(http.MethodPost, "/api/v1/campaigns/bulk-patch", bytes.NewReader(payload))
+	req.Header.Set("Content-Type", "application/json")
+	rec := httptest.NewRecorder()
+	mux.ServeHTTP(rec, req)
+	require.Equal(t, http.StatusOK, rec.Code)
+	var resp campaign.BulkPatchCampaignResponse
+	require.NoError(t, json.Unmarshal(rec.Body.Bytes(), &resp))
+	require.Len(t, resp.Results, 1)
+	assert.True(t, resp.Results[0].OK)
+	assert.Equal(t, campID, stub.patchedID)
+	assert.Equal(t, url, *stub.lastPatch.TargetURL)
+}
+
+func TestMintProgrammaticClick_buildsClickURL(t *testing.T) {
+	t.Parallel()
+	campID := uuid.MustParse("11111111-1111-7111-8111-111111111111")
+	resp, err := campaign.MintProgrammaticClick("https://trk.example.com", campID, campaign.ProgrammaticClickMintRequest{
+		CampaignID: campID.String(),
+		ClickID:    "clk-test-1",
+		Params:     map[string]string{"sub1": "alpha"},
+	}, campaign.ProgrammaticClickLinkSigning{})
+	require.NoError(t, err)
+	assert.Equal(t, "clk-test-1", resp.ClickID)
+	assert.Contains(t, resp.ClickURL, "sub1=alpha")
+}
+
+func TestPostMintProgrammaticClick_returnsClickURL(t *testing.T) {
+	t.Parallel()
+	campID := uuid.New()
+	h := &campaign.CampaignsHTTPHandlers{
+		Campaigns:            &diffCampaignStub{},
+		TrackerPublicBaseURL: func() string { return "https://trk.example.com" },
+		AuthorizeCampaignAccess: func(_ *http.Request, id uuid.UUID) error {
+			if id != campID {
+				return campaign.ErrForbidden
+			}
+			return nil
+		},
+	}
+	mux := http.NewServeMux()
+	h.RegisterTrackerClickRoutes(mux, func(next http.HandlerFunc) http.HandlerFunc { return next }, func(_ []string, next http.HandlerFunc) http.HandlerFunc { return next })
+	payload, err := json.Marshal(campaign.ProgrammaticClickMintRequest{
+		CampaignID: campID.String(),
+		ClickID:    "api-click-1",
+	})
+	require.NoError(t, err)
+	req := httptest.NewRequest(http.MethodPost, "/api/v1/tracker/clicks", bytes.NewReader(payload))
+	req.Header.Set("Content-Type", "application/json")
+	rec := httptest.NewRecorder()
+	mux.ServeHTTP(rec, req)
+	require.Equal(t, http.StatusOK, rec.Code)
+}
+
+func TestPostCampaignBulkPatch_holdoutMapsForbidden(t *testing.T) {
+	t.Parallel()
+	campID := uuid.New()
+	stub := &bulkPatchForbiddenStub{}
+	h := &campaign.CampaignsHTTPHandlers{Campaigns: stub}
+	payload, err := json.Marshal(campaign.BulkPatchCampaignRequest{
+		CampaignIDs: []string{campID.String()},
+		Patch:       campaign.BulkPatchFields{BudgetLimitMicro: ptrInt64(1_000_000)},
+	})
+	require.NoError(t, err)
+	req := httptest.NewRequest(http.MethodPost, "/api/v1/campaigns/bulk-patch", bytes.NewReader(payload))
+	req.Header.Set("Content-Type", "application/json")
+	rec := httptest.NewRecorder()
+	postCampaignBulkPatch(h, rec, req)
+	require.Equal(t, http.StatusOK, rec.Code)
+	var resp campaign.BulkPatchCampaignResponse
+	require.NoError(t, json.Unmarshal(rec.Body.Bytes(), &resp))
+	require.Len(t, resp.Results, 1)
+	assert.False(t, resp.Results[0].OK)
+	assert.Equal(t, "forbidden", resp.Results[0].ErrorCode)
+}
+
+func ptrInt64(v int64) *int64 { return &v }
+
+type bulkPatchCampaignStub struct {
+	diffCampaignStub
+	patchedID uuid.UUID
+	lastPatch campaign.PatchCampaignRequest
+}
+
+func (s *bulkPatchCampaignStub) PatchCampaign(_ context.Context, campaignID uuid.UUID, req campaign.PatchCampaignRequest) (campaign.CampaignDTO, error) {
+	s.patchedID = campaignID
+	s.lastPatch = req
+	return campaign.CampaignDTO{ID: campaignID.String()}, nil
+}
+
+type bulkPatchForbiddenStub struct {
+	diffCampaignStub
+}
+
+func (s *bulkPatchForbiddenStub) PatchCampaign(context.Context, uuid.UUID, campaign.PatchCampaignRequest) (campaign.CampaignDTO, error) {
+	return campaign.CampaignDTO{}, campaign.ErrForbidden
+}
+
 func TestPostCampaignBulk_holdoutSkipsPerIDPauseCampaign(t *testing.T) {
 	t.Parallel()
 	stub := &bulkPauseHoldoutStub{}

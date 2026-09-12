@@ -119,3 +119,24 @@ paths:
           description: Not implemented
         default:
           $ref: '../openapi.yaml#/components/responses/Error'
+
+  /api/v1/traffic-optimizer/rules/{id}/apply:
+    post:
+      tags: [traffic-optimizer]
+      operationId: trafficOptimizerApplyRule
+      summary: Apply traffic optimizer rule weights transactionally
+      description: Runs the same apply path as the background worker and records traffic_optimizer_fires.
+      x-permissions: [campaigns:write]
+      parameters:
+        - $ref: '../openapi.yaml#/components/parameters/UuidPathId'
+      responses:
+        '200':
+          description: Apply result
+          content:
+            application/json:
+              schema:
+                $ref: '../components/schemas/integrations.yaml#/TrafficOptimizerApplyResult'
+        '501':
+          description: Not implemented
+        default:
+          $ref: '../openapi.yaml#/components/responses/Error'

@@ -7,12 +7,12 @@ import (
 	"sort"
 	"strings"
 	"testing"
-	"time"
+
+	"ad-event-processor/internal/database"
 
 	"github.com/jackc/pgx/v5/pgxpool"
 	"github.com/testcontainers/testcontainers-go"
 	"github.com/testcontainers/testcontainers-go/modules/postgres"
-	"github.com/testcontainers/testcontainers-go/wait"
 )
 
 type PostgresConfig struct {
@@ -77,10 +77,7 @@ func setupPostgresContainer(t testing.TB, cfg PostgresConfig) (*postgres.Postgre
 		postgres.WithDatabase(cfg.DatabaseName),
 		postgres.WithUsername(cfg.Username),
 		postgres.WithPassword(cfg.Password),
-		testcontainers.WithWaitStrategy(
-			wait.ForLog("database system is ready to accept connections").
-				WithOccurrence(2).
-				WithStartupTimeout(20*time.Second)),
+		testcontainers.WithWaitStrategy(database.PostgresContainerWaitStrategy()),
 	)
 	if err != nil {
 		t.Fatalf("failed to start postgres container: %s", err)
@@ -95,6 +92,7 @@ func setupPostgresContainer(t testing.TB, cfg PostgresConfig) (*postgres.Postgre
 	if err != nil {
 		t.Fatalf("failed to connect to postgres: %s", err)
 	}
+	database.WaitPostgresPoolReady(t, ctx, pool)
 
 	for _, dir := range cfg.MigrationDirs {
 		ApplyMigrations(t, pool, dir)

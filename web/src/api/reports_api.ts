@@ -5,7 +5,9 @@ import {
   parseWireSignalBreakdownReportResponse,
 } from './validate.js';
 import { reportKeyToApiPath } from '../lib/report_paths.js';
+import { parseAutomationRule } from './validate.js';
 import type {
+  AutomationRule,
   ClickLogReportQuery,
   ClickLogReportResponse,
   CustomerFraudByTypeReportResponse,
@@ -151,10 +153,8 @@ export async function getFraudCatalogReport<K extends FraudCatalogReportKey>(
   params: FraudCatalogReportQuery = {},
   signal?: AbortSignal
 ): Promise<FraudCatalogReportResponseMap[K]> {
-  return apiJsonValidated(
-    buildFraudCatalogReportPath(key, params),
-    { signal },
-    (value) => parseFraudCatalogReportResponse(key, value)
+  return apiJsonValidated(buildFraudCatalogReportPath(key, params), { signal }, (value) =>
+    parseFraudCatalogReportResponse(key, value)
   );
 }
 
@@ -193,7 +193,11 @@ export async function getFraudReasonsReport(
 ): Promise<FraudReasonsReportResponse> {
   const path = buildReportRunPath(reportKey, params);
   if (reportKey === 'wire-signal-breakdown') {
-    const payload = await apiJsonValidated(path, { signal }, parseWireSignalBreakdownReportResponse);
+    const payload = await apiJsonValidated(
+      path,
+      { signal },
+      parseWireSignalBreakdownReportResponse
+    );
     return {
       rows: payload.rows ?? [],
       freshness: payload.freshness,
@@ -704,4 +708,32 @@ export async function exportTelegramReport(
     body: JSON.stringify(body),
     signal,
   });
+}
+
+export type CreateReportRuleRequest = {
+  customer_id: string;
+  campaign_id: string;
+  report_key: string;
+  name?: string;
+  action: 'pause_campaign' | 'blacklist_placement';
+  metric?: string;
+  operator?: string;
+  threshold?: number;
+  window_minutes?: number;
+  filter_snapshot: Record<string, string>;
+};
+
+export async function createReportAutomationRule(
+  body: CreateReportRuleRequest,
+  signal?: AbortSignal
+): Promise<AutomationRule> {
+  return apiJsonValidated(
+    '/api/v1/reports/rules',
+    {
+      method: 'POST',
+      body: JSON.stringify(body),
+      signal,
+    },
+    parseAutomationRule
+  );
 }

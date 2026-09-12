@@ -10,12 +10,7 @@ import {
 } from '@/lib/admin_spacing';
 import { cn } from '@/lib/utils';
 
-export {
-  pageCanvasInsetClass,
-  pageFooterFlatClass,
-  pageSectionStackClass,
-  pageWorkspaceFlatClass,
-};
+export { pageCanvasInsetClass, pageFooterFlatClass, pageSectionStackClass, pageWorkspaceFlatClass };
 
 /** Min height for directory/dashboard pages inside the scroll canvas (see tailwind.css vars). */
 export const pageFillViewportMinHeightClass = 'min-h-[var(--page-fill-min-height)]';
@@ -37,11 +32,7 @@ export function resolvePageFillViewport(
   return footer != null;
 }
 
-export function PageCanvasInset({
-  children,
-}: {
-  children: ReactNode;
-}) {
+export function PageCanvasInset({ children }: { children: ReactNode }) {
   return <div className={pageCanvasInsetClass}>{children}</div>;
 }
 
@@ -97,7 +88,9 @@ export function PageLayout({
   return (
     <div className="flex min-h-0 min-w-0 w-full flex-1 flex-col">
       {title != null && title !== '' ? (
-        <header className={cn(adminSpacing.flex.pageHeader, 'border-b border-border', headerClassName)}>
+        <header
+          className={cn(adminSpacing.flex.pageHeader, 'border-b border-border', headerClassName)}
+        >
           <div className={cn('min-w-0', adminSpacing.stack.titleBlock)}>
             <div className={adminSpacing.flex.buttonGroup}>
               <h1 className={adminTypography.pageTitle}>{title}</h1>
@@ -137,7 +130,13 @@ export function PageLayout({
               : 'grid-rows-[minmax(0,1fr)]'
           )}
         >
-          <main className={cn('flex min-h-0 min-w-0 flex-1 flex-col', adminSpacing.gap.lg, mainClassName)}>
+          <main
+            className={cn(
+              'flex min-h-0 min-w-0 flex-1 flex-col',
+              adminSpacing.gap.lg,
+              mainClassName
+            )}
+          >
             {children}
           </main>
           {aside ? (

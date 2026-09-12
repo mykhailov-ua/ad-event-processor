@@ -48,7 +48,12 @@ import {
   SelectValue,
 } from '@/components/ui/select';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
-import type { TeamBudgetApproval, TeamMember, TeamOverview, TeamMetricsResponse } from '@/api/types';
+import type {
+  TeamBudgetApproval,
+  TeamMember,
+  TeamOverview,
+  TeamMetricsResponse,
+} from '@/api/types';
 import { displayTimestamp } from '@/lib/display';
 import { DASHBOARD_RANGE_PRESETS, type DashboardRangePreset } from '@/lib/dashboard_range';
 import { TeamMetricsPanel } from '@/domains/team/team_metrics_panel';
@@ -234,7 +239,6 @@ export function TeamOverviewView({
       controlPanel={
         <FilterPanel>
           <DirectoryFilterForm
-           
             onSubmit={(event) => {
               event.preventDefault();
               onApplyCustomer();
@@ -318,8 +322,8 @@ export function TeamOverviewView({
       alerts={<DirectoryMutationError error={actionError} />}
     >
       {overview ? (
-        <div >
-          <div >
+        <div>
+          <div>
             <span>{overview.customer_name ?? overview.customer_id}</span>
             {overview.cost_center ? <span>Cost center: {overview.cost_center}</span> : null}
             {overview.balance_micro != null ? (
@@ -329,7 +333,7 @@ export function TeamOverviewView({
             ) : null}
           </div>
           {overview.license ? (
-            <div >
+            <div>
               <span>License: {overview.license.state ?? ''}</span>
               {overview.license.plan_code ? (
                 <Badge variant="outline">{overview.license.plan_code}</Badge>
@@ -359,12 +363,12 @@ export function TeamOverviewView({
       ) : null}
 
       <Dialog onOpenChange={setInviteOpen} open={inviteOpen}>
-        <DialogContent >
+        <DialogContent>
           <DialogHeader>
             <DialogTitle>Invite member</DialogTitle>
           </DialogHeader>
           <DirectoryFilterForm layout="auto-fill" onSubmit={(event) => event.preventDefault()}>
-            <FilterField  htmlFor="team-invite-email" label="Email">
+            <FilterField htmlFor="team-invite-email" label="Email">
               <Input
                 id="team-invite-email"
                 type="email"
@@ -411,10 +415,10 @@ export function TeamOverviewView({
           ))}
         </TabsList>
 
-        <TabsContent  value="members">
-          <h2 >Members</h2>
+        <TabsContent value="members">
+          <h2>Members</h2>
           {membersFetching && !hasMembersSnapshot ? (
-            <p >Loading members...</p>
+            <p>Loading members...</p>
           ) : !membersCustomerId ? (
             <EmptyState
               title="Customer required"
@@ -423,7 +427,7 @@ export function TeamOverviewView({
           ) : membersList.length === 0 ? (
             <EmptyState title="No members" description="Team roster is empty for this customer." />
           ) : (
-            <DirectoryTable >
+            <DirectoryTable>
               <TableHeader>
                 <TableRow>
                   <DirectoryTableHead>Email</DirectoryTableHead>
@@ -467,7 +471,6 @@ export function TeamOverviewView({
                       <TableCell>
                         <Input
                           aria-label={`Spend cap for ${member.email ?? memberId}`}
-                         
                           inputMode="numeric"
                           value={draft.spend_cap_micro}
                           onChange={(event) =>
@@ -487,7 +490,7 @@ export function TeamOverviewView({
                       <TableCell>
                         {displayTimestamp(member.created_at, member.created_at_display)}
                       </TableCell>
-                      <TableCell >
+                      <TableCell>
                         <Button
                           disabled={!memberId || updating}
                           onClick={() => onSaveMember(memberId)}
@@ -516,10 +519,10 @@ export function TeamOverviewView({
           />
         </TabsContent>
 
-        <TabsContent  value="approvals">
-          <h2 >Budget approvals</h2>
+        <TabsContent value="approvals">
+          <h2>Budget approvals</h2>
           {approvalsFetching && !hasApprovalsSnapshot ? (
-            <p >Loading approvals...</p>
+            <p>Loading approvals...</p>
           ) : !approvalsCustomerId ? (
             <EmptyState
               title="Customer required"
@@ -531,7 +534,7 @@ export function TeamOverviewView({
               description="Budget approval queue is empty."
             />
           ) : (
-            <DirectoryTable >
+            <DirectoryTable>
               <TableHeader>
                 <TableRow>
                   <DirectoryTableHead>Status</DirectoryTableHead>
@@ -549,14 +552,14 @@ export function TeamOverviewView({
                   return (
                     <TableRow key={rowId}>
                       <TableCell>{row.status ?? ''}</TableCell>
-                      <TableCell >{row.user_id ?? ''}</TableCell>
-                      <TableCell >{row.campaign_id ?? ''}</TableCell>
+                      <TableCell>{row.user_id ?? ''}</TableCell>
+                      <TableCell>{row.campaign_id ?? ''}</TableCell>
                       <TableCell>{row.requested_budget_micro ?? ''}</TableCell>
                       <TableCell>{row.previous_budget_micro ?? ''}</TableCell>
                       <TableCell>
                         {displayTimestamp(row.created_at, row.created_at_display)}
                       </TableCell>
-                      <TableCell >
+                      <TableCell>
                         <RowActionsMenu
                           ariaLabel="Approval actions"
                           disabled={!rowId || actingId === rowId}
@@ -568,7 +571,6 @@ export function TeamOverviewView({
                             Approve
                           </DropdownMenuItem>
                           <DropdownMenuItem
-                           
                             disabled={!rowId || actingId === rowId}
                             onClick={() => onDeny(rowId)}
                           >

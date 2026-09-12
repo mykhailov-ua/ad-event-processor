@@ -10,7 +10,12 @@ import { CustomerDetailTabBar } from '@/domains/customers/customer_detail_tab_ba
 import { CustomerDetailTaxTab } from '@/domains/customers/customer_detail_tax_tab';
 import type { CustomerDetailProps } from '@/domains/customers/customer_detail_types';
 import { CustomerDetailWalletTab } from '@/domains/customers/customer_detail_wallet_tab';
-import { adminSpacing, adminTypography, customerDetailHeaderClass, customerDetailSectionClass } from '@/lib/admin_spacing';
+import {
+  adminSpacing,
+  adminTypography,
+  customerDetailHeaderClass,
+  customerDetailSectionClass,
+} from '@/lib/admin_spacing';
 import { ErrorBlock } from '@/shell/error_block';
 import { panelError } from '@/shell/panel_error';
 import { PageSkeleton } from '@/shell/page_skeleton';

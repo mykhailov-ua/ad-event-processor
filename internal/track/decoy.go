@@ -21,7 +21,7 @@ type DecoyTemplateInput struct {
 	SafePageURL   string
 }
 
-var SafeDecoyStaticBody = []byte("<!DOCTYPE html><html lang=\"en\"><head><meta charset=\"utf-8\"><meta name=\"viewport\" content=\"width=device-width,initial-scale=1\"><title>Loading</title></head><body><main id=\"aed-mount\"><p>Loading</p></main><script src=\"/static/track-telemetry.js\"></script><script src=\"/static/antifraud-telemetry.js\"></script></body></html>")
+var SafeDecoyStaticBody = []byte("<!DOCTYPE html><html lang=\"en\"><head><meta charset=\"utf-8\"><meta name=\"viewport\" content=\"width=device-width,initial-scale=1\"><title>Loading</title></head><body><main id=\"aed-mount\"><p>Loading</p></main><script src=\"/static/tag-ev.js\"></script><script src=\"/static/tag-ctx.js\"></script></body></html>")
 
 func (s DecoyTemplateSource) MetricLabel() string {
 	switch s {

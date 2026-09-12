@@ -20,7 +20,7 @@
   }
 
   document.documentElement.style.visibility = 'hidden';
-  const boot = globalThis.aedSensBootstrap;
+  const boot = globalThis.tagLiteBoot;
   if (typeof boot !== 'function') {
     show();
     return;

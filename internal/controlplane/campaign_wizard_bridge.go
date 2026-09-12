@@ -12,6 +12,7 @@ import (
 	"ad-event-processor/internal/campaign/integration"
 	"ad-event-processor/internal/campaign/wizard"
 	"ad-event-processor/internal/integrationschema"
+	"ad-event-processor/internal/postback"
 
 	"github.com/google/uuid"
 )
@@ -121,6 +122,13 @@ func (s *Service) TrackerPublicBaseURL() string {
 	return ""
 }
 
+func (s *Service) LinkSigningSecret() []byte {
+	if s.cfg == nil || len(s.cfg.LinkSigningHMACSecret) == 0 {
+		return nil
+	}
+	return []byte(string(s.cfg.LinkSigningHMACSecret))
+}
+
 func (s *Service) EvaluateCampaignPublish(ctx context.Context, campaignID uuid.UUID) (campaign.CampaignPublishCheckDTO, error) {
 	return s.CampaignRuntime().EvaluateCampaignPublish(ctx, campaignID)
 }
@@ -139,6 +147,34 @@ func (s *Service) ListCampaignConversionMappings(ctx context.Context, campaignID
 
 func (s *Service) ReplaceCampaignConversionMappings(ctx context.Context, campaignID uuid.UUID, mappings []campaign.ConversionMappingDTO) ([]campaign.ConversionMappingDTO, error) {
 	return campaign.ReplaceCampaignConversionMappings(ctx, s.pool, campaignID, mappings)
+}
+
+func (s *Service) ListCampaignStatusSchemeRules(ctx context.Context, campaignID uuid.UUID) ([]campaign.StatusSchemeRuleDTO, error) {
+	return campaign.ListCampaignStatusSchemeRules(ctx, s.pool, campaignID)
+}
+
+func (s *Service) ReplaceCampaignStatusSchemeRules(ctx context.Context, campaignID uuid.UUID, rules []campaign.StatusSchemeRuleDTO) ([]campaign.StatusSchemeRuleDTO, error) {
+	return campaign.ReplaceCampaignStatusSchemeRules(ctx, s.pool, campaignID, rules)
+}
+
+func (s *Service) PatchCampaignStatusSchemeRule(ctx context.Context, campaignID, ruleID uuid.UUID, patch campaign.PatchStatusSchemeRuleRequest) (campaign.StatusSchemeRuleDTO, error) {
+	return campaign.PatchCampaignStatusSchemeRule(ctx, s.pool, campaignID, ruleID, patch)
+}
+
+func (s *Service) ListCampaignOutboundPostbacks(ctx context.Context, campaignID uuid.UUID) ([]campaign.OutboundPostbackDTO, error) {
+	return campaign.ListCampaignOutboundPostbacks(ctx, s.pool, campaignID)
+}
+
+func (s *Service) ReplaceCampaignOutboundPostbacks(ctx context.Context, campaignID uuid.UUID, rows []campaign.OutboundPostbackWriteDTO) ([]campaign.OutboundPostbackDTO, error) {
+	return campaign.ReplaceCampaignOutboundPostbacks(ctx, s.pool, s.PostbackEncryptionKey(), campaignID, rows)
+}
+
+func (s *Service) PatchCampaignOutboundPostback(ctx context.Context, campaignID, postbackID uuid.UUID, patch campaign.PatchOutboundPostbackRequest) (campaign.OutboundPostbackDTO, error) {
+	return campaign.PatchCampaignOutboundPostback(ctx, s.pool, s.PostbackEncryptionKey(), campaignID, postbackID, patch)
+}
+
+func (s *Service) DryRunCampaignOutboundPostback(ctx context.Context, campaignID, postbackID uuid.UUID) (postback.DryRunResult, error) {
+	return campaign.DryRunCampaignOutboundPostback(ctx, s.pool, s.PostbackEncryptionKey(), campaignID, postbackID)
 }
 
 func (s *Service) AuditCampaignRevisionConflict(ctx context.Context, campaignID uuid.UUID, expectedRevision string) {

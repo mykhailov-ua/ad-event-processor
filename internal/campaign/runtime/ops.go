@@ -26,6 +26,19 @@ import (
 	"github.com/jackc/pgx/v5/pgxpool"
 )
 
+func createCampaignOwnerUserID(ctx context.Context) uuid.UUID {
+	u, ok := authz.GetUser(ctx)
+	if !ok {
+		return uuid.Nil
+	}
+	switch authz.NormalizeRole(u.Role) {
+	case authz.RoleMediaBuyer, authz.RoleBuyer:
+		return u.UserID
+	default:
+		return uuid.Nil
+	}
+}
+
 type auditCreateCampaignChange struct {
 	Name         string                `json:"name"`
 	BudgetLimit  int64                 `json:"budget_limit"`
@@ -133,6 +146,12 @@ func createCampaign(ctx context.Context, pool *pgxpool.Pool, fx campaign.Effects
 			TemplateID:      templateIDParam,
 		}); err != nil {
 			return err
+		}
+
+		if ownerID := createCampaignOwnerUserID(ctx); ownerID != uuid.Nil {
+			if _, err = tx.Exec(ctx, `UPDATE campaigns SET owner_user_id = $1 WHERE id = $2`, ownerID, campaignID); err != nil {
+				return err
+			}
 		}
 
 		if _, err = q.CreateLedgerEntry(ctx, db.CreateLedgerEntryParams{
@@ -509,6 +528,7 @@ func scrubCampaignDTO(ctx context.Context, c db.Campaign) campaign.CampaignDTO {
 		StartAt:                      formatCampaignOptionalTime(c.StartAt),
 		EndAt:                        formatCampaignOptionalTime(c.EndAt),
 		DaypartHours:                 campaign.DaypartOrEmpty(c.DaypartHours),
+		CampaignGroupID:              formatCampaignOptionalUUID(c.CampaignGroupID),
 		OwnerUserID:                  formatCampaignOptionalUUID(c.OwnerUserID),
 		TrafficTemplateID:            campaign.FormatOptionalText(c.TrafficTemplateID),
 		ClickQueryParams:             campaign.ClickQueryParamsFromRaw(c.ClickQueryParams),

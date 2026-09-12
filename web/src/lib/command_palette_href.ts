@@ -41,7 +41,9 @@ export function resolveCommandPaletteHref(href: string): string {
   }
 
   if (pathname === '/platform-campaigns') {
-    return search ? `/integrations/platform-campaigns?${search}` : '/integrations/platform-campaigns';
+    return search
+      ? `/integrations/platform-campaigns?${search}`
+      : '/integrations/platform-campaigns';
   }
 
   return normalized;

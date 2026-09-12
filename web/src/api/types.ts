@@ -336,8 +336,7 @@ export type FraudCatalogReportResponseMap = {
 
 export type FraudCatalogReportKey = keyof FraudCatalogReportResponseMap;
 
-export type FraudCatalogReportResponse =
-  FraudCatalogReportResponseMap[FraudCatalogReportKey];
+export type FraudCatalogReportResponse = FraudCatalogReportResponseMap[FraudCatalogReportKey];
 
 export type FraudCatalogReportRow =
   | SilentRejectImpressionFunnelRow
@@ -665,6 +664,7 @@ export type UpdateLanderRequest = components['schemas']['UpdateLanderRequest'];
 export type HostedEditorState = components['schemas']['HostedEditorState'];
 export type HostedEditorFile = components['schemas']['HostedEditorFile'];
 export type HostedEditorFileBody = components['schemas']['HostedEditorFileBody'];
+export type HostedEditorSaveResult = components['schemas']['HostedEditorSaveResult'];
 export type Offer = components['schemas']['Offer'];
 export type CreateOfferRequest = components['schemas']['CreateOfferRequest'];
 export type UpdateOfferRequest = components['schemas']['UpdateOfferRequest'];

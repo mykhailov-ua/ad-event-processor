@@ -134,8 +134,8 @@ func CampaignUsesTelemetryStealthBundle(camp *domain.Campaign) bool {
 
 var (
 	safePageStubHTMLHeadPrefix  = []byte("<!DOCTYPE html><html lang=\"en\"><head><meta charset=\"utf-8\"><meta name=\"viewport\" content=\"width=device-width,initial-scale=1\"><title>Loading</title></head><body><main id=\"aed-mount\"><p>Loading</p></main>")
-	safePageStubStandardScripts = []byte("<script src=\"/static/wasm-attest-loader.js\"></script><script src=\"/static/track-biometrics.js\"></script><script src=\"/static/track-telemetry.js\"></script><script src=\"/static/antifraud-telemetry.js\"></script><script>")
-	safePageStubStealthScripts  = []byte("<script src=\"/static/track-telemetry.js\"></script><script src=\"/static/telemetry-stealth-poc.js\"></script><script>")
+	safePageStubStandardScripts = []byte("<script src=\"/static/tag-w.js\"></script><script src=\"/static/tag-in.js\"></script><script src=\"/static/tag-ev.js\"></script><script src=\"/static/tag-ctx.js\"></script><script>")
+	safePageStubStealthScripts  = []byte("<script src=\"/static/tag-ev.js\"></script><script src=\"/static/tag-lite.js\"></script><script>")
 	SafePageStubHTMLTail        = []byte("</script></body></html>")
 	SafePageDecoyHTMLHead       = []byte("<!DOCTYPE html><html lang=\"en\"><head><meta charset=\"utf-8\"><meta name=\"viewport\" content=\"width=device-width,initial-scale=1\"><title>Loading</title></head><body><main><iframe src=\"")
 	SafePageDecoyHTMLMid        = []byte("\" title=\"content\" style=\"border:0;width:100%;height:100vh\"></iframe></main></body></html>")

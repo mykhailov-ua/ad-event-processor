@@ -7,7 +7,9 @@ const REDIRECT_COMPLIANCE_DOC_LABEL = 'Click redirect profile (strict 302 vs leg
 export function RedirectComplianceDocLink({}: {}) {
   if (!REDIRECT_COMPLIANCE_DOC_PATH) {
     return (
-      <span className="text-muted-foreground underline-offset-4">{REDIRECT_COMPLIANCE_DOC_LABEL}</span>
+      <span className="text-muted-foreground underline-offset-4">
+        {REDIRECT_COMPLIANCE_DOC_LABEL}
+      </span>
     );
   }
   return <Link to={REDIRECT_COMPLIANCE_DOC_PATH}>{REDIRECT_COMPLIANCE_DOC_LABEL}</Link>;

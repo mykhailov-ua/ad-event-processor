@@ -16,6 +16,7 @@ import (
 	"ad-event-processor/internal/config"
 	"ad-event-processor/internal/database"
 	"ad-event-processor/internal/domain/db"
+	"ad-event-processor/internal/domain/shard"
 	ingestion "ad-event-processor/internal/ingest"
 
 	"github.com/google/uuid"
@@ -69,20 +70,10 @@ func TestE2E_Multishard(t *testing.T) {
 	require.NoError(t, err)
 
 	for i, campaignID := range campaignIDs {
-		_, err = pool.Exec(ctx,
-			"INSERT INTO campaigns (id, name, status, customer_id, budget_limit) VALUES ($1, $2, $3, $4, $5)",
-			campaignID, fmt.Sprintf("Multishard Campaign %d", i), "ACTIVE", customerID, 100_000_000,
-		)
-		require.NoError(t, err)
+		insertE2EActiveCampaign(t, ctx, pool, campaignID, customerID, fmt.Sprintf("Multishard Campaign %d", i), 100_000_000)
 	}
 
 	registry := testutil.NewAdsRegistry(t, queries)
-	budgetWarmer := ingestion.NewBudgetCacheWarmer(rdbs, sharder)
-	registry.SetBudgetWarmer(budgetWarmer)
-	_, err = registry.Sync(ctx)
-	require.NoError(t, err)
-	_, err = budgetWarmer.WarmFromRegistry(ctx, registry)
-	require.NoError(t, err)
 
 	store := ingestion.NewPostgresStore(queries, 1*time.Second)
 	campaignRepo := ingestion.NewCampaignRepo(queries)
@@ -105,6 +96,7 @@ func TestE2E_Multishard(t *testing.T) {
 	filterEngine := ingestion.NewFilterEngine(time.Duration(cfg.FilterTimeoutMs)*time.Millisecond, unifiedFilter)
 
 	handler := ingestion.NewAdsPacketHandler(cfg, registry, filterEngine, pool, rdbs, sharder, cfg.FraudStreamName, nil)
+	wireE2EBudgetAndTrackIngest(t, ctx, queries, rdbs, sharder, registry, handler, unifiedFilter)
 	defer handler.Stop(ctx)
 
 	for i, campaignID := range campaignIDs {
@@ -123,7 +115,7 @@ func TestE2E_Multishard(t *testing.T) {
 
 	for _, campaignID := range campaignIDs {
 		expectedShard := sharder.GetShard(campaignID)
-		budgetKey := "budget:campaign:" + campaignID.String()
+		budgetKey := shard.BudgetCampaignKey(campaignID)
 
 		for shardID, rdb := range rdbs {
 			exists, err := rdb.Exists(ctx, budgetKey).Result()

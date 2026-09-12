@@ -17,6 +17,8 @@ import (
 
 type RulesService struct {
 	Pool                  *pgxpool.Pool
+	Host                  Host
+	Publish               PublishHost
 	EvalFloorMinutes      func() int
 	AllowExtendedLookback func() bool
 }

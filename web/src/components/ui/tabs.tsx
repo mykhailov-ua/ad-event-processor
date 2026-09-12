@@ -53,7 +53,8 @@ const TabsList = React.forwardRef<
     ref={ref}
     role="tablist"
     className={cn(
-      variant === 'segmented' && 'inline-flex min-h-7 items-center bg-muted p-1 text-muted-foreground',
+      variant === 'segmented' &&
+        'inline-flex min-h-7 items-center bg-muted p-1 text-muted-foreground',
       adminKit.controlRadius,
       variant === 'pill' && 'inline-flex flex-wrap items-center gap-2',
       variant === 'underline' && 'inline-flex items-center gap-4 border-b border-border',

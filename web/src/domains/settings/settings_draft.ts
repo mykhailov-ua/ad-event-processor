@@ -63,7 +63,8 @@ export function draftEqualsConfig(
 ): boolean {
   return (
     normalizeTrackingDomainInput(draft.trackingDomain) === (config?.tracking_domain ?? '') &&
-    draft.defaultCurrency.trim().toUpperCase() === (config?.default_currency ?? '').trim().toUpperCase() &&
+    draft.defaultCurrency.trim().toUpperCase() ===
+      (config?.default_currency ?? '').trim().toUpperCase() &&
     draft.timezone.trim() === (config?.timezone ?? '').trim() &&
     draft.ingressSchema === (config?.ingress_schema ?? '') &&
     draft.edgeXdp === (config?.edge_xdp ?? false) &&

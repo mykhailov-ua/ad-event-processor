@@ -73,7 +73,10 @@ function buildClickLogEventOverviewFields(
     {
       label: 'Campaign',
       value: event.campaign_id ? (
-        <InAppLink className="text-primary hover:underline" to={`/campaigns/${event.campaign_id}/edit`}>
+        <InAppLink
+          className="text-primary hover:underline"
+          to={`/campaigns/${event.campaign_id}/edit`}
+        >
           <span className={adminTypography.monoData}>{event.campaign_id}</span>
         </InAppLink>
       ) : (
@@ -162,7 +165,10 @@ export function ClickLogDirectory({
     [draftCustomerId]
   );
 
-  const postbackRecordById = useMemo(() => directoryRecordMap(postbacks, postbackRowId), [postbacks]);
+  const postbackRecordById = useMemo(
+    () => directoryRecordMap(postbacks, postbackRowId),
+    [postbacks]
+  );
   const postbackRows = useMemo(
     () => directoryOperateRows(postbacks, postbackRowId, postbackRowLabel),
     [postbacks]

@@ -171,6 +171,10 @@ Campaign:
     flow_id:
       type: string
       format: uuid
+    campaign_group_id:
+      type: string
+      format: uuid
+      description: Optional campaign group (Keitaro stream analogue) for bulk ops and report filters.
     owner_user_id:
       type: string
       format: uuid
@@ -1307,6 +1311,10 @@ FlowPath:
     weight:
       type: integer
       format: int32
+    rotation_mode:
+      type: string
+      description: Per-path smart rotation (Binom unseen / fix-on). Default weighted uses sticky hash selection.
+      enum: [weighted, unseen, fix_on, sequential]
     landers:
       type: array
       items:
@@ -1848,6 +1856,242 @@ ReplaceConversionMappingsRequest:
       type: array
       items:
         $ref: '#/ConversionMapping'
+
+StatusSchemeRule:
+  type: object
+  required: [sort_order, payout_mode, fire_outbound, enabled]
+  properties:
+    id:
+      type: string
+      format: uuid
+    sort_order:
+      type: integer
+      format: int32
+    when_status:
+      type: string
+    when_goal:
+      type: string
+    set_internal_status:
+      type: string
+    set_goal_name:
+      type: string
+    payout_mode:
+      type: string
+      enum: [inherit, fixed, zero, pass_through, accumulate_payout]
+    payout_micro:
+      type: integer
+      format: int64
+    fire_outbound:
+      type: boolean
+    enabled:
+      type: boolean
+
+ManualCampaignCostRequest:
+  type: object
+  required: [cost_date, amount_micro]
+  properties:
+    cost_date:
+      type: string
+      format: date
+    amount_micro:
+      type: integer
+      format: int64
+      minimum: 0
+    currency:
+      type: string
+      default: USD
+    placement_id:
+      type: string
+
+ManualCampaignCostResponse:
+  type: object
+  required: [campaign_id, cost_date, amount_micro, currency, placement_id]
+  properties:
+    campaign_id:
+      type: string
+      format: uuid
+    cost_date:
+      type: string
+      format: date
+    amount_micro:
+      type: integer
+      format: int64
+    currency:
+      type: string
+    placement_id:
+      type: string
+
+StatusSchemeListResponse:
+  type: object
+  required: [rules]
+  properties:
+    rules:
+      type: array
+      items:
+        $ref: '#/StatusSchemeRule'
+
+ReplaceStatusSchemeRequest:
+  type: object
+  required: [rules]
+  properties:
+    rules:
+      type: array
+      items:
+        $ref: '#/StatusSchemeRule'
+
+OutboundPostback:
+  type: object
+  required: [priority, enabled, provider, url_template, target_event, trigger_kind]
+  properties:
+    id:
+      type: string
+      format: uuid
+    name:
+      type: string
+    priority:
+      type: integer
+      format: int32
+    enabled:
+      type: boolean
+    provider:
+      type: string
+    url_template:
+      type: string
+    target_event:
+      type: string
+    trigger_kind:
+      type: string
+      enum: [conversion, status, goal]
+    trigger_value:
+      type: string
+    test_event_code:
+      type: string
+    has_api_token:
+      type: boolean
+    has_signing_secret:
+      type: boolean
+    sample_percent:
+      type: integer
+      format: int32
+      minimum: 0
+      maximum: 100
+      description: Deterministic outbound fire rate per click (0=off, 100=all).
+    delay_seconds:
+      type: integer
+      format: int32
+      minimum: 0
+      maximum: 604800
+      description: Delay outbound S2S dispatch by N seconds after conversion (0=immediate).
+
+OutboundPostbackWrite:
+  type: object
+  required: [provider, url_template, trigger_kind]
+  properties:
+    name:
+      type: string
+    priority:
+      type: integer
+      format: int32
+    enabled:
+      type: boolean
+    provider:
+      type: string
+    url_template:
+      type: string
+    api_token:
+      type: string
+    signing_secret:
+      type: string
+    target_event:
+      type: string
+    trigger_kind:
+      type: string
+      enum: [conversion, status, goal]
+    trigger_value:
+      type: string
+    test_event_code:
+      type: string
+    sample_percent:
+      type: integer
+      format: int32
+      minimum: 0
+      maximum: 100
+    delay_seconds:
+      type: integer
+      format: int32
+      minimum: 0
+      maximum: 604800
+
+OutboundPostbackListResponse:
+  type: object
+  required: [postbacks]
+  properties:
+    postbacks:
+      type: array
+      items:
+        $ref: '#/OutboundPostback'
+
+ReplaceOutboundPostbacksRequest:
+  type: object
+  required: [postbacks]
+  properties:
+    postbacks:
+      type: array
+      items:
+        $ref: '#/OutboundPostbackWrite'
+
+PatchOutboundPostbackRequest:
+  type: object
+  properties:
+    name:
+      type: string
+    priority:
+      type: integer
+      format: int32
+    enabled:
+      type: boolean
+    provider:
+      type: string
+    url_template:
+      type: string
+    api_token:
+      type: string
+    signing_secret:
+      type: string
+    target_event:
+      type: string
+    trigger_kind:
+      type: string
+      enum: [conversion, status, goal]
+    trigger_value:
+      type: string
+    test_event_code:
+      type: string
+
+PatchStatusSchemeRuleRequest:
+  type: object
+  properties:
+    sort_order:
+      type: integer
+      format: int32
+    when_status:
+      type: string
+    when_goal:
+      type: string
+    set_internal_status:
+      type: string
+    set_goal_name:
+      type: string
+    payout_mode:
+      type: string
+      enum: [inherit, fixed, zero, pass_through]
+    payout_micro:
+      type: integer
+      format: int64
+    fire_outbound:
+      type: boolean
+    enabled:
+      type: boolean
 
 MigrationSourceKindMeta:
   type: object
@@ -2423,16 +2667,16 @@ CampaignIntegrationPanel:
         additionalProperties: true
     browser_pixel_script_url:
       type: string
-      description: track.js script URL; uses /_aed/track.js on LANDER_PUBLIC_BASE_URL when configured.
+      description: tag.js script URL; uses /_aed/tag.js on LANDER_PUBLIC_BASE_URL when configured.
     browser_pixel_track_url:
       type: string
       description: POST /track endpoint for browser pixel snippet.
     browser_pixel_snippet:
       type: string
-      description: Copy-paste HTML with conversionEventId and trackEvent call.
+      description: Copy-paste HTML with conversionEventId and sendEvent call.
     browser_pixel_first_party:
       type: boolean
-      description: True when script is served same-origin via lander /_aed/track.js proxy.
+      description: True when script is served same-origin via lander /_aed/tag.js proxy.
 
 MacroPreviewRequest:
   type: object
@@ -2527,6 +2771,112 @@ CampaignBulkActionResponse:
       type: array
       items:
         $ref: '#/CampaignBulkActionResultRow'
+
+CampaignBulkPatchFields:
+  type: object
+  description: Allowlisted campaign fields for bulk PATCH (max 50 campaign_ids per request).
+  properties:
+    target_url:
+      type: string
+    budget_limit_micro:
+      type: integer
+      format: int64
+    budget_limit:
+      type: string
+    pacing_mode:
+      type: string
+    daily_budget_micro:
+      type: integer
+      format: int64
+    timezone:
+      type: string
+    target_countries:
+      type: array
+      items:
+        type: string
+    status:
+      type: string
+      enum: [active, paused, draft, archived]
+    referrer_filter:
+      type: string
+    fallback_click_url:
+      type: string
+    budget_failover_mode:
+      type: string
+      enum: [reject, fallback_url, flow_next]
+    flow_path_weights:
+      type: array
+      items:
+        type: object
+        required: [path_index, weight]
+        properties:
+          path_index:
+            type: integer
+            format: int32
+            minimum: 0
+          weight:
+            type: integer
+            format: int32
+            minimum: 1
+
+CampaignBulkPatchRequest:
+  type: object
+  required: [campaign_ids, patch]
+  properties:
+    campaign_ids:
+      type: array
+      maxItems: 50
+      items:
+        type: string
+        format: uuid
+    patch:
+      $ref: '#/CampaignBulkPatchFields'
+
+CampaignBulkPatchResultRow:
+  type: object
+  required: [id, ok]
+  properties:
+    id:
+      type: string
+      format: uuid
+    ok:
+      type: boolean
+    error_code:
+      type: string
+
+CampaignBulkPatchResponse:
+  type: object
+  required: [results]
+  properties:
+    results:
+      type: array
+      items:
+        $ref: '#/CampaignBulkPatchResultRow'
+
+ProgrammaticClickMintRequest:
+  type: object
+  required: [campaign_id]
+  properties:
+    campaign_id:
+      type: string
+      format: uuid
+    click_id:
+      type: string
+      maxLength: 128
+    params:
+      type: object
+      additionalProperties:
+        type: string
+
+ProgrammaticClickMintResponse:
+  type: object
+  required: [click_id, click_url]
+  properties:
+    click_id:
+      type: string
+    click_url:
+      type: string
+      format: uri
 
 CampaignGeoCountryRow:
   type: object
@@ -2648,4 +2998,83 @@ PlacementBlockSuggestionsResponse:
         $ref: '#/PlacementBlockSuggestion'
     freshness:
       $ref: 'ops_reports.yaml#/DataFreshness'
+
+CampaignGroup:
+  type: object
+  required: [id, customer_id, name, created_at, updated_at]
+  properties:
+    id:
+      type: string
+      format: uuid
+    customer_id:
+      type: string
+      format: uuid
+    name:
+      type: string
+    default_flow_id:
+      type: string
+      format: uuid
+    member_count:
+      type: integer
+      format: int64
+    created_at:
+      type: string
+      format: date-time
+    updated_at:
+      type: string
+      format: date-time
+
+CreateCampaignGroupRequest:
+  type: object
+  required: [customer_id, name]
+  properties:
+    customer_id:
+      type: string
+      format: uuid
+    name:
+      type: string
+    default_flow_id:
+      type: string
+      format: uuid
+
+UpdateCampaignGroupRequest:
+  type: object
+  properties:
+    name:
+      type: string
+    default_flow_id:
+      type: string
+      format: uuid
+      nullable: true
+
+AssignCampaignGroupMembersRequest:
+  type: object
+  required: [campaign_ids]
+  properties:
+    campaign_ids:
+      type: array
+      items:
+        type: string
+        format: uuid
+
+CampaignGroupAssignResultRow:
+  type: object
+  required: [campaign_id, ok]
+  properties:
+    campaign_id:
+      type: string
+      format: uuid
+    ok:
+      type: boolean
+    error_code:
+      type: string
+
+AssignCampaignGroupMembersResponse:
+  type: object
+  required: [results]
+  properties:
+    results:
+      type: array
+      items:
+        $ref: '#/CampaignGroupAssignResultRow'
 

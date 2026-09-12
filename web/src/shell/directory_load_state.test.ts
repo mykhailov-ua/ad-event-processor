@@ -30,7 +30,10 @@ test('resolveDirectoryLoadPhase ready with snapshot despite error', () => {
 });
 
 test('shouldShowDirectoryRefreshError only when snapshot exists', () => {
-  assert.equal(shouldShowDirectoryRefreshError({ fetching: false, error: err, hasSnapshot: true }), true);
+  assert.equal(
+    shouldShowDirectoryRefreshError({ fetching: false, error: err, hasSnapshot: true }),
+    true
+  );
   assert.equal(
     shouldShowDirectoryRefreshError({ fetching: false, error: err, hasSnapshot: false }),
     false

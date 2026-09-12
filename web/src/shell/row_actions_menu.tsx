@@ -24,7 +24,6 @@ export function RowActionsMenu({
       <DropdownMenuTrigger asChild>
         <button
           aria-label={ariaLabel}
-         
           disabled={disabled}
           type="button"
           onClick={(event) => event.stopPropagation()}

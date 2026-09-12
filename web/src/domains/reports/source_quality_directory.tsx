@@ -1,6 +1,8 @@
 import { useCallback, useMemo, useState } from 'react';
 import { Link } from 'react-router-dom';
 
+import { DropdownMenuItem } from '@/components/ui/dropdown-menu';
+
 import type { ReportCompareDeltas, SourceQualityGroupBy, SourceQualityRow } from '@/api/types';
 import { FilterApplyButton } from '@/shell/action_buttons';
 import { CustomerCombobox } from '@/shell/customer_combobox';
@@ -26,7 +28,9 @@ import { resolveEconomicsProfitMicro, resolveEconomicsRoiPct } from '@/lib/econo
 import { adminKit, adminSpacing, adminTypography } from '@/lib/admin_kit';
 import { cn } from '@/lib/utils';
 import { DirectoryStack, MetaLinksBand, TableHost } from '@/shell/ui_bands';
+import { ReportRuleCreateDialog } from '@/domains/reports/report_rule_create_dialog';
 import { useSourceQualityPageWorkspace } from '@/domains/reports/use_source_quality_page_workspace';
+import { DirectoryRowActionsMenu } from '@/shell/directory_row_actions_menu';
 
 const GROUP_BY_OPTIONS: { id: SourceQualityGroupBy; label: string }[] = [
   { id: 'placement', label: 'Placement' },
@@ -164,8 +168,18 @@ function buildSourceQualityOverviewFields(
 }
 
 export function SourceQualityDirectory() {
+  const [ruleDialogOpen, setRuleDialogOpen] = useState(false);
+  const [ruleDialogRow, setRuleDialogRow] = useState<SourceQualityRow | undefined>();
+
   const {
     rows,
+    canWrite,
+    appliedCustomerId,
+    appliedFrom,
+    appliedTo,
+    appliedCampaignId,
+    appliedGroupBy,
+    appliedCompare,
     freshness,
     customerOptions,
     draftCustomerId,
@@ -206,6 +220,11 @@ export function SourceQualityDirectory() {
     [detailMode]
   );
   const nameColumnLabel = sourceQualityNameColumnLabel(draftGroupBy);
+
+  const openCreateRuleDialog = useCallback((row: SourceQualityRow) => {
+    setRuleDialogRow(row);
+    setRuleDialogOpen(true);
+  }, []);
 
   if (fetching && !hasSnapshot && !error) {
     return <PageSkeleton variant="directory" columns={3} />;
@@ -281,7 +300,9 @@ export function SourceQualityDirectory() {
                 </div>
               </FilterField>
               <FilterField label="Compare">
-                <div className={cn('flex items-center', adminSpacing.gap.md, adminKit.controlHeight)}>
+                <div
+                  className={cn('flex items-center', adminSpacing.gap.md, adminKit.controlHeight)}
+                >
                   <Checkbox
                     checked={draftCompare}
                     id="source-quality-compare"
@@ -329,12 +350,44 @@ export function SourceQualityDirectory() {
             overviewTitle={(row) => sourceQualityRowLabel(row)}
             recordById={recordById}
             revalidating={listRevalidating}
+            renderActions={
+              canWrite
+                ? (tableRow, row, openOverview) => (
+                    <DirectoryRowActionsMenu
+                      ariaLabel={`Source quality actions ${tableRow.id}`}
+                      disabled={fetching}
+                      onOverview={openOverview}
+                    >
+                      <DropdownMenuItem
+                        disabled={fetching}
+                        onClick={() => openCreateRuleDialog(row)}
+                      >
+                        Create rule
+                      </DropdownMenuItem>
+                    </DirectoryRowActionsMenu>
+                  )
+                : undefined
+            }
             rows={operateRows}
             selectedId={selectedId}
             onSelectedIdChange={setSelectedId}
           />
         </TableHost>
       )}
+      <ReportRuleCreateDialog
+        filterContext={{
+          customerId: appliedCustomerId,
+          campaignId: appliedCampaignId || undefined,
+          from: appliedFrom,
+          to: appliedTo,
+          groupBy: appliedGroupBy,
+          compare: appliedCompare,
+        }}
+        open={ruleDialogOpen}
+        reportKey="source-quality"
+        row={ruleDialogRow}
+        onOpenChange={setRuleDialogOpen}
+      />
     </PageLayout>
   );
 }

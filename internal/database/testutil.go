@@ -5,7 +5,6 @@ import (
 	"path/filepath"
 	"runtime"
 	"testing"
-	"time"
 
 	"ad-event-processor/pkg/coldpath"
 
@@ -14,7 +13,6 @@ import (
 	"github.com/testcontainers/testcontainers-go"
 	"github.com/testcontainers/testcontainers-go/modules/postgres"
 	rediscontainer "github.com/testcontainers/testcontainers-go/modules/redis"
-	"github.com/testcontainers/testcontainers-go/wait"
 )
 
 type TestDBInfra struct {
@@ -31,10 +29,7 @@ func SetupTestDBInfra(t testing.TB) (infra *TestDBInfra, cleanup func()) {
 		postgres.WithDatabase("testdb"),
 		postgres.WithUsername("user"),
 		postgres.WithPassword("pass"),
-		testcontainers.WithWaitStrategy(
-			wait.ForLog("database system is ready to accept connections").
-				WithOccurrence(2).
-				WithStartupTimeout(15*time.Second)),
+		testcontainers.WithWaitStrategy(PostgresContainerWaitStrategy()),
 	)
 	if err != nil {
 		t.Fatalf("failed to start container: %s", err)
@@ -49,6 +44,7 @@ func SetupTestDBInfra(t testing.TB) (infra *TestDBInfra, cleanup func()) {
 	if err != nil {
 		t.Fatalf("failed to connect to db: %s", err)
 	}
+	WaitPostgresPoolReady(t, ctx, pool)
 
 	applyIngestionMigrations(t, pool)
 

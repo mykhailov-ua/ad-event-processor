@@ -218,10 +218,7 @@ export function CalendarPicker({
 
   return (
     <div className={cn('grid min-w-0', adminKit.fieldLabelGap)}>
-      <Label
-        className="block min-h-[18px] truncate whitespace-nowrap leading-[18px]"
-        htmlFor={id}
-      >
+      <Label className="block min-h-[18px] truncate whitespace-nowrap leading-[18px]" htmlFor={id}>
         {label}
       </Label>
       {field}

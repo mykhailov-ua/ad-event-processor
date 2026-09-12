@@ -68,6 +68,7 @@ func ExportCampaignsBatch(ctx context.Context, host campaign.ImportExportHost, i
 
 	exportedAt := time.Now().UTC().Format(time.RFC3339)
 	needPostback := make([]pgtype.UUID, 0, len(ids))
+	needOutbound := make([]pgtype.UUID, 0, len(ids))
 	needMappings := make([]pgtype.UUID, 0, len(ids))
 	schemaIDs := make([]uuid.UUID, 0, 8)
 	flowIDList := make([]uuid.UUID, 0, 8)
@@ -105,6 +106,7 @@ func ExportCampaignsBatch(ctx context.Context, host campaign.ImportExportHost, i
 		}
 		pgID := domain.ToUUID(id)
 		needPostback = append(needPostback, pgID)
+		needOutbound = append(needOutbound, pgID)
 		needMappings = append(needMappings, pgID)
 		pending = append(pending, pendingExport{id: id, row: row, flow: flowID})
 	}
@@ -121,6 +123,22 @@ func ExportCampaignsBatch(ctx context.Context, host campaign.ImportExportHost, i
 		for i := range pbRows {
 			cid := uuid.UUID(pbRows[i].CampaignID.Bytes)
 			postbackByCampaign[cid] = pbRows[i]
+		}
+	}
+
+	outboundByCampaign := map[uuid.UUID][]db.CampaignOutboundPostback{}
+	if len(needOutbound) > 0 {
+		outboundRows, outboundErr := q.ListOutboundPostbacksByCampaignIDs(ctx, needOutbound)
+		if outboundErr != nil {
+			for _, pe := range pending {
+				out.Errors[pe.id] = outboundErr
+			}
+			return out
+		}
+		for i := range outboundRows {
+			row := db.CampaignOutboundPostbackFromListIDs(outboundRows[i])
+			cid := uuid.UUID(row.CampaignID.Bytes)
+			outboundByCampaign[cid] = append(outboundByCampaign[cid], row)
 		}
 	}
 
@@ -202,6 +220,9 @@ func ExportCampaignsBatch(ctx context.Context, host campaign.ImportExportHost, i
 		}
 		for _, mapping := range mappingsByCampaign[pe.id] {
 			bundle.ConversionMappings = append(bundle.ConversionMappings, campaign.ConversionMappingToDTO(&mapping))
+		}
+		if outboundRows, ok := outboundByCampaign[pe.id]; ok && len(outboundRows) > 0 {
+			bundle.OutboundPostbacks = campaign.ExportOutboundPostbacksFromRows(outboundRows)
 		}
 		if pe.flow != uuid.Nil {
 			cache, ok := flowCache[pe.flow]

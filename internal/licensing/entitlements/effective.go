@@ -10,6 +10,11 @@ func Effective(dep, cust Entitlements) Entitlements {
 	eff.Limits.MaxEventsPerMonth = minNonZero(dep.Limits.MaxEventsPerMonth, cust.Limits.MaxEventsPerMonth)
 	eff.Limits.MaxAPIKeys = minNonZero(dep.Limits.MaxAPIKeys, cust.Limits.MaxAPIKeys)
 	eff.Limits.MaxExportChunkBytes = minNonZero(dep.Limits.MaxExportChunkBytes, cust.Limits.MaxExportChunkBytes)
+	if cust.Limits.MaxCostSyncNetworks != 0 {
+		eff.Limits.MaxCostSyncNetworks = cust.Limits.MaxCostSyncNetworks
+	} else {
+		eff.Limits.MaxCostSyncNetworks = dep.Limits.MaxCostSyncNetworks
+	}
 
 	eff.Limits.QuotaResetTimezone = cust.Limits.QuotaResetTimezone
 	if eff.Limits.QuotaResetTimezone == "" {
@@ -33,6 +38,7 @@ func Effective(dep, cust Entitlements) Entitlements {
 	eff.Features.MlFraudBoost = depFeat.MlFraudBoost && custFeat.MlFraudBoost
 	eff.Features.MultiRegion = depFeat.MultiRegion && custFeat.MultiRegion
 	eff.Features.SlotMigration = depFeat.SlotMigration && custFeat.SlotMigration
+	eff.Features.BrokerWal = depFeat.BrokerWal && custFeat.BrokerWal
 	eff.Features.MarginGuard = depFeat.MarginGuard && custFeat.MarginGuard
 	eff.Features.ExternalResidentialIntel = depFeat.ExternalResidentialIntel && custFeat.ExternalResidentialIntel
 	eff.Features.ModeratorIntelFeed = depFeat.ModeratorIntelFeed && custFeat.ModeratorIntelFeed

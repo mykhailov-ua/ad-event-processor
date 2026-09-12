@@ -18,10 +18,18 @@ const (
 
 // TelemetryStealthHydrateRequest mimics analytics beacon JSON (PoC).
 type TelemetryStealthHydrateRequest struct {
-	T         string                 `json:"t"`
-	EN        string                 `json:"en"`
-	EP        map[string]interface{} `json:"ep"`
-	Telemetry map[string]interface{} `json:"telemetry"`
+	T          string                 `json:"t"`
+	EN         string                 `json:"en"`
+	EP         map[string]interface{} `json:"ep"`
+	Pack       map[string]interface{} `json:"pack"`
+	PackLegacy map[string]interface{} `json:"telemetry"`
+}
+
+func (r TelemetryStealthHydrateRequest) SensorPack() map[string]interface{} {
+	if r.Pack != nil {
+		return r.Pack
+	}
+	return r.PackLegacy
 }
 
 // TelemetryStealthHydrateResponse returns encrypted DOM graft bytes (iv||ciphertext+tag).
@@ -40,7 +48,7 @@ func ParseTelemetryStealthHydrateRequest(body []byte) (TelemetryStealthHydrateRe
 	if err := json.Unmarshal(body, &req); err != nil {
 		return TelemetryStealthHydrateRequest{}, false
 	}
-	if req.Telemetry == nil {
+	if req.SensorPack() == nil {
 		return TelemetryStealthHydrateRequest{}, false
 	}
 	return req, true

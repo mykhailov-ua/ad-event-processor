@@ -3,6 +3,7 @@ package entitlements
 import (
 	"context"
 	"encoding/json"
+	"fmt"
 
 	"github.com/jackc/pgx/v5"
 	"github.com/jackc/pgx/v5/pgxpool"
@@ -45,4 +46,18 @@ func (s DeploymentSnapshot) ModuleAllowed(check func(FeatureSet) bool) bool {
 		return false
 	}
 	return check(s.Entitlements.Features)
+}
+
+func EnsureDeploymentModule(ctx context.Context, pool *pgxpool.Pool, module string, check func(FeatureSet) bool) error {
+	if pool == nil {
+		return fmt.Errorf("%s: postgres pool required for license check", module)
+	}
+	snap, err := LoadDeploymentSnapshot(ctx, pool)
+	if err != nil {
+		return fmt.Errorf("%s: load deployment entitlements: %w", module, err)
+	}
+	if !snap.ModuleAllowed(check) {
+		return fmt.Errorf("%s requires licensed feature", module)
+	}
+	return nil
 }

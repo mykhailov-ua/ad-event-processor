@@ -33,6 +33,7 @@ func (h *ReportsHTTPHandlers) Register(mux *http.ServeMux) {
 	h.registerPostbackReconReport(mux)
 	h.registerConversionTypePayoutReport(mux)
 	h.registerClickLogReport(mux)
+	h.registerReportRules(mux)
 	h.registerPacingDriftReport(mux)
 	h.registerCostCoverageReport(mux)
 	h.registerEdgeParityReport(mux)

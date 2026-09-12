@@ -44,7 +44,7 @@ func (h *AdsPacketHandler) reactAntifraudChallenge(req *Request, c gnet.Conn, ct
 }
 
 func parseAntifraudChallengeCampaignID(path []byte) (uuid.UUID, bool) {
-	if !httpPathHasPrefix(path, antifraudChallengePath) {
+	if !httpPathHasPrefix(path, clientCtxChallengePath) {
 		return uuid.Nil, false
 	}
 	key := []byte("campaign_id=")

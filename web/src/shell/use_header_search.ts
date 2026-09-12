@@ -49,10 +49,7 @@ export function useHeaderSearch() {
     return () => window.clearTimeout(timer);
   }, [trimmedQuery, useServerSearch]);
 
-  const routesResource = useResource(
-    (signal) => fetchCommandPaletteRoutesCached(signal),
-    []
-  );
+  const routesResource = useResource((signal) => fetchCommandPaletteRoutesCached(signal), []);
 
   const routesReady = routesResource.data !== undefined;
 

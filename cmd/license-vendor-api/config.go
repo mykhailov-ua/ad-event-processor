@@ -9,8 +9,10 @@ import (
 	"ad-event-processor/internal/licenseissue"
 )
 
-const envAPIToken = "LICENSE_VENDOR_API_TOKEN"
-const envListen = "LICENSE_VENDOR_API_LISTEN"
+const (
+	envAPIToken = "LICENSE_VENDOR_API_TOKEN"
+	envListen   = "LICENSE_VENDOR_API_LISTEN"
+)
 
 type serverConfig struct {
 	Listen string

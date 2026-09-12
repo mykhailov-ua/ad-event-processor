@@ -76,13 +76,13 @@ export function CostSyncCredentialForm({
   return (
     <FilterPanel>
       <h2 className={adminTypography.sectionTitle}>Upsert credentials</h2>
-      <p className={adminTypography.bodyMuted} >
+      <p className={adminTypography.bodyMuted}>
         Secrets are encrypted at rest. Leave token fields empty to keep existing values on update.
         Click a credentials row below to prefill the network and account fields.
       </p>
 
       <DirectoryFilterForm layout="auto-fill" onSubmit={(event) => event.preventDefault()}>
-        <div className="grid gap-2" >
+        <div className="grid gap-2">
           <Label htmlFor="cost-sync-network">Network</Label>
           {networkOptions.length > 0 ? (
             <Select value={draftNetwork} onValueChange={onDraftNetworkChange} disabled={disabled}>
@@ -106,7 +106,7 @@ export function CostSyncCredentialForm({
             />
           )}
         </div>
-        <div className="grid gap-2" >
+        <div className="grid gap-2">
           <Label htmlFor="cost-sync-account-id">Account ID</Label>
           <Input
             id="cost-sync-account-id"
@@ -115,7 +115,7 @@ export function CostSyncCredentialForm({
             onChange={(event) => onDraftAccountIdChange(event.target.value)}
           />
         </div>
-        <div className="grid gap-2" >
+        <div className="grid gap-2">
           <Label htmlFor="cost-sync-sync-interval">Sync interval (min)</Label>
           <Select
             value={draftSyncIntervalMinutes}
@@ -134,7 +134,7 @@ export function CostSyncCredentialForm({
             </SelectContent>
           </Select>
         </div>
-        <div className="grid gap-2 md:col-span-2" >
+        <div className="grid gap-2 md:col-span-2">
           <Label htmlFor="cost-sync-access-token">Access token</Label>
           <PasswordInput
             id="cost-sync-access-token"
@@ -144,7 +144,7 @@ export function CostSyncCredentialForm({
             onChange={(event) => onDraftAccessTokenChange(event.target.value)}
           />
         </div>
-        <div className="grid gap-2 md:col-span-2" >
+        <div className="grid gap-2 md:col-span-2">
           <Label htmlFor="cost-sync-refresh-token">Refresh token</Label>
           <PasswordInput
             id="cost-sync-refresh-token"
@@ -154,7 +154,7 @@ export function CostSyncCredentialForm({
             onChange={(event) => onDraftRefreshTokenChange(event.target.value)}
           />
         </div>
-        <div className="grid gap-2 md:col-span-2" >
+        <div className="grid gap-2 md:col-span-2">
           <Label htmlFor="cost-sync-api-key">API key</Label>
           <PasswordInput
             id="cost-sync-api-key"
@@ -182,11 +182,9 @@ export function CostSyncCredentialForm({
       ) : null}
       {saveError ? integrationsPanelError(saveError, 'Save failed') : null}
       {deleteError ? integrationsPanelError(deleteError, 'Delete failed') : null}
-      {saveSuccess ? (
-        <p>Credentials saved. List refreshed.</p>
-      ) : null}
+      {saveSuccess ? <p>Credentials saved. List refreshed.</p> : null}
       {deleteSuccess ? (
-        <p className={adminTypography.bodyMuted} >Credentials deleted. List refreshed.</p>
+        <p className={adminTypography.bodyMuted}>Credentials deleted. List refreshed.</p>
       ) : null}
     </FilterPanel>
   );

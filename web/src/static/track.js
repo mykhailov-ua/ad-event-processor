@@ -26,36 +26,36 @@ function appendQueryAttribution(body) {
 
 async function appendTelemetry(body, campaignId) {
   let events = [];
-  const telemetrySnapshot = globalThis.trackTelemetrySnapshot;
-  if (typeof telemetrySnapshot === 'function') {
-    const snapshot = telemetrySnapshot();
+  const evSnapshot = globalThis.tagEvSnapshot;
+  if (typeof evSnapshot === 'function') {
+    const snapshot = evSnapshot();
     if (snapshot && snapshot.events && snapshot.events.length) {
       events = events.concat(snapshot.events);
     }
   }
-  const biometricsSnapshot = globalThis.trackBiometricsSnapshot;
-  if (typeof biometricsSnapshot === 'function') {
-    const snapshot = biometricsSnapshot();
+  const inSnapshot = globalThis.tagInSnapshot;
+  if (typeof inSnapshot === 'function') {
+    const snapshot = inSnapshot();
     if (snapshot && snapshot.events && snapshot.events.length) {
       events = events.concat(snapshot.events);
     }
   }
   if (events.length) {
-    body.telemetry = { events };
+    body.ev = { events };
   }
-  const arm = globalThis.trackAntifraudArm;
+  const arm = globalThis.tagCtxArm;
   if (typeof arm === 'function' && campaignId) {
     arm(campaignId);
   }
-  const whenReady = globalThis.trackAntifraudWhenReady;
+  const whenReady = globalThis.tagCtxReady;
   if (typeof whenReady === 'function') {
     await whenReady();
   }
-  const antifraudSnapshot = globalThis.trackAntifraudSnapshot;
-  if (typeof antifraudSnapshot === 'function') {
-    const snapshot = antifraudSnapshot();
+  const ctxSnapshot = globalThis.tagCtxSnapshot;
+  if (typeof ctxSnapshot === 'function') {
+    const snapshot = ctxSnapshot();
     if (snapshot) {
-      body.antifraud = snapshot;
+      body.ctx = snapshot;
     }
   }
 }
@@ -71,7 +71,7 @@ async function waitMinDwellMs(ms) {
   }
 }
 
-export async function trackEvent(opts) {
+export async function sendEvent(opts) {
   const body = {
     campaign_id: opts.campaignId,
     type: opts.type,
@@ -97,6 +97,12 @@ export async function trackEvent(opts) {
       body[key] = subs[key];
     }
   }
+  if (opts.payoutMicro != null && opts.payoutMicro !== '') {
+    body.payout_micro = String(opts.payoutMicro);
+  }
+  if (opts.goal) {
+    body.goal_name = opts.goal;
+  }
   appendQueryAttribution(body);
   await appendTelemetry(body, opts.campaignId);
   await waitMinDwellMs(opts.minDwellMs);
@@ -109,4 +115,80 @@ export async function trackEvent(opts) {
   });
 }
 
-globalThis.trackEvent = trackEvent;
+const sdkState = {
+  campaignId: '',
+  endpoint: '',
+  clickId: '',
+  subs: {},
+};
+
+export function init(campaignId, opts = {}) {
+  sdkState.campaignId = String(campaignId || '');
+  if (opts.endpoint) {
+    sdkState.endpoint = opts.endpoint;
+  }
+  if (opts.clickId) {
+    sdkState.clickId = opts.clickId;
+  }
+  if (opts.subs) {
+    sdkState.subs = { ...opts.subs };
+  }
+}
+
+export async function click(opts = {}) {
+  return sendEvent({
+    campaignId: opts.campaignId || sdkState.campaignId,
+    type: 'click',
+    endpoint: opts.endpoint || sdkState.endpoint,
+    clickId: opts.clickId || sdkState.clickId,
+    subs: { ...sdkState.subs, ...(opts.subs || {}) },
+    minDwellMs: opts.minDwellMs,
+  });
+}
+
+export async function conversion(goal, payoutMicro, opts = {}) {
+  const subs = { ...sdkState.subs, ...(opts.subs || {}) };
+  if (goal) {
+    subs.sub1 = goal;
+  }
+  return sendEvent({
+    campaignId: opts.campaignId || sdkState.campaignId,
+    type: 'conversion',
+    endpoint: opts.endpoint || sdkState.endpoint,
+    clickId: opts.clickId || sdkState.clickId,
+    eventId: opts.eventId,
+    goal,
+    payoutMicro,
+    subs,
+    minDwellMs: opts.minDwellMs,
+  });
+}
+
+function bootFromScriptTag() {
+  const tag = document.currentScript;
+  if (!tag) {
+    return;
+  }
+  const campaignId = tag.getAttribute('data-campaign-id');
+  const endpoint = tag.getAttribute('data-track-endpoint');
+  if (!campaignId || !endpoint) {
+    return;
+  }
+  init(campaignId, {
+    endpoint,
+    clickId: tag.getAttribute('data-click-id') || '',
+  });
+  if (tag.getAttribute('data-auto-conversion') === '1') {
+    conversion(
+      tag.getAttribute('data-goal') || 'conversion',
+      tag.getAttribute('data-payout-micro') || ''
+    );
+  }
+}
+
+bootFromScriptTag();
+
+globalThis.sendEvent = sendEvent;
+globalThis.init = init;
+globalThis.click = click;
+globalThis.conversion = conversion;

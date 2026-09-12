@@ -54,9 +54,11 @@ export function SettingsSummary({ meta, platformSnapshot }: SettingsSummaryProps
         <SummaryRow label="Product">
           {meta?.product_name?.trim() || 'ad-event-processor'}
         </SummaryRow>
-        <SummaryRow label="Version">{meta?.version?.trim() || '—'}</SummaryRow>
+        <SummaryRow label="Version">{meta?.version?.trim() || '-'}</SummaryRow>
         <SummaryRow label="Bootstrap">
-          {meta?.bootstrap_complete ?? platformSnapshot?.bootstrap_complete ? 'Complete' : 'Pending'}
+          {(meta?.bootstrap_complete ?? platformSnapshot?.bootstrap_complete)
+            ? 'Complete'
+            : 'Pending'}
         </SummaryRow>
         <SummaryRow label="Payment module">
           {meta?.payment_enabled ? 'Enabled' : 'Disabled'}
@@ -83,10 +85,10 @@ export function SettingsSummary({ meta, platformSnapshot }: SettingsSummaryProps
           </SummaryRow>
         ) : null}
         <SummaryRow label="Click URL template">
-          {clickTemplate || (trackingDomain ? '—' : 'Set tracking domain below')}
+          {clickTemplate || (trackingDomain ? '-' : 'Set tracking domain below')}
         </SummaryRow>
         <SummaryRow label="OpenRTB endpoint template">
-          {openrtbTemplate || (trackingDomain ? '—' : 'Set tracking domain below')}
+          {openrtbTemplate || (trackingDomain ? '-' : 'Set tracking domain below')}
         </SummaryRow>
       </div>
       <p className={adminTypography.bodyMuted}>

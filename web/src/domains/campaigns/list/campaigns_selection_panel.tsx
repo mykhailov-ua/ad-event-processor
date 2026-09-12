@@ -13,6 +13,7 @@ import { ValidationErrorBlock } from '@/shell/validation_error_block';
 
 export type CampaignsSelectionPanelProps = {
   selectedCampaign: Campaign | undefined;
+  selectedCount?: number;
   bulkActionError?: Error;
   bulkBusy?: boolean;
   exportError?: Error;
@@ -20,6 +21,7 @@ export type CampaignsSelectionPanelProps = {
   selectionGuardError?: AdminValidationError;
   variant?: 'sidebar' | 'toolbar' | 'inline';
   onClone: () => void;
+  onBulkEdit: () => void;
   onPause: () => void;
   onResume: () => void;
   onArchive: () => void;
@@ -32,6 +34,7 @@ const actionButtonShape = 'default' as const;
 
 export function CampaignsSelectionPanel({
   selectedCampaign,
+  selectedCount = 0,
   bulkActionError,
   bulkBusy = false,
   exportError,
@@ -39,6 +42,7 @@ export function CampaignsSelectionPanel({
   selectionGuardError,
   variant = 'sidebar',
   onClone,
+  onBulkEdit,
   onPause,
   onResume,
   onArchive,
@@ -65,25 +69,69 @@ export function CampaignsSelectionPanel({
           <Link to={`/campaigns/${selectedCampaign.id}/edit`}>Edit</Link>
         </PrimaryActionButton>
       ) : null}
-      <SecondaryActionButton disabled={busy} shape={actionButtonShape} type="button" onClick={onClone}>
+      <SecondaryActionButton
+        disabled={busy || selectedCount === 0}
+        shape={actionButtonShape}
+        type="button"
+        onClick={onBulkEdit}
+      >
+        Bulk edit{selectedCount > 0 ? ` (${selectedCount})` : ''}
+      </SecondaryActionButton>
+      <SecondaryActionButton
+        disabled={busy || !selectedCampaign?.id}
+        shape={actionButtonShape}
+        type="button"
+        onClick={onClone}
+      >
         Clone
       </SecondaryActionButton>
-      <SecondaryActionButton disabled={busy} shape={actionButtonShape} type="button" onClick={onPause}>
+      <SecondaryActionButton
+        disabled={busy}
+        shape={actionButtonShape}
+        type="button"
+        onClick={onPause}
+      >
         Pause
       </SecondaryActionButton>
-      <SecondaryActionButton disabled={busy} shape={actionButtonShape} type="button" onClick={onResume}>
+      <SecondaryActionButton
+        disabled={busy}
+        shape={actionButtonShape}
+        type="button"
+        onClick={onResume}
+      >
         Resume
       </SecondaryActionButton>
-      <Button disabled={busy} shape={actionButtonShape} type="button" variant="destructive" onClick={onArchive}>
+      <Button
+        disabled={busy}
+        shape={actionButtonShape}
+        type="button"
+        variant="destructive"
+        onClick={onArchive}
+      >
         Archive
       </Button>
-      <SecondaryActionButton disabled={busy} shape={actionButtonShape} type="button" onClick={onExportCsv}>
+      <SecondaryActionButton
+        disabled={busy}
+        shape={actionButtonShape}
+        type="button"
+        onClick={onExportCsv}
+      >
         Export CSV
       </SecondaryActionButton>
-      <SecondaryActionButton disabled={busy} shape={actionButtonShape} type="button" onClick={onExportBundles}>
+      <SecondaryActionButton
+        disabled={busy}
+        shape={actionButtonShape}
+        type="button"
+        onClick={onExportBundles}
+      >
         Export JSON
       </SecondaryActionButton>
-      <SecondaryActionButton disabled={busy} shape={actionButtonShape} type="button" onClick={onClearSelection}>
+      <SecondaryActionButton
+        disabled={busy}
+        shape={actionButtonShape}
+        type="button"
+        onClick={onClearSelection}
+      >
         Clear selection
       </SecondaryActionButton>
     </>

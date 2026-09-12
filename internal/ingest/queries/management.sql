@@ -320,6 +320,10 @@ WHERE deleted_at IS NULL
     sqlc.narg('pacing_mode')::text IS NULL
     OR btrim(sqlc.narg('pacing_mode')::text) = ''
     OR pacing_mode::text ILIKE btrim(sqlc.narg('pacing_mode')::text)
+  )
+  AND (
+    sqlc.narg('campaign_group_id')::uuid IS NULL
+    OR campaign_group_id = sqlc.narg('campaign_group_id')::uuid
   );
 
 -- name: ListCampaignTargetCountries :many
@@ -510,6 +514,10 @@ WHERE campaigns.deleted_at IS NULL
     OR btrim(sqlc.narg('pacing_mode')::text) = ''
     OR campaigns.pacing_mode::text ILIKE btrim(sqlc.narg('pacing_mode')::text)
   )
+  AND (
+    sqlc.narg('campaign_group_id')::uuid IS NULL
+    OR campaigns.campaign_group_id = sqlc.narg('campaign_group_id')::uuid
+  )
 ORDER BY
   (CASE WHEN COALESCE(sqlc.narg('sort_field')::text, 'updated_at') = 'name' AND COALESCE(sqlc.narg('sort_desc')::boolean, true) THEN lower(campaigns.name) END) DESC NULLS LAST,
   (CASE WHEN COALESCE(sqlc.narg('sort_field')::text, 'updated_at') = 'name' AND NOT COALESCE(sqlc.narg('sort_desc')::boolean, true) THEN lower(campaigns.name) END) ASC NULLS LAST,
@@ -584,6 +592,10 @@ LEFT JOIN (
         OR btrim(sqlc.narg('pacing_mode')::text) = ''
         OR pacing_mode::text ILIKE btrim(sqlc.narg('pacing_mode')::text)
       )
+      AND (
+        sqlc.narg('campaign_group_id')::uuid IS NULL
+        OR campaign_group_id = sqlc.narg('campaign_group_id')::uuid
+      )
   ) filtered ON filtered.id = cs.campaign_id
   WHERE cs.date >= sqlc.narg('stats_from')::date
     AND cs.date <= sqlc.narg('stats_to')::date
@@ -623,6 +635,10 @@ WHERE deleted_at IS NULL
     sqlc.narg('pacing_mode')::text IS NULL
     OR btrim(sqlc.narg('pacing_mode')::text) = ''
     OR pacing_mode::text ILIKE btrim(sqlc.narg('pacing_mode')::text)
+  )
+  AND (
+    sqlc.narg('campaign_group_id')::uuid IS NULL
+    OR campaign_group_id = sqlc.narg('campaign_group_id')::uuid
   )
 ORDER BY
   (CASE WHEN COALESCE(sqlc.narg('sort_field')::text, 'updated_at') = 'clicks' AND COALESCE(sqlc.narg('sort_desc')::boolean, true) THEN COALESCE(stats.stat_clicks, 0) END) DESC NULLS LAST,

@@ -65,8 +65,8 @@ export function CampaignOpsPanel({ campaignId, workspace }: CampaignOpsPanelProp
   } = workspace;
 
   return (
-    <div >
-      <div >
+    <div>
+      <div>
         <Button disabled={busy} onClick={onLoadEvents} type="button" variant="outline">
           {loadingKey === 'events' ? 'Loading...' : 'Events'}
         </Button>
@@ -85,19 +85,15 @@ export function CampaignOpsPanel({ campaignId, workspace }: CampaignOpsPanelProp
       </div>
 
       {statusIntegrationSchemaName ? (
-        <FilterPanel >
-          <h3 >Status integration preset</h3>
+        <FilterPanel>
+          <h3>Status integration preset</h3>
           <p>{statusIntegrationSchemaName}</p>
           {statusIntegrationSchemaId ? (
             <Button disabled={busy} onClick={onSyncFromPreset} type="button" variant="secondary">
               {syncingPreset ? 'Syncing...' : 'Sync from preset'}
             </Button>
           ) : null}
-          {syncPresetMessage ? (
-            <p  role="status">
-              {syncPresetMessage}
-            </p>
-          ) : null}
+          {syncPresetMessage ? <p role="status">{syncPresetMessage}</p> : null}
         </FilterPanel>
       ) : null}
 
@@ -114,8 +110,8 @@ export function CampaignOpsPanel({ campaignId, workspace }: CampaignOpsPanelProp
       />
 
       {margin ? (
-        <FilterPanel >
-          <h3 >Margin</h3>
+        <FilterPanel>
+          <h3>Margin</h3>
           <p>
             Operator margin (micro): <strong>{margin.operator_margin_micro ?? ''}</strong>
           </p>
@@ -142,7 +138,7 @@ export function CampaignOpsPanel({ campaignId, workspace }: CampaignOpsPanelProp
               <TableRow key={`${row.click_id ?? 'event'}-${index}`}>
                 <TableCell>{displayTimestamp(row.created_at)}</TableCell>
                 <TableCell>{row.event_type ?? ''}</TableCell>
-                <TableCell >{row.click_id ?? ''}</TableCell>
+                <TableCell>{row.click_id ?? ''}</TableCell>
               </TableRow>
             ))}
           </TableBody>
@@ -150,8 +146,8 @@ export function CampaignOpsPanel({ campaignId, workspace }: CampaignOpsPanelProp
       ) : null}
 
       {mappings ? (
-        <FilterPanel >
-          <h3 >Conversion mappings</h3>
+        <FilterPanel>
+          <h3>Conversion mappings</h3>
           {mappingDrafts.map((draft, index) => (
             <DirectoryFilterForm
               key={`mapping-${index}`}
@@ -194,7 +190,7 @@ export function CampaignOpsPanel({ campaignId, workspace }: CampaignOpsPanelProp
               </FilterField>
             </DirectoryFilterForm>
           ))}
-          <div >
+          <div>
             <Button
               disabled={busy}
               onClick={() =>
@@ -212,11 +208,7 @@ export function CampaignOpsPanel({ campaignId, workspace }: CampaignOpsPanelProp
               {savingMappings ? 'Saving...' : 'Save mappings'}
             </Button>
           </div>
-          {mappingSaveSuccess ? (
-            <p  role="status">
-              Conversion mappings saved.
-            </p>
-          ) : null}
+          {mappingSaveSuccess ? <p role="status">Conversion mappings saved.</p> : null}
         </FilterPanel>
       ) : null}
 
@@ -233,7 +225,7 @@ export function CampaignOpsPanel({ campaignId, workspace }: CampaignOpsPanelProp
           <TableBody>
             {suggestions.map((row) => (
               <TableRow key={row.placement_id}>
-                <TableCell >{row.placement_id}</TableCell>
+                <TableCell>{row.placement_id}</TableCell>
                 <TableCell>{row.ivt_rate_label ?? row.ivt_rate ?? ''}</TableCell>
                 <TableCell>{row.reason_label ?? row.suggested_action ?? ''}</TableCell>
                 <TableCell>
@@ -252,7 +244,7 @@ export function CampaignOpsPanel({ campaignId, workspace }: CampaignOpsPanelProp
         </DirectoryTable>
       ) : null}
 
-      <div >
+      <div>
         <FilterField htmlFor="ops-placement-id" label="Placement ID to block">
           <Input
             id="ops-placement-id"

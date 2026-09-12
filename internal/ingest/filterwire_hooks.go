@@ -6,7 +6,6 @@ import (
 	"ad-event-processor/internal/domain"
 	"ad-event-processor/internal/filter"
 	"ad-event-processor/internal/metrics"
-	"ad-event-processor/internal/telemetry"
 )
 
 type filterRejectSpec struct {
@@ -44,7 +43,6 @@ var filterRejectSpecs = [...]filterRejectSpec{
 
 func recordHTTPFilterReject(kind filter.FilterRejectKind, evt *domain.Event) {
 	metrics.FilterBlockedTotal.WithLabelValues(filterRejectSpecs[kind].metricLabel).Inc()
-	telemetry.RecordRejected()
 	filter.RecordFilterRejectCountrySample(kind, evt, nil, 0)
 }
 

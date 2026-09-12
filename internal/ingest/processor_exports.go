@@ -10,6 +10,8 @@ type (
 	SpendSyncTransport        = stream.SpendSyncTransport
 	SpendSyncProducer         = stream.SpendSyncProducer
 	ConversionPayoutApplier   = stream.ConversionPayoutApplier
+	ConversionLedgerApplier   = stream.ConversionLedgerApplier
+	StatusSchemeApplier       = stream.StatusSchemeApplier
 	ProcessorWeightController = stream.ProcessorWeightController
 	SettlementWorker          = stream.SettlementWorker
 	BrokerStreamConsumer      = stream.BrokerStreamConsumer
@@ -25,6 +27,8 @@ var (
 	NewProcessorPostgresGate            = stream.NewProcessorPostgresGate
 	NewProcessorClickHouseGate          = stream.NewProcessorClickHouseGate
 	NewConversionPayoutApplier          = stream.NewConversionPayoutApplier
+	NewConversionLedgerApplier          = stream.NewConversionLedgerApplier
+	NewStatusSchemeApplier              = stream.NewStatusSchemeApplier
 	NewPgxAffiliateStatusSchemaStore    = stream.NewPgxAffiliateStatusSchemaStore
 	NewSettlementStore                  = stream.NewSettlementStore
 	NewSettlementWorker                 = stream.NewSettlementWorker

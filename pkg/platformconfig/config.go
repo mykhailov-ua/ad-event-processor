@@ -74,7 +74,7 @@ func Default() Config {
 		DefaultCurrency:  "USD",
 		Timezone:         "UTC",
 		IngressSchema:    IngressAdEventProcessorNative,
-		TelemetryEnabled: true,
+		TelemetryEnabled: false,
 		Profile:          ProfileSingleVPS,
 		EdgeExposeClick:  true,
 		NetworkInterface: "eth0",

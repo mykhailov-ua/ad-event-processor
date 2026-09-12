@@ -57,8 +57,7 @@ export function DashboardAdopsCampaignsList({
   }
 
   const truncated =
-    tableMeta?.truncated === true ||
-    (tableMeta?.total != null && tableMeta.total > visible.length);
+    tableMeta?.truncated === true || (tableMeta?.total != null && tableMeta.total > visible.length);
 
   return (
     <DashboardPanelSection
@@ -96,7 +95,7 @@ export function DashboardAdopsCampaignsList({
                   {row.name ?? row.id}
                 </Link>
               ) : (
-                row.name ?? ''
+                (row.name ?? '')
               )}
             </TableCell>
             <TableCell>

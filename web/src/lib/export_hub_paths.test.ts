@@ -20,8 +20,5 @@ test('resolveExportHubReturnHref restores in-app return path', () => {
   const params = new URLSearchParams(
     'return_to=%2Fcampaigns%3Fcustomer_id%3Dabc%26status%3DACTIVE'
   );
-  assert.equal(
-    resolveExportHubReturnHref(params),
-    '/campaigns?customer_id=abc&status=ACTIVE'
-  );
+  assert.equal(resolveExportHubReturnHref(params), '/campaigns?customer_id=abc&status=ACTIVE');
 });

@@ -271,7 +271,10 @@ export function useCampaignEditorActions({
     setClonePreview(undefined);
 
     try {
-      const result = await previewCampaignClone(id, buildCloneRequestBody(cloneNameSuffix, cloneOptions));
+      const result = await previewCampaignClone(
+        id,
+        buildCloneRequestBody(cloneNameSuffix, cloneOptions)
+      );
       setClonePreview(result);
     } catch (err: unknown) {
       if (isAbortError(err)) {
@@ -326,7 +329,9 @@ export function useCampaignEditorActions({
 
     const against = diffAgainstId.trim();
     if (against === '') {
-      setDiffError(validationError('Enter a campaign id to compare against.', { field: 'diff_against_id' }));
+      setDiffError(
+        validationError('Enter a campaign id to compare against.', { field: 'diff_against_id' })
+      );
       setDiffResult(undefined);
       return;
     }

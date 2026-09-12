@@ -27,6 +27,24 @@ func LoadHeartbeatPolicyFromEnv() HeartbeatPolicy {
 			p.RenewBeforeDays = n
 		}
 	}
+	return normalizeHeartbeatPolicy(p)
+}
+
+func HeartbeatPolicyFromClaims(claims *LicenseClaims, envFallback HeartbeatPolicy) HeartbeatPolicy {
+	p := envFallback
+	if claims == nil {
+		return normalizeHeartbeatPolicy(p)
+	}
+	if claims.OfflineGraceDays > 0 || claims.Plan == "pilot" {
+		p.OfflineGraceDays = claims.OfflineGraceDays
+	}
+	if claims.PreRenewalWarnDays > 0 {
+		p.RenewBeforeDays = claims.PreRenewalWarnDays
+	}
+	return normalizeHeartbeatPolicy(p)
+}
+
+func normalizeHeartbeatPolicy(p HeartbeatPolicy) HeartbeatPolicy {
 	if p.RenewBeforeDays > p.OfflineGraceDays {
 		p.RenewBeforeDays = p.OfflineGraceDays
 	}

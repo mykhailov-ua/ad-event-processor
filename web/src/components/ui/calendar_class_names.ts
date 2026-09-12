@@ -67,7 +67,10 @@ export function buildCalendarClassNames(captionLayout: CalendarCaptionLayout = '
     selected: '',
     today: '',
     focused: '',
-    outside: cn('text-muted-foreground aria-selected:text-muted-foreground', defaultClassNames.outside),
+    outside: cn(
+      'text-muted-foreground aria-selected:text-muted-foreground',
+      defaultClassNames.outside
+    ),
     disabled: cn('text-muted-foreground opacity-40', defaultClassNames.disabled),
     hidden: cn('invisible', defaultClassNames.hidden),
   };

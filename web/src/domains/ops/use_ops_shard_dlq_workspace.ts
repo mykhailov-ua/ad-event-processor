@@ -44,10 +44,7 @@ export function useOpsShardDlqWorkspace() {
     error,
     fetching,
     revalidating: listRevalidating,
-  } = useResource(
-    (signal) => listOpsDlq({ limit, cursor }, signal),
-    [limit, cursor, refreshToken]
-  );
+  } = useResource((signal) => listOpsDlq({ limit, cursor }, signal), [limit, cursor, refreshToken]);
 
   const bumpRefreshCoalesced = useCoalescedBumpRefresh(bumpRefresh, fetching || retryingId != null);
 

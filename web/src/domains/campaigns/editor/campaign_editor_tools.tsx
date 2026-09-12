@@ -28,13 +28,13 @@ export function CampaignEditorTools({
   const tools = useCampaignEditorToolsLoad(campaignId, campaign);
 
   return (
-    <section className={cn(EDITOR_MAIN_COLUMN_CLASS, 'gap-4')} >
+    <section className={cn(EDITOR_MAIN_COLUMN_CLASS, 'gap-4')}>
       <h2 className={adminTypography.sectionTitle}>Campaign tools</h2>
-      <div className="flex flex-wrap gap-2" >
+      <div className="flex flex-wrap gap-2">
         {TOOL_TABS.map((item) => (
           <Button
-            className="focus-visible:ring-0 focus-visible:ring-offset-0" key={item.id}
-           
+            className="focus-visible:ring-0 focus-visible:ring-offset-0"
+            key={item.id}
             type="button"
             variant={tools.tab === item.id ? 'default' : 'outline'}
             onClick={() => tools.setTab(item.id)}

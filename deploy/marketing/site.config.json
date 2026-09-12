@@ -51,7 +51,7 @@
     "intro": "Before you request a pilot or contact sales, confirm you accept the public offer for BidShard self-hosted software.",
     "points": [
       "License runs on your VPS or dedicated server; vendor does not host your traffic by default.",
-      "Paid tiers differ by hosts, API keys, export limits, and feature flags in the JWT. Campaign and event volume are unlimited — scale on your hardware.",
+      "Paid tiers differ by licensed hosts, client workspaces, export limits, and feature flags in the JWT. Event and campaign volume are unlimited on your hardware.",
       "Monthly USDT fees are non-refundable after JWT delivery except vendor failure to deliver within 5 business days.",
       "You are responsible for lawful use, VPS security, backups, and end-user privacy on your deployment.",
       "Documented force majeure (host loss, provider shutdown, emergency relocation) may qualify for additional license activations at vendor discretion — contact support before rebinding hardware."
@@ -110,7 +110,7 @@
       },
       {
         "title": "Optional depth when licensed",
-        "body": "Broker WAL, eBPF edge drops, OpenRTB live auction — add when you need them, not required for a pilot."
+        "body": "Optional broker WAL (CH_INGEST_SOURCE=broker), Enterprise eBPF XDP (listed L4 only), OpenRTB live auction — add when licensed and sized for them."
       }
     ],
     "cta": "Read full architecture",
@@ -157,23 +157,23 @@
   "instant_sell": {
     "margin_guard": {
       "eyebrow": "Margin Guard",
-      "title": "Pause campaigns before profit turns red",
-      "body": "Compares spend to payout every few minutes. When ROI drops below your threshold, campaigns pause automatically — not just a Telegram alert you read after the budget is gone.",
-      "metric": "Checked every few minutes",
-      "footnote": "Example: +12% at lunch, -8% by 6pm — paused before the overnight bleed."
+      "title": "Auto-pause routing when margin rules breach",
+      "body": "Background worker (default every 5 minutes) compares Postgres ledger totals and ClickHouse placement stats to your policy. On breach it enqueues an internal pause — Redis budget removal or placement block inside your install. It does not call Meta or Google APIs unless you add Enterprise platform sync separately.",
+      "metric": "Default interval: 5 minutes",
+      "footnote": "Skips evaluation when ClickHouse lag exceeds 5 minutes. Delayed postbacks or cost-sync gaps can look like a ROI dip — tune thresholds before relying on auto-pause in production."
     }
   },
   "killers": [
     {
       "id": "wasm",
-      "tier": "Starter+",
+      "tier": "Pro+",
       "title": "Drop the cloaker bill",
       "body": "Built-in funnel protection and safe-page checks — no $300–600/month third-party cloaker. Same protection on accepted traffic, more margin left after media spend.",
       "icon": "funnel"
     },
     {
       "id": "silent",
-      "tier": "Starter+",
+      "tier": "Pro+",
       "title": "Bots see OK — your budget does not move",
       "body": "Junk traffic gets a clean accept response while your campaign budget stays intact. Reviewers and bots see a normal funnel; you see every filtered hit in analytics.",
       "icon": "ghost"
@@ -188,13 +188,13 @@
     {
       "id": "margin_guard",
       "tier": "Pro+",
-      "title": "ROI turned red? Campaign pauses, not just an alert",
-      "body": "Margin Guard compares spend to payout every few minutes. Below your threshold the campaign pauses automatically — while filters still block junk spend on every click.",
+      "title": "ROI breach? Routing pauses inside your stack",
+      "body": "Timer-based checks on ledger and ClickHouse stats — not live polling of 25 ad networks. Breach enqueues an internal pause; ads in Meta or Google keep running until you change them there or use Enterprise platform sync.",
       "icon": "gauge"
     },
     {
       "id": "capi",
-      "tier": "Starter+",
+      "tier": "Pro+",
       "title": "Conversions networks can optimize on",
       "body": "Meta, Google, and TikTok conversion APIs on your server — real postback signal to the ad stack, not a half-synced browser pixel.",
       "icon": "capi"
@@ -232,15 +232,15 @@
       "id": "xdp",
       "tier": "Enterprise",
       "landing": false,
-      "title": "L4 junk hits your wire bill first",
-      "body": "Edge packet filtering drops flood traffic before it reaches your tracker or bandwidth invoice — for installs under heavy bot waves.",
+      "title": "Optional L4 edge filter on bare metal",
+      "body": "Enterprise eBPF XDP drops listed bad IPs and rate-limited SYN traffic on the NIC. Does not replace CDN or DDoS scrubbing; rotating proxies still reach nginx and L7 filters.",
       "icon": "shield"
     }
   ],
   "outcomes_compact": [
     "Ad networks get real conversion signal — Meta, Google, TikTok — so bidding improves",
     "Junk traffic does not debit your campaign budget",
-    "Spend numbers match ad networks — no end-of-day CSV panic",
+    "Cost sync imports network spend on a schedule — reconcile, do not assume real-time parity",
     "See where conversions disappeared before the week closes red",
     "One install replaces tracker + cloaker + separate IVT bill",
     "Team permissions so juniors do not kill production campaigns",
@@ -253,9 +253,9 @@
     "Click routing and S2S postbacks — spend only on traffic you accept",
     "Silent reject and rule filters — less budget burned on junk",
     "Fraud scoring on your data in the background — not chat AI on every click, no token API bills",
-    "Cost sync from 25 ad networks — ROI from real network numbers",
+    "Cost sync from configured ad networks — hourly and 15-minute import jobs, separate from Margin Guard",
     "Smart alerts to Slack or Telegram — act before the day ends red",
-    "Team RBAC and API keys — fewer costly operator mistakes",
+    "Team RBAC — fewer costly operator mistakes",
     "Export bundles for partner disputes and month-end reconciliation",
     "OpenRTB bid endpoint — programmatic revenue on Network tier"
   ],
@@ -264,6 +264,7 @@
     "subtitle": "Most teams run a test VPS in parallel first — not a full GEO swap on day one. We send a license file; you point one test campaign and compare numbers.",
     "install_cli_title": "Install command (for your DevOps)",
     "install_cli_summary": "Show install command",
+    "install_cli_summary_close": "Close install command",
     "cta_primary": "Get free pilot",
     "cta_docs": "Architecture",
     "cta_install": "Install command",
@@ -291,58 +292,58 @@
         "highlight": true,
         "items": [
           "License from $129/mo — cloaker-class protection, CAPI, Mini Apps in one line item",
-          "Built for high-volume click workloads — stable memory under spikes",
-          "Columnar analytics store — less RAM per billion events on the same box",
-          "Right-size the VPS for your volume — not overprovisioned for legacy runtime peaks",
-          "Margin Guard pauses campaigns when ROI drops — not a Telegram alert after the bleed",
-          "Junk traffic sees a clean accept — your budget does not move"
+          "Columnar ClickHouse for analytics — size RAM for reports and merge load, not just ingest",
+          "Starter/Pro: single VPS (12–16 GB typical). Scale+: split tracker, Redis, and reporting",
+          "Under overload the tracker returns 503 fail-closed — sizing and role split matter",
+          "Margin Guard pauses routing inside your install — separate from cost-sync API polling",
+          "Silent reject: junk traffic gets 202 decoy — campaign budget is not debited"
         ],
-        "summary": "$400–550/mo license + right-sized VPS for the same 10M events/mo workload"
+        "summary": "License from $129/mo + VPS sized per hardware guide — throughput is not guaranteed on one box"
       }
     ],
     "impacts": {
       "title": "Where the money goes at 10M events/mo",
-      "subtitle": "Subscription math is noise. Infrastructure, bot budget, and uptime at volume — that is the migration case.",
+      "subtitle": "Illustrative comparison at ~10M events/mo average — not a guaranteed savings calculator. Spike shape and VPS layout dominate real cost.",
       "headers": {
         "driver": "Driver",
         "patchwork": "Patchwork",
         "bidshard": "BidShard",
-        "impact": "TCO impact"
+        "impact": "Notes"
       },
       "rows": [
         {
           "label": "Infrastructure",
-          "patchwork": "32–64 GB VPS — legacy tracker spikes, row-store DB for reporting at event scale",
-          "bidshard": "16–24 GB — high-volume ingest, columnar analytics on the same box",
-          "delta": "$800–1,600/mo",
-          "delta_note": "smaller box, same peak throughput"
+          "patchwork": "Often 32–64 GB VPS compensating for legacy runtime spikes and row-store reporting",
+          "bidshard": "Starter/Pro: 12–16 GB single VPS for moderate volume. Scale+: split tracker, Redis, ClickHouse. Shared disk: CH merge competes with ingest under spikes",
+          "delta": "Sizing-dependent",
+          "delta_note": "see hardware sizing table — no fixed RAM promise"
         },
         {
           "label": "SaaS stack",
           "patchwork": "Tracker + cloaker + IVT — three invoices, three renewals",
-          "bidshard": "One license — routing, antifraud, reporting",
-          "delta": "$300–600/mo",
-          "delta_note": "cloaker-class protection in Starter"
+          "bidshard": "One license — routing, rule antifraud, reporting, optional ML sidecars",
+          "delta": "Fewer renewals",
+          "delta_note": "license consolidation is the main SaaS delta"
         },
         {
-          "label": "Retained ad spend",
-          "patchwork": "Bots and junk still debit budget — alerts after the day bleeds red",
-          "bidshard": "Silent Reject + Margin Guard — budget stays on real clicks",
-          "delta": "$2,400–8,000/mo",
-          "delta_note": "12% junk × $0.04 CPC on 10M clicks"
+          "label": "Junk spend",
+          "patchwork": "Bots can still debit budget — alerts often arrive after the bleed",
+          "bidshard": "Silent reject stops budget debit on filtered traffic; Margin Guard is a separate timer-based routing pause",
+          "delta": "Policy-dependent",
+          "delta_note": "no guaranteed % saved — depends on your traffic mix"
         },
         {
-          "label": "Spike downtime",
-          "patchwork": "20 min DB lock or tracker OOM during funnel spike",
-          "bidshard": "Keeps accepting clicks when traffic spikes — less lost revenue per incident",
-          "delta": "$1k–5k",
-          "delta_note": "per incident — lost revenue, not license fees"
+          "label": "Spike overload",
+          "patchwork": "OOM or DB lock — hard downtime",
+          "bidshard": "Fail-closed 503 when overloaded; ClickHouse reports on the same host can still cause OOM if undersized",
+          "delta": "Ops discipline",
+          "delta_note": "not a throughput SLA on one VPS"
         }
       ],
       "total": {
-        "label": "Typical TCO gap vs patchwork at this volume",
-        "value": "$4,500–16,000/mo",
-        "body": "Trackers do not fail because the license is expensive. They fail because legacy stacks eat RAM on spikes and reporting buckles under event volume. BidShard is built for that workload.",
+        "label": "What is actually different",
+        "value": "One license, your metal",
+        "body": "We consolidate tracker, rule antifraud, and reporting in one self-hosted install. Infrastructure cost and spike behavior depend on how you size and split roles — see architecture docs and hardware sizing.",
         "architecture_link": "How it is built"
       }
     }
@@ -357,11 +358,14 @@
       "specs_label": "Pilot includes",
       "features": [
         { "text": "10-day trial · 1 server · full click routing on your VPS", "highlight": true },
-        { "text": "Silent reject + rule antifraud — test budget protection free", "highlight": true },
-        { "text": "Margin Guard ROI auto-pause", "highlight": true },
+        {
+          "text": "Silent reject + rule antifraud — test budget protection free",
+          "highlight": true
+        },
+        { "text": "Margin Guard — internal routing auto-pause (timer-based)", "highlight": true },
         "Rule antifraud: geo, schedule, device, consent filters",
-        "S2S postbacks + cost sync from ad networks",
-        "Admin console · 3 API keys · 1 tenant",
+        "S2S postbacks + scheduled cost sync (when credentials configured)",
+        "Admin console · 1 client workspace",
         "Not included: IVT ML, ML fraud boost, OpenRTB, slot migration"
       ],
       "cta": "Request pilot",
@@ -376,16 +380,21 @@
       "tagline": "Keitaro-class routing — plus CAPI and Telegram Mini Apps in one license.",
       "specs_label": "Starter — CAPI, Mini Apps & margin",
       "features": [
-        { "text": "Meta / Google / TikTok CAPI — networks bid on real conversions", "highlight": true },
-        { "text": "Telegram Mini App flows — funnels in Telegram without a second SaaS bill", "highlight": true },
+        {
+          "text": "Meta / Google / TikTok CAPI — networks bid on real conversions",
+          "highlight": true
+        },
+        {
+          "text": "Telegram Mini App flows — funnels in Telegram without a second SaaS bill",
+          "highlight": true
+        },
         { "text": "Silent reject — 202 decoy, budget not debited", "highlight": true },
-        "Unlimited campaigns & events on your metal",
-        "Click routing, flows, landers, offer walls",
+        "Click routing, flows, landers, multi-offer flows",
         "Rule antifraud + geo/schedule/device filters",
-        "Margin Guard + cost sync (25 ad networks)",
+        "Cost sync — up to 3 ad networks (scheduled import)",
         "S2S postbacks",
         "Smart alerts to Slack or Telegram",
-        "1 host · 5 API keys · 3 tenants",
+        "1 licensed host · up to 3 client workspaces",
         "Report exports up to 5 MiB per chunk"
       ],
       "cta": "Choose Starter",
@@ -400,12 +409,19 @@
       "specs_label": "Pro — IVT + conversion audit",
       "features": [
         "Everything in Starter",
-        { "text": "IVT on your data — catch invalid traffic before it eats budget", "highlight": true },
-        { "text": "Postback trail — see where conversions disappear (network, tracker, affiliate)", "highlight": true },
+        {
+          "text": "IVT on your data — catch invalid traffic before it eats budget",
+          "highlight": true
+        },
+        {
+          "text": "Postback trail — see where conversions disappear (network, tracker, affiliate)",
+          "highlight": true
+        },
         { "text": "Fraud stream + silent reject analytics in ClickHouse", "highlight": true },
+        "Margin Guard (ledger + ClickHouse stats, default 5 min)",
+        "Cost sync — up to 15 ad networks",
         "Multi-host license bind (same deployment)",
-        "Team RBAC across tenants",
-        "10 API keys · 10 tenants",
+        "Team RBAC · up to 10 client workspaces",
         "Report exports up to 10 MiB per chunk"
       ],
       "cta": "Choose Pro",
@@ -421,13 +437,16 @@
       "specs_label": "Scale — ML intel & migration",
       "features": [
         "Everything in Pro",
-        { "text": "Precomputed fraud risk before each click — ML boost snapshot", "highlight": true },
+        {
+          "text": "Precomputed fraud risk before each click — ML boost snapshot",
+          "highlight": true
+        },
         { "text": "Slot migration — move shards without idle revenue days", "highlight": true },
         { "text": "Fraud dispute evidence export bundles", "highlight": true },
         "Moderator intel feed (reviewer traffic signals)",
         "External residential proxy intel on hot read",
-        "Optional mmap broker WAL ingest path",
-        "3 host activations · 25 tenants · 25 API keys",
+        "Broker WAL ingest (JWT broker_wal; CH_INGEST_SOURCE=broker; default is Redis streams)",
+        "Up to 3 licensed hosts · 25 client workspaces",
         "Report exports up to 50 MiB per chunk"
       ],
       "cta": "Choose Scale",
@@ -447,7 +466,7 @@
         { "text": "Multi-node ingest across host activations", "highlight": true },
         "RTB catalog + programmatic revenue path",
         "All Scale intel feeds + dispute exports",
-        "10 host activations · 50 tenants · 50 API keys",
+        "Up to 10 licensed hosts · 50 client workspaces",
         "Report exports up to 100 MiB per chunk"
       ],
       "cta": "Choose Network",
@@ -458,16 +477,22 @@
       "name": "Enterprise",
       "price": "$2,999+",
       "period": "/ month",
-      "tagline": "Drop L4 junk before your host bills you for bandwidth.",
+      "tagline": "Large fleets, optional L4 edge, platform API automation.",
       "specs_label": "Enterprise — edge & automation",
       "features": [
         "Everything in Network",
-        { "text": "eBPF XDP edge — drop L4 flood before it hits tracker or your bandwidth invoice", "highlight": true },
-        { "text": "Campaign API sync — ad platform automation", "highlight": true },
+        {
+          "text": "eBPF XDP edge — L4 blocklist and flood limits on your NIC (not a CDN replacement)",
+          "highlight": true
+        },
+        {
+          "text": "Campaign API sync — pause/resume linked ads via platform APIs",
+          "highlight": true
+        },
         { "text": "Up to 99 regions · 99 host activations", "highlight": true },
         "Fingerprint HWID bind for compliance-heavy installs",
         "Vendor SLA channel + custom export limits",
-        "999 API keys · unlimited tenants (schema cap)",
+        "Up to 99 licensed hosts · unlimited client workspaces",
         "Report exports up to 1 GiB per chunk"
       ],
       "cta": "Contact us",
@@ -479,7 +504,7 @@
     "eyebrow": "Hardware sizing",
     "title": "Recommended server sizing",
     "subtitle": "Planning guide only — not a throughput guarantee. Start here, then scale with your traffic, antifraud depth, and whether reporting and bidding run on the same box or separate hosts.",
-    "footnote": "x86_64 and NVMe recommended. RAM and disk figures are sizing guidance. Your license caps hosts, regions, and features — not the vCPU labels on this page. If a node is lost, see FAQ — extra activations are available for documented force majeure and emergency relocation.",
+    "footnote": "x86_64 and NVMe recommended. RAM, vCPU, and disk figures include headroom for OS, ClickHouse merges, and moderate spikes — planning guidance only, not a throughput guarantee. Your license caps hosts, regions, and features — not the vCPU labels on this page. If a node is lost, see FAQ — extra activations are available for documented force majeure and emergency relocation.",
     "labels": {
       "hosts": "Licensed hosts",
       "cpu": "Typical layout",
@@ -492,45 +517,45 @@
         "code": "pilot",
         "plan": "Pilot",
         "hosts": "1 host",
-        "cpu": "All-in-one VPS",
-        "ram": "8 GB",
-        "disk": "80 GB+ NVMe",
+        "cpu": "4 vCPU · all-in-one VPS",
+        "ram": "12 GB",
+        "disk": "100 GB+ NVMe",
         "profile": "10-day pilot on one server. Rule-based antifraud only. Message us on Telegram with expected traffic and VPS spec."
       },
       {
         "code": "starter",
         "plan": "Starter",
         "hosts": "1 host",
-        "cpu": "Single VPS",
-        "ram": "4 GB routing-only · 8 GB with reporting DB",
-        "disk": "80 GB+ NVMe",
+        "cpu": "4 vCPU · single VPS",
+        "ram": "6 GB routing-only · 12 GB with reporting DB",
+        "disk": "100 GB+ NVMe",
         "profile": "Solo buyer on one VPS; silent reject + postbacks. Add RAM before heavy report exports."
       },
       {
         "code": "pro",
         "plan": "Pro",
         "hosts": "1 host",
-        "cpu": "Single VPS + ML analytics",
-        "ram": "12 GB+",
-        "disk": "160 GB+ NVMe",
+        "cpu": "6 vCPU · single VPS + ML sidecars",
+        "ram": "16 GB+",
+        "disk": "200 GB+ NVMe",
         "profile": "Invalid-traffic scoring as background jobs on your reporting store. One deployment — extra host slots bind the same install."
       },
       {
         "code": "scale",
         "plan": "Scale",
         "hosts": "Up to 3 hosts",
-        "cpu": "Split: tracker, cache, reporting",
-        "ram": "16 GB+ per busy node",
-        "disk": "160 GB+ NVMe per node",
+        "cpu": "6–8 vCPU · split: tracker, cache, reporting",
+        "ram": "24 GB+ per busy node",
+        "disk": "200 GB+ NVMe per node",
         "profile": "Precomputed fraud signals at click time. Move shards between hosts without a full reinstall freeze."
       },
       {
         "code": "network",
         "plan": "Network",
         "hosts": "Up to 10 hosts",
-        "cpu": "Multi-region + programmatic bidding",
-        "ram": "16 GB+ routing · 32 GB+ reporting · bidder separate",
-        "disk": "320 GB+ NVMe per role per region",
+        "cpu": "8 vCPU routing · 16 vCPU reporting · bidder separate",
+        "ram": "24 GB+ routing · 48 GB+ reporting · bidder separate",
+        "disk": "400 GB+ NVMe per role per region",
         "profile": "Up to 3 regions in the license. Live bid endpoint and multi-node routing — size each role on its own hardware."
       },
       {
@@ -574,7 +599,7 @@
     "DesignedForActiveMediaBuyers": "Outcomes that tie spend to revenue",
     "PricingPlans": "Pricing Plans",
     "SimplePricing": "Simple pricing",
-    "NoCapOnCampaignCountOrEventVolumeYouScaleOnYourHardware": "No cap on campaign count or event volume — you scale on your hardware.",
+    "NoCapOnCampaignCountOrEventVolumeYouScaleOnYourHardware": "Unlimited events & campaigns. Team seats & workspaces tiered for agencies.",
     "PaidMonthlyInUsdtSelfHostedLicenseNotACloudSubscription": "Paid monthly in USDT. Self-hosted license you own.",
     "TryFreeFor10Days": "Try free for 10 days",
     "KRps1ServerRulesOnlyAntifraudMessageUsOnTelegramWithExpectedTrafficVpsSpec": "1 server · full click routing · message us on Telegram with expected traffic and VPS spec",
@@ -589,6 +614,7 @@
     "PointTraffic": "Point one test campaign",
     "ClickUrlsPostbacksCostSyncYouReLive": "Compare numbers with your current stack. Scale when ROI math checks out.",
     "InstallCliSummary": "Show install command",
+    "InstallCliSummaryClose": "Close install command",
     "AdEventProcessorRunningOnPort8080OfflineJwtLicenseVerified": "✔ BidShard stack running. License verified.",
     "AdEventProcessorRunningOnPort8080OfflineJwtLicenseVerified": "✔ BidShard stack running on port 8080. Offline JWT license verified.",
     "BuiltForOperatorsWhoHateSurprises": "Why teams switch",
@@ -612,7 +638,7 @@
     "CommonQuestions": "Common Questions",
     "FrequentlyAskedQuestions": "Frequently Asked Questions",
     "DoYouStoreMyCampaigns": "Do you store my campaigns?",
-    "IsThisLikeKeitaroInTheCloud": "Is this like Keitaro in the cloud?",
+    "IsThisLikeKeitaroInTheCloud": "How does this compare to Keitaro or Binom?",
     "WhatHappensAfterThePilot": "What happens after the pilot?",
     "DoINeedToBeADeveloper": "Do I need to be a developer?",
     "HowDoIStart": "How do I start?",
@@ -626,7 +652,7 @@
     "2026AdEventProcessorAllRightsReserved": "© 2026 BidShard. All rights reserved.",
     "site-tco-jump": "Where the money goes at scale",
     "NoEverythingRunsExclusivelyOnYourServerWeHaveNoBackendApiThatCollectsTelemetryCampaignConfigurationsOrVisitorLogs": "No. Everything runs exclusively on your server. We have no backend API that collects telemetry, campaign configurations, or visitor logs.",
-    "NoItIsLocalSoftwareYouInstallDirectlyOnYourVpsYouCanImportYourCurrentConfigurationsDirectlyFromKeitaroOrBinomViaJson": "No — it is local software you install directly on your VPS. You can import your current configurations directly from Keitaro or Binom via JSON.",
+    "NoItIsLocalSoftwareYouInstallDirectlyOnYourVpsYouCanImportYourCurrentConfigurationsDirectlyFromKeitaroOrBinomViaJson": "Same deployment model — self-hosted on your VPS, your traffic never leaves your infrastructure. The difference is one stack: routing, funnel protection, IVT, cost sync, and CAPI without separate tracker, cloaker, and antifraud bills. Import JSON from Keitaro or Binom and run a parallel pilot.",
     "PayUsdtForYourMatchingTierWeGenerateAndSendANewLicenseFileYouLoadItIntoYourExistingDeploymentWithNoReinstallNeeded": "Pay USDT for your matching tier. We generate and send a new license file. You load it into your existing deployment with no reinstall needed.",
     "BeingComfortableWithBasicVpsOperationsAndDockerIsHighlyRecommendedTheProductIsApiFirstTodayWhileOurAdminUiContinuesToCatchUp": "You need someone comfortable with basic VPS and Docker — not a full-time developer. The onboarding wizard walks through the first campaign; admin console covers day-to-day ops.",
     "ReachOutOnTelegramToObtainAPilotLicenseExecuteTheSingleLineInstallScriptOnYourHostActivateTheLicenseInYourBrowserAndYouAreLive": "Reach out on Telegram to obtain a pilot license. Execute the single-line install script on your host, activate the license in your browser, and you are live.",

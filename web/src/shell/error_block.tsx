@@ -11,12 +11,7 @@ type ErrorBlockProps = {
   componentStack?: string;
 };
 
-export function ErrorBlock({
-  title = 'Error',
-  message,
-  error,
-  componentStack,
-}: ErrorBlockProps) {
+export function ErrorBlock({ title = 'Error', message, error, componentStack }: ErrorBlockProps) {
   const resolvedMessage =
     message ??
     (error != null && isValidationError(error)

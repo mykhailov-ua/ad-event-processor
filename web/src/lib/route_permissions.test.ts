@@ -68,10 +68,7 @@ test('resolveRoutePermission maps disputes to customers:read', () => {
 });
 
 test('formatRoutePermissionRequirement formats single and any permissions', () => {
-  assert.equal(
-    formatRoutePermissionRequirement(resolveRoutePermission('/ops')),
-    'shards:read'
-  );
+  assert.equal(formatRoutePermissionRequirement(resolveRoutePermission('/ops')), 'shards:read');
   assert.equal(
     formatRoutePermissionRequirement(resolveRoutePermission('/team')),
     'team:read or campaigns:read'

@@ -106,9 +106,13 @@ export function useCampaignCloneDialogWorkspace({
     setCloneError(undefined);
 
     try {
-      const result = await cloneCampaign(campaignId, buildCloneRequestBody(nameSuffix, cloneOptions), {
-        idempotencyKey: idempotencyKeyRef.current,
-      });
+      const result = await cloneCampaign(
+        campaignId,
+        buildCloneRequestBody(nameSuffix, cloneOptions),
+        {
+          idempotencyKey: idempotencyKeyRef.current,
+        }
+      );
       idempotencyKeyRef.current = null;
       setClonedId(result.id);
       onCloned?.(result.id);

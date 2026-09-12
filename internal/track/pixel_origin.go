@@ -6,7 +6,7 @@ import (
 	"strings"
 )
 
-const TrackPixelFirstPartyPath = "/_aed/track.js"
+const TrackPixelFirstPartyPath = "/_aed/tag.js"
 
 type BrowserPixelBundle struct {
 	ScriptURL  string
@@ -47,16 +47,10 @@ func BuildBrowserPixelSnippet(scriptURL, trackURL, campaignID string) string {
 	if scriptURL == "" || trackURL == "" || campaignID == "" {
 		return ""
 	}
-	return fmt.Sprintf(`<script src="%s"></script>
-<script>
-  const conversionEventId = crypto.randomUUID();
-  trackEvent({
-    campaignId: '%s',
-    type: 'conversion',
-    endpoint: '%s',
-    eventId: conversionEventId,
-  });
-</script>`, scriptURL, campaignID, trackURL)
+	return fmt.Sprintf(
+		`<script src="%s" defer data-campaign-id="%s" data-track-endpoint="%s" data-auto-conversion="1" data-goal="conversion"></script>`,
+		scriptURL, campaignID, trackURL,
+	)
 }
 
 func normalizePublicBase(raw string) string {

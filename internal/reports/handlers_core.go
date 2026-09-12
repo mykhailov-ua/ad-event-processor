@@ -257,6 +257,8 @@ type ReportsHTTPHandlers struct {
 	RequireLicenseFeature       func(http.ResponseWriter, string) bool
 	DenyScopedAPIKeyReport      func(http.ResponseWriter, *http.Request, string) bool
 	FraudEvidencePackHMACSecret []byte
+	ReportRuleCreator           ReportRuleCreator
+	ReportAuditLog              ReportAuditLogger
 }
 
 const permShardsRead = "shards:read"

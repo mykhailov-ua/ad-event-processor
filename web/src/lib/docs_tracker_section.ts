@@ -23,7 +23,7 @@ export const TRACKER_DOCS_SECTION: DocsSection = {
             ['/click', 'GET', 'Traffic source click URL (banner, push, native, social ad)'],
             ['/track', 'POST (or GET query)', 'Server postback when a lead or sale happens'],
             [
-              '/static/track.js',
+              '/static/tag.js',
               'GET',
               'Browser pixel on the landing page (zero-redirect conversions)',
             ],
@@ -94,6 +94,50 @@ export const TRACKER_DOCS_SECTION: DocsSection = {
         {
           type: 'note',
           text: 'Templates in Integrations map network-specific tokens to these fields. After apply-templates, the Integration tab shows the exact URL for your source.',
+        },
+      ],
+    },
+    {
+      id: 'programmatic-click-api',
+      title: 'Programmatic click API',
+      blocks: [
+        {
+          type: 'paragraph',
+          text: 'Use the admin API to mint a click id and click URL without sending a browser through /click. Budget debit still happens when the buyer opens click_url. This matches Keitaro KClient / Binom Click API workflows for server-side link generation.',
+        },
+        {
+          type: 'table',
+          headers: ['Endpoint', 'Method', 'Auth'],
+          rows: [
+            [
+              '/api/v1/tracker/clicks',
+              'POST',
+              'Bearer API key with campaigns:read or campaigns:write',
+            ],
+          ],
+        },
+        {
+          type: 'code',
+          code: `POST https://{control_host}/api/v1/tracker/clicks
+Authorization: Bearer {api_key}
+Content-Type: application/json
+
+{
+  "campaign_id": "{campaign_uuid}",
+  "click_id": "optional-your-id",
+  "params": {
+    "sub1": "zone-42",
+    "sub2": "creative-a"
+  }
+}`,
+        },
+        {
+          type: 'paragraph',
+          text: 'Response: { "click_id": "...", "click_url": "https://{track_host}/click?campaign_id=...&click_id=...&sub1=..." }. Send traffic to click_url; do not call /click again with the same click_id unless you intend a duplicate ingress.',
+        },
+        {
+          type: 'note',
+          text: 'When link_signing_enabled is on for the campaign, click_url includes expires and _sig query params (HMAC over click_id and expiry). Unsigned or expired links are rejected on /click. Mint uses the same TTL and attestation caps as live redirect signing.',
         },
       ],
     },
@@ -169,7 +213,7 @@ Content-Type: application/json
     },
     {
       id: 'browser-pixel',
-      title: 'Browser pixel (track.js)',
+      title: 'Browser pixel (tag.js)',
       blocks: [
         {
           type: 'paragraph',
@@ -181,14 +225,14 @@ Content-Type: application/json
         },
         {
           type: 'paragraph',
-          text: 'Nginx on the lander host proxies /_aed/track.js to the tracker /static/track.js so the browser loads telemetry as same-origin. Campaign Integration tab copies the snippet with conversionEventId; POST /track still targets the tracker hostname (TRACK_CORS_ORIGINS must include the lander origin; tracker config auto-merges LANDER_PUBLIC_BASE_URL when set).',
+          text: 'Nginx on the lander host proxies /_aed/tag.js to the tracker /static/tag.js so the browser loads the pixel as same-origin. Campaign Integration tab copies the snippet with conversionEventId; POST /track still targets the tracker hostname (TRACK_CORS_ORIGINS must include the lander origin; tracker config auto-merges LANDER_PUBLIC_BASE_URL when set).',
         },
         {
           type: 'code',
-          code: `<script src="https://{lander_host}/_aed/track.js"></script>
+          code: `<script src="https://{lander_host}/_aed/tag.js"></script>
 <script>
   ${LANDER_CONVERSION_EVENT_ID_LINE}
-  trackEvent({
+  sendEvent({
     endpoint: 'https://{track_host}/track',
     campaignId: '{campaign_uuid}',
     type: 'conversion',
@@ -203,10 +247,10 @@ Content-Type: application/json
         },
         {
           type: 'code',
-          code: `<script src="https://{track_host}/static/track.js"></script>
+          code: `<script src="https://{track_host}/static/tag.js"></script>
 <script>
   ${LANDER_CONVERSION_EVENT_ID_LINE}
-  trackEvent({
+  sendEvent({
     endpoint: 'https://{track_host}/track',
     campaignId: '{campaign_uuid}',
     type: 'conversion',
@@ -218,7 +262,7 @@ Content-Type: application/json
         {
           type: 'list',
           items: [
-            'Set LANDER_PUBLIC_BASE_URL to the hosted /lp/ origin when using first-party /_aed/track.js.',
+            'Set LANDER_PUBLIC_BASE_URL to the hosted /lp/ origin when using first-party /_aed/tag.js.',
             'Set TRACK_CORS_ORIGINS on the tracker to include your lander origin (comma-separated). Auto-merged from LANDER_PUBLIC_BASE_URL at tracker boot when unset.',
             'Copy the snippet from Campaign -> Integration (browser pixel block after templates apply).',
             'Verify: bash scripts/test/edge/first_party_pixel_drill.sh with LANDER_PUBLIC_BASE_URL set.',

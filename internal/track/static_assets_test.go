@@ -18,18 +18,23 @@ func TestTrackTelemetryJS_holdoutHumanizationSignals(t *testing.T) {
 
 func TestTrackPixelContract_holdout(t *testing.T) {
 	body := string(TrackPixelJS)
-	require.Contains(t, body, "trackEvent")
+	require.Contains(t, body, "sendEvent")
 	require.Contains(t, body, "event_id")
 	require.Contains(t, body, "msclkid")
 	require.Contains(t, body, "tblci")
 	require.Contains(t, body, "ob_click_id")
-	require.Contains(t, body, "trackTelemetrySnapshot")
-	require.Contains(t, body, "trackBiometricsSnapshot")
-	require.Contains(t, body, "trackAntifraudWhenReady")
-	require.True(t, strings.Contains(body, "globalThis.trackEvent"), "script tag must expose global trackEvent")
+	require.Contains(t, body, "tagEvSnapshot")
+	require.Contains(t, body, "tagInSnapshot")
+	require.Contains(t, body, "tagCtxReady")
+	require.True(t, strings.Contains(body, "globalThis.sendEvent"), "script tag must expose global sendEvent")
 	require.NotEmpty(t, AntifraudTelemetryJS)
-	require.Contains(t, string(AntifraudTelemetryJS), "trackAntifraudArm")
-	require.NotContains(t, string(TrackPixelJS), "attest.wasm")
+	require.Contains(t, string(AntifraudTelemetryJS), "tagCtxArm")
+	require.NotContains(t, string(AntifraudTelemetryJS), "telemetry_mac")
+	require.NotContains(t, string(AntifraudTelemetryJS), "antifraud")
+	require.NotContains(t, string(TrackPixelJS), "tag.wasm")
+	require.NotContains(t, string(TrackPixelJS), "antifraud")
+	require.NotContains(t, string(TrackPixelJS), "fingerprint")
+	require.NotContains(t, string(TelemetryStealthPocJS), "telemetry")
 }
 
 func TestAttestWasm_embed_holdout(t *testing.T) {

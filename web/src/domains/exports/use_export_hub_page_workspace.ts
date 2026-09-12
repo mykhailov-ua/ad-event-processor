@@ -50,7 +50,10 @@ import {
   resolveSavedViewReportKey,
   type ExportHubSavedViewApplyPatch,
 } from '@/domains/exports/export_hub_saved_view_spec';
-import { exportHubErrorMessage, exportHubJobErrorMessage } from '@/domains/exports/export_hub_errors';
+import {
+  exportHubErrorMessage,
+  exportHubJobErrorMessage,
+} from '@/domains/exports/export_hub_errors';
 import {
   exportJobPhase,
   exportJobSpreadsheetUrl,
@@ -68,10 +71,7 @@ import {
   resolveExportHubReportFormats,
   type ExportHubReportFormat,
 } from '@/domains/exports/export_hub_report_formats';
-import {
-  fetchReportCatalogCached,
-  invalidateReportCatalogCache,
-} from '@/lib/report_catalog_cache';
+import { fetchReportCatalogCached, invalidateReportCatalogCache } from '@/lib/report_catalog_cache';
 import { resolveReportDisplayTitle } from '@/lib/report_paths';
 import { confirmDestructiveAction } from '@/lib/mutation_audit';
 import { sessionHasPermission } from '@/lib/session_permissions';
@@ -161,16 +161,10 @@ export function useExportHubPageWorkspace() {
     data: catalog,
     error: catalogError,
     fetching: catalogFetching,
-  } = useResource(
-    (signal) => fetchReportCatalogCached(signal),
-    [catalogRefreshToken]
-  );
+  } = useResource((signal) => fetchReportCatalogCached(signal), [catalogRefreshToken]);
   const catalogHasSnapshot = catalog != null;
 
-  const catalogEntries = useMemo(
-    () => exportHubEntriesFromCatalog(catalog?.rows),
-    [catalog?.rows]
-  );
+  const catalogEntries = useMemo(() => exportHubEntriesFromCatalog(catalog?.rows), [catalog?.rows]);
 
   const entryId = searchParams.get('entry') ?? '';
   const kindFromUrl = parseKind(searchParams.get('kind'));
@@ -185,7 +179,7 @@ export function useExportHubPageWorkspace() {
       return (
         catalogEntries.find(
           (entry) => entry.kind === 'report' && entry.reportKey === reportKey
-        )         ?? {
+        ) ?? {
           id: `custom-${reportKey}`,
           title: resolveReportDisplayTitle(reportKey),
           description: 'Custom report key from catalog search.',
@@ -232,12 +226,8 @@ export function useExportHubPageWorkspace() {
   const urlFrom = searchParams.get('from');
   const urlTo = searchParams.get('to');
   const urlFormat = searchParams.get('format');
-  const [draftFrom, setDraftFrom] = useState(() =>
-    urlFrom ? toDatetimeLocalValue(urlFrom) : ''
-  );
-  const [draftTo, setDraftTo] = useState(() =>
-    urlTo ? toDatetimeLocalValue(urlTo) : ''
-  );
+  const [draftFrom, setDraftFrom] = useState(() => (urlFrom ? toDatetimeLocalValue(urlFrom) : ''));
+  const [draftTo, setDraftTo] = useState(() => (urlTo ? toDatetimeLocalValue(urlTo) : ''));
   const [draftCompareFrom, setDraftCompareFrom] = useState('');
   const [draftCompareTo, setDraftCompareTo] = useState('');
   const [draftNotifyChannel, setDraftNotifyChannel] = useState<ExportHubNotifyChannel>('none');
@@ -252,9 +242,9 @@ export function useExportHubPageWorkspace() {
     parseDestination(searchParams.get('destination'))
   );
   const [draftCampaignToggleCampaignId, setDraftCampaignToggleCampaignId] = useState('');
-  const [draftCampaignToggleField, setDraftCampaignToggleField] = useState<CampaignToggleField | ''>(
-    ''
-  );
+  const [draftCampaignToggleField, setDraftCampaignToggleField] = useState<
+    CampaignToggleField | ''
+  >('');
   const [draftCampaignToggleAt, setDraftCampaignToggleAt] = useState('');
   const [draftCampaignToggleWindowHours, setDraftCampaignToggleWindowHours] = useState('');
   const [draftLayerDesyncCount, setDraftLayerDesyncCount] = useState('');
@@ -266,7 +256,9 @@ export function useExportHubPageWorkspace() {
   const [draftRedactPii, setDraftRedactPii] = useState(false);
   const [draftRowLimit, setDraftRowLimit] = useState(searchParams.get('row_limit') ?? '');
   const [draftJobId, setDraftJobId] = useState(jobId);
-  const [recentJobs, setRecentJobs] = useState<ExportHubRecentJob[]>(() => listExportHubRecentJobs());
+  const [recentJobs, setRecentJobs] = useState<ExportHubRecentJob[]>(() =>
+    listExportHubRecentJobs()
+  );
   const [jobStartedAtMs, setJobStartedAtMs] = useState<number | undefined>();
   const [activeRowLimit, setActiveRowLimit] = useState<number | undefined>();
   const completionToastRef = useRef<string | null>(null);
@@ -278,7 +270,9 @@ export function useExportHubPageWorkspace() {
   const [pollToken, setPollToken] = useState(0);
   const [auditExportTruncated, setAuditExportTruncated] = useState(false);
   const [asyncStatusPhase, setAsyncStatusPhase] = useState<ExportHubStatusPhase>('idle');
-  const [formValidationError, setFormValidationError] = useState<AdminValidationError | undefined>();
+  const [formValidationError, setFormValidationError] = useState<
+    AdminValidationError | undefined
+  >();
   const [presetName, setPresetName] = useState('');
   const [selectedViewId, setSelectedViewId] = useState('');
   const [savingPreset, setSavingPreset] = useState(false);
@@ -454,7 +448,8 @@ export function useExportHubPageWorkspace() {
   );
 
   const jobFetching = selectedKind === 'billing' ? billingJobFetching : reportJobFetching;
-  const jobRevalidating = selectedKind === 'billing' ? billingJobRevalidating : reportJobRevalidating;
+  const jobRevalidating =
+    selectedKind === 'billing' ? billingJobRevalidating : reportJobRevalidating;
   const jobPending = Boolean(job?.status && isJobPendingStatus(String(job.status)));
   const autoPolling =
     Boolean(jobId) && selectedKind !== 'audit' && selectedKind !== 'directory' && jobPending;
@@ -481,8 +476,7 @@ export function useExportHubPageWorkspace() {
       status,
       bytes: job.bytes ?? undefined,
       error: job.error ?? jobErrorMessage,
-      spreadsheetUrl:
-        selectedKind === 'report' ? exportJobSpreadsheetUrl(reportJob) : undefined,
+      spreadsheetUrl: selectedKind === 'report' ? exportJobSpreadsheetUrl(reportJob) : undefined,
     };
     setRecentJobs(patchExportHubRecentJob(jobId, patch));
 
@@ -508,7 +502,11 @@ export function useExportHubPageWorkspace() {
   }, [job, jobErrorMessage, jobId, reportJob, selectedKind]);
 
   const rowLimit = useMemo(
-    () => clampExportHubRowLimit(parseExportHubRowLimitDraft(draftRowLimit, rowLimitBounds), rowLimitBounds),
+    () =>
+      clampExportHubRowLimit(
+        parseExportHubRowLimitDraft(draftRowLimit, rowLimitBounds),
+        rowLimitBounds
+      ),
     [draftRowLimit, rowLimitBounds]
   );
 
@@ -1057,17 +1055,23 @@ export function useExportHubPageWorkspace() {
       if (draftDestination === 'google_sheet') {
         if (googleSheetsStatusError) {
           reportFormValidationFailure(
-            validationError(exportHubErrorMessage(googleSheetsStatusError, 'Google Sheets status unavailable'), {
-              kind: 'action',
-            })
+            validationError(
+              exportHubErrorMessage(googleSheetsStatusError, 'Google Sheets status unavailable'),
+              {
+                kind: 'action',
+              }
+            )
           );
           return;
         }
         if (!googleSheetsStatus?.connected) {
           reportFormValidationFailure(
-            validationError('Connect Google Sheets in Integrations before exporting to a spreadsheet.', {
-              kind: 'action',
-            })
+            validationError(
+              'Connect Google Sheets in Integrations before exporting to a spreadsheet.',
+              {
+                kind: 'action',
+              }
+            )
           );
           return;
         }
@@ -1325,9 +1329,7 @@ export function useExportHubPageWorkspace() {
         triggerBlobDownload(blob, `billing-export-${trimmed}.${ext}`);
       } else {
         const blob = await downloadReportJob(trimmed);
-        const ext = reportDownloadExtension(
-          (reportJob?.format ?? draftReportFormat) || undefined
-        );
+        const ext = reportDownloadExtension((reportJob?.format ?? draftReportFormat) || undefined);
         triggerBlobDownload(blob, `${draftReportKey || 'report'}.${ext}`);
       }
       setAsyncStatusPhase('idle');
@@ -1338,7 +1340,14 @@ export function useExportHubPageWorkspace() {
     } finally {
       setDownloading(false);
     }
-  }, [draftBillingFormat, draftJobId, draftReportFormat, draftReportKey, reportJob?.format, selectedKind]);
+  }, [
+    draftBillingFormat,
+    draftJobId,
+    draftReportFormat,
+    draftReportKey,
+    reportJob?.format,
+    selectedKind,
+  ]);
 
   const applySavedViewPatch = useCallback(
     (patch: ExportHubSavedViewApplyPatch, viewReportKey: string) => {

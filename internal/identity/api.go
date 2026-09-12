@@ -10,6 +10,7 @@ import (
 
 	"ad-event-processor/internal/config"
 	"ad-event-processor/internal/identity/db"
+	"ad-event-processor/internal/licensingadmin"
 	"ad-event-processor/pkg/clientip"
 
 	"github.com/google/uuid"
@@ -469,6 +470,9 @@ func mapError(err error) error {
 		return nil
 	}
 	if errors.Is(err, ErrRateLimitExceeded) {
+		return status.Error(codes.ResourceExhausted, err.Error())
+	}
+	if errors.Is(err, licensingadmin.ErrDeploymentAPIKeyLimit) {
 		return status.Error(codes.ResourceExhausted, err.Error())
 	}
 	if errors.Is(err, ErrInvalidCredentials) || errors.Is(err, ErrInvalidToken) || errors.Is(err, ErrExpiredToken) || errors.Is(err, ErrAccountLocked) || errors.Is(err, ErrSessionBlocked) || errors.Is(err, ErrEmailNotVerified) || errors.Is(err, ErrInvalidAPIKey) {

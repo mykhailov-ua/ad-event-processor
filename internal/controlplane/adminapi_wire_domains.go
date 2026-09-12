@@ -84,6 +84,10 @@ func (h *Handler) wireAdminDomainRoutes(reg *RouteRegistry, e adminWireEnv) {
 		RequestHasShardsRead:      requestHasShardsRead,
 		RequireLicenseFeature:     requireLicenseFeature,
 		DenyScopedAPIKeyReport:    selfserve.DenyScopedAPIKeyOperatorReport,
+		ReportRuleCreator:         svc.AutomationRules(),
+		ReportAuditLog: func(ctx context.Context, adminID uuid.UUID, action, targetType string, targetID *uuid.UUID, changes, metadata any) {
+			svc.AuditLog(ctx, nil, adminID, action, targetType, targetID, changes, metadata)
+		},
 	}
 	// ReportJobHTTP: async ClickHouse/Postgres export jobs; schedule validation is server-side only.
 	reg.ReportJobHTTP = &reportjob.HTTPHandlers{
@@ -187,6 +191,7 @@ func (h *Handler) wireAdminDomainRoutes(reg *RouteRegistry, e adminWireEnv) {
 		},
 		AuthorizeCustomerAccess: authCustomer,
 		WriteServiceError:       writeErr,
+		CapHost:                 licensingHost{svc: svc},
 	}
 	reg.PlatformCampaignHTTP = &platformadmin.PlatformCampaignHTTPHandlers{
 		Pool:              pool,
@@ -205,9 +210,10 @@ func (h *Handler) wireAdminDomainRoutes(reg *RouteRegistry, e adminWireEnv) {
 		},
 	}
 	reg.MarginGuardHTTP = &marginguard.HTTPHandlers{
-		Service:           marginGuardServiceAdapter{svc: svc},
-		ApplyRateLimit:    limit,
-		RequirePermission: perm,
+		Service:               marginGuardServiceAdapter{svc: svc},
+		ApplyRateLimit:        limit,
+		RequirePermission:     perm,
+		RequireLicenseFeature: licenseFeatureAllowed,
 	}
 	reg.SmartAlertsHTTP = &SmartAlertsHTTPHandlers{
 		Service:           svc.SmartAlertsStore(),
@@ -322,11 +328,12 @@ func (h *Handler) wireAdminDomainRoutes(reg *RouteRegistry, e adminWireEnv) {
 		WriteServiceError: writeErr,
 	}
 	reg.RtbHTTP = &rtbadmin.HTTPHandlers{
-		Service:           svc.RtbAdminService(),
-		ApplyRateLimit:    limit,
-		RequirePermission: perm,
-		WriteServiceError: writeErr,
-		RuntimeConfig:     rtbRuntimeConfig{cfg: h.cfg},
+		Service:               svc.RtbAdminService(),
+		ApplyRateLimit:        limit,
+		RequirePermission:     perm,
+		WriteServiceError:     writeErr,
+		RequireLicenseFeature: licenseFeatureAllowed,
+		RuntimeConfig:         rtbRuntimeConfig{cfg: h.cfg},
 		PlatformConfig: func(ctx context.Context) (platformconfig.Config, error) {
 			cfg, _, err := svc.GetPlatformConfig(ctx)
 			return cfg, err
@@ -347,27 +354,35 @@ func (h *Handler) wireAdminDomainRoutes(reg *RouteRegistry, e adminWireEnv) {
 	}
 	// CampaignsHTTP: Postgres mutations and onboarding wizard via Service; ClickHouse read-only via ClickHouseQuery.
 	reg.CampaignsHTTP = &campaign.CampaignsHTTPHandlers{
-		Campaigns:                  svc,
-		CampaignFraud:              fraudadmin.CampaignFraudAPI{Host: svc, MapErr: mapFraudadminErr},
-		ConversionMappings:         svc,
-		GetCampaignFlow:            svc.GetFlow,
-		ValidateCampaignFlowPaths:  svc.ValidateCampaignFlowPaths,
-		RecordRevisionConflict:     svc.AuditCampaignRevisionConflict,
-		ClickHouseQuery:            svc.ClickHouseQuery(),
-		PostgresPool:               pool,
-		MarginDefaultThresholdBps:  h.cfg.MarginGuardDefaultThresholdBps,
-		ApplyRateLimit:             limit,
-		RequireAnyPermission:       permAny,
-		AuthorizeCampaignAccess:    authCampaign,
-		AuthorizeCampaignIDsAccess: authCampaignIDs,
-		ResolveCustomerID:          h.resolveCampaignsCustomerID,
-		AllowFraudPreview:          h.allowFraudPreview,
-		LicenseFeatureAllowed:      licenseFeatureAllowed,
-		ReportJobs:                 reportJobs,
-		WriteServiceError:          writeErr,
-		TrackerPublicBaseURL:       func() string { return svc.TrackerPublicBaseURL() },
-		LanderPublicBaseURL:        func() string { return svc.landerPublicBase(context.Background()) },
-		ResolveTrackingDomain:      func(ctx context.Context) string { return svc.TrackingDomain(ctx, "") },
+		Campaigns:                    svc,
+		CampaignFraud:                fraudadmin.CampaignFraudAPI{Host: svc, MapErr: mapFraudadminErr},
+		ConversionMappings:           svc,
+		StatusSchemes:                svc,
+		OutboundPostbacks:            svc,
+		GetCampaignFlow:              svc.GetFlow,
+		UpdateCampaignFlow:           svc.UpdateFlow,
+		ValidateCampaignFlowPaths:    svc.ValidateCampaignFlowPaths,
+		RecordRevisionConflict:       svc.AuditCampaignRevisionConflict,
+		ClickHouseQuery:              svc.ClickHouseQuery(),
+		PostgresPool:                 pool,
+		MarginDefaultThresholdBps:    h.cfg.MarginGuardDefaultThresholdBps,
+		ApplyRateLimit:               limit,
+		RequireAnyPermission:         permAny,
+		AuthorizeCampaignAccess:      authCampaign,
+		AuthorizeCampaignIDsAccess:   authCampaignIDs,
+		ResolveCustomerID:            h.resolveCampaignsCustomerID,
+		AllowFraudPreview:            h.allowFraudPreview,
+		LicenseFeatureAllowed:        licenseFeatureAllowed,
+		ReportJobs:                   reportJobs,
+		WriteServiceError:            writeErr,
+		TrackerPublicBaseURL:         func() string { return svc.TrackerPublicBaseURL() },
+		LinkSigningSecret:            func() []byte { return svc.LinkSigningSecret() },
+		LanderPublicBaseURL:          func() string { return svc.landerPublicBase(context.Background()) },
+		ResolveTrackingDomain:        func(ctx context.Context) string { return svc.TrackingDomain(ctx, "") },
+		RequireAnyPermissionOrAPIKey: e.permAnyOrAPIKey,
+		CampaignAuditLog: func(ctx context.Context, adminID uuid.UUID, action, targetType string, targetID *uuid.UUID, changes, metadata any) {
+			svc.AuditLog(ctx, nil, adminID, action, targetType, targetID, changes, metadata)
+		},
 	}
 	reg.FraudHTTP = &fraudadmin.HTTPHandlers{
 		Labels:                  fraudadmin.LabelsAPI{Host: svc},

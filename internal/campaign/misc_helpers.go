@@ -2342,6 +2342,19 @@ func ImportMigrationCampaigns(ctx context.Context, fx Effects, spec ImportMigrat
 			})
 			continue
 		}
+		if len(mapped.StatusSchemeRules) > 0 && host.Pool() != nil {
+			campaignID, parseErr := uuid.Parse(strings.TrimSpace(result.ID))
+			if parseErr == nil {
+				dtos := statusSchemeRulesFromMigration(mapped.StatusSchemeRules)
+				if _, schemeErr := ReplaceCampaignStatusSchemeRules(ctx, host.Pool(), campaignID, dtos); schemeErr != nil {
+					out.Warnings = append(out.Warnings, migrationsource.Warning{
+						Slug:        "status_scheme_import_failed",
+						Message:     schemeErr.Error(),
+						CampaignRef: mapped.Ref,
+					})
+				}
+			}
+		}
 		out.Imported = append(out.Imported, result)
 	}
 	if len(out.Imported) == 0 && len(out.Failed) > 0 {
@@ -2556,6 +2569,7 @@ type CampaignDTO struct {
 	EndAt                        string                `json:"end_at,omitempty"`
 	DaypartHours                 []int16               `json:"daypart_hours"`
 	FlowID                       string                `json:"flow_id,omitempty"`
+	CampaignGroupID              string                `json:"campaign_group_id,omitempty"`
 	OwnerUserID                  string                `json:"owner_user_id,omitempty"`
 	IngressCostConfig            *IngressCostConfigDTO `json:"ingress_cost_config,omitempty"`
 	TrafficTemplateID            string                `json:"traffic_template_id,omitempty"`

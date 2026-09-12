@@ -41,7 +41,9 @@ export function smartAlertTemplateLabel(template: string | undefined): string {
 
 const TEMPLATE_WIRE_DEFAULTS: Record<
   SmartAlertRuleTemplate,
-  Pick<UpsertSmartAlertRuleRequest, 'metric' | 'operator' | 'window_minutes'> & { defaultName: string }
+  Pick<UpsertSmartAlertRuleRequest, 'metric' | 'operator' | 'window_minutes'> & {
+    defaultName: string;
+  }
 > = {
   budget_burn_pct: {
     metric: 'template:budget_burn_pct',

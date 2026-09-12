@@ -18,14 +18,12 @@ const toastClassNames = {
   title: 'text-[13px] leading-[18px] font-medium text-foreground',
   description: 'text-[13px] leading-[18px] font-normal text-admin-fg-secondary',
   closeButton: 'hidden',
-  error:
-    'border-destructive/35 bg-destructive/16 text-foreground [&_[data-icon]]:text-destructive',
+  error: 'border-destructive/35 bg-destructive/16 text-foreground [&_[data-icon]]:text-destructive',
   warning:
     'border-admin-warn-border/45 bg-admin-warn-bg/55 text-foreground [&_[data-icon]]:text-admin-warn-fg',
   success:
     'border-admin-status-active/35 bg-admin-status-active/16 text-foreground [&_[data-icon]]:text-admin-positive-fg',
-  info:
-    'border-primary/35 bg-primary/18 text-foreground [&_[data-icon]]:text-admin-metric-conversion-fg',
+  info: 'border-primary/35 bg-primary/18 text-foreground [&_[data-icon]]:text-admin-metric-conversion-fg',
   default:
     'border-primary/35 bg-primary/18 text-foreground [&_[data-icon]]:text-admin-metric-conversion-fg',
 };

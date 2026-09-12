@@ -12,7 +12,6 @@ import (
 	"ad-event-processor/internal/ingest/pb"
 	"ad-event-processor/internal/metrics"
 	"ad-event-processor/internal/stream/codec"
-	"ad-event-processor/internal/telemetry"
 
 	"github.com/google/uuid"
 	redis "github.com/redis/go-redis/v9"
@@ -281,7 +280,6 @@ func (p *StreamProducer) process(evt *domain.Event, reserved bool) error {
 		*bufPtr = buf
 		codec.ByteBufPool.Put(bufPtr)
 		metrics.EventsDropped.Inc()
-		telemetry.RecordRejected()
 		return err
 	}
 	data := buf[:n]
@@ -299,7 +297,6 @@ func (p *StreamProducer) process(evt *domain.Event, reserved bool) error {
 		*bufPtr = buf[:cap(buf)]
 		codec.ByteBufPool.Put(bufPtr)
 		metrics.EventsDropped.Inc()
-		telemetry.RecordRejected()
 		return ErrQueueFull
 	}
 }
@@ -489,14 +486,8 @@ func (p *StreamProducer) flushBatch(batch []*[]byte) {
 
 	if err != nil {
 		metrics.EventsDropped.Add(float64(n))
-		for range n {
-			telemetry.RecordRejected()
-		}
 		return
 	}
 
 	metrics.EventsProcessed.Add(float64(n))
-	for range n {
-		telemetry.RecordAccepted()
-	}
 }

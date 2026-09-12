@@ -87,6 +87,8 @@ test('affiliate presets GET 500 shows ErrorBlock without empty table', async ({ 
 
   const content = mainContent(page);
   await expect(content.getByRole('alert')).toBeVisible();
-  await expect(content.getByText('Could not load affiliate presets', { exact: true })).toBeVisible();
+  await expect(
+    content.getByText('Could not load affiliate presets', { exact: true })
+  ).toBeVisible();
   await expect(content.getByText('No presets', { exact: true })).not.toBeVisible();
 });

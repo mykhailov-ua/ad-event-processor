@@ -12,7 +12,6 @@ import (
 	"fmt"
 	"net/http"
 	"net/http/httptest"
-	"sync"
 	"testing"
 	"time"
 
@@ -46,14 +45,15 @@ func TestE2E_GracefulShutdown_NoDataLoss(t *testing.T) {
 
 	queries := db.New(pool)
 	cfg := &config.Config{
-		EventBatchSize:     10,
-		EventFlushMs:       100,
-		StatsFlushMs:       100,
-		MaxWorkers:         2,
-		WriteTimeoutMs:     5000,
-		FilterTimeoutMs:    5000,
-		MaxRequestBodySize: 1024 * 1024,
-		StreamMaxLen:       100000,
+		EventBatchSize:             10,
+		EventFlushMs:               100,
+		StatsFlushMs:               100,
+		MaxWorkers:                 4,
+		WriteTimeoutMs:             5000,
+		FilterTimeoutMs:            10000,
+		MaxRequestBodySize:         1024 * 1024,
+		StreamMaxLen:               100000,
+		StreamProducerAdmissionPct: 0,
 	}
 
 	pm := database.NewPartitionManager(pool, 7, 1)
@@ -63,11 +63,15 @@ func TestE2E_GracefulShutdown_NoDataLoss(t *testing.T) {
 	_, _ = pool.Exec(ctx, "INSERT INTO customers (id, name, balance) VALUES ($1, $2, $3)", customerID, "Shutdown Customer", 1_000_000_000)
 
 	campaignID := uuid.New()
-	_, err := pool.Exec(ctx, "INSERT INTO campaigns (id, name, status, customer_id, budget_limit) VALUES ($1, $2, $3, $4, $5)", campaignID, "Shutdown Test", "ACTIVE", customerID, 1_000_000_000)
-	require.NoError(t, err)
+	insertE2EActiveCampaign(t, ctx, pool, campaignID, customerID, "Shutdown Test", 1_000_000_000)
 
 	registry := testutil.NewAdsRegistry(t, queries)
-	_, _ = registry.Sync(ctx)
+	budgetWarmer := ingestion.NewBudgetCacheWarmer([]redis.UniversalClient{rdb}, ingestion.NewJumpHashSharder(1))
+	registry.SetBudgetWarmer(budgetWarmer)
+	_, err := registry.Sync(ctx)
+	require.NoError(t, err)
+	_, err = budgetWarmer.WarmFromRegistry(ctx, registry)
+	require.NoError(t, err)
 
 	store := ingestion.NewPostgresStore(queries, 5*time.Second)
 	unifiedFilter := ingestion.NewUnifiedFilter(
@@ -85,7 +89,10 @@ func TestE2E_GracefulShutdown_NoDataLoss(t *testing.T) {
 		100000,
 	)
 	filterEngine := ingestion.NewFilterEngine(time.Duration(cfg.FilterTimeoutMs)*time.Millisecond, unifiedFilter)
-	consumer := ingestion.NewStreamConsumer(store, rdb, "shutdown-stream", "shutdown-group", "shutdown-c1", cfg.EventBatchSize, cfg.MaxWorkers, 100*time.Millisecond, 5*time.Second, 100*time.Millisecond, 5*time.Second, 5, 5*time.Minute, 1*time.Second)
+	require.NoError(t, unifiedFilter.PreloadScripts(ctx))
+	registry.MarkPubSubOK()
+
+	consumer := ingestion.NewStreamConsumer(store, rdb, "shutdown-stream", "shutdown-group", "shutdown-c1", cfg.EventBatchSize, cfg.MaxWorkers, 100*time.Millisecond, 5*time.Second, 100*time.Millisecond, 5*time.Second, 5, 5*time.Minute, 30*time.Second)
 	consumer.Start(ctx)
 
 	sharder := ingestion.NewJumpHashSharder(1)
@@ -94,48 +101,43 @@ func TestE2E_GracefulShutdown_NoDataLoss(t *testing.T) {
 	defer srv.Close()
 
 	const eventCount = 50
-	var wg sync.WaitGroup
 	var acceptedCount int64
-	var mu sync.Mutex
 
 	for i := range eventCount {
-		wg.Add(1)
-		go func(idx int) {
-			defer wg.Done()
-			payload := map[string]any{
-				"campaign_id": campaignID,
-				"type":        "click",
-				"payload":     map[string]string{"idx": fmt.Sprintf("%d", idx)},
-			}
-			body, _ := json.Marshal(payload)
-			req, err := http.NewRequestWithContext(context.Background(), http.MethodPost, srv.URL+"/track", bytes.NewBuffer(body))
-			if err != nil {
-				return
-			}
-			req.Header.Set("Content-Type", "application/json")
-			resp, err := http.DefaultClient.Do(req)
-			if err == nil && resp.StatusCode == http.StatusAccepted {
-				mu.Lock()
-				acceptedCount++
-				mu.Unlock()
-			}
-			if resp != nil {
-				resp.Body.Close()
-			}
-		}(i)
+		payload := map[string]any{
+			"campaign_id": campaignID,
+			"type":        "click",
+			"click_id":    uuid.NewString(),
+			"payload":     map[string]string{"idx": fmt.Sprintf("%d", i)},
+		}
+		body, err := json.Marshal(payload)
+		require.NoError(t, err)
+		req, err := http.NewRequestWithContext(ctx, http.MethodPost, srv.URL+"/track", bytes.NewBuffer(body))
+		require.NoError(t, err)
+		req.Header.Set("Content-Type", "application/json")
+		resp, err := http.DefaultClient.Do(req)
+		require.NoError(t, err)
+		if resp.StatusCode == http.StatusAccepted {
+			acceptedCount++
+		}
+		resp.Body.Close()
 	}
-
-	wg.Wait()
 	require.Equal(t, int64(eventCount), acceptedCount)
 
-	consumer.Close()
-	consumer.Wait(ctx)
+	streamLen, err := rdb.XLen(ctx, "shutdown-stream").Result()
+	require.NoError(t, err)
+	require.Equal(t, acceptedCount, streamLen, "each accepted event must have one stream entry before drain")
 
-	cancel()
+	consumer.Close()
+	waitCtx, waitCancel := context.WithTimeout(context.Background(), 30*time.Second)
+	defer waitCancel()
+	require.NoError(t, consumer.Wait(waitCtx))
 
 	assert.Eventually(t, func() bool {
 		var dbEventCount int64
 		err = pool.QueryRow(context.Background(), "SELECT count(*) FROM events WHERE campaign_id = $1", campaignID).Scan(&dbEventCount)
 		return err == nil && dbEventCount == acceptedCount
 	}, 15*time.Second, 100*time.Millisecond, "All accepted events should be persisted to database")
+
+	cancel()
 }

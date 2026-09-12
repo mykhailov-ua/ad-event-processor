@@ -122,6 +122,6 @@
     return { events: events.slice() };
   }
 
-  globalThis.trackTelemetryArm = arm;
-  globalThis.trackTelemetrySnapshot = snapshot;
+  globalThis.tagEvArm = arm;
+  globalThis.tagEvSnapshot = snapshot;
 })();

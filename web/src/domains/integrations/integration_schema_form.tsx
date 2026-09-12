@@ -66,15 +66,13 @@ export function IntegrationSchemaCreateForm({
         Create schema
       </Button>
       <Dialog onOpenChange={setCreateOpen} open={createOpen}>
-        <DialogContent >
+        <DialogContent>
           <DialogHeader>
             <DialogTitle>Create schema</DialogTitle>
           </DialogHeader>
-          <p >
-            Register a new integration schema definition. Schema body must be valid JSON.
-          </p>
-          <div >
-            <div >
+          <p>Register a new integration schema definition. Schema body must be valid JSON.</p>
+          <div>
+            <div>
               <Label htmlFor="integration-schema-name">Name</Label>
               <Input
                 id="integration-schema-name"
@@ -82,7 +80,7 @@ export function IntegrationSchemaCreateForm({
                 onChange={(event) => onDraftNameChange(event.target.value)}
               />
             </div>
-            <div >
+            <div>
               <Label htmlFor="integration-schema-version">Version</Label>
               <Input
                 id="integration-schema-version"
@@ -92,11 +90,10 @@ export function IntegrationSchemaCreateForm({
                 onChange={(event) => onDraftVersionChange(event.target.value)}
               />
             </div>
-            <div >
+            <div>
               <Label htmlFor="integration-schema-json">Schema JSON</Label>
               <Textarea
                 id="integration-schema-json"
-               
                 value={draftSchemaJson}
                 onChange={(event) => onDraftSchemaJsonChange(event.target.value)}
               />
@@ -143,14 +140,14 @@ export function IntegrationSchemaApplyForm({
 
   return (
     <FilterPanel>
-      <h2 >Apply schema</h2>
-      <p >
+      <h2>Apply schema</h2>
+      <p>
         Apply a registered schema to a campaign. Click a schema row below to prefill the schema
         field.
       </p>
 
       <DirectoryFilterForm layout="auto-fill" onSubmit={(event) => event.preventDefault()}>
-        <FilterField  htmlFor="integration-apply-schema" label="Schema">
+        <FilterField htmlFor="integration-apply-schema" label="Schema">
           {schemas.length > 0 ? (
             <Select value={draftSchemaId} onValueChange={onDraftSchemaIdChange}>
               <SelectTrigger id="integration-apply-schema">
@@ -173,11 +170,7 @@ export function IntegrationSchemaApplyForm({
             />
           )}
         </FilterField>
-        <FilterField
-         
-          htmlFor="integration-apply-campaign-id"
-          label="Campaign ID"
-        >
+        <FilterField htmlFor="integration-apply-campaign-id" label="Campaign ID">
           <Input
             id="integration-apply-campaign-id"
             value={draftCampaignId}
@@ -190,27 +183,19 @@ export function IntegrationSchemaApplyForm({
       </DirectoryFilterForm>
 
       {applyError ? integrationsPanelError(applyError, 'Apply failed') : null}
-      {applySuccess ? (
-        <p >Schema applied to campaign.</p>
-      ) : null}
+      {applySuccess ? <p>Schema applied to campaign.</p> : null}
       {applyResult ? (
-        <div >
+        <div>
           <p>
             Status: {applyResult.status} ({applyResult.kind})
           </p>
-          {applyResult.url_template ? (
-            <p >URL: {applyResult.url_template}</p>
-          ) : null}
+          {applyResult.url_template ? <p>URL: {applyResult.url_template}</p> : null}
           {applyResult.panel_postback_url ? (
-            <p >Postback: {applyResult.panel_postback_url}</p>
+            <p>Postback: {applyResult.panel_postback_url}</p>
           ) : null}
-          {applyResult.target_url ? (
-            <p >Target: {applyResult.target_url}</p>
-          ) : null}
+          {applyResult.target_url ? <p>Target: {applyResult.target_url}</p> : null}
           {applyResult.mappings_applied_count != null ? (
-            <p >
-              Mappings applied: {applyResult.mappings_applied_count}
-            </p>
+            <p>Mappings applied: {applyResult.mappings_applied_count}</p>
           ) : null}
         </div>
       ) : null}
@@ -239,18 +224,14 @@ export function IntegrationTemplateImportForm({
 }: IntegrationTemplateImportFormProps) {
   return (
     <FilterPanel>
-      <h2 >Import templates</h2>
-      <p >
+      <h2>Import templates</h2>
+      <p>
         Import integration templates from the catalog into registered schemas. Leave names empty to
         import all templates. Use comma-separated names to import a subset.
       </p>
 
       <DirectoryFilterForm layout="auto-fill" onSubmit={(event) => event.preventDefault()}>
-        <FilterField
-         
-          htmlFor="integration-import-names"
-          label="Template names (optional)"
-        >
+        <FilterField htmlFor="integration-import-names" label="Template names (optional)">
           <Input
             id="integration-import-names"
             value={draftTemplateNames}
@@ -265,7 +246,7 @@ export function IntegrationTemplateImportForm({
 
       {importError ? integrationsPanelError(importError, 'Import failed') : null}
       {importSuccess ? (
-        <p >
+        <p>
           Templates imported
           {importedCount != null
             ? ` (${importedCount} schema${importedCount === 1 ? '' : 's'})`

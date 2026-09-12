@@ -8,6 +8,7 @@ import {
   parseAuditLogRow,
   parseCampaign,
   parseCampaignBulkActionResponse,
+  parseCampaignBulkPatchResponse,
   parseCampaignFlowValidateResponse,
   parseCampaignListMetricsTotalsResponse,
   parseCampaignListResponse,
@@ -170,6 +171,13 @@ test('parseCampaignBulkActionResponse accepts valid results', () => {
   });
   assert.equal(parsed.results.length, 1);
   assert.equal(parsed.results[0]?.ok, true);
+});
+
+test('parseCampaignBulkPatchResponse accepts valid results', () => {
+  const parsed = parseCampaignBulkPatchResponse({
+    results: [{ id: 'abe62900-7466-5a77-8dac-2cf17fd1dd84', ok: true }],
+  });
+  assert.equal(parsed.results.length, 1);
 });
 
 test('parseCampaignFlowValidateResponse rejects missing valid flag', () => {

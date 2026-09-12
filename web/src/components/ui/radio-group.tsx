@@ -32,7 +32,16 @@ export type RadioGroupProps = Omit<React.HTMLAttributes<HTMLDivElement>, 'onChan
 
 const RadioGroup = React.forwardRef<HTMLDivElement, RadioGroupProps>(
   (
-    { value, defaultValue, onValueChange, name: nameProp, disabled = false, className, children, ...props },
+    {
+      value,
+      defaultValue,
+      onValueChange,
+      name: nameProp,
+      disabled = false,
+      className,
+      children,
+      ...props
+    },
     ref
   ) => {
     const [internalValue, setInternalValue] = useControllableState({
@@ -55,7 +64,12 @@ const RadioGroup = React.forwardRef<HTMLDivElement, RadioGroupProps>(
 
     return (
       <RadioGroupContext.Provider value={contextValue}>
-        <div ref={ref} className={cn(`grid ${adminSpacing.gap.md}`, className)} role="radiogroup" {...props}>
+        <div
+          ref={ref}
+          className={cn(`grid ${adminSpacing.gap.md}`, className)}
+          role="radiogroup"
+          {...props}
+        >
           {children}
         </div>
       </RadioGroupContext.Provider>
@@ -73,8 +87,12 @@ export type RadioGroupItemProps = Omit<
 
 const RadioGroupItem = React.forwardRef<HTMLInputElement, RadioGroupItemProps>(
   ({ value, id, disabled: itemDisabled, className, children, ...props }, ref) => {
-    const { name, value: selectedValue, onValueChange, disabled: groupDisabled } =
-      useRadioGroupContext();
+    const {
+      name,
+      value: selectedValue,
+      onValueChange,
+      disabled: groupDisabled,
+    } = useRadioGroupContext();
     const disabled = groupDisabled || itemDisabled;
     const checked = selectedValue === value;
     const inputId = id ?? `${name}-${value}`;

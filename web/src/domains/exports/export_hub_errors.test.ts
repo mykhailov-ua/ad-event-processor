@@ -2,7 +2,10 @@ import assert from 'node:assert/strict';
 import test from 'node:test';
 
 import { ApiError } from '@/api/api_error';
-import { exportHubErrorMessage, exportHubJobErrorMessage } from '@/domains/exports/export_hub_errors';
+import {
+  exportHubErrorMessage,
+  exportHubJobErrorMessage,
+} from '@/domains/exports/export_hub_errors';
 
 test('exportHubErrorMessage maps client timeout', () => {
   const message = exportHubErrorMessage(new ApiError(0, 'TIMEOUT', 'timeout'));
@@ -10,7 +13,9 @@ test('exportHubErrorMessage maps client timeout', () => {
 });
 
 test('exportHubErrorMessage hides clickhouse details from job status', () => {
-  const message = exportHubJobErrorMessage('clickhouse: Code: 241. DB::Exception: Memory limit exceeded');
+  const message = exportHubJobErrorMessage(
+    'clickhouse: Code: 241. DB::Exception: Memory limit exceeded'
+  );
   assert.ok(message);
   assert.doesNotMatch(message!, /clickhouse/i);
   assert.match(message!, /data source failed/i);

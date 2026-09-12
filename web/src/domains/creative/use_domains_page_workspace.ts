@@ -41,7 +41,8 @@ function matchesDomainFilter(row: DomainHealth, filter: DomainHealthFilter): boo
   }
   if (filter === 'degraded') {
     return (
-      (row.health_status === 'degraded' || row.health_status === 'down') && row.pool_status !== 'banned'
+      (row.health_status === 'degraded' || row.health_status === 'down') &&
+      row.pool_status !== 'banned'
     );
   }
   return true;
@@ -116,7 +117,9 @@ export function useDomainsPageWorkspace() {
         if (status.status === 'completed' || status.status === 'failed') {
           bumpReload();
           if (status.status === 'completed') {
-            toast.success(`Bulk job finished (${status.completed - status.failed}/${status.total} ok)`);
+            toast.success(
+              `Bulk job finished (${status.completed - status.failed}/${status.total} ok)`
+            );
           } else {
             toast.error(status.error ?? 'Bulk job failed');
           }

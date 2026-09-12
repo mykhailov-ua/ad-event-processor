@@ -111,7 +111,7 @@ func OpenModule(ctx context.Context, cfg *config.Config) (*Module, error) {
 		}
 		return nil, err
 	}
-	authService := NewService(repo, tokenMaker, hasher, lockoutLimiter, redisClient)
+	authService := NewService(repo, tokenMaker, hasher, lockoutLimiter, redisClient, pool)
 	authService.SetControlRedisShards(controlRedisShards)
 	workerCtx, workerCancel := context.WithCancel(ctx)
 	mod := &Module{

@@ -27,6 +27,7 @@ func (s *stubAdOpsRoleHost) ReportCHTimeout() time.Duration { return time.Second
 func (s *stubAdOpsRoleHost) GetBuyerPortfolio(context.Context, uuid.UUID) (BuyerPortfolioDTO, error) {
 	return BuyerPortfolioDTO{}, nil
 }
+
 func (s *stubAdOpsRoleHost) GetBuyerPortfolioRange(_ context.Context, customerID uuid.UUID, _ *uuid.UUID, from, to time.Time, _ reports.ChartGranularity) (BuyerPortfolioDTO, error) {
 	s.from = from
 	s.to = to
@@ -39,9 +40,11 @@ func (s *stubAdOpsRoleHost) GetBuyerPortfolioRange(_ context.Context, customerID
 		KPIs: &MetricsBlockDTO{},
 	}, nil
 }
+
 func (s *stubAdOpsRoleHost) BuildStatement(context.Context, uuid.UUID, time.Time, time.Time) (BillingStatement, error) {
 	return BillingStatement{}, nil
 }
+
 func (s *stubAdOpsRoleHost) GetInvariant(context.Context, *uuid.UUID) (BillingInvariant, error) {
 	return BillingInvariant{}, nil
 }
@@ -49,9 +52,11 @@ func (s *stubAdOpsRoleHost) SumDisputeExposure(context.Context, uuid.UUID) int64
 func (s *stubAdOpsRoleHost) FraudMLSnapshot(context.Context) (FraudMLSnapshot, error) {
 	return FraudMLSnapshot{}, nil
 }
+
 func (s *stubAdOpsRoleHost) ListMLManualLabels(context.Context, uuid.UUID, int) ([]MLManualLabelDTO, error) {
 	return nil, nil
 }
+
 func (s *stubAdOpsRoleHost) FetchEdgeMetrics(context.Context) (EdgeMetricsPanelDTO, error) {
 	return EdgeMetricsPanelDTO{}, nil
 }

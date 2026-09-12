@@ -9,15 +9,8 @@
     "../ingest/?.lua",
     "../ingest/?/init.lua"
   ],
-  "workspace.library": [
-    "../ingest/types"
-  ],
-  "diagnostics.globals": [
-    "redis",
-    "KEYS",
-    "ARGV",
-    "bit"
-  ],
+  "workspace.library": ["../ingest/types"],
+  "diagnostics.globals": ["redis", "KEYS", "ARGV", "bit"],
   "diagnostics.disable": [
     "need-check-nil",
     "undefined-field",

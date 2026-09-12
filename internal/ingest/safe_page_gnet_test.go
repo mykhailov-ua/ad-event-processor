@@ -123,9 +123,9 @@ func TestSafePageStub_embedsHydrator(t *testing.T) {
 	resp := string(conn.Written())
 	require.NotContains(t, resp, "safe.example/embed")
 	require.Contains(t, resp, `id="aed-mount"`)
-	require.Contains(t, resp, "/static/track-biometrics.js")
-	require.Contains(t, resp, "/static/track-telemetry.js")
-	require.Contains(t, resp, "/static/antifraud-telemetry.js")
+	require.Contains(t, resp, "/static/tag-in.js")
+	require.Contains(t, resp, "/static/tag-ev.js")
+	require.Contains(t, resp, "/static/tag-ctx.js")
 	require.Contains(t, resp, "/track/verify")
 	require.Contains(t, resp, string(safePageHydratorJS[:40]))
 }

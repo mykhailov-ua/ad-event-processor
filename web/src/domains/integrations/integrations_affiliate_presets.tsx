@@ -44,11 +44,12 @@ function buildAffiliatePresetOverviewFields(row: AffiliateStatusPreset): Directo
     { label: 'Name', value: row.name ?? '' },
     {
       label: 'Status mappings',
-      value: statuses.length === 0
-        ? '0'
-        : statuses
-            .map((entry) => `${entry.inbound_status ?? ''} -> ${entry.goal_name ?? ''}`)
-            .join(', '),
+      value:
+        statuses.length === 0
+          ? '0'
+          : statuses
+              .map((entry) => `${entry.inbound_status ?? ''} -> ${entry.goal_name ?? ''}`)
+              .join(', '),
     },
   ];
 }
@@ -69,10 +70,7 @@ export function IntegrationsAffiliatePresets({
   const [selectedId, setSelectedId] = useState<string | null>(null);
   const canApply = draftCampaignId.trim().length > 0;
 
-  const recordById = useMemo(
-    () => directoryRecordMap(presets, affiliatePresetId),
-    [presets]
-  );
+  const recordById = useMemo(() => directoryRecordMap(presets, affiliatePresetId), [presets]);
   const rows = useMemo(
     () => directoryOperateRows(presets, affiliatePresetId, (row) => row.name ?? ''),
     [presets]
@@ -100,9 +98,7 @@ export function IntegrationsAffiliatePresets({
       </DirectoryFilterForm>
 
       {applyResult?.mappings_applied_count != null ? (
-        <p role="status">
-          Last apply: {applyResult.mappings_applied_count} mapping(s) upserted.
-        </p>
+        <p role="status">Last apply: {applyResult.mappings_applied_count} mapping(s) upserted.</p>
       ) : null}
 
       {(presets ?? []).length === 0 ? (

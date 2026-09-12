@@ -132,7 +132,7 @@ func TestRegister(t *testing.T) {
 	repo := &mockRepo{}
 	hasher, err := NewPasswordHasher(65536, 3, 4)
 	assert.NoError(t, err)
-	service := NewService(repo, nil, hasher, nil, nil)
+	service := NewService(repo, nil, hasher, nil, nil, nil)
 
 	t.Run("Success", func(t *testing.T) {
 		repo.createUserErr = nil
@@ -186,7 +186,7 @@ func TestLogin(t *testing.T) {
 	tokenMaker := &mockTokenMaker{}
 	hasher, err := NewPasswordHasher(65536, 3, 4)
 	assert.NoError(t, err)
-	service := NewService(repo, tokenMaker, hasher, nil, nil)
+	service := NewService(repo, tokenMaker, hasher, nil, nil, nil)
 
 	password := "Password123!"
 	hash, _ := hasher.HashPassword(password)
@@ -254,7 +254,7 @@ func TestLogin(t *testing.T) {
 func TestVerifyToken(t *testing.T) {
 	repo := &mockRepo{}
 	tokenMaker := &mockTokenMaker{}
-	service := NewService(repo, tokenMaker, nil, nil, nil)
+	service := NewService(repo, tokenMaker, nil, nil, nil, nil)
 
 	t.Run("Success", func(t *testing.T) {
 		repo.getUserByID = db.User{Email: "user@example.com", EmailVerified: true}
@@ -282,7 +282,7 @@ func TestVerifyToken(t *testing.T) {
 func TestRefreshToken(t *testing.T) {
 	repo := &mockRepo{}
 	tokenMaker := &mockTokenMaker{}
-	service := NewService(repo, tokenMaker, nil, nil, nil)
+	service := NewService(repo, tokenMaker, nil, nil, nil, nil)
 
 	t.Run("Success", func(t *testing.T) {
 		repo.session = db.Session{
@@ -352,7 +352,7 @@ func TestRefreshToken(t *testing.T) {
 
 func TestRevokeToken(t *testing.T) {
 	repo := &mockRepo{}
-	service := NewService(repo, nil, nil, nil, nil)
+	service := NewService(repo, nil, nil, nil, nil, nil)
 
 	repo.err = nil
 	err := service.RevokeToken(context.Background(), "token-to-revoke")
@@ -361,7 +361,7 @@ func TestRevokeToken(t *testing.T) {
 
 func TestSessionCleanupWorker(t *testing.T) {
 	repo := &mockRepo{}
-	service := NewService(repo, nil, nil, nil, nil)
+	service := NewService(repo, nil, nil, nil, nil, nil)
 	worker := NewSessionCleanupWorker(service)
 
 	err := worker.Cleanup(context.Background())
@@ -385,7 +385,7 @@ func TestLoginFlood(t *testing.T) {
 		},
 	}
 	lockout := NewLockoutLimiter(rdb)
-	service := NewService(repo, nil, hasher, lockout, rdb)
+	service := NewService(repo, nil, hasher, lockout, rdb, nil)
 
 	email := "flood@example.com"
 	clientIP := "test-ip"

@@ -20,8 +20,11 @@ func (s *Service) TrafficOptimizerRules() *trafficoptimizer.RulesService {
 	if s.cfg != nil && s.cfg.Management.TrafficOptimizerIntervalMin > 0 {
 		floor = s.cfg.Management.TrafficOptimizerIntervalMin
 	}
+	host := trafficOptimizerHost{s}
 	return &trafficoptimizer.RulesService{
-		Pool: s.pool,
+		Pool:    s.pool,
+		Host:    host,
+		Publish: s,
 		EvalFloorMinutes: func() int {
 			return floor
 		},

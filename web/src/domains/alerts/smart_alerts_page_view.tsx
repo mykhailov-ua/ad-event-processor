@@ -126,7 +126,9 @@ export function SmartAlertsPageView({
               <Select
                 disabled={!canManage || saving}
                 value={draft.template || undefined}
-                onValueChange={(value) => onDraftChange({ template: value as SmartAlertRuleTemplate })}
+                onValueChange={(value) =>
+                  onDraftChange({ template: value as SmartAlertRuleTemplate })
+                }
               >
                 <SelectTrigger id="smart-alerts-template">
                   <SelectValue placeholder="Select template" />
@@ -233,126 +235,130 @@ export function SmartAlertsPageView({
               title="History load failed"
             />
             {rulesHasSnapshot && !rulesFetching && rules.length === 0 ? (
-            <EmptyState
-              description="No alert rules exist for this customer yet."
-              title="No alert rules"
-            />
-          ) : null}
-          {rules.length > 0 ? (
-            <DashboardPanelSection tableAriaLabel="Smart alert rules" title="Rules">
-            <TableHeader>
-              <TableRow>
-                <DirectoryTableHead>Name</DirectoryTableHead>
-                <DirectoryTableHead>Template</DirectoryTableHead>
-                <DirectoryTableHead>Threshold</DirectoryTableHead>
-                <DirectoryTableHead>Enabled</DirectoryTableHead>
-                <DirectoryTableHead>Actions</DirectoryTableHead>
-              </TableRow>
-            </TableHeader>
-            <TableBody>
-              {rules.map((rule) => (
-                <TableRow key={rule.id}>
-                  <TableCell>{rule.name}</TableCell>
-                  <TableCell>{smartAlertTemplateLabel(rule.template) || rule.metric}</TableCell>
-                  <TableCell>{rule.threshold ?? ''}</TableCell>
-                  <TableCell>{rule.enabled ? 'yes' : 'no'}</TableCell>
-                  <TableCell>
-                    <div
-                      aria-label={`Actions for ${rule.id}`}
-                      className={adminSpacing.flex.buttonGroup}
-                    >
-                      <Button type="button" variant="outline" onClick={() => onSelectRule(rule)}>
-                        Edit
-                      </Button>
-                      {canManage ? (
-                        <Button
-                          disabled={saving}
-                          type="button"
-                          variant="outline"
-                          onClick={() => void onToggleRule(rule)}
-                        >
-                          {rule.enabled ? 'Disable' : 'Enable'}
-                        </Button>
-                      ) : null}
-                    </div>
-                  </TableCell>
-                </TableRow>
-              ))}
-            </TableBody>
-            </DashboardPanelSection>
-          ) : null}
-
-          <BentoSection title="History">
-            {historyFetching && !historyHasSnapshot && !historyError ? (
-              <p className={adminTypography.bodyMuted}>Loading history...</p>
-            ) : null}
-            {historyHasSnapshot && !historyFetching && history.length === 0 ? (
               <EmptyState
-                description="No alert events have fired for this customer yet."
-                title="No alert history"
+                description="No alert rules exist for this customer yet."
+                title="No alert rules"
               />
             ) : null}
-            {history.length > 0 ? (
-              <>
-                <DashboardPanelSection tableAriaLabel="Smart alert history">
+            {rules.length > 0 ? (
+              <DashboardPanelSection tableAriaLabel="Smart alert rules" title="Rules">
                 <TableHeader>
                   <TableRow>
-                    <DirectoryTableHead>Fired</DirectoryTableHead>
+                    <DirectoryTableHead>Name</DirectoryTableHead>
                     <DirectoryTableHead>Template</DirectoryTableHead>
-                    <DirectoryTableHead>Observed</DirectoryTableHead>
-                    <DirectoryTableHead>Webhook</DirectoryTableHead>
-                    <DirectoryTableHead>Acked</DirectoryTableHead>
+                    <DirectoryTableHead>Threshold</DirectoryTableHead>
+                    <DirectoryTableHead>Enabled</DirectoryTableHead>
                     <DirectoryTableHead>Actions</DirectoryTableHead>
                   </TableRow>
                 </TableHeader>
                 <TableBody>
-                  {history.map((event) => (
-                    <TableRow key={event.id}>
+                  {rules.map((rule) => (
+                    <TableRow key={rule.id}>
+                      <TableCell>{rule.name}</TableCell>
+                      <TableCell>{smartAlertTemplateLabel(rule.template) || rule.metric}</TableCell>
+                      <TableCell>{rule.threshold ?? ''}</TableCell>
+                      <TableCell>{rule.enabled ? 'yes' : 'no'}</TableCell>
                       <TableCell>
-                        {event.fired_at ? new Date(event.fired_at).toLocaleString() : ''}
-                      </TableCell>
-                      <TableCell>{historyTemplateLabel(event.metric)}</TableCell>
-                      <TableCell>{event.observed_value ?? ''}</TableCell>
-                      <TableCell>{event.webhook_status ?? ''}</TableCell>
-                      <TableCell>{event.acked_at ? 'yes' : 'no'}</TableCell>
-                      <TableCell>
-                        {event.acked_at || !event.id ? null : (
+                        <div
+                          aria-label={`Actions for ${rule.id}`}
+                          className={adminSpacing.flex.buttonGroup}
+                        >
                           <Button
-                            disabled={!canManage || ackingEventId === event.id}
                             type="button"
                             variant="outline"
-                            onClick={() => onAckEvent(event.id!)}
+                            onClick={() => onSelectRule(rule)}
                           >
-                            {ackingEventId === event.id ? 'Acking...' : 'Ack'}
+                            Edit
                           </Button>
-                        )}
+                          {canManage ? (
+                            <Button
+                              disabled={saving}
+                              type="button"
+                              variant="outline"
+                              onClick={() => void onToggleRule(rule)}
+                            >
+                              {rule.enabled ? 'Disable' : 'Enable'}
+                            </Button>
+                          ) : null}
+                        </div>
                       </TableCell>
                     </TableRow>
                   ))}
                 </TableBody>
               </DashboardPanelSection>
-              <div className={adminSpacing.flex.buttonGroup}>
-                <Button
-                  disabled={historyPage <= 0 || historyFetching}
-                  type="button"
-                  variant="outline"
-                  onClick={() => onHistoryPageChange(historyPage - 1)}
-                >
-                  Previous
-                </Button>
-                <span className={adminTypography.bodyMuted}>Page {historyPage + 1}</span>
-                <Button
-                  disabled={history.length < historyPageSize || historyFetching}
-                  type="button"
-                  variant="outline"
-                  onClick={() => onHistoryPageChange(historyPage + 1)}
-                >
-                  Next
-                </Button>
-              </div>
-            </>
             ) : null}
-          </BentoSection>
+
+            <BentoSection title="History">
+              {historyFetching && !historyHasSnapshot && !historyError ? (
+                <p className={adminTypography.bodyMuted}>Loading history...</p>
+              ) : null}
+              {historyHasSnapshot && !historyFetching && history.length === 0 ? (
+                <EmptyState
+                  description="No alert events have fired for this customer yet."
+                  title="No alert history"
+                />
+              ) : null}
+              {history.length > 0 ? (
+                <>
+                  <DashboardPanelSection tableAriaLabel="Smart alert history">
+                    <TableHeader>
+                      <TableRow>
+                        <DirectoryTableHead>Fired</DirectoryTableHead>
+                        <DirectoryTableHead>Template</DirectoryTableHead>
+                        <DirectoryTableHead>Observed</DirectoryTableHead>
+                        <DirectoryTableHead>Webhook</DirectoryTableHead>
+                        <DirectoryTableHead>Acked</DirectoryTableHead>
+                        <DirectoryTableHead>Actions</DirectoryTableHead>
+                      </TableRow>
+                    </TableHeader>
+                    <TableBody>
+                      {history.map((event) => (
+                        <TableRow key={event.id}>
+                          <TableCell>
+                            {event.fired_at ? new Date(event.fired_at).toLocaleString() : ''}
+                          </TableCell>
+                          <TableCell>{historyTemplateLabel(event.metric)}</TableCell>
+                          <TableCell>{event.observed_value ?? ''}</TableCell>
+                          <TableCell>{event.webhook_status ?? ''}</TableCell>
+                          <TableCell>{event.acked_at ? 'yes' : 'no'}</TableCell>
+                          <TableCell>
+                            {event.acked_at || !event.id ? null : (
+                              <Button
+                                disabled={!canManage || ackingEventId === event.id}
+                                type="button"
+                                variant="outline"
+                                onClick={() => onAckEvent(event.id!)}
+                              >
+                                {ackingEventId === event.id ? 'Acking...' : 'Ack'}
+                              </Button>
+                            )}
+                          </TableCell>
+                        </TableRow>
+                      ))}
+                    </TableBody>
+                  </DashboardPanelSection>
+                  <div className={adminSpacing.flex.buttonGroup}>
+                    <Button
+                      disabled={historyPage <= 0 || historyFetching}
+                      type="button"
+                      variant="outline"
+                      onClick={() => onHistoryPageChange(historyPage - 1)}
+                    >
+                      Previous
+                    </Button>
+                    <span className={adminTypography.bodyMuted}>Page {historyPage + 1}</span>
+                    <Button
+                      disabled={history.length < historyPageSize || historyFetching}
+                      type="button"
+                      variant="outline"
+                      onClick={() => onHistoryPageChange(historyPage + 1)}
+                    >
+                      Next
+                    </Button>
+                  </div>
+                </>
+              ) : null}
+            </BentoSection>
           </CustomerScopeGate>
         </DirectoryPageShell>
       </PageSectionStack>

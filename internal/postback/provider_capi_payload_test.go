@@ -122,7 +122,7 @@ func TestCAPI_ProxyAttributionChain(t *testing.T) {
 			"sub1":"px",
 			"event_source_url":"` + clickURL + `"
 		}`),
-	}, uuid.New())
+	}, uuid.New(), uuid.Nil)
 	require.Equal(t, clickURL, pb.EventSourceURL)
 	require.Equal(t, "GCLID99", pb.GCLID)
 	require.Equal(t, "FB99", pb.FBCLID)

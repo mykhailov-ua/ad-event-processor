@@ -118,15 +118,13 @@ export function SearchableFilterSelect({
 
   const filteredGroups = useMemo(() => {
     const needle = query.trim().toLowerCase();
-    const sourceGroups =
-      groups ??
-      [
-        {
-          id: 'all',
-          label: '',
-          options,
-        },
-      ];
+    const sourceGroups = groups ?? [
+      {
+        id: 'all',
+        label: '',
+        options,
+      },
+    ];
 
     return sourceGroups
       .map((group) => ({
@@ -163,7 +161,9 @@ export function SearchableFilterSelect({
             setOpen(false);
           }}
         >
-          <span className="truncate" title={label}>{label}</span>
+          <span className="truncate" title={label}>
+            {label}
+          </span>
           {isSelected ? (
             <Check
               aria-hidden
@@ -272,14 +272,20 @@ export function SearchableFilterSelect({
             </li>
           ) : null}
           {filteredOptions.length === 0 && !canUseFreeform ? (
-            <li className={searchableFilterSelectEmptyClass} role="none">No matches</li>
+            <li className={searchableFilterSelectEmptyClass} role="none">
+              No matches
+            </li>
           ) : hasGroupHeaders ? (
             filteredGroups.map((group) => (
               <li key={group.id} role="presentation">
                 {group.label ? (
                   <div className={searchableFilterSelectGroupLabelClass}>{group.label}</div>
                 ) : null}
-                <ul className={adminChrome.menuList} role="group" aria-label={group.label || undefined}>
+                <ul
+                  className={adminChrome.menuList}
+                  role="group"
+                  aria-label={group.label || undefined}
+                >
                   {group.options.map((option) => renderOption(option))}
                 </ul>
               </li>

@@ -1,4 +1,7 @@
-import { buildCampaignListExportCsv, buildCampaignListExportRows } from '@/domains/campaigns/list/campaign_list_export_rows';
+import {
+  buildCampaignListExportCsv,
+  buildCampaignListExportRows,
+} from '@/domains/campaigns/list/campaign_list_export_rows';
 import { defaultCampaignListExportDataColumns } from '@/domains/campaigns/list/campaign_list_columns';
 import { CAMPAIGN_LIST_EXPORT_CSV_100_BUDGET } from '@/lib/perf/budgets';
 import { buildLargeCampaignListFixture } from '@/lib/perf/fixtures/campaign_list_large';

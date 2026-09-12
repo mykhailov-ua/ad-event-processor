@@ -28,7 +28,10 @@ export function DirectoryTableSkeleton({
         ))}
       </div>
       {Array.from({ length: rows }, (_, rowIndex) => (
-        <div key={`row-${rowIndex}`} className="flex h-[34px] border-b border-border/40 last:border-0">
+        <div
+          key={`row-${rowIndex}`}
+          className="flex h-[34px] border-b border-border/40 last:border-0"
+        >
           {Array.from({ length: columns }, (_, colIndex) => (
             <div key={`cell-${rowIndex}-${colIndex}`} className="flex flex-1 items-center px-4">
               <div

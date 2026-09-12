@@ -9,6 +9,7 @@ import (
 	"ad-event-processor/internal/config"
 	"ad-event-processor/internal/domain"
 	"ad-event-processor/internal/licensing"
+	"ad-event-processor/internal/licensingadmin"
 	"ad-event-processor/internal/opsadmin"
 	"ad-event-processor/internal/payment"
 	"ad-event-processor/internal/platformadmin"
@@ -22,6 +23,7 @@ var (
 	_ billingadmin.CryptoBillingHost = (*Service)(nil)
 	_ billingadmin.UsageExportHost   = (*Service)(nil)
 	_ billingadmin.TenantCapHost     = (*Service)(nil)
+	_ licensingadmin.CapHost         = (*Service)(nil)
 	_ billingadmin.CreditHost        = (*Service)(nil)
 )
 
@@ -46,6 +48,10 @@ func (s *Service) ExportChunkMaxBytes() int {
 
 func (s *Service) DeploymentLimits() (licensing.Limits, licensing.LicenseState, bool) {
 	return licenseDeploymentLimits()
+}
+
+func (s *Service) DeploymentCapHost() licensingadmin.CapHost {
+	return s
 }
 
 func (s *Service) CreditScoringConfig() billingadmin.CreditScoringConfig {

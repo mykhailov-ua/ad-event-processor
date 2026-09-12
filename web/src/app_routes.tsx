@@ -37,6 +37,9 @@ import { IntegrationsApiKeysPage } from '@/pages/integrations_api_keys_page';
 import { IntegrationsPostbacksPage } from '@/pages/integrations_postbacks_page';
 import { IntegrationsDebuggerPage } from '@/pages/integrations_debugger_page';
 import { IntegrationsSchemasPage } from '@/pages/integrations_schemas_page';
+import { IntegrationsTrafficOptimizerPage } from '@/pages/integrations_traffic_optimizer_page';
+import { IntegrationsMarginGuardPage } from '@/pages/integrations_margin_guard_page';
+import { LanderHostedEditorPage } from '@/pages/lander_hosted_editor_page';
 import { OpsBlacklistPage } from '@/pages/ops_blacklist_page';
 import { OpsConsentPage } from '@/pages/ops_consent_page';
 import { OpsSyncErrorsPage } from '@/pages/ops_sync_errors_page';
@@ -60,6 +63,8 @@ import { AlertsPage } from '@/pages/alerts_page';
 import { DisputesPage } from '@/pages/disputes_page';
 import { SupportFeedbackPage } from '@/pages/support_feedback_page';
 import { RouteErrorPage } from '@/pages/route_error_page';
+import { FlowsPage } from '@/pages/flows_page';
+import { FlowDetailPage } from '@/pages/flow_detail_page';
 
 function ProtectedLayout() {
   const { bootstrapComplete, licenseNeedsSetup, loading: metaLoading } = useMeta();
@@ -166,11 +171,17 @@ export function AppRoutes() {
             path="integrations/affiliate-presets"
           />
           <Route element={<IntegrationsGoogleSheetsPage />} path="integrations/google-sheets" />
-          <Route element={<PreserveSearchRedirect to="/exports" />} path="integrations/automation" />
-          <Route element={<PreserveSearchRedirect to="/alerts" />} path="integrations/smart-alerts" />
-          <Route element={<PreserveSearchRedirect to="/exports" />} path="integrations/margin-guard" />
           <Route
             element={<PreserveSearchRedirect to="/exports" />}
+            path="integrations/automation"
+          />
+          <Route
+            element={<PreserveSearchRedirect to="/alerts" />}
+            path="integrations/smart-alerts"
+          />
+          <Route element={<IntegrationsMarginGuardPage />} path="integrations/margin-guard" />
+          <Route
+            element={<IntegrationsTrafficOptimizerPage />}
             path="integrations/traffic-optimizer"
           />
           <Route
@@ -187,7 +198,9 @@ export function AppRoutes() {
           <Route element={<Navigate replace to="/exports" />} path="rtb/*" />
           <Route element={<Navigate replace to="/exports" />} path="fraud/*" />
           <Route element={<PreserveSearchRedirect to="/campaigns" />} path="creative" />
-          <Route element={<PreserveSearchRedirect to="/campaigns" />} path="flows/*" />
+          <Route element={<FlowsPage />} path="flows" />
+          <Route element={<FlowDetailPage />} path="flows/:id" />
+          <Route element={<LanderHostedEditorPage />} path="landers/:id/hosted-editor" />
           <Route element={<PreserveSearchRedirect to="/campaigns" />} path="landers/*" />
           <Route element={<PreserveSearchRedirect to="/campaigns" />} path="offers" />
           <Route element={<PreserveSearchRedirect to="/campaigns" />} path="offers/*" />
@@ -196,9 +209,15 @@ export function AppRoutes() {
           <Route element={<Navigate replace to="/integrations" />} path="supply/*" />
           <Route element={<Navigate replace to="/ops/domains" />} path="domains" />
           <Route element={<Navigate replace to="/exports" />} path="automation/*" />
-          <Route element={<Navigate replace to="/exports" />} path="traffic-optimizer/*" />
+          <Route
+            element={<PreserveSearchRedirect to="/integrations/traffic-optimizer" />}
+            path="traffic-optimizer/*"
+          />
           <Route element={<Navigate replace to="/alerts" />} path="smart-alerts/*" />
-          <Route element={<Navigate replace to="/exports" />} path="margin-guard/*" />
+          <Route
+            element={<PreserveSearchRedirect to="/integrations/margin-guard" />}
+            path="margin-guard/*"
+          />
           <Route element={<Navigate replace to="/exports" />} path="portals" />
           <Route element={<Navigate replace to="/exports" />} path="selfserve" />
           <Route element={<Navigate replace to="/exports" />} path="publisher/*" />

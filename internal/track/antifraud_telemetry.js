@@ -234,7 +234,7 @@
     }
   }
 
-  function canvasFingerprint() {
+  function paintDigest() {
     try {
       const canvas = document.createElement('canvas');
       canvas.width = 240;
@@ -332,7 +332,7 @@
       return;
     }
     const start = performance.now();
-    fetch('/track/antifraud/rtt?nonce=' + encodeURIComponent(String(start)), {
+    fetch('/track/m/rtt?nonce=' + encodeURIComponent(String(start)), {
       credentials: 'omit',
       cache: 'no-store',
     })
@@ -351,7 +351,7 @@
   let rafCvMilli = 0;
   let challengeToken = '';
   let powNonce = 0;
-  let telemetryMac = '';
+  let ctxMac = '';
   let sealedSnapshot = null;
   let readyPromise = null;
   let campaignID = '';
@@ -376,9 +376,9 @@
   }
 
   async function solvePoW(salt, difficulty) {
-    if (globalThis.aedWasmAttest && typeof globalThis.aedWasmAttest.solvePoW === 'function') {
-      const wasmNonce = await globalThis.aedWasmAttest.solvePoW(
-        '/static/attest.wasm',
+    if (globalThis.tagW && typeof globalThis.tagW.solvePoW === 'function') {
+      const wasmNonce = await globalThis.tagW.solvePoW(
+        '/static/tag.wasm',
         salt,
         difficulty,
         2000000
@@ -438,7 +438,7 @@
     ]);
   }
 
-  async function signTelemetry(
+  async function signCtxMac(
     challengeTok,
     nonce,
     dwellMs,
@@ -667,12 +667,12 @@
       rtt_samples: snapshotRTTSamples(),
       challenge_token: challengeToken,
       pow_nonce: powNonce,
-      telemetry_mac: telemetryMac,
+      ctx_mac: ctxMac,
     };
   }
 
   async function fetchChallenge(id) {
-    const res = await fetch('/track/antifraud/challenge?campaign_id=' + encodeURIComponent(id), {
+    const res = await fetch('/track/m/challenge?campaign_id=' + encodeURIComponent(id), {
       credentials: 'omit',
       cache: 'no-store',
     });
@@ -696,7 +696,7 @@
     rafCvMilli = await measureRafJitter();
     powNonce = await solvePoW(decoded.salt, decoded.difficulty || 2);
     const body = buildSnapshotBody();
-    telemetryMac = await signTelemetry(
+    ctxMac = await signCtxMac(
       challengeToken,
       powNonce,
       body.dwell_ms,
@@ -706,7 +706,7 @@
       body.automation_leak
     );
     body.pow_nonce = powNonce;
-    body.telemetry_mac = telemetryMac;
+    body.ctx_mac = ctxMac;
     sealedSnapshot = Object.freeze(body);
   }
 
@@ -720,7 +720,7 @@
     window.addEventListener('pointermove', onPointerMove, { passive: true });
     window.addEventListener('touchstart', onTouchStart, { passive: true });
     window.addEventListener('scroll', onScroll, { passive: true });
-    canvasHash = canvasFingerprint();
+    canvasHash = paintDigest();
     webglHash = webglFingerprint();
     audioFingerprint((h) => {
       audioHash = h;
@@ -749,17 +749,17 @@
     return readyPromise;
   }
 
-  Object.defineProperty(globalThis, 'trackAntifraudArm', {
+  Object.defineProperty(globalThis, 'tagCtxArm', {
     value: arm,
     writable: false,
     configurable: false,
   });
-  Object.defineProperty(globalThis, 'trackAntifraudSnapshot', {
+  Object.defineProperty(globalThis, 'tagCtxSnapshot', {
     value: snapshot,
     writable: false,
     configurable: false,
   });
-  Object.defineProperty(globalThis, 'trackAntifraudWhenReady', {
+  Object.defineProperty(globalThis, 'tagCtxReady', {
     value: whenReady,
     writable: false,
     configurable: false,

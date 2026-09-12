@@ -137,7 +137,19 @@ func AssertCampaignAccess(ctx context.Context, pool *pgxpool.Pool, camp db.Campa
 		return nil
 	}
 	if !camp.OwnerUserID.Valid {
-		return ErrForbidden
+		role := authz.NormalizeRole(u.Role)
+		switch role {
+		case authz.RoleMediaBuyer, authz.RoleBuyer, authz.RoleTeamLead:
+			return ErrForbidden
+		default:
+			snap, snapOK := authz.SnapshotFromContext(ctx)
+			if snapOK && snap.Scope == authz.ScopeTeam && snap.Mask == authz.MaskMasked {
+				if customerEnforceOwnership(ctx, pool, u.CustomerID) {
+					return ErrForbidden
+				}
+			}
+			return nil
+		}
 	}
 	ownerID := uuid.UUID(camp.OwnerUserID.Bytes)
 	role := authz.NormalizeRole(u.Role)

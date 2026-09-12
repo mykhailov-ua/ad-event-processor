@@ -79,10 +79,11 @@ type PathFiltersDTO struct {
 }
 
 type PathDTO struct {
-	Weight  int32           `json:"weight"`
-	Landers []PathLanderRef `json:"landers"`
-	Offers  []PathOfferRef  `json:"offers"`
-	Filters *PathFiltersDTO `json:"filters,omitempty"`
+	Weight       int32           `json:"weight"`
+	RotationMode string          `json:"rotation_mode,omitempty"`
+	Landers      []PathLanderRef `json:"landers"`
+	Offers       []PathOfferRef  `json:"offers"`
+	Filters      *PathFiltersDTO `json:"filters,omitempty"`
 }
 
 type PathErrorDTO struct {

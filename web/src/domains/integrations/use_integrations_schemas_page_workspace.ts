@@ -55,7 +55,9 @@ export function useIntegrationsSchemasPageWorkspace() {
   const [viewedSchema, setViewedSchema] = useState<IntegrationSchema | undefined>();
   const [viewingSchema, setViewingSchema] = useState(false);
   const [viewSchemaError, setViewSchemaError] = useState<Error | undefined>();
-  const [formValidationError, setFormValidationError] = useState<AdminValidationError | undefined>();
+  const [formValidationError, setFormValidationError] = useState<
+    AdminValidationError | undefined
+  >();
 
   const clearFormValidationError = useCallback(() => {
     setFormValidationError(undefined);

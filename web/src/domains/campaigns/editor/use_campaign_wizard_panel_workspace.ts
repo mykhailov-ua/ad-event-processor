@@ -4,10 +4,7 @@ import { useSearchParams } from 'react-router-dom';
 import { toast } from 'sonner';
 
 import { postCampaignWizardSession } from '@/api/campaigns_api';
-import {
-  isCampaignWizardCommitResult,
-  isCampaignWizardSession,
-} from '@/api/validate';
+import { isCampaignWizardCommitResult, isCampaignWizardSession } from '@/api/validate';
 import type {
   CampaignOnboardingTemplate,
   CampaignWizardCommitResult,
@@ -227,7 +224,9 @@ export function useCampaignWizardPanelWorkspace({
     } else {
       const budgetMicro = usdInputToMicroQueryParam(budgetDraft.budget_usd);
       if (budgetMicro == null || budgetMicro <= 0) {
-        setActionError(validationError('Budget must be a positive USD amount.', { field: 'budget_usd' }));
+        setActionError(
+          validationError('Budget must be a positive USD amount.', { field: 'budget_usd' })
+        );
         return;
       }
       payload = {

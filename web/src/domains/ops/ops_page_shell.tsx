@@ -39,20 +39,12 @@ export function OpsPageShell({
             <OpsNav variant="admin" />
           </div>
           {actions ? (
-            <div
-              aria-label="Ops actions"
-              className={adminSpacing.flex.buttonGroup}
-              role="toolbar"
-            >
+            <div aria-label="Ops actions" className={adminSpacing.flex.buttonGroup} role="toolbar">
               {actions}
             </div>
           ) : null}
           {filters ? (
-            <div
-              aria-label="Ops filters"
-              className={adminSpacing.grid.filterMatrix}
-              role="search"
-            >
+            <div aria-label="Ops filters" className={adminSpacing.grid.filterMatrix} role="search">
               {filters}
             </div>
           ) : null}
@@ -79,11 +71,7 @@ export function OpsPageBlockingError({
   title: string;
   error: Error;
 }) {
-  return (
-    <OpsPageShell title={pageTitle}>
-      {panelError(error, title)}
-    </OpsPageShell>
-  );
+  return <OpsPageShell title={pageTitle}>{panelError(error, title)}</OpsPageShell>;
 }
 
 export function OpsPageRefreshError({
@@ -141,22 +129,12 @@ export function OpsPageWithLoad({
 
   if (phase === 'blocking-error' && fetchState.error) {
     return (
-      <OpsPageBlockingError
-        error={fetchState.error}
-        pageTitle={title}
-        title={blockingErrorTitle}
-      />
+      <OpsPageBlockingError error={fetchState.error} pageTitle={title} title={blockingErrorTitle} />
     );
   }
 
   return (
-    <OpsPageShell
-      badge={badge}
-      actions={actions}
-      filters={filters}
-      footer={footer}
-      title={title}
-    >
+    <OpsPageShell badge={badge} actions={actions} filters={filters} footer={footer} title={title}>
       <OpsPageRefreshError
         error={fetchState.error}
         fetchState={fetchState}

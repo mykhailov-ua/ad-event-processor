@@ -1,7 +1,7 @@
 // Package telemetry collects opt-in deployment pulse counters and POSTs aggregated windows to a vendor URL.
 //
 // Role:
-//   - counters.go: RecordAccepted, RecordRejected, RecordTrack hooks from ingest filter accept/reject and /track.
+//   - counters.go: in-process counter API for optional control-plane pulse (not wired on tracker hot path).
 //   - pulse.go Worker POSTs PulsePayload (schema_version, window_sec, accepted/rejected counts, peak_rps).
 //   - validate.go rejects forbidden PII keys in outbound JSON (campaign_id, ip, click_id, etc.).
 //
@@ -23,11 +23,11 @@
 //
 // Invariants:
 //   - Opt-in false or empty URL means Worker.Enabled() false: no outbound calls.
-//   - No per-event telemetry from /track; counters only.
+//   - Tracker binary does not import or update these counters (separate process from control).
 //   - Pulse body must pass ValidatePayloadJSON (no PII field names).
 //
 // Forbidden:
-//   - Per-event telemetry from synchronous /track or filter Check.
+//   - Hot-path Record* hooks in tracker ingest, filter, or stream packages.
 //   - Blocking pulse POST on request-critical goroutines.
 //
 // Verify:

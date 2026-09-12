@@ -31,10 +31,7 @@ test(
       await route.continue();
     });
 
-    await gotoLive(
-      page,
-      `/reports/click-log?customer_id=${encodeURIComponent(customerId)}`
-    );
+    await gotoLive(page, `/reports/click-log?customer_id=${encodeURIComponent(customerId)}`);
 
     const main = mainContent(page);
     await expect(main.getByText('Control Plane export mode', { exact: true })).toBeVisible({

@@ -10,6 +10,7 @@ import (
 	"testing"
 	"time"
 
+	"ad-event-processor/internal/database"
 	"ad-event-processor/internal/testutil"
 
 	"ad-event-processor/internal/identity/db"
@@ -21,7 +22,6 @@ import (
 	"github.com/testcontainers/testcontainers-go"
 	"github.com/testcontainers/testcontainers-go/modules/postgres"
 	rediscontainer "github.com/testcontainers/testcontainers-go/modules/redis"
-	"github.com/testcontainers/testcontainers-go/wait"
 )
 
 const testPasetoKey = "yellow-submarine-yellow-submarin"
@@ -43,10 +43,7 @@ func setupAuthTestInfra(t *testing.T) (infra *authTestInfra, cleanup func()) {
 		postgres.WithDatabase("auth_test_db"),
 		postgres.WithUsername("postgres"),
 		postgres.WithPassword("secure_password"),
-		testcontainers.WithWaitStrategy(
-			wait.ForLog("database system is ready to accept connections").
-				WithOccurrence(2).
-				WithStartupTimeout(20*time.Second)),
+		testcontainers.WithWaitStrategy(database.PostgresContainerWaitStrategy()),
 	)
 	require.NoError(t, err)
 
@@ -90,7 +87,7 @@ func (ti *authTestInfra) newService(t *testing.T) *Service {
 	hasher, err := NewPasswordHasher(4096, 1, 1)
 	require.NoError(t, err)
 	lockout := NewLockoutLimiter(ti.Redis)
-	return NewService(ti.Store, tokenMaker, hasher, lockout, ti.Redis)
+	return NewService(ti.Store, tokenMaker, hasher, lockout, ti.Redis, ti.Pool)
 }
 
 func (ti *authTestInfra) registerAndLogin(t *testing.T, svc *Service, email, password string) (userID uuid.UUID, accessToken, refreshToken string) {

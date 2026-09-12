@@ -23,17 +23,9 @@ import type {
   CampaignPacingFilter,
   CampaignStatusFilter,
 } from '@/domains/campaigns/list/campaigns_list_types';
-import {
-  CAMPAIGNS_FILTER_ROW,
-  FilterField,
-  FilterPanel,
-} from '@/shell/filter_panel';
+import { CAMPAIGNS_FILTER_ROW, FilterField, FilterPanel } from '@/shell/filter_panel';
 import { adminTypography } from '@/lib/admin_kit';
-import {
-  StatusMetricsBand,
-  ToolbarBandActions,
-  DirectoryStack,
-} from '@/shell/ui_bands';
+import { StatusMetricsBand, ToolbarBandActions, DirectoryStack } from '@/shell/ui_bands';
 
 const ALL_OPTION_VALUE = '__all__';
 
@@ -161,11 +153,7 @@ export function CampaignsListToolbar({
             </Button>
             <DropdownMenu>
               <DropdownMenuTrigger asChild>
-                <Button
-                  aria-label="More campaign actions"
-                  type="button"
-                  variant="outline"
-                >
+                <Button aria-label="More campaign actions" type="button" variant="outline">
                   <MoreHorizontal aria-hidden />
                 </Button>
               </DropdownMenuTrigger>
@@ -212,107 +200,106 @@ export function CampaignsListToolbar({
           }}
         >
           <div className={CAMPAIGNS_FILTER_ROW}>
-          <FilterField compact label="Customer group">
-            <CampaignsListSearchableFilterSelect
-              aria-label="Customer group"
-              options={groupOptions}
-              searchPlaceholder="All groups"
-              value={draftCustomerId || ALL_OPTION_VALUE}
-              onValueChange={(value) =>
-                onDraftCustomerIdChange(value === ALL_OPTION_VALUE ? '' : value)
-              }
-            />
-          </FilterField>
+            <FilterField compact label="Customer group">
+              <CampaignsListSearchableFilterSelect
+                aria-label="Customer group"
+                options={groupOptions}
+                searchPlaceholder="All groups"
+                value={draftCustomerId || ALL_OPTION_VALUE}
+                onValueChange={(value) =>
+                  onDraftCustomerIdChange(value === ALL_OPTION_VALUE ? '' : value)
+                }
+              />
+            </FilterField>
 
-          <FilterField compact label="Pacing">
-            <CampaignsListFilterSelect
-              aria-label="Pacing"
-              options={PACING_FILTER_OPTIONS}
-              value={draftPacing || ALL_OPTION_VALUE}
-              onValueChange={(value) =>
-                onDraftPacingChange(
-                  value === ALL_OPTION_VALUE ? '' : (value as CampaignPacingFilter)
-                )
-              }
-            />
-          </FilterField>
+            <FilterField compact label="Pacing">
+              <CampaignsListFilterSelect
+                aria-label="Pacing"
+                options={PACING_FILTER_OPTIONS}
+                value={draftPacing || ALL_OPTION_VALUE}
+                onValueChange={(value) =>
+                  onDraftPacingChange(
+                    value === ALL_OPTION_VALUE ? '' : (value as CampaignPacingFilter)
+                  )
+                }
+              />
+            </FilterField>
 
-          <FilterField compact label="Owner">
-            <CampaignsListSearchableFilterSelect
-              aria-label="Owner"
-              disabled={fetching || listFacetsFetching || listFacetsDegraded}
-              options={ownerOptions}
-              searchPlaceholder="All owners"
-              title={
-                listFacetsDegraded
-                  ? 'Owner filter requires list-facets API'
-                  : 'Filter campaigns by owner'
-              }
-              value={draftOwnerUserId || ALL_OPTION_VALUE}
-              onValueChange={(value) =>
-                onDraftOwnerUserIdChange(value === ALL_OPTION_VALUE ? '' : value)
-              }
-            />
-          </FilterField>
+            <FilterField compact label="Owner">
+              <CampaignsListSearchableFilterSelect
+                aria-label="Owner"
+                disabled={fetching || listFacetsFetching || listFacetsDegraded}
+                options={ownerOptions}
+                searchPlaceholder="All owners"
+                title={
+                  listFacetsDegraded
+                    ? 'Owner filter requires list-facets API'
+                    : 'Filter campaigns by owner'
+                }
+                value={draftOwnerUserId || ALL_OPTION_VALUE}
+                onValueChange={(value) =>
+                  onDraftOwnerUserIdChange(value === ALL_OPTION_VALUE ? '' : value)
+                }
+              />
+            </FilterField>
 
-          <FilterField compact label="Country">
-            <CampaignListCountrySelect
-              aria-label="Country"
-              disabled={fetching || listFacetsFetching || listFacetsDegraded}
-              options={countryOptions}
-              title={
-                listFacetsDegraded
-                  ? 'Country filter requires list-facets API'
-                  : 'Filter campaigns by target country'
-              }
-              value={draftCountry || ALL_OPTION_VALUE}
-              onValueChange={(value) =>
-                onDraftCountryChange(value === ALL_OPTION_VALUE ? '' : value)
-              }
-            />
-          </FilterField>
+            <FilterField compact label="Country">
+              <CampaignListCountrySelect
+                aria-label="Country"
+                disabled={fetching || listFacetsFetching || listFacetsDegraded}
+                options={countryOptions}
+                title={
+                  listFacetsDegraded
+                    ? 'Country filter requires list-facets API'
+                    : 'Filter campaigns by target country'
+                }
+                value={draftCountry || ALL_OPTION_VALUE}
+                onValueChange={(value) =>
+                  onDraftCountryChange(value === ALL_OPTION_VALUE ? '' : value)
+                }
+              />
+            </FilterField>
 
-          <FilterField compact htmlFor="campaigns-budget-min" label="Budget min ($)">
-            <Input
-              id="campaigns-budget-min"
+            <FilterField compact htmlFor="campaigns-budget-min" label="Budget min ($)">
+              <Input
+                id="campaigns-budget-min"
+                disabled={fetching}
+                inputMode="decimal"
+                placeholder="Min budget"
+                value={draftBudgetMinUsd}
+                onChange={(event) => onDraftBudgetMinUsdChange(event.target.value)}
+              />
+            </FilterField>
+
+            <FilterField compact htmlFor="campaigns-budget-max" label="Budget max ($)">
+              <Input
+                id="campaigns-budget-max"
+                disabled={fetching}
+                inputMode="decimal"
+                placeholder="Max budget"
+                value={draftBudgetMaxUsd}
+                onChange={(event) => onDraftBudgetMaxUsdChange(event.target.value)}
+              />
+            </FilterField>
+
+            <ToolbarDateRangePicker
               disabled={fetching}
-              inputMode="decimal"
-              placeholder="Min budget"
-              value={draftBudgetMinUsd}
-              onChange={(event) => onDraftBudgetMinUsdChange(event.target.value)}
+              from={draftStatsFrom}
+              id="campaign-list-stats-range"
+              label="Period"
+              to={draftStatsTo}
+              onChange={onStatsRangeChange}
             />
-          </FilterField>
 
-          <FilterField compact htmlFor="campaigns-budget-max" label="Budget max ($)">
-            <Input
-              id="campaigns-budget-max"
-              disabled={fetching}
-              inputMode="decimal"
-              placeholder="Max budget"
-              value={draftBudgetMaxUsd}
-              onChange={(event) => onDraftBudgetMaxUsdChange(event.target.value)}
-            />
-          </FilterField>
-
-          <ToolbarDateRangePicker
-            disabled={fetching}
-            from={draftStatsFrom}
-            id="campaign-list-stats-range"
-            label="Period"
-            to={draftStatsTo}
-            onChange={onStatsRangeChange}
-          />
-
-          <FilterField compact hideLabel label="Apply filters">
-            <div className="flex w-fit max-w-full flex-wrap items-center gap-2">
-              <Button disabled={fetching} shape="default" type="submit" variant="brand">
-                Apply
-              </Button>
-              {filterFooter}
-            </div>
-          </FilterField>
-
-            </div>
+            <FilterField compact hideLabel label="Apply filters">
+              <div className="flex w-fit max-w-full flex-wrap items-center gap-2">
+                <Button disabled={fetching} shape="default" type="submit" variant="brand">
+                  Apply
+                </Button>
+                {filterFooter}
+              </div>
+            </FilterField>
+          </div>
         </form>
       </FilterPanel>
     </DirectoryStack>

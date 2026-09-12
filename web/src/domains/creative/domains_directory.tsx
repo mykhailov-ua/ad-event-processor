@@ -1,7 +1,11 @@
 import { useMemo, useState } from 'react';
 import { useRunWhenTrue } from '@/hooks/use_run_when_true';
 
-import { PrimaryActionButton, SecondaryActionButton, FilterApplyButton } from '@/shell/action_buttons';
+import {
+  PrimaryActionButton,
+  SecondaryActionButton,
+  FilterApplyButton,
+} from '@/shell/action_buttons';
 import { DirectoryFilterForm, FilterField } from '@/shell/filter_panel';
 import { PageChrome } from '@/shell/page_chrome';
 import { EmptyState } from '@/shell/empty_state';
@@ -134,7 +138,12 @@ function DomainSslResultSummary({ result }: { result: DomainSSLSetupResult }) {
       </p>
       <p className="text-muted-foreground">{result.message}</p>
       {result.output ? (
-        <pre className={cn('mt-2 max-h-40 overflow-auto whitespace-pre-wrap', adminTypography.monoData)}>
+        <pre
+          className={cn(
+            'mt-2 max-h-40 overflow-auto whitespace-pre-wrap',
+            adminTypography.monoData
+          )}
+        >
           {result.output}
         </pre>
       ) : null}
@@ -163,9 +172,7 @@ function buildDomainOverviewFields(row: DomainHealth): DirectoryOverviewField[] 
     { label: 'Role', value: row.role ?? '-' },
     {
       label: 'Health',
-      value: (
-        <Badge variant={healthBadgeVariant(row.health_status)}>{row.health_status}</Badge>
-      ),
+      value: <Badge variant={healthBadgeVariant(row.health_status)}>{row.health_status}</Badge>,
     },
     { label: 'SSL status', value: row.ssl_status ?? '-' },
     { label: 'SSL expiry', value: displayTimestamp(row.ssl_not_after) },
@@ -181,9 +188,7 @@ function buildBulkResultOverviewFields(row: DomainBulkJobRow): DirectoryOverview
     { label: 'Hostname', value: row.hostname },
     {
       label: 'Result',
-      value: (
-        <Badge variant={row.ok ? 'default' : 'destructive'}>{row.ok ? 'ok' : 'failed'}</Badge>
-      ),
+      value: <Badge variant={row.ok ? 'default' : 'destructive'}>{row.ok ? 'ok' : 'failed'}</Badge>,
     },
     { label: 'Error', value: row.error ?? '-' },
   ];
@@ -191,12 +196,14 @@ function buildBulkResultOverviewFields(row: DomainBulkJobRow): DirectoryOverview
 
 function DomainBulkJobResultsTable({ rows }: { rows: DomainBulkJobRow[] }) {
   const [selectedId, setSelectedId] = useState<string | null>(null);
-  const recordById = useMemo(
-    () => directoryRecordMap(rows, (row) => row.hostname),
-    [rows]
-  );
+  const recordById = useMemo(() => directoryRecordMap(rows, (row) => row.hostname), [rows]);
   const operateRows = useMemo(
-    () => directoryOperateRows(rows, (row) => row.hostname, (row) => row.hostname),
+    () =>
+      directoryOperateRows(
+        rows,
+        (row) => row.hostname,
+        (row) => row.hostname
+      ),
     [rows]
   );
 
@@ -281,12 +288,14 @@ export function DomainsDirectory({
   const [parkOpen, setParkOpen] = useState(false);
   const [selectedHostname, setSelectedHostname] = useState<string | null>(null);
 
-  const domainByHostname = useMemo(
-    () => directoryRecordMap(items, (row) => row.hostname),
-    [items]
-  );
+  const domainByHostname = useMemo(() => directoryRecordMap(items, (row) => row.hostname), [items]);
   const operateRows = useMemo(
-    () => directoryOperateRows(items, (row) => row.hostname, (row) => row.hostname),
+    () =>
+      directoryOperateRows(
+        items,
+        (row) => row.hostname,
+        (row) => row.hostname
+      ),
     [items]
   );
 

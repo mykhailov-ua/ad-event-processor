@@ -35,7 +35,9 @@ test('postbacks config PUT 400 shows save error', { tag: '@L3' }, async ({ page 
   await page.locator('#postback-campaign-id').fill(campaignId);
   await page.locator('#postback-provider').click();
   await page.getByRole('option', { name: 'webhook' }).click();
-  await page.locator('#postback-url-template').fill('https://example.com/postback?click={click_id}');
+  await page
+    .locator('#postback-url-template')
+    .fill('https://example.com/postback?click={click_id}');
   await page.locator('#postback-target-event').fill('conversion');
 
   const savePut = page.waitForResponse(

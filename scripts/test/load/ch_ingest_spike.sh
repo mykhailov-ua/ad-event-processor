@@ -39,7 +39,7 @@ prom_query_scalar() {
   local query=$1
   local url body
   url="${PROMETHEUS_URL%/}/api/v1/query"
-  body="$(curl -sfG --max-time 15 --data-urlencode "query=${query}" "$url" 2>/dev/null)" || return 1
+  body="$(curl -sfG --max-time 15 --data-urlencode "query=${query}" "$url" 2> /dev/null)" || return 1
   python3 - "$body" << 'PY'
 import json, sys
 data = json.loads(sys.argv[1])
@@ -55,7 +55,7 @@ print(val)
 PY
 }
 
-if ! curl -sf --max-time 3 "${PROMETHEUS_URL%/}/-/ready" >/dev/null 2>&1; then
+if ! curl -sf --max-time 3 "${PROMETHEUS_URL%/}/-/ready" > /dev/null 2>&1; then
   die "prometheus not ready at $PROMETHEUS_URL"
 fi
 
@@ -84,7 +84,8 @@ sleep 10
 
 lag_p99="$(prom_query_scalar 'histogram_quantile(0.99, sum(rate(ad_ch_ingest_lag_seconds_bucket[2m])) by (le))' || true)"
 single_after="$(prom_query_scalar 'sum(ad_ch_single_row_inserts_total)' || echo 0)"
-single_delta="$(python3 - "$single_before" "$single_after" << 'PY'
+single_delta="$(
+  python3 - "$single_before" "$single_after" << 'PY'
 import sys
 print(float(sys.argv[2]) - float(sys.argv[1]))
 PY

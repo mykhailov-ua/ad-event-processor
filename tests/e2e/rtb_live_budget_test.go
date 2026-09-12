@@ -74,6 +74,7 @@ func TestE2E_RtbLiveBudgetAuthority(t *testing.T) {
 	require.NoError(t, err)
 
 	registry := testutil.NewAdsRegistry(t, queries)
+	wireOpenRTBLicenseForE2E(t, registry)
 	_, err = registry.Sync(ctx)
 	require.NoError(t, err)
 

@@ -3,6 +3,7 @@
 import { ApiError } from '@/api/api_error';
 import type {
   AuditLog,
+  AutomationRule,
   Campaign,
   CampaignBulkActionResponse,
   CampaignBulkActionResultRow,
@@ -24,7 +25,16 @@ import type {
   Lander,
   LanderHostingCounts,
   LanderListResponse,
+  Offer,
   PostbackDryRunResult,
+  HostedEditorFileBody,
+  HostedEditorSaveResult,
+  HostedEditorState,
+  MarginGuardActivity,
+  MarginGuardPolicy,
+  TrafficOptimizerDryRunResult,
+  TrafficOptimizerPreset,
+  TrafficOptimizerRule,
   WireSignalBreakdownReportResponse,
   WireSignalBreakdownRow,
 } from '@/api/types';
@@ -125,11 +135,7 @@ function parseFlowPathFilters(value: unknown): FlowPathFilters | undefined {
   };
 }
 
-function parseFlowPathRef(
-  value: unknown,
-  label: string,
-  idField: 'lander_id' | 'offer_id'
-): void {
+function parseFlowPathRef(value: unknown, label: string, idField: 'lander_id' | 'offer_id'): void {
   if (!isRecord(value) || typeof value[idField] !== 'string' || typeof value.weight !== 'number') {
     invalidResponse(`${label} missing ${idField} or weight`);
   }
@@ -300,6 +306,10 @@ export function parseCampaignListResponse(value: unknown): CampaignListResponse 
   return value as CampaignListResponse;
 }
 
+export function parseLander(value: unknown): Lander {
+  return parseLanderRow(value);
+}
+
 function parseLanderRow(value: unknown): Lander {
   if (!isRecord(value) || typeof value.id !== 'string' || typeof value.name !== 'string') {
     invalidResponse('Lander row missing id or name');
@@ -338,6 +348,20 @@ export function parseLanderListResponse(value: unknown): LanderListResponse {
   return value as LanderListResponse;
 }
 
+function parseOfferRow(value: unknown): Offer {
+  if (!isRecord(value) || typeof value.id !== 'string' || typeof value.name !== 'string') {
+    invalidResponse('Offer row missing id or name');
+  }
+  return value as Offer;
+}
+
+export function parseOfferList(value: unknown): Offer[] {
+  if (!Array.isArray(value)) {
+    invalidResponse('Expected offers array');
+  }
+  return value.map(parseOfferRow);
+}
+
 export function parseCampaignBulkActionResultRow(value: unknown): CampaignBulkActionResultRow {
   if (!isRecord(value) || typeof value.id !== 'string' || typeof value.ok !== 'boolean') {
     invalidResponse('Campaign bulk action result row missing id or ok');
@@ -353,6 +377,10 @@ export function parseCampaignBulkActionResponse(value: unknown): CampaignBulkAct
     parseCampaignBulkActionResultRow(row);
   }
   return value as CampaignBulkActionResponse;
+}
+
+export function parseCampaignBulkPatchResponse(value: unknown): CampaignBulkActionResponse {
+  return parseCampaignBulkActionResponse(value);
 }
 
 export function parseCampaignPublishBlockedError(value: unknown): CampaignPublishBlockedError {
@@ -376,9 +404,7 @@ export function parseCampaignValidateResponse(value: unknown): CampaignValidateR
   return value as CampaignValidateResponse;
 }
 
-export function isCampaignWizardCommitResult(
-  value: unknown
-): value is CampaignWizardCommitResult {
+export function isCampaignWizardCommitResult(value: unknown): value is CampaignWizardCommitResult {
   if (!isRecord(value) || !isRecord(value.campaign)) {
     return false;
   }
@@ -420,4 +446,139 @@ export function parsePostbackDryRunResult(value: unknown): PostbackDryRunResult 
     invalidResponse('Postback dry-run result missing ok, provider, or test_event');
   }
   return value as PostbackDryRunResult;
+}
+
+function parseTrafficOptimizerArm(value: unknown): TrafficOptimizerDryRunResult['arms'][number] {
+  if (
+    !isRecord(value) ||
+    typeof value.entity_id !== 'string' ||
+    typeof value.current_weight !== 'number' ||
+    typeof value.proposed_weight !== 'number' ||
+    typeof value.observed_value !== 'number'
+  ) {
+    invalidResponse('Traffic optimizer dry-run arm missing entity_id or weights');
+  }
+  return {
+    entity_id: value.entity_id,
+    current_weight: value.current_weight,
+    proposed_weight: value.proposed_weight,
+    observed_value: value.observed_value,
+  };
+}
+
+export function parseTrafficOptimizerDryRunResult(value: unknown): TrafficOptimizerDryRunResult {
+  if (!isRecord(value) || typeof value.stale_weights !== 'boolean' || !Array.isArray(value.arms)) {
+    invalidResponse('Traffic optimizer dry-run result missing stale_weights or arms');
+  }
+  return {
+    stale_weights: value.stale_weights,
+    arms: value.arms.map(parseTrafficOptimizerArm),
+  };
+}
+
+export function parseTrafficOptimizerPreset(value: unknown): TrafficOptimizerPreset {
+  if (
+    !isRecord(value) ||
+    typeof value.key !== 'string' ||
+    typeof value.title !== 'string' ||
+    typeof value.description !== 'string' ||
+    !Array.isArray(value.parameters_schema)
+  ) {
+    invalidResponse('Traffic optimizer preset missing key, title, or parameters_schema');
+  }
+  return value as TrafficOptimizerPreset;
+}
+
+export function parseTrafficOptimizerPresetList(value: unknown): TrafficOptimizerPreset[] {
+  if (!Array.isArray(value)) {
+    invalidResponse('Traffic optimizer presets must be an array');
+  }
+  return value.map(parseTrafficOptimizerPreset);
+}
+
+export function parseTrafficOptimizerRule(value: unknown): TrafficOptimizerRule {
+  if (!isRecord(value) || typeof value.id !== 'string' || typeof value.customer_id !== 'string') {
+    invalidResponse('Traffic optimizer rule missing id or customer_id');
+  }
+  if (typeof value.name !== 'string' || typeof value.scope !== 'string') {
+    invalidResponse('Traffic optimizer rule missing name or scope');
+  }
+  return value as TrafficOptimizerRule;
+}
+
+export function parseTrafficOptimizerRuleList(value: unknown): TrafficOptimizerRule[] {
+  if (!Array.isArray(value)) {
+    invalidResponse('Traffic optimizer rules must be an array');
+  }
+  return value.map(parseTrafficOptimizerRule);
+}
+
+export function parseMarginGuardPolicy(value: unknown): MarginGuardPolicy {
+  if (!isRecord(value) || typeof value.campaign_id !== 'string' || typeof value.name !== 'string') {
+    invalidResponse('Margin guard policy missing campaign_id or name');
+  }
+  return value as MarginGuardPolicy;
+}
+
+export function parseMarginGuardPolicyList(value: unknown): MarginGuardPolicy[] {
+  if (!Array.isArray(value)) {
+    invalidResponse('Margin guard policies must be an array');
+  }
+  return value.map(parseMarginGuardPolicy);
+}
+
+export function parseMarginGuardActivity(value: unknown): MarginGuardActivity {
+  if (
+    !isRecord(value) ||
+    typeof value.id !== 'string' ||
+    typeof value.campaign_id !== 'string' ||
+    typeof value.placement_id !== 'string'
+  ) {
+    invalidResponse('Margin guard activity missing id, campaign_id, or placement_id');
+  }
+  return value as MarginGuardActivity;
+}
+
+export function parseMarginGuardActivityList(value: unknown): MarginGuardActivity[] {
+  if (!Array.isArray(value)) {
+    invalidResponse('Margin guard activity must be an array');
+  }
+  return value.map(parseMarginGuardActivity);
+}
+
+export function parseHostedEditorState(value: unknown): HostedEditorState {
+  if (
+    !isRecord(value) ||
+    typeof value.lander_id !== 'string' ||
+    typeof value.name !== 'string' ||
+    !Array.isArray(value.files)
+  ) {
+    invalidResponse('Hosted editor state missing lander_id, name, or files');
+  }
+  return value as HostedEditorState;
+}
+
+export function parseHostedEditorFileBody(value: unknown): HostedEditorFileBody {
+  if (!isRecord(value) || typeof value.content !== 'string') {
+    invalidResponse('Hosted editor file body missing content');
+  }
+  return value as HostedEditorFileBody;
+}
+
+export function parseAutomationRule(value: unknown): AutomationRule {
+  if (!isRecord(value) || typeof value.id !== 'string' || typeof value.name !== 'string') {
+    invalidResponse('Automation rule missing id or name');
+  }
+  return value as AutomationRule;
+}
+
+export function parseHostedEditorSaveResult(value: unknown): HostedEditorSaveResult {
+  if (
+    !isRecord(value) ||
+    typeof value.draft_version !== 'number' ||
+    typeof value.has_unpublished_draft !== 'boolean'
+  ) {
+    invalidResponse('Hosted editor save result missing draft_version');
+  }
+  return value as HostedEditorSaveResult;
 }

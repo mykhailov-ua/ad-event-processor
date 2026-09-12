@@ -6,10 +6,7 @@ import type { OpsBlacklistEntry } from '@/api/types';
 import { displayTimestamp } from '@/lib/display';
 import { opsPanelError } from '@/domains/ops/ops_nav';
 import { OpsListFooter } from '@/domains/ops/ops_list_footer';
-import {
-  OpsActionGroup,
-  OpsPageWithLoad,
-} from '@/domains/ops/ops_page_shell';
+import { OpsActionGroup, OpsPageWithLoad } from '@/domains/ops/ops_page_shell';
 import {
   OpsTable,
   OpsTableCell,

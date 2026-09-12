@@ -7,10 +7,11 @@ import { toError } from '@/lib/admin_error';
 export type SupportFeedbackType = 'bug' | 'feature' | 'support';
 
 export function useSupportFeedbackPageWorkspace() {
-  const { data: meta, error: metaError, fetching: metaFetching } = useResource(
-    (signal) => getSupportFeedbackMeta(signal),
-    []
-  );
+  const {
+    data: meta,
+    error: metaError,
+    fetching: metaFetching,
+  } = useResource((signal) => getSupportFeedbackMeta(signal), []);
 
   const [feedbackType, setFeedbackType] = useState<SupportFeedbackType>('bug');
   const [contactEmail, setContactEmail] = useState('');

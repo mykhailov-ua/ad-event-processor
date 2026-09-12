@@ -1,21 +1,9 @@
 {
   "$schema": "https://raw.githubusercontent.com/sumneko/vscode-lua/master/setting/schema.json",
   "runtime.version": "LuaJIT",
-  "runtime.path": [
-    "?.lua",
-    "?/init.lua",
-    "../ingest/?.lua",
-    "../ingest/?/init.lua"
-  ],
-  "workspace.library": [
-    "../ingest/types"
-  ],
-  "diagnostics.globals": [
-    "redis",
-    "KEYS",
-    "ARGV",
-    "bit"
-  ],
+  "runtime.path": ["?.lua", "?/init.lua", "../ingest/?.lua", "../ingest/?/init.lua"],
+  "workspace.library": ["../ingest/types"],
+  "diagnostics.globals": ["redis", "KEYS", "ARGV", "bit"],
   "diagnostics.disable": [
     "need-check-nil",
     "undefined-field",

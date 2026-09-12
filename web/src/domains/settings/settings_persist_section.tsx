@@ -35,18 +35,16 @@ export function SettingsPersistSection({
         Writes the current control-plane configuration to install.compose.env on the server. Restart
         tracker and edge services afterward to load the new values.
       </p>
-      {applyError ? <ErrorBlock error={applyError} title="Could not write install.compose.env" /> : null}
+      {applyError ? (
+        <ErrorBlock error={applyError} title="Could not write install.compose.env" />
+      ) : null}
       {applyWrittenPath ? (
         <p className={adminTypography.body}>
           Last written path: <span className={adminTypography.monoData}>{applyWrittenPath}</span>
         </p>
       ) : null}
       <FilterPanel className={FILTER_PANEL_FLAT}>
-        <FilterField
-          htmlFor="settings-install-root"
-          label="Install root (optional)"
-          wide
-        >
+        <FilterField htmlFor="settings-install-root" label="Install root (optional)" wide>
           <Input
             disabled={!canWrite || applying}
             id="settings-install-root"

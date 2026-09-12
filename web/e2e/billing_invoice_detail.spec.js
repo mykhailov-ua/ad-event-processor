@@ -101,6 +101,8 @@ test('billing invoice detail GET 500 shows blocking error', { tag: '@L3' }, asyn
     mainContent(page).getByText('Could not load invoice', { exact: true })
   ).toBeVisible();
   await expect(
-    mainContent(page).getByText('The server encountered an error. Try again later.', { exact: true })
+    mainContent(page).getByText('The server encountered an error. Try again later.', {
+      exact: true,
+    })
   ).toBeVisible();
 });

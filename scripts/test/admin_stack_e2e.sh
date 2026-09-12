@@ -4,6 +4,7 @@ set -euo pipefail
 # Role: Playwright admin stack E2E against control :8188; smoke bundle always, full matrix when ADMIN_WEB_E2E_NIGHTLY=1.
 # Execution context: CI admin-stack-e2e workflow or operator with Docker; exits 0 when web/scripts/build.mjs absent.
 # Invariants/contracts enforced: CONTROL_URL reachable; bootstrap credentials from ADMIN_STACK_E2E_* or INSTALL_BOOTSTRAP_TOKEN.
+# Stack: SKIP_CODEGEN=1 for docker build; redis-0..N-1 match REDIS_ADDRS from .env (default 2 shards from .env.example).
 # Verify: bash scripts/test/admin_stack_e2e.sh
 source "$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)/lib/paths.sh"
 cd "$ROOT"
@@ -22,11 +23,13 @@ if [[ -f "$ROOT/.env" ]]; then
 fi
 
 CONTROL_URL="${CONTROL_URL:-http://127.0.0.1:8188}"
+INSTALL_ROOT="${AED_INSTALL_ROOT:-/opt/platform/ad-event-processor}"
 ADMIN_STACK_E2E_EMAIL="${ADMIN_STACK_E2E_EMAIL:-${ADMIN_BOOTSTRAP_EMAIL:-}}"
 ADMIN_STACK_E2E_PASSWORD="${ADMIN_STACK_E2E_PASSWORD:-${ADMIN_BOOTSTRAP_PASSWORD:-}}"
 INSTALL_TOKEN="${INSTALL_BOOTSTRAP_TOKEN:-}"
 
 COMPOSE_INGEST_ENV=(
+  SKIP_CODEGEN=1
   CH_ENABLED=0
   CONTROL_ENABLE_PAYMENT=0
   CONTROL_ENABLE_BILLING=0
@@ -39,6 +42,35 @@ log() { printf 'admin-stack-e2e: %s\n' "$*"; }
 die() {
   printf 'admin-stack-e2e: ERROR: %s\n' "$*" >&2
   exit 1
+}
+
+e2e_redis_shard_count() {
+  local addrs="${REDIS_ADDRS:-/run/ad-event-processor/redis/redis-0.sock,/run/ad-event-processor/redis/redis-1.sock}"
+  local count=0
+  local part
+  IFS=',' read -ra parts <<< "$addrs"
+  for part in "${parts[@]}"; do
+    part="${part#"${part%%[![:space:]]*}"}"
+    part="${part%"${part##*[![:space:]]}"}"
+    if [[ -n "$part" ]]; then
+      count=$((count + 1))
+    fi
+  done
+  if [[ "$count" -lt 1 ]]; then
+    count=2
+  fi
+  echo "$count"
+}
+
+e2e_compose_base_services() {
+  local shard_count="$1"
+  local -n out_ref=$2
+  out_ref=(db)
+  local i=0
+  while [[ $i -lt $shard_count ]]; do
+    out_ref+=("redis-${i}")
+    i=$((i + 1))
+  done
 }
 
 wait_control() {
@@ -74,15 +106,22 @@ ensure_env_and_license() {
   ADMIN_STACK_E2E_PASSWORD="${ADMIN_STACK_E2E_PASSWORD:-${ADMIN_BOOTSTRAP_PASSWORD:-Password123!}}"
 
   mkdir -p "$ROOT/var"
-  if [[ ! -f "$ROOT/var/license.jwt" ]]; then
-    log "issuing pilot license for stack e2e"
-    go run ./cmd/license-issue \
-      --sku pilot \
-      --customer admin-stack-e2e \
-      --out "$ROOT/var/license.jwt" \
-      --force \
-      --force-reason admin_stack_e2e
+  if [[ -f "$ROOT/var/license.jwt" ]]; then
+    return 0
   fi
+  if [[ -f "${INSTALL_ROOT}/var/license.jwt" ]]; then
+    cp "${INSTALL_ROOT}/var/license.jwt" "$ROOT/var/license.jwt"
+    log "reused license from ${INSTALL_ROOT}/var/license.jwt"
+    return 0
+  fi
+  log "issuing pilot license for stack e2e"
+  VENDOR_TRIAL_FORCE="${VENDOR_TRIAL_FORCE:-1}" go run ./cmd/license-issue \
+    --sku pilot \
+    --customer admin-stack-e2e \
+    --telegram-id "${ADMIN_STACK_E2E_TELEGRAM_ID:-admin-stack-e2e}" \
+    --out "$ROOT/var/license.jwt" \
+    --force \
+    --force-reason admin_stack_e2e
 }
 
 build_admin_ui() {
@@ -91,12 +130,19 @@ build_admin_ui() {
 }
 
 start_or_refresh_stack() {
+  local shard_count services=()
+  shard_count="$(e2e_redis_shard_count)"
+  e2e_compose_base_services "$shard_count" services
+  log "redis shard count from REDIS_ADDRS: ${shard_count}"
+
   if curl -sf "${CONTROL_URL}/health" > /dev/null 2>&1; then
-    log "control healthy; rebuilding control with fresh admin embed"
-    "${COMPOSE_INGEST_ENV[@]}" docker compose --profile ingest_only up -d --build --force-recreate control
+    log "control healthy; ensuring redis shards and rebuilding control with fresh admin embed"
+    env "${COMPOSE_INGEST_ENV[@]}" docker compose --profile ingest_only up -d "${services[@]}"
+    env "${COMPOSE_INGEST_ENV[@]}" docker compose --profile ingest_only up -d --build --force-recreate control
   else
     log "control not healthy; starting ingest-only stack"
-    "${COMPOSE_INGEST_ENV[@]}" docker compose --profile ingest_only up -d --build db redis-0 control
+    services+=("control")
+    env "${COMPOSE_INGEST_ENV[@]}" docker compose --profile ingest_only up -d --build "${services[@]}"
   fi
   wait_control || die "control did not become healthy"
 }

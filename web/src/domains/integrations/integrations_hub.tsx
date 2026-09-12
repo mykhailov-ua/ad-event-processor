@@ -1,4 +1,15 @@
-import { Bug, FileSpreadsheet, Key, Link2, Plug, ScrollText, Share2, Tags } from 'lucide-react';
+import {
+  Bug,
+  FileSpreadsheet,
+  Gauge,
+  Key,
+  Link2,
+  Plug,
+  ScrollText,
+  Share2,
+  ShieldCheck,
+  Tags,
+} from 'lucide-react';
 
 import { BentoSection } from '@/shell/bento_card';
 import { DirectoryPageShell } from '@/shell/directory_page_shell';
@@ -10,7 +21,8 @@ const INTEGRATION_LINKS = [
   {
     path: '/integrations/api-keys',
     title: 'Service accounts',
-    description: 'Mint Bearer API keys for automation (Dolphin, scripts, CAPI) separate from user login.',
+    description:
+      'Mint Bearer API keys for automation (Dolphin, scripts, CAPI) separate from user login.',
     icon: Key,
     meta: 'Bearer tokens',
   },
@@ -62,6 +74,21 @@ const INTEGRATION_LINKS = [
     description: 'Connect Google OAuth to push report exports into spreadsheets from Export Hub.',
     icon: FileSpreadsheet,
     meta: 'Export destination',
+  },
+  {
+    path: '/integrations/traffic-optimizer',
+    title: 'Traffic optimizer',
+    description:
+      'Bandit presets, dry-run weight suggestions, and apply-to-flow for lander/offer splits.',
+    icon: Gauge,
+    meta: 'Flow weights',
+  },
+  {
+    path: '/integrations/margin-guard',
+    title: 'Margin guard',
+    description: 'Placement margin policies, activity log, and override removal (Pro+ license).',
+    icon: ShieldCheck,
+    meta: 'Margin automation',
   },
 ];
 

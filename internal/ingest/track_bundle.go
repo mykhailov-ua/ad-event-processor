@@ -519,6 +519,9 @@ func scanLongIntegerDigits(data []byte, i, n int) int {
 const trackTelemetryMaxEvents = 64
 
 func matchTelemetryKey(key []byte) bool {
+	if len(key) == 2 && key[0] == 'e' && key[1] == 'v' {
+		return true
+	}
 	return len(key) == 9 &&
 		httpingress.FoldKeyU32(key, 0) == 0x656c6574 &&
 		httpingress.FoldKeyU32(key, 4) == 0x7274656d &&

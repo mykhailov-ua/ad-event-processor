@@ -8,7 +8,5 @@ export function CampaignIdRedirect() {
     return <Navigate replace to={`/campaigns${location.search}`} />;
   }
 
-  return (
-    <Navigate replace to={`/campaigns/${encodeURIComponent(id)}/edit${location.search}`} />
-  );
+  return <Navigate replace to={`/campaigns/${encodeURIComponent(id)}/edit${location.search}`} />;
 }

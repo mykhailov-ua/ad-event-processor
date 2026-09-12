@@ -14,10 +14,11 @@ import { mutationError } from '@/lib/mutation_audit';
 export function useIntegrationsGoogleSheetsPageWorkspace() {
   const [searchParams, setSearchParams] = useSearchParams();
   const { refreshToken, bumpRefresh } = useRefreshToken();
-  const { data: status, error, fetching } = useResource(
-    (signal) => getGoogleSheetsStatus(signal),
-    [refreshToken]
-  );
+  const {
+    data: status,
+    error,
+    fetching,
+  } = useResource((signal) => getGoogleSheetsStatus(signal), [refreshToken]);
   const [disconnecting, setDisconnecting] = useState(false);
   const [disconnectError, setDisconnectError] = useState<Error | undefined>();
   const bumpRefreshCoalesced = useCoalescedBumpRefresh(bumpRefresh, fetching || disconnecting);

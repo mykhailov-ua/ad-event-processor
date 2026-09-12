@@ -134,9 +134,7 @@ export function CustomerReportDirectory<Row>({
     ) : telemetryMissing ? (
       <span className={adminTypography.bodyMuted}>Telemetry missing: {telemetryMissing}</span>
     ) : freshness?.as_of ? (
-      <span className={adminTypography.bodyMuted}>
-        As of {displayTimestamp(freshness.as_of)}
-      </span>
+      <span className={adminTypography.bodyMuted}>As of {displayTimestamp(freshness.as_of)}</span>
     ) : null);
 
   return (
@@ -182,7 +180,9 @@ export function CustomerReportDirectory<Row>({
               </FilterField>
               {config.showCompare ? (
                 <FilterField label="Compare">
-                  <div className={cn('flex items-center', adminSpacing.gap.md, adminKit.controlHeight)}>
+                  <div
+                    className={cn('flex items-center', adminSpacing.gap.md, adminKit.controlHeight)}
+                  >
                     <Checkbox
                       checked={draftCompare}
                       id={`${config.key}-compare`}
@@ -230,7 +230,9 @@ export function CustomerReportDirectory<Row>({
               buildOverviewFields={buildOverviewFields}
               disabled={fetching}
               nameColumnLabel={nameColumnLabel}
-              overviewTitle={(row) => String(reportRowLabelFromColumn(row, nameColumn, config.title))}
+              overviewTitle={(row) =>
+                String(reportRowLabelFromColumn(row, nameColumn, config.title))
+              }
               recordById={recordById}
               revalidating={listRevalidating}
               rows={operateRows}

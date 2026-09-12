@@ -19,7 +19,11 @@ import {
   type DashboardRangePreset,
   DASHBOARD_RANGE_PRESETS,
 } from '@/lib/dashboard_range';
-import { requireNonEmpty, toastValidationError, validationError } from '@/lib/admin_validation_error';
+import {
+  requireNonEmpty,
+  toastValidationError,
+  validationError,
+} from '@/lib/admin_validation_error';
 
 export type DashboardPageRole = 'buyer' | 'adops';
 
@@ -49,12 +53,7 @@ export type DashboardPageWorkspace = {
   onRefresh: () => void;
 };
 
-function buildExportHref(
-  reportKey: string,
-  customerId: string,
-  from: string,
-  to: string
-): string {
+function buildExportHref(reportKey: string, customerId: string, from: string, to: string): string {
   const params = new URLSearchParams();
   params.set('report_key', reportKey);
   if (customerId) {
@@ -78,8 +77,7 @@ export function useDashboardPageWorkspace(role: DashboardPageRole): DashboardPag
   const appliedCustomerId = searchParams.get('customer_id') ?? session?.default_customer_id ?? '';
   const appliedFrom = searchParams.get('from') ?? defaultRange.from;
   const appliedTo = searchParams.get('to') ?? defaultRange.to;
-  const chartMockPreview =
-    role === 'buyer' && isChartMockPreviewEnabled(searchParams.toString());
+  const chartMockPreview = role === 'buyer' && isChartMockPreviewEnabled(searchParams.toString());
 
   const [draftCustomerId, setDraftCustomerId] = useState(appliedCustomerId);
   const [draftFrom, setDraftFrom] = useState(() => toDatetimeLocalValue(appliedFrom));
@@ -103,25 +101,22 @@ export function useDashboardPageWorkspace(role: DashboardPageRole): DashboardPag
 
   const { data, error, fetching, revalidating } = useResource<
     BuyerDashboardPayload | AdopsDashboardPayload
-  >(
-    (signal) => {
-      if (chartMockPreview) {
-        return Promise.resolve(
-          buildBuyerDashboardChartMock(appliedCustomerId, appliedFrom, appliedTo)
-        );
-      }
-      const query = {
-        customer_id: appliedCustomerId,
-        from: appliedFrom,
-        to: appliedTo,
-      };
-      if (role === 'buyer') {
-        return getBuyerDashboard(query, signal);
-      }
-      return getAdopsDashboard(query, signal);
-    },
-    queryDeps
-  );
+  >((signal) => {
+    if (chartMockPreview) {
+      return Promise.resolve(
+        buildBuyerDashboardChartMock(appliedCustomerId, appliedFrom, appliedTo)
+      );
+    }
+    const query = {
+      customer_id: appliedCustomerId,
+      from: appliedFrom,
+      to: appliedTo,
+    };
+    if (role === 'buyer') {
+      return getBuyerDashboard(query, signal);
+    }
+    return getAdopsDashboard(query, signal);
+  }, queryDeps);
 
   const onDraftPresetChange = useCallback((preset: DashboardRangePreset) => {
     setDraftPreset(preset);

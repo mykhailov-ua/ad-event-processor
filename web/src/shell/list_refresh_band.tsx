@@ -28,7 +28,11 @@ export function ListRefreshBand({
   const busy = loading || disabled;
 
   return (
-    <div aria-label="List refresh" className={cn('flex shrink-0 items-center', adminSpacing.gap.md)} role="group">
+    <div
+      aria-label="List refresh"
+      className={cn('flex shrink-0 items-center', adminSpacing.gap.md)}
+      role="group"
+    >
       <span
         className={cn('whitespace-nowrap', adminTypography.bodyMuted)}
         title={lastUpdatedAt ? `Last updated ${displayTimestamp(lastUpdatedAt)}` : undefined}
@@ -36,7 +40,8 @@ export function ListRefreshBand({
         {statusText}
       </span>
       <Button
-        className={cn('size-7 shrink-0 p-0', busy && 'pointer-events-none')} aria-busy={loading || undefined}
+        className={cn('size-7 shrink-0 p-0', busy && 'pointer-events-none')}
+        aria-busy={loading || undefined}
         aria-label={ariaLabel}
         disabled={busy}
         title={title ?? ariaLabel}

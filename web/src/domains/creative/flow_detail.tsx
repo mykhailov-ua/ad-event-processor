@@ -128,7 +128,9 @@ export function FlowDetail({
 
             <div className="grid gap-2 rounded-md border border-border p-3">
               <p className={adminTypography.label}>Click URL preview</p>
-              <p className={cn(adminTypography.captionPlain, 'break-all text-muted-foreground')}>{previewUrl}</p>
+              <p className={cn(adminTypography.captionPlain, 'break-all text-muted-foreground')}>
+                {previewUrl}
+              </p>
               <p className={cn(adminTypography.captionPlain, 'text-muted-foreground')}>
                 Attach this flow to a campaign (flow_id) before sending live traffic. The tracker
                 resolves landers from the campaign flow snapshot on /click.

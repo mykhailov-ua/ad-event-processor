@@ -98,10 +98,7 @@ export function CustomersDirectory({
     () => (items ?? []).find((customer) => customer.id === selectedCustomerId),
     [items, selectedCustomerId]
   );
-  const customerById = useMemo(
-    () => directoryRecordMap(items, (customer) => customer.id),
-    [items]
-  );
+  const customerById = useMemo(() => directoryRecordMap(items, (customer) => customer.id), [items]);
 
   const handleClearSelection = useCallback(() => {
     onSelectedCustomerIdChange(null);
@@ -121,13 +118,7 @@ export function CustomersDirectory({
           onClearSelection={handleClearSelection}
         />
       }
-      badge={
-        freshnessLabel ? (
-          <span>
-            {freshnessLabel}
-          </span>
-        ) : null
-      }
+      badge={freshnessLabel ? <span>{freshnessLabel}</span> : null}
       blockingErrorTitle="Could not load customers"
       description={
         <>

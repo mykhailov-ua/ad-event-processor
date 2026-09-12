@@ -229,9 +229,10 @@
       description. We can issue additional license activations or reset HWID bindings case by case.
     </p>
     <p>
-      Margin Guard pauses campaigns when ROI drops — not only a Telegram alert you read after the budget is gone.
-      Silent reject keeps bots seeing a clean 202 while your spend stays intact. Those are product behaviors; this page
-      is the ops context around them.
+      Margin Guard runs on a timer (default 5 minutes), reads Postgres ledger and ClickHouse placement stats, and
+      enqueues an internal routing pause — it does not pause ads in Meta or Google unless you use Enterprise platform
+      sync. Skips when ClickHouse lag exceeds 5 minutes. Silent reject returns 202 to junk traffic without debiting
+      campaign budget. Size VPS per the hardware table; all-in-one under spike + heavy reports risks 503 or OOM.
     </p>
 
     <div class="site-doc-actions">

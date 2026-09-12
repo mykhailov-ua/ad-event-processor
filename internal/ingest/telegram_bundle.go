@@ -6,7 +6,6 @@ import (
 
 	"ad-event-processor/internal/domain"
 	"ad-event-processor/internal/metrics"
-	"ad-event-processor/internal/telemetry"
 	"ad-event-processor/internal/track"
 
 	"github.com/panjf2000/gnet/v2"
@@ -65,7 +64,6 @@ func fillTelegramEventFromParsed(evt *domain.Event, eventType string, parsed *te
 
 func (h *AdsPacketHandler) reactTelegramBid(req *Request, c gnet.Conn, ctx *ConnContext) gnet.Action {
 	startMono := monotonicNano()
-	telemetry.RecordTrack()
 
 	var parsedReq telegramBidRequest
 	if !parseTelegramBidRequest(req.Body, &parsedReq) {
@@ -170,7 +168,6 @@ func (h *AdsPacketHandler) resolveTelegramLanding(evt *domain.Event, filtered []
 
 func (h *AdsPacketHandler) reactTelegramClick(req *Request, c gnet.Conn, ctx *ConnContext) gnet.Action {
 	startMono := monotonicNano()
-	telemetry.RecordTrack()
 
 	scratch := parseTelegramQuery(req.Path, ctx.WCamp.Buf[:0], &ctx.TelegramClickParsed)
 	ctx.WCamp.Buf = scratch
@@ -245,7 +242,6 @@ func (h *AdsPacketHandler) reactTelegramClick(req *Request, c gnet.Conn, ctx *Co
 
 func (h *AdsPacketHandler) reactTelegramImpression(req *Request, c gnet.Conn, ctx *ConnContext) gnet.Action {
 	startMono := monotonicNano()
-	telemetry.RecordTrack()
 
 	scratch := parseTelegramQuery(req.Path, ctx.WCamp.Buf[:0], &ctx.TelegramClickParsed)
 	ctx.WCamp.Buf = scratch

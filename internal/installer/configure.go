@@ -38,11 +38,11 @@ func RunConfigure(interactive bool) error {
 			cfg.Timezone = strings.TrimSpace(timezone)
 		}
 
-		fmt.Print("Enable telemetry? (Y/n): ")
+		fmt.Print("Enable telemetry? (y/N): ")
 		var telemetry string
 		_, _ = fmt.Scanln(&telemetry)
-		if strings.EqualFold(strings.TrimSpace(telemetry), "n") {
-			cfg.TelemetryEnabled = false
+		if strings.EqualFold(strings.TrimSpace(telemetry), "y") {
+			cfg.TelemetryEnabled = true
 		}
 
 		fmt.Print("Enable Stripe payments? (y/N): ")

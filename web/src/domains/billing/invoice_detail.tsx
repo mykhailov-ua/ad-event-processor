@@ -76,9 +76,7 @@ export function InvoiceDetail({
 
   if (error && !hasSnapshot) {
     return (
-      <PageChrome title="Invoice">
-        {billingPanelError(error, 'Could not load invoice')}
-      </PageChrome>
+      <PageChrome title="Invoice">{billingPanelError(error, 'Could not load invoice')}</PageChrome>
     );
   }
 
@@ -136,16 +134,8 @@ export function InvoiceDetail({
       </div>
 
       {actionError ? billingPanelError(actionError, 'Action failed') : null}
-      {voidSuccess ? (
-        <p  role="status">
-          Invoice voided.
-        </p>
-      ) : null}
-      {retrySuccess ? (
-        <p  role="status">
-          Delivery retry accepted.
-        </p>
-      ) : null}
+      {voidSuccess ? <p role="status">Invoice voided.</p> : null}
+      {retrySuccess ? <p role="status">Delivery retry accepted.</p> : null}
 
       <CustomerDetailPanel>
         <CustomerDetailRow label="Invoice ID" value={invoice.id} />
@@ -233,7 +223,7 @@ export function InvoiceDetail({
 function InvoiceLinesTable({ caption, lines }: { caption: string; lines: BillingInvoiceLine[] }) {
   if (lines.length === 0) {
     return (
-      <section className="grid gap-4" >
+      <section className="grid gap-4">
         <h2 className={adminTypography.sectionTitle}>{caption}</h2>
         <p>No line items on this invoice.</p>
       </section>

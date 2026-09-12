@@ -18,7 +18,9 @@ export function useIntegrationsAffiliatePresetsPageWorkspace() {
   const [applyingPreset, setApplyingPreset] = useState<string | undefined>();
   const [applyError, setApplyError] = useState<Error | undefined>();
   const [applyResult, setApplyResult] = useState<ApplyIntegrationSchemaResponse | undefined>();
-  const [formValidationError, setFormValidationError] = useState<AdminValidationError | undefined>();
+  const [formValidationError, setFormValidationError] = useState<
+    AdminValidationError | undefined
+  >();
 
   const onDraftCampaignIdChange = useCallback((value: string) => {
     setFormValidationError(undefined);

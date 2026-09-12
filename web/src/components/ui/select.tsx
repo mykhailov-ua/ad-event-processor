@@ -44,13 +44,7 @@ type SelectProps = {
   children?: React.ReactNode;
 };
 
-function Select({
-  value,
-  defaultValue,
-  onValueChange,
-  disabled,
-  children,
-}: SelectProps) {
+function Select({ value, defaultValue, onValueChange, disabled, children }: SelectProps) {
   const [open, setOpen] = React.useState(false);
   const [internalValue, setInternalValue] = useControllableState({
     value,
@@ -102,11 +96,7 @@ const SelectValue = ({ placeholder }: { placeholder?: string }) => {
         ? value.toUpperCase()
         : value;
   const label = registered ?? fallback;
-  return (
-    <span className="truncate text-left">
-      {label ?? placeholder ?? 'Select...'}
-    </span>
-  );
+  return <span className="truncate text-left">{label ?? placeholder ?? 'Select...'}</span>;
 };
 
 const SelectTrigger = React.forwardRef<
@@ -253,9 +243,7 @@ const SelectContent = React.forwardRef<
         style={coords}
         {...props}
       >
-        <div
-          className={cn(adminChrome.menuList, 'scrollbar-admin max-h-60 overflow-y-auto p-1')}
-        >
+        <div className={cn(adminChrome.menuList, 'scrollbar-admin max-h-60 overflow-y-auto p-1')}>
           {children}
         </div>
       </div>
@@ -266,11 +254,7 @@ SelectContent.displayName = 'SelectContent';
 
 const SelectLabel = React.forwardRef<HTMLDivElement, React.HTMLAttributes<HTMLDivElement>>(
   ({ className, ...props }, ref) => (
-    <div
-      ref={ref}
-      className={cn(adminKit.labelCaps, 'px-2 py-1.5', className)}
-      {...props}
-    />
+    <div ref={ref} className={cn(adminKit.labelCaps, 'px-2 py-1.5', className)} {...props} />
   )
 );
 SelectLabel.displayName = 'SelectLabel';

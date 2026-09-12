@@ -5,25 +5,32 @@ import (
 	"net/http/httptest"
 	"testing"
 
+	"ad-event-processor/internal/config"
+
 	"github.com/stretchr/testify/require"
 )
+
+func newTrackStaticHarness() *AdsPacketHandler {
+	cfg := &config.Config{MaxRequestBodySize: 1 << 20}
+	return NewAdsPacketHandler(cfg, &mockRegistry{}, nil, nil, nil, NewJumpHashSharder(1), "", nil)
+}
 
 func TestTrackPixelHTTPRoute(t *testing.T) {
 	w := httptest.NewRecorder()
 	serveHTTPTrackPixel(w)
 	require.Equal(t, http.StatusOK, w.Code)
 	require.Contains(t, w.Header().Get("Content-Type"), "application/javascript")
-	require.Contains(t, w.Body.String(), "trackEvent")
+	require.Contains(t, w.Body.String(), "sendEvent")
 }
 
 func TestTrackPixelGnetRoute(t *testing.T) {
-	h := &AdsPacketHandler{}
+	h := newTrackStaticHarness()
 	_, conn := ServeGnetHarness(h, BuildGnetHTTP("GET", trackPixelPath, map[string]string{
 		"Connection":     "keep-alive",
 		"Content-Length": "0",
 	}, nil))
 	require.Contains(t, string(conn.Written()), "200 OK")
-	require.Contains(t, string(conn.Written()), "trackEvent")
+	require.Contains(t, string(conn.Written()), "sendEvent")
 }
 
 func TestTrackTelemetryHTTPRoute(t *testing.T) {
@@ -31,7 +38,7 @@ func TestTrackTelemetryHTTPRoute(t *testing.T) {
 	serveHTTPTrackClientJS(w, trackTelemetryJS)
 	require.Equal(t, http.StatusOK, w.Code)
 	require.Contains(t, w.Header().Get("Content-Type"), "application/javascript")
-	require.Contains(t, w.Body.String(), "trackTelemetrySnapshot")
+	require.Contains(t, w.Body.String(), "tagEvSnapshot")
 }
 
 func TestTrackBiometricsHTTPRoute(t *testing.T) {
@@ -39,15 +46,15 @@ func TestTrackBiometricsHTTPRoute(t *testing.T) {
 	serveHTTPTrackClientJS(w, trackBiometricsJS)
 	require.Equal(t, http.StatusOK, w.Code)
 	require.Contains(t, w.Header().Get("Content-Type"), "application/javascript")
-	require.Contains(t, w.Body.String(), "trackBiometricsSnapshot")
+	require.Contains(t, w.Body.String(), "tagInSnapshot")
 }
 
 func TestTrackTelemetryGnetRoute(t *testing.T) {
-	h := &AdsPacketHandler{}
+	h := newTrackStaticHarness()
 	_, conn := ServeGnetHarness(h, BuildGnetHTTP("GET", trackTelemetryPath, map[string]string{
 		"Connection":     "keep-alive",
 		"Content-Length": "0",
 	}, nil))
 	require.Contains(t, string(conn.Written()), "200 OK")
-	require.Contains(t, string(conn.Written()), "trackTelemetrySnapshot")
+	require.Contains(t, string(conn.Written()), "tagEvSnapshot")
 }

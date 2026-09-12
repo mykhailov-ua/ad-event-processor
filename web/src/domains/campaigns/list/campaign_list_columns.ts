@@ -202,9 +202,7 @@ export function defaultCampaignListColumnPrefs(): CampaignListColumnPrefs {
   };
 }
 
-function normalizeDataColumnOrder(
-  order: ReadonlyArray<string>
-): CampaignListReorderableColumnId[] {
+function normalizeDataColumnOrder(order: ReadonlyArray<string>): CampaignListReorderableColumnId[] {
   const seen = new Set<CampaignListReorderableColumnId>();
   const result: CampaignListReorderableColumnId[] = [];
 

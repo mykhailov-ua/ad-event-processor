@@ -80,7 +80,11 @@ function fail(message: string, field?: string): ValidationFail {
   return { ok: false, error: validationError(message, field ? { field } : undefined) };
 }
 
-export function requireNonEmpty(value: string, label: string, field?: string): ValidationResult<string> {
+export function requireNonEmpty(
+  value: string,
+  label: string,
+  field?: string
+): ValidationResult<string> {
   const trimmed = value.trim();
   if (!trimmed) {
     return fail(`${label} is required.`, field);
@@ -183,7 +187,11 @@ export function requireHexLength(
   return { ok: true, value: trimmed };
 }
 
-export function requireZeroOrOne(value: string, label: string, field?: string): ValidationResult<number> {
+export function requireZeroOrOne(
+  value: string,
+  label: string,
+  field?: string
+): ValidationResult<number> {
   const parsed = requireInteger(value, label, { min: 0, max: 1, field });
   if (!parsed.ok) {
     return parsed;
@@ -191,7 +199,11 @@ export function requireZeroOrOne(value: string, label: string, field?: string): 
   return parsed;
 }
 
-export function requireJsonObject(value: string, label: string, field?: string): ValidationResult<Record<string, unknown>> {
+export function requireJsonObject(
+  value: string,
+  label: string,
+  field?: string
+): ValidationResult<Record<string, unknown>> {
   const trimmed = value.trim();
   if (!trimmed) {
     return fail(`${label} is required.`, field);
@@ -207,7 +219,11 @@ export function requireJsonObject(value: string, label: string, field?: string):
   }
 }
 
-export function requireJsonArray(value: string, label: string, field?: string): ValidationResult<unknown[]> {
+export function requireJsonArray(
+  value: string,
+  label: string,
+  field?: string
+): ValidationResult<unknown[]> {
   const trimmed = value.trim();
   if (!trimmed) {
     return fail(`${label} is required.`, field);

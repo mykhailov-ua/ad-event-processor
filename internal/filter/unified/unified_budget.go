@@ -17,7 +17,6 @@ import (
 	"ad-event-processor/internal/domain"
 	filt "ad-event-processor/internal/filter"
 	"ad-event-processor/internal/metrics"
-	"ad-event-processor/internal/telemetry"
 
 	"github.com/google/uuid"
 	"github.com/prometheus/client_golang/prometheus"
@@ -723,7 +722,6 @@ func (f *UnifiedFilter) handleLuaResult(
 			return true, filt.ErrFilterTimeout
 		}
 		metrics.EventsProcessed.Inc()
-		telemetry.RecordAccepted()
 		f.recordAcceptedSpendIfDebited(shard, evt.CampaignID, amount, sampleLua)
 		return true, nil
 	case 11:
@@ -733,7 +731,6 @@ func (f *UnifiedFilter) handleLuaResult(
 	case luaReturnFraudSignal:
 		filt.AddFraudSignal(evt, filt.FraudReasonL3Blocklist)
 		metrics.EventsProcessed.Inc()
-		telemetry.RecordAccepted()
 		f.recordAcceptedSpendIfDebited(shard, evt.CampaignID, amount, sampleLua)
 		return true, nil
 	case luaReturnPlacement:
@@ -749,7 +746,6 @@ func (f *UnifiedFilter) handleLuaResult(
 		// Lua debit succeeded; ingest publishAcceptedTrack runs after Check returns nil.
 		// Post-debit producer reject must call RollbackDebit (not handled inside this package).
 		metrics.EventsProcessed.Inc()
-		telemetry.RecordAccepted()
 		f.recordAcceptedSpendIfDebited(shard, evt.CampaignID, amount, sampleLua)
 		return true, nil
 	}

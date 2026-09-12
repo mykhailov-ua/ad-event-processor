@@ -18,6 +18,15 @@
 //   - GET /api/v1/license/status returns UNCONFIGURED when billing.license_status row is missing.
 //   - Nil FeatureChecker leaves gated routes open; wired checker fails closed with 403 when feature denied.
 //   - EULA accept records legal.Version once per deployment in system_settings.
+//   - Deployment caps (CapHost): 0 = unlimited except max_export_chunk_bytes (0 = exports disabled); >= 999999 = unlimited.
+//
+// Limit enforcement map:
+//   - max_tenants: EnforceDeploymentTenantCap -> CreateCustomer, ActivateOwner -> 429 LIMIT_EXCEEDED
+//   - max_api_keys: EnforceDeploymentAPIKeyCap -> identity.CreateAPIKey -> 429 LIMIT_EXCEEDED
+//   - max_active_campaigns: EnforceDeploymentCampaignCap -> CreateCampaign -> 429 LIMIT_EXCEEDED
+//   - max_regions: EnforceDeploymentRegionCap -> control serve multi_region startup -> error
+//   - max_export_chunk_bytes: EnforceDeploymentExportAllowed / ExportDisabled -> 403 DEPLOYMENT_EXPORT_DISABLED
+//   - max_events_per_month: EnforceDeploymentMonthlyEventsCap (cold); LicenseMonthlyEventsFilter (hot snapshot)
 //
 // Forbidden:
 //   - License server ping on appliance (file-based JWT mode only).
@@ -27,5 +36,5 @@
 //
 //	go test ./internal/licensingadmin/ -short -count=1
 //	go test ./internal/licensingadmin/ -short -run TestLicenseFeatureAllowed -count=1
-//	go test ./internal/licensingadmin/ -short -run TestRevokeQueue -count=1
+//	go test ./internal/licensingadmin/ -short -run TestEnforceDeploymentExportAllowed -count=1
 package licensingadmin

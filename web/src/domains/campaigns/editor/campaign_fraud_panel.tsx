@@ -70,7 +70,7 @@ export function CampaignFraudPanel({
   } = workspace;
 
   return (
-    <div className="grid gap-4" >
+    <div className="grid gap-4">
       <FraudLimitsDocLink />
       <PerimeterSybilDocLink />
       <p>
@@ -80,15 +80,12 @@ export function CampaignFraudPanel({
       </p>
       <p>
         ML fraud boost is applied from a Redis snapshot on the tracker. Batch scoring runs in{' '}
-        <span>cmd/fraud-scorer</span>; there is no inline model call on{' '}
-        <span>/track</span>.
+        <span>cmd/fraud-scorer</span>; there is no inline model call on <span>/track</span>.
       </p>
       {fraudConfig?.ml_boost_last_refreshed_at ? (
         <p>
           Last ML boost refresh:{' '}
-          <span>
-            {displayTimestamp(fraudConfig.ml_boost_last_refreshed_at)}
-          </span>
+          <span>{displayTimestamp(fraudConfig.ml_boost_last_refreshed_at)}</span>
         </p>
       ) : null}
       {loadError && !fraudConfig
@@ -96,7 +93,7 @@ export function CampaignFraudPanel({
         : null}
 
       <DirectoryFilterForm layout="auto-fill" onSubmit={(event) => event.preventDefault()}>
-        <FilterField  htmlFor="fraud-preset" label="Preset">
+        <FilterField htmlFor="fraud-preset" label="Preset">
           <Input
             id="fraud-preset"
             value={draftPreset}
@@ -287,11 +284,7 @@ export function CampaignFraudPanel({
         </Button>
       </div>
 
-      {saveSuccess ? (
-        <p  role="status">
-          Fraud config saved.
-        </p>
-      ) : null}
+      {saveSuccess ? <p role="status">Fraud config saved.</p> : null}
       {saveError ? campaignPanelError(saveError, 'Could not save fraud config') : null}
       {previewError ? campaignPanelError(previewError, 'Could not preview fraud impact') : null}
       {preview ? (

@@ -72,7 +72,9 @@ export function resolveSavedViewReportKey(kind: ExportHubKind, reportKey: string
   return reportKey.trim() || 'placements';
 }
 
-export function buildExportHubSavedViewSpec(draft: ExportHubSavedViewDraft): ExportHubSavedViewSpec {
+export function buildExportHubSavedViewSpec(
+  draft: ExportHubSavedViewDraft
+): ExportHubSavedViewSpec {
   const fromIso = fromDatetimeLocalValue(draft.from);
   const toIso = fromDatetimeLocalValue(draft.to);
   const compareFromIso = fromDatetimeLocalValue(draft.compareFrom);
@@ -188,14 +190,21 @@ export function applyExportHubSavedViewSpec(
   rawSpec: unknown
 ): ExportHubSavedViewApplyPatch {
   const spec = parseSavedViewSpec(rawSpec);
-  const kind = spec.kind ?? (reportKey === 'billing-export' ? 'billing' : reportKey === 'audit-export' ? 'audit' : 'report');
+  const kind =
+    spec.kind ??
+    (reportKey === 'billing-export'
+      ? 'billing'
+      : reportKey === 'audit-export'
+        ? 'audit'
+        : 'report');
   const patch: ExportHubSavedViewApplyPatch = { kind };
 
   if (spec.entry) {
     patch.entryId = spec.entry;
   }
   if (kind === 'report') {
-    patch.reportKey = reportKey === 'billing-export' || reportKey === 'audit-export' ? 'placements' : reportKey;
+    patch.reportKey =
+      reportKey === 'billing-export' || reportKey === 'audit-export' ? 'placements' : reportKey;
   }
   if (spec.from) {
     patch.from = toDatetimeLocalValue(spec.from);
@@ -209,7 +218,12 @@ export function applyExportHubSavedViewSpec(
   if (spec.compare_to) {
     patch.compareTo = toDatetimeLocalValue(spec.compare_to);
   }
-  if (spec.format === 'csv' || spec.format === 'json' || spec.format === 'xlsx' || spec.format === 'zip') {
+  if (
+    spec.format === 'csv' ||
+    spec.format === 'json' ||
+    spec.format === 'xlsx' ||
+    spec.format === 'zip'
+  ) {
     patch.reportFormat = spec.format;
   }
   if (spec.destination === 'google_sheet' || spec.destination === 'download') {

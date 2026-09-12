@@ -50,6 +50,13 @@ func campaignListWarningsOnlyParam(filter ListCampaignsFilter) pgtype.Bool {
 	return pgtype.Bool{Bool: true, Valid: true}
 }
 
+func optionalCampaignGroupID(id uuid.UUID) pgtype.UUID {
+	if id == uuid.Nil {
+		return pgtype.UUID{}
+	}
+	return domain.ToUUID(id)
+}
+
 func CampaignCountParamsFromFilter(filter ListCampaignsFilter) db.CountCampaignsParams {
 	var customerID pgtype.UUID
 	if filter.CustomerID != uuid.Nil {
@@ -64,16 +71,17 @@ func CampaignCountParamsFromFilter(filter ListCampaignsFilter) db.CountCampaigns
 		targetCountry = pgtype.Text{String: filter.TargetCountry, Valid: true}
 	}
 	return db.CountCampaignsParams{
-		CustomerID:     customerID,
-		Status:         status,
-		WarningsOnly:   campaignListWarningsOnlyParam(filter),
-		OwnerUserID:    filter.OwnerUserID,
-		OwnerUserIds:   ownerUserIDsSQLParam(filter.OwnerUserIDs),
-		TargetCountry:  targetCountry,
-		BudgetMinMicro: filter.BudgetMinMicro,
-		BudgetMaxMicro: filter.BudgetMaxMicro,
-		SearchQuery:    optionalCampaignSearchText(filter.SearchQuery),
-		PacingMode:     optionalCampaignPacingMode(filter.PacingMode),
+		CustomerID:      customerID,
+		Status:          status,
+		WarningsOnly:    campaignListWarningsOnlyParam(filter),
+		OwnerUserID:     filter.OwnerUserID,
+		OwnerUserIds:    ownerUserIDsSQLParam(filter.OwnerUserIDs),
+		TargetCountry:   targetCountry,
+		BudgetMinMicro:  filter.BudgetMinMicro,
+		BudgetMaxMicro:  filter.BudgetMaxMicro,
+		SearchQuery:     optionalCampaignSearchText(filter.SearchQuery),
+		PacingMode:      optionalCampaignPacingMode(filter.PacingMode),
+		CampaignGroupID: optionalCampaignGroupID(filter.CampaignGroupID),
 	}
 }
 
@@ -172,20 +180,21 @@ func campaignListBaseParams(filter ListCampaignsFilter) (
 func CampaignListParamsFromFilter(filter ListCampaignsFilter) db.ListCampaignsParams {
 	customerID, status, targetCountry := campaignListBaseParams(filter)
 	return db.ListCampaignsParams{
-		Limit:          filter.Limit,
-		Offset:         filter.Offset,
-		CustomerID:     customerID,
-		Status:         status,
-		WarningsOnly:   campaignListWarningsOnlyParam(filter),
-		OwnerUserID:    filter.OwnerUserID,
-		OwnerUserIds:   ownerUserIDsSQLParam(filter.OwnerUserIDs),
-		TargetCountry:  targetCountry,
-		BudgetMinMicro: filter.BudgetMinMicro,
-		BudgetMaxMicro: filter.BudgetMaxMicro,
-		SearchQuery:    optionalCampaignSearchText(filter.SearchQuery),
-		PacingMode:     optionalCampaignPacingMode(filter.PacingMode),
-		SortField:      campaignListSortField(filter.SortField),
-		SortDesc:       campaignListSortDesc(filter.SortOrder),
+		Limit:           filter.Limit,
+		Offset:          filter.Offset,
+		CustomerID:      customerID,
+		Status:          status,
+		WarningsOnly:    campaignListWarningsOnlyParam(filter),
+		OwnerUserID:     filter.OwnerUserID,
+		OwnerUserIds:    ownerUserIDsSQLParam(filter.OwnerUserIDs),
+		TargetCountry:   targetCountry,
+		BudgetMinMicro:  filter.BudgetMinMicro,
+		BudgetMaxMicro:  filter.BudgetMaxMicro,
+		SearchQuery:     optionalCampaignSearchText(filter.SearchQuery),
+		PacingMode:      optionalCampaignPacingMode(filter.PacingMode),
+		CampaignGroupID: optionalCampaignGroupID(filter.CampaignGroupID),
+		SortField:       campaignListSortField(filter.SortField),
+		SortDesc:        campaignListSortDesc(filter.SortOrder),
 	}
 }
 
@@ -213,21 +222,22 @@ func CampaignCountWarningsParamsFromFilter(filter ListCampaignsFilter) db.CountC
 func CampaignListSortedByStatsParamsFromFilter(filter ListCampaignsFilter) db.ListCampaignsSortedByStatsParams {
 	customerID, status, targetCountry := campaignListBaseParams(filter)
 	return db.ListCampaignsSortedByStatsParams{
-		Limit:          filter.Limit,
-		Offset:         filter.Offset,
-		CustomerID:     customerID,
-		Status:         status,
-		WarningsOnly:   campaignListWarningsOnlyParam(filter),
-		OwnerUserID:    filter.OwnerUserID,
-		OwnerUserIds:   ownerUserIDsSQLParam(filter.OwnerUserIDs),
-		TargetCountry:  targetCountry,
-		BudgetMinMicro: filter.BudgetMinMicro,
-		BudgetMaxMicro: filter.BudgetMaxMicro,
-		SearchQuery:    optionalCampaignSearchText(filter.SearchQuery),
-		PacingMode:     optionalCampaignPacingMode(filter.PacingMode),
-		SortField:      campaignListSortField(filter.SortField),
-		SortDesc:       campaignListSortDesc(filter.SortOrder),
-		StatsFrom:      filter.StatsFrom,
-		StatsTo:        filter.StatsTo,
+		Limit:           filter.Limit,
+		Offset:          filter.Offset,
+		CustomerID:      customerID,
+		Status:          status,
+		WarningsOnly:    campaignListWarningsOnlyParam(filter),
+		OwnerUserID:     filter.OwnerUserID,
+		OwnerUserIds:    ownerUserIDsSQLParam(filter.OwnerUserIDs),
+		TargetCountry:   targetCountry,
+		BudgetMinMicro:  filter.BudgetMinMicro,
+		BudgetMaxMicro:  filter.BudgetMaxMicro,
+		SearchQuery:     optionalCampaignSearchText(filter.SearchQuery),
+		PacingMode:      optionalCampaignPacingMode(filter.PacingMode),
+		CampaignGroupID: optionalCampaignGroupID(filter.CampaignGroupID),
+		SortField:       campaignListSortField(filter.SortField),
+		SortDesc:        campaignListSortDesc(filter.SortOrder),
+		StatsFrom:       filter.StatsFrom,
+		StatsTo:         filter.StatsTo,
 	}
 }

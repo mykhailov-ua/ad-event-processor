@@ -10,6 +10,7 @@ import (
 
 	"ad-event-processor/pkg/faultproof"
 
+	"ad-event-processor/internal/database"
 	"ad-event-processor/internal/domain/db"
 
 	"github.com/google/uuid"
@@ -131,10 +132,7 @@ func setupAdsProcessorPartitionInfra(t *testing.T) (*adsProcessorPartitionInfra,
 		postgres.WithUsername("user"),
 		postgres.WithPassword("pass"),
 		tcnetwork.WithNetwork([]string{"postgres"}, nw),
-		testcontainers.WithWaitStrategy(
-			wait.ForLog("database system is ready to accept connections").
-				WithOccurrence(2).
-				WithStartupTimeout(30*time.Second)),
+		testcontainers.WithWaitStrategy(database.PostgresContainerWaitStrategy()),
 	)
 	require.NoError(t, err)
 

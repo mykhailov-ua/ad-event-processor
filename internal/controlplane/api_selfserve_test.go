@@ -150,6 +150,7 @@ func TestSelfServe_PauseResume(t *testing.T) {
 	ctx := context.Background()
 	campID, err := svc.CreateCampaign(ctx, testCampaignSpec(custID, "SS Camp", 10_000_000, "ss-pause-idem"))
 	require.NoError(t, err)
+	attachPublishableFlowFixture(t, ctx, pool, svc, campID)
 
 	mux := http.NewServeMux()
 	h.RegisterRoutes(mux)

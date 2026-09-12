@@ -8,6 +8,7 @@ import (
 
 	"ad-event-processor/internal/costsync"
 	db "ad-event-processor/internal/domain/db"
+	"ad-event-processor/internal/licensingadmin"
 	"ad-event-processor/pkg/coldpath"
 	"ad-event-processor/pkg/httpresponse"
 
@@ -25,6 +26,7 @@ type CostSyncHTTPHandlers struct {
 	ResolveBoundCustomerID  func(*http.Request, string) (string, error)
 	AuthorizeCustomerAccess func(*http.Request, string) error
 	WriteServiceError       func(http.ResponseWriter, error)
+	CapHost                 licensingadmin.CapHost
 }
 
 func (h *CostSyncHTTPHandlers) Register(mux *http.ServeMux) {
@@ -151,6 +153,10 @@ func (h *CostSyncHTTPHandlers) writeCostSyncError(w http.ResponseWriter, err err
 		httpresponse.Error(w, http.StatusForbidden, "FORBIDDEN", "forbidden")
 		return
 	}
+	if errors.Is(err, ErrDeploymentCostSyncNetworkLimit) {
+		httpresponse.Error(w, http.StatusTooManyRequests, "LIMIT_EXCEEDED", err.Error())
+		return
+	}
 	if h.WriteServiceError != nil {
 		h.WriteServiceError(w, err)
 		return
@@ -235,6 +241,11 @@ func (h *CostSyncHTTPHandlers) upsertCredential(w http.ResponseWriter, r *http.R
 	mergedExtra := costsync.MergeExtraConfig(existingExtra, req.ExtraConfig, schema)
 	if err := costsync.ValidateExtraConfig(network, mergedExtra); err != nil {
 		httpresponse.Error(w, http.StatusBadRequest, "BAD_REQUEST", err.Error())
+		return
+	}
+
+	if err := licensingadmin.EnforceCostSyncNetworkCap(r.Context(), h.CapHost, custID, !hasExisting); err != nil {
+		h.writeCostSyncError(w, err)
 		return
 	}
 
@@ -346,6 +357,7 @@ func (h *CostSyncHTTPHandlers) runSync(w http.ResponseWriter, r *http.Request) {
 	}
 
 	var custFilter *uuid.UUID
+	capCustomerID := uuid.Nil
 	if req.CustomerID != "" {
 		cid, err := uuid.Parse(req.CustomerID)
 		if err != nil {
@@ -353,6 +365,11 @@ func (h *CostSyncHTTPHandlers) runSync(w http.ResponseWriter, r *http.Request) {
 			return
 		}
 		custFilter = &cid
+		capCustomerID = cid
+	}
+	if err := licensingadmin.EnforceCostSyncNetworkCap(r.Context(), h.CapHost, capCustomerID, false); err != nil {
+		h.writeCostSyncError(w, err)
+		return
 	}
 
 	from := time.Now().UTC().AddDate(0, 0, -1).Truncate(24 * time.Hour)

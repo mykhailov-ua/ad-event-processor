@@ -3,8 +3,7 @@ import { adminKit } from '@/lib/admin_kit';
 import { uiScrollbarClass } from '@/lib/ui_surfaces';
 import { cn } from '@/lib/utils';
 
-export const searchableFilterSelectPopoverClass =
-  'w-max min-w-[14rem] max-w-[20rem] p-0';
+export const searchableFilterSelectPopoverClass = 'w-max min-w-[14rem] max-w-[20rem] p-0';
 
 export const searchableFilterSelectTriggerClass = cn(
   adminChrome.control,

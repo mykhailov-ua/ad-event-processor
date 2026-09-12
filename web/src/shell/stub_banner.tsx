@@ -1,9 +1,11 @@
+import type { ReactNode } from 'react';
+
 import { uiSurfaces } from '@/lib/ui_surfaces';
 import { cn } from '@/lib/utils';
 
 type StubBannerProps = {
   title?: string;
-  message: string;
+  message: ReactNode;
   className?: string;
 };
 

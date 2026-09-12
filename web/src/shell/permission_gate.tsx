@@ -24,7 +24,7 @@ export function ForbiddenPanel({ requiredPermission }: { requiredPermission?: st
       : undefined;
 
   return (
-    <div className="grid gap-4" >
+    <div className="grid gap-4">
       <AdminErrorPage detail={detail} kind="forbidden" layout="embedded" />
       <div>
         <Button asChild type="button" variant="outline">
@@ -58,9 +58,7 @@ export function RoutePermissionGuard({ children }: { children: ReactNode }) {
   }
   const allowed = sessionHasRoutePermission(user?.permissions, rule);
   if (!allowed) {
-    return (
-      <ForbiddenPanel requiredPermission={formatRoutePermissionRequirement(rule)} />
-    );
+    return <ForbiddenPanel requiredPermission={formatRoutePermissionRequirement(rule)} />;
   }
   return children;
 }

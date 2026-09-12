@@ -45,7 +45,8 @@ export function CampaignListOperationalSignals({
   const burnPct =
     metrics?.budget_burn_pct ??
     (typeof campaign.budget_used_pct === 'number' ? campaign.budget_used_pct : undefined);
-  const burnLabel = burnPct != null && Number.isFinite(burnPct) ? formatBudgetUsedPercent(burnPct) : undefined;
+  const burnLabel =
+    burnPct != null && Number.isFinite(burnPct) ? formatBudgetUsedPercent(burnPct) : undefined;
   const stale = metrics?.metrics_stale === true || metrics?.stale === true;
   const pacingMode = metrics?.pacing_mode ?? campaign.pacing_mode;
 
@@ -62,13 +63,19 @@ export function CampaignListOperationalSignals({
         </Badge>
       ) : null}
       {burnLabel ? (
-        <span className={cn(adminTypography.captionPlain, 'text-muted-foreground')}>{burnLabel} burn</span>
+        <span className={cn(adminTypography.captionPlain, 'text-muted-foreground')}>
+          {burnLabel} burn
+        </span>
       ) : null}
       {pacingMode ? (
-        <span className={cn(adminTypography.captionPlain, 'text-muted-foreground')}>{pacingMode}</span>
+        <span className={cn(adminTypography.captionPlain, 'text-muted-foreground')}>
+          {pacingMode}
+        </span>
       ) : null}
       {stale ? (
-        <span className={cn(adminTypography.captionPlain, 'text-amber-700 dark:text-amber-300')}>Stale metrics</span>
+        <span className={cn(adminTypography.captionPlain, 'text-amber-700 dark:text-amber-300')}>
+          Stale metrics
+        </span>
       ) : null}
     </span>
   );

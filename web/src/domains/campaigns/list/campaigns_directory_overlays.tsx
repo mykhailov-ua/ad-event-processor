@@ -2,9 +2,7 @@
 // Dialog) is secondary/advanced. open/set helpers in campaign_list_create_overlay.ts enforce mutex
 // so only one class-C surface is open; bulkBusy blocks archive confirm while exportBusy is separate.
 import { PrimaryActionButton, SecondaryActionButton } from '@/shell/action_buttons';
-import {
-  DirectoryMutationError,
-} from '@/shell/directory_page_shell';
+import { DirectoryMutationError } from '@/shell/directory_page_shell';
 import { panelError } from '@/shell/panel_error';
 import {
   Dialog,
@@ -35,6 +33,7 @@ import {
 import type { CustomerComboboxOption } from '@/shell/customer_combobox';
 import type { SelfServeCampaignTemplate } from '@/api/types';
 import { CampaignBulkCloneDialog } from '@/domains/campaigns/list/campaign_bulk_clone_dialog';
+import { CampaignBulkPatchDialog } from '@/domains/campaigns/list/campaign_bulk_patch_dialog';
 import { CampaignCloneDialog } from '@/domains/campaigns/editor/campaign_clone_dialog';
 import { CampaignImportPanel } from '@/domains/campaigns/editor/campaign_import_panel';
 import { CampaignWizardPanel } from '@/domains/campaigns/editor/campaign_wizard_panel';
@@ -46,6 +45,7 @@ export type CampaignsDirectoryOverlaysProps = {
   archiveOpen: boolean;
   bulkBusy: boolean;
   bulkCloneOpen: boolean;
+  bulkPatchOpen: boolean;
   cloneOpen: boolean;
   createDisabled: boolean;
   createCustomerId: string;
@@ -63,6 +63,8 @@ export type CampaignsDirectoryOverlaysProps = {
   onArchiveConfirm: () => void;
   onArchiveOpenChange: (open: boolean) => void;
   onBulkCloneOpenChange: (open: boolean) => void;
+  onBulkPatchOpenChange: (open: boolean) => void;
+  onBulkPatched: () => void;
   onCloneOpenChange: (open: boolean) => void;
   onBulkCloned: () => void;
   onCloned: () => void;
@@ -92,6 +94,7 @@ export function CampaignsDirectoryOverlays({
   archiveOpen,
   bulkBusy,
   bulkCloneOpen,
+  bulkPatchOpen,
   cloneOpen,
   createDisabled,
   createCustomerId,
@@ -109,6 +112,8 @@ export function CampaignsDirectoryOverlays({
   onArchiveConfirm,
   onArchiveOpenChange,
   onBulkCloneOpenChange,
+  onBulkPatchOpenChange,
+  onBulkPatched,
   onCloneOpenChange,
   onBulkCloned,
   onCloned,
@@ -137,12 +142,10 @@ export function CampaignsDirectoryOverlays({
 
   return (
     <>
-      {actionError && !createSectionOpen ? (
-        <DirectoryMutationError error={actionError} />
-      ) : null}
+      {actionError && !createSectionOpen ? <DirectoryMutationError error={actionError} /> : null}
 
       <Dialog open={createSectionOpen} onOpenChange={onCreateSectionOpenChange}>
-        <DialogContent >
+        <DialogContent>
           <DialogHeader>
             <DialogTitle>Quick create campaign</DialogTitle>
             <DialogDescription>
@@ -151,20 +154,19 @@ export function CampaignsDirectoryOverlays({
           </DialogHeader>
 
           <form
-           
             onSubmit={(event) => {
               event.preventDefault();
               onCreateCampaign();
             }}
           >
-            <div >
+            <div>
               <Label htmlFor="campaigns-create-customer">Customer group</Label>
               <Select
                 disabled={customersLoading || customerOptions.length === 0}
                 value={createCustomerId || undefined}
                 onValueChange={onDraftCreateCustomerIdChange}
               >
-                <SelectTrigger  id="campaigns-create-customer">
+                <SelectTrigger id="campaigns-create-customer">
                   <SelectValue
                     placeholder={
                       customersLoading
@@ -185,14 +187,14 @@ export function CampaignsDirectoryOverlays({
               </Select>
             </div>
 
-            <div >
+            <div>
               <Label htmlFor="campaigns-template">Template</Label>
               <Select
                 disabled={createFieldsDisabled || templatesLoading}
                 value={draftTemplateId}
                 onValueChange={onDraftTemplateIdChange}
               >
-                <SelectTrigger  id="campaigns-template">
+                <SelectTrigger id="campaigns-template">
                   <SelectValue
                     placeholder={
                       createFieldsDisabled
@@ -215,7 +217,7 @@ export function CampaignsDirectoryOverlays({
               </Select>
             </div>
 
-            <div >
+            <div>
               <Label htmlFor="campaigns-create-name">Name</Label>
               <Input
                 id="campaigns-create-name"
@@ -226,7 +228,7 @@ export function CampaignsDirectoryOverlays({
               />
             </div>
 
-            <div >
+            <div>
               <Label htmlFor="campaigns-budget-micro">Budget (micro)</Label>
               <Input
                 id="campaigns-budget-micro"
@@ -238,21 +240,19 @@ export function CampaignsDirectoryOverlays({
               />
             </div>
 
-            {templatesError
-              ? panelError(templatesError, 'Could not load templates')
-              : null}
+            {templatesError ? panelError(templatesError, 'Could not load templates') : null}
             {actionError ? <DirectoryMutationError error={actionError} /> : null}
             {effectiveCreateCustomerId &&
             !templatesLoading &&
             templates.length === 0 &&
             !templatesError ? (
-              <p >
+              <p>
                 No templates for{' '}
                 {customerNameById[effectiveCreateCustomerId] ?? effectiveCreateCustomerId}.
               </p>
             ) : null}
 
-            <DialogFooter >
+            <DialogFooter>
               <SecondaryActionButton
                 disabled={createFieldsDisabled}
                 loading={templatesLoading}
@@ -285,8 +285,15 @@ export function CampaignsDirectoryOverlays({
         onOpenChange={onBulkCloneOpenChange}
       />
 
+      <CampaignBulkPatchDialog
+        campaignIds={selectedCampaignIds}
+        open={bulkPatchOpen}
+        onOpenChange={onBulkPatchOpenChange}
+        onPatched={onBulkPatched}
+      />
+
       <Dialog open={archiveOpen} onOpenChange={onArchiveOpenChange}>
-        <DialogContent >
+        <DialogContent>
           <DialogHeader>
             <DialogTitle>Archive campaigns</DialogTitle>
             <DialogDescription>
@@ -294,7 +301,7 @@ export function CampaignsDirectoryOverlays({
               status.
             </DialogDescription>
           </DialogHeader>
-          <DialogFooter >
+          <DialogFooter>
             <SecondaryActionButton type="button" onClick={() => onArchiveOpenChange(false)}>
               Cancel
             </SecondaryActionButton>
@@ -318,14 +325,14 @@ export function CampaignsDirectoryOverlays({
       </Sheet>
 
       <Dialog onOpenChange={onWizardOpenChange} open={wizardOpen}>
-        <DialogContent >
-          <DialogHeader >
+        <DialogContent>
+          <DialogHeader>
             <DialogTitle>Guided setup</DialogTitle>
             <DialogDescription>
               Step-by-step campaign setup with traffic, flow, and budget.
             </DialogDescription>
           </DialogHeader>
-          <DialogBody >
+          <DialogBody>
             <CampaignWizardPanel workspace={wizardPanelWorkspace} />
           </DialogBody>
         </DialogContent>

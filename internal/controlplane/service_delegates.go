@@ -40,7 +40,7 @@ func (s *Service) ListCampaignRowsByIDs(ctx context.Context, ids []uuid.UUID) ([
 }
 
 func (s *Service) CreateCustomer(ctx context.Context, id uuid.UUID, name string, balance int64, currency string) error {
-	if err := s.EnforceDeploymentLicenseCampaignCap(ctx); err != nil {
+	if err := s.EnforceDeploymentLicenseTenantCap(ctx); err != nil {
 		return err
 	}
 	_, err := db.New(s.pool).CreateCustomer(ctx, db.CreateCustomerParams{

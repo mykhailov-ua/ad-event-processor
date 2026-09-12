@@ -57,11 +57,7 @@ function DropdownMenu({
     [isOpen, setIsOpen]
   );
 
-  return (
-    <MenuContext.Provider value={contextValue}>
-      {children}
-    </MenuContext.Provider>
-  );
+  return <MenuContext.Provider value={contextValue}>{children}</MenuContext.Provider>;
 }
 
 const DropdownMenuTrigger = React.forwardRef<

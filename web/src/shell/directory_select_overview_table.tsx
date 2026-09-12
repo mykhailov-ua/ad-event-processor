@@ -15,11 +15,7 @@ export type DirectorySelectOverviewTableProps<T> = {
   buildOverviewFields: (record: T) => DirectoryOverviewField[];
   overviewTitle: (record: T) => ReactNode;
   overviewFooter?: (record: T) => ReactNode;
-  renderActions?: (
-    row: ControlPlaneSelectRow,
-    record: T,
-    openOverview: () => void
-  ) => ReactNode;
+  renderActions?: (row: ControlPlaneSelectRow, record: T, openOverview: () => void) => ReactNode;
   actionsAriaLabel?: (row: ControlPlaneSelectRow, record: T) => string;
 } & Omit<ControlPlaneSelectTableProps, 'renderActions'>;
 

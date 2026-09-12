@@ -30,10 +30,7 @@ export function resolveExportHubRowLimitBounds(
   };
 }
 
-export function clampExportHubRowLimit(
-  value: number,
-  bounds: ExportHubRowLimitBounds
-): number {
+export function clampExportHubRowLimit(value: number, bounds: ExportHubRowLimitBounds): number {
   if (!Number.isFinite(value)) {
     return bounds.default;
   }
@@ -41,10 +38,7 @@ export function clampExportHubRowLimit(
   return Math.min(bounds.max, Math.max(bounds.min, rounded));
 }
 
-export function parseExportHubRowLimitDraft(
-  raw: string,
-  bounds: ExportHubRowLimitBounds
-): number {
+export function parseExportHubRowLimitDraft(raw: string, bounds: ExportHubRowLimitBounds): number {
   const trimmed = raw.trim();
   if (!trimmed) {
     return bounds.default;

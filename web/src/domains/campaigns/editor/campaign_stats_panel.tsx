@@ -11,6 +11,7 @@ import { displayCount, displayMoneyDecimal, displayTimestamp } from '@/lib/displ
 import { adminTypography } from '@/lib/admin_kit';
 import { adminSpacing } from '@/lib/admin_spacing';
 import { ErrorBlock } from '@/shell/error_block';
+import { CampaignManualCostForm } from '@/domains/campaigns/editor/campaign_manual_cost_form';
 import { BentoSection } from '@/shell/bento_card';
 import { Button } from '@/components/ui/button';
 import { cn } from '@/lib/utils';
@@ -37,7 +38,10 @@ function CampaignDailyBucketList({ rows }: { rows: CampaignDailyRow[] }) {
       {buckets.map((row) => (
         <li
           key={row.day ?? `${row.impressions}-${row.clicks}`}
-          className={cn('grid grid-cols-[1fr_repeat(3,minmax(0,auto))] gap-3', adminTypography.captionPlain)}
+          className={cn(
+            'grid grid-cols-[1fr_repeat(3,minmax(0,auto))] gap-3',
+            adminTypography.captionPlain
+          )}
         >
           <span>{displayTimestamp(row.day) || '-'}</span>
           <span>{displayCount(row.impressions)} imp</span>
@@ -84,16 +88,24 @@ export function CampaignStatsPanel({
       {error ? <ErrorBlock error={error} title="Could not load campaign stats" /> : null}
 
       {!stats && !loading && !error ? (
-        <p className={adminTypography.bodyMuted}>Load stats for hourly and daily delivery in the selected range.</p>
+        <p className={adminTypography.bodyMuted}>
+          Load stats for hourly and daily delivery in the selected range.
+        </p>
       ) : null}
 
       {stats ? (
         <>
           <div className="grid grid-cols-2 gap-2 md:grid-cols-4">
             <MetricTile label="Spend" value={displayMoneyDecimal(stats.current_spend) || '-'} />
-            <MetricTile label="Impressions" value={displayCount(stats.metrics?.impressions) || '0'} />
+            <MetricTile
+              label="Impressions"
+              value={displayCount(stats.metrics?.impressions) || '0'}
+            />
             <MetricTile label="Clicks" value={displayCount(stats.metrics?.clicks) || '0'} />
-            <MetricTile label="Conversions" value={displayCount(stats.metrics?.conversions) || '0'} />
+            <MetricTile
+              label="Conversions"
+              value={displayCount(stats.metrics?.conversions) || '0'}
+            />
           </div>
 
           <MetricsSection title="Hourly trend">
@@ -102,6 +114,10 @@ export function CampaignStatsPanel({
 
           <MetricsSection title="Daily buckets">
             <CampaignDailyBucketList rows={stats.daily ?? []} />
+          </MetricsSection>
+
+          <MetricsSection title="Manual cost entry">
+            <CampaignManualCostForm campaignId={campaignId} onSaved={onReload} />
           </MetricsSection>
         </>
       ) : null}

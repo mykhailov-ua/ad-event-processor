@@ -38,7 +38,7 @@ func TestVerifyAPIKey_validSecret(t *testing.T) {
 		},
 	}
 
-	service := NewService(repo, nil, hasher, nil, nil)
+	service := NewService(repo, nil, hasher, nil, nil, nil)
 	verified, err := service.VerifyAPIKey(context.Background(), rawKey)
 	require.NoError(t, err)
 	assert.Equal(t, userID, uuid.UUID(verified.User.ID.Bytes))
@@ -51,7 +51,7 @@ func TestCreateAPIKey_persistsScopes(t *testing.T) {
 	repo := &mockRepo{}
 	hasher, err := NewPasswordHasher(32768, 2, 2)
 	require.NoError(t, err)
-	service := NewService(repo, nil, hasher, nil, nil)
+	service := NewService(repo, nil, hasher, nil, nil, nil)
 
 	scopes := []string{"campaigns:read", "campaigns:pause"}
 	result, err := service.CreateAPIKey(context.Background(), uuid.New(), "scoped", scopes, nil)
@@ -73,7 +73,7 @@ func TestVerifyAPIKey_rejectsWrongSecret(t *testing.T) {
 			KeyHash: keyHash,
 		},
 	}
-	service := NewService(repo, nil, hasher, nil, nil)
+	service := NewService(repo, nil, hasher, nil, nil, nil)
 
 	_, err = service.VerifyAPIKey(context.Background(), "wrong-key")
 	assert.ErrorIs(t, err, ErrInvalidAPIKey)

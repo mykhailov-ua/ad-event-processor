@@ -27,18 +27,16 @@ export async function getBuyerDashboard(
   params: DashboardQuery,
   signal?: AbortSignal
 ): Promise<BuyerDashboardPayload> {
-  return apiJson<BuyerDashboardPayload>(
-    `/api/v1/dashboards/buyer${buildDashboardQuery(params)}`,
-    { signal }
-  );
+  return apiJson<BuyerDashboardPayload>(`/api/v1/dashboards/buyer${buildDashboardQuery(params)}`, {
+    signal,
+  });
 }
 
 export async function getAdopsDashboard(
   params: Omit<DashboardQuery, 'campaign_id'>,
   signal?: AbortSignal
 ): Promise<AdopsDashboardPayload> {
-  return apiJson<AdopsDashboardPayload>(
-    `/api/v1/dashboards/adops${buildDashboardQuery(params)}`,
-    { signal }
-  );
+  return apiJson<AdopsDashboardPayload>(`/api/v1/dashboards/adops${buildDashboardQuery(params)}`, {
+    signal,
+  });
 }

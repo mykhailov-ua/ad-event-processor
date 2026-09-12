@@ -16,7 +16,6 @@ import (
 	"github.com/jackc/pgx/v5/pgxpool"
 	"github.com/testcontainers/testcontainers-go"
 	"github.com/testcontainers/testcontainers-go/modules/postgres"
-	"github.com/testcontainers/testcontainers-go/wait"
 )
 
 func benchWritePathEvent() *domain.Event {
@@ -105,10 +104,7 @@ func setupPostgresStoreBench(b *testing.B) (*PostgresStore, func()) {
 		postgres.WithDatabase("write_path_bench_db"),
 		postgres.WithUsername("user"),
 		postgres.WithPassword("pass"),
-		testcontainers.WithWaitStrategy(
-			wait.ForLog("database system is ready to accept connections").
-				WithOccurrence(2).
-				WithStartupTimeout(20*time.Second)),
+		testcontainers.WithWaitStrategy(database.PostgresContainerWaitStrategy()),
 	)
 	if err != nil {
 		b.Fatalf("failed to start postgres container: %s", err)

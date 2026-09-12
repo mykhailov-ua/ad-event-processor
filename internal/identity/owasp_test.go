@@ -182,7 +182,7 @@ func TestOWASP_UserEnumerationRegister(t *testing.T) {
 	repo := &owaspMockRepo{}
 	hasher, err := NewPasswordHasher(32768, 2, 2)
 	assert.NoError(t, err)
-	service := NewService(repo, nil, hasher, nil, nil)
+	service := NewService(repo, nil, hasher, nil, nil, nil)
 
 	repo.createUserFunc = func(ctx context.Context, arg db.CreateUserParams) (db.CreateUserRow, error) {
 		return db.CreateUserRow{}, &pgconn.PgError{Code: "23505"}
@@ -210,7 +210,7 @@ func TestOWASP_LockoutNoPostgresBlock(t *testing.T) {
 		},
 	}
 	lockout := NewLockoutLimiter(mRedis)
-	service := NewService(repo, nil, hasher, lockout, mRedis)
+	service := NewService(repo, nil, hasher, lockout, mRedis, nil)
 
 	repo.getUserByEmailFunc = func(ctx context.Context, email string) (db.User, error) {
 		return db.User{

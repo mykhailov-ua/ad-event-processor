@@ -10,7 +10,7 @@ func clickTierMinForFilter(f EventFilter) domain.ClickFilterTier {
 		return domain.ClickFilterTierFull
 	default:
 		switch f.(type) {
-		case *LicenseFilter, *LicenseRPSFilter:
+		case *LicenseFilter, *LicenseRPSFilter, *LicenseMonthlyEventsFilter:
 			return domain.ClickFilterTierRedirectOnly
 		case *EmergencyBreakerFilter, *GeoFilter, *ScheduleFilter:
 			return domain.ClickFilterTierLight

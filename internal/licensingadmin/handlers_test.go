@@ -1,6 +1,7 @@
 package licensingadmin
 
 import (
+	"context"
 	"encoding/json"
 	"testing"
 	"time"
@@ -69,10 +70,10 @@ func TestEnrichLicenseStatusFromRow_maxRPS(t *testing.T) {
 	ent := licensing.Entitlements{Limits: licensing.Limits{MaxRPS: 5000}}
 	raw, err := json.Marshal(ent)
 	require.NoError(t, err)
-	resp := enrichLicenseStatusFromRow(LicenseStatusResponse{State: "ACTIVE", PlanCode: "pilot"}, billingdb.BillingLicenseStatus{
+	resp := enrichLicenseStatusFromRow(context.Background(), LicenseStatusResponse{State: "ACTIVE", PlanCode: "pilot"}, billingdb.BillingLicenseStatus{
 		PlanCode:         "pilot",
 		EntitlementsJson: raw,
-	})
+	}, nil)
 	require.Equal(t, uint64(5000), resp.MaxRPS)
 	require.Equal(t, licensing.SKUCodeStarter, resp.UpgradePlanCode)
 }

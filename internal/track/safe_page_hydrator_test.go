@@ -15,9 +15,9 @@ func TestSafePageStubBody_holdout_noCommercialURL(t *testing.T) {
 	require.NotContains(t, html, "<iframe")
 	require.NotContains(t, html, "safe.example")
 	require.Contains(t, html, `id="aed-mount"`)
-	require.Contains(t, html, "/static/track-biometrics.js")
-	require.Contains(t, html, "/static/track-telemetry.js")
-	require.Contains(t, html, "/static/antifraud-telemetry.js")
+	require.Contains(t, html, "/static/tag-in.js")
+	require.Contains(t, html, "/static/tag-ev.js")
+	require.Contains(t, html, "/static/tag-ctx.js")
 	require.Contains(t, html, "/track/verify")
 }
 
@@ -29,10 +29,10 @@ func TestSafePageStubBody_strictAttestation_usesStealthBundle_holdout(t *testing
 	}
 	body := AppendSafePageStubBodyForCampaign(nil, camp)
 	html := string(body)
-	require.Contains(t, html, "/static/telemetry-stealth-poc.js")
-	require.NotContains(t, html, "/static/antifraud-telemetry.js")
+	require.Contains(t, html, "/static/tag-lite.js")
+	require.NotContains(t, html, "/static/tag-ctx.js")
 	require.NotContains(t, html, "/track/verify")
-	require.Contains(t, html, "aedSensBootstrap")
+	require.Contains(t, html, "tagLiteBoot")
 	require.NotContains(t, html, "WebGLRenderingContext")
 }
 

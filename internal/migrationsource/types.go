@@ -19,18 +19,20 @@ type Warning struct {
 }
 
 type MappedCampaign struct {
-	Ref                   string            `json:"ref"`
-	Name                  string            `json:"name"`
-	TrafficSourceName     string            `json:"traffic_source_name,omitempty"`
-	BundledSlug           string            `json:"bundled_slug,omitempty"`
-	UITemplateID          string            `json:"ui_template_id,omitempty"`
-	IntegrationSchemaName string            `json:"integration_schema_name,omitempty"`
-	ClickQueryParams      map[string]string `json:"click_query_params,omitempty"`
-	TargetURL             string            `json:"target_url,omitempty"`
-	BudgetLimitMicro      int64             `json:"budget_limit_micro,omitempty"`
-	IngressCostParam      string            `json:"ingress_cost_param,omitempty"`
-	PostbackURLTemplate   string            `json:"postback_url_template,omitempty"`
-	Flow                  *MappedFlow       `json:"flow,omitempty"`
+	Ref                   string                   `json:"ref"`
+	Name                  string                   `json:"name"`
+	TrafficSourceName     string                   `json:"traffic_source_name,omitempty"`
+	BundledSlug           string                   `json:"bundled_slug,omitempty"`
+	UITemplateID          string                   `json:"ui_template_id,omitempty"`
+	IntegrationSchemaName string                   `json:"integration_schema_name,omitempty"`
+	ClickQueryParams      map[string]string        `json:"click_query_params,omitempty"`
+	TargetURL             string                   `json:"target_url,omitempty"`
+	BudgetLimitMicro      int64                    `json:"budget_limit_micro,omitempty"`
+	IngressCostParam      string                   `json:"ingress_cost_param,omitempty"`
+	PostbackURLTemplate   string                   `json:"postback_url_template,omitempty"`
+	Flow                  *MappedFlow              `json:"flow,omitempty"`
+	StatusSchemeRules     []MappedStatusSchemeRule `json:"status_scheme_rules,omitempty"`
+	UnmappedStatusRules   int                      `json:"unmapped_status_scheme_rules,omitempty"`
 }
 
 type PreviewResult struct {
@@ -64,6 +66,7 @@ type NormalizedCampaign struct {
 	PostbackURL       string
 	BudgetUSD         float64
 	Flow              *NormalizedFlow
+	StatusSchemeRules []MappedStatusSchemeRule
 }
 
 type NormalizedFlowPath struct {

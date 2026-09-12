@@ -17,9 +17,9 @@
   </script>
   <link rel="alternate" hreflang="en" href="/docs.html" />
   <link rel="alternate" hreflang="uk" href="/uk/docs.html" />
-  <link rel="stylesheet" href="site.css?v=20260912">
+  <link rel="stylesheet" href="site.css?v=20260918">
   <script src="https://cdn.jsdelivr.net/npm/mermaid@11.4.0/dist/mermaid.min.js" defer></script>
-  <script src="site.js?v=20260912" defer></script>
+  <script src="site.js?v=20260917" defer></script>
 </head>
 <body class="docs-page">
   <div class="site-offer-gate" data-site-offer-gate hidden aria-hidden="true"></div>
@@ -162,7 +162,7 @@
     </table>
     <p class="site-doc-callout site-doc-callout--hardware">
       <strong>Sizing note:</strong> ClickHouse is RAM-hungry on a single VPS. For a comfortable all-in-one install
-      (ClickHouse + Redis + Postgres + tracker pool), plan at least <strong>4 vCPU and 8 GB RAM</strong> plus NVMe disk.
+      (ClickHouse + Redis + Postgres + tracker pool), plan at least <strong>4–6 vCPU and 12 GB RAM</strong> plus NVMe disk.
       Routing-only pilots can start smaller; an undersized budget VPS often hits ClickHouse OOM — that is an ops sizing
       issue, not a license defect. See <a href="#hardware-sizing">hardware sizing</a> below.
     </p>
@@ -210,6 +210,7 @@
       <li><strong>Silent reject</strong> — HTTP 202 to the visitor (decoy accept); flagged in analytics so funnels stay clean. Does not auto-flip campaign settings in Postgres.</li>
       <li><strong>IVT detector</strong> (Pro+) — batch rules on ClickHouse; can enqueue blacklist/boost actions via the admin outbox.</li>
       <li><strong>ML fraud scorer</strong> (Scale+) — batch LightGBM in a sidecar writes boost keys to Redis; the tracker reads a <strong>precomputed fraud-boost snapshot</strong> on ingest (map lookup only — no model inference on <code>/track</code>).</li>
+      <li><strong>Margin Guard</strong> (Starter+) — timer worker (default 5 min) on Postgres ledger and ClickHouse placement stats; breach enqueues internal routing pause (Redis budget removal or placement block). Not ad-network API pause unless Enterprise platform sync is licensed. Skips when ClickHouse lag &gt; 5 min.</li>
     </ul>
 
     <h2 id="admin-path">Admin, billing, and reports</h2>
@@ -271,7 +272,7 @@
         <tr>
           <td><code>edge-xdp</code> + <code>edge-bpf-sync</code></td>
           <td>Enterprise (<code>ebpf_xdp_edge</code>)</td>
-          <td>L4 drop for listed IPs on NIC; does not replace L7 tracker filters</td>
+          <td>L4 drop for listed IPs and rate limits on NIC; does not replace CDN/DDoS scrubbing or L7 tracker filters</td>
         </tr>
         <tr>
           <td><code>region-proxy</code></td>
@@ -286,7 +287,7 @@
       Planning guide only — not a throughput guarantee. Start here, then scale with traffic, antifraud depth,
       and whether reporting and bidding run on the same box or separate hosts.
     </p>
-    <section class="site-hardware-sizing" data-site-hardware-sizing aria-labelledby="site-hardware-title"></section>
+    <section class="site-hardware-sizing" data-site-hardware-sizing aria-labelledby="hardware-sizing"></section>
 
     <h2 id="limits">Honest limits</h2>
     <ul class="site-doc-honest">

@@ -14,11 +14,13 @@ import (
 	"time"
 
 	"ad-event-processor/internal/identity/db"
+	"ad-event-processor/internal/licensingadmin"
 
 	"github.com/google/uuid"
 	"github.com/jackc/pgx/v5"
 	"github.com/jackc/pgx/v5/pgconn"
 	"github.com/jackc/pgx/v5/pgtype"
+	"github.com/jackc/pgx/v5/pgxpool"
 	"github.com/prometheus/client_golang/prometheus"
 	"github.com/redis/go-redis/v9"
 )
@@ -70,6 +72,7 @@ func init() {
 
 type Service struct {
 	repo               db.Store
+	pool               *pgxpool.Pool
 	tokenMaker         Maker
 	hasher             *PasswordHasher
 	lockout            *LockoutLimiter
@@ -94,7 +97,7 @@ func (s *Service) controlRedis() []redis.UniversalClient {
 	return nil
 }
 
-func NewService(repo db.Store, tokenMaker Maker, hasher *PasswordHasher, lockout *LockoutLimiter, redisClient redis.UniversalClient) *Service {
+func NewService(repo db.Store, tokenMaker Maker, hasher *PasswordHasher, lockout *LockoutLimiter, redisClient redis.UniversalClient, pool *pgxpool.Pool) *Service {
 	gomaxprocs := runtime.GOMAXPROCS(0)
 	p := 1
 	if hasher != nil {
@@ -109,6 +112,7 @@ func NewService(repo db.Store, tokenMaker Maker, hasher *PasswordHasher, lockout
 
 	return &Service{
 		repo:        repo,
+		pool:        pool,
 		tokenMaker:  tokenMaker,
 		hasher:      hasher,
 		lockout:     lockout,
@@ -643,7 +647,9 @@ func (s *Service) ChangePassword(ctx context.Context, userID uuid.UUID, oldPassw
 
 	for _, oldHash := range historyHashes {
 		matchHist, verifyHistErr := VerifyPassword(newPassword, oldHash)
-		if verifyHistErr != nil && !errors.Is(verifyHistErr, ErrInsecureHashParameters) {
+		if verifyHistErr != nil &&
+			!errors.Is(verifyHistErr, ErrInsecureHashParameters) &&
+			!errors.Is(verifyHistErr, ErrAuthenticationFailed) {
 			return verifyHistErr
 		}
 		if matchHist {
@@ -685,6 +691,11 @@ func (s *Service) ChangePassword(ctx context.Context, userID uuid.UUID, oldPassw
 }
 
 func (s *Service) CreateAPIKey(ctx context.Context, userID uuid.UUID, name string, scopes []string, expiresAt *time.Time) (CreateAPIKeyResult, error) {
+	if s.pool != nil {
+		if err := licensingadmin.EnforceDeploymentAPIKeyCap(ctx, deploymentCapHost{pool: s.pool}); err != nil {
+			return CreateAPIKeyResult{}, err
+		}
+	}
 	raw := make([]byte, 32)
 	if _, err := rand.Read(raw); err != nil {
 		return CreateAPIKeyResult{}, err

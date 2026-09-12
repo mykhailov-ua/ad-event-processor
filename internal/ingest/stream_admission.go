@@ -5,7 +5,6 @@ import (
 	"ad-event-processor/internal/domain"
 	"ad-event-processor/internal/filter"
 	"ad-event-processor/internal/metrics"
-	"ad-event-processor/internal/telemetry"
 
 	"github.com/google/uuid"
 )
@@ -150,7 +149,6 @@ func tryAcquireStreamAdmission(
 	target.recordQueueDepth()
 	if !target.tryReserve(cfg.StreamProducerAdmissionPct) {
 		target.recordRejected()
-		telemetry.RecordRejected()
 		return streamAdmissionLease{}, filterRejectProducerOverload, false
 	}
 	lease := streamAdmissionLease{
@@ -203,7 +201,6 @@ func rejectIfStreamProducerOverloaded(
 		return 0, false
 	}
 	target.recordRejected()
-	telemetry.RecordRejected()
 	return filterRejectProducerOverload, true
 }
 

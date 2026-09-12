@@ -23,10 +23,7 @@ function emptyExportedStrings(content) {
     /export const (\w+)(?::[^=]+)?\s*=\s*(?:cn\([\s\S]*?\)|`[\s\S]*?`|'[\s\S]*?'|"[\s\S]*?");/g,
     "export const $1 = '';"
   );
-  next = next.replace(
-    /(\w+):\s*(?:cn\([\s\S]*?\)|`[\s\S]*?`|'[\s\S]*?'|"[\s\S]*?")/g,
-    "$1: ''"
-  );
+  next = next.replace(/(\w+):\s*(?:cn\([\s\S]*?\)|`[\s\S]*?`|'[\s\S]*?'|"[\s\S]*?")/g, "$1: ''");
   return next;
 }
 

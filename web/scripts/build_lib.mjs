@@ -260,9 +260,7 @@ export function devRebuildPlugin(onRebuild) {
 export async function createDevEsbuildContext({ onRebuild } = {}) {
   mkdirSync(join(DIST, 'src'), { recursive: true });
   const plugins = onRebuild ? [devRebuildPlugin(onRebuild)] : [];
-  const context = await esbuild.context(
-    esbuildOptions({ minify: false, extraPlugins: plugins })
-  );
+  const context = await esbuild.context(esbuildOptions({ minify: false, extraPlugins: plugins }));
   return context;
 }
 

@@ -186,11 +186,7 @@ const DialogContent = React.forwardRef<
                   : 'ui-scrollbar flex max-h-[min(90vh,48rem)] flex-col gap-4 overflow-y-auto p-6'
             )}
           >
-            {useCompactShell ? (
-              <div className="grid w-full gap-4 p-6">{children}</div>
-            ) : (
-              children
-            )}
+            {useCompactShell ? <div className="grid w-full gap-4 p-6">{children}</div> : children}
             <button
               type="button"
               className="absolute right-4 top-4 z-10 rounded-sm p-1 text-muted-foreground hover:text-foreground"

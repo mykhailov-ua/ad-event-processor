@@ -1,12 +1,16 @@
 package billingadmin
 
 import (
-	"errors"
-
 	"ad-event-processor/internal/campaign"
+	"ad-event-processor/internal/licensingadmin"
 )
 
 var (
-	ErrDeploymentTenantLimit = errors.New("deployment tenant limit reached for license tier")
-	ErrInvalidTimeRange      = campaign.ErrInvalidTimeRange
+	ErrDeploymentTenantLimit          = licensingadmin.ErrDeploymentTenantLimit
+	ErrDeploymentAPIKeyLimit          = licensingadmin.ErrDeploymentAPIKeyLimit
+	ErrDeploymentRegionLimit          = licensingadmin.ErrDeploymentRegionLimit
+	ErrDeploymentExportDisabled       = licensingadmin.ErrDeploymentExportDisabled
+	ErrDeploymentMonthlyEventsLimit   = licensingadmin.ErrDeploymentMonthlyEventsLimit
+	ErrDeploymentCostSyncNetworkLimit = licensingadmin.ErrDeploymentCostSyncNetworkLimit
+	ErrInvalidTimeRange               = campaign.ErrInvalidTimeRange
 )

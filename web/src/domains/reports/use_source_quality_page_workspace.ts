@@ -46,7 +46,8 @@ export function sourceQualityNeedsDetailRows(groupBy: SourceQualityGroupBy[]): b
 export function useSourceQualityPageWorkspace() {
   const [searchParams, { isPending: listQueryPending, replaceSearchParams }] =
     useTransitionSearchParams();
-  const { session } = useSession();
+  const { session, user } = useSession();
+  const canWrite = user?.permissions?.includes('campaigns:write') ?? false;
   const defaultRange = useMemo(() => defaultReportRange('7d'), []);
 
   const appliedCustomerId = searchParams.get('customer_id') ?? session?.default_customer_id ?? '';
@@ -201,6 +202,13 @@ export function useSourceQualityPageWorkspace() {
 
   return {
     rows,
+    canWrite,
+    appliedCustomerId,
+    appliedFrom,
+    appliedTo,
+    appliedCampaignId,
+    appliedGroupBy,
+    appliedCompare,
     freshness: data?.freshness,
     customerOptions,
     draftCustomerId,

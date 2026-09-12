@@ -21,6 +21,7 @@ import (
 	"ad-event-processor/internal/identity"
 	"ad-event-processor/internal/ledger"
 	"ad-event-processor/internal/licensing"
+	"ad-event-processor/internal/licensingadmin"
 	"ad-event-processor/internal/notify"
 	"ad-event-processor/internal/opsadmin"
 	"ad-event-processor/internal/reconciliation"
@@ -53,6 +54,9 @@ func ServeWithOptions(ctx context.Context, cfg *config.Config, opts ServeOptions
 		if snapErr != nil || !snap.ModuleAllowed(func(f licensing.FeatureSet) bool { return f.MultiRegionEnabled() }) {
 			return fmt.Errorf("multi_region requires enterprise license with multi_region feature")
 		}
+		if err := licensingadmin.EnforceDeploymentRegionCap(ctx, regionCapHost{pool: pool, snap: snap}, int16(cfg.RegionCode)); err != nil {
+			return fmt.Errorf("multi_region region cap: %w", err)
+		}
 		slog.Info("multi-region mode enabled", "region_code", cfg.RegionCode, "cell", cfg.MultiRegionCell(), "global", cfg.MultiRegionGlobal())
 	}
 
@@ -66,6 +70,7 @@ func ServeWithOptions(ctx context.Context, cfg *config.Config, opts ServeOptions
 		return err
 	}
 	licensing.StartLicenseEpochSync(ctx, shardadmin.PickHealthyControlShard(redisShards))
+	licensing.StartMonthlyEventsSnapshotSync(ctx, shardadmin.PickHealthyControlShard(redisShards), 0)
 
 	sharder := domain.NewStaticSlotSharder(len(redisShards))
 
@@ -234,7 +239,7 @@ func ServeWithOptions(ctx context.Context, cfg *config.Config, opts ServeOptions
 		)
 	}
 
-	startControlWorkers(ctx, cfg, svc, pool, postgresPools, syncWorkers)
+	startControlWorkers(ctx, cfg, svc, pool, postgresPools, syncWorkers, redisShards)
 
 	paymentClient, closePayment, err := openPaymentClient(ctx, cfg, opts)
 	if err != nil {
@@ -299,6 +304,10 @@ func ServeWithOptions(ctx context.Context, cfg *config.Config, opts ServeOptions
 	alertmanagerWebhook := opsadmin.NewAlertmanagerWebhook(notifierClient.API(), cfg)
 
 	if cfg.SlotMigrationEnabled {
+		snap, snapErr := licensing.LoadDeploymentSnapshot(ctx, pool)
+		if snapErr != nil || !snap.ModuleAllowed(func(f licensing.FeatureSet) bool { return f.SlotMigrationEnabled() }) {
+			return fmt.Errorf("slot_migration requires scale+ license with slot_migration feature")
+		}
 		migrationInterval := time.Duration(cfg.SlotMigrationIntervalMs) * time.Millisecond
 		orchestrator := NewSlotMigrationOrchestrator(svc, migrationInterval)
 		svc.StartBackgroundWorker(func() {

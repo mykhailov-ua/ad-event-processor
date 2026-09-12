@@ -10,8 +10,7 @@ export const DIRECTORY_CONTENT_BAND_CLASS = 'w-full min-w-0 max-w-[75%]';
 
 export const DIRECTORY_FILTER_FORM_STACK_CLASS = adminSpacing.grid.filterFormStack;
 
-export const DIRECTORY_FIELD_LABEL_CLASS =
-  'block min-h-[18px] whitespace-nowrap leading-[18px]';
+export const DIRECTORY_FIELD_LABEL_CLASS = 'block min-h-[18px] whitespace-nowrap leading-[18px]';
 
 export const AUTO_FILL_FILTER_GRID = adminSpacing.grid.filterMatrix;
 

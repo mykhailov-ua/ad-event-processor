@@ -28,7 +28,7 @@ if [[ ! -f "$SRC" ]]; then
   exit 1
 fi
 
-python3 - "$ASSETS" <<'PY'
+python3 - "$ASSETS" << 'PY'
 import base64
 import io
 import sys

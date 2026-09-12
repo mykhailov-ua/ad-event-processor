@@ -57,7 +57,7 @@ fi
 
 TOKEN="${VENDOR_TRIAL_BOT_TOKEN:-}"
 if [[ -z "$TOKEN" ]]; then
-  TOKEN="$(remote "if [[ -f '${ENV_FILE}' ]] && grep -q '^VENDOR_TRIAL_BOT_TOKEN=' '${ENV_FILE}'; then grep '^VENDOR_TRIAL_BOT_TOKEN=' '${ENV_FILE}' | head -n1 | cut -d= -f2-; fi" 2>/dev/null || true)"
+  TOKEN="$(remote "if [[ -f '${ENV_FILE}' ]] && grep -q '^VENDOR_TRIAL_BOT_TOKEN=' '${ENV_FILE}'; then grep '^VENDOR_TRIAL_BOT_TOKEN=' '${ENV_FILE}' | head -n1 | cut -d= -f2-; fi" 2> /dev/null || true)"
 fi
 if [[ -z "$TOKEN" ]]; then
   die "VENDOR_TRIAL_BOT_TOKEN is required (set env or create ${ENV_FILE} on target)"

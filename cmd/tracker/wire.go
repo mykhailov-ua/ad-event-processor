@@ -111,6 +111,15 @@ func runTracker(cfg *config.Config) {
 	}
 	defer pool.Close()
 
+	if cfg.BrokerPrimaryCH() {
+		if err := licensing.EnsureDeploymentModule(ctx, pool, "broker_wal", func(f licensing.FeatureSet) bool {
+			return f.BrokerWalEnabled()
+		}); err != nil {
+			slog.Error("broker_wal license check failed", "error", err)
+			exitWithCancel(cancel, 1)
+		}
+	}
+
 	queries := db.New(pool)
 	registry := ingestion.NewRegistry(queries)
 	registry.SetPool(pool)
@@ -163,6 +172,7 @@ func runTracker(cfg *config.Config) {
 	database.StartRedisPoolStatsReporter(ctx, redisShards, 15*time.Second)
 	if len(redisShards) > 0 && redisShards[0] != nil {
 		licensing.StartLicenseEpochSync(ctx, redisShards[0])
+		licensing.StartMonthlyEventsSnapshotSync(ctx, redisShards[0], 0)
 	}
 	if redisShards[0] == nil {
 		slog.Warn("redis shard 0 not connected; running in degraded mode",
@@ -601,6 +611,7 @@ func runTracker(cfg *config.Config) {
 	unifiedFilter.SetIngressRPDHandledExternally(true)
 	licenseFilter := ingestion.NewLicenseFilter(registry)
 	licenseRPSFilter := ingestion.NewLicenseRPSFilter(registry)
+	licenseMonthlyEventsFilter := ingestion.NewLicenseMonthlyEventsFilter(registry)
 	entitlementsFilter := ingestion.NewEntitlementsFilter(registry, sharder, redisShards)
 	entitlementsFilter.SetRegionCode(uint8(cfg.RegionCode))
 	entitlementsFilter.ConfigureCGNAT(cfg.CGNATMobileIPBypassEnabled(), mobileCarrierASN, asnLookup)
@@ -617,7 +628,7 @@ func runTracker(cfg *config.Config) {
 	//   - tryAcquireStreamAdmission (TryReserve on StreamProducer or BrokerProducer) runs before Check (fail-closed 503 overload).
 	//   - evt fields on ConnContext use unsafeString over copied offload buffer; AsyncWrite clones response bytes (no frame lifetime).
 	//   - LOCAL_QUOTA_MODE live: local quanta full-skip skips sync EVALSHA; LocalQuantaStreamPublisher async lane is separate from TryReserve.
-	filterEngine := ingestion.NewFilterEngine(time.Duration(cfg.FilterTimeoutMs)*time.Millisecond, licenseFilter, licenseRPSFilter, breakerFilter, geoFilter, scheduleFilter, vppFilter, fraudFilter, residentialProxyFilter, tcpMSSFilter, deviceFilter, l7WireFilter, jsonSerializationFilter, behaviorTelemetryFilter, antifraudTelemetryFilter, crowdProbeFilter, probeClusterFilter, crowdWaveFilter, consentFilter, segmentFilter, entitlementsFilter, unifiedFilter)
+	filterEngine := ingestion.NewFilterEngine(time.Duration(cfg.FilterTimeoutMs)*time.Millisecond, licenseFilter, licenseRPSFilter, licenseMonthlyEventsFilter, breakerFilter, geoFilter, scheduleFilter, vppFilter, fraudFilter, residentialProxyFilter, tcpMSSFilter, deviceFilter, l7WireFilter, jsonSerializationFilter, behaviorTelemetryFilter, antifraudTelemetryFilter, crowdProbeFilter, probeClusterFilter, crowdWaveFilter, consentFilter, segmentFilter, entitlementsFilter, unifiedFilter)
 	filterEngine.SetSettingsWatcher(settingsWatcher)
 
 	// Phase 6: optional RTB catalog (in-process auction; no full FilterEngine on /openrtb/bid).

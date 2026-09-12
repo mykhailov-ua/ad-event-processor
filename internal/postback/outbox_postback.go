@@ -8,28 +8,31 @@ import (
 	"github.com/google/uuid"
 )
 
+// OutboundPostbackID scopes idempotency when multiple S2S URLs fire per conversion.
+
 type PostbackPayload struct {
-	SigningSecret  []byte    `json:"-"`
-	CustomerID     uuid.UUID `json:"customer_id"`
-	CampaignID     uuid.UUID `json:"campaign_id"`
-	ClickID        string    `json:"click_id"`
-	EventType      string    `json:"event_type"`
-	PayoutMicro    int64     `json:"payout_micro"`
-	TxID           string    `json:"tx_id"`
-	SubID1         string    `json:"subid1"`
-	Param10        string    `json:"param10"`
-	Email          string    `json:"email"`
-	Phone          string    `json:"phone"`
-	FBCLID         string    `json:"fbclid"`
-	GCLID          string    `json:"gclid"`
-	TTCLID         string    `json:"ttclid"`
-	TBLCI          string    `json:"tblci,omitempty"`
-	OBClickID      string    `json:"ob_click_id,omitempty"`
-	MSCLKID        string    `json:"msclkid,omitempty"`
-	EventSourceURL string    `json:"event_source_url,omitempty"`
-	TestEventCode  string    `json:"test_event_code,omitempty"`
-	EventID        string    `json:"event_id,omitempty"`
-	subSlots       [maxSubMacroSlots]string
+	SigningSecret      []byte    `json:"-"`
+	CustomerID         uuid.UUID `json:"customer_id"`
+	CampaignID         uuid.UUID `json:"campaign_id"`
+	ClickID            string    `json:"click_id"`
+	EventType          string    `json:"event_type"`
+	PayoutMicro        int64     `json:"payout_micro"`
+	TxID               string    `json:"tx_id"`
+	SubID1             string    `json:"subid1"`
+	Param10            string    `json:"param10"`
+	Email              string    `json:"email"`
+	Phone              string    `json:"phone"`
+	FBCLID             string    `json:"fbclid"`
+	GCLID              string    `json:"gclid"`
+	TTCLID             string    `json:"ttclid"`
+	TBLCI              string    `json:"tblci,omitempty"`
+	OBClickID          string    `json:"ob_click_id,omitempty"`
+	MSCLKID            string    `json:"msclkid,omitempty"`
+	EventSourceURL     string    `json:"event_source_url,omitempty"`
+	TestEventCode      string    `json:"test_event_code,omitempty"`
+	EventID            string    `json:"event_id,omitempty"`
+	OutboundPostbackID uuid.UUID `json:"outbound_postback_id,omitempty"`
+	subSlots           [maxSubMacroSlots]string
 }
 
 func (p *PostbackPayload) SubIDs() [maxSubMacroSlots]string {

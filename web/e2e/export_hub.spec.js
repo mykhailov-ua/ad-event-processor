@@ -15,16 +15,18 @@ test.beforeEach(async ({}, testInfo) => {
   await skipUnlessIntegrationReady(testInfo);
 });
 
-test('export hub loads catalog from GET /api/v1/reports/catalog', { tag: '@L1' }, async ({
-  page,
-}) => {
-  await loginAsAdmin(page);
-  const catalogResponse = await gotoLiveAwaitGet(page, '/exports', '/api/v1/reports/catalog');
-  expect(catalogResponse.ok()).toBe(true);
+test(
+  'export hub loads catalog from GET /api/v1/reports/catalog',
+  { tag: '@L1' },
+  async ({ page }) => {
+    await loginAsAdmin(page);
+    const catalogResponse = await gotoLiveAwaitGet(page, '/exports', '/api/v1/reports/catalog');
+    expect(catalogResponse.ok()).toBe(true);
 
-  await expect(mainHeading(page, 'Exports')).toBeVisible();
-  await expect(page.getByLabel('Export')).toBeVisible();
-});
+    await expect(mainHeading(page, 'Exports')).toBeVisible();
+    await expect(page.getByLabel('Export')).toBeVisible();
+  }
+);
 
 test('export hub failed job poll shows ErrorBlock', { tag: '@L3' }, async ({ page }) => {
   await loginAsAdmin(page);

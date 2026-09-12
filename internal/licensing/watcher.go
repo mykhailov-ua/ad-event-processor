@@ -232,6 +232,10 @@ func (w *LicenseWatcher) verifyAndReload(ctx context.Context) error {
 	}
 
 	claims.Features = entitlements.SanitizeFeaturesForSKU(claims.SKU, claims.Features)
+	w.policy = entitlements.HeartbeatPolicyFromClaims(claims, w.policy)
+	if claims.HeartbeatIntervalHrs > 0 {
+		w.interval = time.Duration(claims.HeartbeatIntervalHrs) * time.Hour
+	}
 
 	w.mu.Lock()
 	offlineSince := w.offlineSince
@@ -425,6 +429,9 @@ func (w *LicenseWatcher) updateDatabaseAndRedis(ctx context.Context, token strin
 		"ml_fraud_boost":             boolToInt(features.MlFraudBoost),
 		"multi_region":               boolToInt(features.MultiRegion),
 		"slot_migration":             boolToInt(features.SlotMigration),
+		"broker_wal":                 boolToInt(features.BrokerWal),
+		"margin_guard":               boolToInt(features.MarginGuard),
+		"fraud_dispute_evidence":     boolToInt(features.FraudDisputeEvidence),
 		"external_residential_intel": boolToInt(features.ExternalResidentialIntel),
 		"moderator_intel_feed":       boolToInt(features.ModeratorIntelFeed),
 		"ad_platform_campaign_api":   boolToInt(features.AdPlatformCampaignAPI),

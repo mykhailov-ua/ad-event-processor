@@ -66,6 +66,16 @@ func (t *CampaignFlowTable) SelectForEvent(campaignID uuid.UUID, userID []byte, 
 }
 
 func (t *CampaignFlowTable) SelectForEventExcluding(campaignID uuid.UUID, userID []byte, evt *domain.Event, exclude map[uuid.UUID]struct{}) (sel FlowSelection, landerURL []byte, ok bool) {
+	return t.SelectForEventExcludingWithRotation(campaignID, userID, evt, exclude, nil)
+}
+
+func (t *CampaignFlowTable) SelectForEventExcludingWithRotation(
+	campaignID uuid.UUID,
+	userID []byte,
+	evt *domain.Event,
+	exclude map[uuid.UUID]struct{},
+	rot *RotationSelectContext,
+) (sel FlowSelection, landerURL []byte, ok bool) {
 	if t == nil || campaignID == uuid.Nil || len(userID) == 0 {
 		return FlowSelection{}, nil, false
 	}
@@ -77,13 +87,16 @@ func (t *CampaignFlowTable) SelectForEventExcluding(campaignID uuid.UUID, userID
 	if !ok {
 		return FlowSelection{}, nil, false
 	}
-	return SelectSnapshotExcluding(&flow, userID, flowSelectContextFromEvent(evt), exclude)
+	ctx := flowSelectContextFromEvent(evt)
+	ctx.Rotation = rot
+	return SelectSnapshotExcluding(&flow, userID, ctx, exclude)
 }
 
 type flowPathJSON struct {
-	Weight  int32                `json:"weight"`
-	Filters *flowPathFiltersJSON `json:"filters"`
-	Landers []struct {
+	Weight       int32                `json:"weight"`
+	RotationMode string               `json:"rotation_mode,omitempty"`
+	Filters      *flowPathFiltersJSON `json:"filters"`
+	Landers      []struct {
 		LanderID uuid.UUID `json:"lander_id"`
 		Weight   int32     `json:"weight"`
 	} `json:"landers"`
@@ -329,7 +342,13 @@ func buildFlowSnapshot(
 		if p.Weight <= 0 || len(p.Landers) == 0 {
 			continue
 		}
-		fp := FlowPath{Weight: p.Weight, Filters: compileFlowPathFilters(p.Filters), Landers: make([]FlowLanderEntry, 0, len(p.Landers)), Offers: make([]FlowOfferEntry, 0, len(p.Offers))}
+		fp := FlowPath{
+			Weight:       p.Weight,
+			RotationMode: string(domain.NormalizeRotationMode(p.RotationMode)),
+			Filters:      compileFlowPathFilters(p.Filters),
+			Landers:      make([]FlowLanderEntry, 0, len(p.Landers)),
+			Offers:       make([]FlowOfferEntry, 0, len(p.Offers)),
+		}
 		for _, l := range p.Landers {
 			url := landerURLs[l.LanderID]
 			if l.Weight <= 0 || len(url) == 0 {
@@ -394,6 +413,7 @@ type FlowSelectContext struct {
 	DeviceMask uint8
 	OSMask     uint8
 	Language   [2]byte
+	Rotation   *RotationSelectContext
 }
 
 type flowPathFiltersJSON struct {
@@ -584,10 +604,11 @@ type FlowOfferEntry struct {
 }
 
 type FlowPath struct {
-	Weight  int32
-	Filters FlowPathFilters
-	Landers []FlowLanderEntry
-	Offers  []FlowOfferEntry
+	Weight       int32
+	RotationMode string
+	Filters      FlowPathFilters
+	Landers      []FlowLanderEntry
+	Offers       []FlowOfferEntry
 }
 
 type FlowPathSnapshot struct {
@@ -647,17 +668,20 @@ func SelectSnapshotExcluding(snap *FlowPathSnapshot, userID []byte, ctx FlowSele
 	if !pathOK {
 		return FlowSelection{}, nil, false
 	}
-	landerIdx, lander := selectWeightedLander(path.Landers, fnv1a32Salted(userID, 'l'))
-	if landerIdx < 0 || len(lander.URL) == 0 {
+	seen := map[string]struct{}{}
+	if ctx.Rotation != nil && ctx.Rotation.Redis != nil && ctx.Rotation.VisitorKey != "" {
+		key := RotationSeenRedisKey(ctx.Rotation.CampaignID, ctx.Rotation.VisitorKey)
+		if loaded, err := loadRotationSeen(context.Background(), ctx.Rotation.Redis, key); err == nil {
+			seen = loaded
+		}
+	}
+	landerIdx, lander, landerOK := selectRotationLander(path, seen, userID)
+	if !landerOK || landerIdx < 0 || len(lander.URL) == 0 {
 		return FlowSelection{}, nil, false
 	}
-	var offerIdx int
-	var offer FlowOfferEntry
-	if snap.RoutingMode == domain.FlowRoutingModeWaterfall ||
-		snap.RoutingMode == domain.FlowRoutingModeWaterfallThenLanding {
-		offerIdx, offer = selectWaterfallOffer(path.Offers, exclude)
-	} else {
-		offerIdx, offer = selectWeightedOfferExcluding(path.Offers, fnv1a32Salted(userID, 'o'), exclude)
+	offerIdx, offer, offerOK := selectRotationOffer(path, snap, seen, userID, exclude)
+	if !offerOK {
+		offerIdx = -1
 	}
 	if offerIdx < 0 {
 		if snap.RoutingMode == domain.FlowRoutingModeWaterfallThenLanding {
@@ -669,7 +693,7 @@ func SelectSnapshotExcluding(snap *FlowPathSnapshot, userID []byte, ctx FlowSele
 		}
 		return FlowSelection{}, nil, false
 	}
-	return FlowSelection{
+	sel = FlowSelection{
 		PathIdx:        pathIdx,
 		LanderIdx:      landerIdx,
 		OfferIdx:       offerIdx,
@@ -677,7 +701,11 @@ func SelectSnapshotExcluding(snap *FlowPathSnapshot, userID []byte, ctx FlowSele
 		OfferID:        offer.OfferID,
 		CapClicksDaily: offer.CapClicksDaily,
 		CapClicksTotal: offer.CapClicksTotal,
-	}, lander.URL, true
+	}
+	if ctx.Rotation != nil {
+		_ = applyRotationSeen(context.Background(), ctx.Rotation, sel.LanderID, sel.OfferID)
+	}
+	return sel, lander.URL, true
 }
 
 func selectWeightedFlowFiltered(paths []FlowPath, ctx FlowSelectContext, bucket uint32) (int, FlowPath, bool) {

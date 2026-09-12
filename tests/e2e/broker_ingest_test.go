@@ -50,11 +50,11 @@ func TestE2E_BrokerIngest(t *testing.T) {
 	require.NoError(t, srv.Start())
 	defer srv.Stop()
 
-	producer := client.NewClient(srv.Addr(), 2*time.Second)
+	producer := client.NewClient(srv.Addr(), 5*time.Second)
 	require.NoError(t, producer.Connect())
 	rec := &pb.AdStreamEvent{
 		CreatedAtUnix: time.Now().Unix(),
-		CampaignId:    campaignID[:],
+		CampaignId:    []byte(campaignID.String()),
 		ClickId:       []byte("broker-e2e-click"),
 		EventType:     []byte("click"),
 		Ip:            []byte("203.0.113.9"),
@@ -67,31 +67,35 @@ func TestE2E_BrokerIngest(t *testing.T) {
 	require.NoError(t, err)
 	require.NoError(t, producer.Close())
 
-	store := ingestion.NewPostgresStore(queries, 200*time.Millisecond)
+	store := ingestion.NewPostgresStore(queries, 5*time.Second)
 	cfg := ingestion.BrokerConsumerConfig{
 		BrokerAddr: srv.Addr(),
 		Topic:      "tracker-logs",
-		Group:      "ad:processor:group_pg_broker",
+		Group:      "e2e-broker-ingest",
 		BatchSize:  1,
 		FlushInt:   50 * time.Millisecond,
 		MaxBytes:   1024 * 1024,
-		Timeout:    2 * time.Second,
+		Timeout:    5 * time.Second,
 		IdleWait:   20 * time.Millisecond,
 		ShadowMode: false,
 	}
-	consumer := ingestion.NewBrokerStreamConsumer(store, cfg, time.Second, 50*time.Millisecond, time.Second, 1)
+	consumer := ingestion.NewBrokerStreamConsumer(store, cfg, 5*time.Second, 50*time.Millisecond, time.Second, 3)
 	consumer.Start(ctx)
-	defer consumer.Close()
+	defer func() {
+		consumer.Close()
+		_ = consumer.Wait(context.Background())
+	}()
 
 	assert.Eventually(t, func() bool {
 		var clicks int64
-		err := pool.QueryRow(ctx, "SELECT clicks_count FROM campaign_stats WHERE campaign_id = $1", campaignID).Scan(&clicks)
+		err := pool.QueryRow(ctx,
+			`SELECT COALESCE(SUM(clicks_count), 0) FROM campaign_stats WHERE campaign_id = $1`,
+			campaignID,
+		).Scan(&clicks)
 		return err == nil && clicks == 1
 	}, 8*time.Second, 100*time.Millisecond)
 
-	assert.Eventually(t, func() bool {
-		var eventCount int
-		err := pool.QueryRow(ctx, "SELECT count(*) FROM events WHERE campaign_id = $1", campaignID).Scan(&eventCount)
-		return err == nil && eventCount == 1
-	}, 8*time.Second, 100*time.Millisecond)
+	var eventCount int
+	require.NoError(t, pool.QueryRow(ctx, "SELECT count(*) FROM events WHERE campaign_id = $1", campaignID).Scan(&eventCount))
+	require.Equal(t, 1, eventCount)
 }

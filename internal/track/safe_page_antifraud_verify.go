@@ -29,6 +29,7 @@ func RequiresSafePageAntifraudCrypto(camp *domain.Campaign, antifraudTelemetryEn
 type antifraudVerifyJSON struct {
 	ChallengeToken string `json:"challenge_token"`
 	PoWNonce       uint32 `json:"pow_nonce"`
+	CtxMAC         string `json:"ctx_mac"`
 	TelemetryMAC   string `json:"telemetry_mac"`
 	DwellMs        uint32 `json:"dwell_ms"`
 	PointerCVMilli uint16 `json:"pointer_cv_milli"`
@@ -45,7 +46,11 @@ func ParseAntifraudSnapshotFromJSON(raw []byte) (domain.AntifraudSnapshot, bool)
 	if err := json.Unmarshal(raw, &in); err != nil {
 		return domain.AntifraudSnapshot{}, false
 	}
-	if in.ChallengeToken == "" || in.PoWNonce == 0 || len(in.TelemetryMAC) != 32 {
+	mac := in.CtxMAC
+	if mac == "" {
+		mac = in.TelemetryMAC
+	}
+	if in.ChallengeToken == "" || in.PoWNonce == 0 || len(mac) != 32 {
 		return domain.AntifraudSnapshot{}, false
 	}
 	if len(in.ChallengeToken) > domain.AntifraudMaxChallengeToken {
@@ -54,7 +59,7 @@ func ParseAntifraudSnapshotFromJSON(raw []byte) (domain.AntifraudSnapshot, bool)
 	var snap domain.AntifraudSnapshot
 	snap.ChallengeTokenLen = uint8(len(in.ChallengeToken))
 	copy(snap.ChallengeToken[:], in.ChallengeToken)
-	copy(snap.TelemetryMAC[:], in.TelemetryMAC)
+	copy(snap.TelemetryMAC[:], mac)
 	snap.PoWNonce = in.PoWNonce
 	snap.DwellMs = in.DwellMs
 	snap.PointerCVMilli = in.PointerCVMilli

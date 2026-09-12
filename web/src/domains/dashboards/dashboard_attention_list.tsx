@@ -41,7 +41,12 @@ export function DashboardAttentionList({ rows }: DashboardAttentionListProps) {
             <TableCell>{row.name}</TableCell>
             <TableCell>{row.reason}</TableCell>
             <TableCell>
-              <Button asChild data-testid={`dashboard-attention-${row.id}`} type="button" variant="outline">
+              <Button
+                asChild
+                data-testid={`dashboard-attention-${row.id}`}
+                type="button"
+                variant="outline"
+              >
                 <Link to={`/campaigns/${row.id}/edit`}>Open</Link>
               </Button>
             </TableCell>

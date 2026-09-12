@@ -14,11 +14,11 @@ export type CustomerDetailFieldRowProps = {
 
 export function CustomerDetailFieldRow({ children, htmlFor, label }: CustomerDetailFieldRowProps) {
   return (
-    <div className={customerDetailRowClass} >
-      <Label  className={customerDetailRowLabelClass} htmlFor={htmlFor}>
+    <div className={customerDetailRowClass}>
+      <Label className={customerDetailRowLabelClass} htmlFor={htmlFor}>
         {label}
       </Label>
-      <div className="min-w-0" >{children}</div>
+      <div className="min-w-0">{children}</div>
     </div>
   );
 }

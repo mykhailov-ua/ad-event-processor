@@ -67,6 +67,7 @@ WHERE idempotency_hash = $1
 -- name: GetPendingPostbackEventsForUpdate :many
 SELECT * FROM outbox_events
 WHERE event_type = 'SEND_POSTBACK'
+  AND (not_before IS NULL OR not_before <= NOW())
   AND (
     status = 'PENDING'
     OR (
@@ -77,6 +78,10 @@ WHERE event_type = 'SEND_POSTBACK'
 ORDER BY created_at ASC
 LIMIT $1
 FOR UPDATE SKIP LOCKED;
+
+-- name: CreatePostbackOutboxEventsBatch :exec
+INSERT INTO outbox_events (event_type, payload, not_before)
+SELECT unnest(@event_types::text[]), unnest(@payloads::bytea[]), unnest(@not_before::timestamptz[]);
 
 -- name: ListPostbackDLQ :many
 SELECT * FROM postback_dlq ORDER BY created_at DESC;

@@ -107,7 +107,9 @@ function buildSchemaOverviewFields(row: IntegrationSchema): DirectoryOverviewFie
   ];
 }
 
-function buildTemplateOverviewFields(row: IntegrationTemplateCatalogEntry): DirectoryOverviewField[] {
+function buildTemplateOverviewFields(
+  row: IntegrationTemplateCatalogEntry
+): DirectoryOverviewField[] {
   return [
     { label: 'Kind', value: row.kind },
     { label: 'Category', value: row.category },
@@ -133,19 +135,18 @@ export function IntegrationsSchemas({
   const [selectedSchemaId, setSelectedSchemaId] = useState<string | null>(null);
   const [selectedTemplateId, setSelectedTemplateId] = useState<string | null>(null);
 
-  const schemaRecordById = useMemo(
-    () => directoryRecordMap(schemas, (row) => row.id),
-    [schemas]
-  );
+  const schemaRecordById = useMemo(() => directoryRecordMap(schemas, (row) => row.id), [schemas]);
   const schemaRows = useMemo(
-    () => directoryOperateRows(schemas, (row) => row.id, (row) => row.name ?? row.id),
+    () =>
+      directoryOperateRows(
+        schemas,
+        (row) => row.id,
+        (row) => row.name ?? row.id
+      ),
     [schemas]
   );
 
-  const templateRecordById = useMemo(
-    () => directoryRecordMap(templates, templateId),
-    [templates]
-  );
+  const templateRecordById = useMemo(() => directoryRecordMap(templates, templateId), [templates]);
   const templateRows = useMemo(
     () => directoryOperateRows(templates, templateId, (row) => row.name ?? templateId(row)),
     [templates]
@@ -228,9 +229,7 @@ export function IntegrationsSchemas({
                       disabled={fetching}
                       onOverview={openOverview}
                     >
-                      <DropdownMenuItem
-                        onClick={() => applyForm.onPrefillFromSchema(record)}
-                      >
+                      <DropdownMenuItem onClick={() => applyForm.onPrefillFromSchema(record)}>
                         Prefill apply form
                       </DropdownMenuItem>
                       <DropdownMenuItem onClick={() => viewSchema.onView(record)}>

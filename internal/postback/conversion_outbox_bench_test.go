@@ -35,12 +35,12 @@ var (
 func BenchmarkBuildPostbackPayloadFromEvent(b *testing.B) {
 	b.ReportAllocs()
 	for b.Loop() {
-		_ = buildPostbackPayloadFromEvent(benchConvEvent, benchCustomerID)
+		_ = buildPostbackPayloadFromEvent(benchConvEvent, benchCustomerID, uuid.Nil)
 	}
 }
 
 func BenchmarkMarshalPostbackPayload(b *testing.B) {
-	pb := buildPostbackPayloadFromEvent(benchConvEvent, benchCustomerID)
+	pb := buildPostbackPayloadFromEvent(benchConvEvent, benchCustomerID, uuid.Nil)
 	b.ReportAllocs()
 	for b.Loop() {
 		_, _ = json.Marshal(pb)
@@ -67,6 +67,10 @@ func BenchmarkEventTypeMatches(b *testing.B) {
 type benchPostbackQuerier struct {
 	hasConfig   bool
 	outboxCalls int
+}
+
+func (q *benchPostbackQuerier) ListOutboundPostbacksByCampaignIDs(ctx context.Context, ids []pgtype.UUID) ([]db.CampaignOutboundPostback, error) {
+	return nil, nil
 }
 
 func (q *benchPostbackQuerier) ListPostbackConfigsByCampaignIDs(ctx context.Context, ids []pgtype.UUID) ([]db.PostbackConfig, error) {
@@ -96,7 +100,7 @@ func (q *benchPostbackQuerier) ListCampaignsByIDs(ctx context.Context, ids []pgt
 	return out, nil
 }
 
-func (q *benchPostbackQuerier) CreateOutboxEventsBatch(ctx context.Context, arg db.CreateOutboxEventsBatchParams) error {
+func (q *benchPostbackQuerier) CreatePostbackOutboxEventsBatch(ctx context.Context, arg db.CreatePostbackOutboxEventsBatchParams) error {
 	q.outboxCalls++
 	return nil
 }

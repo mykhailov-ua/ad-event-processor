@@ -73,6 +73,9 @@ func exportCustomerLedgerCSV(ctx context.Context, host CustomerLedgerHost, custo
 	if _, err := q.GetCustomerByID(ctx, domain.ToUUID(customerID)); err != nil {
 		return LedgerExportResult{}, err
 	}
+	if billingadmin.ExportDisabled(host.ExportChunkMaxBytes()) {
+		return LedgerExportResult{}, billingadmin.ErrDeploymentExportDisabled
+	}
 
 	limited := billingadmin.NewExportLimitedWriter(w, host.ExportChunkMaxBytes())
 	cw := csv.NewWriter(limited)

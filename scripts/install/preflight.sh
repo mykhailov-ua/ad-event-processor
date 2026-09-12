@@ -79,8 +79,8 @@ ports_check() {
 mem_check() {
   local kb
   kb="$(awk '/MemTotal:/ {print $2}' /proc/meminfo 2> /dev/null || echo 0)"
-  if [[ "$kb" -gt 0 ]] && [[ "$kb" -lt 7000000 ]]; then
-    warn "RAM < 8 GB - appliance may be tight under load"
+  if [[ "$kb" -gt 0 ]] && [[ "$kb" -lt 11000000 ]]; then
+    warn "RAM < 12 GB - appliance may be tight under load (see hardware sizing guide)"
   else
     pass "memory"
   fi

@@ -6,6 +6,7 @@
 package e2e_test
 
 import (
+	"bytes"
 	"context"
 	"net/http"
 	"os"
@@ -57,6 +58,7 @@ func TestE2E_OpenRTB26LiveBudget(t *testing.T) {
 	require.NoError(t, err)
 
 	registry := testutil.NewAdsRegistry(t, queries)
+	wireOpenRTBLicenseForE2E(t, registry)
 	_, err = registry.Sync(ctx)
 	require.NoError(t, err)
 
@@ -67,6 +69,7 @@ func TestE2E_OpenRTB26LiveBudget(t *testing.T) {
 
 	rtbStore := rtb.NewBudgetStore()
 	catalog := ingestion.NewRtbCatalog(rtbStore, ingestion.BudgetAuthorityRTB)
+	catalog.Registry().SetTargetingIndexEnabled(true)
 	sharder := ingestion.NewJumpHashSharder(1)
 	budgetSync := ingestion.RtbBudgetSync{
 		Authority: ingestion.BudgetAuthorityRTB,
@@ -86,6 +89,7 @@ func TestE2E_OpenRTB26LiveBudget(t *testing.T) {
 
 	body, err := os.ReadFile("../../internal/openrtb/testdata/bid_request_min.json")
 	require.NoError(t, err)
+	body = bytes.ReplaceAll(body, []byte(`"country": "USA"`), []byte(`"country": "US"`))
 
 	status, resp := ingestion.PostOpenRTBBidGnet(handler, body)
 	require.Equal(t, http.StatusOK, status, string(resp))

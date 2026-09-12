@@ -41,7 +41,13 @@ export type AppMobileNavSheetProps = {
 
 function AppSidebarBrand() {
   return (
-    <div className={cn('flex shrink-0 items-center border-b border-border', adminSpacing.gap.sm, adminSpacing.inset.bandLg)}>
+    <div
+      className={cn(
+        'flex shrink-0 items-center border-b border-border',
+        adminSpacing.gap.sm,
+        adminSpacing.inset.bandLg
+      )}
+    >
       <ProductAvatar framed size="md" />
       <span className={cn('whitespace-nowrap tracking-tight', adminTypography.sectionTitle)}>
         {productDisplayName}

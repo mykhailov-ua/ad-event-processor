@@ -28,6 +28,7 @@ func TestWorkspaceBilling_costCenterPatchAndExport(t *testing.T) {
 
 	pool, cleanupDB := database.SetupTestDB(t)
 	defer cleanupDB()
+	database.ApplyLedgerMigrations(t, pool)
 	redisClient, cleanupRedis := database.SetupTestRedis(t)
 	defer cleanupRedis()
 
@@ -76,6 +77,7 @@ func TestWorkspaceBilling_usageExportTenantIsolation(t *testing.T) {
 
 	pool, cleanupDB := database.SetupTestDB(t)
 	defer cleanupDB()
+	database.ApplyLedgerMigrations(t, pool)
 	redisClient, cleanupRedis := database.SetupTestRedis(t)
 	defer cleanupRedis()
 

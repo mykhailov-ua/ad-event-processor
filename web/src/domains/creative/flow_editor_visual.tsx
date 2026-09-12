@@ -14,8 +14,13 @@ import {
 import type { Lander, Offer } from '@/api/types';
 import {
   applySplitPreset,
+  FLOW_PATH_ROTATION_OPTIONS,
+  newFlowEntityRef,
   newFlowPathRow,
+  normalizeEntityRefWeights,
   normalizeVisualPathWeights,
+  type FlowEntityRefRow,
+  type FlowPathRotationMode,
   type FlowPathVisualRow,
 } from '@/domains/creative/flow_path_model';
 import { adminTypography } from '@/lib/admin_spacing';
@@ -83,7 +88,12 @@ export function FlowEditorVisual({
         >
           Normalize weights
         </SecondaryActionButton>
-        <SecondaryActionButton disabled={disabled} onClick={onAddRow} type="button" variant="secondary">
+        <SecondaryActionButton
+          disabled={disabled}
+          onClick={onAddRow}
+          type="button"
+          variant="secondary"
+        >
           Add path
         </SecondaryActionButton>
       </div>
@@ -91,10 +101,7 @@ export function FlowEditorVisual({
       {validationError ? <ErrorBlock message={validationError} title="Flow validation" /> : null}
 
       {rows.map((row, index) => (
-        <section
-          key={row.row_id}
-          className="grid gap-3 rounded-md border border-border p-3"
-        >
+        <section key={row.row_id} className="grid gap-3 rounded-md border border-border p-3">
           <div className="flex items-center justify-between gap-2">
             <h3 className={adminTypography.sectionTitle}>Path {index + 1}</h3>
             {rows.length > 1 ? (
@@ -109,67 +116,66 @@ export function FlowEditorVisual({
             ) : null}
           </div>
 
-          <div className="grid gap-3 sm:grid-cols-2">
-            <FilterField htmlFor={`flow-weight-${row.row_id}`} label="Weight %">
-              <Input
-                disabled={disabled}
-                id={`flow-weight-${row.row_id}`}
-                inputMode="decimal"
-                value={String(row.weight)}
-                onChange={(event) =>
-                  updateRow(index, { weight: Number.parseFloat(event.target.value) || 0 })
-                }
-              />
-            </FilterField>
+          <FilterField htmlFor={`flow-weight-${row.row_id}`} label="Path weight %">
+            <Input
+              disabled={disabled}
+              id={`flow-weight-${row.row_id}`}
+              inputMode="decimal"
+              value={String(row.weight)}
+              onChange={(event) =>
+                updateRow(index, { weight: Number.parseFloat(event.target.value) || 0 })
+              }
+            />
+          </FilterField>
 
-            <FilterField htmlFor={`flow-lander-${row.row_id}`} label="Lander">
-              <Select
-                disabled={disabled}
-                value={row.lander_id || undefined}
-                onValueChange={(value) => updateRow(index, { lander_id: value })}
-              >
-                <SelectTrigger id={`flow-lander-${row.row_id}`}>
-                  <SelectValue placeholder="Select lander" />
-                </SelectTrigger>
-                <SelectContent>
-                  {landers.map((lander) => (
-                    <SelectItem key={lander.id} value={lander.id}>
-                      {lander.name}
-                    </SelectItem>
-                  ))}
-                </SelectContent>
-              </Select>
-            </FilterField>
+          <FilterField htmlFor={`flow-rotation-${row.row_id}`} label="Rotation mode">
+            <Select
+              disabled={disabled}
+              value={row.rotation_mode}
+              onValueChange={(value) =>
+                updateRow(index, { rotation_mode: value as FlowPathRotationMode })
+              }
+            >
+              <SelectTrigger id={`flow-rotation-${row.row_id}`}>
+                <SelectValue placeholder="Weighted" />
+              </SelectTrigger>
+              <SelectContent>
+                {FLOW_PATH_ROTATION_OPTIONS.map((option) => (
+                  <SelectItem key={option.value} value={option.value}>
+                    {option.label}
+                  </SelectItem>
+                ))}
+              </SelectContent>
+            </Select>
+          </FilterField>
 
-            <FilterField htmlFor={`flow-offer-${row.row_id}`} label="Offer">
-              <Select
-                disabled={disabled}
-                value={row.offer_id || undefined}
-                onValueChange={(value) => updateRow(index, { offer_id: value })}
-              >
-                <SelectTrigger id={`flow-offer-${row.row_id}`}>
-                  <SelectValue placeholder="Select offer" />
-                </SelectTrigger>
-                <SelectContent>
-                  {offers.map((offer) => (
-                    <SelectItem key={offer.id} value={offer.id}>
-                      {offer.name}
-                    </SelectItem>
-                  ))}
-                </SelectContent>
-              </Select>
-            </FilterField>
+          <FlowEntityRefEditor
+            disabled={disabled}
+            entities={landers}
+            entityLabel="Lander"
+            idPrefix={`flow-lander-${row.row_id}`}
+            refs={row.landers}
+            onRefsChange={(landers) => updateRow(index, { landers })}
+          />
 
-            <FilterField htmlFor={`flow-countries-${row.row_id}`} label="Geo (countries)">
-              <Input
-                disabled={disabled}
-                id={`flow-countries-${row.row_id}`}
-                placeholder="US, CA"
-                value={row.countries}
-                onChange={(event) => updateRow(index, { countries: event.target.value })}
-              />
-            </FilterField>
-          </div>
+          <FlowEntityRefEditor
+            disabled={disabled}
+            entities={offers}
+            entityLabel="Offer"
+            idPrefix={`flow-offer-${row.row_id}`}
+            refs={row.offers}
+            onRefsChange={(offers) => updateRow(index, { offers })}
+          />
+
+          <FilterField htmlFor={`flow-countries-${row.row_id}`} label="Geo (countries)">
+            <Input
+              disabled={disabled}
+              id={`flow-countries-${row.row_id}`}
+              placeholder="US, CA"
+              value={row.countries}
+              onChange={(event) => updateRow(index, { countries: event.target.value })}
+            />
+          </FilterField>
 
           <div className="grid gap-2">
             <Label>Device filters</Label>
@@ -183,9 +189,10 @@ export function FlowEditorVisual({
                       disabled={disabled}
                       id={`flow-device-${row.row_id}-${device}`}
                       onCheckedChange={(next) => {
-                        const devices = next === true
-                          ? [...row.devices, device]
-                          : row.devices.filter((value) => value !== device);
+                        const devices =
+                          next === true
+                            ? [...row.devices, device]
+                            : row.devices.filter((value) => value !== device);
                         updateRow(index, { devices });
                       }}
                     />
@@ -198,6 +205,106 @@ export function FlowEditorVisual({
             </div>
           </div>
         </section>
+      ))}
+    </div>
+  );
+}
+
+type FlowEntityRefEditorProps = {
+  refs: FlowEntityRefRow[];
+  entities: Array<{ id: string; name: string }>;
+  entityLabel: string;
+  idPrefix: string;
+  disabled?: boolean;
+  onRefsChange: (refs: FlowEntityRefRow[]) => void;
+};
+
+function FlowEntityRefEditor({
+  refs,
+  entities,
+  entityLabel,
+  idPrefix,
+  disabled = false,
+  onRefsChange,
+}: FlowEntityRefEditorProps) {
+  const updateRef = (refIndex: number, patch: Partial<FlowEntityRefRow>) => {
+    onRefsChange(refs.map((ref, index) => (index === refIndex ? { ...ref, ...patch } : ref)));
+  };
+
+  const onAddRef = () => {
+    const even = Math.floor(100 / (refs.length + 1));
+    const next = [...refs, newFlowEntityRef(even)].map((ref) => ({ ...ref, weight: even }));
+    onRefsChange(normalizeEntityRefWeights(next));
+  };
+
+  const onRemoveRef = (refIndex: number) => {
+    if (refs.length <= 1) {
+      return;
+    }
+    onRefsChange(normalizeEntityRefWeights(refs.filter((_, index) => index !== refIndex)));
+  };
+
+  return (
+    <div className="grid gap-2">
+      <div className="flex items-center justify-between gap-2">
+        <Label>{entityLabel}s</Label>
+        <SecondaryActionButton
+          disabled={disabled}
+          onClick={onAddRef}
+          type="button"
+          variant="secondary"
+        >
+          Add {entityLabel.toLowerCase()}
+        </SecondaryActionButton>
+      </div>
+      {refs.map((ref, refIndex) => (
+        <div
+          key={ref.ref_id}
+          className="grid gap-2 rounded-md border border-border/60 p-2 sm:grid-cols-[1fr_6rem_auto]"
+        >
+          <FilterField
+            htmlFor={`${idPrefix}-${ref.ref_id}`}
+            label={`${entityLabel} ${refIndex + 1}`}
+          >
+            <Select
+              disabled={disabled}
+              value={ref.entity_id || undefined}
+              onValueChange={(value) => updateRef(refIndex, { entity_id: value })}
+            >
+              <SelectTrigger id={`${idPrefix}-${ref.ref_id}`}>
+                <SelectValue placeholder={`Select ${entityLabel.toLowerCase()}`} />
+              </SelectTrigger>
+              <SelectContent>
+                {entities.map((entity) => (
+                  <SelectItem key={entity.id} value={entity.id}>
+                    {entity.name}
+                  </SelectItem>
+                ))}
+              </SelectContent>
+            </Select>
+          </FilterField>
+          <FilterField htmlFor={`${idPrefix}-weight-${ref.ref_id}`} label="Weight %">
+            <Input
+              disabled={disabled}
+              id={`${idPrefix}-weight-${ref.ref_id}`}
+              inputMode="decimal"
+              value={String(ref.weight)}
+              onChange={(event) =>
+                updateRef(refIndex, { weight: Number.parseFloat(event.target.value) || 0 })
+              }
+            />
+          </FilterField>
+          {refs.length > 1 ? (
+            <SecondaryActionButton
+              disabled={disabled}
+              onClick={() => onRemoveRef(refIndex)}
+              type="button"
+              variant="secondary"
+            >
+              Remove
+            </SecondaryActionButton>
+          ) : null}
+        </div>
       ))}
     </div>
   );

@@ -95,22 +95,22 @@ export const JsonPayloadView = memo(function JsonPayloadView({
   const { scalarEntries, tableSections } = useMemo(() => partitionPayload(payload), [payload]);
 
   return (
-    <div className="grid gap-4" >
+    <div className="grid gap-4">
       {scalarEntries.length > 0 ? (
-        <div className="grid gap-4 sm:grid-cols-[repeat(auto-fit,minmax(220px,1fr))]" >
+        <div className="grid gap-4 sm:grid-cols-[repeat(auto-fit,minmax(220px,1fr))]">
           {scalarEntries.map(([key, value]) => (
             <div className="ui-surface-raised grid gap-2 p-5" key={key}>
-              <p className="text-sm font-medium text-muted-foreground" >
+              <p className="text-sm font-medium text-muted-foreground">
                 {formatKey ? formatKey(key) : key}
               </p>
               <div
-               
-              className={cn(
+                className={cn(
                   'text-sm',
                   (typeof value === 'object' && value != null) || key.includes('template')
                     ? 'break-all font-mono text-xs'
                     : 'tabular-nums'
-                )} >
+                )}
+              >
                 {formatMapCell(value)}
               </div>
             </div>
@@ -131,8 +131,8 @@ export const JsonPayloadView = memo(function JsonPayloadView({
           title={formatKey ? formatKey(section.key) : section.key}
         >
           <ReportMapTable
-           
-            className="border-0 bg-transparent shadow-none" columns={section.columns}
+            className="border-0 bg-transparent shadow-none"
+            columns={section.columns}
             formatColumn={formatColumn ?? formatKey}
             rowKeyPrefix={section.key}
             rows={section.rows}

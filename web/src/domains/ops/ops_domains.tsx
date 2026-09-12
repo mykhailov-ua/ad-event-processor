@@ -151,7 +151,8 @@ export function OpsDomains({
       {tlsHost ? (
         <div className={cn(adminSpacing.flex.buttonGroup, adminTypography.body)}>
           <span>
-            TLS allowed for <span className={adminTypography.label}>{draftHostname.trim() || 'hostname'}</span>
+            TLS allowed for{' '}
+            <span className={adminTypography.label}>{draftHostname.trim() || 'hostname'}</span>
           </span>
           <Badge variant="default">yes</Badge>
         </div>

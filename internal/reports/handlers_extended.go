@@ -70,7 +70,9 @@ func (h *ReportsHTTPHandlers) getTrueROIReport(w http.ResponseWriter, r *http.Re
 		return
 	}
 	out := trueROIRowsFromMaps(fetch.Rows)
+	masked := false
 	if snap, ok := authz.SnapshotFromContext(r.Context()); ok && snap.Mask == authz.MaskMasked {
+		masked = true
 		out = redactTrueROIRows(out)
 	}
 	if parseComparePrevious(r) {
@@ -79,7 +81,11 @@ func (h *ReportsHTTPHandlers) getTrueROIReport(w http.ResponseWriter, r *http.Re
 			h.writeLoadedReportError(w, perr)
 			return
 		}
-		attachTrueROICompareDeltas(out, trueROIRowsFromMaps(prevRows))
+		prevOut := trueROIRowsFromMaps(prevRows)
+		if masked {
+			prevOut = redactTrueROIRows(prevOut)
+		}
+		attachTrueROICompareDeltas(out, prevOut)
 	}
 	httpresponse.JSON(w, http.StatusOK, TrueROIReportResponse{
 		Rows:       out,

@@ -32,10 +32,10 @@ export function CampaignEditorAdvancedMacroSection({
   onMacroPreview,
 }: CampaignEditorAdvancedMacroSectionProps) {
   return (
-    <section className="flex flex-col gap-4" >
+    <section className="flex flex-col gap-4">
       <h2 className={adminTypography.sectionTitle}>Macro preview</h2>
-      <div className="grid gap-2 sm:grid-cols-3" >
-        <div className="grid gap-2" >
+      <div className="grid gap-2 sm:grid-cols-3">
+        <div className="grid gap-2">
           <Label htmlFor="macro-preview-sub1">sub1</Label>
           <Input
             id="macro-preview-sub1"
@@ -44,7 +44,7 @@ export function CampaignEditorAdvancedMacroSection({
             onChange={(event) => onMacroPreviewFieldChange('sub1', event.target.value)}
           />
         </div>
-        <div className="grid gap-2" >
+        <div className="grid gap-2">
           <Label htmlFor="macro-preview-country">country</Label>
           <Input
             id="macro-preview-country"
@@ -53,7 +53,7 @@ export function CampaignEditorAdvancedMacroSection({
             onChange={(event) => onMacroPreviewFieldChange('country', event.target.value)}
           />
         </div>
-        <div className="grid gap-2" >
+        <div className="grid gap-2">
           <Label htmlFor="macro-preview-click-id">click_id</Label>
           <Input
             id="macro-preview-click-id"
@@ -64,7 +64,7 @@ export function CampaignEditorAdvancedMacroSection({
         </div>
       </div>
 
-      <div className={campaignEditorActionsRowClass} >
+      <div className={campaignEditorActionsRowClass}>
         <Button
           type="button"
           variant="secondary"
@@ -84,17 +84,17 @@ export function CampaignEditorAdvancedMacroSection({
         : null}
 
       {macroPreviewResult ? (
-        <div className={cn(campaignEditorSectionClass, 'gap-3')} >
-          <div className="grid gap-2" >
+        <div className={cn(campaignEditorSectionClass, 'gap-3')}>
+          <div className="grid gap-2">
             <p className={adminTypography.label}>Resolved click URL</p>
-            <p className={cn("break-all", adminTypography.monoData, "text-muted-foreground")} >
+            <p className={cn('break-all', adminTypography.monoData, 'text-muted-foreground')}>
               {formatReadonly(macroPreviewResult.resolved_click_url)}
             </p>
           </div>
           {macroPreviewResult.resolved_postback_url ? (
-            <div className="grid gap-2" >
+            <div className="grid gap-2">
               <p className={adminTypography.label}>Resolved postback URL</p>
-              <p className={cn("break-all", adminTypography.monoData, "text-muted-foreground")} >
+              <p className={cn('break-all', adminTypography.monoData, 'text-muted-foreground')}>
                 {macroPreviewResult.resolved_postback_url}
               </p>
             </div>

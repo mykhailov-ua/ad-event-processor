@@ -99,11 +99,7 @@ export function useCampaignsPageMutations({
     const budgetRaw = draftBudgetLimitMicro.trim();
     let budgetLimitMicro: number | undefined;
     if (budgetRaw) {
-      const parsed = requirePositiveInteger(
-        budgetRaw,
-        'Budget',
-        'budget_limit_micro'
-      );
+      const parsed = requirePositiveInteger(budgetRaw, 'Budget', 'budget_limit_micro');
       if (!parsed.ok) {
         setActionError(parsed.error);
         return;

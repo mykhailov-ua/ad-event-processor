@@ -3,21 +3,24 @@ package entitlements
 import "time"
 
 type LicenseClaims struct {
-	Issuer       string     `json:"iss"`
-	Subject      string     `json:"sub"`
-	KeyID        string     `json:"kid"`
-	DeploymentID string     `json:"deployment_id"`
-	CustomerName string     `json:"customer_name"`
-	Plan         string     `json:"plan,omitempty"`
-	SKU          string     `json:"sku,omitempty"`
-	VolumeBand   VolumeBand `json:"volume_band"`
-	ValidFrom    time.Time  `json:"valid_from"`
-	ValidUntil   time.Time  `json:"valid_until"`
-	GraceDays    int        `json:"grace_days"`
-	Revoked      bool       `json:"revoked,omitempty"`
-	Limits       Limits     `json:"limits"`
-	Features     FeatureSet `json:"features"`
-	Bind         struct {
+	Issuer               string     `json:"iss"`
+	Subject              string     `json:"sub"`
+	KeyID                string     `json:"kid"`
+	DeploymentID         string     `json:"deployment_id"`
+	CustomerName         string     `json:"customer_name"`
+	Plan                 string     `json:"plan,omitempty"`
+	SKU                  string     `json:"sku,omitempty"`
+	VolumeBand           VolumeBand `json:"volume_band"`
+	ValidFrom            time.Time  `json:"valid_from"`
+	ValidUntil           time.Time  `json:"valid_until"`
+	GraceDays            int        `json:"grace_days"`
+	OfflineGraceDays     int        `json:"offline_grace_days,omitempty"`
+	HeartbeatIntervalHrs int        `json:"heartbeat_interval_hours,omitempty"`
+	PreRenewalWarnDays   int        `json:"pre_renewal_warn_days,omitempty"`
+	Revoked              bool       `json:"revoked,omitempty"`
+	Limits               Limits     `json:"limits"`
+	Features             FeatureSet `json:"features"`
+	Bind                 struct {
 		Mode        string `json:"mode"`
 		Fingerprint string `json:"fingerprint"`
 	} `json:"bind"`

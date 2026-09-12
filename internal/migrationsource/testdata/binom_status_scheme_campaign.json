@@ -1,0 +1,31 @@
+{
+  "version": 1,
+  "campaigns": [
+    {
+      "id": 42,
+      "name": "Binom Status Scheme Camp",
+      "traffic_source_name": "Facebook",
+      "budget": 100,
+      "tracking_url": "https://trk.example.com/click?cid={clickid}",
+      "lander_url": "https://lander.example/lp",
+      "postback_url": "https://aff.example/postback?cid={subid}",
+      "status_scheme": {
+        "rules": [
+          {
+            "if_status": "hold",
+            "then_status": "hold",
+            "payout_mode": "inherit",
+            "disable_postback": true
+          },
+          {
+            "if_status": "approved",
+            "then_status": "approved",
+            "then_goal": "sale",
+            "payout_mode": "pass_through",
+            "disable_postback": false
+          }
+        ]
+      }
+    }
+  ]
+}

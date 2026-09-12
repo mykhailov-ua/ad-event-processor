@@ -225,8 +225,7 @@
       Можемо видати додаткові активації або скинути HWID — case by case.
     </p>
     <p>
-      Margin Guard ставить кампанію на паузу при падінні ROI — не лише Telegram alert, який ви прочитаєте після зливу
-      бюджету. Silent reject віддає ботам чистий 202, поки spend цілий. Це поведінка продукту; ця сторінка — ops-контекст навколо неї.
+      Margin Guard працює за таймером (за замовчуванням 5 хв), читає ledger і ClickHouse stats і ставить внутрішню паузу маршрутизації — не паузить ads у Meta/Google без Enterprise platform sync. Пропускає цикл при lag CH &gt; 5 хв. Silent reject віддає ботам 202 без списання бюджету кампанії. Sizing VPS — за таблицею hardware; all-in-one під пік + важкі звіти ризикує 503 або OOM.
     </p>
 
     <div class="site-doc-actions">

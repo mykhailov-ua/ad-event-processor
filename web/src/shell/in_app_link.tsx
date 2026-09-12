@@ -16,13 +16,7 @@ export function InAppLink({ to, className, children }: InAppLinkProps) {
     if (event.defaultPrevented) {
       return;
     }
-    if (
-      event.metaKey ||
-      event.ctrlKey ||
-      event.shiftKey ||
-      event.altKey ||
-      event.button !== 0
-    ) {
+    if (event.metaKey || event.ctrlKey || event.shiftKey || event.altKey || event.button !== 0) {
       return;
     }
     event.preventDefault();

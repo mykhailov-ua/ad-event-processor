@@ -226,7 +226,11 @@ export function useCampaignsPageList({
   const metricsById = metricsBatch?.metricsById;
   const marginsById = metricsBatch?.marginsById;
 
-  const { data: listFacetsFromApi, error: listFacetsError, fetching: listFacetsFetching } = useResource(
+  const {
+    data: listFacetsFromApi,
+    error: listFacetsError,
+    fetching: listFacetsFetching,
+  } = useResource(
     (signal) =>
       fetchCampaignListFacets(customerId, signal).catch((err) => {
         if (isCampaignListAuxEndpointUnavailable(err)) {

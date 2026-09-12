@@ -9,6 +9,7 @@ import (
 
 	"ad-event-processor/internal/config"
 	"ad-event-processor/internal/controlplane"
+	"ad-event-processor/internal/database"
 	ads_db "ad-event-processor/internal/domain/db"
 	ingestion "ad-event-processor/internal/ingest"
 	"ad-event-processor/internal/payment"
@@ -22,7 +23,6 @@ import (
 	"github.com/testcontainers/testcontainers-go"
 	"github.com/testcontainers/testcontainers-go/modules/postgres"
 	rediscontainer "github.com/testcontainers/testcontainers-go/modules/redis"
-	"github.com/testcontainers/testcontainers-go/wait"
 )
 
 const paymentContainerStopTimeout = 10 * time.Second
@@ -54,10 +54,7 @@ func SetupPaymentFaultInfra(t *testing.T) (*FaultInfra, func()) {
 		postgres.WithDatabase("payment_fault_db"),
 		postgres.WithUsername("postgres"),
 		postgres.WithPassword("secure_password"),
-		testcontainers.WithWaitStrategy(
-			wait.ForLog("database system is ready to accept connections").
-				WithOccurrence(2).
-				WithStartupTimeout(20*time.Second)),
+		testcontainers.WithWaitStrategy(database.PostgresContainerWaitStrategy()),
 	)
 	require.NoError(t, err)
 

@@ -6,6 +6,43 @@ import (
 	"github.com/stretchr/testify/require"
 )
 
+func TestRedactTrueROIRows_masksEconomics_holdout(t *testing.T) {
+	rows := []TrueROIReportRowDTO{{
+		CampaignID:      "camp-1",
+		AdSpendMicro:    1000,
+		RevenueMicro:    5000,
+		TrueProfitMicro: 4000,
+		TrueRoiPct:      4.0,
+		TrueCpaMicro:    200,
+		Conversions:     5,
+	}}
+	out := redactTrueROIRows(rows)
+	require.Equal(t, int64(1000), out[0].AdSpendMicro)
+	require.Equal(t, int64(0), out[0].RevenueMicro)
+	require.Equal(t, int64(0), out[0].TrueProfitMicro)
+	require.Equal(t, float64(0), out[0].TrueRoiPct)
+	require.Equal(t, int64(0), out[0].TrueCpaMicro)
+}
+
+func TestAttachTrueROICompareDeltas_maskedPrevDoesNotLeakRevenue_holdout(t *testing.T) {
+	rows := []TrueROIReportRowDTO{{
+		CampaignID:   "camp-1",
+		AdSpendMicro: 1000,
+		RevenueMicro: 0,
+		Conversions:  2,
+	}}
+	prev := []TrueROIReportRowDTO{{
+		CampaignID:   "camp-1",
+		AdSpendMicro: 800,
+		RevenueMicro: 9000,
+		Conversions:  1,
+	}}
+	prev = redactTrueROIRows(prev)
+	attachTrueROICompareDeltas(rows, prev)
+	require.NotNil(t, rows[0].Compare)
+	require.Equal(t, int64(0), rows[0].Compare.RevenueMicroDelta)
+}
+
 func TestAttachTrueROICompareDeltas_holdout(t *testing.T) {
 	t.Parallel()
 	rows := []TrueROIReportRowDTO{{

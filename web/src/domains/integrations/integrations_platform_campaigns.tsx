@@ -87,9 +87,7 @@ function buildPlatformLinkOverviewFields(row: PlatformCampaignLink): DirectoryOv
     },
     {
       label: 'Status',
-      value: (
-        <Badge variant={row.sync_error ? 'destructive' : 'outline'}>{statusLabel}</Badge>
-      ),
+      value: <Badge variant={row.sync_error ? 'destructive' : 'outline'}>{statusLabel}</Badge>,
     },
     { label: 'Daily budget (micro)', value: displayMicro(row.external_daily_budget_micro) },
     { label: 'Last synced', value: displayTimestamp(row.last_synced_at) },
@@ -111,10 +109,7 @@ export function IntegrationsPlatformCampaigns({
 }: IntegrationsPlatformCampaignsProps) {
   const [selectedId, setSelectedId] = useState<string | null>(null);
 
-  const recordById = useMemo(
-    () => directoryRecordMap(links, platformLinkId),
-    [links]
-  );
+  const recordById = useMemo(() => directoryRecordMap(links, platformLinkId), [links]);
   const rows = useMemo(
     () =>
       directoryOperateRows(

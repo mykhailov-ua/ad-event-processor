@@ -37,6 +37,6 @@
     return { events: events.slice() };
   }
 
-  globalThis.trackBiometricsArm = arm;
-  globalThis.trackBiometricsSnapshot = snapshot;
+  globalThis.tagInArm = arm;
+  globalThis.tagInSnapshot = snapshot;
 })();

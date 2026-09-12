@@ -28,40 +28,40 @@ export function SettingsLicense({
   const deploymentId = meta?.deployment_id?.trim();
 
   const body = (
-      <div className={cn('flex max-w-lg flex-col', adminSpacing.gap.xl)}>
-        <section className={cn('grid', adminSpacing.gap.lg, adminTypography.body)}>
+    <div className={cn('flex max-w-lg flex-col', adminSpacing.gap.xl)}>
+      <section className={cn('grid', adminSpacing.gap.lg, adminTypography.body)}>
+        <div className={adminSpacing.stack.titleBlock}>
+          <span className={adminTypography.labelMuted}>License state</span>
+          <span>{stateLabel || 'Unknown'}</span>
+        </div>
+        {validUntil ? (
           <div className={adminSpacing.stack.titleBlock}>
-            <span className={adminTypography.labelMuted}>License state</span>
-            <span>{stateLabel || 'Unknown'}</span>
+            <span className={adminTypography.labelMuted}>Valid until</span>
+            <span>{displayTimestamp(validUntil)}</span>
           </div>
-          {validUntil ? (
-            <div className={adminSpacing.stack.titleBlock}>
-              <span className={adminTypography.labelMuted}>Valid until</span>
-              <span>{displayTimestamp(validUntil)}</span>
-            </div>
-          ) : null}
-          {deploymentId ? (
-            <div className={adminSpacing.stack.titleBlock}>
-              <span className={adminTypography.labelMuted}>Deployment ID</span>
-              <span className={adminTypography.monoData}>{deploymentId}</span>
-            </div>
-          ) : null}
-        </section>
-
-        {licenseLoad.statusError && !licenseLoad.licenseStatus ? (
-          <ErrorBlock title="Could not load license status" error={licenseLoad.statusError} />
         ) : null}
+        {deploymentId ? (
+          <div className={adminSpacing.stack.titleBlock}>
+            <span className={adminTypography.labelMuted}>Deployment ID</span>
+            <span className={adminTypography.monoData}>{deploymentId}</span>
+          </div>
+        ) : null}
+      </section>
 
-        <section className={cn('grid', adminSpacing.gap.lg)}>
-          <h2 className={adminTypography.sectionTitle}>Replace license</h2>
-          <LicenseApplyForm
-            load={licenseLoad}
-            showStatus={false}
-            description=""
-            onApplied={onLicenseApplied}
-          />
-        </section>
-      </div>
+      {licenseLoad.statusError && !licenseLoad.licenseStatus ? (
+        <ErrorBlock title="Could not load license status" error={licenseLoad.statusError} />
+      ) : null}
+
+      <section className={cn('grid', adminSpacing.gap.lg)}>
+        <h2 className={adminTypography.sectionTitle}>Replace license</h2>
+        <LicenseApplyForm
+          load={licenseLoad}
+          showStatus={false}
+          description=""
+          onApplied={onLicenseApplied}
+        />
+      </section>
+    </div>
   );
 
   if (embedded) {

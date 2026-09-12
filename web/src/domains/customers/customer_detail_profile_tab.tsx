@@ -59,8 +59,8 @@ export function CustomerDetailProfileTab({
         </CustomerDetailPanel>
 
         <form
-         
-          className="grid gap-4" onSubmit={(event) => {
+          className="grid gap-4"
+          onSubmit={(event) => {
             event.preventDefault();
             onSaveProfile();
           }}
@@ -74,7 +74,7 @@ export function CustomerDetailProfileTab({
                   onChange={(event) => onDraftNameChange(event.target.value)}
                 />
               ) : (
-                <p className={customerDetailRowValueClass} >{customer.name}</p>
+                <p className={customerDetailRowValueClass}>{customer.name}</p>
               )}
             </CustomerDetailFieldRow>
             <CustomerDetailFieldRow htmlFor="customer-cost-center" label="Cost center">
@@ -85,12 +85,12 @@ export function CustomerDetailProfileTab({
                   onChange={(event) => onDraftCostCenterChange(event.target.value)}
                 />
               ) : (
-                <p className={customerDetailRowValueClass} >{customer.cost_center ?? '-'}</p>
+                <p className={customerDetailRowValueClass}>{customer.cost_center ?? '-'}</p>
               )}
             </CustomerDetailFieldRow>
           </CustomerDetailPanel>
           {canSaveProfile ? (
-            <div className={COMPACT_TOOLBAR_ROW_CLASS} >
+            <div className={COMPACT_TOOLBAR_ROW_CLASS}>
               <PrimaryActionButton loading={savingProfile} type="submit">
                 Save profile
               </PrimaryActionButton>
@@ -98,11 +98,7 @@ export function CustomerDetailProfileTab({
           ) : null}
         </form>
         {profileSaveError ? panelError(profileSaveError, 'Save failed') : null}
-        {profileSaveSuccess ? (
-          <p  role="status">
-            Profile saved.
-          </p>
-        ) : null}
+        {profileSaveSuccess ? <p role="status">Profile saved.</p> : null}
       </CardContent>
     </Card>
   );

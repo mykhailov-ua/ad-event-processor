@@ -10,6 +10,8 @@ import (
 
 	"ad-event-processor/internal/clickhouse/migrate"
 
+	"ad-event-processor/pkg/piihash"
+
 	chgo "github.com/ClickHouse/clickhouse-go/v2"
 	"github.com/ClickHouse/clickhouse-go/v2/lib/driver"
 	"github.com/google/uuid"
@@ -77,10 +79,11 @@ func TestHandlerAPI_CampaignStatsClickHouseExplain(t *testing.T) {
 
 	campaignID := uuid.MustParse("00000000-0000-4000-8000-000000000042")
 	hour := time.Now().UTC().Add(-2 * time.Hour).Truncate(time.Hour)
+	chPII := piihash.TestHasher()
 	require.NoError(t, conn.Exec(ctx, `
-		INSERT INTO impressions (click_id, campaign_id, ip_address, user_agent, payload, created_at)
-		VALUES (?, ?, '1.1.1.1', 'ua', '{}', ?)`,
-		"explain-click-1", campaignID, hour.Add(5*time.Minute)))
+		INSERT INTO impressions (click_id, campaign_id, ip_hash, ua_hash, pii_salt_version, payload, created_at)
+		VALUES (?, ?, ?, ?, ?, '{}', ?)`,
+		"explain-click-1", campaignID, piihash.FixedString16(chPII.HashIP("1.1.1.1")), piihash.FixedString16(chPII.HashUA("ua")), chPII.Version(), hour.Add(5*time.Minute)))
 
 	from := hour.Add(-time.Hour)
 	to := hour.Add(2 * time.Hour)

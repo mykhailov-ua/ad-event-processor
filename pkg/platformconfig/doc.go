@@ -18,7 +18,7 @@
 // Defaults and limits:
 //   - ProfileSingleVPS default appliance profile; compose_dev allowed in Validate only (not Default()).
 //   - IngressAdEventProcessorNative and IngressOpenRTB3 canonical ingress_schema values.
-//   - Default currency USD, timezone UTC, telemetry_enabled true, edge_expose_click true, network_interface eth0.
+//   - Default currency USD, timezone UTC, telemetry_enabled false, edge_expose_click true, network_interface eth0.
 //   - RedisShardCountAppliance 4 UDS shards; RedisShardCountInfra 6 reserved for future multi-host profiles.
 //
 // Invariants:

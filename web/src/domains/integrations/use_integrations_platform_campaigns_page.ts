@@ -63,7 +63,9 @@ export function useIntegrationsPlatformCampaignsPage() {
   const [refreshSuccess, setRefreshSuccess] = useState(false);
   const [syncSuccess, setSyncSuccess] = useState(false);
   const [mutationResult, setMutationResult] = useState<PlatformCampaignMutation | undefined>();
-  const [formValidationError, setFormValidationError] = useState<AdminValidationError | undefined>();
+  const [formValidationError, setFormValidationError] = useState<
+    AdminValidationError | undefined
+  >();
 
   const clearFormValidationError = useCallback(() => {
     setFormValidationError(undefined);
@@ -302,7 +304,13 @@ export function useIntegrationsPlatformCampaignsPage() {
     } finally {
       setSyncing(false);
     }
-  }, [bumpRefreshCoalesced, clearActionFeedback, draftCampaignId, reportFormValidationFailure, syncing]);
+  }, [
+    bumpRefreshCoalesced,
+    clearActionFeedback,
+    draftCampaignId,
+    reportFormValidationFailure,
+    syncing,
+  ]);
 
   const runMutation = useCallback(
     async (

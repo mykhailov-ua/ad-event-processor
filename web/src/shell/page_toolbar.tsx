@@ -7,9 +7,5 @@ export type PageToolbarProps = HTMLAttributes<HTMLDivElement> & {
 };
 
 export function PageToolbar({ children, ...props }: PageToolbarProps) {
-  return (
-    <div  {...props}>
-      {children}
-    </div>
-  );
+  return <div {...props}>{children}</div>;
 }

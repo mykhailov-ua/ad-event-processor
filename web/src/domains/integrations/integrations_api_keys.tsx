@@ -102,7 +102,12 @@ export function IntegrationsApiKeys({
 
   const recordById = useMemo(() => directoryRecordMap(keys, (row) => row.id), [keys]);
   const rows = useMemo(
-    () => directoryOperateRows(keys, (row) => row.id, (row) => row.name),
+    () =>
+      directoryOperateRows(
+        keys,
+        (row) => row.id,
+        (row) => row.name
+      ),
     [keys]
   );
 

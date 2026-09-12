@@ -100,7 +100,7 @@ export function PlatformCampaignLinkForm({
   return (
     <FilterPanel>
       <h2 className={adminTypography.sectionTitle}>Manage platform campaign links</h2>
-      <p className={adminTypography.bodyMuted} >
+      <p className={adminTypography.bodyMuted}>
         Upsert, refresh, or remove external platform links for the applied customer. Pause, resume,
         and budget mutations use a fresh idempotency key per request. Click a link row below to
         prefill campaign and network fields.
@@ -210,25 +210,17 @@ export function PlatformCampaignLinkForm({
       {refreshError ? integrationsPanelError(refreshError, 'Refresh failed') : null}
       {syncError ? integrationsPanelError(syncError, 'Platform sync failed') : null}
       {mutationError ? integrationsPanelError(mutationError, 'Campaign mutation failed') : null}
-      {saveSuccess ? (
-        <p>Link saved. List refreshed.</p>
-      ) : null}
-      {deleteSuccess ? (
-        <p>Link deleted. List refreshed.</p>
-      ) : null}
-      {refreshSuccess ? (
-        <p>Link refreshed. List refreshed.</p>
-      ) : null}
-      {syncSuccess ? (
-        <p>Platform sync completed for campaign.</p>
-      ) : null}
+      {saveSuccess ? <p>Link saved. List refreshed.</p> : null}
+      {deleteSuccess ? <p>Link deleted. List refreshed.</p> : null}
+      {refreshSuccess ? <p>Link refreshed. List refreshed.</p> : null}
+      {syncSuccess ? <p>Platform sync completed for campaign.</p> : null}
       {mutationResult ? (
         <div>
-          <p className={adminTypography.bodyMuted} >
+          <p className={adminTypography.bodyMuted}>
             {mutationResult.action}: {mutationResult.status} ({mutationResult.network})
           </p>
           {mutationResult.error_message ? (
-            <p className={adminTypography.bodyMuted} >{mutationResult.error_message}</p>
+            <p className={adminTypography.bodyMuted}>{mutationResult.error_message}</p>
           ) : null}
         </div>
       ) : null}

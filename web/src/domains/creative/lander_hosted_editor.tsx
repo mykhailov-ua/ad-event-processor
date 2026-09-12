@@ -1,4 +1,4 @@
-import { useMemo } from 'react';
+import { useMemo, type ReactNode } from 'react';
 import { Link } from 'react-router-dom';
 
 import { PrimaryActionButton } from '@/shell/action_buttons';
@@ -42,6 +42,7 @@ export type LanderHostedEditorProps = {
   onSelectFile?: (filePath: string) => void;
   onFileContentChange?: (value: string) => void;
   onSaveFile?: () => void;
+  wysiwyg?: ReactNode;
 };
 
 function buildHostedFileOverviewFields(
@@ -73,13 +74,19 @@ export function LanderHostedEditor({
   onSelectFile,
   onFileContentChange,
   onSaveFile,
+  wysiwyg,
 }: LanderHostedEditorProps) {
   const fileByPath = useMemo(
     () => directoryRecordMap(state?.files, (file) => file.path),
     [state?.files]
   );
   const fileRows = useMemo(
-    () => directoryOperateRows(state?.files, (file) => file.path, (file) => file.path),
+    () =>
+      directoryOperateRows(
+        state?.files,
+        (file) => file.path,
+        (file) => file.path
+      ),
     [state?.files]
   );
 
@@ -126,6 +133,8 @@ export function LanderHostedEditor({
             ) : null}
           </ActionLinksBand>
         </section>
+
+        {wysiwyg}
 
         {onUploadZip || onPublish ? (
           <section className={FILTER_PANEL_NARROW_CLASS}>
@@ -214,7 +223,9 @@ export function LanderHostedEditor({
         {selectedFilePath && onSaveFile ? (
           <section className="grid gap-4">
             <h2 className={adminTypography.sectionTitle}>Edit file</h2>
-            <p className={cn(adminTypography.captionPlain, 'text-muted-foreground')}>{selectedFilePath}</p>
+            <p className={cn(adminTypography.captionPlain, 'text-muted-foreground')}>
+              {selectedFilePath}
+            </p>
             {fileLoading ? (
               <p className={adminTypography.bodyMuted}>Loading file...</p>
             ) : (

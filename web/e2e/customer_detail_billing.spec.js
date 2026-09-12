@@ -112,6 +112,8 @@ test('customer detail balance GET 500 shows blocking error', { tag: '@L3' }, asy
     mainContent(page).getByText('Could not load balance', { exact: true })
   ).toBeVisible();
   await expect(
-    mainContent(page).getByText('The server encountered an error. Try again later.', { exact: true })
+    mainContent(page).getByText('The server encountered an error. Try again later.', {
+      exact: true,
+    })
   ).toBeVisible();
 });

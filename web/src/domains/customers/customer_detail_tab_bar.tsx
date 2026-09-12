@@ -18,7 +18,7 @@ export function CustomerDetailTabBar({
   const tabs = customerDetailTabs(paymentEnabled);
 
   return (
-    <div className="flex flex-wrap gap-2" >
+    <div className="flex flex-wrap gap-2">
       {tabs.map((item) => (
         <Button
           key={item.id}

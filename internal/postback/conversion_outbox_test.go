@@ -26,6 +26,22 @@ func TestConversionPostbackEnqueuer_skipsValidationPending(t *testing.T) {
 	}
 }
 
+func TestConversionPostbackEnqueuer_skipsStatusSchemeOutbound(t *testing.T) {
+	campID := uuid.New()
+	store := &benchPostbackQuerier{hasConfig: true}
+	enq := NewConversionPostbackEnqueuer(store)
+	evt := &domain.Event{
+		Type:       "conversion",
+		CampaignID: campID,
+		ClickID:    "clk-1",
+		Payload:    []byte(`{"goal_name":"hold","status_scheme_skip_outbound":"true"}`),
+	}
+	enq.OnBatchStored(context.Background(), []*domain.Event{evt})
+	if store.outboxCalls != 0 {
+		t.Fatalf("outbox calls %d", store.outboxCalls)
+	}
+}
+
 func TestConversionPostbackEnqueuer_enqueuesWhenValidated(t *testing.T) {
 	campID := benchCampaignID
 	store := &benchPostbackQuerier{hasConfig: true}
@@ -98,7 +114,7 @@ func TestBuildPostbackPayloadFromEvent(t *testing.T) {
 		ClearingPriceMicro: 1_000_000,
 		Payload:            []byte(`{"gclid":"G-9","sub2":"x"}`),
 	}
-	pb := buildPostbackPayloadFromEvent(evt, cust)
+	pb := buildPostbackPayloadFromEvent(evt, cust, uuid.Nil)
 	if pb.CustomerID != cust || pb.CampaignID != cid || pb.ClickID != "clk-1" {
 		t.Fatalf("ids %+v", pb)
 	}

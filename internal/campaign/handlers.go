@@ -8,6 +8,7 @@ import (
 
 	"ad-event-processor/internal/controlplane/authz"
 	"ad-event-processor/internal/database"
+	"ad-event-processor/internal/flow"
 	"ad-event-processor/internal/reportjob"
 	"ad-event-processor/pkg/coldpath"
 	"ad-event-processor/pkg/httpresponse"
@@ -44,27 +45,33 @@ type CampaignReader interface {
 }
 
 type CampaignsHTTPHandlers struct {
-	Campaigns                  CampaignReader
-	CampaignFraud              CampaignFraudService
-	ConversionMappings         ConversionMappingService
-	GetCampaignFlow            func(ctx context.Context, flowID uuid.UUID) (FlowDTO, error)
-	ValidateCampaignFlowPaths  CampaignFlowPathValidator
-	RecordRevisionConflict     func(ctx context.Context, campaignID uuid.UUID, expectedRevision string)
-	ClickHouseQuery            *database.ClickHouseQuery
-	PostgresPool               *pgxpool.Pool
-	MarginDefaultThresholdBps  int
-	ApplyRateLimit             func(http.HandlerFunc) http.HandlerFunc
-	RequireAnyPermission       func([]string, http.HandlerFunc) http.HandlerFunc
-	AuthorizeCampaignAccess    func(*http.Request, uuid.UUID) error
-	AuthorizeCampaignIDsAccess func(*http.Request, []uuid.UUID) map[uuid.UUID]error
-	ResolveCustomerID          func(*http.Request, *uuid.UUID) (uuid.UUID, error)
-	AllowFraudPreview          func(campaignID string) bool
-	LicenseFeatureAllowed      func(featureKey string) (allowed bool, planCode string)
-	ReportJobs                 *reportjob.ReportJobRunner
-	WriteServiceError          func(http.ResponseWriter, error)
-	TrackerPublicBaseURL       func() string
-	LanderPublicBaseURL        func() string
-	ResolveTrackingDomain      func(context.Context) string
+	Campaigns                    CampaignReader
+	CampaignFraud                CampaignFraudService
+	ConversionMappings           ConversionMappingService
+	StatusSchemes                StatusSchemeService
+	OutboundPostbacks            OutboundPostbackService
+	GetCampaignFlow              func(ctx context.Context, flowID uuid.UUID) (FlowDTO, error)
+	UpdateCampaignFlow           func(ctx context.Context, flowID uuid.UUID, req flow.UpdateFlowRequest) (FlowDTO, error)
+	ValidateCampaignFlowPaths    CampaignFlowPathValidator
+	RecordRevisionConflict       func(ctx context.Context, campaignID uuid.UUID, expectedRevision string)
+	ClickHouseQuery              *database.ClickHouseQuery
+	PostgresPool                 *pgxpool.Pool
+	MarginDefaultThresholdBps    int
+	ApplyRateLimit               func(http.HandlerFunc) http.HandlerFunc
+	RequireAnyPermission         func([]string, http.HandlerFunc) http.HandlerFunc
+	AuthorizeCampaignAccess      func(*http.Request, uuid.UUID) error
+	AuthorizeCampaignIDsAccess   func(*http.Request, []uuid.UUID) map[uuid.UUID]error
+	ResolveCustomerID            func(*http.Request, *uuid.UUID) (uuid.UUID, error)
+	AllowFraudPreview            func(campaignID string) bool
+	LicenseFeatureAllowed        func(featureKey string) (allowed bool, planCode string)
+	ReportJobs                   *reportjob.ReportJobRunner
+	WriteServiceError            func(http.ResponseWriter, error)
+	TrackerPublicBaseURL         func() string
+	LinkSigningSecret            func() []byte
+	LanderPublicBaseURL          func() string
+	ResolveTrackingDomain        func(context.Context) string
+	RequireAnyPermissionOrAPIKey func([]string, http.HandlerFunc) http.HandlerFunc
+	CampaignAuditLog             func(context.Context, uuid.UUID, string, string, *uuid.UUID, any, any)
 }
 
 func (h *CampaignsHTTPHandlers) Register(mux *http.ServeMux) {
@@ -97,11 +104,20 @@ func (h *CampaignsHTTPHandlers) Register(mux *http.ServeMux) {
 	h.registerMigrationRoutes(mux, limit, perm)
 	h.registerIntegrationHealthRoutes(mux, limit, perm)
 	h.registerConversionMappingRoutes(mux, limit, perm)
+	h.registerStatusSchemeRoutes(mux, limit, perm)
+	h.registerOutboundPostbackRoutes(mux, limit, perm)
+	h.registerManualCostRoutes(mux, limit, perm)
 	h.registerCampaignFraudRoutes(mux, limit, perm)
 	h.registerCampaignEditorRoutes(mux, limit, perm)
 	h.registerCampaignPublishRoutes(mux, limit, perm)
 	h.registerCampaignSmokeRoutes(mux, limit, perm)
+	clickPerm := perm
+	if h.RequireAnyPermissionOrAPIKey != nil {
+		clickPerm = h.RequireAnyPermissionOrAPIKey
+	}
+	h.registerTrackerClickRoutes(mux, limit, clickPerm)
 	h.registerCampaignWizardRoutes(mux, limit, perm)
+	h.registerCampaignGroupRoutes(mux, limit, perm)
 }
 
 func (h *CampaignsHTTPHandlers) listCampaigns(w http.ResponseWriter, r *http.Request) {
@@ -137,11 +153,12 @@ func (h *CampaignsHTTPHandlers) listCampaigns(w http.ResponseWriter, r *http.Req
 	pacingMode := strings.TrimSpace(q.Get("pacing_mode"))
 	limit, offset := coldpath.ParseAPIPagination(r)
 	listFilter := ListCampaignsFilter{
-		CustomerID:     customerID,
-		Status:         statusFilter,
-		WarningsOnly:   warningsOnly,
-		OwnerUserID:    ResolveListOwnerUserFilter(r.Context(), r),
-		TargetCountry:  parseTargetCountryQuery(r),
+		CustomerID:      customerID,
+		CampaignGroupID: parseCampaignGroupIDQuery(r),
+		Status:          statusFilter,
+		WarningsOnly:    warningsOnly,
+		OwnerUserID:     ResolveListOwnerUserFilter(r.Context(), r),
+		TargetCountry:   parseTargetCountryQuery(r),
 		BudgetMinMicro: parseOptionalBudgetMicroQuery(r, "budget_min_micro"),
 		BudgetMaxMicro: parseOptionalBudgetMicroQuery(r, "budget_max_micro"),
 		SearchQuery:    search,

@@ -1,6 +1,9 @@
 import { Link } from 'react-router-dom';
 
-import type { AdopsDashboardPayload, BuyerDashboardPayload } from '@/domains/dashboards/dashboard_types';
+import type {
+  AdopsDashboardPayload,
+  BuyerDashboardPayload,
+} from '@/domains/dashboards/dashboard_types';
 import { DashboardAttentionList } from '@/domains/dashboards/dashboard_attention_list';
 import { DashboardBreakdownList } from '@/domains/dashboards/dashboard_breakdown_list';
 import { DashboardKpiBlocks } from '@/domains/dashboards/dashboard_kpi_blocks';
@@ -170,7 +173,10 @@ export function DashboardPageView({
               />
             </div>
           )}
-          <DashboardStaleBanner freshness={kpis?.freshness} sessionStaleBanner={sessionStaleBanner} />
+          <DashboardStaleBanner
+            freshness={kpis?.freshness}
+            sessionStaleBanner={sessionStaleBanner}
+          />
           {kpis?.freshness?.freshness_label ? (
             <p className={adminTypography.bodyMuted} data-testid="dashboard-freshness-label">
               {kpis.freshness.freshness_label}

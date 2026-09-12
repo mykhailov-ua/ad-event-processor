@@ -803,6 +803,77 @@ func postCampaignClonePreview(h *campaign.CampaignsHTTPHandlers, w http.Response
 	httpresponse.JSON(w, http.StatusOK, previewCloneCampaign(camp, req))
 }
 
+func postCampaignBulkPatch(h *campaign.CampaignsHTTPHandlers, w http.ResponseWriter, r *http.Request) {
+	req, ok := coldpath.DecodeRequestOrBadRequest[campaign.BulkPatchCampaignRequest](w, r, coldpath.DefaultMaxBody)
+	if !ok {
+		return
+	}
+	if err := campaign.ValidateBulkPatchFields(req.Patch); err != nil {
+		httpresponse.Error(w, http.StatusBadRequest, "BAD_REQUEST", err.Error())
+		return
+	}
+	if len(req.CampaignIDs) == 0 {
+		httpresponse.Error(w, http.StatusBadRequest, "BAD_REQUEST", "campaign_ids required")
+		return
+	}
+	if len(req.CampaignIDs) > bulkCampaignMaxSync {
+		httpresponse.Error(w, http.StatusBadRequest, "BAD_REQUEST", "too many campaign_ids")
+		return
+	}
+	patchReq := campaign.BulkPatchFieldsToPatchRequest(req.Patch)
+	hasFlowWeights := len(req.Patch.FlowPathWeights) > 0
+	results := make([]campaign.BulkPatchCampaignResultRow, 0, len(req.CampaignIDs))
+	parsedIDs := make([]uuid.UUID, 0, len(req.CampaignIDs))
+	idByRaw := make(map[uuid.UUID]string, len(req.CampaignIDs))
+	for _, rawID := range req.CampaignIDs {
+		row := campaign.BulkPatchCampaignResultRow{ID: rawID}
+		campaignID, err := uuid.Parse(strings.TrimSpace(rawID))
+		if err != nil {
+			row.ErrorCode = "invalid_id"
+			results = append(results, row)
+			continue
+		}
+		parsedIDs = append(parsedIDs, campaignID)
+		idByRaw[campaignID] = rawID
+	}
+	authErrors := h.AuthorizeCampaignIDs(r, parsedIDs)
+	for _, campaignID := range parsedIDs {
+		if _, denied := authErrors[campaignID]; denied {
+			results = append(results, campaign.BulkPatchCampaignResultRow{
+				ID:        idByRaw[campaignID],
+				ErrorCode: "forbidden",
+			})
+			delete(idByRaw, campaignID)
+		}
+	}
+	for _, campaignID := range parsedIDs {
+		rawID, allowed := idByRaw[campaignID]
+		if !allowed {
+			continue
+		}
+		if campaign.BulkPatchHasScalarFields(req.Patch) {
+			if _, err := h.Campaigns.PatchCampaign(r.Context(), campaignID, patchReq); err != nil {
+				results = append(results, campaign.BulkPatchCampaignResultRow{
+					ID:        rawID,
+					ErrorCode: bulkCampaignErrorCode(err),
+				})
+				continue
+			}
+		}
+		if hasFlowWeights {
+			if err := applyBulkFlowPathWeights(r.Context(), h, campaignID, req.Patch.FlowPathWeights); err != nil {
+				results = append(results, campaign.BulkPatchCampaignResultRow{
+					ID:        rawID,
+					ErrorCode: bulkCampaignErrorCode(err),
+				})
+				continue
+			}
+		}
+		results = append(results, campaign.BulkPatchCampaignResultRow{ID: rawID, OK: true})
+	}
+	httpresponse.JSON(w, http.StatusOK, campaign.BulkPatchCampaignResponse{Results: results})
+}
+
 func postCampaignBulk(h *campaign.CampaignsHTTPHandlers, w http.ResponseWriter, r *http.Request) {
 	req, ok := coldpath.DecodeRequestOrBadRequest[BulkCampaignRequestDTO](w, r, coldpath.DefaultMaxBody)
 	if !ok {
@@ -1024,7 +1095,16 @@ func bulkCampaignErrorCode(err error) string {
 		return "invalid_state"
 	case errors.Is(err, campaign.ErrCampaignPublishBlocked):
 		return "publish_blocked"
+	case errors.Is(err, campaign.ErrForbidden):
+		return "forbidden"
+	case errors.Is(err, campaign.ErrCampaignRevisionConflict):
+		return "revision_conflict"
+	case errors.Is(err, campaign.ErrInsufficientBalance):
+		return "insufficient_balance"
 	default:
+		if campaign.IsValidationError(err) {
+			return "validation_error"
+		}
 		return "error"
 	}
 }
@@ -1097,4 +1177,46 @@ func queryPlacementBlockSuggestions(
 		}
 	}
 	return out, nil
+}
+
+func applyBulkFlowPathWeights(
+	ctx context.Context,
+	h *campaign.CampaignsHTTPHandlers,
+	campaignID uuid.UUID,
+	weights []campaign.BulkFlowPathWeight,
+) error {
+	if h == nil || h.Campaigns == nil {
+		return campaign.ErrValidationf("campaign service unavailable")
+	}
+	if h.GetCampaignFlow == nil || h.UpdateCampaignFlow == nil {
+		return campaign.ErrValidationf("flow update unavailable")
+	}
+	camp, err := h.Campaigns.GetCampaign(ctx, campaignID)
+	if err != nil {
+		return err
+	}
+	if strings.TrimSpace(camp.FlowID) == "" {
+		return campaign.ErrValidationf("campaign has no flow")
+	}
+	flowID, err := uuid.Parse(strings.TrimSpace(camp.FlowID))
+	if err != nil {
+		return campaign.ErrValidationf("invalid flow id")
+	}
+	flowDTO, err := h.GetCampaignFlow(ctx, flowID)
+	if err != nil {
+		return err
+	}
+	paths, err := campaign.ParseFlowPaths(flowDTO.Paths)
+	if err != nil {
+		return campaign.ErrValidationf("invalid stored flow paths")
+	}
+	updated, err := campaign.ApplyFlowPathWeights(paths, weights)
+	if err != nil {
+		return err
+	}
+	_, err = h.UpdateCampaignFlow(ctx, flowID, flow.UpdateFlowRequest{
+		Name:  flowDTO.Name,
+		Paths: updated,
+	})
+	return err
 }

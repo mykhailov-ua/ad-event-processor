@@ -31,6 +31,40 @@ func TestHTTPHandlers_listPresets(t *testing.T) {
 	assert.Contains(t, keys, "epc_best_performer")
 }
 
+func TestHTTPHandlers_applyRule_unavailableWithoutHost(t *testing.T) {
+	t.Parallel()
+	h := &HTTPHandlers{Rules: &RulesService{}}
+	mux := http.NewServeMux()
+	h.Register(mux)
+
+	req := httptest.NewRequest(
+		http.MethodPost,
+		"/api/v1/traffic-optimizer/rules/00000000-0000-4000-8000-000000000001/apply",
+		http.NoBody,
+	)
+	rec := httptest.NewRecorder()
+	mux.ServeHTTP(rec, req)
+
+	require.Equal(t, http.StatusServiceUnavailable, rec.Code)
+}
+
+func TestHTTPHandlers_dryRun_unavailableWithoutPool(t *testing.T) {
+	t.Parallel()
+	h := &HTTPHandlers{Rules: &RulesService{}}
+	mux := http.NewServeMux()
+	h.Register(mux)
+
+	req := httptest.NewRequest(
+		http.MethodPost,
+		"/api/v1/traffic-optimizer/rules/00000000-0000-4000-8000-000000000001/dry-run",
+		http.NoBody,
+	)
+	rec := httptest.NewRecorder()
+	mux.ServeHTTP(rec, req)
+
+	require.Equal(t, http.StatusServiceUnavailable, rec.Code)
+}
+
 func TestHTTPHandlers_createRule_unavailableWithoutPool(t *testing.T) {
 	t.Parallel()
 	h := &HTTPHandlers{Rules: &RulesService{}}

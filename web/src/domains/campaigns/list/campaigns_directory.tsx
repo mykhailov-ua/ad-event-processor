@@ -62,8 +62,7 @@ function buildCampaignOverviewFields(
     },
     {
       label: 'Customer',
-      value:
-        customerNameById[campaign.customer_id ?? ''] ?? campaign.customer_id ?? '-',
+      value: customerNameById[campaign.customer_id ?? ''] ?? campaign.customer_id ?? '-',
     },
     { label: 'Budget limit', value: campaign.budget_limit ?? '-' },
     { label: 'Pacing', value: metrics?.pacing_mode ?? campaign.pacing_mode ?? '-' },
@@ -271,6 +270,14 @@ export function CampaignsDirectory({
     );
   }, [requireSelectedCampaigns, workspace.bulkBusy, workspace.setArchiveOpen]);
 
+  const handleBulkEditSelected = useCallback(() => {
+    runCampaignListBulkAction(workspace.bulkBusy, true, '', () =>
+      requireSelectedCampaigns('Select at least one campaign', () =>
+        workspace.setBulkPatchOpen(true)
+      )
+    );
+  }, [requireSelectedCampaigns, workspace.bulkBusy, workspace.setBulkPatchOpen]);
+
   const handleClearSelection = useCallback(() => {
     workspace.setSelectedIds(new Set());
   }, [workspace.setSelectedIds]);
@@ -282,15 +289,16 @@ export function CampaignsDirectory({
   });
 
   const selectedCampaignId = workspace.selectedCampaignId ?? null;
-  const campaignById = useMemo(
-    () => directoryRecordMap(items, (campaign) => campaign.id),
-    [items]
-  );
+  const campaignById = useMemo(() => directoryRecordMap(items, (campaign) => campaign.id), [items]);
   const operateRows = useMemo(
     () =>
-      directoryOperateRows(items, (campaign) => campaign.id, (campaign) => (
-        <CampaignListNameWithSignals campaign={campaign} metrics={metricsById[campaign.id]} />
-      )),
+      directoryOperateRows(
+        items,
+        (campaign) => campaign.id,
+        (campaign) => (
+          <CampaignListNameWithSignals campaign={campaign} metrics={metricsById[campaign.id]} />
+        )
+      ),
     [items, metricsById]
   );
   const buildOverviewFields = useCallback(
@@ -328,7 +336,7 @@ export function CampaignsDirectory({
         mainClassName="min-w-0 w-full flex-none"
         workspaceClassName="pt-2"
         controlPanel={
-          <div >
+          <div>
             {listFacetsDegraded ? (
               <StubBanner
                 title="Owner and country filters limited"
@@ -349,14 +357,16 @@ export function CampaignsDirectory({
               draftPacing={draftPacing}
               fetching={fetching}
               filterFooter={
-                workspace.selectedCampaign ? (
+                workspace.selectedIds.size > 0 ? (
                   <CampaignsSelectionPanel
                     bulkBusy={workspace.bulkBusy}
                     exportBusy={workspace.exportBusy}
                     selectedCampaign={workspace.selectedCampaign}
+                    selectedCount={workspace.selectedIds.size}
                     selectionGuardError={selectionGuardError}
                     variant="inline"
                     onArchive={handleArchiveSelected}
+                    onBulkEdit={handleBulkEditSelected}
                     onClearSelection={handleClearSelection}
                     onClone={() => {
                       runCampaignListBulkAction(workspace.bulkBusy, true, '', () =>
@@ -464,6 +474,7 @@ export function CampaignsDirectory({
         archiveOpen={workspace.archiveOpen}
         bulkBusy={workspace.bulkBusy}
         bulkCloneOpen={workspace.bulkCloneOpen}
+        bulkPatchOpen={workspace.bulkPatchOpen}
         cloneOpen={workspace.cloneOpen}
         createDisabled={createDisabled}
         createSectionOpen={createSectionOpen}
@@ -481,6 +492,12 @@ export function CampaignsDirectory({
         onArchiveConfirm={workspace.onArchiveSelected}
         onArchiveOpenChange={workspace.setArchiveOpen}
         onBulkCloneOpenChange={workspace.setBulkCloneOpen}
+        onBulkPatchOpenChange={workspace.setBulkPatchOpen}
+        onBulkPatched={() => {
+          workspace.setBulkPatchOpen(false);
+          workspace.setSelectedIds(new Set());
+          workspace.refreshListAfterMutation();
+        }}
         onCloneOpenChange={workspace.setCloneOpen}
         onBulkCloned={() => {
           workspace.setBulkCloneOpen(false);

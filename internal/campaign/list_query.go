@@ -21,8 +21,9 @@ import (
 const campaignListMetricsMaxRange = 90 * 24 * time.Hour
 
 type ListCampaignsFilter struct {
-	CustomerID     uuid.UUID
-	Status         string
+	CustomerID      uuid.UUID
+	CampaignGroupID uuid.UUID
+	Status          string
 	WarningsOnly   bool
 	OwnerUserID    pgtype.UUID
 	OwnerUserIDs   []uuid.UUID
@@ -103,6 +104,18 @@ func parseOptionalBudgetMicroQuery(r *http.Request, key string) pgtype.Int8 {
 
 func parseTargetCountryQuery(r *http.Request) string {
 	return strings.ToUpper(strings.TrimSpace(r.URL.Query().Get("country")))
+}
+
+func parseCampaignGroupIDQuery(r *http.Request) uuid.UUID {
+	raw := strings.TrimSpace(r.URL.Query().Get("campaign_group_id"))
+	if raw == "" {
+		return uuid.Nil
+	}
+	id, err := uuid.Parse(raw)
+	if err != nil {
+		return uuid.Nil
+	}
+	return id
 }
 
 // parseCampaignListMetricsRange reads from/to (RFC3339). Defaults: last 7d, to truncated to UTC hour.

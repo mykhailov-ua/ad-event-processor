@@ -11,10 +11,7 @@ import {
   OpsMetricsSnapshotMeta,
 } from '@/domains/ops/ops_metrics_points_table';
 import { opsPanelError } from '@/domains/ops/ops_nav';
-import {
-  OpsActionGroup,
-  OpsPageWithLoad,
-} from '@/domains/ops/ops_page_shell';
+import { OpsActionGroup, OpsPageWithLoad } from '@/domains/ops/ops_page_shell';
 
 export type OpsMetricsProps = {
   metrics: DashboardMetrics | undefined;
@@ -94,7 +91,6 @@ export function OpsMetrics({
       ) : null}
 
       <OpsMetricsPointsTable points={points} />
-
     </OpsPageWithLoad>
   );
 }

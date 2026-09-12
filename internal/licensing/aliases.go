@@ -42,6 +42,7 @@ type (
 	SKUFile                = entitlements.SKUFile
 	SkewWatch              = entitlements.SkewWatch
 	SkewWatchOptions       = entitlements.SkewWatchOptions
+	TierUsageCounts        = entitlements.TierUsageCounts
 	VolumeBand             = entitlements.VolumeBand
 )
 
@@ -145,13 +146,20 @@ var (
 	EvaluateClockSkew                      = entitlements.EvaluateClockSkew
 	FeatureSeed                            = entitlements.FeatureSeed
 	FeatureSeedValid                       = entitlements.FeatureSeedValid
+	FeatureAllowedByKey                    = entitlements.FeatureAllowedByKey
 	FraudDisputeEvidenceAllowed            = entitlements.FraudDisputeEvidenceAllowed
+	BrokerWalAllowed                       = entitlements.BrokerWalAllowed
+	SlotMigrationAllowed                   = entitlements.SlotMigrationAllowed
+	MarginGuardAllowed                     = entitlements.MarginGuardAllowed
+	AdPlatformCampaignAPIAllowed           = entitlements.AdPlatformCampaignAPIAllowed
+	EnsureDeploymentModule                 = entitlements.EnsureDeploymentModule
 	IngestAllowed                          = entitlements.IngestAllowed
 	InvalidateLicenseEpoch                 = entitlements.InvalidateLicenseEpoch
 	LicenseEpochInvalid                    = entitlements.LicenseEpochInvalid
 	LicenseEpochPubSubChannel              = entitlements.LicenseEpochPubSubChannel
 	LoadDeploymentSnapshot                 = entitlements.LoadDeploymentSnapshot
 	LoadHeartbeatPolicyFromEnv             = entitlements.LoadHeartbeatPolicyFromEnv
+	HeartbeatPolicyFromClaims              = entitlements.HeartbeatPolicyFromClaims
 	LoadSKUFile                            = entitlements.LoadSKUFile
 	MCKFeatureBits                         = entitlements.MCKFeatureBits
 	MergeFeatures                          = entitlements.MergeFeatures
@@ -194,6 +202,8 @@ var (
 	SetSeedCouplingRequired                = entitlements.SetSeedCouplingRequired
 	SettlementSeedGateAllowed              = entitlements.SettlementSeedGateAllowed
 	StartLicenseEpochSync                  = entitlements.StartLicenseEpochSync
+	StartMonthlyEventsSnapshotSync         = entitlements.StartMonthlyEventsSnapshotSync
+	PublishDeploymentMonthlyEventsSnapshot = entitlements.PublishDeploymentMonthlyEventsSnapshot
 	StartSkewWatch                         = entitlements.StartSkewWatch
 	StateActive                            = entitlements.StateActive
 	StateExpired                           = entitlements.StateExpired
@@ -202,6 +212,7 @@ var (
 	StateOfflineWarn                       = entitlements.StateOfflineWarn
 	StateRevoked                           = entitlements.StateRevoked
 	TierUsageWarnings                      = entitlements.TierUsageWarnings
+	UpdateDeploymentMonthlyEventsSnapshot  = entitlements.UpdateDeploymentMonthlyEventsSnapshot
 	UpdateLogWatermark                     = entitlements.UpdateLogWatermark
 	VendorLicenseRevoked                   = entitlements.VendorLicenseRevoked
 	VolumeBandLarge                        = entitlements.VolumeBandLarge

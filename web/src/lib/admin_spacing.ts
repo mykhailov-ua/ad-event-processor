@@ -72,9 +72,9 @@ export const adminSpacing = {
     columnMd: 'flex flex-col gap-2',
     columnLg: 'flex flex-col gap-3',
     workspaceFlat: 'flex min-h-0 flex-1 flex-col gap-4',
-    sectionStack:
-      'flex flex-col gap-3 border-t border-border pt-3 first:border-t-0 first:pt-0',
-    footer: 'flex shrink-0 flex-wrap items-center gap-3 border-0 border-t border-border bg-transparent',
+    sectionStack: 'flex flex-col gap-3 border-t border-border pt-3 first:border-t-0 first:pt-0',
+    footer:
+      'flex shrink-0 flex-wrap items-center gap-3 border-0 border-t border-border bg-transparent',
     /** App header three-zone row (nav | search overlay | account). */
     headerBar: 'relative flex h-full items-center gap-3',
     headerStart: 'relative z-[1] flex min-w-0 items-center',
@@ -86,8 +86,7 @@ export const adminSpacing = {
   },
   grid: {
     mainAside: 'grid min-h-0 min-w-0 w-full flex-1 gap-4',
-    filterMatrix:
-      'grid gap-4 md:grid-cols-[repeat(auto-fill,minmax(12rem,1fr))] md:items-end',
+    filterMatrix: 'grid gap-4 md:grid-cols-[repeat(auto-fill,minmax(12rem,1fr))] md:items-end',
     campaignsFilterRow:
       'grid w-full grid-cols-2 gap-x-3 gap-y-2 sm:grid-cols-3 md:grid-cols-4 md:items-end',
     filterFormStack: 'grid w-full justify-items-start gap-4',
@@ -107,9 +106,11 @@ export const adminTypography = {
   bodyMuted: 'text-[13px] leading-[18px] text-muted-foreground',
   label: 'text-[13px] font-medium leading-[18px] text-foreground',
   labelMuted: 'text-[13px] leading-[18px] text-muted-foreground',
-  caption: 'text-[11px] font-semibold uppercase leading-[14px] tracking-normal text-muted-foreground',
+  caption:
+    'text-[11px] font-semibold uppercase leading-[14px] tracking-normal text-muted-foreground',
   captionPlain: 'text-[11px] leading-[14px] text-muted-foreground',
-  tableHeader: 'text-[11px] font-semibold uppercase leading-[14px] tracking-normal text-muted-foreground',
+  tableHeader:
+    'text-[11px] font-semibold uppercase leading-[14px] tracking-normal text-muted-foreground',
   tableBody: 'text-[13px] leading-[18px] text-foreground',
   tooltip: 'text-[12px] leading-5',
   badge: 'text-xs leading-4',

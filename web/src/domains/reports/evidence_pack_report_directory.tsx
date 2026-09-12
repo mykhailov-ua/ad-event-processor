@@ -74,8 +74,7 @@ function EvidenceSelectOverviewTable<Row extends Record<string, unknown>>({
   const nameColumnLabel = nameColumn?.label ?? 'Event';
 
   const recordById = useMemo(
-    () =>
-      directoryRecordMapIndexed(rows, (_row, index) => `${rowKeyPrefix}-${index}`),
+    () => directoryRecordMapIndexed(rows, (_row, index) => `${rowKeyPrefix}-${index}`),
     [rowKeyPrefix, rows]
   );
   const operateRows = useMemo(

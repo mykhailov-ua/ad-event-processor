@@ -22,7 +22,6 @@ import (
 	"github.com/testcontainers/testcontainers-go"
 	"github.com/testcontainers/testcontainers-go/modules/postgres"
 	rediscontainer "github.com/testcontainers/testcontainers-go/modules/redis"
-	"github.com/testcontainers/testcontainers-go/wait"
 
 	"ad-event-processor/internal/licensing"
 )
@@ -69,10 +68,7 @@ func setupAdsFaultInfra(t *testing.T) (*adsFaultInfra, func()) {
 		postgres.WithDatabase("ads_fault_db"),
 		postgres.WithUsername("user"),
 		postgres.WithPassword("pass"),
-		testcontainers.WithWaitStrategy(
-			wait.ForLog("database system is ready to accept connections").
-				WithOccurrence(2).
-				WithStartupTimeout(20*time.Second)),
+		testcontainers.WithWaitStrategy(database.PostgresContainerWaitStrategy()),
 	)
 	require.NoError(t, err)
 

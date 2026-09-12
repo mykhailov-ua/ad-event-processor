@@ -128,6 +128,15 @@ func main() {
 	}
 	defer pool.Close()
 
+	if cfg.BrokerPrimaryCH() {
+		if err := licensing.EnsureDeploymentModule(ctx, pool, "broker_wal", func(f licensing.FeatureSet) bool {
+			return f.BrokerWalEnabled()
+		}); err != nil {
+			slog.Error("broker_wal license check failed", "error", err)
+			os.Exit(1)
+		}
+	}
+
 	// Settlement-dedicated pool; gated by ProcessorPostgresGate slot count.
 	settlementPool, err := database.Connect(ctx, string(cfg.DBDSN), cfg.PostgresPoolSettleConns(cfg.SettlementLaneCount()), 1, database.PoolConfig{
 		StatementTimeout: cfg.AdminPGStatementTimeout(),
@@ -277,6 +286,8 @@ func main() {
 		conversionPayoutApplier = ingestion.NewConversionPayoutApplier(settleQueries)
 		conversionPayoutApplier.SetStatusSchemaStore(ingestion.NewPgxAffiliateStatusSchemaStore(pool))
 		clickhouseStore.SetConversionPayoutApplier(conversionPayoutApplier)
+		clickhouseStore.SetConversionLedgerApplier(ingestion.NewConversionLedgerApplier(settleQueries))
+		clickhouseStore.SetStatusSchemeApplier(ingestion.NewStatusSchemeApplier(settleQueries))
 		if err := clickhouseStore.RecoverSpool(ctx); err != nil {
 			slog.Error("failed to recover clickhouse spool", "error", err)
 			os.Exit(1)

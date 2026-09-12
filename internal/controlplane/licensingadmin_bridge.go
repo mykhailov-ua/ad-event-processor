@@ -94,6 +94,30 @@ func (s *Service) enforceDeploymentLicenseCampaignCap(ctx context.Context) error
 	return s.LicensingService().EnforceDeploymentCampaignCap(ctx)
 }
 
+func (s *Service) EnforceDeploymentLicenseTenantCap(ctx context.Context) error {
+	return s.LicensingService().EnforceDeploymentTenantCap(ctx)
+}
+
+func (s *Service) EnforceDeploymentLicenseAPIKeyCap(ctx context.Context) error {
+	return s.LicensingService().EnforceDeploymentAPIKeyCap(ctx)
+}
+
+func (s *Service) EnforceDeploymentLicenseExportAllowed() error {
+	return s.LicensingService().EnforceDeploymentExportAllowed()
+}
+
+func (s *Service) EnforceDeploymentLicenseRegionCap(ctx context.Context, regionCode int16) error {
+	return s.LicensingService().EnforceDeploymentRegionCap(ctx, regionCode)
+}
+
+func (s *Service) DeploymentLimitUsage(ctx context.Context) (licensingadmin.DeploymentLimitUsage, error) {
+	return s.LicensingService().DeploymentLimitUsage(ctx)
+}
+
+func (s *Service) EnforceDeploymentTenantCap(ctx context.Context) error {
+	return s.EnforceDeploymentLicenseTenantCap(ctx)
+}
+
 func (s *Service) StartLicenseRevokeQueueWorker(interval time.Duration) {
 	if s == nil || s.pool == nil {
 		return

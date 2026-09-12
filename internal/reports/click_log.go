@@ -147,16 +147,28 @@ func (h *ReportsHTTPHandlers) getClickLogReport(w http.ResponseWriter, r *http.R
 		httpresponse.Error(w, http.StatusBadRequest, "BAD_REQUEST", "invalid campaign_id")
 		return
 	}
+	groupFilter, groupFilterSet, err := ParseOptionalCampaignGroupFilter(r)
+	if err != nil {
+		httpresponse.Error(w, http.StatusBadRequest, "BAD_REQUEST", "invalid group_id")
+		return
+	}
 	if campaignFilterSet && !h.authorizeReportCampaign(w, r, campaignFilter) {
 		return
 	}
 
-	campaignIDs, err := listCustomerCampaignIDs(r.Context(), h.Pool, customerID)
+	campaignIDs, err := ResolveReportCampaignIDs(
+		r.Context(),
+		h.Pool,
+		customerID,
+		campaignFilter,
+		campaignFilterSet,
+		groupFilter,
+		groupFilterSet,
+	)
 	if err != nil {
 		h.writeServiceError(w, err)
 		return
 	}
-	campaignIDs = narrowCampaignIDs(campaignIDs, campaignFilter, campaignFilterSet)
 	if len(campaignIDs) == 0 {
 		httpresponse.JSON(w, http.StatusOK, ClickLogReportResponse{
 			Events:    []ClickLogEventDTO{},

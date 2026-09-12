@@ -14,6 +14,7 @@ import (
 	"github.com/jackc/pgx/v5"
 	"github.com/jackc/pgx/v5/pgtype"
 	"github.com/jackc/pgx/v5/pgxpool"
+	redis "github.com/redis/go-redis/v9"
 )
 
 const incrementUsageMeterSQL = `
@@ -39,19 +40,28 @@ const MeterAcceptedEvents = meterAcceptedEvents
 type VolumeMeterWorker struct {
 	pool            *pgxpool.Pool
 	clickhouseQuery *database.ClickHouseQuery
+	redisClient     redis.UniversalClient
 	source          string
 	interval        time.Duration
 	postgresGate    PostgresLowGate
+	quotaTimezone   string
 }
 
-func NewVolumeMeterWorker(pool *pgxpool.Pool, clickhouseQuery *database.ClickHouseQuery, source string, interval time.Duration, postgresGate PostgresLowGate) *VolumeMeterWorker {
+func NewVolumeMeterWorker(pool *pgxpool.Pool, clickhouseQuery *database.ClickHouseQuery, redisClient redis.UniversalClient, source string, interval time.Duration, postgresGate PostgresLowGate) *VolumeMeterWorker {
 	if interval <= 0 {
 		interval = time.Hour
 	}
 	if source == "" {
 		source = VolumeMeterSourcePG
 	}
-	return &VolumeMeterWorker{pool: pool, clickhouseQuery: clickhouseQuery, source: source, interval: interval, postgresGate: postgresGate}
+	return &VolumeMeterWorker{
+		pool:            pool,
+		clickhouseQuery: clickhouseQuery,
+		redisClient:     redisClient,
+		source:          source,
+		interval:        interval,
+		postgresGate:    postgresGate,
+	}
 }
 
 func (w *VolumeMeterWorker) Start(ctx context.Context) {
@@ -63,6 +73,9 @@ func (w *VolumeMeterWorker) Start(ctx context.Context) {
 		return
 	}
 	slog.Info("volume meter worker starting", "interval", w.interval, "source", w.source)
+	if err := w.refreshMonthlyEventsSnapshot(ctx); err != nil {
+		slog.Warn("volume meter initial monthly events snapshot failed", "err", err)
+	}
 	ticker := time.NewTicker(w.interval)
 	defer ticker.Stop()
 
@@ -115,13 +128,17 @@ func (w *VolumeMeterWorker) runPGHour(ctx context.Context, hourStart, hourEnd, p
 	if err != nil {
 		return err
 	}
+	units := mapFromPGMeterRows(rows)
+	if len(units) > 0 {
+		if err := batchIncrementUsageMeters(ctx, w.pool, meterAcceptedEvents, period, units); err != nil {
+			return err
+		}
+	}
+	if err := w.refreshMonthlyEventsSnapshot(ctx); err != nil {
+		return err
+	}
 	if len(rows) == 0 {
 		return nil
-	}
-
-	units := mapFromPGMeterRows(rows)
-	if err := batchIncrementUsageMeters(ctx, w.pool, meterAcceptedEvents, period, units); err != nil {
-		return err
 	}
 	metrics.VolumeMeterRowsTotal.Add(float64(len(rows)))
 	slog.Info("volume meter pg rollup complete",
@@ -197,18 +214,22 @@ func (w *VolumeMeterWorker) runClickHouseHour(ctx context.Context, hourStart, ho
 	if err != nil {
 		return err
 	}
-	if len(rows) == 0 {
-		return nil
-	}
-
 	campaignCustomers, err := w.loadCampaignCustomers(ctx)
 	if err != nil {
 		return err
 	}
 
 	customerUnits := ComputeWeightedUnitsFromRows(rows, campaignCustomers)
-	if err := batchIncrementUsageMeters(ctx, w.pool, meterBillableEvents, period, customerUnits); err != nil {
+	if len(customerUnits) > 0 {
+		if err := batchIncrementUsageMeters(ctx, w.pool, meterBillableEvents, period, customerUnits); err != nil {
+			return err
+		}
+	}
+	if err := w.refreshMonthlyEventsSnapshot(ctx); err != nil {
 		return err
+	}
+	if len(rows) == 0 {
+		return nil
 	}
 	metrics.VolumeMeterRowsTotal.Add(float64(len(customerUnits)))
 	slog.Info("volume meter clickhouseQuery rollup complete",
@@ -261,6 +282,10 @@ func (w *VolumeMeterWorker) loadCampaignCustomers(ctx context.Context) (map[uuid
 		out[campID] = custID
 	}
 	return out, postgresRows.Err()
+}
+
+func (w *VolumeMeterWorker) refreshMonthlyEventsSnapshot(ctx context.Context) error {
+	return RefreshDeploymentMonthlyEventsSnapshot(ctx, w.pool, w.redisClient, w.quotaTimezone)
 }
 
 func ComputeWeightedUnitsFromRows(rows []RollupRow, campaignCustomers map[uuid.UUID]uuid.UUID) map[uuid.UUID]int64 {

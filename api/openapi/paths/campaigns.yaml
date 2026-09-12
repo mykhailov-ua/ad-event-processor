@@ -64,6 +64,13 @@ paths:
             type: string
             minLength: 2
             maxLength: 2
+        - name: campaign_group_id
+          in: query
+          required: false
+          schema:
+            type: string
+            format: uuid
+          description: Filter campaigns assigned to this group.
         - $ref: '../openapi.yaml#/components/parameters/LimitQuery'
         - $ref: '../openapi.yaml#/components/parameters/OffsetQuery'
       responses:
@@ -73,6 +80,146 @@ paths:
             application/json:
               schema:
                 $ref: '../components/schemas/campaign.yaml#/CampaignListResponse'
+        default:
+          $ref: '../openapi.yaml#/components/responses/Error'
+
+  /api/v1/campaign-groups:
+    get:
+      tags: [campaigns]
+      operationId: campaignGroupsList
+      summary: List campaign groups
+      x-permissions: [campaigns:read, campaigns:read:masked]
+      parameters:
+        - $ref: '../openapi.yaml#/components/parameters/CustomerIdQuery'
+      responses:
+        '200':
+          description: Campaign groups for customer
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: '../components/schemas/campaign.yaml#/CampaignGroup'
+        default:
+          $ref: '../openapi.yaml#/components/responses/Error'
+    post:
+      tags: [campaigns]
+      operationId: campaignGroupsCreate
+      summary: Create campaign group
+      x-permissions: [campaigns:write]
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '../components/schemas/campaign.yaml#/CreateCampaignGroupRequest'
+      responses:
+        '201':
+          description: Created campaign group
+          content:
+            application/json:
+              schema:
+                $ref: '../components/schemas/campaign.yaml#/CampaignGroup'
+        default:
+          $ref: '../openapi.yaml#/components/responses/Error'
+
+  /api/v1/campaign-groups/{id}:
+    get:
+      tags: [campaigns]
+      operationId: campaignGroupsGet
+      summary: Get campaign group
+      x-permissions: [campaigns:read, campaigns:read:masked]
+      parameters:
+        - $ref: '../openapi.yaml#/components/parameters/UuidPathId'
+      responses:
+        '200':
+          description: Campaign group
+          content:
+            application/json:
+              schema:
+                $ref: '../components/schemas/campaign.yaml#/CampaignGroup'
+        default:
+          $ref: '../openapi.yaml#/components/responses/Error'
+    patch:
+      tags: [campaigns]
+      operationId: campaignGroupsPatch
+      summary: Update campaign group
+      x-permissions: [campaigns:write]
+      parameters:
+        - $ref: '../openapi.yaml#/components/parameters/UuidPathId'
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '../components/schemas/campaign.yaml#/UpdateCampaignGroupRequest'
+      responses:
+        '200':
+          description: Updated campaign group
+          content:
+            application/json:
+              schema:
+                $ref: '../components/schemas/campaign.yaml#/CampaignGroup'
+        default:
+          $ref: '../openapi.yaml#/components/responses/Error'
+    delete:
+      tags: [campaigns]
+      operationId: campaignGroupsDelete
+      summary: Delete campaign group
+      x-permissions: [campaigns:write]
+      parameters:
+        - $ref: '../openapi.yaml#/components/parameters/UuidPathId'
+      responses:
+        '204':
+          description: Deleted
+        default:
+          $ref: '../openapi.yaml#/components/responses/Error'
+
+  /api/v1/campaign-groups/{id}/assign-campaigns:
+    post:
+      tags: [campaigns]
+      operationId: campaignGroupsAssignCampaigns
+      summary: Assign campaigns to group
+      x-permissions: [campaigns:write]
+      parameters:
+        - $ref: '../openapi.yaml#/components/parameters/UuidPathId'
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '../components/schemas/campaign.yaml#/AssignCampaignGroupMembersRequest'
+      responses:
+        '200':
+          description: Per-campaign assign results
+          content:
+            application/json:
+              schema:
+                $ref: '../components/schemas/campaign.yaml#/AssignCampaignGroupMembersResponse'
+        default:
+          $ref: '../openapi.yaml#/components/responses/Error'
+
+  /api/v1/campaign-groups/{id}/unassign-campaigns:
+    post:
+      tags: [campaigns]
+      operationId: campaignGroupsUnassignCampaigns
+      summary: Unassign campaigns from group
+      x-permissions: [campaigns:write]
+      parameters:
+        - $ref: '../openapi.yaml#/components/parameters/UuidPathId'
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '../components/schemas/campaign.yaml#/AssignCampaignGroupMembersRequest'
+      responses:
+        '200':
+          description: Per-campaign unassign results
+          content:
+            application/json:
+              schema:
+                $ref: '../components/schemas/campaign.yaml#/AssignCampaignGroupMembersResponse'
         default:
           $ref: '../openapi.yaml#/components/responses/Error'
 
@@ -684,6 +831,30 @@ paths:
         default:
           $ref: '../openapi.yaml#/components/responses/Error'
 
+  /api/v1/campaigns/{id}/manual-cost:
+    put:
+      tags: [campaigns]
+      operationId: campaignsPutManualCost
+      summary: Upsert manual campaign cost for a date
+      x-permissions: [campaigns:write]
+      parameters:
+        - $ref: '../openapi.yaml#/components/parameters/UuidPathId'
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '../components/schemas/campaign.yaml#/ManualCampaignCostRequest'
+      responses:
+        '200':
+          description: Manual cost row written
+          content:
+            application/json:
+              schema:
+                $ref: '../components/schemas/campaign.yaml#/ManualCampaignCostResponse'
+        default:
+          $ref: '../openapi.yaml#/components/responses/Error'
+
   /api/v1/campaigns/{id}/integration-health:
     get:
       tags: [campaigns]
@@ -1151,6 +1322,52 @@ paths:
             application/json:
               schema:
                 $ref: '../components/schemas/campaign.yaml#/CampaignBulkActionResponse'
+        default:
+          $ref: '../openapi.yaml#/components/responses/Error'
+
+  /api/v1/tracker/clicks:
+    post:
+      tags: [campaigns]
+      operationId: trackerMintClick
+      summary: Mint programmatic click URL without redirect
+      description: Returns click_id and tracker /click URL for server-side or landing-page SDK use. Does not debit budget; debit happens when /click is requested.
+      x-permissions: [campaigns:read, campaigns:write]
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '../components/schemas/campaign.yaml#/ProgrammaticClickMintRequest'
+      responses:
+        '200':
+          description: Minted click
+          content:
+            application/json:
+              schema:
+                $ref: '../components/schemas/campaign.yaml#/ProgrammaticClickMintResponse'
+        default:
+          $ref: '../openapi.yaml#/components/responses/Error'
+
+  /api/v1/campaigns/bulk-patch:
+    post:
+      tags: [campaigns]
+      operationId: campaignsBulkPatch
+      summary: Bulk patch allowlisted campaign fields
+      description: Updates target_url, budget, geo, pacing, and related fields for up to 50 campaigns. Per-campaign errors are returned in the response body.
+      x-permissions: [campaigns:write]
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '../components/schemas/campaign.yaml#/CampaignBulkPatchRequest'
+      responses:
+        '200':
+          description: Bulk patch results
+          content:
+            application/json:
+              schema:
+                $ref: '../components/schemas/campaign.yaml#/CampaignBulkPatchResponse'
         default:
           $ref: '../openapi.yaml#/components/responses/Error'
 
@@ -1993,6 +2210,176 @@ paths:
                 type: array
                 items:
                   $ref: '../components/schemas/campaign.yaml#/CloudflareZone'
+        default:
+          $ref: '../openapi.yaml#/components/responses/Error'
+
+  /api/v1/campaigns/{id}/outbound-postbacks:
+    get:
+      tags: [campaigns]
+      operationId: campaignsListOutboundPostbacks
+      summary: List outbound S2S postback URLs for campaign
+      x-permissions: [campaigns:read, campaigns:read:masked]
+      parameters:
+        - $ref: '../openapi.yaml#/components/parameters/UuidPathId'
+      responses:
+        '200':
+          description: Outbound postbacks
+          content:
+            application/json:
+              schema:
+                $ref: '../components/schemas/campaign.yaml#/OutboundPostbackListResponse'
+        default:
+          $ref: '../openapi.yaml#/components/responses/Error'
+    post:
+      tags: [campaigns]
+      operationId: campaignsReplaceOutboundPostbacks
+      summary: Replace all outbound postbacks for campaign
+      x-permissions: [campaigns:write]
+      parameters:
+        - $ref: '../openapi.yaml#/components/parameters/UuidPathId'
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '../components/schemas/campaign.yaml#/ReplaceOutboundPostbacksRequest'
+      responses:
+        '200':
+          description: Updated outbound postbacks
+          content:
+            application/json:
+              schema:
+                $ref: '../components/schemas/campaign.yaml#/OutboundPostbackListResponse'
+        default:
+          $ref: '../openapi.yaml#/components/responses/Error'
+
+  /api/v1/campaigns/{id}/outbound-postbacks/{postback_id}:
+    patch:
+      tags: [campaigns]
+      operationId: campaignsPatchOutboundPostback
+      summary: Patch a single outbound postback
+      x-permissions: [campaigns:write]
+      parameters:
+        - $ref: '../openapi.yaml#/components/parameters/UuidPathId'
+        - name: postback_id
+          in: path
+          required: true
+          schema:
+            type: string
+            format: uuid
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '../components/schemas/campaign.yaml#/PatchOutboundPostbackRequest'
+      responses:
+        '200':
+          description: Updated outbound postback
+          content:
+            application/json:
+              schema:
+                $ref: '../components/schemas/campaign.yaml#/OutboundPostback'
+        default:
+          $ref: '../openapi.yaml#/components/responses/Error'
+
+  /api/v1/campaigns/{id}/outbound-postbacks/{postback_id}/test:
+    post:
+      tags: [campaigns]
+      operationId: campaignsTestOutboundPostback
+      summary: Dry-run outbound postback URL for campaign
+      x-permissions: [campaigns:write]
+      parameters:
+        - $ref: '../openapi.yaml#/components/parameters/UuidPathId'
+        - name: postback_id
+          in: path
+          required: true
+          schema:
+            type: string
+            format: uuid
+      responses:
+        '200':
+          description: Dry-run succeeded
+          content:
+            application/json:
+              schema:
+                $ref: '../components/schemas/integrations.yaml#/PostbackDryRunResult'
+        '422':
+          description: Dry-run failed
+          content:
+            application/json:
+              schema:
+                $ref: '../components/schemas/integrations.yaml#/PostbackDryRunResult'
+        default:
+          $ref: '../openapi.yaml#/components/responses/Error'
+
+  /api/v1/campaigns/{id}/status-schemes:
+    get:
+      tags: [campaigns]
+      operationId: campaignsListStatusSchemes
+      summary: List ordered status scheme rules for campaign
+      x-permissions: [campaigns:read, campaigns:read:masked]
+      parameters:
+        - $ref: '../openapi.yaml#/components/parameters/UuidPathId'
+      responses:
+        '200':
+          description: Status scheme rules
+          content:
+            application/json:
+              schema:
+                $ref: '../components/schemas/campaign.yaml#/StatusSchemeListResponse'
+        default:
+          $ref: '../openapi.yaml#/components/responses/Error'
+    post:
+      tags: [campaigns]
+      operationId: campaignsReplaceStatusSchemes
+      summary: Replace all status scheme rules for campaign
+      x-permissions: [campaigns:write]
+      parameters:
+        - $ref: '../openapi.yaml#/components/parameters/UuidPathId'
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '../components/schemas/campaign.yaml#/ReplaceStatusSchemeRequest'
+      responses:
+        '200':
+          description: Updated status scheme rules
+          content:
+            application/json:
+              schema:
+                $ref: '../components/schemas/campaign.yaml#/StatusSchemeListResponse'
+        default:
+          $ref: '../openapi.yaml#/components/responses/Error'
+
+  /api/v1/campaigns/{id}/status-schemes/{rule_id}:
+    patch:
+      tags: [campaigns]
+      operationId: campaignsPatchStatusSchemeRule
+      summary: Patch a single status scheme rule
+      x-permissions: [campaigns:write]
+      parameters:
+        - $ref: '../openapi.yaml#/components/parameters/UuidPathId'
+        - name: rule_id
+          in: path
+          required: true
+          schema:
+            type: string
+            format: uuid
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '../components/schemas/campaign.yaml#/PatchStatusSchemeRuleRequest'
+      responses:
+        '200':
+          description: Updated rule
+          content:
+            application/json:
+              schema:
+                $ref: '../components/schemas/campaign.yaml#/StatusSchemeRule'
         default:
           $ref: '../openapi.yaml#/components/responses/Error'
 

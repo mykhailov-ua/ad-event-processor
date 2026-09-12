@@ -62,11 +62,9 @@ func TestE2E_Flow(t *testing.T) {
 	require.NoError(t, err)
 
 	campaignID := uuid.New()
-	_, err = pool.Exec(ctx, "INSERT INTO campaigns (id, name, status, customer_id, budget_limit) VALUES ($1, $2, $3, $4, $5)", campaignID, "E2E Campaign", "ACTIVE", customerID, 100_000_000)
-	require.NoError(t, err)
+	insertE2EActiveCampaign(t, ctx, pool, campaignID, customerID, "E2E Campaign", 100_000_000)
 
 	registry := testutil.NewAdsRegistry(t, queries)
-	_, _ = registry.Sync(ctx)
 
 	store := ingestion.NewPostgresStore(queries, 1*time.Second)
 	campaignRepo := ingestion.NewCampaignRepo(queries)
@@ -85,17 +83,19 @@ func TestE2E_Flow(t *testing.T) {
 		100000,
 	)
 	filterEngine := ingestion.NewFilterEngine(time.Duration(cfg.FilterTimeoutMs)*time.Millisecond, unifiedFilter)
+	sharder := ingestion.NewStaticSlotSharder(1)
+	handler := ingestion.NewAdsPacketHandler(cfg, registry, filterEngine, pool, []redis.UniversalClient{rdb}, sharder, cfg.FraudStreamName, nil)
+	wireE2EBudgetAndTrackIngest(t, ctx, queries, []redis.UniversalClient{rdb}, sharder, registry, handler, unifiedFilter)
+	defer handler.Stop(ctx)
+
 	consumer := ingestion.NewStreamConsumer(store, rdb, "test-stream", "test-group", "test-c1", cfg.EventBatchSize, cfg.MaxWorkers, 100*time.Millisecond, 1*time.Second, 100*time.Millisecond, 5*time.Second, 5, 5*time.Minute, 1*time.Second)
 	consumer.Start(ctx)
 	defer consumer.Close()
 
-	sharder := ingestion.NewStaticSlotSharder(1)
-	handler := ingestion.NewAdsPacketHandler(cfg, registry, filterEngine, pool, []redis.UniversalClient{rdb}, sharder, cfg.FraudStreamName, nil)
-	defer handler.Stop(ctx)
-
 	payload := map[string]any{
 		"campaign_id": campaignID,
 		"type":        "click",
+		"click_id":    uuid.NewString(),
 		"payload":     map[string]string{"foo": "bar"},
 	}
 	body, _ := json.Marshal(payload)
@@ -148,10 +148,9 @@ func TestE2E_Flow_Protobuf(t *testing.T) {
 	_, _ = pool.Exec(ctx, "INSERT INTO customers (id, name, balance) VALUES ($1, $2, $3)", customerID, "Proto Customer", 1_000_000_000)
 
 	campaignID := uuid.New()
-	_, _ = pool.Exec(ctx, "INSERT INTO campaigns (id, name, status, customer_id, budget_limit) VALUES ($1, $2, $3, $4, $5)", campaignID, "Proto Campaign", "ACTIVE", customerID, 100_000_000)
+	insertE2EActiveCampaign(t, ctx, pool, campaignID, customerID, "Proto Campaign", 100_000_000)
 
 	registry := testutil.NewAdsRegistry(t, queries)
-	_, _ = registry.Sync(ctx)
 
 	store := ingestion.NewPostgresStore(queries, 1*time.Second)
 	campaignRepo := ingestion.NewCampaignRepo(queries)
@@ -170,13 +169,14 @@ func TestE2E_Flow_Protobuf(t *testing.T) {
 		100000,
 	)
 	filterEngine := ingestion.NewFilterEngine(time.Duration(cfg.FilterTimeoutMs)*time.Millisecond, unifiedFilter)
+	sharder := ingestion.NewStaticSlotSharder(1)
+	handler := ingestion.NewAdsPacketHandler(cfg, registry, filterEngine, pool, []redis.UniversalClient{rdb}, sharder, cfg.FraudStreamName, nil)
+	wireE2EBudgetAndTrackIngest(t, ctx, queries, []redis.UniversalClient{rdb}, sharder, registry, handler, unifiedFilter)
+	defer handler.Stop(ctx)
+
 	consumer := ingestion.NewStreamConsumer(store, rdb, "test-proto-stream", "test-proto-group", "test-c2", cfg.EventBatchSize, cfg.MaxWorkers, 100*time.Millisecond, 1*time.Second, 100*time.Millisecond, 5*time.Second, 5, 5*time.Minute, 1*time.Second)
 	consumer.Start(ctx)
 	defer consumer.Close()
-
-	sharder := ingestion.NewStaticSlotSharder(1)
-	handler := ingestion.NewAdsPacketHandler(cfg, registry, filterEngine, pool, []redis.UniversalClient{rdb}, sharder, cfg.FraudStreamName, nil)
-	defer handler.Stop(ctx)
 
 	pbEvt := &pb.AdEvent{
 		CampaignId: campaignID[:],

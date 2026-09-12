@@ -16,7 +16,10 @@ export type FileUploadFieldProps = {
   className?: string;
 };
 
-function formatSelectionLabel(files: FileList | null | undefined, multiple?: boolean): string | undefined {
+function formatSelectionLabel(
+  files: FileList | null | undefined,
+  multiple?: boolean
+): string | undefined {
   if (!files || files.length === 0) {
     return undefined;
   }
@@ -84,9 +87,7 @@ export function FileUploadField({
           </SecondaryActionButton>
         ) : null}
       </div>
-      <p className={cn('m-0', adminTypography.bodyMuted)}>
-        {selectedLabel ?? emptyLabel}
-      </p>
+      <p className={cn('m-0', adminTypography.bodyMuted)}>{selectedLabel ?? emptyLabel}</p>
     </div>
   );
 }

@@ -1,5 +1,5 @@
 #!/usr/bin/env bash
-# Role: curl proof that lander edge serves first-party /_aed/track.js proxy to tracker /static/track.js.
+# Role: curl proof that lander edge serves first-party /_aed/tag.js proxy to tracker /static/tag.js.
 # Execution context: Operator or CI with LANDER_PUBLIC_BASE_URL or FIRST_PARTY_PIXEL_URL set.
 # Env: LANDER_PUBLIC_BASE_URL, FIRST_PARTY_PIXEL_URL (override full script URL), FIRST_PARTY_PIXEL_ARTIFACT_DIR.
 # Verify: bash scripts/test/edge/first_party_pixel_drill.sh
@@ -18,11 +18,11 @@ if [[ -z "$SCRIPT_URL" ]]; then
     exit 1
   fi
   LANDER_BASE="${LANDER_BASE%/}"
-  SCRIPT_URL="${LANDER_BASE}/_aed/track.js"
+  SCRIPT_URL="${LANDER_BASE}/_aed/tag.js"
 fi
 
 mkdir -p "$OUT_DIR"
-BODY_FILE="$OUT_DIR/track.js"
+BODY_FILE="$OUT_DIR/tag.js"
 META_FILE="$OUT_DIR/meta.txt"
 
 log() { printf 'first_party_pixel_drill: %s\n' "$*" >&2; }
@@ -35,8 +35,8 @@ if [[ "$HTTP_CODE" != "200" ]]; then
   log "ERROR: expected HTTP 200, got $HTTP_CODE"
   exit 1
 fi
-if ! grep -q trackEvent "$BODY_FILE"; then
-  log "ERROR: body missing trackEvent export"
+if ! grep -q sendEvent "$BODY_FILE"; then
+  log "ERROR: body missing sendEvent export"
   exit 1
 fi
 

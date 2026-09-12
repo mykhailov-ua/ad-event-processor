@@ -39,7 +39,7 @@ docker compose -f docker-compose.yaml -f deploy/compose/docker-compose.tracker-l
 docker compose -f docker-compose.yaml -f deploy/compose/docker-compose.tracker-local.yaml \
   restart tracker-0 tracker-1 tracker-2 tracker-3
 for _ in $(seq 1 90); do
-  code="$(curl -sk -o /dev/null -w '%{http_code}' "${TRACK_URL}/static/track.js" 2> /dev/null || true)"
+  code="$(curl -sk -o /dev/null -w '%{http_code}' "${TRACK_URL}/static/tag.js" 2> /dev/null || true)"
   if [[ "$code" == "200" ]]; then
     break
   fi

@@ -14,15 +14,16 @@ func TestTelemetryStealthPoc_noSensitiveLiterals_holdout(t *testing.T) {
 		"navigator.webdriver",
 		"AudioContext",
 		"OfflineAudioContext",
-		"trackAntifraudArm",
+		"tagCtxArm",
 		"detectAutomation",
-		"canvasFingerprint",
+		"paintDigest",
 	}
 	for _, s := range banned {
 		require.NotContains(t, body, s, "static surface must not contain %q", s)
 	}
-	require.Contains(t, body, "aedSensBootstrap")
-	require.Contains(t, body, "function* telemetryFsm")
+	require.Contains(t, body, "tagLiteBoot")
+	require.Contains(t, body, "function* stepGen")
+	require.NotContains(t, body, "telemetry")
 }
 
 func TestBuildStealthHydrateResponse_roundTripKeyMaterial(t *testing.T) {

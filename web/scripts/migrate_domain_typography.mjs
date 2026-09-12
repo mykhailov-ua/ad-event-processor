@@ -47,7 +47,10 @@ function ensureTypographyImport(content) {
 
 function toTemplateLiteral(className) {
   if (className.includes('${adminTypography.')) {
-    return `{${JSON.stringify(className).slice(1, -1).replace(/\\"/g, '"').replace(/adminTypography\./g, '${adminTypography.')}}`;
+    return `{${JSON.stringify(className)
+      .slice(1, -1)
+      .replace(/\\"/g, '"')
+      .replace(/adminTypography\./g, '${adminTypography.')}}`;
   }
   return `"${className}"`;
 }

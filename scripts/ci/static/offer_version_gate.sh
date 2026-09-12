@@ -12,7 +12,8 @@ if [[ ! -f "$META" ]]; then
   exit 1
 fi
 
-VERSION="$(python3 - <<'PY'
+VERSION="$(
+  python3 - << 'PY'
 import json, pathlib
 print(json.loads(pathlib.Path("deploy/vendor/offer_meta.json").read_text())["version"])
 PY

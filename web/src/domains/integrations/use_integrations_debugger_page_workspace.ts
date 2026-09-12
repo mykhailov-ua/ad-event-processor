@@ -25,7 +25,9 @@ export function useIntegrationsDebuggerPageWorkspace() {
   const [draftCampaignId, setDraftCampaignId] = useState(appliedCampaignId);
   const [loadingKey, setLoadingKey] = useState<string | undefined>();
   const [actionError, setActionError] = useState<Error | undefined>();
-  const [formValidationError, setFormValidationError] = useState<AdminValidationError | undefined>();
+  const [formValidationError, setFormValidationError] = useState<
+    AdminValidationError | undefined
+  >();
   const [smokeResult, setSmokeResult] = useState<CampaignSmokeResult | undefined>();
   const [flowResult, setFlowResult] = useState<CampaignFlowValidateResponse | undefined>();
   const [postbackResult, setPostbackResult] = useState<PostbackDryRunResult | undefined>();

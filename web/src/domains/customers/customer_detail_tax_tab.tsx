@@ -117,11 +117,13 @@ export function CustomerDetailTaxTab({
           </CardContent>
         </Card>
 
-        {saveError
-          ? isValidationError(saveError)
-            ? <ValidationErrorBlock error={saveError} title="Check tax profile fields" />
-            : panelError(saveError, 'Save failed')
-          : null}
+        {saveError ? (
+          isValidationError(saveError) ? (
+            <ValidationErrorBlock error={saveError} title="Check tax profile fields" />
+          ) : (
+            panelError(saveError, 'Save failed')
+          )
+        ) : null}
         {saveSuccess ? (
           <p className={adminTypography.bodyMuted} role="status">
             Tax profile saved.

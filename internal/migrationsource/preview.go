@@ -89,6 +89,16 @@ func Preview(kind SourceKind, payload []byte, maps *Maps) (PreviewResult, error)
 		if camp.Flow != nil {
 			mapped.Flow = mapNormalizedFlow(camp.Flow)
 		}
+		if len(camp.StatusSchemeRules) > 0 {
+			mapped.StatusSchemeRules = append([]MappedStatusSchemeRule(nil), camp.StatusSchemeRules...)
+		}
+		unmapped := 0
+		for _, w := range out.Warnings {
+			if w.CampaignRef == camp.Ref && w.Slug == "binom_status_scheme_unmapped" {
+				unmapped++
+			}
+		}
+		mapped.UnmappedStatusRules = unmapped
 		out.MappedCampaigns = append(out.MappedCampaigns, mapped)
 	}
 	return out, nil

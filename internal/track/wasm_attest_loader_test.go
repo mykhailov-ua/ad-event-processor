@@ -16,6 +16,6 @@ func TestWasmAttestLoader_holdout_noFetchOnTrackPixel(t *testing.T) {
 
 func TestWasmAttestLoader_holdout_exportsGlobal(t *testing.T) {
 	src := string(WasmAttestLoaderJS)
-	require.Contains(t, src, "globalThis.aedWasmAttest")
+	require.Contains(t, src, "globalThis.tagW")
 	require.True(t, strings.Index(src, "fetch") < strings.Index(src, "solvePoW"))
 }

@@ -10,8 +10,8 @@ import (
 	"sync"
 	"sync/atomic"
 	"testing"
-	"time"
 
+	"ad-event-processor/internal/database"
 	"ad-event-processor/internal/testutil"
 
 	db "ad-event-processor/internal/domain/db"
@@ -22,7 +22,6 @@ import (
 	"github.com/stretchr/testify/require"
 	"github.com/testcontainers/testcontainers-go"
 	"github.com/testcontainers/testcontainers-go/modules/postgres"
-	"github.com/testcontainers/testcontainers-go/wait"
 )
 
 func setupPostgresInfra(t *testing.T) (pool *pgxpool.Pool, cleanup func()) {
@@ -34,10 +33,7 @@ func setupPostgresInfra(t *testing.T) (pool *pgxpool.Pool, cleanup func()) {
 		postgres.WithDatabase("postback_test_db"),
 		postgres.WithUsername("user"),
 		postgres.WithPassword("pass"),
-		testcontainers.WithWaitStrategy(
-			wait.ForLog("database system is ready to accept connections").
-				WithOccurrence(2).
-				WithStartupTimeout(20*time.Second)),
+		testcontainers.WithWaitStrategy(database.PostgresContainerWaitStrategy()),
 	)
 	require.NoError(t, err)
 

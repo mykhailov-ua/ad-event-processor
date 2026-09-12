@@ -97,6 +97,97 @@ export type CampaignExportBatchResponse = {
 
 export const CAMPAIGN_BULK_ACTION_MAX_IDS = 50;
 
+export type CampaignBulkPatchFields = {
+  target_url?: string;
+  budget_limit?: string;
+  budget_limit_micro?: number;
+  pacing_mode?: string;
+  daily_budget_micro?: number;
+  timezone?: string;
+  target_countries?: string[];
+  status?: string;
+  referrer_filter?: string;
+  fallback_click_url?: string;
+  budget_failover_mode?: string;
+};
+
+export type CampaignBulkPatchRequest = {
+  campaign_ids: string[];
+  patch: CampaignBulkPatchFields;
+};
+
+export type CampaignBulkPatchResultRow = CampaignBulkActionResultRow;
+
+export type CampaignBulkPatchResponse = {
+  results: CampaignBulkPatchResultRow[];
+};
+
+export type StatusSchemePayoutMode = 'inherit' | 'fixed' | 'zero' | 'pass_through';
+
+export type StatusSchemeRule = {
+  id?: string;
+  sort_order?: number;
+  when_status?: string;
+  when_goal?: string;
+  set_internal_status?: string;
+  set_goal_name?: string;
+  payout_mode?: StatusSchemePayoutMode;
+  payout_micro?: number;
+  fire_outbound?: boolean;
+  enabled?: boolean;
+};
+
+export type StatusSchemeListResponse = {
+  rules: StatusSchemeRule[];
+};
+
+export type ReplaceStatusSchemeRequest = {
+  rules: StatusSchemeRule[];
+};
+
+export type OutboundPostbackTriggerKind = 'conversion' | 'status' | 'goal';
+
+export type OutboundPostback = {
+  id?: string;
+  name?: string;
+  priority?: number;
+  enabled?: boolean;
+  provider?: string;
+  url_template?: string;
+  target_event?: string;
+  trigger_kind?: OutboundPostbackTriggerKind;
+  trigger_value?: string;
+  test_event_code?: string;
+  sample_percent?: number;
+  delay_seconds?: number;
+  has_api_token?: boolean;
+  has_signing_secret?: boolean;
+};
+
+export type OutboundPostbackWrite = {
+  name?: string;
+  priority?: number;
+  enabled?: boolean;
+  provider?: string;
+  url_template?: string;
+  api_token?: string;
+  signing_secret?: string;
+  target_event?: string;
+  trigger_kind?: OutboundPostbackTriggerKind;
+  trigger_value?: string;
+  test_event_code?: string;
+  sample_percent?: number;
+  delay_seconds?: number;
+};
+
+export type OutboundPostbackListResponse = {
+  postbacks: OutboundPostback[];
+};
+
+export type ReplaceOutboundPostbacksRequest = {
+  postbacks: OutboundPostbackWrite[];
+};
+
 export type BulkCloneCampaignsRequest = {
   source_campaign_ids: string[];
   customer_id?: string;

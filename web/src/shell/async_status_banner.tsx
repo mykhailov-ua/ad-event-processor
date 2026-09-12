@@ -51,11 +51,7 @@ export function AsyncStatusBanner({
 
   if (phase === 'ready') {
     return (
-      <div
-        aria-live="polite"
-        className={uiMessageSurfaceClass('success')}
-        role="status"
-      >
+      <div aria-live="polite" className={uiMessageSurfaceClass('success')} role="status">
         <p className={adminTypography.body}>{readyLabel}</p>
       </div>
     );

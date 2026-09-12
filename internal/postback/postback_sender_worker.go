@@ -243,24 +243,13 @@ func (w *PostbackWorker) ProcessEvent(ctx context.Context, ev db.OutboxEvent, pr
 		return nil
 	}
 
-	var config db.PostbackConfig
-	if preloadedConfigs != nil {
-		cfg, ok := preloadedConfigs[payload.CampaignID]
-		if !ok {
-			slog.Warn("No postback config found for campaign, marking processed", "campaign_id", payload.CampaignID)
-			return nil
-		}
-		config = cfg
-	} else {
-		var err error
-		config, err = q.GetPostbackConfig(ctx, pgtype.UUID{Bytes: payload.CampaignID, Valid: true})
-		if err != nil {
-			if errors.Is(err, pgx.ErrNoRows) {
-				slog.Warn("No postback config found for campaign, marking processed", "campaign_id", payload.CampaignID)
-				return nil
-			}
-			return fmt.Errorf("failed to get postback config: %w", err)
-		}
+	config, err := w.resolvePostbackConfig(ctx, q, payload, preloadedConfigs)
+	if err != nil {
+		return err
+	}
+	if config == nil {
+		slog.Warn("No postback config found for campaign, marking processed", "campaign_id", payload.CampaignID)
+		return nil
 	}
 
 	provider := strings.ToLower(config.Provider)
@@ -354,6 +343,43 @@ func (w *PostbackWorker) ProcessEvent(ctx context.Context, ev db.OutboxEvent, pr
 		return ErrDispatchFinalizePending
 	}
 	return nil
+}
+
+func (w *PostbackWorker) resolvePostbackConfig(
+	ctx context.Context,
+	q *db.Queries,
+	payload PostbackPayload,
+	preloadedConfigs map[uuid.UUID]db.PostbackConfig,
+) (*db.PostbackConfig, error) {
+	if payload.OutboundPostbackID != uuid.Nil {
+		row, err := q.GetOutboundPostback(ctx, db.GetOutboundPostbackParams{
+			ID:         pgtype.UUID{Bytes: payload.OutboundPostbackID, Valid: true},
+			CampaignID: pgtype.UUID{Bytes: payload.CampaignID, Valid: true},
+		})
+		if err != nil {
+			if errors.Is(err, pgx.ErrNoRows) {
+				return nil, nil
+			}
+			return nil, fmt.Errorf("failed to get outbound postback: %w", err)
+		}
+		cfg := PostbackConfigFromOutbound(db.CampaignOutboundPostbackFromGet(row))
+		return &cfg, nil
+	}
+	if preloadedConfigs != nil {
+		cfg, ok := preloadedConfigs[payload.CampaignID]
+		if !ok {
+			return nil, nil
+		}
+		return &cfg, nil
+	}
+	cfg, err := q.GetPostbackConfig(ctx, pgtype.UUID{Bytes: payload.CampaignID, Valid: true})
+	if err != nil {
+		if errors.Is(err, pgx.ErrNoRows) {
+			return nil, nil
+		}
+		return nil, fmt.Errorf("failed to get postback config: %w", err)
+	}
+	return &cfg, nil
 }
 
 func (w *PostbackWorker) dispatchWithRetry(ctx context.Context, adapter PostbackAdapter, payload *PostbackPayload, urlTemplate, token string, onDelivered func() error) error {

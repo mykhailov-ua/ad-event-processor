@@ -8,6 +8,8 @@ import (
 	"testing"
 	"time"
 
+	"ad-event-processor/pkg/piihash"
+
 	chgo "github.com/ClickHouse/clickhouse-go/v2"
 	"github.com/ClickHouse/clickhouse-go/v2/lib/driver"
 	"github.com/google/uuid"
@@ -63,11 +65,12 @@ func insertImpressionPart(t *testing.T, conn driver.Conn, clickID string, create
 	t.Helper()
 	ctx, cancel := context.WithTimeout(context.Background(), 10*time.Second)
 	defer cancel()
+	hasher := piihash.TestHasher()
 	require.NoError(t, conn.Exec(ctx, `
 INSERT INTO ad_event_processor.impressions
-(click_id, campaign_id, ip_address, user_agent, payload, created_at)
-VALUES (?, ?, '203.0.113.1', 'janitor-test', 'payload-bytes', ?)`,
-		clickID, uuid.New(), createdAt,
+(click_id, campaign_id, ip_hash, ua_hash, pii_salt_version, payload, created_at)
+VALUES (?, ?, ?, ?, ?, 'payload-bytes', ?)`,
+		clickID, uuid.New(), piihash.FixedString16(hasher.HashIP("203.0.113.1")), piihash.FixedString16(hasher.HashUA("janitor-test")), hasher.Version(), createdAt,
 	))
 }
 

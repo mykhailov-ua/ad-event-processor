@@ -60,9 +60,7 @@ export function EmptyState({
       </div>
       <div className={cn('max-w-md', adminSpacing.stack.titleBlock)}>
         <p className={cn('whitespace-normal', adminTypography.sectionTitle)}>{resolvedTitle}</p>
-        <p className={cn('whitespace-normal', adminTypography.bodyMuted)}>
-          {resolvedDescription}
-        </p>
+        <p className={cn('whitespace-normal', adminTypography.bodyMuted)}>{resolvedDescription}</p>
       </div>
       {showAction ? (
         actionHref ? (

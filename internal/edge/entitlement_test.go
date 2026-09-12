@@ -20,7 +20,7 @@ import (
 	"github.com/stretchr/testify/require"
 )
 
-func TestEbpfEdgeLicensed_missingKeyFailsOpen(t *testing.T) {
+func TestEbpfEdgeLicensed_missingKeyFailsClosed(t *testing.T) {
 	mr, err := miniredis.Run()
 	require.NoError(t, err)
 	t.Cleanup(mr.Close)
@@ -28,7 +28,7 @@ func TestEbpfEdgeLicensed_missingKeyFailsOpen(t *testing.T) {
 	redisClient := redis.NewClient(&redis.Options{Addr: mr.Addr()})
 	t.Cleanup(func() { _ = redisClient.Close() })
 
-	assert.True(t, EbpfEdgeLicensed(context.Background(), redisClient))
+	assert.False(t, EbpfEdgeLicensed(context.Background(), redisClient))
 }
 
 func TestEbpfEdgeLicensed_enabled(t *testing.T) {

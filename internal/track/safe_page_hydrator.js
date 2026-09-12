@@ -83,11 +83,11 @@
     window.addEventListener('scroll', onScroll, { passive: true });
     window.addEventListener('touchstart', onTouch, { passive: true });
     window.addEventListener('touchmove', onTouch, { passive: true });
-    if (typeof globalThis.trackTelemetryArm === 'function') {
-      globalThis.trackTelemetryArm();
+    if (typeof globalThis.tagEvArm === 'function') {
+      globalThis.tagEvArm();
     }
-    if (typeof globalThis.trackBiometricsArm === 'function') {
-      globalThis.trackBiometricsArm();
+    if (typeof globalThis.tagInArm === 'function') {
+      globalThis.tagInArm();
     }
   }
 
@@ -244,7 +244,7 @@
 
   function mergeTelemetryEvents() {
     const out = events.slice();
-    const snapFn = globalThis.trackTelemetrySnapshot;
+    const snapFn = globalThis.tagEvSnapshot;
     if (typeof snapFn === 'function') {
       const ext = snapFn();
       if (ext && ext.events && ext.events.length) {
@@ -259,7 +259,7 @@
         }
       }
     }
-    const bioFn = globalThis.trackBiometricsSnapshot;
+    const bioFn = globalThis.tagInSnapshot;
     if (typeof bioFn === 'function') {
       const bio = bioFn();
       if (bio && bio.events && bio.events.length) {
@@ -342,13 +342,13 @@
     const body = {
       campaign_id: campaignId,
       events: mergeTelemetryEvents(),
-      fingerprint: buildFingerprint(),
+      fp: buildFingerprint(),
     };
     if (runtimeDeepProbesEnabled()) {
-      body.fingerprint.runtime_probes = await probeRuntimeDeep();
+      body.fp.runtime_probes = await probeRuntimeDeep();
     }
     if (snap) {
-      body.antifraud = snap;
+      body.ctx = snap;
     }
 
     const resp = await fetch(verifyEndpoint, {
@@ -371,24 +371,24 @@
   function readyForVerify(snap) {
     const dwellOk = performance.now() - armTs >= minDwellMs;
     const motionOk = events.length >= minEvents;
-    const whenReady = globalThis.trackAntifraudWhenReady;
-    const cryptoOk = !whenReady || (snap && snap.telemetry_mac && snap.pow_nonce);
+    const whenReady = globalThis.tagCtxReady;
+    const cryptoOk = !whenReady || (snap && snap.ctx_mac && snap.pow_nonce);
     return dwellOk && motionOk && cryptoOk;
   }
 
   async function gateVerify() {
     const campaignId = parseCampaignId();
     armListeners();
-    if (typeof globalThis.trackAntifraudArm === 'function') {
-      globalThis.trackAntifraudArm(campaignId);
+    if (typeof globalThis.tagCtxArm === 'function') {
+      globalThis.tagCtxArm(campaignId);
     }
-    const whenReady = globalThis.trackAntifraudWhenReady;
+    const whenReady = globalThis.tagCtxReady;
     if (typeof whenReady === 'function') {
       await whenReady();
     }
 
     for (let attempt = 0; attempt < 120; attempt += 1) {
-      const snapFn = globalThis.trackAntifraudSnapshot;
+      const snapFn = globalThis.tagCtxSnapshot;
       const snap = typeof snapFn === 'function' ? snapFn() : null;
       if (readyForVerify(snap)) {
         const result = await requestServerUnlock(campaignId, snap);

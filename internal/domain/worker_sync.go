@@ -466,8 +466,12 @@ func (w *SyncWorker) prepareBudgetEntity(ctx context.Context, prefix, idStr stri
 		return uuid.UUID{}, 0, "", budgetEntityKeys{}, 0, false
 	}
 
+	syncKey := "budget:sync:" + prefix + ":" + idStr
+	if prefix == "campaign" {
+		syncKey = CampaignSyncKey(id)
+	}
 	keys := budgetEntityKeys{
-		syncKey:     "budget:sync:" + prefix + ":" + idStr,
+		syncKey:     syncKey,
 		inFlightKey: "budget:inflight:" + prefix + ":" + idStr,
 		lockKey:     "budget:lock:" + prefix + ":" + idStr,
 		txKey:       "budget:txid:" + prefix + ":" + idStr,

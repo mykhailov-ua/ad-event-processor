@@ -2,10 +2,7 @@ import { useCallback, useMemo, useState } from 'react';
 import { Link } from 'react-router-dom';
 
 import type { CampaignStats } from '@/api/types';
-import {
-  HourlyTrendChart,
-  MetricsSection,
-} from '@/domains/campaigns/list/campaign_metrics_shared';
+import { HourlyTrendChart, MetricsSection } from '@/domains/campaigns/list/campaign_metrics_shared';
 import { ReportKpiGrid } from '@/domains/reports/report_kpi_grid';
 import {
   buildReportColumnOverviewFields,

@@ -85,7 +85,7 @@ remote "mkdir -p '${INSTALL_ROOT}/deploy/marketing' '${INSTALL_ROOT}/deploy/mark
 rsync "${rsync_base[@]}" \
   --exclude '.gitignore' \
   "$ROOT/deploy/marketing/" "${TARGET}:${INSTALL_ROOT}/deploy/marketing/"
-if [[ -d "$ROOT/deploy/marketing/releases" ]] && ls "$ROOT/deploy/marketing/releases"/*.tar.gz >/dev/null 2>&1; then
+if [[ -d "$ROOT/deploy/marketing/releases" ]] && ls "$ROOT/deploy/marketing/releases"/*.tar.gz > /dev/null 2>&1; then
   log "sync installer release tarballs"
   rsync "${rsync_base[@]}" \
     "$ROOT/deploy/marketing/releases/" "${TARGET}:${INSTALL_ROOT}/deploy/marketing/releases/"

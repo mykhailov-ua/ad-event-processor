@@ -48,11 +48,7 @@ export function ExportJobStatusBadge({
   const phase = exportJobPhase(status);
 
   if (phase === 'pending') {
-    return (
-      <Badge variant="outline">
-        Running{elapsed ? ` / ${elapsed}` : '...'}
-      </Badge>
-    );
+    return <Badge variant="outline">Running{elapsed ? ` / ${elapsed}` : '...'}</Badge>;
   }
 
   if (phase === 'completed') {
@@ -92,8 +88,7 @@ export function ExportHubJobLifecycle({
   const phase = exportJobPhase(status);
   const elapsed = useExportJobElapsed(phase === 'pending', startedAtMs);
   const canDownload = exportJobCanDownloadFile(status, { destination, spreadsheetUrl });
-  const canOpenSpreadsheet =
-    phase === 'completed' && Boolean(spreadsheetUrl?.trim());
+  const canOpenSpreadsheet = phase === 'completed' && Boolean(spreadsheetUrl?.trim());
   const canCancel = canCancelKind && exportJobCanCancel(status);
   const sizeSummary =
     phase === 'completed' ? formatExportJobRowSummary(rowLimit, bytes) : undefined;
@@ -156,11 +151,7 @@ export function ExportHubJobLifecycle({
           <Button
             data-testid="export-job-download"
             disabled={exportBusy || !trimmedJobId}
-            title={
-              sizeSummary
-                ? `Download ${sizeSummary}`
-                : 'Download completed export'
-            }
+            title={sizeSummary ? `Download ${sizeSummary}` : 'Download completed export'}
             type="button"
             onClick={onDownloadJob}
           >

@@ -4,13 +4,11 @@ import (
 	"context"
 	"sync/atomic"
 	"testing"
-	"time"
 
 	"github.com/jackc/pgx/v5"
 	"github.com/jackc/pgx/v5/pgxpool"
 	"github.com/testcontainers/testcontainers-go"
 	"github.com/testcontainers/testcontainers-go/modules/postgres"
-	"github.com/testcontainers/testcontainers-go/wait"
 )
 
 type QueryCounter struct {
@@ -42,10 +40,7 @@ func SetupTestDBWithQueryCounter(t testing.TB) (*pgxpool.Pool, *QueryCounter, fu
 		postgres.WithDatabase("testdb"),
 		postgres.WithUsername("user"),
 		postgres.WithPassword("pass"),
-		testcontainers.WithWaitStrategy(
-			wait.ForLog("database system is ready to accept connections").
-				WithOccurrence(2).
-				WithStartupTimeout(15*time.Second)),
+		testcontainers.WithWaitStrategy(PostgresContainerWaitStrategy()),
 	)
 	if err != nil {
 		t.Fatalf("failed to start container: %s", err)
@@ -67,6 +62,7 @@ func SetupTestDBWithQueryCounter(t testing.TB) (*pgxpool.Pool, *QueryCounter, fu
 	if err != nil {
 		t.Fatalf("failed to connect to db: %s", err)
 	}
+	WaitPostgresPoolReady(t, ctx, pool)
 
 	applyIngestionMigrations(t, pool)
 

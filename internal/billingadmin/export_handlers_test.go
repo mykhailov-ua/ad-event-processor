@@ -72,5 +72,5 @@ func TestJobRunner_runJob_timesOut(t *testing.T) {
 	status, ok := runner.GetJob(jobID)
 	require.True(t, ok)
 	require.Equal(t, JobStatusFailed, status.Status)
-	require.Contains(t, status.Error, "deadline exceeded")
+	require.Contains(t, status.Error, "Export timed out while waiting for data")
 }

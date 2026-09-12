@@ -9,6 +9,7 @@ type Limits struct {
 	MaxEventsPerMonth   uint64 `json:"max_events_per_month" yaml:"max_events_per_month"`
 	MaxAPIKeys          uint64 `json:"max_api_keys" yaml:"max_api_keys"`
 	MaxExportChunkBytes uint64 `json:"max_export_chunk_bytes" yaml:"max_export_chunk_bytes"`
+	MaxCostSyncNetworks uint64 `json:"max_cost_sync_networks" yaml:"max_cost_sync_networks"`
 	MaxActivations      uint64 `json:"max_activations" yaml:"max_activations"`
 	QuotaResetTimezone  string `json:"quota_reset_timezone" yaml:"quota_reset_timezone"`
 }
@@ -21,6 +22,7 @@ type FeatureSet struct {
 	MlFraudBoost             bool `json:"ml_fraud_boost" yaml:"ml_fraud_boost"`
 	MultiRegion              bool `json:"multi_region" yaml:"multi_region"`
 	SlotMigration            bool `json:"slot_migration" yaml:"slot_migration"`
+	BrokerWal                bool `json:"broker_wal" yaml:"broker_wal"`
 	MarginGuard              bool `json:"margin_guard" yaml:"margin_guard"`
 	ExternalResidentialIntel bool `json:"external_residential_intel" yaml:"external_residential_intel"`
 	ModeratorIntelFeed       bool `json:"moderator_intel_feed" yaml:"moderator_intel_feed"`
@@ -43,6 +45,7 @@ type LimitsDTO struct {
 	MaxEventsPerMonth   uint64 `json:"max_events_per_month"`
 	MaxAPIKeys          uint64 `json:"max_api_keys"`
 	MaxExportChunkBytes uint64 `json:"max_export_chunk_bytes"`
+	MaxCostSyncNetworks uint64 `json:"max_cost_sync_networks"`
 	MaxActivations      uint64 `json:"max_activations"`
 	QuotaResetTimezone  string `json:"quota_reset_timezone"`
 }
@@ -55,6 +58,7 @@ type FeatureSetDTO struct {
 	MlFraudBoost             bool `json:"ml_fraud_boost"`
 	MultiRegion              bool `json:"multi_region"`
 	SlotMigration            bool `json:"slot_migration"`
+	BrokerWal                bool `json:"broker_wal"`
 	MarginGuard              bool `json:"margin_guard"`
 	ExternalResidentialIntel bool `json:"external_residential_intel"`
 	ModeratorIntelFeed       bool `json:"moderator_intel_feed"`

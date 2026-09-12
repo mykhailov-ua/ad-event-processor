@@ -9,7 +9,10 @@ const EXPORT_SERVER_MESSAGE =
   'The server could not complete the export. Try again later or contact support.';
 const EXPORT_VALIDATION_FALLBACK = 'Check the form fields and try again.';
 
-export function exportHubErrorMessage(error: unknown, fallback = EXPORT_VALIDATION_FALLBACK): string {
+export function exportHubErrorMessage(
+  error: unknown,
+  fallback = EXPORT_VALIDATION_FALLBACK
+): string {
   if (error instanceof ApiError) {
     if (error.code === 'TIMEOUT' || (error.status === 0 && error.code === 'TIMEOUT')) {
       return EXPORT_TIMEOUT_MESSAGE;

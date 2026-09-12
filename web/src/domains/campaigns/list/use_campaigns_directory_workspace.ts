@@ -80,6 +80,7 @@ export function useCampaignsDirectoryWorkspace({
   });
   const [cloneOpen, setCloneOpen] = useState(false);
   const [bulkCloneOpen, setBulkCloneOpen] = useState(false);
+  const [bulkPatchOpen, setBulkPatchOpen] = useState(false);
   const [archiveOpen, setArchiveOpen] = useState(false);
   const [bulkBusy, setBulkBusy] = useState(false);
   const [exportBusy, setExportBusy] = useState(false);
@@ -234,6 +235,7 @@ export function useCampaignsDirectoryWorkspace({
     archiveOpen,
     bulkBusy,
     bulkCloneOpen,
+    bulkPatchOpen,
     cloneOpen,
     exportBusy,
     importOpen,
@@ -249,6 +251,7 @@ export function useCampaignsDirectoryWorkspace({
     selectedIdsList,
     setArchiveOpen,
     setBulkCloneOpen,
+    setBulkPatchOpen,
     setCloneOpen,
     setImportOpen,
     setSelectedIds,

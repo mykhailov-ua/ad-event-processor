@@ -65,11 +65,11 @@ func (s *Service) EnforceDeploymentCampaignCap(ctx context.Context) error {
 		return nil
 	}
 	limits, state, ok := s.host.DeploymentLimits()
+	if err := requireActiveLicense(s.host, state, ok); err != nil {
+		return err
+	}
 	if !ok {
 		return nil
-	}
-	if state == licensing.StateExpired || state == licensing.StateRevoked {
-		return s.host.ErrValidation("license not active")
 	}
 	maxActive := limits.MaxActiveCampaigns
 	if maxActive == 0 {
@@ -82,7 +82,32 @@ func (s *Service) EnforceDeploymentCampaignCap(ctx context.Context) error {
 		return fmt.Errorf("count deployment active campaigns: %w", err)
 	}
 	if uint64(active) >= maxActive {
+		recordCapReject("active_campaigns")
 		return ErrDeploymentCampaignLimit
 	}
 	return nil
+}
+
+func (s *Service) EnforceDeploymentTenantCap(ctx context.Context) error {
+	return EnforceDeploymentTenantCap(ctx, s.host)
+}
+
+func (s *Service) EnforceDeploymentAPIKeyCap(ctx context.Context) error {
+	return EnforceDeploymentAPIKeyCap(ctx, s.host)
+}
+
+func (s *Service) EnforceDeploymentExportAllowed() error {
+	return EnforceDeploymentExportAllowed(s.host)
+}
+
+func (s *Service) EnforceDeploymentRegionCap(ctx context.Context, regionCode int16) error {
+	return EnforceDeploymentRegionCap(ctx, s.host, regionCode)
+}
+
+func (s *Service) EnforceDeploymentMonthlyEventsCap(ctx context.Context) error {
+	return EnforceDeploymentMonthlyEventsCap(ctx, s.host)
+}
+
+func (s *Service) DeploymentLimitUsage(ctx context.Context) (DeploymentLimitUsage, error) {
+	return DeploymentLimitUsageSnapshot(ctx, s.host)
 }

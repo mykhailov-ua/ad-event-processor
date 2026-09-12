@@ -89,13 +89,13 @@ export function PostbackConfigForm({
   return (
     <FilterPanel>
       <h2 className={adminTypography.sectionTitle}>Upsert postback config</h2>
-      <p className={adminTypography.bodyMuted} >
+      <p className={adminTypography.bodyMuted}>
         API token is encrypted at rest. Leave token empty on update to keep the existing value.
         Click a config row below to prefill this form.
       </p>
 
       <DirectoryFilterForm layout="auto-fill" onSubmit={(event) => event.preventDefault()}>
-        <div className="grid gap-2 md:col-span-2" >
+        <div className="grid gap-2 md:col-span-2">
           <Label htmlFor="postback-campaign-id">Campaign ID</Label>
           <Input
             id="postback-campaign-id"
@@ -103,7 +103,7 @@ export function PostbackConfigForm({
             onChange={(event) => onDraftCampaignIdChange(event.target.value)}
           />
         </div>
-        <div className="grid gap-2" >
+        <div className="grid gap-2">
           <Label htmlFor="postback-provider">Provider</Label>
           <Select value={draftProvider} onValueChange={onDraftProviderChange}>
             <SelectTrigger className="w-full" id="postback-provider">
@@ -118,7 +118,7 @@ export function PostbackConfigForm({
             </SelectContent>
           </Select>
         </div>
-        <div className="grid gap-2" >
+        <div className="grid gap-2">
           <Label htmlFor="postback-target-event">Target event</Label>
           <Input
             id="postback-target-event"
@@ -126,7 +126,7 @@ export function PostbackConfigForm({
             onChange={(event) => onDraftTargetEventChange(event.target.value)}
           />
         </div>
-        <div className="grid gap-2 md:col-span-2" >
+        <div className="grid gap-2 md:col-span-2">
           <Label htmlFor="postback-url-template">URL template</Label>
           <Input
             id="postback-url-template"
@@ -141,10 +141,10 @@ export function PostbackConfigForm({
             }
           />
           {urlTemplateHint ? (
-            <p className={adminTypography.captionPlain} >{urlTemplateHint}</p>
+            <p className={adminTypography.captionPlain}>{urlTemplateHint}</p>
           ) : null}
         </div>
-        <div className="grid gap-2 md:col-span-2" >
+        <div className="grid gap-2 md:col-span-2">
           <Label htmlFor="postback-api-token">API token</Label>
           <PasswordInput
             id="postback-api-token"
@@ -153,7 +153,7 @@ export function PostbackConfigForm({
             onChange={(event) => onDraftApiTokenChange(event.target.value)}
           />
         </div>
-        <div className="grid gap-2 md:col-span-2" >
+        <div className="grid gap-2 md:col-span-2">
           <Label htmlFor="postback-test-event-code">Test event code</Label>
           <Input
             id="postback-test-event-code"
@@ -174,9 +174,7 @@ export function PostbackConfigForm({
       ) : null}
       {saveError ? integrationsPanelError(saveError, 'Save failed') : null}
       {testError ? integrationsPanelError(testError, 'Dry-run failed') : null}
-      {saveSuccess ? (
-        <p>Config saved. List refreshed.</p>
-      ) : null}
+      {saveSuccess ? <p>Config saved. List refreshed.</p> : null}
       {testResult ? (
         <div>
           <p>
@@ -185,7 +183,7 @@ export function PostbackConfigForm({
           {testResult.http_status != null ? <p>HTTP status: {testResult.http_status}</p> : null}
           {testResult.error ? <p>{testResult.error}</p> : null}
           {testResult.rendered_url ? (
-            <p className="text-destructive" >{testResult.rendered_url}</p>
+            <p className="text-destructive">{testResult.rendered_url}</p>
           ) : null}
         </div>
       ) : null}

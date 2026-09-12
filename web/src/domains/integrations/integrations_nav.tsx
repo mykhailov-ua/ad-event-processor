@@ -21,6 +21,8 @@ export const INTEGRATIONS_NAV_ITEMS: SectionNavItem[] = [
   { path: '/integrations/platform-campaigns', label: 'Platform links' },
   { path: '/integrations/affiliate-presets', label: 'Affiliate presets' },
   { path: '/integrations/google-sheets', label: 'Google Sheets' },
+  { path: '/integrations/traffic-optimizer', label: 'Traffic optimizer' },
+  { path: '/integrations/margin-guard', label: 'Margin guard' },
 ];
 
 export function IntegrationsNav() {

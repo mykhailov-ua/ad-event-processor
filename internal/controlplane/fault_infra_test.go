@@ -5,6 +5,7 @@ import (
 	"testing"
 	"time"
 
+	"ad-event-processor/internal/database"
 	"ad-event-processor/internal/testutil"
 
 	"github.com/jackc/pgx/v5/pgxpool"
@@ -13,7 +14,6 @@ import (
 	"github.com/testcontainers/testcontainers-go"
 	"github.com/testcontainers/testcontainers-go/modules/postgres"
 	rediscontainer "github.com/testcontainers/testcontainers-go/modules/redis"
-	"github.com/testcontainers/testcontainers-go/wait"
 )
 
 const faultContainerStopTimeout = 10 * time.Second
@@ -34,10 +34,7 @@ func setupControlFaultInfra(t *testing.T) (*controlFaultInfra, func()) {
 		postgres.WithDatabase("control_fault_db"),
 		postgres.WithUsername("user"),
 		postgres.WithPassword("pass"),
-		testcontainers.WithWaitStrategy(
-			wait.ForLog("database system is ready to accept connections").
-				WithOccurrence(2).
-				WithStartupTimeout(20*time.Second)),
+		testcontainers.WithWaitStrategy(database.PostgresContainerWaitStrategy()),
 	)
 	require.NoError(t, err)
 

@@ -22,7 +22,10 @@ import {
   validationError,
   type AdminValidationError,
 } from '@/lib/admin_validation_error';
-import { SMART_ALERT_TEMPLATE_OPTIONS, buildUpsertSmartAlertRuleFromTemplate } from '@/domains/alerts/smart_alerts_templates';
+import {
+  SMART_ALERT_TEMPLATE_OPTIONS,
+  buildUpsertSmartAlertRuleFromTemplate,
+} from '@/domains/alerts/smart_alerts_templates';
 
 const HISTORY_PAGE_SIZE = 25;
 
@@ -54,7 +57,9 @@ export function useSmartAlertsPageWorkspace() {
   const [historyPage, setHistoryPage] = useState(0);
   const [saving, setSaving] = useState(false);
   const [ackingEventId, setAckingEventId] = useState<string | undefined>();
-  const [formValidationError, setFormValidationError] = useState<AdminValidationError | undefined>();
+  const [formValidationError, setFormValidationError] = useState<
+    AdminValidationError | undefined
+  >();
 
   const canManage = sessionHasPermission(user?.permissions, 'campaigns:write');
   const trimmedCustomerId = customerId.trim();
@@ -151,14 +156,17 @@ export function useSmartAlertsPageWorkspace() {
       toastValidationError(webhookCheck.error);
       return;
     }
-    const body = buildUpsertSmartAlertRuleFromTemplate(templateCheck.value as SmartAlertRuleTemplate, {
-      customer_id: customerIdCheck.value,
-      name: draft.name.trim() || undefined,
-      threshold: thresholdValue,
-      campaign_id: draft.campaignId.trim() || undefined,
-      webhook_url: webhookCheck.value,
-      enabled: draft.enabled,
-    });
+    const body = buildUpsertSmartAlertRuleFromTemplate(
+      templateCheck.value as SmartAlertRuleTemplate,
+      {
+        customer_id: customerIdCheck.value,
+        name: draft.name.trim() || undefined,
+        threshold: thresholdValue,
+        campaign_id: draft.campaignId.trim() || undefined,
+        webhook_url: webhookCheck.value,
+        enabled: draft.enabled,
+      }
+    );
     setSaving(true);
     try {
       if (selectedRuleId) {

@@ -1,3 +1,5 @@
+import { Link } from 'react-router-dom';
+
 import { ApiError } from '@/api/client';
 import { userErrorMessage } from '@/lib/admin_error';
 import { ErrorBlock } from '@/shell/error_block';
@@ -27,14 +29,36 @@ export function panelError(error: Error, title: string, options: PanelErrorOptio
       />
     );
   }
-  if (
-    error instanceof ApiError &&
-    (error.status === 403 || error.code === 'FEATURE_REQUIRED')
-  ) {
+  if (error instanceof ApiError && error.code === 'LIMIT_EXCEEDED') {
     return (
       <StubBanner
-        title={options.forbiddenTitle ?? (error.code === 'FEATURE_REQUIRED' ? 'License required' : `${title} forbidden`)}
-        message={userErrorMessage(error)}
+        title="License limit reached"
+        message={
+          <>
+            {userErrorMessage(error)} Upgrade your plan in <Link to="/settings">Settings</Link> to
+            raise cost-sync or deployment limits.
+          </>
+        }
+      />
+    );
+  }
+  if (error instanceof ApiError && (error.status === 403 || error.code === 'FEATURE_REQUIRED')) {
+    return (
+      <StubBanner
+        title={
+          options.forbiddenTitle ??
+          (error.code === 'FEATURE_REQUIRED' ? 'License required' : `${title} forbidden`)
+        }
+        message={
+          error.code === 'FEATURE_REQUIRED' ? (
+            <>
+              {userErrorMessage(error)} Open <Link to="/settings">Settings</Link> to review your
+              license tier.
+            </>
+          ) : (
+            userErrorMessage(error)
+          )
+        }
       />
     );
   }

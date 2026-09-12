@@ -14,13 +14,13 @@ func TestResolveBrowserPixel_prefersLanderFirstPartyPath(t *testing.T) {
 	if !bundle.FirstParty {
 		t.Fatal("expected first-party")
 	}
-	if bundle.ScriptURL != "https://lp.example.com/_aed/track.js" {
+	if bundle.ScriptURL != "https://lp.example.com/_aed/tag.js" {
 		t.Fatalf("script url %q", bundle.ScriptURL)
 	}
 	if bundle.TrackURL != "https://trk.example.com/track" {
 		t.Fatalf("track url %q", bundle.TrackURL)
 	}
-	if !strings.Contains(bundle.Snippet, "/_aed/track.js") {
+	if !strings.Contains(bundle.Snippet, "/_aed/tag.js") {
 		t.Fatalf("snippet %q", bundle.Snippet)
 	}
 	if !strings.Contains(bundle.Snippet, "conversionEventId") {
@@ -33,7 +33,7 @@ func TestResolveBrowserPixel_trackerStaticWithoutLander(t *testing.T) {
 	if bundle.FirstParty {
 		t.Fatal("unexpected first-party")
 	}
-	if bundle.ScriptURL != "https://trk.example.com/static/track.js" {
+	if bundle.ScriptURL != "https://trk.example.com/static/tag.js" {
 		t.Fatalf("script url %q", bundle.ScriptURL)
 	}
 }

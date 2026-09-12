@@ -42,7 +42,6 @@ export function PaginationPages({
             key={pageNumber}
             aria-current={active ? 'page' : undefined}
             aria-label={`Page ${pageNumber}`}
-           
             disabled={disabled}
             type="button"
             variant={active ? 'default' : 'outline'}

@@ -14,12 +14,14 @@ skus:
       ml_fraud_boost: false
       multi_region: false
       slot_migration: false
-      margin_guard: true
+      margin_guard: false
+      broker_wal: false
       external_residential_intel: false
       moderator_intel_feed: false
       ad_platform_campaign_api: false
       fraud_dispute_evidence: false
     limits:
+      max_cost_sync_networks: 3
       max_activations: 1
       max_regions: 1
       max_api_keys: 5
@@ -46,11 +48,13 @@ skus:
       multi_region: false
       slot_migration: false
       margin_guard: true
+      broker_wal: false
       external_residential_intel: false
       moderator_intel_feed: false
       ad_platform_campaign_api: false
       fraud_dispute_evidence: false
     limits:
+      max_cost_sync_networks: 15
       max_activations: 1
       max_regions: 1
       max_api_keys: 10
@@ -77,11 +81,13 @@ skus:
       multi_region: false
       slot_migration: true
       margin_guard: true
+      broker_wal: true
       external_residential_intel: true
       moderator_intel_feed: true
       ad_platform_campaign_api: false
       fraud_dispute_evidence: true
     limits:
+      max_cost_sync_networks: 999999
       max_activations: 3
       max_regions: 1
       max_api_keys: 25
@@ -108,11 +114,13 @@ skus:
       multi_region: true
       slot_migration: true
       margin_guard: true
+      broker_wal: true
       external_residential_intel: true
       moderator_intel_feed: true
       ad_platform_campaign_api: false
       fraud_dispute_evidence: true
     limits:
+      max_cost_sync_networks: 999999
       max_activations: 10
       max_regions: 3
       max_api_keys: 50
@@ -139,11 +147,13 @@ skus:
       multi_region: true
       slot_migration: true
       margin_guard: true
+      broker_wal: true
       external_residential_intel: true
       moderator_intel_feed: true
       ad_platform_campaign_api: true
       fraud_dispute_evidence: true
     limits:
+      max_cost_sync_networks: 999999
       max_activations: 99
       max_regions: 99
       max_api_keys: 999
@@ -170,12 +180,14 @@ skus:
       ml_fraud_boost: false
       multi_region: false
       slot_migration: false
-      margin_guard: true
+      margin_guard: false
+      broker_wal: false
       external_residential_intel: false
       moderator_intel_feed: false
       ad_platform_campaign_api: false
       fraud_dispute_evidence: false
     limits:
+      max_cost_sync_networks: 0
       max_activations: 1
       max_regions: 1
       max_api_keys: 3
@@ -201,11 +213,13 @@ skus:
       multi_region: true
       slot_migration: true
       margin_guard: true
+      broker_wal: true
       external_residential_intel: true
       moderator_intel_feed: true
       ad_platform_campaign_api: true
       fraud_dispute_evidence: true
     limits:
+      max_cost_sync_networks: 999999
       max_activations: 999
       max_regions: 99
       max_api_keys: 999

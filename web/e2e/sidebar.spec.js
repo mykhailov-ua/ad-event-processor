@@ -1,6 +1,11 @@
 import { test, expect } from '@playwright/test';
 
-import { isApiGet, loginAsAdmin, openAppNavigation, skipUnlessIntegrationReady } from './helpers.js';
+import {
+  isApiGet,
+  loginAsAdmin,
+  openAppNavigation,
+  skipUnlessIntegrationReady,
+} from './helpers.js';
 
 const NAV_LABELS = ['Dashboard', 'Campaigns', 'Users', 'Billing', 'Maintenance'];
 

@@ -1,7 +1,9 @@
 import {
   bulkCampaignAction,
+  bulkCampaignPatch,
   summarizeCampaignBulkResults,
   type CampaignBulkAction,
+  type CampaignBulkPatchFields,
 } from '@/api/campaigns_api';
 import { CAMPAIGN_LIST_BULK_CHUNK_SIZE } from '@/domains/campaigns/list/campaign_list_limits';
 
@@ -57,4 +59,37 @@ export async function bulkPauseOrResumeCampaigns(
 
 export async function archiveCampaigns(campaignIds: string[]): Promise<CampaignBulkActionResult> {
   return bulkCampaignActionChunked('archive', campaignIds);
+}
+
+async function bulkCampaignPatchChunked(
+  patch: CampaignBulkPatchFields,
+  campaignIds: string[]
+): Promise<CampaignBulkActionResult> {
+  if (campaignIds.length === 0) {
+    return { succeeded: [], failed: [] };
+  }
+
+  const chunkResults = await runInChunks(campaignIds, CAMPAIGN_LIST_BULK_CHUNK_SIZE, (chunk) =>
+    bulkCampaignPatch({ campaign_ids: chunk, patch })
+  );
+
+  const succeeded: string[] = [];
+  const failed: { id: string; error: string }[] = [];
+  for (const response of chunkResults) {
+    const summary = summarizeCampaignBulkResults(response.results);
+    for (const row of summary.succeeded) {
+      succeeded.push(row.id);
+    }
+    for (const row of summary.failed) {
+      failed.push({ id: row.id, error: row.error_code ?? 'BULK_PATCH_FAILED' });
+    }
+  }
+  return { succeeded, failed };
+}
+
+export async function bulkPatchCampaigns(
+  campaignIds: string[],
+  patch: CampaignBulkPatchFields
+): Promise<CampaignBulkActionResult> {
+  return bulkCampaignPatchChunked(patch, campaignIds);
 }

@@ -510,7 +510,7 @@ if ! rg -q "prefix: '/disputes'" web/src/lib/route_permissions.ts 2> /dev/null; 
 fi
 
 echo "ui slop: EH-ST1 fake empty list ban"
-if rg -n 'Promise\.resolve\(\[\]' web/src/domains web/src/pages --glob '*.ts' --glob '*.tsx' 2>/dev/null; then
+if rg -n 'Promise\.resolve\(\[\]' web/src/domains web/src/pages --glob '*.ts' --glob '*.tsx' 2> /dev/null; then
   echo "Error: UI slop - Promise.resolve([]) banned (EH-ST1); use undefined + hasSnapshot"
   failed=1
 fi
