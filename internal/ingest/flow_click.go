@@ -33,7 +33,7 @@ func (h *AdsPacketHandler) selectFlowLandingWithClickCaps(evt *domain.Event) (la
 		Now:        time.Now(),
 	}
 	const maxAttempts = 8
-	for attempt := 0; attempt < maxAttempts; attempt++ {
+	for range maxAttempts {
 		sel, landerURL, picked := h.campaignFlowTable.SelectForEventExcludingWithRotation(
 			evt.CampaignID, UnsafeBytes(uid), evt, exclude, rot,
 		)

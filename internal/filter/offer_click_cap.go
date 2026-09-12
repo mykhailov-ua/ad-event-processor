@@ -100,7 +100,7 @@ func loadOfferClickCounts(ctx context.Context, rdb redis.UniversalClient, offerI
 
 func parseRedisInt64(s string) (int64, error) {
 	var n int64
-	for i := 0; i < len(s); i++ {
+	for i := range len(s) {
 		c := s[i]
 		if c < '0' || c > '9' {
 			return 0, fmt.Errorf("invalid integer")

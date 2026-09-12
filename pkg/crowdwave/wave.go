@@ -93,7 +93,7 @@ func countSimhashNeighbors(entries []WaveEntry, maxDist int) int {
 		return 0
 	}
 	neighbors := 0
-	for i := 0; i < len(entries); i++ {
+	for i := range len(entries) {
 		if entries[i].Simhash == 0 {
 			continue
 		}

@@ -493,7 +493,7 @@ Competitor refs: Binom **update costs** rules; Keitaro **cost sync** (FB/Google/
 
 **DoD:**
 
-- [ ] Keitaro stream -> `campaign_groups` or flow mapping documented
+- [x] Keitaro stream -> `campaign_groups` or flow mapping documented
 - [ ] Import wizard UI step with dry-run counts
 - [ ] Verify: fixture import test
 
@@ -560,6 +560,7 @@ Use on competitive matrix; not implementation tasks.
 | **W4** | PARITY-LANDER-WYSIWYG-BUILDER, PARITY-WORDPRESS-PLUGIN, PARITY-RULES-FROM-REPORTS | Retention / long tail |
 | **W5** | PARITY-ROTATION-TOP-TO-BOTTOM, PARITY-POSTBACK-SAMPLING-PCT, PARITY-CLICK-API tail | Rotation + outbound sampling + API hardening |
 | **W6** | PARITY-DELAYED-POSTBACKS, PARITY-OFFER-WALL (option B), admin/live_routes verify closure | Delayed S2S + marketing honesty + gate closure |
+| **W7** | PARITY-CAMPAIGN-STREAMS-GROUPS | Keitaro stream analogue via `campaign_groups` + report `group_id` |
 
 ---
 
@@ -587,3 +588,4 @@ Use on competitive matrix; not implementation tasks.
 | 2026-09-12 | W3 tails: margin guard UI, cost-sync LIMIT_EXCEEDED CTA, true-ROI masked compare fix, optimizer apply endpoint |
 | 2026-09-12 | P1 closure: payout ledger, bulk flow weights, manual cost API/UI, Binom status scheme import, tracker SDK, LP local serve docs, OpenAPI mutation coverage script |
 | 2026-09-12 | W6: delayed outbound postbacks (`delay_seconds`, `outbox_events.not_before`); offer-wall marketing reword; `web.sh` + `live_routes.sh` green |
+| 2026-09-12 | W7: `campaign_groups` CRUD + bulk assign; `campaign_group_id` list filter; click-log `group_id`; Keitaro stream mapping doc |

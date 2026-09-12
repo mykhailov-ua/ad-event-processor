@@ -228,7 +228,7 @@ func matchAntifraudScalarKey(key []byte, lit string) bool {
 	if len(key) != len(lit) {
 		return false
 	}
-	for i := 0; i < len(lit); i++ {
+	for i := range len(lit) {
 		if key[i] != lit[i] {
 			return false
 		}
@@ -272,7 +272,7 @@ func parseAntifraudHexHash(data []byte, start, n int, bud *jsonScanBudget, dst *
 	}
 	raw := data[valStart : end-1]
 	*dst = [16]byte{}
-	for j := 0; j < 16 && j < len(raw); j++ {
+	for j := range min(16, len(raw)) {
 		dst[j] = raw[j]
 	}
 	return end, len(raw) >= 4
@@ -312,7 +312,7 @@ func parseAntifraudTelemetryMAC(data []byte, start, n int, bud *jsonScanBudget, 
 		return start, false
 	}
 	*dst = [32]byte{}
-	for j := 0; j < 32; j++ {
+	for j := range 32 {
 		dst[j] = raw[j]
 	}
 	return end, true

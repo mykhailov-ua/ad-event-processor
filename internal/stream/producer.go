@@ -177,7 +177,7 @@ func NewStreamProducer(
 	}
 	p.wg.Add(1)
 	go p.worker()
-	for i := 0; i < 8; i++ {
+	for range 8 {
 		buf := make([]byte, 0, 2048)
 		codec.ByteBufPool.Put(&buf)
 	}

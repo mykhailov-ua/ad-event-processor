@@ -318,10 +318,10 @@ func (r *ResidentialProxyRing) SeedForTest(campaignID uuid.UUID, row Residential
 		cell.userHashes[i].Store(0)
 		cell.uaHashes[i].Store(0)
 	}
-	for i := 0; i < row.UniqueUsers && i < residentialProxyDistinct; i++ {
+	for i := range min(row.UniqueUsers, residentialProxyDistinct) {
 		cell.userHashes[i].Store(uint32(i + 1))
 	}
-	for i := 0; i < row.UniqueUAs && i < residentialProxyDistinct; i++ {
+	for i := range min(row.UniqueUAs, residentialProxyDistinct) {
 		cell.uaHashes[i].Store(uint32(i + 1000))
 	}
 }

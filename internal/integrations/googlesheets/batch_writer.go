@@ -163,7 +163,7 @@ func (w *batchWriter) valuesBatchUpdateURL() string {
 
 func (w *batchWriter) doWithBackoff(ctx context.Context, method, url string, body []byte) error {
 	backoff := 500 * time.Millisecond
-	for attempt := 0; attempt < 5; attempt++ {
+	for attempt := range 5 {
 		req, err := http.NewRequestWithContext(ctx, method, url, strings.NewReader(string(body)))
 		if err != nil {
 			return err

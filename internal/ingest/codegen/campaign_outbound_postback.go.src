@@ -1,0 +1,61 @@
+package db
+
+func CampaignOutboundPostbackFromList(row ListOutboundPostbacksByCampaignRow) CampaignOutboundPostback {
+	return CampaignOutboundPostback{
+		ID: row.ID, CampaignID: row.CampaignID, Name: row.Name, Priority: row.Priority,
+		Enabled: row.Enabled, Provider: row.Provider, UrlTemplate: row.UrlTemplate,
+		ApiTokenEncrypted: row.ApiTokenEncrypted, TargetEvent: row.TargetEvent,
+		TriggerKind: row.TriggerKind, TriggerValue: row.TriggerValue,
+		TestEventCode: row.TestEventCode, SigningSecretEncrypted: row.SigningSecretEncrypted,
+		SamplePercent: row.SamplePercent, DelaySeconds: row.DelaySeconds,
+		CreatedAt: row.CreatedAt, UpdatedAt: row.UpdatedAt,
+	}
+}
+
+func CampaignOutboundPostbackFromListIDs(row ListOutboundPostbacksByCampaignIDsRow) CampaignOutboundPostback {
+	return CampaignOutboundPostback{
+		ID: row.ID, CampaignID: row.CampaignID, Name: row.Name, Priority: row.Priority,
+		Enabled: row.Enabled, Provider: row.Provider, UrlTemplate: row.UrlTemplate,
+		ApiTokenEncrypted: row.ApiTokenEncrypted, TargetEvent: row.TargetEvent,
+		TriggerKind: row.TriggerKind, TriggerValue: row.TriggerValue,
+		TestEventCode: row.TestEventCode, SigningSecretEncrypted: row.SigningSecretEncrypted,
+		SamplePercent: row.SamplePercent, DelaySeconds: row.DelaySeconds,
+		CreatedAt: row.CreatedAt, UpdatedAt: row.UpdatedAt,
+	}
+}
+
+func CampaignOutboundPostbackFromGet(row GetOutboundPostbackRow) CampaignOutboundPostback {
+	return CampaignOutboundPostback{
+		ID: row.ID, CampaignID: row.CampaignID, Name: row.Name, Priority: row.Priority,
+		Enabled: row.Enabled, Provider: row.Provider, UrlTemplate: row.UrlTemplate,
+		ApiTokenEncrypted: row.ApiTokenEncrypted, TargetEvent: row.TargetEvent,
+		TriggerKind: row.TriggerKind, TriggerValue: row.TriggerValue,
+		TestEventCode: row.TestEventCode, SigningSecretEncrypted: row.SigningSecretEncrypted,
+		SamplePercent: row.SamplePercent, DelaySeconds: row.DelaySeconds,
+		CreatedAt: row.CreatedAt, UpdatedAt: row.UpdatedAt,
+	}
+}
+
+func CampaignOutboundPostbackFromInsert(row InsertOutboundPostbackRow) CampaignOutboundPostback {
+	return CampaignOutboundPostback{
+		ID: row.ID, CampaignID: row.CampaignID, Name: row.Name, Priority: row.Priority,
+		Enabled: row.Enabled, Provider: row.Provider, UrlTemplate: row.UrlTemplate,
+		ApiTokenEncrypted: row.ApiTokenEncrypted, TargetEvent: row.TargetEvent,
+		TriggerKind: row.TriggerKind, TriggerValue: row.TriggerValue,
+		TestEventCode: row.TestEventCode, SigningSecretEncrypted: row.SigningSecretEncrypted,
+		SamplePercent: row.SamplePercent, DelaySeconds: row.DelaySeconds,
+		CreatedAt: row.CreatedAt, UpdatedAt: row.UpdatedAt,
+	}
+}
+
+func CampaignOutboundPostbackFromUpdate(row UpdateOutboundPostbackRow) CampaignOutboundPostback {
+	return CampaignOutboundPostback{
+		ID: row.ID, CampaignID: row.CampaignID, Name: row.Name, Priority: row.Priority,
+		Enabled: row.Enabled, Provider: row.Provider, UrlTemplate: row.UrlTemplate,
+		ApiTokenEncrypted: row.ApiTokenEncrypted, TargetEvent: row.TargetEvent,
+		TriggerKind: row.TriggerKind, TriggerValue: row.TriggerValue,
+		TestEventCode: row.TestEventCode, SigningSecretEncrypted: row.SigningSecretEncrypted,
+		SamplePercent: row.SamplePercent, DelaySeconds: row.DelaySeconds,
+		CreatedAt: row.CreatedAt, UpdatedAt: row.UpdatedAt,
+	}
+}

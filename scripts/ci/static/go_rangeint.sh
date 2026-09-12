@@ -10,7 +10,8 @@ cd "$ROOT"
 
 pattern='for ([a-zA-Z_][a-zA-Z0-9_]*) := 0; \1 < [^;]+; \1\+\+'
 allowlist=(
-  internal/openrtb/parse26_scan.go:115
+  internal/openrtb/parse26_scan.go:116
+  internal/track/click_query.go:292
   internal/filter/netintel/residential_proxy.go:314
   internal/filter/netintel/residential_proxy.go:317
   internal/track/ip_rotation.go:84

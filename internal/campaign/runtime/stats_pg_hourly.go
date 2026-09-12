@@ -41,7 +41,7 @@ func pgHourlyWeights(campaignID uuid.UUID) [24]float64 {
 	var weights [24]float64
 	seed := int(campaignID[0]) + int(campaignID[7])*3 + int(campaignID[15])*11
 	var sum float64
-	for h := 0; h < 24; h++ {
+	for h := range 24 {
 		peak := 0.45 + 0.55*math.Sin(float64(h-10)*math.Pi/12.0)
 		if peak < 0.12 {
 			peak = 0.12
@@ -54,7 +54,7 @@ func pgHourlyWeights(campaignID uuid.UUID) [24]float64 {
 		weights[0] = 1
 		return weights
 	}
-	for h := 0; h < 24; h++ {
+	for h := range 24 {
 		weights[h] /= sum
 	}
 	return weights

@@ -59,13 +59,6 @@ func markRotationSeen(ctx context.Context, rdb redis.UniversalClient, key, membe
 	return err
 }
 
-func clearRotationSeen(ctx context.Context, rdb redis.UniversalClient, key string) error {
-	if rdb == nil || key == "" {
-		return nil
-	}
-	return rdb.Del(ctx, key).Err()
-}
-
 func selectUnseenLander(
 	landers []FlowLanderEntry,
 	seen map[string]struct{},

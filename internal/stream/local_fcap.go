@@ -37,7 +37,7 @@ func (l *LocalFcapLedger) cellFor(lookup uint64) *LocalFcapCell {
 		return &l.cells[0]
 	}
 	idx := lookup & localFcapSlotMask
-	for probe := 0; probe < localFcapMaxProbe; probe++ {
+	for probe := range localFcapMaxProbe {
 		cell := &l.cells[(idx+uint64(probe))&localFcapSlotMask]
 		if cell.lookupKey == lookup || cell.lookupKey == 0 {
 			return cell

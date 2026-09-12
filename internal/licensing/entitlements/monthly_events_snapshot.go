@@ -115,6 +115,6 @@ func MonthlyEventsIngestAllowed(limits Limits, state LicenseState, licensed bool
 	return used < limits.MaxEventsPerMonth
 }
 
-func limitMonthlyEventsUnlimited(max uint64) bool {
-	return max == 0 || max >= 999999
+func limitMonthlyEventsUnlimited(limit uint64) bool {
+	return limit == 0 || limit >= 999999
 }

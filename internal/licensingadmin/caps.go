@@ -34,8 +34,8 @@ type DeploymentLimitUsage struct {
 	EventsMonth *LimitUsage `json:"events_month,omitempty"`
 }
 
-func limitUnlimited(max uint64) bool {
-	return max == 0 || max >= 999999
+func limitUnlimited(limit uint64) bool {
+	return limit == 0 || limit >= 999999
 }
 
 func requireActiveLicense(host CapHost, state licensing.LicenseState, ok bool) error {
@@ -156,15 +156,15 @@ func EnforceCostSyncNetworkCap(ctx context.Context, host CapHost, customerID uui
 	if host.Pool() == nil || customerID == uuid.Nil {
 		return nil
 	}
-	cap := entitlements.CostSyncNetworksCap(limits)
-	if cap == 0 {
+	networkCap := entitlements.CostSyncNetworksCap(limits)
+	if networkCap == 0 {
 		return nil
 	}
 	used, err := CountCustomerCostSyncNetworks(ctx, host.Pool(), customerID)
 	if err != nil {
 		return err
 	}
-	if used >= cap {
+	if used >= networkCap {
 		recordCapReject("cost_sync_networks")
 		return ErrDeploymentCostSyncNetworkLimit
 	}

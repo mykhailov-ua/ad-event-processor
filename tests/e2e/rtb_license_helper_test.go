@@ -56,15 +56,6 @@ func wireE2EBudgetAndTrackIngest(
 	wireTrackIngestLuaStreamForE2E(t, ctx, registry, handler, unifiedFilter)
 }
 
-// wireE2ETrackFilterOnly preloads Lua when tests use Router (no AdsPacketHandler health probe).
-func wireE2ETrackFilterOnly(t *testing.T, ctx context.Context, registry *ingestion.Registry, unifiedFilter *ingestion.UnifiedFilter) {
-	t.Helper()
-	if registry != nil {
-		registry.MarkPubSubOK()
-	}
-	require.NoError(t, unifiedFilter.PreloadScripts(ctx))
-}
-
 // wireSettlementSeedForE2E publishes a valid feature seed when seed coupling is enabled in the test env.
 func wireSettlementSeedForE2E(t *testing.T) {
 	t.Helper()

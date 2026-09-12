@@ -30,7 +30,7 @@ func CampaignDisplayIDFromString(id string) string {
 	parsed, err := uuid.Parse(id)
 	if err != nil {
 		var hash uint64
-		for i := 0; i < len(id); i++ {
+		for i := range len(id) {
 			hash = hash*31 + uint64(id[i])
 		}
 		return fmt.Sprintf("%08d", 10000000+(hash%90000000))

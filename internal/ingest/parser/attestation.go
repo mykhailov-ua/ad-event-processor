@@ -239,7 +239,7 @@ func attestationIPPrefixMatch(stored []byte, ip string) bool {
 func parseIPv4Dotted(ip string, out *[4]byte) bool {
 	start := 0
 	end := len(ip)
-	for i := 0; i < len(ip); i++ {
+	for i := range len(ip) {
 		if ip[i] == ' ' && start == 0 {
 			start = i + 1
 			continue
@@ -316,7 +316,7 @@ func putInt64BE(dst []byte, v int64) {
 
 func int64BE(src []byte) int64 {
 	var v int64
-	for i := 0; i < 8 && i < len(src); i++ {
+	for i := range min(8, len(src)) {
 		v = (v << 8) | int64(src[i])
 	}
 	return v

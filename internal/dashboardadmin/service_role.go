@@ -159,7 +159,7 @@ func worstSourcesFromCampaigns(campaigns []BuyerCampaignRowDTO) []SourceRowDTO {
 		}
 	}
 	out := make([]SourceRowDTO, 0, 5)
-	for i := 0; i < len(scoredRows) && i < 5; i++ {
+	for i := range min(len(scoredRows), 5) {
 		out = append(out, scoredRows[i].row)
 	}
 	return out

@@ -159,14 +159,14 @@ func (h *CampaignsHTTPHandlers) listCampaigns(w http.ResponseWriter, r *http.Req
 		WarningsOnly:    warningsOnly,
 		OwnerUserID:     ResolveListOwnerUserFilter(r.Context(), r),
 		TargetCountry:   parseTargetCountryQuery(r),
-		BudgetMinMicro: parseOptionalBudgetMicroQuery(r, "budget_min_micro"),
-		BudgetMaxMicro: parseOptionalBudgetMicroQuery(r, "budget_max_micro"),
-		SearchQuery:    search,
-		PacingMode:     pacingMode,
-		SortField:      sortField,
-		SortOrder:      order,
-		Limit:          limit,
-		Offset:         offset,
+		BudgetMinMicro:  parseOptionalBudgetMicroQuery(r, "budget_min_micro"),
+		BudgetMaxMicro:  parseOptionalBudgetMicroQuery(r, "budget_max_micro"),
+		SearchQuery:     search,
+		PacingMode:      pacingMode,
+		SortField:       sortField,
+		SortOrder:       order,
+		Limit:           limit,
+		Offset:          offset,
 	}
 	if IsCampaignListMetricWindowSortField(sortField) {
 		from, to, rangeErr := parseCampaignListMetricsRange(r)

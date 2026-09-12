@@ -54,7 +54,7 @@ func ParseTCPSigHex(raw string) (uint32, bool) {
 		return 0, false
 	}
 	var val uint32
-	for i := 0; i < len(raw); i++ {
+	for i := range len(raw) {
 		c := raw[i]
 		var digit uint32
 		switch {

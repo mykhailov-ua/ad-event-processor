@@ -8,7 +8,7 @@ func GeoHashFromCountry(country string) uint32 {
 		return 0
 	}
 	crc := uint32(0xffffffff)
-	for i := 0; i < len(country); i++ {
+	for i := range len(country) {
 		crc = crc32.IEEETable[byte(crc^uint32(country[i]))] ^ (crc >> 8)
 	}
 	return crc ^ 0xffffffff

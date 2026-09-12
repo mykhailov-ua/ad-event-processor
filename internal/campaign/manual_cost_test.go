@@ -1,6 +1,7 @@
 package campaign
 
 import (
+	"context"
 	"testing"
 
 	"github.com/google/uuid"
@@ -9,7 +10,7 @@ import (
 
 func TestPutManualCampaignCost_rejectsInvalidDate_holdout(t *testing.T) {
 	t.Parallel()
-	_, err := PutManualCampaignCost(nil, nil, uuid.New(), uuid.New(), ManualCampaignCostRequest{
+	_, err := PutManualCampaignCost(context.Background(), nil, uuid.New(), uuid.New(), ManualCampaignCostRequest{
 		CostDate:    "not-a-date",
 		AmountMicro: 1_000_000,
 	})

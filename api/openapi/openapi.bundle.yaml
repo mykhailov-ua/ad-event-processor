@@ -1,5 +1,13 @@
 components:
     parameters:
+        CampaignGroupIdQuery:
+            description: Filter report rows to campaigns in this group.
+            in: query
+            name: group_id
+            required: false
+            schema:
+                format: uuid
+                type: string
         CampaignIdPath:
             in: path
             name: campaign_id
@@ -479,6 +487,14 @@ paths:
         $ref: paths/campaigns.yaml#/paths/~1api~1v1~1brands~1{id}
     /api/v1/brands/{id}/creatives:
         $ref: paths/campaigns.yaml#/paths/~1api~1v1~1brands~1{id}~1creatives
+    /api/v1/campaign-groups:
+        $ref: paths/campaigns.yaml#/paths/~1api~1v1~1campaign-groups
+    /api/v1/campaign-groups/{id}:
+        $ref: paths/campaigns.yaml#/paths/~1api~1v1~1campaign-groups~1{id}
+    /api/v1/campaign-groups/{id}/assign-campaigns:
+        $ref: paths/campaigns.yaml#/paths/~1api~1v1~1campaign-groups~1{id}~1assign-campaigns
+    /api/v1/campaign-groups/{id}/unassign-campaigns:
+        $ref: paths/campaigns.yaml#/paths/~1api~1v1~1campaign-groups~1{id}~1unassign-campaigns
     /api/v1/campaigns:
         $ref: paths/campaigns.yaml#/paths/~1api~1v1~1campaigns
     /api/v1/campaigns/{id}:

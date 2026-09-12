@@ -24,23 +24,23 @@ type ListCampaignsFilter struct {
 	CustomerID      uuid.UUID
 	CampaignGroupID uuid.UUID
 	Status          string
-	WarningsOnly   bool
-	OwnerUserID    pgtype.UUID
-	OwnerUserIDs   []uuid.UUID
-	TargetCountry  string
-	BudgetMinMicro pgtype.Int8
-	BudgetMaxMicro pgtype.Int8
-	SearchQuery    string
-	PacingMode     string
-	SortField      string
-	SortOrder      string
-	StatsFrom      pgtype.Date
-	StatsTo        pgtype.Date
-	StatsRangeFrom time.Time
-	StatsRangeTo   time.Time
-	StatsRangeSet  bool
-	Limit          int32
-	Offset         int32
+	WarningsOnly    bool
+	OwnerUserID     pgtype.UUID
+	OwnerUserIDs    []uuid.UUID
+	TargetCountry   string
+	BudgetMinMicro  pgtype.Int8
+	BudgetMaxMicro  pgtype.Int8
+	SearchQuery     string
+	PacingMode      string
+	SortField       string
+	SortOrder       string
+	StatsFrom       pgtype.Date
+	StatsTo         pgtype.Date
+	StatsRangeFrom  time.Time
+	StatsRangeTo    time.Time
+	StatsRangeSet   bool
+	Limit           int32
+	Offset          int32
 }
 
 func IsCampaignListStatsSortField(field string) bool {

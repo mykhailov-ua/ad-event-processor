@@ -146,7 +146,7 @@ func VerifyPoW(salt []byte, nonce uint32, difficulty uint8) bool {
 	copy(buf[:16], salt[:16])
 	binary.BigEndian.PutUint32(buf[16:20], nonce)
 	sum := sha256.Sum256(buf[:20])
-	for i := 0; i < int(difficulty); i++ {
+	for i := range int(difficulty) {
 		if sum[i] != 0 {
 			return false
 		}
@@ -188,7 +188,7 @@ func VerifyTelemetryMACDerived(challengeToken string, powNonce uint32, dwellMs u
 		return false
 	}
 	var got [telemetryMACLen]byte
-	for i := 0; i < telemetryMACLen; i++ {
+	for i := range telemetryMACLen {
 		hi := fromHex(gotHex[i*2])
 		lo := fromHex(gotHex[i*2+1])
 		if hi < 0 || lo < 0 {
@@ -228,7 +228,7 @@ func VerifyTelemetryMAC(secret []byte, input []byte, gotHex []byte) bool {
 		return false
 	}
 	var got [telemetryMACLen]byte
-	for i := 0; i < telemetryMACLen; i++ {
+	for i := range telemetryMACLen {
 		hi := fromHex(gotHex[i*2])
 		lo := fromHex(gotHex[i*2+1])
 		if hi < 0 || lo < 0 {

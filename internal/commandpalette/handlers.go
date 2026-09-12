@@ -261,7 +261,7 @@ func parseSearchLimit(raw string) int {
 		return DefaultSearchLimit
 	}
 	var n int
-	for i := 0; i < len(raw); i++ {
+	for i := range len(raw) {
 		c := raw[i]
 		if c < '0' || c > '9' {
 			return DefaultSearchLimit

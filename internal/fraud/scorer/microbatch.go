@@ -124,7 +124,8 @@ func (m *MicroBatcher) flush(ctx context.Context) {
 	batch := make(map[aggKey]*aggStats)
 	limit := 10000
 
-	for i := 0; i < limit; i++ {
+batchDrain:
+	for range limit {
 		select {
 		case evt := <-m.eventsChan:
 			key := aggKey{IP: evt.IP, CampaignID: evt.CampaignID.String()}
@@ -147,7 +148,7 @@ func (m *MicroBatcher) flush(ctx context.Context) {
 				stats.UniqueUAs[evt.UA] = struct{}{}
 			}
 		default:
-			i = limit
+			break batchDrain
 		}
 	}
 

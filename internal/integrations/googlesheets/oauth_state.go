@@ -77,7 +77,7 @@ func signState(secret []byte, payload string) string {
 
 func parseInt64(s string) (int64, error) {
 	var out int64
-	for i := 0; i < len(s); i++ {
+	for i := range len(s) {
 		c := s[i]
 		if c < '0' || c > '9' {
 			return 0, fmt.Errorf("invalid int")

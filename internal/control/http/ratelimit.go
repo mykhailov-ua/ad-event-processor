@@ -218,7 +218,7 @@ func (l *CustomerRateLimiter) AllowNAt(key string, at time.Time, n int) int {
 	}
 	e.LastSeen = now
 	allowed := 0
-	for i := 0; i < n; i++ {
+	for range n {
 		if !e.Lim.AllowN(now, 1) {
 			break
 		}
