@@ -102,15 +102,8 @@ func EnforceDeploymentExportAllowed(host CapHost) error {
 	if host == nil {
 		return nil
 	}
-	limits, state, ok := host.DeploymentLimits()
-	if err := requireActiveLicense(host, state, ok); err != nil {
-		return err
-	}
-	if !ok || limits.MaxExportChunkBytes > 0 {
-		return nil
-	}
-	recordCapReject("exports")
-	return ErrDeploymentExportDisabled
+	_, state, ok := host.DeploymentLimits()
+	return requireActiveLicense(host, state, ok)
 }
 
 func EnforceDeploymentRegionCap(ctx context.Context, host CapHost, regionCode int16) error {

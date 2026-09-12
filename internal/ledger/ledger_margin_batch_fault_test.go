@@ -10,6 +10,7 @@ import (
 
 	"github.com/google/uuid"
 	"github.com/jackc/pgx/v5/pgtype"
+	"github.com/jackc/pgx/v5/pgxpool"
 	"github.com/stretchr/testify/require"
 )
 
@@ -59,8 +60,14 @@ func TestFault_LedgerMarginBatchPause(t *testing.T) {
 	require.Equal(t, int64(120_000), sumRows[0].RtbCostMicro)
 
 	cfg := &config.Config{MarginGuardDefaultThresholdBps: 500}
-	worker := NewWorker(pool, nil, cfg, nil, nil)
+	enforcement := &ledgerMarginBatchTestEnforcement{pool: pool}
+	worker := NewWorker(pool, nil, cfg, nil, nil, enforcement)
 	require.NoError(t, worker.RunCycle(ctx))
+	require.True(t, enforcement.pauseCalled)
+
+	var status string
+	require.NoError(t, pool.QueryRow(ctx, `SELECT status FROM campaigns WHERE id = $1`, campaignID).Scan(&status))
+	require.Equal(t, "PAUSED", status)
 
 	var outboxCount int
 	require.NoError(t, pool.QueryRow(ctx, `
@@ -69,4 +76,29 @@ func TestFault_LedgerMarginBatchPause(t *testing.T) {
 		"%"+campaignID.String()+"%",
 	).Scan(&outboxCount))
 	require.Equal(t, 1, outboxCount)
+}
+
+type ledgerMarginBatchTestEnforcement struct {
+	pool        *pgxpool.Pool
+	pauseCalled bool
+}
+
+func (e *ledgerMarginBatchTestEnforcement) PauseCampaign(ctx context.Context, campaignID uuid.UUID, reason string) error {
+	e.pauseCalled = true
+	_, err := e.pool.Exec(ctx, `UPDATE campaigns SET status = 'PAUSED' WHERE id = $1`, campaignID)
+	if err != nil {
+		return err
+	}
+	payload := []byte(`{"campaign_id":"` + campaignID.String() + `","budget_limit":1000000000}`)
+	_, err = e.pool.Exec(ctx, `
+		INSERT INTO outbox_events (event_type, payload) VALUES ('PAUSE_CAMPAIGN', $1)`, payload)
+	return err
+}
+
+func (e *ledgerMarginBatchTestEnforcement) BlacklistPlacement(context.Context, uuid.UUID, string) error {
+	return nil
+}
+
+func (e *ledgerMarginBatchTestEnforcement) PlatformPauseCampaign(context.Context, uuid.UUID, string, string) error {
+	return nil
 }

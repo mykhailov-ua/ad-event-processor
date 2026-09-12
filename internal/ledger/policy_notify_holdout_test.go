@@ -1,0 +1,65 @@
+package ledger
+
+import (
+	"context"
+	"testing"
+	"time"
+
+	"ad-event-processor/internal/config"
+
+	"github.com/google/uuid"
+	"github.com/stretchr/testify/require"
+)
+
+func TestFault_LedgerMarginBatchNotifyOnly_noPause_holdout(t *testing.T) {
+	if testing.Short() {
+		t.Skip("integration: run make test-integration (Docker testcontainers)")
+	}
+
+	ctx := context.Background()
+	pool, cleanup := setupBillingTestDB(t)
+	defer cleanup()
+
+	customerID := uuid.New()
+	campaignID := uuid.New()
+	_, err := pool.Exec(ctx, `
+		INSERT INTO customers (id, name, balance) VALUES ($1, 'margin-guard', 1000000000)
+	`, customerID)
+	require.NoError(t, err)
+	_, err = pool.Exec(ctx, `
+		INSERT INTO campaigns (id, name, status, customer_id, budget_limit, current_spend)
+		VALUES ($1, 'mg', 'ACTIVE', $2, 1000000000, 0)
+	`, campaignID, customerID)
+	require.NoError(t, err)
+
+	_, err = pool.Exec(ctx, `
+		INSERT INTO margin_guard_policies (campaign_id, name, cost_over_revenue_threshold_bps, enforcement, is_active)
+		VALUES ($1, 'ledger-guard', 500, 'notify_only', true)
+	`, campaignID)
+	require.NoError(t, err)
+
+	_, err = pool.Exec(ctx, `
+		INSERT INTO balance_ledger (customer_id, campaign_id, amount, type, idempotency_hash, created_at)
+		VALUES ($1, $2, -100000, 'FEE', 'mg-fee-notify-1', now()),
+		 ($1, $2, 120000, 'rtb_cost', 'mg-rtb-notify-1', now()),
+		 ($1, $2, 120000, 'publisher_payout', 'mg-pub-notify-1', now())
+	`, customerID, campaignID)
+	require.NoError(t, err)
+
+	cfg := &config.Config{MarginGuardDefaultThresholdBps: 500}
+	enforcement := &ledgerMarginBatchTestEnforcement{pool: pool}
+	worker := NewWorker(pool, nil, cfg, nil, nil, enforcement)
+	require.NoError(t, worker.RunCycle(ctx))
+	require.False(t, enforcement.pauseCalled)
+
+	var status string
+	require.NoError(t, pool.QueryRow(ctx, `SELECT status FROM campaigns WHERE id = $1`, campaignID).Scan(&status))
+	require.Equal(t, "ACTIVE", status)
+
+	var activityCount int
+	require.NoError(t, pool.QueryRow(ctx, `
+		SELECT COUNT(*) FROM margin_guard_activity
+		WHERE campaign_id = $1 AND action = 'pause'`, campaignID).Scan(&activityCount))
+	require.Equal(t, 1, activityCount)
+}
+

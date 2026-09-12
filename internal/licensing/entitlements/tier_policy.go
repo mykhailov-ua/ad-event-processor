@@ -15,7 +15,7 @@ const (
 func SanitizeFeaturesForSKU(sku string, features FeatureSet) FeatureSet {
 	out := features.Normalized()
 	switch strings.ToLower(strings.TrimSpace(sku)) {
-	case SKUCodePilot, SKUCodeStarter, "solo":
+	case SKUCodeStarter, "solo":
 		out.RtbLive = false
 		out.OpenRTBEngine = false
 		out.EbpfXDPEdge = false
@@ -28,18 +28,25 @@ func SanitizeFeaturesForSKU(sku string, features FeatureSet) FeatureSet {
 		out.ExternalResidentialIntel = false
 		out.ModeratorIntelFeed = false
 		out.AdPlatformCampaignAPI = false
-	case SKUCodePro:
+		out.FraudDisputeEvidence = false
+	case SKUCodePilot, SKUCodePro:
 		out.RtbLive = false
 		out.OpenRTBEngine = false
+		out.EbpfXDPEdge = false
 		out.IvtMLDetector = true
 		out.MlFraudBoost = false
-		out.EbpfXDPEdge = false
+		out.MultiRegion = false
+		out.SlotMigration = false
 		out.BrokerWal = false
 		out.ExternalResidentialIntel = false
 		out.ModeratorIntelFeed = false
-		out.AdPlatformCampaignAPI = false
+		out.MarginGuard = true
+		out.AdPlatformCampaignAPI = true
+		out.FraudDisputeEvidence = true
 	case SKUCodeScale:
 		out.EbpfXDPEdge = false
+		out.OpenRTBEngine = false
+		out.RtbLive = false
 	case SKUCodeNetwork, SKUCodeEnterprise, SKUCodeLicense:
 	}
 	return out

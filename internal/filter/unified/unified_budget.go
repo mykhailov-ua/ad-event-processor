@@ -834,6 +834,9 @@ func (f *UnifiedFilter) recoverBudgetAfterMiss(
 		}
 		return false, err
 	}
+	if camp.Status != "" && camp.Status != domain.CampaignStatusActive {
+		return false, filt.ErrBudgetExhausted
+	}
 
 	remaining := camp.BudgetLimit - camp.CurrentSpend
 	if remaining < 0 {

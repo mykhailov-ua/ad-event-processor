@@ -24,6 +24,9 @@ func (w *Worker) evaluateLedgerMarginBatch(ctx context.Context, policies []*Poli
 	if len(policies) == 0 {
 		return nil
 	}
+	if w.enforcement == nil {
+		return fmt.Errorf("margin guard enforcement host not configured")
+	}
 
 	campaignIDs := make([]uuid.UUID, 0, len(policies))
 	seen := make(map[uuid.UUID]struct{}, len(policies))
@@ -94,23 +97,24 @@ func (w *Worker) evaluateLedgerMarginBatch(ctx context.Context, policies []*Poli
 		return nil
 	}
 
-	paused := make(map[uuid.UUID]struct{})
+	lastPauseByCampaign := make(map[uuid.UUID]time.Time)
 	pauseRows, err := q.ListRecentMarginGuardPausesByCampaigns(ctx, breachCampaignIDs)
 	if err != nil {
 		return fmt.Errorf("list recent margin pauses: %w", err)
 	}
 	for _, row := range pauseRows {
-		id, err := uuid.FromBytes(row.Bytes[:])
+		id, err := uuid.FromBytes(row.CampaignID.Bytes[:])
 		if err != nil {
 			continue
 		}
-		paused[id] = struct{}{}
+		if row.LastPauseAt.Valid {
+			lastPauseByCampaign[id] = row.LastPauseAt.Time
+		}
 	}
 
-	eventTypes := make([]string, 0, len(candidates))
-	payloads := make([][]byte, 0, len(candidates))
+	now := time.Now()
 	for _, item := range candidates {
-		if _, ok := paused[item.policy.CampaignID]; ok {
+		if lastPause, ok := lastPauseByCampaign[item.policy.CampaignID]; ok && WithinCooldown(lastPause, PolicyCooldownSec(item.policy), now) {
 			continue
 		}
 		reason := fmt.Sprintf(
@@ -135,31 +139,18 @@ func (w *Worker) evaluateLedgerMarginBatch(ctx context.Context, policies []*Poli
 		if err != nil {
 			return err
 		}
-
-		payload, err := json.Marshal(map[string]string{
-			"campaign_id": item.policy.CampaignID.String(),
-			"reason":      reason,
-		})
-		if err != nil {
-			return fmt.Errorf("marshal pause payload: %w", err)
+		if err := w.applyCampaignBreach(ctx, item.policy, item.policy.CampaignID, reason); err != nil {
+			return fmt.Errorf("apply campaign breach %s: %w", item.policy.CampaignID, err)
 		}
-		eventTypes = append(eventTypes, "PAUSE_CAMPAIGN")
-		payloads = append(payloads, payload)
 
-		slog.Info("margin guard ledger pause enqueued",
+		slog.Info("margin guard ledger pause applied",
 			"campaign_id", item.policy.CampaignID,
 			"rtb_cost_micro", item.sums.rtbCostMicro,
 			"advertiser_spend_micro", item.sums.advertiserSpendMicro,
 			"threshold_bps", item.bps,
 		)
 	}
-	if len(eventTypes) == 0 {
-		return nil
-	}
-	return q.CreateOutboxEventsBatch(ctx, db.CreateOutboxEventsBatchParams{
-		EventTypes: eventTypes,
-		Payloads:   payloads,
-	})
+	return nil
 }
 
 type forcePauseMetrics struct {

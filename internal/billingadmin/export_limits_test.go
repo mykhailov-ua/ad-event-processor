@@ -8,12 +8,13 @@ import (
 	"github.com/stretchr/testify/require"
 )
 
-func TestExportChunkMaxBytes_pilotDisabled(t *testing.T) {
+func TestExportChunkMaxBytes_zeroUsesDefault(t *testing.T) {
 	got := ExportChunkMaxBytes(licensing.Limits{MaxExportChunkBytes: 0}, licensing.StateActive, true)
-	require.True(t, ExportDisabled(got))
+	require.Equal(t, DefaultExportChunkMaxBytes, got)
+	require.False(t, ExportDisabled(got))
 }
 
-func TestExportChunkMaxBytes_starterCap(t *testing.T) {
+func TestExportChunkMaxBytes_explicitCap(t *testing.T) {
 	got := ExportChunkMaxBytes(licensing.Limits{MaxExportChunkBytes: 5 << 20}, licensing.StateActive, true)
 	require.Equal(t, 5<<20, got)
 	require.False(t, ExportDisabled(got))

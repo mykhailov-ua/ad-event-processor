@@ -139,7 +139,15 @@ func serveMarginGuard(ctx context.Context, cfg *config.Config, inProcess *notify
 	if notifierClient != nil {
 		notifierAPI = notifierClient.API()
 	}
-	worker := ledger.NewWorker(pool, clickhouseQuery, cfg, registry, notifierAPI)
+	enforcementSvc := controlplane.NewMarginGuardEnforcementService(pool, cfg)
+	worker := ledger.NewWorker(
+		pool,
+		clickhouseQuery,
+		cfg,
+		registry,
+		notifierAPI,
+		controlplane.NewLedgerEnforcementHost(enforcementSvc),
+	)
 	worker.Start(ctx, ledger.WorkerInterval(cfg))
 	return ctx.Err()
 }

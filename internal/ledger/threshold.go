@@ -6,7 +6,10 @@ import (
 	"ad-event-processor/internal/config"
 )
 
-const defaultCostOverRevenueThresholdBps = 500
+const (
+	defaultCostOverRevenueThresholdBps = 500
+	defaultMarginGuardIntervalSec      = 5
+)
 
 func CostOverRevenueThresholdBps(policy *Policy, cfg *config.Config) int {
 	if policy != nil && policy.CostOverRevenueThresholdBps > 0 {
@@ -27,7 +30,7 @@ func CostOverRevenueLimitMicro(advertiserSpendMicro int64, thresholdBps int) int
 
 func WorkerInterval(cfg *config.Config) time.Duration {
 	if cfg == nil || cfg.MarginGuardIntervalSec <= 0 {
-		return 5 * time.Minute
+		return time.Duration(defaultMarginGuardIntervalSec) * time.Second
 	}
 	return time.Duration(cfg.MarginGuardIntervalSec) * time.Second
 }

@@ -3,8 +3,8 @@
 <head>
   <meta charset="utf-8">
   <meta name="viewport" content="width=device-width, initial-scale=1">
-  <meta name="description" content="Як влаштований BidShard: hot-path ingest, cold-path admin і що реально працює на вашому VPS.">
-  <title>Архітектура — BidShard</title>
+  <meta name="description" content="Як працює BidShard на вашому сервері: фільтрація трафіку, захист бюджету, звіти та офлайн-ліцензування.">
+  <title>Як це працює — BidShard</title>
   <script>
     (function () {
       try {
@@ -17,9 +17,8 @@
   </script>
   <link rel="alternate" hreflang="en" href="/docs.html" />
   <link rel="alternate" hreflang="uk" href="/uk/docs.html" />
-  <link rel="stylesheet" href="/site.css?v=20260918">
-  <script src="https://cdn.jsdelivr.net/npm/mermaid@11.4.0/dist/mermaid.min.js" defer></script>
-  <script src="/site.js?v=20260917" defer></script>
+  <link rel="stylesheet" href="/site.css?v=20260912">
+  <script src="/site.js?v=20260912" defer></script>
 </head>
 <body class="docs-page">
   <div class="site-offer-gate" data-site-offer-gate hidden aria-hidden="true"></div>
@@ -27,8 +26,8 @@
     <a href="index.html">BidShard</a>
     <nav class="site-doc-header__nav" aria-label="Документація">
       <a href="index.html">Головна</a>
-      <a href="operators.html">Для операторів</a>
-      <a href="../offer.html">Оферта</a>
+      <a href="buyers.html">Гід для media buyers</a>
+      <a href="../offer.html">Публічна оферта</a>
     </nav>
     <div class="site-header-end">
       <a class="site-lang-switch" href="/docs.html" hreflang="en" title="English version">EN</a>
@@ -47,276 +46,79 @@
   <main class="site-doc">
     <a href="index.html" class="site-doc-back">На головну</a>
 
-    <p class="site-doc-eyebrow">Технічний огляд</p>
-    <h1>Архітектура</h1>
+    <p class="site-doc-eyebrow">Концептуальний огляд</p>
+    <h1>Як це працює</h1>
     <p class="site-doc-lead">
       BidShard — self-hosted ПЗ, яке ви встановлюєте на свій VPS або dedicated-сервер.
-      Ця сторінка описує, що саме працює на вашій інфраструктурі — а не cloud SaaS control plane.
-      Інженерні деталі для контрибʼюторів — у vendor tree (<code>docs/ARCHITECTURE.md</code>).
+      Ваш трафік залишається на вашому залізі — ми постачаємо стек і файл ліцензії, а не спільний cloud-tenant.
     </p>
 
     <nav class="site-doc-toc" aria-label="На цій сторінці">
       <div class="site-doc-toc__title">На цій сторінці</div>
       <ol>
-        <li><a href="#overview">Огляд</a></li>
-        <li><a href="#default-stack">Стек за замовчуванням</a></li>
-        <li><a href="#click-path">Що відбувається на кліку</a></li>
-        <li><a href="#admin-path">Admin, billing і звіти</a></li>
-        <li><a href="#data-stores">Сховища даних</a></li>
-        <li><a href="#optional">Опційні компоненти</a></li>
-        <li><a href="#hardware-sizing">Розмір сервера</a></li>
-        <li><a href="#limits">Чесні обмеження</a></li>
-        <li><a href="#ports">Порти</a></li>
+        <li><a href="#your-server">Ваш сервер</a></li>
+        <li><a href="#filters">Фільтри до списання бюджету</a></li>
+        <li><a href="#reports">Звіти та postbacks</a></li>
+        <li><a href="#license">Файл ліцензійного ключа</a></li>
       </ol>
     </nav>
 
-    <h2 id="overview">Огляд</h2>
+    <h2 id="your-server">Ваш сервер</h2>
     <p>
-      Система поділена на <strong>hot path</strong> (прийняти або відхилити кліки й impressions за мілісекундні бюджети)
-      і <strong>cold path</strong> (CRUD кампаній, billing, звіти, ML batch jobs, outbox workers).
-      У дефолтній моделі доставки ваш трафік не проходить через сервери BidShard — лише license JWT
-      і support chat залишаються на стороні вендора.
+      Один інстал запускає маршрутизацію кліків, адмінку кампаній, облік бюджету та аналітику на залізі, яке контролюєте ви.
+      Відвідувачі заходять на ваш домен; прийняті кліки логуються й проводяться на тій самій машині — не через наш датацентр.
     </p>
-    <figure class="site-doc-mermaid-wrap" aria-label="Схема потоку трафіку">
-      <pre class="site-doc-mermaid mermaid">flowchart TB
-  subgraph HP["Hot path — синхронний /track"]
-    direction LR
-    V[Відвідувач] --&gt; N[Nginx edge]
-    N --&gt; T[Tracker gnet]
-    T --&gt; F[Filters + fraud-boost lookup]
-    F --&gt; U[Redis unified filter + debit]
-    U --&gt; S[Redis stream / broker WAL]
-  end
-
-  subgraph AS["Async settlement"]
-    direction LR
-    S --&gt; P[Processor]
-    P --&gt; PG[(Postgres spend)]
-    P --&gt; CH[(ClickHouse events)]
-  end
-
-  subgraph CP["Cold path — фоновий"]
-    direction TB
-    CTL[Control :8188] --&gt; PG
-    CTL --&gt; OB[Outbox workers]
-    CH --&gt; ML[fraud-scorer / IVT batch]
-    ML --&gt; RS[(Redis snapshots)]
-    OB --&gt; RS
-  end
-
-  RS -. "лише snapshot lookup, без ML inference" .-&gt; F</pre>
-      <figcaption class="site-doc-mermaid__caption">Суцільні стрілки: шлях прийняття кліку. Пунктир: precomputed fraud-boost snapshot на ingest.</figcaption>
-    </figure>
-    <p class="site-doc-callout">
-      <strong>HTTP 202 на <code>/track</code></strong> означає, що tracker прийняв і провалідував подію на ingest path.
-      Це <em>не</em> означає, що Postgres або ClickHouse уже записали рядок — це відбувається асинхронно через processor.
-    </p>
-
-    <h2 id="default-stack">Стек за замовчуванням на вашому сервері</h2>
-    <p>Типовий інстал на одному VPS запускає такі процеси (systemd units з installer):</p>
-    <table class="site-doc-table">
-      <thead>
-        <tr>
-          <th>Процес</th>
-          <th>Роль</th>
-          <th>Порт за замовч.</th>
-        </tr>
-      </thead>
-      <tbody>
-        <tr>
-          <td>Nginx (OpenResty)</td>
-          <td>TLS, rate limits, ранній blacklist, shard routing до пулу tracker</td>
-          <td>8180 / 443</td>
-        </tr>
-        <tr>
-          <td><code>tracker</code></td>
-          <td>Ingest кліків і impressions, filter chain, budget enforcement, async enqueue подій</td>
-          <td>8181–8184</td>
-        </tr>
-        <tr>
-          <td><code>control</code></td>
-          <td>Admin API, мутації кампаній, outbox workers, payment webhooks</td>
-          <td>8188</td>
-        </tr>
-        <tr>
-          <td><code>processor</code></td>
-          <td>Читає Redis streams (або broker WAL) → settle Postgres + batch у ClickHouse</td>
-          <td>8186</td>
-        </tr>
-        <tr>
-          <td>PostgreSQL</td>
-          <td>Фінансова правда: кампанії, бюджети, ledger, outbox</td>
-          <td>5430 (compose default)</td>
-        </tr>
-        <tr>
-          <td>Redis</td>
-          <td>Hot-path debit/dedup, streams, pub/sub reload конфігу</td>
-          <td>6479+ (sharded)</td>
-        </tr>
-        <tr>
-          <td>ClickHouse</td>
-          <td>Аналітика, fraud/IVT звіти, ML feature reads (cold path)</td>
-          <td>9000</td>
-        </tr>
-      </tbody>
-    </table>
-    <p class="site-doc-callout site-doc-callout--hardware">
-      <strong>Рекомендація по залізу:</strong> ClickHouse на одному VPS дуже прожорливий до RAM. Для комфортного all-in-one
-      (ClickHouse + Redis + Postgres + tracker pool) закладайте мінімум <strong>4–6 vCPU і 12 GB RAM</strong> плюс NVMe диск.
-      Routing-only pilot можна стартувати менше; дешевий VPS часто впереться в ClickHouse OOM — це питання sizing, а не дефект ліцензії.
-      Див. <a href="#hardware-sizing">розмір сервера</a> нижче.
-    </p>
-    <p>
-      Перевірка ліцензії — offline Ed25519 JWT файл на диску; без регулярного phone-home для ingest tokens.
-      Feature flags, host activations і export limits закодовані в JWT per SKU. Кампанії та обсяг подій не обмежуються ліцензією, коли в каталозі стоїть 0.
-    </p>
-
-    <h2 id="click-path">Що відбувається на кліку</h2>
-    <ol class="site-doc-steps">
-      <li>
-        <strong>Edge (nginx)</strong> — опційний ранній reject: per-campaign rate limit, circuit breaker, IP blacklist,
-        ASN policy. Конфіг дзеркалиться в worker memory по таймеру; access phase не викликає Redis на кожен request.
-      </li>
-      <li>
-        <strong>Tracker parse</strong> — HTTP/1 обробляє gnet (не <code>net/http</code> на hot path).
-        <code>/track</code> вимагає <code>Content-Length</code>; chunked bodies відхиляються (parity з edge policy).
-      </li>
-      <li>
-        <strong>Local filters</strong> — license, geo, schedule, device signals, consent і rule-based fraud checks
-        працюють in-process. ML inference тут <em>не</em> запускається; tracker може читати precomputed fraud-boost
-        snapshot з Redis, якщо ваш tier це включає.
-      </li>
-      <li>
-        <strong>Redis unified filter</strong> — максимум один синхронний Lua script на прийняту подію для budget debit
-        і dedup (нуль scripts, коли eligible local-quota full-skip mode). Campaign keys використовують Redis hash tag, щоб
-        multi-key atomicity залишається на одному shard master.
-      </li>
-      <li>
-        <strong>Async enqueue</strong> — прийняті події йдуть у Redis stream або опційний mmap broker WAL через
-        reserved slot у producer queue. Якщо enqueue падає після debit — budget відкочується.
-      </li>
-      <li>
-        <strong>processor</strong> — background workers батчать у Postgres (settlement) і ClickHouse (analytics).
-      </li>
-    </ol>
-    <p>
-      <code>/click</code> проганяє ту саму filter chain і повертає redirect.
-      <code>/openrtb/bid</code> запускає in-process RTB auction — без повної filter chain (тариф Network, live mode).
-    </p>
-
-    <h3>Antifraud semantics (без маркетингових скорочень)</h3>
-    <ul>
-      <li><strong>Hard reject</strong> — HTTP 403; бюджет не списується.</li>
-      <li><strong>Silent reject</strong> — HTTP 202 відвідувачу (decoy accept); прапорець у analytics, щоб воронки залишалися чистими. Не змінює campaign settings у Postgres автоматично.</li>
-      <li><strong>IVT detector</strong> (Pro+) — batch rules на ClickHouse; може enqueue blacklist/boost actions через admin outbox.</li>
-      <li><strong>ML fraud scorer</strong> (Scale+) — batch LightGBM у sidecar пише boost keys у Redis; tracker читає <strong>precomputed fraud-boost snapshot</strong> на ingest (лише map lookup — без model inference на <code>/track</code>).</li>
-      <li><strong>Margin Guard</strong> (Starter+) — таймерний воркер (за замовчуванням 5 хв) по Postgres ledger і ClickHouse placement stats; порушення ставить внутрішню паузу маршрутизації (видалення budget key у Redis або блок placement). Не пауза в кабінеті рекламної мережі, доки не ліцензовано Enterprise platform sync. Пропуск при lag ClickHouse &gt; 5 хв.</li>
-    </ul>
-
-    <h2 id="admin-path">Admin, billing і звіти</h2>
-    <p>
-      <code>control</code> — modular monolith: один процес віддає <code>/api/v1/*</code> і крутить in-process workers.
-      Коли ви PATCH-ите кампанію, мутація і рядок <code>outbox_events</code> пишуться в одній Postgres
-      transaction. Outbox worker (poll ~20 ms) застосовує Redis side effects і тригерить tracker registry reload через pub/sub.
-    </p>
-    <p>
-      <code>tracker</code> <em>не</em> опитує Postgres на кожен request — читає in-memory snapshot, оновлений з Redis.
-      Payment webhooks і ledger entries — лише cold path; processor не вставляє рядки <code>balance_ledger</code>.
-    </p>
-
-    <h2 id="data-stores">Сховища даних</h2>
     <div class="site-doc-cards">
       <article class="site-doc-card">
-        <h3>PostgreSQL</h3>
-        <p>Кампанії, бюджети, team RBAC, payment state, transactional outbox. Джерело фінансової правди після processor settlement.</p>
+        <h3>Трафік на вхід</h3>
+        <p>Ваша реклама веде кліки на URL трекера. Маршрутизація, landers і offer flows працюють локально.</p>
       </article>
       <article class="site-doc-card">
-        <h3>Redis</h3>
-        <p>Per-shard budgets, dedup locks, ingest streams, fraud blacklists, ML boost snapshots. Standalone masters + Sentinel — не Redis Cluster на hot path.</p>
+        <h3>Адмінка та білінг</h3>
+        <p>Редагування кампаній, доступ команди, cost sync і payment hooks — у тому ж стеку, без окремої SaaS-консолі.</p>
       </article>
       <article class="site-doc-card">
-        <h3>ClickHouse</h3>
-        <p>Event analytics, report aggregates, IVT/ML feature reads. Не консультується синхронно на accept <code>/track</code>.</p>
+        <h3>Дані залишаються локально</h3>
+        <p>Конфіги кампаній, події відвідувачів і звіти — на вашому сервері. Ми не хостимо ваші воронки й не тягнемо телеметрію додому.</p>
       </article>
     </div>
+
+    <h2 id="filters">Фільтри до списання бюджету</h2>
     <p>
-      Кампанії sharded: <code>slot = CRC32C(campaign_id) &amp; 1023</code> мапить на Redis shard і tracker listener.
-      Edge slot map і Go мають бути в sync (installer публікує map).
+      Кожен клік проходить rule checks — гео, розклад, сигнали пристрою, consent і антифрод — до того, як рухається бюджет кампанії.
+      Сміттєвий і підозрілий трафік можна відсіяти або показати decoy-воронку, поки витрати залишаються цілими.
+    </p>
+    <p class="site-doc-callout">
+      <strong>Клоакінг вбудований.</strong>
+      Без окремого рахунку за клоаку — модерація й фільтрація ботів у тому ж інсталі, що маршрутизація й звітність.
+    </p>
+    <p>
+      Важчі перевірки фроду та invalid-traffic scoring працюють як фонові задачі на ваших аналітичних даних і повертаються в live filtering —
+      не per-click API-виклик до стороннього AI-сервісу.
     </p>
 
-    <h2 id="optional">Опційні компоненти</h2>
-    <table class="site-doc-table">
-      <thead>
-        <tr>
-          <th>Компонент</th>
-          <th>Коли</th>
-          <th>Що робить</th>
-        </tr>
-      </thead>
-      <tbody>
-        <tr>
-          <td><code>broker</code></td>
-          <td><code>CH_INGEST_SOURCE=broker</code></td>
-          <td>mmap WAL замість Redis stream як authoritative ingest log</td>
-        </tr>
-        <tr>
-          <td><code>fraud-scorer</code></td>
-          <td>Scale SKU</td>
-          <td>Batch ML scores → Redis boost keys</td>
-        </tr>
-        <tr>
-          <td><code>ivt-detector</code></td>
-          <td>Pro SKU</td>
-          <td>CH rule batches → outbox actions</td>
-        </tr>
-        <tr>
-          <td><code>edge-xdp</code> + <code>edge-bpf-sync</code></td>
-          <td>Enterprise (<code>ebpf_xdp_edge</code>)</td>
-          <td>L4 drop для listed IPs і rate limits на NIC; не замінює CDN/DDoS scrubbing і L7 tracker filters</td>
-        </tr>
-        <tr>
-          <td><code>region-proxy</code></td>
-          <td>Network+ (<code>multi_region</code>)</td>
-          <td>Multi-cell WAL ingress і global coordinator</td>
-        </tr>
-      </tbody>
-    </table>
-
-    <h2 id="hardware-sizing">Розмір сервера</h2>
+    <h2 id="reports">Звіти та postbacks</h2>
     <p>
-      Орієнтир для планування — не гарантія throughput. Стартуйте тут, потім масштабуйтеся залежно від трафіку, глибини antifraud
-      і того, чи звіти та bidding працюють на одному VPS чи окремих хостах.
+      Прийняті події потрапляють у ваше сховище звітів для дашбордів, експорту та dispute bundles.
+      S2S postbacks відправляються на конверсіях; кожен крок логується — бачите, де зникли ліди між мережею, трекером і affiliate.
     </p>
-    <section class="site-hardware-sizing" data-site-hardware-sizing aria-labelledby="hardware-sizing"></section>
+    <p>
+      Cost sync підтягує витрати з налаштованих рекламних мереж за розкладом — звіряйте з ledger, не очікуйте real-time паритету з кожним UI мережі.
+      Conversion API для Meta, Google і TikTok можуть працювати з того ж сервера — автоставки бачать реальні результати, а не лише напівсинхронізований browser pixel.
+    </p>
 
-    <h2 id="limits">Чесні обмеження</h2>
-    <ul class="site-doc-honest">
-      <li>Ми не хостимо ваш трафік і не гарантуємо uptime на вашому VPS — сервером керуєте ви.</li>
-      <li>Edge і XDP можуть дропати відомі bad IP; rotating proxies все одно можуть дійти до tracker — там працюють L7 rules.</li>
-      <li><code>BROKER_SHADOW_MODE</code> shadow-ить лише processor CH ingest; tracker WAL writes live, коли увімкнено broker-primary.</li>
-      <li><code>LOCAL_QUOTA_MODE=shadow</code> проганяє local quanta, але все одно виконує sync Redis Lua; лише <code>live</code> може його пропустити, коли eligible.</li>
-      <li>Обмеження ліцензії (хости, tenants, features, export chunk) застосовуються за тарифом — див. <a href="index.html#pricing">тарифи</a>.</li>
-    </ul>
-
-    <h2 id="ports">Порти (compose defaults)</h2>
-    <table class="site-doc-table site-doc-table--compact">
-      <thead>
-        <tr><th>Сервіс</th><th>Порт</th></tr>
-      </thead>
-      <tbody>
-        <tr><td>nginx edge</td><td>8180, 443</td></tr>
-        <tr><td>tracker</td><td>8181–8184</td></tr>
-        <tr><td>control (admin API)</td><td>8188</td></tr>
-        <tr><td>payment webhooks</td><td>8187</td></tr>
-        <tr><td>processor</td><td>8186</td></tr>
-        <tr><td>broker (optional)</td><td>9092</td></tr>
-        <tr><td>tracker metrics sidecar</td><td>9101–9104</td></tr>
-      </tbody>
-    </table>
+    <h2 id="license">Файл ліцензійного ключа, без license server</h2>
+    <p>
+      Ваш тариф і feature flags живуть у файлі ліцензії, який вставляєте в Admin Settings після встановлення.
+      Перевірка офлайн на вашому сервері — без phone-home на кожен клік, без vendor-акаунта, який блокує export або тримає ваші дані.
+    </p>
+    <p>
+      Після апгрейду надсилаємо новий файл; завантажуєте на місці без перевстановлення стеку.
+      Втратили сервер? Напишіть у Telegram — можемо видати replacement key для задокументованих emergency.
+    </p>
 
     <p class="site-doc-meta site-doc-meta--spaced">
-      Оновлено для marketing site: 2026-09-12. Кроки installer — у install-блоці на головній.
-      Юридичні умови — у <a href="../offer.html">публічній оферті</a>.
+      Кроки встановлення — на головній сторінці. Юридичні умови — у <a href="../offer.html">публічній оферті</a>.
     </p>
 
     <div class="site-doc-actions">

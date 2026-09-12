@@ -82,18 +82,19 @@ WHERE campaign_id = ANY(@campaign_ids::uuid[])
 GROUP BY campaign_id;
 
 -- name: ListMarginGuardPoliciesByCampaignIDs :many
-SELECT id, campaign_id, name, min_clicks, roi_floor_pct, zero_conv_streak, cost_over_revenue_threshold_bps, is_active
+SELECT id, campaign_id, name, min_clicks, roi_floor_pct, zero_conv_streak, cost_over_revenue_threshold_bps, enforcement, cooldown_sec, platform_pause, platform_network, is_active
 FROM margin_guard_policies
 WHERE campaign_id = ANY($1::uuid[])
 ORDER BY campaign_id, id;
 
 -- name: ListRecentMarginGuardPausesByCampaigns :many
-SELECT DISTINCT campaign_id
+SELECT campaign_id, max(created_at)::timestamptz AS last_pause_at
 FROM margin_guard_activity
 WHERE campaign_id = ANY($1::uuid[])
   AND action = 'pause'
   AND placement_id = ''
-  AND created_at > now() - INTERVAL '1 hour';
+  AND created_at > now() - INTERVAL '7 days'
+GROUP BY campaign_id;
 
 -- name: GetLedgerByHash :one
 SELECT * FROM balance_ledger

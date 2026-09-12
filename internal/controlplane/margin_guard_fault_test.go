@@ -11,6 +11,7 @@ import (
 	"ad-event-processor/pkg/faultproof"
 
 	"github.com/google/uuid"
+	"github.com/redis/go-redis/v9"
 	"github.com/stretchr/testify/require"
 )
 
@@ -53,8 +54,13 @@ func TestFault_MarginGuardPause(t *testing.T) {
 	require.NoError(t, err)
 
 	cfg := &config.Config{MarginGuardDefaultThresholdBps: 500}
-	worker := ledger.NewWorker(pool, nil, cfg, nil, nil)
+	svc := NewBareServiceForTest(t, pool, []redis.UniversalClient{redisClient}, cfg)
+	worker := ledger.NewWorker(pool, nil, cfg, nil, nil, NewLedgerEnforcementHost(svc))
 	require.NoError(t, worker.RunCycle(ctx))
+
+	var status string
+	require.NoError(t, pool.QueryRow(ctx, `SELECT status FROM campaigns WHERE id = $1`, campaignID).Scan(&status))
+	require.Equal(t, "PAUSED", status)
 
 	var outboxCount int
 	require.NoError(t, pool.QueryRow(ctx, `

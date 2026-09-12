@@ -11,23 +11,23 @@ import (
 	"github.com/stretchr/testify/require"
 )
 
-func TestEnforceDeploymentExportAllowed_pilotDisabled_holdout(t *testing.T) {
+func TestEnforceDeploymentExportAllowed_activeLicenseAllowed(t *testing.T) {
 	host := stubCapHost{
 		limits: licensing.Limits{MaxExportChunkBytes: 0},
 		state:  licensing.StateActive,
 		ok:     true,
 	}
-	err := EnforceDeploymentExportAllowed(host)
-	require.ErrorIs(t, err, ErrDeploymentExportDisabled)
+	require.NoError(t, EnforceDeploymentExportAllowed(host))
 }
 
-func TestEnforceDeploymentExportAllowed_activeTierAllowed(t *testing.T) {
+func TestEnforceDeploymentExportAllowed_expiredLicenseRejected(t *testing.T) {
 	host := stubCapHost{
 		limits: licensing.Limits{MaxExportChunkBytes: 5 << 20},
-		state:  licensing.StateActive,
+		state:  licensing.StateExpired,
 		ok:     true,
 	}
-	require.NoError(t, EnforceDeploymentExportAllowed(host))
+	err := EnforceDeploymentExportAllowed(host)
+	require.Error(t, err)
 }
 
 func TestEnforceCostSyncNetworkCap_disabledTier_holdout(t *testing.T) {

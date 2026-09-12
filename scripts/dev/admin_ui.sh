@@ -405,7 +405,6 @@ case "$CMD" in
     stop_docker_control
     apply_host_control_env
     cd "$ROOT"
-    local go_bin
     go_bin="$(aed_go_bin)" || die "go not found"
     exec "$go_bin" run ./cmd/control
     ;;

@@ -1,5 +1,4 @@
 
-
 skus:
   - code: starter
     display_name: Starter on-prem ($129)
@@ -21,16 +20,16 @@ skus:
       ad_platform_campaign_api: false
       fraud_dispute_evidence: false
     limits:
-      max_cost_sync_networks: 3
+      max_cost_sync_networks: 999999
       max_activations: 1
       max_regions: 1
-      max_api_keys: 5
+      max_api_keys: 0
       max_rps: 0
       max_requests_per_day: 0
       max_active_campaigns: 0
-      max_tenants: 3
+      max_tenants: 0
       max_events_per_month: 0
-      max_export_chunk_bytes: 5242880
+      max_export_chunk_bytes: 0
     bind:
       mode: hard
 
@@ -51,25 +50,25 @@ skus:
       broker_wal: false
       external_residential_intel: false
       moderator_intel_feed: false
-      ad_platform_campaign_api: false
-      fraud_dispute_evidence: false
+      ad_platform_campaign_api: true
+      fraud_dispute_evidence: true
     limits:
-      max_cost_sync_networks: 15
+      max_cost_sync_networks: 999999
       max_activations: 1
       max_regions: 1
-      max_api_keys: 10
+      max_api_keys: 0
       max_rps: 0
       max_requests_per_day: 0
       max_active_campaigns: 0
-      max_tenants: 10
+      max_tenants: 0
       max_events_per_month: 0
-      max_export_chunk_bytes: 10485760
+      max_export_chunk_bytes: 0
     bind:
       mode: multi
 
   - code: scale
-    display_name: Scale on-prem ($749)
-    price_usd_monthly: 749
+    display_name: Scale on-prem ($999)
+    price_usd_monthly: 999
     valid_days: 30
     grace_days: 7
     features:
@@ -84,52 +83,19 @@ skus:
       broker_wal: true
       external_residential_intel: true
       moderator_intel_feed: true
-      ad_platform_campaign_api: false
+      ad_platform_campaign_api: true
       fraud_dispute_evidence: true
     limits:
       max_cost_sync_networks: 999999
       max_activations: 3
       max_regions: 1
-      max_api_keys: 25
+      max_api_keys: 0
       max_rps: 0
       max_requests_per_day: 0
       max_active_campaigns: 0
-      max_tenants: 25
+      max_tenants: 0
       max_events_per_month: 0
-      max_export_chunk_bytes: 52428800
-    bind:
-      mode: multi
-
-  - code: network
-    display_name: Network on-prem ($1,399)
-    price_usd_monthly: 1399
-    valid_days: 30
-    grace_days: 7
-    features:
-      rtb_live: true
-      openrtb_engine: true
-      ebpf_xdp_edge: false
-      ivt_ml_detector: true
-      ml_fraud_boost: true
-      multi_region: true
-      slot_migration: true
-      margin_guard: true
-      broker_wal: true
-      external_residential_intel: true
-      moderator_intel_feed: true
-      ad_platform_campaign_api: false
-      fraud_dispute_evidence: true
-    limits:
-      max_cost_sync_networks: 999999
-      max_activations: 10
-      max_regions: 3
-      max_api_keys: 50
-      max_rps: 0
-      max_requests_per_day: 0
-      max_active_campaigns: 0
-      max_tenants: 50
-      max_events_per_month: 0
-      max_export_chunk_bytes: 104857600
+      max_export_chunk_bytes: 0
     bind:
       mode: multi
 
@@ -156,13 +122,13 @@ skus:
       max_cost_sync_networks: 999999
       max_activations: 99
       max_regions: 99
-      max_api_keys: 999
+      max_api_keys: 0
       max_rps: 0
       max_requests_per_day: 0
       max_active_campaigns: 0
-      max_tenants: 999999
+      max_tenants: 0
       max_events_per_month: 0
-      max_export_chunk_bytes: 1073741824
+      max_export_chunk_bytes: 0
     bind:
       mode: fingerprint
 
@@ -176,21 +142,21 @@ skus:
       rtb_live: false
       openrtb_engine: false
       ebpf_xdp_edge: false
-      ivt_ml_detector: false
+      ivt_ml_detector: true
       ml_fraud_boost: false
       multi_region: false
       slot_migration: false
-      margin_guard: false
+      margin_guard: true
       broker_wal: false
       external_residential_intel: false
       moderator_intel_feed: false
-      ad_platform_campaign_api: false
-      fraud_dispute_evidence: false
+      ad_platform_campaign_api: true
+      fraud_dispute_evidence: true
     limits:
-      max_cost_sync_networks: 0
+      max_cost_sync_networks: 999999
       max_activations: 1
       max_regions: 1
-      max_api_keys: 3
+      max_api_keys: 0
       max_rps: 0
       max_requests_per_day: 0
       max_active_campaigns: 0
@@ -222,12 +188,12 @@ skus:
       max_cost_sync_networks: 999999
       max_activations: 999
       max_regions: 99
-      max_api_keys: 999
+      max_api_keys: 0
       max_rps: 0
       max_requests_per_day: 0
       max_active_campaigns: 0
-      max_tenants: 999999
+      max_tenants: 0
       max_events_per_month: 0
-      max_export_chunk_bytes: 1073741824
+      max_export_chunk_bytes: 0
     bind:
       mode: fingerprint

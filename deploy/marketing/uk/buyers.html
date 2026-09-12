@@ -1,0 +1,245 @@
+<!DOCTYPE html>
+<html lang="uk">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <meta name="description" content="BidShard для media buyers: вартість розрізненого стеку, міграція без страху простою та підтримка, коли щось ламається.">
+  <title>Для media buyers — BidShard</title>
+  <script>
+    (function () {
+      try {
+        var theme = localStorage.getItem("bidshard_theme");
+        if (theme === "light" || theme === "dark") {
+          document.documentElement.setAttribute("data-theme", theme);
+        }
+      } catch (e) {}
+    })();
+  </script>
+  <link rel="alternate" hreflang="en" href="/buyers.html" />
+  <link rel="alternate" hreflang="uk" href="/uk/buyers.html" />
+  <link rel="stylesheet" href="/site.css?v=20260913">
+  <script src="/site.js?v=20260913" defer></script>
+</head>
+<body class="docs-page buyers-page">
+  <div class="site-offer-gate" data-site-offer-gate hidden aria-hidden="true"></div>
+  <header class="site-doc-header">
+    <a href="index.html">BidShard</a>
+    <nav class="site-doc-header__nav" aria-label="Гід для баєрів">
+      <a href="index.html">Головна</a>
+      <a href="docs.html">Як це працює</a>
+      <a href="../offer.html">Публічна оферта</a>
+    </nav>
+    <div class="site-header-end">
+      <a class="site-lang-switch" href="/buyers.html" hreflang="en" title="English version">EN</a>
+      <button type="button" class="site-theme-toggle" data-site-theme-toggle aria-label="Увімкнути світлу тему" title="Світла тема">
+        <svg class="site-theme-toggle__icon site-theme-toggle__icon--sun" viewBox="0 0 24 24" fill="none" aria-hidden="true">
+          <circle cx="12" cy="12" r="4" stroke="currentColor" stroke-width="2"/>
+          <path d="M12 2v2M12 20v2M4.93 4.93l1.41 1.41M17.66 17.66l1.41 1.41M2 12h2M20 12h2M4.93 19.07l1.41-1.41M17.66 6.34l1.41-1.41" stroke="currentColor" stroke-width="2" stroke-linecap="round"/>
+        </svg>
+        <svg class="site-theme-toggle__icon site-theme-toggle__icon--moon" viewBox="0 0 24 24" fill="none" aria-hidden="true">
+          <path d="M12 3a6 6 0 0 0 9 9 9 9 0 1 1-9-9Z" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/>
+        </svg>
+      </button>
+    </div>
+  </header>
+
+  <main class="site-doc">
+    <a href="index.html" class="site-doc-back">На головну</a>
+
+    <p class="site-doc-eyebrow">Гід для media buyers</p>
+    <h1>Коли стек ніби працює проти вас</h1>
+    <p class="site-doc-lead">
+      Ця сторінка для media buyers і team lead, які вже платять за трекер, клоакінг, IVT-інструменти та години на VPS —
+      і все одно прокидаються з червоним ROI або «зниклими» конверсіями. Тут не каталог фіч, а ситуації, під які ми будували продукт,
+      і що змінюється на вашому сервері.
+    </p>
+
+    <nav class="site-doc-toc" aria-label="На цій сторінці">
+      <div class="site-doc-toc__title">На цій сторінці</div>
+      <ol>
+        <li><a href="#familiar">Якщо це про вас</a></li>
+        <li><a href="#stack-cost">За що ви платите насправді</a></li>
+        <li><a href="#start">Старт без поломки продакшену</a></li>
+        <li><a href="#questions">Питання перед пілотом</a></li>
+        <li><a href="#when-wrong">Коли щось пішло не так</a></li>
+      </ol>
+    </nav>
+
+    <h2 id="familiar">Якщо це про вас</h2>
+    <div class="site-doc-cards">
+      <article class="site-doc-card">
+        <h3>Хмарний трекер — хмарний ризик</h3>
+        <p>
+          Ваші воронки живуть у чужій multi-tenant базі. Ліміти акаунта, export caps і «policy» ban прилітають у найгірший день місяця.
+          Self-hosted означає, що кампанії та логи відвідувачів залишаються на вашому VPS —
+          ми постачаємо ПЗ і файл ліцензії, а не спільний tenant.
+        </p>
+      </article>
+      <article class="site-doc-card">
+        <h3>Ще один рахунок за клоаку, ROI уже червоний</h3>
+        <p>
+          Трекер $99, клоака $499, IVT «підключимо наступного кварталу» — а сміттєвий трафік уже палить бюджет сьогодні вночі.
+          BidShard збирає маршрутизацію, клоакінг, rule antifraud і звітність в одному інсталі — маржа перестає тікати
+          через чотири окремі підписки.
+        </p>
+      </article>
+      <article class="site-doc-card">
+        <h3>«Куди зникли 15 конверсій?»</h3>
+        <p>
+          Мережа показує 100 лідів, партнерка — 85, сапорт скидає скріншоти туди-сюди. Postback trail логує
+          кожен крок — бачите, де розрив: мережа, трекер чи affiliate, до того як тиждень закриється в мінус.
+        </p>
+      </article>
+      <article class="site-doc-card">
+        <h3>П&apos;ятниця вечір, VPS не відповідає</h3>
+        <p>
+          Кампанії крутяться в ad manager, а ingest мертвий. Коли хост втрачено або треба переїхати швидко,
+          напишіть у Telegram — можемо видати новий ліцензійний ключ для replacement server, розглядаємо case by case.
+        </p>
+      </article>
+    </div>
+
+    <div class="site-doc-callout">
+      <strong>Антифрод без «AI за токени».</strong>
+      Rule checks працюють на кожному кліку. Оцінки ризику фроду рахуються на вашому сервері у фоні —
+      не ChatGPT на кожен візит, без оплати за запити й без зайвої затримки на прийнятий трафік.
+    </div>
+
+    <h2 id="stack-cost">За що ви платите насправді</h2>
+    <p>
+      Порівнюйте <strong>повний місячний стек</strong>, а не лише рядок «ліцензія трекера». Дешевий cloud виглядає нормально,
+      доки зверху не лягають клоака, IVT і ваш час на ops.
+    </p>
+
+    <table class="site-doc-table">
+      <thead>
+        <tr>
+          <th scope="col">Типовий розрізнений стек</th>
+          <th scope="col">BidShard на вашому сервері</th>
+        </tr>
+      </thead>
+      <tbody>
+        <tr>
+          <td>Продовження трекера, коли ROI уже негативний</td>
+          <td>Одна ліцензія — маршрутизація, антифрод і звіти разом</td>
+        </tr>
+        <tr>
+          <td>Cloaker SaaS $300–1 000/міс поверх media spend</td>
+          <td>Вбудований клоакінг — менше бюджету на сміття, без окремого рядка за клоаку</td>
+        </tr>
+        <tr>
+          <td>IVT «підключимо пізніше», а боти витрачають уже сьогодні</td>
+          <td>Invalid-traffic checks на ваших даних з Pro — фонові задачі, не AI на кожен клік</td>
+        </tr>
+        <tr>
+          <td>Ваш вечір на postback debug — не support SaaS</td>
+          <td>Один інстал, один файл ліцензії, Telegram коли щось ламається</td>
+        </tr>
+      </tbody>
+    </table>
+
+    <p>
+      <strong>Pilot</strong> — 10 днів на вашому VPS з повною маршрутизацією кліків і клоакінгом, без прив'язки картки.
+      <strong>Платні тарифи</strong> — Starter, Pro і Scale до $999/міс залежно від функцій і розміру команди.
+      <strong>Enterprise</strong> — індивідуальна пропозиція для великих флотів і platform automation.
+      Оплата щомісяця в USDT за ліцензію — не за клік, не за токен.
+      <a href="index.html#pricing">Повні тарифи на головній</a>.
+    </p>
+
+    <h2 id="start">Старт без поломки продакшену</h2>
+    <p>
+      Найчастіший страх: «переїду в п&apos;ятницю і втрачу вихідні». Не обов&apos;язково.
+    </p>
+    <ol class="site-doc-steps">
+      <li>
+        <strong>Пілот на окремому VPS</strong> — 10 днів, один сервер, повна маршрутизація кліків. Більшість спочатку ведуть
+        тест-кампанію, а не повний GEO swap у перший день.
+      </li>
+      <li>
+        <strong>Імпорт з Keitaro або Binom</strong> — 159 шаблонів інтеграцій; flows, landers і postbacks можуть
+        бути готові з першого дня, а не через півроку rebuild.
+      </li>
+      <li>
+        <strong>Ліцензія — файл у Settings</strong> — вставте після встановлення. Без vendor-акаунта, який блокує export,
+        і без sales call, щоб відкрити власні дані.
+      </li>
+      <li>
+        <strong>Після пілоту — апгрейд на місці</strong> — USDT, новий файл ліцензії, те саме розгортання. Без
+        reinstall і без повернення в cloud tenant.
+      </li>
+    </ol>
+
+    <div class="site-doc-callout">
+      <strong>10 днів достатньо</strong>, щоб зрозуміти, чи платите ви за клоаку більше, ніж за ліцензію —
+      без картки і без презентації на 40 слайдів. Напишіть у Telegram з очікуваним трафіком і spec VPS;
+      надішлемо файл ліцензії, не посилання на вебінар.
+    </div>
+
+    <h2 id="questions">Питання перед пілотом</h2>
+    <div class="site-doc-cards">
+      <article class="site-doc-card">
+        <h3>Це сповільнить кліки?</h3>
+        <p>
+          Це нормальне питання. Rule filters працюють на кожному прийнятому кліку; fraud scores рахуються у scheduled batch
+          jobs на вашому analytics store і кешуються для live routing. Hot path не викликає зовнішній LLM і не платить за
+          запит.
+        </p>
+      </article>
+      <article class="site-doc-card">
+        <h3>Я mid-campaign на Keitaro — зупинятися?</h3>
+        <p>
+          Ні. Імпортуйте JSON, запустіть пілот паралельно, дублюйте postbacks на тестовому flow, потім перемикайте traffic sources,
+          коли цифри збігаються. Production Keitaro може працювати, поки не будете впевнені.
+        </p>
+      </article>
+      <article class="site-doc-card">
+        <h3>Потрібен full-time developer?</h3>
+        <p>
+          Потрібен хтось, хто комфортно працює з базовим VPS і Docker — не виділений інженер. Onboarding wizard проведе
+          через першу кампанію; адмінка і API покривають щоденні ops.
+        </p>
+      </article>
+      <article class="site-doc-card">
+        <h3>Підтримка — черга тікетів?</h3>
+        <p>
+          Telegram — бот підтримки або менеджер. Опишіть, що зламалося і на який сервер переїхали. Ми знаємо, що postbacks і
+          бани провайдерів не чекають робочих годин L1.
+        </p>
+      </article>
+      <article class="site-doc-card">
+        <h3>Баєр може крутити без мене?</h3>
+        <p>
+          Командні ролі та API keys — щоб джун не поставив на паузу продакшен-кампанії помилково. Ви лишаєтесь data
+          controller на своєму залізі.
+        </p>
+      </article>
+      <article class="site-doc-card">
+        <h3>Ви зберігаєте мої кампанії?</h3>
+        <p>
+          Ні. Усе працює на вашому сервері. У нас немає backend, який збирає телеметрію, конфіги кампаній чи логи
+          відвідувачів.
+        </p>
+      </article>
+    </div>
+
+    <h2 id="when-wrong">Коли щось пішло не так</h2>
+    <p>
+      Мертвий VPS, shutdown провайдера або emergency move на нове залізо — так буває в media buying.
+      Пишіть <a href="https://t.me/bidshardsupportbot">@bidshardsupportbot</a> або
+      <a href="https://t.me/bidshard_manager">@bidshard_manager</a> у Telegram з коротким описом ситуації.
+      Можемо надіслати новий ліцензійний ключ для replacement server — розглядаємо case by case, не як зловживання ліцензією.
+    </p>
+    <p>
+      <strong>Margin Guard</strong> (тариф Pro) стежить за ledger totals і placement stats за таймером. Коли ROI падає нижче
+      ваших правил, ставить на паузу маршрутизацію в трекері та може поставити на паузу пов'язані кампанії в Meta і Google — витрати
+      зупиняються, поки ви фіксуєте воронку, а не після того, як день закрився в мінус.
+    </p>
+
+    <div class="site-doc-actions">
+      <a class="primary" data-site-cta="telegram" href="#">Отримати пілот</a>
+      <a class="ghost" href="docs.html">Як це працює</a>
+      <a class="ghost" href="index.html#pricing">Тарифи</a>
+    </div>
+  </main>
+</body>
+</html>

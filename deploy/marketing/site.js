@@ -132,12 +132,15 @@
     return siteLocale() === 'uk' ? '/uk/demo.html' : '/demo.html';
   }
 
-  function operatorsPageHref(config) {
+  function buyersPageHref(config) {
     var ui = config && config.ui ? config.ui : {};
+    if (ui.buyers_href) {
+      return ui.buyers_href;
+    }
     if (ui.operators_href) {
       return ui.operators_href;
     }
-    return siteLocale() === 'uk' ? '/uk/operators.html' : '/operators.html';
+    return siteLocale() === 'uk' ? '/uk/buyers.html' : '/buyers.html';
   }
 
   function formatTemplate(template, vars) {
@@ -237,8 +240,8 @@
     if (document.body.classList.contains('demo-page')) {
       return siteLocale() === 'uk' ? '/demo.html' : '/uk/demo.html';
     }
-    if (document.body.classList.contains('operators-page')) {
-      return siteLocale() === 'uk' ? '/operators.html' : '/uk/operators.html';
+    if (document.body.classList.contains('buyers-page') || document.body.classList.contains('operators-page')) {
+      return siteLocale() === 'uk' ? '/buyers.html' : '/uk/buyers.html';
     }
     if (document.body.classList.contains('docs-page')) {
       return siteLocale() === 'uk' ? '/docs.html' : '/uk/docs.html';
@@ -1126,11 +1129,8 @@
         link.textContent = demoLabel;
       }
     });
-    document.querySelectorAll('[data-site-hero-operators]').forEach(function (link) {
-      link.setAttribute('href', operatorsPageHref(config));
-    });
     document.querySelectorAll('[data-site-empathy-guide]').forEach(function (link) {
-      link.setAttribute('href', operatorsPageHref(config));
+      link.setAttribute('href', buyersPageHref(config));
     });
     document.querySelectorAll('[data-site-tco-architecture]').forEach(function (link) {
       link.setAttribute('href', docsPageHref(config));
@@ -1162,17 +1162,16 @@
     var disclaimer = document.querySelector('[data-site-pilot-disclaimer]');
     if (disclaimer) {
       var disclaimerText = formatTemplate(
-        uiText(
-          config,
-          'pilot_disclaimer',
-          'No credit card. Free {days}-day pilot. By requesting a pilot you accept the {offer_link}.'
-        ),
-        { days: days, offer_link: offerLinkText }
+        uiText(config, 'pilot_disclaimer', 'No credit card. {days}-day pilot.'),
+        { days: days }
       );
-      disclaimer.innerHTML = disclaimerText.replace(
-        offerLinkText,
-        '<a href="' + escapeHtml(offerHref) + '">' + escapeHtml(offerLinkText) + '</a>'
-      );
+      disclaimer.innerHTML =
+        disclaimerText +
+        ' <a class="site-pilot-disclaimer__offer" href="' +
+        escapeHtml(offerHref) +
+        '">' +
+        escapeHtml(offerLinkText) +
+        '</a>';
     }
     document
       .querySelectorAll(
@@ -1248,7 +1247,6 @@
       return;
     }
 
-    var docsHref = docsPageHref(config);
     var nav = document.createElement('nav');
     nav.className = 'site-mobile-nav';
     nav.setAttribute('aria-label', 'Mobile');
@@ -1258,11 +1256,6 @@
       '</a>' +
       '<a href="#" data-site-scroll="PRICING">' +
       escapeHtml(uiText(config, 'mobile_nav_pricing', 'Pricing')) +
-      '</a>' +
-      '<a href="' +
-      escapeHtml(docsHref) +
-      '">' +
-      escapeHtml(uiText(config, 'mobile_nav_architecture', 'Architecture')) +
       '</a>' +
       '<a href="#" data-site-scroll="HOW-IT-WORKS">' +
       escapeHtml(uiText(config, 'mobile_nav_install', 'Install')) +
@@ -1331,13 +1324,8 @@
   }
 
   function ensureOfferAccepted(config, onAllowed) {
-    var offer = config.offer || {};
-    var version = offer.version || '2026-09-09';
-    if (readOfferAcceptance(version)) {
-      onAllowed();
-      return;
-    }
-    showOfferGate(config, onAllowed);
+    // Offer gate disabled on landing CTA; legal stays on offer.html and footer only.
+    onAllowed();
   }
 
   function showOfferGate(config, onAllowed) {
@@ -1605,8 +1593,8 @@
     document.querySelectorAll(".site-doc-header__nav a[href='docs.html']").forEach(function (link) {
       link.setAttribute('href', docsPageHref(config));
     });
-    document.querySelectorAll("a[href='operators.html']").forEach(function (link) {
-      link.setAttribute('href', operatorsPageHref(config));
+    document.querySelectorAll("a[href='operators.html'], a[href='buyers.html']").forEach(function (link) {
+      link.setAttribute('href', buyersPageHref(config));
     });
     document.querySelectorAll(".site-doc-actions a[href='docs.html']").forEach(function (link) {
       link.setAttribute('href', docsPageHref(config));

@@ -29,6 +29,12 @@ func TestSanitizeFeaturesForSKU_proAllowsMarginGuard(t *testing.T) {
 	require.True(t, out.MarginGuardEnabled())
 }
 
+func TestSanitizeFeaturesForSKU_pilotAllowsMarginGuard(t *testing.T) {
+	in := FeatureSet{MarginGuard: false}
+	out := SanitizeFeaturesForSKU(SKUCodePilot, in)
+	require.True(t, out.MarginGuardEnabled())
+}
+
 func TestSanitizeFeaturesForSKU_starterBlocksBrokerWal(t *testing.T) {
 	in := FeatureSet{BrokerWal: true}
 	out := SanitizeFeaturesForSKU(SKUCodeStarter, in)

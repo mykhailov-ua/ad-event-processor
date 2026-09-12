@@ -2,6 +2,7 @@ package ledger
 
 import (
 	"testing"
+	"time"
 
 	"ad-event-processor/internal/config"
 
@@ -18,4 +19,10 @@ func TestCostOverRevenueThresholdBps(t *testing.T) {
 
 func TestCostOverRevenueLimitMicro(t *testing.T) {
 	assert.Equal(t, int64(105_000), CostOverRevenueLimitMicro(100_000, 500))
+}
+
+func TestWorkerInterval_defaultFiveSeconds_holdout(t *testing.T) {
+	assert.Equal(t, 5*time.Second, WorkerInterval(nil))
+	assert.Equal(t, 5*time.Second, WorkerInterval(&config.Config{MarginGuardIntervalSec: 0}))
+	assert.Equal(t, 30*time.Second, WorkerInterval(&config.Config{MarginGuardIntervalSec: 30}))
 }

@@ -869,7 +869,7 @@ func Load() (*Config, error) {
 		BidFloorMinMicro:                       getEnvMicro("BID_FLOOR_MIN_MICRO", 1000),
 		DealFloorRefreshIntervalMs:             getEnvInt("DEAL_FLOOR_REFRESH_INTERVAL_MS", 60_000),
 		PacingToleranceMargin:                  getEnvFloat("PACING_TOLERANCE_MARGIN", 0.15),
-		MarginGuardIntervalSec:                 getEnvInt("MARGIN_GUARD_INTERVAL_SEC", 300),
+		MarginGuardIntervalSec:                 getEnvInt("MARGIN_GUARD_INTERVAL_SEC", 5),
 		MarginGuardDefaultThresholdBps:         getEnvInt("MARGIN_GUARD_DEFAULT_THRESHOLD_BPS", 500),
 		CreditScoringMinAgeDays:                getEnvFloat("CREDIT_SCORING_MIN_AGE_DAYS", 7.0),
 		CreditScoringMatureAgeDays:             getEnvFloat("CREDIT_SCORING_MATURE_AGE_DAYS", 30.0),

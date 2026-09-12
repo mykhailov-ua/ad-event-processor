@@ -304,6 +304,7 @@ body {
   gap: 12px;
 }
 
+.BuyersEmpathyTeaser,
 .OperatorsEmpathyTeaser {
   margin: 0;
   max-width: 52ch;
@@ -312,12 +313,14 @@ body {
   line-height: 1.55;
 }
 
+.BuyersEmpathyTeaser a,
 .OperatorsEmpathyTeaser a {
   color: var(--site-accent);
   text-decoration: underline;
   text-underline-offset: 3px;
 }
 
+.BuyersEmpathyTeaser a:hover,
 .OperatorsEmpathyTeaser a:hover {
   color: var(--site-text);
 }
@@ -6589,6 +6592,7 @@ html[lang='uk'] .site-hardware-card__profile {
     max-width: none;
   }
 
+  .BuyersEmpathyTeaser,
   .OperatorsEmpathyTeaser {
     font-size: 14px;
     line-height: 1.5;
@@ -6628,6 +6632,8 @@ html[lang='uk'] .site-hardware-card__profile {
     padding-bottom: max(var(--site-footer-y), env(safe-area-inset-bottom, 0px)) !important;
   }
 
+  .buyers-page .site-doc-cards,
+  .buyers-page .site-doc-card,
   .operators-page .site-doc-cards,
   .operators-page .site-doc-card {
     min-width: 0;

@@ -48,10 +48,16 @@ func (st *Store) CreatePolicy(ctx context.Context, p *ledger.Policy) error {
 		return fmt.Errorf("service unavailable")
 	}
 	thresholdBps := costOverRevenueThresholdBps(p, st.host.DefaultCostOverRevenueThresholdBps())
+	enforcement := ledger.NormalizeEnforcement(p.Enforcement)
+	cooldownSec := ledger.PolicyCooldownSec(p)
 	_, err := st.pool.Exec(ctx, `
-		INSERT INTO margin_guard_policies (campaign_id, name, min_clicks, roi_floor_pct, zero_conv_streak, cost_over_revenue_threshold_bps, is_active)
-		VALUES ($1, $2, $3, $4, $5, $6, $7)
-	`, domain.ToUUID(p.CampaignID), p.Name, p.MinClicks, p.RoiFloorPct, p.ZeroConvStreak, thresholdBps, p.IsActive)
+		INSERT INTO margin_guard_policies (
+			campaign_id, name, min_clicks, roi_floor_pct, zero_conv_streak,
+			cost_over_revenue_threshold_bps, enforcement, cooldown_sec, platform_pause, platform_network, is_active
+		)
+		VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11)
+	`, domain.ToUUID(p.CampaignID), p.Name, p.MinClicks, p.RoiFloorPct, p.ZeroConvStreak,
+		thresholdBps, enforcement, cooldownSec, p.PlatformPause, strings.TrimSpace(p.PlatformNetwork), p.IsActive)
 	return err
 }
 
@@ -60,7 +66,8 @@ func (st *Store) ListPolicies(ctx context.Context, campaignID uuid.UUID) ([]*led
 		return nil, fmt.Errorf("service unavailable")
 	}
 	rows, err := st.pool.Query(ctx, `
-		SELECT id, campaign_id, name, min_clicks, roi_floor_pct, zero_conv_streak, cost_over_revenue_threshold_bps, is_active
+		SELECT id, campaign_id, name, min_clicks, roi_floor_pct, zero_conv_streak,
+			cost_over_revenue_threshold_bps, enforcement, cooldown_sec, platform_pause, platform_network, is_active
 		FROM margin_guard_policies
 		WHERE campaign_id = $1
 	`, domain.ToUUID(campaignID))
@@ -72,7 +79,10 @@ func (st *Store) ListPolicies(ctx context.Context, campaignID uuid.UUID) ([]*led
 	var policies []*ledger.Policy
 	for rows.Next() {
 		p := &ledger.Policy{}
-		if err := rows.Scan(&p.ID, &p.CampaignID, &p.Name, &p.MinClicks, &p.RoiFloorPct, &p.ZeroConvStreak, &p.CostOverRevenueThresholdBps, &p.IsActive); err != nil {
+		if err := rows.Scan(
+			&p.ID, &p.CampaignID, &p.Name, &p.MinClicks, &p.RoiFloorPct, &p.ZeroConvStreak,
+			&p.CostOverRevenueThresholdBps, &p.Enforcement, &p.CooldownSec, &p.PlatformPause, &p.PlatformNetwork, &p.IsActive,
+		); err != nil {
 			return nil, err
 		}
 		policies = append(policies, p)
@@ -255,6 +265,10 @@ func (st *Store) BatchMarginBreach(ctx context.Context, campaignIDs []uuid.UUID)
 			RoiFloorPct:                 row.RoiFloorPct,
 			ZeroConvStreak:              int(row.ZeroConvStreak),
 			CostOverRevenueThresholdBps: int(row.CostOverRevenueThresholdBps),
+			Enforcement:                 row.Enforcement,
+			CooldownSec:                 int(row.CooldownSec),
+			PlatformPause:               row.PlatformPause,
+			PlatformNetwork:             row.PlatformNetwork,
 			IsActive:                    row.IsActive,
 		}
 	}

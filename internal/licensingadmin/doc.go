@@ -18,14 +18,14 @@
 //   - GET /api/v1/license/status returns UNCONFIGURED when billing.license_status row is missing.
 //   - Nil FeatureChecker leaves gated routes open; wired checker fails closed with 403 when feature denied.
 //   - EULA accept records legal.Version once per deployment in system_settings.
-//   - Deployment caps (CapHost): 0 = unlimited except max_export_chunk_bytes (0 = exports disabled); >= 999999 = unlimited.
+//   - Deployment caps (CapHost): 0 = unlimited for max_tenants, max_api_keys, max_events_per_month; max_export_chunk_bytes 0 uses default chunk size.
 //
 // Limit enforcement map:
 //   - max_tenants: EnforceDeploymentTenantCap -> CreateCustomer, ActivateOwner -> 429 LIMIT_EXCEEDED
 //   - max_api_keys: EnforceDeploymentAPIKeyCap -> identity.CreateAPIKey -> 429 LIMIT_EXCEEDED
 //   - max_active_campaigns: EnforceDeploymentCampaignCap -> CreateCampaign -> 429 LIMIT_EXCEEDED
 //   - max_regions: EnforceDeploymentRegionCap -> control serve multi_region startup -> error
-//   - max_export_chunk_bytes: EnforceDeploymentExportAllowed / ExportDisabled -> 403 DEPLOYMENT_EXPORT_DISABLED
+//   - max_export_chunk_bytes: ExportChunkMaxBytes chunk sizing only (0 = default 10 MiB); tier no longer disables exports
 //   - max_events_per_month: EnforceDeploymentMonthlyEventsCap (cold); LicenseMonthlyEventsFilter (hot snapshot)
 //
 // Forbidden:

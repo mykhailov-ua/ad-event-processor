@@ -46,6 +46,13 @@ func (m *budgetMissOnceRedis) Process(ctx context.Context, cmd redis.Cmder) erro
 	return nil
 }
 
+func (m *budgetMissOnceRedis) FilterEvalFast(cmd *redis.Cmd) (int64, error) {
+	if m.calls.Add(1) == 1 {
+		return -1, nil
+	}
+	return 0, nil
+}
+
 type panicCampaignRepo struct{}
 
 func (r panicCampaignRepo) GetByID(context.Context, uuid.UUID) (*domain.Campaign, error) {

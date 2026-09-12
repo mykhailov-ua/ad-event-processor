@@ -478,6 +478,17 @@ MarginGuardPolicy:
       type: integer
     cost_over_revenue_threshold_bps:
       type: integer
+    enforcement:
+      type: string
+      enum: ['', pause_campaign, blacklist_placement, notify_only, platform_pause]
+    cooldown_sec:
+      type: integer
+      minimum: 0
+      maximum: 604800
+    platform_pause:
+      type: boolean
+    platform_network:
+      type: string
     is_active:
       type: boolean
 

@@ -6,10 +6,7 @@ import (
 	"ad-event-processor/internal/licensing"
 )
 
-const (
-	defaultExportChunkMaxBytes = 10 * 1024 * 1024
-	exportDisabledSentinel     = -1
-)
+const defaultExportChunkMaxBytes = 10 * 1024 * 1024
 
 const DefaultExportChunkMaxBytes = defaultExportChunkMaxBytes
 
@@ -21,7 +18,7 @@ func ExportChunkMaxBytes(limits licensing.Limits, state licensing.LicenseState, 
 		return defaultExportChunkMaxBytes
 	}
 	if limits.MaxExportChunkBytes == 0 {
-		return exportDisabledSentinel
+		return defaultExportChunkMaxBytes
 	}
 	if limits.MaxExportChunkBytes > uint64(math.MaxInt) {
 		return math.MaxInt

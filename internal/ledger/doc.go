@@ -8,6 +8,10 @@
 //     StartWorkers runs InvoiceWorker on 1st of month 00:15 UTC when InvoiceWorkerEnabled.
 //   - Worker (worker.go): ClickHouse placement spend vs revenue margin guard; pauses placements when
 //     cost-over-revenue exceeds licensed threshold; started from internal/control/run.go.
+//   - EnforcementHost (enforcement.go): PauseCampaign, BlacklistPlacement, PlatformPauseCampaign;
+//     policy enforcement modes in policy_enforcement.go (pause_campaign, blacklist_placement,
+//     notify_only, platform_pause) with per-policy cooldown_sec.
+//     controlplane ledger_enforcement_bridge.go (not raw PAUSE_* outbox inserts).
 //   - BillingClient (client.go): thin domain.BillingAPI facade for controlplane operator billing calls.
 //   - CheckLedgerBalanceInvariant (ledger_invariant_assert.go): customers.balance vs ledger sum
 //     before invoice generation; drift increments LedgerDriftTotal metrics.
@@ -28,7 +32,7 @@
 //   - Margin guard requires licensing.Entitlements.Features.MarginGuard on customer snapshot.
 //
 // Defaults and limits:
-//   - MarginGuardIntervalSec: WorkerInterval default 5 min when unset (threshold.go).
+//   - MarginGuardIntervalSec: WorkerInterval default 5 s when unset (threshold.go; env MARGIN_GUARD_INTERVAL_SEC).
 //   - MarginGuardDefaultThresholdBps default 500 bps when unset.
 //   - Invoice worker schedule: 1st of month 00:15 UTC (worker_invoice.go).
 //
@@ -43,4 +47,8 @@
 //	go test ./internal/ledger/ -short -run TestFault_LedgerDriftCheck -count=1
 //	go test ./internal/ledger/ -short -run TestFault_InvoiceCronIdempotent -count=1
 //	go test ./internal/ledger/ -short -run TestCostOverRevenueThresholdBps -count=1
+//	go test ./internal/ledger/ -short -run TestWorkerInterval_defaultFiveSeconds_holdout -count=1
+//	go test ./internal/ingest/ -short -run TestTryRecoverBudgetFromRegistry_pausedCampaignNoRecover_holdout -count=1
+//	go test ./internal/ingest/ -short -run TestUnifiedFilter_budgetMiss_pausedCampaignNoPGRecover_holdout -count=1
+//	go test ./internal/controlplane/ -short -run TestFault_MarginGuardPause_noBudgetRecovery_holdout -count=1
 package ledger

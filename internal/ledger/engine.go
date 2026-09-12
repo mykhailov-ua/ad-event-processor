@@ -14,6 +14,10 @@ type Policy struct {
 	RoiFloorPct                 float64   `json:"roi_floor_pct"`
 	ZeroConvStreak              int       `json:"zero_conv_streak"`
 	CostOverRevenueThresholdBps int       `json:"cost_over_revenue_threshold_bps"`
+	Enforcement                 string    `json:"enforcement"`
+	CooldownSec                 int       `json:"cooldown_sec"`
+	PlatformPause               bool      `json:"platform_pause"`
+	PlatformNetwork             string    `json:"platform_network"`
 	IsActive                    bool      `json:"is_active"`
 }
 

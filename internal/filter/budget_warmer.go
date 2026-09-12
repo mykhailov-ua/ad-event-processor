@@ -151,6 +151,9 @@ func TryRecoverBudgetFromRegistry(
 	if !ok {
 		return false, nil
 	}
+	if camp.Status != "" && camp.Status != domain.CampaignStatusActive {
+		return false, nil
+	}
 	if camp.BudgetLimit == 0 && camp.CurrentSpend == 0 {
 		return false, nil
 	}
