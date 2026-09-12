@@ -3,6 +3,10 @@ package opsadmin
 import (
 	"context"
 	"fmt"
+	"os"
+	"path/filepath"
+
+	"ad-event-processor/internal/config"
 
 	"github.com/google/uuid"
 )
@@ -66,5 +70,34 @@ func (r *Reader) ListDomainRotation(ctx context.Context) (DomainRotationListResu
 	if hosts == nil {
 		hosts = []DomainRotationHostDTO{}
 	}
-	return DomainRotationListResult{Hosts: hosts}, nil
+	return DomainRotationListResult{
+		Hosts:    hosts,
+		SSLSetup: domainSSLSetupCapability(r.cfg()),
+	}, nil
+}
+
+func domainSSLSetupCapability(cfg *config.Config) *DomainSSLSetupCapability {
+	if cfg == nil {
+		return &DomainSSLSetupCapability{
+			Available: false,
+			Message:   "service unavailable",
+		}
+	}
+	if !cfg.Management.DomainSSLSetupEnabled {
+		return &DomainSSLSetupCapability{
+			Available: false,
+			Message:   "ssl setup disabled on this deployment",
+		}
+	}
+	script := cfg.Management.DomainSSLSetupScript
+	if script == "" {
+		script = filepath.Join("scripts", "install", "setup_domain_ssl.sh")
+	}
+	if _, err := os.Stat(script); err != nil {
+		return &DomainSSLSetupCapability{
+			Available: false,
+			Message:   fmt.Sprintf("ssl setup script not found: %s", script),
+		}
+	}
+	return &DomainSSLSetupCapability{Available: true}
 }

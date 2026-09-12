@@ -8,8 +8,10 @@ import {
   isApiGet,
   isApiPost,
   loginAsAdmin,
+  mainContent,
   mainHeading,
   skipUnlessIntegrationReady,
+  stubApiRoute,
 } from './helpers.js';
 
 test.beforeEach(async ({}, testInfo) => {
@@ -72,4 +74,35 @@ test('team invite posts member and refreshes roster', { tag: '@write' }, async (
   await expect(page.getByRole('cell', { name: inviteEmail, exact: true })).toBeVisible({
     timeout: 15_000,
   });
+});
+
+test('team invite POST 400 shows mutation error', { tag: '@L3' }, async ({ page }) => {
+  await loginAsAdmin(page);
+  const runToken = integrationRunToken();
+  const inviteEmail = integrationTeamInviteEmail(runToken);
+
+  const customerId = await fetchSessionCustomerId(page);
+  if (!customerId) {
+    test.skip(true, 'integration: no default_customer_id in session');
+    return;
+  }
+
+  const loaded = await gotoLiveTeam(page, customerId);
+  if (!loaded) {
+    test.skip(true, 'integration: team overview unavailable for session customer');
+    return;
+  }
+
+  await stubApiRoute(page, 'POST', '/api/v1/team/members', 400, {
+    code: 'BAD_REQUEST',
+    message: 'invalid invite email',
+  });
+
+  await page.getByRole('button', { name: 'Invite member' }).click();
+  await page.locator('#team-invite-email').fill(inviteEmail);
+  await page.getByRole('button', { name: 'Send invite' }).click();
+
+  await expect(mainContent(page).getByRole('alert')).toBeVisible({ timeout: 15_000 });
+  await expect(mainContent(page).getByText('invalid invite email', { exact: true })).toBeVisible();
+  await expect(page.locator('#team-invite-email')).toHaveValue(inviteEmail);
 });

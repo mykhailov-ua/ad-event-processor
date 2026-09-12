@@ -58,6 +58,30 @@ function isMutatingMethod(method: string): boolean {
   return upper !== 'GET' && upper !== 'HEAD' && upper !== 'OPTIONS';
 }
 
+function featureRequiredMessage(record: Record<string, unknown>): string {
+  const featureKey =
+    typeof record.feature_key === 'string'
+      ? record.feature_key
+      : typeof record.feature_required === 'string'
+        ? record.feature_required
+        : '';
+  const planCode = typeof record.plan_code === 'string' ? record.plan_code : '';
+  if (featureKey && planCode) {
+    return `${featureKey} requires ${planCode} plan`;
+  }
+  if (featureKey) {
+    return featureKey;
+  }
+  return '';
+}
+
+function normalizeApiErrorCode(rawCode: string): string {
+  if (rawCode === 'feature_required') {
+    return 'FEATURE_REQUIRED';
+  }
+  return rawCode;
+}
+
 export async function parseApiError(response: Response): Promise<ApiError> {
   let code = 'HTTP_ERROR';
   let message = response.statusText || `HTTP ${response.status}`;
@@ -70,13 +94,25 @@ export async function parseApiError(response: Response): Promise<ApiError> {
       if (errorField && typeof errorField === 'object') {
         const errObj = errorField as Record<string, unknown>;
         if (typeof errObj.code === 'string') {
-          code = errObj.code;
+          code = normalizeApiErrorCode(errObj.code);
         }
         if (typeof errObj.message === 'string') {
           message = errObj.message;
         }
+        if (code === 'FEATURE_REQUIRED' && message === response.statusText) {
+          const featureMessage = featureRequiredMessage({ ...record, ...errObj });
+          if (featureMessage !== '') {
+            message = featureMessage;
+          }
+        }
       } else if (typeof errorField === 'string') {
-        message = errorField;
+        if (errorField === 'feature_required') {
+          code = 'FEATURE_REQUIRED';
+          const featureMessage = featureRequiredMessage(record);
+          message = featureMessage !== '' ? featureMessage : errorField;
+        } else {
+          message = errorField;
+        }
       }
     }
   } catch {

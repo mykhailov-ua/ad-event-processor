@@ -657,7 +657,7 @@ body {
   gap: 48px;
 }
 
-.Landing > .HowItWorks > .Frame:first-child {
+.site-how-it-works__head {
   display: flex;
   flex-direction: column;
   align-items: flex-start;
@@ -666,8 +666,10 @@ body {
   width: 100%;
   max-width: var(--site-content-max);
   margin: 0 auto;
+  box-sizing: border-box;
 }
 
+.site-how-it-works__head .OperationalInMinutes,
 .Landing > .HowItWorks > .Frame:first-child .OperationalInMinutes {
   color: var(--site-accent-text);
   font-size: 12px;
@@ -677,17 +679,24 @@ body {
   text-transform: uppercase;
 }
 
+.site-how-it-works__steps,
 .Landing > .HowItWorks > .Frame:nth-child(2) {
   display: grid;
   grid-template-columns: repeat(3, minmax(0, 1fr));
   gap: 24px;
+  width: 100%;
+  max-width: var(--site-content-max);
+  margin: 0 auto;
+  box-sizing: border-box;
 }
 
+.site-how-it-works__step,
 .Landing > .HowItWorks > .Frame:nth-child(2) > .Frame {
   display: flex;
   flex-direction: column;
   gap: 8px;
   padding: 24px;
+  box-sizing: border-box;
   background: var(--site-surface);
   border: 1px solid var(--site-border);
   border-radius: var(--site-radius-card);
@@ -1650,6 +1659,7 @@ body.site-offer-gate-open {
 
 .Landing .Pillars > .Frame,
 .Landing .HowItWorks > .Frame:nth-child(2),
+.site-how-it-works__steps,
 .Landing > .Faq > .Frame:nth-child(2) {
   width: 100%;
   max-width: var(--site-content-max);
@@ -2534,7 +2544,8 @@ html[data-theme="light"] .site-pricing-badge {
     grid-template-columns: repeat(2, minmax(0, 1fr));
   }
 
-  .Landing > .HowItWorks > .Frame:nth-child(2) {
+  .Landing > .HowItWorks > .Frame:nth-child(2),
+  .site-how-it-works__steps {
     grid-template-columns: repeat(2, minmax(0, 1fr));
   }
 }
@@ -2629,7 +2640,8 @@ html[data-theme="light"] .site-pricing-badge {
     justify-content: center;
   }
 
-  .Landing > .HowItWorks > .Frame:nth-child(2) {
+  .Landing > .HowItWorks > .Frame:nth-child(2),
+  .site-how-it-works__steps {
     grid-template-columns: 1fr;
   }
 
@@ -3962,17 +3974,20 @@ html[data-theme="light"] .site-flow__note {
     font-size: 13px;
   }
 
-  .Landing > .HowItWorks > .Frame:nth-child(2) {
+  .Landing > .HowItWorks > .Frame:nth-child(2),
+  .site-how-it-works__steps {
     gap: 12px;
   }
 
-  .Landing > .HowItWorks > .Frame:nth-child(2) > .Frame {
+  .Landing > .HowItWorks > .Frame:nth-child(2) > .Frame,
+  .site-how-it-works__step {
     padding: 18px;
   }
 }
 
 @media (max-width: 960px) and (min-width: 641px) {
-  .Landing > .HowItWorks > .Frame:nth-child(2) {
+  .Landing > .HowItWorks > .Frame:nth-child(2),
+  .site-how-it-works__steps {
     grid-template-columns: 1fr;
   }
 
@@ -4931,7 +4946,7 @@ html[data-theme="light"] .site-flow__note {
 
 .Landing > .HowItWorks.site-pga-install-section {
   align-items: stretch;
-  gap: 0;
+  gap: 40px;
   padding-top: 56px !important;
   padding-bottom: 72px !important;
 }
@@ -5000,6 +5015,9 @@ html[data-theme="light"] .site-flow__note {
   cursor: pointer;
   margin: 0;
   padding: 16px 20px;
+  box-sizing: border-box;
+  appearance: none;
+  -webkit-appearance: none;
   color: var(--site-text);
   font-family: var(--site-font-sans);
   font-size: 15px;
@@ -5029,8 +5047,9 @@ html[data-theme="light"] .site-flow__note {
 }
 
 .site-pga-install-cli .site-pga-terminal-shell {
-  padding: 0 20px 20px;
+  padding: 20px 24px 24px;
   border-top: 1px solid var(--site-border);
+  box-sizing: border-box;
 }
 
 .site-appliance-proof__actions {
@@ -5142,7 +5161,7 @@ html[data-theme="light"] .site-flow__note {
   justify-content: space-between;
   gap: 12px;
   margin: 0;
-  padding: 8px 12px 8px 14px;
+  padding: 10px 16px 10px 20px;
   border-bottom: 1px solid var(--site-border);
   background: var(--site-surface);
   min-height: 40px;
@@ -5162,9 +5181,10 @@ html[data-theme="light"] .site-flow__note {
 .Landing .TerminalBlock.site-pga-terminal .site-pga-terminal__body {
   display: flex;
   flex-direction: column;
-  gap: 8px;
+  gap: 10px;
   margin: 0;
-  padding: 16px 18px 18px;
+  padding: 20px 20px 24px;
+  box-sizing: border-box;
   background: var(--site-code-bg);
 }
 
@@ -5231,6 +5251,7 @@ html[data-theme="light"] .site-instant-sell__card--calculator .site-hero-calcula
 /* pgAdmin-style landing page layout */
 
 .site-pga-page {
+  --site-shell-inline: var(--site-gutter);
   --site-shell-inline: max(var(--site-gutter), calc((100% - var(--site-content-max)) / 2));
   background: var(--site-bg);
 }
@@ -5357,8 +5378,7 @@ html[data-theme="light"] .site-pga-page > .Header {
 .site-pga-page .SimplePricing,
 .site-pga-page .BuiltForOperatorsWhoHateSurprises,
 .site-pga-page .FrequentlyAskedQuestions,
-.site-pga-page .Killers__title,
-.site-pga-page .OperationalInMinutes {
+.site-pga-page .Killers__title {
   font-weight: 600;
   font-size: clamp(24px, 3vw, 32px);
 }
@@ -5503,6 +5523,9 @@ html[data-theme="light"] .site-pga-page > .PilotCta {
 .site-pga-page .site-killers__grid,
 .site-pga-page > .Pricing > .Frame,
 .site-pga-page > .Pricing > .site-pricing-grid,
+.site-pga-page > .HowItWorks .site-how-it-works__head,
+.site-pga-page > .HowItWorks .site-how-it-works__steps,
+.site-pga-page > .HowItWorks .site-pga-install,
 .site-pga-page > .Trust > .Frame,
 .site-pga-page > .Faq > .Frame,
 .site-pga-page > .Pillars > .Frame,
@@ -5582,6 +5605,12 @@ html[data-theme="light"] .site-pga-page > .PilotCta {
 
 .site-pga-page > .HowItWorks.site-pga-install-section {
   align-items: stretch !important;
+  gap: 40px !important;
+}
+
+.site-pga-page .site-how-it-works__step {
+  padding: 24px;
+  box-sizing: border-box;
 }
 
 .site-pga-page .site-appliance-proof__copy {
@@ -6620,6 +6649,10 @@ html[lang="uk"] .site-hardware-card__profile {
     gap: 16px;
   }
 
+  .site-pga-page .site-how-it-works__step {
+    padding: 18px;
+  }
+
   .site-pga-install-cli__title {
     font-size: 14px;
     line-height: 1.35;
@@ -6627,7 +6660,15 @@ html[lang="uk"] .site-hardware-card__profile {
   }
 
   .site-pga-install-cli .site-pga-terminal-shell {
-    padding: 0 16px 16px;
+    padding: 16px 18px 20px;
+  }
+
+  .Landing .TerminalBlock.site-pga-terminal .site-pga-terminal__tabbar {
+    padding: 10px 14px 10px 18px;
+  }
+
+  .Landing .TerminalBlock.site-pga-terminal .site-pga-terminal__body {
+    padding: 18px 18px 22px;
   }
 
   .site-appliance-proof__subtitle {

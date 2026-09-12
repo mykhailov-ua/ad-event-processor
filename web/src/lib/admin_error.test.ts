@@ -5,6 +5,7 @@ import { ApiError } from '../api/api_error.ts';
 import {
   adminErrorUserMessage,
   formatAdminErrorDetails,
+  isBillingUnavailableError,
   isPaymentUnavailableError,
   normalizeSubmitError,
   userErrorMessage,
@@ -31,6 +32,18 @@ test('userErrorMessage maps ApiError status to operator copy', () => {
   assert.equal(
     userErrorMessage(new ApiError(403, 'FORBIDDEN', 'role denied')),
     'You do not have permission to view this resource.'
+  );
+  assert.equal(
+    userErrorMessage(new ApiError(401, 'UNAUTHORIZED', 'invalid credentials')),
+    'invalid credentials'
+  );
+  assert.equal(
+    userErrorMessage(new ApiError(429, 'TOO_MANY_REQUESTS', 'rate limit exceeded')),
+    'rate limit exceeded'
+  );
+  assert.equal(
+    userErrorMessage(new ApiError(429, 'TOO_MANY_REQUESTS', '')),
+    'Too many requests. Wait a moment and try again.'
   );
   assert.equal(
     userErrorMessage(new ApiError(501, 'NOT_IMPLEMENTED', 'Wizard not wired')),
@@ -73,6 +86,32 @@ test('normalizeSubmitError preserves ApiError and wraps unknown values', () => {
   assert.notEqual(generic, apiError);
 });
 
+test('userErrorMessage maps FEATURE_REQUIRED to license copy', () => {
+  const message = userErrorMessage(
+    new ApiError(403, 'FEATURE_REQUIRED', 'openrtb requires pilot plan')
+  );
+  assert.match(message, /not included in your license plan/i);
+  assert.match(message, /openrtb requires pilot plan/);
+});
+
+test('userErrorMessage maps CLICKHOUSE_UNAVAILABLE to analytics store copy', () => {
+  assert.equal(
+    userErrorMessage(new ApiError(503, 'CLICKHOUSE_UNAVAILABLE', 'clickhouse not configured')),
+    'Analytics store is unavailable. Report data cannot be loaded right now. Reload this tab to retry.'
+  );
+});
+
+test('userErrorMessage maps FORECAST_UNAVAILABLE with retry hint', () => {
+  assert.equal(
+    userErrorMessage(new ApiError(503, 'FORECAST_UNAVAILABLE', 'forecast store offline')),
+    'forecast store offline Reload this tab to retry when ClickHouse recovers.'
+  );
+  assert.match(
+    userErrorMessage(new ApiError(503, 'FORECAST_UNAVAILABLE', '')),
+    /Reload this tab to retry when ClickHouse recovers/
+  );
+});
+
 test('isPaymentUnavailableError matches PAYMENT_UNAVAILABLE code', () => {
   assert.equal(
     isPaymentUnavailableError(
@@ -82,6 +121,33 @@ test('isPaymentUnavailableError matches PAYMENT_UNAVAILABLE code', () => {
   );
   assert.equal(
     isPaymentUnavailableError(new ApiError(500, 'INTERNAL_ERROR', 'internal error')),
+    false
+  );
+});
+
+test('userErrorMessage maps APPROVAL_REQUIRED to operator copy', () => {
+  assert.equal(
+    userErrorMessage(new ApiError(409, 'APPROVAL_REQUIRED', 'budget approval required')),
+    'budget approval required'
+  );
+});
+
+test('userErrorMessage maps BILLING_UNAVAILABLE to operator copy', () => {
+  assert.equal(
+    userErrorMessage(new ApiError(503, 'BILLING_UNAVAILABLE', 'billing service not configured')),
+    'billing service not configured'
+  );
+});
+
+test('isBillingUnavailableError matches BILLING_UNAVAILABLE code', () => {
+  assert.equal(
+    isBillingUnavailableError(
+      new ApiError(503, 'BILLING_UNAVAILABLE', 'billing service not configured')
+    ),
+    true
+  );
+  assert.equal(
+    isBillingUnavailableError(new ApiError(503, 'PAYMENT_UNAVAILABLE', 'payment unavailable')),
     false
   );
 });

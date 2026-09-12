@@ -1,5 +1,7 @@
 import type { ReactNode } from 'react';
 
+import { adminSpacing } from '@/lib/admin_spacing';
+import { cn } from '@/lib/utils';
 import { PageLayout } from '@/shell/page_layout';
 import { PageSkeleton } from '@/shell/page_skeleton';
 import { AdminMutationError } from '@/shell/admin_error';
@@ -18,7 +20,9 @@ export type DirectoryPageShellProps = {
   controlPanel?: ReactNode;
   footer?: ReactNode;
   blockingErrorTitle: string;
+  blockingErrorFooter?: ReactNode;
   refreshErrorTitle?: string;
+  refreshErrorFooter?: ReactNode;
   skeletonColumns?: number;
   fetchState: DirectoryFetchState;
   /** Non-fetch errors (export, mutation) and status lines above main content. */
@@ -41,7 +45,9 @@ export function DirectoryPageShell({
   controlPanel,
   footer,
   blockingErrorTitle,
+  blockingErrorFooter,
   refreshErrorTitle = 'Refresh failed',
+  refreshErrorFooter,
   skeletonColumns = 4,
   fetchState,
   alerts,
@@ -61,7 +67,12 @@ export function DirectoryPageShell({
   }
 
   if (phase === 'blocking-error' && fetchState.error) {
-    return panelError(fetchState.error, blockingErrorTitle);
+    return (
+      <div className={cn('grid', adminSpacing.gap.md)}>
+        {panelError(fetchState.error, blockingErrorTitle)}
+        {blockingErrorFooter}
+      </div>
+    );
   }
 
   return (
@@ -80,9 +91,12 @@ export function DirectoryPageShell({
       title={title}
       workspaceClassName={workspaceClassName}
     >
-      {shouldShowDirectoryRefreshError(fetchState) && fetchState.error
-        ? panelError(fetchState.error, refreshErrorTitle)
-        : null}
+      {shouldShowDirectoryRefreshError(fetchState) && fetchState.error ? (
+        <div className={cn('grid', adminSpacing.gap.md)}>
+          {panelError(fetchState.error, refreshErrorTitle)}
+          {refreshErrorFooter}
+        </div>
+      ) : null}
       {alerts}
       {children}
     </PageLayout>

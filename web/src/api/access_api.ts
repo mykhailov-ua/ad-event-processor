@@ -1,4 +1,4 @@
-import { apiJson } from './client.js';
+import { apiFetch, apiJson, parseApiError } from './client.js';
 
 export type AccessCapability = {
   id: string;
@@ -55,12 +55,9 @@ export async function getAccessRoles(
 }
 
 export async function getAccessRolesYaml(signal?: AbortSignal): Promise<string> {
-  const response = await fetch('/api/v1/access/roles.yaml', {
-    credentials: 'include',
-    signal,
-  });
+  const response = await apiFetch('/api/v1/access/roles.yaml', { signal });
   if (!response.ok) {
-    throw new Error(`access roles yaml failed: ${response.status}`);
+    throw await parseApiError(response);
   }
   return response.text();
 }

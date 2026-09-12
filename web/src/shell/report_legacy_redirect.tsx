@@ -1,6 +1,6 @@
 import { Navigate, useLocation, useParams } from 'react-router-dom';
 
-import { resolveReportCatalogKey } from '@/lib/report_paths';
+import { normalizeReportRouteSplat, resolveReportCatalogKey } from '@/lib/report_paths';
 
 function buildExportsHref(locationSearch: string, reportKey?: string): string {
   const params = new URLSearchParams(locationSearch);
@@ -12,19 +12,10 @@ function buildExportsHref(locationSearch: string, reportKey?: string): string {
   return query ? `/exports?${query}` : '/exports';
 }
 
-function normalizeReportSplat(splat: string | undefined): string | undefined {
-  const trimmed = splat?.trim();
-  if (!trimmed) {
-    return undefined;
-  }
-  const decoded = decodeURIComponent(trimmed).replace(/^\/+|\/+$/g, '');
-  return decoded || undefined;
-}
-
 export function ReportLegacyRedirect() {
   const location = useLocation();
   const params = useParams();
-  const reportKey = normalizeReportSplat(params['*']);
+  const reportKey = normalizeReportRouteSplat(params['*']);
 
   return <Navigate replace to={buildExportsHref(location.search, reportKey)} />;
 }

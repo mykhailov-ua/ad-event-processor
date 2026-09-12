@@ -20,6 +20,7 @@ export function CustomerDetailWalletTab({
 }: CustomerDetailWalletTabProps) {
   return (
     <CustomerTabShell
+      blockingErrorOptions={{ unavailableTitle: 'Wallet unavailable' }}
       blockingErrorTitle="Could not load wallet"
       fetchState={{ fetching, error, hasSnapshot }}
     >

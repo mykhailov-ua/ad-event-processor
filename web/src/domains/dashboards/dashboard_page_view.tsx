@@ -23,6 +23,7 @@ import {
 import { adminSpacing, adminTypography, opsControlPanelClass } from '@/lib/admin_spacing';
 import { ErrorBlock } from '@/shell/error_block';
 import { PageChrome } from '@/shell/page_chrome';
+import { StubBanner } from '@/shell/stub_banner';
 import { PageSectionStack } from '@/shell/page_layout';
 import { PageSkeleton } from '@/shell/page_skeleton';
 import { BentoSection } from '@/shell/bento_card';
@@ -54,6 +55,7 @@ export function DashboardPageView({
   sessionStaleBanner,
   exportTrueRoiHref,
   exportCampaignOverviewHref,
+  chartMockPreview,
   onDraftCustomerIdChange,
   onDraftFromChange,
   onDraftToChange,
@@ -153,6 +155,21 @@ export function DashboardPageView({
 
       {!error && hasSnapshot ? (
         <PageSectionStack>
+          {chartMockPreview ? (
+            <div data-testid="dashboard-chart-mock-banner">
+              <StubBanner
+                message="KPI blocks and series below are synthetic chart preview data from ?chart_mock=1. They are not loaded from GET /api/v1/dashboards/buyer."
+                title="Chart preview"
+              />
+            </div>
+          ) : (
+            <div data-testid="dashboard-freeze-banner">
+              <StubBanner
+                message="Control Plane deprioritizes in-browser BI on this route. Use Export Hub for async reports. The stale analytics banner below still applies when ClickHouse lags."
+                title="Dashboard (FREEZE)"
+              />
+            </div>
+          )}
           <DashboardStaleBanner freshness={kpis?.freshness} sessionStaleBanner={sessionStaleBanner} />
           {kpis?.freshness?.freshness_label ? (
             <p className={adminTypography.bodyMuted} data-testid="dashboard-freshness-label">

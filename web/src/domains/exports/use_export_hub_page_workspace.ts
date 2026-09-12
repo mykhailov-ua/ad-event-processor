@@ -68,7 +68,10 @@ import {
   resolveExportHubReportFormats,
   type ExportHubReportFormat,
 } from '@/domains/exports/export_hub_report_formats';
-import { fetchReportCatalogCached } from '@/lib/report_catalog_cache';
+import {
+  fetchReportCatalogCached,
+  invalidateReportCatalogCache,
+} from '@/lib/report_catalog_cache';
 import { resolveReportDisplayTitle } from '@/lib/report_paths';
 import { confirmDestructiveAction } from '@/lib/mutation_audit';
 import { sessionHasPermission } from '@/lib/session_permissions';
@@ -122,7 +125,7 @@ function reportDownloadExtension(format: string | undefined): string {
 }
 
 function parseKind(value: string | null): ExportHubKind | undefined {
-  if (value === 'report' || value === 'billing' || value === 'audit') {
+  if (value === 'report' || value === 'billing' || value === 'audit' || value === 'directory') {
     return value;
   }
   return undefined;
@@ -153,7 +156,16 @@ function recentJobLabel(
 export function useExportHubPageWorkspace() {
   const [searchParams, { replaceSearchParams }] = useTransitionSearchParams();
   const { session, user } = useSession();
-  const { data: catalog } = useResource((signal) => fetchReportCatalogCached(signal), []);
+  const [catalogRefreshToken, setCatalogRefreshToken] = useState(0);
+  const {
+    data: catalog,
+    error: catalogError,
+    fetching: catalogFetching,
+  } = useResource(
+    (signal) => fetchReportCatalogCached(signal),
+    [catalogRefreshToken]
+  );
+  const catalogHasSnapshot = catalog != null;
 
   const catalogEntries = useMemo(
     () => exportHubEntriesFromCatalog(catalog?.rows),
@@ -283,7 +295,7 @@ export function useExportHubPageWorkspace() {
   } = useResource(
     (signal) => {
       if (!customerIdForViews || !isUuidLike(customerIdForViews)) {
-        return Promise.resolve([] as SavedView[]);
+        return Promise.resolve(undefined);
       }
       return listSavedViews({ customer_id: customerIdForViews }, signal);
     },
@@ -311,6 +323,11 @@ export function useExportHubPageWorkspace() {
     },
     [draftDestination, selectedKind]
   );
+
+  const onRefreshCatalog = useCallback(() => {
+    invalidateReportCatalogCache();
+    setCatalogRefreshToken((value) => value + 1);
+  }, []);
 
   const clearFormValidationError = useCallback(() => {
     setFormValidationError(undefined);
@@ -439,7 +456,8 @@ export function useExportHubPageWorkspace() {
   const jobFetching = selectedKind === 'billing' ? billingJobFetching : reportJobFetching;
   const jobRevalidating = selectedKind === 'billing' ? billingJobRevalidating : reportJobRevalidating;
   const jobPending = Boolean(job?.status && isJobPendingStatus(String(job.status)));
-  const autoPolling = Boolean(jobId) && selectedKind !== 'audit' && jobPending;
+  const autoPolling =
+    Boolean(jobId) && selectedKind !== 'audit' && selectedKind !== 'directory' && jobPending;
   const polling = Boolean(jobId) && (jobFetching || jobRevalidating || autoPolling);
 
   useEffect(() => {
@@ -875,6 +893,10 @@ export function useExportHubPageWorkspace() {
 
   const onRunExport = useCallback(async () => {
     setAsyncStatusPhase('pending');
+    if (selectedKind === 'directory') {
+      setAsyncStatusPhase('idle');
+      return;
+    }
     if (selectedKind === 'audit') {
       setCreating(true);
       try {
@@ -1597,10 +1619,19 @@ export function useExportHubPageWorkspace() {
     selectedViewId,
   ]);
 
+  const directoryLinkHref =
+    selectedKind === 'directory' ? selectedEntry?.href?.trim() || '/campaigns' : undefined;
+
   return {
     catalogEntries,
+    catalogError,
+    catalogFetching,
+    catalogHasSnapshot,
+    onRefreshCatalog,
     catalogPickerValue,
     selectedKind,
+    directoryLinkHref,
+    selectedEntryDescription: selectedEntry?.description,
     draftCustomerId,
     draftReportKey,
     draftFrom,
@@ -1677,6 +1708,7 @@ export function useExportHubPageWorkspace() {
     onRerunRecentJob,
     onRetryRecentJob,
     savedViews: savedViews ?? [],
+    savedViewsHasSnapshot: savedViews != null,
     savedViewsError,
     savedViewsFetching,
     canManagePresets,

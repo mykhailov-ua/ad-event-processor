@@ -144,6 +144,7 @@ export function CustomerDetail({
       ) : null}
       {tab === 'ledger' ? (
         <CustomerDetailLedgerTab
+          customerId={customer?.id}
           error={ledgerError}
           exportError={ledgerExportError}
           exporting={ledgerExporting}
@@ -176,7 +177,7 @@ export function CustomerDetail({
           hasSnapshot={hasForecastSnapshot}
         />
       ) : null}
-      {tab === 'wallet' ? (
+      {tab === 'wallet' && paymentEnabled ? (
         <CustomerDetailWalletTab
           error={walletError}
           fetching={walletFetching}

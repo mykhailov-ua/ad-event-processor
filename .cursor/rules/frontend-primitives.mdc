@@ -78,7 +78,7 @@ Control Plane report routes do not mount heavy `DirectoryTable` bodies. Pattern:
 | Frozen / export-only report page | `ExportOnlyReportStub` (Phase B shell) + `StubBanner` explaining async export |
 | Primary CTA | Link or button to Export Hub with pre-filled query |
 | Deep link helper | `buildExportHubHref({ reportKey, customerId, from, to, format })` -> `/exports?...` (Phase C); until then `buildReportJobsHref` -> `/reports/jobs?...` |
-| Reference | `web/src/pages/fraud_evidence_pack_bulk_page.tsx` |
+| Reference | `web/src/pages/report_export_stub_page.tsx` + `web/src/shell/report_export_stub_route.tsx` |
 
 **Banned on CP report routes:** client-held report tables, `useMemo` aggregate over full report payloads, fake empty rows when export is the only supported path.
 

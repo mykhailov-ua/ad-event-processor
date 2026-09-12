@@ -21,6 +21,7 @@ import {
   CUSTOMER_DETAIL_LEDGER_PAGE_LIMIT,
   CUSTOMER_DETAIL_PAYMENTS_PAGE_LIMIT,
   currentCustomerDetailMonthValue,
+  mapTaxProfileSaveError,
   skipCustomerDetailTabFetch,
   taxProfileToDraft,
 } from '@/domains/customers/customer_detail_page_utils';
@@ -179,7 +180,7 @@ export function useCustomerDetailPageWorkspace() {
   }, [taxResource.data]);
 
   useEffect(() => {
-    if (!paymentEnabled && tab === 'payments') {
+    if (!paymentEnabled && (tab === 'payments' || tab === 'wallet')) {
       setTab('profile');
     }
   }, [paymentEnabled, tab]);
@@ -249,7 +250,7 @@ export function useCustomerDetailPageWorkspace() {
       toast.success('Tax profile saved');
       setTaxRefreshToken((value) => value + 1);
     } catch (err: unknown) {
-      const nextError = toError(err);
+      const nextError = mapTaxProfileSaveError(err);
       setSaveError(nextError);
       toast.error(userErrorMessage(nextError));
     } finally {
@@ -268,6 +269,14 @@ export function useCustomerDetailPageWorkspace() {
       return;
     }
     const name = nameResult.value;
+    const costCenter = draftCostCenter.trim();
+    if (costCenter.length > 64) {
+      setProfileSaveError(
+        validationError('Cost center must be at most 64 characters.', { field: 'cost_center' })
+      );
+      setProfileSaveSuccess(false);
+      return;
+    }
 
     setSavingProfile(true);
     setProfileSaveError(undefined);
@@ -275,7 +284,7 @@ export function useCustomerDetailPageWorkspace() {
     try {
       await patchCustomer(id, {
         name,
-        cost_center: draftCostCenter.trim(),
+        cost_center: costCenter,
       });
       setProfileSaveSuccess(true);
       toast.success('Customer profile saved');

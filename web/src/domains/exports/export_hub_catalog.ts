@@ -2,7 +2,7 @@ import type { ReportCatalogRow } from '@/api/types';
 import { buildExportHubHref } from '@/lib/export_hub_paths';
 import { resolveReportDisplayTitle } from '@/lib/report_paths';
 
-export type ExportHubKind = 'report' | 'billing' | 'audit';
+export type ExportHubKind = 'report' | 'billing' | 'audit' | 'directory';
 
 export type ExportHubEntry = {
   id: string;
@@ -11,6 +11,8 @@ export type ExportHubEntry = {
   kind: ExportHubKind;
   defaultFormat: string;
   reportKey?: string;
+  /** In-app route when kind is directory (client-side export on that page). */
+  href?: string;
 };
 
 const REPORT_EXPORT_KEY_FALLBACK = [
@@ -27,7 +29,8 @@ const STATIC_EXPORT_HUB_ENTRIES: ExportHubEntry[] = [
   {
     id: 'billing-ledger',
     title: 'Billing ledger',
-    description: 'Customer ledger entries for a date range (async export job).',
+    description:
+      'Async billing ledger export for a customer and date range. Customer detail Ledger tab Export CSV is a one-shot balance snapshot only; use this job for full ledger history.',
     kind: 'billing',
     defaultFormat: 'csv',
   },
@@ -37,6 +40,24 @@ const STATIC_EXPORT_HUB_ENTRIES: ExportHubEntry[] = [
     description: 'One-shot CSV export of audit events (optional PII redaction).',
     kind: 'audit',
     defaultFormat: 'csv',
+  },
+  {
+    id: 'campaigns-directory',
+    title: 'Campaigns list CSV',
+    description:
+      'Export visible campaigns from the directory toolbar (client-side CSV of loaded rows).',
+    kind: 'directory',
+    defaultFormat: 'csv',
+    href: '/campaigns',
+  },
+  {
+    id: 'customers-directory',
+    title: 'Customer portfolio export',
+    description:
+      'Async customer portfolio KPI export for the selected customer and date range. Customer directory is operational CRUD; use Export hub for portfolio jobs.',
+    kind: 'report',
+    defaultFormat: 'csv',
+    reportKey: 'customer-portfolio',
   },
 ];
 
@@ -116,6 +137,9 @@ export function resolveExportHubCatalogValue(
 export const EXPORT_HUB_ENTRIES: ExportHubEntry[] = exportHubEntriesFromCatalog();
 
 export function exportHubEntryHref(entry: ExportHubEntry): string {
+  if (entry.kind === 'directory' && entry.href?.trim()) {
+    return entry.href.trim();
+  }
   return buildExportHubHref({
     entry: entry.id,
     kind: entry.kind,
@@ -139,4 +163,5 @@ export const EXPORT_HUB_KIND_LABELS: Record<ExportHubKind, string> = {
   report: 'Reports',
   billing: 'Billing',
   audit: 'Audit',
+  directory: 'Directory',
 };

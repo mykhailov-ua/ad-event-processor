@@ -19,6 +19,7 @@ export type AdminErrorPageProps = {
   error?: unknown;
   title?: string;
   message?: string;
+  detail?: string;
   layout?: 'standalone' | 'embedded';
   componentStack?: string;
   onRetry?: () => void;
@@ -29,6 +30,7 @@ export function AdminErrorPage({
   error,
   title,
   message,
+  detail,
   layout = 'embedded',
   componentStack,
   onRetry,
@@ -76,6 +78,9 @@ export function AdminErrorPage({
               {kind === 'not-found' ? '404' : kind === 'forbidden' ? '403' : 'Error'}
             </h1>
             <p className="m-0 text-sm text-muted-foreground">{resolvedMessage}</p>
+            {detail ? (
+              <p className="m-0 text-sm text-muted-foreground">{detail}</p>
+            ) : null}
             {devHint ? (
               <p className="m-0 font-mono text-xs text-muted-foreground">{devHint}</p>
             ) : null}

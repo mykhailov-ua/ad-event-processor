@@ -13,6 +13,7 @@ export function ExportSchedulesPage() {
       runningScheduleId={workspace.runningScheduleId}
       saving={workspace.saving}
       schedules={workspace.schedules}
+      schedulesHasSnapshot={workspace.schedulesHasSnapshot}
       schedulesError={workspace.schedulesError}
       schedulesFetching={workspace.schedulesFetching}
       onCustomerIdChange={workspace.setCustomerId}

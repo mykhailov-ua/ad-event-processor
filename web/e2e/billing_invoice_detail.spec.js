@@ -1,6 +1,13 @@
 import { test, expect } from '@playwright/test';
 
-import { gotoBilling, isApiGet, loginAsAdmin, skipUnlessIntegrationReady } from './helpers.js';
+import {
+  gotoBilling,
+  isApiGet,
+  loginAsAdmin,
+  mainContent,
+  skipUnlessIntegrationReady,
+  stubApiRoute,
+} from './helpers.js';
 
 test.beforeEach(async ({}, testInfo) => {
   await skipUnlessIntegrationReady(testInfo);
@@ -59,4 +66,41 @@ test('billing exports page loads from billing hub', async ({ page }) => {
   await page.getByRole('link', { name: 'Ledger exports' }).click();
   await expect(page.getByRole('heading', { name: 'Billing ledger exports' })).toBeVisible();
   await expect(page.getByRole('button', { name: 'Start export' })).toBeVisible();
+});
+
+test('billing invoice detail GET 500 shows blocking error', { tag: '@L3' }, async ({ page }) => {
+  await loginAsAdmin(page);
+  const invoicesGet = page.waitForResponse(isApiGet('/api/v1/billing/invoices'), {
+    timeout: 20_000,
+  });
+  await gotoBilling(page);
+  const invoicesResponse = await invoicesGet;
+  const invoicesBody = await invoicesResponse.json();
+  const firstInvoice = invoicesBody.items?.[0];
+  if (!firstInvoice?.id) {
+    test.skip(true, 'integration: no invoices in billing grid');
+    return;
+  }
+
+  await stubApiRoute(
+    page,
+    'GET',
+    `/api/v1/billing/invoices/${firstInvoice.id}`,
+    500,
+    {
+      code: 'INTERNAL_ERROR',
+      message: 'invoice detail unavailable',
+    },
+    { exactPath: true }
+  );
+
+  await page.goto(`/billing/invoices/${firstInvoice.id}`);
+
+  await expect(mainContent(page).getByRole('alert')).toBeVisible({ timeout: 15_000 });
+  await expect(
+    mainContent(page).getByText('Could not load invoice', { exact: true })
+  ).toBeVisible();
+  await expect(
+    mainContent(page).getByText('The server encountered an error. Try again later.', { exact: true })
+  ).toBeVisible();
 });

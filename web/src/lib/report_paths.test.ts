@@ -2,11 +2,17 @@ import test from 'node:test';
 import assert from 'node:assert/strict';
 
 import {
+  allTypedCatalogReportKeys,
   buildReportJobsHref,
+  isTypedCatalogReportKey,
   reportKeyToApiPath,
+  reportRequiresCustomerScope,
+  reportStubPathFromKey,
   reportTitleFromKey,
+  REPORT_CATALOG_KEY_ALIASES,
   resolveReportCatalogKey,
   resolveReportDisplayTitle,
+  resolveReportStubRequiresCustomer,
 } from './report_paths.ts';
 
 test('reportKeyToApiPath maps nested ML report keys', () => {
@@ -65,4 +71,41 @@ test('resolveReportDisplayTitle prefers catalog title', () => {
   assert.equal(resolveReportDisplayTitle('true-roi', 'True ROI'), 'True ROI');
   assert.equal(resolveReportDisplayTitle('true-roi', ''), 'True ROI');
   assert.equal(resolveReportDisplayTitle('true-roi', 'true-roi'), 'True ROI');
+});
+
+test('reportRequiresCustomerScope scopes customer reports only', () => {
+  assert.equal(reportRequiresCustomerScope('placements'), true);
+  assert.equal(reportRequiresCustomerScope('rtb-overview'), false);
+  assert.equal(reportRequiresCustomerScope('edge-parity'), false);
+});
+
+test('resolveReportStubRequiresCustomer uses catalog scope for typed keys only', () => {
+  assert.equal(resolveReportStubRequiresCustomer('placements'), true);
+  assert.equal(resolveReportStubRequiresCustomer('rtb-overview'), false);
+  assert.equal(resolveReportStubRequiresCustomer('custom-export-report'), false);
+});
+
+test('unknown report keys humanize for export stub title', () => {
+  const unknownKey = 'custom-export-report';
+  assert.equal(isTypedCatalogReportKey(unknownKey), false);
+  assert.equal(reportTitleFromKey(unknownKey), 'Custom Export Report');
+});
+
+test('reportStubPathFromKey maps catalog keys to report URL splat', () => {
+  assert.equal(reportStubPathFromKey('placements'), 'placements');
+  assert.equal(reportStubPathFromKey('ml/feature-spikes'), 'ml/feature-spikes');
+});
+
+test('ghost-impression-funnel alias resolves canonical stub title', () => {
+  const catalogKey = resolveReportCatalogKey('ghost-impression-funnel');
+  assert.equal(catalogKey, 'silent-reject-impression-funnel');
+  assert.equal(reportTitleFromKey('ghost-impression-funnel'), 'Non-blocking fraud response funnel');
+  assert.equal(reportStubPathFromKey(catalogKey), 'ghost-impression-funnel');
+});
+
+test('allTypedCatalogReportKeys covers catalog and legacy alias routes', () => {
+  const typedCount = allTypedCatalogReportKeys().size;
+  const aliasCount = Object.keys(REPORT_CATALOG_KEY_ALIASES).length;
+  assert.ok(typedCount >= 47);
+  assert.ok(typedCount + aliasCount >= 49);
 });

@@ -34,7 +34,10 @@ if [ ! -d "$E2E_DIR/node_modules/@playwright/test" ]; then
   (cd "$E2E_DIR" && npm ci)
 fi
 
-echo "admin web e2e nightly: playwright full matrix (stack on :8188)"
+echo "admin web e2e nightly: KEEP L1+L3 proof bundle (stack on :8188)"
+bash "$SCRIPTS/ci/admin/web_e2e_keep_proof.sh"
+
+echo "admin web e2e nightly: playwright full matrix"
 (
   cd "$E2E_DIR" && npx playwright test
 )

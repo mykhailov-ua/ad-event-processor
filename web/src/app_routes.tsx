@@ -26,7 +26,8 @@ import {
   PreserveSearchRedirect,
   ReportJobsRoute,
 } from '@/shell/export_hub_legacy_redirect';
-import { ReportIndexLegacyRedirect, ReportLegacyRedirect } from '@/shell/report_legacy_redirect';
+import { ReportExportStubRoute } from '@/shell/report_export_stub_route';
+import { ReportIndexLegacyRedirect } from '@/shell/report_legacy_redirect';
 import { IntegrationsAffiliatePresetsPage } from '@/pages/integrations_affiliate_presets_page';
 import { IntegrationsGoogleSheetsPage } from '@/pages/integrations_google_sheets_page';
 import { IntegrationsCostSyncPage } from '@/pages/integrations_cost_sync_page';
@@ -56,6 +57,8 @@ import { TeamPage } from '@/pages/team_page';
 import { DashboardAdopsRoutePage } from '@/pages/dashboard_adops_page';
 import { DashboardBuyerRoutePage } from '@/pages/dashboard_buyer_page';
 import { AlertsPage } from '@/pages/alerts_page';
+import { DisputesPage } from '@/pages/disputes_page';
+import { SupportFeedbackPage } from '@/pages/support_feedback_page';
 import { RouteErrorPage } from '@/pages/route_error_page';
 
 function ProtectedLayout() {
@@ -179,7 +182,7 @@ export function AppRoutes() {
             path="platform-campaigns/*"
           />
           <Route element={<ReportIndexLegacyRedirect />} path="reports" />
-          <Route element={<ReportLegacyRedirect />} path="reports/*" />
+          <Route element={<ReportExportStubRoute />} path="reports/*" />
           <Route element={<PreserveSearchRedirect to="/exports" />} path="rtb" />
           <Route element={<Navigate replace to="/exports" />} path="rtb/*" />
           <Route element={<Navigate replace to="/exports" />} path="fraud/*" />
@@ -204,8 +207,9 @@ export function AppRoutes() {
           <Route element={<Navigate replace to="/exports" />} path="views" />
           <Route element={<Navigate replace to="/exports" />} path="forecast/*" />
           <Route element={<Navigate replace to="/exports" />} path="docs/*" />
-          <Route element={<Navigate replace to="/customers" />} path="disputes" />
-          <Route element={<Navigate replace to="/settings" />} path="support/*" />
+          <Route element={<DisputesPage />} path="disputes" />
+          <Route element={<SupportFeedbackPage />} path="support/feedback" />
+          <Route element={<Navigate replace to="/support/feedback" />} path="support" />
           <Route element={<NotFoundPage />} path="*" />
         </Route>
         <Route element={<NotFoundPage />} path="*" />

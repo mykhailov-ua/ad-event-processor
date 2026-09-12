@@ -26,6 +26,7 @@ import { sessionHasPermission } from '@/lib/session_permissions';
 
 export type SettingsPageWorkspace = {
   meta: ReturnType<typeof useMeta>['meta'];
+  metaError: Error | undefined;
   platformSnapshot: PlatformSettingsView | undefined;
   draft: PlatformSettingsDraft;
   draftDirty: boolean;
@@ -51,7 +52,7 @@ export type SettingsPageWorkspace = {
 };
 
 export function useSettingsPageWorkspace(): SettingsPageWorkspace {
-  const { meta, refreshMeta } = useMeta();
+  const { meta, error: metaError, refreshMeta } = useMeta();
   const { user } = useSession();
   const canWrite = sessionHasPermission(user?.permissions, 'settings:write');
   const licenseLoad = useLicenseApplyFormLoad(false);
@@ -184,8 +185,13 @@ export function useSettingsPageWorkspace(): SettingsPageWorkspace {
     bumpRefreshCoalesced();
   }, [bumpRefreshCoalesced, refreshMeta]);
 
+  useEffect(() => {
+    refreshMeta();
+  }, [refreshMeta]);
+
   return {
     meta,
+    metaError,
     platformSnapshot,
     draft,
     draftDirty,

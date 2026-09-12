@@ -10,6 +10,7 @@ import {
   OpsMetricsPointsTable,
   OpsMetricsSnapshotMeta,
 } from '@/domains/ops/ops_metrics_points_table';
+import { opsPanelError } from '@/domains/ops/ops_nav';
 import {
   OpsActionGroup,
   OpsPageWithLoad,
@@ -22,6 +23,7 @@ export type OpsMetricsProps = {
   draftRange: string;
   fetching: boolean;
   error: Error | undefined;
+  streamError: Error | undefined;
   hasSnapshot: boolean;
   onDraftRangeChange: (value: string) => void;
   onLoad: () => void;
@@ -35,6 +37,7 @@ export function OpsMetrics({
   draftRange,
   fetching,
   error,
+  streamError,
   hasSnapshot,
   onDraftRangeChange,
   onLoad,
@@ -44,8 +47,10 @@ export function OpsMetrics({
 
   return (
     <OpsPageWithLoad
+      alerts={streamError ? opsPanelError(streamError, 'Live stream failed') : null}
       blockingErrorTitle="Could not load dashboard metrics"
       fetchState={{ fetching, error, hasSnapshot }}
+      refreshErrorTitle="Dashboard metrics refresh failed"
       title="Dashboard metrics"
       filters={
         <FilterField htmlFor="metrics-range" label="Range">

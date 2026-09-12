@@ -74,3 +74,46 @@ test(
     ).toBeVisible();
   }
 );
+
+test(
+  'campaign editor publish check shows unavailable stub on 501',
+  { tag: '@write' },
+  async ({ page }) => {
+    await loginAsAdmin(page);
+
+    const campaignId = await openFirstCampaignEditor(page);
+    if (!campaignId) {
+      test.skip(true, 'integration: no campaigns in directory');
+      return;
+    }
+
+    await page.route(`**/api/v1/campaigns/${campaignId}/publish-check`, async (route) => {
+      if (route.request().method() !== 'GET') {
+        await route.continue();
+        return;
+      }
+      await route.fulfill({
+        status: 501,
+        contentType: 'application/json',
+        body: JSON.stringify({
+          error: { code: 'NOT_IMPLEMENTED', message: 'publish check unavailable (e2e stub)' },
+        }),
+      });
+    });
+
+    const publishCheckGet = page.waitForResponse(
+      (response) =>
+        response.request().method() === 'GET' &&
+        response.url().includes(`/api/v1/campaigns/${campaignId}/publish-check`) &&
+        response.status() === 501,
+      { timeout: 20_000 }
+    );
+
+    await page.getByRole('button', { name: 'Check publish' }).click();
+
+    await publishCheckGet;
+    await expect(page.getByText('publish check unavailable (e2e stub)')).toBeVisible({
+      timeout: 15_000,
+    });
+  }
+);

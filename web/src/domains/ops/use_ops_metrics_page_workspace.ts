@@ -1,5 +1,6 @@
 // ops metrics: GET dashboard by URL range + optional SSE liveSummary overlay (regime F leaf).
 import { useEffect, useState } from 'react';
+import { useLocation } from 'react-router-dom';
 
 import { getOpsDashboardMetrics, subscribeOpsDashboardStream } from '@/api/ops_api';
 import type { DashboardSummary } from '@/api/types';
@@ -8,6 +9,7 @@ import { useCoalescedBumpRefresh } from '@/hooks/use_coalesced_refresh_token';
 import { useTransitionSearchParams } from '@/hooks/use_transition_search_params';
 
 export function useOpsMetricsPageWorkspace() {
+  const location = useLocation();
   const [searchParams, { replaceSearchParams }] = useTransitionSearchParams();
   const appliedRange = searchParams.get('range') ?? '1h';
   const [draftRange, setDraftRange] = useState(appliedRange);
@@ -40,11 +42,10 @@ export function useOpsMetricsPageWorkspace() {
 
   useEffect(() => {
     if (!liveEnabled) {
-      setLiveSummary(undefined);
       return undefined;
     }
     setStreamError(undefined);
-    return subscribeOpsDashboardStream(
+    const close = subscribeOpsDashboardStream(
       (summary) => {
         setLiveSummary(summary);
       },
@@ -53,7 +54,11 @@ export function useOpsMetricsPageWorkspace() {
         setLiveEnabled(false);
       }
     );
-  }, [liveEnabled]);
+    return () => {
+      close();
+      setLiveSummary(undefined);
+    };
+  }, [liveEnabled, location.pathname]);
 
   const onLoad = useCoalescedBumpRefresh(() => {
     setPendingRange(draftRange.trim() || '1h');
@@ -68,7 +73,8 @@ export function useOpsMetricsPageWorkspace() {
     liveEnabled,
     draftRange,
     fetching: metricsResource.fetching,
-    error: streamError ?? metricsResource.error,
+    error: metricsResource.error,
+    streamError,
     hasSnapshot,
     onDraftRangeChange: setDraftRange,
     onLoad,

@@ -186,17 +186,27 @@ export function EditorStatusBanners({
   }
   if (publishCheckError) {
     blocks.push(
-      <ErrorBlock key="publish-check" title="Could not check publish gate" error={publishCheckError} />
+      <div key="publish-check">
+        {editorApiErrorBlock(
+          publishCheckError,
+          'Publish check unavailable',
+          'Could not check publish gate'
+        )}
+      </div>
     );
   }
   if (validateError) {
     blocks.push(
-      <ErrorBlock key="validate" title="Could not validate changes" error={validateError} />
+      <div key="validate">
+        {editorApiErrorBlock(validateError, 'Validate unavailable', 'Could not validate changes')}
+      </div>
     );
   }
   if (publishError) {
     blocks.push(
-      <ErrorBlock key="publish" title="Could not publish campaign" error={publishError} />
+      <div key="publish">
+        {editorApiErrorBlock(publishError, 'Publish unavailable', 'Could not publish campaign')}
+      </div>
     );
   }
   if (blocks.length === 0) {

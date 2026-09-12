@@ -9,6 +9,7 @@ import {
   updateReportSchedule,
 } from '@/api/report_schedules_api';
 import { useResource } from '@/api/use_resource';
+import { useCoalescedBumpRefresh, useRefreshToken } from '@/hooks/use_coalesced_refresh_token';
 import type { ReportSchedule } from '@/api/types';
 import { useSession } from '@/hooks/use_session';
 import { exportHubErrorMessage } from '@/domains/exports/export_hub_errors';
@@ -70,7 +71,7 @@ export function useExportSchedulesPageWorkspace() {
   const [customerId, setCustomerId] = useState(session?.default_customer_id ?? '');
   const [draft, setDraft] = useState<ExportSchedulesDraft>(DEFAULT_DRAFT);
   const [selectedScheduleId, setSelectedScheduleId] = useState<string | undefined>();
-  const [refreshToken, setRefreshToken] = useState(0);
+  const { refreshToken, bumpRefresh } = useRefreshToken();
   const [saving, setSaving] = useState(false);
   const [runningScheduleId, setRunningScheduleId] = useState<string | undefined>();
   const [formValidationError, setFormValidationError] = useState<AdminValidationError | undefined>();
@@ -85,7 +86,7 @@ export function useExportSchedulesPageWorkspace() {
   } = useResource(
     (signal) => {
       if (!trimmedCustomerId) {
-        return Promise.resolve([] as ReportSchedule[]);
+        return Promise.resolve(undefined);
       }
       return listReportSchedules({ customer_id: trimmedCustomerId }, signal);
     },
@@ -120,9 +121,7 @@ export function useExportSchedulesPageWorkspace() {
     setFormValidationError(undefined);
   }, []);
 
-  const refreshSchedules = useCallback(() => {
-    setRefreshToken((value) => value + 1);
-  }, []);
+  const refreshSchedules = useCoalescedBumpRefresh(bumpRefresh, schedulesFetching);
 
   const onSaveSchedule = useCallback(async () => {
     if (!canManage) {
@@ -297,6 +296,7 @@ export function useExportSchedulesPageWorkspace() {
     draft,
     setDraft,
     schedules: schedules ?? [],
+    schedulesHasSnapshot: schedules != null,
     schedulesError,
     schedulesFetching,
     selectedScheduleId,

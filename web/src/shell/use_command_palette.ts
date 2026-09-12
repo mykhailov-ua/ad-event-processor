@@ -17,6 +17,7 @@ import { useCommandPaletteContextualState } from '@/shell/command_palette_contex
 
 const SEARCH_DEBOUNCE_MS = 250;
 
+// AbortError reject: useResource swallows; gated lane is not an operator error.
 function skipLazyFetch(): Promise<never> {
   return Promise.reject(new DOMException('Skipped', 'AbortError'));
 }
@@ -136,9 +137,12 @@ export function useCommandPalette({
     routesResource.fetching || (customerId ? recentsResource.fetching : false);
   const searchLoading = searchResource.fetching;
 
+  const catalogForbidden =
+    catalogError instanceof ApiError && catalogError.status === 403;
+  const searchForbidden = searchError instanceof ApiError && searchError.status === 403;
   const activeError = isSearching ? searchError : catalogError;
   const activeLoading = isSearching ? searchLoading : catalogLoading;
-  const paletteForbidden = activeError instanceof ApiError && activeError.status === 403;
+  const paletteForbidden = isSearching ? searchForbidden : catalogForbidden;
 
   const onSelectItem = useCallback(
     (item: CommandPaletteItem) => {
@@ -167,6 +171,10 @@ export function useCommandPalette({
     recents,
     searchItems,
     degraded,
+    catalogError,
+    catalogLoading,
+    searchError,
+    searchLoading,
     activeError,
     activeLoading,
     paletteForbidden,

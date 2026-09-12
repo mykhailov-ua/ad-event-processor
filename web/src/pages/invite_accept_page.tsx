@@ -9,6 +9,7 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/com
 import { PasswordInput } from '@/components/ui/password_input';
 import { Label } from '@/components/ui/label';
 import { normalizeSubmitError } from '@/lib/admin_error';
+import { requireNonEmpty } from '@/lib/admin_validation_error';
 import { adminSpacing } from '@/lib/admin_spacing';
 import { cn } from '@/lib/utils';
 
@@ -29,13 +30,23 @@ export function InviteAcceptPage() {
       setClientError('Invite token missing from URL query (?token=...)');
       return;
     }
-    if (password !== confirmPassword) {
+    const passwordResult = requireNonEmpty(password, 'Password', 'password');
+    if (!passwordResult.ok) {
+      setClientError(passwordResult.error.message);
+      return;
+    }
+    const confirmResult = requireNonEmpty(confirmPassword, 'Confirm password', 'confirm_password');
+    if (!confirmResult.ok) {
+      setClientError(confirmResult.error.message);
+      return;
+    }
+    if (passwordResult.value !== confirmResult.value) {
       setClientError('Passwords do not match');
       return;
     }
     setSubmitting(true);
     try {
-      await publicAcceptInvite({ token: inviteToken, password });
+      await publicAcceptInvite({ token: inviteToken, password: passwordResult.value });
       window.location.replace('/');
     } catch (err: unknown) {
       setApiError(normalizeSubmitError(err, 'Invite accept failed'));

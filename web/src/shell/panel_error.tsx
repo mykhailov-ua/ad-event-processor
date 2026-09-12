@@ -13,7 +13,13 @@ export function isPanelStubError(error: Error | undefined): boolean {
 }
 
 export function panelError(error: Error, title: string, options: PanelErrorOptions = {}) {
-  if (error instanceof ApiError && error.code === 'PAYMENT_UNAVAILABLE') {
+  if (
+    error instanceof ApiError &&
+    (error.code === 'PAYMENT_UNAVAILABLE' ||
+      error.code === 'BILLING_UNAVAILABLE' ||
+      error.code === 'FORECAST_UNAVAILABLE' ||
+      error.code === 'CLICKHOUSE_UNAVAILABLE')
+  ) {
     return (
       <StubBanner
         title={options.unavailableTitle ?? `${title} unavailable`}
@@ -21,10 +27,13 @@ export function panelError(error: Error, title: string, options: PanelErrorOptio
       />
     );
   }
-  if (error instanceof ApiError && error.status === 403) {
+  if (
+    error instanceof ApiError &&
+    (error.status === 403 || error.code === 'FEATURE_REQUIRED')
+  ) {
     return (
       <StubBanner
-        title={options.forbiddenTitle ?? `${title} forbidden`}
+        title={options.forbiddenTitle ?? (error.code === 'FEATURE_REQUIRED' ? 'License required' : `${title} forbidden`)}
         message={userErrorMessage(error)}
       />
     );

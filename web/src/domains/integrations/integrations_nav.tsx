@@ -3,7 +3,7 @@ import type { ReactNode } from 'react';
 import { SectionNav } from '@/shell/section_nav';
 import { PageChrome } from '@/shell/page_chrome';
 import { PageSkeleton } from '@/shell/page_skeleton';
-import { AdminError } from '@/shell/admin_error';
+import { panelError } from '@/shell/panel_error';
 import {
   type DirectoryFetchState,
   resolveDirectoryLoadPhase,
@@ -28,7 +28,7 @@ export function IntegrationsNav() {
 }
 
 export function integrationsPanelError(error: Error, title: string) {
-  return <AdminError error={error} title={title} />;
+  return panelError(error, title);
 }
 
 export type IntegrationsPageWithLoadProps = {

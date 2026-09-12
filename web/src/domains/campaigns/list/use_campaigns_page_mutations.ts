@@ -6,7 +6,11 @@ import { createSelfServeCampaign } from '@/api/selfserve_api';
 import { invalidateCampaignListResponseCache } from '@/domains/campaigns/list/campaign_list_response_cache';
 import { useCoalescedCallback } from '@/hooks/use_coalesced_callback';
 import { toError, userErrorMessage } from '@/lib/admin_error';
-import { requirePositiveInteger } from '@/lib/admin_validation_error';
+import {
+  actionGuardError,
+  requirePositiveInteger,
+  toastValidationError,
+} from '@/lib/admin_validation_error';
 import { newRandomUuid } from '@/lib/uuid';
 
 export type UseCampaignsPageMutationsArgs = {
@@ -79,7 +83,16 @@ export function useCampaignsPageMutations({
     const effectiveCustomerId =
       draftCreateCustomerId.trim() || appliedCustomerId || customerId || '';
     const effectiveTemplateId = resolveCreateTemplateId(draftTemplateId, templates);
-    if (!effectiveCustomerId || !effectiveTemplateId) {
+    if (!effectiveCustomerId) {
+      const err = actionGuardError('Select a customer group before creating a campaign');
+      setActionError(err);
+      toastValidationError(err);
+      return;
+    }
+    if (!effectiveTemplateId) {
+      const err = actionGuardError('Select a template before creating a campaign');
+      setActionError(err);
+      toastValidationError(err);
       return;
     }
 

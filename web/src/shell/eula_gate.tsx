@@ -1,9 +1,10 @@
 import type { ReactNode } from 'react';
 
+import { logout } from '@/api/auth_api';
 import { ApiError } from '@/api/client';
 import { adminTypography } from '@/lib/admin_kit';
 import { cn } from '@/lib/utils';
-import { PrimaryActionButton } from '@/shell/action_buttons';
+import { PrimaryActionButton, SecondaryActionButton } from '@/shell/action_buttons';
 import { ErrorBlock } from '@/shell/error_block';
 import { PageSkeleton } from '@/shell/page_skeleton';
 import { useEulaGate } from '@/shell/use_eula_gate';
@@ -70,9 +71,24 @@ export function EulaGate({ children }: EulaGateProps) {
                 Accept EULA
               </PrimaryActionButton>
             ) : (
-              <p className={adminTypography.bodyMuted}>
-                Your session lacks settings:write permission required to accept the EULA.
-              </p>
+              <div className={cn('grid w-full', adminTypography.bodyMuted, 'gap-3')}>
+                <p>
+                  Your session lacks settings:write permission required to accept the EULA. Sign
+                  out and ask an administrator to accept, or use an account with settings access.
+                </p>
+                <SecondaryActionButton
+                  type="button"
+                  onClick={() => {
+                    void logout()
+                      .catch(() => undefined)
+                      .finally(() => {
+                        window.location.replace('/login');
+                      });
+                  }}
+                >
+                  Sign out
+                </SecondaryActionButton>
+              </div>
             )}
           </DialogFooter>
         </DialogContent>

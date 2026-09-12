@@ -5,7 +5,9 @@ import {
   gotoLive,
   isApiGet,
   loginAsAdmin,
+  mainContent,
   skipUnlessIntegrationReady,
+  stubApiGetError,
 } from './helpers.js';
 
 const INTEGRATIONS_SECTION_READS = [
@@ -62,4 +64,29 @@ test('affiliate presets read returns rows from GET /api/v1/integration/affiliate
     emptyTitle: 'No presets',
     rowLabel: (row) => String(row.name ?? ''),
   });
+});
+
+test('affiliate presets GET 500 shows ErrorBlock without empty table', async ({ page }) => {
+  await loginAsAdmin(page);
+  await stubApiGetError(
+    page,
+    '/api/v1/integration/affiliate-status-presets',
+    500,
+    'affiliate presets unavailable'
+  );
+
+  const failedList = page.waitForResponse(
+    (response) =>
+      response.request().method() === 'GET' &&
+      response.url().includes('/api/v1/integration/affiliate-status-presets') &&
+      response.status() === 500,
+    { timeout: 20_000 }
+  );
+  await gotoLive(page, '/integrations/affiliate-presets');
+  await failedList;
+
+  const content = mainContent(page);
+  await expect(content.getByRole('alert')).toBeVisible();
+  await expect(content.getByText('Could not load affiliate presets', { exact: true })).toBeVisible();
+  await expect(content.getByText('No presets', { exact: true })).not.toBeVisible();
 });

@@ -16,6 +16,7 @@ import { useSession } from '@/hooks/use_session';
 const SEARCH_DEBOUNCE_MS = 250;
 const MIN_SERVER_QUERY_LENGTH = 2;
 
+// AbortError reject: useResource swallows; gated lane is not an operator error.
 function skipLazyFetch(): Promise<never> {
   return Promise.reject(new DOMException('Skipped', 'AbortError'));
 }

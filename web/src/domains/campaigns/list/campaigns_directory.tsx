@@ -22,6 +22,7 @@ import { DirectoryFetchError, DirectoryPageShell } from '@/shell/directory_page_
 import { StubBanner } from '@/shell/stub_banner';
 import { CAMPAIGN_LIST_FACETS_DEGRADED_MESSAGE } from '@/domains/campaigns/list/campaign_list_facets_source';
 import { isCampaignListAuxEndpointUnavailable } from '@/domains/campaigns/list/campaign_list_aux_error';
+import { runCampaignListBulkAction } from '@/domains/campaigns/list/campaign_list_bulk_guard';
 import {
   openCampaignCreateDialog,
   openCampaignWizardSheet,
@@ -214,13 +215,22 @@ export function CampaignsDirectory({
   const page = Math.floor(offset / limit) + 1;
   const pageCount = total === 0 ? 1 : Math.ceil(total / limit);
 
+  const overlaysBusy =
+    workspace.bulkBusy || workspace.exportBusy || createSectionOpen || workspace.wizardOpen;
+
   const handleCreateClick = useCallback(() => {
+    if (overlaysBusy && !createSectionOpen) {
+      return;
+    }
     openCampaignCreateDialog(onCreateSectionOpenChange, workspace.setWizardOpen);
-  }, [onCreateSectionOpenChange, workspace.setWizardOpen]);
+  }, [createSectionOpen, onCreateSectionOpenChange, overlaysBusy, workspace.setWizardOpen]);
 
   const handleWizardClick = useCallback(() => {
+    if (overlaysBusy && !workspace.wizardOpen) {
+      return;
+    }
     openCampaignWizardSheet(onCreateSectionOpenChange, workspace.setWizardOpen);
-  }, [onCreateSectionOpenChange, workspace.setWizardOpen]);
+  }, [onCreateSectionOpenChange, overlaysBusy, workspace.setWizardOpen, workspace.wizardOpen]);
 
   const handleCreateSectionOpenChange = useCallback(
     (open: boolean) => {
@@ -244,16 +254,22 @@ export function CampaignsDirectory({
       : undefined;
 
   const handlePauseSelected = useCallback(() => {
-    requireSelectedCampaigns('Select at least one campaign', workspace.onPauseSelected);
-  }, [requireSelectedCampaigns, workspace.onPauseSelected]);
+    runCampaignListBulkAction(workspace.bulkBusy, true, '', () =>
+      requireSelectedCampaigns('Select at least one campaign', workspace.onPauseSelected)
+    );
+  }, [requireSelectedCampaigns, workspace.bulkBusy, workspace.onPauseSelected]);
 
   const handleResumeSelected = useCallback(() => {
-    requireSelectedCampaigns('Select at least one campaign', workspace.onResumeSelected);
-  }, [requireSelectedCampaigns, workspace.onResumeSelected]);
+    runCampaignListBulkAction(workspace.bulkBusy, true, '', () =>
+      requireSelectedCampaigns('Select at least one campaign', workspace.onResumeSelected)
+    );
+  }, [requireSelectedCampaigns, workspace.bulkBusy, workspace.onResumeSelected]);
 
   const handleArchiveSelected = useCallback(() => {
-    requireSelectedCampaigns('Select at least one campaign', () => workspace.setArchiveOpen(true));
-  }, [requireSelectedCampaigns, workspace.setArchiveOpen]);
+    runCampaignListBulkAction(workspace.bulkBusy, true, '', () =>
+      requireSelectedCampaigns('Select at least one campaign', () => workspace.setArchiveOpen(true))
+    );
+  }, [requireSelectedCampaigns, workspace.bulkBusy, workspace.setArchiveOpen]);
 
   const handleClearSelection = useCallback(() => {
     workspace.setSelectedIds(new Set());
@@ -343,8 +359,10 @@ export function CampaignsDirectory({
                     onArchive={handleArchiveSelected}
                     onClearSelection={handleClearSelection}
                     onClone={() => {
-                      requireSelectedCampaigns('Select a campaign first', () =>
-                        workspace.setCloneOpen(true)
+                      runCampaignListBulkAction(workspace.bulkBusy, true, '', () =>
+                        requireSelectedCampaigns('Select a campaign first', () =>
+                          workspace.setCloneOpen(true)
+                        )
                       );
                     }}
                     onExportBundles={workspace.onExportBundles}
@@ -358,6 +376,7 @@ export function CampaignsDirectory({
               listFacetsDegraded={listFacetsDegraded}
               listLastUpdatedAt={listLastUpdatedAt}
               listRevalidating={listRevalidating}
+              overlaysBusy={overlaysBusy}
               ownerOptions={ownerOptions}
               statusTotals={statusTotals}
               statusTotalsLoading={statusTotalsLoading}

@@ -124,7 +124,9 @@ export function ExportHubJobLifecycle({
       ) : null}
 
       {phase === 'failed' && failedJobMessage ? (
-        <ErrorBlock message={failedJobMessage} title="Export failed" />
+        <div data-testid="export-job-error">
+          <ErrorBlock message={failedJobMessage} title="Export failed" />
+        </div>
       ) : null}
 
       <div

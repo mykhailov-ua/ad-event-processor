@@ -35,6 +35,8 @@ import type { CampaignStatsQuery } from '@/api/types';
 import { invalidateCampaignListResponseCache } from '@/domains/campaigns/list/campaign_list_response_cache';
 import { toError } from '@/lib/admin_error';
 
+// Column prefs are default-only in CP scope: export uses workspace defaults, not leaf save*.
+// Directory table/menu must notify the owner via onColumnPrefsChange only; no duplicate persistence.
 const DEFAULT_EXPORT_COLUMNS = exportableCampaignListColumns(
   visibleCampaignListColumns(defaultCampaignListColumnPrefs())
 );

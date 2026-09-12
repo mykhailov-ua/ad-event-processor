@@ -11,11 +11,13 @@ export function AlertsPage() {
       draft={workspace.draft}
       formValidationError={workspace.formValidationError}
       history={workspace.history}
+      historyHasSnapshot={workspace.historyHasSnapshot}
       historyError={workspace.historyError}
       historyFetching={workspace.historyFetching}
       historyPage={workspace.historyPage}
       historyPageSize={workspace.historyPageSize}
       rules={workspace.rules}
+      rulesHasSnapshot={workspace.rulesHasSnapshot}
       rulesError={workspace.rulesError}
       rulesFetching={workspace.rulesFetching}
       saving={workspace.saving}

@@ -124,8 +124,14 @@ type DomainRotationHostDTO struct {
 	ActiveCampaignCount int64  `json:"active_campaign_count"`
 }
 
+type DomainSSLSetupCapability struct {
+	Available bool   `json:"available"`
+	Message   string `json:"message,omitempty"`
+}
+
 type DomainRotationListResult struct {
-	Hosts []DomainRotationHostDTO `json:"hosts"`
+	Hosts    []DomainRotationHostDTO   `json:"hosts"`
+	SSLSetup *DomainSSLSetupCapability `json:"ssl_setup,omitempty"`
 }
 
 type ShardHealthAPIResponse struct {

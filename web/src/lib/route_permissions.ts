@@ -14,6 +14,13 @@ const EXTRA_ROUTE_RULES: RoutePermissionRule[] = [
   { prefix: '/reports/jobs', permission: 'campaigns:read' },
   { prefix: '/billing/exports', permission: 'campaigns:read' },
   { prefix: '/settings/access', permission: 'access:read' },
+  {
+    prefix: '/dashboards',
+    permissionAny: ['campaigns:read', 'campaigns:read:masked'],
+  },
+  { prefix: '/exports/schedules', permission: 'campaigns:read' },
+  { prefix: '/alerts', permission: 'campaigns:read' },
+  { prefix: '/disputes', permission: 'customers:read' },
 ];
 
 function buildRouteRules(): RoutePermissionRule[] {
@@ -37,6 +44,21 @@ export function resolveRoutePermission(pathname: string): RoutePermission | null
     }
   }
   return null;
+}
+
+export function formatRoutePermissionRequirement(
+  rule: RoutePermission | null
+): string | undefined {
+  if (!rule) {
+    return undefined;
+  }
+  if (rule.permissionAny?.length) {
+    return rule.permissionAny.join(' or ');
+  }
+  if (rule.permission) {
+    return rule.permission;
+  }
+  return undefined;
 }
 
 export function sessionHasRoutePermission(

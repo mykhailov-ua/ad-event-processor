@@ -17,9 +17,13 @@ import {
 import { DashboardPanelSection } from '@/domains/dashboards/dashboard_panel_section';
 import { adminTypography } from '@/lib/admin_kit';
 import { adminSpacing, opsControlPanelClass } from '@/lib/admin_spacing';
+import { CustomerScopeGate } from '@/shell/customer_scope_gate';
+import { DirectoryFetchError, DirectoryPageShell } from '@/shell/directory_page_shell';
 import { PageChrome } from '@/shell/page_chrome';
 import { PageSectionStack } from '@/shell/page_layout';
+import { EmptyState } from '@/shell/empty_state';
 import { ErrorBlock } from '@/shell/error_block';
+import { StubBanner } from '@/shell/stub_banner';
 import { FilterField, FilterPanel } from '@/shell/filter_panel';
 import { BentoSection } from '@/shell/bento_card';
 import {
@@ -38,9 +42,11 @@ export type SmartAlertsPageViewProps = {
   onDraftChange: (patch: Partial<SmartAlertsDraft>) => void;
   templateOptions: Array<{ value: SmartAlertRuleTemplate; label: string; hint: string }>;
   rules: SmartAlertRule[];
+  rulesHasSnapshot: boolean;
   rulesError?: Error;
   rulesFetching: boolean;
   history: SmartAlertEvent[];
+  historyHasSnapshot: boolean;
   historyError?: Error;
   historyFetching: boolean;
   historyPage: number;
@@ -75,9 +81,11 @@ export function SmartAlertsPageView({
   onDraftChange,
   templateOptions,
   rules,
+  rulesHasSnapshot,
   rulesError,
   rulesFetching,
   history,
+  historyHasSnapshot,
   historyError,
   historyFetching,
   historyPage,
@@ -198,20 +206,40 @@ export function SmartAlertsPageView({
       }
     >
       <PageSectionStack>
-        {rulesError ? <ErrorBlock error={rulesError} title="Rules load failed" /> : null}
-        {historyError ? <ErrorBlock error={historyError} title="History load failed" /> : null}
+        <StubBanner
+          message="Smart alerts are deprioritized in Control Plane. Configure rules when the API is available, or use Export Hub for async report exports."
+          title="Automation surface (FREEZE)"
+        />
         {!canManage ? (
           <p className={adminTypography.bodyMuted}>
             Read-only: create, update, delete, and ack require campaigns:write.
           </p>
         ) : null}
 
-        {rulesFetching ? <p className={adminTypography.bodyMuted}>Loading rules...</p> : null}
-        {!rulesFetching && rules.length === 0 ? (
-          <p className={adminTypography.bodyMuted}>No alert rules for this customer.</p>
-        ) : null}
-        {rules.length > 0 ? (
-          <DashboardPanelSection tableAriaLabel="Smart alert rules" title="Rules">
+        <DirectoryPageShell
+          blockingErrorTitle="Rules load failed"
+          fetchState={{ fetching: rulesFetching, error: rulesError, hasSnapshot: rulesHasSnapshot }}
+          refreshErrorTitle="Rules refresh failed"
+          title=""
+        >
+          <CustomerScopeGate customerId={customerId} testId="smart-alerts-scope">
+            <DirectoryFetchError
+              error={historyError}
+              fetchState={{
+                fetching: historyFetching,
+                error: historyError,
+                hasSnapshot: historyHasSnapshot,
+              }}
+              title="History load failed"
+            />
+            {rulesHasSnapshot && !rulesFetching && rules.length === 0 ? (
+            <EmptyState
+              description="No alert rules exist for this customer yet."
+              title="No alert rules"
+            />
+          ) : null}
+          {rules.length > 0 ? (
+            <DashboardPanelSection tableAriaLabel="Smart alert rules" title="Rules">
             <TableHeader>
               <TableRow>
                 <DirectoryTableHead>Name</DirectoryTableHead>
@@ -251,17 +279,22 @@ export function SmartAlertsPageView({
                 </TableRow>
               ))}
             </TableBody>
-          </DashboardPanelSection>
-        ) : null}
-
-        <BentoSection title="History">
-          {historyFetching ? <p className={adminTypography.bodyMuted}>Loading history...</p> : null}
-          {!historyFetching && history.length === 0 ? (
-            <p className={adminTypography.bodyMuted}>No alert history for this page.</p>
+            </DashboardPanelSection>
           ) : null}
-          {history.length > 0 ? (
-            <>
-              <DashboardPanelSection tableAriaLabel="Smart alert history">
+
+          <BentoSection title="History">
+            {historyFetching && !historyHasSnapshot && !historyError ? (
+              <p className={adminTypography.bodyMuted}>Loading history...</p>
+            ) : null}
+            {historyHasSnapshot && !historyFetching && history.length === 0 ? (
+              <EmptyState
+                description="No alert events have fired for this customer yet."
+                title="No alert history"
+              />
+            ) : null}
+            {history.length > 0 ? (
+              <>
+                <DashboardPanelSection tableAriaLabel="Smart alert history">
                 <TableHeader>
                   <TableRow>
                     <DirectoryTableHead>Fired</DirectoryTableHead>
@@ -318,8 +351,10 @@ export function SmartAlertsPageView({
                 </Button>
               </div>
             </>
-          ) : null}
-        </BentoSection>
+            ) : null}
+          </BentoSection>
+          </CustomerScopeGate>
+        </DirectoryPageShell>
       </PageSectionStack>
     </PageChrome>
   );

@@ -510,6 +510,7 @@ export function TeamOverviewView({
               fetching: membersFetching,
               error: membersError,
               hasSnapshot: hasMembersSnapshot,
+              revalidating: membersListRevalidating,
             }}
             title="Could not load members"
           />
@@ -588,6 +589,7 @@ export function TeamOverviewView({
               fetching: approvalsFetching,
               error: approvalsError,
               hasSnapshot: hasApprovalsSnapshot,
+              revalidating: approvalsListRevalidating,
             }}
             title="Could not load approvals"
           />

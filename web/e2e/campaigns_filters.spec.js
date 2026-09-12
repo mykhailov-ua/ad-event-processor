@@ -4,6 +4,7 @@ import {
   applyCampaignFilters,
   ensureLoggedIn,
   expectApiListBoundToDom,
+  expectErrorBlockVisible,
   gotoCampaigns,
   gotoCampaignsLive,
   headerSearchInput,
@@ -11,6 +12,7 @@ import {
   navigateAppSection,
   skipUnlessIntegrationReady,
   statusFiltersBand,
+  stubApiGetError,
 } from './helpers.js';
 
 test.describe.configure({ mode: 'serial', timeout: 120_000 });
@@ -204,4 +206,25 @@ test('campaigns pagination next updates offset when available', async ({ page })
   await expect(page).toHaveURL(/offset=/);
   const offset = new URL(page.url()).searchParams.get('offset');
   expect(Number(offset)).toBeGreaterThan(0);
+});
+
+test('campaigns list GET 500 shows ErrorBlock without empty table', { tag: '@L3' }, async ({
+  page,
+}) => {
+  await ensureLoggedIn(page);
+  await stubApiGetError(page, '/api/v1/campaigns', 500, 'campaign list unavailable');
+
+  const failedList = page.waitForResponse(
+    (response) => isCampaignsListResponse(response) && response.status() === 500,
+    { timeout: 20_000 }
+  );
+  await gotoCampaignsLive(page);
+  await failedList;
+
+  await expectErrorBlockVisible(page, 'Could not load campaigns');
+  await expect(
+    page.getByText('No campaigns yet. Create one to start tracking spend and delivery.', {
+      exact: true,
+    })
+  ).not.toBeVisible();
 });

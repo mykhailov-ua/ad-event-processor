@@ -75,13 +75,56 @@ export function userErrorMessage(
     if (error.code === 'PAYMENT_UNAVAILABLE') {
       return 'Payment history is not available in this deployment. Enable the payment module or use the ledger tab for balance activity.';
     }
+    if (error.code === 'BILLING_UNAVAILABLE') {
+      const detail = error.message.trim();
+      if (detail !== '') {
+        return detail;
+      }
+      return 'Billing is not available in this deployment.';
+    }
+    if (error.code === 'APPROVAL_REQUIRED') {
+      const detail = error.message.trim();
+      if (detail !== '') {
+        return detail;
+      }
+      return 'Budget approval is required before this change can take effect.';
+    }
+    if (error.code === 'FEATURE_REQUIRED') {
+      const base = 'This feature is not included in your license plan.';
+      const detail = error.message.trim();
+      if (detail !== '') {
+        return `${base} ${detail}`;
+      }
+      return base;
+    }
+    if (error.code === 'CLICKHOUSE_UNAVAILABLE') {
+      return 'Analytics store is unavailable. Report data cannot be loaded right now. Reload this tab to retry.';
+    }
+    if (error.code === 'FORECAST_UNAVAILABLE') {
+      const detail = error.message.trim();
+      if (detail !== '') {
+        return `${detail} Reload this tab to retry when ClickHouse recovers.`;
+      }
+      return 'Billing forecast is unavailable right now. Reload this tab to retry when ClickHouse recovers.';
+    }
     if (error.status === 404) {
       return 'The requested resource was not found.';
     }
     if (error.status === 403) {
       return 'You do not have permission to view this resource.';
     }
+    if (error.status === 429 || error.code === 'TOO_MANY_REQUESTS') {
+      const detail = error.message.trim();
+      if (detail !== '') {
+        return detail;
+      }
+      return 'Too many requests. Wait a moment and try again.';
+    }
     if (error.status === 401) {
+      const detail = error.message.trim();
+      if (detail !== '' && error.code === 'UNAUTHORIZED') {
+        return detail;
+      }
       return 'Your session expired. Sign in again.';
     }
     if (error.status === 0 && error.code === 'TIMEOUT') {
@@ -137,6 +180,17 @@ export function userErrorMessage(
 
 export function isPaymentUnavailableError(error: unknown): boolean {
   return error instanceof ApiError && error.code === 'PAYMENT_UNAVAILABLE';
+}
+
+export function isBillingUnavailableError(error: unknown): boolean {
+  return error instanceof ApiError && error.code === 'BILLING_UNAVAILABLE';
+}
+
+export function isForecastUnavailableError(error: unknown): boolean {
+  return (
+    error instanceof ApiError &&
+    (error.code === 'FORECAST_UNAVAILABLE' || error.code === 'CLICKHOUSE_UNAVAILABLE')
+  );
 }
 
 export function formatAdminErrorDetails(error: unknown, componentStack?: string): string {

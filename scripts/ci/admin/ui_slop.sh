@@ -256,11 +256,6 @@ for dir in web/src/domains web/src/shell web/src/pages; do
   fi
 done
 
-if [ "$failed" -ne 0 ]; then
-  echo "Remediation: .cursor/rules/ui.mdc (**Spacing and typography**); web/src/lib/admin_spacing.ts; frontend-slop.mdc layout contract"
-  exit 1
-fi
-
 echo "ui slop: overlay React loop guards (OV-*)"
 OVERLAY_UI=(
   web/src/components/ui/select.tsx
@@ -315,11 +310,6 @@ if [ -f web/src/main.tsx ]; then
   fi
 fi
 
-if [ "$failed" -ne 0 ]; then
-  echo "Remediation: frontend-slop.mdc OV-*/RB-E*/CSP-*/UUID-*; overlay_position_state.ts; app_error_boundary.tsx"
-  exit 1
-fi
-
 # Class A mobile nav: Sheet dock with dedicated nav scroll (frontend-slop.mdc overlays).
 echo "ui slop: mobile nav sheet contract"
 if ! rg -n 'AppMobileNavSheet' web/src/app_shell.tsx 2> /dev/null; then
@@ -345,8 +335,188 @@ if ! rg -n 'stopPropagation' web/src/components/ui/dropdown-menu.tsx 2> /dev/nul
   failed=1
 fi
 
+echo "ui slop: Export Hub contract (E0)"
+if [ ! -f web/src/shell/export_only_report_stub.tsx ]; then
+  echo "Error: UI slop - missing web/src/shell/export_only_report_stub.tsx (frontend-primitives.mdc Export Hub UI)"
+  failed=1
+fi
+if [ ! -f web/src/lib/export_hub_paths.ts ]; then
+  echo "Error: UI slop - missing web/src/lib/export_hub_paths.ts (frontend-primitives.mdc Export Hub UI)"
+  failed=1
+elif ! rg -n 'buildExportHubHref' web/src/lib/export_hub_paths.ts 2> /dev/null; then
+  echo "Error: UI slop - web/src/lib/export_hub_paths.ts must export buildExportHubHref (frontend-primitives.mdc Export Hub UI)"
+  failed=1
+fi
+if ! rg -n 'ReportExportStubRoute|ReportExportStubPage' web/src/app_routes.tsx 2> /dev/null; then
+  echo "Error: UI slop - app_routes.tsx must register ReportExportStubRoute for typed report stubs (frontend-primitives.mdc Export Hub UI)"
+  failed=1
+fi
+if [ ! -f web/src/domains/dashboards/dashboard_series_mock.ts ]; then
+  echo "Error: UI slop - missing web/src/domains/dashboards/dashboard_series_mock.ts (frontend-primitives.mdc Export Hub UI)"
+  failed=1
+elif ! rg -n 'isChartMockPreviewEnabled' web/src/domains/dashboards/dashboard_series_mock.ts 2> /dev/null; then
+  echo "Error: UI slop - dashboard_series_mock.ts must export isChartMockPreviewEnabled (frontend-primitives.mdc Export Hub UI)"
+  failed=1
+fi
+
+echo "ui slop: E3 KEEP error contract"
+if [ -f web/e2e/helpers.js ]; then
+  if rg -n '(^|export )(?:async )?function stubApiRoute\b|export \{[^}]*stubApiRoute' web/e2e/helpers.js 2> /dev/null; then
+    if ! rg -n 'export (async )?function stubApiRoute\b|export \{[^}]*stubApiRoute' web/e2e/helpers.js 2> /dev/null; then
+      echo "Error: UI slop - web/e2e/helpers.js defines stubApiRoute but does not export it (E3 KEEP error contract)"
+      failed=1
+    fi
+  fi
+fi
+if [ -d web/e2e ]; then
+  e3_l3_spec_count=0
+  while IFS= read -r e3_l3_spec; do
+    [ -n "$e3_l3_spec" ] || continue
+    e3_l3_spec_count=$((e3_l3_spec_count + 1))
+  done < <(rg -l 'stubApiRoute|status:\s*500' web/e2e/*.spec.js 2> /dev/null || true)
+  if [ "$e3_l3_spec_count" -lt 5 ]; then
+    echo "Error: UI slop - E3 KEEP error contract requires >= 5 web/e2e/*.spec.js files matching stubApiRoute or status: 500 (found ${e3_l3_spec_count})"
+    failed=1
+  fi
+fi
+
+echo "ui slop: E5 FREEZE contract"
+if [ ! -f web/e2e/freeze_redirect.spec.js ]; then
+  echo "Error: UI slop - missing web/e2e/freeze_redirect.spec.js (E5 FREEZE contract)"
+  failed=1
+elif ! rg -n "tag: '@freeze'" web/e2e/freeze_redirect.spec.js 2> /dev/null; then
+  echo "Error: UI slop - freeze_redirect.spec.js must tag @freeze (E5 FREEZE contract)"
+  failed=1
+fi
+if [ ! -f web/e2e/click_log.spec.js ]; then
+  echo "Error: UI slop - missing web/e2e/click_log.spec.js (E5 FREEZE contract)"
+  failed=1
+elif ! rg -n 'Control Plane export mode|report_key=click-log' web/e2e/click_log.spec.js 2> /dev/null; then
+  echo "Error: UI slop - click_log.spec.js must assert export stub (E5 FREEZE contract)"
+  failed=1
+fi
+if ! rg -n 'catalogUnknown|exportOnlyReportStubBannerMessage' web/src/pages/report_export_stub_page.tsx web/src/shell/export_only_report_stub_message.ts 2> /dev/null; then
+  echo "Error: UI slop - report_export_stub_page must render unknown-key export stub (E5-4)"
+  failed=1
+fi
+
+echo "ui slop: E6 coalescing contract"
+if [ ! -f web/src/lib/coalesced_user_action.ts ]; then
+  echo "Error: UI slop - missing web/src/lib/coalesced_user_action.ts (E6 coalescing contract)"
+  failed=1
+fi
+if ! rg -n 'useCoalescedBumpRefresh' web/src/domains/dashboards/use_dashboard_page_workspace.ts web/src/domains/exports/use_export_schedules_page_workspace.ts web/src/domains/alerts/use_smart_alerts_page_workspace.ts 2> /dev/null; then
+  echo "Error: UI slop - E6 coalescing contract requires useCoalescedBumpRefresh on dashboard, export schedules, and smart alerts workspaces"
+  failed=1
+fi
+if ! rg -n 'catalogError|catalogLoading|searchError|searchLoading' web/src/shell/use_command_palette.ts 2> /dev/null; then
+  echo "Error: UI slop - use_command_palette.ts must expose catalog vs search lanes (E6-6)"
+  failed=1
+fi
+if ! rg -n 'overlaysBusy' web/src/domains/campaigns/list/campaigns_list_toolbar.tsx 2> /dev/null; then
+  echo "Error: UI slop - campaigns_list_toolbar.tsx must document create mutex via overlaysBusy (E6-9)"
+  failed=1
+fi
+
+echo "ui slop: E7 shell layout contract"
+if ! rg -q 'DirectoryPageShell' \
+  web/src/domains/integrations/integrations_hub.tsx \
+  web/src/domains/exports/export_hub.tsx \
+  web/src/domains/settings/settings_main.tsx \
+  web/src/domains/exports/export_schedules_page_view.tsx 2> /dev/null; then
+  echo "Error: UI slop - E7 shell layout contract requires DirectoryPageShell on integrations, export hub, settings, and export schedules"
+  failed=1
+fi
+if ! rg -q 'CustomerTabShell' \
+  web/src/domains/customers/customer_detail_ledger_tab.tsx \
+  web/src/domains/customers/customer_detail_tax_tab.tsx 2> /dev/null; then
+  echo "Error: UI slop - E7 shell layout contract requires CustomerTabShell on customer ledger and tax tabs"
+  failed=1
+fi
+if ! rg -q 'min-h-0 flex-1 overflow-y-auto' web/src/components/ui/sheet.tsx 2> /dev/null; then
+  echo "Error: UI slop - E7 VL-10 requires SheetBody min-h-0 scroll chain in sheet.tsx"
+  failed=1
+fi
+if rg -q 'justify-between' web/src/domains/customers/customer_detail_forecast_tab.tsx 2> /dev/null; then
+  echo "Error: UI slop - E7 VL-08 bans justify-between on customer forecast tab CardHeader"
+  failed=1
+fi
+if ! rg -q 'EditorPageShell' web/src/domains/campaigns/editor/campaign_editor.tsx 2> /dev/null; then
+  echo "Error: UI slop - E7 shell layout contract requires EditorPageShell on campaign editor"
+  failed=1
+fi
+
+echo "ui slop: E8 E2E proof contract"
+if [ ! -f web/e2e/export_hub.spec.js ]; then
+  echo "Error: UI slop - missing web/e2e/export_hub.spec.js (E8 E2E proof contract)"
+  failed=1
+fi
+if [ ! -f web/e2e/integrations_postbacks_save.spec.js ]; then
+  echo "Error: UI slop - missing web/e2e/integrations_postbacks_save.spec.js (E8 E2E proof contract)"
+  failed=1
+fi
+if [ ! -f scripts/ci/admin/web_e2e_keep_proof.sh ]; then
+  echo "Error: UI slop - missing scripts/ci/admin/web_e2e_keep_proof.sh (E8 E2E proof contract)"
+  failed=1
+fi
+if rg -n 'fraud_presets|fraud_labels_write|fraud_overrides_write|fraud_hub\.spec' scripts/ci/admin/web_e2e_smoke.sh 2> /dev/null; then
+  echo "Error: UI slop - web_e2e_smoke.sh must not reference removed @freeze fraud specs (E8-B)"
+  failed=1
+fi
+if [ -d web/e2e ]; then
+  e8_l3_tag_count=0
+  while IFS= read -r e8_l3_spec; do
+    [ -n "$e8_l3_spec" ] || continue
+    e8_l3_tag_count=$((e8_l3_tag_count + 1))
+  done < <(rg -l "tag: '@L3'" web/e2e/*.spec.js 2> /dev/null || true)
+  if [ "$e8_l3_tag_count" -lt 10 ]; then
+    echo "Error: UI slop - E8 E2E proof contract requires >= 10 @L3 spec files (found ${e8_l3_tag_count})"
+    failed=1
+  fi
+fi
+
+echo "ui slop: E9 backend-ahead contract"
+if ! rg -q 'getProbeClusterSummary|getCrowdWaveSummary' web/src/api/fraud_api.ts 2> /dev/null; then
+  echo "Error: UI slop - E9 requires probe/crowd-wave fetchers in fraud_api.ts"
+  failed=1
+fi
+for e9_file in \
+  web/src/domains/campaigns/editor/campaign_fraud_signals_panel.tsx \
+  web/src/domains/ops/ops_fraud_preset_panel.tsx \
+  web/src/domains/disputes/disputes_directory.tsx \
+  web/src/domains/support/support_feedback_form.tsx \
+  web/src/pages/disputes_page.tsx \
+  web/src/pages/support_feedback_page.tsx; do
+  if [ ! -f "$e9_file" ]; then
+    echo "Error: UI slop - E9 backend-ahead contract missing ${e9_file}"
+    failed=1
+  fi
+done
+if rg -n 'Navigate replace to="/customers".*path="disputes"' web/src/app_routes.tsx 2> /dev/null; then
+  echo "Error: UI slop - E9 requires live /disputes route (not redirect to /customers)"
+  failed=1
+fi
+if ! rg -q 'path="disputes"' web/src/app_routes.tsx 2> /dev/null; then
+  echo "Error: UI slop - E9 requires DisputesPage route in app_routes.tsx"
+  failed=1
+fi
+if ! rg -q 'path="support/feedback"' web/src/app_routes.tsx 2> /dev/null; then
+  echo "Error: UI slop - E9 requires SupportFeedbackPage route in app_routes.tsx"
+  failed=1
+fi
+if ! rg -q "prefix: '/disputes'" web/src/lib/route_permissions.ts 2> /dev/null; then
+  echo "Error: UI slop - E9 requires /disputes route permission customers:read"
+  failed=1
+fi
+
+echo "ui slop: EH-ST1 fake empty list ban"
+if rg -n 'Promise\.resolve\(\[\]' web/src/domains web/src/pages --glob '*.ts' --glob '*.tsx' 2>/dev/null; then
+  echo "Error: UI slop - Promise.resolve([]) banned (EH-ST1); use undefined + hasSnapshot"
+  failed=1
+fi
+
 if [ "$failed" -ne 0 ]; then
-  echo "Remediation: .cursor/rules/ui.mdc (**Spacing and typography**); web/src/lib/admin_spacing.ts; frontend-slop.mdc layout contract"
+  echo "Remediation: .cursor/rules/ui.mdc (**Spacing and typography**); web/src/lib/admin_spacing.ts; frontend-slop.mdc layout contract; frontend-primitives.mdc Export Hub UI; OV-*/RB-E*/CSP-*/UUID-*; overlay_position_state.ts; app_error_boundary.tsx"
   exit 1
 fi
 

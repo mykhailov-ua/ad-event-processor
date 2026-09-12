@@ -13,6 +13,7 @@ import {
   TableRow,
 } from '@/shell/directory_table';
 import { CustomerTabShell } from '@/shell/customer_tab_shell';
+import { StubBanner } from '@/shell/stub_banner';
 import { INLINE_FILTER_ACTION_GRID_CLASS, FilterField } from '@/shell/filter_panel';
 import { displayMicro } from '@/lib/display';
 import { adminTypography } from '@/lib/admin_kit';
@@ -64,6 +65,12 @@ export function CustomerDetailStatementTab({
       >
         {hasSnapshot && statement ? (
           <section>
+            {'stale' in statement && statement.stale === true ? (
+              <StubBanner
+                message="Statement analytics may be delayed while ClickHouse catches up. Ledger totals and reconciliation remain Postgres-backed."
+                title="Stale analytics"
+              />
+            ) : null}
             <Card>
               <CardHeader>
                 <CardTitle>Statement summary</CardTitle>

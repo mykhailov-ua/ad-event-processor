@@ -3,6 +3,7 @@ set -euo pipefail
 
 # Role: Admin web smoke e2e (curated Playwright bundle).
 # Execution context: Optional tier when ADMIN_WEB_E2E_SMOKE=1 via web.sh.
+# Not handler wiring proof: route mount + subset of L1/L3; see web_e2e_keep_proof.sh for KEEP matrix.
 # Verify: ADMIN_WEB_E2E_SMOKE=1 bash scripts/ci/admin/web.sh
 source "$(cd "$(dirname "${BASH_SOURCE[0]}")/../.." && pwd)/lib/paths.sh"
 cd "$ROOT"
@@ -24,7 +25,7 @@ if [ ! -d "$E2E_DIR/node_modules/@playwright/test" ]; then
   (cd "$E2E_DIR" && npm ci)
 fi
 
-echo "admin web e2e smoke: playwright bundle"
+echo "admin web e2e smoke: playwright bundle (mount smoke; not full L1/L3 matrix)"
 (
   cd "$E2E_DIR" && npx playwright test --workers=1 \
     smoke_matrix.spec.js \
@@ -34,18 +35,18 @@ echo "admin web e2e smoke: playwright bundle"
     customers_list.spec.js \
     customer_detail_billing.spec.js \
     campaigns_filters.spec.js \
-    campaigns_bulk_pause.spec.js \
     campaign_editor.spec.js \
-    campaign_editor_deep.spec.js \
-    campaign_integrations.spec.js \
-    campaign_publish.spec.js \
-    campaign_diff.spec.js \
+    export_hub.spec.js \
     settings.spec.js \
-    fraud_hub.spec.js \
-    fraud_presets.spec.js \
-    fraud_labels_write.spec.js \
-    fraud_overrides_write.spec.js \
-    team_invite.spec.js
+    audit.spec.js \
+    ops_console.spec.js \
+    permission_route_audit.spec.js \
+    integrations_hub.spec.js \
+    integrations_postbacks_health.spec.js \
+    team_invite.spec.js \
+    team.spec.js \
+    freeze_redirect.spec.js \
+    click_log.spec.js
 )
 
 echo "admin web e2e smoke PASSED"

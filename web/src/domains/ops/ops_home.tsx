@@ -4,6 +4,7 @@ import { Button } from '@/components/ui/button';
 import { EmptyState } from '@/shell/empty_state';
 import type { DashboardSummary, DoctorSummary, OpsHomeSnapshot } from '@/api/types';
 import { OpsKvRow, OpsStatGrid, OpsStatPanel } from '@/domains/ops/ops_stat_panel';
+import { OpsFraudPresetPanelWithWorkspace } from '@/domains/ops/ops_fraud_preset_panel';
 import { OpsActionGroup, OpsPageWithLoad } from '@/domains/ops/ops_page_shell';
 import { opsPanelError } from '@/domains/ops/ops_nav';
 import { OpsStatusChip } from '@/domains/ops/ops_status';
@@ -258,6 +259,8 @@ export function OpsHome({
               <OpsHomeDoctorChecksTable checks={checks} />
             )}
           </OpsBlock>
+
+          <OpsFraudPresetPanelWithWorkspace />
         </>
       )}
     </OpsPageWithLoad>

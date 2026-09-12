@@ -199,9 +199,18 @@ export function OpsMlModel({
       {statusError && !hasStatusSnapshot
         ? opsPanelError(statusError, 'Could not load ML status')
         : null}
+      {statusError && hasStatusSnapshot
+        ? opsPanelError(statusError, 'ML status refresh failed')
+        : null}
       {evalError && !hasEvalSnapshot ? opsPanelError(evalError, 'Could not load ML eval') : null}
+      {evalError && hasEvalSnapshot
+        ? opsPanelError(evalError, 'ML eval refresh failed')
+        : null}
       {labelsError && !hasLabelsSnapshot
         ? opsPanelError(labelsError, 'Could not load ML labels')
+        : null}
+      {labelsError && hasLabelsSnapshot
+        ? opsPanelError(labelsError, 'ML labels refresh failed')
         : null}
 
       {status ? <JsonPayloadView payload={status} /> : null}

@@ -36,7 +36,7 @@ import {
   ExportHubCustomerIdHint,
   ExportHubJobIdHint,
 } from '@/domains/exports/export_hub_field_hints';
-import { PageChrome } from '@/shell/page_chrome';
+import { DirectoryPageShell } from '@/shell/directory_page_shell';
 import { PageSectionStack } from '@/shell/page_layout';
 import { ErrorBlock } from '@/shell/error_block';
 import { StubBanner } from '@/shell/stub_banner';
@@ -67,8 +67,14 @@ export type ExportHubCampaignToggleField =
 
 export type ExportHubProps = {
   catalogEntries: ExportHubEntry[];
+  catalogError?: Error;
+  catalogFetching: boolean;
+  catalogHasSnapshot: boolean;
+  onRefreshCatalog: () => void;
   catalogPickerValue: string;
-  selectedKind: 'report' | 'billing' | 'audit';
+  selectedKind: 'report' | 'billing' | 'audit' | 'directory';
+  directoryLinkHref?: string;
+  selectedEntryDescription?: string;
   draftCustomerId: string;
   draftReportKey: string;
   draftFrom: string;
@@ -141,6 +147,7 @@ export type ExportHubProps = {
   onDownloadRecentJob: (job: ExportHubRecentJob) => void;
   onRerunRecentJob: (job: ExportHubRecentJob) => void;
   savedViews: SavedView[];
+  savedViewsHasSnapshot: boolean;
   savedViewsError?: Error;
   savedViewsFetching: boolean;
   canManagePresets: boolean;
@@ -163,8 +170,14 @@ function jobStatusLabel(job: ReportJobStatus | BillingExportJob | undefined): st
 
 export function ExportHub({
   catalogEntries,
+  catalogError,
+  catalogFetching,
+  catalogHasSnapshot,
+  onRefreshCatalog,
   catalogPickerValue,
   selectedKind,
+  directoryLinkHref,
+  selectedEntryDescription,
   draftCustomerId,
   draftReportKey,
   draftFrom,
@@ -236,6 +249,7 @@ export function ExportHub({
   onDownloadRecentJob,
   onRerunRecentJob,
   savedViews,
+  savedViewsHasSnapshot,
   savedViewsError,
   savedViewsFetching,
   canManagePresets,
@@ -264,8 +278,9 @@ export function ExportHub({
     spreadsheetUrl,
   });
   const exportBusy = creating || downloading || cancelling || (polling && !canDownload);
-  const showAsyncJobPanel = selectedKind !== 'audit';
-  const showRowLimit = selectedKind !== 'audit';
+  const isDirectoryExport = selectedKind === 'directory';
+  const showAsyncJobPanel = selectedKind !== 'audit' && !isDirectoryExport;
+  const showRowLimit = selectedKind !== 'audit' && !isDirectoryExport;
   const activeJobId = draftJobId.trim() || undefined;
   const runLabel =
     selectedKind === 'audit'
@@ -280,12 +295,23 @@ export function ExportHub({
     exportBusy ||
     (selectedKind !== 'audit' && !draftCustomerId.trim()) ||
     (selectedKind === 'report' && !catalogPickerValue.trim());
+  const catalogRetryButton = (
+    <Button
+      data-testid="export-hub-catalog-retry"
+      disabled={catalogFetching}
+      type="button"
+      variant="outline"
+      onClick={onRefreshCatalog}
+    >
+      {catalogFetching ? 'Retrying...' : 'Retry'}
+    </Button>
+  );
 
   return (
-    <PageChrome
-      description="Async report and billing exports. Full tabular reports run as jobs; download when complete."
+    <DirectoryPageShell
       actions={<ExportHubNotifications onOpenJob={onSelectRecentJob} />}
-      title="Exports"
+      blockingErrorFooter={<div data-testid="export-hub-catalog-error">{catalogRetryButton}</div>}
+      blockingErrorTitle="Could not load export catalog"
       controlPanel={
         <div className={opsControlPanelClass}>
           <ExportsNav />
@@ -301,7 +327,24 @@ export function ExportHub({
                 onValueChange={onCatalogPickerChange}
               />
 
-              {selectedKind !== 'audit' ? (
+              {isDirectoryExport && directoryLinkHref ? (
+                <div className={cn('col-span-full grid min-w-0', adminSpacing.gap.md)}>
+                  <StubBanner
+                    message={
+                      selectedEntryDescription ??
+                      'Open the directory page and use Export CSV in the toolbar.'
+                    }
+                    title="Directory export"
+                  />
+                  <div className={adminSpacing.flex.buttonGroup}>
+                    <Button asChild type="button" variant="brand">
+                      <Link to={directoryLinkHref}>Open campaigns directory</Link>
+                    </Button>
+                  </div>
+                </div>
+              ) : null}
+
+              {selectedKind !== 'audit' && !isDirectoryExport ? (
                 <div className={cn('grid min-w-0', adminKit.fieldLabelGap)}>
                   <FieldLabelWithHint htmlFor="export-hub-customer-id" label="Customer ID">
                     <ExportHubCustomerIdHint />
@@ -315,7 +358,7 @@ export function ExportHub({
                 </div>
               ) : null}
 
-              {selectedKind !== 'audit' ? (
+              {selectedKind !== 'audit' && !isDirectoryExport ? (
                 <>
                   <DatetimePicker
                     disabled={exportBusy}
@@ -577,9 +620,11 @@ export function ExportHub({
                 </div>
               ) : null}
 
-              <Button disabled={runDisabled} type="button" onClick={onRunExport}>
-                {runLabel}
-              </Button>
+              {!isDirectoryExport ? (
+                <Button disabled={runDisabled} type="button" onClick={onRunExport}>
+                  {runLabel}
+                </Button>
+              ) : null}
             </DirectoryFilterForm>
           </FilterPanel>
 
@@ -625,6 +670,17 @@ export function ExportHub({
           ) : null}
         </div>
       }
+      description="Async report and billing exports. Full tabular reports run as jobs; download when complete."
+      fetchState={{
+        fetching: catalogFetching,
+        error: catalogError,
+        hasSnapshot: catalogHasSnapshot,
+      }}
+      refreshErrorFooter={
+        <div data-testid="export-hub-catalog-refresh-error">{catalogRetryButton}</div>
+      }
+      refreshErrorTitle="Export catalog refresh failed"
+      title="Exports"
     >
       <PageSectionStack>
         {auditExportTruncated ? (
@@ -637,11 +693,13 @@ export function ExportHub({
         <ExportHubSavedViews
           canExport={canExportPreset}
           canManage={canManagePresets}
+          customerId={draftCustomerId}
           exportingViewId={exportingViewId}
           presetName={presetName}
           saving={savingPreset}
           selectedViewId={selectedViewId}
           views={savedViews}
+          viewsHasSnapshot={savedViewsHasSnapshot}
           viewsError={savedViewsError}
           viewsFetching={savedViewsFetching}
           onDeleteView={onDeleteSavedView}
@@ -662,6 +720,6 @@ export function ExportHub({
           onSelectJob={onSelectRecentJob}
         />
       </PageSectionStack>
-    </PageChrome>
+    </DirectoryPageShell>
   );
 }

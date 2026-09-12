@@ -13,6 +13,8 @@ import {
 import { DashboardPanelSection } from '@/domains/dashboards/dashboard_panel_section';
 import { adminTypography } from '@/lib/admin_kit';
 import { adminSpacing } from '@/lib/admin_spacing';
+import { CustomerScopeGate } from '@/shell/customer_scope_gate';
+import { EmptyState } from '@/shell/empty_state';
 import { ErrorBlock } from '@/shell/error_block';
 import { FilterField, FilterPanel } from '@/shell/filter_panel';
 import { BentoSection } from '@/shell/bento_card';
@@ -25,7 +27,9 @@ import {
 } from '@/shell/directory_table';
 
 export type ExportHubSavedViewsProps = {
+  customerId: string;
   views: SavedView[];
+  viewsHasSnapshot: boolean;
   viewsError?: Error;
   viewsFetching: boolean;
   canManage: boolean;
@@ -43,7 +47,9 @@ export type ExportHubSavedViewsProps = {
 };
 
 export function ExportHubSavedViews({
+  customerId,
   views,
+  viewsHasSnapshot,
   viewsError,
   viewsFetching,
   canManage,
@@ -85,12 +91,22 @@ export function ExportHubSavedViews({
         </FilterField>
         <FilterField htmlFor="export-hub-preset-select" label="Saved preset">
           <Select
-            disabled={viewsFetching || views.length === 0}
+            disabled={!viewsHasSnapshot || viewsFetching || views.length === 0}
             value={selectedViewId || undefined}
             onValueChange={onSelectedViewIdChange}
           >
             <SelectTrigger id="export-hub-preset-select">
-              <SelectValue placeholder={viewsFetching ? 'Loading presets...' : 'Select preset'} />
+              <SelectValue
+                placeholder={
+                  viewsFetching && !viewsHasSnapshot
+                    ? 'Loading presets...'
+                    : !viewsHasSnapshot
+                      ? 'Enter customer ID above'
+                      : views.length === 0
+                        ? 'No saved presets'
+                        : 'Select preset'
+                }
+              />
             </SelectTrigger>
             <SelectContent>
               {views.map((view) => (
@@ -132,26 +148,38 @@ export function ExportHubSavedViews({
         </div>
       </FilterPanel>
 
-      {views.length > 0 ? (
-        <DashboardPanelSection tableAriaLabel="Saved export presets">
-          <TableHeader>
-            <TableRow>
-              <DirectoryTableHead>Name</DirectoryTableHead>
-              <DirectoryTableHead>Report key</DirectoryTableHead>
-              <DirectoryTableHead>Updated</DirectoryTableHead>
-            </TableRow>
-          </TableHeader>
-          <TableBody>
-            {views.map((view) => (
-              <TableRow key={view.id}>
-                <TableCell>{view.name}</TableCell>
-                <TableCell>{view.report_key}</TableCell>
-                <TableCell>{view.updated_at ?? ''}</TableCell>
+      <CustomerScopeGate
+        customerId={customerId}
+        description="Enter a customer UUID in the Customer ID field above to load saved presets."
+        testId="export-hub-saved-views-scope"
+      >
+        {viewsHasSnapshot && !viewsFetching && views.length === 0 ? (
+          <EmptyState
+            description="Save the current export fields as a preset for this customer."
+            title="No saved presets"
+          />
+        ) : null}
+        {views.length > 0 ? (
+          <DashboardPanelSection tableAriaLabel="Saved export presets">
+            <TableHeader>
+              <TableRow>
+                <DirectoryTableHead>Name</DirectoryTableHead>
+                <DirectoryTableHead>Report key</DirectoryTableHead>
+                <DirectoryTableHead>Updated</DirectoryTableHead>
               </TableRow>
-            ))}
-          </TableBody>
-        </DashboardPanelSection>
-      ) : null}
+            </TableHeader>
+            <TableBody>
+              {views.map((view) => (
+                <TableRow key={view.id}>
+                  <TableCell>{view.name}</TableCell>
+                  <TableCell>{view.report_key}</TableCell>
+                  <TableCell>{view.updated_at ?? ''}</TableCell>
+                </TableRow>
+              ))}
+            </TableBody>
+          </DashboardPanelSection>
+        ) : null}
+      </CustomerScopeGate>
     </BentoSection>
   );
 }

@@ -42,36 +42,51 @@ There is no in-browser mock API tier. Chart preview (`?chart_mock=1`) is dashboa
 | `billing_filters.spec.js` | `/api/v1/billing/invoices` (+ filtered refetch) |
 | `billing_invoice_detail.spec.js` | Invoice + ledger + deliveries on detail open |
 | `audit.spec.js` | `/api/v1/audit` |
-| `automation_rules.spec.js` | `/api/v1/automation/rules` |
 | `campaign_editor.spec.js` | `/api/v1/campaigns/:id` on editor open |
 | `campaigns_filters.spec.js` | `/api/v1/campaigns` list bind; status GET; pacing overlay; Report link |
 | `campaign_single_clone.spec.js` | POST `/api/v1/campaigns/{id}/clone` (L2 API) |
-| `click_log.spec.js` | `/api/v1/reports/click-log` on Apply |
-| `edge_parity.spec.js` | `/api/v1/reports/edge-parity` on load |
-| `creative_flows.spec.js` | `/api/v1/flows`, `/api/v1/landers` |
-| `flow_stream.spec.js` | `/api/v1/flows/validate` 400; visual weight ErrorBlock; L2 flow -> campaign -> `/click` redirect |
+| `click_log.spec.js` | Export-only stub on `/reports/click-log`; no GET `/api/v1/reports/click-log` on load; Export Hub link with `report_key=click-log` |
+| `export_hub.spec.js` | `/api/v1/reports/catalog` on `/exports` |
+| `freeze_redirect.spec.js` | `@freeze` frozen deep links: fraud/rtb -> `/exports`, creative -> `/campaigns`, click-log stays on export stub |
 | `customer_detail_billing.spec.js` | `/api/v1/customers`, `/api/v1/customers/:id` |
-| `dashboards.spec.js` | `/api/v1/dashboards/buyer` on Apply |
 | `dashboards_adops.spec.js` | `/api/v1/dashboards/adops` campaigns[] DOM bind |
-| `fraud_labels.spec.js` | `/api/v1/fraud/labels` |
-| `fraud_decision.spec.js` | `/api/v1/fraud/decisions` on Explain |
-| `fraud_integrations.spec.js` | `/api/v1/fraud/integrations` on Load |
-| `fraud_presets.spec.js` | `/api/v1/fraud/presets` |
 | `integrations_hub.spec.js` | Per integrations section GET |
 | `integrations_postbacks_health.spec.js` | `/api/v1/postbacks/health` on Health tab |
 | `ops_blacklist.spec.js` | `/api/v1/ops/blacklist` |
 | `ops_console.spec.js` | `/api/v1/ops/home` + `OPS_SECTION_READS` |
 | `ops_dlq.spec.js` | `/api/v1/ops/dlq/inbox` |
-| `portals_smoke.spec.js` | Self-serve / publisher reads |
-| `reports.spec.js` | `/api/v1/reports/catalog` |
-| `rtb.spec.js` | `/api/v1/reports/rtb/overview` when licensed |
-| `rtb_deals.spec.js` | `/api/v1/rtb/deals` |
 | `settings.spec.js` | `/api/v1/settings/platform` |
 | `sidebar.spec.js` | `/api/v1/session` after login |
 | `team.spec.js` | `/api/v1/team/overview` |
 | `team_member_patch.spec.js` | `/api/v1/team/members` |
-| `fraud_presets_patch.spec.js` | `/api/v1/fraud/presets` |
 | `command_palette.spec.js` | `/api/v1/command-palette/routes` |
+
+## @freeze removed specs (Control Plane scope)
+
+Frozen routes no longer mount in-browser table runners. Do not recreate full fraud/rtb/creative table specs; use `freeze_redirect.spec.js` for redirect honesty and `click_log.spec.js` for export-only report stubs.
+
+| Former spec | Replacement |
+| :--- | :--- |
+| `automation_rules.spec.js` | **@freeze removed** — route redirects to `/exports` (`freeze_redirect.spec.js` pattern) |
+| `creative_flows.spec.js` | **@freeze removed** — `/creative` -> `/campaigns` in `freeze_redirect.spec.js` |
+| `dashboards.spec.js` | **@freeze removed** — buyer dashboard frozen |
+| `edge_parity.spec.js` | **@freeze removed** — ops report frozen |
+| `flow_stream.spec.js` | **@freeze removed** — flows frozen |
+| `fraud_decision.spec.js` | **@freeze removed** |
+| `fraud_integrations.spec.js` | **@freeze removed** |
+| `fraud_labels.spec.js` | **@freeze removed** |
+| `fraud_presets.spec.js` | **@freeze removed** — `/fraud/presets` -> `/exports` in `freeze_redirect.spec.js` |
+| `fraud_presets_patch.spec.js` | **@freeze removed** |
+| `portals_smoke.spec.js` | **@freeze removed** — portals redirect to `/exports` |
+| `reports.spec.js` | **@freeze removed** — `/reports` index redirects to `/exports` |
+| `rtb.spec.js` | **@freeze removed** |
+| `rtb_deals.spec.js` | **@freeze removed** — `/rtb/deals` -> `/exports` in `freeze_redirect.spec.js` |
+
+Run frozen redirect coverage:
+
+```bash
+cd web/e2e && npx playwright test --grep @freeze
+```
 
 ## L2 write specs (`@write` tag)
 
@@ -90,11 +105,26 @@ Mutation specs carry `{ tag: '@write' }` on each test:
 | `settings_apply.spec.js` | POST `/api/v1/settings/platform/apply` |
 | `team_invite.spec.js` | POST `/api/v1/team/members` |
 
-## L3 error specs
+## L3 error specs (`@L3` tag)
 
-| File | Notes |
-| :--- | :--- |
-| `ops_forbidden_mb.spec.js` | MB role GET `/api/v1/ops/home` 403 |
+| File | Stimulus | Assert |
+| :--- | :--- | :--- |
+| `customers_list.spec.js` | GET `/api/v1/customers` 500 | `Could not load customers`; no empty table |
+| `campaigns_filters.spec.js` | GET `/api/v1/campaigns` 500 | `Could not load campaigns`; no empty table |
+| `campaign_editor.spec.js` | PATCH `/api/v1/campaigns/:id` 400 | `Could not save campaign` + field message |
+| `export_hub.spec.js` | GET `/api/v1/reports/jobs/:id` failed | `Export failed` on poll |
+| `settings.spec.js` | GET `/api/v1/meta` 500; PATCH platform 409 | metadata + save `ErrorBlock` |
+| `audit.spec.js` | GET `/api/v1/audit` 500 | `Could not load audit log`; no export toolbar |
+| `ops_console.spec.js` | GET `/api/v1/ops/home` 500 | `Could not load ops snapshot` |
+| `permission_route_audit.spec.js` | MB deep-link `/ops`, `/audit`, `/settings` | 403 UI + API |
+| `integrations_postbacks_save.spec.js` | PUT `/api/v1/postbacks/config/:id` 400 | save error alert |
+| `customer_detail_billing.spec.js` | GET balance 500 | `Could not load balance` |
+| `billing_invoice_detail.spec.js` | GET invoice 500 | `Could not load invoice` |
+| `team_invite.spec.js` | POST `/api/v1/team/members` 400 | mutation alert + message |
+| `team_member_patch.spec.js` | PATCH `/api/v1/team/members/:id` 500 | mutation alert |
+| `login.spec.js` | POST `/api/v1/auth/login` 401 | login `ErrorBlock` |
+| `session_perms_nav.spec.js` | API 403 before grant | nav hidden |
+| `permission_gate.spec.js` | forbidden route | `ForbiddenPanel` |
 
 ## Retained L0 only (not wiring proof)
 
@@ -117,11 +147,17 @@ Mutation specs carry `{ tag: '@write' }` on each test:
 # T1 stack required for integration specs
 bash scripts/dev/aed-admin up
 
-# Curated smoke bundle
+# Curated mount smoke (not L1/L3 wiring proof)
 ADMIN_WEB_E2E_SMOKE=1 bash scripts/ci/admin/web.sh
 
-# Full matrix (nightly)
+# KEEP L1+L3 proof per core route (nightly tier 1)
+bash scripts/ci/admin/web_e2e_keep_proof.sh
+
+# Full matrix (nightly tier 2)
 ADMIN_WEB_E2E_NIGHTLY=1 bash scripts/ci/admin/web_e2e_nightly.sh
+
+# L3 error subset
+cd web/e2e && npx playwright test --grep @L3
 
 # L2 mutation subset (@write tag)
 cd web && npx playwright test --grep @write
@@ -129,5 +165,8 @@ cd web && npx playwright test --grep @write
 # L1 read subset (examples)
 cd web/e2e && npx playwright test \
   smoke_matrix.spec.js customers_list.spec.js billing_filters.spec.js \
-  audit.spec.js ops_console.spec.js fraud_labels.spec.js
+  audit.spec.js ops_console.spec.js click_log.spec.js
+
+# @freeze redirect subset
+cd web/e2e && npx playwright test freeze_redirect.spec.js
 ```

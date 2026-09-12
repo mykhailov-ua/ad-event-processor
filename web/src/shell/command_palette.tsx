@@ -29,11 +29,16 @@ export function CommandPalette({ open: controlledOpen, onOpenChange }: CommandPa
     recents,
     searchItems,
     degraded,
-    activeError,
-    activeLoading,
+    catalogError,
+    catalogLoading,
+    searchError,
+    searchLoading,
     paletteForbidden,
     onSelectItem,
   } = useCommandPalette({ open: controlledOpen, onOpenChange });
+
+  const laneError = isSearching ? searchError : catalogError;
+  const laneLoading = isSearching ? searchLoading : catalogLoading;
 
   return (
     <CommandDialog onOpenChange={setOpen} open={open} shouldFilter={false}>
@@ -53,16 +58,16 @@ export function CommandPalette({ open: controlledOpen, onOpenChange }: CommandPa
       ) : null}
       {paletteForbidden ? (
         <div className={adminSpacing.inset.bandLg}>
-          <ErrorBlock error={activeError} title="Command palette forbidden" />
+          <ErrorBlock error={laneError} title="Command palette forbidden" />
         </div>
-      ) : activeError && !paletteForbidden ? (
+      ) : laneError ? (
         <div className={adminSpacing.inset.bandLg}>
-          <ErrorBlock error={activeError} title="Command palette failed" />
+          <ErrorBlock error={laneError} title="Command palette failed" />
         </div>
       ) : (
         <CommandList aria-label="Command palette results">
           <CommandEmpty>
-            {activeLoading ? 'Loading...' : isSearching ? 'No matches.' : 'No entries.'}
+            {laneLoading ? 'Loading...' : isSearching ? 'No matches.' : 'No entries.'}
           </CommandEmpty>
           {isSearching ? (
             <CommandGroup heading="Results">

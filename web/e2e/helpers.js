@@ -283,6 +283,93 @@ export function isApiPatch(pathPart, status = 200) {
     response.status() === status;
 }
 
+const HTTP_STUB_METHODS = new Set(['GET', 'POST', 'PATCH', 'PUT', 'DELETE']);
+
+/**
+ * @param {number} status
+ * @param {{ error?: { code?: string, message?: string }, code?: string, message?: string }} [body]
+ */
+function stubApiErrorEnvelope(status, body = {}) {
+  if (body != null && typeof body === 'object' && body.error != null) {
+    return body;
+  }
+  const code =
+    typeof body.code === 'string'
+      ? body.code
+      : status >= 500
+        ? 'INTERNAL_ERROR'
+        : status === 409
+          ? 'CONFLICT'
+          : status === 429
+            ? 'TOO_MANY_REQUESTS'
+            : status === 401
+              ? 'UNAUTHORIZED'
+              : 'BAD_REQUEST';
+  const message = typeof body.message === 'string' ? body.message : 'Request failed';
+  return { error: { code, message } };
+}
+
+/**
+ * Fulfill matching API routes with a JSON error envelope.
+ * Signature A: stubApiRoute(page, pathPart, status, jsonBody)
+ * Signature B: stubApiRoute(page, method, pathPart, status, errorBody, options)
+ * @param {import('@playwright/test').Page} page
+ * @param {string} methodOrPathPart
+ * @param {string|number} pathPartOrStatus
+ * @param {number|object} statusOrBody
+ * @param {object} [errorBodyOrOptions]
+ * @param {{ exactPath?: boolean }} [maybeOptions]
+ */
+export async function stubApiRoute(
+  page,
+  methodOrPathPart,
+  pathPartOrStatus,
+  statusOrBody,
+  errorBodyOrOptions = {},
+  maybeOptions = {}
+) {
+  let method = null;
+  let pathPart;
+  let status;
+  let errorBody;
+  let options;
+
+  if (HTTP_STUB_METHODS.has(methodOrPathPart)) {
+    method = methodOrPathPart;
+    pathPart = pathPartOrStatus;
+    status = statusOrBody;
+    errorBody = errorBodyOrOptions ?? {};
+    options = maybeOptions ?? {};
+  } else {
+    pathPart = methodOrPathPart;
+    status = pathPartOrStatus;
+    errorBody = statusOrBody ?? {};
+    options = {};
+  }
+
+  const envelope = stubApiErrorEnvelope(status, errorBody);
+  const exactPath = options.exactPath ?? false;
+
+  await page.route(`**${pathPart}**`, async (route) => {
+    if (method != null && route.request().method() !== method) {
+      await route.continue();
+      return;
+    }
+    if (exactPath) {
+      const pathname = new URL(route.request().url()).pathname;
+      if (pathname !== pathPart) {
+        await route.continue();
+        return;
+      }
+    }
+    await route.fulfill({
+      status,
+      contentType: 'application/json',
+      body: JSON.stringify(envelope),
+    });
+  });
+}
+
 /**
  * Navigate and wait for a GET API response.
  * @param {import('@playwright/test').Page} page
@@ -299,6 +386,38 @@ export async function gotoLiveAwaitGet(page, path, apiPathPart, status = 200) {
 
 /**
  * @param {import('@playwright/test').Page} page
+ * @param {string} titleSubstring
+ */
+export async function expectErrorBlockVisible(page, titleSubstring) {
+  const pattern = new RegExp(titleSubstring, 'i');
+  const mainAlert = page.locator('#main-content').getByRole('alert');
+  const pageAlert = page.getByRole('alert');
+  const locator = mainAlert
+    .filter({ hasText: pattern })
+    .or(pageAlert.filter({ hasText: pattern }))
+    .or(page.locator('#main-content').getByRole('heading', { name: pattern }))
+    .or(page.getByRole('heading', { name: pattern }));
+  await expect(locator.first()).toBeVisible({ timeout: 15_000 });
+}
+
+/**
+ * Navigate with a GET stub active for the first matching response.
+ * @param {import('@playwright/test').Page} page
+ * @param {string} path
+ * @param {string} apiPathPart
+ * @param {number} stubStatus
+ * @param {{ error?: { code?: string, message?: string }, code?: string, message?: string }} [stubBody]
+ * @returns {Promise<import('@playwright/test').Response>}
+ */
+export async function gotoLiveAwaitGetWithStub(page, path, apiPathPart, stubStatus, stubBody) {
+  await stubApiRoute(page, apiPathPart, stubStatus, stubBody);
+  const listResponse = page.waitForResponse(isApiGet(apiPathPart, stubStatus), { timeout: 20_000 });
+  await gotoLive(page, path);
+  return listResponse;
+}
+
+/**
+ * @param {import('@playwright/test').Page} page
  * @param {(response: import('@playwright/test').Response) => boolean} predicate
  * @returns {Promise<import('@playwright/test').Response>}
  */
@@ -306,6 +425,29 @@ export async function gotoLiveAwaitResponse(page, path, predicate) {
   const listResponse = page.waitForResponse(predicate, { timeout: 20_000 });
   await gotoLive(page, path);
   return listResponse;
+}
+
+/**
+ * L3: stub a GET API path to return a JSON error envelope (fail-closed UI proof).
+ * @param {import('@playwright/test').Page} page
+ * @param {string} apiPathPart
+ * @param {number} [status=500]
+ * @param {string} [message='request failed']
+ */
+export async function stubApiGetError(page, apiPathPart, status = 500, message = 'request failed') {
+  const code =
+    status === 403 ? 'FORBIDDEN' : status === 501 ? 'NOT_IMPLEMENTED' : 'INTERNAL_ERROR';
+  await page.route(`**${apiPathPart}**`, async (route) => {
+    if (route.request().method() !== 'GET') {
+      await route.continue();
+      return;
+    }
+    await route.fulfill({
+      status,
+      contentType: 'application/json',
+      body: JSON.stringify({ error: { code, message } }),
+    });
+  });
 }
 
 /** L1 smoke matrix routes with primary read GET (hub-only routes omit api). */

@@ -1,5 +1,6 @@
 import { apiJson, apiJsonArray } from './client.js';
 import type {
+  CrowdWaveSummary,
   FraudDecision,
   FraudDecisionQuery,
   FraudIntegration,
@@ -11,6 +12,7 @@ import type {
   FraudOverrideRequest,
   FraudPolicyPreset,
   PatchFraudPolicyPresetRequest,
+  ProbeClusterSummary,
 } from './types.js';
 
 function withCustomerQuery(path: string, customerId: string, extra?: URLSearchParams): string {
@@ -167,4 +169,25 @@ export async function getFraudDecision(
   signal?: AbortSignal
 ): Promise<FraudDecision> {
   return apiJson(buildFraudDecisionPath(params), { signal });
+}
+
+export async function getProbeClusterSummary(
+  clusterId: string,
+  signal?: AbortSignal
+): Promise<ProbeClusterSummary> {
+  const id = clusterId.trim();
+  return apiJson<ProbeClusterSummary>(
+    `/api/v1/fraud/probe-clusters/${encodeURIComponent(id)}`,
+    { signal }
+  );
+}
+
+export async function getCrowdWaveSummary(
+  campaignId: string,
+  signal?: AbortSignal
+): Promise<CrowdWaveSummary> {
+  return apiJson<CrowdWaveSummary>(
+    `/api/v1/fraud/crowd-waves/${encodeURIComponent(campaignId)}`,
+    { signal }
+  );
 }

@@ -31,3 +31,8 @@ test('isCampaignListMiddleColumnId recognizes metric columns', () => {
   assert.equal(isCampaignListMiddleColumnId('clicks'), true);
   assert.equal(isCampaignListMiddleColumnId('select'), false);
 });
+
+test('campaign list column prefs default is stable export surface', () => {
+  const prefs = defaultCampaignListColumnPrefs();
+  assert.deepEqual(prefs.hidden, [...CAMPAIGN_LIST_DEFAULT_HIDDEN]);
+});

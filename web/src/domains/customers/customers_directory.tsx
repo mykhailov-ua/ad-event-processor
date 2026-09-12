@@ -1,7 +1,10 @@
 import { useCallback, useEffect, useMemo } from 'react';
-import { Link } from 'react-router-dom';
+import { Link, useLocation } from 'react-router-dom';
 
 import type { Customer } from '@/api/types';
+import { InAppLink } from '@/shell/in_app_link';
+import { buildExportHubHref } from '@/lib/export_hub_paths';
+import { rememberExportHubReturnPath } from '@/lib/export_hub_return';
 import { CustomersSelectionPanel } from '@/domains/customers/customers_selection_panel';
 import { listPageRange } from '@/lib/list_page_stats';
 import { DirectoryPaginationFooter } from '@/shell/directory_pagination_footer';
@@ -57,6 +60,22 @@ export function CustomersDirectory({
   onPageChange,
   onLimitChange,
 }: CustomersDirectoryProps) {
+  const location = useLocation();
+  const exportHubHref = useMemo(
+    () =>
+      buildExportHubHref({
+        entry: 'customers-directory',
+        reportKey: 'customer-portfolio',
+        kind: 'report',
+        returnTo: `${location.pathname}${location.search}`,
+      }),
+    [location.pathname, location.search]
+  );
+
+  useEffect(() => {
+    rememberExportHubReturnPath(`${location.pathname}${location.search}`);
+  }, [location.pathname, location.search]);
+
   const canGoPrev = offset > 0;
   const canGoNext = offset + limit < total;
   const pageRange = listPageRange(total, limit, offset, (items ?? []).length);
@@ -110,6 +129,15 @@ export function CustomersDirectory({
         ) : null
       }
       blockingErrorTitle="Could not load customers"
+      description={
+        <>
+          Customer directory for operational billing context. Portfolio KPI exports run on{' '}
+          <InAppLink className="text-primary hover:underline" to={exportHubHref}>
+            Export hub
+          </InAppLink>{' '}
+          (Operations nav).
+        </>
+      }
       fetchState={{ fetching, error, hasSnapshot }}
       footer={
         <DirectoryPaginationFooter
@@ -134,9 +162,12 @@ export function CustomersDirectory({
         nameColumnLabel="Customer"
         overviewFooter={(customer) =>
           customer.id ? (
-            <PrimaryActionButton asChild>
-              <Link to={`/customers/${customer.id}`}>Open detail</Link>
-            </PrimaryActionButton>
+            <>
+              <PrimaryActionButton asChild>
+                <Link to={`/customers/${customer.id}`}>Open detail</Link>
+              </PrimaryActionButton>
+              <InAppLink to={exportHubHref}>Export hub</InAppLink>
+            </>
           ) : null
         }
         overviewTitle={(customer) => customer.name ?? customer.id ?? ''}

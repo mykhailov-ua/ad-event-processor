@@ -44,6 +44,7 @@ export type OpsDomainsProps = {
   fetchingRotation: boolean;
   fetchingTlsHost: boolean;
   rotationError: Error | undefined;
+  sslSetupError: Error | undefined;
   tlsHostError: Error | undefined;
   hasRotationSnapshot: boolean;
   onDraftHostnameChange: (value: string) => void;
@@ -58,6 +59,7 @@ export function OpsDomains({
   fetchingRotation,
   fetchingTlsHost,
   rotationError,
+  sslSetupError,
   tlsHostError,
   hasRotationSnapshot,
   onDraftHostnameChange,
@@ -76,7 +78,12 @@ export function OpsDomains({
       }}
       refreshErrorTitle="Domain rotation refresh failed"
       title="Domain ops"
-      alerts={tlsHostError ? opsPanelError(tlsHostError, 'TLS allow check failed') : null}
+      alerts={
+        <>
+          {sslSetupError ? opsPanelError(sslSetupError, 'Domain SSL setup') : null}
+          {tlsHostError ? opsPanelError(tlsHostError, 'TLS allow check failed') : null}
+        </>
+      }
       filters={
         <FilterField htmlFor="ops-tls-hostname" label="Hostname">
           <Input

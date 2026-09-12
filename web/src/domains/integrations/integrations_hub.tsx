@@ -1,9 +1,10 @@
 import { Bug, FileSpreadsheet, Key, Link2, Plug, ScrollText, Share2, Tags } from 'lucide-react';
 
 import { BentoSection } from '@/shell/bento_card';
+import { DirectoryPageShell } from '@/shell/directory_page_shell';
 import { HubLinkCard, HubLinkGrid } from '@/shell/hub_link_card';
-import { PageChrome } from '@/shell/page_chrome';
 import { IntegrationsNav } from '@/domains/integrations/integrations_nav';
+import { opsControlPanelClass } from '@/lib/admin_spacing';
 
 const INTEGRATION_LINKS = [
   {
@@ -66,11 +67,17 @@ const INTEGRATION_LINKS = [
 
 export function IntegrationsHub() {
   return (
-    <PageChrome
+    <DirectoryPageShell
+      blockingErrorTitle="Integrations unavailable"
+      controlPanel={
+        <div className={opsControlPanelClass}>
+          <IntegrationsNav />
+        </div>
+      }
       description="Cost sync, postbacks, schemas, and affiliate mapping."
+      fetchState={{ fetching: false, error: undefined, hasSnapshot: true }}
       title="Integrations"
     >
-      <IntegrationsNav />
       <BentoSection title="Connections">
         <HubLinkGrid>
           {INTEGRATION_LINKS.map((item) => (
@@ -78,6 +85,6 @@ export function IntegrationsHub() {
           ))}
         </HubLinkGrid>
       </BentoSection>
-    </PageChrome>
+    </DirectoryPageShell>
   );
 }

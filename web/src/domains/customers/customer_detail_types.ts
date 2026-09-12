@@ -34,7 +34,7 @@ export function customerDetailTabs(paymentEnabled: boolean) {
   if (paymentEnabled) {
     return CUSTOMER_DETAIL_TABS;
   }
-  return CUSTOMER_DETAIL_TABS.filter((item) => item.id !== 'payments');
+  return CUSTOMER_DETAIL_TABS.filter((item) => item.id !== 'payments' && item.id !== 'wallet');
 }
 
 export type CustomerDetailProps = {

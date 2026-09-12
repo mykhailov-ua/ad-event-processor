@@ -100,12 +100,12 @@ const SheetPortal = ({ children }: { children: React.ReactNode }) => (
 );
 
 const SheetOverlay = React.forwardRef<HTMLDivElement, React.HTMLAttributes<HTMLDivElement>>(
-  ({ onClick, ...props }, ref) => {
+  ({ className, onClick, ...props }, ref) => {
     const { setOpen } = useSheetContext();
     return (
       <div
         ref={ref}
-       
+        className={cn(adminChrome.overlayBackdrop, className)}
         onClick={(event) => {
           onClick?.(event);
           setOpen(false);
@@ -129,7 +129,7 @@ const sideClass: Record<SheetSide, string> = {
 const SheetContent = React.forwardRef<
   HTMLDivElement,
   React.HTMLAttributes<HTMLDivElement> & { side?: SheetSide }
->(({ side = 'right', children, ...props }, ref) => {
+>(({ side = 'right', className, children, ...props }, ref) => {
   const { open, setOpen } = useSheetContext();
   const scrollBody = React.Children.toArray(children).some(
     (child) =>
@@ -147,7 +147,12 @@ const SheetContent = React.forwardRef<
       <SheetLayoutContext.Provider value={{ scrollBody }}>
         <div
           ref={ref}
-         
+          className={cn(
+            'fixed z-50 flex min-h-0 flex-col gap-0 border-border bg-card text-card-foreground shadow-lg',
+            scrollBody ? 'overflow-hidden' : 'ui-scrollbar gap-4 overflow-y-auto p-6',
+            sideClass[side],
+            className
+          )}
           role="dialog"
           aria-modal="true"
           onKeyDown={(event) => {
@@ -161,11 +166,11 @@ const SheetContent = React.forwardRef<
           {children}
           <button
             type="button"
-           
+            className="absolute right-4 top-4 z-10 rounded-sm p-1 text-muted-foreground hover:text-foreground"
             aria-label="Close"
             onClick={() => setOpen(false)}
           >
-            <X  />
+            <X className="h-4 w-4" />
           </button>
         </div>
       </SheetLayoutContext.Provider>
@@ -174,12 +179,16 @@ const SheetContent = React.forwardRef<
 });
 SheetContent.displayName = 'SheetContent';
 
-const SheetHeader = ({ ...props }: React.HTMLAttributes<HTMLDivElement>) => {
+const SheetHeader = ({ className, ...props }: React.HTMLAttributes<HTMLDivElement>) => {
   const { scrollBody } = useSheetLayout();
 
   return (
     <div
-     
+      className={cn(
+        'flex w-full shrink-0 flex-col items-start gap-2 text-left',
+        scrollBody && 'px-6 pt-6',
+        className
+      )}
       {...props}
     />
   );
@@ -187,10 +196,13 @@ const SheetHeader = ({ ...props }: React.HTMLAttributes<HTMLDivElement>) => {
 SheetHeader.displayName = 'SheetHeader';
 
 const SheetBody = React.forwardRef<HTMLDivElement, React.HTMLAttributes<HTMLDivElement>>(
-  ({ onWheel, ...props }, ref) => (
+  ({ className, onWheel, ...props }, ref) => (
     <div
       ref={ref}
-     
+      className={cn(
+        'ui-scrollbar min-h-0 flex-1 overflow-y-auto overscroll-y-contain px-6 py-4',
+        className
+      )}
       onWheel={(event) => {
         onWheel?.(event);
         event.stopPropagation();
@@ -201,12 +213,16 @@ const SheetBody = React.forwardRef<HTMLDivElement, React.HTMLAttributes<HTMLDivE
 );
 SheetBody.displayName = 'SheetBody';
 
-const SheetFooter = ({ ...props }: React.HTMLAttributes<HTMLDivElement>) => {
+const SheetFooter = ({ className, ...props }: React.HTMLAttributes<HTMLDivElement>) => {
   const { scrollBody } = useSheetLayout();
 
   return (
     <div
-     
+      className={cn(
+        'flex w-full shrink-0 flex-col-reverse items-stretch gap-2 sm:flex-row sm:justify-end',
+        scrollBody && 'px-6 pb-6',
+        className
+      )}
       {...props}
     />
   );
@@ -214,8 +230,8 @@ const SheetFooter = ({ ...props }: React.HTMLAttributes<HTMLDivElement>) => {
 SheetFooter.displayName = 'SheetFooter';
 
 const SheetTitle = React.forwardRef<HTMLHeadingElement, React.HTMLAttributes<HTMLHeadingElement>>(
-  ({ ...props }, ref) => (
-    <h2 ref={ref} {...props} />
+  ({ className, ...props }, ref) => (
+    <h2 ref={ref} className={cn('text-lg font-semibold text-foreground', className)} {...props} />
   )
 );
 SheetTitle.displayName = 'SheetTitle';
@@ -223,8 +239,8 @@ SheetTitle.displayName = 'SheetTitle';
 const SheetDescription = React.forwardRef<
   HTMLParagraphElement,
   React.HTMLAttributes<HTMLParagraphElement>
->(({ ...props }, ref) => (
-  <p ref={ref} {...props} />
+>(({ className, ...props }, ref) => (
+  <p ref={ref} className={cn('text-sm text-muted-foreground', className)} {...props} />
 ));
 SheetDescription.displayName = 'SheetDescription';
 

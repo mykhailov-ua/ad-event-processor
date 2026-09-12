@@ -38,6 +38,7 @@ export function IntegrationsDebugger({
 }: IntegrationsDebuggerProps) {
   return (
     <IntegrationsPageWithLoad
+      alerts={actionError ? integrationsPanelError(actionError, 'Debugger action failed') : null}
       blockingErrorTitle="Integration debugger unavailable"
       fetchState={{ error: undefined, fetching: false, hasSnapshot: true }}
       title="Integration debugger"
@@ -88,8 +89,6 @@ export function IntegrationsDebugger({
           {loadingKey === 'postback' ? 'Testing postback...' : 'Test postback'}
         </Button>
       </div>
-
-      {actionError ? integrationsPanelError(actionError, 'Debugger action failed') : null}
 
       {smokeResult ? (
         <FilterPanel>

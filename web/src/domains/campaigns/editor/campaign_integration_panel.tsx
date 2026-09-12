@@ -22,6 +22,7 @@ import {
   formatIntegrationHealthStatus,
 } from '@/domains/campaigns/editor/integration_health_labels';
 import { campaignPanelError } from '@/domains/campaigns/editor/campaign_editor_shared';
+import { StubBanner } from '@/shell/stub_banner';
 import type { CampaignIntegrationPanelWorkspace } from '@/domains/campaigns/editor/use_campaign_integration_panel_workspace';
 
 function integrationHealthBadgeVariant(
@@ -219,6 +220,12 @@ export function CampaignIntegrationPanel({
       ) : null}
       {health ? (
         <div>
+          {health.summary && health.summary.trim().toLowerCase() !== 'ok' ? (
+            <StubBanner
+              message="Resolve integration health checks before relying on delivery URLs and postbacks."
+              title={`Integration health: ${formatIntegrationHealthStatus(health.summary)}`}
+            />
+          ) : null}
           <div>
             <span>Integration health</span>
             <Badge variant={integrationHealthBadgeVariant(health.summary)}>

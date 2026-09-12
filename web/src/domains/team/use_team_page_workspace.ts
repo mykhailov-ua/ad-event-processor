@@ -19,6 +19,7 @@ import type { TeamMemberEditDraft, TeamRosterTab } from '@/domains/team/team_ove
 import { confirmDestructiveAction } from '@/lib/mutation_audit';
 import { toError, userErrorMessage } from '@/lib/admin_error';
 import {
+  requireEmail,
   requireNonNegativeInteger,
   toastValidationError,
   validationError,
@@ -228,7 +229,11 @@ export function useTeamPageWorkspace() {
     memberUpdatingId != null ||
     actingId != null;
   const bumpRosterRefreshCoalesced = useCoalescedBumpRefresh(bumpRosterRefresh, rosterRefreshBusy);
-  const bumpRosterLanesAfterMutation = useCallback(() => {
+  const bumpRosterOnlyAfterMutation = useCallback(() => {
+    bumpRosterRefreshCoalesced();
+  }, [bumpRosterRefreshCoalesced]);
+
+  const bumpApprovalLanesAfterMutation = useCallback(() => {
     bumpRosterRefreshCoalesced();
     bumpOverviewRefreshCoalesced();
   }, [bumpOverviewRefreshCoalesced, bumpRosterRefreshCoalesced]);
@@ -376,6 +381,14 @@ export function useTeamPageWorkspace() {
       if (!customerId || !memberId || !draft) {
         return;
       }
+      const role = draft.role.trim();
+      const allowedRoles = new Set(teamRoleOptions.map((option) => option.code));
+      if (!role || !allowedRoles.has(role)) {
+        const roleError = validationError('Select a valid team role.', { field: 'role' });
+        setActionError(roleError);
+        toastValidationError(roleError);
+        return;
+      }
       let spendCapMicro: number | undefined;
       if (draft.spend_cap_micro.trim() !== '') {
         const spendResult = requireNonNegativeInteger(
@@ -394,7 +407,7 @@ export function useTeamPageWorkspace() {
       setActionError(undefined);
       try {
         await updateTeamMember(customerId, memberId, {
-          role: draft.role.trim() || undefined,
+          role,
           is_blocked: draft.is_blocked,
           spend_cap_micro: spendCapMicro,
         });
@@ -403,7 +416,7 @@ export function useTeamPageWorkspace() {
           refetchSession();
         }
         toast.success('Member updated');
-        bumpRosterLanesAfterMutation();
+        bumpRosterOnlyAfterMutation();
       } catch (err: unknown) {
         const nextError = toError(err);
         setActionError(nextError);
@@ -412,7 +425,14 @@ export function useTeamPageWorkspace() {
         setMemberUpdatingId(undefined);
       }
     },
-    [appliedCustomerId, bumpRosterLanesAfterMutation, memberDrafts, refetchSession, user?.id]
+    [
+      appliedCustomerId,
+      bumpRosterOnlyAfterMutation,
+      memberDrafts,
+      refetchSession,
+      teamRoleOptions,
+      user?.id,
+    ]
   );
 
   const onInvite = useCallback(async () => {
@@ -420,20 +440,35 @@ export function useTeamPageWorkspace() {
       return;
     }
     const customerId = appliedCustomerId.trim();
-    const email = draftInviteEmail.trim();
+    if (!customerId) {
+      return;
+    }
+    const emailResult = requireEmail(draftInviteEmail, 'Email', 'email');
+    if (!emailResult.ok) {
+      setActionError(emailResult.error);
+      toastValidationError(emailResult.error);
+      return;
+    }
     const role = draftInviteRole.trim();
-    if (!customerId || !email || !role) {
+    const allowedRoles = new Set(teamRoleOptions.map((option) => option.code));
+    if (!role || !allowedRoles.has(role)) {
+      const roleError = validationError('Select a valid team role.', { field: 'role' });
+      setActionError(roleError);
+      toastValidationError(roleError);
       return;
     }
     setInviting(true);
     setActionError(undefined);
     setInviteSuccess(false);
     try {
-      await inviteTeamMember(customerId, { email, role });
+      const invited = await inviteTeamMember(customerId, {
+        email: emailResult.value,
+        role,
+      });
+      const invitedEmail = invited.email ?? emailResult.value;
       setInviteSuccess(true);
-      setDraftInviteEmail('');
-      toast.success('Invite sent');
-      bumpRosterLanesAfterMutation();
+      toast.success(`Invite sent to ${invitedEmail}`);
+      bumpRosterOnlyAfterMutation();
     } catch (err: unknown) {
       const nextError = toError(err);
       setActionError(nextError);
@@ -441,7 +476,14 @@ export function useTeamPageWorkspace() {
     } finally {
       setInviting(false);
     }
-  }, [appliedCustomerId, bumpRosterLanesAfterMutation, draftInviteEmail, draftInviteRole, inviting]);
+  }, [
+    appliedCustomerId,
+    bumpRosterOnlyAfterMutation,
+    draftInviteEmail,
+    draftInviteRole,
+    inviting,
+    teamRoleOptions,
+  ]);
 
   const runApprovalAction = useCallback(
     async (id: string, action: 'approve' | 'deny') => {
@@ -458,7 +500,7 @@ export function useTeamPageWorkspace() {
           await denyTeamBudgetApproval(id);
           toast.success('Budget approval denied');
         }
-        bumpRosterLanesAfterMutation();
+        bumpApprovalLanesAfterMutation();
       } catch (err: unknown) {
         const nextError = toError(err);
         setActionError(nextError);
@@ -467,7 +509,7 @@ export function useTeamPageWorkspace() {
         setActingId(undefined);
       }
     },
-    [bumpRosterLanesAfterMutation]
+    [bumpApprovalLanesAfterMutation]
   );
 
   return {

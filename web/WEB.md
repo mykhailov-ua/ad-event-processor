@@ -40,7 +40,7 @@ Do not treat chart preview as production wiring proof (`anti-slop.mdc` tier hone
 | **Chart preview** | `?chart_mock=1` on buyer dashboard | `dashboard_series_mock.ts` synthetic series/KPIs | Chart component preview only; not `GET /api/v1/dashboards/*` |
 | **T2 embedded** | `web/dist` served from control binary | Live API same origin | Production embed path |
 
-CI/e2e and merge claims must use **live API** against control (`curl -sf :8188/health`). Green UI under `chart_mock=1` does not prove handler wiring.
+CI/e2e and merge claims must use **live API** against control (`curl -sf :8188/health`). Green UI under `chart_mock=1` does not prove handler wiring. KEEP error-phase L3 tier: `web/e2e/README.md` (**L3**); rollout status `docs/CONTROL_PLANE_UI_SCOPE.md` (**E3 implementation status**).
 
 ```bash
 bash scripts/dev/aed-admin status

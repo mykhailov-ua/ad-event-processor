@@ -382,6 +382,17 @@ export type FraudManualLabelBulkRequest = components['schemas']['FraudManualLabe
 export type FraudManualLabelBulkResponse = components['schemas']['FraudManualLabelBulkResponse'];
 export type FraudPolicyPreset = components['schemas']['FraudPolicyPreset'];
 export type PatchFraudPolicyPresetRequest = components['schemas']['PatchFraudPolicyPresetRequest'];
+export type ProbeClusterSummary = components['schemas']['ProbeClusterSummary'];
+
+/** Wire shape from GET /api/v1/fraud/crowd-waves/{campaign_id} (not yet in OpenAPI components). */
+export type CrowdWaveSummary = {
+  campaign_id: string;
+  active: boolean;
+  score: number;
+  unique_clusters: number;
+  simhash_neighbors: number;
+  entry_count: number;
+};
 
 export type ModeratorCorpusTuple = {
   id: string;

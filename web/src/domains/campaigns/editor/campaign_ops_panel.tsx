@@ -1,6 +1,7 @@
 import { Link } from 'react-router-dom';
 
 import { campaignPanelError } from '@/domains/campaigns/editor/campaign_editor_shared';
+import { CampaignFraudSignalsPanelWithWorkspace } from '@/domains/campaigns/editor/campaign_fraud_signals_panel';
 import { CampaignStatsPanel } from '@/domains/campaigns/editor/campaign_stats_panel';
 import { buildIntegrationsDebuggerHref } from '@/domains/integrations/integration_debug_api';
 import {
@@ -99,6 +100,8 @@ export function CampaignOpsPanel({ campaignId, workspace }: CampaignOpsPanelProp
           ) : null}
         </FilterPanel>
       ) : null}
+
+      <CampaignFraudSignalsPanelWithWorkspace campaignId={campaignId} />
 
       <CampaignStatsPanel
         campaignId={campaignId}

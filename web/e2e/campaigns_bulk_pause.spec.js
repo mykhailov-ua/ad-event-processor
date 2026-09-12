@@ -57,3 +57,48 @@ test(
     expect(updated?.status).toBe('PAUSED');
   }
 );
+
+test(
+  'toolbar pause surfaces bulk API failure',
+  { tag: '@write' },
+  async ({ page }) => {
+    await loginAsAdmin(page);
+    const initialList = page.waitForResponse(isCampaignsListResponse, { timeout: 20_000 });
+    await gotoCampaignsLive(page);
+    const listResponse = await initialList;
+    const listBody = await listResponse.json();
+
+    const activeCampaign = listBody.items.find((row) => row.status === 'ACTIVE');
+    if (!activeCampaign) {
+      test.skip(true, 'integration: no ACTIVE campaign for bulk pause error path');
+      return;
+    }
+
+    await page.route('**/api/v1/campaigns/bulk', async (route) => {
+      if (route.request().method() !== 'POST') {
+        await route.continue();
+        return;
+      }
+      await route.fulfill({
+        status: 500,
+        contentType: 'application/json',
+        body: JSON.stringify({
+          error: { code: 'INTERNAL_ERROR', message: 'bulk pause failed (e2e stub)' },
+        }),
+      });
+    });
+
+    const rowCheckbox = page.getByRole('checkbox', {
+      name: `Select ${activeCampaign.name}`,
+      exact: true,
+    });
+    await expect(rowCheckbox).toBeVisible({ timeout: 15_000 });
+    await rowCheckbox.check();
+
+    await page.getByRole('button', { name: 'Pause', exact: true }).click();
+
+    await expect(
+      page.getByText('bulk pause failed (e2e stub)', { exact: true })
+    ).toBeVisible({ timeout: 15_000 });
+  }
+);

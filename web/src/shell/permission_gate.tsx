@@ -6,6 +6,7 @@ import { AdminErrorPage } from '@/shell/admin_error_page';
 import { Button } from '@/components/ui/button';
 import { PageSkeleton } from '@/shell/page_skeleton';
 import {
+  formatRoutePermissionRequirement,
   resolveRoutePermission,
   sessionHasRoutePermission,
   type RoutePermission,
@@ -16,10 +17,15 @@ export type PermissionGateProps = RoutePermission & {
   fallback?: ReactNode;
 };
 
-export function ForbiddenPanel() {
+export function ForbiddenPanel({ requiredPermission }: { requiredPermission?: string }) {
+  const detail =
+    requiredPermission != null && requiredPermission.length > 0
+      ? `Required permission: ${requiredPermission}`
+      : undefined;
+
   return (
     <div className="grid gap-4" >
-      <AdminErrorPage kind="forbidden" layout="embedded" />
+      <AdminErrorPage detail={detail} kind="forbidden" layout="embedded" />
       <div>
         <Button asChild type="button" variant="outline">
           <Link to="/">Go home</Link>
@@ -52,7 +58,9 @@ export function RoutePermissionGuard({ children }: { children: ReactNode }) {
   }
   const allowed = sessionHasRoutePermission(user?.permissions, rule);
   if (!allowed) {
-    return <ForbiddenPanel />;
+    return (
+      <ForbiddenPanel requiredPermission={formatRoutePermissionRequirement(rule)} />
+    );
   }
   return children;
 }

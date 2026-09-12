@@ -10,6 +10,7 @@ import {
   updateSmartAlertRule,
 } from '@/api/smart_alerts_api';
 import { useResource } from '@/api/use_resource';
+import { useCoalescedBumpRefresh, useRefreshToken } from '@/hooks/use_coalesced_refresh_token';
 import type { SmartAlertEvent, SmartAlertRule, SmartAlertRuleTemplate } from '@/api/types';
 import { useSession } from '@/hooks/use_session';
 import { exportHubErrorMessage } from '@/domains/exports/export_hub_errors';
@@ -48,8 +49,8 @@ export function useSmartAlertsPageWorkspace() {
   const [customerId, setCustomerId] = useState(session?.default_customer_id ?? '');
   const [draft, setDraft] = useState<SmartAlertsDraft>(DEFAULT_DRAFT);
   const [selectedRuleId, setSelectedRuleId] = useState<string | undefined>();
-  const [rulesRefreshToken, setRulesRefreshToken] = useState(0);
-  const [historyRefreshToken, setHistoryRefreshToken] = useState(0);
+  const { refreshToken: rulesRefreshToken, bumpRefresh: bumpRulesRefresh } = useRefreshToken();
+  const { refreshToken: historyRefreshToken, bumpRefresh: bumpHistoryRefresh } = useRefreshToken();
   const [historyPage, setHistoryPage] = useState(0);
   const [saving, setSaving] = useState(false);
   const [ackingEventId, setAckingEventId] = useState<string | undefined>();
@@ -65,7 +66,7 @@ export function useSmartAlertsPageWorkspace() {
   } = useResource(
     (signal) => {
       if (!trimmedCustomerId) {
-        return Promise.resolve([] as SmartAlertRule[]);
+        return Promise.resolve(undefined);
       }
       return listSmartAlertRules({ customer_id: trimmedCustomerId }, signal);
     },
@@ -79,7 +80,7 @@ export function useSmartAlertsPageWorkspace() {
   } = useResource(
     (signal) => {
       if (!trimmedCustomerId) {
-        return Promise.resolve([] as SmartAlertEvent[]);
+        return Promise.resolve(undefined);
       }
       return listSmartAlertHistory(
         {
@@ -98,13 +99,8 @@ export function useSmartAlertsPageWorkspace() {
     [rules, selectedRuleId]
   );
 
-  const refreshRules = useCallback(() => {
-    setRulesRefreshToken((value) => value + 1);
-  }, []);
-
-  const refreshHistory = useCallback(() => {
-    setHistoryRefreshToken((value) => value + 1);
-  }, []);
+  const refreshRules = useCoalescedBumpRefresh(bumpRulesRefresh, rulesFetching);
+  const refreshHistory = useCoalescedBumpRefresh(bumpHistoryRefresh, historyFetching);
 
   const loadRuleIntoDraft = useCallback((rule: SmartAlertRule) => {
     setSelectedRuleId(rule.id);
@@ -266,9 +262,11 @@ export function useSmartAlertsPageWorkspace() {
     selectedRuleId,
     setSelectedRuleId,
     rules: rules ?? [],
+    rulesHasSnapshot: rules != null,
     rulesError,
     rulesFetching,
     history: history ?? [],
+    historyHasSnapshot: history != null,
     historyError,
     historyFetching,
     historyPage,

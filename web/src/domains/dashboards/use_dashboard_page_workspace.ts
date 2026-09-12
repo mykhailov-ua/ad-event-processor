@@ -1,4 +1,4 @@
-import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
+import { useCallback, useEffect, useMemo, useState } from 'react';
 
 import { getAdopsDashboard, getBuyerDashboard } from '@/api/dashboards_api';
 import { useResource } from '@/api/use_resource';
@@ -6,6 +6,11 @@ import type {
   AdopsDashboardPayload,
   BuyerDashboardPayload,
 } from '@/domains/dashboards/dashboard_types';
+import {
+  buildBuyerDashboardChartMock,
+  isChartMockPreviewEnabled,
+} from '@/domains/dashboards/dashboard_series_mock';
+import { useCoalescedBumpRefresh, useRefreshToken } from '@/hooks/use_coalesced_refresh_token';
 import { useSession } from '@/hooks/use_session';
 import { useTransitionSearchParams } from '@/hooks/use_transition_search_params';
 import { fromDatetimeLocalValue, toDatetimeLocalValue } from '@/lib/datetime_range';
@@ -35,6 +40,7 @@ export type DashboardPageWorkspace = {
   sessionStaleBanner?: string;
   exportTrueRoiHref: string;
   exportCampaignOverviewHref: string;
+  chartMockPreview?: boolean;
   onDraftCustomerIdChange: (value: string) => void;
   onDraftFromChange: (value: string) => void;
   onDraftToChange: (value: string) => void;
@@ -66,13 +72,14 @@ function buildExportHref(
 export function useDashboardPageWorkspace(role: DashboardPageRole): DashboardPageWorkspace {
   const { session } = useSession();
   const [searchParams, { replaceSearchParams }] = useTransitionSearchParams();
-  const [refreshToken, setRefreshToken] = useState(0);
-  const refreshCoalesceRef = useRef(false);
+  const { refreshToken, bumpRefresh } = useRefreshToken();
 
   const defaultRange = dashboardPresetRange('7d');
   const appliedCustomerId = searchParams.get('customer_id') ?? session?.default_customer_id ?? '';
   const appliedFrom = searchParams.get('from') ?? defaultRange.from;
   const appliedTo = searchParams.get('to') ?? defaultRange.to;
+  const chartMockPreview =
+    role === 'buyer' && isChartMockPreviewEnabled(searchParams.toString());
 
   const [draftCustomerId, setDraftCustomerId] = useState(appliedCustomerId);
   const [draftFrom, setDraftFrom] = useState(() => toDatetimeLocalValue(appliedFrom));
@@ -85,12 +92,24 @@ export function useDashboardPageWorkspace(role: DashboardPageRole): DashboardPag
     setDraftTo(toDatetimeLocalValue(appliedTo));
   }, [appliedCustomerId, appliedFrom, appliedTo]);
 
-  const queryDeps = [role, appliedCustomerId, appliedFrom, appliedTo, refreshToken] as const;
+  const queryDeps = [
+    role,
+    appliedCustomerId,
+    appliedFrom,
+    appliedTo,
+    refreshToken,
+    chartMockPreview,
+  ] as const;
 
   const { data, error, fetching, revalidating } = useResource<
     BuyerDashboardPayload | AdopsDashboardPayload
   >(
     (signal) => {
+      if (chartMockPreview) {
+        return Promise.resolve(
+          buildBuyerDashboardChartMock(appliedCustomerId, appliedFrom, appliedTo)
+        );
+      }
       const query = {
         customer_id: appliedCustomerId,
         from: appliedFrom,
@@ -135,16 +154,7 @@ export function useDashboardPageWorkspace(role: DashboardPageRole): DashboardPag
     replaceSearchParams(next);
   }, [draftCustomerId, draftFrom, draftTo, replaceSearchParams, searchParams]);
 
-  const onRefresh = useCallback(() => {
-    if (refreshCoalesceRef.current) {
-      return;
-    }
-    refreshCoalesceRef.current = true;
-    setRefreshToken((value) => value + 1);
-    window.setTimeout(() => {
-      refreshCoalesceRef.current = false;
-    }, 750);
-  }, []);
+  const onRefresh = useCoalescedBumpRefresh(bumpRefresh, fetching || revalidating);
 
   const exportTrueRoiHref = useMemo(
     () => buildExportHref('true-roi', appliedCustomerId, appliedFrom, appliedTo),
@@ -173,6 +183,7 @@ export function useDashboardPageWorkspace(role: DashboardPageRole): DashboardPag
     sessionStaleBanner: session?.stale_banner,
     exportTrueRoiHref,
     exportCampaignOverviewHref,
+    chartMockPreview,
     onDraftCustomerIdChange: setDraftCustomerId,
     onDraftFromChange: setDraftFrom,
     onDraftToChange: setDraftTo,

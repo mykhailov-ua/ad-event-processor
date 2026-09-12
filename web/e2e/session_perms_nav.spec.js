@@ -34,6 +34,9 @@ test(
       await loginWithCredentials(mbPage, mbEmail, mbPassword);
       await expect(mainNav(mbPage).getByRole('link', { name: 'Audit' })).toHaveCount(0);
 
+      const auditRes = await mbPage.request.get(new URL('/api/v1/audit', baseURL).toString());
+      expect(auditRes.status()).toBe(403);
+
       const bootstrapRes = await mbPage.request.get(
         new URL('/api/v1/session/bootstrap', baseURL).toString()
       );

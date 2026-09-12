@@ -39,7 +39,7 @@ function controlPlaneCoreNavItems(): NavItem[] {
       label: 'Campaigns',
       permissionAny: ['campaigns:read', 'campaigns:read:masked'],
     },
-    { path: '/team', label: 'Team', permission: 'campaigns:read' },
+    { path: '/team', label: 'Team', permissionAny: ['team:read', 'campaigns:read'] },
     { path: '/settings', label: 'Settings', permission: 'settings:read' },
   ];
 }

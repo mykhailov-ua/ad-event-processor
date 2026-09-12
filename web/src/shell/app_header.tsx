@@ -31,7 +31,7 @@ export function AppHeader({
     >
       <div className={cn(adminSpacing.flex.headerBar, adminSpacing.inset.headerX)}>
         <div className={adminSpacing.flex.headerStart}>
-          <ProductAvatar className="hidden md:inline-flex" framed size="sm" />
+          <ProductAvatar className="hidden h-6 w-6 md:inline-flex" framed />
           <HeaderNavMenu navGroups={navGroups} onOpenMobileNav={onOpenMobileNav} />
         </div>
         <div className={adminSpacing.flex.headerEnd}>

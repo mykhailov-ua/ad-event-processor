@@ -1,5 +1,31 @@
+import { ApiError } from '@/api/api_error';
+import { toError } from '@/lib/admin_error';
+import { validationError } from '@/lib/admin_validation_error';
+
 export const CUSTOMER_DETAIL_PAYMENTS_PAGE_LIMIT = 50;
 export const CUSTOMER_DETAIL_LEDGER_PAGE_LIMIT = 50;
+
+const TAX_PROFILE_FIELD_PATTERNS: { pattern: RegExp; field: string }[] = [
+  { pattern: /country/i, field: 'country_code' },
+  { pattern: /tax[_\s-]?region/i, field: 'tax_region' },
+  { pattern: /tax[_\s-]?scheme/i, field: 'tax_scheme' },
+  { pattern: /tax[_\s-]?rate|bps/i, field: 'tax_rate_bps' },
+];
+
+export function mapTaxProfileSaveError(err: unknown): Error {
+  if (err instanceof ApiError && err.status === 400) {
+    const message = err.message.trim();
+    if (message !== '') {
+      for (const { pattern, field } of TAX_PROFILE_FIELD_PATTERNS) {
+        if (pattern.test(message)) {
+          return validationError(message, { field });
+        }
+      }
+      return validationError(message);
+    }
+  }
+  return toError(err);
+}
 
 export function currentCustomerDetailMonthValue(): string {
   const now = new Date();

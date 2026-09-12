@@ -80,6 +80,7 @@ export function IntegrationsAffiliatePresets({
 
   return (
     <IntegrationsPageWithLoad
+      alerts={applyError ? integrationsPanelError(applyError, 'Apply failed') : null}
       blockingErrorTitle="Could not load affiliate presets"
       fetchState={{ error, fetching, hasSnapshot }}
       title="Affiliate status presets"
@@ -98,7 +99,6 @@ export function IntegrationsAffiliatePresets({
         </FilterField>
       </DirectoryFilterForm>
 
-      {applyError ? integrationsPanelError(applyError, 'Apply failed') : null}
       {applyResult?.mappings_applied_count != null ? (
         <p role="status">
           Last apply: {applyResult.mappings_applied_count} mapping(s) upserted.

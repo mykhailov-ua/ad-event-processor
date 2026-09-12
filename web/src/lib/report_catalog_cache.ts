@@ -27,3 +27,8 @@ export function fetchReportCatalogCached(signal?: AbortSignal): Promise<ReportCa
 
   return inflightCatalog;
 }
+
+export function invalidateReportCatalogCache(): void {
+  cachedCatalog = undefined;
+  inflightCatalog = undefined;
+}

@@ -8,7 +8,7 @@ import {
   GOOGLE_SHEETS_CONNECT_PATH,
 } from '@/api/integrations_api';
 import { useResource } from '@/api/use_resource';
-import { useRefreshToken } from '@/hooks/use_coalesced_refresh_token';
+import { useCoalescedBumpRefresh, useRefreshToken } from '@/hooks/use_coalesced_refresh_token';
 import { mutationError } from '@/lib/mutation_audit';
 
 export function useIntegrationsGoogleSheetsPageWorkspace() {
@@ -20,6 +20,7 @@ export function useIntegrationsGoogleSheetsPageWorkspace() {
   );
   const [disconnecting, setDisconnecting] = useState(false);
   const [disconnectError, setDisconnectError] = useState<Error | undefined>();
+  const bumpRefreshCoalesced = useCoalescedBumpRefresh(bumpRefresh, fetching || disconnecting);
 
   useEffect(() => {
     if (searchParams.get('google_sheets') !== 'connected') {
@@ -29,8 +30,8 @@ export function useIntegrationsGoogleSheetsPageWorkspace() {
     const next = new URLSearchParams(searchParams);
     next.delete('google_sheets');
     setSearchParams(next, { replace: true });
-    bumpRefresh();
-  }, [bumpRefresh, searchParams, setSearchParams]);
+    bumpRefreshCoalesced();
+  }, [bumpRefreshCoalesced, searchParams, setSearchParams]);
 
   const onConnect = useCallback(() => {
     window.location.assign(GOOGLE_SHEETS_CONNECT_PATH);
@@ -42,13 +43,13 @@ export function useIntegrationsGoogleSheetsPageWorkspace() {
     try {
       await disconnectGoogleSheets();
       toast.success('Google Sheets disconnected');
-      bumpRefresh();
+      bumpRefreshCoalesced();
     } catch (err: unknown) {
       setDisconnectError(mutationError(err));
     } finally {
       setDisconnecting(false);
     }
-  }, [bumpRefresh]);
+  }, [bumpRefreshCoalesced]);
 
   return {
     status,

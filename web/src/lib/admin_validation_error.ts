@@ -88,6 +88,23 @@ export function requireNonEmpty(value: string, label: string, field?: string): V
   return { ok: true, value: trimmed };
 }
 
+const EMAIL_PATTERN = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
+
+export function requireEmail(
+  value: string,
+  label = 'Email',
+  field = 'email'
+): ValidationResult<string> {
+  const trimmed = value.trim();
+  if (!trimmed) {
+    return fail(`${label} is required.`, field);
+  }
+  if (!EMAIL_PATTERN.test(trimmed)) {
+    return fail(`${label} must be a valid email address.`, field);
+  }
+  return { ok: true, value: trimmed };
+}
+
 export function requireInteger(
   value: string,
   label: string,

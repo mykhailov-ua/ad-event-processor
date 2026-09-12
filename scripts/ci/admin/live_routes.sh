@@ -35,6 +35,16 @@ if ! rg -q 'path="reports/jobs"' "$APP_ROUTES"; then
   exit 1
 fi
 
+if ! rg -q 'ReportExportStubRoute' "$APP_ROUTES"; then
+  echo "Error: $APP_ROUTES must wire ReportExportStubRoute on reports/* (Phase D export-only stubs)"
+  exit 1
+fi
+
+if rg -q 'ReportLegacyRedirect' "$APP_ROUTES"; then
+  echo "Error: $APP_ROUTES must not use ReportLegacyRedirect on reports/*; use ReportExportStubRoute for typed catalog keys"
+  exit 1
+fi
+
 if ! command -v python3 > /dev/null 2>&1; then
   echo "Error: python3 required for report catalog parity check"
   exit 1

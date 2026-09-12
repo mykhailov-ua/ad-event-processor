@@ -106,6 +106,44 @@ export function resolveReportCatalogKey(key: string): string {
   return REPORT_CATALOG_KEY_ALIASES[key] ?? key;
 }
 
+const REPORT_STUB_PATH_ALIASES: Record<string, string> = {
+  'click-log': 'clicks',
+  'silent-reject-impression-funnel': 'ghost-impression-funnel',
+};
+
+export function normalizeReportRouteSplat(splat: string | undefined): string | undefined {
+  const trimmed = splat?.trim();
+  if (!trimmed) {
+    return undefined;
+  }
+  const decoded = decodeURIComponent(trimmed).replace(/^\/+|\/+$/g, '');
+  return decoded || undefined;
+}
+
+export function reportStubPathFromKey(reportKey: string): string {
+  const resolved = resolveReportCatalogKey(reportKey);
+  return REPORT_STUB_PATH_ALIASES[resolved] ?? resolved;
+}
+
+export function reportRequiresCustomerScope(reportKey: string): boolean {
+  const resolved = resolveReportCatalogKey(reportKey);
+  if (!isTypedCatalogReportKey(resolved)) {
+    return false;
+  }
+  if (TYPED_RTB_REPORT_KEYS.has(resolved) || TYPED_OPS_REPORT_KEYS.has(resolved)) {
+    return false;
+  }
+  return true;
+}
+
+export function resolveReportStubRequiresCustomer(catalogKey: string): boolean {
+  const resolved = resolveReportCatalogKey(catalogKey);
+  if (isTypedCatalogReportKey(resolved)) {
+    return reportRequiresCustomerScope(resolved);
+  }
+  return false;
+}
+
 const REPORT_TITLE_ACRONYMS = new Set(['roi', 'ivt', 'ml', 'rtb', 'rtt', 'kpi', 'cpa', 'csv']);
 
 const REPORT_TITLE_OVERRIDES: Record<string, string> = {

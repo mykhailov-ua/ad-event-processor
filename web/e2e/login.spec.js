@@ -1,11 +1,13 @@
 import { test, expect } from '@playwright/test';
 
 import {
+  expectErrorBlockVisible,
   getAdminCredentials,
   loginAsAdmin,
   loginSignInHeading,
   openAppNavigation,
   skipUnlessIntegrationReady,
+  stubApiRoute,
 } from './helpers.js';
 
 test.beforeEach(async ({}, testInfo) => {
@@ -31,6 +33,19 @@ test('can submit admin credentials', async ({ page }) => {
 
   await page.waitForURL((url) => !url.pathname.endsWith('/login'), { timeout: 15_000 });
   await expect(page).not.toHaveURL(/\/login$/);
+});
+
+test('login bad password shows ErrorBlock', { tag: '@L3' }, async ({ page }) => {
+  await stubApiRoute(page, '/api/v1/auth/login', 401, {
+    error: { code: 'UNAUTHORIZED', message: 'invalid credentials' },
+  });
+
+  await page.goto('/login');
+  await page.getByLabel('Email').fill('wrong@test.local');
+  await page.getByRole('textbox', { name: 'Password' }).fill('WrongPassword123!');
+  await page.getByRole('button', { name: 'Sign in' }).click();
+
+  await expectErrorBlockVisible(page, 'Sign in failed');
 });
 
 test('loginAsAdmin helper reaches authenticated shell', async ({ page }) => {

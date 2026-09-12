@@ -16,8 +16,11 @@ import type { ExportSchedulesDraft } from '@/domains/exports/use_export_schedule
 import { DashboardPanelSection } from '@/domains/dashboards/dashboard_panel_section';
 import { adminTypography } from '@/lib/admin_kit';
 import { adminSpacing, opsControlPanelClass } from '@/lib/admin_spacing';
+import { CustomerScopeGate } from '@/shell/customer_scope_gate';
+import { DirectoryPageShell } from '@/shell/directory_page_shell';
 import { PageChrome } from '@/shell/page_chrome';
 import { PageSectionStack } from '@/shell/page_layout';
+import { EmptyState } from '@/shell/empty_state';
 import { ErrorBlock } from '@/shell/error_block';
 import { FilterField, FilterPanel } from '@/shell/filter_panel';
 import {
@@ -35,6 +38,7 @@ export type ExportSchedulesPageViewProps = {
   draft: ExportSchedulesDraft;
   onDraftChange: (patch: Partial<ExportSchedulesDraft>) => void;
   schedules: ReportSchedule[];
+  schedulesHasSnapshot: boolean;
   schedulesError?: Error;
   schedulesFetching: boolean;
   canManage: boolean;
@@ -56,6 +60,7 @@ export function ExportSchedulesPageView({
   draft,
   onDraftChange,
   schedules,
+  schedulesHasSnapshot,
   schedulesError,
   schedulesFetching,
   canManage,
@@ -200,21 +205,31 @@ export function ExportSchedulesPageView({
       }
     >
       <PageSectionStack>
-        {schedulesError ? <ErrorBlock error={schedulesError} title="Schedules load failed" /> : null}
         {!canManage ? (
           <p className={adminTypography.bodyMuted}>
             Read-only: create, update, run, and delete require exports:run.
           </p>
         ) : null}
 
-        {schedulesFetching && schedules.length === 0 ? (
-          <p className={adminTypography.bodyMuted}>Loading schedules...</p>
-        ) : null}
-        {!schedulesFetching && schedules.length === 0 ? (
-          <p className={adminTypography.bodyMuted}>No schedules for this customer.</p>
-        ) : null}
-        {schedules.length > 0 ? (
-          <DashboardPanelSection tableAriaLabel="Report schedules" title="Schedules">
+        <CustomerScopeGate customerId={customerId} testId="export-schedules-scope">
+          <DirectoryPageShell
+            blockingErrorTitle="Schedules load failed"
+            fetchState={{
+              fetching: schedulesFetching,
+              error: schedulesError,
+              hasSnapshot: schedulesHasSnapshot,
+            }}
+            refreshErrorTitle="Schedules refresh failed"
+            title=""
+          >
+          {schedulesHasSnapshot && !schedulesFetching && schedules.length === 0 ? (
+            <EmptyState
+              description="No recurring export schedules exist for this customer yet."
+              title="No schedules"
+            />
+          ) : null}
+          {schedules.length > 0 ? (
+            <DashboardPanelSection tableAriaLabel="Report schedules" title="Schedules">
             <TableHeader>
               <TableRow>
                 <DirectoryTableHead>Report</DirectoryTableHead>
@@ -296,8 +311,10 @@ export function ExportSchedulesPageView({
                 );
               })}
             </TableBody>
-          </DashboardPanelSection>
-        ) : null}
+            </DashboardPanelSection>
+          ) : null}
+          </DirectoryPageShell>
+        </CustomerScopeGate>
       </PageSectionStack>
     </PageChrome>
   );

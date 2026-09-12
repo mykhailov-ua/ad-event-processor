@@ -1,3 +1,6 @@
+// Campaign create UX: Quick create (createSectionOpen Dialog) is primary; Guided setup (wizardOpen
+// Dialog) is secondary/advanced. open/set helpers in campaign_list_create_overlay.ts enforce mutex
+// so only one class-C surface is open; bulkBusy blocks archive confirm while exportBusy is separate.
 import { PrimaryActionButton, SecondaryActionButton } from '@/shell/action_buttons';
 import {
   DirectoryMutationError,
@@ -303,12 +306,12 @@ export function CampaignsDirectoryOverlays({
       </Dialog>
 
       <Sheet onOpenChange={onImportOpenChange} open={importOpen}>
-        <SheetContent >
-          <SheetHeader >
+        <SheetContent className="gap-0 p-0 sm:max-w-2xl">
+          <SheetHeader className="border-b border-border px-6 py-4 text-left">
             <SheetTitle>Import campaign</SheetTitle>
             <SheetDescription>Validate, migrate, or import a campaign bundle.</SheetDescription>
           </SheetHeader>
-          <SheetBody >
+          <SheetBody className="grid gap-4 pb-8">
             <CampaignImportPanel workspace={importPanelWorkspace} />
           </SheetBody>
         </SheetContent>

@@ -6,6 +6,7 @@ import type { BillingForecast } from '@/api/types';
 import { CustomerDetailPanel } from '@/domains/customers/customer_detail_panel';
 import { CustomerDetailRow } from '@/domains/customers/customer_detail_row';
 import { CustomerTabShell } from '@/shell/customer_tab_shell';
+import { StubBanner } from '@/shell/stub_banner';
 import { displayMicro } from '@/lib/display';
 export type CustomerDetailForecastTabProps = {
   forecast: BillingForecast | undefined;
@@ -22,18 +23,27 @@ export function CustomerDetailForecastTab({
 }: CustomerDetailForecastTabProps) {
   return (
     <CustomerTabShell
+      blockingErrorOptions={{ unavailableTitle: 'Forecast unavailable' }}
       blockingErrorTitle="Could not load forecast"
       fetchState={{ fetching, error, hasSnapshot }}
     >
+      {forecast?.ch_unavailable ? (
+        <StubBanner
+          message="ClickHouse impression history is unavailable. Ledger run-rate values are shown from Postgres; reload this tab to retry analytics."
+          title="Forecast partially unavailable"
+        />
+      ) : null}
       {forecast ? (
         <Card>
-          <CardHeader className={cn('flex flex-wrap items-center justify-between', adminSpacing.gap.md)}>
+          <CardHeader
+            className={cn(
+              'grid gap-2 sm:grid-cols-[1fr_auto] sm:items-center',
+              adminSpacing.gap.md
+            )}
+          >
             <CardTitle>Billing forecast</CardTitle>
             <div className={adminSpacing.flex.buttonGroup}>
               {forecast.low_confidence ? <Badge variant="secondary">Low confidence</Badge> : null}
-              {forecast.ch_unavailable ? (
-                <Badge variant="outline">ClickHouse unavailable</Badge>
-              ) : null}
             </div>
           </CardHeader>
           <CardContent>

@@ -63,5 +63,5 @@ else
   echo "Admin web checks PASSED (stub only)."
 fi
 
-echo "admin: set ADMIN_WEB_E2E_SMOKE=1 to run smoke playwright bundle"
-# Full Playwright matrix (nightly only): ADMIN_WEB_E2E_NIGHTLY=1 bash scripts/ci/admin/web_e2e_nightly.sh
+echo "admin: set ADMIN_WEB_E2E_SMOKE=1 for mount smoke playwright bundle (not L1/L3 wiring proof)"
+# KEEP L1+L3 proof + full matrix (nightly only): ADMIN_WEB_E2E_NIGHTLY=1 bash scripts/ci/admin/web_e2e_nightly.sh

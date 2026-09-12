@@ -9,8 +9,8 @@ import {
 } from '@/domains/settings/settings_field_labels';
 import type { SettingsPageWorkspace } from '@/domains/settings/use_settings_page_workspace';
 import { adminSpacing, adminTypography } from '@/lib/admin_spacing';
+import { DirectoryPageShell } from '@/shell/directory_page_shell';
 import { ErrorBlock } from '@/shell/error_block';
-import { PageSkeleton } from '@/shell/page_skeleton';
 import { SecondaryActionButton } from '@/shell/action_buttons';
 import { cn } from '@/lib/utils';
 
@@ -19,6 +19,7 @@ export type SettingsMainProps = SettingsPageWorkspace;
 export function SettingsMain(workspace: SettingsMainProps) {
   const {
     meta,
+    metaError,
     platformSnapshot,
     draft,
     draftDirty,
@@ -43,28 +44,34 @@ export function SettingsMain(workspace: SettingsMainProps) {
     onLicenseApplied,
   } = workspace;
 
-  if (loading) {
-    return <PageSkeleton columns={2} variant="directory" />;
-  }
-
-  if (loadError && !platformSnapshot) {
-    return (
-      <div className={cn('grid', adminSpacing.gap.md)}>
-        <ErrorBlock error={loadError} title="Could not load platform settings" />
-        <SecondaryActionButton type="button" onClick={onRefresh}>
-          Retry
-        </SecondaryActionButton>
-      </div>
-    );
-  }
-
   const restartRequired = platformSnapshot?.restart_required ?? [];
   const restartLabels = formatRestartRequiredLabels(restartRequired);
   const bootstrapComplete =
     platformSnapshot?.bootstrap_complete ?? meta?.bootstrap_complete ?? false;
 
   return (
-    <div className={cn('grid', adminSpacing.gap.xl)}>
+    <DirectoryPageShell
+      blockingErrorFooter={
+        <SecondaryActionButton type="button" onClick={onRefresh}>
+          Retry
+        </SecondaryActionButton>
+      }
+      blockingErrorTitle="Could not load platform settings"
+      fetchState={{
+        fetching: loading,
+        error: loadError,
+        hasSnapshot: Boolean(platformSnapshot),
+        revalidating,
+      }}
+      refreshErrorTitle="Settings refresh failed"
+      skeletonColumns={2}
+      title=""
+    >
+      <div className={cn('grid', adminSpacing.gap.xl)}>
+      {metaError ? (
+        <ErrorBlock error={metaError} title="Could not load deployment metadata" />
+      ) : null}
+
       {revalidating ? (
         <p className={adminTypography.bodyMuted} role="status">Refreshing settings…</p>
       ) : null}
@@ -143,6 +150,7 @@ export function SettingsMain(workspace: SettingsMainProps) {
           Documentation
         </Link>
       </p>
-    </div>
+      </div>
+    </DirectoryPageShell>
   );
 }

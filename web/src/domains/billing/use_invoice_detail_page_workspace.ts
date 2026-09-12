@@ -14,6 +14,7 @@ import type { BillingLedgerLine } from '@/api/types';
 import { useBreadcrumbSegmentLabel } from '@/shell/breadcrumb_context';
 import { useResource } from '@/api/use_resource';
 import { useSession } from '@/hooks/use_session';
+import { toError } from '@/lib/admin_error';
 import { validationError } from '@/lib/admin_validation_error';
 import { triggerBlobDownload } from '@/lib/trigger_blob_download';
 import { newRandomUuid } from '@/lib/uuid';
@@ -79,7 +80,6 @@ export function useInvoiceDetailPageWorkspace() {
     setAppliedLedgerCursor(undefined);
     setLedgerLines([]);
     setLedgerNextCursor(undefined);
-    setLedgerRefreshToken(0);
   }, [id]);
 
   useEffect(() => {
@@ -115,7 +115,7 @@ export function useInvoiceDetailPageWorkspace() {
       const blob = await downloadInvoicePdf(id);
       triggerBlobDownload(blob, `invoice-${id}.pdf`);
     } catch (err: unknown) {
-      setActionError(err instanceof Error ? err : new Error(String(err)));
+      setActionError(toError(err));
     } finally {
       setDownloadingPdf(false);
     }
@@ -134,7 +134,7 @@ export function useInvoiceDetailPageWorkspace() {
       setInvoiceRefreshToken((value) => value + 1);
       resetLedger();
     } catch (err: unknown) {
-      setActionError(err instanceof Error ? err : new Error(String(err)));
+      setActionError(toError(err));
     } finally {
       setVoiding(false);
     }
@@ -152,7 +152,7 @@ export function useInvoiceDetailPageWorkspace() {
       setRetrySuccess(true);
       setInvoiceRefreshToken((value) => value + 1);
     } catch (err: unknown) {
-      setActionError(err instanceof Error ? err : new Error(String(err)));
+      setActionError(toError(err));
     } finally {
       setRetryingDelivery(false);
     }

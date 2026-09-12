@@ -6,7 +6,7 @@ export function DashboardBuyerPage() {
   return (
     <DashboardPageView
       {...workspace}
-      description="Morning KPI for your portfolio. Export Hub holds full tabular reports."
+      description="Morning KPI for your portfolio. Export Hub holds full tabular reports. Append ?chart_mock=1 for labeled synthetic chart preview (buyer only)."
       title="Buyer dashboard"
     />
   );

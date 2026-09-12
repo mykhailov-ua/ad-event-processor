@@ -15,7 +15,6 @@ export function useOpsShardsPageWorkspace() {
   const { refreshToken, bumpRefresh } = useRefreshToken();
 
   const { data, error, fetching } = useResource((signal) => listOpsShards(signal), [refreshToken]);
-
   const bumpRefreshCoalesced = useCoalescedBumpRefresh(bumpRefresh, fetching || catchingUp);
 
   const runCatchup = useCallback(async () => {
@@ -24,15 +23,19 @@ export function useOpsShardsPageWorkspace() {
     }
     setCatchingUp(true);
     setCatchupError(undefined);
+    let accepted = false;
     try {
       const result = await triggerOpsShard0Catchup();
       setCatchupStatus(result.status ?? 'accepted');
       toast.success('Shard-0 catch-up accepted');
-      bumpRefreshCoalesced();
+      accepted = true;
     } catch (err: unknown) {
       setCatchupError(mutationError(err));
     } finally {
       setCatchingUp(false);
+      if (accepted) {
+        bumpRefreshCoalesced();
+      }
     }
   }, [bumpRefreshCoalesced]);
 

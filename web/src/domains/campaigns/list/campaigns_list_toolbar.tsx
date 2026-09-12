@@ -28,6 +28,7 @@ import {
   FilterField,
   FilterPanel,
 } from '@/shell/filter_panel';
+import { adminTypography } from '@/lib/admin_kit';
 import {
   StatusMetricsBand,
   ToolbarBandActions,
@@ -75,6 +76,7 @@ export type CampaignsListToolbarProps = {
   onCreateClick: () => void;
   onWizardClick?: () => void;
   onImportClick?: () => void;
+  overlaysBusy?: boolean;
   /** Rendered beside Apply inside the filter panel (e.g. row selection actions). */
   filterFooter?: ReactNode;
 };
@@ -112,6 +114,7 @@ export function CampaignsListToolbar({
   onCreateClick,
   onWizardClick,
   onImportClick,
+  overlaysBusy = false,
   filterFooter,
 }: CampaignsListToolbarProps) {
   const showWizardAction = onWizardClick != null;
@@ -176,6 +179,11 @@ export function CampaignsListToolbar({
               </DropdownMenuContent>
             </DropdownMenu>
           </ToolbarBandActions>
+          {overlaysBusy ? (
+            <p className={adminTypography.bodyMuted}>
+              Finish or close the open campaign dialog before starting another create flow.
+            </p>
+          ) : null}
           <div className="min-w-0 flex-1">
             <StatusMetricsBand aria-label="Status filters">
               {statusTotals || statusTotalsLoading ? (

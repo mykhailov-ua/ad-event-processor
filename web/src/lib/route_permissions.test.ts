@@ -1,7 +1,11 @@
 import assert from 'node:assert/strict';
 import test from 'node:test';
 
-import { resolveRoutePermission, sessionHasRoutePermission } from '@/lib/route_permissions';
+import {
+  formatRoutePermissionRequirement,
+  resolveRoutePermission,
+  sessionHasRoutePermission,
+} from '@/lib/route_permissions';
 
 test('resolveRoutePermission maps ops sub-routes to shards:read', () => {
   const rule = resolveRoutePermission('/ops/dlq');
@@ -36,4 +40,41 @@ test('sessionHasRoutePermission allows operator on ops routes', () => {
 test('sessionHasRoutePermission honors wildcard permissions', () => {
   const rule = resolveRoutePermission('/ops');
   assert.equal(sessionHasRoutePermission(['*'], rule), true);
+});
+
+test('resolveRoutePermission maps dashboards sub-routes to campaigns read permissions', () => {
+  const rule = resolveRoutePermission('/dashboards/adops');
+  assert.deepEqual(rule?.permissionAny, ['campaigns:read', 'campaigns:read:masked']);
+});
+
+test('resolveRoutePermission maps alerts to campaigns:read', () => {
+  const rule = resolveRoutePermission('/alerts');
+  assert.equal(rule?.permission, 'campaigns:read');
+});
+
+test('resolveRoutePermission maps export schedules to campaigns:read', () => {
+  const rule = resolveRoutePermission('/exports/schedules');
+  assert.equal(rule?.permission, 'campaigns:read');
+});
+
+test('resolveRoutePermission maps team to team:read or campaigns:read from nav', () => {
+  const rule = resolveRoutePermission('/team');
+  assert.deepEqual(rule?.permissionAny, ['team:read', 'campaigns:read']);
+});
+
+test('resolveRoutePermission maps disputes to customers:read', () => {
+  const rule = resolveRoutePermission('/disputes');
+  assert.equal(rule?.permission, 'customers:read');
+});
+
+test('formatRoutePermissionRequirement formats single and any permissions', () => {
+  assert.equal(
+    formatRoutePermissionRequirement(resolveRoutePermission('/ops')),
+    'shards:read'
+  );
+  assert.equal(
+    formatRoutePermissionRequirement(resolveRoutePermission('/team')),
+    'team:read or campaigns:read'
+  );
+  assert.equal(formatRoutePermissionRequirement(null), undefined);
 });
