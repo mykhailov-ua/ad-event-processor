@@ -94,7 +94,7 @@ func (st *Store) ListSmartAlertRules(ctx context.Context, customerID uuid.UUID) 
 	}
 	rows, err := st.host.Pool().Query(ctx, `
 		SELECT id, customer_id, campaign_id, name, metric, operator, threshold,
-		 window_minutes, webhook_url, enabled, created_at, updated_at
+		 window_minutes, webhook_url, action, enabled, created_at, updated_at
 		FROM alert_rules
 		WHERE customer_id = $1
 		ORDER BY created_at DESC`, domain.ToUUID(customerID))
@@ -122,7 +122,7 @@ func (st *Store) CreateSmartAlertRule(ctx context.Context, req UpsertSmartAlertR
 	if err != nil {
 		return SmartAlertRuleDTO{}, fmt.Errorf("invalid customer_id")
 	}
-	metric, operator, name, template, window, err := resolveUpsertSmartAlertRule(req)
+	metric, operator, name, template, window, action, err := resolveUpsertSmartAlertRule(req)
 	if err != nil {
 		return SmartAlertRuleDTO{}, err
 	}
@@ -140,12 +140,12 @@ func (st *Store) CreateSmartAlertRule(ctx context.Context, req UpsertSmartAlertR
 	row := st.host.Pool().QueryRow(ctx, `
 		INSERT INTO alert_rules (
 			customer_id, campaign_id, name, metric, operator, threshold,
-			window_minutes, webhook_url, enabled
-		) VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9)
+			window_minutes, webhook_url, action, enabled
+		) VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10)
 		RETURNING id, customer_id, campaign_id, name, metric, operator, threshold,
-		 window_minutes, webhook_url, enabled, created_at, updated_at`,
+		 window_minutes, webhook_url, action, enabled, created_at, updated_at`,
 		domain.ToUUID(customerID), campParam, name, metric, operator, req.Threshold,
-		window, webhookURL, req.Enabled,
+		window, webhookURL, action, req.Enabled,
 	)
 	dto, err := scanSmartAlertRule(row)
 	if err != nil {
@@ -159,7 +159,7 @@ func (st *Store) UpdateSmartAlertRule(ctx context.Context, ruleID uuid.UUID, req
 	if st == nil || st.host == nil || st.host.Pool() == nil {
 		return SmartAlertRuleDTO{}, fmt.Errorf("service unavailable")
 	}
-	metric, operator, name, template, window, err := resolveUpsertSmartAlertRule(req)
+	metric, operator, name, template, window, action, err := resolveUpsertSmartAlertRule(req)
 	if err != nil {
 		return SmartAlertRuleDTO{}, err
 	}
@@ -177,12 +177,12 @@ func (st *Store) UpdateSmartAlertRule(ctx context.Context, ruleID uuid.UUID, req
 	row := st.host.Pool().QueryRow(ctx, `
 		UPDATE alert_rules
 		SET name = $2, campaign_id = $3, metric = $4, operator = $5, threshold = $6,
-		 window_minutes = $7, webhook_url = $8, enabled = $9, updated_at = now()
+		 window_minutes = $7, webhook_url = $8, action = $9, enabled = $10, updated_at = now()
 		WHERE id = $1
 		RETURNING id, customer_id, campaign_id, name, metric, operator, threshold,
-		 window_minutes, webhook_url, enabled, created_at, updated_at`,
+		 window_minutes, webhook_url, action, enabled, created_at, updated_at`,
 		domain.ToUUID(ruleID), name, campParam, metric, operator, req.Threshold,
-		window, webhookURL, req.Enabled,
+		window, webhookURL, action, req.Enabled,
 	)
 	dto, err := scanSmartAlertRule(row)
 	if err != nil {
@@ -195,16 +195,20 @@ func (st *Store) UpdateSmartAlertRule(ctx context.Context, ruleID uuid.UUID, req
 	return dto, nil
 }
 
-func resolveUpsertSmartAlertRule(req UpsertSmartAlertRuleRequest) (metric, operator, name, template string, window int, err error) {
+func resolveUpsertSmartAlertRule(req UpsertSmartAlertRuleRequest) (metric, operator, name, template string, window int, action string, err error) {
 	webhookURL := strings.TrimSpace(req.WebhookURL)
 	if webhookURL == "" || !strings.HasPrefix(webhookURL, "http") {
-		return "", "", "", "", 0, fmt.Errorf("webhook_url must be an http(s) URL")
+		return "", "", "", "", 0, "", fmt.Errorf("webhook_url must be an http(s) URL")
 	}
+	action = normalizeAlertAction(req.Action)
 	template = strings.TrimSpace(req.Template)
 	if template != "" {
 		spec, specErr := resolveTemplateRuleSpec(template)
 		if specErr != nil {
-			return "", "", "", "", 0, specErr
+			return "", "", "", "", 0, "", specErr
+		}
+		if err := validateAlertAction(template, action); err != nil {
+			return "", "", "", "", 0, "", err
 		}
 		metric = spec.Metric
 		operator = spec.Operator
@@ -214,25 +218,28 @@ func resolveUpsertSmartAlertRule(req UpsertSmartAlertRuleRequest) (metric, opera
 		if name == "" {
 			name = defaultTemplateRuleName(template)
 		}
-		return metric, operator, name, template, window, nil
+		return metric, operator, name, template, window, action, nil
+	}
+	if action != ActionNotify {
+		return "", "", "", "", 0, "", fmt.Errorf("action %q requires template margin_breach", action)
 	}
 	metric, err = normalizeAlertMetric(req.Metric)
 	if err != nil {
-		return "", "", "", "", 0, err
+		return "", "", "", "", 0, "", err
 	}
 	operator, err = normalizeAlertOperator(req.Operator)
 	if err != nil {
-		return "", "", "", "", 0, err
+		return "", "", "", "", 0, "", err
 	}
 	name = strings.TrimSpace(req.Name)
 	if name == "" {
-		return "", "", "", "", 0, fmt.Errorf("name is required")
+		return "", "", "", "", 0, "", fmt.Errorf("name is required")
 	}
 	window = clampAlertWindowMinutes(req.WindowMinutes)
 	if req.WindowMinutes == 0 {
 		window = 60
 	}
-	return metric, operator, name, "", window, nil
+	return metric, operator, name, "", window, action, nil
 }
 
 func (st *Store) DeleteSmartAlertRule(ctx context.Context, ruleID uuid.UUID) error {
@@ -316,6 +323,7 @@ type smartAlertRuleRow struct {
 	Threshold     float64
 	WindowMinutes int
 	WebhookURL    string
+	Action        string
 }
 
 type Worker struct {
@@ -376,7 +384,7 @@ func (w *Worker) tick(ctx context.Context) {
 func (w *Worker) loadEnabledRules(ctx context.Context) ([]smartAlertRuleRow, error) {
 	rows, err := w.host.Pool().Query(ctx, `
 		SELECT id, customer_id, campaign_id, name, metric, operator, threshold,
-		 window_minutes, webhook_url
+		 window_minutes, webhook_url, action
 		FROM alert_rules
 		WHERE enabled = true`)
 	if err != nil {
@@ -390,7 +398,7 @@ func (w *Worker) loadEnabledRules(ctx context.Context) ([]smartAlertRuleRow, err
 		var campID pgtype.UUID
 		if err := rows.Scan(
 			&r.ID, &r.CustomerID, &campID, &r.Name, &r.Metric, &r.Operator,
-			&r.Threshold, &r.WindowMinutes, &r.WebhookURL,
+			&r.Threshold, &r.WindowMinutes, &r.WebhookURL, &r.Action,
 		); err != nil {
 			return nil, err
 		}
@@ -444,7 +452,7 @@ func scanSmartAlertRule(row smartAlertRowScanner) (SmartAlertRuleDTO, error) {
 	var campID pgtype.UUID
 	if err := row.Scan(
 		&id, &customerID, &campID, &dto.Name, &dto.Metric, &dto.Operator,
-		&dto.Threshold, &dto.WindowMinutes, &dto.WebhookURL, &dto.Enabled,
+		&dto.Threshold, &dto.WindowMinutes, &dto.WebhookURL, &dto.Action, &dto.Enabled,
 		&dto.CreatedAt, &dto.UpdatedAt,
 	); err != nil {
 		return SmartAlertRuleDTO{}, err
@@ -455,6 +463,7 @@ func scanSmartAlertRule(row smartAlertRowScanner) (SmartAlertRuleDTO, error) {
 	if template, ok := parseTemplateFromMetric(dto.Metric); ok {
 		dto.Template = template
 	}
+	dto.Action = normalizeAlertAction(dto.Action)
 	return dto, nil
 }
 

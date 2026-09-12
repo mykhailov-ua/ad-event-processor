@@ -1,0 +1,568 @@
+{
+  "locale": "ru",
+  "ui": {
+    "lang_switch_label": "EN",
+    "lang_switch_href": "/",
+    "lang_switch_title": "English version",
+    "pilot_badge": "Пилот {days} дней · без карты",
+    "pilot_headline": "Тестируйте {days} дней бесплатно",
+    "pilot_disclaimer": "Без привязки карты. Бесплатный пилот на {days} дней. <a href=\"{offer_href}\" class=\"site-pilot-disclaimer__offer\">{offer_link}</a>",
+    "offer_link_text": "публичной офертой",
+    "pilot_cta_subline": "Полный Pro-доступ на {days} дней — напишите в Telegram ваш объём трафика",
+    "calc_stack_today": "Ваш стек сегодня",
+    "calc_savings": "Расчёт экономии",
+    "calc_presets_aria": "Шаблоны стека",
+    "plan_specs_default": "Характеристики",
+    "plan_cta_default": "Запустить",
+    "plan_period_days": " / {days} дней",
+    "recommended_badge": "ТОП ВЫБОР",
+    "mobile_nav_features": "Возможности",
+    "mobile_nav_pricing": "Тарифы",
+    "mobile_nav_architecture": "Архитектура",
+    "mobile_nav_install": "Установка",
+    "mobile_nav_faq": "FAQ",
+    "mobile_nav_contacts": "Контакты",
+    "mobile_nav_cta": "Запросить пилот",
+    "theme_light_label": "Включить светлую тему",
+    "theme_dark_label": "Включить тёмную тему",
+    "theme_light_title": "Светлая тема",
+    "theme_dark_title": "Тёмная тема",
+    "offer_gate_version": "Редакция оферты:",
+    "offer_gate_scroll_hint": "Прокрутите текст до конца, чтобы подтвердить согласие.",
+    "appliance_screenshot_alt": "Веб-админка BidShard в браузере",
+    "docs_href": "/ru/docs.html",
+    "demo_href": "/ru/demo.html",
+    "buyers_href": "/ru/buyers.html",
+    "home_href": "/ru/",
+    "offer_href": "/offer.html",
+    "hero_demo_cta": "Веб-админка"
+  },
+  "product_name": "BidShard",
+  "telegram_url": "https://t.me/bidshardsupportbot",
+  "telegram_handle": "@bidshardsupportbot",
+  "telegram_manager_url": "https://t.me/bidshard_manager",
+  "telegram_manager_handle": "@bidshard_manager",
+  "support_email": "support@bidshard.pro",
+  "install_script_url": "https://bidshard.com/get.sh",
+  "offer": {
+    "version": "2026-09-09",
+    "url": "/offer.html",
+    "title": "Принять публичную оферту",
+    "intro": "Перед запросом пилота или обращением в отдел продаж подтвердите согласие с публичной офертой на self-hosted ПО BidShard.",
+    "points": [
+      "Лицензия работает на вашем VPS или dedicated-сервере; мы не пропускаем ваш трафик через сторонние облака.",
+      "Тарифы отличаются числом лицензированных серверов, воркспейсов и фичей в ключе. Клики, связки и лиды не лимитируются на вашем железе.",
+      "Ежемесячная оплата в USDT не подлежит возврату после выдачи лицензионного ключа, за исключением случая задержки выдачи более 5 рабочих дней.",
+      "Вы самостоятельно отвечаете за законность пролитов, безопасность VPS, бэкапы и приватность данных пользователей.",
+      "Упал сервер или меняете хостинг? Напишите в Telegram — быстро перевыдадим или перепривяжем лицензионный ключ."
+    ],
+    "checkbox": "Я ознакомился(-лась) с офертой и принимаю её условия.",
+    "accept_cta": "Принимаю — открыть Telegram",
+    "read_cta": "Читать текст оферты"
+  },
+  "architecture": {
+    "eyebrow": "Как это устроено",
+    "title": "Весь ваш трафик и связки остаются на вашем сервере",
+    "subtitle": "BidShard разворачивается как self-hosted стек на вашем VPS. Клики заходят на ваш домен, моментально фильтруются и логируются, а постбеки и CAPI уходят в сетки — всё на железе под вашим полным контролем.",
+    "points": [
+      "Трафик идет на ваш домен — встроенная клоака и роутинг решают, кто попадает на money page",
+      "Боты и модераторы получают белый декой — daily cap не расходуется в пустую",
+      "Конверсии отстукивают в Meta, Google и TikTok — автоставки обучаются на чистых сигналах",
+      "Веб-админка в браузере — управление связками, отчётами и алерты на одном сервере"
+    ],
+    "flow": {
+      "aria_label": "Схема потока трафика",
+      "levels": [
+        "Клик / Юзер",
+        "Ваш Edge",
+        "Трекер",
+        "Клоака + Фильтры",
+        "Аналитика",
+        "API рек. сетей"
+      ]
+    },
+    "highlights": [
+      {
+        "title": "Платите только за принятый трафик",
+        "body": "Списание бюджета идет только по валидным кликам — мусор и боты не выжигают ваш дневной кап."
+      },
+      {
+        "title": "Встроенный клоакинг",
+        "body": "Уводите ботов и ревьюеров от целевого оффера без покупки отдельной подписки на клоаку."
+      },
+      {
+        "title": "Margin Guard на Pro",
+        "body": "Если ROI проседает ниже заданного порога, BidShard автоматически стопает роутинг в трекере и гасит кампании в Meta и Google."
+      },
+      {
+        "title": "Postback trail против шейва",
+        "body": "Прозрачный лог каждого отстука — вы точно видите, где потерялся лид, еще до споров с саппортом ПП."
+      },
+      {
+        "title": "Полная веб-админка",
+        "body": "Управление кампанией, потоками, отчётами и правами байеров прямо в браузере — без сторонних консолей."
+      }
+    ],
+    "cta": "Детальная архитектура",
+    "url": "/ru/docs.html"
+  },
+  "contacts": {
+    "eyebrow": "Контакты",
+    "title": "Поддержка и отдел продаж в Telegram",
+    "subtitle": "Выдача пилота, смена тарифа и помощь по инсталлу — пишите прямо саппорт-боту или менеджеру. Без тикетов и ожиданий.",
+    "relocation_note": "Упал VPS или сменили хостинг? Напишите в Telegram — оперативно перевыдадим ключ.",
+    "cta": "Написать в Telegram"
+  },
+  "pilot_days": 10,
+  "hero": {
+    "eyebrow": "10 дней бесплатного пилота · без карты"
+  },
+  "empathy": {
+    "eyebrow": "Знакомые боли?",
+    "title": "Если ваша неделя в арбитраже выглядит так",
+    "guide_label": "Гид для медиабайеров"
+  },
+  "empathy_cards": [
+    {
+      "id": "cloud_risk",
+      "title": "Облачный трекер — риски для ваших связок",
+      "body": "Твои связки и воронки живут в чужом облаке. Баны аккаунтов и лимиты экспорта прилетают в самый разгар пролива. Self-hosted хранит связки, ленды и логи только на твоём VPS — мы продаем софт, а не держим твои данные в общем баке."
+    },
+    {
+      "id": "cloaker_bill",
+      "title": "Счёт за клоаку снова уводит ROI в минус",
+      "body": "Трекер $99, клоака $499, антифрод «подключим потом» — а боты выжигают баланс прямо сейчас. Одна лицензия BidShard закрывает роутинг, клоакинг, антифрод и отстук постбеков."
+    },
+    {
+      "id": "missing_leads",
+      "title": "«Куда срезало 15 лидов?»",
+      "body": "Сетка показывает 100 конверсий, ПП — 85, а саппорт разводит руками со скриншотами. Postback trail логирует каждый шаг отстука — ты сразу видишь разрыв и шейв до того, как день закроется в минус."
+    },
+    {
+      "id": "vps_down",
+      "title": "Пятница вечер, VPS улетел в даун",
+      "body": "Кампании крутятся в адсетке, а инджест лежит. Сгорел сервер или забанил хостер? Напиши в Telegram — мгновенно перевыдадим ключ под новый сервер."
+    }
+  ],
+  "instant_sell": {
+    "margin_guard": {
+      "eyebrow": "Margin Guard",
+      "title": "Автостоп пролива, пока вы спите",
+      "body": "Фейсбук в 3 ночи налил ботов и слил $2000, пока вы спали? Margin Guard следит за ROI по таймеру и сам гасит рекламу в Meta и Google через API — плюс останавливает роутинг в трекере — до того, как день закроется в минус.",
+      "metric": "Доступно на Pro и в Пилоте",
+      "footnote": "Правила защиты ROI настраиваются один раз. Margin Guard работает на тарифах Pro, Scale и в 10-дневном пилоте."
+    }
+  },
+  "killers": [
+    {
+      "id": "wasm",
+      "title": "Прощай, счёт за клоаку",
+      "body": "Встроенная клоака прямо на вашем VPS — минус $300–600/мес за сторонние сервисы. Фильтрация на лету, максимум профита в кармане.",
+      "icon": "funnel"
+    },
+    {
+      "id": "silent",
+      "title": "Боты видят OK — кап не течёт",
+      "body": "Мусорный трафик и боты получают валидный 200 OK на декой-страницу. Модераторы спокойны, а daily cap расходуется только на реальных лидов.",
+      "icon": "ghost"
+    },
+    {
+      "id": "postback",
+      "title": "Прозрачный отстук без шейва",
+      "body": "ПП говорит 85 лидов вместо 100? Полный лог каждого постбека покажет точную точку разрыва — доказывайте шейв фактами, а не эмоциями.",
+      "icon": "route"
+    },
+    {
+      "id": "margin_guard",
+      "title": "Margin Guard — защита от минуса",
+      "body": "ROI пошел ко дну? Margin Guard автоматически ставит на паузу кампании в FB/Google и роутинг кликов до того, как баланс сгорит в ноль.",
+      "icon": "gauge"
+    },
+    {
+      "id": "capi",
+      "title": "CAPI без потерь сигнала",
+      "body": "Прямой отстук Conversion API в Meta, Google и TikTok с вашего сервера. Оптимизация пикселя идет по чистым конверсиям.",
+      "icon": "capi"
+    },
+    {
+      "id": "dispute",
+      "title": "Аргументы для спора с ПП",
+      "body": "Выгружайте полный пакет логов кликов и отстуков постбеков в один клик. Идеально для диспутов по шейву и срезам трафика.",
+      "icon": "evidence"
+    },
+    {
+      "id": "migration",
+      "title": "Переезд за 5 минут без простоя",
+      "body": "Переносите инджест на новый VPS по той же лицензии — никаких заморозок пролива и потерь профита.",
+      "icon": "migrate"
+    }
+  ],
+  "outcomes_compact": [
+    "Мусор и боты отсекаются — daily cap не выгорает на пустые клики",
+    "Margin Guard стопает трафик и кампании в FB/Google при просадке ROI",
+    "Видно каждый постбек — контроль шейва партнерки 24/7",
+    "CAPI отправляет реальный сигнал — автоставки сетей зацепляют нужный аукцион",
+    "Один софт вместо счетов за трекер + клоаку + антифрод каждый месяц",
+    "Удобная веб-админка — управление связками и отчётами прямо в браузере"
+  ],
+  "capabilities_compact": [
+    "Удобная веб-админка — связки, потоки, ленды и аналитика в браузере",
+    "Прямой CAPI для Meta, Google и TikTok — алгоритмы оптимизируются по горячим лидам",
+    "Поддержка Telegram Mini App воронок — запускайте связки без лишних SaaS-подписок",
+    "Роутинг кликов и S2S постбеки — платите только за профитный трафик",
+    "Встроенный клоакинг и бот-фильтры — ноль слива бюджета на модераторов",
+    "Фоновый ML-антифрод на ваших данных — без оплаты за каждый кликовый запрос",
+    "Автосинхрон расходов из рек. сетей — каждые 15 минут для точного ROI",
+    "Умные алерты в Telegram/Slack — реакция до того, как пролив уйдет в минус",
+    "Командный доступ (RBAC) — джуны не срубят профитные кампании",
+    "Пакетный экспорт логов для диспутов по шейву и сверок на конец месяца",
+    "Margin Guard глушит роутинг и гасит байдинг в Meta/Google при просадке ROI"
+  ],
+  "appliance": {
+    "title": "Пилот без риска для основного пролива",
+    "subtitle": "Запустите одну тестовую кампанию — сравните конверсию и срезы с текущим трекером до полного перевода трафика.",
+    "install_cli_title": "Команда установки (для DevOps)",
+    "install_cli_summary": "Показать команду установки",
+    "install_cli_summary_close": "Скрыть команду установки",
+    "cta_primary": "Запросить пилот",
+    "cta_docs": "Архитектура",
+    "cta_install": "Команда установки",
+    "screenshot_alt": "Веб-админка BidShard: страница управления лицензией и связками"
+  },
+  "tco": {
+    "eyebrow": "Полная экономика стека",
+    "title": "Один софт на вашем железе — вместо 4 подписок каждый месяц",
+    "subtitle": "Типичный сетап арбитражной команды: мульти-GEO проливы, 1 ops-лид, 10 млн событий в месяц.",
+    "columns": [
+      {
+        "label": "Сборный софт-стек",
+        "items": [
+          "Лицензия трекера ($99–130/мес)",
+          "Сторонняя клоака ($300–600/мес)",
+          "Антифрод отдельно ($100–200/мес)",
+          "Раздутый VPS под пики — 32–64 GB RAM",
+          "Старый трекер задыхается — утечки памяти после каждого деплоя",
+          "Row-store БД — жрёт гигабайты RAM на миллионах кликов"
+        ],
+        "summary": "$900–1 400/мес только на софт, до байдинга"
+      },
+      {
+        "label": "BidShard на вашем VPS",
+        "highlight": true,
+        "items": [
+          "Лицензия от $129/мес — роутинг, клоака, CAPI и отстуки в одном чеке",
+          "Колоночная БД — RAM под аналитику, а не под просадки сервера",
+          "Starter и Pro: 1 сервер на 12–16 GB RAM",
+          "Scale: кластер из трекера, кэша и БД под высокие объемы",
+          "Margin Guard гасит рекламу в FB/Google и стопает роутинг на Pro",
+          "Боты получают декой — daily cap не сливается"
+        ],
+        "summary": "Лицензия от $129/мес + обычный VPS"
+      }
+    ],
+    "impacts": {
+      "title": "Куда уходит профит при 10 млн кликов/мес",
+      "subtitle": "Один и тот же объём трафика — кардинально разные расходы на инфраструктуру.",
+      "headers": {
+        "driver": "Статья расходов",
+        "patchwork": "Сборный стек",
+        "bidshard": "BidShard",
+        "impact": "Результат"
+      },
+      "rows": [
+        {
+          "label": "Инфраструктура",
+          "patchwork": "VPS 32–64 GB RAM из-за тяжелой БД и утечек в старых трекерах",
+          "bidshard": "Starter и Pro: 12–16 GB RAM на 1 VPS. Scale: распределение нагрузки",
+          "delta": "Экономия RAM",
+          "delta_note": "см. гайд по железу"
+        },
+        {
+          "label": "SaaS-подписки",
+          "patchwork": "Трекер + клоака + антифрод — 3 счета, 3 продления",
+          "bidshard": "1 лицензия — роутинг, клоакинг, антифрод и отчеты",
+          "delta": "Минус 3 счета",
+          "delta_note": "главная экономия на софте"
+        },
+        {
+          "label": "Слив на ботов",
+          "patchwork": "Боты выжигают баланс — алерты приходят уже после слива",
+          "bidshard": "Боты видят декой; Margin Guard автостопает при падении ROI",
+          "delta": "Контроль байдинга",
+          "delta_note": "сохраняет бюджет 24/7"
+        },
+        {
+          "label": "Ops-нагрузка",
+          "patchwork": "3 вендора, постоянные инциденты и тикеты в саппорт",
+          "bidshard": "1 инсталл, 1 файл лицензии, полная автономия",
+          "delta": "Без рутины",
+          "delta_note": "self-hosted на вашем VPS"
+        }
+      ],
+      "total": {
+        "label": "В чём главная разница",
+        "value": "Одна лицензия, ваше железо",
+        "body": "Трекер, клоакинг, антифрод и аналитика в одном инсталле. Настройте VPS по гайду — масштабируйтесь без переплат за клики.",
+        "architecture_link": "Детали архитектуры"
+      }
+    }
+  },
+  "plans": [
+    {
+      "code": "pilot",
+      "name": "Pilot",
+      "price": "Бесплатно",
+      "period": "",
+      "tagline": "10 дней бесплатно — полный Pro-доступ с Margin Guard. Поможем наставить.",
+      "specs_label": "Что входит в пилот",
+      "features": [
+        { "text": "10 дней бесплатно · полный Pro · без карты", "highlight": true },
+        { "text": "Margin Guard — автостоп рекламы в Meta/Google при просадке ROI, пока вы спите", "highlight": true },
+        { "text": "Встроенная клоака — забудьте про счета за отдельный клоакер", "highlight": true },
+        { "text": "Фильтрация ботов — daily cap не сливается в ночную смену", "highlight": true },
+        { "text": "Отчеты для диспутов с ПП — доказывайте шейв срезом по ботам", "highlight": true },
+        { "text": "Синхрон расходов из сетей — чистый ROI без гаданий", "highlight": true },
+        "Отстук конверсий в кабинеты Meta, Google и TikTok",
+        { "text": "Веб-админка — полный Pro-интерфейс в браузере", "highlight": true },
+        "Инсталл в 1 клик · бесплатный саппорт в Telegram",
+        "Безлимит по кампаниям и кликам"
+      ],
+      "cta": "Запросить пилот",
+      "featured": false,
+      "pilot": true
+    },
+    {
+      "code": "starter",
+      "name": "Starter",
+      "price": "$129",
+      "period": "/ мес",
+      "tagline": "Соло-байер — трекер, клоака и CAPI в одном месте.",
+      "specs_label": "Starter — лей в плюс без переплат",
+      "features": [
+        { "text": "Связки, ленды и сплит-тесты — в одном трекере", "highlight": true },
+        { "text": "Встроенный клоакинг — экономия $300–600/мес на клоаке", "highlight": true },
+        { "text": "CAPI-отстук в кабинеты Meta, Google и TikTok", "highlight": true },
+        { "text": "Postback партнерке — оплата только валидного трафика", "highlight": true },
+        { "text": "Синхрон расходов — свежий ROI каждые 15 минут", "highlight": true },
+        { "text": "Веб-админка — управление связками и отчетами", "highlight": true },
+        "Фильтры по ГЕО, устройствам и расписанию",
+        "Алерты в Telegram до того, как день уйдет в минус",
+        "Инсталл в 1 клик · помощь в Telegram",
+        "Безлимит по кампаниям и кликам"
+      ],
+      "cta": "Выбрать Starter",
+      "featured": false
+    },
+    {
+      "code": "pro",
+      "name": "Pro",
+      "price": "$399",
+      "period": "/ мес",
+      "tagline": "Масштабирование без слива бюджета — выбор арбитражных команд.",
+      "specs_label": "Pro — автостоп слива и контроль шейва",
+      "features": [
+        "Всё из тарифа Starter",
+        { "text": "Margin Guard — автостоп рекламы в FB/Google при падении ROI, даже ночью", "highlight": true },
+        { "text": "ML-антифрод — блокировка ботов до списания бюджета", "highlight": true },
+        { "text": "Полный Postback Trail — вся цепочка от клика до выплаты", "highlight": true },
+        { "text": "Экспорт доказательств шейва для споров с ПП", "highlight": true },
+        { "text": "Пауза адсетов в Meta и Google прямиком из трекера", "highlight": true },
+        { "text": "Веб-админка — Margin Guard, отчёты и командный доступ", "highlight": true },
+        "Роли и права — джуны не срубят профитные кампании",
+        "Инсталл в 1 клик · помощь в Telegram",
+        "Безлимит по кампаниям и кликам"
+      ],
+      "cta": "Выбрать Pro",
+      "featured": true,
+      "badge": "ТОП ВЫБОР"
+    },
+    {
+      "code": "scale",
+      "name": "Scale",
+      "price": "$999",
+      "period": "/ мес",
+      "tagline": "Команды и агентства — до 3 серверов, перенос трафика без простоя.",
+      "specs_label": "Scale — для больших объемов и команд",
+      "features": [
+        "Всё из тарифа Pro",
+        { "text": "До 3 серверов — распределение нагрузки при росте объёмов", "highlight": true },
+        { "text": "Мгновенный перенос трафика между VPS без потери профита", "highlight": true },
+        { "text": "Приоритетный Telegram-саппорт с выделенным менеджером", "highlight": true },
+        { "text": "Скоринг фрода до момента роутинга клика", "highlight": true },
+        { "text": "Веб-админка на каждом лицензированном сервере", "highlight": true },
+        "Детект модераторов и бота-инспектирования",
+        "Инсталл в 1 клик · приоритетная помощь в Telegram",
+        "Безлимит по кампаниям на всех VPS"
+      ],
+      "cta": "Выбрать Scale",
+      "featured": false
+    },
+    {
+      "code": "enterprise",
+      "name": "Enterprise",
+      "price": "Custom",
+      "period": "",
+      "tagline": "Большие арбитражные медиа-холдинги и кастомные решения.",
+      "specs_label": "Enterprise — флот серверов и персональный SLA",
+      "features": [
+        { "text": "Мульти-региональный сетап для крупных команд", "highlight": true },
+        { "text": "Персональный SLA и прямой контакты с разработчиками", "highlight": true },
+        { "text": "Индивидуальный лимит серверов и воркспейсов", "highlight": true },
+        "Массовое управление адсетами по всем аккаунтам",
+        "Инсталл под ключ · сопровождение развертывания"
+      ],
+      "cta": "Связаться с нами",
+      "featured": false,
+      "enterprise": true
+    }
+  ],
+  "hardware_sizing": {
+    "eyebrow": "Подбор железа",
+    "title": "Рекомендуемые параметры серверов",
+    "subtitle": "Ориентируйтесь на эти требования под ваш тариф. При росте объёмов на Scale просто разделяйте роли.",
+    "footnote": "Рекомендуем x86_64 и NVMe диски. Параметры RAM и CPU учтены с запасом под ОС и аналитику. Упал сервер? Напишите в Telegram — оперативно перевыдадим ключ.",
+    "labels": {
+      "hosts": "Лицензированные VPS",
+      "cpu": "Конфигурация",
+      "ram": "Мин. RAM (на узел)",
+      "disk": "NVMe диск",
+      "profile": "Когда масштабировать"
+    },
+    "tiers": [
+      {
+        "code": "pilot",
+        "plan": "Pilot",
+        "hosts": "1 VPS",
+        "cpu": "4 vCPU · all-in-one",
+        "ram": "12 GB",
+        "disk": "100 GB+ NVMe",
+        "profile": "10 дней теста со всеми фичами Pro. Напишите в Telegram объём трафика и параметры вашего VPS."
+      },
+      {
+        "code": "starter",
+        "plan": "Starter",
+        "hosts": "1 VPS",
+        "cpu": "4 vCPU · один сервер",
+        "ram": "12 GB",
+        "disk": "100 GB+ NVMe",
+        "profile": "Соло-байер — роутинг, клоака, CAPI и постбеки на одной машине."
+      },
+      {
+        "code": "pro",
+        "plan": "Pro",
+        "hosts": "1 VPS",
+        "cpu": "6 vCPU · один сервер",
+        "ram": "16 GB",
+        "disk": "200 GB+ NVMe",
+        "profile": "ML-антифрод и Margin Guard. Уверенно держит плотный пролив на 1 VPS."
+      },
+      {
+        "code": "scale",
+        "plan": "Scale",
+        "hosts": "До 3 VPS",
+        "cpu": "6–8 vCPU · разделение трекера, кэша и БД",
+        "ram": "24 GB на узел",
+        "disk": "200 GB+ NVMe на узел",
+        "profile": "Командные объёмы — разделяйте нагрузку до наступления пиков."
+      },
+      {
+        "code": "enterprise",
+        "plan": "Enterprise",
+        "hosts": "Флот серверов",
+        "cpu": "Индивидуальный расчет",
+        "ram": "Индивидуальный расчет",
+        "disk": "Индивидуальный расчет",
+        "profile": "Мульти-региональный флот — расчет архитектуры под ключ."
+      }
+    ]
+  },
+  "page": {
+    "title": "BidShard — стоп сливу бюджета на мусорный трафик и ботов",
+    "description": "Медиабайерам: стоп сливу бюджета на ботов и мусор. Встроенная клоака и антифрод. 10 дней бесплатного пилота без карты.",
+    "menu_aria": "Открыть меню"
+  },
+  "copy": {
+    "NavFeatures": "Возможности",
+    "NavPricing": "Тарифы",
+    "NavArchitecture": "Архитектура",
+    "NavInstall": "Установка",
+    "NavFaq": "FAQ",
+    "NavContacts": "Контакты",
+    "GetFreePilot": "Запросить пилот",
+    "OwnYourTrackingStackStopRentingYourData": "Стоп сливу бюджета на ботов и мусорный трафик — держи ROI в плюсе 24/7",
+    "AdEventProcessorIsSelfHostedSoftwareForClickRoutingConversionPostbacksCampaignBudgetsAdNetworkCostSyncAndLayeredAntifraudInstallOnYourVpsLicenseIsOfflineYourCampaignsNeverLeaveYourInfrastructure": "Встроенная клоака и жесткий антифрод: боты и модераторы не жрут твой daily cap. Тестируй Pro-доступ 10 дней на своем VPS без привязки карты.",
+    "GetFreePilotOnTelegram": "Запросить пилот",
+    "SeePricingLink": "Смотреть тарифы",
+    "CompareStackCost": "Полное сравнение расходов",
+    "NoCreditCardPilot10DaysRulesOnlyAntifraudTierByRequestingAPilotYouAcceptThePublicOffer": "Без карты. Пилот 10 дней. Запрашивая пилот, вы принимаете условия публичной оферты.",
+    "Empathy__eyebrow": "Знакомые боли?",
+    "Empathy__title": "Если ваша неделя в арбитраже выглядит так",
+    "EmpathyGuideLink": "Гид для медиабайеров",
+    "Killers__eyebrow": "Защита маржи",
+    "Killers__title": "Что останавливает утечки бюджета",
+    "Capabilities": "Что вы получаете",
+    "DesignedForActiveMediaBuyers": "Результаты, которые дают плюс в ROI",
+    "PricingPlans": "Тарифные планы",
+    "SimplePricing": "Прозрачные тарифы",
+    "PricingSubtitle": "Полная веб-админка в комплекте. Запуск в 1 клик; бесплатно поможем настроить в Telegram.",
+    "NoCapOnCampaignCountOrEventVolumeYouScaleOnYourHardware": "Безлимит по кликам и связкам на всех тарифах.",
+    "PaidMonthlyInUsdtSelfHostedLicenseNotACloudSubscription": "Оплата ежемесячно в USDT. Лицензия в вашей собственности.",
+    "TryFreeFor10Days": "Тестируйте 10 дней бесплатно",
+    "KRps1ServerRulesOnlyAntifraudMessageUsOnTelegramWithExpectedTrafficVpsSpec": "Полный Pro на 10 дней — напишите в Telegram ваш объём трафика",
+    "OperationalInMinutes": "Запуск за 10 минут",
+    "Step1": "Шаг 1",
+    "RequestPilot": "Напишите в Telegram",
+    "TellUsOnTelegramWeSendALicenseFile": "Напишите в Telegram свой объём трафика. Вышлем файл лицензии и поможем наставить бесплатно.",
+    "Step2": "Шаг 2",
+    "InstallOnYourVps": "Инсталл в 1 клик",
+    "OneCurlCommandActivateInTheBrowser": "Запустите одну команду на VPS — или проведём за руку в Telegram.",
+    "Step3": "Шаг 3",
+    "PointTraffic": "Запустите тест-поток",
+    "ClickUrlsPostbacksCostSyncYouReLive": "Сравните цифры со старым трекером. Масштабируйте, когда ROI радует глаз.",
+    "InstallCliSummary": "Показать команду установки",
+    "InstallCliSummaryClose": "Скрыть команду установки",
+    "AdEventProcessorRunningOnPort8080OfflineJwtLicenseVerified": "✔ BidShard работает. Лицензия подтверждена — откройте веб-админку в браузере.",
+    "BuiltForOperatorsWhoHateSurprises": "Почему медиабайеры переходят на BidShard",
+    "SelfHosted": "Ваши связки и данные только ваши",
+    "YouAreTheDataControllerOnYourInfrastructureZeroSharedRecords": "Кампании, связки и логи остаются только на вашем сервере. Никаких общих баз — вы владеете софтом и контролем.",
+    "TelegramSupport": "Прямой саппорт в Telegram",
+    "PostbacksDoNotWaitForTicketQueues": "Отстук постбеков и проблемы со счетами не ждут ответов тикетов по 2 дня. Пишите саппорту или менеджеру напрямую.",
+    "FullStackLicense": "Один стек — одна оплата",
+    "RoutingBudgetsAntifraudReportingOneInstallWithoutCloakerIvtStack": "Роутинг, клоака, антифрод и отчёты в одном инсталле — забудьте про 4 разных чека каждый месяц.",
+    "NoRoiWarranty": "Если упал сервер",
+    "YourDirectTrafficYourSpecificFunnelsAndYourTargetingDictateTheRoiResults": "Сгорел VPS или забанил хостер? Напишите в Telegram — оперативно перевыдадим ключ под новое железо.",
+    "WhyTrackerDoesNotMatchNetwork": "Почему расходится статистика с ПП?",
+    "TrackerNetworkMismatchAnswer": "Чаще всего дело в задержке статусов (hold vs confirmed), битом subid в постбеке или срезе со стороны ПП. Pro-тариф ведет полный Postback Trail — видно точную точку разрыва цепочки еще до споров с менеджером.",
+    "DoINeedCloakerWithBidshard": "Нужен ли отдельный клоакер?",
+    "CloakerWithBidshardAnswer": "В Starter уже встроена клоака — большинство команд сразу отменяют подписку на сторонние сервисы. Запустите пилот на своих ГЕО и сравните пробиваемость.",
+    "CanIRunPilotParallelKeitaro": "Можно запустить пилот параллельно с Keitaro?",
+    "PilotParallelKeitaroAnswer": "Да — именно так и стоит делать! Импортируйте JSON-конфиг, дублируйте постбеки на тестовый поток и держите Keitaro, пока не убедитесь в цифрах.",
+    "WhatIfILoseAServerOrNeedToRelocate": "Что делать при слёте сервера или срочном переезде?",
+    "WeKnowBuyersLoseHostsProviderBansDatacenterIssuesWarZoneMovesEmergencyMigrationsYourLicenseBindsToHardwareFingerprintsNotASingleIpForeverForDocumentedForceMajeureHostLossProviderShutdownSanctionedRegionRelocationContactBidshardsupportbotOrBidshardManagerWithYourDeploymentIdAndWhatHappenedWeCanIssueAdditionalActivationsOrResetBindingsCaseByCaseWeDoNotTreatOpsEmergenciesLikeLicenseAbuse": "Упал VPS или сменили провайдера? Напишите @bidshardsupportbot или @bidshard_manager в Telegram. Быстро перевыдадим ключ лицензии — никаких блокировок.",
+    "PricingRelocationPolicy": "Упал VPS? Напишите в Telegram — мгновенно перевыдадим лицензионный ключ.",
+    "CommonQuestions": "Частые вопросы",
+    "FrequentlyAskedQuestions": "Часто задаваемые вопросы",
+    "DoYouStoreMyCampaigns": "Вы имеете доступ к моим связкам?",
+    "IsThisLikeKeitaroInTheCloud": "Чем BidShard отличается от Keitaro или Binom?",
+    "WhatHappensAfterThePilot": "Что происходит после 10 дней пилота?",
+    "DoINeedToBeADeveloper": "Нужно ли быть программистом?",
+    "HowDoIStart": "Как быстро запустить пилот?",
+    "SelfHostedLicenseSoftwareForModernMediaBuyers": "self-hosted трекинг-стек для медиабайеров, ценящих свои связки и ROI.",
+    "FooterArchitecture": "Архитектура",
+    "FooterBuyersGuide": "Гид для медиабайеров",
+    "PublicOffer": "Оферта",
+    "ContactsFooter": "Контакты",
+    "Telegram": "Telegram",
+    "FooterInstall": "Установка",
+    "2026AdEventProcessorAllRightsReserved": "© 2026 BidShard. Все права защищены.",
+    "site-tco-jump": "Куда уходят деньги при масштабировании",
+    "NoEverythingRunsExclusivelyOnYourServerWeHaveNoBackendApiThatCollectsTelemetryCampaignConfigurationsOrVisitorLogs": "Нет! Всё крутится строго на вашем VPS. У нас нет бэкенда, собирающего телеметрию, настройки связок или логи посетителей.",
+    "NoItIsLocalSoftwareYouInstallDirectlyOnYourVpsYouCanImportYourCurrentConfigurationsDirectlyFromKeitaroOrBinomViaJson": "Тот же удобный формат — self-hosted на вашем VPS, трафик не уходит на сторону. Плюс у нас все в одном: роутинг, клоака, IVT, синхрон расходов и CAPI без гор счетов. Импортируйте JSON из Keitaro/Binom и протестируйте параллельно.",
+    "PayUsdtForYourMatchingTierWeGenerateAndSendANewLicenseFileYouLoadItIntoYourExistingDeploymentWithNoReinstallNeeded": "Оплачиваете USDT за нужный тариф, мы высылаем новый файл лицензии. Вставляете в веб-админке — переустановка не требуется.",
+    "BeingComfortableWithBasicVpsOperationsAndDockerIsHighlyRecommendedTheProductIsApiFirstTodayWhileOurAdminUiContinuesToCatchUp": "Разработчик не нужен! Удобная веб-админка в комплекте — связки, потоки, отчёты и Margin Guard под рукой. Мы бесплатно поможем с инсталлом в Telegram.",
+    "ReachOutOnTelegramToObtainAPilotLicenseExecuteTheSingleLineInstallScriptOnYourHostActivateTheLicenseInYourBrowserAndYouAreLive": "Напишите в Telegram за ключом. Команда установки в 1 клик, активация в браузере — и можно заливать трафик.",
+    "MessageOnTelegram": "Написать в Telegram",
+    "OperationIntegrity": "Надёжность работы",
+    "SitePgaTerminalComment": "# одна команда на вашем VPS"
+  }
+}

@@ -567,6 +567,9 @@ SmartAlertRule:
       type: integer
     webhook_url:
       type: string
+    action:
+      type: string
+      enum: [notify, pause_campaign, blacklist_placement]
     enabled:
       type: boolean
     created_at:
@@ -601,6 +604,9 @@ UpsertSmartAlertRuleRequest:
       type: integer
     webhook_url:
       type: string
+    action:
+      type: string
+      enum: [notify, pause_campaign, blacklist_placement]
     enabled:
       type: boolean
 

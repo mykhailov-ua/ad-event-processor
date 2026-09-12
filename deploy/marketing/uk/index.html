@@ -3,8 +3,8 @@
   <head>
     <meta charset="UTF-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-    <title>BidShard — зупиніть злив бюджету на сміттєвий трафік</title>
-    <meta name="description" content="Media buyers: зупиніть злив бюджету на сміттєвий трафік. Клоакінг і антифрод вбудовано. 10 днів пілоту без картки." />
+    <title>BidShard — стоп зливу бюджету на сміттєвий трафік та ботів</title>
+    <meta name="description" content="Медіабаєрам: стоп зливу бюджету на ботів та сміття. Вбудована клоака та антифрод. 10 днів безкоштовного пілоту без картки." />
     <script>
       (function () {
         try {
@@ -17,11 +17,12 @@
     </script>
     <link rel="alternate" hreflang="en" href="/" />
     <link rel="alternate" hreflang="uk" href="/uk/" />
+    <link rel="alternate" hreflang="ru" href="/ru/" />
     <link rel="icon" href="../assets/product_avatar.svg" type="image/svg+xml" />
     <link rel="preload" href="/fonts/jetbrains-mono/JetBrainsMono-Regular.woff2" as="font" type="font/woff2" crossorigin="anonymous" />
-    <link rel="stylesheet" href="/site.css?v=20260913" />
+    <link rel="stylesheet" href="/site.css?v=20260914" />
     <script src="/vendor/lucide.min.js" defer></script>
-    <script src="/site.js?v=20260913" defer></script>
+    <script src="/site.js?v=20260914" defer></script>
   </head>
   <body>
     <div class="site-offer-gate" data-site-offer-gate hidden aria-hidden="true"></div>
@@ -50,7 +51,13 @@
       <i data-lucide="menu" class="site-icon site-icon--menu" aria-hidden="true"></i>
     </button>
     <div class="site-header-end">
-      <a class="site-lang-switch" href="/" hreflang="en" title="English version">EN</a>
+      <nav class="site-lang-nav" aria-label="Мова">
+        <a class="site-lang-switch" data-site-lang="en" href="/" hreflang="en" title="English">EN</a>
+        <span class="site-lang-sep" aria-hidden="true">·</span>
+        <a class="site-lang-switch is-active" data-site-lang="uk" href="/uk/" hreflang="uk" title="Українська" aria-current="page">UA</a>
+        <span class="site-lang-sep" aria-hidden="true">·</span>
+        <a class="site-lang-switch" data-site-lang="ru" href="/ru/" hreflang="ru" title="Русский">RU</a>
+      </nav>
       <button type="button" class="site-theme-toggle" data-site-theme-toggle aria-label="Увімкнути світлу тему" title="Світла тема">
         <span class="site-theme-toggle__icon site-theme-toggle__icon--sun" aria-hidden="true"><i data-lucide="sun"></i></span>
         <span class="site-theme-toggle__icon site-theme-toggle__icon--moon" aria-hidden="true"><i data-lucide="moon"></i></span>
@@ -62,18 +69,18 @@
   </div>
   <div data-layer="HERO" class="Hero">
     <div class="site-pga-hero">
-      <p class="site-hero-eyebrow" data-site-hero-eyebrow>10 днів пілоту · без картки</p>
+      <p class="site-hero-eyebrow" data-site-hero-eyebrow>10 днів безкоштовного пілоту · без картки</p>
       <div data-layer="hero-text" class="HeroText">
-        <h1 data-layer="Own your tracking stack. Stop renting your data." class="OwnYourTrackingStackStopRentingYourData">Зупиніть злив бюджету на сміттєвий трафік, поки ROI не пішов у мінус</h1>
-        <p data-layer="ad-event-processor is self-hosted software for click routing, conversion postbacks, campaign budgets, ad-network cost sync, and layered antifraud. Install on your VPS. License is offline. Your campaigns never leave your infrastructure." class="AdEventProcessorIsSelfHostedSoftwareForClickRoutingConversionPostbacksCampaignBudgetsAdNetworkCostSyncAndLayeredAntifraudInstallOnYourVpsLicenseIsOfflineYourCampaignsNeverLeaveYourInfrastructure">Клоакінг і антифрод на вашому трафіку — сміттєві кліки перестають з'їдати денний кап. Повний Pro на 10 днів, без картки.</p>
+        <h1 data-layer="Own your tracking stack. Stop renting your data." class="OwnYourTrackingStackStopRentingYourData">Стоп зливу бюджету на ботів та сміттєвий трафік — тримай ROI в плюсі 24/7</h1>
+        <p data-layer="ad-event-processor is self-hosted software for click routing, conversion postbacks, campaign budgets, ad-network cost sync, and layered antifraud. Install on your VPS. License is offline. Your campaigns never leave your infrastructure." class="AdEventProcessorIsSelfHostedSoftwareForClickRoutingConversionPostbacksCampaignBudgetsAdNetworkCostSyncAndLayeredAntifraudInstallOnYourVpsLicenseIsOfflineYourCampaignsNeverLeaveYourInfrastructure">Вбудована клоака та жорсткий антифрод: боти й модератори не жеруть твій daily cap. Тестуй Pro-доступ 10 днів на своєму VPS без прив'язки картки.</p>
       </div>
       <div data-layer="hero-actions" class="HeroActions">
         <div data-layer="Frame" class="Frame site-pga-hero__actions">
           <div data-site-cta="telegram" data-layer="btn-primary" class="BtnPrimary">
-            <div data-layer="Get free pilot on Telegram" class="GetFreePilotOnTelegram">Пілот</div>
+            <div data-layer="Get free pilot on Telegram" class="GetFreePilotOnTelegram">Запросити пілот</div>
           </div>
           <div data-site-nav="Pricing" data-layer="btn-ghost" class="BtnGhost SeePricingLink">
-            <div data-layer="See pricing" class="SeePricingLink">Дивитись тарифи</div>
+            <div data-layer="See pricing" class="SeePricingLink">Дивитися тарифи</div>
           </div>
         </div>
         <div data-layer="No credit card. 10-day pilot." class="NoCreditCardPilot10DaysRulesOnlyAntifraudTierByRequestingAPilotYouAcceptThePublicOffer" data-site-offer-disclaimer data-site-pilot-disclaimer>Без картки. Пілот 10 днів. <a href="offer.html">оферта</a></div>
@@ -82,11 +89,11 @@
   </div>
   <section id="familiar" data-layer="FAMILIAR" class="Killers">
     <div class="Killers__head Frame">
-      <div class="Empathy__eyebrow">Знайомо?</div>
-      <div class="Empathy__title">Якщо це схоже на ваш тиждень</div>
+      <div class="Empathy__eyebrow">Знайомі болі?</div>
+      <div class="Empathy__title">Якщо ваш тиждень в арбітражі виглядає так</div>
     </div>
     <div data-site-empathy-root aria-live="polite"></div>
-    <p class="BuyersEmpathyTeaser"><a href="buyers.html" data-site-empathy-guide class="EmpathyGuideLink">Гід для media buyers</a></p>
+    <p class="BuyersEmpathyTeaser"><a href="buyers.html" data-site-empathy-guide class="EmpathyGuideLink">Гід для медіабаерів</a></p>
   </section>
   <section id="killers" data-layer="KILLERS" class="Killers">
     <div class="Killers__head Frame">
@@ -98,7 +105,7 @@
   <div id="features" data-layer="FEATURES" class="Features">
     <div data-layer="Frame" class="Frame">
       <div data-layer="Capabilities" class="Capabilities">Що ви отримуєте</div>
-      <div data-layer="Designed for active media buyers" class="DesignedForActiveMediaBuyers">Результати, що пов'язують витрати з доходом</div>
+      <div data-layer="Designed for active media buyers" class="DesignedForActiveMediaBuyers">Результати, які дають плюс у ROI</div>
     </div>
     <div class="site-features__grid">
       <div class="site-features__spotlight" data-site-margin-guard-root aria-live="polite"></div>
@@ -108,7 +115,7 @@
   <div data-layer="TRUST" class="Trust">
     <div data-layer="Frame" class="Frame">
       <div data-layer="Operation Integrity" class="OperationIntegrity">Ops-надійність</div>
-      <div data-layer="Built for operators who scale with confidence" class="BuiltForOperatorsWhoHateSurprises">Чому media buyers переходять</div>
+      <div data-layer="Built for operators who scale with confidence" class="BuiltForOperatorsWhoHateSurprises">Чому медіабаери переходять на BidShard</div>
     </div>
     <div data-layer="Frame" class="Frame">
       <div data-layer="Frame" class="Frame">
@@ -117,8 +124,8 @@
             <i data-lucide="server" class="site-icon site-icon--trust"></i>
           </div>
           <div data-layer="Frame" class="Frame">
-            <div data-layer="Self-hosted" class="SelfHosted">Ваші дані належать лише вам</div>
-            <div data-layer="You are the data controller on your infrastructure. Zero shared records — your metal only." class="YouAreTheDataControllerOnYourInfrastructureZeroSharedRecords">Кампанії та логи відвідувачів залишаються на вашому сервері. Жодних спільних хмар — ми постачаємо ПЗ, а не контролюємо вашу базу.</div>
+            <div data-layer="Self-hosted" class="SelfHosted">Ваші зв'язки та дані тільки ваші</div>
+            <div data-layer="You are the data controller on your infrastructure. Zero shared records — your metal only." class="YouAreTheDataControllerOnYourInfrastructureZeroSharedRecords">Кампанії, зв'язки та логи залишаються тільки на вашому сервері. Жодних спільних баз — ви володієте софтом і контролем.</div>
           </div>
         </div>
         <div data-layer="trust-card" class="TrustCard">
@@ -126,8 +133,8 @@
             <i data-lucide="layers" class="site-icon site-icon--trust"></i>
           </div>
           <div data-layer="Frame" class="Frame">
-            <div data-layer="Full-stack license" class="FullStackLicense">Один стек, одна передплата</div>
-            <div data-layer="Routing, budgets, antifraud, and reporting in one install. No separate cloaker or IVT subscription stack." class="RoutingBudgetsAntifraudReportingOneInstallWithoutCloakerIvtStack">Маршрутизація, бюджети, клоакінг, антифрод і звітність в одному інсталі — не трекер + клоака + IVT щомісяця.</div>
+            <div data-layer="Full-stack license" class="FullStackLicense">Один стек — одна оплата</div>
+            <div data-layer="Routing, budgets, antifraud, and reporting in one install. No separate cloaker or IVT subscription stack." class="RoutingBudgetsAntifraudReportingOneInstallWithoutCloakerIvtStack">Роутинг, клоака, антифрод та звіти в одному інсталі — забудьте про 4 різних чеки щомісяця.</div>
           </div>
         </div>
       </div>
@@ -137,8 +144,8 @@
             <i data-lucide="message-circle" class="site-icon site-icon--trust"></i>
           </div>
           <div data-layer="Frame" class="Frame">
-            <div data-layer="Support on Telegram" class="TelegramSupport">Підтримка в Telegram</div>
-            <div data-layer="Postbacks and provider bans do not wait for ticket queues." class="PostbacksDoNotWaitForTicketQueues">Постбеки й бани не чекають робочих годин — пишіть у бот підтримки або менеджеру.</div>
+            <div data-layer="Support on Telegram" class="TelegramSupport">Прямий сапорт у Telegram</div>
+            <div data-layer="Postbacks and provider bans do not wait for ticket queues." class="PostbacksDoNotWaitForTicketQueues">Відстук постбеків та проблеми з рахунками не чекають відповідей тікетів по 2 дні. Пишіть сапорту чи менеджеру напряму.</div>
           </div>
         </div>
         <div data-layer="trust-card" class="TrustCard">
@@ -146,8 +153,8 @@
             <i data-lucide="replace" class="site-icon site-icon--trust"></i>
           </div>
           <div data-layer="Frame" class="Frame">
-            <div data-layer="Host loss & relocation" class="NoRoiWarranty">Коли сервер лежить</div>
-            <div data-layer="Provider ban or dead VPS — message Telegram for a new license key." class="YourDirectTrafficYourSpecificFunnelsAndYourTargetingDictateTheRoiResults">Бан провайдера чи мертвий VPS? Напишіть у Telegram — перевидаємо ключ ліцензії для нового сервера.</div>
+            <div data-layer="Host loss & relocation" class="NoRoiWarranty">Якщо упав сервер</div>
+            <div data-layer="Provider ban or dead VPS — message Telegram for a new license key." class="YourDirectTrafficYourSpecificFunnelsAndYourTargetingDictateTheRoiResults">Згорів VPS чи забанив хостер? Напишіть у Telegram — оперативно перевидамо ключ під нове залізо.</div>
           </div>
         </div>
       </div>
@@ -155,44 +162,45 @@
   </div>
   <div id="pricing" data-layer="PRICING" class="Pricing">
     <div data-layer="Frame" class="Frame">
-      <div data-layer="Pricing Plans" class="PricingPlans">Тарифи</div>
-      <div data-layer="Simple pricing" class="SimplePricing">Проста ціна</div>
+      <div data-layer="Pricing Plans" class="PricingPlans">Тарифні плани</div>
+      <div data-layer="Simple pricing" class="SimplePricing">Прозорі тарифи</div>
+      <p class="PricingSubtitle">Повна веб-адмінка у комплекті. Запуск в 1 клік; безкоштовно допоможемо налаштувати в Telegram.</p>
     </div>
     <div data-site-pricing-grid class="site-pricing-grid" aria-live="polite"></div>
     <div data-layer="Frame" class="Frame">
-      <div data-layer="No cap on campaign count or event volume — you scale on your hardware." class="NoCapOnCampaignCountOrEventVolumeYouScaleOnYourHardware">Необмежені події та кампанії. Командні місця та client workspaces — за тарифом для агентств.</div>
-      <div data-layer="Paid monthly in USDT. Self-hosted license you own." class="PaidMonthlyInUsdtSelfHostedLicenseNotACloudSubscription">Оплата щомісяця в USDT. Self-hosted ліцензія у вашій власності.</div>
-      <div data-layer="Lost a host or relocating under force majeure? Extra license activations are possible — see FAQ or message us on Telegram." class="PricingRelocationPolicy">Втратили хост або переїжджаєте через форс-мажор? Додаткові активації можливі — див. FAQ або напишіть у Telegram.</div>
-      <button type="button" class="site-tco-jump" data-site-scroll="TCO">Куди йдуть гроші на обсязі</button>
+      <div data-layer="No cap on campaign count or event volume — you scale on your hardware." class="NoCapOnCampaignCountOrEventVolumeYouScaleOnYourHardware">Безліміт по кліках та зв'язках на всіх тарифах.</div>
+      <div data-layer="Paid monthly in USDT. Self-hosted license you own." class="PaidMonthlyInUsdtSelfHostedLicenseNotACloudSubscription">Оплата щомісяця в USDT. Ліцензія у вашій власності.</div>
+      <div data-layer="Lost a host or relocating under force majeure? Extra license activations are possible — see FAQ or message us on Telegram." class="PricingRelocationPolicy">Упав VPS? Напишіть у Telegram — миттєво перевидамо ліцензійний ключ.</div>
+      <button type="button" class="site-tco-jump" data-site-scroll="TCO">Куди йдуть гроші при масштабуванні</button>
     </div>
   </div>
   <section id="tco" data-layer="TCO" class="Tco" data-site-tco aria-labelledby="site-tco-title"></section>
   <div id="install" data-layer="HOW-IT-WORKS" class="HowItWorks site-pga-install-section">
     <div data-layer="Frame" class="Frame site-how-it-works__head">
-      <div data-layer="Operational in minutes" class="OperationalInMinutes">Старт за 10 днів</div>
+      <div data-layer="Operational in minutes" class="OperationalInMinutes">Запуск за 10 хвилин</div>
     </div>
     <div data-layer="Frame" class="Frame site-how-it-works__steps">
       <div data-layer="Frame" class="Frame site-how-it-works__step">
         <div data-layer="Step 1" class="Step1">Крок 1</div>
         <div data-layer="Request pilot" class="RequestPilot">Напишіть у Telegram</div>
-        <div data-layer="Tell us on Telegram. We send a license file." class="TellUsOnTelegramWeSendALicenseFile">Розкажіть про очікуваний трафік і конфігурацію VPS. Ми надішлемо файл пілотної ліцензії.</div>
+        <div data-layer="Tell us on Telegram. We send a license file." class="TellUsOnTelegramWeSendALicenseFile">Напишіть у Telegram свій обсяг трафіку. Вишлемо файл ліцензії та допоможемо наставити безкоштовно.</div>
       </div>
       <div data-layer="Frame" class="Frame site-how-it-works__step">
         <div data-layer="Step 2" class="Step2">Крок 2</div>
-        <div data-layer="Install on your VPS" class="InstallOnYourVps">Встановити на тестовий VPS</div>
-        <div data-layer="One curl command. Activate in the browser." class="OneCurlCommandActivateInTheBrowser">Допоможемо з розміром сервера. Вставте ліцензію в налаштування адмінки — або передайте команду встановлення своєму DevOps.</div>
+        <div data-layer="Install on your VPS" class="InstallOnYourVps">Інсталл в 1 клік</div>
+        <div data-layer="One curl command. Activate in the browser." class="OneCurlCommandActivateInTheBrowser">Запустіть одну команду на VPS — або проведемо за руку в Telegram.</div>
       </div>
       <div data-layer="Frame" class="Frame site-how-it-works__step">
         <div data-layer="Step 3" class="Step3">Крок 3</div>
-        <div data-layer="Point traffic" class="PointTraffic">Спрямувати один тестовий потік</div>
-        <div data-layer="Click URLs, postbacks, cost sync. You're live." class="ClickUrlsPostbacksCostSyncYouReLive">Порівняйте цифри з поточним стеком. Масштабуйте, коли ROI-математика сходиться.</div>
+        <div data-layer="Point traffic" class="PointTraffic">Запустіть тест-потік</div>
+        <div data-layer="Click URLs, postbacks, cost sync. You're live." class="ClickUrlsPostbacksCostSyncYouReLive">Порівняйте цифри зі старим трекером. Масштабуйте, коли ROI радує око.</div>
       </div>
     </div>
     <div class="site-pga-install">
       <div class="site-pga-install__hero">
         <div data-site-appliance-proof></div>
         <details id="install-cli" class="site-pga-install-cli">
-        <summary class="site-pga-install-cli__title InstallCliSummary" data-site-install-cli-summary>Показати команду інсталяції</summary>
+        <summary class="site-pga-install-cli__title InstallCliSummary" data-site-install-cli-summary>Показати команду встановлення</summary>
         <div class="site-pga-terminal-shell">
           <div data-layer="terminal-block" class="TerminalBlock site-pga-terminal">
             <div data-layer="Frame" class="Frame site-pga-terminal__tabbar">
@@ -205,7 +213,7 @@
               <div data-layer="# one command on your VPS" class="SitePgaTerminalComment"># одна команда на вашому VPS</div>
               <div data-layer="$ curl -fsSL https://bidshard.com/get.sh | bash" class="CurlFsslHttpsReleasesExampleComGetShBash">$ curl -fsSL https://bidshard.com/get.sh | bash</div>
               <div data-layer="$ cd ad-event-processor && sudo bash install.sh systemd up" class="CdAdEventProcessorSudoBashInstallShSystemdUp">$ cd ad-event-processor && sudo bash install.sh systemd up</div>
-              <div data-layer="✔ BidShard stack running on port 8080. Offline JWT license verified." class="AdEventProcessorRunningOnPort8080OfflineJwtLicenseVerified">Стек BidShard працює. Ліцензійний ключ підтверджено — працює офлайн.</div>
+              <div data-layer="BidShard running. License verified. Open web admin in browser." class="AdEventProcessorRunningOnPort8080OfflineJwtLicenseVerified">✔ BidShard працює. Ліцензію підтверджено — відкрийте веб-адмінку в браузері.</div>
             </div>
           </div>
         </div>
@@ -215,8 +223,8 @@
   </div>
   <div data-layer="PILOT-CTA" class="PilotCta">
     <div data-layer="Frame" class="Frame">
-      <div data-layer="Try free for 10 days" class="TryFreeFor10Days" data-site-pilot-cta-headline>Спробуйте 10 днів безкоштовно</div>
-      <div data-layer="Pilot CTA subline" class="KRps1ServerRulesOnlyAntifraudMessageUsOnTelegramWithExpectedTrafficVpsSpec">1 сервер · повний маршрут кліків · напишіть у Telegram з очікуваним трафіком і конфігурацією VPS</div>
+      <div data-layer="Try free for 10 days" class="TryFreeFor10Days" data-site-pilot-cta-headline>Тестуйте 10 днів безкоштовно</div>
+      <div data-layer="Pilot CTA subline" class="KRps1ServerRulesOnlyAntifraudMessageUsOnTelegramWithExpectedTrafficVpsSpec">Повний Pro на 10 днів — напишіть у Telegram ваш обсяг трафіку</div>
     </div>
     <div data-site-cta="telegram" data-layer="btn-primary" class="BtnPrimary">
       <div data-layer="Message on Telegram" class="MessageOnTelegram">Написати в Telegram</div>
@@ -230,12 +238,12 @@
     <div data-layer="Frame" class="Frame">
       <div data-layer="accordion-item" class="AccordionItem">
         <div data-layer="Frame" class="Frame">
-          <div data-layer="Why doesn't my tracker match the CPA network?" class="WhyTrackerDoesNotMatchNetwork">Чому трекер не збігається з CPA-мережею?</div>
+          <div data-layer="Why doesn't my tracker match the CPA network?" class="WhyTrackerDoesNotMatchNetwork">Чому розходиться статистика з ПП?</div>
           <div data-layer="icon-container" class="IconContainer">
             <i data-lucide="chevron-down" class="site-icon site-icon--accordion" aria-hidden="true"></i>
           </div>
         </div>
-        <div data-layer="Usually status timing (hold vs confirmed), a bad subid in the postback URL, or a gap on the network side. Pro tier logs every postback hop so you see where the chain broke — before you argue in screenshots." class="TrackerNetworkMismatchAnswer">Зазвичай це таймінг статусів (hold vs confirmed), помилковий subid у postback URL або розрив на стороні мережі. Тариф Pro логує кожен крок postback — ви бачите, де ланцюг обірвався, ще до суперечок у скріншотах.</div>
+        <div data-layer="Usually status timing (hold vs confirmed), a bad subid in the postback URL, or a gap on the network side. Pro tier logs every postback hop so you see where the chain broke — before you argue in screenshots." class="TrackerNetworkMismatchAnswer">Найчастіше справа у затримці статусів (hold vs confirmed), битому subid у постбеку або зрізі з боку ПП. Pro-тариф веде повний Postback Trail — видно точну точку розриву ланцюжка ще до суперечок з менеджером.</div>
       </div>
       <div data-layer="accordion-item" class="AccordionItem">
         <div data-layer="Frame" class="Frame">
@@ -244,7 +252,7 @@
             <i data-lucide="chevron-down" class="site-icon site-icon--accordion" aria-hidden="true"></i>
           </div>
         </div>
-        <div data-layer="Built-in cloaking — most teams drop a separate cloaker bill." class="CloakerWithBidshardAnswer">Starter вже включає вбудований клоакінг — більшість команд відмовляються від окремого рахунку за клоаку. Запустіть пілот на своїх GEO і порівняйте block rate поруч.</div>
+        <div data-layer="Built-in cloaking — most teams drop a separate cloaker bill." class="CloakerWithBidshardAnswer">У Starter вже вбудована клоака — більшість команд одразу скасовують підписку на сторонні сервіси. Запустіть пілот на своїх ГЕО та порівняйте пробиваність.</div>
       </div>
       <div data-layer="accordion-item" class="AccordionItem">
         <div data-layer="Frame" class="Frame">
@@ -253,61 +261,61 @@
             <i data-lucide="chevron-down" class="site-icon site-icon--accordion" aria-hidden="true"></i>
           </div>
         </div>
-        <div data-layer="Yes — that is what we recommend. Import JSON, duplicate postbacks on a test flow, keep Keitaro live until numbers match, then switch sources." class="PilotParallelKeitaroAnswer">Так — саме так ми і радимо. Імпортуйте JSON, дублюйте postbacks на тестовому flow, тримайте Keitaro live, поки цифри не збігаються, потім перемикайте джерела.</div>
+        <div data-layer="Yes — that is what we recommend. Import JSON, duplicate postbacks on a test flow, keep Keitaro live until numbers match, then switch sources." class="PilotParallelKeitaroAnswer">Так — саме так і варто робити! Імпортуйте JSON-конфіг, дублюйте постбеки на тестовий потік і тримайте Keitaro, поки не переконаєтеся в цифрах.</div>
       </div>
       <div data-layer="accordion-item" class="AccordionItem">
         <div data-layer="Frame" class="Frame">
-          <div data-layer="Do you store my campaigns?" class="DoYouStoreMyCampaigns">Ви зберігаєте мої кампанії?</div>
+          <div data-layer="Do you store my campaigns?" class="DoYouStoreMyCampaigns">Ви маєте доступ до моїх зв'язок?</div>
           <div data-layer="icon-container" class="IconContainer">
             <i data-lucide="chevron-down" class="site-icon site-icon--accordion" aria-hidden="true"></i>
           </div>
         </div>
-        <div data-layer="No. Everything runs exclusively on your server. We have no backend API that collects telemetry, campaign configurations, or visitor logs." class="NoEverythingRunsExclusivelyOnYourServerWeHaveNoBackendApiThatCollectsTelemetryCampaignConfigurationsOrVisitorLogs">Ні. Усе працює виключно на вашому сервері. У нас немає backend API, який збирає телеметрію, конфігурації кампаній чи логи відвідувачів.</div>
+        <div data-layer="No. Everything runs exclusively on your server. We have no backend API that collects telemetry, campaign configurations, or visitor logs." class="NoEverythingRunsExclusivelyOnYourServerWeHaveNoBackendApiThatCollectsTelemetryCampaignConfigurationsOrVisitorLogs">Ні! Усе крутиться строго на вашому VPS. У нас немає бекенду, що збирає телеметрію, налаштування зв'язок чи логи відвідувачів.</div>
       </div>
       <div data-layer="accordion-item" class="AccordionItem">
         <div data-layer="Frame" class="Frame">
-          <div data-layer="How does this compare to Keitaro or Binom?" class="IsThisLikeKeitaroInTheCloud">Чим це відрізняється від Keitaro чи Binom?</div>
+          <div data-layer="How does this compare to Keitaro or Binom?" class="IsThisLikeKeitaroInTheCloud">Чим BidShard відрізняється від Keitaro чи Binom?</div>
           <div data-layer="icon-container" class="IconContainer">
             <i data-lucide="chevron-down" class="site-icon site-icon--accordion" aria-hidden="true"></i>
           </div>
         </div>
-        <div data-layer="Same deployment model — self-hosted on your VPS, your traffic never leaves your infrastructure. The difference is one stack: routing, funnel protection, IVT, cost sync, and CAPI without separate tracker, cloaker, and antifraud bills. Import JSON from Keitaro or Binom and run a parallel pilot." class="NoItIsLocalSoftwareYouInstallDirectlyOnYourVpsYouCanImportYourCurrentConfigurationsDirectlyFromKeitaroOrBinomViaJson">Той самий підхід — self-hosted на вашому VPS, трафік не йде в чужу хмару. Різниця в одному стеку: маршрутизація, клоакінг, IVT, cost sync і CAPI без окремих рахунків за трекер, клоаку та антифрод. Імпортуйте JSON з Keitaro або Binom і протестуйте паралельно.</div>
+        <div data-layer="Same deployment model — self-hosted on your VPS, your traffic never leaves your infrastructure. The difference is one stack: routing, funnel protection, IVT, cost sync, and CAPI without separate tracker, cloaker, and antifraud bills. Import JSON from Keitaro or Binom and run a parallel pilot." class="NoItIsLocalSoftwareYouInstallDirectlyOnYourVpsYouCanImportYourCurrentConfigurationsDirectlyFromKeitaroOrBinomViaJson">Той самий зручний формат — self-hosted на вашому VPS, трафік не йде на сторону. Плюс у нас усе в одному: роутинг, клоака, IVT, синхрон витрат і CAPI без гір рахунків. Імпортуйте JSON з Keitaro/Binom та протестуйте паралельно.</div>
       </div>
       <div data-layer="accordion-item" class="AccordionItem">
         <div data-layer="Frame" class="Frame">
-          <div data-layer="What happens after the pilot?" class="WhatHappensAfterThePilot">Що відбувається після пілоту?</div>
+          <div data-layer="What happens after the pilot?" class="WhatHappensAfterThePilot">Що відбувається після 10 днів пілоту?</div>
           <div data-layer="icon-container" class="IconContainer">
             <i data-lucide="chevron-down" class="site-icon site-icon--accordion" aria-hidden="true"></i>
           </div>
         </div>
-        <div data-layer="Pay USDT for your matching tier. We generate and send a new license file. You load it into your existing deployment with no reinstall needed." class="PayUsdtForYourMatchingTierWeGenerateAndSendANewLicenseFileYouLoadItIntoYourExistingDeploymentWithNoReinstallNeeded">Сплачуєте USDT за відповідний тариф. Ми генеруємо та надсилаємо новий файл ліцензії. Завантажуєте його в існуюче розгортання — без перевстановлення.</div>
+        <div data-layer="Pay USDT for your matching tier. We generate and send a new license file. You load it into your existing deployment with no reinstall needed." class="PayUsdtForYourMatchingTierWeGenerateAndSendANewLicenseFileYouLoadItIntoYourExistingDeploymentWithNoReinstallNeeded">Сплачуєте USDT за потрібний тариф, ми висилаємо новий файл ліцензії. Вставляєте в веб-адмінці — перевстановлення не потрібне.</div>
       </div>
       <div data-layer="accordion-item" class="AccordionItem">
         <div data-layer="Frame" class="Frame">
-          <div data-layer="What if I lose a server or need to relocate?" class="WhatIfILoseAServerOrNeedToRelocate">Що робити при втраті сервера або релокації?</div>
+          <div data-layer="What if I lose a server or need to relocate?" class="WhatIfILoseAServerOrNeedToRelocate">Що робити при зльоті сервера або терміновому переїзді?</div>
           <div data-layer="icon-container" class="IconContainer">
             <i data-lucide="chevron-down" class="site-icon site-icon--accordion" aria-hidden="true"></i>
           </div>
         </div>
-        <div data-layer="Provider ban or dead VPS — message Telegram for a new license key." class="WeKnowBuyersLoseHostsProviderBansDatacenterIssuesWarZoneMovesEmergencyMigrationsYourLicenseBindsToHardwareFingerprintsNotASingleIpForeverForDocumentedForceMajeureHostLossProviderShutdownSanctionedRegionRelocationContactBidshardsupportbotOrBidshardManagerWithYourDeploymentIdAndWhatHappenedWeCanIssueAdditionalActivationsOrResetBindingsCaseByCaseWeDoNotTreatOpsEmergenciesLikeLicenseAbuse">Бан провайдера чи мертвий VPS? Напишіть @bidshardsupportbot або @bidshard_manager у Telegram — перевидаємо ключ ліцензії для нового сервера.</div>
+        <div data-layer="Provider ban or dead VPS — message Telegram for a new license key." class="WeKnowBuyersLoseHostsProviderBansDatacenterIssuesWarZoneMovesEmergencyMigrationsYourLicenseBindsToHardwareFingerprintsNotASingleIpForeverForDocumentedForceMajeureHostLossProviderShutdownSanctionedRegionRelocationContactBidshardsupportbotOrBidshardManagerWithYourDeploymentIdAndWhatHappenedWeCanIssueAdditionalActivationsOrResetBindingsCaseByCaseWeDoNotTreatOpsEmergenciesLikeLicenseAbuse">Упав VPS чи змінили провайдера? Напишіть @bidshardsupportbot або @bidshard_manager у Telegram. Швидко перевидаємо ключ ліцензії — жодних блокувань.</div>
       </div>
       <div data-layer="accordion-item" class="AccordionItem">
         <div data-layer="Frame" class="Frame">
-          <div data-layer="Do I need to be a developer?" class="DoINeedToBeADeveloper">Чи потрібно бути розробником?</div>
+          <div data-layer="Do I need to be a developer?" class="DoINeedToBeADeveloper">Чи потрібно бути програмістом?</div>
           <div data-layer="icon-container" class="IconContainer">
             <i data-lucide="chevron-down" class="site-icon site-icon--accordion" aria-hidden="true"></i>
           </div>
         </div>
-        <div data-layer="Comfort with VPS and Docker; onboarding wizard for the first campaign." class="BeingComfortableWithBasicVpsOperationsAndDockerIsHighlyRecommendedTheProductIsApiFirstTodayWhileOurAdminUiContinuesToCatchUp">Потрібен комфорт з базовим VPS і Docker — full-time developer не обов'язковий. Onboarding wizard проведе через першу кампанію.</div>
+        <div data-layer="Web admin UI included; one-click install with Telegram help." class="BeingComfortableWithBasicVpsOperationsAndDockerIsHighlyRecommendedTheProductIsApiFirstTodayWhileOurAdminUiContinuesToCatchUp">Розробник не потрібен! Зручна веб-адмінка в комплекті — зв'язки, потоки, звіти та Margin Guard під рукою. Ми безкоштовно допоможемо з інсталом у Telegram.</div>
       </div>
       <div data-layer="accordion-item" class="AccordionItem">
         <div data-layer="Frame" class="Frame">
-          <div data-layer="How do I start?" class="HowDoIStart">Як почати?</div>
+          <div data-layer="How do I start?" class="HowDoIStart">Як швидко запустити пілот?</div>
           <div data-layer="icon-container" class="IconContainer">
             <i data-lucide="chevron-down" class="site-icon site-icon--accordion" aria-hidden="true"></i>
           </div>
         </div>
-        <div data-layer="Reach out on Telegram to obtain a pilot license. Execute the single-line install script on your host, activate the license in your browser, and you are live." class="ReachOutOnTelegramToObtainAPilotLicenseExecuteTheSingleLineInstallScriptOnYourHostActivateTheLicenseInYourBrowserAndYouAreLive">Напишіть у Telegram, щоб отримати пілотну ліцензію. Запустіть однорядковий скрипт встановлення на сервері, активуйте ліцензію в браузері — і можна лити трафік.</div>
+        <div data-layer="Reach out on Telegram to obtain a pilot license. Execute the single-line install script on your host, activate the license in your browser, and you are live." class="ReachOutOnTelegramToObtainAPilotLicenseExecuteTheSingleLineInstallScriptOnYourHostActivateTheLicenseInYourBrowserAndYouAreLive">Напишіть у Telegram за ключем. Команда установки в 1 клік, активація у браузері — і можна заливати трафік.</div>
       </div>
     </div>
   </div>
@@ -316,11 +324,11 @@
     <div data-layer="Frame" class="Frame">
       <div data-layer="Frame" class="Frame">
         <div data-layer="BidShard" class="AdEventProcessor">BidShard</div>
-        <div data-layer="self-hosted license software for modern media buyers." class="SelfHostedLicenseSoftwareForModernMediaBuyers">self-hosted ad-стек для media buyers, яких уже підводили.</div>
+        <div data-layer="self-hosted license software for modern media buyers." class="SelfHostedLicenseSoftwareForModernMediaBuyers">self-hosted трекінг-стек для медіабаєрів, які цінують свої зв'язки та ROI.</div>
       </div>
       <div data-layer="Frame" class="Frame">
         <a href="docs.html" class="FooterArchitecture">Архітектура</a>
-        <a href="buyers.html" class="FooterBuyersGuide">Гід для media buyers</a>
+        <a href="buyers.html" class="FooterBuyersGuide">Гід для медіабаерів</a>
         <div data-site-link="offer" class="PublicOffer">Оферта</div>
         <div data-site-nav="Contacts" class="ContactsFooter">Контакти</div>
         <div data-site-cta="telegram" class="Telegram">Telegram</div>

@@ -3,7 +3,6 @@ package ledger
 import (
 	"context"
 	"testing"
-	"time"
 
 	"ad-event-processor/internal/config"
 
@@ -62,4 +61,3 @@ func TestFault_LedgerMarginBatchNotifyOnly_noPause_holdout(t *testing.T) {
 		WHERE campaign_id = $1 AND action = 'pause'`, campaignID).Scan(&activityCount))
 	require.Equal(t, 1, activityCount)
 }
-

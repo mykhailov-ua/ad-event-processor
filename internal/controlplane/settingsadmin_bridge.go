@@ -3,12 +3,14 @@ package controlplane
 import (
 	"context"
 	"errors"
+	"fmt"
 	"log/slog"
 	"time"
 
 	"ad-event-processor/internal/database"
 	"ad-event-processor/internal/smartalerts"
 
+	"github.com/google/uuid"
 	"github.com/jackc/pgx/v5/pgxpool"
 
 	"ad-event-processor/internal/campaign"
@@ -17,8 +19,6 @@ import (
 	"ad-event-processor/internal/opsadmin"
 	"ad-event-processor/internal/settingsadmin"
 	"ad-event-processor/internal/shardadmin"
-
-	"github.com/google/uuid"
 )
 
 var (
@@ -185,4 +185,18 @@ func (h smartalertsHost) AlertDrainStuck(ctx context.Context, version int32, slo
 	if h.svc.alerter != nil {
 		h.svc.alerter.AlertDrainStuck(ctx, version, slot, state, lastError, updatedAt)
 	}
+}
+
+func (h smartalertsHost) PauseCampaign(ctx context.Context, campaignID uuid.UUID, reason string) error {
+	if h.svc == nil {
+		return fmt.Errorf("service unavailable")
+	}
+	return h.svc.PauseCampaign(ctx, campaignID, reason)
+}
+
+func (h smartalertsHost) BlacklistPlacement(ctx context.Context, campaignID uuid.UUID, placementID string) error {
+	if h.svc == nil {
+		return fmt.Errorf("service unavailable")
+	}
+	return h.svc.BlockCampaignPlacement(ctx, campaignID, placementID)
 }

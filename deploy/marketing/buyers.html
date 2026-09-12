@@ -3,8 +3,8 @@
 <head>
   <meta charset="utf-8">
   <meta name="viewport" content="width=device-width, initial-scale=1">
-  <meta name="description" content="BidShard for media buyers: patchwork stack costs, migration without downtime fear, and support when things go wrong.">
-  <title>For media buyers — BidShard</title>
+  <meta name="description" content="BidShard for media buyers: true stack economics, zero-downtime server migration, and direct Telegram support.">
+  <title>For Media Buyers — BidShard</title>
   <script>
     (function () {
       try {
@@ -17,8 +17,9 @@
   </script>
   <link rel="alternate" hreflang="en" href="/buyers.html" />
   <link rel="alternate" hreflang="uk" href="/uk/buyers.html" />
-  <link rel="stylesheet" href="site.css?v=20260913">
-  <script src="site.js?v=20260913" defer></script>
+  <link rel="alternate" hreflang="ru" href="/ru/buyers.html" />
+  <link rel="stylesheet" href="/site.css?v=20260914">
+  <script src="/site.js?v=20260914" defer></script>
 </head>
 <body class="docs-page buyers-page">
   <div class="site-offer-gate" data-site-offer-gate hidden aria-hidden="true"></div>
@@ -30,7 +31,13 @@
       <a href="offer.html">Public offer</a>
     </nav>
     <div class="site-header-end">
-      <a class="site-lang-switch" href="/uk/buyers.html" hreflang="uk" title="Ukrainian version">UA</a>
+      <nav class="site-lang-nav" aria-label="Language">
+        <a class="site-lang-switch is-active" data-site-lang="en" href="/buyers.html" hreflang="en" title="English" aria-current="page">EN</a>
+        <span class="site-lang-sep" aria-hidden="true">·</span>
+        <a class="site-lang-switch" data-site-lang="uk" href="/uk/buyers.html" hreflang="uk" title="Українська">UA</a>
+        <span class="site-lang-sep" aria-hidden="true">·</span>
+        <a class="site-lang-switch" data-site-lang="ru" href="/ru/buyers.html" hreflang="ru" title="Русский">RU</a>
+      </nav>
       <button type="button" class="site-theme-toggle" data-site-theme-toggle aria-label="Switch to light theme" title="Light theme">
         <svg class="site-theme-toggle__icon site-theme-toggle__icon--sun" viewBox="0 0 24 24" fill="none" aria-hidden="true">
           <circle cx="12" cy="12" r="4" stroke="currentColor" stroke-width="2"/>
@@ -47,21 +54,20 @@
     <a href="index.html" class="site-doc-back">Back to home</a>
 
     <p class="site-doc-eyebrow">Media buyer guide</p>
-    <h1>If the stack feels like it works against you</h1>
+    <h1>When your software stack works against your ROI</h1>
     <p class="site-doc-lead">
-      This page is for media buyers and team leads who already pay for a tracker, cloaking, IVT tooling, and VPS hours —
-      and still wake up to red ROI or missing conversions. No feature catalog here: just the situations we built for,
-      and what changes on your server.
+      This guide is for media buyers and team leads paying for separate trackers, cloakers, antifraud tools, and oversized VPS RAM —
+      yet still facing ROI crashes or missing conversions. No fluff: just real-world affiliate scenarios and self-hosted solutions.
     </p>
 
     <nav class="site-doc-toc" aria-label="On this page">
       <div class="site-doc-toc__title">On this page</div>
       <ol>
         <li><a href="#familiar">If this sounds familiar</a></li>
-        <li><a href="#stack-cost">What you are really paying for</a></li>
-        <li><a href="#start">Starting without breaking prod</a></li>
+        <li><a href="#stack-cost">What you actually pay for</a></li>
+        <li><a href="#start">Starting without breaking live traffic</a></li>
         <li><a href="#questions">Questions before the pilot</a></li>
-        <li><a href="#when-wrong">When things go wrong</a></li>
+        <li><a href="#when-wrong">When a VPS crashes</a></li>
       </ol>
     </nav>
 
@@ -70,173 +76,155 @@
       <article class="site-doc-card">
         <h3>Cloud tracker, cloud risk</h3>
         <p>
-          Your funnels live in someone else&apos;s multi-tenant database. Account limits, export caps, and &quot;policy&quot;
-          bans land on the worst day of the month. Self-hosted means your campaigns and visitor logs stay on your VPS —
-          we ship software and a license file, not a shared tenant.
+          Your winning funnels live in someone else's shared cloud database. Account bans and export limits land on the worst day of the month.
+          Self-hosted keeps campaigns and visitor logs strictly on your server — we ship software, not a shared database.
         </p>
       </article>
       <article class="site-doc-card">
         <h3>Another cloaker invoice, ROI already red</h3>
         <p>
-          Tracker $99, cloaker $499, IVT &quot;we&apos;ll add next quarter&quot; — while junk traffic still burns budget tonight.
-          BidShard bundles routing, cloaking, rule antifraud, and reporting in one install so margin stops leaking
-          through four separate renewals.
+          Tracker $99, cloaker $499, antifraud 'next quarter' — while junk traffic burns your budget tonight.
+          One BidShard license covers click routing, cloaking, bot filtering, and postback reporting.
         </p>
       </article>
       <article class="site-doc-card">
-        <h3>&quot;Where did 15 conversions go?&quot;</h3>
+        <h3>"Where did 15 conversions go?"</h3>
         <p>
-          Network shows 100 leads, partner shows 85, and support sends screenshots back and forth. Postback trail logs
-          every hop so you see whether the gap is network, tracker, or affiliate — before the week closes in the red.
+          Ad network shows 100 leads, affiliate network logs 85, support sends back-and-forth screenshots. Postback trail logs
+          every hop so you spot network shave before closing the week red.
         </p>
       </article>
       <article class="site-doc-card">
-        <h3>Friday night, VPS is down</h3>
+        <h3>Friday night, main VPS goes down</h3>
         <p>
-          Campaigns still spin in the ad manager while ingest is dead. When a host is lost or you need to move fast,
-          message us on Telegram — we can issue a new license key for your replacement server, reviewed case by case.
+          Campaigns are spinning in ad manager while ingest is dead. Server host burned or banned? Drop us a note on Telegram — we reissue your license key file instantly for your replacement node.
         </p>
       </article>
     </div>
 
     <div class="site-doc-callout">
-      <strong>Antifraud without the AI hype tax.</strong>
-      Real-time rules run on every click. Fraud risk scores are precomputed on your server in the background —
-      not ChatGPT per visit, no token bills, no extra latency on accepted traffic.
+      <strong>Antifraud without per-click fees.</strong>
+      Rule filters evaluate incoming traffic at the edge. Background ML fraud scoring runs asynchronously on your VPS — zero external API latency or per-hit billing.
     </div>
 
-    <h2 id="stack-cost">What you are really paying for</h2>
+    <h2 id="stack-cost">What you actually pay for</h2>
     <p>
-      Compare the <strong>full monthly stack</strong>, not the tracker line item alone. A cheap cloud license looks fine
-      until cloaker, IVT, and your own ops time stack on top.
+      Compare <strong>full monthly stack costs</strong>, not just the base tracker license fee. Cheap cloud trackers look good
+      until cloaker, antifraud, and ops maintenance hours pile on top.
     </p>
 
     <table class="site-doc-table">
       <thead>
         <tr>
-          <th scope="col">Typical patchwork stack</th>
+          <th scope="col">Patchwork SaaS stack</th>
           <th scope="col">BidShard on your server</th>
         </tr>
       </thead>
       <tbody>
         <tr>
-          <td>Tracker renewal while ROI is already negative</td>
-          <td>One license — routing, antifraud, and reports together</td>
+          <td>Tracker renewal fees when ROI goes negative</td>
+          <td>One license — click routing, cloaking, and reports included</td>
         </tr>
         <tr>
-          <td>Cloaker SaaS $300–1,000/mo on top of media spend</td>
-          <td>Built-in cloaking — less budget on junk, no separate cloaker line item</td>
+          <td>Cloaker SaaS $300–$1,000/mo on top of media spend</td>
+          <td>Built-in cloaking — drop your separate cloaker invoice</td>
         </tr>
         <tr>
-          <td>IVT &quot;we&apos;ll wire it later&quot; while bots spend tonight</td>
-          <td>Invalid-traffic checks on your data from Pro — background jobs, not AI per click</td>
+          <td>Antifraud 'someday', while bots burn budget tonight</td>
+          <td>ML antifraud and edge filters on your bare metal</td>
         </tr>
         <tr>
-          <td>Your evening debugging postbacks — not vendor support</td>
-          <td>One install, one license file, Telegram when something breaks</td>
+          <td>Nights spent debugging postbacks and support tickets</td>
+          <td>One install, 1-click deploy, direct Telegram support</td>
         </tr>
       </tbody>
     </table>
 
     <p>
-      <strong>Pilot</strong> — 10 days on your VPS with full click routing and cloaking, no credit card.
-      <strong>Paid tiers</strong> — Starter, Pro, and Scale up to $999/mo depending on features and team size.
-      <strong>Enterprise</strong> — custom quote for large fleets and platform automation.
-      Paid monthly in USDT for the license — not per click, not per token.
-      <a href="index.html#pricing">See full pricing on the home page</a>.
+      <strong>Pilot</strong> — 10 days on your VPS with full click routing and cloaking, no credit card required.
+      <strong>Paid tiers</strong> — Starter, Pro, and Scale up to $999/mo depending on feature flags and team size.
+      <strong>Enterprise</strong> — custom deployment for high-volume fleets and agencies.
+      Paid monthly in USDT — no per-click fees.
+      <a href="index.html#pricing">View full pricing on home page</a>.
     </p>
 
-    <h2 id="start">Starting without breaking prod</h2>
+    <h2 id="start">Starting without breaking live traffic</h2>
     <p>
-      The fear we hear most: &quot;I&apos;ll migrate on Friday and lose the weekend.&quot; You do not have to.
+      The #1 fear media buyers have: "If I migrate on Friday, I'll lose my weekend." Not with BidShard.
     </p>
     <ol class="site-doc-steps">
       <li>
-        <strong>Pilot on a separate VPS</strong> — 10 days, one server, full click routing. Most teams point a test
-        campaign first, not a full GEO swap on day one.
+        <strong>Pilot on a test VPS</strong> — 10 days of full Pro features. Point one test campaign first and compare conversion numbers with your legacy tracker.
       </li>
       <li>
-        <strong>Import from Keitaro or Binom</strong> — 159 integration templates; flows, landers, and postbacks can
-        be operational from day one instead of a six-month rebuild.
+        <strong>Import from Keitaro or Binom</strong> — 1-click JSON import for flows, landers, and postbacks so you don't rebuild from scratch.
       </li>
       <li>
-        <strong>License is a file in Settings</strong> — paste it after install. No vendor account that gates export,
-        no sales call to unlock your own data.
+        <strong>License file activation</strong> — paste your key in the web admin UI. No vendor account holding your campaign data hostage.
       </li>
       <li>
-        <strong>After pilot, upgrade in place</strong> — pay USDT, load the new license file, keep the same deployment. No
-        reinstall, no move back to a cloud tenant.
+        <strong>Seamless upgrade</strong> — pay USDT for your tier, load the new key file, keep running on the same node without reinstallation.
       </li>
     </ol>
 
     <div class="site-doc-callout">
-      <strong>10 days is enough</strong> to see whether you pay more for a cloaker alone than for the license —
-      without a credit card and without a 40-slide sales deck. Message us on Telegram with expected traffic and VPS spec;
-      we send a license file, not a webinar link.
+      <strong>10 days is all it takes</strong> to verify cloaking efficiency and net ROI gains —
+      no credit card, no sales calls. DM us on Telegram with your expected traffic and VPS spec for instant key file issuance.
     </div>
 
     <h2 id="questions">Questions before the pilot</h2>
     <div class="site-doc-cards">
       <article class="site-doc-card">
-        <h3>Will this slow my clicks?</h3>
+        <h3>Will this slow down my clicks?</h3>
         <p>
-          That is a fair worry. Rule filters run on every accepted click; fraud scores are computed in scheduled batch
-          jobs on your analytics store and cached for live routing. The hot path does not call an external LLM or pay per
-          request.
+          No! Edge rule filters evaluate accepted hits locally in microseconds. Heavy fraud scores run in background batch jobs on your analytics DB. Zero external LLM latency on live traffic.
         </p>
       </article>
       <article class="site-doc-card">
-        <h3>I am mid-campaign on Keitaro — do I stop?</h3>
+        <h3>I'm mid-campaign on Keitaro — should I stop?</h3>
         <p>
-          No. Import JSON, run the pilot in parallel, duplicate postbacks on a test flow, then switch traffic sources
-          when numbers match. Production Keitaro can keep running until you are comfortable.
+          No. Import your JSON config, run BidShard in parallel, duplicate postbacks on a test flow, and switch traffic once conversion numbers match.
         </p>
       </article>
       <article class="site-doc-card">
-        <h3>Do I need a full-time developer?</h3>
+        <h3>Do I need a dedicated developer?</h3>
         <p>
-          You need someone comfortable with basic VPS and Docker — not a dedicated engineer. The onboarding wizard walks
-          through the first campaign; admin console covers day-to-day campaign work.
+          No! Full web admin UI is included — campaigns, flows, reports, and Margin Guard in your browser. We help with 1-click install on Telegram.
         </p>
       </article>
       <article class="site-doc-card">
-        <h3>Is support a ticket queue?</h3>
+        <h3>Is support locked behind ticket queues?</h3>
         <p>
-          Telegram — support bot or manager. Describe what broke and which server you moved to. We know postbacks and
-          provider bans do not wait for L1 business hours.
+          No ticket queues! Direct Telegram support with our bot or manager. We know postbacks and host bans don't wait for L1 business hours.
         </p>
       </article>
       <article class="site-doc-card">
-        <h3>Can my buyer run it without me?</h3>
+        <h3>Can junior buyers ruin live campaigns?</h3>
         <p>
-          Team roles and API keys exist so a junior does not pause production campaigns by mistake — you stay data
-          controller on your metal.
+          Team RBAC and role management restrict critical campaign actions so junior buyers can't accidentally pause winning adsets.
         </p>
       </article>
       <article class="site-doc-card">
-        <h3>Do you store my campaigns?</h3>
+        <h3>Do you store my campaign funnels?</h3>
         <p>
-          No. Everything runs on your server. We have no backend that collects telemetry, campaign configs, or visitor
-          logs.
+          No! Everything runs exclusively on your server. We have zero backend endpoints collecting telemetry, funnel configs, or visitor logs.
         </p>
       </article>
     </div>
 
-    <h2 id="when-wrong">When things go wrong</h2>
+    <h2 id="when-wrong">When a VPS crashes</h2>
     <p>
-      Dead VPS, provider shutdown, or an emergency move to new hardware — it happens in media buying.
-      Contact <a href="https://t.me/bidshardsupportbot">@bidshardsupportbot</a> or
-      <a href="https://t.me/bidshard_manager">@bidshard_manager</a> on Telegram with a short description of what happened.
-      We can send a new license key for your replacement server — reviewed case by case, not treated as abuse.
+      Server crash, provider ban, or emergency migration — it happens in media buying.
+      Message <a href="https://t.me/bidshardsupportbot">@bidshardsupportbot</a> or
+      <a href="https://t.me/bidshard_manager">@bidshard_manager</a> on Telegram.
+      We reissue your license key file for your new node fast — case by case, zero hassle.
     </p>
     <p>
-      <strong>Margin Guard</strong> (Pro tier) watches ledger totals and placement stats on a timer. When ROI drops below
-      your rules, it pauses routing inside the tracker and can pause linked campaigns in Meta and Google — so spend stops
-      bleeding while you fix the funnel, not after the day ends red.
+      <strong>Margin Guard</strong> (Pro tier) monitors campaign ROI on a timer. When profitability drops below your rules, it pauses click routing in the tracker and stops adsets in Meta and Google via API — protecting your budget before the day closes deep red.
     </p>
 
     <div class="site-doc-actions">
-      <a class="primary" data-site-cta="telegram" href="#">Get free pilot</a>
+      <a class="primary" data-site-cta="telegram" href="#">Request pilot on Telegram</a>
       <a class="ghost" href="docs.html">How it works</a>
       <a class="ghost" href="index.html#pricing">Pricing</a>
     </div>

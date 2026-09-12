@@ -250,6 +250,9 @@ func (w *Worker) fireAlertRule(ctx context.Context, rule smartAlertRuleRow, wind
 	if template, ok := parseTemplateFromMetric(rule.Metric); ok {
 		payload["template"] = template
 	}
+	if action := normalizeAlertAction(rule.Action); action != ActionNotify {
+		payload["action"] = action
+	}
 	if rule.HasCampaign {
 		payload["campaign_id"] = rule.CampaignID.String()
 	}
@@ -283,6 +286,9 @@ func (w *Worker) fireAlertRule(ctx context.Context, rule smartAlertRuleRow, wind
 		domain.ToUUID(eventID), webhookStatus, webhookErr)
 	if err != nil {
 		return fmt.Errorf("update webhook status: %w", err)
+	}
+	if err := w.applyRuleAction(ctx, rule, windowStart, windowEnd, eventID); err != nil {
+		return fmt.Errorf("apply alert action: %w", err)
 	}
 	slog.Info("smart alert fired",
 		"rule_id", rule.ID,

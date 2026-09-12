@@ -3,7 +3,7 @@
 <head>
   <meta charset="utf-8">
   <meta name="viewport" content="width=device-width, initial-scale=1">
-  <meta name="description" content="Як працює BidShard на вашому сервері: фільтрація трафіку, захист бюджету, звіти та офлайн-ліцензування.">
+  <meta name="description" content="Як працює BidShard на вашому сервері: роутинг кліків, захист бюджету, CAPI відстук та офлайн-ліцензія.">
   <title>Як це працює — BidShard</title>
   <script>
     (function () {
@@ -17,8 +17,9 @@
   </script>
   <link rel="alternate" hreflang="en" href="/docs.html" />
   <link rel="alternate" hreflang="uk" href="/uk/docs.html" />
-  <link rel="stylesheet" href="/site.css?v=20260912">
-  <script src="/site.js?v=20260912" defer></script>
+  <link rel="alternate" hreflang="ru" href="/ru/docs.html" />
+  <link rel="stylesheet" href="/site.css?v=20260914">
+  <script src="/site.js?v=20260914" defer></script>
 </head>
 <body class="docs-page">
   <div class="site-offer-gate" data-site-offer-gate hidden aria-hidden="true"></div>
@@ -26,11 +27,17 @@
     <a href="index.html">BidShard</a>
     <nav class="site-doc-header__nav" aria-label="Документація">
       <a href="index.html">Головна</a>
-      <a href="buyers.html">Гід для media buyers</a>
+      <a href="buyers.html">Гід для медіабаєрів</a>
       <a href="../offer.html">Публічна оферта</a>
     </nav>
     <div class="site-header-end">
-      <a class="site-lang-switch" href="/docs.html" hreflang="en" title="English version">EN</a>
+      <nav class="site-lang-nav" aria-label="Мова">
+        <a class="site-lang-switch" data-site-lang="en" href="/docs.html" hreflang="en" title="English">EN</a>
+        <span class="site-lang-sep" aria-hidden="true">·</span>
+        <a class="site-lang-switch is-active" data-site-lang="uk" href="/uk/docs.html" hreflang="uk" title="Українська" aria-current="page">UA</a>
+        <span class="site-lang-sep" aria-hidden="true">·</span>
+        <a class="site-lang-switch" data-site-lang="ru" href="/ru/docs.html" hreflang="ru" title="Русский">RU</a>
+      </nav>
       <button type="button" class="site-theme-toggle" data-site-theme-toggle aria-label="Увімкнути світлу тему" title="Світла тема">
         <svg class="site-theme-toggle__icon site-theme-toggle__icon--sun" viewBox="0 0 24 24" fill="none" aria-hidden="true">
           <circle cx="12" cy="12" r="4" stroke="currentColor" stroke-width="2"/>
@@ -46,83 +53,82 @@
   <main class="site-doc">
     <a href="index.html" class="site-doc-back">На головну</a>
 
-    <p class="site-doc-eyebrow">Концептуальний огляд</p>
+    <p class="site-doc-eyebrow">Архітектура трекера</p>
     <h1>Як це працює</h1>
     <p class="site-doc-lead">
-      BidShard — self-hosted ПЗ, яке ви встановлюєте на свій VPS або dedicated-сервер.
-      Ваш трафік залишається на вашому залізі — ми постачаємо стек і файл ліцензії, а не спільний cloud-tenant.
+      BidShard — self-hosted ПЗ, що розгортається на вашому VPS або dedicated-сервері.
+      Ваш трафік та зв'язки залишаються строго на вашому залізі — ми постачаємо високонавантажений стек та файл ліцензії.
     </p>
 
     <nav class="site-doc-toc" aria-label="На цій сторінці">
       <div class="site-doc-toc__title">На цій сторінці</div>
       <ol>
         <li><a href="#your-server">Ваш сервер</a></li>
-        <li><a href="#filters">Фільтри до списання бюджету</a></li>
-        <li><a href="#reports">Звіти та postbacks</a></li>
-        <li><a href="#license">Файл ліцензійного ключа</a></li>
+        <li><a href="#filters">Фільтрація кліків до списування капу</a></li>
+        <li><a href="#reports">Звіти, CAPI та Postback Trail</a></li>
+        <li><a href="#license">Офлайн-ліцензія</a></li>
       </ol>
     </nav>
 
     <h2 id="your-server">Ваш сервер</h2>
     <p>
-      Один інстал запускає маршрутизацію кліків, адмінку кампаній, облік бюджету та аналітику на залізі, яке контролюєте ви.
-      Відвідувачі заходять на ваш домен; прийняті кліки логуються й проводяться на тій самій машині — не через наш датацентр.
+      Один інсталл запускает роутинг кліків, адмінку зв'язок, облік бюджетів та аналітику на залізі, яке контролюєте ви.
+      Кліки заходять на ваш домен; валідний трафік миттєво розподіляється за потоками — без сторонніх проксі-серверів.
     </p>
     <div class="site-doc-cards">
       <article class="site-doc-card">
-        <h3>Трафік на вхід</h3>
-        <p>Ваша реклама веде кліки на URL трекера. Маршрутизація, landers і offer flows працюють локально.</p>
+        <h3>Вхідний трафік</h3>
+        <p>Ваша реклама веде кліки на URL трекера. Маршрутизація, ленди та воронки працюють локально з миттєвим відгуком.</p>
       </article>
       <article class="site-doc-card">
-        <h3>Адмінка та білінг</h3>
-        <p>Редагування кампаній, доступ команди, cost sync і payment hooks — у тому ж стеку, без окремої SaaS-консолі.</p>
+        <h3>Адмінка та контроль</h3>
+        <p>Налаштування зв'язок, права баєрів, синхрон витрат та алерти — у єдиному зручному інтерфейсі.</p>
       </article>
       <article class="site-doc-card">
-        <h3>Дані залишаються локально</h3>
-        <p>Конфіги кампаній, події відвідувачів і звіти — на вашому сервері. Ми не хостимо ваші воронки й не тягнемо телеметрію додому.</p>
+        <h3>100% приватність даних</h3>
+        <p>Конфіги зв'язок, логи кліків та звіти зберігаються на вашому сервері. Ми не збираємо вашу статистику.</p>
       </article>
     </div>
 
-    <h2 id="filters">Фільтри до списання бюджету</h2>
+    <h2 id="filters">Фільтрація кліків до списування капу</h2>
     <p>
-      Кожен клік проходить rule checks — гео, розклад, сигнали пристрою, consent і антифрод — до того, як рухається бюджет кампанії.
-      Сміттєвий і підозрілий трафік можна відсіяти або показати decoy-воронку, поки витрати залишаються цілими.
+      Кожен клік проходить миттєві перевірки — ГЕО, пристрій, таймінг, бот-фільтри та клоака — до списування денного бюджету.
+      Боти та модератори отримують білу сторінку, поки ваш daily cap витрачається лише на цільовий трафік.
     </p>
     <p class="site-doc-callout">
-      <strong>Клоакінг вбудований.</strong>
-      Без окремого рахунку за клоаку — модерація й фільтрація ботів у тому ж інсталі, що маршрутизація й звітність.
+      <strong>Вбудована клоака.</strong>
+      Без сторонніх підписок — фільтрація ботів та модераторів працює прямо в інсталі трекера.
     </p>
     <p>
-      Важчі перевірки фроду та invalid-traffic scoring працюють як фонові задачі на ваших аналітичних даних і повертаються в live filtering —
-      не per-click API-виклик до стороннього AI-сервісу.
-    </p>
-
-    <h2 id="reports">Звіти та postbacks</h2>
-    <p>
-      Прийняті події потрапляють у ваше сховище звітів для дашбордів, експорту та dispute bundles.
-      S2S postbacks відправляються на конверсіях; кожен крок логується — бачите, де зникли ліди між мережею, трекером і affiliate.
-    </p>
-    <p>
-      Cost sync підтягує витрати з налаштованих рекламних мереж за розкладом — звіряйте з ledger, не очікуйте real-time паритету з кожним UI мережі.
-      Conversion API для Meta, Google і TikTok можуть працювати з того ж сервера — автоставки бачать реальні результати, а не лише напівсинхронізований browser pixel.
+      Глибокий ML-антифрод фоново аналізує кліки на вашому аналітичному сховищі — без затримок на кожен клік і без плат за зовнішні API.
     </p>
 
-    <h2 id="license">Файл ліцензійного ключа, без license server</h2>
+    <h2 id="reports">Звіти, CAPI та Postback Trail</h2>
     <p>
-      Ваш тариф і feature flags живуть у файлі ліцензії, який вставляєте в Admin Settings після встановлення.
-      Перевірка офлайн на вашому сервері — без phone-home на кожен клік, без vendor-акаунта, який блокує export або тримає ваші дані.
+      Прийняті конверсії зберігаються у вашій аналітичній БД для миттєвих звітів та експорту доказів шейву.
+      S2S постбеки відправляються в ПП з логуванням кожного хопу — ви завжди знаєте exact-статус відстуку.
     </p>
     <p>
-      Після апгрейду надсилаємо новий файл; завантажуєте на місці без перевстановлення стеку.
-      Втратили сервер? Напишіть у Telegram — можемо видати replacement key для задокументованих emergency.
+      Автосинхрон підтягує витрати з рекламних мереж кожні 15 хвилин для актуального ROI.
+      Прямий відстук Conversion API (Meta, Google, TikTok) йде з вашого сервера — алгоритми оптимізуються по гарячих конверсіях.
+    </p>
+
+    <h2 id="license">Офлайн-ліцензія без license-сервера</h2>
+    <p>
+      Ваш тариф активується локальним файлом ліцензії у веб-адмінці.
+      Перевірка ключа проходить офлайн на вашому VPS — жодних «home-calls» на кожен клік та блокувань експорту.
+    </p>
+    <p>
+      При апгрейді надсилаємо новий файл ключа — активуйте у браузері без перевстановлення.
+      Згорів VPS? Напишіть у Telegram — швидко перевидамо ліцензійний ключ під нове залізо.
     </p>
 
     <p class="site-doc-meta site-doc-meta--spaced">
-      Кроки встановлення — на головній сторінці. Юридичні умови — у <a href="../offer.html">публічній оферті</a>.
+      Інструкція з інсталяції — на головній. Умови — у <a href="../offer.html">публічній оферті</a>.
     </p>
 
     <div class="site-doc-actions">
-      <a class="primary" data-site-cta="telegram" href="#">Запросити пілот через Telegram</a>
+      <a class="primary" data-site-cta="telegram" href="#">Запросити пілот у Telegram</a>
       <a class="ghost" href="index.html">На головну</a>
     </div>
   </main>

@@ -3,7 +3,7 @@
 <head>
   <meta charset="utf-8">
   <meta name="viewport" content="width=device-width, initial-scale=1">
-  <meta name="description" content="How BidShard works on your server: traffic filtering, budget protection, reports, and offline licensing.">
+  <meta name="description" content="How BidShard works on your server: click routing, spend protection, CAPI postbacks, and offline licensing.">
   <title>How it works — BidShard</title>
   <script>
     (function () {
@@ -17,20 +17,27 @@
   </script>
   <link rel="alternate" hreflang="en" href="/docs.html" />
   <link rel="alternate" hreflang="uk" href="/uk/docs.html" />
-  <link rel="stylesheet" href="site.css?v=20260912">
-  <script src="site.js?v=20260912" defer></script>
+  <link rel="alternate" hreflang="ru" href="/ru/docs.html" />
+  <link rel="stylesheet" href="/site.css?v=20260914">
+  <script src="/site.js?v=20260914" defer></script>
 </head>
 <body class="docs-page">
   <div class="site-offer-gate" data-site-offer-gate hidden aria-hidden="true"></div>
   <header class="site-doc-header">
     <a href="index.html">BidShard</a>
-    <nav class="site-doc-header__nav" aria-label="Docs">
+    <nav class="site-doc-header__nav" aria-label="Documentation">
       <a href="index.html">Home</a>
       <a href="buyers.html">Media buyer guide</a>
       <a href="offer.html">Public offer</a>
     </nav>
     <div class="site-header-end">
-      <a class="site-lang-switch" href="/uk/docs.html" hreflang="uk" title="Українська версія">UA</a>
+      <nav class="site-lang-nav" aria-label="Language">
+        <a class="site-lang-switch is-active" data-site-lang="en" href="/docs.html" hreflang="en" title="English" aria-current="page">EN</a>
+        <span class="site-lang-sep" aria-hidden="true">·</span>
+        <a class="site-lang-switch" data-site-lang="uk" href="/uk/docs.html" hreflang="uk" title="Українська">UA</a>
+        <span class="site-lang-sep" aria-hidden="true">·</span>
+        <a class="site-lang-switch" data-site-lang="ru" href="/ru/docs.html" hreflang="ru" title="Русский">RU</a>
+      </nav>
       <button type="button" class="site-theme-toggle" data-site-theme-toggle aria-label="Switch to light theme" title="Light theme">
         <svg class="site-theme-toggle__icon site-theme-toggle__icon--sun" viewBox="0 0 24 24" fill="none" aria-hidden="true">
           <circle cx="12" cy="12" r="4" stroke="currentColor" stroke-width="2"/>
@@ -46,83 +53,82 @@
   <main class="site-doc">
     <a href="index.html" class="site-doc-back">Back to home</a>
 
-    <p class="site-doc-eyebrow">Conceptual overview</p>
+    <p class="site-doc-eyebrow">Tracker Architecture</p>
     <h1>How it works</h1>
     <p class="site-doc-lead">
-      BidShard is self-hosted software you install on your VPS or dedicated server.
-      Your traffic stays on your metal — we ship the stack and a license file, not a shared cloud tenant.
+      BidShard is self-hosted software deployed on your VPS or dedicated server.
+      Your traffic and funnels stay strictly on your metal — we ship a high-RPS stack and offline license key file.
     </p>
 
     <nav class="site-doc-toc" aria-label="On this page">
       <div class="site-doc-toc__title">On this page</div>
       <ol>
         <li><a href="#your-server">Your server</a></li>
-        <li><a href="#filters">Filters before budget spend</a></li>
-        <li><a href="#reports">Reports and postbacks</a></li>
-        <li><a href="#license">License key file</a></li>
+        <li><a href="#filters">Edge filtering before budget spend</a></li>
+        <li><a href="#reports">Reports, CAPI & Postback Trail</a></li>
+        <li><a href="#license">Offline license validation</a></li>
       </ol>
     </nav>
 
     <h2 id="your-server">Your server</h2>
     <p>
-      One install runs click routing, campaign admin, budget tracking, and analytics on hardware you control.
-      Visitors hit your domain; accepted clicks are logged and settled on the same box — not routed through our datacenter.
+      A single installation runs click routing, campaign web admin, budget accounting, and columnar analytics on hardware under your control.
+      Visitors hit your domain; valid hits route instantly without proxying through third-party data centers.
     </p>
     <div class="site-doc-cards">
       <article class="site-doc-card">
-        <h3>Traffic in</h3>
-        <p>Your ads send clicks to your tracker URL. Routing, landers, and offer flows run locally.</p>
+        <h3>Ingress traffic</h3>
+        <p>Your ads route clicks to tracker URLs. Click routing, landers, and offer flows run locally with zero cloud proxy lag.</p>
       </article>
       <article class="site-doc-card">
-        <h3>Admin and billing</h3>
-        <p>Campaign edits, team access, cost sync, and payment hooks live in the same stack — no separate SaaS console.</p>
+        <h3>Web admin & control</h3>
+        <p>Campaign management, team RBAC roles, ad spend sync, and alert rules — all in one browser UI.</p>
       </article>
       <article class="site-doc-card">
-        <h3>Data stays local</h3>
-        <p>Campaign configs, visitor events, and reports sit on your server. We do not host your funnels or pull telemetry home.</p>
+        <h3>100% data privacy</h3>
+        <p>Funnel configs, click logs, and reports live on your server. We never phone home or harvest your data.</p>
       </article>
     </div>
 
-    <h2 id="filters">Filters before budget spend</h2>
+    <h2 id="filters">Edge filtering before budget spend</h2>
     <p>
-      Every click passes rule checks — geo, schedule, device signals, consent, and antifraud — before your campaign budget moves.
-      Junk and suspicious traffic can be turned away or shown a decoy funnel while your spend stays intact.
+      Every incoming click passes edge rule checks — GEO, device signals, timing, bot filters, and cloaking — before daily budget is debited.
+      Bots and reviewer crawlers get a clean decoy view while your daily cap is preserved for money traffic.
     </p>
     <p class="site-doc-callout">
-      <strong>Cloaking built in.</strong>
-      No separate cloaker bill — moderation and bot filtering run in the same install as routing and reporting.
+      <strong>Built-in cloaking.</strong>
+      No extra SaaS bill — bot and moderator filtering operates right inside the tracker engine.
     </p>
     <p>
-      Heavier fraud checks and invalid-traffic scoring run as background jobs on your analytics data, then feed back into live filtering —
-      not a per-click API call to a third-party AI service.
-    </p>
-
-    <h2 id="reports">Reports and postbacks</h2>
-    <p>
-      Accepted events land in your reporting store for dashboards, export, and dispute bundles.
-      Server-to-server postbacks fire on conversions; each hop is logged so you can see where leads dropped between network, tracker, and affiliate.
-    </p>
-    <p>
-      Cost sync pulls spend from configured ad networks on a schedule — reconcile against your ledger, do not assume real-time parity with every network UI.
-      Conversion APIs for Meta, Google, and TikTok can run from the same server so bidding sees real outcomes, not a half-synced pixel alone.
+      Deep ML antifraud runs background scoring on your analytics store — avoiding per-click API costs and latency.
     </p>
 
-    <h2 id="license">License key file, no license server</h2>
+    <h2 id="reports">Reports, CAPI & Postback Trail</h2>
     <p>
-      Your tier and feature flags live in a license file you paste into Admin Settings after install.
-      Verification is offline on your server — no phone-home on every click, no vendor account that gates export or holds your data hostage.
+      Accepted conversions are logged to your columnar analytics DB for instant reports and dispute exports.
+      S2S postbacks fire to affiliate networks with full hop-by-hop logging so you verify exact postback delivery.
     </p>
     <p>
-      When you upgrade, we send a new file; you load it in place without reinstalling the stack.
-      Lost a server? Message us on Telegram — we can issue a replacement key for documented emergencies.
+      Cost sync imports spend from ad networks every 15 minutes for real-time ROI tracking.
+      Server-side Conversion APIs (Meta, Google, TikTok) fire directly from your server to train network bidding on real signal.
+    </p>
+
+    <h2 id="license">Offline license key, zero phone-home</h2>
+    <p>
+      Your plan tier and feature flags reside in an offline license key file loaded via the web admin UI.
+      Verification runs locally on your VPS — no phone-home call per click, no vendor lockouts.
+    </p>
+    <p>
+      Upgrades are delivered as a fresh key file — load it in your browser with zero downtime.
+      Lost a server node? Message us on Telegram — we reissue your license key file fast.
     </p>
 
     <p class="site-doc-meta site-doc-meta--spaced">
-      For install steps see the home page. For legal terms see <a href="offer.html">public offer</a>.
+      Installation steps are available on the home page. Legal terms are in the <a href="offer.html">public offer</a>.
     </p>
 
     <div class="site-doc-actions">
-      <a class="primary" data-site-cta="telegram" href="#">Request pilot via Telegram</a>
+      <a class="primary" data-site-cta="telegram" href="#">Request pilot on Telegram</a>
       <a class="ghost" href="index.html">Back to home</a>
     </div>
   </main>

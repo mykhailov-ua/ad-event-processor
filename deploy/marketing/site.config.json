@@ -6,11 +6,11 @@
     "lang_switch_title": "Ukrainian version",
     "pilot_badge": "Free {days}-day pilot · no credit card",
     "pilot_headline": "Try free for {days} days",
-    "pilot_disclaimer": "No credit card. {days}-day pilot.",
+    "pilot_disclaimer": "No credit card. Free {days}-day pilot. <a href=\"{offer_href}\" class=\"site-pilot-disclaimer__offer\">{offer_link}</a>",
     "offer_link_text": "public offer",
-    "pilot_cta_subline": "Full Pro for {days} days — message us on Telegram with expected traffic",
-    "calc_stack_today": "Your stack today",
-    "calc_savings": "Estimated savings",
+    "pilot_cta_subline": "Full Pro tier for {days} days — DM us on Telegram with your expected traffic volume",
+    "calc_stack_today": "Your current monthly stack",
+    "calc_savings": "Estimated monthly savings",
     "calc_presets_aria": "Stack presets",
     "plan_specs_default": "Specifications",
     "plan_cta_default": "Get started",
@@ -28,14 +28,14 @@
     "theme_light_title": "Light theme",
     "theme_dark_title": "Dark theme",
     "offer_gate_version": "Offer version:",
-    "offer_gate_scroll_hint": "Scroll to the end to enable acceptance.",
-    "appliance_screenshot_alt": "BidShard admin Settings page with license key field",
+    "offer_gate_scroll_hint": "Scroll to the bottom to confirm acceptance.",
+    "appliance_screenshot_alt": "BidShard web admin interface in browser",
     "docs_href": "/docs.html",
     "demo_href": "/demo.html",
     "buyers_href": "/buyers.html",
     "home_href": "/",
     "offer_href": "/offer.html",
-    "hero_demo_cta": "View demo"
+    "hero_demo_cta": "Web admin"
   },
   "product_name": "BidShard",
   "telegram_url": "https://t.me/bidshardsupportbot",
@@ -47,257 +47,262 @@
   "offer": {
     "version": "2026-09-09",
     "url": "offer.html",
-    "title": "Accept the public offer",
-    "intro": "Before you request a pilot or contact sales, confirm you accept the public offer for BidShard self-hosted software.",
+    "title": "Accept public offer",
+    "intro": "Before requesting your pilot or contacting sales, please confirm your acceptance of the public offer agreement for BidShard self-hosted software.",
     "points": [
-      "License runs on your VPS or dedicated server; vendor does not host your traffic.",
-      "Paid tiers differ by licensed hosts, workspaces, and feature flags in the license key. Events and campaigns are unlimited on your hardware.",
-      "Monthly USDT fees are non-refundable after license key delivery except vendor failure to deliver within 5 business days.",
-      "You are responsible for lawful use, VPS security, backups, and end-user privacy on your deployment.",
-      "Lost your server or moving to new hardware? Message us on Telegram — we can reissue or rebind the license key."
+      "License runs locally on your VPS or dedicated server; we never proxy your ad traffic.",
+      "Paid plans differ by licensed host count, team workspaces, and feature flags. Events, campaigns, and clicks are unlimited on your hardware.",
+      "Monthly USDT payments are non-refundable once the license key file is issued, except in case of vendor delivery failure exceeding 5 business days.",
+      "You maintain full responsibility for campaign compliance, server security, backups, and visitor data privacy on your node.",
+      "Lost a server or migrating hosting? Drop us a line on Telegram — we reissue and rebind your license key file instantly."
     ],
-    "checkbox": "I have read the public offer and accept its terms.",
+    "checkbox": "I have read the public offer agreement and accept all terms.",
     "accept_cta": "I accept — open Telegram",
     "read_cta": "Read full public offer"
   },
   "architecture": {
-    "eyebrow": "How it works",
-    "title": "Your traffic stays on your server",
-    "subtitle": "BidShard runs as a self-hosted stack on your VPS. Visitors hit your edge, clicks are filtered and logged, conversions sync back to ad networks — all on hardware you control.",
+    "eyebrow": "Architecture overview",
+    "title": "Your funnels and visitor logs never leave your server",
+    "subtitle": "BidShard deploys as a high-RPS self-hosted stack on your VPS. Clicks hit your edge, get filtered and logged instantly, and postbacks sync back to ad networks — all on bare metal under your total control.",
     "points": [
-      "Visitors land on your domain — cloaking and routing decide who sees your offer",
-      "Bad traffic gets a clean response — bots see OK, your campaign budget stays intact",
-      "Conversions post back to Meta, Google, and TikTok so bidding improves on real signal",
-      "Admin, reports, and alerts run on the same install — no shared cloud tenant"
+      "Visitors land on your domain — built-in cloaking and routing dictate money page vs decoy view",
+      "Bots and moderators get a clean 200 OK response — your daily cap stops burning on junk",
+      "Conversions fire directly to Meta, Google, and TikTok CAPI so network auto-bidding lands real signal",
+      "Full web admin UI — manage campaigns, flows, postbacks, and alert rules on the same node"
     ],
     "flow": {
       "aria_label": "Traffic flow diagram",
       "levels": [
-        "Visitor",
-        "Your edge",
+        "Click / User",
+        "Your Edge",
         "Tracker",
-        "Cloaking + filters",
-        "Analytics",
-        "Ad network APIs"
+        "Cloaker + Filters",
+        "Analytics DB",
+        "Ad Network APIs"
       ]
     },
     "highlights": [
       {
-        "title": "Spend only on traffic you accept",
-        "body": "Campaign budget debits on accepted clicks — junk traffic does not eat your daily cap."
+        "title": "Pay only for accepted traffic",
+        "body": "Daily cap debits only on valid incoming hits — bot floods don't drain your daily ad spend."
       },
       {
-        "title": "Cloaking built in",
-        "body": "Route reviewers and bots away from your money page without a separate cloaker subscription."
+        "title": "Built-in cloaking",
+        "body": "Route moderators and reviewer bots away from your offer page without paying $300–$600/mo for a separate cloaker."
       },
       {
         "title": "Margin Guard on Pro",
-        "body": "When ROI drops below your rules, BidShard pauses routing in the tracker and pauses linked campaigns in Meta and Google."
+        "body": "When ROI dips below your target, BidShard automatically pauses click routing in the tracker and stops adsets in Meta and Google via API."
       },
       {
-        "title": "Postback trail for disputes",
-        "body": "Every conversion hop is logged — see where leads disappeared before arguing with screenshots."
+        "title": "Lossless Postback Trail",
+        "body": "Full click-to-payout logging — spot network shave or broken postback endpoints before your week closes red."
+      },
+      {
+        "title": "Complete web admin",
+        "body": "Control campaigns, flows, reports, and team RBAC in your browser — zero reliance on third-party cloud consoles."
       }
     ],
-    "cta": "Read full architecture",
+    "cta": "Read full architecture docs",
     "url": "docs.html"
   },
   "contacts": {
-    "eyebrow": "Contacts",
-    "title": "Support and sales on Telegram",
-    "subtitle": "Pilot license, paid tiers, and upgrades — message the support bot or manager directly. No ticket queue.",
-    "relocation_note": "Lost your server? Message us on Telegram — we reissue the license key.",
-    "cta": "Open support bot"
+    "eyebrow": "Direct Contacts",
+    "title": "Telegram support & sales",
+    "subtitle": "Pilot key delivery, license upgrades, and setup help — reach out to our bot or manager directly. No ticket queues.",
+    "relocation_note": "Lost a host or relocating VPS? Ping us on Telegram — we reissue your license key instantly.",
+    "cta": "Open Telegram support"
   },
   "pilot_days": 10,
   "hero": {
-    "eyebrow": "10-day free pilot · no credit card"
+    "eyebrow": "10-day free pilot · no credit card required"
   },
   "empathy": {
     "eyebrow": "Sound familiar?",
-    "title": "If this feels like your week",
+    "title": "If your week in media buying looks like this",
     "guide_label": "Media buyer guide"
   },
   "empathy_cards": [
     {
       "id": "cloud_risk",
       "title": "Cloud tracker, cloud risk",
-      "body": "Your campaigns live in someone else's account. Policy bans and surprise limits land on the worst day of the month. Self-hosted keeps funnels and visitor logs on your server — we ship software, not a shared database."
+      "body": "Your winning funnels and landers live in someone else's shared cloud. Account bans and export limits strike on the worst day of the month. Self-hosted keeps campaigns and visitor logs strictly on your VPS — we ship software, not a shared database."
     },
     {
       "id": "cloaker_bill",
       "title": "Another cloaker invoice, ROI already red",
-      "body": "Tracker $99, cloaker $499, IVT \"next quarter\" — while junk traffic still burns budget tonight. One license covers routing, cloaking, antifraud, and reporting."
+      "body": "Tracker $99, cloaker $499, antifraud 'next quarter' — while junk traffic burns your budget tonight. One BidShard license covers click routing, cloaking, bot filtering, and postback reporting."
     },
     {
       "id": "missing_leads",
-      "title": "\"Where did 15 conversions go?\"",
-      "body": "Network shows 100 leads, partner shows 85, support sends screenshots. Postback trail logs every hop so you see whether the gap is network, tracker, or affiliate — before the week closes red."
+      "title": "\"Where did 15 conversions disappear?\"",
+      "body": "Ad network reports 100 leads, affiliate network logs 85, support sends back-and-forth screenshots. Postback trail logs every single hop so you spot network shave before closing the week red."
     },
     {
       "id": "vps_down",
-      "title": "Friday night, VPS is down",
-      "body": "Campaigns still spin in the ad manager while ingest is dead. Lost your server? Message us on Telegram — we reissue the license key so you can bring traffic back online."
+      "title": "Friday night, main VPS goes down",
+      "body": "Campaigns are spinning in ad manager while ingest is dead. Server host burned or banned? Drop us a note on Telegram — we reissue your license key file instantly for your replacement node."
     }
   ],
   "instant_sell": {
     "margin_guard": {
       "eyebrow": "Margin Guard",
-      "title": "Anti-bleed while you sleep",
-      "body": "Facebook caught bot traffic at 3 a.m. and burned $2k before you woke up? Margin Guard watches ROI on a timer and pauses your ads in Meta and Google through their APIs — plus routing in the tracker — before the day ends deep red.",
+      "title": "Anti-bleed spend protection while you sleep",
+      "body": "Facebook caught bot traffic at 3 a.m. and burned $2,000 before sunrise? Margin Guard monitors campaign ROI on a timer and pauses your adsets in Meta and Google via API — plus click routing in the tracker — before the day ends deep red.",
       "metric": "Included on Pro and Pilot",
-      "footnote": "Set your margin rules once. Margin Guard runs on Pro, Scale, and the 10-day Pilot."
+      "footnote": "Set your ROI threshold once. Margin Guard runs on Pro, Scale, and the 10-day Pilot."
     }
   },
   "killers": [
     {
       "id": "wasm",
-      "title": "Drop the cloaker bill",
-      "body": "Built-in cloaking on your server — no $300–600/month third-party cloaker. Same protection on accepted traffic, more margin left after media spend.",
+      "title": "Ditch the extra cloaker invoice",
+      "body": "Built-in edge cloaking on your server — save $300–$600/month on third-party cloakers. Same protection on accepted traffic, more margin left in your pocket.",
       "icon": "funnel"
     },
     {
       "id": "silent",
-      "title": "Bots see OK — budget stays intact",
-      "body": "Junk traffic gets a clean accept response while your campaign budget stays intact. Reviewers and bots see a normal page; you see every filtered hit in analytics.",
+      "title": "Bots see clean OK — budget stays intact",
+      "body": "Junk traffic and reviewer bots get a clean 200 OK response on a decoy page while your daily budget cap stays intact. Full visibility in analytics.",
       "icon": "ghost"
     },
     {
       "id": "postback",
-      "title": "Where did 15 conversions go?",
-      "body": "Network says 100 leads, partner shows 85. Every postback hop is logged so you spot the gap — network, tracker, or affiliate — before the week closes in the red.",
+      "title": "Lossless postback tracking vs shave",
+      "body": "CPA network claims 85 leads instead of 100? Every postback hop is logged — prove affiliate network shave with hard data instead of screenshot debates.",
       "icon": "route"
     },
     {
       "id": "margin_guard",
-      "title": "Anti-bleed while you sleep",
-      "body": "Facebook burned $2k on bot traffic before you woke up? Margin Guard pauses your ads in Meta and Google through their APIs when ROI drops — not just a Telegram alert at 2 a.m.",
+      "title": "Margin Guard — anti-bleed defense",
+      "body": "Facebook burning budget on bad traffic? Margin Guard pauses your campaigns in Meta and Google via API when ROI drops — not just a 2 a.m. Telegram notification.",
       "icon": "gauge"
     },
     {
       "id": "capi",
-      "title": "Conversions networks can optimize on",
-      "body": "Meta, Google, and TikTok conversion APIs on your server — real postback signal to the ad stack, not a half-synced browser pixel.",
+      "title": "Server-side CAPI for Meta, Google & TikTok",
+      "body": "Direct CAPI postback signal from your server to ad networks. Auto-bidding algorithms train on real, verified conversions.",
       "icon": "capi"
     },
     {
       "id": "dispute",
-      "title": "Partner shave? Send proof, not screenshots",
-      "body": "Export clicks, postback receipts, and payout snapshots in one bundle — built for traffic refund disputes, not ticket ping-pong.",
+      "title": "Prove partner shave with export bundles",
+      "body": "Export click logs, postback receipts, and payout snapshots in one bundle — built to resolve traffic refund disputes fast.",
       "icon": "evidence"
     },
     {
       "id": "migration",
-      "title": "Change servers without losing revenue days",
-      "body": "Move ingest to new hardware under the same license — no week-long reinstall freeze while campaigns sit idle.",
+      "title": "Migrate servers in 5 mins without downtime",
+      "body": "Move ingest to new hardware under your existing license key — no week-long reinstall freeze while live traffic sits idle.",
       "icon": "migrate"
     }
   ],
   "outcomes_compact": [
-    "Junk traffic gets filtered — your daily cap stops bleeding on bots",
-    "Margin Guard pauses traffic and Meta/Google ads when ROI drops",
-    "See where conversions disappeared before the week closes red",
-    "Ad networks get real conversion signal so bidding improves",
-    "One license instead of tracker + cloaker + IVT renewals every month"
+    "Junk traffic & bots get filtered — daily cap stops bleeding on empty hits",
+    "Margin Guard pauses tracker routing and Meta/Google ads when ROI drops",
+    "Audit every postback hop — detect affiliate network shave 24/7",
+    "Ad networks get real conversion CAPI signals to hit winning auctions",
+    "One software license instead of separate tracker + cloaker + IVT bills",
+    "Web admin UI — manage campaigns, flows, and reports in your browser"
   ],
   "capabilities_compact": [
-    "Meta, Google, and TikTok CAPI — networks bid on real conversions",
-    "Telegram Mini App flows — launch funnels without a second SaaS bill",
-    "Click routing and S2S postbacks — spend only on traffic you accept",
-    "Cloaking and bot filters — less budget burned on junk",
-    "IVT and ML antifraud on your data — background scoring, not per-click API bills",
-    "Cost sync from configured ad networks — hourly and 15-minute import jobs",
-    "Smart alerts to Slack or Telegram — act before the day ends red",
-    "Team RBAC — fewer costly mistakes on live campaigns",
-    "Export bundles for partner disputes and month-end reconciliation",
-    "Margin Guard pauses tracker traffic and Meta/Google campaigns when ROI drops"
+    "Web admin UI — campaigns, landers, flows, and reports in your browser",
+    "Meta, Google, and TikTok CAPI — train ad algorithms on real conversions",
+    "Telegram Mini App funnel support — launch flows without a second SaaS bill",
+    "Click routing and S2S postbacks — spend budget only on accepted traffic",
+    "Built-in cloaking and bot filters — zero budget wasted on moderators",
+    "Background ML antifraud on your bare metal — no per-click API fees",
+    "Ad network spend sync — 15-minute auto imports for accurate ROI",
+    "Smart alerts to Telegram/Slack — take action before campaigns turn red",
+    "Team RBAC — prevent junior buyers from killing winning campaigns",
+    "Export bundles for affiliate network shave disputes and month-end audits",
+    "Margin Guard kills click routing and pauses FB/Google adsets on ROI drop"
   ],
   "appliance": {
-    "title": "Pilot without breaking production",
-    "subtitle": "Point one test campaign first — compare numbers with your current tracker before you switch anything live.",
+    "title": "Pilot without breaking live campaigns",
+    "subtitle": "Route one test campaign first — compare conversions and block rates with your current tracker before switching live traffic.",
     "install_cli_title": "Install command (for your DevOps)",
     "install_cli_summary": "Show install command",
     "install_cli_summary_close": "Close install command",
     "cta_primary": "Get free pilot",
     "cta_docs": "Architecture",
     "cta_install": "Install command",
-    "screenshot_alt": "BidShard admin Settings page with license key field"
+    "screenshot_alt": "BidShard web admin in browser — license management and settings"
   },
   "tco": {
-    "eyebrow": "Total cost",
-    "title": "One stack on your metal — not four vendors billing you every month",
-    "subtitle": "Typical mid-sized setup: multi-GEO funnels, one ops lead, 10M events per month.",
+    "eyebrow": "Total cost of ownership",
+    "title": "One stack on your metal — not four SaaS vendors billing monthly",
+    "subtitle": "Standard media buying setup: multi-GEO funnels, 1 ops lead, 10M events per month.",
     "columns": [
       {
-        "label": "Patchwork stack",
+        "label": "Patchwork SaaS stack",
         "items": [
-          "Tracker license ($99–130/mo)",
-          "Cloaker SaaS ($300–600/mo)",
-          "IVT tooling bought separately ($100–200/mo)",
-          "VPS oversized for traffic spikes — 32–64 GB RAM",
-          "Legacy tracker chokes under load — memory spikes after every deploy",
-          "Row-store reporting DB — more RAM per billion events"
+          "Tracker subscription ($99–$130/mo)",
+          "Cloaker SaaS ($300–$600/mo)",
+          "IVT tooling addon ($100–$200/mo)",
+          "Oversized 32–64 GB RAM VPS to handle legacy memory leaks",
+          "Legacy row-store DB chokes under heavy click volumes"
         ],
-        "summary": "$900–1,400/mo in SaaS alone, before ad spend"
+        "summary": "$900–$1,400/mo in SaaS tooling alone, before ad spend"
       },
       {
         "label": "BidShard on your VPS",
         "highlight": true,
         "items": [
-          "License from $129/mo — cloaking, CAPI, postbacks in one line item",
-          "Columnar analytics — size RAM for reports, not just ingest spikes",
-          "Starter and Pro: single VPS with 12–16 GB RAM",
-          "Scale: split tracker, cache, and reporting across hosts",
-          "Margin Guard pauses tracker traffic and Meta/Google campaigns on Pro",
-          "Bots see OK — budget stays intact on filtered traffic"
+          "License from $129/mo — routing, cloaking, CAPI & postbacks in one bill",
+          "Columnar analytics DB — lightweight RAM footprint",
+          "Starter & Pro: single 12–16 GB RAM VPS handles high RPS",
+          "Scale: split tracker, cache, and analytics across nodes",
+          "Margin Guard pauses tracker routing and Meta/Google adsets on Pro",
+          "Bots see decoy 200 OK — daily budget cap stays intact"
         ],
-        "summary": "License from $129/mo + VPS sized per hardware guide"
+        "summary": "License from $129/mo + standard VPS cost"
       }
     ],
     "impacts": {
       "title": "Where the money goes at 10M events/mo",
-      "subtitle": "Same traffic volume — different monthly stack cost.",
+      "subtitle": "Same traffic volume — radically lower monthly infrastructure overhead.",
       "headers": {
         "driver": "Driver",
-        "patchwork": "Patchwork",
+        "patchwork": "Patchwork Stack",
         "bidshard": "BidShard",
-        "impact": "Notes"
+        "impact": "Result"
       },
       "rows": [
         {
           "label": "Infrastructure",
-          "patchwork": "Often 32–64 GB VPS compensating for legacy runtime spikes and row-store reporting",
-          "bidshard": "Starter and Pro: 12–16 GB single VPS. Scale: split tracker, cache, and analytics across hosts",
-          "delta": "Right-sized RAM",
+          "patchwork": "32–64 GB VPS needed to compensate for legacy tracker spikes",
+          "bidshard": "Starter & Pro: 12–16 GB RAM VPS. Scale: split roles across nodes",
+          "delta": "RAM savings",
           "delta_note": "see hardware sizing table"
         },
         {
           "label": "SaaS stack",
-          "patchwork": "Tracker + cloaker + IVT — three invoices, three renewals",
-          "bidshard": "One license — routing, cloaking, antifraud, and reporting",
+          "patchwork": "Tracker + cloaker + IVT — three vendors, three renewals",
+          "bidshard": "One license — click routing, cloaking, antifraud, and reporting",
           "delta": "Fewer renewals",
-          "delta_note": "license consolidation is the main SaaS delta"
+          "delta_note": "license consolidation cuts SaaS cost"
         },
         {
-          "label": "Junk spend",
-          "patchwork": "Bots can still debit budget — alerts often arrive after the bleed",
-          "bidshard": "Bots see OK — budget stays intact; Margin Guard pauses when ROI drops",
+          "label": "Junk traffic spend",
+          "patchwork": "Bots burn budget — notifications arrive after money is gone",
+          "bidshard": "Bots hit decoy views; Margin Guard stops ads when ROI drops",
           "delta": "Spend control",
-          "delta_note": "depends on your traffic mix and rule tuning"
+          "delta_note": "protects budget 24/7"
         },
         {
           "label": "Ops overhead",
-          "patchwork": "Three vendors, three renewals, three support threads",
-          "bidshard": "One install, one license key file, works offline",
-          "delta": "Less ops drag",
+          "patchwork": "Three vendors, constant support tickets, multi-panel chaos",
+          "bidshard": "One install, one offline license key file, total autonomy",
+          "delta": "Zero ops drag",
           "delta_note": "self-hosted on your VPS"
         }
       ],
       "total": {
-        "label": "What is actually different",
-        "value": "One license, your metal",
-        "body": "Tracker, cloaking, antifraud, and reporting in one self-hosted install. Size VPS per hardware guide — split roles on Scale when volume grows.",
-        "architecture_link": "How it is built"
+        "label": "What actually changes",
+        "value": "One license, your bare metal",
+        "body": "Click routing, cloaking, antifraud, and analytics in one self-hosted deployment. Right-size your VPS — scale hardware without paying per click.",
+        "architecture_link": "How it works"
       }
     }
   },
@@ -307,18 +312,19 @@
       "name": "Pilot",
       "price": "Free",
       "period": "",
-      "tagline": "10 days free — full Pro, including anti-bleed. We help with install.",
+      "tagline": "10 days free — full Pro features including Margin Guard. Free setup help.",
       "specs_label": "What you get in the pilot",
       "features": [
-        { "text": "10 days free · full Pro · no credit card", "highlight": true },
-        { "text": "Margin Guard — auto-stops Meta/Google ads when ROI drops while you sleep", "highlight": true },
-        { "text": "Built-in cloaking — drop the separate cloaker bill", "highlight": true },
-        { "text": "Bot and junk filters — less budget burned tonight", "highlight": true },
-        { "text": "Refund-ready reports for affiliate shave disputes (bot breakdown included)", "highlight": true },
-        { "text": "Network spend imports — see true ROI before month-end", "highlight": true },
-        "Conversions back to Meta, Google, and TikTok ad accounts",
-        "One-click install · free setup help on Telegram",
-        "Unlimited campaigns and clicks"
+        { "text": "10 days free · full Pro access · no credit card required", "highlight": true },
+        { "text": "Margin Guard — auto-pauses Meta/Google ads when ROI dips while you sleep", "highlight": true },
+        { "text": "Built-in cloaking — drop your separate cloaker invoice", "highlight": true },
+        { "text": "Bot & junk traffic filters — stop night-shift budget burn", "highlight": true },
+        { "text": "Refund-ready shave reports with bot breakdowns", "highlight": true },
+        { "text": "Network ad spend imports — track true ROI before month-end", "highlight": true },
+        "Server-side postback conversion fire to Meta, Google, and TikTok",
+        { "text": "Web admin UI — complete Pro dashboard in browser", "highlight": true },
+        "One-click install · free setup assistance on Telegram",
+        "Unlimited campaigns, funnels, and clicks"
       ],
       "cta": "Request pilot",
       "featured": false,
@@ -329,18 +335,19 @@
       "name": "Starter",
       "price": "$129",
       "period": "/ month",
-      "tagline": "Solo buyer — tracker, cloaking, and conversions in one bill.",
-      "specs_label": "Starter — run traffic and get paid",
+      "tagline": "Solo buyer — click routing, cloaking, and CAPI in one single bill.",
+      "specs_label": "Starter — run traffic in the green",
       "features": [
-        { "text": "Funnels, landers, and split paths — one tracker", "highlight": true },
-        { "text": "Built-in cloaking — no $300–600/mo cloaker", "highlight": true },
-        { "text": "Conversions land in Meta, Google, and TikTok", "highlight": true },
-        { "text": "Partner postbacks — pay only for clicks you accept", "highlight": true },
-        { "text": "Ad spend sync — reconcile ROI before month-end", "highlight": true },
-        "Geo, schedule, and device filters on junk traffic",
-        "Telegram alerts before the day ends red",
-        "One-click install · free setup help on Telegram",
-        "Unlimited campaigns and clicks"
+        { "text": "Funnels, landers, and A/B split paths in one tracker", "highlight": true },
+        { "text": "Built-in cloaking — no $300–$600/mo cloaker fee", "highlight": true },
+        { "text": "Server-side CAPI conversions for Meta, Google, and TikTok", "highlight": true },
+        { "text": "Affiliate network postbacks — track accepted clicks", "highlight": true },
+        { "text": "Ad spend sync — real-time ROI updates every 15 mins", "highlight": true },
+        { "text": "Web admin UI — manage campaigns and view reports in browser", "highlight": true },
+        "Geo, schedule, and device filters for junk traffic",
+        "Telegram alerts before campaigns turn red",
+        "One-click install · free Telegram setup help",
+        "Unlimited campaigns, funnels, and clicks"
       ],
       "cta": "Choose Starter",
       "featured": false
@@ -350,18 +357,19 @@
       "name": "Pro",
       "price": "$399",
       "period": "/ month",
-      "tagline": "Stop bleeding while you scale — the tier most buyers pick.",
-      "specs_label": "Pro — anti-bleed and refund proof",
+      "tagline": "Scale traffic without bleeding budget — the top pick for teams.",
+      "specs_label": "Pro — anti-bleed spend guard & shave proof",
       "features": [
         "Everything in Starter",
-        { "text": "Margin Guard — system pauses Facebook/Google ads when traffic goes negative, even while you sleep", "highlight": true },
-        { "text": "ML antifraud — catch junk before it eats your daily cap", "highlight": true },
-        { "text": "Where did conversions go? Full click-to-payout trail", "highlight": true },
-        { "text": "Refund-ready export for partner disputes — bot slice included", "highlight": true },
-        { "text": "Pause campaigns in Meta and Google straight from the tracker", "highlight": true },
-        "Team roles — juniors cannot kill live campaigns",
-        "One-click install · free setup help on Telegram",
-        "Unlimited campaigns and clicks"
+        { "text": "Margin Guard — auto-pauses FB/Google adsets when ROI drops, even at 3 a.m.", "highlight": true },
+        { "text": "ML antifraud — catch junk traffic before daily budget burns out", "highlight": true },
+        { "text": "Complete Postback Trail — audit click-to-payout hops", "highlight": true },
+        { "text": "Refund-ready export for affiliate shave disputes", "highlight": true },
+        { "text": "Pause adsets in Meta and Google directly from tracker", "highlight": true },
+        { "text": "Web admin UI — Margin Guard, reports, and team roles", "highlight": true },
+        "Team RBAC — keep juniors from breaking live campaigns",
+        "One-click install · free Telegram setup help",
+        "Unlimited campaigns, funnels, and clicks"
       ],
       "cta": "Choose Pro",
       "featured": true,
@@ -372,17 +380,18 @@
       "name": "Scale",
       "price": "$999",
       "period": "/ month",
-      "tagline": "Agency volume — three servers, move traffic without losing revenue days.",
-      "specs_label": "Scale — agency and high volume",
+      "tagline": "Agencies & heavy volume — up to 3 nodes, zero revenue loss on server moves.",
+      "specs_label": "Scale — high-volume agency fleet",
       "features": [
         "Everything in Pro",
-        { "text": "Up to 3 servers — split load when volume grows", "highlight": true },
-        { "text": "Move traffic between servers without idle revenue days", "highlight": true },
-        { "text": "Priority Telegram — a human answers fast", "highlight": true },
-        { "text": "Fraud scores ready before the click routes", "highlight": true },
-        "Reviewer and moderator traffic intel",
-        "One-click install · free setup help on Telegram",
-        "Unlimited campaigns across your servers"
+        { "text": "Up to 3 servers — distribute load as click volume surges", "highlight": true },
+        { "text": "Reroute live traffic between nodes with zero idle revenue days", "highlight": true },
+        { "text": "Priority Telegram support with dedicated account engineer", "highlight": true },
+        { "text": "Fraud scoring ready before click routing executes", "highlight": true },
+        { "text": "Web admin UI on every licensed server node", "highlight": true },
+        "Reviewer and ad-inspector bot intelligence",
+        "One-click install · priority Telegram rollout help",
+        "Unlimited campaigns across all server nodes"
       ],
       "cta": "Choose Scale",
       "featured": false
@@ -392,83 +401,83 @@
       "name": "Enterprise",
       "price": "Custom",
       "period": "",
-      "tagline": "Large fleets and custom layouts — we size it with you.",
-      "specs_label": "Enterprise — fleet and SLA",
+      "tagline": "Media buying teams & custom deployments — tailored layout.",
+      "specs_label": "Enterprise — custom fleet & SLA",
       "features": [
-        { "text": "Multi-region layout for big teams", "highlight": true },
-        { "text": "Vendor SLA and dedicated support line", "highlight": true },
-        { "text": "Custom server count and team limits", "highlight": true },
-        "Bulk pause and sync across ad accounts",
-        "One-click install · we help with rollout"
+        { "text": "Multi-region cluster architecture for large teams", "highlight": true },
+        { "text": "Vendor SLA agreement and direct dev line", "highlight": true },
+        { "text": "Custom host counts and workspace limits", "highlight": true },
+        "Bulk adset pause and sync across all ad accounts",
+        "Turnkey installation & deployment support"
       ],
-      "cta": "Contact us",
+      "cta": "Contact sales",
       "featured": false,
       "enterprise": true
     }
   ],
   "hardware_sizing": {
-    "eyebrow": "Hardware sizing",
+    "eyebrow": "Hardware Sizing",
     "title": "Recommended server sizing",
-    "subtitle": "Start here for your tier, then split roles when volume grows on Scale.",
-    "footnote": "x86_64 and NVMe recommended. RAM and vCPU figures include headroom for OS, analytics merges, and moderate spikes. Lost your server? Message Telegram — we reissue the license key.",
+    "subtitle": "Start on a single node for your tier, then split roles as volume scales on Scale.",
+    "footnote": "x86_64 and NVMe storage recommended. RAM and vCPU specs include headroom for OS, analytics merges, and traffic spikes. Lost a server? Ping us on Telegram — we reissue your key file fast.",
     "labels": {
-      "hosts": "Licensed hosts",
-      "cpu": "Typical layout",
+      "hosts": "Licensed VPS nodes",
+      "cpu": "Hardware spec",
       "ram": "Min RAM (per node)",
-      "disk": "Storage",
-      "profile": "When to scale up"
+      "disk": "NVMe Storage",
+      "profile": "When to scale"
     },
     "tiers": [
       {
         "code": "pilot",
         "plan": "Pilot",
-        "hosts": "1 host",
-        "cpu": "4 vCPU · all-in-one VPS",
+        "hosts": "1 VPS",
+        "cpu": "4 vCPU · all-in-one",
         "ram": "12 GB",
         "disk": "100 GB+ NVMe",
-        "profile": "10-day pilot with full Pro stack. Message us on Telegram with expected traffic and VPS spec."
+        "profile": "10-day pilot with full Pro features. DM us on Telegram with your volume and VPS spec."
       },
       {
         "code": "starter",
         "plan": "Starter",
-        "hosts": "1 host",
-        "cpu": "4 vCPU · single VPS",
+        "hosts": "1 VPS",
+        "cpu": "4 vCPU · single node",
         "ram": "12 GB",
         "disk": "100 GB+ NVMe",
-        "profile": "Solo buyer — cloaking, postbacks, and CAPI on one box."
+        "profile": "Solo buyer — click routing, cloaking, postbacks, and CAPI on one node."
       },
       {
         "code": "pro",
         "plan": "Pro",
-        "hosts": "1 host",
-        "cpu": "6 vCPU · single VPS",
+        "hosts": "1 VPS",
+        "cpu": "6 vCPU · single node",
         "ram": "16 GB",
         "disk": "200 GB+ NVMe",
-        "profile": "IVT and ML sidecars plus Margin Guard. One VPS handles moderate volume comfortably."
+        "profile": "ML antifraud & Margin Guard. Smoothly handles heavy media spend on 1 node."
       },
       {
         "code": "scale",
         "plan": "Scale",
-        "hosts": "Up to 3 hosts",
+        "hosts": "Up to 3 VPS",
         "cpu": "6–8 vCPU · split tracker, cache, analytics",
         "ram": "24 GB per busy node",
         "disk": "200 GB+ NVMe per node",
-        "profile": "Agency volume — split roles before peaks hit one box."
+        "profile": "Agency volume — split components before traffic spikes hit one node."
       },
       {
         "code": "enterprise",
         "plan": "Enterprise",
-        "hosts": "Fleet",
-        "cpu": "Vendor sizing call",
-        "ram": "Vendor sizing call",
-        "disk": "Vendor sizing call",
-        "profile": "Multi-region fleet — layout agreed per install."
+        "hosts": "Server Fleet",
+        "cpu": "Custom sizing call",
+        "ram": "Custom sizing call",
+        "disk": "Custom sizing call",
+        "profile": "Multi-region fleet — architecture designed per rollout."
       }
     ]
   },
   "page": {
-    "title": "BidShard — stop budget bleed on junk traffic",
-    "description": "Media buyers: stop budget bleed on junk traffic. Built-in cloaking and antifraud. 10-day free pilot, no credit card.",
+    "title": "BidShard — stop budget bleed on junk traffic & bots",
+    "description": "Media buyers: stop budget bleed on junk traffic and bots. Built-in cloaking and antifraud. 10-day free pilot, no credit card.",
     "menu_aria": "Open menu"
   },
   "copy": {
@@ -479,65 +488,65 @@
     "NavFaq": "FAQ",
     "NavContacts": "Contacts",
     "GetFreePilot": "Get free pilot",
-    "OwnYourTrackingStackStopRentingYourData": "Stop bleeding budget on junk traffic before ROI turns red",
-    "AdEventProcessorIsSelfHostedSoftwareForClickRoutingConversionPostbacksCampaignBudgetsAdNetworkCostSyncAndLayeredAntifraudInstallOnYourVpsLicenseIsOfflineYourCampaignsNeverLeaveYourInfrastructure": "Cloaking and antifraud on your traffic — junk clicks stop eating your daily cap. Full Pro for 10 days, no credit card.",
+    "OwnYourTrackingStackStopRentingYourData": "Stop bleeding budget on junk traffic — run your campaigns in the green 24/7",
+    "AdEventProcessorIsSelfHostedSoftwareForClickRoutingConversionPostbacksCampaignBudgetsAdNetworkCostSyncAndLayeredAntifraudInstallOnYourVpsLicenseIsOfflineYourCampaignsNeverLeaveYourInfrastructure": "Built-in cloaking and strict antifraud: bots and reviewers won't burn your daily cap. Test full Pro for 10 days on your VPS without a credit card.",
     "GetFreePilotOnTelegram": "Get free pilot",
     "SeePricingLink": "See pricing",
-    "CompareStackCost": "See the full comparison",
-    "NoCreditCardPilot10DaysRulesOnlyAntifraudTierByRequestingAPilotYouAcceptThePublicOffer": "No credit card. Free 10-day pilot. By requesting a pilot you accept the public offer.",
+    "CompareStackCost": "See full stack comparison",
+    "NoCreditCardPilot10DaysRulesOnlyAntifraudTierByRequestingAPilotYouAcceptThePublicOffer": "No credit card required. Free 10-day pilot. By requesting a pilot you accept the public offer.",
     "Empathy__eyebrow": "Sound familiar?",
-    "Empathy__title": "If this feels like your week",
+    "Empathy__title": "If your week in media buying looks like this",
     "EmpathyGuideLink": "Media buyer guide",
     "Killers__eyebrow": "Protect your margin",
     "Killers__title": "What stops budget leaks",
     "Capabilities": "What you get",
-    "DesignedForActiveMediaBuyers": "Outcomes that tie spend to revenue",
+    "DesignedForActiveMediaBuyers": "Outcomes that keep your campaigns profitable",
     "PricingPlans": "Pricing Plans",
-    "SimplePricing": "Simple pricing",
-    "PricingSubtitle": "One-click install on your server — we help with setup free on Telegram.",
-    "NoCapOnCampaignCountOrEventVolumeYouScaleOnYourHardware": "Unlimited campaigns and clicks on every tier.",
-    "PaidMonthlyInUsdtSelfHostedLicenseNotACloudSubscription": "Paid monthly in USDT. You own the license.",
+    "SimplePricing": "Transparent pricing",
+    "PricingSubtitle": "Full web admin UI included. One-click install; free setup help on Telegram.",
+    "NoCapOnCampaignCountOrEventVolumeYouScaleOnYourHardware": "Unlimited campaigns, funnels, and clicks on every plan.",
+    "PaidMonthlyInUsdtSelfHostedLicenseNotACloudSubscription": "Paid monthly in USDT. Self-hosted license you own.",
     "TryFreeFor10Days": "Try free for 10 days",
-    "KRps1ServerRulesOnlyAntifraudMessageUsOnTelegramWithExpectedTrafficVpsSpec": "Full Pro for 10 days — message us on Telegram, we help with install",
-    "OperationalInMinutes": "Start in 10 days",
+    "KRps1ServerRulesOnlyAntifraudMessageUsOnTelegramWithExpectedTrafficVpsSpec": "Full Pro for 10 days — DM us on Telegram with your expected traffic volume",
+    "OperationalInMinutes": "Up and running in 10 mins",
     "Step1": "Step 1",
     "RequestPilot": "Message us on Telegram",
-    "TellUsOnTelegramWeSendALicenseFile": "Message Telegram with your traffic volume. We send a license file and help with install free.",
+    "TellUsOnTelegramWeSendALicenseFile": "Message us on Telegram with your traffic volume. We send a license key file and help with setup free.",
     "Step2": "Step 2",
     "InstallOnYourVps": "One-click install",
-    "OneCurlCommandActivateInTheBrowser": "Run one install command on your server — or we walk you through it on Telegram.",
+    "OneCurlCommandActivateInTheBrowser": "Run one terminal command on your server — or we walk you through it on Telegram.",
     "Step3": "Step 3",
-    "PointTraffic": "Point one test campaign",
-    "ClickUrlsPostbacksCostSyncYouReLive": "Compare numbers with your current stack. Scale when ROI math checks out.",
+    "PointTraffic": "Route a test campaign",
+    "ClickUrlsPostbacksCostSyncYouReLive": "Compare conversion numbers with your old tracker. Scale up when ROI math checks out.",
     "InstallCliSummary": "Show install command",
     "InstallCliSummaryClose": "Close install command",
-    "AdEventProcessorRunningOnPort8080OfflineJwtLicenseVerified": "BidShard stack running. License key verified — works offline.",
-    "BuiltForOperatorsWhoHateSurprises": "Why media buyers switch",
-    "SelfHosted": "Your data stays yours",
-    "YouAreTheDataControllerOnYourInfrastructureZeroSharedRecords": "Campaigns and visitor logs stay on your server. No shared cloud tenant — we ship software, not a database you do not control.",
-    "TelegramSupport": "Support on Telegram",
-    "PostbacksDoNotWaitForTicketQueues": "Postbacks and provider bans do not wait for L1 business hours. Message the support bot or manager directly.",
+    "AdEventProcessorRunningOnPort8080OfflineJwtLicenseVerified": "✔ BidShard is running. License verified — open web admin in your browser.",
+    "BuiltForOperatorsWhoHateSurprises": "Why media buyers switch to BidShard",
+    "SelfHosted": "Your funnels stay strictly yours",
+    "YouAreTheDataControllerOnYourInfrastructureZeroSharedRecords": "Campaigns, funnels, and visitor logs stay on your server. No shared cloud tenant — we ship software, not a database we control.",
+    "TelegramSupport": "Direct Telegram support",
+    "PostbacksDoNotWaitForTicketQueues": "Postback issues and provider bans can't wait days for support tickets. DM our support bot or manager directly.",
     "FullStackLicense": "One stack, one renewal",
-    "RoutingBudgetsAntifraudReportingOneInstallWithoutCloakerIvtStack": "Routing, budgets, cloaking, antifraud, and reporting in one install — not tracker + cloaker + IVT renewals every month.",
-    "NoRoiWarranty": "When the server dies",
-    "YourDirectTrafficYourSpecificFunnelsAndYourTargetingDictateTheRoiResults": "Dead VPS or need new hardware? Message us on Telegram — we reissue the license key. Details in FAQ.",
+    "RoutingBudgetsAntifraudReportingOneInstallWithoutCloakerIvtStack": "Click routing, cloaking, antifraud, and reporting in one install — no separate monthly invoices.",
+    "NoRoiWarranty": "When a server goes down",
+    "YourDirectTrafficYourSpecificFunnelsAndYourTargetingDictateTheRoiResults": "Server host burned or provider banned? Ping us on Telegram — we reissue your license key for your new hardware.",
     "WhyTrackerDoesNotMatchNetwork": "Why doesn't my tracker match the CPA network?",
-    "TrackerNetworkMismatchAnswer": "Usually status timing (hold vs confirmed), a bad subid in the postback URL, or a gap on the network side. Pro tier logs every postback hop so you see where the chain broke — before you argue in screenshots.",
-    "DoINeedCloakerWithBidshard": "Do I still need a cloaker?",
-    "CloakerWithBidshardAnswer": "Starter includes built-in cloaking — most teams drop a separate cloaker bill. Run the pilot on your GEOs and compare block rates side by side.",
+    "TrackerNetworkMismatchAnswer": "Usually status timing (hold vs confirmed), a broken subid parameter, or affiliate network shave. Pro tier logs every postback hop so you see exact drop points before arguing with screenshots.",
+    "DoINeedCloakerWithBidshard": "Do I still need a separate cloaker?",
+    "CloakerWithBidshardAnswer": "Starter includes built-in cloaking — most teams drop their separate $300–$600/mo cloaker subscription immediately. Run the pilot on your GEOs and compare block rates.",
     "CanIRunPilotParallelKeitaro": "Can I run the pilot parallel to Keitaro?",
-    "PilotParallelKeitaroAnswer": "Yes — that is what we recommend. Import JSON, duplicate postbacks on a test flow, keep Keitaro live until numbers match, then switch sources.",
-    "WhatIfILoseAServerOrNeedToRelocate": "What if I lose a server or need to relocate?",
-    "WeKnowBuyersLoseHostsProviderBansDatacenterIssuesWarZoneMovesEmergencyMigrationsYourLicenseBindsToHardwareFingerprintsNotASingleIpForeverForDocumentedForceMajeureHostLossProviderShutdownSanctionedRegionRelocationContactBidshardsupportbotOrBidshardManagerWithYourDeploymentIdAndWhatHappenedWeCanIssueAdditionalActivationsOrResetBindingsCaseByCaseWeDoNotTreatOpsEmergenciesLikeLicenseAbuse": "Lost your server? Message @bidshardsupportbot or @bidshard_manager on Telegram with a short note. We reissue the license key — no license server, works offline.",
-    "PricingRelocationPolicy": "Lost your server? Message us on Telegram — we reissue the license key.",
+    "PilotParallelKeitaroAnswer": "Yes — that is exactly what we recommend! Import your JSON config, duplicate postbacks on a test flow, keep Keitaro live until numbers match, then switch traffic.",
+    "WhatIfILoseAServerOrNeedToRelocate": "What if I lose a server or need an emergency migration?",
+    "WeKnowBuyersLoseHostsProviderBansDatacenterIssuesWarZoneMovesEmergencyMigrationsYourLicenseBindsToHardwareFingerprintsNotASingleIpForeverForDocumentedForceMajeureHostLossProviderShutdownSanctionedRegionRelocationContactBidshardsupportbotOrBidshardManagerWithYourDeploymentIdAndWhatHappenedWeCanIssueAdditionalActivationsOrResetBindingsCaseByCaseWeDoNotTreatOpsEmergenciesLikeLicenseAbuse": "Server crashed or provider banned? Message @bidshardsupportbot or @bidshard_manager on Telegram. We reissue your license key fast — works 100% offline.",
+    "PricingRelocationPolicy": "Lost your server? Message us on Telegram — we reissue the license key instantly.",
     "CommonQuestions": "Common Questions",
     "FrequentlyAskedQuestions": "Frequently Asked Questions",
-    "DoYouStoreMyCampaigns": "Do you store my campaigns?",
-    "IsThisLikeKeitaroInTheCloud": "How does this compare to Keitaro or Binom?",
-    "WhatHappensAfterThePilot": "What happens after the pilot?",
+    "DoYouStoreMyCampaigns": "Do you store my campaign funnels?",
+    "IsThisLikeKeitaroInTheCloud": "How does BidShard compare to Keitaro or Binom?",
+    "WhatHappensAfterThePilot": "What happens after the 10-day pilot?",
     "DoINeedToBeADeveloper": "Do I need to be a developer?",
-    "HowDoIStart": "How do I start?",
-    "SelfHostedLicenseSoftwareForModernMediaBuyers": "self-hosted ad stack for media buyers who've been burned before.",
+    "HowDoIStart": "How do I start the pilot?",
+    "SelfHostedLicenseSoftwareForModernMediaBuyers": "self-hosted tracking stack for media buyers who demand complete control over their ROI.",
     "FooterArchitecture": "Architecture",
     "FooterBuyersGuide": "Media buyer guide",
     "PublicOffer": "Public offer",
@@ -545,12 +554,12 @@
     "Telegram": "Telegram",
     "FooterInstall": "Install",
     "2026AdEventProcessorAllRightsReserved": "© 2026 BidShard. All rights reserved.",
-    "site-tco-jump": "Where the money goes at scale",
-    "NoEverythingRunsExclusivelyOnYourServerWeHaveNoBackendApiThatCollectsTelemetryCampaignConfigurationsOrVisitorLogs": "No. Everything runs on your server. We have no backend that collects telemetry, campaign configs, or visitor logs.",
-    "NoItIsLocalSoftwareYouInstallDirectlyOnYourVpsYouCanImportYourCurrentConfigurationsDirectlyFromKeitaroOrBinomViaJson": "Same model — self-hosted on your VPS, your traffic never leaves your infrastructure. The difference is one stack: routing, cloaking, IVT, cost sync, and CAPI without separate tracker, cloaker, and antifraud bills. Import JSON from Keitaro or Binom and run a parallel pilot.",
-    "PayUsdtForYourMatchingTierWeGenerateAndSendANewLicenseFileYouLoadItIntoYourExistingDeploymentWithNoReinstallNeeded": "Pay USDT for your matching tier. We send a new license key file. Load it in Admin Settings — no reinstall needed.",
-    "BeingComfortableWithBasicVpsOperationsAndDockerIsHighlyRecommendedTheProductIsApiFirstTodayWhileOurAdminUiContinuesToCatchUp": "You need someone comfortable with basic VPS and Docker — not a full-time developer. The onboarding wizard walks through the first campaign; admin console covers day-to-day ops.",
-    "ReachOutOnTelegramToObtainAPilotLicenseExecuteTheSingleLineInstallScriptOnYourHostActivateTheLicenseInYourBrowserAndYouAreLive": "Message us on Telegram for a pilot license key file. Run the install script on your VPS, paste the key in Admin Settings, and point a test campaign.",
+    "site-tco-jump": "Where the money goes when scaling",
+    "NoEverythingRunsExclusivelyOnYourServerWeHaveNoBackendApiThatCollectsTelemetryCampaignConfigurationsOrVisitorLogs": "No! Everything runs exclusively on your server. We have zero backend endpoints collecting telemetry, funnel configs, or visitor logs.",
+    "NoItIsLocalSoftwareYouInstallDirectlyOnYourVpsYouCanImportYourCurrentConfigurationsDirectlyFromKeitaroOrBinomViaJson": "Same self-hosted model on your VPS — your traffic never leaves your infrastructure. The key difference is one unified stack: routing, cloaking, IVT, cost sync, and CAPI without 4 separate subscriptions. Import JSON from Keitaro or Binom and run a parallel test.",
+    "PayUsdtForYourMatchingTierWeGenerateAndSendANewLicenseFileYouLoadItIntoYourExistingDeploymentWithNoReinstallNeeded": "Pay USDT for your matching tier. We issue a new license key file. Paste it in your web admin UI — no server reinstall required.",
+    "BeingComfortableWithBasicVpsOperationsAndDockerIsHighlyRecommendedTheProductIsApiFirstTodayWhileOurAdminUiContinuesToCatchUp": "No full-time developer needed! Full web admin UI is included — campaigns, flows, reports, and Margin Guard in your browser. We help with 1-click install on Telegram.",
+    "ReachOutOnTelegramToObtainAPilotLicenseExecuteTheSingleLineInstallScriptOnYourHostActivateTheLicenseInYourBrowserAndYouAreLive": "DM us on Telegram for a pilot license. Run the 1-click install command, paste your key in the web admin, and launch a test campaign.",
     "MessageOnTelegram": "Message on Telegram",
     "OperationIntegrity": "Operation integrity",
     "SitePgaTerminalComment": "# one command on your VPS"

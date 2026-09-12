@@ -5,6 +5,8 @@
 //     POST /api/v1/smart-alerts/events/{id}/ack.
 //   - worker_batch.go batches ClickHouse metric windows per customer/campaign; store.go persists rules and fired events.
 //   - worker_templates.go evaluates template:* rules via fixed PG/CH queries (M5 lite).
+//   - action_apply.go applies margin_breach rule actions (notify, pause_campaign, blacklist_placement)
+//     through Host.PauseCampaign and Host.BlacklistPlacement (same paths as automation executor).
 //   - drain.go (CheckStuckDrainJobs) alerts on stuck redis_slot_migration drain rows via Host.AlertDrainStuck.
 //
 // Topology:
@@ -18,6 +20,7 @@
 //   - Enabled=false rules skipped by worker without deleting history.
 //   - One firing per rule per window_start (existing event lookup before insert).
 //   - Template create path rejects arbitrary metric/operator from client when template is set.
+//   - pause_campaign and blacklist_placement actions are allowed only for margin_breach template rules.
 //
 // Forbidden:
 //   - Alert evaluation on tracker request path.

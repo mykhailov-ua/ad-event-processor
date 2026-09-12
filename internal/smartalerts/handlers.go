@@ -44,6 +44,7 @@ type SmartAlertRuleDTO struct {
 	Threshold     float64   `json:"threshold"`
 	WindowMinutes int       `json:"window_minutes"`
 	WebhookURL    string    `json:"webhook_url"`
+	Action        string    `json:"action,omitempty"`
 	Enabled       bool      `json:"enabled"`
 	CreatedAt     time.Time `json:"created_at"`
 	UpdatedAt     time.Time `json:"updated_at"`
@@ -77,6 +78,7 @@ type UpsertSmartAlertRuleRequest struct {
 	Threshold     float64 `json:"threshold"`
 	WindowMinutes int     `json:"window_minutes"`
 	WebhookURL    string  `json:"webhook_url"`
+	Action        string  `json:"action,omitempty"`
 	Enabled       bool    `json:"enabled"`
 }
 

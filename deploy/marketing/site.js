@@ -89,31 +89,100 @@
 
   function siteLocale() {
     var lang = (document.documentElement.getAttribute('lang') || 'en').toLowerCase();
-    return lang === 'uk' ? 'uk' : 'en';
+    if (lang === 'uk' || lang === 'ru') {
+      return lang;
+    }
+    return 'en';
   }
 
-  function localeHref(path) {
-    var target = String(path || '');
-    if (!target) {
-      return siteLocale() === 'uk' ? '/uk/' : '/';
+  function localePathPrefix(locale) {
+    locale = locale || siteLocale();
+    if (locale === 'uk') {
+      return '/uk';
     }
+    if (locale === 'ru') {
+      return '/ru';
+    }
+    return '';
+  }
+
+  function localizedPath(path, locale) {
+    var target = String(path || '/');
     if (/^https?:\/\//i.test(target)) {
       return target;
     }
     if (target.charAt(0) !== '/') {
       target = '/' + target;
     }
-    if (siteLocale() === 'uk' && target.indexOf('/uk/') !== 0 && target !== '/uk') {
-      return '/uk' + target;
+    var prefix = localePathPrefix(locale);
+    if (!prefix) {
+      return target;
     }
-    return target;
+    if (target === '/') {
+      return prefix + '/';
+    }
+    return prefix + target;
+  }
+
+  function localeHref(path) {
+    return localizedPath(path, siteLocale());
+  }
+
+  function pageKind() {
+    if (document.body.classList.contains('demo-page')) {
+      return 'demo';
+    }
+    if (
+      document.body.classList.contains('buyers-page') ||
+      document.body.classList.contains('operators-page')
+    ) {
+      return 'buyers';
+    }
+    if (document.body.classList.contains('docs-page')) {
+      return 'docs';
+    }
+    if (document.body.classList.contains('offer-page')) {
+      return 'offer';
+    }
+    if (document.querySelector('.Landing')) {
+      return 'home';
+    }
+    return 'home';
+  }
+
+  function localePageHref(locale) {
+    var prefix = localePathPrefix(locale);
+    var kind = pageKind();
+    if (kind === 'home') {
+      return prefix ? prefix + '/' : '/';
+    }
+    if (kind === 'offer') {
+      return '/offer.html';
+    }
+    var file = kind + '.html';
+    return prefix ? prefix + '/' + file : '/' + file;
+  }
+
+  function localeFromHref(href) {
+    var path = String(href || '');
+    if (path.indexOf('/uk/') === 0 || path === '/uk' || path.indexOf('/uk') === 0) {
+      return 'uk';
+    }
+    if (path.indexOf('/ru/') === 0 || path === '/ru' || path.indexOf('/ru') === 0) {
+      return 'ru';
+    }
+    return 'en';
   }
 
   function offerPageHref(config) {
     if (config && config.offer && config.offer.url) {
       return config.offer.url;
     }
-    return siteLocale() === 'uk' ? '../offer.html' : 'offer.html';
+    var locale = siteLocale();
+    if (locale === 'uk' || locale === 'ru') {
+      return '../offer.html';
+    }
+    return 'offer.html';
   }
 
   function docsPageHref(config) {
@@ -121,7 +190,7 @@
     if (ui.docs_href) {
       return ui.docs_href;
     }
-    return siteLocale() === 'uk' ? '/uk/docs.html' : '/docs.html';
+    return localizedPath('/docs.html', siteLocale());
   }
 
   function demoPageHref(config) {
@@ -129,7 +198,7 @@
     if (ui.demo_href) {
       return ui.demo_href;
     }
-    return siteLocale() === 'uk' ? '/uk/demo.html' : '/demo.html';
+    return localizedPath('/demo.html', siteLocale());
   }
 
   function buyersPageHref(config) {
@@ -140,7 +209,7 @@
     if (ui.operators_href) {
       return ui.operators_href;
     }
-    return siteLocale() === 'uk' ? '/uk/buyers.html' : '/buyers.html';
+    return localizedPath('/buyers.html', siteLocale());
   }
 
   function formatTemplate(template, vars) {
@@ -160,7 +229,12 @@
   }
 
   function loadConfigForLocale(locale) {
-    var file = locale === 'uk' ? '/site.config.uk.json' : '/site.config.json';
+    var file = '/site.config.json';
+    if (locale === 'uk') {
+      file = '/site.config.uk.json';
+    } else if (locale === 'ru') {
+      file = '/site.config.ru.json';
+    }
     return fetch(file, { cache: 'no-store' })
       .then(function (res) {
         return res.ok ? res.json() : {};
@@ -173,15 +247,18 @@
   var localeConfigs = null;
 
   function preloadLocaleConfigs() {
-    return Promise.all([loadConfigForLocale('en'), loadConfigForLocale('uk')]).then(
-      function (rows) {
-        localeConfigs = {
-          en: normalizeConfig(rows[0]),
-          uk: normalizeConfig(rows[1]),
-        };
-        return localeConfigs[siteLocale()] || localeConfigs.en;
-      }
-    );
+    return Promise.all([
+      loadConfigForLocale('en'),
+      loadConfigForLocale('uk'),
+      loadConfigForLocale('ru'),
+    ]).then(function (rows) {
+      localeConfigs = {
+        en: normalizeConfig(rows[0]),
+        uk: normalizeConfig(rows[1]),
+        ru: normalizeConfig(rows[2]),
+      };
+      return localeConfigs[siteLocale()] || localeConfigs.en;
+    });
   }
 
   function escapeHtml(value) {
@@ -237,20 +314,14 @@
   }
 
   function langSwitchHref(config) {
-    if (document.body.classList.contains('demo-page')) {
-      return siteLocale() === 'uk' ? '/demo.html' : '/uk/demo.html';
+    var current = siteLocale();
+    if (current === 'en') {
+      return '/uk/';
     }
-    if (document.body.classList.contains('buyers-page') || document.body.classList.contains('operators-page')) {
-      return siteLocale() === 'uk' ? '/buyers.html' : '/uk/buyers.html';
+    if (current === 'uk') {
+      return '/ru/';
     }
-    if (document.body.classList.contains('docs-page')) {
-      return siteLocale() === 'uk' ? '/docs.html' : '/uk/docs.html';
-    }
-    if (document.body.classList.contains('offer-page')) {
-      return siteLocale() === 'uk' ? '/offer.html' : '/uk/';
-    }
-    var ui = config.ui || {};
-    return ui.lang_switch_href || (siteLocale() === 'uk' ? '/' : '/uk/');
+    return '/';
   }
 
   function normalizeConfig(raw) {
@@ -364,7 +435,7 @@
   }
 
   function switchLocale(href) {
-    var targetLocale = href.indexOf('/uk') !== -1 ? 'uk' : 'en';
+    var targetLocale = localeFromHref(href);
     var config = localeConfigs && localeConfigs[targetLocale];
     if (!config) {
       window.location.assign(href);
@@ -1508,16 +1579,33 @@
 
   function updateLangSwitch(config) {
     var ui = config.ui || {};
-    var href = langSwitchHref(config);
-    document.querySelectorAll('.site-lang-switch, [data-site-lang-switch]').forEach(function (el) {
-      el.setAttribute('href', href);
-      if (ui.lang_switch_label) {
-        el.textContent = ui.lang_switch_label;
+    var current = siteLocale();
+    document.querySelectorAll('[data-site-lang]').forEach(function (el) {
+      var loc = el.getAttribute('data-site-lang');
+      if (!loc) {
+        return;
       }
-      if (ui.lang_switch_title) {
-        el.setAttribute('title', ui.lang_switch_title);
+      el.setAttribute('href', localePageHref(loc));
+      var active = loc === current;
+      el.classList.toggle('is-active', active);
+      if (active) {
+        el.setAttribute('aria-current', 'page');
+      } else {
+        el.removeAttribute('aria-current');
       }
     });
+    document.querySelectorAll('.site-lang-switch:not([data-site-lang]), [data-site-lang-switch]').forEach(
+      function (el) {
+        var href = langSwitchHref(config);
+        el.setAttribute('href', href);
+        if (ui.lang_switch_label) {
+          el.textContent = ui.lang_switch_label;
+        }
+        if (ui.lang_switch_title) {
+          el.setAttribute('title', ui.lang_switch_title);
+        }
+      }
+    );
   }
 
   function wireLangSwitch() {
@@ -1579,7 +1667,7 @@
     renderHardwareSizing(config);
     updateLangSwitch(config);
     applyTheme(document.documentElement.getAttribute('data-theme') || 'dark');
-    var homeHref = siteLocale() === 'uk' ? '/uk/' : '/';
+    var homeHref = localizedPath('/', siteLocale());
     document
       .querySelectorAll(".site-doc-header a[href='index.html'], .site-doc-back")
       .forEach(function (link) {
@@ -1681,7 +1769,7 @@
     document
       .querySelectorAll(".offer-header a[href='index.html'], .offer-back")
       .forEach(function (link) {
-        link.setAttribute('href', siteLocale() === 'uk' ? '/uk/' : '/');
+        link.setAttribute('href', localizedPath('/', siteLocale()));
       });
     document
       .querySelectorAll(".offer-header .site-doc-header__nav a[href='docs.html']")
@@ -1705,7 +1793,7 @@
       return;
     }
     var locale = window.history.state.bidshardLocale;
-    switchLocale(locale === 'uk' ? '/uk/' : '/');
+    switchLocale(localePageHref(locale));
   });
 
   preloadLocaleConfigs().then(function (config) {

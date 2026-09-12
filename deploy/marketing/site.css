@@ -556,6 +556,15 @@ body {
   letter-spacing: -0.02em;
 }
 
+.PricingSubtitle {
+  margin: 12px 0 0;
+  max-width: 52ch;
+  color: var(--site-muted);
+  font-size: 17px;
+  font-weight: 500;
+  line-height: 1.5;
+}
+
 .Landing .FeatureStoryBlock {
   width: 100%;
   max-width: var(--site-content-max);
@@ -5266,6 +5275,26 @@ html[data-theme='light'] .Landing .TerminalBlock.site-pga-terminal {
 
 html[data-theme='light'] .site-instant-sell__card--calculator .site-hero-calculator {
   box-shadow: none;
+}
+
+.site-lang-nav {
+  display: inline-flex;
+  align-items: center;
+  gap: 2px;
+  flex-shrink: 0;
+}
+
+.site-lang-sep {
+  color: var(--site-text-muted);
+  font-size: 11px;
+  line-height: 1;
+  user-select: none;
+}
+
+.site-lang-switch.is-active {
+  border-color: var(--site-accent);
+  color: var(--site-accent);
+  background: color-mix(in srgb, var(--site-accent) 12%, var(--site-surface));
 }
 
 .site-lang-switch {

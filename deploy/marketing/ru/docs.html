@@ -1,0 +1,136 @@
+<!DOCTYPE html>
+<html lang="ru">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <meta name="description" content="Как работает BidShard на вашем сервере: роутинг кликов, защита бюджета, CAPI отстук и офлайн-лицензия.">
+  <title>Как это работает — BidShard</title>
+  <script>
+    (function () {
+      try {
+        var theme = localStorage.getItem("bidshard_theme");
+        if (theme === "light" || theme === "dark") {
+          document.documentElement.setAttribute("data-theme", theme);
+        }
+      } catch (e) {}
+    })();
+  </script>
+  <link rel="alternate" hreflang="en" href="/docs.html" />
+  <link rel="alternate" hreflang="uk" href="/uk/docs.html" />
+  <link rel="alternate" hreflang="ru" href="/ru/docs.html" />
+  <link rel="stylesheet" href="/site.css?v=20260914">
+  <script src="/site.js?v=20260914" defer></script>
+</head>
+<body class="docs-page">
+  <div class="site-offer-gate" data-site-offer-gate hidden aria-hidden="true"></div>
+  <header class="site-doc-header">
+    <a href="index.html">BidShard</a>
+    <nav class="site-doc-header__nav" aria-label="Документация">
+      <a href="index.html">Главная</a>
+      <a href="buyers.html">Гид для медиабайеров</a>
+      <a href="../offer.html">Публичная оферта</a>
+    </nav>
+    <div class="site-header-end">
+      <nav class="site-lang-nav" aria-label="Язык">
+        <a class="site-lang-switch" data-site-lang="en" href="/docs.html" hreflang="en" title="English">EN</a>
+        <span class="site-lang-sep" aria-hidden="true">·</span>
+        <a class="site-lang-switch" data-site-lang="uk" href="/uk/docs.html" hreflang="uk" title="Українська">UA</a>
+        <span class="site-lang-sep" aria-hidden="true">·</span>
+        <a class="site-lang-switch is-active" data-site-lang="ru" href="/ru/docs.html" hreflang="ru" title="Русский" aria-current="page">RU</a>
+      </nav>
+      <button type="button" class="site-theme-toggle" data-site-theme-toggle aria-label="Включить светлую тему" title="Светлая тема">
+        <svg class="site-theme-toggle__icon site-theme-toggle__icon--sun" viewBox="0 0 24 24" fill="none" aria-hidden="true">
+          <circle cx="12" cy="12" r="4" stroke="currentColor" stroke-width="2"/>
+          <path d="M12 2v2M12 20v2M4.93 4.93l1.41 1.41M17.66 17.66l1.41 1.41M2 12h2M20 12h2M4.93 19.07l1.41-1.41M17.66 6.34l1.41-1.41" stroke="currentColor" stroke-width="2" stroke-linecap="round"/>
+        </svg>
+        <svg class="site-theme-toggle__icon site-theme-toggle__icon--moon" viewBox="0 0 24 24" fill="none" aria-hidden="true">
+          <path d="M12 3a6 6 0 0 0 9 9 9 9 0 1 1-9-9Z" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/>
+        </svg>
+      </button>
+    </div>
+  </header>
+
+  <main class="site-doc">
+    <a href="index.html" class="site-doc-back">На главную</a>
+
+    <p class="site-doc-eyebrow">Архитектура трекера</p>
+    <h1>Как это работает</h1>
+    <p class="site-doc-lead">
+      BidShard — self-hosted ПО, разворачиваемое на вашем VPS или dedicated-сервере.
+      Ваш трафик и связки остаются строго на вашем железе — мы поставляем высоконагруженный стек и файл лицензии.
+    </p>
+
+    <nav class="site-doc-toc" aria-label="На этой странице">
+      <div class="site-doc-toc__title">На этой странице</div>
+      <ol>
+        <li><a href="#your-server">Ваш сервер</a></li>
+        <li><a href="#filters">Фильтрация кликов до списывания капа</a></li>
+        <li><a href="#reports">Отчёты, CAPI и Postback Trail</a></li>
+        <li><a href="#license">Офлайн-лицензия</a></li>
+      </ol>
+    </nav>
+
+    <h2 id="your-server">Ваш сервер</h2>
+    <p>
+      Один инсталл запускает роутинг кликов, админку связок, учет бюджетов и аналитику на железе, которое контролируете вы.
+      Клики заходят на ваш домен; валидный трафик мгновенно распределяется по потокам — без сторонних прокси-серверов.
+    </p>
+    <div class="site-doc-cards">
+      <article class="site-doc-card">
+        <h3>Входной трафик</h3>
+        <p>Ваша реклама ведет клики на URL трекера. Маршрутизация, ленды и воронки работают локально с мгновенным откликом.</p>
+      </article>
+      <article class="site-doc-card">
+        <h3>Админка и контроль</h3>
+        <p>Настройка связок, права байеров, синхрон расходов и алерты — в едином удобном интерфейсе.</p>
+      </article>
+      <article class="site-doc-card">
+        <h3>100% приватность данных</h3>
+        <p>Конфиги связок, логи кликов и отчёты хранятся на вашем сервере. Мы не собираем вашу статистику.</p>
+      </article>
+    </div>
+
+    <h2 id="filters">Фильтрация кликов до списывания капа</h2>
+    <p>
+      Каждый клик проходит моментальные проверки — ГЕО, устройство, тайминг, бот-фильтры и клоака — до списывания дневного бюджета.
+      Боты и модераторы получают белую страницу, пока ваш daily cap расходуется только на целевой трафик.
+    </p>
+    <p class="site-doc-callout">
+      <strong>Встроенная клоака.</strong>
+      Без сторонних подписок — фильтрация ботов и модераторов работает прямо в инсталле трекера.
+    </p>
+    <p>
+      Глубокий ML-антифрод фоново анализирует клики на вашем аналитическом хранилище — без задержек на каждый клик и без плат за внешние API.
+    </p>
+
+    <h2 id="reports">Отчёты, CAPI и Postback Trail</h2>
+    <p>
+      Принятые конверсии сохраняются в вашей аналитической БД для мгновенных отчётов и экспорта доказательств шейва.
+      S2S постбеки отправляются в ПП с логурованием каждого хопа — вы всегда знаете exact-статус отстука.
+    </p>
+    <p>
+      Автосинхрон подтягивает расходы из рекламных сетей каждые 15 минут для актуального ROI.
+      Прямой отстук Conversion API (Meta, Google, TikTok) идет с вашего сервера — алгоритмы оптимизируются по горячим конверсиям.
+    </p>
+
+    <h2 id="license">Офлайн-лицензия без license-сервера</h2>
+    <p>
+      Ваш тариф активируется локальным файлом лицензии в веб-админке.
+      Проверка ключа проходит офлайн на вашем VPS — никаких «home-calls» на каждый клик и блокировок экспорта.
+    </p>
+    <p>
+      При апгрейде высылаем новый файл ключа — активируйте в браузере без переустановки.
+      Сгорел VPS? Напишите в Telegram — быстро перевыдадим лицензионный ключ под новое железо.
+    </p>
+
+    <p class="site-doc-meta site-doc-meta--spaced">
+      Инструкция по установке — на главной. Условия — в <a href="../offer.html">публичной оферте</a>.
+    </p>
+
+    <div class="site-doc-actions">
+      <a class="primary" data-site-cta="telegram" href="#">Запросить пилот в Telegram</a>
+      <a class="ghost" href="index.html">На главную</a>
+    </div>
+  </main>
+</body>
+</html>

@@ -1,0 +1,233 @@
+<!DOCTYPE html>
+<html lang="ru">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <meta name="description" content="BidShard для медиабайеров: честная экономика софт-стека, переезд без простоя пролива и саппорт в Telegram.">
+  <title>Для медиабайеров — BidShard</title>
+  <script>
+    (function () {
+      try {
+        var theme = localStorage.getItem("bidshard_theme");
+        if (theme === "light" || theme === "dark") {
+          document.documentElement.setAttribute("data-theme", theme);
+        }
+      } catch (e) {}
+    })();
+  </script>
+  <link rel="alternate" hreflang="en" href="/buyers.html" />
+  <link rel="alternate" hreflang="uk" href="/uk/buyers.html" />
+  <link rel="alternate" hreflang="ru" href="/ru/buyers.html" />
+  <link rel="stylesheet" href="/site.css?v=20260914">
+  <script src="/site.js?v=20260914" defer></script>
+</head>
+<body class="docs-page buyers-page">
+  <div class="site-offer-gate" data-site-offer-gate hidden aria-hidden="true"></div>
+  <header class="site-doc-header">
+    <a href="index.html">BidShard</a>
+    <nav class="site-doc-header__nav" aria-label="Гид для медиабайеров">
+      <a href="index.html">Главная</a>
+      <a href="docs.html">Как это работает</a>
+      <a href="../offer.html">Публичная оферта</a>
+    </nav>
+    <div class="site-header-end">
+      <nav class="site-lang-nav" aria-label="Язык">
+        <a class="site-lang-switch" data-site-lang="en" href="/buyers.html" hreflang="en" title="English">EN</a>
+        <span class="site-lang-sep" aria-hidden="true">·</span>
+        <a class="site-lang-switch" data-site-lang="uk" href="/uk/buyers.html" hreflang="uk" title="Українська">UA</a>
+        <span class="site-lang-sep" aria-hidden="true">·</span>
+        <a class="site-lang-switch is-active" data-site-lang="ru" href="/ru/buyers.html" hreflang="ru" title="Русский" aria-current="page">RU</a>
+      </nav>
+      <button type="button" class="site-theme-toggle" data-site-theme-toggle aria-label="Включить светлую тему" title="Светлая тема">
+        <svg class="site-theme-toggle__icon site-theme-toggle__icon--sun" viewBox="0 0 24 24" fill="none" aria-hidden="true">
+          <circle cx="12" cy="12" r="4" stroke="currentColor" stroke-width="2"/>
+          <path d="M12 2v2M12 20v2M4.93 4.93l1.41 1.41M17.66 17.66l1.41 1.41M2 12h2M20 12h2M4.93 19.07l1.41-1.41M17.66 6.34l1.41-1.41" stroke="currentColor" stroke-width="2" stroke-linecap="round"/>
+        </svg>
+        <svg class="site-theme-toggle__icon site-theme-toggle__icon--moon" viewBox="0 0 24 24" fill="none" aria-hidden="true">
+          <path d="M12 3a6 6 0 0 0 9 9 9 9 0 1 1-9-9Z" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/>
+        </svg>
+      </button>
+    </div>
+  </header>
+
+  <main class="site-doc">
+    <a href="index.html" class="site-doc-back">На главную</a>
+
+    <p class="site-doc-eyebrow">Гид для медиабайеров</p>
+    <h1>Когда софт-стек мешает лить в плюс</h1>
+    <p class="site-doc-lead">
+      Эта страница для медиабайеров и тимлидов, которые платят за трекер, клоаку, антифрод и гигабайты RAM на VPS —
+      и всё равно сталкиваются с просадкой ROI или срезами лидов. Никакой корпоративной воды: только реальные арбитражные ситуации и решения на вашем сервере.
+    </p>
+
+    <nav class="site-doc-toc" aria-label="На этой странице">
+      <div class="site-doc-toc__title">На этой странице</div>
+      <ol>
+        <li><a href="#familiar">Если это про вас</a></li>
+        <li><a href="#stack-cost">За что вы платите на самом деле</a></li>
+        <li><a href="#start">Старт без риска для пролива</a></li>
+        <li><a href="#questions">Вопросы перед пилотом</a></li>
+        <li><a href="#when-wrong">Если улетел VPS</a></li>
+      </ol>
+    </nav>
+
+    <h2 id="familiar">Если это про вас</h2>
+    <div class="site-doc-cards">
+      <article class="site-doc-card">
+        <h3>Облачный трекер — риски для ваших связок</h3>
+        <p>
+          Твои связки и воронки живут в чужом облаке. Баны аккаунтов и лимиты экспорта прилетают в самый разгар пролива.
+          Self-hosted держит связки, ленды и логи только на твоём VPS — мы продаем софт, а не держим твои данные в общем баке.
+        </p>
+      </article>
+      <article class="site-doc-card">
+        <h3>Счёт за клоаку снова уводит ROI в минус</h3>
+        <p>
+          Трекер $99, клоака $499, антифрод «подключим потом» — а боты выжигают баланс прямо сейчас.
+          Одна лицензия BidShard закрывает роутинг, клоакинг, антифрод и отстук постбеков.
+        </p>
+      </article>
+      <article class="site-doc-card">
+        <h3>«Куда срезало 15 лидов?»</h3>
+        <p>
+          Сетка показывает 100 конверсий, ПП — 85, а саппорт разводит руками со скриншотами. Postback trail логирует
+          каждый крок отстуку — ты сразу видишь разрыв и шейв до того, как день закроется в минус.
+        </p>
+      </article>
+      <article class="site-doc-card">
+        <h3>Пятница вечер, VPS улетел в даун</h3>
+        <p>
+          Кампании крутятся в адсетке, а инджест лежит. Сгорел сервер или забанил хостер? Напиши в Telegram — мгновенно перевыдадим ключ под новый сервер.
+        </p>
+      </article>
+    </div>
+
+    <div class="site-doc-callout">
+      <strong>Антифрод без оплаты за каждый клик.</strong>
+      Правила фильтрации проверяют клики на лету. Фоновый ML-скоринг фрода работает на твоем VPS — никакого внешнего API на каждый визит и задержек при проливе.
+    </div>
+
+    <h2 id="stack-cost">За что вы платите на самом деле</h2>
+    <p>
+      Сравнивайте <strong>полный месячный стек</strong>, а не только стоимость подписки на трекер. Дешёвый облачный трекер кажется выгодным,
+      пока сверху не добавятся счета за клоаку, антифрод и время на рутину.
+    </p>
+
+    <table class="site-doc-table">
+      <thead>
+        <tr>
+          <th scope="col">Сборный софт-стек</th>
+          <th scope="col">BidShard на вашем сервере</th>
+        </tr>
+      </thead>
+      <tbody>
+        <tr>
+          <td>Продление трекера при просадках ROI</td>
+          <td>Одна лицензия — роутинг, клоака и отчёты сразу</td>
+        </tr>
+        <tr>
+          <td>Сторонняя клоака $300–1 000/мес поверх байдинга</td>
+          <td>Встроенный клоакинг — минус $300–600/мес без лишних чеков</td>
+        </tr>
+        <tr>
+          <td>Антифрод «когда-нибудь», а боты сливают баланс</td>
+          <td>ML-антифрод и фильтры на твоих данных в Pro</td>
+        </tr>
+        <tr>
+          <td>Ночи на отладку постбеков и тикеты в саппорт</td>
+          <td>Один инсталл, 1 клик, прямой саппорт в Telegram</td>
+        </tr>
+      </tbody>
+    </table>
+
+    <p>
+      <strong>Pilot</strong> — 10 дней на вашем VPS с полной маршрутизацией кликов и клоакингом, без карты.
+      <strong>Платные тарифы</strong> — Starter, Pro и Scale до $999/мес в зависимости от функций и размера команды.
+      <strong>Enterprise</strong> — индивидуальное решение для больших арбитражных холдингов.
+      Оплата ежемесячно в USDT за лицензию — без переплат за клики.
+      <a href="index.html#pricing">Полные тарифы на главной</a>.
+    </p>
+
+    <h2 id="start">Старт без риска для пролива</h2>
+    <p>
+      Самый частый страх: «перееду в пятницу и потеряю выходные». Это не так.
+    </p>
+    <ol class="site-doc-steps">
+      <li>
+        <strong>Пилот на отдельном VPS</strong> — 10 дней полного Pro-доступа. Запустите сначала одну тестовую кампанию и сравните конверсию со старым трекером.
+      </li>
+      <li>
+        <strong>Импорт из Keitaro или Binom</strong> — готовность связок, лендов и постбеков в 1 клик без ручной сборки с нуля.
+      </li>
+      <li>
+        <strong>Лицензия в веб-админке</strong> — вставьте ключ в браузере без закрытых облачных теннеров и лишних созвонов.
+      </li>
+      <li>
+        <strong>Апгрейд на месте</strong> — USDT, новый ключ, сохранение всех настроек и данных на вашем VPS.
+      </li>
+    </ol>
+
+    <div class="site-doc-callout">
+      <strong>10 дней достаточно</strong>, чтобы увидеть экономию на клоаке и прирост чистой маржи —
+      без карты и корпоративных вебинаров. Напишите в Telegram объём трафика и параметры VPS — вышлем ключ прямо сейчас.
+    </div>
+
+    <h2 id="questions">Вопросы перед пилотом</h2>
+    <div class="site-doc-cards">
+      <article class="site-doc-card">
+        <h3>Это замедлит клики?</h3>
+        <p>
+          Нет! Фильтры работают прямо на Edge на вашем сервере. Фоновый антифрод-скоринг считается асинхронно в БД аналитики. Никаких внешних задержек на принятый трафик.
+        </p>
+      </article>
+      <article class="site-doc-card">
+        <h3>Я кручу на Keitaro — останавливаться?</h3>
+        <p>
+          Нет. Импортируйте JSON-конфиг, запустите пилот параллельно, дублируйте постбеки на тестовый поток и переключайте трафик, когда убедитесь в цифрах.
+        </p>
+      </article>
+      <article class="site-doc-card">
+        <h3>Нужен программист в штат?</h3>
+        <p>
+          Разработчик не нужен! Удобная веб-админка в комплекте — связки, потоки, отчёты и Margin Guard под рукой. Мы бесплатно поможем с инсталлом в Telegram.
+        </p>
+      </article>
+      <article class="site-doc-card">
+        <h3>Саппорт снова заставит ждать тикеты?</h3>
+        <p>
+          Никаких тикетов! Прямой контакт в Telegram с ботом поддержки или менеджером. Мы знаем, что отстук постбеков и баны хостинга не ждут L1-смен.
+        </p>
+      </article>
+      <article class="site-doc-card">
+        <h3>Джун не сломает связки?</h3>
+        <p>
+          Командный доступ (RBAC) и разграничение прав защищают профитные кампании от случайных кликов джуниор-байеров.
+        </p>
+      </article>
+      <article class="site-doc-card">
+        <h3>Вы имеете доступ к моим связкам?</h3>
+        <p>
+          Нет! Всё крутится строго на вашем VPS. У нас нет бэкенда, собирающего телеметрию, настройки связок или логи посетителей.
+        </p>
+      </article>
+    </div>
+
+    <h2 id="when-wrong">Если улетел VPS</h2>
+    <p>
+      Упал VPS, сменился провайдер или срочный переезд на новое железо — в арбитраже это обычное дело.
+      Пишите <a href="https://t.me/bidshardsupportbot">@bidshardsupportbot</a> или
+      <a href="https://t.me/bidshard_manager">@bidshard_manager</a> в Telegram.
+      Мгновенно вышлем новый лицензионный ключ под новый сервер — оперативно и без лишней бюрократии.
+    </p>
+    <p>
+      <strong>Margin Guard</strong> (тариф Pro) автоматически отслеживает ROI и расходы. Когда профит падает ниже ваших правил, система ставит на паузу роутинг в трекере и гасит рекламу в Meta и Google через API — бюджет защищён до того, как день уйдёт в глубокий минус.
+    </p>
+
+    <div class="site-doc-actions">
+      <a class="primary" data-site-cta="telegram" href="#">Запросить пилот в Telegram</a>
+      <a class="ghost" href="docs.html">Как это работает</a>
+      <a class="ghost" href="index.html#pricing">Тарифы</a>
+    </div>
+  </main>
+</body>
+</html>

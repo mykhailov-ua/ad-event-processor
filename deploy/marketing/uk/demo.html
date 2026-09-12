@@ -3,8 +3,8 @@
 <head>
   <meta charset="utf-8">
   <meta name="viewport" content="width=device-width, initial-scale=1">
-  <meta name="description" content="Інтерактивне демо BidShard — попередній перегляд скоро.">
-  <title>Демо — BidShard</title>
+  <meta name="description" content="Веб-адмінка BidShard — зв'язки, звіти та антифрод у браузері. Входить у кожне розгортання.">
+  <title>Веб-адмінка — BidShard</title>
   <script>
     (function () {
       try {
@@ -17,21 +17,28 @@
   </script>
   <link rel="alternate" hreflang="en" href="/demo.html" />
   <link rel="alternate" hreflang="uk" href="/uk/demo.html" />
-  <link rel="stylesheet" href="../site.css?v=20260912">
-  <script src="../site.js?v=20260912" defer></script>
+  <link rel="alternate" hreflang="ru" href="/ru/demo.html" />
+  <link rel="stylesheet" href="/site.css?v=20260914">
+  <script src="/site.js?v=20260914" defer></script>
 </head>
 <body class="docs-page demo-page">
   <div class="site-offer-gate" data-site-offer-gate hidden aria-hidden="true"></div>
   <header class="site-doc-header">
     <a href="index.html">BidShard</a>
     <nav class="site-doc-header__nav" aria-label="Демо">
-      <a href="docs.html">Архітектура</a>
-      <a href="buyers.html">Гід для media buyers</a>
+      <a href="docs.html">Як це працює</a>
+      <a href="buyers.html">Гід для медіабаєрів</a>
       <a href="../offer.html">Публічна оферта</a>
     </nav>
     <div class="site-header-end">
-      <a class="site-lang-switch" href="/demo.html" hreflang="en" title="English version">EN</a>
-      <button type="button" class="site-theme-toggle" data-site-theme-toggle aria-label="Перемкнути на світлу тему" title="Світла тема">
+      <nav class="site-lang-nav" aria-label="Мова">
+        <a class="site-lang-switch" data-site-lang="en" href="/demo.html" hreflang="en" title="English">EN</a>
+        <span class="site-lang-sep" aria-hidden="true">·</span>
+        <a class="site-lang-switch is-active" data-site-lang="uk" href="/uk/demo.html" hreflang="uk" title="Українська" aria-current="page">UA</a>
+        <span class="site-lang-sep" aria-hidden="true">·</span>
+        <a class="site-lang-switch" data-site-lang="ru" href="/ru/demo.html" hreflang="ru" title="Русский">RU</a>
+      </nav>
+      <button type="button" class="site-theme-toggle" data-site-theme-toggle aria-label="Увімкнути світлу тему" title="Світла тема">
         <svg class="site-theme-toggle__icon site-theme-toggle__icon--sun" viewBox="0 0 24 24" fill="none" aria-hidden="true">
           <circle cx="12" cy="12" r="4" stroke="currentColor" stroke-width="2"/>
           <path d="M12 2v2M12 20v2M4.93 4.93l1.41 1.41M17.66 17.66l1.41 1.41M2 12h2M20 12h2M4.93 19.07l1.41-1.41M17.66 6.34l1.41-1.41" stroke="currentColor" stroke-width="2" stroke-linecap="round"/>
@@ -46,22 +53,22 @@
   <main class="site-doc site-demo-stub">
     <a href="index.html" class="site-doc-back">На головну</a>
 
-    <p class="site-doc-eyebrow">Попередній перегляд</p>
-    <h1>Інтерактивне демо</h1>
+    <p class="site-doc-eyebrow">Веб-адмінка</p>
+    <h1>Повний UI у браузері</h1>
 
     <div class="site-demo-stub__card">
-      <span class="site-demo-stub__badge">Скоро</span>
       <p class="site-demo-stub__lead">
-        Готуємо живе демо адмінки: кампанії, звіти та налаштування antifraud без встановлення на ваш VPS.
+        Кожна установка включає зручну веб-адмінку: зв'язки, потоки, ленди, звіти, правила Margin Guard, права команди
+        та ліцензія — у браузері, на вашому сервері.
       </p>
       <p class="site-demo-stub__hint">
-        Поки що перегляньте архітектуру або запросіть безкоштовний 10-денний пілот на власному сервері.
+        Запросіть безкоштовний 10-денний пілот — допоможемо з установкою в один клік у Telegram. Робочий UI вже готовий до проливу на вашому VPS.
       </p>
     </div>
 
     <div class="site-doc-actions">
-      <a class="primary" data-site-cta="telegram" href="#">Отримати пілот</a>
-      <a class="ghost" href="docs.html">Архітектура</a>
+      <a class="primary" data-site-cta="telegram" href="#">Запросити пілот</a>
+      <a class="ghost" href="docs.html">Як це працює</a>
       <a class="ghost" href="index.html">На головну</a>
     </div>
   </main>

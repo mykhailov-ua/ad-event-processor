@@ -8,10 +8,10 @@
 //     StartWorkers runs InvoiceWorker on 1st of month 00:15 UTC when InvoiceWorkerEnabled.
 //   - Worker (worker.go): ClickHouse placement spend vs revenue margin guard; pauses placements when
 //     cost-over-revenue exceeds licensed threshold; started from internal/control/run.go.
-//   - EnforcementHost (enforcement.go): PauseCampaign, BlacklistPlacement, PlatformPauseCampaign;
-//     policy enforcement modes in policy_enforcement.go (pause_campaign, blacklist_placement,
-//     notify_only, platform_pause) with per-policy cooldown_sec.
-//     controlplane ledger_enforcement_bridge.go (not raw PAUSE_* outbox inserts).
+//   - EnforcementHost (enforcement.go): PauseCampaign, BlacklistPlacement, PlatformPauseCampaign
+//     via controlplane ledger_enforcement_bridge.go (not raw PAUSE_* outbox inserts).
+//     Policy modes in policy_enforcement.go: pause_campaign, blacklist_placement, notify_only,
+//     platform_pause; per-policy cooldown_sec from margin_guard_policies.
 //   - BillingClient (client.go): thin domain.BillingAPI facade for controlplane operator billing calls.
 //   - CheckLedgerBalanceInvariant (ledger_invariant_assert.go): customers.balance vs ledger sum
 //     before invoice generation; drift increments LedgerDriftTotal metrics.
